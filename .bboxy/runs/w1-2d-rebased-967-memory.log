@@ -1,0 +1,38 @@
+SOURCE_COMMIT 1871a6d95106c28c35f6868691772d240059e16c
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'gates_seats', 'gate_memory', '--', '--ignored', '--nocapture', '--test-threads=1']
+{'GATE_RATE': '32kB/s', 'GATE_SECONDS': '60', 'GATE_KEEP_RUN': '1', 'GATE_RUN_DIR': '/Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs', 'GATE_SEATS': '967'}
+    Finished `release` profile [optimized] target(s) in 0.27s
+     Running tests/gates_seats.rs (target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0)
+
+running 1 test
+test gate_memory ... GATE spawn progress=25/967 elapsed_s=0.936
+GATE spawn progress=50/967 elapsed_s=2.362
+GATE spawn progress=75/967 elapsed_s=3.856
+GATE spawn progress=100/967 elapsed_s=5.564
+GATE spawn progress=125/967 elapsed_s=7.470
+GATE spawn progress=150/967 elapsed_s=8.625
+GATE spawn progress=175/967 elapsed_s=9.924
+GATE spawn progress=200/967 elapsed_s=11.343
+GATE spawn progress=225/967 elapsed_s=12.952
+GATE spawn progress=250/967 elapsed_s=14.923
+GATE spawn progress=275/967 elapsed_s=16.732
+GATE spawn progress=300/967 elapsed_s=20.602
+GATE spawn progress=325/967 elapsed_s=25.524
+GATE spawn progress=350/967 elapsed_s=33.407
+GATE spawn progress=375/967 elapsed_s=45.586
+GATE spawn progress=400/967 elapsed_s=54.204
+GATE spawn progress=425/967 elapsed_s=64.187
+GATE spawn progress=450/967 elapsed_s=73.287
+GATE spawn progress=475/967 elapsed_s=81.207
+GATE spawn progress=500/967 elapsed_s=117.092
+GATE spawn progress=525/967 elapsed_s=170.394
+GATE spawn progress=550/967 elapsed_s=195.231
+GATE spawn progress=575/967 elapsed_s=216.853
+GATE spawn progress=600/967 elapsed_s=246.547
+GATE spawn progress=625/967 elapsed_s=325.955
+GATE spawn progress=650/967 elapsed_s=443.334
+error: test failed, to rerun pass `-p bbt-mux --test gates_seats`
+
+Caused by:
+  process didn't exit successfully: `/Users/feral/mydev/bboxy450-term-rook/scripts/sign-run.sh /Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0 gate_memory --ignored --nocapture --test-threads=1` (signal: 15, SIGTERM: termination signal)
+EXIT 101; wall_s=504.206

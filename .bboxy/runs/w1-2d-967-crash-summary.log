@@ -1,0 +1,16 @@
+CRASH_SOURCE: w1-2d-967-crash-replay.log; actual child exit0.
+Verified distinct seats: 967
+Replayed production Ring::open+history for all967.
+CRC errors: 0
+Total producer-written bytes: 5241920
+Total admitted bytes: 4710528
+Total committed/replayed bytes: 4315968
+Max admitted-minus-committed bytes: 640
+Max observed admission tick bytes: 704
+Every individual admitted loss <= its own observed tick: true
+Max pre-capture tail bytes: 832
+Measured platform PTY buffer bytes: [1024]
+Fixture 2ms coalescing bytes: [64]
+Every individual pre-capture tail <= its measured PTY buffer+coalescing: true
+Full replay:21.614s. Whole command:45.776s, native test:40.54s.
+This was supervisor SIGKILL, not physical power loss/kernel panic.

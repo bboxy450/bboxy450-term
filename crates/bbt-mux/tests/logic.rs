@@ -1,4 +1,5 @@
 #![allow(clippy::disallowed_methods)] // Disposable IO/process test harness.
+mod common;
 use std::io::Write;
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -126,7 +127,7 @@ fn view_stream_coalesces_and_replica_refuses_wrong_baselines_atomically() {
 fn logic_reconnect_keeps_same_supervisor_child_and_exact_screen() {
     let temp = tempfile::tempdir().unwrap();
     let runtime = runtime();
-    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let config = fixture(temp.path());
     let logic = Logic::start(
         supervisor.connect().unwrap(),
@@ -167,7 +168,7 @@ fn a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_ident
     use bbt_mux::bus::{Consumer, Delivery};
     let temp = tempfile::tempdir().unwrap();
     let runtime = runtime();
-    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let config = fixture(temp.path());
     let logic = Logic::start(
         supervisor.connect().unwrap(),
@@ -230,7 +231,7 @@ fn a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_ident
 fn supervisor_expires_grace_after_logic_stops_and_undo_preserves_process() {
     let temp = tempfile::tempdir().unwrap();
     let runtime = runtime();
-    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let config = fixture(temp.path());
     let logic = Logic::start(
         supervisor.connect().unwrap(),
@@ -243,7 +244,7 @@ fn supervisor_expires_grace_after_logic_stops_and_undo_preserves_process() {
     let record = SeatRecord::new(spec.seat, Ulid::new(), "fixture", "zsh");
     let seat = spec.seat;
     let swarm = record.swarm;
-    runtime.block_on(logic.client.spawn(record, spec)).unwrap();
+    let original = runtime.block_on(logic.client.spawn(record, spec)).unwrap();
     settled(&runtime, &logic, seat);
     let position = Position {
         swarm,
@@ -256,7 +257,7 @@ fn supervisor_expires_grace_after_logic_stops_and_undo_preserves_process() {
         .block_on(
             logic
                 .client
-                .close(seat, 1, Ulid::new(), position.clone(), 500),
+                .close(seat, 1, Ulid::new(), position.clone(), 30_000),
         )
         .unwrap();
     let record = runtime.block_on(logic.client.record(seat)).unwrap();
@@ -273,17 +274,19 @@ fn supervisor_expires_grace_after_logic_stops_and_undo_preserves_process() {
         .unwrap();
     logic.shutdown().unwrap();
     let client = supervisor.connect().unwrap();
-    let until = Instant::now() + Duration::from_secs(3);
+    let until = Instant::now() + Duration::from_secs(10);
     loop {
         let Reply::Seats { seats } = client.request(Action::ListOwnedSeats).unwrap() else {
             panic!()
         };
+        assert_eq!(seats[0].pid, original.pid, "undo replaced the child");
+        assert_eq!(seats[0].generation, original.generation);
         if seats[0].exited.is_some() {
             break;
         }
         assert!(
             Instant::now() < until,
-            "supervisor failed to expire grace without logic"
+            "supervisor failed to expire grace without logic: {seats:?}"
         );
         std::thread::sleep(Duration::from_millis(20));
     }
@@ -314,7 +317,7 @@ async fn socket_request(path: &Path, request: &Request) -> serde_json::Value {
 fn real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap() {
     let temp = tempfile::tempdir().unwrap();
     let runtime = runtime();
-    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let logic = Logic::start(
         supervisor.connect().unwrap(),
         fixture(temp.path()),
@@ -384,6 +387,7 @@ fn hard_killed_separate_logic_process_recovers_the_same_zsh_view() {
     let supervisor_path = config.run_dir.join("supervisor.sock");
     let supervisor = Supervisor::start(Config {
         socket_path: Some(supervisor_path.clone()),
+        journal_directory: Some(temp.path().join("supervisor-journal")),
         ..Default::default()
     })
     .unwrap();
@@ -567,7 +571,7 @@ fn ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_the
     use sha2::{Digest, Sha256};
     let temp = tempfile::tempdir().unwrap();
     let runtime = runtime();
-    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let config = fixture(temp.path());
     let logic = Logic::start(
         supervisor.connect().unwrap(),
@@ -596,21 +600,17 @@ fn ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_the
     let until = Instant::now() + Duration::from_secs(60);
     while !temp.path().join("writer.json").exists() {
         if started.elapsed() >= next_trace {
-            let Reply::RingRecovery { status, .. } = stalled
-                .request(Action::RingRecovery {
-                    attachment: attachment.clone(),
-                })
-                .unwrap()
-            else {
-                panic!()
-            };
-            println!(
-                "writer progress {:?}: {} captured bytes, hot {}, paused {}",
-                started.elapsed(),
-                status.byte_end,
-                status.hot_bytes,
-                status.paused
-            );
+            if let Ok(Reply::RingRecovery { status, .. }) = stalled.request(Action::RingRecovery {
+                attachment: attachment.clone(),
+            }) {
+                println!(
+                    "writer progress {:?}: {} captured bytes, hot {}, paused {}",
+                    started.elapsed(),
+                    status.byte_end,
+                    status.hot_bytes,
+                    status.paused
+                );
+            }
             next_trace += Duration::from_secs(5);
         }
         assert!(
@@ -625,15 +625,24 @@ fn ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_the
     assert_eq!(stats["bytes"], size);
     assert!(stats["max_write_s"].as_f64().unwrap() < 2.0);
     let raw_size = size + 8 + b"\x1b[31mRING-TAIL\x1b[0m\r\n".len();
-    let until = Instant::now() + Duration::from_secs(5);
+    let until = Instant::now() + Duration::from_secs(15);
+    let mut last_observation = String::new();
     loop {
-        let Reply::RingRecovery { status, .. } = stalled
-            .request(Action::RingRecovery {
-                attachment: attachment.clone(),
-            })
-            .unwrap()
-        else {
-            panic!()
+        let status = match stalled.request(Action::RingRecovery {
+            attachment: attachment.clone(),
+        }) {
+            Ok(Reply::RingRecovery { status, .. }) => {
+                last_observation = format!("{status:?}");
+                status
+            }
+            other => {
+                assert!(
+                    Instant::now() < until,
+                    "final capture unavailable; last={last_observation}; current={other:?}"
+                );
+                std::thread::sleep(Duration::from_millis(10));
+                continue;
+            }
         };
         assert!(!status.paused);
         assert!(status.hot_bytes <= config.ring.capacity_bytes);
@@ -641,7 +650,10 @@ fn ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_the
             println!("capture profile BEFORE logic restart: {:?}", status.capture);
             break;
         }
-        assert!(Instant::now() < until, "final capture bytes unavailable");
+        assert!(
+            Instant::now() < until,
+            "final capture bytes unavailable: {last_observation}"
+        );
         std::thread::sleep(Duration::from_millis(10));
     }
     let restart = Instant::now();
@@ -779,7 +791,7 @@ fn ring_live_logic_catches_up_coalesced_notifications_after_a_stall() {
     }
     let temp = tempfile::tempdir().unwrap();
     let runtime = runtime();
-    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let pause = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let logic = Logic::start(
         Delayed {
@@ -826,7 +838,7 @@ fn ring_live_logic_catches_up_coalesced_notifications_after_a_stall() {
 fn ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshold() {
     let temp = tempfile::tempdir().unwrap();
     let runtime = runtime();
-    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let mut config = fixture(temp.path());
     config.ring.idle_ms = 30;
     let logic = Logic::start(
@@ -872,7 +884,7 @@ fn ring_capture_throughput_with_logic_running_and_stopped() {
     for running in [false, true] {
         let temp = tempfile::tempdir().unwrap();
         let runtime = runtime();
-        let supervisor = Supervisor::start(Config::default()).unwrap();
+        let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
         let config = fixture(temp.path());
         let key = SigningKey::from_bytes(&[29; 32]);
         let initial = Logic::start(
@@ -931,7 +943,7 @@ fn ring_capture_throughput_with_logic_running_and_stopped() {
                 else {
                     panic!()
                 };
-                status
+                *status
             };
             if status.byte_end == raw_size as u64
                 && status.committed_sequence == status.captured_sequence

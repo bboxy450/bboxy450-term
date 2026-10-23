@@ -1,0 +1,32 @@
+BUILD ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'gates_seats', '--no-run']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 3.50s
+  Executable tests/gates_seats.rs (target/w1-2d/release/deps/gates_seats-553bb7d31ee804d0)
+BUILD_EXIT 0
+COMMAND ['/Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/gates_seats-553bb7d31ee804d0', 'gate_memory', '--ignored', '--nocapture', '--test-threads=1']
+OWNED_PID 95877
+
+running 1 test
+test gate_memory ... GATE spawn progress=25/400 elapsed_s=1.223
+GATE spawn progress=50/400 elapsed_s=2.207
+GATE spawn progress=75/400 elapsed_s=3.546
+GATE spawn progress=100/400 elapsed_s=4.911
+GATE spawn progress=125/400 elapsed_s=6.201
+GATE spawn progress=150/400 elapsed_s=7.978
+GATE spawn progress=175/400 elapsed_s=9.588
+GATE spawn progress=200/400 elapsed_s=11.621
+GATE spawn progress=225/400 elapsed_s=14.268
+GATE spawn progress=250/400 elapsed_s=16.469
+GATE spawn progress=275/400 elapsed_s=19.124
+GATE spawn progress=300/400 elapsed_s=23.023
+GATE spawn progress=325/400 elapsed_s=27.167
+GATE spawn progress=350/400 elapsed_s=31.083
+GATE spawn progress=375/400 elapsed_s=35.021
+GATE spawn progress=400/400 elapsed_s=39.685
+HOT_SAMPLE during10s measured load
+Sampling process 95877 for 2 seconds with 1 millisecond of run time between samples
+Sampling completed, processing symbols...
+Sample analysis of process 95877 written to file /Users/feral/mydev/bboxy450-term-rook/.bboxy/runs/w1-2d-journal-400-hot-sample.log
+SAMPLE_EXIT 0
+GATE capture seats=400 load_wall_s=10.866 writer_busy_fraction=0.7003 busy_replies=0 heartbeat_max_ms=153.150 commit_p99_upper_ms=8.000 commit_max_ms=51.190
+CHILD_EXIT -15; wall_s=214.954

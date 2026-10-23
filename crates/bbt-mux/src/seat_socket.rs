@@ -475,7 +475,11 @@ mod gui_tests {
         let temp = tempfile::tempdir().unwrap();
         let repository = temp.path().join("repository");
         std::fs::create_dir(&repository).unwrap();
-        let supervisor = Supervisor::start(Default::default()).unwrap();
+        let supervisor = Supervisor::start(crate::Config {
+            journal_directory: Some(temp.path().join("supervisor-journal")),
+            ..Default::default()
+        })
+        .unwrap();
         let logic = Logic::start(
             supervisor.connect().unwrap(),
             LogicConfig {

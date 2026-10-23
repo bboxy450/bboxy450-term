@@ -1,0 +1,42 @@
+UTC 2026-10-22T22:53:03.264924+00:00
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-supervisor', '--lib', '--', '--nocapture']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `release` profile [optimized] target(s) in 5.06s
+     Running unittests src/lib.rs (target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1)
+
+running 4 tests
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+EXIT=0
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'capture_busy', '--', '--nocapture']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 42.74s
+     Running tests/capture_busy.rs (target/w1-2d/release/deps/capture_busy-aea4365cb6f6f61e)
+
+running 1 test
+test capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+EXIT=0
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'gates_seats', '--no-run']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 1.71s
+  Executable tests/gates_seats.rs (target/w1-2d/release/deps/gates_seats-553bb7d31ee804d0)
+EXIT=0
+GATE_SEATS=50 GATE_RATE=32kB/s GATE_SECONDS=4
+PID=61721
+
+running 1 test
+test gate_memory ... GATE memory value=68.969 unit=MiB budget=none MEASURED ptmx_max=999 seats=50 rate=32kB/s load_s=4 baseline_mib=11.0 peak_mib=69.0 per_seat_kib=1187.8 spawn_s=7.2 records=91114 sync_s=6.6 marker_s=8.1 queue_full=0 disk_peak_mib=65.9 observed_s=35.571 writer_busy_s=33.294 writer_s_per_wall_s=0.936 commit_rounds=363 commit_p99_upper_ms=839.022 commit_max_ms=839.022 logic_alive=true
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 63.44s
+
+CHILD_EXIT=0 ELAPSED_S=63.732959

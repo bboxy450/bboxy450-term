@@ -1,0 +1,92 @@
+Before fix: real live PTY, seeded full retained output frame, ring admission available.
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-supervisor', '--lib', 'a_full_retained_capture_buffer', '--', '--nocapture']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `release` profile [optimized] target(s) in 5.83s
+     Running unittests src/lib.rs (target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1)
+
+running 1 test
+
+thread 'supervisor::capture_read_tests::a_full_retained_capture_buffer_is_not_pty_eof' (10522160) panicked at crates/bbt-supervisor/src/supervisor.rs:1583:9:
+zero-length read invented EOF on a live PTY
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test supervisor::capture_read_tests::a_full_retained_capture_buffer_is_not_pty_eof ... FAILED
+
+failures:
+
+failures:
+    supervisor::capture_read_tests::a_full_retained_capture_buffer_is_not_pty_eof
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.03s
+
+error: test failed, to rerun pass `-p bbt-supervisor --lib`
+BEFORE_FIX_EXIT=101
+AFTER_FIX_COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-supervisor', '--', '--nocapture']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `release` profile [optimized] target(s) in 10.70s
+     Running unittests src/lib.rs (target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1)
+
+running 15 tests
+test ring::writer::crash_tests::capture_crash_child ... ignored, private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ignored, release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture
+test ring::journal::tests::metadata_only_debt_keeps_the_five_second_full_flush_deadline ... ok
+test ring::journal::tests::bad_crc_and_oversized_header_never_commit_a_later_tick ... ok
+test ring::journal::tests::old_segment_waits_for_every_sealed_projection_and_checkpoint ... ok
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test ring::writer::tests::undurable_admission_budget_pauses_until_a_full_flush_returns_credit ... ok
+test ring::writer::tests::orderly_shutdown_leaves_a_durable_journal_that_rebuilds_the_projection ... ok
+test ring::journal::tests::legacy_checkpoint_publication_offsets_remain_readable ... ok
+test supervisor::capture_read_tests::a_full_retained_capture_buffer_is_not_pty_eof ... ok
+test ring::journal::tests::checkpoint_carries_offset_and_rotated_tail_replays_without_effects ... ok
+test ring::journal::tests::crash_rebuilds_two_seats_only_through_the_last_tick_and_rejects_torn_suffix ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+
+test result: ok. 13 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+     Running tests/journal_config.rs (target/w1-2d/release/deps/journal_config-ef27c801a29fc69e)
+
+running 2 tests
+test capture_requires_an_explicit_supervisor_journal_directory ... ok
+test supervisor_shutdown_preserves_every_already_admitted_byte_for_offline_reopen ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/supervisor.rs (target/w1-2d/release/deps/supervisor-4baddf59c0f5bef6)
+
+running 10 tests
+test validation_rejects_stale_and_oversized_input ... ok
+test natural_exit_follows_all_final_output ... ok
+test killed_child_reports_generation_and_fences_replacement ... ok
+test zsh_echo_cwd_environment_and_resize ... ok
+50 distinct PTY seats echoed under one Supervisor / one mio::Poll
+test fifty_seats_share_one_supervisor_poller ... ok
+slow subscriber: complete 4 MiB + TAIL recovered with contiguous record sequences
+test slow_reader_backpressures_and_recovers_the_complete_output ... ok
+test unix_socket_auth_framing_and_live_pty ... ok
+test two_seats_interleave_without_cross_talk ... ok
+test logic_and_writer_replacement_preserve_child_and_deduplicate_input ... ok
+blocked write: 1022 of 65536 bytes, PartialUnknown retained across logic replacement
+test blocked_write_survives_fencing_and_becomes_unknown_without_replay ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.34s
+
+   Doc-tests bbt_supervisor
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+AFTER_FIX_EXIT=0; WALL_SECONDS=12.974
+AFTER_FIX_COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-supervisor', '--lib', 'capture_sigkill', '--', '--ignored', '--nocapture']
+    Finished `release` profile [optimized] target(s) in 0.06s
+     Running unittests src/lib.rs (target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1)
+
+running 1 test
+{"admitted":6272,"admitted_loss":384,"admitted_tick_bytes":576,"coalescing_limit":64,"committed":5888,"crc_errors":0,"measured_pty_buffer":1024,"pre_capture_tail":64,"seat":"01M5KAA40HYRPRDQBE827QVV0C","signal":"SIGKILL","written":6336}
+{"admitted":5952,"admitted_loss":384,"admitted_tick_bytes":576,"coalescing_limit":64,"committed":5568,"crc_errors":0,"measured_pty_buffer":1024,"pre_capture_tail":64,"seat":"01M5KAA411EDWTJ6D92F1J792Z","signal":"SIGKILL","written":6016}
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.29s
+
+AFTER_FIX_EXIT=0; WALL_SECONDS=0.385

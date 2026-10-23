@@ -1,4 +1,5 @@
 #![allow(clippy::disallowed_methods)] // Disposable broker/database/socket fixtures.
+mod common;
 use bbt_mux::Ulid;
 use bbt_mux::messaging::{
     keys::{LocalSeatKeys, SeatKeys},
@@ -615,7 +616,7 @@ fn oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects() {
 #[test]
 fn live_logic_and_capability_socket_deliver_dm_native_written_without_claiming_model_receipt() {
     use bbt_mux::{
-        Config, LaunchSpec, Supervisor,
+        LaunchSpec, Supervisor,
         adapters::Endpoint,
         logic::{Logic, LogicConfig},
         messaging::api::{Request as Api, Response},
@@ -629,7 +630,7 @@ fn live_logic_and_capability_socket_deliver_dm_native_written_without_claiming_m
         .enable_all()
         .build()
         .unwrap();
-    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(tmp.path())).unwrap();
     let logic = Logic::start(
         supervisor.connect().unwrap(),
         LogicConfig {

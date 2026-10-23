@@ -1,0 +1,39 @@
+EXACT_SHA=0a542c2f9b16ed179cb1f805713c90f74d67f86e
+CASE=parent
+COMMAND=['cargo', 'test', '-p', 'bbt-mux', '--test', 'logic', '--locked', 'ring_seals_twenty_mib', '--', '--nocapture', '--test-threads=1']
+UNOPTIMIZED DEV/TEST_OPT_LEVEL=0 DEBUG=0 INCREMENTAL=0; same30s deadline, sequential standalone diagnostic, memory custody.
+Preparing worktree (detached HEAD 0a542c2)
+HEAD is now at 0a542c2 fix: admit a retained full capture frame before another PTY read
+INITIAL_STATUS=''
+OWN_CHILD_PID=63049
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/rook-w1-2d-replay-parent-0a542c2/crates/bbt-ui-model)
+   Compiling bbt-core v0.0.1 (/private/tmp/rook-w1-2d-replay-parent-0a542c2/crates/bbt-core)
+   Compiling bbt-rt v0.0.1 (/private/tmp/rook-w1-2d-replay-parent-0a542c2/crates/bbt-rt)
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/rook-w1-2d-replay-parent-0a542c2/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/private/tmp/rook-w1-2d-replay-parent-0a542c2/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/private/tmp/rook-w1-2d-replay-parent-0a542c2/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 25.41s
+     Running tests/logic.rs (/Users/feral/mydev/bboxy450-term-rook/target/w1-2d-read-diagnostic/debug/deps/logic-221cf4ff58a682a7)
+
+running 1 test
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... writer progress 5.584217125s: 12775432 captured bytes, hot 49320, paused true
+20 MiB writer completed BEFORE logic restart: {"bytes":20971520,"calls":321,"elapsed_s":7.65138041699538,"max_write_s":1.8759881669830063,"mib_s":2.6139074140890513,"p99_write_s":1.0542663749947678}
+capture profile BEFORE logic restart: CaptureStats { records: 1351, encode_ns: 1392638195, hot_write_ns: 102559585, sync_ns: 74529873, marker_ns: 11722876, cold_ns: 2850375209, seals: 5, max_seal_ns: 697227041, queued_bytes: 0, peak_queue_bytes: 722336, queue_full_count: 40, ordered_commits: 113, durable_commits: 10, writer_busy_ns: 7671979630, commit_rounds: 105, commit_p99_ns: 14000000, commit_max_ns: 17949958, undurable_bytes: 26644, peak_undurable_bytes: 4416512, durable_pauses: 0, durable_rounds: 7 }
+cold replay 4.26071225s: 4196352 bytes, reads 3.836314249s, checkpoint writes 0ns
+cold replay 9.152009125s: 8388608 bytes, reads 8.286742157s, checkpoint writes 0ns
+cold replay 12.688384042s: 12597248 bytes, reads 11.446924753s, checkpoint writes 0ns
+cold replay 16.531047292s: 16784384 bytes, reads 14.882984256s, checkpoint writes 0ns
+cold replay 19.624744667s: 20971540 bytes, reads 17.610212219s, checkpoint writes 0ns
+20 MiB cold replay startup: 19.676981083s
+cold replay 26.42612225s: 25167900 bytes, reads 21.218944176s, checkpoint writes 29.909958ms
+cold replay 34.2992945s: 29360156 bytes, reads 25.862551666s, checkpoint writes 29.909958ms
+cold replay 40.086477458s: 33568796 bytes, reads 28.434515204s, checkpoint writes 29.909958ms
+cold replay 45.494007208s: 37755932 bytes, reads 30.612248246s, checkpoint writes 29.909958ms
+cold replay 50.353417792s: 41943088 bytes, reads 32.315708574s, checkpoint writes 29.909958ms
+complete raw capture: 20971548 bytes, SHA-256 77553a799001eccf7d30dadb0cec39fbbbf13b0aef4ab9d45303445a67441bcb, no gap
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 61.59s
+
+CHILD_EXIT=0; WALL_SECONDS=87.519
+OWN_WORKTREE_REMOVE_EXIT=0

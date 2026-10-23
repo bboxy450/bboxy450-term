@@ -1,12 +1,13 @@
 //! Opt-in, finite W2.2 measurements; no provider or user harness is touched.
 #![allow(clippy::disallowed_methods)] // Disposable IO/process test harness.
+mod common;
 use std::time::Instant;
 
 use bbt_mux::bus::{Broker, Consumer};
 use bbt_mux::logic::{Logic, LogicConfig};
 use bbt_mux::registry::SeatRecord;
 use bbt_mux::store::events::Draft;
-use bbt_mux::{Config, LaunchSpec, Supervisor, Ulid};
+use bbt_mux::{LaunchSpec, Supervisor, Ulid};
 use ed25519_dalek::SigningKey;
 use petgraph::{
     graph::{DiGraph, NodeIndex},
@@ -128,7 +129,7 @@ fn file_descriptors_at_200_live_seats_and_sqlite_objects() {
         .enable_all()
         .build()
         .unwrap();
-    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let repo = temp.path().join(".bboxy");
     std::fs::create_dir(&repo).unwrap();
     let logic = Logic::start(

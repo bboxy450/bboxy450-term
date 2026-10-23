@@ -1,0 +1,8 @@
+{
+  "sha": "e79c6bd0b86bbb69601b26ed18b44bcfd3b0528e",
+  "exit": 0,
+  "wall_seconds": 412.0456702920201,
+  "ci_pid": 86916,
+  "worktree": "/tmp/ci-rook-w1-2d-e79c6bd",
+  "target": "/Users/feral/mydev/bboxy450-term-rook/target/w1-2d-final-ci-e79c6bd"
+}

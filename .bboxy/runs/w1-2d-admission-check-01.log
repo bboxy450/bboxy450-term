@@ -1,0 +1,37 @@
+UTC 2026-10-22T23:25:04.393216+00:00
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-supervisor', '--lib', '--', '--nocapture']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+warning: unused import: `File`
+ --> crates/bbt-supervisor/src/ring/writer/probe.rs:3:15
+  |
+3 | use std::fs::{File, OpenOptions};
+  |               ^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `bbt-supervisor` (lib test) generated 1 warning (run `cargo fix --lib -p bbt-supervisor --tests` to apply 1 suggestion)
+    Finished `release` profile [optimized] target(s) in 4.13s
+     Running unittests src/lib.rs (target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1)
+
+running 7 tests
+test ring::writer::crash_tests::capture_crash_child ... ignored, private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ignored, release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+test ring::writer::tests::undurable_admission_budget_pauses_until_a_full_flush_returns_credit ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+
+thread 'ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte' (9171665) panicked at crates/bbt-supervisor/src/ring/writer.rs:827:9:
+assertion failed: handle.can_capture()
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... FAILED
+
+failures:
+
+failures:
+    ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte
+
+test result: FAILED. 4 passed; 1 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+error: test failed, to rerun pass `-p bbt-supervisor --lib`
+EXIT=101

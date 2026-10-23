@@ -1,0 +1,18 @@
+Oracle5f69546a-4cf2-431e-9a06-1c7a273d6407: free-disk guard10GiB at each spawn progress tick and each measured-load tick; abort stops all owned producers and removes its own run even with KEEP_RUN. Regression raises threshold without consuming disk.
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'gates_seats', 'disk_guard_abort', '--', '--nocapture']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 23.24s
+     Running tests/gates_seats.rs (target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0)
+
+running 1 test
+GATE aborted reason=disk_low free_bytes=37166632960 min_free_bytes=37166632961; stopping owned producers and removing owned run
+
+thread 'disk_guard_abort_terminates_owned_children_and_removes_the_run' (10413063) panicked at crates/bbt-mux/tests/gates_seats.rs:401:9:
+disk reserve guard aborted gate before ENOSPC
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test disk_guard_abort_terminates_owned_children_and_removes_the_run ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.13s
+
+EXIT=0; WALL_SECONDS=23.603

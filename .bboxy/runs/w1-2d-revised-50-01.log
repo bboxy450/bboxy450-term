@@ -1,0 +1,110 @@
+UTC 2026-10-22T22:45:53.956005+00:00
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'gates_seats', '--no-run']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+error[E0609]: no field `writer_busy_ns` on type `CaptureStats`
+   --> crates/bbt-mux/tests/gates_seats.rs:197:15
+    |
+197 |             t.writer_busy_ns = c.writer_busy_ns;
+    |               ^^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `records`, `encode_ns`, `hot_write_ns`, `sync_ns`, `marker_ns` ... and 6 others
+
+error[E0609]: no field `writer_busy_ns` on type `CaptureStats`
+   --> crates/bbt-mux/tests/gates_seats.rs:197:34
+    |
+197 |             t.writer_busy_ns = c.writer_busy_ns;
+    |                                  ^^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `records`, `encode_ns`, `hot_write_ns`, `sync_ns`, `marker_ns` ... and 6 others
+
+error[E0609]: no field `commit_rounds` on type `CaptureStats`
+   --> crates/bbt-mux/tests/gates_seats.rs:198:15
+    |
+198 |             t.commit_rounds = c.commit_rounds;
+    |               ^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `records`, `encode_ns`, `hot_write_ns`, `sync_ns`, `marker_ns` ... and 6 others
+
+error[E0609]: no field `commit_rounds` on type `CaptureStats`
+   --> crates/bbt-mux/tests/gates_seats.rs:198:33
+    |
+198 |             t.commit_rounds = c.commit_rounds;
+    |                                 ^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `records`, `encode_ns`, `hot_write_ns`, `sync_ns`, `marker_ns` ... and 6 others
+
+error[E0609]: no field `commit_p99_ns` on type `CaptureStats`
+   --> crates/bbt-mux/tests/gates_seats.rs:199:15
+    |
+199 |             t.commit_p99_ns = c.commit_p99_ns;
+    |               ^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `records`, `encode_ns`, `hot_write_ns`, `sync_ns`, `marker_ns` ... and 6 others
+
+error[E0609]: no field `commit_p99_ns` on type `CaptureStats`
+   --> crates/bbt-mux/tests/gates_seats.rs:199:33
+    |
+199 |             t.commit_p99_ns = c.commit_p99_ns;
+    |                                 ^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `records`, `encode_ns`, `hot_write_ns`, `sync_ns`, `marker_ns` ... and 6 others
+
+error[E0609]: no field `commit_max_ns` on type `CaptureStats`
+   --> crates/bbt-mux/tests/gates_seats.rs:200:15
+    |
+200 |             t.commit_max_ns = c.commit_max_ns;
+    |               ^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `records`, `encode_ns`, `hot_write_ns`, `sync_ns`, `marker_ns` ... and 6 others
+
+error[E0609]: no field `commit_max_ns` on type `CaptureStats`
+   --> crates/bbt-mux/tests/gates_seats.rs:200:33
+    |
+200 |             t.commit_max_ns = c.commit_max_ns;
+    |                                 ^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `records`, `encode_ns`, `hot_write_ns`, `sync_ns`, `marker_ns` ... and 6 others
+
+error[E0609]: no field `writer_busy_ns` on type `CaptureStats`
+   --> crates/bbt-mux/tests/gates_seats.rs:258:17
+    |
+258 |             cap.writer_busy_ns as f64 / 1e9,
+    |                 ^^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `records`, `encode_ns`, `hot_write_ns`, `sync_ns`, `marker_ns` ... and 6 others
+
+error[E0609]: no field `writer_busy_ns` on type `CaptureStats`
+   --> crates/bbt-mux/tests/gates_seats.rs:259:17
+    |
+259 |             cap.writer_busy_ns as f64 / 1e9 / observed,
+    |                 ^^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `records`, `encode_ns`, `hot_write_ns`, `sync_ns`, `marker_ns` ... and 6 others
+
+error[E0609]: no field `commit_rounds` on type `CaptureStats`
+   --> crates/bbt-mux/tests/gates_seats.rs:260:17
+    |
+260 |             cap.commit_rounds,
+    |                 ^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `records`, `encode_ns`, `hot_write_ns`, `sync_ns`, `marker_ns` ... and 6 others
+
+error[E0609]: no field `commit_p99_ns` on type `CaptureStats`
+   --> crates/bbt-mux/tests/gates_seats.rs:261:17
+    |
+261 |             cap.commit_p99_ns as f64 / 1e6,
+    |                 ^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `records`, `encode_ns`, `hot_write_ns`, `sync_ns`, `marker_ns` ... and 6 others
+
+error[E0609]: no field `commit_max_ns` on type `CaptureStats`
+   --> crates/bbt-mux/tests/gates_seats.rs:262:17
+    |
+262 |             cap.commit_max_ns as f64 / 1e6
+    |                 ^^^^^^^^^^^^^ unknown field
+    |
+    = note: available fields are: `records`, `encode_ns`, `hot_write_ns`, `sync_ns`, `marker_ns` ... and 6 others
+
+For more information about this error, try `rustc --explain E0609`.
+error: could not compile `bbt-mux` (test "gates_seats") due to 13 previous errors
+BUILD_EXIT=101

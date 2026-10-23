@@ -1,0 +1,15 @@
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+error[E0599]: no method named `drain_events` found for struct `bbt_core::Term` in the current scope
+   --> crates/bbt-supervisor/src/ring/journal.rs:478:31
+    |
+478 |         assert!(restored.term.drain_events().is_empty());
+    |                               ^^^^^^^^^^^^
+    |
+help: there is a method `take_events` with a similar name
+    |
+478 -         assert!(restored.term.drain_events().is_empty());
+478 +         assert!(restored.term.take_events().is_empty());
+    |
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `bbt-supervisor` (lib test) due to 1 previous error

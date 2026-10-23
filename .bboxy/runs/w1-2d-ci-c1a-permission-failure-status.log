@@ -1,0 +1,21 @@
+[
+  {
+    "sha": "0a502b395e6a94ca944542f1d26e9596b5c04516",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bboxy450-term",
+      "--locked",
+      "--test",
+      "cockpit",
+      "--test",
+      "custody",
+      "--",
+      "--nocapture"
+    ],
+    "exit": 101,
+    "wall_seconds": 53.68304195799283,
+    "child_pid": 5260
+  }
+]

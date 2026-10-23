@@ -27,10 +27,12 @@ impl LocalBlobs {
         }
         Ok(self.root.join(format!("{digest}.zst")))
     }
-}
-
-impl Blobs for LocalBlobs {
-    fn put(&self, bytes: &[u8]) -> Result<String> {
+    pub(crate) fn put_ordered(&self, bytes: &[u8]) -> Result<String> {
+        self.put_tier(bytes, false)
+    }
+    /// The shared capture writer supplies the subsequent device-wide full
+    /// flush. File and directory ordering must be established before returning.
+    fn put_tier(&self, bytes: &[u8], strong: bool) -> Result<String> {
         bbt_rt::assert_not_ui_thread();
         if bytes.len() > MAX_BLOB {
             return Err(invalid("blob exceeds 64 MiB"));
@@ -48,10 +50,19 @@ impl Blobs for LocalBlobs {
             .open(&temp)?;
         let compressed = zstd::stream::encode_all(bytes, 3)?;
         file.write_all(&compressed)?;
-        file.sync_all()?;
+        crate::durability::sync_file(&file, strong)?;
         std::fs::rename(temp, path)?;
-        std::fs::File::open(&self.root)?.sync_all()?;
+        crate::durability::sync_directory(&std::fs::File::open(&self.root)?)?;
+        if strong {
+            crate::durability::sync_file(&file, true)?;
+        }
         Ok(hash)
+    }
+}
+
+impl Blobs for LocalBlobs {
+    fn put(&self, bytes: &[u8]) -> Result<String> {
+        self.put_tier(bytes, true)
     }
     fn get(&self, hash: &str) -> Result<Vec<u8>> {
         bbt_rt::assert_not_ui_thread();

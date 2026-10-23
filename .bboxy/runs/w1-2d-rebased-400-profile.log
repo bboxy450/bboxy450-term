@@ -1,0 +1,39 @@
+SOURCE 982d735044b3867b4b9bbea6f153734f1d106c7b
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'gates_seats', 'gate_memory', '--', '--ignored', '--nocapture', '--test-threads=1']
+GATE_SEATS=400 GATE_RATE=32kB/s GATE_SECONDS=60; fixture key, no production custody
+OWN_CARGO_PID=53602
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 24.92s
+     Running tests/gates_seats.rs (target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0)
+
+running 1 test
+test gate_memory ... GATE spawn progress=25/400 elapsed_s=0.976
+GATE spawn progress=50/400 elapsed_s=1.936
+GATE spawn progress=75/400 elapsed_s=2.937
+GATE spawn progress=100/400 elapsed_s=4.028
+GATE spawn progress=125/400 elapsed_s=5.239
+GATE spawn progress=150/400 elapsed_s=6.551
+GATE spawn progress=175/400 elapsed_s=7.798
+GATE spawn progress=200/400 elapsed_s=9.339
+GATE spawn progress=225/400 elapsed_s=10.794
+GATE spawn progress=250/400 elapsed_s=12.459
+GATE spawn progress=275/400 elapsed_s=14.138
+GATE spawn progress=300/400 elapsed_s=15.964
+GATE spawn progress=325/400 elapsed_s=17.700
+GATE spawn progress=350/400 elapsed_s=19.792
+GATE spawn progress=375/400 elapsed_s=21.746
+GATE spawn progress=400/400 elapsed_s=24.024
+OWN_SAMPLED_TEST_PID=53797
+Sampling process 53797 for 3 seconds with 10 milliseconds of run time between samples
+Sampling completed, processing symbols...
+Sample analysis of process 53797 written to file /Users/feral/mydev/bboxy450-term-rook/.bboxy/runs/w1-2d-rebased-400-writer-sample.log
+SAMPLE_EXIT=0
+GATE capture seats=400 load_wall_s=61.121 writer_busy_fraction=0.4369 busy_replies=0 heartbeat_max_ms=449.688 commit_p99_upper_ms=7.000 commit_max_ms=43.404 durable_rounds=1250 durable_pauses=0 peak_undurable_bytes=9960883
+GATE retained owned fixture /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-lS7QWZ
+GATE memory value=873.766 unit=MiB budget=none MEASURED ptmx_max=999 seats=400 rate=32kB/s load_s=60 baseline_mib=12.2 peak_mib=873.8 per_seat_kib=2205.6 spawn_s=24.0 sample_seat_records=7137 sync_s=0.0 marker_s=0.0 sample_seat_full=365 disk_peak_mib=1155.6 observed_s=85.189 writer_busy_s=36.293 writer_s_per_wall_s=0.426 commit_rounds=5461 commit_p99_upper_ms=7.000 commit_max_ms=43.404 logic_alive=true
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 86.55s
+
+CHILD_EXIT=0; WALL_SECONDS=111.981

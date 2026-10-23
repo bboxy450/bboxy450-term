@@ -118,7 +118,15 @@ async fn custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry() {
         unavailable: AtomicBool::new(true),
         keys: Mutex::new(BTreeMap::new()),
     });
-    let supervisor = Supervisor::start(Default::default()).unwrap();
+    let supervisor = Supervisor::start(bbt_mux::Config {
+        journal_directory: Some(
+            bbt_mux::store::object_dir(root.path(), "supervisor")
+                .unwrap()
+                .join("journal"),
+        ),
+        ..Default::default()
+    })
+    .unwrap();
     let logic = Logic::start_custodied_with_store(
         supervisor.connect().unwrap(),
         LogicConfig {

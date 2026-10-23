@@ -1,0 +1,1092 @@
+Analysis of sampling gates_seats-0a3918ce8c4823c0 (pid 17011) every 10 milliseconds
+Process:         gates_seats-0a3918ce8c4823c0 [17011]
+Path:            /Users/USER/*/gates_seats-0a3918ce8c4823c0
+Load Address:    0x104ac4000
+Identifier:      gates_seats-0a3918ce8c4823c0
+Version:         0
+Code Type:       ARM64
+Platform:        macOS
+Parent Process:  cargo [16982]
+Target Type:     live task
+
+Date/Time:       2026-10-22 18:13:17.334 -0700
+Launch Time:     2026-10-22 18:10:18.462 -0700
+OS Version:      macOS 27.0.1 (26A434)
+Report Version:  7
+Analysis Tool:   /usr/bin/sample
+
+Physical footprint:         1.1G
+Physical footprint (peak):  1.1G
+Idle exit:                  untracked
+----
+
+Call graph:
+    248 Thread_9955207   DispatchQueue_1: com.apple.main-thread  (serial)
+    + 248 start  (in dyld) + 6688  [0x191903e80]
+    +   248 main  (in gates_seats-0a3918ce8c4823c0) + 52  [0x104ace9dc]
+    +     248 _RNvNtCs1SSuMAdGM58_3std2rt19lang_start_internal  (in gates_seats-0a3918ce8c4823c0) + 936  [0x1051b5af0]
+    +       248 _RNCINvNtCs1SSuMAdGM58_3std2rt10lang_startuE0Cs6WrxWbOquvp_11gates_seats  (in gates_seats-0a3918ce8c4823c0) + 16  [0x104add6c8]
+    +         248 _RINvNtNtCs1SSuMAdGM58_3std3sys9backtrace28___rust_begin_short_backtraceFEuuECs6WrxWbOquvp_11gates_seats  (in gates_seats-0a3918ce8c4823c0) + 12  [0x104adefac]
+    +           248 _RNvCslPnnYyqfaRn_4test16test_main_static  (in gates_seats-0a3918ce8c4823c0) + 612  [0x104b0b270]
+    +             248 _RNvNtCslPnnYyqfaRn_4test7console17run_tests_console  (in gates_seats-0a3918ce8c4823c0) + 3136  [0x104b1a964]
+    +               248 _RNvMs1_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc4listINtB5_7ChannelNtNtCslPnnYyqfaRn_4test5event13CompletedTestE4recvB10_  (in gates_seats-0a3918ce8c4823c0) + 428  [0x104b1126c]
+    +                 248 _RNCNvMs1_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc4listINtB7_7ChannelNtNtCslPnnYyqfaRn_4test5event13CompletedTestE4recvs_0B12_  (in gates_seats-0a3918ce8c4823c0) + 248  [0x104b0819c]
+    +                   248 _RNvMs_NtNtCs1SSuMAdGM58_3std6thread6threadNtB4_6Thread4park  (in gates_seats-0a3918ce8c4823c0) + 48  [0x1051aa7e4]
+    +                     248 _dispatch_semaphore_wait_slow  (in libdispatch.dylib) + 132  [0x191b1ab28]
+    +                       248 _dispatch_sema4_wait  (in libdispatch.dylib) + 28  [0x191b1a49c]
+    +                         248 semaphore_wait_trap  (in libsystem_kernel.dylib) + 8  [0x191c94b9c]
+    248 Thread_9955214: gate_memory
+    + 248 thread_start  (in libsystem_pthread.dylib) + 8  [0x191cd4cec]
+    +   248 _pthread_start  (in libsystem_pthread.dylib) + 136  [0x191cd9d00]
+    +     248 _RNvNvMs0_NtNtNtCs1SSuMAdGM58_3std3sys6thread4unixNtB7_6Thread3new12thread_start  (in gates_seats-0a3918ce8c4823c0) + 392  [0x1051bdc88]
+    +       248 _RNSNvYNCINvNtNtCs1SSuMAdGM58_3std6thread9lifecycle15spawn_uncheckedNCNvCslPnnYyqfaRn_4test8run_tests_0uEs_0INtNtNtCsjIpoRzUjyHQ_4core3ops8function6FnOnceuE9call_once6vtableB17_  (in gates_seats-0a3918ce8c4823c0) + 64  [0x104b09bd0]
+    +         248 _RINvNtNtCs1SSuMAdGM58_3std3sys9backtrace28___rust_begin_short_backtraceNCNvCslPnnYyqfaRn_4test8run_tests_0uEB1b_  (in gates_seats-0a3918ce8c4823c0) + 132  [0x104b020ac]
+    +           248 _RNCNvCslPnnYyqfaRn_4test8run_test0B3_  (in gates_seats-0a3918ce8c4823c0) + 940  [0x104b0770c]
+    +             248 _RINvCslPnnYyqfaRn_4test28___rust_begin_short_backtraceINtNtCsjIpoRzUjyHQ_4core6result6ResultuNtNtCs6zY7rJBZy9D_5alloc6string6StringEFEBQ_EB2_  (in gates_seats-0a3918ce8c4823c0) + 24  [0x104afc198]
+    +               248 _RNvYNCNvCs6WrxWbOquvp_11gates_seats11gate_memory0INtNtNtCsjIpoRzUjyHQ_4core3ops8function6FnOnceuE9call_onceB6_  (in gates_seats-0a3918ce8c4823c0) + 432  [0x104accb30]
+    +                 248 _RNvMs_Cs6WrxWbOquvp_11gates_seatsNtB4_3Rig14firehose_seats  (in gates_seats-0a3918ce8c4823c0) + 1244  [0x104acb0f0]
+    +                   248 _RINvMNtNtCsftljrneu3qx_5tokio7runtime7runtimeNtB3_7Runtime8block_onNCNvMNtCs6b4Z5gS8CoF_7bbt_mux5logicNtB18_11LogicClient5spawn0ECs6WrxWbOquvp_11gates_seats  (in gates_seats-0a3918ce8c4823c0) + 124  [0x104acfea4]
+    +                     248 _RINvNtNtNtCsftljrneu3qx_5tokio7runtime7context7runtime13enter_runtimeNCINvMNtNtB6_9scheduler12multi_threadNtB1b_11MultiThread8block_onNCNvMNtCs6b4Z5gS8CoF_7bbt_mux5logicNtB2d_11LogicClient5spawn0E0INtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol8SeatInfoINtNtCs6zY7rJBZy9D_5alloc5boxed3BoxDNtNtB3e_5error5ErrorNtNtB3e_6marker4SendNtB5x_4SyncEL_EEECs6WrxWbOquvp_11gates_seats  (in gates_seats-0a3918ce8c4823c0) + 300  [0x104aecf00]
+    +                       248 _RINvMs2_NtNtCsftljrneu3qx_5tokio7runtime4parkNtB6_16CachedParkThread8block_onNCNvMNtCs6b4Z5gS8CoF_7bbt_mux5logicNtB1i_11LogicClient5spawn0ECs6WrxWbOquvp_11gates_seats  (in gates_seats-0a3918ce8c4823c0) + 1496  [0x104af55e4]
+    +                         248 _RNvMs_NtNtCsftljrneu3qx_5tokio7runtime4parkNtB4_5Inner4park  (in gates_seats-0a3918ce8c4823c0) + 180  [0x10517b1e4]
+    +                           248 _pthread_cond_wait  (in libsystem_pthread.dylib) + 980  [0x191cda1d0]
+    +                             248 __psynch_cvwait  (in libsystem_kernel.dylib) + 8  [0x191c9850c]
+    248 Thread_9955227: tokio-rt-worker
+    + 248 thread_start  (in libsystem_pthread.dylib) + 8  [0x191cd4cec]
+    +   248 _pthread_start  (in libsystem_pthread.dylib) + 136  [0x191cd9d00]
+    +     248 _RNvNvMs0_NtNtNtCs1SSuMAdGM58_3std3sys6thread4unixNtB7_6Thread3new12thread_start  (in gates_seats-0a3918ce8c4823c0) + 392  [0x1051bdc88]
+    +       248 _RNSNvYNCINvNtNtCs1SSuMAdGM58_3std6thread9lifecycle15spawn_uncheckedNCNvMs5_NtNtNtCsftljrneu3qx_5tokio7runtime8blocking4poolNtB1b_7Spawner12spawn_thread0uEs_0INtNtNtCsjIpoRzUjyHQ_4core3ops8function6FnOnceuE9call_once6vtableB1h_  (in gates_seats-0a3918ce8c4823c0) + 104  [0x105182e34]
+    +         248 _RINvNtNtCs1SSuMAdGM58_3std3sys9backtrace28___rust_begin_short_backtraceNCNvMs5_NtNtNtCsftljrneu3qx_5tokio7runtime8blocking4poolNtB1f_7Spawner12spawn_thread0uEB1l_  (in gates_seats-0a3918ce8c4823c0) + 132  [0x10517fb80]
+    +           248 _RNvMs8_NtNtNtCsftljrneu3qx_5tokio7runtime8blocking4poolNtB5_5Inner3run  (in gates_seats-0a3918ce8c4823c0) + 392  [0x105184a24]
+    +             248 _RNvMs0_NtNtNtCsftljrneu3qx_5tokio7runtime4task7harnessINtB5_7HarnessINtNtNtB9_8blocking4task12BlockingTaskNCNvMNtNtNtB9_9scheduler12multi_thread6workerNtB1L_6Launch6launch0ENtNtB19_8schedule16BlockingScheduleE4pollBb_  (in gates_seats-0a3918ce8c4823c0) + 168  [0x105166c44]
+    +               248 _RNvMs4_NtNtNtCsftljrneu3qx_5tokio7runtime4task4coreINtB5_4CoreINtNtNtB9_8blocking4task12BlockingTaskNCNvMNtNtNtB9_9scheduler12multi_thread6workerNtB1F_6Launch6launch0ENtNtB13_8schedule16BlockingScheduleE4pollBb_  (in gates_seats-0a3918ce8c4823c0) + 84  [0x105165b50]
+    +                 248 <deduplicated_symbol>  (in gates_seats-0a3918ce8c4823c0) + 68  [0x10516765c]
+    +                   248 _RNvNtNtNtNtCsftljrneu3qx_5tokio7runtime9scheduler12multi_thread6worker3run  (in gates_seats-0a3918ce8c4823c0) + 172  [0x1051707e0]
+    +                     248 _RINvNtNtNtCsftljrneu3qx_5tokio7runtime7context7runtime13enter_runtimeNCNvNtNtNtB6_9scheduler12multi_thread6worker3run0uEB8_  (in gates_seats-0a3918ce8c4823c0) + 384  [0x10517ca5c]
+    +                       248 _RINvMNtNtNtCsftljrneu3qx_5tokio7runtime7context6scopedINtB3_6ScopedNtNtB7_9scheduler7ContextE3setNCNCNvNtNtB15_12multi_thread6worker3run00uEB9_  (in gates_seats-0a3918ce8c4823c0) + 56  [0x105175d8c]
+    +                         248 _RNvMs_NtNtNtNtCsftljrneu3qx_5tokio7runtime9scheduler12multi_thread6workerNtB4_7Context3run  (in gates_seats-0a3918ce8c4823c0) + 2084  [0x10516fd64]
+    +                           248 _RNvMs_NtNtNtNtCsftljrneu3qx_5tokio7runtime9scheduler12multi_thread6workerNtB4_7Context13park_internal  (in gates_seats-0a3918ce8c4823c0) + 360  [0x10516f254]
+    +                             248 _RNvMs1_NtNtNtNtCsftljrneu3qx_5tokio7runtime9scheduler12multi_thread4parkNtB5_5Inner12park_condvar  (in gates_seats-0a3918ce8c4823c0) + 372  [0x10516a3f4]
+    +                               248 _pthread_cond_wait  (in libsystem_pthread.dylib) + 980  [0x191cda1d0]
+    +                                 248 __psynch_cvwait  (in libsystem_kernel.dylib) + 8  [0x191c9850c]
+    248 Thread_9955228: tokio-rt-worker
+    + 248 thread_start  (in libsystem_pthread.dylib) + 8  [0x191cd4cec]
+    +   248 _pthread_start  (in libsystem_pthread.dylib) + 136  [0x191cd9d00]
+    +     248 _RNvNvMs0_NtNtNtCs1SSuMAdGM58_3std3sys6thread4unixNtB7_6Thread3new12thread_start  (in gates_seats-0a3918ce8c4823c0) + 392  [0x1051bdc88]
+    +       248 _RNSNvYNCINvNtNtCs1SSuMAdGM58_3std6thread9lifecycle15spawn_uncheckedNCNvMs5_NtNtNtCsftljrneu3qx_5tokio7runtime8blocking4poolNtB1b_7Spawner12spawn_thread0uEs_0INtNtNtCsjIpoRzUjyHQ_4core3ops8function6FnOnceuE9call_once6vtableB1h_  (in gates_seats-0a3918ce8c4823c0) + 104  [0x105182e34]
+    +         248 _RINvNtNtCs1SSuMAdGM58_3std3sys9backtrace28___rust_begin_short_backtraceNCNvMs5_NtNtNtCsftljrneu3qx_5tokio7runtime8blocking4poolNtB1f_7Spawner12spawn_thread0uEB1l_  (in gates_seats-0a3918ce8c4823c0) + 132  [0x10517fb80]
+    +           248 _RNvMs8_NtNtNtCsftljrneu3qx_5tokio7runtime8blocking4poolNtB5_5Inner3run  (in gates_seats-0a3918ce8c4823c0) + 392  [0x105184a24]
+    +             248 _RNvMs0_NtNtNtCsftljrneu3qx_5tokio7runtime4task7harnessINtB5_7HarnessINtNtNtB9_8blocking4task12BlockingTaskNCNvMNtNtNtB9_9scheduler12multi_thread6workerNtB1L_6Launch6launch0ENtNtB19_8schedule16BlockingScheduleE4pollBb_  (in gates_seats-0a3918ce8c4823c0) + 168  [0x105166c44]
+    +               248 _RNvMs4_NtNtNtCsftljrneu3qx_5tokio7runtime4task4coreINtB5_4CoreINtNtNtB9_8blocking4task12BlockingTaskNCNvMNtNtNtB9_9scheduler12multi_thread6workerNtB1F_6Launch6launch0ENtNtB13_8schedule16BlockingScheduleE4pollBb_  (in gates_seats-0a3918ce8c4823c0) + 84  [0x105165b50]
+    +                 248 <deduplicated_symbol>  (in gates_seats-0a3918ce8c4823c0) + 68  [0x10516765c]
+    +                   248 _RNvNtNtNtNtCsftljrneu3qx_5tokio7runtime9scheduler12multi_thread6worker3run  (in gates_seats-0a3918ce8c4823c0) + 172  [0x1051707e0]
+    +                     248 _RINvNtNtNtCsftljrneu3qx_5tokio7runtime7context7runtime13enter_runtimeNCNvNtNtNtB6_9scheduler12multi_thread6worker3run0uEB8_  (in gates_seats-0a3918ce8c4823c0) + 384  [0x10517ca5c]
+    +                       248 _RINvMNtNtNtCsftljrneu3qx_5tokio7runtime7context6scopedINtB3_6ScopedNtNtB7_9scheduler7ContextE3setNCNCNvNtNtB15_12multi_thread6worker3run00uEB9_  (in gates_seats-0a3918ce8c4823c0) + 56  [0x105175d8c]
+    +                         248 _RNvMs_NtNtNtNtCsftljrneu3qx_5tokio7runtime9scheduler12multi_thread6workerNtB4_7Context3run  (in gates_seats-0a3918ce8c4823c0) + 2084  [0x10516fd64]
+    +                           248 _RNvMs_NtNtNtNtCsftljrneu3qx_5tokio7runtime9scheduler12multi_thread6workerNtB4_7Context13park_internal  (in gates_seats-0a3918ce8c4823c0) + 296  [0x10516f214]
+    +                             248 _RNvMNtNtCsftljrneu3qx_5tokio7runtime4timeNtB2_6Driver13park_internal  (in gates_seats-0a3918ce8c4823c0) + 556  [0x10517ce6c]
+    +                               248 _RNvMNtNtNtCsftljrneu3qx_5tokio7runtime2io6driverNtB2_6Driver4turn  (in gates_seats-0a3918ce8c4823c0) + 176  [0x105174f54]
+    +                                 248 _RNvMNtCsf698oIHMeoM_3mio4pollNtB2_4Poll4poll  (in gates_seats-0a3918ce8c4823c0) + 108  [0x10518986c]
+    +                                   248 kevent  (in libsystem_kernel.dylib) + 8  [0x191c9afcc]
+    248 Thread_9955230: bbt-capture-writer
+    + 248 thread_start  (in libsystem_pthread.dylib) + 8  [0x191cd4cec]
+    +   248 _pthread_start  (in libsystem_pthread.dylib) + 136  [0x191cd9d00]
+    +     248 _RNvNvMs0_NtNtNtCs1SSuMAdGM58_3std3sys6thread4unixNtB7_6Thread3new12thread_start  (in gates_seats-0a3918ce8c4823c0) + 392  [0x1051bdc88]
+    +       248 _RNSNvYNCINvNtNtCs1SSuMAdGM58_3std6thread9lifecycle15spawn_uncheckedNCNvMs1_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB1b_13CaptureWriter5start0uEs_0INtNtNtCsjIpoRzUjyHQ_4core3ops8function6FnOnceuE9call_once6vtableB1f_  (in gates_seats-0a3918ce8c4823c0) + 144  [0x104e13ae8]
+    +         248 _RINvNtNtCs1SSuMAdGM58_3std3sys9backtrace28___rust_begin_short_backtraceNCNvMs1_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB1f_13CaptureWriter5start0uEB1j_  (in gates_seats-0a3918ce8c4823c0) + 48  [0x104df48b4]
+    +           120 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer3run  (in gates_seats-0a3918ce8c4823c0) + 308  [0x104e31e98]
+    +           ! 120 _RNvMNtNtNtNtCs1SSuMAdGM58_3std3sys4sync7condvar7pthreadNtB2_7Condvar12wait_timeout  (in gates_seats-0a3918ce8c4823c0) + 172  [0x1051a17d8]
+    +           !   120 _pthread_cond_wait  (in libsystem_pthread.dylib) + 1024  [0x191cda1fc]
+    +           !     120 __psynch_cvwait  (in libsystem_kernel.dylib) + 8  [0x191c9850c]
+    +           49 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer3run  (in gates_seats-0a3918ce8c4823c0) + 7980  [0x104e33c90]
+    +           ! 22 _RNvMs5_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_4Tail7compact  (in gates_seats-0a3918ce8c4823c0) + 804  [0x104e315c4]
+    +           ! : 20 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring10checkpoint  (in gates_seats-0a3918ce8c4823c0) + 440  [0x104ddd39c]
+    +           ! : | 20 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring6append  (in gates_seats-0a3918ce8c4823c0) + 236  [0x104de1c54]
+    +           ! : |   11 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring8seal_hot  (in gates_seats-0a3918ce8c4823c0) + 216  [0x104de4b44]
+    +           ! : |   + 11 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring8put_blob  (in gates_seats-0a3918ce8c4823c0) + 108  [0x104de4a10]
+    +           ! : |   +   9 _RNvMNtNtCs9Yj5s65SCYx_14bbt_supervisor5store5blobsNtB2_10LocalBlobs8put_tier  (in gates_seats-0a3918ce8c4823c0) + 112  [0x104e1997c]
+    +           ! : |   +   ! 9 _RNvNtCsb6FoDbpHpzW_4sha26sha25611compress256  (in gates_seats-0a3918ce8c4823c0) + 204,820,...  [0x104f9d9e0,0x104f9dc48,...]
+    +           ! : |   +   1 _RNvMNtNtCs9Yj5s65SCYx_14bbt_supervisor5store5blobsNtB2_10LocalBlobs8put_tier  (in gates_seats-0a3918ce8c4823c0) + 776  [0x104e19c14]
+    +           ! : |   +   ! 1 _RINvNtNtCs3U8OiCLMAex_4zstd6stream9functions10encode_allRShECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 168  [0x104e1e3d8]
+    +           ! : |   +   !   1 _RNvYINtNtNtCs3U8OiCLMAex_4zstd6stream5write7EncoderQINtNtCs6zY7rJBZy9D_5alloc3vec3VechEENtNtNtCsjIpoRzUjyHQ_4core2io5write5Write9write_allCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 108  [0x104e25a10]
+    +           ! : |   +   !     1 _RNvXs_NtNtNtCs3U8OiCLMAex_4zstd6stream3zio6writerINtB4_6WriterQINtNtCs6zY7rJBZy9D_5alloc3vec3VechENtNtB8_3raw7EncoderENtNtNtCsjIpoRzUjyHQ_4core2io5write5Write5writeCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 248  [0x104e1c6cc]
+    +           ! : |   +   !       1 _RINvMs1_CsbaPN1zoBmRc_9zstd_safeNtB6_4CCtx15compress_streamINtNtCs6zY7rJBZy9D_5alloc3vec3VechEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 96  [0x104e3eea4]
+    +           ! : |   +   !         1 ZSTD_compressStream  (in gates_seats-0a3918ce8c4823c0) + 24  [0x104e4f0a8]
+    +           ! : |   +   !           1 ZSTD_compressStream2  (in gates_seats-0a3918ce8c4823c0) + 1112  [0x104e4f54c]
+    +           ! : |   +   !             1 ZSTD_compressContinue_internal  (in gates_seats-0a3918ce8c4823c0) + 1520  [0x104e4d7b0]
+    +           ! : |   +   !               1 ZSTD_compressBlock_internal  (in gates_seats-0a3918ce8c4823c0) + 64  [0x104e5222c]
+    +           ! : |   +   !                 1 ZSTD_compressBlock_doubleFast  (in gates_seats-0a3918ce8c4823c0) + 4376  [0x104e585b0]
+    +           ! : |   +   1 _RNvMNtNtCs9Yj5s65SCYx_14bbt_supervisor5store5blobsNtB2_10LocalBlobs8put_tier  (in gates_seats-0a3918ce8c4823c0) + 964  [0x104e19cd0]
+    +           ! : |   +     1 _RNvNtCs9Yj5s65SCYx_14bbt_supervisor10durability9sync_file  (in gates_seats-0a3918ce8c4823c0) + 60  [0x104e24dfc]
+    +           ! : |   +       1 fcntl  (in libsystem_kernel.dylib) + 88  [0x191c95758]
+    +           ! : |   +         1 __fcntl  (in libsystem_kernel.dylib) + 8  [0x191c958b8]
+    +           ! : |   4 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring8seal_hot  (in gates_seats-0a3918ce8c4823c0) + 2000  [0x104de523c]
+    +           ! : |   + 3 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring12finish_group  (in gates_seats-0a3918ce8c4823c0) + 436  [0x104dde448]
+    +           ! : |   + ! 3 _RNvNtCs9Yj5s65SCYx_14bbt_supervisor10durability9sync_file  (in gates_seats-0a3918ce8c4823c0) + 60  [0x104e24dfc]
+    +           ! : |   + !   3 fcntl  (in libsystem_kernel.dylib) + 88  [0x191c95758]
+    +           ! : |   + !     3 __fcntl  (in libsystem_kernel.dylib) + 8  [0x191c958b8]
+    +           ! : |   + 1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring12finish_group  (in gates_seats-0a3918ce8c4823c0) + 544  [0x104dde4b4]
+    +           ! : |   +   1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring14retire_orphans  (in gates_seats-0a3918ce8c4823c0) + 400  [0x104ddf3c4]
+    +           ! : |   +     1 _RNvXsz_NtCs1SSuMAdGM58_3std2fsNtB5_7ReadDirNtNtNtNtCsjIpoRzUjyHQ_4core4iter6traits8iterator8Iterator4next  (in gates_seats-0a3918ce8c4823c0) + 28  [0x1051c3e5c]
+    +           ! : |   +       1 _RNvXsb_NtNtNtCs1SSuMAdGM58_3std3sys2fs4unixNtB5_7ReadDirNtNtNtNtCsjIpoRzUjyHQ_4core4iter6traits8iterator8Iterator4next  (in gates_seats-0a3918ce8c4823c0) + 68  [0x1051c1fd0]
+    +           ! : |   +         1 readdir  (in libsystem_c.dylib) + 40  [0x191bb5180]
+    +           ! : |   +           1 _readdir_unlocked  (in libsystem_c.dylib) + 224  [0x191bb5088]
+    +           ! : |   +             1 __getdirentries64  (in libsystem_kernel.dylib) + 8  [0x191c969c0]
+    +           ! : |   2 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring8seal_hot  (in gates_seats-0a3918ce8c4823c0) + 152  [0x104de4b04]
+    +           ! : |   + 2 _RNvNvNtCs1SSuMAdGM58_3std2fs4read5inner  (in gates_seats-0a3918ce8c4823c0) + 328  [0x1051be25c]
+    +           ! : |   +   2 _RINvNtNtCs6zY7rJBZy9D_5alloc2io4read19default_read_to_endNtNtCs1SSuMAdGM58_3std2fs4FileEBX_  (in gates_seats-0a3918ce8c4823c0) + 472  [0x105197224]
+    +           ! : |   +     2 read  (in libsystem_kernel.dylib) + 8  [0x191c95910]
+    +           ! : |   1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring8seal_hot  (in gates_seats-0a3918ce8c4823c0) + 76  [0x104de4ab8]
+    +           ! : |   + 1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring6commit  (in gates_seats-0a3918ce8c4823c0) + 552  [0x104de23d4]
+    +           ! : |   +   1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring21publish_boundary_tier  (in gates_seats-0a3918ce8c4823c0) + 436  [0x104de037c]
+    +           ! : |   +     1 _RNvMsj_NtCs1SSuMAdGM58_3std2fsNtB5_11OpenOptions5__open  (in gates_seats-0a3918ce8c4823c0) + 140  [0x1051b4860]
+    +           ! : |   +       1 _RNvMsi_NtNtNtCs1SSuMAdGM58_3std3sys2fs4unixNtB5_4File6open_c  (in gates_seats-0a3918ce8c4823c0) + 268  [0x1051b2ff8]
+    +           ! : |   +         1 open  (in libsystem_kernel.dylib) + 64  [0x191ca0960]
+    +           ! : |   +           1 __open  (in libsystem_kernel.dylib) + 8  [0x191c95680]
+    +           ! : |   1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring8seal_hot  (in gates_seats-0a3918ce8c4823c0) + 1640  [0x104de50d4]
+    +           ! : |   + 1 _RNvNtCs9Yj5s65SCYx_14bbt_supervisor10durability9sync_file  (in gates_seats-0a3918ce8c4823c0) + 60  [0x104e24dfc]
+    +           ! : |   +   1 fcntl  (in libsystem_kernel.dylib) + 88  [0x191c95758]
+    +           ! : |   +     1 __fcntl  (in libsystem_kernel.dylib) + 8  [0x191c958b8]
+    +           ! : |   1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring8seal_hot  (in gates_seats-0a3918ce8c4823c0) + 1700  [0x104de5110]
+    +           ! : |     1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring21publish_boundary_tier  (in gates_seats-0a3918ce8c4823c0) + 580  [0x104de040c]
+    +           ! : |       1 _RNvNtCs9Yj5s65SCYx_14bbt_supervisor10durability9sync_file  (in gates_seats-0a3918ce8c4823c0) + 60  [0x104e24dfc]
+    +           ! : |         1 fcntl  (in libsystem_kernel.dylib) + 88  [0x191c95758]
+    +           ! : |           1 __fcntl  (in libsystem_kernel.dylib) + 8  [0x191c958b8]
+    +           ! : 2 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring10checkpoint  (in gates_seats-0a3918ce8c4823c0) + 76  [0x104ddd230]
+    +           ! :   2 _RNvMs2_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_5Saved6decode  (in gates_seats-0a3918ce8c4823c0) + 472  [0x104ddacf4]
+    +           ! :     2 _RINvNtCs4gwtf8fzHNo_10serde_json2de10from_traitNtNtB4_4read9SliceReadNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring5SavedEB19_  (in gates_seats-0a3918ce8c4823c0) + 72  [0x104d99c98]
+    +           ! :       2 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structNtNvXNvNtCs9Yj5s65SCYx_14bbt_supervisor4rings7_1__NtB2v_5SavedNtB1l_11Deserialize11deserialize9___VisitorEB2x_  (in gates_seats-0a3918ce8c4823c0) + 1820  [0x104dad7d8]
+    +           ! :         2 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structNtNvXNvCsgcT4WtEuZqq_8bbt_cores_1__NtB2v_10CheckpointNtB1l_11Deserialize11deserialize9___VisitorECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 548  [0x104dab0a0]
+    +           ! :           2 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structINtNvXNvNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4terms6_1__INtB2w_4TermpENtB1l_11Deserialize11deserialize9___VisitorNtB2C_6EventsEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 2648  [0x104da6820]
+    +           ! :             2 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structINtNvXNvNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4grids3_1__INtB2w_4GridpENtB1l_11Deserialize11deserialize9___VisitorNtNtNtB2y_4term4cell4CellEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 1192  [0x104da4228]
+    +           ! :               2 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structINtNvXNvNtNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4grid7storages_1__INtB2w_7StoragepENtB1l_11Deserialize11deserialize9___VisitorNtNtNtB2A_4term4cell4CellEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 880  [0x104daa5a4]
+    +           ! :                 2 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer15deserialize_seqINtNvXsh_NtB1l_5implsINtNtCs6zY7rJBZy9D_5alloc3vec3VecpENtB1l_11Deserialize11deserialize10VecVisitorINtNtNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4grid3row3RowNtNtNtB44_4term4cell4CellEEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 172  [0x104d9c658]
+    +           ! :                   2 _RINvXNvXsh_NtNtCshkSSkomUAhA_10serde_core2de5implsINtNtCs6zY7rJBZy9D_5alloc3vec3VecpENtBb_11Deserialize11deserializeINtB3_10VecVisitorINtNtNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4grid3row3RowNtNtNtB2f_4term4cell4CellEENtBb_7Visitor9visit_seqINtNtCs4gwtf8fzHNo_10serde_json2de9SeqAccessNtNtB43_4read9SliceReadEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 156  [0x104e270d8]
+    +           ! :                     2 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structINtNvXNvNtNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4grid3rows_1__INtB2w_3RowpENtB1l_11Deserialize11deserialize9___VisitorNtNtNtB2A_4term4cell4CellEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 576  [0x104da9ac4]
+    +           ! :                       2 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer15deserialize_seqINtNvXsh_NtB1l_5implsINtNtCs6zY7rJBZy9D_5alloc3vec3VecpENtB1l_11Deserialize11deserialize10VecVisitorNtNtNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4term4cell4CellEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 172  [0x104d9ce00]
+    +           ! :                         2 _RINvXNvXsh_NtNtCshkSSkomUAhA_10serde_core2de5implsINtNtCs6zY7rJBZy9D_5alloc3vec3VecpENtBb_11Deserialize11deserializeINtB3_10VecVisitorNtNtNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4term4cell4CellENtBb_7Visitor9visit_seqINtNtCs4gwtf8fzHNo_10serde_json2de9SeqAccessNtNtB3E_4read9SliceReadEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 160  [0x104e279d0]
+    +           ! :                           1 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structNtNvXNvNtNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4term4cells8_1__NtB2v_4CellNtB1l_11Deserialize11deserialize9___VisitorECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 288  [0x104db97cc]
+    +           ! :                           + 1 _RNvXs5_NtCs4gwtf8fzHNo_10serde_json4readNtB5_9SliceReadNtB5_4Read9parse_str  (in gates_seats-0a3918ce8c4823c0) + 96  [0x10518dfe0]
+    +           ! :                           +   1 _RNvMs3_NtCs4gwtf8fzHNo_10serde_json4readNtB5_9SliceRead14skip_to_escape  (in gates_seats-0a3918ce8c4823c0) + 64  [0x10518d1e0]
+    +           ! :                           1 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structNtNvXNvNtNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4term4cells8_1__NtB2v_4CellNtB1l_11Deserialize11deserialize9___VisitorECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 916  [0x104db9a40]
+    +           ! :                             1 _RINvXNvNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor3vte4ansisi_1__NtB5_5ColorNtNtCshkSSkomUAhA_10serde_core2de11Deserialize11deserializeQINtNtCs4gwtf8fzHNo_10serde_json2de12DeserializerNtNtB28_4read9SliceReadEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 196  [0x104e39b7c]
+    +           ! :                               1 _RINvXsb_NtCs4gwtf8fzHNo_10serde_json2deINtB6_13VariantAccessNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de10EnumAccess12variant_seedINtNtCsjIpoRzUjyHQ_4core6marker11PhantomDataNtNvXNvNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor3vte4ansisi_1__NtB35_5ColorNtB1l_11Deserialize11deserialize7___FieldEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 132  [0x104dba98c]
+    +           ! :                                 1 _RNvXs5_NtCs4gwtf8fzHNo_10serde_json4readNtB5_9SliceReadNtB5_4Read9parse_str  (in gates_seats-0a3918ce8c4823c0) + 96  [0x10518dfe0]
+    +           ! :                                   1 _RNvMs3_NtCs4gwtf8fzHNo_10serde_json4readNtB5_9SliceRead14skip_to_escape  (in gates_seats-0a3918ce8c4823c0) + 144  [0x10518d230]
+    +           ! 16 _RNvMs5_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_4Tail7compact  (in gates_seats-0a3918ce8c4823c0) + 372  [0x104e31414]
+    +           ! : 16 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring12append_event  (in gates_seats-0a3918ce8c4823c0) + 156  [0x104dde214]
+    +           ! :   11 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring6append  (in gates_seats-0a3918ce8c4823c0) + 504  [0x104de1d60]
+    +           ! :   | 11 _RNvYNtNtCs1SSuMAdGM58_3std2fs4FileNtNtNtCsjIpoRzUjyHQ_4core2io5write5Write9write_allCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 112  [0x104df7a48]
+    +           ! :   |   11 _RNvXsb_NtCs1SSuMAdGM58_3std2fsNtB5_4FileNtNtNtCsjIpoRzUjyHQ_4core2io5write5Write5write  (in gates_seats-0a3918ce8c4823c0) + 32  [0x1051c1ef8]
+    +           ! :   |     11 write  (in libsystem_kernel.dylib) + 8  [0x191c98838]
+    +           ! :   5 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring6append  (in gates_seats-0a3918ce8c4823c0) + 104  [0x104de1bd0]
+    +           ! :     5 _RNvNtCs9Yj5s65SCYx_14bbt_supervisor4ring6encode  (in gates_seats-0a3918ce8c4823c0) + 440,464  [0x104de6008,0x104de6020]
+    +           ! 5 _RNvMs5_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_4Tail7compact  (in gates_seats-0a3918ce8c4823c0) + 240  [0x104e31390]
+    +           ! : 4 _RNvMNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring7journalNtB2_7Journal7payload  (in gates_seats-0a3918ce8c4823c0) + 848  [0x104e18908]
+    +           ! : | 4 _RNvYNtNtCs1SSuMAdGM58_3std2fs4FileNtNtNtNtB6_2os4unix2fs7FileExt13read_exact_atCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 124  [0x104df7bac]
+    +           ! : |   4 _RNvXNtNtNtCs1SSuMAdGM58_3std2os4unix2fsNtNtB8_2fs4FileNtB2_7FileExt7read_at  (in gates_seats-0a3918ce8c4823c0) + 32  [0x1051beb4c]
+    +           ! : |     4 pread  (in libsystem_kernel.dylib) + 8  [0x191c96648]
+    +           ! : 1 _RNvMNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring7journalNtB2_7Journal7payload  (in gates_seats-0a3918ce8c4823c0) + 560  [0x104e187e8]
+    +           ! :   1 _RINvYNtNtNtCs1SSuMAdGM58_3std4hash6random11RandomStateNtNtCsjIpoRzUjyHQ_4core4hash11BuildHasher8hash_oneRNtNtCs6zY7rJBZy9D_5alloc6string6StringECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 104  [0x104e4193c]
+    +           ! :     1 _RNvXs3_NtNtCsjIpoRzUjyHQ_4core4hash3sipINtB5_6HasherNtB5_11Sip13RoundsENtB7_6Hasher5writeCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 164  [0x104e435f8]
+    +           ! 3 _RNvMs5_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_4Tail7compact  (in gates_seats-0a3918ce8c4823c0) + 968  [0x104e31668]
+    +           ! : 3 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring12finish_group  (in gates_seats-0a3918ce8c4823c0) + 436  [0x104dde448]
+    +           ! :   3 _RNvNtCs9Yj5s65SCYx_14bbt_supervisor10durability9sync_file  (in gates_seats-0a3918ce8c4823c0) + 60  [0x104e24dfc]
+    +           ! :     3 fcntl  (in libsystem_kernel.dylib) + 88  [0x191c95758]
+    +           ! :       3 __fcntl  (in libsystem_kernel.dylib) + 8  [0x191c958b8]
+    +           ! 1 _RNvMs5_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_4Tail7compact  (in gates_seats-0a3918ce8c4823c0) + 948  [0x104e31654]
+    +           ! : 1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring6commit  (in gates_seats-0a3918ce8c4823c0) + 552  [0x104de23d4]
+    +           ! :   1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring21publish_boundary_tier  (in gates_seats-0a3918ce8c4823c0) + 936  [0x104de0570]
+    +           ! :     1 _RINvNtCs1SSuMAdGM58_3std2fs6renameNtNtB4_4path7PathBufBw_ECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 48  [0x104df33a8]
+    +           ! :       1 _RNvNtNtCs1SSuMAdGM58_3std3sys2fs6rename  (in gates_seats-0a3918ce8c4823c0) + 204  [0x1051b8268]
+    +           ! :         1 rename  (in libsystem_kernel.dylib) + 16  [0x191c9886c]
+    +           ! :           1 __rename  (in libsystem_kernel.dylib) + 8  [0x191c98890]
+    +           ! 1 _RNvMs5_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_4Tail7compact  (in gates_seats-0a3918ce8c4823c0) + 1116  [0x104e316fc]
+    +           ! : 1 _RNvMs4_NtNtCs6zY7rJBZy9D_5alloc11collections9vec_dequeINtB5_8VecDequeNtNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring7journal6RecordE8truncateB1b_  (in gates_seats-0a3918ce8c4823c0) + 300  [0x104df6cfc]
+    +           ! :   1 _xzm_free_tc  (in libsystem_malloc.dylib) + 204  [0x191afd944]
+    +           ! 1 _RNvMs5_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_4Tail7compact  (in gates_seats-0a3918ce8c4823c0) + 324  [0x104e313e4]
+    +           20 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer3run  (in gates_seats-0a3918ce8c4823c0) + 2820  [0x104e32868]
+    +           ! 16 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer7release  (in gates_seats-0a3918ce8c4823c0) + 72  [0x104e362e0]
+    +           ! : 16 _RNvMNtNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4sync5mutexNtB2_5Mutex4lock  (in gates_seats-0a3918ce8c4823c0) + 12  [0x1051a2e4c]
+    +           ! :   16 _pthread_mutex_firstfit_lock_slow  (in libsystem_pthread.dylib) + 216  [0x191cd49b8]
+    +           ! :     16 _pthread_mutex_firstfit_lock_wait  (in libsystem_pthread.dylib) + 84  [0x191cd6f7c]
+    +           ! :       16 __psynch_mutexwait  (in libsystem_kernel.dylib) + 8  [0x191c979dc]
+    +           ! 2 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer7release  (in gates_seats-0a3918ce8c4823c0) + 148  [0x104e3632c]
+    +           ! : 1 _RINvYNtNtNtCs1SSuMAdGM58_3std4hash6random11RandomStateNtNtCsjIpoRzUjyHQ_4core4hash11BuildHasher8hash_oneRTNtCs3LKJysamPJd_4ulid4UlidyEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 116  [0x104e41b90]
+    +           ! : | 1 _RNvXs3_NtNtCsjIpoRzUjyHQ_4core4hash3sipINtB5_6HasherNtB5_11Sip13RoundsENtB7_6Hasher5writeCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 320  [0x104e43694]
+    +           ! : 1 _RINvYNtNtNtCs1SSuMAdGM58_3std4hash6random11RandomStateNtNtCsjIpoRzUjyHQ_4core4hash11BuildHasher8hash_oneRTNtCs3LKJysamPJd_4ulid4UlidyEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 124  [0x104e41b98]
+    +           ! 2 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer7release  (in gates_seats-0a3918ce8c4823c0) + 384  [0x104e36418]
+    +           !   2 _RNvMNtCsf698oIHMeoM_3mio5wakerNtB2_5Waker4wake  (in gates_seats-0a3918ce8c4823c0) + 68  [0x105188c94]
+    +           !     2 kevent  (in libsystem_kernel.dylib) + 8  [0x191c9afcc]
+    +           20 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer3run  (in gates_seats-0a3918ce8c4823c0) + 8112  [0x104e33d14]
+    +           ! 15 _RNvMNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring7journalNtB2_7Journal9append_at  (in gates_seats-0a3918ce8c4823c0) + 340  [0x104e18c04]
+    +           ! : 14 _RNvNtCs9Yj5s65SCYx_14bbt_supervisor4ring6encode  (in gates_seats-0a3918ce8c4823c0) + 428,440,...  [0x104de5ffc,0x104de6008,...]
+    +           ! : 1 _RNvNtCs9Yj5s65SCYx_14bbt_supervisor4ring6encode  (in gates_seats-0a3918ce8c4823c0) + 380  [0x104de5fcc]
+    +           ! :   1 _platform_memmove  (in libsystem_platform.dylib) + 180  [0x191ce3e14]
+    +           ! 2 _RNvMNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring7journalNtB2_7Journal9append_at  (in gates_seats-0a3918ce8c4823c0) + 576  [0x104e18cf0]
+    +           ! : 2 _RINvYNtNtNtCs1SSuMAdGM58_3std4hash6random11RandomStateNtNtCsjIpoRzUjyHQ_4core4hash11BuildHasher8hash_oneRTNtCs3LKJysamPJd_4ulid4UlidyEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 96  [0x104e41b7c]
+    +           ! :   2 _RNvXs3_NtNtCsjIpoRzUjyHQ_4core4hash3sipINtB5_6HasherNtB5_11Sip13RoundsENtB7_6Hasher5writeCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 0,68  [0x104e43554,0x104e43598]
+    +           ! 2 _RNvMNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring7journalNtB2_7Journal9append_at  (in gates_seats-0a3918ce8c4823c0) + 896  [0x104e18e30]
+    +           ! : 1 __xzm_xzone_free_to_freelist_chunk  (in libsystem_malloc.dylib) + 424  [0x191af982c]
+    +           ! : | 1 mach_absolute_time  (in libsystem_kernel.dylib) + 108  [0x191c950f8]
+    +           ! : 1 _xzm_free_tc  (in libsystem_malloc.dylib) + 260  [0x191afd97c]
+    +           ! 1 _RNvMNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring7journalNtB2_7Journal9append_at  (in gates_seats-0a3918ce8c4823c0) + 532  [0x104e18cc4]
+    +           !   1 _RNvXs4_NtCs6zY7rJBZy9D_5alloc6stringNtB5_6StringNtNtCsjIpoRzUjyHQ_4core5clone5Clone5clone  (in gates_seats-0a3918ce8c4823c0) + 28  [0x1051cf8e8]
+    +           11 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer3run  (in gates_seats-0a3918ce8c4823c0) + 5388  [0x104e33270]
+    +           ! 10 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer12commit_group  (in gates_seats-0a3918ce8c4823c0) + 80  [0x104e3183c]
+    +           ! : 7 _RNvMNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring7journalNtB2_7Journal6commit  (in gates_seats-0a3918ce8c4823c0) + 328  [0x104e18060]
+    +           ! : | 7 _RNvNtCs9Yj5s65SCYx_14bbt_supervisor10durability9sync_file  (in gates_seats-0a3918ce8c4823c0) + 60  [0x104e24dfc]
+    +           ! : |   7 fcntl  (in libsystem_kernel.dylib) + 88  [0x191c95758]
+    +           ! : |     7 __fcntl  (in libsystem_kernel.dylib) + 8  [0x191c958b8]
+    +           ! : 3 _RNvMNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring7journalNtB2_7Journal6commit  (in gates_seats-0a3918ce8c4823c0) + 312  [0x104e18050]
+    +           ! :   3 _RNvMNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring7journalNtB2_7Journal12flush_buffer  (in gates_seats-0a3918ce8c4823c0) + 40  [0x104e17278]
+    +           ! :     3 _RNvYNtNtCs1SSuMAdGM58_3std2fs4FileNtNtNtCsjIpoRzUjyHQ_4core2io5write5Write9write_allCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 112  [0x104df7a48]
+    +           ! :       3 _RNvXsb_NtCs1SSuMAdGM58_3std2fsNtB5_4FileNtNtNtCsjIpoRzUjyHQ_4core2io5write5Write5write  (in gates_seats-0a3918ce8c4823c0) + 32  [0x1051c1ef8]
+    +           ! :         3 write  (in libsystem_kernel.dylib) + 8  [0x191c98838]
+    +           ! 1 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer12commit_group  (in gates_seats-0a3918ce8c4823c0) + 1180  [0x104e31c88]
+    +           !   1 _RNvMNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring7journalNtB2_7Journal6rotate  (in gates_seats-0a3918ce8c4823c0) + 36  [0x104e1815c]
+    +           !     1 _RNvMNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring7journalNtB2_7Journal6commit  (in gates_seats-0a3918ce8c4823c0) + 328  [0x104e18060]
+    +           !       1 _RNvNtCs9Yj5s65SCYx_14bbt_supervisor10durability9sync_file  (in gates_seats-0a3918ce8c4823c0) + 60  [0x104e24dfc]
+    +           !         1 fcntl  (in libsystem_kernel.dylib) + 88  [0x191c95758]
+    +           !           1 __fcntl  (in libsystem_kernel.dylib) + 8  [0x191c958b8]
+    +           8 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer3run  (in gates_seats-0a3918ce8c4823c0) + 5096  [0x104e3314c]
+    +           ! 8 _RNvMNtNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4sync5mutexNtB2_5Mutex4lock  (in gates_seats-0a3918ce8c4823c0) + 12  [0x1051a2e4c]
+    +           !   8 _pthread_mutex_firstfit_lock_slow  (in libsystem_pthread.dylib) + 216  [0x191cd49b8]
+    +           !     8 _pthread_mutex_firstfit_lock_wait  (in libsystem_pthread.dylib) + 84  [0x191cd6f7c]
+    +           !       8 __psynch_mutexwait  (in libsystem_kernel.dylib) + 8  [0x191c979dc]
+    +           4 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer3run  (in gates_seats-0a3918ce8c4823c0) + 3068  [0x104e32960]
+    +           ! 4 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer12commit_group  (in gates_seats-0a3918ce8c4823c0) + 80  [0x104e3183c]
+    +           !   4 _RNvMNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring7journalNtB2_7Journal6commit  (in gates_seats-0a3918ce8c4823c0) + 328  [0x104e18060]
+    +           !     4 _RNvNtCs9Yj5s65SCYx_14bbt_supervisor10durability9sync_file  (in gates_seats-0a3918ce8c4823c0) + 60  [0x104e24dfc]
+    +           !       4 fcntl  (in libsystem_kernel.dylib) + 88  [0x191c95758]
+    +           !         4 __fcntl  (in libsystem_kernel.dylib) + 8  [0x191c958b8]
+    +           4 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer3run  (in gates_seats-0a3918ce8c4823c0) + 8632  [0x104e33f1c]
+    +           ! 4 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring7history  (in gates_seats-0a3918ce8c4823c0) + 304  [0x104de3094]
+    +           !   3 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring7hydrate  (in gates_seats-0a3918ce8c4823c0) + 184  [0x104de39e8]
+    +           !   : 2 _RNvXs_NtNtCs9Yj5s65SCYx_14bbt_supervisor5store5blobsNtB4_10LocalBlobsNtB6_5Blobs3get  (in gates_seats-0a3918ce8c4823c0) + 632  [0x104e1c420]
+    +           !   : | 2 _RNvNtCsb6FoDbpHpzW_4sha26sha25611compress256  (in gates_seats-0a3918ce8c4823c0) + 148,400  [0x104f9d9a8,0x104f9daa4]
+    +           !   : 1 _RNvXs_NtNtCs9Yj5s65SCYx_14bbt_supervisor5store5blobsNtB4_10LocalBlobsNtB6_5Blobs3get  (in gates_seats-0a3918ce8c4823c0) + 508  [0x104e1c3a4]
+    +           !   :   1 _RINvNtNtCs6zY7rJBZy9D_5alloc2io4read19default_read_to_endINtNtNtCsjIpoRzUjyHQ_4core2io4util4TakeINtNtNtCs3U8OiCLMAex_4zstd6stream4read7DecoderINtNtNtB4_8buffered9bufreader9BufReaderNtNtCs1SSuMAdGM58_3std2fs4FileEEEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 496  [0x104e40424]
+    +           !   :     1 _RNvXs3_NtNtCs6zY7rJBZy9D_5alloc2io4utilINtNtNtCsjIpoRzUjyHQ_4core2io4util4TakeINtNtNtCs3U8OiCLMAex_4zstd6stream4read7DecoderINtNtNtB7_8buffered9bufreader9BufReaderNtNtCs1SSuMAdGM58_3std2fs4FileEEENtNtB7_4read4Read8read_bufCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 164  [0x104df75a8]
+    +           !   :       1 _RNvXs0_NtNtNtCs3U8OiCLMAex_4zstd6stream3zio6readerINtB5_6ReaderINtNtNtNtCs6zY7rJBZy9D_5alloc2io8buffered9bufreader9BufReaderNtNtCs1SSuMAdGM58_3std2fs4FileENtNtB9_3raw7DecoderENtNtB16_4read4Read4readCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 440  [0x104e3e2c8]
+    +           !   :         1 _RINvMs6_CsbaPN1zoBmRc_9zstd_safeNtB6_4DCtx17decompress_streamShECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 104  [0x104e3f004]
+    +           !   :           1 ZSTD_decompressStream  (in gates_seats-0a3918ce8c4823c0) + 2292  [0x104eac5cc]
+    +           !   :             1 ZSTD_decompressContinue  (in gates_seats-0a3918ce8c4823c0) + 256  [0x104eaaeb8]
+    +           !   :               1 ZSTD_decompressBlock_internal  (in gates_seats-0a3918ce8c4823c0) + 120  [0x104eadbf8]
+    +           !   :                 1 ZSTD_decodeLiteralsBlock  (in gates_seats-0a3918ce8c4823c0) + 1372  [0x104ead40c]
+    +           !   :                   1 HUF_decompress4X1_usingDTable_internal  (in gates_seats-0a3918ce8c4823c0) + 348  [0x104ea8020]
+    +           !   1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring7hydrate  (in gates_seats-0a3918ce8c4823c0) + 800  [0x104de3c50]
+    +           3 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer3run  (in gates_seats-0a3918ce8c4823c0) + 9160  [0x104e3412c]
+    +           ! 3 _RNvXNtNtCs6zY7rJBZy9D_5alloc3vec14spec_from_iterINtB4_3VecIBL_hEEINtB2_12SpecFromIterBU_INtNtNtCsjIpoRzUjyHQ_4core4iter8adapters12GenericShuntINtNtB1r_3map3MapINtNtNtB1v_5slice4iter4IterNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring12IndexedEventEINvNtCs4gwtf8fzHNo_10serde_json3ser6to_vecB2Y_EEINtNtB1v_6result6ResultNtNtB1v_7convert10InfallibleNtNtB3V_5error5ErrorEEE9from_iterB32_  (in gates_seats-0a3918ce8c4823c0) + 192  [0x104e42e50]
+    +           !   3 _RINvXs0_NtNtNtCsjIpoRzUjyHQ_4core4iter8adapters3mapINtB6_3MapINtNtNtBc_5slice4iter4IterNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring12IndexedEventEINvNtCs4gwtf8fzHNo_10serde_json3ser6to_vecB1n_EENtNtNtBa_6traits8iterator8Iterator8try_folduNCINvXB8_INtB8_12GenericShuntBN_INtNtBc_6result6ResultNtNtBc_7convert10InfallibleNtNtB2k_5error5ErrorEEB31_8try_folduNCINvNvB31_12try_for_each4callINtNtCs6zY7rJBZy9D_5alloc3vec3VechEINtNtNtBc_3ops12control_flow11ControlFlowB66_ENcNtB6F_5Break0E0B6F_E0IB6G_B6F_EEB1r_  (in gates_seats-0a3918ce8c4823c0) + 124  [0x104e16630]
+    +           !     3 _RINvXNvNtCs9Yj5s65SCYx_14bbt_supervisor4ringsa_1__NtB5_12IndexedEventNtNtCshkSSkomUAhA_10serde_core3ser9Serialize9serializeQINtNtCs4gwtf8fzHNo_10serde_json3ser10SerializerQINtNtCs6zY7rJBZy9D_5alloc3vec3VechEEEB7_  (in gates_seats-0a3918ce8c4823c0) + 100  [0x104dd9b7c]
+    +           !       3 _RINvXNvNtCs9Yj5s65SCYx_14bbt_supervisor8protocolsm_1__NtB5_5EventNtNtCshkSSkomUAhA_10serde_core3ser9Serialize9serializeQINtNtCs4gwtf8fzHNo_10serde_json3ser10SerializerQINtNtCs6zY7rJBZy9D_5alloc3vec3VechEEEB7_  (in gates_seats-0a3918ce8c4823c0) + 444  [0x104dd3340]
+    +           !         3 _RINvYINtNtCs4gwtf8fzHNo_10serde_json3ser8CompoundQINtNtCs6zY7rJBZy9D_5alloc3vec3VechENtB6_16CompactFormatterENtNtCshkSSkomUAhA_10serde_core3ser12SerializeMap15serialize_entryeBM_ECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 220  [0x104dfa28c]
+    +           !           2 _RINvXs1q_NtNtCshkSSkomUAhA_10serde_core3ser5implsINtNtCs6zY7rJBZy9D_5alloc3vec3VechENtB9_9Serialize9serializeQINtNtCs4gwtf8fzHNo_10serde_json3ser10SerializerQBL_EECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 384  [0x104df89f8]
+    +           !           : 2 _platform_memmove  (in libsystem_platform.dylib) + 428,460  [0x191ce3f0c,0x191ce3f2c]
+    +           !           1 _RINvXs1q_NtNtCshkSSkomUAhA_10serde_core3ser5implsINtNtCs6zY7rJBZy9D_5alloc3vec3VechENtB9_9Serialize9serializeQINtNtCs4gwtf8fzHNo_10serde_json3ser10SerializerQBL_EECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 400  [0x104df8a08]
+    +           3 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer3run  (in gates_seats-0a3918ce8c4823c0) + 8888,8908  [0x104e3401c,0x104e34030]
+    +           2 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer3run  (in gates_seats-0a3918ce8c4823c0) + 1792  [0x104e32464]
+    +           ! 1 _RNvNtCs9Yj5s65SCYx_14bbt_supervisor4ring12encode_event  (in gates_seats-0a3918ce8c4823c0) + 260  [0x104de59c8]
+    +           ! : 1 _xzm_malloc_tc  (in libsystem_malloc.dylib) + 260  [0x191afba94]
+    +           ! 1 _RNvNtCs9Yj5s65SCYx_14bbt_supervisor4ring12encode_event  (in gates_seats-0a3918ce8c4823c0) + 280  [0x104de59dc]
+    +           !   1 _platform_memmove  (in libsystem_platform.dylib) + 180  [0x191ce3e14]
+    +           2 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer3run  (in gates_seats-0a3918ce8c4823c0) + 7720  [0x104e33b8c]
+    +           ! 2 _RNvMs2_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_5Saved6decode  (in gates_seats-0a3918ce8c4823c0) + 472  [0x104ddacf4]
+    +           !   2 _RINvNtCs4gwtf8fzHNo_10serde_json2de10from_traitNtNtB4_4read9SliceReadNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring5SavedEB19_  (in gates_seats-0a3918ce8c4823c0) + 72  [0x104d99c98]
+    +           !     2 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structNtNvXNvNtCs9Yj5s65SCYx_14bbt_supervisor4rings7_1__NtB2v_5SavedNtB1l_11Deserialize11deserialize9___VisitorEB2x_  (in gates_seats-0a3918ce8c4823c0) + 1820  [0x104dad7d8]
+    +           !       2 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structNtNvXNvCsgcT4WtEuZqq_8bbt_cores_1__NtB2v_10CheckpointNtB1l_11Deserialize11deserialize9___VisitorECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 548  [0x104dab0a0]
+    +           !         2 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structINtNvXNvNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4terms6_1__INtB2w_4TermpENtB1l_11Deserialize11deserialize9___VisitorNtB2C_6EventsEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 2648  [0x104da6820]
+    +           !           2 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structINtNvXNvNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4grids3_1__INtB2w_4GridpENtB1l_11Deserialize11deserialize9___VisitorNtNtNtB2y_4term4cell4CellEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 1192  [0x104da4228]
+    +           !             2 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structINtNvXNvNtNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4grid7storages_1__INtB2w_7StoragepENtB1l_11Deserialize11deserialize9___VisitorNtNtNtB2A_4term4cell4CellEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 880  [0x104daa5a4]
+    +           !               2 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer15deserialize_seqINtNvXsh_NtB1l_5implsINtNtCs6zY7rJBZy9D_5alloc3vec3VecpENtB1l_11Deserialize11deserialize10VecVisitorINtNtNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4grid3row3RowNtNtNtB44_4term4cell4CellEEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 172  [0x104d9c658]
+    +           !                 2 _RINvXNvXsh_NtNtCshkSSkomUAhA_10serde_core2de5implsINtNtCs6zY7rJBZy9D_5alloc3vec3VecpENtBb_11Deserialize11deserializeINtB3_10VecVisitorINtNtNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4grid3row3RowNtNtNtB2f_4term4cell4CellEENtBb_7Visitor9visit_seqINtNtCs4gwtf8fzHNo_10serde_json2de9SeqAccessNtNtB43_4read9SliceReadEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 156  [0x104e270d8]
+    +           !                   2 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structINtNvXNvNtNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4grid3rows_1__INtB2w_3RowpENtB1l_11Deserialize11deserialize9___VisitorNtNtNtB2A_4term4cell4CellEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 576  [0x104da9ac4]
+    +           !                     2 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer15deserialize_seqINtNvXsh_NtB1l_5implsINtNtCs6zY7rJBZy9D_5alloc3vec3VecpENtB1l_11Deserialize11deserialize10VecVisitorNtNtNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4term4cell4CellEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 172  [0x104d9ce00]
+    +           !                       2 _RINvXNvXsh_NtNtCshkSSkomUAhA_10serde_core2de5implsINtNtCs6zY7rJBZy9D_5alloc3vec3VecpENtBb_11Deserialize11deserializeINtB3_10VecVisitorNtNtNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4term4cell4CellENtBb_7Visitor9visit_seqINtNtCs4gwtf8fzHNo_10serde_json2de9SeqAccessNtNtB3E_4read9SliceReadEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 160  [0x104e279d0]
+    +           !                         1 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structNtNvXNvNtNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4term4cells8_1__NtB2v_4CellNtB1l_11Deserialize11deserialize9___VisitorECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 916  [0x104db9a40]
+    +           !                         : 1 _RINvXNvNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor3vte4ansisi_1__NtB5_5ColorNtNtCshkSSkomUAhA_10serde_core2de11Deserialize11deserializeQINtNtCs4gwtf8fzHNo_10serde_json2de12DeserializerNtNtB28_4read9SliceReadEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 196  [0x104e39b7c]
+    +           !                         :   1 _RINvXsb_NtCs4gwtf8fzHNo_10serde_json2deINtB6_13VariantAccessNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de10EnumAccess12variant_seedINtNtCsjIpoRzUjyHQ_4core6marker11PhantomDataNtNvXNvNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor3vte4ansisi_1__NtB35_5ColorNtB1l_11Deserialize11deserialize7___FieldEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 132  [0x104dba98c]
+    +           !                         :     1 _RNvXs5_NtCs4gwtf8fzHNo_10serde_json4readNtB5_9SliceReadNtB5_4Read9parse_str  (in gates_seats-0a3918ce8c4823c0) + 388  [0x10518e104]
+    +           !                         :       1 _RNvNtNtCsjIpoRzUjyHQ_4core3str8converts9from_utf8  (in gates_seats-0a3918ce8c4823c0) + 72  [0x1051d5e6c]
+    +           !                         1 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structNtNvXNvNtNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4term4cells8_1__NtB2v_4CellNtB1l_11Deserialize11deserialize9___VisitorECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 1068  [0x104db9ad8]
+    +           !                           1 _RINvXNvNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor3vte4ansisi_1__NtB5_5ColorNtNtCshkSSkomUAhA_10serde_core2de11Deserialize11deserializeQINtNtCs4gwtf8fzHNo_10serde_json2de12DeserializerNtNtB28_4read9SliceReadEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 164  [0x104e39b5c]
+    +           1 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer3run  (in gates_seats-0a3918ce8c4823c0) + 5204  [0x104e331b8]
+    +           ! 1 _RNvMNtNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4sync5mutexNtB2_5Mutex4lock  (in gates_seats-0a3918ce8c4823c0) + 12  [0x1051a2e4c]
+    +           !   1 _pthread_mutex_firstfit_lock_slow  (in libsystem_pthread.dylib) + 216  [0x191cd49b8]
+    +           !     1 _pthread_mutex_firstfit_lock_wait  (in libsystem_pthread.dylib) + 84  [0x191cd6f7c]
+    +           !       1 __psynch_mutexwait  (in libsystem_kernel.dylib) + 8  [0x191c979dc]
+    +           1 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer3run  (in gates_seats-0a3918ce8c4823c0) + 5292  [0x104e33210]
+    +             1 _RNvMNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4timeNtB2_8Timespec3now  (in gates_seats-0a3918ce8c4823c0) + 24  [0x1051a15fc]
+    +               1 clock_gettime  (in libsystem_c.dylib) + 60  [0x191b70100]
+    +                 1 clock_gettime_nsec_np  (in libsystem_c.dylib) + 384  [0x191b621ac]
+    +                   1 mach_absolute_time  (in libsystem_kernel.dylib) + 108  [0x191c950f8]
+    248 Thread_9955231: bbt-supervisor
+    + 248 thread_start  (in libsystem_pthread.dylib) + 8  [0x191cd4cec]
+    +   248 _pthread_start  (in libsystem_pthread.dylib) + 136  [0x191cd9d00]
+    +     248 _RNvNvMs0_NtNtNtCs1SSuMAdGM58_3std3sys6thread4unixNtB7_6Thread3new12thread_start  (in gates_seats-0a3918ce8c4823c0) + 392  [0x1051bdc88]
+    +       248 _RNSNvYNCINvNtNtCs1SSuMAdGM58_3std6thread9lifecycle15spawn_uncheckedNCNvMs_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB1a_10Supervisor5start0INtNtCsjIpoRzUjyHQ_4core6result6ResultuNtNtNtB2m_2io5error5ErrorEEs_0INtNtNtB2m_3ops8function6FnOnceuE9call_once6vtableB1c_  (in gates_seats-0a3918ce8c4823c0) + 140  [0x104e13c88]
+    +         248 _RINvNtNtCs1SSuMAdGM58_3std3sys9backtrace28___rust_begin_short_backtraceNCNvMs_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB1e_10Supervisor5start0INtNtCsjIpoRzUjyHQ_4core6result6ResultuNtNtNtB2q_2io5error5ErrorEEB1g_  (in gates_seats-0a3918ce8c4823c0) + 20  [0x104df48d8]
+    +           123 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 2540  [0x104e088ac]
+    +           ! 123 _RNvXs2_Cse2HTUWRXB3r_12portable_ptyNtNtCs1SSuMAdGM58_3std7process5ChildNtB5_5Child8try_wait  (in gates_seats-0a3918ce8c4823c0) + 28  [0x104ee18f8]
+    +           !   123 _RNvMsT_NtCs1SSuMAdGM58_3std7processNtB5_5Child8try_wait  (in gates_seats-0a3918ce8c4823c0) + 64  [0x1051aa06c]
+    +           !     123 __wait4  (in libsystem_kernel.dylib) + 8,4  [0x191c9c4d0,0x191c9c4cc]
+    +           49 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 3052  [0x104e08aac]
+    +           ! 49 read  (in libsystem_kernel.dylib) + 8  [0x191c95910]
+    +           12 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 4048  [0x104e08e90]
+    +           ! 12 _RNvXNtNtNtCsf698oIHMeoM_3mio3sys4unix8sourcefdNtB2_8SourceFdNtNtNtB8_5event6source6Source10reregister  (in gates_seats-0a3918ce8c4823c0) + 116  [0x10518a018]
+    +           !   12 _RNvNtNtNtCsf698oIHMeoM_3mio3sys4unix8selector15kevent_register  (in gates_seats-0a3918ce8c4823c0) + 52  [0x105188ec8]
+    +           !     12 kevent  (in libsystem_kernel.dylib) + 8  [0x191c9afcc]
+    +           10 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 2920  [0x104e08a28]
+    +           ! 4 _RNvMs3_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_6Handle11can_capture  (in gates_seats-0a3918ce8c4823c0) + 56  [0x104e2fd4c]
+    +           ! : 3 _RNvMNtNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4sync5mutexNtB2_5Mutex4lock  (in gates_seats-0a3918ce8c4823c0) + 12  [0x1051a2e4c]
+    +           ! : | 3 _pthread_mutex_firstfit_lock_slow  (in libsystem_pthread.dylib) + 216  [0x191cd49b8]
+    +           ! : |   3 _pthread_mutex_firstfit_lock_wait  (in libsystem_pthread.dylib) + 84  [0x191cd6f7c]
+    +           ! : |     3 __psynch_mutexwait  (in libsystem_kernel.dylib) + 8  [0x191c979dc]
+    +           ! : 1 _RNvMNtNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4sync5mutexNtB2_5Mutex4lock  (in gates_seats-0a3918ce8c4823c0) + 0  [0x1051a2e40]
+    +           ! 2 _RNvMs3_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_6Handle11can_capture  (in gates_seats-0a3918ce8c4823c0) + 120  [0x104e2fd8c]
+    +           ! : 2 _RNvMNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4timeNtB2_8Timespec3now  (in gates_seats-0a3918ce8c4823c0) + 24  [0x1051a15fc]
+    +           ! :   2 clock_gettime  (in libsystem_c.dylib) + 0,272  [0x191b700c4,0x191b701d4]
+    +           ! 2 _RNvMs3_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_6Handle11can_capture  (in gates_seats-0a3918ce8c4823c0) + 408,500  [0x104e2feac,0x104e2ff08]
+    +           ! 1 _RNvMs3_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_6Handle11can_capture  (in gates_seats-0a3918ce8c4823c0) + 548  [0x104e2ff38]
+    +           ! : 1 _RNvNtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writer8has_room  (in gates_seats-0a3918ce8c4823c0) + 200  [0x104e365e4]
+    +           ! 1 _RNvMs3_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_6Handle11can_capture  (in gates_seats-0a3918ce8c4823c0) + 592  [0x104e2ff64]
+    +           !   1 _RINvYNtNtNtCs1SSuMAdGM58_3std4hash6random11RandomStateNtNtCsjIpoRzUjyHQ_4core4hash11BuildHasher8hash_oneRTNtCs3LKJysamPJd_4ulid4UlidyEECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 96  [0x104e41b7c]
+    +           !     1 _RNvXs3_NtNtCsjIpoRzUjyHQ_4core4hash3sipINtB5_6HasherNtB5_11Sip13RoundsENtB7_6Hasher5writeCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 376  [0x104e436cc]
+    +           9 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 3532  [0x104e08c8c]
+    +           ! 8 _RNvMs5_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_4Seat12flush_output  (in gates_seats-0a3918ce8c4823c0) + 140  [0x104e0cee8]
+    +           ! : 4 _RNvMs3_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_6Handle12append_event  (in gates_seats-0a3918ce8c4823c0) + 1532  [0x104e308d8]
+    +           ! : | 4 _RNvXsb_NtCs6zY7rJBZy9D_5alloc3vecINtB5_3VechENtNtCsjIpoRzUjyHQ_4core5clone5Clone5cloneCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 92  [0x104e43cdc]
+    +           ! : |   4 _platform_memmove  (in libsystem_platform.dylib) + 180,196  [0x191ce3e14,0x191ce3e24]
+    +           ! : 2 _RNvMs3_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_6Handle12append_event  (in gates_seats-0a3918ce8c4823c0) + 1100  [0x104e30728]
+    +           ! : | 2 _RNvMNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4timeNtB2_8Timespec3now  (in gates_seats-0a3918ce8c4823c0) + 24  [0x1051a15fc]
+    +           ! : |   1 clock_gettime  (in libsystem_c.dylib) + 60  [0x191b70100]
+    +           ! : |   + 1 clock_gettime_nsec_np  (in libsystem_c.dylib) + 384  [0x191b621ac]
+    +           ! : |   +   1 mach_absolute_time  (in libsystem_kernel.dylib) + 108  [0x191c950f8]
+    +           ! : |   1 clock_gettime  (in libsystem_c.dylib) + 272  [0x191b701d4]
+    +           ! : 1 _RNvMs3_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_6Handle12append_event  (in gates_seats-0a3918ce8c4823c0) + 136  [0x104e30364]
+    +           ! : | 1 _RNvMNtNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4sync5mutexNtB2_5Mutex4lock  (in gates_seats-0a3918ce8c4823c0) + 12  [0x1051a2e4c]
+    +           ! : |   1 _pthread_mutex_firstfit_lock_slow  (in libsystem_pthread.dylib) + 216  [0x191cd49b8]
+    +           ! : |     1 _pthread_mutex_firstfit_lock_wait  (in libsystem_pthread.dylib) + 84  [0x191cd6f7c]
+    +           ! : |       1 __psynch_mutexwait  (in libsystem_kernel.dylib) + 8  [0x191c979dc]
+    +           ! : 1 _RNvXsb_NtCs6zY7rJBZy9D_5alloc3vecINtB5_3VechENtNtCsjIpoRzUjyHQ_4core5clone5Clone5cloneCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 120  [0x104e43cf8]
+    +           ! 1 _RNvMs5_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_4Seat12flush_output  (in gates_seats-0a3918ce8c4823c0) + 412  [0x104e0cff8]
+    +           !   1 _xzm_free_outlined  (in libsystem_malloc.dylib) + 76  [0x191af8ef8]
+    +           7 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 2836  [0x104e089d4]
+    +           ! 4 _RNvMs5_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_4Seat15publish_pending  (in gates_seats-0a3918ce8c4823c0) + 520  [0x104e0d8d0]
+    +           ! : 3 _RNvXsb_NtCs6zY7rJBZy9D_5alloc3vecINtB5_3VechENtNtCsjIpoRzUjyHQ_4core5clone5Clone5cloneCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 92  [0x104e43cdc]
+    +           ! : | 3 _platform_memmove  (in libsystem_platform.dylib) + 180,196,...  [0x191ce3e14,0x191ce3e24,...]
+    +           ! : 1 _RNvXsb_NtCs6zY7rJBZy9D_5alloc3vecINtB5_3VechENtNtCsjIpoRzUjyHQ_4core5clone5Clone5cloneCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 72  [0x104e43cc8]
+    +           ! :   1 xzm_malloc_zone_malloc_type_malloc_tc  (in libsystem_malloc.dylib) + 0  [0x191afb3cc]
+    +           ! 2 _RNvMs5_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_4Seat15publish_pending  (in gates_seats-0a3918ce8c4823c0) + 556  [0x104e0d8f4]
+    +           ! : 1 _RNvMs2_NtNtCs1SSuMAdGM58_3std4sync4mpmcINtB5_6SenderNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5EventE8try_sendBS_  (in gates_seats-0a3918ce8c4823c0) + 140  [0x104e23c3c]
+    +           ! : | 1 _RNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB4_7ChannelNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5EventE8try_sendB10_  (in gates_seats-0a3918ce8c4823c0) + 292  [0x104df0b64]
+    +           ! : 1 _RNvMs2_NtNtCs1SSuMAdGM58_3std4sync4mpmcINtB5_6SenderNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5EventE8try_sendBS_  (in gates_seats-0a3918ce8c4823c0) + 8  [0x104e23bb8]
+    +           ! 1 _RNvMs5_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_4Seat15publish_pending  (in gates_seats-0a3918ce8c4823c0) + 1104  [0x104e0db18]
+    +           !   1 _xzm_free_tc  (in libsystem_malloc.dylib) + 260  [0x191afd97c]
+    +           6 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 2060  [0x104e086cc]
+    +           ! 6 _RNvMs4_NtNtNtNtCs6zY7rJBZy9D_5alloc11collections5btree3map5entryINtB5_11VacantEntryNtCs3LKJysamPJd_4ulid4UlidNtNtCs9Yj5s65SCYx_14bbt_supervisor10supervisor4SeatE12insert_entryB1N_  (in gates_seats-0a3918ce8c4823c0) + 96  [0x104e2bff0]
+    +           !   4 _RINvMsN_NtNtNtCs6zY7rJBZy9D_5alloc11collections5btree4nodeINtB6_6HandleINtB6_7NodeRefNtNtB6_6marker3MutNtCs3LKJysamPJd_4ulid4UlidNtNtCs9Yj5s65SCYx_14bbt_supervisor10supervisor4SeatNtB1n_4LeafENtB1n_4EdgeE16insert_recursingNtNtBc_5alloc6GlobalNCNvMs4_NtNtB8_3map5entryINtB40_11VacantEntryB1D_B23_E12insert_entry0EB27_  (in gates_seats-0a3918ce8c4823c0) + 616  [0x104de6e28]
+    +           !   : 4 _platform_memmove  (in libsystem_platform.dylib) + 624  [0x191ce3fd0]
+    +           !   1 _RINvMsN_NtNtNtCs6zY7rJBZy9D_5alloc11collections5btree4nodeINtB6_6HandleINtB6_7NodeRefNtNtB6_6marker3MutNtCs3LKJysamPJd_4ulid4UlidNtNtCs9Yj5s65SCYx_14bbt_supervisor10supervisor4SeatNtB1n_4LeafENtB1n_4EdgeE16insert_recursingNtNtBc_5alloc6GlobalNCNvMs4_NtNtB8_3map5entryINtB40_11VacantEntryB1D_B23_E12insert_entry0EB27_  (in gates_seats-0a3918ce8c4823c0) + 544  [0x104de6de0]
+    +           !   : 1 _platform_memmove  (in libsystem_platform.dylib) + 624  [0x191ce3fd0]
+    +           !   1 _RINvMsN_NtNtNtCs6zY7rJBZy9D_5alloc11collections5btree4nodeINtB6_6HandleINtB6_7NodeRefNtNtB6_6marker3MutNtCs3LKJysamPJd_4ulid4UlidNtNtCs9Yj5s65SCYx_14bbt_supervisor10supervisor4SeatNtB1n_4LeafENtB1n_4EdgeE16insert_recursingNtNtBc_5alloc6GlobalNCNvMs4_NtNtB8_3map5entryINtB40_11VacantEntryB1D_B23_E12insert_entry0EB27_  (in gates_seats-0a3918ce8c4823c0) + 568  [0x104de6df8]
+    +           !     1 _platform_memmove  (in libsystem_platform.dylib) + 624  [0x191ce3fd0]
+    +           6 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 2252  [0x104e0878c]
+    +           ! 5 _RNvMs5_NtNtNtNtCs6zY7rJBZy9D_5alloc11collections5btree3map5entryINtB5_13OccupiedEntryNtCs3LKJysamPJd_4ulid4UlidNtNtCs9Yj5s65SCYx_14bbt_supervisor10supervisor4SeatE9remove_kvB1P_  (in gates_seats-0a3918ce8c4823c0) + 48  [0x104e2c6fc]
+    +           ! : 4 _RINvMNtNtNtCs6zY7rJBZy9D_5alloc11collections5btree6removeINtNtB5_4node6HandleINtBW_7NodeRefNtNtBW_6marker3MutNtCs3LKJysamPJd_4ulid4UlidNtNtCs9Yj5s65SCYx_14bbt_supervisor10supervisor4SeatNtB1t_14LeafOrInternalENtB1t_2KVE18remove_kv_trackingNCNvMs5_NtNtB5_3map5entryINtB3X_13OccupiedEntryB1J_B29_E9remove_kv0NtNtB9_5alloc6GlobalEB2d_  (in gates_seats-0a3918ce8c4823c0) + 316  [0x104de68c4]
+    +           ! : | 3 _RINvMs_NtNtNtCs6zY7rJBZy9D_5alloc11collections5btree6removeINtNtB7_4node6HandleINtBY_7NodeRefNtNtBY_6marker3MutNtCs3LKJysamPJd_4ulid4UlidNtNtCs9Yj5s65SCYx_14bbt_supervisor10supervisor4SeatNtB1v_4LeafENtB1v_2KVE14remove_leaf_kvNCNvMs5_NtNtB7_3map5entryINtB3K_13OccupiedEntryB1L_B2b_E9remove_kv0NtNtBb_5alloc6GlobalEB2f_  (in gates_seats-0a3918ce8c4823c0) + 156  [0x104dea570]
+    +           ! : | + 3 _platform_memmove  (in libsystem_platform.dylib) + 372  [0x191ce3ed4]
+    +           ! : | 1 _RINvMs_NtNtNtCs6zY7rJBZy9D_5alloc11collections5btree6removeINtNtB7_4node6HandleINtBY_7NodeRefNtNtBY_6marker3MutNtCs3LKJysamPJd_4ulid4UlidNtNtCs9Yj5s65SCYx_14bbt_supervisor10supervisor4SeatNtB1v_4LeafENtB1v_2KVE14remove_leaf_kvNCNvMs5_NtNtB7_3map5entryINtB3K_13OccupiedEntryB1L_B2b_E9remove_kv0NtNtBb_5alloc6GlobalEB2f_  (in gates_seats-0a3918ce8c4823c0) + 528  [0x104dea6e4]
+    +           ! : |   1 _platform_memmove  (in libsystem_platform.dylib) + 180  [0x191ce3e14]
+    +           ! : 1 _RINvMNtNtNtCs6zY7rJBZy9D_5alloc11collections5btree6removeINtNtB5_4node6HandleINtBW_7NodeRefNtNtBW_6marker3MutNtCs3LKJysamPJd_4ulid4UlidNtNtCs9Yj5s65SCYx_14bbt_supervisor10supervisor4SeatNtB1t_14LeafOrInternalENtB1t_2KVE18remove_kv_trackingNCNvMs5_NtNtB5_3map5entryINtB3X_13OccupiedEntryB1J_B29_E9remove_kv0NtNtB9_5alloc6GlobalEB2d_  (in gates_seats-0a3918ce8c4823c0) + 252  [0x104de6884]
+    +           ! :   1 _platform_memmove  (in libsystem_platform.dylib) + 180  [0x191ce3e14]
+    +           ! 1 _RNvMs5_NtNtNtNtCs6zY7rJBZy9D_5alloc11collections5btree3map5entryINtB5_13OccupiedEntryNtCs3LKJysamPJd_4ulid4UlidNtNtCs9Yj5s65SCYx_14bbt_supervisor10supervisor4SeatE9remove_kvB1P_  (in gates_seats-0a3918ce8c4823c0) + 64  [0x104e2c70c]
+    +           !   1 _platform_memmove  (in libsystem_platform.dylib) + 180  [0x191ce3e14]
+    +           6 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 2164,2952,...  [0x104e08734,0x104e08a48,...]
+    +           4 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 3520  [0x104e08c80]
+    +           ! 3 _RNvMs3_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_6Handle11can_capture  (in gates_seats-0a3918ce8c4823c0) + 56  [0x104e2fd4c]
+    +           ! : 3 _RNvMNtNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4sync5mutexNtB2_5Mutex4lock  (in gates_seats-0a3918ce8c4823c0) + 12  [0x1051a2e4c]
+    +           ! :   3 _pthread_mutex_firstfit_lock_slow  (in libsystem_pthread.dylib) + 216  [0x191cd49b8]
+    +           ! :     3 _pthread_mutex_firstfit_lock_wait  (in libsystem_pthread.dylib) + 84  [0x191cd6f7c]
+    +           ! :       3 __psynch_mutexwait  (in libsystem_kernel.dylib) + 8  [0x191c979dc]
+    +           ! 1 _RNvMs3_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_6Handle11can_capture  (in gates_seats-0a3918ce8c4823c0) + 852  [0x104e30068]
+    +           !   1 _pthread_mutex_firstfit_unlock_slow  (in libsystem_pthread.dylib) + 220  [0x191cd4c6c]
+    +           !     1 _pthread_mutex_firstfit_wake  (in libsystem_pthread.dylib) + 28  [0x191cd6fec]
+    +           !       1 __psynch_mutexdrop  (in libsystem_kernel.dylib) + 8  [0x191c97ba8]
+    +           4 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 6348  [0x104e0978c]
+    +           ! 2 _RNvMs3_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_6Handle11can_capture  (in gates_seats-0a3918ce8c4823c0) + 56  [0x104e2fd4c]
+    +           ! : 2 _RNvMNtNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4sync5mutexNtB2_5Mutex4lock  (in gates_seats-0a3918ce8c4823c0) + 12  [0x1051a2e4c]
+    +           ! :   2 _pthread_mutex_firstfit_lock_slow  (in libsystem_pthread.dylib) + 216  [0x191cd49b8]
+    +           ! :     2 _pthread_mutex_firstfit_lock_wait  (in libsystem_pthread.dylib) + 84  [0x191cd6f7c]
+    +           ! :       2 __psynch_mutexwait  (in libsystem_kernel.dylib) + 8  [0x191c979dc]
+    +           ! 1 _RNvMs3_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_6Handle11can_capture  (in gates_seats-0a3918ce8c4823c0) + 120  [0x104e2fd8c]
+    +           ! : 1 _RNvMNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4timeNtB2_8Timespec3now  (in gates_seats-0a3918ce8c4823c0) + 24  [0x1051a15fc]
+    +           ! :   1 clock_gettime  (in libsystem_c.dylib) + 272  [0x191b701d4]
+    +           ! 1 _RNvMs3_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_6Handle11can_capture  (in gates_seats-0a3918ce8c4823c0) + 180  [0x104e2fdc8]
+    +           !   1 _RNvMNtCs1SSuMAdGM58_3std4timeNtB2_7Instant14duration_since  (in gates_seats-0a3918ce8c4823c0) + 40  [0x1051a0368]
+    +           !     1 _RNvMNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4timeNtB2_8Timespec12sub_timespec  (in gates_seats-0a3918ce8c4823c0) + 188  [0x1051a15bc]
+    +           3 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 1520  [0x104e084b0]
+    +           ! 2 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor8dispatch  (in gates_seats-0a3918ce8c4823c0) + 5332  [0x104e0bc54]
+    +           ! : 2 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring4open  (in gates_seats-0a3918ce8c4823c0) + 2660  [0x104de135c]
+    +           ! :   2 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_4Ring21publish_boundary_tier  (in gates_seats-0a3918ce8c4823c0) + 580  [0x104de040c]
+    +           ! :     2 _RNvNtCs9Yj5s65SCYx_14bbt_supervisor10durability9sync_file  (in gates_seats-0a3918ce8c4823c0) + 60  [0x104e24dfc]
+    +           ! :       2 fcntl  (in libsystem_kernel.dylib) + 88  [0x191c95758]
+    +           ! :         2 __fcntl  (in libsystem_kernel.dylib) + 8  [0x191c958b8]
+    +           ! 1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor8dispatch  (in gates_seats-0a3918ce8c4823c0) + 3512  [0x104e0b538]
+    +           !   1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor10spawn_seat  (in gates_seats-0a3918ce8c4823c0) + 1988  [0x104e077a0]
+    +           !     1 _RNvXs3_NtCse2HTUWRXB3r_12portable_pty4unixNtB5_12UnixSlavePtyNtB7_8SlavePty13spawn_command  (in gates_seats-0a3918ce8c4823c0) + 460  [0x104edd7fc]
+    +           !       1 _RNvMsi_NtCs1SSuMAdGM58_3std7processNtB5_7Command5spawn  (in gates_seats-0a3918ce8c4823c0) + 40  [0x1051b2ae8]
+    +           !         1 _RNvMNtNtNtNtCs1SSuMAdGM58_3std3sys7process4unix4unixNtNtB4_6common7Command5spawn  (in gates_seats-0a3918ce8c4823c0) + 560  [0x1051a1a88]
+    +           !           1 fork  (in libsystem_c.dylib) + 56  [0x191b853d4]
+    +           !             1 __fork  (in libsystem_kernel.dylib) + 20  [0x191c9c958]
+    +           3 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 2952  [0x104e08a48]
+    +           ! 3 _platform_memset  (in libsystem_platform.dylib) + 140  [0x191ce3b1c]
+    +           2 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 3576  [0x104e08cb8]
+    +           ! 1 _RNvMs5_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_4Seat15publish_pending  (in gates_seats-0a3918ce8c4823c0) + 120  [0x104e0d740]
+    +           ! : 1 _RINvYNtNtNtCs1SSuMAdGM58_3std4hash6random11RandomStateNtNtCsjIpoRzUjyHQ_4core4hash11BuildHasher8hash_oneRNtCs3LKJysamPJd_4ulid4UlidECs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 204  [0x104e41884]
+    +           ! 1 _RNvMs5_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_4Seat15publish_pending  (in gates_seats-0a3918ce8c4823c0) + 520  [0x104e0d8d0]
+    +           !   1 _RNvXsb_NtCs6zY7rJBZy9D_5alloc3vecINtB5_3VechENtNtCsjIpoRzUjyHQ_4core5clone5Clone5cloneCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0) + 72  [0x104e43cc8]
+    +           !     1 _xzm_xzone_malloc_tiny  (in libsystem_malloc.dylib) + 348  [0x191af4ba8]
+    +           1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 2292  [0x104e087b4]
+    +           ! 1 _platform_memmove  (in libsystem_platform.dylib) + 180  [0x191ce3e14]
+    +           1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 3328  [0x104e08bc0]
+    +           ! 1 _RNvMNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4timeNtB2_8Timespec3now  (in gates_seats-0a3918ce8c4823c0) + 24  [0x1051a15fc]
+    +           !   1 clock_gettime  (in libsystem_c.dylib) + 60  [0x191b70100]
+    +           !     1 mach_timebase_info  (in libsystem_kernel.dylib) + 80  [0x191c95008]
+    +           1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 5716  [0x104e09514]
+    +           ! 1 _RNvMs3_NtNtCs9Yj5s65SCYx_14bbt_supervisor4ring6writerNtB5_6Handle11can_capture  (in gates_seats-0a3918ce8c4823c0) + 120  [0x104e2fd8c]
+    +           !   1 _RNvMNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4timeNtB2_8Timespec3now  (in gates_seats-0a3918ce8c4823c0) + 24  [0x1051a15fc]
+    +           !     1 clock_gettime  (in libsystem_c.dylib) + 60  [0x191b70100]
+    +           !       1 ???  (in <unknown binary>)  [0x19952a770]
+    +           1 _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0) + 6540  [0x104e0984c]
+    +             1 _RNvMNtCsf698oIHMeoM_3mio4pollNtB2_4Poll4poll  (in gates_seats-0a3918ce8c4823c0) + 108  [0x10518986c]
+    +               1 kevent  (in libsystem_kernel.dylib) + 8  [0x191c9afcc]
+    248 Thread_9955232: tokio-rt-worker
+    + 248 thread_start  (in libsystem_pthread.dylib) + 8  [0x191cd4cec]
+    +   248 _pthread_start  (in libsystem_pthread.dylib) + 136  [0x191cd9d00]
+    +     248 _RNvNvMs0_NtNtNtCs1SSuMAdGM58_3std3sys6thread4unixNtB7_6Thread3new12thread_start  (in gates_seats-0a3918ce8c4823c0) + 392  [0x1051bdc88]
+    +       248 _RNSNvYNCINvNtNtCs1SSuMAdGM58_3std6thread9lifecycle15spawn_uncheckedNCNvMs5_NtNtNtCsftljrneu3qx_5tokio7runtime8blocking4poolNtB1b_7Spawner12spawn_thread0uEs_0INtNtNtCsjIpoRzUjyHQ_4core3ops8function6FnOnceuE9call_once6vtableB1h_  (in gates_seats-0a3918ce8c4823c0) + 104  [0x105182e34]
+    +         248 _RINvNtNtCs1SSuMAdGM58_3std3sys9backtrace28___rust_begin_short_backtraceNCNvMs5_NtNtNtCsftljrneu3qx_5tokio7runtime8blocking4poolNtB1f_7Spawner12spawn_thread0uEB1l_  (in gates_seats-0a3918ce8c4823c0) + 132  [0x10517fb80]
+    +           248 _RNvMs8_NtNtNtCsftljrneu3qx_5tokio7runtime8blocking4poolNtB5_5Inner3run  (in gates_seats-0a3918ce8c4823c0) + 392  [0x105184a24]
+    +             248 _RINvNtNtNtCsftljrneu3qx_5tokio7runtime4task3raw4pollINtNtNtB6_8blocking4task12BlockingTaskNCNvMs1_NtCs6b4Z5gS8CoF_7bbt_mux3busNtB1y_9BusHandle5start0ENtNtBT_8schedule16BlockingScheduleEB1A_  (in gates_seats-0a3918ce8c4823c0) + 80  [0x104c8e980]
+    +               248 _RNvMs4_NtNtNtCsftljrneu3qx_5tokio7runtime4task4coreINtB5_4CoreINtNtNtB9_8blocking4task12BlockingTaskNCNvMs1_NtCs6b4Z5gS8CoF_7bbt_mux3busNtB1I_9BusHandle5start0ENtNtB13_8schedule16BlockingScheduleE4pollB1K_  (in gates_seats-0a3918ce8c4823c0) + 232  [0x104c774f0]
+    +                 248 _RINvNtNtCsftljrneu3qx_5tokio6future8block_on8block_onNCNvMNtNtNtB6_4sync4mpsc7boundedINtBU_8ReceiverNtNtCs6b4Z5gS8CoF_7bbt_mux3bus7CommandE4recv0EB1E_  (in gates_seats-0a3918ce8c4823c0) + 276  [0x104c8cb1c]
+    +                   248 _RNvMs_NtNtCsftljrneu3qx_5tokio7runtime4parkNtB4_5Inner4park  (in gates_seats-0a3918ce8c4823c0) + 180  [0x10517b1e4]
+    +                     248 _pthread_cond_wait  (in libsystem_pthread.dylib) + 980  [0x191cda1d0]
+    +                       248 __psynch_cvwait  (in libsystem_kernel.dylib) + 8  [0x191c9850c]
+    248 Thread_9955233: bbt-logic
+    + 248 thread_start  (in libsystem_pthread.dylib) + 8  [0x191cd4cec]
+    +   248 _pthread_start  (in libsystem_pthread.dylib) + 136  [0x191cd9d00]
+    +     248 _RNvNvMs0_NtNtNtCs1SSuMAdGM58_3std3sys6thread4unixNtB7_6Thread3new12thread_start  (in gates_seats-0a3918ce8c4823c0) + 392  [0x1051bdc88]
+    +       248 _RNSNvYNCINvNtNtCs1SSuMAdGM58_3std6thread9lifecycle15spawn_uncheckedNCINvMs_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB1b_5Logic11start_innerNtCs6WrxWbOquvp_11gates_seats9CountBusyE0INtNtCsjIpoRzUjyHQ_4core6result6ResultuINtNtCs6zY7rJBZy9D_5alloc5boxed3BoxDNtNtB2O_5error5ErrorNtNtB2O_6marker4SendNtB4i_4SyncEL_EEEs_0INtNtNtB2O_3ops8function6FnOnceuE9call_once6vtableB26_  (in gates_seats-0a3918ce8c4823c0) + 148  [0x104ae3cec]
+    +         248 _RINvNtNtCs1SSuMAdGM58_3std3sys9backtrace28___rust_begin_short_backtraceNCINvMs_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB1f_5Logic11start_innerNtCs6WrxWbOquvp_11gates_seats9CountBusyE0INtNtCsjIpoRzUjyHQ_4core6result6ResultuINtNtCs6zY7rJBZy9D_5alloc5boxed3BoxDNtNtB2S_5error5ErrorNtNtB2S_6marker4SendNtB4m_4SyncEL_EEEB2a_  (in gates_seats-0a3918ce8c4823c0) + 596  [0x104adf208]
+    +           219 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker3run  (in gates_seats-0a3918ce8c4823c0) + 16324  [0x104d12c98]
+    +           ! 219 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker7history  (in gates_seats-0a3918ce8c4823c0) + 216  [0x104d1c298]
+    +           !   219 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker15capture_request  (in gates_seats-0a3918ce8c4823c0) + 1132  [0x104d0ca68]
+    +           !     219 _RNvXCs6WrxWbOquvp_11gates_seatsNtB2_9CountBusyNtNtCs9Yj5s65SCYx_14bbt_supervisor6client20SupervisorConnection7request  (in gates_seats-0a3918ce8c4823c0) + 44  [0x104acc48c]
+    +           !       219 _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client7request  (in gates_seats-0a3918ce8c4823c0) + 120  [0x104e06c24]
+    +           !         219 _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client13request_frame  (in gates_seats-0a3918ce8c4823c0) + 528  [0x104e06754]
+    +           !           219 _RNvMsg_NtNtCs1SSuMAdGM58_3std4sync4mpmcINtB5_8ReceiverINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1u_7FailureEE12recv_timeoutB1w_  (in gates_seats-0a3918ce8c4823c0) + 184  [0x104e24018]
+    +           !             219 _RNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB4_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1A_7FailureEE4recvB1C_  (in gates_seats-0a3918ce8c4823c0) + 488  [0x104def0c4]
+    +           !               219 _RNCNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB6_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1C_7FailureEE4recvs_0B1E_  (in gates_seats-0a3918ce8c4823c0) + 212  [0x104dee0a4]
+    +           !                 219 _RNvMs_NtNtCs1SSuMAdGM58_3std6thread6threadNtB4_6Thread12park_timeout  (in gates_seats-0a3918ce8c4823c0) + 100  [0x1051aa5fc]
+    +           !                   219 _dispatch_semaphore_wait_slow  (in libdispatch.dylib) + 76  [0x191b1aaf0]
+    +           !                     219 _dispatch_sema4_timedwait  (in libdispatch.dylib) + 64  [0x191b4e328]
+    +           !                       219 semaphore_timedwait_trap  (in libsystem_kernel.dylib) + 8  [0x191c94bb4]
+    +           22 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker3run  (in gates_seats-0a3918ce8c4823c0) + 4956  [0x104d10030]
+    +           ! 19 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker5spawn  (in gates_seats-0a3918ce8c4823c0) + 1072  [0x104d19570]
+    +           ! : 9 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker6attach  (in gates_seats-0a3918ce8c4823c0) + 3692  [0x104d1ab98]
+    +           ! : | 9 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker15capture_request  (in gates_seats-0a3918ce8c4823c0) + 1132  [0x104d0ca68]
+    +           ! : |   9 _RNvXCs6WrxWbOquvp_11gates_seatsNtB2_9CountBusyNtNtCs9Yj5s65SCYx_14bbt_supervisor6client20SupervisorConnection7request  (in gates_seats-0a3918ce8c4823c0) + 44  [0x104acc48c]
+    +           ! : |     9 _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client7request  (in gates_seats-0a3918ce8c4823c0) + 120  [0x104e06c24]
+    +           ! : |       9 _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client13request_frame  (in gates_seats-0a3918ce8c4823c0) + 528  [0x104e06754]
+    +           ! : |         9 _RNvMsg_NtNtCs1SSuMAdGM58_3std4sync4mpmcINtB5_8ReceiverINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1u_7FailureEE12recv_timeoutB1w_  (in gates_seats-0a3918ce8c4823c0) + 184  [0x104e24018]
+    +           ! : |           9 _RNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB4_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1A_7FailureEE4recvB1C_  (in gates_seats-0a3918ce8c4823c0) + 488  [0x104def0c4]
+    +           ! : |             9 _RNCNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB6_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1C_7FailureEE4recvs_0B1E_  (in gates_seats-0a3918ce8c4823c0) + 212  [0x104dee0a4]
+    +           ! : |               9 _RNvMs_NtNtCs1SSuMAdGM58_3std6thread6threadNtB4_6Thread12park_timeout  (in gates_seats-0a3918ce8c4823c0) + 100  [0x1051aa5fc]
+    +           ! : |                 9 _dispatch_semaphore_wait_slow  (in libdispatch.dylib) + 76  [0x191b1aaf0]
+    +           ! : |                   9 _dispatch_sema4_timedwait  (in libdispatch.dylib) + 64  [0x191b4e328]
+    +           ! : |                     9 semaphore_timedwait_trap  (in libsystem_kernel.dylib) + 8  [0x191c94bb4]
+    +           ! : 4 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker6attach  (in gates_seats-0a3918ce8c4823c0) + 496  [0x104d19f1c]
+    +           ! : | 4 _RNvXCs6WrxWbOquvp_11gates_seatsNtB2_9CountBusyNtNtCs9Yj5s65SCYx_14bbt_supervisor6client20SupervisorConnection7request  (in gates_seats-0a3918ce8c4823c0) + 44  [0x104acc48c]
+    +           ! : |   4 _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client7request  (in gates_seats-0a3918ce8c4823c0) + 120  [0x104e06c24]
+    +           ! : |     4 _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client13request_frame  (in gates_seats-0a3918ce8c4823c0) + 528  [0x104e06754]
+    +           ! : |       4 _RNvMsg_NtNtCs1SSuMAdGM58_3std4sync4mpmcINtB5_8ReceiverINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1u_7FailureEE12recv_timeoutB1w_  (in gates_seats-0a3918ce8c4823c0) + 184  [0x104e24018]
+    +           ! : |         4 _RNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB4_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1A_7FailureEE4recvB1C_  (in gates_seats-0a3918ce8c4823c0) + 488  [0x104def0c4]
+    +           ! : |           4 _RNCNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB6_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1C_7FailureEE4recvs_0B1E_  (in gates_seats-0a3918ce8c4823c0) + 212  [0x104dee0a4]
+    +           ! : |             4 _RNvMs_NtNtCs1SSuMAdGM58_3std6thread6threadNtB4_6Thread12park_timeout  (in gates_seats-0a3918ce8c4823c0) + 100  [0x1051aa5fc]
+    +           ! : |               4 _dispatch_semaphore_wait_slow  (in libdispatch.dylib) + 76  [0x191b1aaf0]
+    +           ! : |                 4 _dispatch_sema4_timedwait  (in libdispatch.dylib) + 64  [0x191b4e328]
+    +           ! : |                   4 semaphore_timedwait_trap  (in libsystem_kernel.dylib) + 8  [0x191c94bb4]
+    +           ! : 3 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker6attach  (in gates_seats-0a3918ce8c4823c0) + 700  [0x104d19fe8]
+    +           ! : | 3 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker15capture_request  (in gates_seats-0a3918ce8c4823c0) + 1132  [0x104d0ca68]
+    +           ! : |   3 _RNvXCs6WrxWbOquvp_11gates_seatsNtB2_9CountBusyNtNtCs9Yj5s65SCYx_14bbt_supervisor6client20SupervisorConnection7request  (in gates_seats-0a3918ce8c4823c0) + 44  [0x104acc48c]
+    +           ! : |     3 _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client7request  (in gates_seats-0a3918ce8c4823c0) + 120  [0x104e06c24]
+    +           ! : |       3 _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client13request_frame  (in gates_seats-0a3918ce8c4823c0) + 528  [0x104e06754]
+    +           ! : |         3 _RNvMsg_NtNtCs1SSuMAdGM58_3std4sync4mpmcINtB5_8ReceiverINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1u_7FailureEE12recv_timeoutB1w_  (in gates_seats-0a3918ce8c4823c0) + 184  [0x104e24018]
+    +           ! : |           3 _RNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB4_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1A_7FailureEE4recvB1C_  (in gates_seats-0a3918ce8c4823c0) + 488  [0x104def0c4]
+    +           ! : |             3 _RNCNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB6_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1C_7FailureEE4recvs_0B1E_  (in gates_seats-0a3918ce8c4823c0) + 212  [0x104dee0a4]
+    +           ! : |               3 _RNvMs_NtNtCs1SSuMAdGM58_3std6thread6threadNtB4_6Thread12park_timeout  (in gates_seats-0a3918ce8c4823c0) + 100  [0x1051aa5fc]
+    +           ! : |                 3 _dispatch_semaphore_wait_slow  (in libdispatch.dylib) + 76  [0x191b1aaf0]
+    +           ! : |                   3 _dispatch_sema4_timedwait  (in libdispatch.dylib) + 64  [0x191b4e328]
+    +           ! : |                     3 semaphore_timedwait_trap  (in libsystem_kernel.dylib) + 8  [0x191c94bb4]
+    +           ! : 2 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker6attach  (in gates_seats-0a3918ce8c4823c0) + 5188  [0x104d1b170]
+    +           ! : | 2 _RNvNtNtCs6b4Z5gS8CoF_7bbt_mux8adapters6native13process_start  (in gates_seats-0a3918ce8c4823c0) + 244  [0x104d72c6c]
+    +           ! : |   1 _RNvMsi_NtCs1SSuMAdGM58_3std7processNtB5_7Command6output  (in gates_seats-0a3918ce8c4823c0) + 44  [0x1051b2b64]
+    +           ! : |   + 1 _RNvMNtNtNtNtCs1SSuMAdGM58_3std3sys7process4unix4unixNtNtB4_6common7Command5spawn  (in gates_seats-0a3918ce8c4823c0) + 2200  [0x1051a20f0]
+    +           ! : |   +   1 posix_spawnp  (in libsystem_c.dylib) + 364  [0x191b93a64]
+    +           ! : |   +     1 posix_spawn  (in libsystem_kernel.dylib) + 496  [0x191c9c0d8]
+    +           ! : |   +       1 __posix_spawn  (in libsystem_kernel.dylib) + 8  [0x191c9c134]
+    +           ! : |   1 _RNvMsi_NtCs1SSuMAdGM58_3std7processNtB5_7Command6output  (in gates_seats-0a3918ce8c4823c0) + 248  [0x1051b2c30]
+    +           ! : |     1 _RNvNtNtNtNtCs1SSuMAdGM58_3std3sys7process4unix6common11read_output  (in gates_seats-0a3918ce8c4823c0) + 192  [0x1051bc874]
+    +           ! : |       1 poll  (in libsystem_kernel.dylib) + 8  [0x191c9d760]
+    +           ! : 1 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker6attach  (in gates_seats-0a3918ce8c4823c0) + 2988  [0x104d1a8d8]
+    +           ! :   1 _RNvMs1_NtNtCs6b4Z5gS8CoF_7bbt_mux5store6sqliteNtB5_11SqliteStore4open  (in gates_seats-0a3918ce8c4823c0) + 504  [0x104d70614]
+    +           ! :     1 _RNvMs1_CsltN67GPY2U6_8rusqliteNtB5_10Connection13execute_batch  (in gates_seats-0a3918ce8c4823c0) + 260  [0x104fbfc9c]
+    +           ! :       1 sqlite3_step  (in gates_seats-0a3918ce8c4823c0) + 536  [0x104fca3cc]
+    +           ! :         1 sqlite3VdbeExec  (in gates_seats-0a3918ce8c4823c0) + 13760  [0x10500b258]
+    +           ! :           1 btreeBeginTrans  (in gates_seats-0a3918ce8c4823c0) + 1032  [0x104ff12ac]
+    +           ! :             1 sqlite3PagerOpenWal  (in gates_seats-0a3918ce8c4823c0) + 112  [0x104ff22a8]
+    +           ! :               1 pagerOpenWal  (in gates_seats-0a3918ce8c4823c0) + 320  [0x104ff8f14]
+    +           ! :                 1 unixOpen  (in gates_seats-0a3918ce8c4823c0) + 1276  [0x104fc84a4]
+    +           ! :                   1 robust_open  (in gates_seats-0a3918ce8c4823c0) + 256  [0x104fed134]
+    +           ! :                     1 posixOpen  (in gates_seats-0a3918ce8c4823c0) + 20  [0x104fef334]
+    +           ! :                       1 open  (in libsystem_kernel.dylib) + 64  [0x191ca0960]
+    +           ! :                         1 __open  (in libsystem_kernel.dylib) + 8  [0x191c95680]
+    +           ! 2 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker5spawn  (in gates_seats-0a3918ce8c4823c0) + 688  [0x104d193f0]
+    +           ! : 2 _RNvXCs6WrxWbOquvp_11gates_seatsNtB2_9CountBusyNtNtCs9Yj5s65SCYx_14bbt_supervisor6client20SupervisorConnection7request  (in gates_seats-0a3918ce8c4823c0) + 44  [0x104acc48c]
+    +           ! :   2 _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client7request  (in gates_seats-0a3918ce8c4823c0) + 120  [0x104e06c24]
+    +           ! :     2 _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client13request_frame  (in gates_seats-0a3918ce8c4823c0) + 528  [0x104e06754]
+    +           ! :       2 _RNvMsg_NtNtCs1SSuMAdGM58_3std4sync4mpmcINtB5_8ReceiverINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1u_7FailureEE12recv_timeoutB1w_  (in gates_seats-0a3918ce8c4823c0) + 184  [0x104e24018]
+    +           ! :         2 _RNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB4_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1A_7FailureEE4recvB1C_  (in gates_seats-0a3918ce8c4823c0) + 488  [0x104def0c4]
+    +           ! :           2 _RNCNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB6_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1C_7FailureEE4recvs_0B1E_  (in gates_seats-0a3918ce8c4823c0) + 212  [0x104dee0a4]
+    +           ! :             2 _RNvMs_NtNtCs1SSuMAdGM58_3std6thread6threadNtB4_6Thread12park_timeout  (in gates_seats-0a3918ce8c4823c0) + 100  [0x1051aa5fc]
+    +           ! :               2 _dispatch_semaphore_wait_slow  (in libdispatch.dylib) + 76  [0x191b1aaf0]
+    +           ! :                 2 _dispatch_sema4_timedwait  (in libdispatch.dylib) + 64  [0x191b4e328]
+    +           ! :                   2 semaphore_timedwait_trap  (in libsystem_kernel.dylib) + 8  [0x191c94bb4]
+    +           ! 1 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker5spawn  (in gates_seats-0a3918ce8c4823c0) + 1292  [0x104d1964c]
+    +           !   1 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker7publish  (in gates_seats-0a3918ce8c4823c0) + 108  [0x104d1c3dc]
+    +           !     1 _RINvMNtNtCsftljrneu3qx_5tokio7runtime6handleNtB3_6Handle8block_onNCINvMs1_NtCs6b4Z5gS8CoF_7bbt_mux3busNtB1a_9BusHandle7publishReE0EB1c_  (in gates_seats-0a3918ce8c4823c0) + 1720  [0x104c7dd28]
+    +           !       1 _RNvMs_NtNtCsftljrneu3qx_5tokio7runtime4parkNtB4_5Inner4park  (in gates_seats-0a3918ce8c4823c0) + 180  [0x10517b1e4]
+    +           !         1 _pthread_cond_wait  (in libsystem_pthread.dylib) + 980  [0x191cda1d0]
+    +           !           1 __psynch_cvwait  (in libsystem_kernel.dylib) + 8  [0x191c9850c]
+    +           3 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker3run  (in gates_seats-0a3918ce8c4823c0) + 16848  [0x104d12ea4]
+    +           ! 3 _RNvMs3_NtCs9Yj5s65SCYx_14bbt_supervisor4ringNtB5_8Playback5apply  (in gates_seats-0a3918ce8c4823c0) + 572  [0x104ddb67c]
+    +           !   2 _RNvMs_CsgcT4WtEuZqq_8bbt_coreNtB4_4Term7advance  (in gates_seats-0a3918ce8c4823c0) + 3256  [0x104ef5ff8]
+    +           !   : 2 _RNvXs7_NtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4termINtB5_4TermNtBb_6EventsENtNtNtB9_3vte4ansi7Handler5inputBb_  (in gates_seats-0a3918ce8c4823c0) + 560,3816  [0x104eff660,0x104f00318]
+    +           !   1 _RNvMs_CsgcT4WtEuZqq_8bbt_coreNtB4_4Term7advance  (in gates_seats-0a3918ce8c4823c0) + 5600  [0x104ef6920]
+    +           !     1 _RINvMs5_NtNtNtCsgcT4WtEuZqq_8bbt_core6vendor3vte4ansiNtB6_9Processor12advance_syncINtNtNtBa_9alacritty4term4TermNtBc_6EventsEEBc_  (in gates_seats-0a3918ce8c4823c0) + 4220  [0x1051f083c]
+    +           !       1 _RINvMs5_NtNtNtCsgcT4WtEuZqq_8bbt_core6vendor3vte4ansiNtB6_9Processor18stop_sync_internalINtNtNtBa_9alacritty4term4TermNtBc_6EventsEEBc_  (in gates_seats-0a3918ce8c4823c0) + 2048  [0x104ee6500]
+    +           !         1 _RINvMs_NtNtCsgcT4WtEuZqq_8bbt_core6vendor3vteINtB5_6ParserKj400_E19action_csi_dispatchINtNtB5_4ansi9PerformerINtNtNtB7_9alacritty4term4TermNtB9_6EventsENtB1p_14StdSyncHandlerEEB9_  (in gates_seats-0a3918ce8c4823c0) + 3924  [0x104ee8594]
+    +           !           1 _RINvNtNtNtCsgcT4WtEuZqq_8bbt_core6vendor3vte4ansi25attrs_from_sgr_parametersINtNtNtB6_9alacritty4term4TermNtB8_6EventsEEB8_  (in gates_seats-0a3918ce8c4823c0) + 96  [0x104ee9800]
+    +           !             1 _RNvXs7_NtNtNtCsgcT4WtEuZqq_8bbt_core6vendor9alacritty4termINtB5_4TermNtBb_6EventsENtNtNtB9_3vte4ansi7Handler18terminal_attributeBb_  (in gates_seats-0a3918ce8c4823c0) + 168  [0x104eee144]
+    +           1 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker3run  (in gates_seats-0a3918ce8c4823c0) + 18556  [0x104d13550]
+    +           ! 1 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker4save  (in gates_seats-0a3918ce8c4823c0) + 456  [0x104d18b54]
+    +           !   1 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker15capture_request  (in gates_seats-0a3918ce8c4823c0) + 1132  [0x104d0ca68]
+    +           !     1 _RNvXCs6WrxWbOquvp_11gates_seatsNtB2_9CountBusyNtNtCs9Yj5s65SCYx_14bbt_supervisor6client20SupervisorConnection7request  (in gates_seats-0a3918ce8c4823c0) + 44  [0x104acc48c]
+    +           !       1 _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client7request  (in gates_seats-0a3918ce8c4823c0) + 120  [0x104e06c24]
+    +           !         1 _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client13request_frame  (in gates_seats-0a3918ce8c4823c0) + 528  [0x104e06754]
+    +           !           1 _RNvMsg_NtNtCs1SSuMAdGM58_3std4sync4mpmcINtB5_8ReceiverINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1u_7FailureEE12recv_timeoutB1w_  (in gates_seats-0a3918ce8c4823c0) + 184  [0x104e24018]
+    +           !             1 _RNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB4_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1A_7FailureEE4recvB1C_  (in gates_seats-0a3918ce8c4823c0) + 488  [0x104def0c4]
+    +           !               1 _RNCNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB6_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1C_7FailureEE4recvs_0B1E_  (in gates_seats-0a3918ce8c4823c0) + 212  [0x104dee0a4]
+    +           !                 1 _RNvMs_NtNtCs1SSuMAdGM58_3std6thread6threadNtB4_6Thread12park_timeout  (in gates_seats-0a3918ce8c4823c0) + 100  [0x1051aa5fc]
+    +           !                   1 _dispatch_semaphore_wait_slow  (in libdispatch.dylib) + 76  [0x191b1aaf0]
+    +           !                     1 _dispatch_sema4_timedwait  (in libdispatch.dylib) + 64  [0x191b4e328]
+    +           !                       1 semaphore_timedwait_trap  (in libsystem_kernel.dylib) + 8  [0x191c94bb4]
+    +           1 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker3run  (in gates_seats-0a3918ce8c4823c0) + 18768  [0x104d13624]
+    +           ! 1 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker22flush_protocol_replies  (in gates_seats-0a3918ce8c4823c0) + 380  [0x104d0e45c]
+    +           !   1 _RNvXCs6WrxWbOquvp_11gates_seatsNtB2_9CountBusyNtNtCs9Yj5s65SCYx_14bbt_supervisor6client20SupervisorConnection7request  (in gates_seats-0a3918ce8c4823c0) + 44  [0x104acc48c]
+    +           !     1 _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client7request  (in gates_seats-0a3918ce8c4823c0) + 120  [0x104e06c24]
+    +           !       1 _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client13request_frame  (in gates_seats-0a3918ce8c4823c0) + 528  [0x104e06754]
+    +           !         1 _RNvMsg_NtNtCs1SSuMAdGM58_3std4sync4mpmcINtB5_8ReceiverINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1u_7FailureEE12recv_timeoutB1w_  (in gates_seats-0a3918ce8c4823c0) + 184  [0x104e24018]
+    +           !           1 _RNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB4_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1A_7FailureEE4recvB1C_  (in gates_seats-0a3918ce8c4823c0) + 488  [0x104def0c4]
+    +           !             1 _RNCNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB6_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1C_7FailureEE4recvs_0B1E_  (in gates_seats-0a3918ce8c4823c0) + 212  [0x104dee0a4]
+    +           !               1 _RNvMs_NtNtCs1SSuMAdGM58_3std6thread6threadNtB4_6Thread12park_timeout  (in gates_seats-0a3918ce8c4823c0) + 100  [0x1051aa5fc]
+    +           !                 1 _dispatch_semaphore_wait_slow  (in libdispatch.dylib) + 76  [0x191b1aaf0]
+    +           !                   1 _dispatch_sema4_timedwait  (in libdispatch.dylib) + 64  [0x191b4e328]
+    +           !                     1 semaphore_timedwait_trap  (in libsystem_kernel.dylib) + 8  [0x191c94bb4]
+    +           1 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker3run  (in gates_seats-0a3918ce8c4823c0) + 23484  [0x104d14890]
+    +           ! 1 _RNvMNtNtCs6b4Z5gS8CoF_7bbt_mux9messaging7serviceNtB2_9Messaging6events  (in gates_seats-0a3918ce8c4823c0) + 272  [0x104d699f8]
+    +           !   1 _RNvMs_NtNtCs6b4Z5gS8CoF_7bbt_mux9messaging6ledgerNtB4_6Ledger10bus_outbox  (in gates_seats-0a3918ce8c4823c0) + 428  [0x104d4a268]
+    +           !     1 _RINvNtNtCsjIpoRzUjyHQ_4core4iter8adapters11try_processINtNtB2_3map3MapINtNtCsltN67GPY2U6_8rusqlite3row10MappedRowsNCNvMs_NtNtCs6b4Z5gS8CoF_7bbt_mux9messaging6ledgerNtB1V_6Ledger10bus_outbox0ENCB1Q_s_0ENtNtNtB1Z_5store6events5DraftINtNtB6_6result6ResultNtNtB6_7convert10InfallibleINtNtCs6zY7rJBZy9D_5alloc5boxed3BoxDNtNtB6_5error5ErrorNtNtB6_6marker4SendNtB5o_4SyncEL_EENCINvXso_B3J_IB3H_INtNtB4y_3vec3VecB3d_EB4t_EINtNtNtB4_6traits7collect12FromIteratorIB3H_B3d_B4t_EE9from_iterBQ_E0B6d_EB1Z_  (in gates_seats-0a3918ce8c4823c0) + 584  [0x104ce90a4]
+    +           !       1 _RINvXs0_NtNtNtCsjIpoRzUjyHQ_4core4iter8adapters3mapINtB6_3MapINtNtCsltN67GPY2U6_8rusqlite3row10MappedRowsNCNvMs_NtNtCs6b4Z5gS8CoF_7bbt_mux9messaging6ledgerNtB1M_6Ledger10bus_outbox0ENCB1H_s_0ENtNtNtBa_6traits8iterator8Iterator8try_folduNCINvXB8_INtB8_12GenericShuntBN_INtNtBc_6result6ResultNtNtBc_7convert10InfallibleINtNtCs6zY7rJBZy9D_5alloc5boxed3BoxDNtNtBc_5error5ErrorNtNtBc_6marker4SendNtB60_4SyncEL_EEEB34_8try_folduNCINvNvB34_12try_for_each4callNtNtNtB1Q_5store6events5DraftINtNtNtBc_3ops12control_flow11ControlFlowB7g_ENcNtB7J_5Break0E0B7J_E0IB7K_B7J_EEB1Q_  (in gates_seats-0a3918ce8c4823c0) + 396  [0x104d4344c]
+    +           !         1 _RINvNtCs4gwtf8fzHNo_10serde_json2de10from_traitNtNtB4_4read9SliceReadNtNtNtCs6b4Z5gS8CoF_7bbt_mux5store6events5DraftEB1b_  (in gates_seats-0a3918ce8c4823c0) + 72  [0x104b325b4]
+    +           !           1 _RINvXs5_NtCs4gwtf8fzHNo_10serde_json2deQINtB6_12DeserializerNtNtB8_4read9SliceReadENtNtCshkSSkomUAhA_10serde_core2de12Deserializer18deserialize_structNtNvXNvNtNtCs6b4Z5gS8CoF_7bbt_mux5store6eventss_1__NtB2v_5DraftNtB1l_11Deserialize11deserialize9___VisitorEB2z_  (in gates_seats-0a3918ce8c4823c0) + 1796  [0x104b6279c]
+    +           !             1 _RINvXNtNtCs4gwtf8fzHNo_10serde_json5value2deNtB5_5ValueNtNtCshkSSkomUAhA_10serde_core2de11Deserialize11deserializeQINtNtB7_2de12DeserializerNtNtB7_4read9SliceReadEECs6b4Z5gS8CoF_7bbt_mux  (in gates_seats-0a3918ce8c4823c0) + 612  [0x104b39d34]
+    +           !               1 _RINvXNvXNtNtCs4gwtf8fzHNo_10serde_json5value2deNtB8_5ValueNtNtCshkSSkomUAhA_10serde_core2de11Deserialize11deserializeNtB3_12ValueVisitorNtBW_7Visitor9visit_mapINtNtBa_2de9MapAccessNtNtBa_4read9SliceReadEECs6b4Z5gS8CoF_7bbt_mux  (in gates_seats-0a3918ce8c4823c0) + 476  [0x104c2f978]
+    +           !                 1 _RINvXNtNtCs4gwtf8fzHNo_10serde_json5value2deNtB5_5ValueNtNtCshkSSkomUAhA_10serde_core2de11Deserialize11deserializeQINtNtB7_2de12DeserializerNtNtB7_4read9SliceReadEECs6b4Z5gS8CoF_7bbt_mux  (in gates_seats-0a3918ce8c4823c0) + 612  [0x104b39d34]
+    +           !                   1 _RINvXNvXNtNtCs4gwtf8fzHNo_10serde_json5value2deNtB8_5ValueNtNtCshkSSkomUAhA_10serde_core2de11Deserialize11deserializeNtB3_12ValueVisitorNtBW_7Visitor9visit_mapINtNtBa_2de9MapAccessNtNtBa_4read9SliceReadEECs6b4Z5gS8CoF_7bbt_mux  (in gates_seats-0a3918ce8c4823c0) + 476  [0x104c2f978]
+    +           !                     1 _RINvXNtNtCs4gwtf8fzHNo_10serde_json5value2deNtB5_5ValueNtNtCshkSSkomUAhA_10serde_core2de11Deserialize11deserializeQINtNtB7_2de12DeserializerNtNtB7_4read9SliceReadEECs6b4Z5gS8CoF_7bbt_mux  (in gates_seats-0a3918ce8c4823c0) + 612  [0x104b39d34]
+    +           !                       1 _RINvXNvXNtNtCs4gwtf8fzHNo_10serde_json5value2deNtB8_5ValueNtNtCshkSSkomUAhA_10serde_core2de11Deserialize11deserializeNtB3_12ValueVisitorNtBW_7Visitor9visit_mapINtNtBa_2de9MapAccessNtNtBa_4read9SliceReadEECs6b4Z5gS8CoF_7bbt_mux  (in gates_seats-0a3918ce8c4823c0) + 476  [0x104c2f978]
+    +           !                         1 _RINvXNtNtCs4gwtf8fzHNo_10serde_json5value2deNtB5_5ValueNtNtCshkSSkomUAhA_10serde_core2de11Deserialize11deserializeQINtNtB7_2de12DeserializerNtNtB7_4read9SliceReadEECs6b4Z5gS8CoF_7bbt_mux  (in gates_seats-0a3918ce8c4823c0) + 548  [0x104b39cf4]
+    +           !                           1 _RNvMs4_NtCs6zY7rJBZy9D_5alloc7raw_vecINtB5_6RawVecNtNtCs4gwtf8fzHNo_10serde_json5value5ValueE8grow_oneBQ_  (in gates_seats-0a3918ce8c4823c0) + 60  [0x1051f6f40]
+    +           !                             1 _RNvMs5_NtCs6zY7rJBZy9D_5alloc7raw_vecNtB5_11RawVecInner11finish_growCs4gwtf8fzHNo_10serde_json  (in gates_seats-0a3918ce8c4823c0) + 120  [0x1051f6fe0]
+    +           !                               1 _xzm_xzone_malloc_tiny  (in libsystem_malloc.dylib) + 404  [0x191af4be0]
+    +           1 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker3run  (in gates_seats-0a3918ce8c4823c0) + 24196  [0x104d14b58]
+    +             1 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker4save  (in gates_seats-0a3918ce8c4823c0) + 456  [0x104d18b54]
+    +               1 _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker15capture_request  (in gates_seats-0a3918ce8c4823c0) + 1132  [0x104d0ca68]
+    +                 1 _RNvXCs6WrxWbOquvp_11gates_seatsNtB2_9CountBusyNtNtCs9Yj5s65SCYx_14bbt_supervisor6client20SupervisorConnection7request  (in gates_seats-0a3918ce8c4823c0) + 44  [0x104acc48c]
+    +                   1 _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client7request  (in gates_seats-0a3918ce8c4823c0) + 120  [0x104e06c24]
+    +                     1 _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client13request_frame  (in gates_seats-0a3918ce8c4823c0) + 528  [0x104e06754]
+    +                       1 _RNvMsg_NtNtCs1SSuMAdGM58_3std4sync4mpmcINtB5_8ReceiverINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1u_7FailureEE12recv_timeoutB1w_  (in gates_seats-0a3918ce8c4823c0) + 184  [0x104e24018]
+    +                         1 _RNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB4_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1A_7FailureEE4recvB1C_  (in gates_seats-0a3918ce8c4823c0) + 488  [0x104def0c4]
+    +                           1 _RNCNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB6_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1C_7FailureEE4recvs_0B1E_  (in gates_seats-0a3918ce8c4823c0) + 212  [0x104dee0a4]
+    +                             1 _RNvMs_NtNtCs1SSuMAdGM58_3std6thread6threadNtB4_6Thread12park_timeout  (in gates_seats-0a3918ce8c4823c0) + 100  [0x1051aa5fc]
+    +                               1 _dispatch_semaphore_wait_slow  (in libdispatch.dylib) + 76  [0x191b1aaf0]
+    +                                 1 _dispatch_sema4_timedwait  (in libdispatch.dylib) + 64  [0x191b4e328]
+    +                                   1 semaphore_timedwait_trap  (in libsystem_kernel.dylib) + 8  [0x191c94bb4]
+    248 Thread_9955238
+    + 248 start_wqthread  (in libsystem_pthread.dylib) + 8  [0x191cd4ce0]
+    +   248 _pthread_wqthread  (in libsystem_pthread.dylib) + 368  [0x191cd5fe8]
+    +     248 __workq_kernreturn  (in libsystem_kernel.dylib) + 8  [0x191c969ec]
+    248 Thread_9955239: notify-rs fsevents loop
+      248 thread_start  (in libsystem_pthread.dylib) + 8  [0x191cd4cec]
+        248 _pthread_start  (in libsystem_pthread.dylib) + 136  [0x191cd9d00]
+          248 _RNvNvMs0_NtNtNtCs1SSuMAdGM58_3std3sys6thread4unixNtB7_6Thread3new12thread_start  (in gates_seats-0a3918ce8c4823c0) + 392  [0x1051bdc88]
+            248 _RNSNvYNCINvNtNtCs1SSuMAdGM58_3std6thread9lifecycle15spawn_uncheckedNCNvMs3_NtCs3ESc6wNnFmz_6notify7fseventNtB1b_14FsEventWatcher3run0uEs_0INtNtNtCsjIpoRzUjyHQ_4core3ops8function6FnOnceuE9call_once6vtableB1d_  (in gates_seats-0a3918ce8c4823c0) + 92  [0x104f0eea4]
+              248 _RINvNtNtCs1SSuMAdGM58_3std3sys9backtrace28___rust_begin_short_backtraceNCNvMs3_NtCs3ESc6wNnFmz_6notify7fseventNtB1f_14FsEventWatcher3run0uEB1h_  (in gates_seats-0a3918ce8c4823c0) + 152  [0x104f13878]
+                248 CFRunLoopRun  (in CoreFoundation) + 64  [0x191e114c4]
+                  248 _CFRunLoopRunSpecificWithOptions  (in CoreFoundation) + 536  [0x191e7382c]
+                    248 __CFRunLoopRun  (in CoreFoundation) + 1172  [0x191d99334]
+                      248 __CFRunLoopServiceMachPort  (in CoreFoundation) + 160  [0x191d9aaec]
+                        248 mach_msg  (in libsystem_kernel.dylib) + 24  [0x191c94fac]
+                          248 mach_msg_overwrite  (in libsystem_kernel.dylib) + 480  [0x191c9da28]
+                            248 mach_msg2_internal  (in libsystem_kernel.dylib) + 76  [0x191ca78e0]
+                              248 mach_msg2_trap  (in libsystem_kernel.dylib) + 8  [0x191c94c20]
+
+Total number in stack (recursive counted multiple, when >=5):
+        13       _platform_memmove  (in libsystem_platform.dylib) + 0  [0x191ce3d60]
+        9       _RNvNtCs9Yj5s65SCYx_14bbt_supervisor10durability9sync_file  (in gates_seats-0a3918ce8c4823c0) + 60  [0x104e24dfc]
+        9       __fcntl  (in libsystem_kernel.dylib) + 0  [0x191c958b0]
+        9       fcntl  (in libsystem_kernel.dylib) + 88  [0x191c95758]
+        8       _RNCNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB6_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1C_7FailureEE4recvs_0B1E_  (in gates_seats-0a3918ce8c4823c0) + 212  [0x104dee0a4]
+        8       _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client13request_frame  (in gates_seats-0a3918ce8c4823c0) + 528  [0x104e06754]
+        8       _RNvMs1_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_6Client7request  (in gates_seats-0a3918ce8c4823c0) + 120  [0x104e06c24]
+        8       _RNvMs_NtNtCs1SSuMAdGM58_3std6thread6threadNtB4_6Thread12park_timeout  (in gates_seats-0a3918ce8c4823c0) + 100  [0x1051aa5fc]
+        8       _RNvMs_NtNtNtCs1SSuMAdGM58_3std4sync4mpmc5arrayINtB4_7ChannelINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1A_7FailureEE4recvB1C_  (in gates_seats-0a3918ce8c4823c0) + 488  [0x104def0c4]
+        8       _RNvMsg_NtNtCs1SSuMAdGM58_3std4sync4mpmcINtB5_8ReceiverINtNtCsjIpoRzUjyHQ_4core6result6ResultNtNtCs9Yj5s65SCYx_14bbt_supervisor8protocol5ReplyNtB1u_7FailureEE12recv_timeoutB1w_  (in gates_seats-0a3918ce8c4823c0) + 184  [0x104e24018]
+        8       _RNvNvMs0_NtNtNtCs1SSuMAdGM58_3std3sys6thread4unixNtB7_6Thread3new12thread_start  (in gates_seats-0a3918ce8c4823c0) + 392  [0x1051bdc88]
+        8       _RNvXCs6WrxWbOquvp_11gates_seatsNtB2_9CountBusyNtNtCs9Yj5s65SCYx_14bbt_supervisor6client20SupervisorConnection7request  (in gates_seats-0a3918ce8c4823c0) + 44  [0x104acc48c]
+        8       _dispatch_sema4_timedwait  (in libdispatch.dylib) + 64  [0x191b4e328]
+        8       _dispatch_semaphore_wait_slow  (in libdispatch.dylib) + 76  [0x191b1aaf0]
+        8       _pthread_start  (in libsystem_pthread.dylib) + 136  [0x191cd9d00]
+        8       semaphore_timedwait_trap  (in libsystem_kernel.dylib) + 0  [0x191c94bac]
+        8       thread_start  (in libsystem_pthread.dylib) + 8  [0x191cd4cec]
+        7       _RNvMNtNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4sync5mutexNtB2_5Mutex4lock  (in gates_seats-0a3918ce8c4823c0) + 12  [0x1051a2e4c]
+        7       __psynch_mutexwait  (in libsystem_kernel.dylib) + 0  [0x191c979d4]
+        7       _pthread_mutex_firstfit_lock_slow  (in libsystem_pthread.dylib) + 216  [0x191cd49b8]
+        7       _pthread_mutex_firstfit_lock_wait  (in libsystem_pthread.dylib) + 84  [0x191cd6f7c]
+        6       _RNvMNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4timeNtB2_8Timespec3now  (in gates_seats-0a3918ce8c4823c0) + 24  [0x1051a15fc]
+        5       _RNvMs4_NtCs6b4Z5gS8CoF_7bbt_mux5logicNtB5_6Worker15capture_request  (in gates_seats-0a3918ce8c4823c0) + 1132  [0x104d0ca68]
+        5       __psynch_cvwait  (in libsystem_kernel.dylib) + 0  [0x191c98504]
+
+Sort by top of stack, same collapsed (when >= 5):
+        __psynch_cvwait  (in libsystem_kernel.dylib)        865
+        kevent  (in libsystem_kernel.dylib)        263
+        __workq_kernreturn  (in libsystem_kernel.dylib)        248
+        mach_msg2_trap  (in libsystem_kernel.dylib)        248
+        semaphore_wait_trap  (in libsystem_kernel.dylib)        248
+        semaphore_timedwait_trap  (in libsystem_kernel.dylib)        240
+        __wait4  (in libsystem_kernel.dylib)        123
+        read  (in libsystem_kernel.dylib)        51
+        __psynch_mutexwait  (in libsystem_kernel.dylib)        34
+        _platform_memmove  (in libsystem_platform.dylib)        24
+        __fcntl  (in libsystem_kernel.dylib)        23
+        _RNvNtCs9Yj5s65SCYx_14bbt_supervisor4ring6encode  (in gates_seats-0a3918ce8c4823c0)        19
+        write  (in libsystem_kernel.dylib)        14
+        _RNvNtCsb6FoDbpHpzW_4sha26sha25611compress256  (in gates_seats-0a3918ce8c4823c0)        11
+        _RNvMs4_NtCs9Yj5s65SCYx_14bbt_supervisor10supervisorNtB5_5Actor3run  (in gates_seats-0a3918ce8c4823c0)        6
+        _RNvXs3_NtNtCsjIpoRzUjyHQ_4core4hash3sipINtB5_6HasherNtB5_11Sip13RoundsENtB7_6Hasher5writeCs9Yj5s65SCYx_14bbt_supervisor  (in gates_seats-0a3918ce8c4823c0)        5
+
+Binary Images:
+       0x104ac4000 -        0x105398e97 +gates_seats-0a3918ce8c4823c0 (0) <06973E79-4A2D-38BB-BB8B-EA036617358B> /Users/*/gates_seats-0a3918ce8c4823c0
+       0x191850000 -        0x19189f5f7  libobjc.A.dylib (973.1) <C0680DF6-9900-3C29-A071-95A031686EF8> /usr/lib/libobjc.A.dylib
+       0x1918a0000 -        0x1918aa23f  libsharedcache.dylib (0) <BBF95357-BEBF-3D89-8900-2BBB14A667C5> /usr/lib/libsharedcache.dylib
+       0x1918ab000 -        0x1918d1d3b  libdyld.dylib (27062) <62863BCA-DD60-3D32-A9DB-89099BA6F3D7> /usr/lib/system/libdyld.dylib
+       0x1918d2000 -        0x1919916e3  dyld (1.0.0 - 27062) <D341DDCB-7969-3A9C-8E03-0CF4751398A9> /usr/lib/dyld
+       0x191992000 -        0x19199501f  libsystem_blocks.dylib (98.1) <6F304731-D95D-3501-B4AD-F2934F7F2446> /usr/lib/system/libsystem_blocks.dylib
+       0x191996000 -        0x1919eb0df  libxpc.dylib (3298.1.1) <0791121F-B5FC-3F84-BF04-115E86D2D882> /usr/lib/system/libxpc.dylib
+       0x1919ec000 -        0x191a0bc13  libsystem_trace.dylib (1966.1.1) <B48A8E3E-A12A-3342-8321-428B555E965E> /usr/lib/system/libsystem_trace.dylib
+       0x191a0c000 -        0x191ac0f27  libcorecrypto.dylib (2109.0.22) <807AA6C9-5D8A-3CA5-B4CE-FACE5296EF6A> /usr/lib/system/libcorecrypto.dylib
+       0x191ac1000 -        0x191b16c5f  libsystem_malloc.dylib (886.0.8) <2339CB57-FE5A-3154-A206-A76059C749EB> /usr/lib/system/libsystem_malloc.dylib
+       0x191b17000 -        0x191b5d19f  libdispatch.dylib (1605.0.2) <022BF08F-0B3A-3225-9E65-16D1553CE90D> /usr/lib/system/libdispatch.dylib
+       0x191b5e000 -        0x191b60d2b  libsystem_featureflags.dylib (108) <20C1CAB2-1F13-3426-8146-9CAE9FF2A33D> /usr/lib/system/libsystem_featureflags.dylib
+       0x191b61000 -        0x191be3ca3  libsystem_c.dylib (1786.0.3) <FBA7B23E-AA60-3A90-9AA4-A7A2E0AD63EE> /usr/lib/system/libsystem_c.dylib
+       0x191be4000 -        0x191c79033  libc++.1.dylib (2200.27) <1E9BA4AA-B5DA-3CF3-80AC-4B880049573F> /usr/lib/libc++.1.dylib
+       0x191c7a000 -        0x191c93eff  libc++abi.dylib (2200.27) <A21743EE-6E1C-3E74-97EA-7AF793DE4BDF> /usr/lib/libc++abi.dylib
+       0x191c94000 -        0x191cd29ab  libsystem_kernel.dylib (13432.1.9) <F63BF418-8F75-34A4-AAF1-8CAF2B9B6A05> /usr/lib/system/libsystem_kernel.dylib
+       0x191cd3000 -        0x191cdf91b  libsystem_pthread.dylib (553.0.1) <5A1828C3-CBC2-3B85-BD07-C8ED10021A41> /usr/lib/system/libsystem_pthread.dylib
+       0x191ce0000 -        0x191ce94f3  libsystem_platform.dylib (402.0.1.0.1) <080E4444-A0FB-3913-9756-4E470015F32F> /usr/lib/system/libsystem_platform.dylib
+       0x191cea000 -        0x191d18903  libsystem_info.dylib (603) <BC387AEB-1CEF-3513-92D7-D7F913596711> /usr/lib/system/libsystem_info.dylib
+       0x191d19000 -        0x1921a9e9f  com.apple.CoreFoundation (6.9 - 5027.0.69) <727E905E-F344-3823-8E13-E7A096388321> /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation
+       0x1921aa000 -        0x1924a9ae7  com.apple.LaunchServices (1141.1 - 1141.1) <00ED6A89-5E67-37AA-9342-51EB93F68EE5> /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/LaunchServices
+       0x1924aa000 -        0x1926584f3  com.apple.gpusw.MetalTools (1.0 - 1) <8317EBC9-11A1-3C21-B224-FF97B6275A67> /System/Library/PrivateFrameworks/MetalTools.framework/Versions/A/MetalTools
+       0x192659000 -        0x192e2c7df  libBLAS.dylib (1617.1.1) <31104D4F-4A7E-3FA7-9E18-55937B2011F2> /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib
+       0x192e2d000 -        0x192f3e3db  com.apple.Lexicon-framework (1.0 - 216) <15A671C9-C620-33E0-9813-D5746EC5ECEF> /System/Library/PrivateFrameworks/Lexicon.framework/Versions/A/Lexicon
+       0x192f3f000 -        0x1930ab107  libSparse.dylib (196.0.1) <5375A133-2487-3429-B891-9917A51A23B9> /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libSparse.dylib
+       0x1930ac000 -        0x19313d193  com.apple.SystemConfiguration (1.21 - 1.21) <10869E21-4B5A-3D06-9A03-F0BA544A6DC8> /System/Library/Frameworks/SystemConfiguration.framework/Versions/A/SystemConfiguration
+       0x19313e000 -        0x19317252f  libCRFSuite.dylib (55) <2D2C2F35-AB83-332B-88F0-F3BC4A3D8463> /usr/lib/libCRFSuite.dylib
+       0x193443000 -        0x194700287  com.apple.Foundation (6.9 - 5027.0.69) <4317F7C6-73D2-3BE9-B010-F318F1198A1B> /System/Library/Frameworks/Foundation.framework/Versions/C/Foundation
+       0x1948af000 -        0x1949c6afb  com.apple.CoreDisplay (291.4 - 291.4) <D83242DE-F9D7-35F7-BDB1-2D0741AAB3B4> /System/Library/Frameworks/CoreDisplay.framework/Versions/A/CoreDisplay
+       0x1949c7000 -        0x194d8c6e3  com.apple.audio.AudioToolboxCore (1.0 - 1638.104.3) <49229A03-C7B7-38DE-99D1-C8A923169FAB> /System/Library/PrivateFrameworks/AudioToolboxCore.framework/Versions/A/AudioToolboxCore
+       0x194d8d000 -        0x194fb05ff  com.apple.CoreText (904 - 904) <D53BFD8D-65E8-389D-B9A5-1223E1EE9ACC> /System/Library/Frameworks/CoreText.framework/Versions/A/CoreText
+       0x194fb1000 -        0x19574e633  com.apple.audio.CoreAudio (5.0 - 5.0) <3AB8F076-7437-38AA-9F5B-B083CF020ADA> /System/Library/Frameworks/CoreAudio.framework/Versions/A/CoreAudio
+       0x19574f000 -        0x195b5e5cf  com.apple.security (7.0 - 62460.1.3) <7B094BB2-DD4D-3A81-8C29-5879451255F5> /System/Library/Frameworks/Security.framework/Versions/A/Security
+       0x195b5f000 -        0x195e417e5  libicucore.A.dylib (78132) <7C675D41-84B1-395F-80CA-4FF1837F0DA0> /usr/lib/libicucore.A.dylib
+       0x195e42000 -        0x195e4bb13  libsystem_darwin.dylib (1786.0.3) <4E66C888-993C-3E6A-A8DA-A949C01C5B67> /usr/lib/system/libsystem_darwin.dylib
+       0x195e4c000 -        0x19613cf23  com.apple.CoreServices.CarbonCore (1333 - 1333) <A2180BAC-D51D-3E70-ACCE-E33F35587CB7> /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/CarbonCore.framework/Versions/A/CarbonCore
+       0x19613d000 -        0x19617b3a3  com.apple.CoreServicesInternal (505 - 505) <6F8147E6-5C1E-3606-94D8-E74383900808> /System/Library/PrivateFrameworks/CoreServicesInternal.framework/Versions/A/CoreServicesInternal
+       0x19617c000 -        0x1961b5507  com.apple.CSStore (1141.1 - 1141.1) <AAC9E652-2F49-3855-BD1B-5973CCA58C5D> /System/Library/PrivateFrameworks/CoreServicesStore.framework/Versions/A/CoreServicesStore
+       0x1961b6000 -        0x19629b707  com.apple.framework.IOKit (2.0.2 - 100288.0.9) <0E4CF3E4-B0C2-312A-B147-0BD4978EF0B7> /System/Library/Frameworks/IOKit.framework/Versions/A/IOKit
+       0x19629c000 -        0x1962adb8b  libsystem_notify.dylib (368) <58FD36D8-37A7-311C-80F2-8E64DD8710CF> /usr/lib/system/libsystem_notify.dylib
+       0x197ad0000 -        0x197ae31df  com.apple.UniformTypeIdentifiers (709 - 709) <7EEC2F07-8F37-3EAB-94C9-9625F7AF5532> /System/Library/Frameworks/UniformTypeIdentifiers.framework/Versions/A/UniformTypeIdentifiers
+       0x197fa7000 -        0x19807ccff  libboringssl.dylib (583) <A958707F-4E4B-3E4E-BACE-DCD225F57C58> /usr/lib/libboringssl.dylib
+       0x19807d000 -        0x1983f80f7  com.apple.CFNetwork (1.0 - 3896.100.1.1.1) <F78B7942-C45B-3520-92C8-DD66E11C46FE> /System/Library/Frameworks/CFNetwork.framework/Versions/A/CFNetwork
+       0x1983f9000 -        0x198413d93  libsystem_networkextension.dylib (2340.1.2) <22E1D190-486F-324F-ABA4-F36AB841BFE9> /usr/lib/system/libsystem_networkextension.dylib
+       0x198414000 -        0x198414ee7  libenergytrace.dylib (23) <09E921A2-6FB1-33A4-8DB0-2BB45A8DBBE2> /usr/lib/libenergytrace.dylib
+       0x198415000 -        0x1984a0277  libMobileGestalt.dylib (1622.0.5) <EA99C094-01F2-3A79-8AFE-368392B35226> /usr/lib/libMobileGestalt.dylib
+       0x1984a1000 -        0x1984b8247  libsystem_asl.dylib (409) <B4D449B7-A821-3A9A-8019-E917B291F10A> /usr/lib/system/libsystem_asl.dylib
+       0x1984b9000 -        0x1984def0f  com.apple.TCC (1.0 - 1) <6EB227C1-E59C-35DD-B07F-888EABAFD85F> /System/Library/PrivateFrameworks/TCC.framework/Versions/A/TCC
+       0x1984df000 -        0x198b1a77f  com.apple.SkyLight (1.600.0 - 953.5.5) <8A3B348E-4637-3685-92D0-6CBC2F36A234> /System/Library/PrivateFrameworks/SkyLight.framework/Versions/A/SkyLight
+       0x198b1b000 -        0x1992cf357  com.apple.CoreGraphics (2.0 - 2050) <B0FB9AC2-E3CC-31C2-A90E-0D38A776BAE2> /System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics
+       0x1993ee000 -        0x19940457f  com.apple.ProtocolBuffer (1 - 325.20.6.4.1) <02B6311A-FAEA-3D68-BCEA-466709877974> /System/Library/PrivateFrameworks/ProtocolBuffer.framework/Versions/A/ProtocolBuffer
+       0x199405000 -        0x199416877  libdns_services.dylib (3111.0.5.0.1) <FA5EA1EF-D140-32BB-86DE-8ABECF70EB95> /usr/lib/libdns_services.dylib
+       0x19944c000 -        0x19944cf2f  libobjcMsgSend.dylib (973.1) <41179EDE-DC97-3BBE-8848-6400D12C1436> /usr/lib/objc/libobjcMsgSend.dylib
+       0x199850000 -        0x199a0375f  com.apple.ColorSync (4.13.0 - 3929) <2EAFBBEE-E9E2-33FA-BDF4-1A4F3C60334E> /System/Library/Frameworks/ColorSync.framework/Versions/A/ColorSync
+       0x199d1e000 -        0x19a15cc7f  com.apple.CoreData (120 - 1629.1) <0D53CA68-008E-3228-8AE7-8738FA67143C> /System/Library/Frameworks/CoreData.framework/Versions/A/CoreData
+       0x19a15d000 -        0x19a357057  libsqlite3.dylib (406) <73D616F2-7B6C-3046-8DE6-656F74793D5F> /usr/lib/libsqlite3.dylib
+       0x19a3f7000 -        0x19a4cbd13  com.apple.BaseBoard (827 - 827) <56EC64E5-6042-3349-B16D-BD9331FE2EE2> /System/Library/PrivateFrameworks/BaseBoard.framework/Versions/A/BaseBoard
+       0x19a4cc000 -        0x19a524d83  com.apple.RunningBoardServices (1.0 - 1080) <EACC9165-43B0-302D-B4BA-44BDE05DEBE4> /System/Library/PrivateFrameworks/RunningBoardServices.framework/Versions/A/RunningBoardServices
+       0x19a525000 -        0x19a5971d7  com.apple.AE (944 - 944) <75E434BB-9CD3-39A5-9BB9-87BBD3A2BC3B> /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/AE.framework/Versions/A/AE
+       0x19a598000 -        0x19a59fedf  libsystem_symptoms.dylib (2394.0.4) <60EE7884-9F4E-3184-A6AC-FA40A7A0297D> /usr/lib/system/libsystem_symptoms.dylib
+       0x19a5a0000 -        0x19be8c187  com.apple.Network (1.0 - 6681.1.1) <174B455B-2DE6-3364-BFF6-3802CFA599CE> /System/Library/Frameworks/Network.framework/Versions/A/Network
+       0x19be8d000 -        0x19bec3a1f  com.apple.analyticsd (1.0 - 1) <BD3F050B-5131-3206-A468-4B4F18965F11> /System/Library/PrivateFrameworks/CoreAnalytics.framework/Versions/A/CoreAnalytics
+       0x19bec4000 -        0x19bec5643  libDiagnosticMessagesClient.dylib (113) <B97372C5-7A87-378A-9EE0-77B6DD4825D0> /usr/lib/libDiagnosticMessagesClient.dylib
+       0x19bec6000 -        0x19bf4cc73  com.apple.spotlight.metadata.utilities (1.0 - 2459.405) <86E8A8A2-12CC-3F59-8EFD-074A26A19E5A> /System/Library/PrivateFrameworks/MetadataUtilities.framework/Versions/A/MetadataUtilities
+       0x19bf4d000 -        0x19bfcd427  com.apple.Metadata (27.0 - 2459.405) <DB51BB9F-F63F-30C7-88B8-0F23756F2571> /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Metadata
+       0x19bfce000 -        0x19bfd7513  com.apple.DiskArbitration (2.7 - 2.7) <BCE1A22D-CE13-3F92-B7D5-C21E22BD8B19> /System/Library/Frameworks/DiskArbitration.framework/Versions/A/DiskArbitration
+       0x19bfd8000 -        0x19c41c38b  com.apple.vImage (8.1 - 650.0.1) <54CF15B0-6AB6-360D-A4BE-F3130D8EEEDB> /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vImage.framework/Versions/A/vImage
+       0x19c41d000 -        0x19c88db47  com.apple.QuartzCore (1223.2.3 - 1223.2.3) <216F70F6-AEF9-3D60-942B-F64C636DEF69> /System/Library/Frameworks/QuartzCore.framework/Versions/A/QuartzCore
+       0x19c88e000 -        0x19c8de683  libFontRegistry.dylib (424) <6744349A-6836-3ED2-A2A2-9BCD309D768F> /System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/ATS.framework/Versions/A/Resources/libFontRegistry.dylib
+       0x19cb5d000 -        0x19cb6670b  com.apple.OpenDirectory (27.0 - 737) <ED898655-1F26-371A-B87A-E00B455DA537> /System/Library/Frameworks/OpenDirectory.framework/Versions/A/OpenDirectory
+       0x19cb67000 -        0x19cbcb357  com.apple.CFOpenDirectory (27.0 - 737) <537D9D7D-9092-3692-BE4D-447AFB0465F7> /System/Library/Frameworks/OpenDirectory.framework/Versions/A/Frameworks/CFOpenDirectory.framework/Versions/A/CFOpenDirectory
+       0x19cbcc000 -        0x19cbd7bdb  com.apple.CoreServices.FSEvents (1433 - 1433) <43D6AFA4-5794-3DC0-AC1F-6EB406B5E1DE> /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/FSEvents
+       0x19cbd8000 -        0x19cbf93c3  com.apple.coreservices.SharedFileList (225 - 225) <81C1A25D-B0A6-39F3-9872-8472670F05FD> /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/SharedFileList.framework/Versions/A/SharedFileList
+       0x19cbfa000 -        0x19cbfce47  libapp_launch_measurement.dylib (17) <7815B21D-226C-3E90-83AE-77E0623B1737> /usr/lib/libapp_launch_measurement.dylib
+       0x19cbfd000 -        0x19cc3b4e7  com.apple.CoreAutoLayout (1.0 - 35) <759521BC-E562-3BE6-8AA2-3248573B8E1E> /System/Library/PrivateFrameworks/CoreAutoLayout.framework/Versions/A/CoreAutoLayout
+       0x19cc3c000 -        0x19cd225bb  libxml2.2.dylib (40.1) <BB183DA3-EF8E-3F22-8150-E158BF761C0B> /usr/lib/libxml2.2.dylib
+       0x19cd23000 -        0x19cdc7bc3  com.apple.CoreVideo (1.8 - 758.27) <2DD9BDAC-2339-34E3-B1D4-3C6680F85485> /System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo
+       0x19cdc8000 -        0x19cdcaba3  com.apple.loginsupport (3.0 - 273) <AD64998C-2323-3410-AD8E-E2871B210CA4> /System/Library/PrivateFrameworks/login.framework/Versions/A/Frameworks/loginsupport.framework/Versions/A/loginsupport
+       0x19ce00000 -        0x19ce26e9f  com.apple.UserManagement (1.0 - 1) <ED7940B6-BF1D-3B80-9DF4-0DB10F9BFF52> /System/Library/PrivateFrameworks/UserManagement.framework/Versions/A/UserManagement
+       0x19e930000 -        0x19e96aaeb  libsystem_containermanager.dylib (833.0.8.0.1) <08A57205-555D-3792-8931-9D5B585AF326> /usr/lib/system/libsystem_containermanager.dylib
+       0x19e96b000 -        0x19e9836af  com.apple.IOSurface (402.5 - 402.5) <B7A5EC30-BFB0-3E94-8055-507FD98DB913> /System/Library/Frameworks/IOSurface.framework/Versions/A/IOSurface
+       0x19e984000 -        0x19e98d5c3  com.apple.IOAccelerator (491 - 491) <A1E30BDD-E8D3-3159-A93E-F601837B956B> /System/Library/PrivateFrameworks/IOAccelerator.framework/Versions/A/IOAccelerator
+       0x19e98e000 -        0x19ec13d77  com.apple.Metal (382.5.3 - 382.5.3) <B0BC74FE-7080-347D-92EE-38195058CCCE> /System/Library/Frameworks/Metal.framework/Versions/A/Metal
+       0x19ec14000 -        0x19ec3e053  com.apple.audio.caulk (1.0 - 247) <C7BA2B3E-B175-30E9-ABF6-4D568D9DAA51> /System/Library/PrivateFrameworks/caulk.framework/Versions/A/caulk
+       0x19ec3f000 -        0x19ee706d7  com.apple.CoreMedia (1.0 - 3350.77.5.6) <976829D2-C1F5-35E4-9FDE-3CCCAF19ED9C> /System/Library/Frameworks/CoreMedia.framework/Versions/A/CoreMedia
+       0x19ee71000 -        0x19f110e87  libFontParser.dylib (459) <6B07DF95-1102-3971-A1B0-F92CD10792EF> /System/Library/PrivateFrameworks/FontServices.framework/libFontParser.dylib
+       0x19f44a000 -        0x19f911b8b  com.apple.ImageIO (3.3.0 - 2851) <9F466BFF-CD36-33EB-9240-A9DC03202193> /System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO
+       0x19f912000 -        0x19fed0027  com.apple.CoreImage (27.0.0 - 1667.21.2) <374BB926-BF7C-3439-843C-D6E5F0D518F6> /System/Library/Frameworks/CoreImage.framework/Versions/A/CoreImage
+       0x19fed1000 -        0x19ff822c7  com.apple.MetalPerformanceShaders.MPSCore (1.0 - 130.0.19) <95E809A5-CD68-36B9-8C22-5B11055368D4> /System/Library/Frameworks/MetalPerformanceShaders.framework/Versions/A/Frameworks/MPSCore.framework/Versions/A/MPSCore
+       0x19ff83000 -        0x19ff87317  libsystem_configuration.dylib (1446) <F3EB66A7-7A24-3AE5-B6E8-9A37BB00F119> /usr/lib/system/libsystem_configuration.dylib
+       0x19ff88000 -        0x19ff8ee03  libsystem_sandbox.dylib (3051.0.52) <1E892B56-092E-3832-BDE3-DCE356D7A4FA> /usr/lib/system/libsystem_sandbox.dylib
+       0x19ff8f000 -        0x19ff90043  com.apple.AggregateDictionary (1.0 - 1) <CDCFA5A2-D392-384C-A334-2D3873F61CF8> /System/Library/PrivateFrameworks/AggregateDictionary.framework/Versions/A/AggregateDictionary
+       0x19ff91000 -        0x19ff94f8b  com.apple.AppleSystemInfo (3.1.5 - 3.1.5) <0C53A195-E323-368E-9A0A-88AABFB4AF66> /System/Library/PrivateFrameworks/AppleSystemInfo.framework/Versions/A/AppleSystemInfo
+       0x19ff95000 -        0x19ff9635b  liblangid.dylib (140) <AE74F74F-21E6-3FA5-AA06-6BBD2D3E3626> /usr/lib/liblangid.dylib
+       0x19ff97000 -        0x1a00b25c3  com.apple.CoreNLP (1.0 - 313) <A8A964E1-9979-3E3C-AC50-DD9C02DE142F> /System/Library/PrivateFrameworks/CoreNLP.framework/Versions/A/CoreNLP
+       0x1a00b3000 -        0x1a00b8d6b  com.apple.LinguisticData (1.0 - 483.10) <35CC48A6-0E31-368D-944C-2248C8B34CB7> /System/Library/PrivateFrameworks/LinguisticData.framework/Versions/A/LinguisticData
+       0x1a00b9000 -        0x1a12ee8f7  libBNNS.dylib (2212.1.1) <21ACE428-0EFB-3080-AFE4-A86EF66D84C6> /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBNNS.dylib
+       0x1a1322000 -        0x1a1369c13  com.apple.IOMobileFramebuffer (343.0.0 - 343.0.0) <B1C5BB2D-DB25-332B-AD82-CF1EC6170E8B> /System/Library/PrivateFrameworks/IOMobileFramebuffer.framework/Versions/A/IOMobileFramebuffer
+       0x1a13d6000 -        0x1a13eb09f  com.apple.MobileKeyBag (2.0 - 1.0) <3E21D7E4-5C92-3781-940A-F1D90D3E7501> /System/Library/PrivateFrameworks/MobileKeyBag.framework/Versions/A/MobileKeyBag
+       0x1a13ec000 -        0x1a13f635b  com.apple.AssertionServices (1.0 - 1080) <C57E2645-3386-395F-88D1-82C3944647DD> /System/Library/PrivateFrameworks/AssertionServices.framework/Versions/A/AssertionServices
+       0x1a13f7000 -        0x1a141e5cb  com.apple.coreservices.BackgroundTaskManagement (1.0 - 104) <1A1A491B-B068-3842-B7E6-2DF944B668FA> /System/Library/PrivateFrameworks/BackgroundTaskManagement.framework/Versions/A/BackgroundTaskManagement
+       0x1a144c000 -        0x1a144cf2f  libobjcMsgSend1.dylib (973.1) <B40D9B2A-E1EE-37ED-8004-711A1F263DE1> /usr/lib/objc/libobjcMsgSend1.dylib
+       0x1a1850000 -        0x1a198c4eb  libvDSP.dylib (1155) <0826F134-170A-3E0B-A99F-B2CF01A56680> /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libvDSP.dylib
+       0x1a1ae3000 -        0x1a1b62307  com.apple.securityfoundation (6.0 - 55294.0.2) <B4C1FCB9-3A20-316C-A7BB-160A0C9099AF> /System/Library/Frameworks/SecurityFoundation.framework/Versions/A/SecurityFoundation
+       0x1a1b6c000 -        0x1a1b6ef93  libquarantine.dylib (217.0.4) <7FD4AE22-86EF-382B-83F5-ADF9336C1160> /usr/lib/system/libquarantine.dylib
+       0x1a1b6f000 -        0x1a1b7b0a7  libCheckFix.dylib (33) <DAB53395-F433-3E13-A6CC-A028029F379C> /usr/lib/libCheckFix.dylib
+       0x1a1b7c000 -        0x1a1b9316b  libcoretls.dylib (189) <431C2F12-0081-3638-8B2F-D1F650B40942> /usr/lib/libcoretls.dylib
+       0x1a1b94000 -        0x1a1ba4fb3  libbsm.0.dylib (91.0.1) <E1D17FEE-E5F2-307D-A0A4-A7DA07424E2E> /usr/lib/libbsm.0.dylib
+       0x1a1ba5000 -        0x1a1c052ff  libmecab.dylib (1159) <DCFF867C-64AB-34E3-A2D1-B1BF117C5700> /usr/lib/libmecab.dylib
+       0x1a1c06000 -        0x1a1c082fb  libgermantok.dylib (31) <66456142-BA99-3D22-9E97-0EAD77D8FE5F> /usr/lib/libgermantok.dylib
+       0x1a1c09000 -        0x1a1c1ca6b  libLinearAlgebra.dylib (1617.1.1) <34C0511A-9A4D-3302-9E1D-0DD4ABD6E9D1> /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libLinearAlgebra.dylib
+       0x1a1c1d000 -        0x1a1e39dbf  com.apple.MetalPerformanceShaders.MPSNeuralNetwork (1.0 - 130.0.19) <532F2FFA-8383-3586-973A-910FF82F7F40> /System/Library/Frameworks/MetalPerformanceShaders.framework/Versions/A/Frameworks/MPSNeuralNetwork.framework/Versions/A/MPSNeuralNetwork
+       0x1a1e3a000 -        0x1a1e8d53f  com.apple.MetalPerformanceShaders.MPSRayIntersector (1.0 - 130.0.19) <C91F6D93-6F2C-37FD-9CDF-90063BEFCC3C> /System/Library/Frameworks/MetalPerformanceShaders.framework/Versions/A/Frameworks/MPSRayIntersector.framework/Versions/A/MPSRayIntersector
+       0x1a1fd5000 -        0x1a2003167  com.apple.MetalPerformanceShaders.MPSMatrix (1.0 - 130.0.19) <D0C6726A-1AF1-3C81-9050-C3ED0E7EBC5E> /System/Library/Frameworks/MetalPerformanceShaders.framework/Versions/A/Frameworks/MPSMatrix.framework/Versions/A/MPSMatrix
+       0x1a2004000 -        0x1a21d6757  com.apple.MetalPerformanceShaders.MPSNDArray (1.0 - 130.0.19) <556369D5-2B69-3CD5-8383-54A36A42ED24> /System/Library/Frameworks/MetalPerformanceShaders.framework/Versions/A/Frameworks/MPSNDArray.framework/Versions/A/MPSNDArray
+       0x1a21d7000 -        0x1a22654df  com.apple.MetalPerformanceShaders.MPSImage (1.0 - 130.0.19) <D09927CC-5C30-3542-AC58-DAC8507B7E10> /System/Library/Frameworks/MetalPerformanceShaders.framework/Versions/A/Frameworks/MPSImage.framework/Versions/A/MPSImage
+       0x1a2266000 -        0x1a2270d63  com.apple.AppleFSCompression (182 - 1.0) <3B5065D1-5D8A-3443-B4B8-293DA9FE47C3> /System/Library/PrivateFrameworks/AppleFSCompression.framework/Versions/A/AppleFSCompression
+       0x1a2271000 -        0x1a227d48b  libbz2.1.0.dylib (49) <C53E464D-6E83-37EE-8454-ACC2C20EF446> /usr/lib/libbz2.1.0.dylib
+       0x1a227e000 -        0x1a22841e7  libsystem_coreservices.dylib (203) <57248E07-11A5-3857-918E-4A3A63B69FE8> /usr/lib/system/libsystem_coreservices.dylib
+       0x1a2285000 -        0x1a22b5db7  com.apple.CoreServices.OSServices (1141.1 - 1141.1) <EFDD75A9-C053-36E5-AC5A-E61CE1312712> /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/OSServices.framework/Versions/A/OSServices
+       0x1a2837000 -        0x1a2845b87  libz.1.dylib (105) <09881E57-159D-3E5F-B9EB-B708249AC31E> /usr/lib/libz.1.dylib
+       0x1a2846000 -        0x1a2883b27  libsystem_m.dylib (3326.0.1) <A3FB340F-3ED5-30F4-8B64-9D5860F64D35> /usr/lib/system/libsystem_m.dylib
+       0x1a2884000 -        0x1a2884b47  libcharset.1.dylib (121) <3C9B584E-740A-3664-A1B0-52E561EA4B0B> /usr/lib/libcharset.1.dylib
+       0x1a2885000 -        0x1a28884f7  libmacho.dylib (27062) <50DEADEC-3E99-3519-AFC3-4A3FEB3F14C3> /usr/lib/system/libmacho.dylib
+       0x1a2889000 -        0x1a28a1c4f  libkxld.dylib (13432.1.9) <E83FDCCE-F143-360F-A06A-9BC9993989B0> /usr/lib/system/libkxld.dylib
+       0x1a28a2000 -        0x1a28ae707  libcommonCrypto.dylib (600041) <41C99F45-C5E6-39DB-B1F2-A1BEA9D242A4> /usr/lib/system/libcommonCrypto.dylib
+       0x1a28af000 -        0x1a28b8c87  libunwind.dylib (2200.5) <3070AB81-B082-39E8-8A00-EF88DDE9AC47> /usr/lib/system/libunwind.dylib
+       0x1a28b9000 -        0x1a28bffe5  liboah.dylib (385) <E359944B-D230-33F9-A04E-0C3B17C3326E> /usr/lib/liboah.dylib
+       0x1a28c0000 -        0x1a28ca7eb  libcopyfile.dylib (260.0.3) <72D95AF9-BF5E-3A84-81A6-BCC5BDB99857> /usr/lib/system/libcopyfile.dylib
+       0x1a28cb000 -        0x1a28ce8bf  libcompiler_rt.dylib (103.4) <DFB5CE7F-A36E-36AA-BECE-1392D3D43607> /usr/lib/system/libcompiler_rt.dylib
+       0x1a28cf000 -        0x1a28d4077  libsystem_collections.dylib (1786.0.3) <1E8022D4-5A37-3A7A-8936-603E6FA88358> /usr/lib/system/libsystem_collections.dylib
+       0x1a28d5000 -        0x1a28d7f1f  libsystem_secinit.dylib (182) <DE037464-4C5D-3E96-A33F-2A4557CC6A20> /usr/lib/system/libsystem_secinit.dylib
+       0x1a28d8000 -        0x1a28da97f  libremovefile.dylib (96) <E6E6DFCF-6B2C-3F30-A59D-816CAB1190CE> /usr/lib/system/libremovefile.dylib
+       0x1a28db000 -        0x1a28dbe27  libkeymgr.dylib (31) <5EC997EF-3ADA-360B-9FCD-5F940C83FA4E> /usr/lib/system/libkeymgr.dylib
+       0x1a28dc000 -        0x1a28e4af7  libsystem_dnssd.dylib (3111.0.5.0.1) <DE22096F-1E5B-3D6E-8164-771582DD6391> /usr/lib/system/libsystem_dnssd.dylib
+       0x1a28e5000 -        0x1a28e9f1b  libcache.dylib (95) <80BAE197-E285-3F6E-A1EE-B77FE37D7E5D> /usr/lib/system/libcache.dylib
+       0x1a28ea000 -        0x1a28eb8f3  libSystem.B.dylib (1359) <4FDC9AA6-B344-37FE-B8C6-A4C94A038F57> /usr/lib/libSystem.B.dylib
+       0x1a28ec000 -        0x1a28eddf7  libfakelink.dylib (5) <76412133-41DC-3EE8-9AC1-12441AB8EE4E> /usr/lib/libfakelink.dylib
+       0x1a28ee000 -        0x1a28ee963  com.apple.SoftLinking (1.0 - 72) <467A5BB5-639E-31D1-8582-D5B0AB28D1F5> /System/Library/PrivateFrameworks/SoftLinking.framework/Versions/A/SoftLinking
+       0x1a2924000 -        0x1a292b0a3  libiconv.2.dylib (121) <C343D6F7-6932-30E8-8E8F-F756946D8413> /usr/lib/libiconv.2.dylib
+       0x1a293f000 -        0x1a2a368c7  libarchive.2.dylib (182.0.1) <2869F71C-09C9-3037-B209-F5EE4ED7B73E> /usr/lib/libarchive.2.dylib
+       0x1a2a37000 -        0x1a2a9bca7  com.apple.SearchKit (1.4.2 - 1.4.2) <E10E4CC4-CD23-36BC-B33C-BD33A3793509> /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/SearchKit.framework/Versions/A/SearchKit
+       0x1a2a9c000 -        0x1a2aa3ed7  libThaiTokenizer.dylib (28) <DDAFA8FA-194E-315B-8B0C-D1A801F6BCF9> /usr/lib/libThaiTokenizer.dylib
+       0x1a2aa4000 -        0x1a2ac752f  com.apple.applesauce (1.0 - 17.7) <FD3F8924-2D39-325A-A2A2-E15CB08C42F2> /System/Library/PrivateFrameworks/AppleSauce.framework/Versions/A/AppleSauce
+       0x1a2ac8000 -        0x1a2ae0803  libapple_nghttp2.dylib (42) <6486CF8F-DC50-35BF-A36C-080D6E27965D> /usr/lib/libapple_nghttp2.dylib
+       0x1a2ae1000 -        0x1a2b8a0b7  libSparseBLAS.dylib (196.0.1) <C182284A-6122-3E5D-B910-5AAB4C981B00> /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libSparseBLAS.dylib
+       0x1a2b8b000 -        0x1a2b8c3d3  com.apple.MetalPerformanceShaders.MetalPerformanceShaders (1.0 - 130.0.19) <CAC089E6-4489-3D36-B155-1BB2AF360A22> /System/Library/Frameworks/MetalPerformanceShaders.framework/Versions/A/MetalPerformanceShaders
+       0x1a2b8d000 -        0x1a2b92d0f  libpam.2.dylib (35) <B9C75402-03F2-3D7A-ACDE-A67D9859B499> /usr/lib/libpam.2.dylib
+       0x1a2b93000 -        0x1a2c7085f  libcompression.dylib (212.0.1) <C25CA2C2-8DE6-3DBB-A03F-B81A9A0DAF50> /usr/lib/libcompression.dylib
+       0x1a2c71000 -        0x1a2c75437  libQuadrature.dylib (10) <6BA9713A-AEBB-3AFF-84F9-7E1F25BA9563> /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libQuadrature.dylib
+       0x1a2c76000 -        0x1a3f3776f  libLAPACK.dylib (1617.1.1) <8A02E4DB-01CA-32D3-9384-DC2AF9FAE7C0> /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libLAPACK.dylib
+       0x1a3f38000 -        0x1a3f8d85f  com.apple.DictionaryServices (1.2 - 383.7) <769713A5-4C54-3A47-A3A2-042FE798DD5D> /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/DictionaryServices.framework/Versions/A/DictionaryServices
+       0x1a3f8e000 -        0x1a3fac617  liblzma.5.dylib (21) <2B34F3EF-C505-3D29-9656-E7CEE143585C> /usr/lib/liblzma.5.dylib
+       0x1a3fad000 -        0x1a3fae53f  libcoretls_cfhelpers.dylib (189) <290FBB06-5D27-3C11-96B7-21D9770E7D8A> /usr/lib/libcoretls_cfhelpers.dylib
+       0x1a3faf000 -        0x1a401fc4f  com.apple.APFS (3288.1.3 - 3288.1.3) <207380E2-6E65-3463-89A3-52B3A82FFD24> /System/Library/PrivateFrameworks/APFS.framework/Versions/A/APFS
+       0x1a4020000 -        0x1a402e0eb  libxar.1.dylib (514.0.1) <E5A8C033-10F5-305C-883B-3433D8EC6871> /usr/lib/libxar.1.dylib
+       0x1a402f000 -        0x1a40322bb  libutil.dylib (76) <38245F99-D78C-38F1-94EE-22DF75E72ADE> /usr/lib/libutil.dylib
+       0x1a4033000 -        0x1a405d0b7  libxslt.1.dylib (22) <993E7F4A-90F1-35C1-BD90-84203244D58A> /usr/lib/libxslt.1.dylib
+       0x1a4065000 -        0x1a40ded07  libvMisc.dylib (1155) <8E6D9B3D-641B-3BB7-ABA2-1A5F55E21535> /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libvMisc.dylib
+       0x1a40df000 -        0x1a416f3a7  libate.dylib (3.0.11) <693A742F-B963-3654-B3E7-F7BAA5B9582F> /usr/lib/libate.dylib
+       0x1a4179000 -        0x1a418a0a7  com.apple.CrashReporterSupport (10.13 - 15146) <94F81559-B4AD-3BDD-A37B-75E023A5C9B9> /System/Library/PrivateFrameworks/CrashReporterSupport.framework/Versions/A/CrashReporterSupport
+       0x1a42b1000 -        0x1a42e3193  com.apple.pluginkit.framework (1.0 - 1) <AF2A6019-5213-368B-A1E3-03269B5E8993> /System/Library/PrivateFrameworks/PlugInKit.framework/Versions/A/PlugInKit
+       0x1a435a000 -        0x1a43a30cf  com.apple.AppleVAFramework (6.2.10 - 6.2.10) <77418C1A-1CB1-3C54-A10D-B2B87798ACA7> /System/Library/PrivateFrameworks/AppleVA.framework/Versions/A/AppleVA
+       0x1a43a4000 -        0x1a43beeb7  libexpat.1.dylib (47) <1A30E0DE-A426-3209-A3B4-2675027F2CF9> /usr/lib/libexpat.1.dylib
+       0x1a43bf000 -        0x1a43c8bb3  libheimdal-asn1.dylib (725.0.12) <3AB630AA-8755-33C3-B955-A3CECEBBFA4B> /usr/lib/libheimdal-asn1.dylib
+       0x1a44be000 -        0x1a457eb4f  com.apple.MediaExperience (1.0 - 1) <DFF7F55D-6EF0-39C4-886C-2A7DD31A81F5> /System/Library/PrivateFrameworks/MediaExperience.framework/Versions/A/MediaExperience
+       0x1a45a1000 -        0x1a45b7c87  com.apple.GraphVisualizer (1.0 - 310) <3ED4C650-0272-38D7-9EAC-BEFE69696E71> /System/Library/PrivateFrameworks/GraphVisualizer.framework/Versions/A/GraphVisualizer
+       0x1a45b8000 -        0x1a45f0e73  com.apple.OTSVG (1.0 - 904) <4E0C0BF7-EA1C-3CBA-B7B1-7E0AC107A174> /System/Library/PrivateFrameworks/OTSVG.framework/Versions/A/OTSVG
+       0x1a45f1000 -        0x1a45fc05f  com.apple.xpc.AppServerSupport (1.0 - 3298.1.1) <0EA6AF48-F033-31DB-AE1B-4729F37CF2E5> /System/Library/PrivateFrameworks/AppServerSupport.framework/Versions/A/AppServerSupport
+       0x1a45fd000 -        0x1a460348b  libspindump.dylib (448) <B59289A5-B57F-3D61-8C87-7D74456047A9> /usr/lib/libspindump.dylib
+       0x1a4604000 -        0x1a46c3343  com.apple.Heimdal (4.0 - 2.0) <61DDDEF4-D205-362E-B7C2-63DC75F3AFF5> /System/Library/PrivateFrameworks/Heimdal.framework/Versions/A/Heimdal
+       0x1a49b5000 -        0x1a49fa04f  com.apple.AppleJPEG (1.0 - 1) <453D6AE3-2DBA-3BD6-9CD7-82B023C2556E> /System/Library/PrivateFrameworks/AppleJPEG.framework/Versions/A/AppleJPEG
+       0x1a49fb000 -        0x1a4b01347  libJP2.dylib (2851) <8C641091-4DF4-3BE2-BCE5-E38F88B81FC7> /System/Library/Frameworks/ImageIO.framework/Versions/A/Resources/libJP2.dylib
+       0x1a4b02000 -        0x1a4b03c67  com.apple.WatchdogClient.framework (1.0 - 334.0.4) <02171A1C-6E1D-3348-B7DB-CA81F61BD3AB> /System/Library/PrivateFrameworks/WatchdogClient.framework/Versions/A/WatchdogClient
+       0x1a4b04000 -        0x1a4b476b7  com.apple.MultitouchSupport.framework (10400.44 - 10400.44) <DA05747A-43DB-39DD-82DA-C9D6C2EDE68E> /System/Library/PrivateFrameworks/MultitouchSupport.framework/Versions/A/MultitouchSupport
+       0x1a4b48000 -        0x1a50d176f  com.apple.VideoToolbox (1.0 - 3350.77.5.6) <6EDC2F05-B68B-3810-9103-16B2DCE770B4> /System/Library/Frameworks/VideoToolbox.framework/Versions/A/VideoToolbox
+       0x1a50d2000 -        0x1a50fc09f  libPng.dylib (2851) <2D9734E3-0991-3823-875A-A7A1ABDC63B4> /System/Library/Frameworks/ImageIO.framework/Versions/A/Resources/libPng.dylib
+       0x1a50fd000 -        0x1a515e34f  libTIFF.dylib (2851) <2FF49954-B5F5-3CD4-A4C7-39948EB833A7> /System/Library/Frameworks/ImageIO.framework/Versions/A/Resources/libTIFF.dylib
+       0x1a515f000 -        0x1a517d56f  com.apple.IOPresentment (67 - 67) <E2F60270-A88B-34B2-A6AB-6BE37B001B75> /System/Library/PrivateFrameworks/IOPresentment.framework/Versions/A/IOPresentment
+       0x1a517e000 -        0x1a51823a7  com.apple.GPUWrangler (8.1.12 - 8.1.12) <DD1A8136-0B38-32C0-A23D-794B162AF26A> /System/Library/PrivateFrameworks/GPUWrangler.framework/Versions/A/GPUWrangler
+       0x1a5183000 -        0x1a51852bf  libRadiance.dylib (2851) <447C6D93-DA95-3A0A-975B-F9BE9095CC28> /System/Library/Frameworks/ImageIO.framework/Versions/A/Resources/libRadiance.dylib
+       0x1a5186000 -        0x1a518ab13  com.apple.DSExternalDisplay (3.1 - 380) <A566E2B1-A7CC-3AE3-96A4-4E2994F8C1D0> /System/Library/PrivateFrameworks/DSExternalDisplay.framework/Versions/A/DSExternalDisplay
+       0x1a518b000 -        0x1a51b5f47  libJPEG.dylib (2851) <D27A6E08-328D-3560-A211-A182B505DAB8> /System/Library/Frameworks/ImageIO.framework/Versions/A/Resources/libJPEG.dylib
+       0x1a51e3000 -        0x1a51e8c27  libGIF.dylib (2851) <6830CD73-C87E-3B59-AD95-FEE4ECC0B759> /System/Library/Frameworks/ImageIO.framework/Versions/A/Resources/libGIF.dylib
+       0x1a51e9000 -        0x1a51facd3  com.apple.CMCaptureCore (1.0 - 764.21.3) <E5B093A6-E1AF-3ABD-8A1D-E1DCA943156C> /System/Library/PrivateFrameworks/CMCaptureCore.framework/Versions/A/CMCaptureCore
+       0x1a61d6000 -        0x1a62430d7  libusrtcp.dylib (6681.1.1) <DD6DE768-C695-31DA-A1B8-B089AD8721FC> /usr/lib/libusrtcp.dylib
+       0x1a6244000 -        0x1a67dce2f  libswiftCore.dylib (6.4.0 - 6.4.0.31.5) <C9B36DA7-BB34-35AF-BC5D-91ECBCAA9ED0> /usr/lib/swift/libswiftCore.dylib
+       0x1a686d000 -        0x1a68bf9eb  libSessionUtility.dylib (449.108) <2D305F72-8E2A-3B72-8617-4278A3D605A4> /System/Library/PrivateFrameworks/AudioSession.framework/libSessionUtility.dylib
+       0x1a68c0000 -        0x1a6a99fb3  com.apple.audio.toolbox.AudioToolbox (1.14 - 1.14) <C5FDDD2A-A45C-39E0-AF9C-64755A6BD394> /System/Library/Frameworks/AudioToolbox.framework/Versions/A/AudioToolbox
+       0x1a6a9a000 -        0x1a6b04fe3  com.apple.audio.AudioSession (1.0 - 449.108) <51EBB45A-C823-3BCA-8A5B-5321EA1D636A> /System/Library/PrivateFrameworks/AudioSession.framework/Versions/A/AudioSession
+       0x1a6b05000 -        0x1a6b0723b  libAudioStatistics.dylib (300) <E5F218A4-4EC6-3334-9EE3-F63E737AB26C> /usr/lib/libAudioStatistics.dylib
+       0x1a6b33000 -        0x1a6b4ec23  libresolv.9.dylib (96) <7D890D7A-3C34-3E74-BBB6-83FA14A6BE0A> /usr/lib/libresolv.9.dylib
+       0x1a6b4f000 -        0x1a6b6157f  libsasl2.2.dylib (219) <ED27922C-C85D-3FE9-B7B6-41B5B7B4084E> /usr/lib/libsasl2.2.dylib
+       0x1a6d17000 -        0x1a6df6eaf  libSMC.dylib (40) <EAF84B62-8A69-395A-9E31-DAE0F74E6A14> /usr/lib/libSMC.dylib
+       0x1a6e55000 -        0x1a6e61db7  com.apple.NetAuth (6.2 - 6.2) <6C13E8AF-2D7F-33FF-9BCB-D23227F8ADD8> /System/Library/PrivateFrameworks/NetAuth.framework/Versions/A/NetAuth
+       0x1a6e70000 -        0x1a6e7a6f3  com.apple.perfdata (1.0 - 135.0.1) <5F510E06-26BE-33D3-8072-B516312A9FE4> /System/Library/PrivateFrameworks/perfdata.framework/Versions/A/perfdata
+       0x1a6e7b000 -        0x1a6e87977  libperfcheck.dylib (46) <BE4BD34C-951A-3CB4-A9E8-C46E38E62E02> /usr/lib/libperfcheck.dylib
+       0x1a6e88000 -        0x1a6e983f7  com.apple.Kerberos (3.0 - 1) <B9E15097-7F2A-33AA-B86A-8942EB8F69BD> /System/Library/Frameworks/Kerberos.framework/Versions/A/Kerberos
+       0x1a6e99000 -        0x1a6ee8b6f  com.apple.GSS (4.0 - 2.0) <E935474F-DCEA-30FF-92C2-C3722F95E8ED> /System/Library/Frameworks/GSS.framework/Versions/A/GSS
+       0x1a6ee9000 -        0x1a6ef9a1f  com.apple.CommonAuth (4.0 - 2.0) <08F95713-D604-382B-B59F-0BD5D92E72E6> /System/Library/PrivateFrameworks/CommonAuth.framework/Versions/A/CommonAuth
+       0x1a6efa000 -        0x1a6fbcaa7  com.apple.MobileAssets (1.0 - 2215.0.20) <242D2797-AA04-34DF-9308-70C298E0778A> /System/Library/PrivateFrameworks/MobileAsset.framework/Versions/A/MobileAsset
+       0x1a703c000 -        0x1a704aef7  com.apple.CorePhoneNumbers (1.0 - 1) <696A225A-F3BC-383E-A1DB-F8B793B1AA9A> /System/Library/PrivateFrameworks/CorePhoneNumbers.framework/Versions/A/CorePhoneNumbers
+       0x1a8a70000 -        0x1a8b5c367  com.apple.combine (1.0 - 3023) <1D189755-83EB-3FC1-A86A-23A60CDAB34A> /System/Library/Frameworks/Combine.framework/Versions/A/Combine
+       0x1a8f15000 -        0x1a8f1586f  com.apple.Accelerate.vecLib (3.11 - vecLib 3.11) <A85314AD-5F04-353C-B6FD-9CBDB885CF75> /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/vecLib
+       0x1a8f32000 -        0x1a8f3298f  com.apple.CoreServices (1226 - 1226) <92E25F67-1006-322C-B4B8-9F3840F8D9B3> /System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices
+       0x1a913f000 -        0x1a913f417  com.apple.Accelerate (1.11 - Accelerate 1.11) <A697E7B9-8FF4-356C-A507-64B38AF1CCAA> /System/Library/Frameworks/Accelerate.framework/Versions/A/Accelerate
+       0x1a944c000 -        0x1a944cf2f  libobjcMsgSend2.dylib (973.1) <BD27A84B-C9AE-3282-BBEA-3B6119837B5A> /usr/lib/objc/libobjcMsgSend2.dylib
+       0x1ad6d9000 -        0x1ad6e5afb  com.apple.SymptomDiagnosticReporter (1.0 - 469) <049798AF-EDA0-3108-9CF8-373B605AB558> /System/Library/PrivateFrameworks/SymptomDiagnosticReporter.framework/Versions/A/SymptomDiagnosticReporter
+       0x1ad6e6000 -        0x1ad70b443  com.apple.PowerLog (1.0 - 1) <5AE600A4-1463-3080-A50C-33517AA61B91> /System/Library/PrivateFrameworks/PowerLog.framework/Versions/A/PowerLog
+       0x1ad717000 -        0x1ad7c08b3  com.apple.DiscRecording (9.0.3 - 9030.4.5) <B1B79268-6DC3-3611-9323-C0A14FDF44B3> /System/Library/Frameworks/DiscRecording.framework/Versions/A/DiscRecording
+       0x1ad7c1000 -        0x1ad7f1687  com.apple.MediaKit (16 - 944) <B378DAE0-A2AF-3F1C-8AB3-E1EAB5B26E7A> /System/Library/PrivateFrameworks/MediaKit.framework/Versions/A/MediaKit
+       0x1ae1e2000 -        0x1ae1f821f  libswiftDispatch.dylib (1605.0.2) <C01F5E48-7D6C-3663-A336-0F66AC49B65D> /usr/lib/swift/libswiftDispatch.dylib
+       0x1ae4cf000 -        0x1ae57764f  com.apple.BoardServices (1.0 - 827) <C248C55D-D69D-3D61-A345-443BA92B3F36> /System/Library/PrivateFrameworks/BoardServices.framework/Versions/A/BoardServices
+       0x1ae5a7000 -        0x1ae5b3c0f  com.apple.GraphicsServices (1.0 - 1.0) <B54AC2CC-7FBD-3302-91EA-6048A79CBA5B> /System/Library/PrivateFrameworks/GraphicsServices.framework/Versions/A/GraphicsServices
+       0x1ae854000 -        0x1ae8746a7  com.apple.DebugSymbols (219 - 219) <AE8A54B1-9840-3582-8480-45B38C2F4C30> /System/Library/PrivateFrameworks/DebugSymbols.framework/Versions/A/DebugSymbols
+       0x1ae875000 -        0x1ae9dce0b  com.apple.CoreSymbolication (16.0 - 64578.82.2) <D4672F79-1DDE-3AAE-95AC-C199B84B9355> /System/Library/PrivateFrameworks/CoreSymbolication.framework/Versions/A/CoreSymbolication
+       0x1ae9dd000 -        0x1ae9e6a73  com.apple.CoreTime (340.0.14 - 340.0.14) <090BF232-5377-30C2-A128-C72DC9152EBB> /System/Library/PrivateFrameworks/CoreTime.framework/Versions/A/CoreTime
+       0x1b028a000 -        0x1b02fc76f  com.apple.BackBoardServices (1.0 - 1.0) <A4C4201B-02FD-3B1B-B58A-A60BB4023B8C> /System/Library/PrivateFrameworks/BackBoardServices.framework/Versions/A/BackBoardServices
+       0x1b02fd000 -        0x1b0337a4f  com.apple.LDAPFramework (2.4.28 - 194.5) <DF9EF86F-9E46-3DC5-8C25-31697C7AC19E> /System/Library/Frameworks/LDAP.framework/Versions/A/LDAP
+       0x1b0338000 -        0x1b0339637  com.apple.TrustEvaluationAgent (2.0 - 38) <8CB2434F-FFBE-3D9F-ABB0-24FA33527AB6> /System/Library/PrivateFrameworks/TrustEvaluationAgent.framework/Versions/A/TrustEvaluationAgent
+       0x1b0466000 -        0x1b051bf87  com.apple.DiskImagesFramework (704 - 704) <6FC7DD54-CE06-30B3-9231-123022BF8CF8> /System/Library/PrivateFrameworks/DiskImages.framework/Versions/A/DiskImages
+       0x1b0559000 -        0x1b056e093  com.apple.RemoteServiceDiscovery (1.0 - 245.0.7) <BCC760CB-6667-3798-8E4C-EEFC5F9130CD> /System/Library/PrivateFrameworks/RemoteServiceDiscovery.framework/Versions/A/RemoteServiceDiscovery
+       0x1b056f000 -        0x1b0582807  com.apple.xpc.RemoteXPC (1.0 - 3298.1.1) <1C3FDABA-4DCB-3557-8126-5B437D640F24> /System/Library/PrivateFrameworks/RemoteXPC.framework/Versions/A/RemoteXPC
+       0x1b0607000 -        0x1b068696b  libcurl.4.dylib (168.0.2) <C067B2C6-DD0E-3BEA-BCC0-F048B2A17545> /usr/lib/libcurl.4.dylib
+       0x1b068d000 -        0x1b06c71f3  com.apple.AppSupport (1.0.0 - 29) <10780E13-654E-39C1-879A-B994F5B2990F> /System/Library/PrivateFrameworks/AppSupport.framework/Versions/A/AppSupport
+       0x1b0939000 -        0x1b093b943  com.apple.InternationalTextSearch (1.0 - 1) <5B798ABD-BB61-3D16-BB42-0167B3C55A0A> /System/Library/PrivateFrameworks/InternationalTextSearch.framework/Versions/A/InternationalTextSearch
+       0x1b0f85000 -        0x1b0f853f7  libHeimdalProxy.dylib (88) <6341E9AF-9CD5-3A7A-ACD4-829EE3E79A6D> /System/Library/Frameworks/Kerberos.framework/Versions/A/Libraries/libHeimdalProxy.dylib
+       0x1b0fa8000 -        0x1b0fc4973  com.apple.StreamingZip (1.0 - 1) <5651DFE8-5C8C-3921-8CC7-A62F564577C9> /System/Library/PrivateFrameworks/StreamingZip.framework/Versions/A/StreamingZip
+       0x1b1014000 -        0x1b1017397  libswiftObjectiveC.dylib (973.1) <3143A5EB-68CA-37E3-B414-98792711FF44> /usr/lib/swift/libswiftObjectiveC.dylib
+       0x1b1018000 -        0x1b1034257  libswiftos.dylib (1090) <010A7F00-D6F4-3E94-918D-39EF4E33EF95> /usr/lib/swift/libswiftos.dylib
+       0x1b111d000 -        0x1b1193f2f  com.apple.proactive.support.ProactiveSupport (1.0 - 423.0.1) <620CAB1D-5B4C-3449-AF3B-5D18989B8D76> /System/Library/PrivateFrameworks/ProactiveSupport.framework/Versions/A/ProactiveSupport
+       0x1b125f000 -        0x1b1286e6f  com.apple.ASEProcessing (1.59.0 - 1.59.0) <6A028F2D-5B7E-324E-BE22-B589F34B1925> /System/Library/PrivateFrameworks/ASEProcessing.framework/Versions/A/ASEProcessing
+       0x1b144c000 -        0x1b144cf2f  libobjcMsgSend3.dylib (973.1) <C0860D68-DDFC-3BD7-8B06-DB0645CBBED4> /usr/lib/objc/libobjcMsgSend3.dylib
+       0x1b366e000 -        0x1b3734353  com.apple.audio.midi.CoreMIDI (2.0 - 88) <DA3E2CF1-D70C-3055-BF59-0F604DA694A9> /System/Library/Frameworks/CoreMIDI.framework/Versions/A/CoreMIDI
+       0x1b42e8000 -        0x1b42ec59f  com.apple.IOSurfaceAccelerator (1.0.0 - 1.0.0) <0499772A-AB15-393F-B655-6DB5E6D24755> /System/Library/PrivateFrameworks/IOSurfaceAccelerator.framework/Versions/A/IOSurfaceAccelerator
+       0x1b9399000 -        0x1b93b31ef  com.apple.HID (1.0 - 1) <EDB0E5D5-3547-3681-8291-DC8129EF0E41> /System/Library/PrivateFrameworks/HID.framework/Versions/A/HID
+       0x1b944c000 -        0x1b944cf2f  libobjcMsgSend4.dylib (973.1) <A6153BF5-622B-3B01-81B6-F64A365EF613> /usr/lib/objc/libobjcMsgSend4.dylib
+       0x1beb13000 -        0x1beb20d1b  com.apple.NetFS (6.0 - 4.0) <E3E650E1-6780-3A10-980D-3A7FACCB7288> /System/Library/Frameworks/NetFS.framework/Versions/A/NetFS
+       0x1befd3000 -        0x1befd5807  libswiftDarwin.dylib (428.0.10) <B4F37828-524C-32F7-94FD-63CB8177AEEC> /usr/lib/swift/libswiftDarwin.dylib
+       0x1c1295000 -        0x1c13829e3  libquic.dylib (6681.1.1) <E55B3940-F54E-35A0-9C42-345155D8E76F> /usr/lib/libquic.dylib
+       0x1c138c000 -        0x1c13ab953  com.apple.private.SystemPolicy (1.0 - 1) <DF086382-D2C6-3905-B921-2196A77E9180> /System/Library/PrivateFrameworks/SystemPolicy.framework/Versions/A/SystemPolicy
+       0x1c144c000 -        0x1c144cf2f  libobjcMsgSend5.dylib (973.1) <3913A71C-B29A-3AEA-820B-BEC40AC1861A> /usr/lib/objc/libobjcMsgSend5.dylib
+       0x1c2756000 -        0x1c27cf39b  com.apple.LoggingSupport (1.0 - 1966.1.1) <1F7476AA-2F22-3C20-8FCA-C8B0E47ABB21> /System/Library/PrivateFrameworks/LoggingSupport.framework/Versions/A/LoggingSupport
+       0x1c27d0000 -        0x1c27dc437  com.apple.MallocStackLogging (1.0 - 65000) <FF92B432-827A-36CD-A3CB-7BAAA6581179> /System/Library/PrivateFrameworks/MallocStackLogging.framework/Versions/A/MallocStackLogging
+       0x1c27f8000 -        0x1c2859ea3  libmis.dylib (487.0.2) <4A873AE2-BD1A-38D5-B98E-AAF4039D4133> /usr/lib/libmis.dylib
+       0x1c285a000 -        0x1c285c88f  com.apple.gpusw.GPURawCounter (35 - 35) <2383C07B-9F0E-3CAC-9C5A-5272664B255C> /System/Library/PrivateFrameworks/GPURawCounter.framework/Versions/A/GPURawCounter
+       0x1c285d000 -        0x1c287bc13  libswiftCoreAudio.dylib (482.102.10) <2F5D4013-D077-34C3-821E-9A376638588D> /usr/lib/swift/libswiftCoreAudio.dylib
+       0x1c287c000 -        0x1c2881caf  libswiftCoreFoundation.dylib (2412) <45079B74-1B3F-3EE0-8331-5A36B71C3530> /usr/lib/swift/libswiftCoreFoundation.dylib
+       0x1c288b000 -        0x1c28d4a9f  libswiftXPC.dylib (167.0.2) <A4ABDA3A-3856-3607-AC51-9229FA1D5777> /usr/lib/swift/libswiftXPC.dylib
+       0x1c28d6000 -        0x1c28d68a3  libswiftIOKit.dylib (1) <125C8CC5-3CFC-3F43-9C25-5DD08C2E4BBD> /usr/lib/swift/libswiftIOKit.dylib
+       0x1c462e000 -        0x1c46752cf  libbootpolicy.dylib (304) <528B381C-8756-328F-BE20-8B9573A7EC3A> /usr/lib/libbootpolicy.dylib
+       0x1c5ff0000 -        0x1c60074a3  libswiftsimd.dylib (25) <BE72A6EC-6A5C-30D2-BBA0-44111D3F604C> /usr/lib/swift/libswiftsimd.dylib
+       0x1c7530000 -        0x1c75379fb  com.apple.IOAccelMemoryInfo (1.0 - 1) <3E60AA32-713B-3346-B95D-E97E10193F0F> /System/Library/PrivateFrameworks/IOAccelMemoryInfo.framework/Versions/A/IOAccelMemoryInfo
+       0x1c8d40000 -        0x1c8d48dc7  libswiftCoreMIDI.dylib (6) <BB0B90A6-1AAF-3A9C-998C-D4822F79B050> /usr/lib/swift/libswiftCoreMIDI.dylib
+       0x1c944c000 -        0x1c944cf2f  libobjcMsgSend6.dylib (973.1) <9BC523A3-E167-3F6C-8CAE-0F3EBA671791> /usr/lib/objc/libobjcMsgSend6.dylib
+       0x1c9947000 -        0x1c994c71b  com.apple.MSUDataAccessor (1.0 - 1) <B575CE52-8A1C-35C6-B1EC-281FBF18E16E> /System/Library/PrivateFrameworks/MSUDataAccessor.framework/Versions/A/MSUDataAccessor
+       0x1c9df2000 -        0x1c9e3dbcb  com.apple.SoftwareUpdateCoreSupport (1.0 - 1) <ED2DBB36-9A42-3A54-958C-93F2B1D34546> /System/Library/PrivateFrameworks/SoftwareUpdateCoreSupport.framework/Versions/A/SoftwareUpdateCoreSupport
+       0x1cd7e7000 -        0x1cd82ea7b  com.apple.biome.BiomeFoundation (1.0 - 250.0.0.3) <85B9EA77-DAE9-3AAD-BD96-D90DE71BE680> /System/Library/PrivateFrameworks/BiomeFoundation.framework/Versions/A/BiomeFoundation
+       0x1d00cb000 -        0x1d00d2f5f  libswiftMetal.dylib (382.5.3) <FAE1B768-4D95-3EB2-BEF3-6D845C38988C> /usr/lib/swift/libswiftMetal.dylib
+       0x1d00d3000 -        0x1d00d96df  libswiftCompression.dylib (18) <A3677B2C-332E-3E7E-ACFF-F6DD4E6613F8> /usr/lib/swift/libswiftCompression.dylib
+       0x1d0f03000 -        0x1d0fb5bf3  libFDR.dylib (1636.0.17) <921820A7-BFA7-3D97-A82D-4276C08554C0> /usr/lib/libFDR.dylib
+       0x1d0fb6000 -        0x1d102a8ef  com.apple.TimeSync (1.0 - 1501.7) <04424CE0-D831-3898-81A1-1E7E4FF2FE92> /System/Library/PrivateFrameworks/TimeSync.framework/Versions/A/TimeSync
+       0x1d144c000 -        0x1d144cf2f  libobjcMsgSend7.dylib (973.1) <248B7BCE-5B4C-34C7-A340-43D5228628C5> /usr/lib/objc/libobjcMsgSend7.dylib
+       0x1d1850000 -        0x1d1d9be37  com.apple.biome.BiomeStreams (1.0 - 250.0.0.3) <C751108F-893C-3D25-A648-222D9E14F46A> /System/Library/PrivateFrameworks/BiomeStreams.framework/Versions/A/BiomeStreams
+       0x1d1f6c000 -        0x1d1f7c05b  com.apple.SoftwareUpdateCoreConnect (1.0 - 1) <DF7BE13C-A22A-3EBB-9E5A-85DEB5C3E193> /System/Library/PrivateFrameworks/SoftwareUpdateCoreConnect.framework/Versions/A/SoftwareUpdateCoreConnect
+       0x1d328d000 -        0x1d32942bb  com.apple.audio.IOKitten (300.1 - 300.1) <6B3DA7ED-00EF-31BB-894E-48B53F7C4593> /System/Library/PrivateFrameworks/IOKitten.framework/Versions/A/IOKitten
+       0x1d4aed000 -        0x1d4b4ad7f  com.apple.osanalytics.OSAnalytics (1.0 - 1) <FC435AAF-0915-3FEE-A21E-D5F8465C7605> /System/Library/PrivateFrameworks/OSAnalytics.framework/Versions/A/OSAnalytics
+       0x1d5ed4000 -        0x1d5ed5deb  libswiftQuartzCore.dylib (5) <303BA471-C8BD-3A89-B8AD-A54C26D39328> /usr/lib/swift/libswiftQuartzCore.dylib
+       0x1d621c000 -        0x1d622166f  com.apple.kperf (1.0 - 1) <D72F399E-388F-3C1E-8270-7208346C0088> /System/Library/PrivateFrameworks/kperf.framework/Versions/A/kperf
+       0x1d632e000 -        0x1d6331ebf  com.apple.MobileSystemServices (1.0 - 1) <A415AF41-E605-36EA-AD1B-01200B7E1FCE> /System/Library/PrivateFrameworks/MobileSystemServices.framework/Versions/A/MobileSystemServices
+       0x1d7834000 -        0x1d78596bb  libamsupport.dylib (475.0.9) <53C7DA2C-3ACC-36FE-863A-2FC6D5902000> /usr/lib/libamsupport.dylib
+       0x1d7c12000 -        0x1d7c628c7  com.apple.biome.BiomePubSub (1.0 - 250.0.0.3) <3A1E7EDF-3D89-362E-876E-53D841BCB6BC> /System/Library/PrivateFrameworks/BiomePubSub.framework/Versions/A/BiomePubSub
+       0x1d7c63000 -        0x1d7c98d97  com.apple.biome.BiomeStorage (1.0 - 250.0.0.3) <34109228-69B3-359F-A58D-2930545A9651> /System/Library/PrivateFrameworks/BiomeStorage.framework/Versions/A/BiomeStorage
+       0x1d944c000 -        0x1d944cf2f  libobjcMsgSend8.dylib (973.1) <3E041BAD-A8E8-3069-B741-78CD1A45B176> /usr/lib/objc/libobjcMsgSend8.dylib
+       0x1da6bc000 -        0x1da6c94f7  libswiftUniformTypeIdentifiers.dylib (917.0.1.403) <9C27643C-CAC9-3687-A19B-0F3F40F9CAB1> /usr/lib/swift/libswiftUniformTypeIdentifiers.dylib
+       0x1da6ca000 -        0x1da78a0bb  libswiftAccelerate.dylib (82) <A57EBF98-4C09-3A2A-8266-6336537116C1> /usr/lib/swift/libswiftAccelerate.dylib
+       0x1da8ca000 -        0x1da8d8f03  libpartition2_dynamic.dylib (3696.0.12.0.3) <25AEE4A8-7C62-3A7F-A279-A3BB6F14E569> /usr/lib/libpartition2_dynamic.dylib
+       0x1dad7f000 -        0x1dad8894f  com.apple.AFKUser (1) <43A2F367-7736-3AE3-AA92-118D27D4DACF> /System/Library/PrivateFrameworks/AFKUser.framework/Versions/A/AFKUser
+       0x1e045b000 -        0x1e045c8e7  libswiftOSLog.dylib (10) <2243B3A2-A831-3F96-8D1B-29ACF2FD7FDE> /usr/lib/swift/libswiftOSLog.dylib
+       0x1e0e05000 -        0x1e0ef09bf  com.apple.Symbolication (16.0 - 64578.100.1) <8797C0C4-4EB6-3BA7-BA93-4F41FFAC09F7> /System/Library/PrivateFrameworks/Symbolication.framework/Versions/A/Symbolication
+       0x1e144c000 -        0x1e144cf2f  libobjcMsgSend9.dylib (973.1) <34A67969-21A0-39D6-BB81-8FDA5A2409DB> /usr/lib/objc/libobjcMsgSend9.dylib
+       0x1e91dd000 -        0x1e91eab8f  com.apple.OSLog (1.0 - 1966.1.1) <21AB9089-83D7-3BAC-8191-B2694336154A> /System/Library/Frameworks/OSLog.framework/Versions/A/OSLog
+       0x1e92ad000 -        0x1e93b476f  com.apple.InternalSwiftProtobuf (1.0 - 1.26.0) <48D97BB1-9659-3732-94E3-AE6A574300CC> /System/Library/PrivateFrameworks/InternalSwiftProtobuf.framework/Versions/A/InternalSwiftProtobuf
+       0x1e93b6000 -        0x1e93bf15f  com.apple.HIDDisplay (1.0 - 1) <3494AB7C-6C5A-3B1A-AA34-E93D7EF29852> /System/Library/PrivateFrameworks/HIDDisplay.framework/Versions/A/HIDDisplay
+       0x1e944c000 -        0x1e944cf2f  libobjcMsgSend10.dylib (973.1) <678186C0-8EAD-3B35-8CBB-00285B41E4A0> /usr/lib/objc/libobjcMsgSend10.dylib
+       0x1f144c000 -        0x1f144cf2f  libobjcMsgSend11.dylib (973.1) <E05CB08C-E956-36FA-8967-AE8E346A8D2C> /usr/lib/objc/libobjcMsgSend11.dylib
+       0x21215d000 -        0x21215dae3  com.apple.FeatureFlags (1.0 - 108) <6A89074E-FDB5-3D09-8E6B-349D0EC61D9D> /System/Library/PrivateFrameworks/FeatureFlags.framework/Versions/A/FeatureFlags
+       0x21944c000 -        0x21944cf2f  libobjcMsgSend12.dylib (973.1) <10AB03AA-FF1F-3FDC-9DFB-BFC40042C501> /usr/lib/objc/libobjcMsgSend12.dylib
+       0x21b754000 -        0x21b756067  com.apple.ConfigProfileHelper (18.0 - 1800) <EDEA7AD5-09E2-3FF0-8DAA-6603FA706017> /System/Library/PrivateFrameworks/ConfigProfileHelper.framework/Versions/A/ConfigProfileHelper
+       0x21fa59000 -        0x21fa5fc43  libCoreFSCache.dylib (404) <DFF19406-D7F3-3D45-937A-042FA0AA5BA8> /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libCoreFSCache.dylib
+       0x21fa60000 -        0x21fa65627  libCoreVMClient.dylib (404) <C262ADF6-0E9A-3D9D-B18D-8525CB90B0DC> /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libCoreVMClient.dylib
+       0x21fa66000 -        0x21fa75857  com.apple.opengl (24.0.2 - 24.0.2) <1DD82D16-39F7-3822-998C-F8DE41F9BD6A> /System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL
+       0x21fa76000 -        0x21fa7869f  libCVMSPluginSupport.dylib (24.0.2) <A84E529F-47DE-35EE-8222-64A7EE00A1F3> /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libCVMSPluginSupport.dylib
+       0x21fa79000 -        0x21fa8117f  libGFXShared.dylib (24.0.2) <B475FA8D-63EF-369E-ADAC-37EEA94CF2BE> /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGFXShared.dylib
+       0x21fa82000 -        0x21fab578b  libGLImage.dylib (24.0.2) <3D0C3F87-6ECC-390D-B26B-5BB17F8EE6C0> /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGLImage.dylib
+       0x21fab6000 -        0x21faef26f  libGLU.dylib (24.0.2) <4B9B9DFD-36B5-3E59-A0F7-9711B7FF0961> /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGLU.dylib
+       0x21fc45000 -        0x21fc4ebc7  libGL.dylib (24.0.2) <DC2FA229-1380-385E-AECD-C2881AD085A5> /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib
+       0x22144c000 -        0x22144cf2f  libobjcMsgSend13.dylib (973.1) <ABF53427-FA6F-3D0D-8F9D-7AD795CA5C92> /usr/lib/objc/libobjcMsgSend13.dylib
+       0x22944c000 -        0x22944cf2f  libobjcMsgSend14.dylib (973.1) <9A844C46-A6DA-34D4-8EBF-2AD775C30684> /usr/lib/objc/libobjcMsgSend14.dylib
+       0x22deae000 -        0x22dffe2f7  com.apple.ExtensionFoundation (97 - 97) <231850D6-9680-3AED-890A-484D2BBEFC28> /System/Library/Frameworks/ExtensionFoundation.framework/Versions/A/ExtensionFoundation
+       0x22fd0d000 -        0x22fd4d387  com.apple.LightweightCodeRequirements (1.0 - 1) <C90102A4-551F-3EFC-9F72-2CE1D702E358> /System/Library/Frameworks/LightweightCodeRequirements.framework/Versions/A/LightweightCodeRequirements
+       0x230c22000 -        0x230c33207  com.apple.MPSBenchmarkLoop (1.0 - 130.0.19) <00087510-13F7-342F-B967-49761B4306C8> /System/Library/Frameworks/MetalPerformanceShaders.framework/Versions/A/Frameworks/MPSBenchmarkLoop.framework/Versions/A/MPSBenchmarkLoop
+       0x230c34000 -        0x230c466bf  com.apple.MPSFunctions (1.0 - 130.0.19) <18D723C8-6584-3F46-AD20-843C1FD0CCB9> /System/Library/Frameworks/MetalPerformanceShaders.framework/Versions/A/Frameworks/MPSFunctions.framework/Versions/A/MPSFunctions
+       0x230c47000 -        0x230c4b813  com.apple.MPSHost (1.0 - 130.0.19) <EEB725E7-28BB-3F1A-A100-203078BB7B88> /System/Library/Frameworks/MetalPerformanceShaders.framework/Versions/A/Frameworks/MPSHost.framework/Versions/A/MPSHost
+       0x23144c000 -        0x23144cf2f  libobjcMsgSend15.dylib (973.1) <7C995666-2B2D-3284-AA0A-EBF7C922838E> /usr/lib/objc/libobjcMsgSend15.dylib
+       0x235687000 -        0x23583197b  com.apple.SwiftData (1.0 - 180) <80467BD4-1405-3400-9475-B5BFCE896E12> /System/Library/Frameworks/SwiftData.framework/Versions/A/SwiftData
+       0x23944c000 -        0x23944cf2f  libobjcMsgSend16.dylib (973.1) <B6C0E14B-53AE-3E22-9ED5-1729C49F46F2> /usr/lib/objc/libobjcMsgSend16.dylib
+       0x23d14a000 -        0x23d15c8f7  com.apple.AppleDeviceQuerySupport (1.0 - 459.0.15) <5E705AD8-327F-3FE0-9A83-173570CE79AC> /System/Library/PrivateFrameworks/AppleDeviceQuerySupport.framework/Versions/A/AppleDeviceQuerySupport
+       0x23d972000 -        0x23d9ff83f  com.apple.AppleKeyStore (1.0 - 1.0) <7965DCDE-5074-391F-A878-324D84651857> /System/Library/PrivateFrameworks/AppleKeyStore.framework/Versions/A/AppleKeyStore
+       0x23e4b3000 -        0x23e4c7be3  com.apple.private.AppleMobileFileIntegrity-fmk (1.0 - 1) <76DA48C4-9F86-3D4B-BAE4-82B436938ABD> /System/Library/PrivateFrameworks/AppleMobileFileIntegrity.framework/Versions/A/AppleMobileFileIntegrity
+       0x23e4c8000 -        0x23e4e1633  com.apple.AppleMSG (1.0 - 1) <41BF3334-137D-3619-B482-1FB98C162FDA> /System/Library/PrivateFrameworks/AppleMSG.framework/Versions/A/AppleMSG
+       0x24021a000 -        0x24022bb9f  com.apple.AtomicsInternal (1.1.0 - 5027.0.64) <3B48B13C-EC92-3B98-A685-E7AF32FD42F3> /System/Library/PrivateFrameworks/AtomicsInternal.framework/Versions/A/AtomicsInternal
+       0x2402c3000 -        0x2402e0fef  com.apple.imgaudio.AudioAnalytics (1.0 - 1) <B01007F1-B7AF-3FFF-BDE2-8DF9913CCC84> /System/Library/PrivateFrameworks/AudioAnalytics.framework/Versions/A/AudioAnalytics
+       0x240bec000 -        0x240c3c7a7  com.apple.BackBoardHIDEventFoundation (1.0 - 1) <E43C4333-66A6-3453-84F6-B2EEFCFFEDD2> /System/Library/PrivateFrameworks/BackBoardHIDEventFoundation.framework/Versions/A/BackBoardHIDEventFoundation
+       0x240c3d000 -        0x240c8878f  com.apple.BackBoardHIDTouchEventProcessor (1.0 - 1) <CAB22CCA-C972-3E18-B0D5-5923BDDC9A55> /System/Library/PrivateFrameworks/BackBoardHIDTouchEventProcessor.framework/Versions/A/BackBoardHIDTouchEventProcessor
+       0x240d33000 -        0x240d46933  com.apple.biome.BiomeDSL (1.0 - 250.0.0.3) <F8DCC3F9-5846-35F6-BEF1-FBDDBFC389B1> /System/Library/PrivateFrameworks/BiomeDSL.framework/Versions/A/BiomeDSL
+       0x240d47000 -        0x240d4c63b  com.apple.biome.BiomeSync (1.0 - 250.0.0.3) <FE07B092-2187-38FC-A475-D904C6A2A45D> /System/Library/PrivateFrameworks/BiomeSync.framework/Versions/A/BiomeSync
+       0x24144c000 -        0x24144cf2f  libobjcMsgSend17.dylib (973.1) <07B4CF85-251B-301B-832B-20B315A59E19> /usr/lib/objc/libobjcMsgSend17.dylib
+       0x241850000 -        0x2420a862f  com.apple.BiomeLibrary (436.6) <0042911B-273E-30D9-B87D-8F143EF1EBE6> /System/Library/PrivateFrameworks/BiomeLibrary.framework/Versions/A/BiomeLibrary
+       0x24306b000 -        0x243144957  com.apple.biome.CascadeSets (1.0 - 250.0.0.3) <A0246CBA-8AEE-3A2A-9932-804EE71D5290> /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/CascadeSets
+       0x24516c000 -        0x2452bd2c3  com.apple.CollectionsInternal (1.2.0 - 5027.0.64) <42FFA870-2B08-331F-9B93-8D67E4A9AA1E> /System/Library/PrivateFrameworks/CollectionsInternal.framework/Versions/A/CollectionsInternal
+       0x245652000 -        0x24565f7a7  com.apple.ConnectedMode (1.0 - 1) <D390876B-3179-3BEC-9CF0-C8F57CCB3B76> /System/Library/PrivateFrameworks/ConnectedMode.framework/Versions/A/ConnectedMode
+       0x24944c000 -        0x24944cf2f  libobjcMsgSend18.dylib (973.1) <43E575B7-04DB-3999-A633-1A3B638BA6E3> /usr/lib/objc/libobjcMsgSend18.dylib
+       0x250ef2000 -        0x250f06f4b  com.apple.DeviceRecovery (1.0 - 1) <1A71D6DD-CAEC-393C-A79A-8CB6FB1A7E6E> /System/Library/PrivateFrameworks/DeviceRecovery.framework/Versions/A/DeviceRecovery
+       0x25144c000 -        0x25144cf2f  libobjcMsgSend19.dylib (973.1) <736F4D85-76F7-3B28-8D87-C07E8F7A0EF4> /usr/lib/objc/libobjcMsgSend19.dylib
+       0x257722000 -        0x257830a3f  libXTFontStaticRegistryData.dylib (351) <5EB06DF3-EA80-3B1A-9EE4-87170C7D2EC9> /System/Library/PrivateFrameworks/FontServices.framework/libXTFontStaticRegistryData.dylib
+       0x257831000 -        0x257833baf  com.apple.FontServices (1.0 - 1) <1095A112-9900-3801-AE96-12DDB7CBE5EC> /System/Library/PrivateFrameworks/FontServices.framework/Versions/A/FontServices
+       0x257835000 -        0x2578716b7  com.apple.FramePacing (1.0 - 1) <7E7531CC-3812-331E-BC31-4FD430AC45DA> /System/Library/PrivateFrameworks/FramePacing.framework/Versions/A/FramePacing
+       0x25944c000 -        0x25944cf2f  libobjcMsgSend20.dylib (973.1) <74E67C8B-6BCA-3184-A18E-A97F370052C6> /usr/lib/objc/libobjcMsgSend20.dylib
+       0x25b92c000 -        0x25be6e7b7  com.apple.Gestures (9127.0.84 - 9127.0.84) <722C0EA0-8210-3433-8D57-B9092BE776E2> /System/Library/PrivateFrameworks/Gestures.framework/Versions/A/Gestures
+       0x25ccf6000 -        0x25ccfbfb7  libGPUCompilerUtils.dylib (32023.921.5) <FFFE6EBE-FB56-3144-9F59-E6ECCA97D0C2> /System/Library/PrivateFrameworks/GPUCompiler.framework/Versions/32023/Libraries/libGPUCompilerUtils.dylib
+       0x25ccfc000 -        0x25cd3c6ff  libllvm-flatbuffers.dylib (32023.921.5) <613BEB0E-CB65-30BB-AF95-50F06C817D39> /System/Library/PrivateFrameworks/GPUCompiler.framework/Versions/32023/Libraries/libllvm-flatbuffers.dylib
+       0x26144c000 -        0x26144cf2f  libobjcMsgSend21.dylib (973.1) <CC0D732F-98E7-3888-9E15-70984DA2FB04> /usr/lib/objc/libobjcMsgSend21.dylib
+       0x26944c000 -        0x26944cf2f  libobjcMsgSend22.dylib (973.1) <85A60286-5DE3-32BA-B18C-2A498B065C88> /usr/lib/objc/libobjcMsgSend22.dylib
+       0x26a8d7000 -        0x26a9ca00f  com.apple.InstalledContentLibrary (1.0 - 1.0) <271E80B3-4E8C-3652-9B73-EF9CBEF8D7F7> /System/Library/PrivateFrameworks/InstalledContentLibrary.framework/Versions/A/InstalledContentLibrary
+       0x26f732000 -        0x26ffc54bf  com.apple.IntelligencePlatformLibrary (436.6) <9431DC2E-DC4F-3A48-BEE1-4BACF5B13FEE> /System/Library/PrivateFrameworks/IntelligencePlatformLibrary.framework/Versions/A/IntelligencePlatformLibrary
+       0x27144c000 -        0x27144cf2f  libobjcMsgSend23.dylib (973.1) <5452A0D2-6B19-39BE-ADDD-80B7BCDE3A98> /usr/lib/objc/libobjcMsgSend23.dylib
+       0x275e92000 -        0x275eeebb7  com.apple.MessageSecurity (1.0 - 341.0.17) <030ECE37-158D-3E06-89F2-9D3CC3A18D39> /System/Library/PrivateFrameworks/MessageSecurity.framework/Versions/A/MessageSecurity
+       0x2765ad000 -        0x276c6a107  com.apple.MIL (3600.16 - 3600.16.1) <C53AA54F-53DF-30A7-A411-1D4EB634EA5D> /System/Library/PrivateFrameworks/MIL.framework/Versions/A/MIL
+       0x2791f2000 -        0x2791fd32b  com.apple.gpusw.MTL3On4 (1.0 - 1) <5738514A-41DE-3AEB-A3FE-767D60C8B457> /System/Library/PrivateFrameworks/MTL3On4.framework/Versions/A/MTL3On4
+       0x27944c000 -        0x27944cf2f  libobjcMsgSend24.dylib (973.1) <94BBF2D6-722B-350D-8557-4D25A8E8D53A> /usr/lib/objc/libobjcMsgSend24.dylib
+       0x280021000 -        0x28002af6b  com.apple.sear.NSPredicateSecurityPolicy (1.0 - 1) <031A156F-8BB6-36B2-96D2-4CCFF1D3174C> /System/Library/PrivateFrameworks/NSPredicateSecurityPolicy.framework/Versions/A/NSPredicateSecurityPolicy
+       0x2813d2000 -        0x2813fd067  com.apple.OSEligibility (446.1.3) <B05AB25F-83C0-3574-B5F3-A4E373624E77> /System/Library/PrivateFrameworks/OSEligibility.framework/Versions/A/OSEligibility
+       0x28144c000 -        0x28144cf2f  libobjcMsgSend25.dylib (973.1) <35481387-5A8E-3AE4-86A6-94CEB3CC8726> /usr/lib/objc/libobjcMsgSend25.dylib
+       0x2923a2000 -        0x2923fa357  com.apple.ParsingInternal (0.0.1 - 5027.0.64) <408A4BEF-67E6-3328-8017-54F85C8B6C74> /System/Library/PrivateFrameworks/ParsingInternal.framework/Versions/A/ParsingInternal
+       0x294f16000 -        0x294f293af  com.apple.accessibility.PhotosensitivityProcessing (1.0 - 1) <5378D4F0-1832-3522-8FE3-25D775DF12BA> /System/Library/PrivateFrameworks/PhotosensitivityProcessing.framework/Versions/A/PhotosensitivityProcessing
+       0x2965f0000 -        0x29666f00f  com.apple.PoirotSchematizer (1.0 - 1) <8F63B1C9-E53A-3D4F-8B12-665FCF11937E> /System/Library/PrivateFrameworks/PoirotSchematizer.framework/Versions/A/PoirotSchematizer
+       0x296670000 -        0x2966acabf  com.apple.PoirotSQLite (1.0 - 1) <C14FEE63-4DFB-3C71-BB15-892F2BFEEF7B> /System/Library/PrivateFrameworks/PoirotSQLite.framework/Versions/A/PoirotSQLite
+       0x2966ad000 -        0x2966e06e7  com.apple.PoirotUDFs (1.0 - 1) <B0AA646F-EDC3-3B2E-B85E-56C9BCFB77D2> /System/Library/PrivateFrameworks/PoirotUDFs.framework/Versions/A/PoirotUDFs
+       0x29808f000 -        0x2981ed29b  com.apple.ProDisplayLibrary (11.0.21 - 11.0.21) <A1059C52-147F-3275-BE00-CA7CA60D4980> /System/Library/PrivateFrameworks/ProDisplayLibrary.framework/Versions/A/ProDisplayLibrary
+       0x298d5d000 -        0x298d65023  com.apple.ReflectionInternal (1.0.0 - 5027.0.64) <84A8F5C2-03F0-378B-BDA5-7670124DCA98> /System/Library/PrivateFrameworks/ReflectionInternal.framework/Versions/A/ReflectionInternal
+       0x29944c000 -        0x29944cf2f  libobjcMsgSend26.dylib (973.1) <9E0C8664-E7F4-39D1-AAFC-BD92B255E4E8> /usr/lib/objc/libobjcMsgSend26.dylib
+       0x29a339000 -        0x29a34c3c7  com.apple.RuntimeInternal (1.0.0 - 5027.0.64) <4E29AB5B-73BC-35D0-942E-066A3B19ABC6> /System/Library/PrivateFrameworks/RuntimeInternal.framework/Versions/A/RuntimeInternal
+       0x29d7ce000 -        0x29d84221f  com.apple.SILManager (67.13 - 67.13) <42D7A7C9-BB41-3A05-BD71-72D9809D1002> /System/Library/PrivateFrameworks/SILManager.framework/Versions/A/SILManager
+       0x2a144c000 -        0x2a144cf2f  libobjcMsgSend27.dylib (973.1) <FD424935-55A9-3650-955A-EED3441A1D19> /usr/lib/objc/libobjcMsgSend27.dylib
+       0x2a944c000 -        0x2a944cf2f  libobjcMsgSend28.dylib (973.1) <09BA7B97-7DF7-3C7F-932A-B6847662FC49> /usr/lib/objc/libobjcMsgSend28.dylib
+       0x2aa4ae000 -        0x2aa4ddcbf  com.apple.security.SwiftASN1Internal (1.0 - 1) <D96B3E7B-6235-3989-ACCF-1B77C7BD3295> /System/Library/PrivateFrameworks/SwiftASN1Internal.framework/Versions/A/SwiftASN1Internal
+       0x2add57000 -        0x2adda776f  com.apple.tightbeam (1.0 - 631.0.5) <1B7DA405-96F3-3EFA-9653-3DE645E0E097> /System/Library/PrivateFrameworks/Tightbeam.framework/Versions/A/Tightbeam
+       0x2b144c000 -        0x2b144cf2f  libobjcMsgSend29.dylib (973.1) <36D5BA3F-2139-30B0-8558-556764BE9813> /usr/lib/objc/libobjcMsgSend29.dylib
+       0x2b3ed5000 -        0x2b3ed60ff  com.apple.VideoToolboxParavirtualizationSupport (71.0.14 - 71.0.14) <310A3A22-A78C-3557-8CCE-A975490C1D02> /System/Library/PrivateFrameworks/VideoToolboxParavirtualizationSupport.framework/Versions/A/VideoToolboxParavirtualizationSupport
+       0x2b944c000 -        0x2b944cf2f  libobjcMsgSend30.dylib (973.1) <9F05564A-9D12-372C-98FC-E9F0E6BE4F04> /usr/lib/objc/libobjcMsgSend30.dylib
+       0x2bc9ad000 -        0x2bca47033  libAppleArchive.dylib (469) <D62616FF-0C2C-343D-AD67-0FDEEFCF52B9> /usr/lib/libAppleArchive.dylib
+       0x2bd137000 -        0x2bd14100b  libCoreEntitlements.dylib (94) <8F204F37-23D4-3AAB-AD38-57B3D8CB73EC> /usr/lib/libCoreEntitlements.dylib
+       0x2bd29a000 -        0x2bd3ac26f  libcrypto.46.dylib (111.0.5) <E2D5A8B9-C4E6-38A5-91F5-450D4A4152FD> /usr/lib/libcrypto.46.dylib
+       0x2bd646000 -        0x2bd660aff  libhvf.dylib (14) <EB152559-8134-3C36-AB2F-446A5A909BD1> /usr/lib/libhvf.dylib
+       0x2be15f000 -        0x2be1652bb  libReverseProxyDevice.dylib (114) <9227B01D-28CA-380B-B95A-8C1B10AEAC73> /usr/lib/libReverseProxyDevice.dylib
+       0x2be166000 -        0x2be16cfe5  libRosetta.dylib (385) <E359944B-D230-33F9-A04E-0C3B17C3326E> /usr/lib/libRosetta.dylib
+       0x2be251000 -        0x2be28800f  libssl.48.dylib (111.0.5) <563A2AF9-97E5-3D1E-80B8-954B9DC97E59> /usr/lib/libssl.48.dylib
+       0x2be2c2000 -        0x2be2fa007  libswiftPrespecialized.dylib (0) <6B5CC7BC-073A-3B54-B913-1C7857DD14EE> /usr/lib/libswiftPrespecialized.dylib
+       0x2be347000 -        0x2be34fad3  libTLE.dylib (94) <6968082F-CBF6-356D-9B29-82B9FEC2FC2D> /usr/lib/libTLE.dylib
+       0x2be5c8000 -        0x2be5c8669  libswift_Builtin_float.dylib (6.4.0.31.5) <9CB6F7D2-F14F-3C51-9E30-EDCB674B970E> /usr/lib/swift/libswift_Builtin_float.dylib
+       0x2be5c9000 -        0x2be6559c7  libswift_Concurrency.dylib (6.4.0 - 6.4.0.31.5) <F2F652DD-14B0-35E2-BC9D-47FE153D579E> /usr/lib/swift/libswift_Concurrency.dylib
+       0x2be656000 -        0x2be658ab3  libswift_DarwinFoundation1.dylib (428.0.10) <8C802776-95AE-3ED7-BF1C-D9EB9A7DB358> /usr/lib/swift/libswift_DarwinFoundation1.dylib
+       0x2be659000 -        0x2be659d2b  libswift_DarwinFoundation2.dylib (428.0.10) <A659D9FC-0554-33A6-9F7A-479B268F8993> /usr/lib/swift/libswift_DarwinFoundation2.dylib
+       0x2be65a000 -        0x2be65a79f  libswift_DarwinFoundation3.dylib (428.0.10) <48A04494-256B-3CE1-88A6-79E4B8E9E7B8> /usr/lib/swift/libswift_DarwinFoundation3.dylib
+       0x2be65d000 -        0x2be6f58b7  libswift_RegexParser.dylib (6.4.0 - 6.4.0.31.5) <1E7009E2-B2B6-3A40-99BC-4C2D9DF18C76> /usr/lib/swift/libswift_RegexParser.dylib
+       0x2be6f8000 -        0x2be7864ef  libswift_StringProcessing.dylib (6.4.0 - 6.4.0.31.5) <DA701840-2499-3238-AF4F-4AD3C96C6C55> /usr/lib/swift/libswift_StringProcessing.dylib
+       0x2be7e9000 -        0x2be7fa837  libswiftDistributed.dylib (6.4.0 - 6.4.0.31.5) <E5CE2297-9720-3FC8-BD0E-647F8C4F6AF0> /usr/lib/swift/libswiftDistributed.dylib
+       0x2be80f000 -        0x2be82812f  libswiftObservation.dylib (6.4.0 - 6.4.0.31.5) <01EDB949-A7D9-361F-812D-4C21E3F6537E> /usr/lib/swift/libswiftObservation.dylib
+       0x2be834000 -        0x2be83e427  libswiftRegexBuilder.dylib (6.4.0 - 6.4.0.31.5) <C15CF9E4-1D44-3567-A47E-07340F9F95A7> /usr/lib/swift/libswiftRegexBuilder.dylib
+       0x2be9b8000 -        0x2be9caf0f  libswiftSynchronization.dylib (6.4.0 - 6.4.0.31.5) <523DD911-05CA-39CE-A98A-27EAB3BA63A4> /usr/lib/swift/libswiftSynchronization.dylib
+       0x2be9cc000 -        0x2be9e9ea7  libswiftSystem.dylib (5027.0.67) <8131BBA8-DF06-3EA3-97AE-E7A0646F18BB> /usr/lib/swift/libswiftSystem.dylib
+       0x2beb55000 -        0x2beb5875b  libsystem_darwindirectory.dylib (129.0.1) <61264923-2AA5-3658-B8C4-550C71E9D4B3> /usr/lib/system/libsystem_darwindirectory.dylib
+       0x2beb59000 -        0x2beb63d9b  libsystem_eligibility.dylib (446.1.3) <EDDE8E9C-A2CF-3931-BBB3-321CB852EB30> /usr/lib/system/libsystem_eligibility.dylib
+       0x2beb64000 -        0x2beb6d42b  libsystem_sanitizers.dylib (32) <7138ED99-7AA0-34EA-B35B-20EF6ADB1EED> /usr/lib/system/libsystem_sanitizers.dylib
+       0x2beb6e000 -        0x2beb6ea13  libsystem_trial.dylib (511) <6AE48824-EC44-3A8C-B501-BE57DBE892E7> /usr/lib/system/libsystem_trial.dylib
+       0x2c144c000 -        0x2c144cf2f  libobjcMsgSend31.dylib (973.1) <0985E20F-78C3-3466-A2B2-DBB95F7104A3> /usr/lib/objc/libobjcMsgSend31.dylib
+       0x2c944c000 -        0x2c944cf2f  libobjcMsgSend32.dylib (973.1) <0D309D58-D576-3E5D-AD4B-6D55AB491702> /usr/lib/objc/libobjcMsgSend32.dylib
+       0x2d144c000 -        0x2d144cf2f  libobjcMsgSend33.dylib (973.1) <346E0484-48FA-369B-8A64-93B5F5341CFE> /usr/lib/objc/libobjcMsgSend33.dylib
+       0x2d944c000 -        0x2d944cf2f  libobjcMsgSend34.dylib (973.1) <6A31F809-BCBE-3E01-A367-E91FDACCE324> /usr/lib/objc/libobjcMsgSend34.dylib

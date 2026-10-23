@@ -1,0 +1,19 @@
+Cleanup at Thu Oct 22 18:02:19 2026; no own scale gate running; only owned GATE_RUN_DIR fixtures
+REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-Cau7pc allocated_bytes=9743536128
+REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-SHFZN9 allocated_bytes=1271988224
+OWN_ALLOCATED_BYTES_REMOVED=11015524352
+AFTER_400_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-lHSztX allocated_bytes=2518560768
+OWN_ALLOCATED_BYTES_REMOVED_THIS_PASS=2518560768
+AFTER_967_OWN_STOP_NO_REMAINING_CHILDREN_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-ouCayQ allocated_bytes=15031005184
+OWN_ALLOCATED_BYTES_REMOVED_THIS_PASS=15031005184
+AFTER_400_EXIT_101_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-s7OIN7 allocated_bytes=1317216256
+OWN_ALLOCATED_BYTES_REMOVED_THIS_PASS=1317216256
+AFTER_PROFILE_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-lS7QWZ allocated_bytes=1317335040
+AFTER_WAKE_COALESCED_400_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-EaW5oC allocated_bytes=1409462272
+OWN_INACTIVE_DEBUG_CACHE_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d/debug allocated_du_bytes=1049636864; release gate70023 continues
+AFTER_STAGED_400_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-7bUCh5 allocated_du_bytes=1015156736
+AFTER_FINAL_967_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-x5lXMZ allocated_du_bytes=2591346688
+AFTER_VERIFIED_967_EXIT_101_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-HQsxMW allocated_du_bytes=2749071360
+AFTER_DIAGNOSTIC_967_EXIT_101_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-A3x5xu allocated_du_bytes=1088417792
+AFTER_VERIFIED_400_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-wfxC9D allocated_du_bytes=1033752576
+AFTER_CORRECTED_MAXIMUM_967_EXIT_0_REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-7NsSfq allocated_du_bytes=2639581184

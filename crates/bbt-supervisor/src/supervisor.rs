@@ -26,10 +26,15 @@ const MAX_INPUT_IDS: usize = 4096;
 const TICK: Duration = Duration::from_millis(20);
 const CALL_TIMEOUT: Duration = Duration::from_secs(10);
 const OUTPUT_DELAY: Duration = Duration::from_millis(2);
+// A ready PTY can spin the actor much faster than child status can change.
+// Keep waitpid work bounded per child; EOF and kill deadlines still wake it.
+const CHILD_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
 pub struct Config {
     /// None is the v0.1 in-process transport; Some enables the same protocol on Unix IPC.
     pub socket_path: Option<PathBuf>,
+    /// Required for AttachRing. Supervisor-wide, outside all seat storage units.
+    pub journal_directory: Option<PathBuf>,
     pub max_seats: usize,
     /// A partially written input times out as unknown; it is never resubmitted.
     pub write_timeout: Duration,
@@ -39,6 +44,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             socket_path: None,
+            journal_directory: None,
             max_seats: 1024,
             write_timeout: Duration::from_secs(5),
         }
@@ -77,7 +83,10 @@ impl Supervisor {
         getrandom::fill(&mut capability).map_err(io::Error::other)?;
         let (tx, rx) = mpsc::sync_channel(CHANNEL_CAPACITY);
         let mut actor = Actor {
-            capture_writer: CaptureWriter::start(waker.clone())?,
+            capture_writer: CaptureWriter::start(
+                waker.clone(),
+                config.journal_directory.as_deref(),
+            )?,
             poll,
             socket,
             config,
@@ -305,6 +314,14 @@ struct PendingIo {
     request_id: Ulid,
     reply: Option<mpsc::SyncSender<Result<Reply, Failure>>>,
     response: CaptureResponse,
+}
+
+impl Drop for Actor {
+    fn drop(&mut self) {
+        // Drop seat handles while the capture writer is still alive. Their
+        // pending output/Close jobs must precede the writer's shutdown flush.
+        self.seats.clear();
+    }
 }
 
 impl Actor {
@@ -583,6 +600,12 @@ impl Actor {
                 directory,
                 settings,
             } => {
+                if self.config.journal_directory.is_none() {
+                    return Err(Failure::new(
+                        FailureCode::Invalid,
+                        "JournalDirectoryRequired: capture requires Config.journal_directory",
+                    ));
+                }
                 let seat_id = seat;
                 let seat = self.seat_mut(seat_id, generation)?;
                 if !directory.is_absolute() {
@@ -647,7 +670,7 @@ impl Actor {
                 let seat = self.seat_mut(attachment.seat, attachment.generation)?;
                 seat.check_writer(client, &attachment)?;
                 seat.check_live()?;
-                seat.flush_output().map_err(pty_error)?;
+                seat.flush_output().map_err(capture_error)?;
                 Ok(Reply::InputContext {
                     context: seat.input_context(),
                 })
@@ -662,7 +685,7 @@ impl Actor {
                 let seat = self.seat_mut(attachment.seat, attachment.generation)?;
                 seat.check_writer(client, &attachment)?;
                 seat.check_live()?;
-                seat.flush_output().map_err(pty_error)?;
+                seat.flush_output().map_err(capture_error)?;
                 if !seat.inputs.contains_key(&input_id)
                     && (seat.input_context() != expected
                         || !expected.settled
@@ -708,7 +731,7 @@ impl Actor {
                         "ring full: checkpoint required before resize",
                     ));
                 }
-                seat.flush_output().map_err(pty_error)?;
+                seat.flush_output().map_err(capture_error)?;
                 seat.master.resize(pty_size(size)).map_err(pty_error)?;
                 seat.size = size;
                 let sequence = seat.next_seq;
@@ -1016,6 +1039,7 @@ struct Seat {
     last_input_ms: u64,
     operator_draft: bool,
     exited: Option<ExitInfo>,
+    next_child_check: Instant,
     exit_published: bool,
     terminate_at: Option<Instant>,
     termination_escalated: bool,
@@ -1072,6 +1096,7 @@ impl Seat {
             last_input_ms: 0,
             operator_draft: false,
             exited: None,
+            next_child_check: Instant::now(),
             exit_published: false,
             terminate_at: None,
             termination_escalated: false,
@@ -1272,7 +1297,7 @@ impl Seat {
 
     fn capture(&mut self, event: Event) -> io::Result<()> {
         if let Some(ring) = self.ring.as_mut() {
-            ring.append_event(&event).map_err(io::Error::other)?;
+            ring.append_event(&event)?;
         }
         self.sequence();
         self.pending_event = Some(event);
@@ -1284,13 +1309,25 @@ impl Seat {
             return Ok(());
         }
         let bytes = std::mem::replace(&mut self.output, Vec::with_capacity(OUTPUT_CHUNK_BYTES));
-        self.output_since = None;
-        self.capture(Event::Output {
+        let event = Event::Output {
             seat: self.spec.seat,
             generation: self.spec.generation,
             seq: self.next_seq,
             bytes,
-        })
+        };
+        if let Some(ring) = self.ring.as_mut()
+            && let Err(error) = ring.append_event(&event)
+        {
+            let Event::Output { bytes, .. } = event else {
+                unreachable!()
+            };
+            self.output = bytes;
+            return Err(error);
+        }
+        self.output_since = None;
+        self.sequence();
+        self.pending_event = Some(event);
+        Ok(())
     }
 
     fn tick(&mut self, actor: &mut Actor) -> io::Result<()> {
@@ -1309,16 +1346,17 @@ impl Seat {
         {
             self.writer = None;
         }
-        if self.exited.is_none() {
+        let now = Instant::now();
+        let escalate = !self.termination_escalated && self.terminate_at.is_some_and(|at| now >= at);
+        if self.exited.is_none() && (now >= self.next_child_check || escalate) {
+            self.next_child_check = now + CHILD_POLL_INTERVAL;
             if let Some(status) = self.child.try_wait()? {
                 self.exited = Some(ExitInfo {
                     code: status.exit_code(),
                     signal: status.signal().map(str::to_owned),
                 });
                 self.read_ready = true;
-            } else if !self.termination_escalated
-                && self.terminate_at.is_some_and(|at| Instant::now() >= at)
-            {
+            } else if escalate {
                 signal(self.pid, libc::SIGKILL)?;
                 self.termination_escalated = true;
             }
@@ -1345,6 +1383,18 @@ impl Seat {
                 .as_ref()
                 .map_or(OUTPUT_CHUNK_BYTES, CaptureHandle::capture_capacity)
                 - self.output.len();
+            if capacity == 0 {
+                // A full frame can survive a WouldBlock admission race. A
+                // read(fd, _, 0) would return zero without real PTY EOF.
+                if let Err(error) = self.flush_output() {
+                    if error.kind() == io::ErrorKind::WouldBlock {
+                        return Ok(());
+                    }
+                    return Err(error);
+                }
+                self.publish_pending(actor);
+                continue;
+            }
             // Darwin commonly returns 1 KiB per PTY read. Coalesce currently
             // available bytes into one bounded record, without waiting for more.
             let mut count = 0;
@@ -1371,6 +1421,7 @@ impl Seat {
                 self.read_ready = false;
                 if read == 0 || error.raw_os_error() == Some(libc::EIO) {
                     self.eof = true;
+                    self.next_child_check = Instant::now();
                 } else if error.kind() != io::ErrorKind::WouldBlock {
                     return Err(error);
                 }
@@ -1380,7 +1431,12 @@ impl Seat {
                 self.output.extend_from_slice(&bytes[..count]);
                 self.output_since.get_or_insert_with(Instant::now);
                 if count == capacity || self.ring.is_none() {
-                    self.flush_output()?;
+                    if let Err(error) = self.flush_output() {
+                        if error.kind() == io::ErrorKind::WouldBlock {
+                            return Ok(());
+                        }
+                        return Err(error);
+                    }
                     self.publish_pending(actor);
                 }
                 continue;
@@ -1392,13 +1448,19 @@ impl Seat {
             .is_some_and(|at| at.elapsed() >= OUTPUT_DELAY || self.eof || self.exited.is_some())
             && self.ring.as_ref().is_none_or(CaptureHandle::can_capture)
         {
-            self.flush_output()?;
+            if let Err(error) = self.flush_output() {
+                if error.kind() == io::ErrorKind::WouldBlock {
+                    return Ok(());
+                }
+                return Err(error);
+            }
             self.publish_pending(actor);
         }
         if let Some(status) = self.exited.clone()
             && !self.read_ready
             && (self.ring.is_some() || self.pending_event.is_none())
             && !self.exit_published
+            && self.output.is_empty()
             && self.ring.as_ref().is_none_or(CaptureHandle::can_control)
         {
             let seq = self.next_seq;
@@ -1452,6 +1514,13 @@ fn pty_size(size: SeatSize) -> PtySize {
     }
 }
 
+fn capture_error(error: io::Error) -> Failure {
+    if error.kind() == io::ErrorKind::WouldBlock {
+        Failure::new(FailureCode::Busy, "capture admission paused")
+    } else {
+        pty_error(error)
+    }
+}
 fn pty_error(error: impl std::fmt::Display) -> Failure {
     Failure::new(FailureCode::Io, error.to_string())
 }
@@ -1476,4 +1545,58 @@ fn signal(pid: u32, signal: libc::c_int) -> io::Result<()> {
         return Err(io::Error::last_os_error());
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod capture_read_tests {
+    use super::*;
+
+    #[test]
+    fn a_full_retained_capture_buffer_is_not_pty_eof() {
+        let root = tempfile::tempdir().unwrap();
+        let journal = root.path().join("journal");
+        let poll = Poll::new().unwrap();
+        let wake = Arc::new(Waker::new(poll.registry(), WAKE).unwrap());
+        let capture_writer = CaptureWriter::start(wake, Some(&journal)).unwrap();
+        let (_tx, rx) = mpsc::sync_channel(CHANNEL_CAPACITY);
+        let mut actor = Actor {
+            poll,
+            socket: None,
+            config: Config {
+                journal_directory: Some(journal),
+                ..Default::default()
+            },
+            capability: [0; 32],
+            boot: Ulid::new(),
+            rx,
+            clients: HashMap::new(),
+            routes: HashMap::new(),
+            seats: BTreeMap::new(),
+            active: None,
+            next_token: 2,
+            pending_io: Vec::new(),
+            capture_writer,
+        };
+        let mut spec = LaunchSpec::new("/bin/sleep", root.path());
+        spec.args = vec!["60".into()];
+        let seat_id = spec.seat;
+        let token = actor.token();
+        let mut seat = Seat::spawn(spec, token, actor.poll.registry()).unwrap();
+        let ring =
+            crate::ring::Ring::open(&root.path().join("ring"), seat_id, 1, 0, Default::default())
+                .unwrap();
+        let handle = actor.capture_writer.register(ring);
+        // Model a full coalesced frame retained after append returned WouldBlock.
+        seat.output.resize(handle.capture_capacity(), b'x');
+        seat.output_since = Some(Instant::now());
+        seat.ring = Some(handle);
+        seat.read_ready = true;
+        seat.tick(&mut actor).unwrap();
+        assert!(!seat.eof, "zero-length read invented EOF on a live PTY");
+        assert!(
+            seat.registered,
+            "live PTY was deregistered after backpressure"
+        );
+        assert!(seat.output.is_empty(), "retained frame was not admitted");
+    }
 }

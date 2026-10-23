@@ -1,0 +1,73 @@
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-supervisor', '--lib']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `release` profile [optimized] target(s) in 20.56s
+     Running unittests src/lib.rs (target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1)
+
+running 14 tests
+test ring::writer::crash_tests::capture_crash_child ... ignored, private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ignored, release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture
+test ring::journal::tests::metadata_only_debt_keeps_the_five_second_full_flush_deadline ... ok
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+test ring::journal::tests::bad_crc_and_oversized_header_never_commit_a_later_tick ... ok
+test ring::journal::tests::old_segment_waits_for_every_sealed_projection_and_checkpoint ... ok
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test ring::writer::tests::undurable_admission_budget_pauses_until_a_full_flush_returns_credit ... ok
+test ring::journal::tests::legacy_checkpoint_publication_offsets_remain_readable ... ok
+test ring::writer::tests::orderly_shutdown_leaves_a_durable_journal_that_rebuilds_the_projection ... ok
+test ring::journal::tests::checkpoint_carries_offset_and_rotated_tail_replays_without_effects ... ok
+test ring::journal::tests::crash_rebuilds_two_seats_only_through_the_last_tick_and_rejects_torn_suffix ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+
+test result: ok. 12 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.30s
+
+EXIT=0; SECONDS=21.055
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'capture_busy', '--', '--nocapture']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 1m 11s
+     Running tests/capture_busy.rs (target/w1-2d/release/deps/capture_busy-4f4a6b2e9942357c)
+
+running 1 test
+test capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+EXIT=0; SECONDS=71.988
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'logic', 'ring_seals_twenty_mib', '--', '--nocapture', '--test-threads=1']
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 7.35s
+     Running tests/logic.rs (target/w1-2d/release/deps/logic-e6b914197f57fb38)
+
+running 1 test
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... 20 MiB writer completed BEFORE logic restart: {"bytes":20971520,"calls":321,"elapsed_s":0.8067501249897759,"max_write_s":0.10370279100607148,"mib_s":24.790823553022022,"p99_write_s":0.09031454200157896}
+capture profile BEFORE logic restart: CaptureStats { records: 1305, encode_ns: 52753717, hot_write_ns: 16667642, sync_ns: 56898957, marker_ns: 10357874, cold_ns: 119421916, seals: 5, max_seal_ns: 60148875, queued_bytes: 0, peak_queue_bytes: 1775520, queue_full_count: 14, ordered_commits: 37, durable_commits: 10, writer_busy_ns: 467445198, commit_rounds: 29, commit_p99_ns: 5000000, commit_max_ns: 4815167, undurable_bytes: 16404, peak_undurable_bytes: 4715520, durable_pauses: 0, durable_rounds: 7 }
+cold replay 278.146125ms: 4207616 bytes, reads 231.438581ms, checkpoint writes 0ns
+cold replay 473.255458ms: 8398848 bytes, reads 389.654466ms, checkpoint writes 0ns
+cold replay 775.034ms: 12590080 bytes, reads 653.868095ms, checkpoint writes 0ns
+cold replay 1.071611333s: 16781312 bytes, reads 898.108997ms, checkpoint writes 0ns
+cold replay 1.285330167s: 20971520 bytes, reads 1.067763633s, checkpoint writes 0ns
+20 MiB cold replay startup: 1.300724625s
+cold replay 4.550325375s: 25179164 bytes, reads 1.311104513s, checkpoint writes 6.81225ms
+cold replay 7.778383375s: 29370396 bytes, reads 1.454262554s, checkpoint writes 6.81225ms
+cold replay 11.006955167s: 33561628 bytes, reads 1.573766092s, checkpoint writes 6.81225ms
+cold replay 14.2308455s: 37752860 bytes, reads 1.708465462s, checkpoint writes 6.81225ms
+cold replay 17.537896333s: 41943068 bytes, reads 1.916040926s, checkpoint writes 6.81225ms
+complete raw capture: 20971548 bytes, SHA-256 77553a799001eccf7d30dadb0cec39fbbbf13b0aef4ab9d45303445a67441bcb, no gap
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 18.62s
+
+EXIT=0; SECONDS=26.253
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-supervisor', '--lib', 'capture_sigkill', '--', '--ignored', '--nocapture']
+    Finished `release` profile [optimized] target(s) in 0.39s
+     Running unittests src/lib.rs (target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1)
+
+running 1 test
+{"admitted":6080,"admitted_loss":384,"admitted_tick_bytes":512,"coalescing_limit":16384,"committed":5696,"crc_errors":0,"measured_pty_buffer":1024,"pre_capture_tail":64,"seat":"01M5K6E7H80V4M5R5AACAK74BG","signal":"SIGKILL","written":6144}
+{"admitted":5696,"admitted_loss":384,"admitted_tick_bytes":512,"coalescing_limit":16384,"committed":5312,"crc_errors":0,"measured_pty_buffer":1024,"pre_capture_tail":64,"seat":"01M5K6E7HTDG3NZF561AK2QJ5J","signal":"SIGKILL","written":5760}
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.34s
+
+EXIT=0

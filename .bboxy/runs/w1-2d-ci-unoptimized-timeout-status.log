@@ -1,0 +1,45 @@
+[
+  {
+    "sha": "08b3b240e6010010b20b8f2804383ae244992720",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bbt-mux",
+      "--lib",
+      "--locked"
+    ],
+    "exit": 0,
+    "wall_seconds": 38.68857941700844,
+    "child_pid": 34795
+  },
+  {
+    "sha": "08b3b240e6010010b20b8f2804383ae244992720",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bboxy450-term",
+      "--locked",
+      "--test",
+      "cockpit",
+      "--test",
+      "custody",
+      "--",
+      "--nocapture"
+    ],
+    "exit": 0,
+    "wall_seconds": 122.94816745800199,
+    "child_pid": 36426
+  },
+  {
+    "sha": "08b3b240e6010010b20b8f2804383ae244992720",
+    "command": [
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "exit": 101,
+    "wall_seconds": 803.5317582919961,
+    "child_pid": 39711
+  }
+]

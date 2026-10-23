@@ -1,0 +1,33 @@
+SOURCE d858b1b00b795e0b23080ca580902927dfaf41dd
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'gates_seats', 'gate_memory', '--', '--ignored', '--nocapture', '--test-threads=1']
+GATE_SEATS=400 GATE_RATE=32kB/s GATE_SECONDS=60; fixture key, no production custody
+OWN_CARGO_PID=65283
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 2.36s
+     Running tests/gates_seats.rs (target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0)
+
+running 1 test
+test gate_memory ... GATE spawn progress=25/400 elapsed_s=1.053
+GATE spawn progress=50/400 elapsed_s=2.697
+GATE spawn progress=75/400 elapsed_s=4.673
+GATE spawn progress=100/400 elapsed_s=6.255
+GATE spawn progress=125/400 elapsed_s=8.051
+GATE spawn progress=150/400 elapsed_s=11.836
+GATE spawn progress=175/400 elapsed_s=14.951
+GATE spawn progress=200/400 elapsed_s=20.325
+GATE spawn progress=225/400 elapsed_s=22.335
+GATE spawn progress=250/400 elapsed_s=24.239
+GATE spawn progress=275/400 elapsed_s=26.200
+GATE spawn progress=300/400 elapsed_s=28.722
+GATE spawn progress=325/400 elapsed_s=31.166
+GATE spawn progress=350/400 elapsed_s=33.902
+GATE spawn progress=375/400 elapsed_s=37.203
+GATE spawn progress=400/400 elapsed_s=39.845
+GATE capture seats=400 load_wall_s=60.742 writer_busy_fraction=0.4287 busy_replies=0 heartbeat_max_ms=447.872 commit_p99_upper_ms=10.000 commit_max_ms=37.964 durable_rounds=1228 durable_pauses=1 peak_undurable_bytes=16760922
+GATE retained owned fixture /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-EaW5oC
+GATE memory value=866.094 unit=MiB budget=none MEASURED ptmx_max=999 seats=400 rate=32kB/s load_s=60 baseline_mib=12.1 peak_mib=866.1 per_seat_kib=2186.2 spawn_s=39.8 sample_seat_records=8019 sync_s=0.0 marker_s=0.0 sample_seat_full=462 disk_peak_mib=1263.0 observed_s=100.646 writer_busy_s=40.138 writer_s_per_wall_s=0.399 commit_rounds=5908 commit_p99_upper_ms=10.000 commit_max_ms=37.964 logic_alive=true
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 101.27s
+
+CHILD_EXIT=0; WALL_SECONDS=103.976

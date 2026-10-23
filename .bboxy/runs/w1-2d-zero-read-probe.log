@@ -1,0 +1,2 @@
+Owned PTY slave remained open. read(master,0)=b''; after write(slave,x), read(master,1)=b'x'. A zero-capacity read returns0 without actual EOF.
+Source suspicion: Seat::tick computes capacity=capture_capacity-output.len(); a retained full output buffer after WouldBlock makes capacity0, and the existing read0 branch sets eof=true. This is a candidate regression to verify, not a proven attribution of the scale cleanup error.

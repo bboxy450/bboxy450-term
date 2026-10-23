@@ -7,6 +7,8 @@
 set -eu
 # Disk is tight: gates need no incremental cache and no debug info (about half the target size).
 export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}" CARGO_PROFILE_DEV_DEBUG="${CARGO_PROFILE_DEV_DEBUG:-0}" CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
+# Bulk replay/render checks need O1 inside the startup budget; keep debug guards on.
+export CARGO_PROFILE_DEV_OPT_LEVEL="${CARGO_PROFILE_DEV_OPT_LEVEL:-1}" CARGO_PROFILE_TEST_OPT_LEVEL="${CARGO_PROFILE_TEST_OPT_LEVEL:-1}" CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true
 sh scripts/layering.sh
 cargo build --workspace --locked
 cargo clippy --workspace --all-targets --locked -- -D warnings

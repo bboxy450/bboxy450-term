@@ -1,0 +1,72 @@
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-supervisor', '--lib', '--', '--nocapture']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `release` profile [optimized] target(s) in 11.41s
+     Running unittests src/lib.rs (target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1)
+/Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1: replacing existing signature
+
+running 7 tests
+test ring::writer::crash_tests::capture_crash_child ... ignored, private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ignored, release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test ring::writer::tests::undurable_admission_budget_pauses_until_a_full_flush_returns_credit ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+
+test result: ok. 5 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.28s
+
+EXIT 0
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'logic', '--test', 'capture_busy', '--', '--nocapture', '--test-threads=1']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+warning: unused import: `Config`
+  --> crates/bbt-mux/tests/capture_busy.rs:13:21
+   |
+13 |     Action, Client, Config, Event, Failure, FailureCode, LaunchSpec, Reply, Supervisor, Ulid,
+   |                     ^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `bbt-mux` (test "capture_busy") generated 1 warning (run `cargo fix --test "capture_busy" -p bbt-mux` to apply 1 suggestion)
+    Finished `release` profile [optimized] target(s) in 51.82s
+     Running tests/capture_busy.rs (target/w1-2d/release/deps/capture_busy-aea4365cb6f6f61e)
+/Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/capture_busy-aea4365cb6f6f61e: replacing existing signature
+
+running 1 test
+test capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.40s
+
+     Running tests/logic.rs (target/w1-2d/release/deps/logic-e6ee789592b67366)
+/Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/logic-e6ee789592b67366: replacing existing signature
+
+running 11 tests
+test a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_identity ... ok
+test external_logic_fixture ... ignored, subprocess fixture, invoked by the hard-kill acceptance test
+test hard_killed_separate_logic_process_recovers_the_same_zsh_view ... ok
+test logic_reconnect_keeps_same_supervisor_child_and_exact_screen ... ok
+test real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap ... ok
+test ring_capture_throughput_with_logic_running_and_stopped ... ignored, cargo test -p bbt-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1
+test ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshold ... ok
+test ring_live_logic_catches_up_coalesced_notifications_after_a_stall ... ok
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... 20 MiB writer completed BEFORE logic restart: {"bytes":20971520,"calls":321,"elapsed_s":1.05533312499756,"max_write_s":0.16203025000868365,"mib_s":18.95136192190143,"p99_write_s":0.1176047920016572}
+capture profile BEFORE logic restart: CaptureStats { records: 1291, encode_ns: 45418041, hot_write_ns: 10655021, sync_ns: 48342832, marker_ns: 88016081, cold_ns: 215570042, seals: 10, max_seal_ns: 61532000, queued_bytes: 0, peak_queue_bytes: 1208368, queue_full_count: 24, ordered_commits: 32, durable_commits: 10, writer_busy_ns: 758022322, commit_rounds: 32, commit_p99_ns: 6000000, commit_max_ns: 5495042, undurable_bytes: 16404, peak_undurable_bytes: 4453376, durable_pauses: 0, durable_rounds: 7 }
+cold replay 127.916958ms: 4207616 bytes, reads 95.752825ms, checkpoint writes 0ns
+cold replay 281.364708ms: 8397824 bytes, reads 218.956117ms, checkpoint writes 0ns
+cold replay 383.2235ms: 12593152 bytes, reads 292.519082ms, checkpoint writes 0ns
+cold replay 508.348333ms: 16777216 bytes, reads 387.947122ms, checkpoint writes 0ns
+cold replay 591.636833ms: 20971520 bytes, reads 443.096005ms, checkpoint writes 0ns
+20 MiB cold replay startup: 602.394791ms
+cold replay 3.925130041s: 25179164 bytes, reads 660.163827ms, checkpoint writes 4.611ms
+cold replay 7.09485425s: 29369372 bytes, reads 764.221375ms, checkpoint writes 4.611ms
+cold replay 10.275977791s: 33564700 bytes, reads 877.155083ms, checkpoint writes 4.611ms
+cold replay 13.438070166s: 37748764 bytes, reads 994.381248ms, checkpoint writes 4.611ms
+cold replay 16.551682083s: 41943068 bytes, reads 1.084299416s, checkpoint writes 4.611ms
+complete raw capture: 20971548 bytes, SHA-256 77553a799001eccf7d30dadb0cec39fbbbf13b0aef4ab9d45303445a67441bcb, no gap
+ok
+test supervisor_expires_grace_after_logic_stops_and_undo_preserves_process ... ok
+test view_stream_coalesces_and_replica_refuses_wrong_baselines_atomically ... ok
+
+test result: ok. 9 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 20.94s
+
+EXIT 0

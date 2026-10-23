@@ -1,4 +1,5 @@
 #![allow(clippy::disallowed_methods)] // Disposable native/PTY fixtures, never UI.
+mod common;
 use bbt_mux::adapters::{
     Adapter, ArbiterView, Binding, Evidence, HarnessRecord, OscTap, Priority, Readiness, Session,
     State, WaitingKind,
@@ -10,7 +11,7 @@ use bbt_mux::adapters::{
 };
 use bbt_mux::registry::SeatRecord;
 use bbt_mux::store::{Store, sqlite::SqliteStore};
-use bbt_mux::{Config, Event, InputState, Supervisor, Ulid};
+use bbt_mux::{Event, InputState, Supervisor, Ulid};
 use serde_json::json;
 use std::time::{Duration, Instant};
 
@@ -360,7 +361,7 @@ fn adapters_real_zsh_overlay_reports_prompt_133_b_and_command_boundary() {
         resume: false,
     };
     let plan = plan(&HarnessRecord::builtin("zsh").unwrap(), &context).unwrap();
-    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let client = supervisor.connect().unwrap();
     let info = client.spawn(plan.spec.clone()).unwrap();
     let att = client.attach(record.id, 1).unwrap();
@@ -517,7 +518,7 @@ fn adapters_logic_launch_retains_overlay_until_exit_and_authenticates_shim_fallb
         .enable_all()
         .build()
         .unwrap();
-    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let logic = bbt_mux::logic::Logic::start(
         supervisor.connect().unwrap(),
         bbt_mux::logic::LogicConfig {
@@ -637,7 +638,7 @@ fn adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it() 
         .enable_all()
         .build()
         .unwrap();
-    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let logic = bbt_mux::logic::Logic::start(
         supervisor.connect().unwrap(),
         bbt_mux::logic::LogicConfig {

@@ -1,0 +1,43 @@
+SOURCE 1427d51a7e6fc19411daa1d2eb58c00a748ad27b
+COMMAND cargo test --release --locked -p bbt-mux --test gates_seats gate_memory -- --ignored --nocapture --test-threads=1
+ENV {'GATE_SEATS': '967', 'GATE_RATE': '32kB/s', 'GATE_SECONDS': '60', 'GATE_KEEP_RUN': '1', 'GATE_RUN_DIR': '/Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs'}
+MACHINE 999 PTY maximum, fixture margin 32
+OWN_CARGO_PID=16982
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 2.13s
+     Running tests/gates_seats.rs (target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0)
+/Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0: replacing existing signature
+
+running 1 test
+test gate_memory ... GATE spawn progress=25/967 elapsed_s=0.852
+GATE spawn progress=50/967 elapsed_s=1.942
+GATE spawn progress=75/967 elapsed_s=2.931
+GATE spawn progress=100/967 elapsed_s=4.090
+GATE spawn progress=125/967 elapsed_s=5.308
+GATE spawn progress=150/967 elapsed_s=6.542
+GATE spawn progress=175/967 elapsed_s=7.768
+GATE spawn progress=200/967 elapsed_s=9.240
+GATE spawn progress=225/967 elapsed_s=11.075
+GATE spawn progress=250/967 elapsed_s=13.125
+GATE spawn progress=275/967 elapsed_s=15.478
+GATE spawn progress=300/967 elapsed_s=18.479
+GATE spawn progress=325/967 elapsed_s=21.586
+GATE spawn progress=350/967 elapsed_s=25.166
+GATE spawn progress=375/967 elapsed_s=31.950
+GATE spawn progress=400/967 elapsed_s=45.219
+GATE spawn progress=425/967 elapsed_s=60.052
+GATE spawn progress=450/967 elapsed_s=73.806
+GATE spawn progress=475/967 elapsed_s=87.076
+GATE spawn progress=500/967 elapsed_s=111.735
+GATE spawn progress=525/967 elapsed_s=152.265
+GATE spawn progress=550/967 elapsed_s=190.172
+GATE spawn progress=575/967 elapsed_s=248.042
+GATE spawn progress=600/967 elapsed_s=317.033
+GATE spawn progress=625/967 elapsed_s=404.864
+GATE spawn progress=650/967 elapsed_s=494.961
+GATE spawn progress=675/967 elapsed_s=660.371
+error: test failed, to rerun pass `-p bbt-mux --test gates_seats`
+
+Caused by:
+  process didn't exit successfully: `/Users/feral/mydev/bboxy450-term-rook/scripts/sign-run.sh /Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0 gate_memory --ignored --nocapture --test-threads=1` (signal: 15, SIGTERM: termination signal)
+CHILD_EXIT=101; WALL_SECONDS=744.153

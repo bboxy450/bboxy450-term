@@ -11,9 +11,11 @@ use bbt_core::{Checkpoint, Term, vte};
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
+use crate::durability::{sync_directory, sync_file};
 use crate::protocol::{Event, ExitInfo, OUTPUT_CHUNK_BYTES, SeatSize};
 use crate::store::{Blobs, Result, blobs::LocalBlobs, invalid};
 
+mod journal;
 mod writer;
 pub(crate) use writer::{
     CaptureWriter, Handle as CaptureHandle, Query as CaptureQuery, Response as CaptureResponse,
@@ -40,6 +42,28 @@ pub struct CaptureStats {
     pub queued_bytes: usize,
     pub peak_queue_bytes: usize,
     pub queue_full_count: u64,
+    #[serde(default)]
+    pub ordered_commits: u64,
+    #[serde(default)]
+    pub durable_commits: u64,
+    /// Shared writer counters, repeated on each seat: do not sum across seats.
+    #[serde(default)]
+    pub writer_busy_ns: u64,
+    #[serde(default)]
+    pub commit_rounds: u64,
+    /// Cumulative round p99, rounded up to 1 ms (overflow uses the exact max).
+    #[serde(default)]
+    pub commit_p99_ns: u64,
+    #[serde(default)]
+    pub commit_max_ns: u64,
+    #[serde(default)]
+    pub undurable_bytes: usize,
+    #[serde(default)]
+    pub peak_undurable_bytes: usize,
+    #[serde(default)]
+    pub durable_pauses: u64,
+    #[serde(default)]
+    pub durable_rounds: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -339,6 +363,8 @@ pub struct History {
 
 #[derive(Clone, Serialize, Deserialize)]
 struct Boundary {
+    #[serde(default)]
+    journal_position: Option<journal::Position>,
     version: u16,
     seat: Ulid,
     generation: u64,
@@ -404,6 +430,8 @@ pub struct Ring {
     stats: CaptureStats,
     group_bytes: u64,
     append_file: Option<File>,
+    grouped: bool,
+    strong_dirty: bool,
 }
 impl Ring {
     pub fn open(
@@ -454,6 +482,8 @@ impl Ring {
                                 stats: CaptureStats::default(),
                                 group_bytes: 64 * 1024,
                                 append_file: None,
+                                grouped: false,
+                                strong_dirty: false,
                                 boundary,
                                 entries,
                                 index: Default::default(),
@@ -476,6 +506,7 @@ impl Ring {
                             ring.load_sealed()?;
                             ring.rebuild_index()?;
                             ring.retire_orphans()?;
+                            journal::recover(&mut ring)?;
                             return Ok(ring);
                         }
                         Err(e) => failures.push(e.to_string()),
@@ -494,6 +525,7 @@ impl Ring {
             )));
         }
         let boundary = Boundary {
+            journal_position: None,
             version: 1,
             seat,
             generation,
@@ -516,6 +548,8 @@ impl Ring {
             stats: CaptureStats::default(),
             group_bytes: 64 * 1024,
             append_file: None,
+            grouped: false,
+            strong_dirty: false,
             boundary,
             entries: Vec::new(),
             index: Default::default(),
@@ -529,6 +563,28 @@ impl Ring {
     }
     fn data_path(&self) -> PathBuf {
         self.root.join(&self.boundary.file)
+    }
+    fn put_blob(&self, bytes: &[u8]) -> Result<String> {
+        let blobs = LocalBlobs::open(&self.root)?;
+        if self.grouped {
+            blobs.put_ordered(bytes)
+        } else {
+            blobs.put(bytes)
+        }
+    }
+    fn finish_group(&mut self) -> Result<()> {
+        if self.strong_dirty {
+            let started = std::time::Instant::now();
+            sync_directory(&File::open(&self.root)?)?;
+            // Ordering of every data/blob file precedes this marker; one full
+            // device flush makes the complete derived seal durable.
+            sync_file(&File::open(self.root.join("committed"))?, true)?;
+            self.stats.sync_ns += started.elapsed().as_nanos() as u64;
+            self.strong_dirty = false;
+            self.stats.durable_commits += 1;
+            self.retire_orphans()?;
+        }
+        Ok(())
     }
     pub fn directory(&self) -> &Path {
         &self.root
@@ -574,20 +630,30 @@ impl Ring {
         Ok(())
     }
     fn checkpoint_refs(&self) -> Result<Vec<CheckpointRef>> {
-        if !self.boundary.checkpoints.is_empty() {
-            return Ok(self.boundary.checkpoints.clone());
-        }
-        let mut refs = Vec::new();
+        let mut refs = self.boundary.checkpoints.clone();
         for entry in self.entries.iter().filter(|e| e.kind == 4).rev().take(2) {
             refs.push(CheckpointRef {
                 sequence: entry.sequence,
-                digest: LocalBlobs::open(&self.root)?.put(&self.payload(entry)?)?,
+                digest: self.put_blob(&self.payload(entry)?)?,
             });
         }
-        refs.reverse();
+        refs.sort_by_key(|r| r.sequence);
+        refs.dedup_by_key(|r| r.sequence);
+        if refs.len() > 2 {
+            refs.drain(..refs.len() - 2);
+        }
         Ok(refs)
     }
     pub fn latest_checkpoint(&self) -> Result<Option<Vec<u8>>> {
+        if let Some(entry) = self.entries.iter().rev().find(|e| e.kind == 4)
+            && self
+                .boundary
+                .checkpoints
+                .last()
+                .is_none_or(|r| entry.sequence >= r.sequence)
+        {
+            return self.payload(entry).map(Some);
+        }
         if let Some(reference) = self.boundary.checkpoints.last() {
             let bytes = LocalBlobs::open(&self.root)?.get(&reference.digest)?;
             let saved = Saved::decode(&bytes)?;
@@ -648,14 +714,17 @@ impl Ring {
             return Ok(());
         }
         let seal_started = std::time::Instant::now();
-        self.flush()?;
+        if self.grouped {
+            self.commit(false)?;
+        } else {
+            self.flush()?;
+        }
         let cold_started = std::time::Instant::now();
         let raw = std::fs::read(self.data_path())?;
         if raw.len() as u64 != self.boundary.length {
             return Err(invalid("cannot seal an uncommitted tail"));
         }
-        let blobs = LocalBlobs::open(&self.root)?;
-        let data = blobs.put(&raw)?;
+        let data = self.put_blob(&raw)?;
         let segment = Sealed {
             previous: self.boundary.sealed_head.clone(),
             data,
@@ -668,7 +737,7 @@ impl Ring {
             byte_end: self.boundary.byte_end,
             length: self.boundary.length,
         };
-        let digest = blobs.put(&serde_json::to_vec(&segment)?)?;
+        let digest = self.put_blob(&serde_json::to_vec(&segment)?)?;
         self.stats.cold_ns += cold_started.elapsed().as_nanos() as u64;
         let mut next = self.boundary.clone();
         next.origin_base = Some(self.first_base());
@@ -683,12 +752,12 @@ impl Ring {
         next.length = 0;
         next.base = next.sequence;
         next.byte_start = next.byte_end;
-        OpenOptions::new()
+        let next_file = OpenOptions::new()
             .write(true)
             .create_new(true)
-            .open(self.root.join(&next.file))?
-            .sync_all()?;
-        self.publish_boundary(&next)?;
+            .open(self.root.join(&next.file))?;
+        sync_file(&next_file, !self.grouped)?;
+        self.publish_boundary_tier(&next, !self.grouped)?;
         self.durable = next.clone();
         self.last_commit = std::time::Instant::now();
         self.boundary = next;
@@ -696,7 +765,12 @@ impl Ring {
         self.entries.clear();
         self.sealed.push(segment);
         self.rebuild_index()?;
-        self.retire_orphans()?;
+        if self.grouped {
+            self.strong_dirty = true;
+            self.finish_group()?;
+        } else {
+            self.retire_orphans()?;
+        }
         self.stats.seals += 1;
         self.stats.max_seal_ns = self
             .stats
@@ -810,11 +884,11 @@ impl Ring {
         self.stats.hot_write_ns += write_started.elapsed().as_nanos() as u64;
         let mut next = self.boundary.clone();
         next.length += bytes.len() as u64;
-        if kind == 4 {
+        if kind == 4 && !self.grouped {
             next.checkpoints = self.checkpoint_refs()?;
             next.checkpoints.push(CheckpointRef {
                 sequence,
-                digest: LocalBlobs::open(&self.root)?.put(payload)?,
+                digest: self.put_blob(payload)?,
             });
             if next.checkpoints.len() > 2 {
                 next.checkpoints.remove(0);
@@ -834,17 +908,29 @@ impl Ring {
             sequence,
             byte_start,
         });
-        if kind != 1 || self.boundary.length.saturating_sub(self.durable.length) >= self.group_bytes
+        if !self.grouped
+            && (kind != 1
+                || self.boundary.length.saturating_sub(self.durable.length) >= self.group_bytes)
         {
             self.flush()?;
         }
         Ok(())
     }
-    /// Captured and durable cursors are distinct. Commit at the group byte
-    /// threshold, 20 ms idle, control/checkpoint publication, sealing and shutdown.
+    /// Direct callers and segment seals require a durable derived boundary.
     pub fn flush(&mut self) -> Result<()> {
+        if self.grouped {
+            self.commit(false)?;
+            self.finish_group()
+        } else {
+            self.commit(true)
+        }
+    }
+    fn commit(&mut self, strong: bool) -> Result<()> {
         bbt_rt::assert_not_ui_thread();
-        if self.boundary.file == self.durable.file && self.boundary.length == self.durable.length {
+        if self.boundary.file == self.durable.file
+            && self.boundary.length == self.durable.length
+            && (!strong || !self.strong_dirty)
+        {
             return Ok(());
         }
         let sync_started = std::time::Instant::now();
@@ -852,13 +938,19 @@ impl Ring {
         if file.metadata()?.len() != self.boundary.length {
             return Err(invalid("untracked/torn capture suffix before commit"));
         }
-        file.sync_all()?;
+        sync_file(&file, strong)?;
         self.stats.sync_ns += sync_started.elapsed().as_nanos() as u64;
         let marker_started = std::time::Instant::now();
-        self.publish_boundary(&self.boundary)?;
+        self.publish_boundary_tier(&self.boundary, strong)?;
         self.durable = self.boundary.clone();
         self.last_commit = std::time::Instant::now();
-        self.retire_orphans()?;
+        self.strong_dirty = !strong;
+        if strong {
+            self.stats.durable_commits += 1;
+            self.retire_orphans()?;
+        } else {
+            self.stats.ordered_commits += 1;
+        }
         self.stats.marker_ns += marker_started.elapsed().as_nanos() as u64;
         Ok(())
     }
@@ -884,6 +976,9 @@ impl Ring {
         Ok(())
     }
     fn publish_boundary(&self, boundary: &Boundary) -> Result<()> {
+        self.publish_boundary_tier(boundary, true)
+    }
+    fn publish_boundary_tier(&self, boundary: &Boundary, strong: bool) -> Result<()> {
         let bytes = serde_json::to_vec(boundary)?;
         let mut wrapped = bytes.clone();
         wrapped.extend(crc32c(&bytes).to_le_bytes());
@@ -893,12 +988,15 @@ impl Ring {
             .create_new(true)
             .open(&temp)?;
         file.write_all(&wrapped)?;
-        file.sync_all()?;
+        sync_file(&file, strong)?;
         if self.root.join("committed").exists() {
             std::fs::rename(self.root.join("committed"), self.root.join("previous"))?;
         }
         std::fs::rename(temp, self.root.join("committed"))?;
-        File::open(&self.root)?.sync_all()?;
+        if strong {
+            sync_directory(&File::open(&self.root)?)?;
+            sync_file(&file, true)?;
+        }
         Ok(())
     }
     fn archive(&self, name: &str) -> Result<()> {

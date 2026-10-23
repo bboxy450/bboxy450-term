@@ -1,0 +1,30 @@
+UTC 2026-10-22T22:42:38.989085+00:00
+Source HEAD: eeecbc2
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'gates_seats', '--no-run']
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/rook-w1-2d-baseline/crates/bbt-ui-model)
+   Compiling bbt-core v0.0.1 (/private/tmp/rook-w1-2d-baseline/crates/bbt-core)
+   Compiling bbt-rt v0.0.1 (/private/tmp/rook-w1-2d-baseline/crates/bbt-rt)
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/rook-w1-2d-baseline/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/private/tmp/rook-w1-2d-baseline/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/private/tmp/rook-w1-2d-baseline/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 29.45s
+  Executable tests/gates_seats.rs (/Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/gates_seats-553bb7d31ee804d0)
+BUILD_EXIT=0
+BINARY_SHA256=32fd10a9a9a9fe3c412986dd23522d0aa592a4cf935e84c5ee57222c9a06b18e
+GATE_SEATS=50 GATE_RATE=32kB/s GATE_SECONDS=4 GATE_RUN_DIR=/Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs
+
+running 1 test
+test gate_memory ... 
+thread 'gate_memory' (8834713) panicked at crates/bbt-mux/tests/gates_seats.rs:226:21:
+spawn 47 of 50 failed after 58.01338675s: spawn outcome unknown; query original seat id; logic exit: Err(Failure { code: Busy, message: "capture writer queue full" })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    gate_memory
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2 filtered out; finished in 86.49s
+
+CHILD_EXIT=101 ELAPSED_S=86.788527
