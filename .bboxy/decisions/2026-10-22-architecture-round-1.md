@@ -570,7 +570,9 @@ briefs Executors from the specs, never from this note.
     divergence: a 512-column / 256-row bound refused under the budget
     name (`:202-208`); ruled: a refusal name never lies, so the bound is
     removed or renamed `history_dimensions_unsupported` with its reason
-    in the spec. The 50-seat memory acceptance is met by `Playback`
+    in the spec; Sable removed it the same evening, heap accounting is the
+    only admission rule, and `history_dimensions_unsupported` names only
+    `bbt-core`'s own minima (`lib.rs:67-75`). The 50-seat memory acceptance is met by `Playback`
     accounting (53.76 MB conservative of 200 MB); RSS and timing at 50
     watched belong to gate 4.
 
