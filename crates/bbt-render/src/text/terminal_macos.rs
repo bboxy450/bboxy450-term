@@ -166,6 +166,10 @@ impl Fonts {
             &self.emoji
         } else if covers(primary, text) {
             primary
+        } else if span == 2 && covers(&self.cjk, text) {
+            // Fullwidth forms exist in Apple Symbols, but its small symbol
+            // designs are unsuitable for a two-cell CJK fallback.
+            &self.cjk
         } else if covers(&self.symbols, text) {
             &self.symbols
         } else if covers(&self.cjk, text) {
@@ -323,5 +327,41 @@ impl Fonts {
             pixels,
             faces,
         }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fullwidth_forms_use_cjk_fallback_and_ascii_keeps_primary_face() {
+        for scale in [1, 2] {
+            let fonts = Fonts::new(
+                &FontConfig {
+                    scale,
+                    ..Default::default()
+                },
+                None,
+                false,
+            )
+            .unwrap();
+            for text in ["１", "２", "３", "："] {
+                let glyph = fonts.rasterize(text, false, false, 2).unwrap().unwrap();
+                assert!(
+                    glyph.faces.iter().all(|f| f.starts_with("PingFang")),
+                    "{text}: {:?}",
+                    glyph.faces
+                );
+            }
+            for text in ["1", "2", "3", ":"] {
+                let glyph = fonts.rasterize(text, false, false, 1).unwrap().unwrap();
+                assert!(
+                    glyph.faces.iter().all(|f| f.starts_with("Menlo")),
+                    "{text}: {:?}",
+                    glyph.faces
+                );
+            }
+        }
     }
 }
