@@ -1,0 +1,45 @@
+SOURCE=32ebfcf847842d57ec156e086afea2a3ea8cc0b2
+COMMAND=['cargo', 'test', '-p', 'bbt-supervisor', '--lib', '--locked', 'a_timed_out_request_blocks_new_writes', '--', '--nocapture']
+OWN_CARGO_PID=25028
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/rook-socket-diag-48eb8d6/crates/bbt-supervisor)
+    Finished `test` profile [optimized] target(s) in 20.98s
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-rook/target/socket-diag-48eb8d6/debug/deps/bbt_supervisor-bac4711fa5046bbf)
+
+running 1 test
+
+thread 'client::tests::a_timed_out_request_blocks_new_writes_until_its_late_reply_is_drained' (13010810) panicked at crates/bbt-supervisor/src/client/tests.rs:118:5:
+not retryable/no-effect: Custom { kind: InvalidData, error: "supervisor operation outcome unknown; query original id" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test client::tests::a_timed_out_request_blocks_new_writes_until_its_late_reply_is_drained ... FAILED
+
+failures:
+
+failures:
+    client::tests::a_timed_out_request_blocks_new_writes_until_its_late_reply_is_drained
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 32 filtered out; finished in 10.02s
+
+error: test failed, to rerun pass `-p bbt-supervisor --lib`
+CHILD_EXIT=101
+COMMAND=['cargo', 'test', '-p', 'bbt-supervisor', '--lib', '--locked', 'an_unanswered_request_becomes_disconnected', '--', '--nocapture']
+OWN_CARGO_PID=25759
+    Finished `test` profile [optimized] target(s) in 0.27s
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-rook/target/socket-diag-48eb8d6/debug/deps/bbt_supervisor-bac4711fa5046bbf)
+
+running 1 test
+unanswered request disconnected after 20.00511825s: supervisor disconnected
+
+thread 'client::tests::an_unanswered_request_becomes_disconnected_at_the_bounded_recovery_deadline' (13011791) panicked at crates/bbt-supervisor/src/client/tests.rs:163:5:
+recovery deadline did not bound read: 20.00511825s
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test client::tests::an_unanswered_request_becomes_disconnected_at_the_bounded_recovery_deadline ... FAILED
+
+failures:
+
+failures:
+    client::tests::an_unanswered_request_becomes_disconnected_at_the_bounded_recovery_deadline
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 32 filtered out; finished in 20.01s
+
+error: test failed, to rerun pass `-p bbt-supervisor --lib`
+CHILD_EXIT=101

@@ -8,6 +8,13 @@ use std::time::{Duration, Instant};
 use crate::store::{Result, invalid};
 use crate::{Action, Client, Event, Failure, Frame, Message, Reply, Ulid};
 
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
+
+struct PendingRequest {
+    id: Ulid,
+    expires: Instant,
+}
+
 #[cfg(test)]
 mod tests;
 
@@ -125,18 +132,22 @@ pub struct SocketSupervisor {
     events: PendingEvents,
     replies: BTreeMap<Ulid, std::result::Result<Reply, Failure>>,
     lease: Option<Ulid>,
+    pending_request: Option<PendingRequest>,
+    broken: bool,
 }
 impl SocketSupervisor {
     pub fn connect(path: &Path, capability: [u8; 32]) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         let stream = std::os::unix::net::UnixStream::connect(path)?;
-        stream.set_write_timeout(Some(Duration::from_secs(5)))?;
+        stream.set_write_timeout(Some(REQUEST_TIMEOUT))?;
         let mut client = Self {
             stream,
             decoder: Default::default(),
             events: PendingEvents::default(),
             replies: BTreeMap::new(),
             lease: None,
+            pending_request: None,
+            broken: false,
         };
         match client.request(Action::AcquireLogic { capability })? {
             Reply::Acquired { logic_lease, .. } => client.lease = Some(logic_lease),
@@ -144,12 +155,43 @@ impl SocketSupervisor {
         }
         Ok(client)
     }
+    fn check_connection(&mut self) -> Result<()> {
+        if self.broken {
+            return Err(invalid("supervisor disconnected"));
+        }
+        if let Some(pending) = &self.pending_request
+            && Instant::now() >= pending.expires
+        {
+            let id = pending.id;
+            self.broken = true;
+            let _ = self.stream.shutdown(std::net::Shutdown::Both);
+            return Err(invalid(format!(
+                "supervisor disconnected: request {id} stayed unresolved beyond its recovery deadline; outcome remains unknown"
+            )));
+        }
+        Ok(())
+    }
+
     fn read(&mut self, timeout: Duration) -> Result<()> {
-        self.stream
-            .set_read_timeout(Some(timeout.max(Duration::from_millis(1))))?;
+        self.check_connection()?;
+        let timeout = self.pending_request.as_ref().map_or(timeout, |pending| {
+            timeout.min(pending.expires.saturating_duration_since(Instant::now()))
+        });
+        if let Err(error) = self
+            .stream
+            .set_read_timeout(Some(timeout.max(Duration::from_millis(1))))
+            && !(cfg!(target_os = "macos") && error.raw_os_error() == Some(libc::EINVAL))
+        {
+            return Err(error.into());
+        }
+        // Darwin can reject SO_RCVTIMEO after peer close, with buffered bytes
+        // still unread. Consume those bytes, then report the actual read/EOF.
         let mut bytes = [0; 8192];
         let count = match self.stream.read(&mut bytes) {
-            Ok(0) => return Err(invalid("supervisor disconnected")),
+            Ok(0) => {
+                self.broken = true;
+                return Err(invalid("supervisor disconnected"));
+            }
             Ok(n) => n,
             Err(e)
                 if matches!(
@@ -157,14 +199,22 @@ impl SocketSupervisor {
                     std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
                 ) =>
             {
-                return Ok(());
+                return self.check_connection();
             }
             Err(e) => return Err(e.into()),
         };
+        self.check_connection()?;
         for frame in self.decoder.push(&bytes[..count])? {
             match frame.body {
                 Message::Event { event } => self.events.push(event)?,
                 Message::Reply { request_id, result } => {
+                    if self
+                        .pending_request
+                        .as_ref()
+                        .is_some_and(|pending| pending.id == request_id)
+                    {
+                        self.pending_request = None;
+                    }
                     if self.replies.len() >= 32 {
                         return Err(invalid("unexpected reply backlog"));
                     }
@@ -178,6 +228,22 @@ impl SocketSupervisor {
 impl SupervisorConnection for SocketSupervisor {
     fn request(&mut self, action: Action) -> Result<Reply> {
         bbt_rt::assert_not_ui_thread();
+        self.check_connection()?;
+        if self.pending_request.is_some() {
+            // A timed-out call may still have a reply on the wire. A small
+            // drain permits recovery even while logic retains a replay event.
+            self.read(Duration::ZERO)?;
+            if let Some(pending) = &self.pending_request {
+                return Err(Failure::new(
+                    crate::FailureCode::Busy,
+                    format!(
+                        "request {} is still unresolved; new request not sent",
+                        pending.id
+                    ),
+                )
+                .into());
+            }
+        }
         let ring = match &action {
             Action::AttachRing {
                 seat, generation, ..
@@ -186,9 +252,20 @@ impl SupervisorConnection for SocketSupervisor {
         };
         let request = crate::Request::new(self.lease, action);
         let id = request.request_id;
-        self.stream
-            .write_all(&crate::transport::encode(&Frame::new(request))?)?;
-        let until = Instant::now() + Duration::from_secs(5);
+        let bytes = crate::transport::encode(&Frame::new(request))?;
+        let started = Instant::now();
+        // One unacknowledged wire request is the invariant behind the socket
+        // queue's one-frame reply reserve, including after an ambiguous timeout.
+        let previous = self.pending_request.replace(PendingRequest {
+            id,
+            expires: started + REQUEST_TIMEOUT * 2,
+        });
+        debug_assert!(
+            previous.is_none(),
+            "multiple outstanding supervisor requests"
+        );
+        self.stream.write_all(&bytes)?;
+        let until = started + REQUEST_TIMEOUT;
         loop {
             if let Some(reply) = self.replies.remove(&id) {
                 let reply = reply?;
@@ -219,6 +296,7 @@ impl SupervisorConnection for SocketSupervisor {
     }
     fn receive(&mut self, timeout: Duration) -> Result<Option<Event>> {
         bbt_rt::assert_not_ui_thread();
+        self.check_connection()?;
         if let Some(event) = self.events.pop_front() {
             return Ok(Some(event));
         }

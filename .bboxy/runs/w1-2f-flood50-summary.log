@@ -1,0 +1,10 @@
+Recorded 2026-10-23T08:30:11.770304+00:00
+Stress source 718d246b0b6be322a67f63e9472877d08a57c0c0
+Binary SHA-256 4a70b3cc30f0c954b873b810290a5ef223cf78ba396cec7237fe4320ac9d2961
+50/50 exit 0, exact proof checked; one initial run then 49 with max parallel=5.
+Wall p50=68.151938s p99=78.601098s max=78.601098s.
+Every run: 10,000 requests, exact_bytes=67,108,877, SHA-256=9ce315ede056aaa42a4a7f6dba33c1e82ae80b2d8932f01221b8af579187f844; lifecycle exit delivered; ring replay count >0; no gap.
+Original 90s observation deadline and all continuity assertions unchanged.
+Per-child PIDs, free disk, machine load, command output and real exit status: w1-2f-flood50-01.log through -50.log.
+Rebased root-fix source onto origin/main 237bfa9; C1c recover_seats method kept and its channel failures use the same underlying-cause mapping; no recovery semantics changed.
+Clean exact-commit CI runs next; throughput profiling/optimization remains pending after this separate root-fix lands.

@@ -1,0 +1,26 @@
+SOURCE=48eb8d633f35c602739c872df1543af12ae24efb
+COMMAND=['/Users/feral/mydev/bboxy450-term-rook/target/socket-diag-48eb8d6/debug/deps/socket_backlog-b85444e384592457', 'socket_request_flood_replays_exact_output_and_delivers_exit_to_logic', '--exact', '--nocapture', '--test-threads=1']
+PARALLEL=1
+LOAD_BEFORE={ 8.93 16.60 22.94 }
+OWN_TEST_PID=41484
+
+running 1 test
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic ... socket backlog: owned_pid=41491 seat=01M5KT4PHNVQ59SVZMRT3RAGYV
+socket backlog: 10000 requests completed in 1.447951792s
+
+thread 'socket_request_flood_replays_exact_output_and_delivers_exit_to_logic' (12628469) panicked at crates/bbt-mux/tests/socket_backlog.rs:143:9:
+socket backlog failure: observation=Ok(Err(Custom { kind: InvalidData, error: "logic stopped" })), actor_exit=Err(Os { code: 22, kind: InvalidInput, message: "Invalid argument" }), requests=10000, replayed=22, exit_sequence=0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    socket_request_flood_replays_exact_output_and_delivers_exit_to_logic
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.92s
+
+CHILD_EXIT=101
+TIMEOUT=False
+WALL_SECONDS=2.267
+LOAD_AFTER={ 9.10 16.51 22.87 }

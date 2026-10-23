@@ -1,0 +1,329 @@
+SOURCE=718d246b0b6be322a67f63e9472877d08a57c0c0
+COMMAND=['cargo', 'test', '-p', 'bbt-supervisor', '--locked', '--', '--nocapture']
+OWN_CARGO_PID=30471
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/rook-socket-diag-48eb8d6/crates/bbt-supervisor)
+    Finished `test` profile [optimized] target(s) in 7.48s
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-rook/target/socket-diag-48eb8d6/debug/deps/bbt_supervisor-bac4711fa5046bbf)
+
+running 33 tests
+closed-peer native SO_RCVTIMEO: Err(Os { code: 22, kind: InvalidInput, message: test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+"Invalid argument" })
+test client::tests::a_peer_closed_after_its_final_reply_does_not_hide_buffered_bytes_behind_timeout_setup ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test ring::journal::tests::bad_crc_and_oversized_header_never_commit_a_later_tick ... ok
+test ring::writer::crash_tests::capture_crash_child ... ignored, private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost
+test ring::journal::tests::metadata_only_debt_keeps_the_five_second_full_flush_deadline ... ok
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ignored, release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture
+test ring::journal::tests::old_segment_waits_for_every_sealed_projection_and_checkpoint ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+test ring::journal::tests::legacy_checkpoint_publication_offsets_remain_readable ... ok
+test ring::writer::tests::undurable_admission_budget_pauses_until_a_full_flush_returns_credit ... ok
+test ring::journal::tests::checkpoint_carries_offset_and_rotated_tail_replays_without_effects ... ok
+test supervisor::capture_read_tests::exited_between_spawn_and_registration_emits_exactly_one_exit ... ok
+test ring::writer::tests::orderly_shutdown_leaves_a_durable_journal_that_rebuilds_the_projection ... ok
+socket probe owned_fork_child_pid=30599
+test supervisor::capture_read_tests::a_full_retained_capture_buffer_is_not_pty_eof ... inherited listener probe: another live supervisor owns the control socket: ownership lock Os { code: 35, kind: WouldBlock, message: "Resource temporarily unavailable" }
+ok
+test supervisor::child_events::tests::a_live_child_cannot_make_the_shutdown_wait_infinite ... ok
+test ring::journal::tests::crash_rebuilds_two_seats_only_through_the_last_tick_and_rejects_torn_suffix ... ok
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+saturated live listener: 1 queued clients; connect error Os { code: 61, kind: ConnectionRefused, message: "Connection refused" }
+test transport::tests::fork_inherited_listener_is_live_until_the_child_releases_it ... full backlog: replacement_bound=false same_inode=true original_listener_accepts=true
+ok
+test transport::tests::full_listener_backlog_is_live_and_never_unlinked ... ok
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test transport::tests::ownership_lock_persists_and_legacy_without_one_fails_closed ... ok
+test supervisor::capture_read_tests::an_early_exiting_writer_is_drained_before_reaping_without_blocking_the_actor ... ok
+test transport::tests::stale_and_live_socket_paths_survive_2000_parallel_iterations ... ignored, manual 2000-iteration parallel stale/live socket stress
+test transport::tests::refused_socket_rebinds_without_replacing_a_live_socket_or_file ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+test transport::tests::invalid_lock_types_permissions_and_owner_are_rejected_without_changes ... ok
+test transport::tests::saturated_events_leave_capacity_for_one_maximum_reply_without_growing_the_queue ... ok
+test supervisor::capture_read_tests::shutdown_closes_a_blocked_staged_pty_and_preserves_capture_and_one_exit ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+test client::tests::a_timed_out_request_blocks_new_writes_until_its_late_reply_is_drained ... ok
+unanswered request disconnected after 10.00102325s: supervisor disconnected: request 01M5KWZ6Y7KREMHRPARZ9J5SKC stayed unresolved beyond its recovery deadline; outcome remains unknown
+test client::tests::an_unanswered_request_becomes_disconnected_at_the_bounded_recovery_deadline ... ok
+
+test result: ok. 30 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 10.00s
+
+     Running tests/journal_config.rs (/Users/feral/mydev/bboxy450-term-rook/target/socket-diag-48eb8d6/debug/deps/journal_config-6a4e560438ef83c3)
+
+running 2 tests
+test capture_requires_an_explicit_supervisor_journal_directory ... ok
+test supervisor_shutdown_preserves_every_already_admitted_byte_for_offline_reopen ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/reaping.rs (/Users/feral/mydev/bboxy450-term-rook/target/socket-diag-48eb8d6/debug/deps/reaping-a60c38242cc4d5ed)
+
+running 3 tests
+test exit_events_at_machine_scale ... ignored, W1.2e before/after: GATE_SEATS=967 cargo test --release -p bbt-supervisor --test reaping -- --ignored --nocapture
+test stdio_eof_does_not_wait_for_a_still_running_child ... ok
+EXIT_FIXTURE ready=8; releasing all producers
+EXIT_LATENCY seats=8 p50_ms=0.461000 p99_ms=0.618000 max_ms=0.618000 all_exit_zero=true clock=CLOCK_MONOTONIC span=producer_marker_to_client_exit
+test final_output_and_exit_reach_the_owner ... ok
+
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/supervisor.rs (/Users/feral/mydev/bboxy450-term-rook/target/socket-diag-48eb8d6/debug/deps/supervisor-9c379a875a6bc41f)
+
+running 10 tests
+test unix_socket_auth_framing_and_live_pty ... ok
+test logic_and_writer_replacement_preserve_child_and_deduplicate_input ... ok
+test two_seats_interleave_without_cross_talk ... ok
+test killed_child_reports_generation_and_fences_replacement ... ok
+test natural_exit_follows_all_final_output ... ok
+50 distinct PTY seats echoed under one Supervisor / one mio::Poll
+slow subscriber: complete 4 MiB + TAIL recovered with contiguous record sequences
+test slow_reader_backpressures_and_recovers_the_complete_output ... ok
+test zsh_echo_cwd_environment_and_resize ... ok
+test fifty_seats_share_one_supervisor_poller ... ok
+test validation_rejects_stale_and_oversized_input ... ok
+blocked write: 1022 of 65536 bytes, PartialUnknown retained across logic replacement
+test blocked_write_survives_fencing_and_becomes_unknown_without_replay ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.09s
+
+   Doc-tests bbt_supervisor
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+CHILD_EXIT=0
+COMMAND=['cargo', 'test', '-p', 'bbt-mux', '--test', 'logic_exit', '--locked', '--', '--nocapture']
+OWN_CARGO_PID=30784
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/rook-socket-diag-48eb8d6/crates/bbt-supervisor)
+   Compiling bbt-mux v0.0.1 (/private/tmp/rook-socket-diag-48eb8d6/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 12.89s
+     Running tests/logic_exit.rs (/Users/feral/mydev/bboxy450-term-rook/target/socket-diag-48eb8d6/debug/deps/logic_exit-0cef417e9411080f)
+
+running 1 test
+logic worker exited: Invalid argument (os error 22)
+
+thread 'bbt-logic' (13034275) panicked at crates/bbt-mux/tests/logic_exit.rs:31:13:
+injected logic panic cause
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test queued_and_later_callers_keep_the_worker_error_and_panic_cause ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+CHILD_EXIT=0
+COMMAND=['cargo', 'clippy', '-p', 'bbt-supervisor', '-p', 'bbt-mux', '--all-targets', '--locked', '--', '-D', 'warnings']
+OWN_CARGO_PID=30894
+    Checking cfg-if v1.0.5
+    Checking typenum v1.20.1
+    Checking subtle v2.6.1
+    Checking const-oid v0.9.6
+    Checking libc v0.2.191
+    Checking serde_core v1.0.229
+    Checking itoa v1.0.18
+    Checking memchr v2.8.3
+    Checking zeroize v1.9.1
+    Checking base64ct v1.8.3
+    Checking zmij v1.0.23
+    Checking zerocopy v0.8.63
+    Checking log v0.4.34
+    Checking bytes v1.12.1
+    Checking smallvec v1.16.3
+    Checking tap v1.0.1
+    Checking pem-rfc7468 v0.7.0
+    Checking radium v0.7.0
+    Checking wyz v0.5.1
+    Checking funty v2.0.0
+    Checking der v0.7.10
+    Checking base16ct v0.2.0
+    Checking rand_core v0.10.1
+    Checking scopeguard v1.2.0
+    Checking pin-project-lite v0.2.17
+    Checking base64 v0.22.1
+    Checking lock_api v0.4.14
+    Checking thiserror v1.0.69
+    Checking libm v0.2.16
+    Checking crossbeam-utils v0.8.23
+    Checking bitvec v1.1.1
+    Checking zstd-sys v2.1.2+zstd.1.5.7
+    Checking unicode-width v0.2.2
+    Checking once_cell v1.21.4
+    Checking const-oid v0.10.2
+    Checking cursor-icon v1.2.0
+    Checking crossbeam-queue v0.3.14
+    Checking zstd-safe v8.2.0
+    Checking anyhow v1.0.104
+    Checking downcast-rs v1.2.1
+    Checking generic-array v0.14.7
+    Checking hybrid-array v0.4.15
+    Checking foldhash v0.2.0
+    Checking shell-words v1.1.1
+    Checking getrandom v0.2.17
+    Checking cpufeatures v0.2.17
+    Checking errno v0.3.14
+    Checking spki v0.7.3
+    Checking getrandom v0.3.4
+    Checking rand_core v0.6.4
+    Checking signal-hook-registry v1.4.8
+    Checking rand_core v0.9.5
+    Checking parking_lot_core v0.9.12
+    Checking pkcs8 v0.10.2
+    Checking getrandom v0.4.3
+    Checking socket2 v0.6.5
+    Checking mio v1.2.4
+    Checking num-traits v0.2.19
+    Checking filedescriptor v0.8.3
+    Checking parking_lot v0.12.5
+    Checking serial2 v0.2.38
+    Checking hashbrown v0.17.1
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking inout v0.1.4
+    Checking digest v0.10.7
+    Checking crypto-bigint v0.5.5
+    Checking cipher v0.4.4
+    Checking tokio v1.54.1
+    Checking hmac v0.12.1
+    Checking sha2 v0.10.9
+    Checking signature v2.2.0
+    Checking hkdf v0.12.4
+    Checking rfc6979 v0.4.0
+    Checking crypto-common v0.2.2
+    Checking block-buffer v0.12.1
+    Checking cpufeatures v0.3.1
+    Checking zstd v0.14.3
+    Checking num-integer v0.1.47
+    Checking spin v0.9.9
+    Checking ctr v0.9.2
+    Checking lazy_static v1.5.1
+    Checking universal-hash v0.5.1
+    Checking aead v0.5.2
+    Checking num-iter v0.1.46
+    Checking opaque-debug v0.3.1
+    Checking fastrand v2.5.0
+    Checking polyval v0.6.2
+    Checking curve25519-dalek v4.1.3
+    Checking serde v1.0.229
+    Checking bitflags v2.13.2
+    Checking serde_json v1.0.154
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/rook-socket-diag-48eb8d6/crates/bbt-ui-model)
+    Checking nix v0.28.0
+    Checking serdect v0.2.0
+    Checking ff v0.13.1
+    Checking arrayvec v0.7.8
+    Checking serde-big-array v0.5.1
+    Checking digest v0.11.3
+    Checking group v0.13.0
+    Checking sec1 v0.7.3
+    Checking rustix v1.1.5
+    Checking bbt-core v0.0.1 (/private/tmp/rook-socket-diag-48eb8d6/crates/bbt-core)
+    Checking aes v0.8.4
+    Checking dbl v0.3.2
+    Checking keccak v0.1.6
+    Checking chacha20 v0.10.2
+    Checking core-foundation-sys v0.8.7
+    Checking byteorder v1.5.0
+    Checking equivalent v1.0.3
+    Checking rand v0.10.3
+    Checking sha3 v0.10.9
+    Checking indexmap v2.14.2
+    Checking thiserror v2.0.21
+    Checking elliptic-curve v0.13.8
+    Checking cmac v0.7.2
+    Checking sha1 v0.11.0
+    Checking serdect v0.3.0
+    Checking ghash v0.5.1
+    Checking httparse v1.10.1
+    Checking portable-pty v0.9.0
+    Checking ecdsa v0.16.9
+    Checking primeorder v0.13.6
+    Checking ed25519 v2.2.3
+    Checking blake2 v0.10.6
+    Checking sha1 v0.10.7
+    Checking pkcs1 v0.7.5
+    Checking password-hash v0.5.0
+    Checking http v1.5.0
+    Checking futures-task v0.3.34
+    Checking futures-core v0.3.34
+    Checking data-encoding v2.11.1
+    Checking foldhash v0.1.5
+    Checking same-file v1.0.6
+    Checking futures-sink v0.3.34
+    Checking zlib-rs v0.6.8
+    Checking signature v3.0.0
+    Checking slab v0.4.12
+    Checking walkdir v2.5.0
+    Checking ed25519 v3.0.0
+    Checking futures-util v0.3.34
+    Checking hashbrown v0.15.5
+    Checking argon2 v0.5.3
+    Checking p521 v0.13.3
+    Checking tempfile v3.27.0
+    Checking k256 v0.13.4
+    Checking p384 v0.13.1
+    Checking ppv-lite86 v0.2.21
+    Checking p256 v0.13.2
+    Checking tungstenite v0.30.0
+    Checking num_enum v0.7.6
+    Checking sha1-checked v0.10.0
+    Checking rand_chacha v0.9.0
+    Checking rand_chacha v0.3.1
+    Checking ed25519-dalek v2.2.0
+    Checking rand v0.9.5
+    Checking rand v0.8.8
+    Checking aes-gcm v0.10.3
+    Checking cx448 v0.1.1
+    Checking libsqlite3-sys v0.38.2
+    Checking bitfields v1.0.3
+    Checking derive_builder v0.20.2
+    Checking eax v0.5.0
+    Checking curve25519-dalek v5.0.0
+    Checking derive_more v2.1.1
+    Checking blowfish v0.9.1
+    Checking camellia v0.1.0
+    Checking crc24 v0.1.6
+    Checking ulid v1.2.1
+    Checking core-foundation v0.10.1
+    Checking security-framework-sys v2.17.0
+    Checking snafu v0.9.2
+    Checking flate2 v1.1.10
+    Checking num-bigint-dig v0.8.6
+    Checking aes-kw v0.2.1
+    Checking sha2 v0.11.1
+    Checking x25519-dalek v2.0.1
+    Checking notify-types v2.1.0
+    Checking ocb3 v0.1.0
+    Checking hashlink v0.12.2
+    Checking des v0.8.1
+    Checking cfb-mode v0.8.2
+    Checking cast5 v0.11.1
+    Checking idea v0.5.1
+    Checking twofish v0.7.1
+    Checking ripemd v0.1.3
+    Checking md-5 v0.10.6
+    Checking block-padding v0.3.3
+    Checking fsevent-sys v4.1.0
+    Checking buffer-redux v1.1.0
+    Checking nom v8.0.0
+    Checking hex v0.4.3
+    Checking ryu v1.0.23
+    Checking fallible-iterator v0.3.0
+    Checking fixedbitset v0.5.7
+    Checking unsafe-libyaml v0.2.11
+    Checking fallible-streaming-iterator v0.1.9
+    Checking replace_with v0.1.8
+    Checking petgraph v0.8.3
+    Checking rusqlite v0.40.2
+    Checking ed25519-dalek v3.0.0
+    Checking dsa v0.6.3
+    Checking rsa v0.9.10
+    Checking notify v8.2.0
+    Checking bbt-proto v0.0.1 (/private/tmp/rook-socket-diag-48eb8d6/crates/bbt-proto)
+    Checking serde_yaml v0.9.34+deprecated
+    Checking bbt-rt v0.0.1 (/private/tmp/rook-socket-diag-48eb8d6/crates/bbt-rt)
+    Checking security-framework v3.7.0
+    Checking tokio-tungstenite v0.30.0
+    Checking bbt-supervisor v0.0.1 (/private/tmp/rook-socket-diag-48eb8d6/crates/bbt-supervisor)
+    Checking pgp v0.21.0
+    Checking bbt-mux v0.0.1 (/private/tmp/rook-socket-diag-48eb8d6/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 11.85s
+CHILD_EXIT=0

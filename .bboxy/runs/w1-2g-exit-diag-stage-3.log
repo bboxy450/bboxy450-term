@@ -1,0 +1,14 @@
+SOURCE=32b7b07a9d585a1c4ad51b87a1ecf492a867438d
+COMMAND=['/Users/feral/mydev/bboxy450-term-rook/target/socket-diag-48eb8d6/debug/deps/socket_backlog-b85444e384592457', 'socket_request_flood_replays_exact_output_and_delivers_exit_to_logic', '--exact', '--nocapture', '--test-threads=1']
+OWN_TEST_PID=55116
+
+running 1 test
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic ... socket backlog: owned_pid=55117 seat=01M5KTNKSJ651Q6Q52T2VYREFA
+socket backlog: 10000 requests completed in 1.00419975s
+socket backlog: requests=10000, exact_bytes=67108877, sha256=9ce315ede056aaa42a4a7f6dba33c1e82ae80b2d8932f01221b8af579187f844, exit_sequence=4104, logic_replayed_records=4101
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 61.09s
+
+CHILD_EXIT=0
+WALL_SECONDS=61.103

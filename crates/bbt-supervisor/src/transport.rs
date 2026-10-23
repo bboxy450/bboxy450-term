@@ -19,6 +19,10 @@ use crate::protocol::{Frame, Message, Request, VERSION};
 
 pub const MAX_FRAME_BYTES: usize = 1024 * 1024;
 pub(crate) const MAX_SOCKET_QUEUE_BYTES: usize = 4 * MAX_FRAME_BYTES;
+// The serial supervisor client has one outstanding request. Keep room for its
+// largest legal reply (body plus length prefix); output can wait/replay. Any
+// future pipelining must scale this reserve or bound its request admission.
+const MAX_EVENT_QUEUE_BYTES: usize = MAX_SOCKET_QUEUE_BYTES - (MAX_FRAME_BYTES + 4);
 
 fn invalid(message: impl std::fmt::Display) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, message.to_string())
@@ -313,8 +317,13 @@ impl SocketPeer {
     }
 
     pub fn enqueue(&mut self, message: Message) -> io::Result<bool> {
+        let limit = if matches!(&message, Message::Reply { .. }) {
+            MAX_SOCKET_QUEUE_BYTES
+        } else {
+            MAX_EVENT_QUEUE_BYTES
+        };
         let bytes = encode(&Frame::new(message))?;
-        if self.queued_bytes + bytes.len() > MAX_SOCKET_QUEUE_BYTES {
+        if self.queued_bytes + bytes.len() > limit {
             return Ok(false);
         }
         self.queued_bytes += bytes.len();
@@ -351,6 +360,51 @@ impl SocketPeer {
 mod tests {
     use super::*;
     use crate::protocol::Action;
+
+    #[test]
+    fn saturated_events_leave_capacity_for_one_maximum_reply_without_growing_the_queue() {
+        use crate::{Event, Failure, FailureCode, Reply, Ulid};
+
+        let (stream, _reader) = std::os::unix::net::UnixStream::pair().unwrap();
+        stream.set_nonblocking(true).unwrap();
+        let mut peer = SocketPeer::new(UnixStream::from_std(stream));
+        let event = Message::Event {
+            event: Event::Output {
+                seat: Ulid::new(),
+                generation: 1,
+                seq: 1,
+                bytes: vec![b'x'; crate::protocol::OUTPUT_CHUNK_BYTES],
+            },
+        };
+        let mut count = 0;
+        while peer.enqueue(event.clone()).unwrap() {
+            count += 1;
+            assert!(count < 1024, "outbound event queue is unbounded");
+        }
+        assert!(count > 0);
+        let mut failure = Failure::new(FailureCode::Invalid, "");
+        let id = Ulid::new();
+        let reply = |failure| Message::Reply {
+            request_id: id,
+            result: Err::<Reply, _>(failure),
+        };
+        let overhead = encode(&Frame::new(reply(failure.clone()))).unwrap().len() - 4;
+        failure.message = "x".repeat(MAX_FRAME_BYTES - overhead);
+        let reply = reply(failure);
+        assert_eq!(
+            encode(&Frame::new(reply.clone())).unwrap().len(),
+            MAX_FRAME_BYTES + 4
+        );
+        assert!(
+            peer.enqueue(reply.clone()).unwrap(),
+            "event traffic consumed the reply's reserved capacity"
+        );
+        assert!(peer.queued_bytes <= MAX_SOCKET_QUEUE_BYTES);
+        assert!(
+            !peer.enqueue(reply).unwrap(),
+            "total queue bound was bypassed"
+        );
+    }
 
     fn bind_orphan_fixture(path: &Path) -> BoundSocket {
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);

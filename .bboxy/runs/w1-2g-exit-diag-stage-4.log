@@ -1,0 +1,23 @@
+SOURCE=32b7b07a9d585a1c4ad51b87a1ecf492a867438d
+COMMAND=['/Users/feral/mydev/bboxy450-term-rook/target/socket-diag-48eb8d6/debug/deps/socket_backlog-b85444e384592457', 'socket_request_flood_replays_exact_output_and_delivers_exit_to_logic', '--exact', '--nocapture', '--test-threads=1']
+OWN_TEST_PID=56695
+
+running 1 test
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic ... socket backlog: owned_pid=56696 seat=01M5KTQFEFH5BFEYTBBTMQ6EZY
+socket backlog: 10000 requests completed in 741.91125ms
+socket backlog supervisor request Discriminant(6) failed: Custom { kind: InvalidData, error: "supervisor disconnected" }
+
+thread 'socket_request_flood_replays_exact_output_and_delivers_exit_to_logic' (12695797) panicked at crates/bbt-mux/tests/socket_backlog.rs:148:9:
+socket backlog failure: observation=Ok(Err(Custom { kind: InvalidData, error: "logic stopped" })), actor_exit=Err(Custom { kind: InvalidData, error: "supervisor disconnected" }), requests=10000, replayed=56, exit_sequence=0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    socket_request_flood_replays_exact_output_and_delivers_exit_to_logic
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.19s
+
+CHILD_EXIT=101
+WALL_SECONDS=1.193

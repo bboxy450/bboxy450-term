@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::{
-    Arc,
+    Arc, OnceLock,
     atomic::{AtomicBool, Ordering},
 };
 use std::time::{Duration, Instant};
@@ -126,6 +126,7 @@ pub struct EndpointInfo {
 pub struct LogicClient {
     tx: mpsc::Sender<Command>,
     pub bus: BusHandle,
+    exit_cause: Arc<OnceLock<String>>,
 }
 impl LogicClient {
     /// Resume missing local processes after the app has replaced the supervisor.
@@ -135,25 +136,39 @@ impl LogicClient {
         self.tx
             .send(Command::RecoverSeats(tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("logic stopped"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     pub async fn gui_hosts(&self) -> Result<Vec<bbt_proto::GuiHost>> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::GuiHosts(tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("logic stopped"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
+
+    fn unavailable(&self, context: &str) -> crate::store::Error {
+        match self.exit_cause.get() {
+            Some(cause) => invalid(format!("{context}; worker exit: {cause}")),
+            None => invalid(context),
+        }
+    }
+
+    fn record_exit(&self, cause: String, log: bool) {
+        if self.exit_cause.set(cause).is_ok() && log {
+            eprintln!("logic worker exited: {}", self.exit_cause.get().unwrap());
+        }
+    }
+
     /// Portable status only; key custody stays inside the identity runtime.
     pub async fn gui_identity(&self) -> Result<bbt_proto::GuiIdentity> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::GuiIdentity(tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("logic stopped"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     /// Read-only identity-card data for the in-process GUI. Primary signing is
     /// deliberately absent from this client and from the seat/MCP surface.
@@ -162,8 +177,8 @@ impl LogicClient {
         self.tx
             .send(Command::IdentityStatus(tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("logic stopped"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     pub async fn control_catalogue(
         &self,
@@ -174,8 +189,8 @@ impl LogicClient {
         self.tx
             .send(Command::ControlCatalogue(seat, generation, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("logic stopped"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     pub async fn control_call(
         &self,
@@ -187,18 +202,19 @@ impl LogicClient {
         self.tx
             .send(Command::ControlCall(seat, generation, call, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await
-            .map_err(|_| invalid("control outcome unavailable; query the original operation ID"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| {
+            self.unavailable("control outcome unavailable; query the original operation ID")
+        })?
     }
     pub async fn gui_spawn(&self, spec: bbt_proto::SpawnSpec) -> Result<bbt_proto::GuiSeat> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::GuiSpawn(spec, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
+            .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await
-            .map_err(|_| invalid("spawn outcome unknown; inspect the seat list"))?
+            .map_err(|_| self.unavailable("spawn outcome unknown; inspect the seat list"))?
     }
     /// Enqueue operator input fenced to the process generation shown by the GUI.
     pub async fn gui_input(
@@ -212,9 +228,9 @@ impl LogicClient {
         self.tx
             .send(Command::GuiInput(seat, generation, id, bytes, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
+            .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await
-            .map_err(|_| invalid("input outcome unknown; keep the original input id"))?
+            .map_err(|_| self.unavailable("input outcome unknown; keep the original input id"))?
     }
     /// Resize only the displayed process generation; validation runs on the worker.
     pub async fn gui_resize(
@@ -228,32 +244,33 @@ impl LogicClient {
         self.tx
             .send(Command::GuiResize(seat, generation, cols, rows, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("resize outcome unknown"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await
+            .map_err(|_| self.unavailable("resize outcome unknown"))?
     }
     pub async fn gui_endpoint(&self) -> Result<EndpointInfo> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::GuiEndpoint(tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("logic stopped"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     pub async fn gui_seats(&self) -> Result<Vec<crate::seat_socket::GuiSeat>> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::GuiSeats(tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("logic stopped"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     pub async fn gui_seat(&self, id: Ulid) -> Result<crate::seat_socket::GuiSeat> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::GuiSeat(id, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("logic stopped"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     /// Admitted seat identity; the broker derives its class from the registry.
     pub async fn messaging(
@@ -284,9 +301,10 @@ impl LogicClient {
         self.tx
             .send(Command::Messaging(seat, generation, request, operator, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await
-            .map_err(|_| invalid("message operation outcome unknown; query original message ID"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| {
+            self.unavailable("message operation outcome unknown; query original message ID")
+        })?
     }
     /// Trusted discovery/fixture seam. Native delivery still checks process
     /// start and native session on every attempt. Peers cannot set this path.
@@ -300,8 +318,8 @@ impl LogicClient {
         self.tx
             .send(Command::DeliveryEndpoint(seat, generation, endpoint, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("logic stopped"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
 
     pub async fn spawn_harness(
@@ -314,9 +332,9 @@ impl LogicClient {
         self.tx
             .send(Command::Launch(Box::new(record), harness, options, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
+            .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await
-            .map_err(|_| invalid("launch outcome unknown; query original seat ID"))?
+            .map_err(|_| self.unavailable("launch outcome unknown; query original seat ID"))?
     }
     pub async fn hook(
         &self,
@@ -328,8 +346,8 @@ impl LogicClient {
         self.tx
             .send(Command::Hook(seat, generation, event, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("logic stopped"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     pub async fn adapter_status(
         &self,
@@ -340,8 +358,8 @@ impl LogicClient {
         self.tx
             .send(Command::Status(seat, generation, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("logic stopped"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     /// Called by the bound native reader, never interpreted as a new operation.
     pub async fn native_event(
@@ -354,41 +372,41 @@ impl LogicClient {
         self.tx
             .send(Command::Native(seat, generation, event, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("logic stopped"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     pub async fn spawn(&self, record: SeatRecord, spec: LaunchSpec) -> Result<SeatInfo> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::Spawn(Box::new(record), spec, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
+            .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await
-            .map_err(|_| invalid("spawn outcome unknown; query original seat id"))?
+            .map_err(|_| self.unavailable("spawn outcome unknown; query original seat id"))?
     }
     pub async fn snapshot(&self, seat: Ulid, generation: u64) -> Result<Snapshot> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::Snapshot(seat, generation, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("logic stopped"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     pub async fn record(&self, seat: Ulid) -> Result<SeatRecord> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::Record(seat, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("logic stopped"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     pub async fn endpoint(&self, seat: Ulid) -> Result<EndpointInfo> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::Endpoint(seat, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("logic stopped"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     pub async fn close(
         &self,
@@ -404,8 +422,9 @@ impl LogicClient {
                 seat, generation, operation, position, grace_ms, tx,
             ))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("close outcome unknown"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await
+            .map_err(|_| self.unavailable("close outcome unknown"))?
     }
     pub async fn undo(
         &self,
@@ -424,8 +443,9 @@ impl LogicClient {
                 tx,
             ))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("undo outcome unknown"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await
+            .map_err(|_| self.unavailable("undo outcome unknown"))?
     }
     pub async fn history(
         &self,
@@ -438,8 +458,8 @@ impl LogicClient {
         self.tx
             .send(Command::History(seat, generation, from, to, tx))
             .await
-            .map_err(|_| invalid("logic stopped"))?;
-        rx.await.map_err(|_| invalid("logic stopped"))?
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
 }
 
@@ -595,15 +615,20 @@ impl Logic {
         let client = LogicClient {
             tx,
             bus: bus.clone(),
+            exit_cause: Arc::new(OnceLock::new()),
         };
         let stop = Arc::new(AtomicBool::new(false));
         let stopping = stop.clone();
         let runtime = handle.clone();
         let (ready_tx, ready_rx) = std::sync::mpsc::sync_channel(1);
         let worker_client = client.clone();
+        let reporter = client.clone();
         let thread = std::thread::Builder::new()
             .name("bbt-logic".into())
             .spawn(move || {
+                // Keep the receiver until the exit cause is published. A
+                // blocked caller must not observe channel closure first.
+                let mut rx = rx;
                 let mut worker = match Worker::open(
                     providers,
                     config,
@@ -616,14 +641,37 @@ impl Logic {
                     Ok(worker) => worker,
                     Err(error) => {
                         let _ = ready_tx.send(Err(error.to_string()));
+                        reporter.record_exit(error.to_string(), true);
                         return Err(error);
                     }
                 };
                 let _ = ready_tx.send(Ok(()));
-                let result = worker.run(rx, stopping);
-                let seal = worker.seal_active_hold();
+                let execution = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    let result = worker.run(&mut rx, stopping);
+                    let seal = worker.seal_active_hold();
+                    result.and(seal)
+                }));
+                let result = match execution {
+                    Ok(result) => {
+                        if let Err(error) = &result {
+                            reporter.record_exit(error.to_string(), true);
+                        }
+                        result
+                    }
+                    Err(payload) => {
+                        let cause = payload
+                            .downcast_ref::<String>()
+                            .map(String::as_str)
+                            .or_else(|| payload.downcast_ref::<&str>().copied())
+                            .unwrap_or("non-string panic payload");
+                        // The existing panic hook has logged once. Preserve
+                        // its cause for callers, then retain panic semantics.
+                        reporter.record_exit(format!("panic: {cause}"), false);
+                        std::panic::resume_unwind(payload);
+                    }
+                };
                 let _ = worker.handle.block_on(worker.bus.shutdown());
-                result.and(seal)
+                result
             })?;
         match ready_rx.recv_timeout(Duration::from_secs(30))? {
             Ok(()) => Ok(Self {
@@ -642,7 +690,9 @@ impl Logic {
         bbt_rt::assert_not_ui_thread();
         self.stop.store(true, Ordering::Release);
         if let Some(thread) = self.thread.take() {
-            thread.join().map_err(|_| invalid("logic panicked"))??;
+            thread
+                .join()
+                .map_err(|_| self.client.unavailable("logic panicked"))??;
         }
         Ok(())
     }
@@ -2219,7 +2269,7 @@ impl Worker {
         ));
         retry_capture(|| self.request_for_seat(seat, action.clone()))
     }
-    fn run(&mut self, mut commands: mpsc::Receiver<Command>, stop: Arc<AtomicBool>) -> Result<()> {
+    fn run(&mut self, commands: &mut mpsc::Receiver<Command>, stop: Arc<AtomicBool>) -> Result<()> {
         let mut scan_at = Instant::now();
         let mut adapters_at = Instant::now();
         let mut messages_at = Instant::now();

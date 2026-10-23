@@ -1,0 +1,21 @@
+SOURCE=718d246b0b6be322a67f63e9472877d08a57c0c0
+BINARY_SHA256=4a70b3cc30f0c954b873b810290a5ef223cf78ba396cec7237fe4320ac9d2961
+RUN=3
+MAX_PARALLEL=5
+FREE_BYTES_BEFORE=21092405248
+COMMAND=['/Users/feral/mydev/bboxy450-term-rook/target/socket-diag-48eb8d6/debug/deps/socket_backlog-b85444e384592457', 'socket_request_flood_replays_exact_output_and_delivers_exit_to_logic', '--exact', '--nocapture', '--test-threads=1']
+LOAD_BEFORE={ 8.38 18.46 24.23 }
+OWN_TEST_PID=42346
+
+running 1 test
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic ... socket backlog: owned_pid=42352 seat=01M5KXD4HS0PAZ8BKEFVESCFR4
+socket backlog: 10000 requests completed in 1.5811865s
+socket backlog: requests=10000, exact_bytes=67108877, sha256=9ce315ede056aaa42a4a7f6dba33c1e82ae80b2d8932f01221b8af579187f844, exit_sequence=4139, logic_replayed_records=4136
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 62.06s
+
+CHILD_EXIT=0
+TIMEOUT=False
+WALL_SECONDS=62.069
+LOAD_AFTER={ 12.38 17.57 23.49 }

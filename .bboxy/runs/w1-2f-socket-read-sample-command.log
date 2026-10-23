@@ -1,0 +1,6 @@
+COMMAND=['/usr/bin/sample', '55116', '3', '1', '-file', '/Users/feral/mydev/bboxy450-term-rook/.bboxy/runs/w1-2f-socket-read-sample.log']
+OWN_SAMPLE_PID=55125
+Sampling process 55116 for 3 seconds with 1 millisecond of run time between samples
+Sampling completed, processing symbols...
+Sample analysis of process 55116 written to file /Users/feral/mydev/bboxy450-term-rook/.bboxy/runs/w1-2f-socket-read-sample.log
+SAMPLE_EXIT=0

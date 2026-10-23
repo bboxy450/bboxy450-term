@@ -1,0 +1,6 @@
+Rook Ashwhisker <EXECUTOR> W1.2f, phase 1 socket root fix.
+50/50 full-rate exact replay cases passed at source718d246. Current rebased source b1ec6fe on237bfa9.
+Next: commit scoped evidence; clean exact CI using own diagnostic worktree and own target AFTER flood wrapper has exited.
+Throughput phase has not begun, remains profile/propose/approval before code.
+Root cause, approvals, deterministic failing checks and all run outputs are in w1-2f-* and w1-2g-exit-diag* logs.
+Own ICQ bfae37c6a294e8103c578f0ea3921f576930c668d18471c5760ca923103b87fa; last received5381.
