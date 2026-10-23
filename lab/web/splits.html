@@ -17,7 +17,7 @@ const TREES = {
 Lab.page({ title: 'splits', wide: true, note: 'A tab is a binary split tree of seats; the gutter (' + (TOKENS.layout.gutter || 2) + ' px, Settings › Appearance) is the divider and drags to change the ratio. Drag a seat row or a pane strip onto a pane: the hovered half tints and dropping splits there. While a ⌘↵ / ⌘⇧↵ preset launcher is open, the target half of the anchor pane breathes in the accent. Same splitView() as the showcase.',
   states: [...Object.keys(TREES), 'drop zones', 'preset target', 'drag ghost'],
   render(s, body) {
-    const frame = el('div', { style: 'height:420px;border-radius:var(--r-pill);overflow:hidden;border:1px solid var(--hair);background:var(--bg);display:flex' });
+    const frame = el('div', { style: 'padding:var(--glow-lane);height:420px;border-radius:var(--r-pill);overflow:hidden;border:1px solid var(--hair);background:var(--bg);display:flex' });
     const po = t => ({ focused: t.key === 'sp0', unfocused: t.key !== 'sp0', shortcut: '⌘' + (+t.key.slice(2) + 1) });
     if (TREES[s]) { const v = C.splitView(TREES[s], { paneOpts: po }); v.style.flex = '1'; frame.append(v); }
     if (s === 'drop zones') { frame.style.cssText += ';display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px;padding:10px;height:520px'; ['left', 'right', 'top', 'bottom'].forEach((z, i) => { const p = C.pane(S(i % 3), po(S(0))); p.classList.add('drop-' + z); p.append(el('div', { class: 'lab-note', style: 'position:absolute;bottom:6px;right:10px;z-index:4' }, 'drop ' + z)); frame.append(p); }); }

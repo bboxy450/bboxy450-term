@@ -154,7 +154,7 @@ code, .mono { font-family: var(--font-mono); }
   background: var(--bg); display: flex; flex-direction: column; min-height: 140px;
   transition: box-shadow var(--hover-ms);
 }
-.pane.active { border-width: var(--strip-b-active); }
+/* the pane border is constant: activity lives in the border shader, never in geometry (an active-only width moved content 1 px) */
 .pane.errored { border-color: var(--c-errored); }
 /* unfocused: strip and content go grey, border keeps the seat colour (the shader glow does too) */
 .pane.unfocused { background: color-mix(in srgb, var(--bg) calc(100% - var(--dim-wash)), var(--fg-dim)); }
@@ -1284,7 +1284,7 @@ body.live .seat-row.bounce { animation: rowBounce 520ms var(--ease) !important; 
 body.live .pane.focused .term .cur { animation: curBlink 1s steps(1) infinite; }
 @keyframes curBlink { 50% { opacity: 0; } }
 /* sidebar: frosted ground, resizable edge */
-.sidebar { position: relative; background: color-mix(in srgb, var(--sidebar-bg) var(--mat-alpha), var(--bg)); border-right: var(--hair-w) solid var(--hair); padding-left: var(--gutter); }
+.sidebar { position: relative; background: color-mix(in srgb, var(--sidebar-bg) var(--mat-alpha), var(--bg)); border-right: var(--hair-w) solid var(--hair); padding-left: var(--sb-edge); }
 .sidebar .sb-scroll { padding: var(--s4) var(--s3) 0; }
 .sb-resize { position: absolute; top: 0; bottom: 0; right: calc(-1 * var(--s4) / 2); width: var(--s4); cursor: col-resize; z-index: 3; }
 /* swarm card: band (Style band) and body (Style swarm-card) */
@@ -1307,7 +1307,7 @@ body.live .pane.focused .term .cur { animation: curBlink 1s steps(1) infinite; }
 .tab-row.closed-strip { background: var(--sel-hover); border-radius: var(--r-row); }
 .tab-row.closed-strip .undo { border: var(--hair-w) solid var(--hair); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); border-radius: var(--r-round); font-size: var(--t-small); }
 /* stage.tiled = the app's split stage: no frame, gutters are the dividers, panes tile square */
-.stage.tiled { flex: 1; padding: 0; background: transparent; min-width: 0; }
+.stage.tiled { flex: 1; padding: var(--glow-lane); background: transparent; min-width: 0; }
 .stage.tiled .pane { background: var(--bg); min-height: 0; min-width: 0; border-radius: 0; }
 .pane .strip .kbd { background: rgba(0,0,0,.22); color: rgba(255,255,255,.85); }
 .pane.settings-pane { display: flex; flex-direction: column; min-width: 0; }

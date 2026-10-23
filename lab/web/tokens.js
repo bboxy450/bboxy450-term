@@ -123,6 +123,9 @@ window.TOKENS = {
     "errored_alpha": 0.45,
     "focused_boost": 1.6,
     "idle_alpha": 0.12,
+    "lane": 8,
+    "lane_max": 8,
+    "lane_min": 2,
     "pane_radius": 14,
     "particle_size": 2.2,
     "particle_speed": 18,
@@ -137,7 +140,7 @@ window.TOKENS = {
   },
   "layout": {
     "cohort_gap": 8,
-    "gutter": 2
+    "gutter": 8
   },
   "meta": {
     "version": 1
@@ -165,6 +168,7 @@ window.TOKENS = {
   },
   "sidebar": {
     "collapse_glyphs": 6,
+    "edge": 2,
     "minigrid_h": 16,
     "minigrid_w": 24,
     "width": 260,
