@@ -243,6 +243,20 @@ pub fn surface_layout(case: &Case) -> Result<c::Layout> {
     }));
     panel.overrides.padding = Some([ui::Length::Px(0.); 4]);
     if launcher {
+        // The launcher's panel adds an inside line to Modal's outside hair.
+        panel.overrides.border = Some(ui::Border {
+            width: ui::Length::Hairline,
+            paint: ui::Paint::solid(ui::Color::Line),
+            outside: false,
+        });
+        panel.overrides.rings = Some(vec![ui::Border {
+            width: ui::Length::Hairline,
+            paint: ui::Paint {
+                color: ui::Color::Line,
+                alpha: ui::Alpha::Hairline,
+            },
+            outside: true,
+        }]);
         panel.overrides.height = Some(ui::Length::Px(number(data, "slot_height")?));
     }
     let mut overlay = c::Overlay::new(c::Element::Box(c::Box::new(panel, vec![])));

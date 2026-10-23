@@ -2195,6 +2195,28 @@ fn paint_contents(
     match &node.kind {
         LayoutKind::Box { style: s, clip, .. } => {
             let mut list = list_with_clips(clips);
+            let underlay_border = s.shadow.is_some() && !s.dashed && s.border_sides == [true; 4];
+            // The first CSS box-shadow paints on top: hair goes below the float.
+            for ring in s
+                .border
+                .iter()
+                .filter(|b| underlay_border && b.outside && b.color[3] > 0.)
+                .chain(s.rings.iter().filter(|b| s.shadow.is_some() && b.outside))
+            {
+                list.push(Prim::Rect {
+                    rect: Rect::new(
+                        node.rect.x - ring.width,
+                        node.rect.y - ring.width,
+                        node.rect.w + 2. * ring.width,
+                        node.rect.h + 2. * ring.width,
+                    ),
+                    radii: s.radii.map(|r| r + ring.width),
+                    fill: Color::TRANSPARENT,
+                    stroke: Some((ring.width, color(ring.color, draw, opacity))),
+                    inner_highlight: None,
+                    shadow: None,
+                });
+            }
             if let Some(shadow) = &s.shadow {
                 list.push(Prim::Rect {
                     rect: node.rect,
@@ -2209,7 +2231,7 @@ fn paint_contents(
                     )),
                 });
             }
-            // Shadow is an underlay; the material receives the pre-shadow backdrop.
+            // Hair and shadow are underlays; material samples the pre-shadow backdrop.
             // Its draw record stays separate from the sampled material record.
             if !list.primitives.is_empty() {
                 let mut record = Vec::new();
@@ -2275,17 +2297,19 @@ fn paint_contents(
                     radii: s.radii,
                     fill,
                     stroke: None,
-                    inner_highlight: None,
+                    inner_highlight: s.inner_highlight.map(|c| color(c, draw, opacity)),
                     shadow: None,
                 });
-                body.push(Prim::Rect {
-                    rect,
-                    radii,
-                    fill: Color::TRANSPARENT,
-                    stroke,
-                    inner_highlight: None,
-                    shadow: None,
-                });
+                if !underlay_border {
+                    body.push(Prim::Rect {
+                        rect,
+                        radii,
+                        fill: Color::TRANSPARENT,
+                        stroke,
+                        inner_highlight: None,
+                        shadow: None,
+                    });
+                }
             } else {
                 body.push(Prim::Rect {
                     rect,
@@ -2314,6 +2338,9 @@ fn paint_contents(
                 }
             }
             for ring in &s.rings {
+                if s.shadow.is_some() && ring.outside {
+                    continue;
+                }
                 let w = if ring.outside { ring.width } else { 0. };
                 body.push(Prim::Rect {
                     rect: Rect::new(
