@@ -460,8 +460,14 @@ impl Native {
                 let prepared = &model.frames[seat];
                 let cell_width = prepared.width as f32 / screen.cols as f32;
                 let line_height = prepared.height as f32 / screen.rows as f32;
-                if rect.w * scale >= 12. * cell_width && rect.h * scale >= line_height {
+                if probe_visible(
+                    screen,
+                    &format!("R5P{id:08X}"),
+                    [rect.w * scale, rect.h * scale],
+                    [cell_width, line_height],
+                ) {
                     self.probe_frame = Some(frame);
+                    self.probe_clipped = false;
                     self.encoded_ms = self
                         .probe_started
                         .map(|(_, start)| start.elapsed().as_secs_f64() * 1000.);
@@ -492,6 +498,17 @@ fn contains(screen: &bbt_proto::Screen, needle: &str) -> bool {
         .iter()
         .any(|row| row.iter().map(|c| c.c).collect::<String>().contains(needle))
 }
+
+/// Count the helper's pinned acknowledgement, never a PTY echo in a lower row.
+fn probe_visible(screen: &bbt_proto::Screen, needle: &str, clip: [f32; 2], cell: [f32; 2]) -> bool {
+    let columns = needle.chars().count();
+    screen.cells.first().is_some_and(|row| {
+        row.iter().take(columns).map(|c| c.c).eq(needle.chars())
+            && row.get(columns).is_some_and(|c| matches!(c.c, '|' | '/'))
+            && ((columns + 1) as f32 * cell[0]).ceil() <= clip[0].floor()
+            && cell[1].ceil() <= clip[1].floor()
+    })
+}
 fn percentile(values: &[f64], p: f64) -> f64 {
     if values.is_empty() {
         return 0.;
@@ -508,4 +525,43 @@ pub fn private_entry(args: &[String]) -> Option<Result<(), String>> {
 }
 pub fn headless(config: Config) -> Result<(), String> {
     headless::run(config)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lower_row_echo_does_not_acknowledge_a_probe_or_bypass_the_clip() {
+        let mut term = bbt_core::Term::new(24, 8, 0);
+        term.advance(b"\x1b[8;1HR5P00000001");
+        let screen = bbt_proto::Screen::from_term(&term, String::new(), None, None);
+        assert!(contains(&screen, "R5P00000001"));
+        assert!(!probe_visible(
+            &screen,
+            "R5P00000001",
+            [192., 105.],
+            [8., 15.]
+        ));
+        term.advance(b"\x1b[1;1HR5P00000001|");
+        let screen = bbt_proto::Screen::from_term(&term, String::new(), None, None);
+        assert!(probe_visible(
+            &screen,
+            "R5P00000001",
+            [192., 105.],
+            [8., 15.]
+        ));
+        assert!(!probe_visible(
+            &screen,
+            "R5P00000001",
+            [95., 105.],
+            [8., 15.]
+        ));
+        assert!(!probe_visible(
+            &screen,
+            "R5P00000001",
+            [192., 14.],
+            [8., 15.]
+        ));
+    }
 }
