@@ -48,6 +48,128 @@ fn a_peer_closed_after_its_final_reply_does_not_hide_buffered_bytes_behind_timeo
     );
 }
 
+struct ReleasePeer(std::sync::mpsc::Sender<()>);
+impl Drop for ReleasePeer {
+    fn drop(&mut self) {
+        let _ = self.0.send(());
+    }
+}
+
+fn admit_peer(stream: &mut std::os::unix::net::UnixStream) {
+    let frame = read_frame::<Request>(stream).unwrap();
+    assert!(matches!(frame.body.action, Action::AcquireLogic { .. }));
+    write_frame(
+        stream,
+        &Frame::new(Message::Reply {
+            request_id: frame.body.request_id,
+            result: Ok(Reply::Acquired {
+                logic_lease: Ulid::new(),
+                supervisor_boot: Ulid::new(),
+            }),
+        }),
+    )
+    .unwrap();
+}
+
+#[test]
+fn a_timed_out_request_blocks_new_writes_until_its_late_reply_is_drained() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("serial.sock");
+    let listener = UnixListener::bind(&path).unwrap();
+    let (release, released) = std::sync::mpsc::channel();
+    let (identify, identified) = std::sync::mpsc::channel();
+    let peer = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(15)))
+            .unwrap();
+        admit_peer(&mut stream);
+        let old = read_frame::<Request>(&mut stream).unwrap();
+        identify.send(old.body.request_id).unwrap();
+        let _ = released.recv_timeout(Duration::from_secs(20));
+        if write_frame(
+            &mut stream,
+            &Frame::new(Message::Reply {
+                request_id: old.body.request_id,
+                result: Ok(Reply::Seats { seats: vec![] }),
+            }),
+        )
+        .is_err()
+        {
+            return;
+        }
+        let new = read_frame::<Request>(&mut stream).unwrap();
+        assert_ne!(old.body.request_id, new.body.request_id);
+        assert!(matches!(new.body.action, Action::ListOwnedSeats));
+        let _ = write_frame(
+            &mut stream,
+            &Frame::new(Message::Reply {
+                request_id: new.body.request_id,
+                result: Ok(Reply::Seats { seats: vec![] }),
+            }),
+        );
+    });
+    let mut client = SocketSupervisor::connect(&path, [11; 32]).unwrap();
+    let release = ReleasePeer(release);
+    let error = client.request(Action::ListOwnedSeats).unwrap_err();
+    assert!(error.to_string().contains("outcome unknown"), "{error}");
+    let old = identified.recv_timeout(Duration::from_secs(1)).unwrap();
+    let held = client.request(Action::ListOwnedSeats).unwrap_err();
+    assert!(
+        held.downcast_ref::<Failure>()
+            .is_some_and(|f| f.code == crate::FailureCode::Busy),
+        "not retryable/no-effect: {held:?}"
+    );
+    release.0.send(()).unwrap();
+    let until = Instant::now() + Duration::from_secs(3);
+    while !client.replies.contains_key(&old) {
+        client.receive(Duration::from_millis(20)).unwrap();
+        assert!(Instant::now() < until, "late reply not drained");
+    }
+    assert!(matches!(
+        client.replies.remove(&old),
+        Some(Ok(Reply::Seats { .. }))
+    ));
+    assert!(matches!(
+        client.request(Action::ListOwnedSeats).unwrap(),
+        Reply::Seats { .. }
+    ));
+    peer.join().unwrap();
+}
+
+#[test]
+fn an_unanswered_request_becomes_disconnected_at_the_bounded_recovery_deadline() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("unanswered.sock");
+    let listener = UnixListener::bind(&path).unwrap();
+    let (release, released) = std::sync::mpsc::channel();
+    let peer = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        admit_peer(&mut stream);
+        let _old = read_frame::<Request>(&mut stream).unwrap();
+        let _ = released.recv_timeout(Duration::from_secs(20));
+    });
+    let mut client = SocketSupervisor::connect(&path, [12; 32]).unwrap();
+    let release = ReleasePeer(release);
+    let started = Instant::now();
+    let error = client.request(Action::ListOwnedSeats).unwrap_err();
+    assert!(error.to_string().contains("outcome unknown"), "{error}");
+    // A long requested receive must still be clipped by the old request's
+    // second deadline (10 s from its original write, not another 60 s).
+    let error = client.receive(Duration::from_secs(60)).unwrap_err();
+    let elapsed = started.elapsed();
+    eprintln!("unanswered request disconnected after {elapsed:?}: {error}");
+    assert!(error.to_string().contains("supervisor disconnected"));
+    assert!(
+        elapsed < Duration::from_secs(12),
+        "recovery deadline did not bound read: {elapsed:?}"
+    );
+    let later = client.request(Action::ListOwnedSeats).unwrap_err();
+    assert!(later.to_string().contains("supervisor disconnected"));
+    drop(release);
+    peer.join().unwrap();
+}
+
 #[test]
 fn pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation() {
     let seat = Ulid::new();
