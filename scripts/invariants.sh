@@ -31,9 +31,6 @@ for invariant_file in .bboxy/invariants/*.md; do
     invariant_name=${invariant_name%.md}
     if [ "$(frontmatter_field slow "$invariant_file")" = true ] && [ "$run_slow" = false ]; then
         gate=$(frontmatter_field gate "$invariant_file")
-        if [ -z "$gate" ] && [ "$invariant_name" = parity-geometry ]; then
-            gate=parity
-        fi
         if [ "$run_parity" = false ] || [ "$gate" != parity ]; then
             printf 'invariant %s: skipped (slow)\n' "$invariant_name"
             invariant_skipped=$((invariant_skipped + 1))
