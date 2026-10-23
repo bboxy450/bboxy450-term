@@ -603,7 +603,10 @@ impl Tail {
         }
         self.ring.boundary.journal_position = position.clone();
         if seal {
-            self.ring.seal_hot()?;
+            // Appending at capacity already seals the full data segment. Make
+            // its remaining checkpoint/hot tail durable without sealing a
+            // second tiny segment containing only the checkpoint.
+            self.ring.flush()?;
             if let (Some(position), Some((seq, _))) = (position, &self.checkpoint) {
                 journal.projected(
                     (self.ring.boundary.seat, self.ring.boundary.generation),
@@ -765,9 +768,6 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
             Some(Job::Close(key)) => {
                 if let Some(journal) = journal.as_mut() {
                     let _ = commit_group(&mut rings, journal, &shared, true);
-                    if let Some(tail) = rings.get_mut(&key) {
-                        let _ = tail.compact(journal, true);
-                    }
                 }
                 rings.remove(&key);
                 let mut q = shared.queue.lock().unwrap();
@@ -847,9 +847,8 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
     }
     if let Some(journal) = journal.as_mut() {
         let _ = commit_group(&mut rings, journal, &shared, true);
-        for tail in rings.values_mut() {
-            let _ = tail.compact(journal, true);
-        }
+        // A durable WAL is sufficient at shutdown. Derived rings may lag;
+        // forcing all projections here would turn stop into O(seat data) IO.
     }
 }
 fn commit_group(
@@ -975,6 +974,58 @@ mod tests {
         drop(writer);
     }
 
+    #[test]
+    fn orderly_shutdown_leaves_a_durable_journal_that_rebuilds_the_projection() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("seat");
+        let seat = Ulid::new();
+        let poll = mio::Poll::new().unwrap();
+        let wake = Arc::new(Waker::new(poll.registry(), mio::Token(0)).unwrap());
+        let writer = CaptureWriter::start(wake, Some(&temp.path().join("journal"))).unwrap();
+        let mut handle =
+            writer.register(Ring::open(&root, seat, 1, 0, Settings::default()).unwrap());
+        let event = Event::Output {
+            seat,
+            generation: 1,
+            seq: 1,
+            bytes: b"\x1b[31mretained".to_vec(),
+        };
+        let mut playback = super::super::Playback::new(seat, 1, crate::SeatSize::default());
+        playback.apply(&event).unwrap();
+        handle.append_event(&event).unwrap();
+        assert!(matches!(
+            handle
+                .request(Query::Checkpoint(playback.saved().encode().unwrap()))
+                .unwrap()
+                .recv_timeout(Duration::from_secs(5))
+                .unwrap()
+                .unwrap(),
+            Reply::CheckpointCommitted { sequence: 1 }
+        ));
+        // Fault fixture suppresses optional idle projection, independently of
+        // scheduler load; close/shutdown must only need the authoritative WAL.
+        writer
+            .shared
+            .queue
+            .lock()
+            .unwrap()
+            .pressure
+            .get_mut(&(seat, 1))
+            .unwrap()
+            .full = true;
+        drop(handle);
+        drop(writer);
+        assert_eq!(
+            super::super::load_boundary(&root.join("committed"))
+                .unwrap()
+                .sequence,
+            0
+        );
+        let ring = Ring::open(&root, seat, 1, 0, Settings::default()).unwrap();
+        assert_eq!(ring.status().committed_sequence, 1);
+        assert_eq!(ring.replay().unwrap().byte_end, playback.byte_end);
+        assert_eq!(ring.history(1, 1).unwrap().records[0].event, event);
+    }
     #[test]
     fn one_writer_tick_orders_two_trickling_seats_without_full_flushes() {
         let poll = mio::Poll::new().unwrap();

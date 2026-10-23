@@ -62,3 +62,10 @@ power-cut claim.
 Global writer busy time, commit-round p99 upper bound/max, undurable byte peak
 and durable pauses repeat in each seat status; do not sum those fields across
 seats. Per-seat queue counters and projected file timings retain their scope.
+
+Journal writes use one bounded 1 MiB staging buffer, flushed before tick barriers
+or a history read that needs pending bytes. History keeps validated logical-row
+indexes separately and never reconstructs the terminal model merely to size or
+annotate a page. Orderly shutdown full-flushes the journal and leaves projections
+to recovery; it does not force all seat data through cold compaction. Old-process
+journals are conservatively retained if their projection proof is unavailable.
