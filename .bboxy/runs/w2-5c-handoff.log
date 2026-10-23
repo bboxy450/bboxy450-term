@@ -1,0 +1,61 @@
+Kestrel Voidwing <EXECUTOR> — W2.5c handoff
+Frozen/gated source: b437f4fc12416484715b9db866e538b619e30f58 (exec5).
+Core: c82e0925cdcbda6a76058a8b48b05e9bcbcfcac2. Base: 4bb041798a4a6f4bcd6bad5968ceae6e605d5723 (includes P3 dd47f4e).
+Both signatures verified with machine fingerprint 9B07E849480C68328CA20684844ECC0587DE7AB0.
+Oracle b1bd2a0e explicitly freezes b437f4f after main advanced to app-only smoke fix64f12c7 during gate setup; Oracle verifies the merged tree. No further rebase or app changes.
+A signed records-only follow-up contains the final CI log and this handoff; its SHA is in the DM.
+
+Scope / public contract
+- Ten tools: message_send, message_list, message_receipts, message_ack; ch_ls, ch_subscribe, ch_unsubscribe, ch_link, ch_pause, ch_grant.
+- Worker catalogue has12 tools, Oracle15 (five existing reads plus the allowed additions). ch_link/pause/grant are Oracle-only in discovery AND dispatch. seat_mute/unmute, guarded input, spawn and task/artifact tools remain unavailable.
+- Actor remains capability/live-generation/registry/epoch derived. Caller role, sender, operator, generation and swarm substitutions are refused. Every W2.4 request uses operator=false.
+- Existing W2.4 semantics are preserved: default lists are caller inbox/outbox even for Oracle; explicit Oracle channel reads are own-swarm scoped. Sender and own-swarm Oracle have existing full receipt visibility; ordinary recipients see their own receipt rows. Ack is the admitted recipient/agent's explicit acknowledgement. It does not create an unread cursor or prove native model consumption.
+- A mutation takes a model-visible op_id argument. It binds existing Call.op_id, is stripped before typed dispatch, is compatible with old _meta, and rejects argument/_meta mismatch. Message ID is that operation ID.
+- Intent and audit commit BEFORE dispatch; the SQLite transaction is released before W2.4 writes. Outcome and audit then commit atomically. Completed retries return the retained result; argument/authority conflicts refuse dispatch; an uncertain/crashed operation remains UNKNOWN and never redispatches automatically.
+- W2.4 read permissions are checked before cached results are exposed. A current denial is audited/returned without disclosing or replacing an earlier authorized result.
+
+Files / mechanisms (frozen-source lines)
+- crates/bbt-mux/src/mcp/messaging.rs:19 — central mutation classification; :32 role-filtered schemas/annotations; :245 strict typed requests and W2.4 bounds; :364 preserves W2.4 kind/data and labels durable send acceptance separately from applied channel/ack changes.
+- crates/bbt-mux/src/mcp/tools.rs:14 — extends the existing five-tool catalogue with the filtered messaging definitions.
+- crates/bbt-mux/src/mcp/mod.rs:5 — private helper export; error results carry explicit rejected/unknown status.
+- crates/bbt-mux/src/mcp/bridge.rs:213 — argument op_id handling, required for new mutation calls with metadata compatibility; :228 mismatch rejection by name. Read argument behavior is unchanged.
+- crates/bbt-mux/src/mcp/journal.rs:48 — current denied read fences stale cache; :59 durable pre-effect admission, unknown crash window and completion transaction; :113 original result/conflict semantics retained; :213 audit metadata stores digests, not payloads.
+- crates/bbt-mux/src/logic.rs:936 — typed control routing, effect versus checked-read path; :971 W2.4 request with literal operator=false and conservative unknown storage outcomes. Only this named adjacent Worker hunk changed; control_read/index roots, client unavailable() causes, capture, providers, identity and GUI paths preserved.
+- crates/bbt-mux/src/mcp/journal.rs:263/:331/:359 — fault fixtures: audit failure executes nothing; admission transaction is released; panic/reopen stays unknown; post-effect outcome-audit failure retains unknown without a second effect.
+- crates/bbt-mux/tests/mcp.rs:821 — real admitted Bridge/Logic message send/reply/list/receipts/ack, one message on retry/restart and argument conflicts.
+- tests/mcp.rs:917 — all channel operations, own-inbox worker links, hidden-tool denial, revocation before cached read with unchanged role epoch.
+- tests/mcp.rs:1043 — private DM visibility, per-recipient receipt pagination, explicit DM revocation and foreign-swarm sink/grant refusal.
+- tests/mcp.rs:1187 — public argument IDs, metadata compatibility/mismatch, invalid IDs, caller-field forgery, typed-producer/bounds/stream-policy negatives.
+- tests/mcp.rs:414 — admission rejection also covers mutation calls with wrong capability/generation. Existing five read-tool assertions are preserved while catalogue size changes.
+- .bboxy/runs/w2-5c-{plan,commands,check,focused,clippy,provenance,ci,gate-state}.log — plan/approvals, actual commands/results, raw checks, signature/scope evidence, exact gate and cleanup.
+
+Actual commands / results
+- Initial git fetch0, git verify-commit15f9f4e0, ancestry5e42991->main0, signed rebase0.
+- Read AGENTS/spec/task/API/target source and fixture files; scoped reads recorded in commands.log. A no-match nested-AGENTS rg exits1; other recorded read batches exit0.
+- ICQ LANDED7fd9c37d/CLAIMd1c1ecf0, planb05cd392, bridge supplement20f415e3, Rook/Sable seam DMs52a3ba85/a75479fb, progress18ac25b5 and freeze request5a1fbfcf: previews0/sends0. Stored receipts alone were not treated as model acceptance.
+- Oracle6069d86e approves the ten-tool/API/journal/logic plan. Oracle810c8a92 approves the bridge hunk. Sablec0faec91/Rook18bf7185 clear shared control methods.
+- Scoped rustfmt --edition2024 --config skip_children=true,reorder_modules=false: exit0.
+- Exact-path staging, source/staged diff checks, signed core checkpointde3af8c, fetch and signed rebase onto4bb0417 (c82e092): all exit0.
+- cargo check --locked -p bbt-mux --lib: exit0/28.077s.
+- cargo test --locked -p bbt-mux --lib --test mcp --test messaging -- --nocapture: exit0/35.168s, then exit0/8.230s after adding explicit mutation-admission/cross-swarm/invalid-ID negatives. Each final suite: library16/0/1 ignored fixture; MCP10/0/1 ignored real-client interop; messaging15/0. The displayed panic is intentionally caught crash injection; its test passes.
+- cargo clippy --workspace --all-targets --locked -- -D warnings: exit0/9.955s.
+- Final exact-path staging/checks0; signed tests commitb437f4f0; fetch0; signed rebase0 (up-to-date immediately before the shared ref advanced).
+- git verify-commit c82e092 and b437f4f: each exit0, correct machine key. Merge-base scope diff contains only the approved paths.
+- Clean detached b437f4f, initial git status empty, private CARGO_TARGET_DIR and BBOXY_TEST_CUSTODY=memory: sh scripts/ci-local.sh exit0/715.463s, "ci-local: all gates passed". Build, strict Clippy, full workspace tests, UI lint, smoke and default invariants all pass.
+- Native smoke in that CI: idle10.002s, frames0, callbacks0, updates20; CPU p50 3.761ms. Default invariants:6 checks,0 failures,4 named slow skips.
+- Private target deleted immediately after gate; git worktree remove exit0; directory absence verified. No failure artifact was needed. No peer processes/targets/directories touched.
+
+Acceptance
+1. Fixture calls actually traverse admitted MCP Bridge -> Logic -> existing W2.4 API with explicit throwaway signing key and private temporary state. All ten routes are exercised; actual signed message sender/class come from the seat; priority9 remains worker class.
+2. Worker hidden ch_link/pause/grant and future seat_input_text/task_delegate are absent from discovery and direct calls fail with audit evidence. Caller forgery, unauthorized/revoked DM, foreign swarm, wrong capability/generation, worker link ownership and receipt privacy negatives pass.
+3. Same argument op_id retries/restart retain one message/result; different arguments conflict. Metadata compatibility and named mismatch refusal pass. Audit admission failure dispatch count0; crash/outcome fault keeps unknown, never a duplicate effect.
+4. Revoked read with unchanged role epoch cannot return an old permitted cached tree; current error is returned and audited.
+5. Strict workspace Clippy0 and clean exact CI0. CI log SHA256 c3e3a13dd093af16e92a360a5e372ad3e06074adcfd7ecc9b61ef926f8b8d60b.
+
+Not checked / deliberately unchanged
+- Real Claude/Codex/model-service first turns remain UNPROVEN; installed-client interop stays ignored. No live credentials, root enrollment or real Keychain acceptance.
+- Crash-window evidence uses deterministic panic/reopen and SQLite audit-failure injection, not a power-loss experiment. Unknown outcomes deliberately require receipt inspection/operator handling.
+- Task/artifact tools and frontmatter writes are W2.5d; native guarded input/spawn are later. Role hydration from Settings and Codex skill-path limitations remain the accepted W2.5b/L8 gaps.
+- No W2.4 API/service/tree/ledger/wire or envelope changes, no new dependencies, no app/proto/UI/render/launch changes. Current W2.4 Oracle read/receipt semantics were not narrowed or widened.
+- No --parity or --slow: this is a backend change. Default slow skips are recorded; strict Clippy ran separately and inside CI.
+- Pre-existing older-track untracked logs remain untouched. Tracked source is clean; final follow-up changes records only. No push/merge.

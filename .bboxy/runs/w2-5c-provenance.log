@@ -1,0 +1,24 @@
+$ git verify-commit c82e0925cdcbda6a76058a8b48b05e9bcbcfcac2
+gpg: Signature made Fri Oct 23 03:14:19 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+exit=0
+$ git verify-commit b437f4fc12416484715b9db866e538b619e30f58
+gpg: Signature made Fri Oct 23 03:32:05 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+exit=0
+$ git diff 4bb0417...b437f4f --name-only
+.bboxy/runs/w2-5c-check.log
+.bboxy/runs/w2-5c-clippy.log
+.bboxy/runs/w2-5c-commands.log
+.bboxy/runs/w2-5c-focused.log
+.bboxy/runs/w2-5c-plan.log
+crates/bbt-mux/src/logic.rs
+crates/bbt-mux/src/mcp/bridge.rs
+crates/bbt-mux/src/mcp/journal.rs
+crates/bbt-mux/src/mcp/messaging.rs
+crates/bbt-mux/src/mcp/mod.rs
+crates/bbt-mux/src/mcp/tools.rs
+crates/bbt-mux/tests/mcp.rs
+exit=0

@@ -188,7 +188,7 @@ impl Bridge {
                 else {
                     return Some(rpc_error(id, -32602, "Invalid tool name"));
                 };
-                let args = params
+                let mut args = params
                     .get("arguments")
                     .cloned()
                     .unwrap_or_else(|| json!({}));
@@ -197,16 +197,47 @@ impl Bridge {
                 {
                     return Some(rpc_error(id, -32602, "Invalid or oversized arguments"));
                 }
-                let op_id = match params.get("_meta").and_then(|m| m.get("bboxy450/op_id")) {
+                let meta_id = match params.get("_meta").and_then(|m| m.get("bboxy450/op_id")) {
                     Some(value) => match value
                         .as_str()
                         .and_then(|s| s.parse::<Ulid>().ok())
                         .filter(|id| *id != Ulid::nil())
                     {
-                        Some(id) => id,
+                        Some(id) => Some(id),
                         None => return Some(rpc_error(id, -32602, "Invalid bboxy450/op_id")),
                     },
-                    None => Ulid::new(),
+                    None => None,
+                };
+                // The model can set tool arguments; native clients need not
+                // expose custom request metadata to support an explicit retry.
+                let argument_id = if super::messaging::mutation(tool) {
+                    match args.as_object_mut().unwrap().remove("op_id") {
+                        Some(value) => match value
+                            .as_str()
+                            .and_then(|s| s.parse::<Ulid>().ok())
+                            .filter(|id| *id != Ulid::nil())
+                        {
+                            Some(id) => Some(id),
+                            None => return Some(rpc_error(id, -32602, "Invalid op_id argument")),
+                        },
+                        None => None,
+                    }
+                } else {
+                    None
+                };
+                let op_id = match (argument_id, meta_id) {
+                    (Some(a), Some(b)) if a != b => {
+                        return Some(rpc_error(id, -32602, "op_id argument/_meta mismatch"));
+                    }
+                    (Some(value), _) | (_, Some(value)) => value,
+                    (None, None) if super::messaging::mutation(tool) => {
+                        return Some(rpc_error(
+                            id,
+                            -32602,
+                            "op_id is required for mutating tools",
+                        ));
+                    }
+                    (None, None) => Ulid::new(),
                 };
                 let call = Call {
                     op_id,

@@ -2,6 +2,7 @@
 
 pub mod bridge;
 pub(crate) mod journal;
+pub(crate) mod messaging;
 pub(crate) mod tools;
 
 use serde::{Deserialize, Serialize};
@@ -58,6 +59,6 @@ pub(crate) fn success(op_id: Ulid, mut data: Value) -> Value {
 }
 
 pub(crate) fn error(op_id: Ulid, code: &str, message: &str) -> Value {
-    let data = json!({"op_id":op_id,"error":{"code":code,"message":message}});
+    let data = json!({"op_id":op_id,"status":if code=="unknown"{"unknown"}else{"rejected"},"error":{"code":code,"message":message}});
     json!({"content":[{"type":"text","text":data.to_string()}],"structuredContent":data,"isError":true})
 }
