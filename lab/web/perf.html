@@ -9,18 +9,20 @@ const el = Lab.el;
 let seed = 7; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
 function meter(o) {
   seed = 7; o = o || {};
-  const budget = o.budget || 8.33, frames = [];
+  const budget = o.budget || 8.33, frames = [], P = ['drain', 'layout', 'draw', 'encode', 'present_wait'];
   for (let i = 0; i < 120; i++) {
     const f = { drain: .12 + rnd() * .1, layout: .3 + rnd() * .25, draw: 1.1 + rnd() * .6, encode: .45 + rnd() * .3 };
     if (o.idleFrom != null && i >= o.idleFrom) { frames.push({ idle: true }); continue; }
-    if (o.hitchAt === i) f[o.hitchPhase === 'present' ? 'encode' : o.hitchPhase] += o.hitchPhase === 'present' ? 0 : o.hitchMs, f.hitch = o.hitchPhase;
+    if (o.hitchAt === i) f[o.hitchPhase === 'present_wait' ? 'encode' : o.hitchPhase] += o.hitchPhase === 'present_wait' ? 0 : o.hitchMs, f.hitch = o.hitchPhase;
     const cpu = f.drain + f.layout + f.draw + f.encode;
-    f.present = o.hitchAt === i && o.hitchPhase === 'present' ? o.hitchMs : Math.max(0, budget - cpu) + (rnd() - .5) * .1;
+    f.present_wait = o.hitchAt === i && o.hitchPhase === 'present_wait' ? o.hitchMs : Math.max(0, budget - cpu) + (rnd() - .5) * .1;
     frames.push(f);
   }
-  const live = frames.filter(f => !f.idle), cpus = live.map(f => f.drain + f.layout + f.draw + f.encode).sort((a, b) => a - b), q = p => cpus[Math.min(cpus.length - 1, Math.floor(p * cpus.length))];
-  const h = o.hitchAt != null ? { phase: o.hitchPhase, ms: o.hitchPhase === 'present' ? frames[o.hitchAt].present : frames[o.hitchAt][o.hitchPhase], frame: 4812 } : null;
-  return { hz: Math.round(1000 / budget), interval_ms: budget, budget_ms: budget, cpu: { p50: q(.5), p99: q(.99) }, gpu_ms: 1.92, phases: {}, frames, hitch: h, hitches: h ? 1 : 0, idle: o.idleFrom != null ? '2.4 s ago' : null };
+  const live = frames.filter(f => !f.idle), p50 = xs => xs.sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+  const cpus = live.map(f => f.drain + f.layout + f.draw + f.encode).sort((a, b) => a - b), q = p => cpus[Math.min(cpus.length - 1, Math.floor(p * cpus.length))];
+  const h = o.hitchAt != null ? { phase: o.hitchPhase, ms: frames[o.hitchAt][o.hitchPhase], frame: 4812 } : null;
+  return { hz: Math.round(1000 / budget), interval_ms: budget, budget_ms: budget, cpu: { p50: q(.5), p99: q(.99) }, gpu_ms: 2.9,
+    phases: Object.fromEntries(P.map(ph => [ph, p50(live.map(f => f[ph]))])), frames, hitch: h, late: h ? 1 : 0, idle_ms: o.idleFrom != null ? 2400 : null };
 }
 // the overlay floats top-right over the app, as ⌘⌥F draws it
 function overApp(hud) {
@@ -32,7 +34,7 @@ function overApp(hud) {
 }
 // divergence before the pick: each shape drawn small from the same record, the caption under it. The pick is C inside A's card.
 function shapes() {
-  const m = meter({ hitchAt: 96, hitchPhase: 'layout', hitchMs: 9.4 }), cpu = f => f.drain + f.layout + f.draw + f.encode, tot = f => cpu(f) + f.present;
+  const m = meter({ hitchAt: 96, hitchPhase: 'layout', hitchMs: 9.4 }), cpu = f => f.drain + f.layout + f.draw + f.encode, tot = f => cpu(f) + f.present_wait;
   const cell = (name, say, body, pick) => el('div', { class: 'shape' + (pick ? ' pick' : ''), style: (pick ? 'grid-column:span 2;' : '') + 'display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:var(--r-card);background:var(--surface);box-shadow:0 0 0 var(--hair-w) ' + (pick ? 'var(--accent)' : 'var(--hair)') }, el('div', { style: 'min-height:96px;display:flex;align-items:center;justify-content:center' }, body), el('b', { style: 'font-size:var(--t-row)' }, name + (pick ? ' · picked' : '')), el('span', { style: 'font-size:var(--t-caption);color:var(--fg-dim)' }, say));
   const W = 200, H = 48, k = H / 20;
   const line = UI.Path({ size: [W, H], points: m.frames.map((f, i) => ({ [i ? 'line' : 'move']: [i * W / 119, H - Math.min(H, tot(f) * k)] })), stroke: { width: 1.25, color: 'accent', join: 'round' } });
@@ -40,7 +42,7 @@ function shapes() {
   const ringSeg = (a0, a1, r) => { const p = a => [32 + r * Math.cos(a - Math.PI / 2), 32 + r * Math.sin(a - Math.PI / 2)], n = 24, pts = [{ move: p(a0) }]; for (let i = 1; i <= n; i++) pts.push({ line: p(a0 + (a1 - a0) * i / n) }); return pts; };
   const last = m.frames[96], ring = el('div', { style: 'position:relative;width:64px;height:64px' }); let a = 0;
   ['drain', 'layout', 'draw', 'encode'].forEach((ph, i) => { const span = last[ph] / 8.33 * Math.PI * 2, r = UI.Path({ size: [64, 64], points: ringSeg(a, Math.min(a + span, Math.PI * 2 - .01), 26), stroke: { width: 6, color: ph === 'layout' ? '#e8a33a' : 'accent', opacity: 1 - i * .18 } }); r.style.position = 'absolute'; r.style.inset = 0; ring.append(r); a += span; });
-  const heat = el('div', { style: 'display:grid;grid-template-columns:repeat(60,3px);gap:0;' }, ...['drain', 'layout', 'draw', 'encode', 'present'].flatMap(ph => m.frames.slice(60).map(f => el('i', { style: 'height:8px;background:color-mix(in srgb,' + (f.hitch === ph ? '#e8a33a' : 'var(--accent)') + ' ' + Math.min(100, Math.round(f[ph] / 3 * 100)) + '%, transparent)' }))));
+  const heat = el('div', { style: 'display:grid;grid-template-columns:repeat(60,3px);gap:0;' }, ...['drain', 'layout', 'draw', 'encode', 'present_wait'].flatMap(ph => m.frames.slice(60).map(f => el('i', { style: 'height:8px;background:color-mix(in srgb,' + (f.hitch === ph ? '#e8a33a' : 'var(--accent)') + ' ' + Math.min(100, Math.round(f[ph] / 3 * 100)) + '%, transparent)' }))));
   const pill = el('span', { style: 'display:inline-flex;align-items:center;gap:8px;padding:4px 12px;border-radius:var(--r-round);font-family:var(--font-mono);font-size:var(--t-micro);background:var(--surface-2);box-shadow:0 0 0 var(--hair-w) var(--hair)' }, el('b', {}, '120 Hz'), UI.Path({ size: [48, 12], points: m.frames.slice(-24).map((f, i) => ({ [i ? 'line' : 'move']: [i * 2, 12 - Math.min(12, tot(f) * .6)] })), stroke: { width: 1, color: 'accent' } }), 'p99 ' + m.cpu.p99.toFixed(1));
   const edge = el('div', { style: 'display:flex;width:200px;height:3px' }, ...m.frames.map(f => el('i', { style: 'flex:1;background:' + (f.hitch ? 'var(--c-waiting)' : 'color-mix(in srgb, var(--accent) 60%, transparent)') })));
   const tach = el('div', { style: 'display:flex;flex-direction:column;gap:4px;font-family:var(--font-mono);font-size:var(--t-micro)' }, el('b', { style: 'font-size:var(--t-subtitle);font-family:var(--font-chrome)' }, '120 Hz'), line, el('span', { style: 'color:var(--fg-dim)' }, 'draw 1.4 · layout 0.4 · encode 0.6'));
@@ -59,12 +61,12 @@ const STATES = {
   'shapes': () => shapes(),
   'steady · 120 Hz': () => overApp(C.perfHud(meter())),
   'hitch · layout': () => overApp(C.perfHud(meter({ hitchAt: 108, hitchPhase: 'layout', hitchMs: 9.4 }))),
-  'hitch · present': () => overApp(C.perfHud(meter({ hitchAt: 108, hitchPhase: 'present', hitchMs: 14.6 }))),
+  'hitch · present': () => overApp(C.perfHud(meter({ hitchAt: 108, hitchPhase: 'present_wait', hitchMs: 14.6 }))),
   'idle': () => overApp(C.perfHud(meter({ idleFrom: 84 }))),
   '60 Hz display': () => overApp(C.perfHud(meter({ budget: 16.67 }))),
   'hud alone': () => el('div', { style: 'display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start' }, C.perfHud(meter()), C.perfHud(meter({ hitchAt: 108, hitchPhase: 'layout', hitchMs: 9.4 }))),
 };
-Lab.page({ title: 'perf overlay', wide: true, note: '⌘⌥F over the live app: the runtime meter (runtime.md) in the hud panel. Last 120 frames as bars stacked by phase (drain, layout, draw, encode on the CPU; present wait above), a dashed budget line at the display interval, the legend doubling as the table, CPU p50/p99, GPU span. A hitch flashes the phase that overran, in its bar and its legend row; idle intervals draw as stubs and never count. shapes: the divergence before the pick.',
+Lab.page({ title: 'perf overlay', wide: true, note: '⌘⌥F over the live app: the runtime meter (runtime.md) in the hud panel. Last 120 frames as bars stacked by phase (drain, layout, draw, encode on the CPU; present wait above), a dashed budget line at the display interval, the legend doubling as the table, CPU p50/p99, GPU active ms per frame, late frames in the window (the meter’s hitch rule). A hitch flashes the phase that overran, in its bar and its legend row; idle intervals draw as stubs and never count. shapes: the divergence before the pick.',
   states: Object.keys(STATES),
   render(s, body) { body.append(STATES[s]()); } });
 </script></body></html>

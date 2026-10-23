@@ -1003,7 +1003,11 @@
   // layout, draw, encode on the CPU, present wait above), a dashed budget line at the display interval, the phase legend doubling
   // as the table. A hitch flashes the phase that overran, in the bar and in its legend row. Idle intervals draw as stubs, never
   // as hitches (the meter does not count them). The record is the meter's own numbers; nothing here is measured from the DOM.
-  const PERF_PHASES = ['drain', 'layout', 'draw', 'encode', 'present'];
+  // Record (bbt-rt meter.rs names): { hz, interval_ms, budget_ms, cpu: { p50, p99 }, gpu_ms: mean GPU active time per frame,
+  // phases: per-phase p50 over the window, frames: [{ drain, layout, draw, encode, present_wait, hitch?: phase } | { idle: true }],
+  // hitch: the latest { phase, ms, frame } or null, late: hitches in the window (meter rule: max(cpu, present_wait) > 1.5 × interval),
+  // idle_ms: time since the last frame, or null }.
+  const PERF_PHASES = ['drain', 'layout', 'draw', 'encode', 'present_wait'];
   function perfHud(m, opts) {
     opts = opts || {};
     const W = 240, H = 44, k = H / (m.budget_ms * 1.5), ms = v => v.toFixed(2); // budget at two thirds; a hitch clips at the top
@@ -1016,11 +1020,12 @@
     const budget = window.UI.Path({ size: [W, 1], points: [{ move: [0, 0.5] }, { line: [W, 0.5] }], stroke: { width: 1, color: 'fg', opacity: 0.55, dash: [3, 2] } });
     budget.classList.add('perf-budget'); budget.style.bottom = (m.budget_ms * k).toFixed(2) + 'px';
     spark.append(budget);
-    const head = el('div', { class: 'perf-head' }, el('b', {}, m.idle ? 'idle' : m.hz + ' Hz'), el('span', {}, m.idle ? 'last frame ' + m.idle : ms(m.interval_ms) + ' ms · budget ' + ms(m.budget_ms)));
-    const last = m.frames[m.frames.length - 1] || {}, over = m.hitch && m.hitch.phase;
-    const legend = el('div', { class: 'perf-legend' }, ...PERF_PHASES.map(ph => el('div', { class: 'perf-ph' + (ph === over ? ' over' : '') }, el('i', { class: 'ph-' + ph }), el('span', {}, ph === 'present' ? 'present wait' : ph), el('b', {}, ms(ph === over ? m.hitch.ms : (m.phases[ph] != null ? m.phases[ph] : last[ph] || 0))))));
-    const foot = el('div', { class: 'perf-foot' }, el('span', {}, 'CPU p50 ' + ms(m.cpu.p50) + ' · p99 ' + ms(m.cpu.p99) + ' ms'), el('span', {}, 'GPU ' + ms(m.gpu_ms) + ' ms'),
-      el('span', { class: m.hitch ? 'hit' : '' }, m.hitch ? 'hitch · ' + m.hitch.phase + ' ' + ms(m.hitch.ms) + ' ms · frame ' + m.hitch.frame : m.hitches + ' hitches'));
+    const idle = m.idle_ms != null, ago = v => v < 1000 ? Math.round(v) + ' ms ago' : (v / 1000).toFixed(1) + ' s ago', label = ph => ph.replace('_', ' ');
+    const head = el('div', { class: 'perf-head' }, el('b', {}, idle ? 'idle' : m.hz + ' Hz'), el('span', {}, idle ? 'last frame ' + ago(m.idle_ms) : ms(m.interval_ms) + ' ms · budget ' + ms(m.budget_ms)));
+    const over = m.hitch && m.hitch.phase;
+    const legend = el('div', { class: 'perf-legend' }, ...PERF_PHASES.map(ph => el('div', { class: 'perf-ph' + (ph === over ? ' over' : '') }, el('i', { class: 'ph-' + ph }), el('span', {}, label(ph)), el('b', {}, ms(ph === over ? m.hitch.ms : m.phases[ph])))));
+    const foot = el('div', { class: 'perf-foot' }, el('span', {}, 'CPU ' + ms(m.cpu.p50) + ' · p99 ' + ms(m.cpu.p99) + ' ms'), el('span', {}, 'GPU ' + ms(m.gpu_ms) + ' ms'),
+      el('span', { class: m.hitch ? 'hit' : '' }, 'late ' + m.late + (m.hitch ? ' · ' + label(m.hitch.phase) + ' ' + ms(m.hitch.ms) + ' ms · #' + m.hitch.frame : ' / ' + m.frames.length)));
     const card = window.UI.Box('hud', head, spark, legend, foot);
     card.classList.add('perf-hud');
     return card;

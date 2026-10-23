@@ -1328,7 +1328,7 @@ body.live .pane.focused .term .cur { animation: curBlink 1s steps(1) infinite; }
 .perf-hud .ph-layout { background: color-mix(in srgb, var(--accent) 75%, var(--fg)); }
 .perf-hud .ph-draw { background: var(--accent); }
 .perf-hud .ph-encode { background: color-mix(in srgb, var(--accent) 50%, var(--surface)); }
-.perf-hud .ph-present { background: color-mix(in srgb, var(--fg-dim) 24%, transparent); }
+.perf-hud .ph-present_wait { background: color-mix(in srgb, var(--fg-dim) 24%, transparent); }
 .perf-hud .over, .perf-hud .perf-bar i.over { background: var(--c-waiting); animation: perf-flash .9s var(--ease, ease-out) 3; }
 @keyframes perf-flash { 0% { background: color-mix(in srgb, var(--c-waiting) 40%, #fff); } 100% { background: var(--c-waiting); } }
 .perf-legend { display: grid; gap: var(--s1); }
