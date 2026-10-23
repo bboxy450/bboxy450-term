@@ -8,6 +8,7 @@ mod live;
 mod log;
 mod scene;
 
+use bboxy450_term::keyboard;
 use bboxy450_term::launcher::{
     CaretMove, Command as LauncherCommand, Controller as LauncherController,
     Outcome as LauncherOutcome,
@@ -277,14 +278,19 @@ fn default_spawn(
 }
 
 /// This is the same routing entry point used by winit and the synthetic tests.
-fn route_key(
-    key: &Key,
-    physical: PhysicalKey,
-    text: Option<&str>,
-    mods: ModifiersState,
-    repeat: bool,
-    query: Option<&str>,
-) -> RoutedKey {
+fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> RoutedKey {
+    if input.state == ElementState::Released {
+        return if query.is_none() {
+            keyboard::encode(input, modes).map_or(RoutedKey::Local, RoutedKey::Terminal)
+        } else {
+            RoutedKey::Local
+        };
+    }
+    let key = &input.logical_key;
+    let physical = input.physical_key;
+    let text = input.text;
+    let mods = input.modifiers.state;
+    let repeat = input.repeat;
     let command = mods.super_key();
     if command && physical == PhysicalKey::Code(KeyCode::KeyQ) {
         return if repeat {
@@ -331,7 +337,7 @@ fn route_key(
     ) {
         KeyRoute::Pane(navigation) => return RoutedKey::Pane(navigation),
         KeyRoute::Terminal => {
-            return terminal_input(key, text, mods).map_or(RoutedKey::Local, RoutedKey::Terminal);
+            return keyboard::encode(input, modes).map_or(RoutedKey::Local, RoutedKey::Terminal);
         }
         _ => {}
     }
@@ -408,6 +414,27 @@ fn route_key(
         _ => return RoutedKey::Local,
     };
     RoutedKey::Launcher(local)
+}
+
+/// Local repeats keep their existing navigation/edit behavior. Only a repeat
+/// that would cross from a locally consumed press into the PTY is suppressed.
+fn route_input(
+    state: &mut keyboard::State,
+    input: &keyboard::Input<'_>,
+    modes: u64,
+    query: Option<&str>,
+) -> RoutedKey {
+    let was_local = state.suppressed(input.physical_key, input.state, input.repeat);
+    let routed = route_key(input, modes, query);
+    if was_local
+        && (input.state == ElementState::Released || matches!(routed, RoutedKey::Terminal(_)))
+    {
+        return RoutedKey::Local;
+    }
+    if !matches!(routed, RoutedKey::Terminal(_)) {
+        state.consumed(input.physical_key, input.state);
+    }
+    routed
 }
 
 fn preedit_command(text: String, cursor: Option<(usize, usize)>) -> LauncherCommand {
@@ -621,6 +648,7 @@ struct App {
     scene: scene::Scene,
     meter: HitchMeter,
     modifiers: ModifiersState,
+    keyboard: keyboard::State,
     overlay: bool,
     fake: bool,
     smoke: bool,
@@ -1517,7 +1545,10 @@ impl ApplicationHandler<UiEvent> for App {
                     self.request_redraw();
                 }
             }
-            WindowEvent::ModifiersChanged(modifiers) => self.modifiers = modifiers.state(),
+            WindowEvent::ModifiersChanged(modifiers) => {
+                self.modifiers = modifiers.state();
+                self.keyboard.modifiers_changed(modifiers);
+            }
             WindowEvent::CursorMoved { position, .. } => {
                 let scale = self
                     .window
@@ -1597,11 +1628,15 @@ impl ApplicationHandler<UiEvent> for App {
             WindowEvent::Ime(Ime::Commit(text)) => {
                 self.launcher_command(LauncherCommand::Commit(text));
             }
-            WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
-                self.focus.controller.key_pressed(Instant::now());
+            WindowEvent::KeyboardInput { event, .. } => {
+                let input = self.keyboard.event(&event, self.modifiers);
+                if event.state.is_pressed() {
+                    self.focus.controller.key_pressed(Instant::now());
+                }
                 // Verification-only resize exercises the real OS Resized event
                 // on borderless windows whose native edge is hard to grab.
-                if self.capture.is_some()
+                if event.state.is_pressed()
+                    && self.capture.is_some()
                     && self.modifiers.super_key()
                     && self.modifiers.shift_key()
                     && event.physical_key == PhysicalKey::Code(KeyCode::KeyR)
@@ -1616,11 +1651,13 @@ impl ApplicationHandler<UiEvent> for App {
                         };
                         self.pending_resize = Some(size);
                     }
+                    self.keyboard.consumed(event.physical_key, event.state);
                     return;
                 }
                 // The existing --capture path can be refreshed after an
                 // interactive verification scene (no readback on the UI).
-                if self.capture.is_some()
+                if event.state.is_pressed()
+                    && self.capture.is_some()
                     && self.modifiers.super_key()
                     && self.modifiers.shift_key()
                     && event.physical_key == PhysicalKey::Code(KeyCode::KeyS)
@@ -1628,18 +1665,30 @@ impl ApplicationHandler<UiEvent> for App {
                 {
                     self.capture_pending = true;
                     self.request_redraw();
+                    self.keyboard.consumed(event.physical_key, event.state);
                     return;
                 }
-                match route_key(
-                    &event.logical_key,
-                    event.physical_key,
-                    event.text.as_deref(),
-                    self.modifiers,
-                    event.repeat,
+                let modes = self
+                    .focus
+                    .stage
+                    .as_ref()
+                    .and_then(|stage| stage.focused)
+                    .and_then(|seat| {
+                        self.live_state
+                            .as_ref()?
+                            .screens
+                            .get(&seat)
+                            .map(|screen| screen.modes)
+                    });
+                let routed = route_input(
+                    &mut self.keyboard,
+                    &input,
+                    modes.unwrap_or_default(),
                     self.launcher
                         .as_ref()
                         .map(|launcher| launcher.launcher.query.as_str()),
-                ) {
+                );
+                match routed {
                     RoutedKey::Quit => self.request_close(event_loop),
                     RoutedKey::OpenLauncher => self.open_launcher(),
                     RoutedKey::ToggleHud => {
@@ -1652,8 +1701,10 @@ impl ApplicationHandler<UiEvent> for App {
                         self.focus_action(FocusAction::Navigate(navigation))
                     }
                     RoutedKey::Terminal(bytes) => {
-                        if let Some(seat) =
-                            self.focus.stage.as_ref().and_then(|stage| stage.focused)
+                        // No terminal input before the focused live Screen supplies modes.
+                        if modes.is_some()
+                            && let Some(seat) =
+                                self.focus.stage.as_ref().and_then(|stage| stage.focused)
                             && let Some(generation) = self
                                 .live_state
                                 .as_ref()
@@ -1793,42 +1844,35 @@ fn flush_pending(
     }
     Ok(())
 }
-fn terminal_input(key: &Key, text: Option<&str>, modifiers: ModifiersState) -> Option<Vec<u8>> {
-    if modifiers.super_key() {
-        return None;
+#[cfg(test)]
+fn test_key<'a>(
+    key: &Key,
+    physical: PhysicalKey,
+    text: Option<&'a str>,
+    mods: ModifiersState,
+    repeat: bool,
+) -> keyboard::Input<'a> {
+    keyboard::Input {
+        logical_key: key.clone(),
+        physical_key: physical,
+        unmodified_key: key.clone(),
+        text,
+        text_all_modifiers: text,
+        location: winit::keyboard::KeyLocation::Standard,
+        state: ElementState::Pressed,
+        repeat,
+        modifiers: keyboard::Modifiers {
+            state: mods,
+            ..Default::default()
+        },
     }
-    let value: &[u8] = match key {
-        Key::Named(NamedKey::Enter) => b"\r",
-        Key::Named(NamedKey::Space) => b" ",
-        Key::Named(NamedKey::Backspace) => b"\x7f",
-        Key::Named(NamedKey::Tab) if modifiers.shift_key() => b"\x1b[Z",
-        Key::Named(NamedKey::Tab) => b"\t",
-        Key::Named(NamedKey::Escape) => b"\x1b",
-        Key::Named(NamedKey::ArrowUp) => b"\x1b[A",
-        Key::Named(NamedKey::ArrowDown) => b"\x1b[B",
-        Key::Named(NamedKey::ArrowRight) => b"\x1b[C",
-        Key::Named(NamedKey::ArrowLeft) => b"\x1b[D",
-        Key::Named(NamedKey::Home) => b"\x1b[H",
-        Key::Named(NamedKey::End) => b"\x1b[F",
-        Key::Named(NamedKey::Delete) => b"\x1b[3~",
-        Key::Named(NamedKey::PageUp) => b"\x1b[5~",
-        Key::Named(NamedKey::PageDown) => b"\x1b[6~",
-        Key::Character(value) if modifiers.control_key() => {
-            let ascii = value.as_bytes();
-            if ascii.len() == 1 && matches!(ascii[0], b'@'..=b'_' | b'a'..=b'z' | b' ') {
-                return Some(vec![ascii[0] & 0x1f]);
-            }
-            return None;
-        }
-        Key::Character(value) => text.unwrap_or(value).as_bytes(),
-        _ => return None,
-    };
-    let mut bytes = Vec::with_capacity(value.len() + usize::from(modifiers.alt_key()));
-    if modifiers.alt_key() {
-        bytes.push(0x1b);
-    }
-    bytes.extend_from_slice(value);
-    Some(bytes)
+}
+#[cfg(test)]
+fn terminal_input(key: &Key, text: Option<&str>, mods: ModifiersState) -> Option<Vec<u8>> {
+    keyboard::encode(
+        &test_key(key, PhysicalKey::Code(KeyCode::Space), text, mods, false),
+        0,
+    )
 }
 /// The meter's window in the HUD's record shape (the lab's field names).
 fn perf_hud(r: bbt_rt::PerfRecord) -> bbt_ui::modules::perf_hud::PerfHud {
@@ -2282,6 +2326,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         meter: HitchMeter::new(120.),
         modifiers: ModifiersState::empty(),
+        keyboard: keyboard::State::default(),
         overlay,
         fake,
         smoke,
@@ -2863,11 +2908,8 @@ mod launcher_host_tests {
     }
     fn route(key: Key, mods: ModifiersState, repeat: bool, query: Option<&str>) -> RoutedKey {
         route_key(
-            &key,
-            PhysicalKey::Code(KeyCode::Space),
-            None,
-            mods,
-            repeat,
+            &test_key(&key, PhysicalKey::Code(KeyCode::Space), None, mods, repeat),
+            0,
             query,
         )
     }
@@ -2910,6 +2952,100 @@ mod launcher_host_tests {
                 None
             ),
             RoutedKey::Pane(Navigation::Cycle { backwards: true })
+        );
+    }
+    #[test]
+    fn terminal_route_uses_live_modes_and_forwards_only_requested_releases() {
+        let mut input = test_key(
+            &Key::Named(NamedKey::Escape),
+            PhysicalKey::Code(KeyCode::Escape),
+            None,
+            ModifiersState::empty(),
+            false,
+        );
+        assert_eq!(route_key(&input, 0, None), RoutedKey::Terminal(vec![27]));
+        assert_eq!(
+            route_key(&input, 1 << 18, None),
+            RoutedKey::Terminal(b"\x1b[27u".to_vec())
+        );
+        input.state = ElementState::Released;
+        assert_eq!(route_key(&input, 1 << 18, None), RoutedKey::Local);
+        assert_eq!(
+            route_key(&input, 3 << 18, None),
+            RoutedKey::Terminal(b"\x1b[27;1:3u".to_vec())
+        );
+        assert_eq!(route_key(&input, 31 << 18, Some("")), RoutedKey::Local);
+        input.state = ElementState::Pressed;
+        input.repeat = true;
+        assert_eq!(
+            route_key(&input, 3 << 18, None),
+            RoutedKey::Terminal(b"\x1b[27;1:2u".to_vec())
+        );
+        // A local Cmd chord stays local after Cmd is released ahead of its key.
+        let mut state = keyboard::State::default();
+        let physical = PhysicalKey::Code(KeyCode::KeyT);
+        let command = test_key(
+            &Key::Character("t".into()),
+            physical,
+            Some("t"),
+            ModifiersState::SUPER,
+            false,
+        );
+        assert_eq!(route_key(&command, 31 << 18, None), RoutedKey::OpenLauncher);
+        state.consumed(physical, ElementState::Pressed);
+        assert!(state.suppressed(physical, ElementState::Pressed, true));
+        assert!(state.suppressed(physical, ElementState::Released, false));
+    }
+    #[test]
+    fn consumed_local_presses_keep_local_repeats_without_leaking_into_the_pty() {
+        let mut state = keyboard::State::default();
+        let mut arrow = test_key(
+            &Key::Named(NamedKey::ArrowLeft),
+            PhysicalKey::Code(KeyCode::ArrowLeft),
+            None,
+            ModifiersState::SUPER | ModifiersState::ALT,
+            false,
+        );
+        let navigation = RoutedKey::Pane(Navigation::Direction(Direction::Left));
+        assert_eq!(route_input(&mut state, &arrow, 31 << 18, None), navigation);
+        arrow.repeat = true;
+        assert_eq!(route_input(&mut state, &arrow, 31 << 18, None), navigation);
+        arrow.modifiers.state = ModifiersState::empty();
+        assert_eq!(
+            route_input(&mut state, &arrow, 31 << 18, None),
+            RoutedKey::Local
+        );
+        arrow.state = ElementState::Released;
+        arrow.repeat = false;
+        assert_eq!(
+            route_input(&mut state, &arrow, 31 << 18, None),
+            RoutedKey::Local
+        );
+        arrow.state = ElementState::Pressed;
+        assert_eq!(
+            route_input(&mut state, &arrow, 31 << 18, None),
+            RoutedKey::Terminal(b"\x1b[D".to_vec())
+        );
+
+        let mut letter = test_key(
+            &Key::Character("a".into()),
+            PhysicalKey::Code(KeyCode::KeyA),
+            Some("a"),
+            ModifiersState::empty(),
+            false,
+        );
+        assert_eq!(
+            route_input(&mut state, &letter, 0, Some("z")),
+            RoutedKey::Launcher(LauncherCommand::Insert("a".into()))
+        );
+        letter.repeat = true;
+        assert_eq!(
+            route_input(&mut state, &letter, 0, Some("za")),
+            RoutedKey::Launcher(LauncherCommand::Insert("a".into()))
+        );
+        assert_eq!(
+            route_input(&mut state, &letter, 31 << 18, None),
+            RoutedKey::Local
         );
     }
     #[test]
@@ -2958,22 +3094,28 @@ mod launcher_host_tests {
         );
         assert_eq!(
             route_key(
-                &Key::Character("t".into()),
-                PhysicalKey::Code(KeyCode::KeyT),
-                Some("t"),
-                ModifiersState::SUPER,
-                false,
+                &test_key(
+                    &Key::Character("t".into()),
+                    PhysicalKey::Code(KeyCode::KeyT),
+                    Some("t"),
+                    ModifiersState::SUPER,
+                    false
+                ),
+                0,
                 None
             ),
             RoutedKey::OpenLauncher
         );
         assert_eq!(
             route_key(
-                &Key::Character("t".into()),
-                PhysicalKey::Code(KeyCode::KeyT),
-                Some("t"),
-                ModifiersState::SUPER,
-                true,
+                &test_key(
+                    &Key::Character("t".into()),
+                    PhysicalKey::Code(KeyCode::KeyT),
+                    Some("t"),
+                    ModifiersState::SUPER,
+                    true
+                ),
+                0,
                 None
             ),
             RoutedKey::Local
