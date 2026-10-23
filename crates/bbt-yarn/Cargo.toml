@@ -1,0 +1,35 @@
+[package]
+name = "bbt-yarn"
+description = "A no_std reactor kernel for explicit, compile-checked async orchestration"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+
+[package.metadata.upstream]
+repository = "https://github.com/Gonzih/kittens-old"
+revision = "293e134526bb2deee96f1197d6268aee64495482"
+
+[features]
+default = ["macros", "tokio"]
+macros = ["dep:bbt-yarn-macros"]
+tokio = ["dep:tokio", "dep:tokio-util"]
+
+[dependencies]
+bbt-yarn-macros = { path = "../bbt-yarn-macros", version = "=0.0.1", optional = true }
+
+[target.'cfg(not(target_os = "none"))'.dependencies]
+tokio = { version = "=1.54.1", default-features = false, features = ["macros", "rt", "rt-multi-thread", "sync", "time"], optional = true }
+tokio-util = { version = "=0.7.19", default-features = false, features = ["rt"], optional = true }
+
+[dev-dependencies]
+tokio = { version = "=1.54.1", default-features = false, features = ["macros", "rt", "rt-multi-thread", "sync", "time", "test-util"] }
+tokio-util = { version = "=0.7.19", default-features = false, features = ["rt"] }
+trybuild = "=1.0.120"
+
+[[example]]
+name = "minimal"
+required-features = ["macros", "tokio"]

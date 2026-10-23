@@ -1,0 +1,13 @@
+{
+  "method": "O0 check on one new private target: core without default features, then enable only macros; two jobs, no debug/incremental, cached registry and nonexclusive host; difference includes proc-macro dependencies. Warm checks reuse each feature set. No app adoption or workspace-total compile-time claim.",
+  "core_cold_s": 0.36930929200025275,
+  "macros_cold_s": 17.391024374985136,
+  "cold_feature_addition_delta_s": 17.021715082984883,
+  "core_warm_s": 0.27232112499768846,
+  "macros_warm_s": 0.23808195799938403,
+  "loadavg_at_start": [
+    16.52099609375,
+    20.4658203125,
+    24.71484375
+  ]
+}

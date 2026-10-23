@@ -1,0 +1,42 @@
+[
+  {
+    "fixture": "tests/ui/before_cycle.rs",
+    "change": "underline width only; diagnostic text and anchors unchanged"
+  },
+  {
+    "fixture": "tests/ui/drain_nonliteral.rs",
+    "change": "underline width only; diagnostic text and anchors unchanged"
+  },
+  {
+    "fixture": "tests/ui/drain_over_limit.rs",
+    "change": "underline width only; diagnostic text and anchors unchanged"
+  },
+  {
+    "fixture": "tests/ui/drain_zero.rs",
+    "change": "underline width only; diagnostic text and anchors unchanged"
+  },
+  {
+    "fixture": "tests/ui/duplicate_place.rs",
+    "change": "underline width only; diagnostic text and anchors unchanged"
+  },
+  {
+    "fixture": "tests/ui/last_followed.rs",
+    "change": "underline width only; diagnostic text and anchors unchanged"
+  },
+  {
+    "fixture": "tests/ui/missing_phase.rs",
+    "change": "underline width only; diagnostic text and anchors unchanged"
+  },
+  {
+    "fixture": "tests/ui/missing_yield.rs",
+    "change": "underline width only; diagnostic text and anchors unchanged"
+  },
+  {
+    "fixture": "tests/ui/shutdown_below_firehose.rs",
+    "change": "underline width only; diagnostic text and anchors unchanged"
+  },
+  {
+    "fixture": "tests/ui/temporary_source.rs",
+    "change": "underline width only; diagnostic text and anchors unchanged"
+  }
+]

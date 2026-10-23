@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/bbt-yarn-macros",
+  "crates/bbt-yarn",
   "crates/bbt-core",
   "crates/bbt-mermaid",
   "crates/bbt-supervisor",

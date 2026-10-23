@@ -1,0 +1,39 @@
+{"argv": ["cargo", "clippy", "-p", "bbt-yarn", "-p", "bbt-yarn-macros", "--all-targets", "--locked", "--", "-D", "warnings"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "env": {"CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/y1", "CARGO_INCREMENTAL": "0", "CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_PROFILE_TEST_DEBUG": "0", "CARGO_PROFILE_DEV_OPT_LEVEL": "1", "CARGO_PROFILE_TEST_OPT_LEVEL": "1", "CARGO_BUILD_JOBS": "2", "BBOXY_TEST_CUSTODY": "memory"}, "TRYBUILD": null}
+    Checking serde_core v1.0.229
+    Checking winnow v1.0.4
+    Checking toml_parser v1.1.5+spec-1.1.0
+    Checking pin-project-lite v0.2.17
+    Checking futures-core v0.3.34
+    Checking slab v0.4.12
+    Checking futures-task v0.3.34
+    Checking toml_datetime v1.1.2+spec-1.1.0
+    Checking futures-util v0.3.34
+    Checking serde_spanned v1.1.2
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn-macros)
+error: this `if` statement can be collapsed
+   --> crates/bbt-yarn-macros/src/lib.rs:746:5
+    |
+746 | /     if let Some((index, arm, span)) = last.first().copied() {
+747 | |         if index + 1 != reactor.arms.len() {
+748 | |             return Err(ktr(
+749 | |                 span,
+...   |
+759 | |     }
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#collapsible_if
+    = note: `-D clippy::collapsible-if` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+    |
+746 ~     if let Some((index, arm, span)) = last.first().copied()
+747 ~         && index + 1 != reactor.arms.len() {
+748 |             return Err(ktr(
+...
+757 |             ));
+758 ~         }
+    |
+
+error: could not compile `bbt-yarn-macros` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+{"argv": ["cargo", "clippy", "-p", "bbt-yarn", "-p", "bbt-yarn-macros", "--all-targets", "--locked", "--", "-D", "warnings"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "exit": 101, "elapsed_s": 2.179454083001474}

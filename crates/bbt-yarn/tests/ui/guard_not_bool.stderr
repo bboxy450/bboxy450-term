@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> tests/ui/guard_not_bool.rs:22:16
+   |
+12 | /     bbt_yarn::reactor! {
+13 | |         policy { selection: biased; required_phases: []; }
+14 | |
+15 | |         #[source(shutdown)]
+...  |
+22 | |         #[when(7)]
+   | |                ^ expected `bool`, found integer
+23 | |         _ = sources.event => { Ok(Control::Continue) }
+24 | |     }
+   | |_____- arguments to this function are incorrect
+   |
+note: function defined here
+  --> src/lib.rs
+   |
+   |     pub const fn assert_KTR019_guard_result_is_bool(value: bool) -> bool {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,0 +1,10 @@
+{"argv": ["cargo", "package", "--allow-dirty", "--locked"], "cwd": "/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn", "env": {"CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/y1", "CARGO_INCREMENTAL": "0", "CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_PROFILE_TEST_DEBUG": "0", "CARGO_PROFILE_DEV_OPT_LEVEL": "1", "CARGO_PROFILE_TEST_OPT_LEVEL": "1", "CARGO_BUILD_JOBS": "2", "BBOXY_TEST_CUSTODY": "memory"}, "TRYBUILD": null}
+   Packaging bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn)
+    Updating crates.io index
+error: failed to prepare local package for uploading
+
+Caused by:
+  no matching package named `bbt-yarn-macros` found
+  location searched: crates.io index
+  required by package `bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn)`
+{"argv": ["cargo", "package", "--allow-dirty", "--locked"], "cwd": "/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn", "exit": 101, "elapsed_s": 0.7884096250054426}

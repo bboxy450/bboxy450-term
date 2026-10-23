@@ -1,0 +1,48 @@
+{
+  "source_sha": "1d6f99f0dffca9a0e6865366db5743221acde14f",
+  "worktree": "/private/tmp/rook-y1-ci-bxmuv642/tree",
+  "target": "/Users/feral/mydev/bboxy450-term-rook/target/y1-ci-1d6f99f0",
+  "runner_pid": 8551,
+  "environment": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/y1-ci-1d6f99f0",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "stages": [
+    {
+      "label": "workspace-clippy",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "pid": 8602,
+      "exit": 0,
+      "elapsed_s": 406.56717395799933,
+      "log": "/Users/feral/mydev/bboxy450-term-rook/.bboxy/runs/y1-workspace-clippy-1d6f99f0.log"
+    },
+    {
+      "label": "ci-local",
+      "argv": [
+        "sh",
+        "scripts/ci-local.sh"
+      ],
+      "pid": 22148,
+      "exit": -15,
+      "elapsed_s": 1372.9818560420244,
+      "log": "/Users/feral/mydev/bboxy450-term-rook/.bboxy/runs/y1-ci-local-1d6f99f0.log"
+    }
+  ],
+  "exit": -15,
+  "finished": true
+}

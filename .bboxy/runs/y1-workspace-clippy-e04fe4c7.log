@@ -1,0 +1,8 @@
+{"source_sha": "e04fe4c7a1497373fe7456c309f799beeeee14fd", "cwd": "/private/tmp/rook-y1-ci-bxmuv642/tree", "argv": ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "environment": {"CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/y1-ci-1d6f99f0", "CARGO_INCREMENTAL": "0", "CARGO_PROFILE_DEV_OPT_LEVEL": "1", "CARGO_PROFILE_TEST_OPT_LEVEL": "1", "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true", "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true", "CARGO_BUILD_JOBS": "2", "BBOXY_TEST_CUSTODY": "memory"}}
+    Checking bbt-ui v0.0.1 (/private/tmp/rook-y1-ci-bxmuv642/tree/crates/bbt-ui)
+    Checking bbt-mux v0.0.1 (/private/tmp/rook-y1-ci-bxmuv642/tree/crates/bbt-mux)
+    Checking bbt-doc v0.0.1 (/private/tmp/rook-y1-ci-bxmuv642/tree/crates/bbt-doc)
+    Checking bboxybook v0.0.1 (/private/tmp/rook-y1-ci-bxmuv642/tree/crates/bboxybook)
+    Checking bboxy450-term v0.0.1 (/private/tmp/rook-y1-ci-bxmuv642/tree/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 54.01s
+{"label": "workspace-clippy", "argv": ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "pid": 77531, "exit": 0, "elapsed_s": 54.25423741701525, "log": "/Users/feral/mydev/bboxy450-term-rook/.bboxy/runs/y1-workspace-clippy-e04fe4c7.log"}

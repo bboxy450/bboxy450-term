@@ -1,0 +1,5 @@
+{"argv": ["cargo", "check", "-p", "bbt-yarn", "--no-default-features", "--features", "macros", "--lib", "--locked"], "cwd": "/private/tmp/rook-y1-ci-bxmuv642/tree", "env": {"CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/y1-ci-1d6f99f0", "CARGO_INCREMENTAL": "0", "CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_PROFILE_TEST_DEBUG": "0", "CARGO_PROFILE_DEV_OPT_LEVEL": "1", "CARGO_PROFILE_TEST_OPT_LEVEL": "1", "CARGO_BUILD_JOBS": "2", "BBOXY_TEST_CUSTODY": "memory"}, "TRYBUILD": null}
+   Compiling bbt-yarn-macros v0.0.1 (/private/tmp/rook-y1-ci-bxmuv642/tree/crates/bbt-yarn-macros)
+    Checking bbt-yarn v0.0.1 (/private/tmp/rook-y1-ci-bxmuv642/tree/crates/bbt-yarn)
+    Finished `dev` profile [optimized] target(s) in 1.89s
+{"argv": ["cargo", "check", "-p", "bbt-yarn", "--no-default-features", "--features", "macros", "--lib", "--locked"], "cwd": "/private/tmp/rook-y1-ci-bxmuv642/tree", "exit": 0, "elapsed_s": 1.966643916995963}

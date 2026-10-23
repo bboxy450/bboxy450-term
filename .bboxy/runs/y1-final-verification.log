@@ -1,0 +1,40 @@
+{
+  "source_sha": "e04fe4c7a1497373fe7456c309f799beeeee14fd",
+  "workspace_test_suites": 135,
+  "workspace_passed": 861,
+  "workspace_failed": 0,
+  "workspace_ignored": 20,
+  "invariants": "6 checks, 0 failures, 7 slow checks skipped",
+  "ci_exit": 0,
+  "stages": [
+    {
+      "label": "workspace-clippy",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "pid": 77531,
+      "exit": 0,
+      "elapsed_s": 54.25423741701525,
+      "log": "/Users/feral/mydev/bboxy450-term-rook/.bboxy/runs/y1-workspace-clippy-e04fe4c7.log"
+    },
+    {
+      "label": "ci-local",
+      "argv": [
+        "sh",
+        "scripts/ci-local.sh"
+      ],
+      "pid": 79263,
+      "exit": 0,
+      "elapsed_s": 1480.0640492080129,
+      "log": "/Users/feral/mydev/bboxy450-term-rook/.bboxy/runs/y1-ci-local-e04fe4c7.log"
+    }
+  ],
+  "ci_log_sha256": "943c80fb2722b758052a93ed728407769ad5cab07cc15c266161aac0bcc4ca0e"
+}

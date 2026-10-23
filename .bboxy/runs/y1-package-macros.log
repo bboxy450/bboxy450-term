@@ -1,0 +1,11 @@
+{"argv": ["cargo", "package", "--allow-dirty", "--locked"], "cwd": "/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn-macros", "env": {"CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/y1", "CARGO_INCREMENTAL": "0", "CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_PROFILE_TEST_DEBUG": "0", "CARGO_PROFILE_DEV_OPT_LEVEL": "1", "CARGO_PROFILE_TEST_OPT_LEVEL": "1", "CARGO_BUILD_JOBS": "2", "BBOXY_TEST_CUSTODY": "memory"}, "TRYBUILD": null}
+warning: manifest has no license or license-file
+  |
+  = note: see https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for more info
+   Packaging bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn-macros)
+    Updating crates.io index
+    Packaged 9 files, 100.0KiB (22.0KiB compressed)
+   Verifying bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn-macros)
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/target/y1/package/bbt-yarn-macros-0.0.1)
+    Finished `dev` profile [optimized] target(s) in 4.10s
+{"argv": ["cargo", "package", "--allow-dirty", "--locked"], "cwd": "/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn-macros", "exit": 0, "elapsed_s": 4.17127208400052}

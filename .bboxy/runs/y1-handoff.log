@@ -1,0 +1,80 @@
+Y1 final handoff — Rook Ashwhisker <EXECUTOR>
+
+SOURCE AND SCOPE
+Exact source tested: e04fe4c7a1497373fe7456c309f799beeeee14fd on rook-y1 in /Users/feral/mydev/bboxy450-term-rook.
+Signed implementation commits: f3153dbc9a4f0489c70952b925a52319331e5ce2 (vendor) and e04fe4c7a1497373fe7456c309f799beeeee14fd (preserve upstream Tokio rt-multi-thread feature). Both GPG signatures verified good, fingerprint 9B07E849480C68328CA20684844ECC0587DE7AB0; author/committer Boxy <bboxy450@gmail.com>.
+The successor containing this log is EVIDENCE ONLY. No source changed after the exact gate. The Oracle is to review/merge; nothing pushed or published by this Executor.
+Pinned upstream: https://github.com/Gonzih/kittens-old at 293e134526bb2deee96f1197d6268aee64495482. Historical source author Maksim Soltan <gonzih@gmail.com> is attribution, never the adopted Git identity.
+Final operator license ruling: Oracle 0f992af6-6156-44b2-8d61-631294f08d70, MIT OR Apache-2.0 for both crates; supersedes Apache-only message c7487b8c. Pinned source actually contains both LICENSE files and the same dual workspace license. All four copied license texts retain their upstream bytes/copyrights. No TODO remains.
+
+FILES / MECHANISMS
+crates/bbt-yarn/src/lib.rs:1 — no_std, forbid unsafe, missing-doc gate and README crate docs; crate alias/re-export use bbt_yarn/bbt_yarn_macros. Runtime reactor.rs, source/mod.rs and source/tokio_impl.rs are byte-identical to upstream (hashes in y1-provenance-audit.log).
+crates/bbt-yarn-macros/src/lib.rs:1421 — resolver finds bbt-yarn and emits bbt_yarn paths. Parser, validator, KTR/SRC diagnostics, grammar and scheduling are preserved; generated __kittens_* internal identifiers remain unchanged. Exact body comparison is y1-upstream-code-diff.log (display copy; raw SHA and private path stated there).
+crates/bbt-yarn/tests/ui.rs:4 — retained 18 compile-fail fixtures and three compiling negative controls. Oracle 97e5e5c8 accepts the actual upstream mix: 16 KTR, one SRC001 admission error and one E0382 ownership error. No diagnostics renamed or fabricated.
+crates/bbt-yarn/README.md:9 and crates/bbt-yarn-macros/README.md:9 — mental model, invariants, entry points, compiling examples, recipes, pitfalls, platform/feature boundaries and KTR repair table. Provenance/license at runtime :178 and macro :71. Both READMEs are the crate-level docs.
+crates/bbt-yarn/Cargo.toml:16 — default macros+tokio, no-default no_std mode, existing pinned Tokio runtime features including rt-multi-thread; proc-macro dependency has exact version plus local path so packaged dependency is publishable.
+Cargo.toml:4 and scripts/layering.sh:7 — new workspace members and macros -> yarn at the bottom of the dependency order, before bbt-rt. Cargo.lock adds six external packages plus the two local crates; no prior package removed/upgraded/checksum changed (y1-lock-audit.log).
+Narrow style-only allowances retain upstream bodies: validator/one fixture collapsible_if and standalone Tokio fixture/example disallowed_methods; no repo-wide lint config edit and no production UI IO exemption.
+
+ACCEPTANCE AND ACTUAL RESULTS
+1. cargo test -p bbt-yarn -p bbt-yarn-macros --locked — exit 0: 45 runtime tests, one trybuild harness (18 fail + three pass), eight macro unit tests and four doctests, 58 top-level passes. Normal check after snapshot update, not just overwrite mode. y1-scoped-tests-02.log.
+2. Final exact clean detached worktree /private/tmp/rook-y1-ci-bxmuv642/tree at e04fe4c7, own CARGO_TARGET_DIR, two jobs, no incremental/debug info, O1 with debug assertions and BBOXY_TEST_CUSTODY=memory:
+   cargo clippy --workspace --all-targets --locked -- -D warnings — exit 0, 54.254237s; y1-workspace-clippy-e04fe4c7.log.
+   sh scripts/ci-local.sh — exit 0, 1480.064049s; y1-ci-local-e04fe4c7.log. Workspace: 861 passed, zero failed, 20 ignored across 135 test summaries (before invariant repeats). Layering, build, tests, strict Clippy, UI IO lint and smoke completed; six invariants pass, seven slow checks skipped by default. The final line is 'all gates passed'.
+   Raw CI log SHA256 943c80fb2722b758052a93ed728407769ad5cab07cc15c266161aac0bcc4ca0e. Status/argv/environment in y1-ci-e04fe4c7-status.log; totals in y1-final-verification.log.
+3. On the same clean e04fe4c7 checkout after CI:
+   cargo fmt -p bbt-yarn -p bbt-yarn-macros -- --check — exit 0.
+   cargo check -p bbt-yarn --no-default-features --lib --locked — exit 0.
+   cargo check -p bbt-yarn --no-default-features --features macros --lib --locked — exit 0.
+   RUSTDOCFLAGS='-D warnings' cargo doc -p bbt-yarn -p bbt-yarn-macros --all-features --no-deps --locked — exit 0.
+   Earlier cargo run -p bbt-yarn --example minimal --locked and sh scripts/layering.sh — each exit 0.
+4. Package dry runs with verification ENABLED, no publishing or --no-verify:
+   In crates/bbt-yarn-macros: cargo package --allow-dirty --locked — exit 0 (9.598404s).
+   In crates/bbt-yarn: cargo package --allow-dirty --locked -p bbt-yarn-macros -p bbt-yarn — exit 0 (11.621675s), approved multi-package form for unpublished macro dependency. A plain runtime-only attempt earlier exited 101 because crates.io has no macro release; that failure is preserved in y1-package-runtime-plain.log.
+   Final archive audits — exit 0: vcs SHA exactly e04fe4c7, dirty=false, dual license, original license bytes, versioned normalized macro dependency, full Tokio features. y1-final-package-{macros,pair,audit}.log.
+   Retained archives: /private/tmp/rook-y1-upstream-hcdwigiu/final-packages/.
+   bbt-yarn-0.0.1.crate SHA256 901ea082936448ef94bd7619c59e827571b01ee61da7cf89b36d9f2434f6fa2d.
+   bbt-yarn-macros-0.0.1.crate SHA256 a0d6f1c1db91fbf6cc3bb1ce4e8c90496b88046c71b99c90772615e9bdcf5c75.
+5. Compile-time delta, same O0 private target with cached registry, no debug/incremental, two jobs, nonexclusive host loadavg 16.52/20.47/24.71: core cold 0.369309s; enabling only macro+compiler dependencies cold 17.391024s, addition 17.021715s. Warm core 0.272321s/macros 0.238082s are cache/noise, no speedup claim. y1-compile-delta.log and four timing logs. Not a workspace-total or adopted-application build measurement.
+
+FAILURES / CORRECTIONS PRESERVED
+Initial trybuild normal run exit 101: ten stderr underline widths changed with the namespace length. Error strings, anchors and spans were audited unchanged; overwrite run exit 0 then normal tests exit 0. y1-snapshot-audit.log and y1-ui-snapshots-regenerate.log.
+Initial scoped Clippy exit 101 for upstream nested-if style under current MSRV; second 101 exposed UI-specific disallowed_methods in standalone runtimes and one fixture if. Scoped exact lint attributes only; final scoped/workspace Clippy 0.
+Initial format check exit 1 was namespace wrapping; formatted whitespace, final format/diff checks 0. One metadata helper initially failed FileNotFoundError due to working directory before any edit; corrected to absolute root. Expected git diff --no-index exit 1 means the documented path/doc/lint differences, not a failed gate.
+The first source omitted upstream rt-multi-thread, caught and restored before final gate. Superseded source 1d6f99f0 CI was stopped at Oracle 8dff1b19: child -15, wrapper 241, NOT passed; logs y1-ci-1d6f99f0-status.log, y1-ci-local-1d6f99f0.log and y1-superseded-stop.log. Its strict workspace Clippy did pass 0, but only e04fe4c7 is the handed-off source. Own warm cache was reused only after old process tree exit, with a new clean source checkout. No simultaneous source/gate edits.
+
+LIMITS / WORKTREE STATE
+No existing macro adoption (Y2), app/protocol/mux/runtime implementation changes, real custody/keychain exercise, package publication or deployment. No --parity (no visual code edit), no --slow, no other-platform or bare-metal execution. no_std compilation here is not bare-metal runtime proof. Ignored tests remain ignored.
+The two implementation signatures are good; the final evidence commit is separate and contains only .bboxy/runs/y1-*.log. Old untracked w1-* sidecars remain untouched. No active own gate or package process remains.
+Cleanup after CI, packaging and audits: own final target/worktree removed; 2,754,605,056 allocated bytes freed, plus earlier scoped/timing cleanup 385,892,352 bytes. df available before/after final cleanup: 6,962,728/9,479,088 KiB (other agents may change disk concurrently). Own final package archives and pinned source retained. y1-final-cleanup.log / y1-pre-ci-cleanup.log.
+
+MAIN MOVEMENT DURING GATE
+Exact gate base was 615bb3bdebecbadf4e020bb3e7e3ac54154e517f. At handoff preparation origin/main is 697e9e243037f9334ebbb9f831dd300733b1894f. Per AGENTS.md the tested source was not rebased/re-gated after main moved. New main includes Mermaid fixture parity checking/spec diagram, architecture/licensing prose/records-push and R5 app/runtime instruments. No overlap with Y1 crate/member/lock/layering implementation paths. Changed paths since gate base:
+.bboxy/decisions/2026-10-22-architecture-round-1.md
+.bboxy/invariants/README.md
+.bboxy/invariants/kitty-keyboard.md
+.bboxy/runs/r5-ci-470a7b5.log
+.bboxy/runs/r5-ci-failed-9f0203c.log
+.bboxy/runs/r5-commands.log
+.bboxy/runs/r5-feasibility.log
+.bboxy/runs/r5-native-470a7b5.log
+.bboxy/runs/r5-native-output-470a7b5.log
+.bboxy/runs/r5-retirement.log
+.bboxy/runs/r5-status.log
+.bboxy/specs/licensing.md
+.bboxy/specs/terminal-core.md
+.bboxy/specs/yarn.md
+crates/bboxy450-term/src/budget.rs
+crates/bboxy450-term/src/gpu.rs
+crates/bboxy450-term/src/main.rs
+crates/bboxy450-term/src/stall.rs
+crates/bboxy450-term/src/stall/headless.rs
+crates/bboxy450-term/src/stall/load.rs
+crates/bboxy450-term/tests/r5_stall.rs
+crates/bbt-mermaid/tests/fixtures.rs
+crates/bbt-mermaid/tests/fixtures/bboxy/yarn-1.mmd
+crates/bbt-rt/src/fault.rs
+crates/bbt-rt/src/lib.rs
+crates/bbt-rt/tests/r5_instruments.rs
+scripts/gates.sh
+scripts/records-push.sh

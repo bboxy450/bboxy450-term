@@ -1,0 +1,20 @@
+[
+  {
+    "name": "bbt-yarn",
+    "archive": "/private/tmp/rook-y1-upstream-hcdwigiu/final-packages/bbt-yarn-0.0.1.crate",
+    "sha256": "901ea082936448ef94bd7619c59e827571b01ee61da7cf89b36d9f2434f6fa2d",
+    "source_sha": "e04fe4c7a1497373fe7456c309f799beeeee14fd",
+    "dirty": false,
+    "license": "MIT OR Apache-2.0",
+    "files": 57
+  },
+  {
+    "name": "bbt-yarn-macros",
+    "archive": "/private/tmp/rook-y1-upstream-hcdwigiu/final-packages/bbt-yarn-macros-0.0.1.crate",
+    "sha256": "a0d6f1c1db91fbf6cc3bb1ce4e8c90496b88046c71b99c90772615e9bdcf5c75",
+    "source_sha": "e04fe4c7a1497373fe7456c309f799beeeee14fd",
+    "dirty": false,
+    "license": "MIT OR Apache-2.0",
+    "files": 9
+  }
+]

@@ -1,0 +1,8 @@
+git show -s --format=fuller HEAD in private pinned upstream clone — exit 0
+commit 293e134526bb2deee96f1197d6268aee64495482
+Author:     Maksim Soltan <gonzih@gmail.com>
+AuthorDate: Wed Oct 7 12:55:01 2026 -0700
+Commit:     Maksim Soltan <gonzih@gmail.com>
+CommitDate: Wed Oct 7 12:55:01 2026 -0700
+
+    docs: retire legacy Kittens SDK and preserve its history

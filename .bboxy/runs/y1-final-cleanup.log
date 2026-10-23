@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-23T10:40:02.523627-07:00",
+  "source_sha": "e04fe4c7a1497373fe7456c309f799beeeee14fd",
+  "gate_exit": 0,
+  "package_and_postchecks": "all finished exit0 before cleanup",
+  "removed_target": "/Users/feral/mydev/bboxy450-term-rook/target/y1-ci-1d6f99f0",
+  "freed_allocated_bytes": 2754605056,
+  "removed_worktree": "/private/tmp/rook-y1-ci-bxmuv642/tree",
+  "remaining_own_target_entries": [],
+  "df_before": "Filesystem   1024-blocks      Used Available Capacity  Mounted on\n/dev/disk3s1   482797652 444992720   6962728    99%    /System/Volumes/Data\n",
+  "df_after": "Filesystem   1024-blocks      Used Available Capacity  Mounted on\n/dev/disk3s1   482797652 442476360   9479088    98%    /System/Volumes/Data\n",
+  "retained": "private pinned source and final .crate archives under /private/tmp/rook-y1-upstream-hcdwigiu; all evidence logs in own .bboxy/runs"
+}

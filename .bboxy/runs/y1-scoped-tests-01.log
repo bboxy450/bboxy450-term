@@ -1,0 +1,595 @@
+{"argv": ["cargo", "test", "-p", "bbt-yarn", "-p", "bbt-yarn-macros"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "env": {"CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/y1", "CARGO_INCREMENTAL": "0", "CARGO_PROFILE_DEV_OPT_LEVEL": "1", "CARGO_BUILD_JOBS": "2", "BBOXY_TEST_CUSTODY": "memory"}}
+    Updating crates.io index
+     Locking 6 packages to highest Rust 1.99 compatible versions
+      Adding glob v0.3.4
+      Adding target-triple v1.0.1
+      Adding termcolor v1.4.1
+      Adding tokio-util v0.7.19 (available: v0.7.20)
+      Adding toml v1.1.8+spec-1.1.0
+      Adding trybuild v1.0.120 (available: v1.0.122)
+ Downloading crates ...
+  Downloaded glob v0.3.4
+  Downloaded target-triple v1.0.1
+  Downloaded trybuild v1.0.120
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling serde_core v1.0.229
+   Compiling syn v3.0.9
+   Compiling winnow v1.0.4
+   Compiling hashbrown v0.17.1
+   Compiling equivalent v1.0.3
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling indexmap v2.14.2
+   Compiling toml_datetime v1.1.2+spec-1.1.0
+   Compiling toml_edit v0.25.17+spec-1.1.0
+   Compiling proc-macro-crate v3.5.0
+   Compiling syn v2.0.119
+   Compiling pin-project-lite v0.2.17
+   Compiling zmij v1.0.23
+   Compiling futures-macro v0.3.34
+   Compiling tokio-macros v2.7.2
+   Compiling serde_json v1.0.154
+   Compiling slab v0.4.12
+   Compiling futures-task v0.3.34
+   Compiling futures-core v0.3.34
+   Compiling target-triple v1.0.1
+   Compiling serde v1.0.229
+   Compiling futures-util v0.3.34
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn-macros)
+   Compiling tokio v1.54.1
+   Compiling serde_spanned v1.1.2
+   Compiling memchr v2.8.3
+   Compiling itoa v1.0.18
+   Compiling futures-sink v0.3.34
+   Compiling bytes v1.12.1
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling toml v1.1.8+spec-1.1.0
+   Compiling tokio-util v0.7.19
+   Compiling serde_derive v1.0.229
+   Compiling glob v0.3.4
+   Compiling termcolor v1.4.1
+   Compiling bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn)
+   Compiling trybuild v1.0.120
+    Finished `test` profile [optimized] target(s) in 1m 27s
+     Running unittests src/lib.rs (target/y1/debug/deps/bbt_yarn-04bde971b7846ecc)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/embedded_shape.rs (target/y1/debug/deps/embedded_shape-020a704827d13770)
+
+running 5 tests
+test dormant_optional_host_source_does_not_self_wake ... ok
+test embedded_future_stays_within_predeclared_host_model_budget ... ok
+test dynamic_absolute_deadline_rearms_after_each_fire ... ok
+test ownership_returning_completion_reenables_submission_in_after_event ... ok
+test protected_touch_precedes_ready_sensor_and_sensor_remains_buffered ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/grok_shape.rs (target/y1/debug/deps/grok_shape-fb9dc00f1834039e)
+
+running 5 tests
+test twenty_three_arm_forms_compile_without_custom_type_or_recursion_limits ... ok
+test raw_and_kittens_forms_preserve_application_owned_presenter_scenarios ... ok
+test grok_dynamic_voice_arm_and_reconnect_replacement_are_persistent ... ok
+test grok_scripted_thirty_two_item_drain_does_not_reach_a_budget_boundary ... ok
+test raw_tokio_oracle_preserves_the_declared_twenty_three_source_order ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/kernel_source_coverage.rs (target/y1/debug/deps/kernel_source_coverage-85192d27d846aeef)
+
+running 5 tests
+test close_policies_map_items_and_expose_only_the_configured_close_event ... ok
+test fixed_queue_preserves_fifo_order_across_wrap_full_and_empty_transitions ... ok
+test generated_type_assertions_admit_capabilities_without_mutating_sources ... ok
+test generated_value_assertions_preserve_guard_handler_and_phase_results ... ok
+test latched_preserves_the_first_event_and_dormant_polls_do_not_self_wake ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reactor_runtime.rs (target/y1/debug/deps/reactor_runtime-be524adf1cb75688)
+
+running 16 tests
+test emit_close_policy_yields_closed_exactly_once ... ok
+test drain_bound_and_after_event_are_one_service_window ... ok
+test absolute_deadline_survives_a_lost_race_without_relative_reconstruction ... ok
+test closed_optional_mpsc_becomes_dormant_without_self_waking ... ok
+test all_four_retained_expansions_match_on_the_scripted_oracle ... ok
+test before_poll_runs_once_across_pending_executor_repolls ... ok
+test buffered_yield_selects_input_before_a_ready_firehose ... ok
+test handler_error_mid_drain_skips_after_event_after_prior_mutation ... ok
+test core_and_tokio_control_match_poll_order_results_and_wake_registration ... ok
+test exhausted_tokio_budget_ends_both_mpsc_drain_windows_early ... ok
+test latched_event_survives_when_an_earlier_source_wins_before_it_is_polled ... ok
+test optional_deadline_disarms_before_delivering ... ok
+test retained_expansion_future_sizes_are_recorded ... ok
+test retained_one_shot_survives_being_polled_before_another_source_wins ... ok
+test handler_panic_mid_drain_unwinds_without_compensation_or_after_event ... ok
+test wake_only_guard_change_waits_for_the_next_arbitration ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/tokio_source_coverage.rs (target/y1/debug/deps/tokio_source_coverage-cc87edf1cc622f2f)
+
+running 14 tests
+test dropping_a_pending_one_shot_drops_the_retained_operation_once ... ok
+test dropping_a_cancellation_waiter_does_not_cancel_other_token_owners ... ok
+test cancellation_replaces_registration_and_becomes_dormant_after_delivery ... ok
+test dropping_persistent_mpsc_closes_the_receiver_and_drops_buffered_items ... ok
+test mpsc_repoll_replaces_the_registered_waker_for_both_receiver_variants ... ok
+test optional_mpsc_backlog_includes_one_emit_close_event ... ok
+test optional_mpsc_returns_rejected_and_replaced_generations_to_the_caller ... ok
+test exhausted_budget_defers_mpsc_drain_without_consuming_the_item ... ok
+test dropping_an_armed_deadline_removes_its_timer_registration ... ok
+test optional_deadline_resets_disarms_and_reports_its_absolute_instant ... ok
+test optional_one_shot_from_future_disarms_before_returning_ready ... ok
+test optional_one_shot_makes_arming_replacement_and_cancellation_explicit ... ok
+test persistent_mpsc_normalizes_receivers_and_enforces_static_close_policies ... ok
+test retained_one_shot_preserves_pending_state_and_replaces_its_registered_waker ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ui.rs (target/y1/debug/deps/ui-9c0e826f2dcc8d4e)
+
+running 1 test
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling hashbrown v0.17.1
+   Compiling equivalent v1.0.3
+   Compiling winnow v1.0.4
+   Compiling syn v3.0.9
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling indexmap v2.14.2
+   Compiling toml_datetime v1.1.2+spec-1.1.0
+   Compiling pin-project-lite v0.2.17
+   Compiling toml_edit v0.25.17+spec-1.1.0
+   Compiling slab v0.4.12
+   Compiling futures-task v0.3.34
+   Compiling futures-core v0.3.34
+   Compiling proc-macro-crate v3.5.0
+   Compiling futures-macro v0.3.34
+   Compiling tokio-macros v2.7.2
+   Compiling futures-util v0.3.34
+   Compiling tokio v1.54.1
+   Compiling syn v2.0.119
+   Compiling futures-sink v0.3.34
+   Compiling bytes v1.12.1
+   Compiling tokio-util v0.7.19
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn-macros)
+   Compiling bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn)
+   Compiling bbt-yarn-tests v0.0.0 (/Users/feral/mydev/bboxy450-term-rook/target/y1/tests/trybuild/bbt-yarn)
+    Finished `dev` profile [optimized] target(s) in 15.60s
+
+
+test tests/ui/all_guarded.rs [should fail to compile] ... ok
+test tests/ui/before_cycle.rs [should fail to compile] ... mismatch
+
+EXPECTED:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR003 reactor scheduling cycle: a -> b -> a. Repair: remove or reverse one listed relation without deleting an unrelated constraint.
+  --> tests/ui/before_cycle.rs:20:9
+   |
+20 |         #[before(a)]
+   |         ^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/before_cycle.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+
+ACTUAL OUTPUT:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR003 reactor scheduling cycle: a -> b -> a. Repair: remove or reverse one listed relation without deleting an unrelated constraint.
+  --> tests/ui/before_cycle.rs:20:9
+   |
+20 |         #[before(a)]
+   |         ^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/before_cycle.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+note: If the actual output is the correct output you can bless it by rerunning
+      your test with the environment variable TRYBUILD=overwrite
+
+test tests/ui/drain_nonliteral.rs [should fail to compile] ... mismatch
+
+EXPECTED:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR008 drain max must be an unsuffixed integer literal. Repair: use a literal from 1 through 4096.
+  --> tests/ui/drain_nonliteral.rs:16:23
+   |
+16 |         #[drain(max = LIMIT)]
+   |                       ^^^^^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/drain_nonliteral.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+
+ACTUAL OUTPUT:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR008 drain max must be an unsuffixed integer literal. Repair: use a literal from 1 through 4096.
+  --> tests/ui/drain_nonliteral.rs:16:23
+   |
+16 |         #[drain(max = LIMIT)]
+   |                       ^^^^^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/drain_nonliteral.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+note: If the actual output is the correct output you can bless it by rerunning
+      your test with the environment variable TRYBUILD=overwrite
+
+test tests/ui/drain_over_limit.rs [should fail to compile] ... mismatch
+
+EXPECTED:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR008 drain max must be an unsuffixed literal from 1 through 4096. Repair: choose a positive bounded service window.
+  --> tests/ui/drain_over_limit.rs:15:23
+   |
+15 |         #[drain(max = 4097)]
+   |                       ^^^^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/drain_over_limit.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+
+ACTUAL OUTPUT:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR008 drain max must be an unsuffixed literal from 1 through 4096. Repair: choose a positive bounded service window.
+  --> tests/ui/drain_over_limit.rs:15:23
+   |
+15 |         #[drain(max = 4097)]
+   |                       ^^^^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/drain_over_limit.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+note: If the actual output is the correct output you can bless it by rerunning
+      your test with the environment variable TRYBUILD=overwrite
+
+test tests/ui/drain_zero.rs [should fail to compile] ... mismatch
+
+EXPECTED:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR008 drain max must be an unsuffixed literal from 1 through 4096. Repair: choose a positive bounded service window.
+  --> tests/ui/drain_zero.rs:15:23
+   |
+15 |         #[drain(max = 0)]
+   |                       ^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/drain_zero.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+
+ACTUAL OUTPUT:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR008 drain max must be an unsuffixed literal from 1 through 4096. Repair: choose a positive bounded service window.
+  --> tests/ui/drain_zero.rs:15:23
+   |
+15 |         #[drain(max = 0)]
+   |                       ^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/drain_zero.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+note: If the actual output is the correct output you can bless it by rerunning
+      your test with the environment variable TRYBUILD=overwrite
+
+test tests/ui/duplicate_place.rs [should fail to compile] ... mismatch
+
+EXPECTED:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR020 source place is declared under both `first` and `second`. Repair: keep one source ID for this exact persistent place; distinct-place aliasing remains a rustc backstop.
+  --> tests/ui/duplicate_place.rs:18:13
+   |
+18 |         _ = (sources.event) => { Ok(Control::Continue) }
+   |             ^^^^^^^^^^^^^^^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/duplicate_place.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+
+ACTUAL OUTPUT:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR020 source place is declared under both `first` and `second`. Repair: keep one source ID for this exact persistent place; distinct-place aliasing remains a rustc backstop.
+  --> tests/ui/duplicate_place.rs:18:13
+   |
+18 |         _ = (sources.event) => { Ok(Control::Continue) }
+   |             ^^^^^^^^^^^^^^^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/duplicate_place.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+note: If the actual output is the correct output you can bless it by rerunning
+      your test with the environment variable TRYBUILD=overwrite
+
+test tests/ui/guard_not_bool.rs [should fail to compile] ... ok
+test tests/ui/last_followed.rs [should fail to compile] ... mismatch
+
+EXPECTED:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR004 source `voice` is declared `last`, but source `telemetry` follows it. Repair: move the complete last source arm to the end without changing its attributes.
+  --> tests/ui/last_followed.rs:16:9
+   |
+16 |         #[last]
+   |         ^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/last_followed.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+
+ACTUAL OUTPUT:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR004 source `voice` is declared `last`, but source `telemetry` follows it. Repair: move the complete last source arm to the end without changing its attributes.
+  --> tests/ui/last_followed.rs:16:9
+   |
+16 |         #[last]
+   |         ^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/last_followed.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+note: If the actual output is the correct output you can bless it by rerunning
+      your test with the environment variable TRYBUILD=overwrite
+
+test tests/ui/missing_phase.rs [should fail to compile] ... mismatch
+
+EXPECTED:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR011 policy requires phase `after_event` exactly once, but its block is missing. Repair: add one `after_event { ... }` block or remove it from `required_phases` only if the application no longer needs that position.
+  --> tests/ui/missing_phase.rs:9:5
+   |
+ 9 | /     bbt_yarn::reactor! {
+10 | |         policy { selection: biased; required_phases: [after_event]; }
+11 | |
+12 | |         #[source(event)]
+13 | |         #[readiness(quiescent)]
+14 | |         _ = sources.event => { Ok(Control::Continue) }
+15 | |     }
+   | |_____^
+   |
+   = note: this error originates in the macro `bbt_yarn::reactor` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/missing_phase.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+
+ACTUAL OUTPUT:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR011 policy requires phase `after_event` exactly once, but its block is missing. Repair: add one `after_event { ... }` block or remove it from `required_phases` only if the application no longer needs that position.
+  --> tests/ui/missing_phase.rs:9:5
+   |
+ 9 | /     bbt_yarn::reactor! {
+10 | |         policy { selection: biased; required_phases: [after_event]; }
+11 | |
+12 | |         #[source(event)]
+13 | |         #[readiness(quiescent)]
+14 | |         _ = sources.event => { Ok(Control::Continue) }
+15 | |     }
+   | |_____^
+   |
+   = note: this error originates in the macro `bbt_yarn::reactor` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/missing_phase.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+note: If the actual output is the correct output you can bless it by rerunning
+      your test with the environment variable TRYBUILD=overwrite
+
+test tests/ui/missing_yield.rs [should fail to compile] ... mismatch
+
+EXPECTED:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR007 may-remain-ready source `model` can starve protected source `input`. Repair: move `input` above `model`, or add `#[yields_to(input, when = buffered)]` when `input` is backlog-probeable; a starvation waiver changes policy.
+  --> tests/ui/missing_yield.rs:14:9
+   |
+14 |         #[readiness(may_remain_ready)]
+   |         ^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/missing_yield.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+
+ACTUAL OUTPUT:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR007 may-remain-ready source `model` can starve protected source `input`. Repair: move `input` above `model`, or add `#[yields_to(input, when = buffered)]` when `input` is backlog-probeable; a starvation waiver changes policy.
+  --> tests/ui/missing_yield.rs:14:9
+   |
+14 |         #[readiness(may_remain_ready)]
+   |         ^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/missing_yield.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+note: If the actual output is the correct output you can bless it by rerunning
+      your test with the environment variable TRYBUILD=overwrite
+
+test tests/ui/non_drainable.rs [should fail to compile] ... ok
+test tests/ui/non_kittens_attribute.rs [should fail to compile] ... ok
+test tests/ui/nonadmitted_source.rs [should fail to compile] ... ok
+test tests/ui/ownership_prevents_second_transfer.rs [should fail to compile] ... ok
+test tests/ui/readiness_mismatch.rs [should fail to compile] ... ok
+test tests/ui/shutdown_below_firehose.rs [should fail to compile] ... mismatch
+
+EXPECTED:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR016 source `cancel` must precede `firehose` because of the shutdown leading-prefix rule. Repair: move the complete source arm so lexical order matches the declared relation.
+  --> tests/ui/shutdown_below_firehose.rs:20:9
+   |
+20 |         #[shutdown]
+   |         ^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/shutdown_below_firehose.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+
+ACTUAL OUTPUT:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR016 source `cancel` must precede `firehose` because of the shutdown leading-prefix rule. Repair: move the complete source arm so lexical order matches the declared relation.
+  --> tests/ui/shutdown_below_firehose.rs:20:9
+   |
+20 |         #[shutdown]
+   |         ^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/shutdown_below_firehose.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+note: If the actual output is the correct output you can bless it by rerunning
+      your test with the environment variable TRYBUILD=overwrite
+
+test tests/ui/temporary_source.rs [should fail to compile] ... mismatch
+
+EXPECTED:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR015 source `packet` must be a persistent path or field, not a temporary expression. Repair: construct a reviewed persistent source before the reactor, or isolate the producer behind an explicitly owned task/signal and admitted channel source.
+ --> tests/ui/temporary_source.rs:9:13
+  |
+9 |         _ = core::future::pending::<u8>() => { Ok(Control::Continue) }
+  |             ^^^^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/temporary_source.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+
+ACTUAL OUTPUT:
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+error: KTR015 source `packet` must be a persistent path or field, not a temporary expression. Repair: construct a reviewed persistent source before the reactor, or isolate the producer behind an explicitly owned task/signal and admitted channel source.
+ --> tests/ui/temporary_source.rs:9:13
+  |
+9 |         _ = core::future::pending::<u8>() => { Ok(Control::Continue) }
+  |             ^^^^
+
+warning: unused import: `bbt_yarn::reactor::Control`
+ --> tests/ui/temporary_source.rs:1:5
+  |
+1 | use bbt_yarn::reactor::Control;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+note: If the actual output is the correct output you can bless it by rerunning
+      your test with the environment variable TRYBUILD=overwrite
+
+test tests/ui/yield_target_not_backlog.rs [should fail to compile] ... ok
+test tests/ui-pass/constraint_erasure_boundaries.rs [should pass] ... ok
+test tests/ui-pass/doc_comment_rationale.rs [should pass] ... ok
+test tests/ui-pass/raw_runtime_bypass.rs [should pass] ... ok
+
+
+test reactor_mutations_and_negative_controls ... FAILED
+
+failures:
+
+---- reactor_mutations_and_negative_controls stdout ----
+
+thread 'reactor_mutations_and_negative_controls' (16935889) panicked at /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/trybuild-1.0.120/src/run.rs:103:13:
+10 of 21 tests failed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    reactor_mutations_and_negative_controls
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 23.85s
+
+error: test failed, to rerun pass `-p bbt-yarn --test ui`
+{"argv": ["cargo", "test", "-p", "bbt-yarn", "-p", "bbt-yarn-macros"], "exit": 101, "elapsed_s": 112.66572983301012}

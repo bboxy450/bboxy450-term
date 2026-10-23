@@ -1,0 +1,311 @@
+{
+  "upstream_revision": "293e134526bb2deee96f1197d6268aee64495482",
+  "mapped_files": [
+    {
+      "upstream": "crates/kittens/examples/minimal.rs",
+      "vendored": "crates/bbt-yarn/examples/minimal.rs",
+      "upstream_sha256": "6523e19ace47ad687febc826f2f1b3128c8ca3f660c1ca9776b936d5f3de7501",
+      "vendored_sha256": "1be25bdff55e96703bbeb8e8f5f293287f8eeaae0084fd8cfa30b9d7cf27e752"
+    },
+    {
+      "upstream": "crates/kittens/src/lib.rs",
+      "vendored": "crates/bbt-yarn/src/lib.rs",
+      "upstream_sha256": "6ad060adaf6de50be98d0f44b3068dfae4769e3733b5eb01cdb3aa37c32db595",
+      "vendored_sha256": "5e0916e46c8cf9bdfd8ab3120e9fc99358bff4f5e3f85c140f59896c7591a628"
+    },
+    {
+      "upstream": "crates/kittens/src/reactor.rs",
+      "vendored": "crates/bbt-yarn/src/reactor.rs",
+      "upstream_sha256": "1eb639b694f80692169a20145c4373aca9facad71025c7bb70acbf0b9acdb4fd",
+      "vendored_sha256": "1eb639b694f80692169a20145c4373aca9facad71025c7bb70acbf0b9acdb4fd"
+    },
+    {
+      "upstream": "crates/kittens/src/source/mod.rs",
+      "vendored": "crates/bbt-yarn/src/source/mod.rs",
+      "upstream_sha256": "e92f6586af7c414a77ce828cfae985b908fa4b98b61b30c18cf2e9a2d3f61ad9",
+      "vendored_sha256": "e92f6586af7c414a77ce828cfae985b908fa4b98b61b30c18cf2e9a2d3f61ad9"
+    },
+    {
+      "upstream": "crates/kittens/src/source/tokio_impl.rs",
+      "vendored": "crates/bbt-yarn/src/source/tokio_impl.rs",
+      "upstream_sha256": "4fcdffa86a78507200740656a105f4cb6ceb461dda8a253e20073124acddb33d",
+      "vendored_sha256": "4fcdffa86a78507200740656a105f4cb6ceb461dda8a253e20073124acddb33d"
+    },
+    {
+      "upstream": "crates/kittens/tests/embedded_shape.rs",
+      "vendored": "crates/bbt-yarn/tests/embedded_shape.rs",
+      "upstream_sha256": "536e60acca402b4f15bce36cb96819b52efa2f286c8d2fe7b3ec6aaf3a2275d6",
+      "vendored_sha256": "40693e12afcf07c9ed880213e3776606786bc92863bcfabe8bd8a71819242040"
+    },
+    {
+      "upstream": "crates/kittens/tests/grok_shape.rs",
+      "vendored": "crates/bbt-yarn/tests/grok_shape.rs",
+      "upstream_sha256": "d4bba37e28035ecc93a3870a68d685b1cff1a4364ff79c7692e270e69bc01d6b",
+      "vendored_sha256": "a4f1a7bb2eef381c770a06d5003553c22444f35567c69eb04646ec08d1d8150c"
+    },
+    {
+      "upstream": "crates/kittens/tests/kernel_source_coverage.rs",
+      "vendored": "crates/bbt-yarn/tests/kernel_source_coverage.rs",
+      "upstream_sha256": "70d78fb9ad00b217fd0babf6d0c606c242487e603f79df7cb85ec1ad1713d3e1",
+      "vendored_sha256": "9e40d086063aec08595beef4d1e1d11ebcd105bc9db4c956eff88b0ec625e0ea"
+    },
+    {
+      "upstream": "crates/kittens/tests/reactor_runtime.rs",
+      "vendored": "crates/bbt-yarn/tests/reactor_runtime.rs",
+      "upstream_sha256": "ddf541db2eedffba94d10fcd5e24bcf4db1f69d50708bb92d08fd42ea544ca34",
+      "vendored_sha256": "69e84be4b39d525da1739b04ce2a78eddc9e4b1b696736dc5b309b7aacbe3dc7"
+    },
+    {
+      "upstream": "crates/kittens/tests/tokio_source_coverage.rs",
+      "vendored": "crates/bbt-yarn/tests/tokio_source_coverage.rs",
+      "upstream_sha256": "3e0b242295c6e39268224f9f0dd216d3e7e940e833fe6136b3df2e34ad040baf",
+      "vendored_sha256": "e1b6aab8254440cc106302f45f568e3d8f530ae2fe2272199bfc472caac6f7cf"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/all_guarded.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/all_guarded.rs",
+      "upstream_sha256": "46bca973ac961be1ac5e71a988cb83bca26148cb116244ab3350bb2e8d2d1962",
+      "vendored_sha256": "a3f1d739003b80c668752f928e130bd0ec025b63884cca7889328f5d539a945a"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/all_guarded.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/all_guarded.stderr",
+      "upstream_sha256": "d091729e800eada1f44f04a7400f9483facd7a74537683c1bee6150dd7798def",
+      "vendored_sha256": "d091729e800eada1f44f04a7400f9483facd7a74537683c1bee6150dd7798def"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/before_cycle.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/before_cycle.rs",
+      "upstream_sha256": "bf9e506e505de3894d20eaa7754186aac9b609b7f8f8189c48c465395a42b395",
+      "vendored_sha256": "cfd990bf70bde5414616ea7a04d5642a474d2ea2fc8d1b9940f8c3c272c8598f"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/before_cycle.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/before_cycle.stderr",
+      "upstream_sha256": "08f83d2a729e9a30e1fe62e28d78fe8e11f23e5e74b483948bf10461278eac0c",
+      "vendored_sha256": "f19dadede78c1880e96d6d114b4ae31190c7710aa0af1416763e5ec645187ee3"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/drain_nonliteral.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/drain_nonliteral.rs",
+      "upstream_sha256": "0b5ad605f7409c75cdb115a2df1b12edafc522bd6f14732cce09e345e53d63c2",
+      "vendored_sha256": "bda45e437d2f655539d02cc2ada4505aa1b2d6047427ddf8fb0a3c100ee1bbe2"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/drain_nonliteral.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/drain_nonliteral.stderr",
+      "upstream_sha256": "5b70aaad4af35370f7546b2cb0c1dfecdf19e4a90a6459a4c4cae425a97105e4",
+      "vendored_sha256": "9ba137e58f76e7d944c4060a596d1091284b4280679dbbc13275a6244f35a19b"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/drain_over_limit.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/drain_over_limit.rs",
+      "upstream_sha256": "69a9117ae92d546d38b135bbc84cd5696bf9c8fe140054e9f21df2e044e0b63b",
+      "vendored_sha256": "5dc23789dd5b08a538674acb32c480f63d9737d4ddc4ea8b7fa45d52ed247b71"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/drain_over_limit.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/drain_over_limit.stderr",
+      "upstream_sha256": "cb592913706c486a7b29d618bf9cc3dfe680ca9c4935a5eda0d805f0946103b0",
+      "vendored_sha256": "1b0fabd3b3cbbe02974440fc05dec00f9ea6511f6eedc1e8a350b3ea88730e9b"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/drain_zero.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/drain_zero.rs",
+      "upstream_sha256": "b87269ec8954d89092171273b9a3a2a79f7eaf9335cab6c5acc68a34d75d3ab8",
+      "vendored_sha256": "ee93fbf5044c61e2de7a25c1a82449e6b81a1bc588bbdc1d0c6150edd6b32438"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/drain_zero.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/drain_zero.stderr",
+      "upstream_sha256": "3d5ddf87a1c361efefb6127e3b7abf74d2a56d57d2ca8a71de166fc5f7e2abae",
+      "vendored_sha256": "3a1dcf3a82b0a4ec10efddc30d06a1710a4ba08c3ab7568ae95f64e1312382ca"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/duplicate_place.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/duplicate_place.rs",
+      "upstream_sha256": "51f6fbf73930f4a0abd6d06e684307e59a0af19525754da14fb9df2bdaca6fab",
+      "vendored_sha256": "0c2a1e14f2c3792497082038b0cace4638126d860b4c13b4a01c8dbc0b1c9894"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/duplicate_place.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/duplicate_place.stderr",
+      "upstream_sha256": "57a75e613379b9072f62d3c2d5eab9808e39062a01527e7591f637fb2beb01d4",
+      "vendored_sha256": "6cb3d303bc12cc5143d701099b0b4be6a94286d41b0e4cf58f64f7306857f243"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/guard_not_bool.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/guard_not_bool.rs",
+      "upstream_sha256": "14ebad1db009245287c7fd4cbbefe19407f8f4654c7eb9713de9dbbb22dd2072",
+      "vendored_sha256": "8b08c3a5c81145426600bd8074e839e1304fd640232ffcb732ade53e728b6899"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/guard_not_bool.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/guard_not_bool.stderr",
+      "upstream_sha256": "2bac7a420f5eeb16b7bb16a29cff65795c3438a458299a6d4e7aafd231fc55af",
+      "vendored_sha256": "19fac030da3f478f93ef6049bb2c19213a1a4fb5db36acc52bd4d4644c47a8b3"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/last_followed.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/last_followed.rs",
+      "upstream_sha256": "082e525ab3774711280df5e7b500f3b5f6f8f9b2d59ccc89eac7aa72c1ad50ef",
+      "vendored_sha256": "f48f011e17ee269c3a088336983645cdcc1c345e3b97c157f81d871eb9c2b2b2"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/last_followed.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/last_followed.stderr",
+      "upstream_sha256": "f0ed11107713372046ed877409031bd112c376c5f9e8ee15d216635632d699d9",
+      "vendored_sha256": "f55cb392ebc50a734a8c175dd5e99d29e24a199190d4e154f603309bda989f41"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/missing_phase.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/missing_phase.rs",
+      "upstream_sha256": "32d18ba0dbbd49df4649e8215081894d14af907ba37c3f6cc7141a149a312473",
+      "vendored_sha256": "5d527c9d3ae7bf7cc50dda1185357c43b3301bf072cc72ebb5df696d02804d66"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/missing_phase.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/missing_phase.stderr",
+      "upstream_sha256": "4340fb6980ba723ac53bfae3c56acf341a4aab4e6f1dd75d67a306a08187b432",
+      "vendored_sha256": "842bc7b2a69ed48bbf275ad6309e679aebd2d76938ea7be62e36ef1a00f370c7"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/missing_yield.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/missing_yield.rs",
+      "upstream_sha256": "e7c1a1f4e8e00cd390667bd9a325e7ca21ace9c5f0744843ad73d41996bdc302",
+      "vendored_sha256": "2729382e66f8e1ec87159b70aeddfb9c86f470353681f181e9d7de322733b09f"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/missing_yield.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/missing_yield.stderr",
+      "upstream_sha256": "247696cf318d3b48ac99e6e94f93affba6b4434ee39d71275f7d3ac07be93322",
+      "vendored_sha256": "b36cb9eecf6d501a59eec98822310e09b92a76131c19e45b3cd78c25fe222dce"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/non_drainable.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/non_drainable.rs",
+      "upstream_sha256": "957ad5410a409c18b2f45dca7e18112e487e2a73f41e87b9a5abf98201192c87",
+      "vendored_sha256": "0835d929d419b08c38a91039b149dc5c2166f4d9dc8d72499aedbba7a3be86e5"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/non_drainable.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/non_drainable.stderr",
+      "upstream_sha256": "8f93a7cebf53e57a5a866a8d451946c680e01544b1e4bbc2c2b0313b00aa9698",
+      "vendored_sha256": "133cd46be6fd488a7c7e3f7579bfa1e2340f3bcd8fec45586cdae3cffd76034c"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/non_kittens_attribute.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/non_kittens_attribute.rs",
+      "upstream_sha256": "69c80c9b38bc4fd84ec914dc65e09b3adf8290a01b86345b9b8ede63290acb75",
+      "vendored_sha256": "295ca4788b21dd4bd829d6a7cfb2d85983f8e1c7fddcbed914938fedd7bb4466"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/non_kittens_attribute.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/non_kittens_attribute.stderr",
+      "upstream_sha256": "922747bd69522a00f2e863d2004147a4459d3780bb41b822cd0e53914b21a2c3",
+      "vendored_sha256": "922747bd69522a00f2e863d2004147a4459d3780bb41b822cd0e53914b21a2c3"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/nonadmitted_source.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/nonadmitted_source.rs",
+      "upstream_sha256": "2935ac77bde1f5872a3b626be7227e348c7e828b7635f6b731c7c0ecf700be35",
+      "vendored_sha256": "e7bc57a7044d1862e9f0ca4b5297abf46446389dfac72005a0f8ed1a5b591948"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/nonadmitted_source.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/nonadmitted_source.stderr",
+      "upstream_sha256": "1e4c6c7c0e24f5c5fc9a3d8414841f2fc61e06f08a4cd847a59f17378f8d4751",
+      "vendored_sha256": "ef7b90881c5fbe5be2a54427eab8095706005440029e86eb31a79b83ce6d8bb4"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/ownership_prevents_second_transfer.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/ownership_prevents_second_transfer.rs",
+      "upstream_sha256": "b233a2f43777a955814422ed822152868ac2a508790cc1ea86c16b8e49247f02",
+      "vendored_sha256": "b233a2f43777a955814422ed822152868ac2a508790cc1ea86c16b8e49247f02"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/ownership_prevents_second_transfer.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/ownership_prevents_second_transfer.stderr",
+      "upstream_sha256": "ad927e8869fd316ddfb43a411ea3c095297c02bf0a45feaf3f606f582fd9cbec",
+      "vendored_sha256": "ad927e8869fd316ddfb43a411ea3c095297c02bf0a45feaf3f606f582fd9cbec"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/readiness_mismatch.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/readiness_mismatch.rs",
+      "upstream_sha256": "53d131dd41a94958ead75d8f5f4eec3642e599b1467fdba2a891c43ff2799d9d",
+      "vendored_sha256": "8f290e959f58e1ce73ce62c84a9f63c894e452315dd002b9a3d9ef4b8acf916d"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/readiness_mismatch.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/readiness_mismatch.stderr",
+      "upstream_sha256": "5ced318956373ecf47b23c4ff0e8d26fa9e12d195047f5d99199331170b16ef7",
+      "vendored_sha256": "d52e9eed7b1b146257033186bf7811c4c424ad47af296ac2172d7235a93704bd"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/shutdown_below_firehose.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/shutdown_below_firehose.rs",
+      "upstream_sha256": "b08de977d3e9ddef2f3fbcac99e47e0b248c148208418bfa32347df1e75b33f4",
+      "vendored_sha256": "b10aabc3291c4cf8fbbc0be747e566925a6dfdfaa4feab70a41ee1e3a337f58f"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/shutdown_below_firehose.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/shutdown_below_firehose.stderr",
+      "upstream_sha256": "c6f479bece13be175355f38fb6e5b9a9cf57b3884b3f20ac466360be4da44260",
+      "vendored_sha256": "d54ad24e768c365557abcccb9d4f806d933d7f321f738451b773555a6ecf65d9"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/temporary_source.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/temporary_source.rs",
+      "upstream_sha256": "16b8d5ba85bf871d0c774c7f7cf390fc33333ce097eaf9e86e6a75d82ee95b67",
+      "vendored_sha256": "84ef1f3d299afc1ecedf5e64c32c79e996aef891a00d5e28622cd301853cbc14"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/temporary_source.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/temporary_source.stderr",
+      "upstream_sha256": "262fe2a7aa1f96f4219ad1064436d0de564e137bb2caa9222294286eddcda27b",
+      "vendored_sha256": "2d97e9ca3657f2d8a9cf627f15c60030267bfc17e138e30688cf2ff3f96b7810"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/yield_target_not_backlog.rs",
+      "vendored": "crates/bbt-yarn/tests/ui/yield_target_not_backlog.rs",
+      "upstream_sha256": "c7641d18f352816b61b5de5bead34761c4d09f789d0427d4e13144c79d4aab69",
+      "vendored_sha256": "d4ab7699e6419f5b43c814990430f97879e305168e97367a8d22922de6f89cc3"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui/yield_target_not_backlog.stderr",
+      "vendored": "crates/bbt-yarn/tests/ui/yield_target_not_backlog.stderr",
+      "upstream_sha256": "cb453de4bdd6022e0b8489b78459f1d351cb03585576348c5ab8cdfa03ae2786",
+      "vendored_sha256": "3e7ab8a385580c3fa89a527a8ec3e462c43c77e8667a588e0f3150e37cb73237"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui-pass/constraint_erasure_boundaries.rs",
+      "vendored": "crates/bbt-yarn/tests/ui-pass/constraint_erasure_boundaries.rs",
+      "upstream_sha256": "86a07125ed3aed1df3497156727cafd5faab3a6f0c72a757f66505fb9b4a4cd7",
+      "vendored_sha256": "7991de2fcd8591a6fe28f9268236dd4a1095d33d830d20cda15fb5394b46cf7c"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui-pass/doc_comment_rationale.rs",
+      "vendored": "crates/bbt-yarn/tests/ui-pass/doc_comment_rationale.rs",
+      "upstream_sha256": "1b8574f32b84f4eac533418b91f343327bd63e1cd74d0172b44656ab097248f8",
+      "vendored_sha256": "324752ada84f5b2be2c0d24cc41e6c5551c881a8e7d0a52c47c51fbe1d29e34a"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui-pass/raw_runtime_bypass.rs",
+      "vendored": "crates/bbt-yarn/tests/ui-pass/raw_runtime_bypass.rs",
+      "upstream_sha256": "9e6e87af8455d85b499af96463aeb285bde2d56d3e305b31b063a3beddce32ba",
+      "vendored_sha256": "9e6e87af8455d85b499af96463aeb285bde2d56d3e305b31b063a3beddce32ba"
+    },
+    {
+      "upstream": "crates/kittens/tests/ui.rs",
+      "vendored": "crates/bbt-yarn/tests/ui.rs",
+      "upstream_sha256": "e673ee60aaabdfe843cf573c21d0d850c58b4c74b95502eb2011fa273fbca94e",
+      "vendored_sha256": "e673ee60aaabdfe843cf573c21d0d850c58b4c74b95502eb2011fa273fbca94e"
+    },
+    {
+      "upstream": "crates/kittens-macros/src/lib.rs",
+      "vendored": "crates/bbt-yarn-macros/src/lib.rs",
+      "upstream_sha256": "5a1468715b49c2a2bbbded81a84b1453b6593ccfa78167089cb964fe4022f30a",
+      "vendored_sha256": "3e37dff83b99c07a775d364d4951ad15d933f89d527bbf8b760bd10f98a403bc"
+    }
+  ]
+}

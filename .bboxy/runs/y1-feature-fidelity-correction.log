@@ -1,0 +1,3 @@
+Source-review correction: pinned upstream workspace tokio features include macros, rt, rt-multi-thread, sync, time; its dev dependency adds test-util.
+The first Y1 manifest omitted rt-multi-thread. The application workspace already enables this feature, so initial workspace compilation used it, but standalone packaging must preserve the upstream feature request too. Both target and dev Tokio declarations now retain rt-multi-thread.
+The active clean gate on1d6f99f0 remains frozen and is baseline evidence only. Final handoff must carry a clean exact gate of the corrected source. Grammar, diagnostics, adapter bodies and generated code are unchanged by this metadata correction.

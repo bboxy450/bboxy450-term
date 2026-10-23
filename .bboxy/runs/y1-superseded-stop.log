@@ -1,0 +1,13 @@
+{"at": "2026-10-23T10:04:26.435845-07:00", "authority": "Oracle8dff1b19-6b9b-4b11-bcee-ea86235dde14", "source_sha": "1d6f99f0dffca9a0e6865366db5743221acde14f", "reason": "superseded by upstream feature fidelity correction; not a passing final gate"}
+{"owned_process_snapshot": [{"pid": 22148, "ppid": 8551, "state": "S", "comm": "sh", "depth": 0}, {"pid": 58922, "ppid": 22148, "state": "S", "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo", "depth": 1}, {"pid": 72105, "ppid": 58922, "state": "R", "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc", "depth": 2}, {"pid": 72716, "ppid": 58922, "state": "R", "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc", "depth": 2}]}
+{"pid": 22148, "signal": "SIGSTOP", "result": "sent"}
+{"pid": 58922, "signal": "SIGSTOP", "result": "sent"}
+{"pid": 72105, "signal": "SIGSTOP", "result": "sent"}
+{"pid": 72716, "signal": "SIGSTOP", "result": "sent"}
+{"pid": 22148, "signal": "SIGTERM", "result": "sent"}
+{"pid": 58922, "signal": "SIGTERM", "result": "sent"}
+{"pid": 72105, "signal": "SIGTERM", "result": "sent"}
+{"pid": 72716, "signal": "SIGTERM", "result": "sent"}
+{"remaining_before_bounded_cleanup": []}
+{"saved_child_exit": -15, "saved_wrapper_exit": 241, "remaining_compilers_on_owned_paths": [{"pid": "74550", "ppid": "13411", "state": "Ss", "comm": "/bin/zsh"}]}
+{"correction": "initial post-stop compiler query falsely matched its own zsh command text; no signal was sent by that query", "exact_comm_filter_remaining_compilers": []}
