@@ -1,0 +1,200 @@
+{
+  "utc": "2026-10-23T18:48:48.952243+00:00",
+  "source": "71d7204b9ec0dfde0ca025886d8ebf53d6d0db1b",
+  "task": "R5 quiet-window measurement attempt",
+  "oracle_window": "d4cee1a9-0b82-4a46-a7c2-08ece2f057a1",
+  "hold": "313dfbc6-62c8-4982-956a-6fe65b26d622",
+  "artifacts": "/private/tmp/aster-r5-triple-_j_8szf4",
+  "build": {
+    "command": [
+      "cargo",
+      "build",
+      "--release",
+      "--locked",
+      "-q",
+      "-p",
+      "bboxy450-term"
+    ],
+    "exit": 0,
+    "elapsed_s": 256.5152762920188,
+    "utc": "2026-10-23T18:38:08.604542+00:00"
+  },
+  "binary": {
+    "source": "71d7204b9ec0dfde0ca025886d8ebf53d6d0db1b",
+    "path": "/Users/feral/mydev/bboxy450-term-exec4/target/r5-frame-71d7204-1792780432088529000/release/bboxy450-term",
+    "sha256": "680a883a16cab99d1645c0262891ebd19d8c3db91558996e43f79ae37e828ffb",
+    "bytes": 31738384,
+    "release_debug_assertions": true,
+    "custody_required": "memory"
+  },
+  "attempts": [
+    {
+      "run": 1,
+      "result": {
+        "exit": 1,
+        "elapsed_s": 81.87863775002188,
+        "timed_out": false,
+        "host_load_before": [
+          7.71484375,
+          15.298828125,
+          20.51025390625
+        ],
+        "host_load_after": [
+          14.35302734375,
+          15.24609375,
+          19.9677734375
+        ],
+        "disk_free_after_bytes": 18632118272,
+        "owned_pid_count": 969,
+        "remaining_owned": []
+      },
+      "app_start_load_line": "R5 host load before: [7.4169921875, 15.11083984375, 20.4130859375]",
+      "custody_line": "R5 identity witness: custody=Some(Memory) label=Some(\"memory custody (debug)\")",
+      "last_error": "Error: \"r5-gui-error: deadline has elapsed\"",
+      "capture_read": true,
+      "capture_observation": "50 pane containers and967 sidebar count; capture is not final liveness/settling proof",
+      "all_pids_absent_ps_exit": 1,
+      "fixture_directories_remaining": [],
+      "files": [
+        {
+          "path": "/private/tmp/aster-r5-triple-_j_8szf4/run-1/command.json",
+          "bytes": 829,
+          "sha256": "53994437cad06b97ff71f46aeabbeea427c97007c6c66e3be913aebc609ae31d"
+        },
+        {
+          "path": "/private/tmp/aster-r5-triple-_j_8szf4/run-1/process.json",
+          "bytes": 63,
+          "sha256": "1ca46b4e4cdc6d626ca6422847e65257105902742eb4a7403441da08f7f45b6f"
+        },
+        {
+          "path": "/private/tmp/aster-r5-triple-_j_8szf4/run-1/r5-frame.1HxTxl/window.png",
+          "bytes": 344948,
+          "sha256": "3d224383aa740c6caf985723f2eeb89a74f5ec7fec2efdbe93015d9864ebee65"
+        },
+        {
+          "path": "/private/tmp/aster-r5-triple-_j_8szf4/run-1/reap-verification.json",
+          "bytes": 93,
+          "sha256": "43513fe1fa77b9d605238421061626ba436273d77226cb2cbe00bb5a99daf261"
+        },
+        {
+          "path": "/private/tmp/aster-r5-triple-_j_8szf4/run-1/reaped.json",
+          "bytes": 10703,
+          "sha256": "18568b7b6a6264c01351433db2d1a7c8805f7730ee89d87d4077917706668d26"
+        },
+        {
+          "path": "/private/tmp/aster-r5-triple-_j_8szf4/run-1/result.json",
+          "bytes": 328,
+          "sha256": "42c1e9ad8eacc681b5f9996b028d84dc4207d38df21ed9b9a69c956aa569e476"
+        },
+        {
+          "path": "/private/tmp/aster-r5-triple-_j_8szf4/run-1/stderr.log",
+          "bytes": 59528,
+          "sha256": "b228360c5e7b801ed176b487cbc0afc33565d7ea4c6bdee87693a48f1e7d37dd"
+        },
+        {
+          "path": "/private/tmp/aster-r5-triple-_j_8szf4/run-1/stdout.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "result": {
+        "exit": 1,
+        "elapsed_s": 90.80466754100053,
+        "timed_out": false,
+        "host_load_before": [
+          5.97998046875,
+          11.47412109375,
+          17.71826171875
+        ],
+        "host_load_after": [
+          8.64892578125,
+          10.77294921875,
+          16.77587890625
+        ],
+        "disk_free_after_bytes": 22640328704,
+        "owned_pid_count": 969,
+        "remaining_owned": []
+      },
+      "app_start_load_line": "R5 host load before: [6.0615234375, 11.3994140625, 17.6552734375]",
+      "custody_line": "R5 identity witness: custody=Some(Memory) label=Some(\"memory custody (debug)\")",
+      "last_error": "Error: \"r5-unsettled-after-producers-stopped\"",
+      "capture_read": true,
+      "capture_observation": "50 pane containers and967 sidebar count; capture is not final liveness/settling proof",
+      "all_pids_absent_ps_exit": 1,
+      "fixture_directories_remaining": [],
+      "files": [
+        {
+          "path": "/private/tmp/aster-r5-triple-_j_8szf4/run-2/command.json",
+          "bytes": 834,
+          "sha256": "d50815db89607f92c4f474f99632659221647c9d0d803f6629c3da9052e935c2"
+        },
+        {
+          "path": "/private/tmp/aster-r5-triple-_j_8szf4/run-2/process.json",
+          "bytes": 63,
+          "sha256": "a897d488d43e11701c30c9a037cf38c97139e0b8f0fb960dce50d2e6dfce820e"
+        },
+        {
+          "path": "/private/tmp/aster-r5-triple-_j_8szf4/run-2/r5-frame.pzcUqv/window.png",
+          "bytes": 343292,
+          "sha256": "85bd1ff8815739ccef6affb55faaff253bc5bfe2542a993b5c8c0016d8e54a16"
+        },
+        {
+          "path": "/private/tmp/aster-r5-triple-_j_8szf4/run-2/reap-verification.json",
+          "bytes": 93,
+          "sha256": "71aacbb2ebaa25e9749fa46c62154d18f6d617c52fcf709a7c5f6d40b6642879"
+        },
+        {
+          "path": "/private/tmp/aster-r5-triple-_j_8szf4/run-2/reaped.json",
+          "bytes": 10703,
+          "sha256": "d4492afd64302ebee95a72fc3b864749cb509fdf16f1a11074fa286c97539db1"
+        },
+        {
+          "path": "/private/tmp/aster-r5-triple-_j_8szf4/run-2/result.json",
+          "bytes": 336,
+          "sha256": "92dede4a608a6aaa42969d29ae7bebd8a76fef3f73eae39fca6a56a1eb7858c6"
+        },
+        {
+          "path": "/private/tmp/aster-r5-triple-_j_8szf4/run-2/stderr.log",
+          "bytes": 59054,
+          "sha256": "dff1a14473ad537122a8893efbc7fbfb1f00cc52a30cc3e7ed46b46937bb5350"
+        },
+        {
+          "path": "/private/tmp/aster-r5-triple-_j_8szf4/run-2/stdout.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    }
+  ],
+  "run3": "NOT STARTED; Oracle hold requires mechanism first",
+  "median": {
+    "cpu_p99_ms": null,
+    "marker_to_gpu_ms": null,
+    "bus_hz": null,
+    "reason": "Both attempts aborted before final report; zero completed timing samples"
+  },
+  "verdict": "UNPROVEN: no valid three-run median; exact967 setup succeeded, full gate failed",
+  "observed_source_mechanisms": {
+    "stall/load.rs:28-62": "fixture boots public Logic/Supervisor; not cockpit::Session",
+    "stall/load.rs:216-228": "fixture Wire writer has no deadline",
+    "seat_socket.rs:576": "server wraps reply write_all in2s Tokio timeout",
+    "stall/load.rs:455-456": "same reply-draining exercise task awaits side workload finish",
+    "stall/load.rs:198": "independent socket reader bounded8; can backpressure if exercise task waits",
+    "stall/load.rs:520": "Error op is discarded, preventing exact call-site correlation in current logs"
+  },
+  "gaps": [
+    "unmeasured duration of side-await gap",
+    "which server send call site timed out",
+    "load-independent967-idle control not run",
+    "no CPU p99, input/GPU latency, bus or frame-work median",
+    "no source fix or weakened limit"
+  ],
+  "host_load_now": [
+    10.26123046875,
+    8.4736328125,
+    14.24072265625
+  ]
+}
