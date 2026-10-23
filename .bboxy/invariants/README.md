@@ -10,7 +10,7 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[layering]] every crate depends only on crates below it | `sh scripts/layering.sh` | runner pass at 0bab92f, 2026-10-22 |
 | [[ui-never-waits]] the UI thread never waits on IO | `sh scripts/ui-lint.sh` | runner pass at 0bab92f, 2026-10-22 |
 | [[modules-through-components]] L7 modules draw only through components | `cargo test -p bbt-ui --locked --test seat_rows module_sources_and_legacy_adapter_cannot_hand_draw_rows` | runner pass at 0bab92f, 2026-10-22 |
-| [[parity-geometry]] web and native geometry agree for every parity case | `sh scripts/parity.sh` (slow; under `ci-local.sh --parity`) | P1 on main at 8e66b3a, 2026-10-22 |
+| [[parity-geometry]] web and native geometry agree for every parity case | `sh scripts/parity.sh` (slow; under `ci-local.sh --parity`) | P3 at dd47f4e: 1704 cases, 0 unproven, 0 mismatches, 2026-10-23 |
 | [[frontmatter-parses]] every .bboxy frontmatter parses | `cargo test -p bbt-doc --locked --test corpus real_bboxy_frontmatter_parses -- --exact` | held, 2026-10-22 (W3.5b parser) |
 | [[seats-1000-bus]] an Oracle broadcast reaches 1000 seats within budget | `GATE_SEATS=1000 GATE_BUDGET=13299 sh scripts/gates.sh bus` (slow) | p99 median 10.6 s at 22f5956, 2026-10-22 |
 | [[seats-400-memory-idle]] 400 idle seats fit in 420 MiB | `GATE_SEATS=400 GATE_RATE=idle GATE_SECONDS=20 GATE_BUDGET=420 sh scripts/gates.sh memory` (slow) | median 333.7 MiB, 2026-10-22 |
