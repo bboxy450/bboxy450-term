@@ -623,6 +623,7 @@ impl ChromeRenderer {
         // Chrome's grayscale CSS text, like its chrome fills, uses source-over
         // in sRGB. One UNORM pass also stores the right premultiplied values
         // inside an isolated group; no backdrop-dependent alpha remap is used.
+        crate::passes::count(crate::passes::Kind::Flat);
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("CSS gamma chrome and text"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -759,6 +760,7 @@ impl ChromeRenderer {
 }
 
 fn clear(view: &wgpu::TextureView, color: wgpu::Color, encoder: &mut wgpu::CommandEncoder) {
+    crate::passes::count(crate::passes::Kind::Clear);
     let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("chrome group clear"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {

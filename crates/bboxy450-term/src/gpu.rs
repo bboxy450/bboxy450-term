@@ -114,6 +114,8 @@ pub struct Gpu {
     pub config: wgpu::SurfaceConfiguration,
     renderer: ChromeRenderer,
     materials: m::Pass,
+    /// Render passes and copies encoded by the last draw (profiling; see bbt_render::passes).
+    pub passes: bbt_render::passes::Counts,
     target: wgpu::Texture,
     backdrop: wgpu::Texture,
     cells: BTreeMap<SeatId, CellTexture>,
@@ -141,6 +143,7 @@ fn texture(device: &wgpu::Device, size: [u32; 2]) -> wgpu::Texture {
     })
 }
 fn clear(view: &wgpu::TextureView, encoder: &mut wgpu::CommandEncoder) {
+    bbt_render::passes::count(bbt_render::passes::Kind::Clear);
     let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("app clear"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -228,6 +231,7 @@ impl Gpu {
             config,
             renderer,
             materials,
+            passes: Default::default(),
             target,
             backdrop,
             cells: BTreeMap::new(),
@@ -452,6 +456,7 @@ impl Gpu {
         let gpu_start = timing_marker(&self.renderer.context.queue)?;
         gpu_start.commit();
         self.renderer.context.queue.submit([encoder.finish()]);
+        self.passes = bbt_render::passes::take();
         let gpu_end = timing_marker(&self.renderer.context.queue)?;
         let sender = self.gpu_sender.clone();
         let completed = RcBlock::new(
@@ -542,6 +547,7 @@ impl Gpu {
                 .min(frame.height)
                 .min(self.config.height.saturating_sub(y));
             if width > 0 && height > 0 {
+                bbt_render::passes::count(bbt_render::passes::Kind::Copy);
                 encoder.copy_texture_to_texture(
                     cached.texture.as_image_copy(),
                     wgpu::TexelCopyTextureInfo {
@@ -841,6 +847,7 @@ fn encode_ops(
                     source.origin = origin;
                     let mut sampled = backdrop.as_image_copy();
                     sampled.origin = origin;
+                    bbt_render::passes::count(bbt_render::passes::Kind::Copy);
                     encoder.copy_texture_to_texture(
                         source,
                         sampled,

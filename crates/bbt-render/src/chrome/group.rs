@@ -163,6 +163,7 @@ impl ChromeRenderer {
                 format: Some(format),
                 ..Default::default()
             });
+        crate::passes::count(crate::passes::Kind::Group);
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("isolated group source-over"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {

@@ -88,6 +88,7 @@ impl PreparedGrid {
         if right <= x || bottom <= y {
             return;
         }
+        crate::passes::count(crate::passes::Kind::Cells);
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("terminal live cells"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
