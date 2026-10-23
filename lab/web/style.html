@@ -19,7 +19,7 @@ Lab.page({ title: 'style', wide: true, note: 'L3 Style, the web reference for th
       if (s === 'button-primary') box.style.background = 'var(--accent)';
       box.style.width = ['pill', 'chip', 'button-primary', 'button-ghost'].includes(s) ? 'auto' : '280px';
       box.style.display = 'inline-flex';
-      let shown = box; if (s === 'pane-glow') { box.style.height = '120px'; shown = el('div', { class: 'pane-wrap', style: 'padding:0;display:inline-block' }, box); requestAnimationFrame(() => Glow.attach(shown, { key: 'pg' + theme, state: 'active' }, { color: SEAT, focused: true })); }
+      let shown = box; if (s === 'pane-glow') { box.style.height = '120px'; shown = el('div', { class: 'pane-wrap', style: 'padding:0;display:inline-block' }, box); requestAnimationFrame(() => Glow.attach(shown, { key: 'pg' + theme, state: 'active' }, { color: SEAT, focused: true, phase_ms: 7 })); }
       grid.append(UI.themeScope(theme, UI.Text(theme, { step: 'small', caps: true, dim: true }), el('div', { style: 'padding:18px 0;' + (s === 'modal' ? 'background:var(--wallpaper);border-radius:12px;padding:18px' : '') }, shown), el('div', { class: 'ui-params' }, s + ' ' + JSON.stringify(st, null, 1).replace(/"/g, ''))));
     }
     body.append(grid);

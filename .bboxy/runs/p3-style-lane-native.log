@@ -1,0 +1,25 @@
+Style Lane harness native checkpoint; parent4bb041798a4a6f4bcd6bad5968ceae6e605d5723
+Allowed product edit: crates/bboxybook/src/styles.rs::paint_box only; triage log included per Oracle brief42b855eb.
+Mechanism: add Lane-only effect pass using existing components::lane token/state resolution. Preserve explicit glow overrides; default Style fixture is Active/focused as public style.html states. Multiply resolved opacity once for state colours. Fill/border/text and existing Glow pass unchanged.
+Public reference pose confirmed by Wren: Active, focusedtrue, colour#2EE6A8,tokenlane8,phase7ms,clock450ms. Final lab revision still pending.
+styles.rs blob: f9accd4ffbdf19690278b851f87a6b698e2a49d1
+
+Initial unfocused draft (before explicit fixture-focus coordination):
+{"command": ["cargo", "build", "-p", "bboxybook", "--locked"], "exit": 0, "seconds": 265.83}
+{"command": ["cargo", "clippy", "-p", "bboxybook", "--all-targets", "--locked", "--", "-D", "warnings"], "exit": 0, "seconds": 98.467}
+Focused fixture build/checks:
+{"command": ["cargo", "build", "-p", "bboxybook", "--locked"], "exit": 0, "seconds": 60.458}
+{"command": ["cargo", "clippy", "-p", "bboxybook", "--all-targets", "--locked", "--", "-D", "warnings"], "exit": 0, "seconds": 6.863}
+{"command": ["cargo", "test", "-p", "bboxybook", "--locked"], "exit": 0, "seconds": 47.594}
+Package pass/fail/ignored total: (85, 0, 0)
+
+Native-only proof, NOT a stale-web comparison:
+Frozen input source9dd73ec; first8style/pane-glow inputs with original immutable backdrop paths.
+Focused binary SHA256 cf23063d933da0bd9ef62c9dbe8b488a25581d12a7cc839f8dd9055785b052c8
+Render8 exit0/1.161s; emission probe exit0/0.659s. Each changed pixels>0, inner-core changed0, beyond conservativetokenlane bounds changed0.
+Artifact: /Users/feral/mydev/bboxy450-term-exec6/target/style-lane-eight-focused-dev/emission-proof.json
+Native cozy-dark image inspected.
+Initial unfocused render/probe were also0, retained under target/style-lane-eight-dev; not an acceptance verdict.
+A token-extraction preflight used json.loads on tokens.js containing two objects and exited1(extra data); corrected to JSONDecoder.raw_decode before either probe.
+Fresh eight-case web/native/geometry parity must run after Wren final lab revision; exact clean ci-local --parity remains required.
+No full CI claim for this candidate; no new renderer, lab, geometry-policy or tolerance edits.

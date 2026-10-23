@@ -1,0 +1,87 @@
+P3 advisory triage — frozen source9dd73ec, accepted main dd47f4e
+334 advisory reviews,13 modules. No product edits. All source pointers below are at frozen9dd73ec.
+Artifacts: /Users/feral/mydev/bboxy450-term-exec6/target/p3-triage-9dd73ec/triage.json
+Metrics: /Users/feral/mydev/bboxy450-term-exec6/target/p3-triage-9dd73ec/metrics.json
+Crops and SHA256 provenance: /Users/feral/mydev/bboxy450-term-exec6/target/p3-triage-9dd73ec/crop-manifest.json
+
+title-strip (88 reviews): real reference mismatch; native follows selected silk
+94.69% of all changed pixels are within 12px outside/3px inside the pane rims. The lab still uses CSS halo plus Canvas2D particles; native emits the selected silk lane. This is reference drift, not font AA, and reverting native to the old glow would contradict the board.
+Evidence: .bboxy/tasks/2026-10-22-c-cockpit.md:54 — operator selects silk; :56 — old halo/inward particles go; lab/web/lab.css:253 — CSS fake; lab/web/glow.js:1 — Canvas fake; crates/bbt-ui/src/style.rs:855 — PaneGlow resolves Lane; crates/bbt-render/src/chrome/materials.wgsl:101 — lane port; :121 — silk equation, matching lab/web/shaders.html:92
+Crop: /Users/feral/mydev/bboxy450-term-exec6/target/p3-triage-9dd73ec/triplets/title-strip.png
+Limits: High for mechanism mismatch; lane amplitude/phase is not newly remeasured here.
+
+pane (48 reviews): real reference mismatch; native follows selected silk
+96.63% of changed pixels lie around pane rims. Same legacy lab glow versus native silk cause as TitleStrip; the content and fixed 1px geometry are already measured, with 0 mismatches.
+Evidence: .bboxy/tasks/2026-10-22-c-cockpit.md:54; lab/web/lab.css:253; lab/web/glow.js:1; crates/bbt-ui/src/modules/pane.rs:378 — glow parameters; :396 — effect behind opaque frame; crates/bbt-render/src/chrome/materials.wgsl:121
+Crop: /Users/feral/mydev/bboxy450-term-exec6/target/p3-triage-9dd73ec/triplets/pane.png
+Limits: High for mechanism mismatch; not a claim that every changed pixel is attributable to glow.
+
+documents (48 reviews): 16 expected diagram diagnostics; 32 predominantly raster residue
+16 flagged rows contain the independent diagram engine: with-a-diagram8 and as-modal8. Different node/edge layout and canvas height shift following raw pixels. The existing chrome comparison deliberately removes each engine canvas height. Other32 (broken-frontmatter8, superseded8, epic8, as-modal-source8) show matching text/layout with coverage and chip/corner edges; 99.36% of their changed pixels are within2px of a web gradient. That edge localization supports the observed residue; it is not proof of a specific font backend.
+Evidence: crates/bboxybook/src/documents.rs:196 — per-side canvas-height projection only for chrome geometry; crates/bboxybook/src/documents.rs:197 — chrome_rect; crates/bbt-render/src/chrome/text.rs:356; .bboxy/specs/renderer.md:59
+Crop: /Users/feral/mydev/bboxy450-term-exec6/target/p3-triage-9dd73ec/triplets/documents.png
+Limits: Diagram cause high; raster classification observational. Modal shell also inherits the separate small surface-rim gap.
+
+harness-icon (48 reviews): SVG raster coverage residue
+Six symbols (claude,codex,omp,zsh,gear,sidebarfox) each have8 reviews; pi has none. Native bakes the same lab SVG dictionary and renders at physical size with resvg/tiny-skia. Crops show identical forms/tints and edge-coverage differences; 100% of changed pixels are within2px of web gradients. No asset/slot-size mismatch found.
+Evidence: crates/bboxybook/build.rs:8 — same lab components.js source; :22 — currentColor becomes white for tinting; crates/bbt-render/src/chrome/icons.rs:180 — physical-size resvg render; .bboxy/specs/renderer.md:21 — measured SVG placement rule
+Crop: /Users/feral/mydev/bboxy450-term-exec6/target/p3-triage-9dd73ec/triplets/harness-icon.png
+Limits: Raster attribution supported by shared assets, exact slot geometry and crops; no new browser rasterizer A/B.
+
+graph (16 reviews): predominantly text/SVG/chip edge raster residue
+Work-tree8 and provenance8. 88.96% of changed pixels are in padded measured text boxes; 100% are near web gradients. Crops show type/stroke coverage at matching positions, with no missing records or filled-region mismatch.
+Evidence: .bboxy/specs/renderer.md:21 — chrome sRGB blending, quarter-device-pixel origins and numeric SF weights; :59 — CoreText/Chrome coverage residue is why text has its budget; crates/bbt-render/src/chrome/text.rs:356 — quarter-pixel glyph placement; :417 — CoreText CTFontDrawGlyphs (line numbers at 9dd73ec); crates/bbt-render/src/chrome/icons.rs:180
+Crop: /Users/feral/mydev/bboxy450-term-exec6/target/p3-triage-9dd73ec/triplets/graph.png
+Limits: Observed raster classification; small glyph/chip paint details not individually isolated.
+
+message-row (24 reviews): text raster residue
+Reply-from-subagent8, unsigned8, to-subagent8. All115460 changed pixels lie in measured text boxes padded2px, and all are near web gradients. Crops retain the same content and wrapping.
+Evidence: .bboxy/specs/renderer.md:21 — chrome sRGB blending, quarter-device-pixel origins and numeric SF weights; :59 — CoreText/Chrome coverage residue is why text has its budget; crates/bbt-render/src/chrome/text.rs:356 — quarter-pixel glyph placement; :417 — CoreText CTFontDrawGlyphs (line numbers at 9dd73ec)
+Crop: /Users/feral/mydev/bboxy450-term-exec6/target/p3-triage-9dd73ec/triplets/message-row.png
+Limits: Strong localization and matching geometry/content; a font-rasterizer counterfactual was not run.
+
+stream (8 reviews): predominantly text and small glyph/outline raster residue
+Rejected-progress8 only. 88.75% is inside text boxes padded2px;98.01% inside8px;100% near gradients. Crops show matching rows/content and residual type, symbols, and notice-edge coverage.
+Evidence: .bboxy/specs/renderer.md:21 — chrome sRGB blending, quarter-device-pixel origins and numeric SF weights; :59 — CoreText/Chrome coverage residue is why text has its budget; crates/bbt-render/src/chrome/text.rs:356 — quarter-pixel glyph placement; :417 — CoreText CTFontDrawGlyphs (line numbers at 9dd73ec)
+Crop: /Users/feral/mydev/bboxy450-term-exec6/target/p3-triage-9dd73ec/triplets/stream.png
+Limits: Observed raster classification; minor rejected-notice outline AA not independently isolated.
+
+settings (24 reviews): predominantly control/text and corner raster residue
+Account8, Roles8, in-a-tab8. Every changed pixel is near a web gradient;75.72% is inside measured text or field/control boxes padded2px. Control text is not represented as child text diagnostics, so the text-only16.01% figure must not be read as84% flat-fill error. Crops show matching field values/linebreaks, small text and rounded control edges.
+Evidence: .bboxy/specs/renderer.md:21 — chrome sRGB blending, quarter-device-pixel origins and numeric SF weights; :59 — CoreText/Chrome coverage residue is why text has its budget; crates/bbt-render/src/chrome/text.rs:356 — quarter-pixel glyph placement; :417 — CoreText CTFontDrawGlyphs (line numbers at 9dd73ec); crates/bbt-ui/src/modules/settings.rs:630 — native field label/control composition
+Crop: /Users/feral/mydev/bboxy450-term-exec6/target/p3-triage-9dd73ec/triplets/settings.png
+Limits: Observed raster classification; no separate control-raster microfixture or new2x capture.
+
+materials (8 reviews): particle-circle coverage raster residue
+All8 are the retained L2 glow material. Seeded particle positions align; the visible differences track circular edges and halo coverage. 100% of changed pixels are near web gradients. Canvas2D arc fill is compared to an analytic GPU radial ramp.
+Evidence: lab/web/glow.js:45 — Canvas2D arc fill; crates/bbt-render/src/chrome/materials.wgsl:94 — analytic distance coverage ramp
+Crop: /Users/feral/mydev/bboxy450-term-exec6/target/p3-triage-9dd73ec/triplets/materials.png
+Limits: Coverage mechanism observed; not a new tuning/optimization experiment.
+
+style (4 reviews): real harness omission, plus stale glow reference
+Pane-glow4 dark rows are flagged. The resolved preset is Lane, but the L3 harness groups Lane with Flat and only adds an effect pass for Glow. Therefore it paints no Lane at all. The same omission affects all8 pane-glow cases, although4light rows remain under budget. The lab also still demonstrates the old glow; both issues need a coherent reference/harness fix.
+Evidence: crates/bbt-ui/src/style.rs:855 — Lane preset; crates/bboxybook/src/styles.rs:273 — Lane reduced to Flat; crates/bboxybook/src/styles.rs:331 — only Glow receives extra pass
+Crop: /Users/feral/mydev/bboxy450-term-exec6/target/p3-triage-9dd73ec/triplets/style.png
+Limits: High: explicit missing branch, confirmed by crop; no source edits.
+
+launcher-surface (8 reviews): real panel-rim paint gap; not cleared by F3
+98.94% of the worst light case is within3px of the panel perimeter. CSS picker retains an inside line border as well as an outside hair shadow; the surface-only native fixture uses Modal with only its outside hair ring. Example x243,y462 is web[214,212,240] versus native[254,254,255]. The paired F3 shader fix leaves all8 in review. This points to the shell/decoration recipe and outside-stroke coverage, not a fill or layout failure.
+Evidence: lab/web/lab.css:192 — inherited inside picker border; lab/web/lab.css:970 — additional outside hair and inner highlight; crates/bboxybook/src/overlays.rs:237 — generic Modal shell; crates/bbt-ui/src/style.rs:795 — Modal outside border
+Crop: /Users/feral/mydev/bboxy450-term-exec6/target/p3-triage-9dd73ec/triplets/launcher-surface.png
+Limits: Missing inside-border recipe is proven; remaining outside-ring AA/alpha split needs F4 isolation.
+
+documents-surface (8 reviews): real panel-rim/highlight paint gap with secondary context edge
+The interior sample matches exactly while the outside ring differs: x132,y374 web[122,122,145],native[155,154,182]; x133 inside is[203,205,215] on both. Native outside-border branch sets inner_highlight=None for both fill and ring despite the modal CSS inset highlight. The crop shows a narrow perimeter gap. Some changed pixels also occur at the outer shared card/crop edge. F3 barely changes it and all8 remain in review.
+Evidence: lab/web/lab.css:1050 — outside hair and inset highlight; crates/bbt-ui/src/components.rs:2017 — outside-ring/fill branch drops inner highlight; crates/bboxybook/src/overlays.rs:249 — shell overlay clip=false
+Crop: /Users/feral/mydev/bboxy450-term-exec6/target/p3-triage-9dd73ec/triplets/documents-surface.png
+Limits: Missing top highlight is source-proven; full ring alpha/coverage and outer-context cause remain for F4 isolation.
+
+seat-row (2 reviews): mixed raster residue and a small waiting-glyph paint omission
+Only compact waiting dark/light fail. Names/icons/glyphs account for the visible differences (99.94% near web gradients;66.84% in text boxes padded2px). CSS adds a6px text shadow to the waiting glyph, while native Glyph emits foreground primitives without that shadow. That is a small paint gap in addition to the known text/SVG coverage residue; its exact contribution is not isolated here.
+Evidence: lab/web/lab.css:260 — waiting glyph text-shadow; crates/bbt-ui/src/atoms.rs:90 — Glyph paints foreground; :161 — waiting mark without shadow
+Crop: /Users/feral/mydev/bboxy450-term-exec6/target/p3-triage-9dd73ec/triplets/seat-row.png
+Limits: Missing shadow is source-proven; share of the two review scores attributable to it is unproven.
+
+Commands: [{"command": "python3 /tmp/velvet-p3-triage.py", "exit": 0, "result": "334 scores independently match the report;17 lossless crop triplets written and viewed"}, {"command": "python3 /tmp/velvet-p3-triage-edges.py", "exit": 0, "result": "334 cases localized to web gradients; localization does not establish causal mechanism by itself"}, {"command": "target/f3-replay/bboxybook-b50-before render --all --out target/p3-triage-9dd73ec/surface-before --manifest target/p3-triage-9dd73ec/surface-requested.json", "exit": 0}, {"command": "target/f3-replay/bboxybook-b50-after render --all --out target/p3-triage-9dd73ec/surface-after --manifest target/p3-triage-9dd73ec/surface-requested.json", "exit": 0}]
+Not checked: No product edits or fixes; No new full CI: analyzed the accepted exact9dd73ec artifacts whose CI exit was0; No operator desktop, fresh browser capture, 2x/fractionalDPR measurement or live app run; No font backend A/B; edge localization does not prove every residual pixel harmless; No tolerance moves or reference substitutions; Full F3 current-main gallery regression and F4 root microfixtures remain outstanding
+Decision needed: The136pane/title reviews arise from stale pre-silk lab references, so native must not be compensated toward them. Oracle disposition is needed for Wren reference updates and for the Style harness Lane omission; no edit scope inferred for those files.
