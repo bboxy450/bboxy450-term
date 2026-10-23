@@ -350,6 +350,11 @@ pub struct Frame<'a> {
     pub items: &'a [Surface],
     pub time_ms: f32,
     pub theme: Theme,
+    /// The caller's digest of everything painted into `backdrop` before these
+    /// items (and of the frame time when any of it is time-driven). Equal keys
+    /// mean an identical backdrop, so a frosted item reuses its previous blur
+    /// instead of rerunning both Gaussian passes. None: always recompute.
+    pub backdrop_key: Option<u64>,
 }
 pub struct Pass {
     layout: wgpu::BindGroupLayout,
@@ -357,7 +362,11 @@ pub struct Pass {
     blur: [wgpu::RenderPipeline; 2],
     sampler: wgpu::Sampler,
     format: wgpu::TextureFormat,
+    /// Finished vertical-blur textures by blur key, most recent last.
+    blurred: std::cell::RefCell<Vec<(u64, wgpu::Texture)>>,
 }
+/// Frosted items per frame whose blur is kept for reuse.
+const BLUR_CACHE: usize = 4;
 impl Pass {
     pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -517,6 +526,7 @@ impl Pass {
             blur,
             sampler,
             format,
+            blurred: Default::default(),
         }
     }
     pub fn draw(
@@ -540,6 +550,7 @@ impl Pass {
             items,
             time_ms,
             theme,
+            backdrop_key,
         } = frame;
         if target.width == 0
             || target.height == 0
@@ -641,6 +652,25 @@ impl Pass {
                 filtered.push(None);
                 continue;
             };
+            // Same backdrop (caller's key), same item parameters and target:
+            // the previous blur is exactly what both passes would produce.
+            let key = backdrop_key.map(|k| {
+                use std::hash::{Hash, Hasher};
+                let mut h = std::collections::hash_map::DefaultHasher::new();
+                k.hash(&mut h);
+                index.hash(&mut h);
+                bytemuck::bytes_of(&instances[index]).hash(&mut h);
+                (target.width, target.height, target.scale.to_bits()).hash(&mut h);
+                h.finish()
+            });
+            if let Some(k) = key
+                && let Some((_, texture)) = self.blurred.borrow().iter().find(|(c, _)| *c == k)
+            {
+                filtered.push(Some(bind_backdrop(
+                    &texture.create_view(&Default::default()),
+                )));
+                continue;
+            }
             let texture = || {
                 context.device.create_texture(&wgpu::TextureDescriptor {
                     label: Some("frosted sRGB-value intermediate"),
@@ -688,6 +718,14 @@ impl Pass {
                 blur.draw(0..3, index as u32..index as u32 + 1);
             }
             filtered.push(Some(bind_backdrop(&y)));
+            if let Some(k) = key {
+                let mut cache = self.blurred.borrow_mut();
+                cache.retain(|(c, _)| *c != k);
+                if cache.len() >= BLUR_CACHE {
+                    cache.remove(0);
+                }
+                cache.push((k, vertical));
+            }
         }
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("L2 named materials"),
@@ -766,6 +804,19 @@ pub fn render_layered_to_rgba(
     scene: Scene<'_>,
     underlay: &DrawList,
     foreground: &DrawList,
+) -> Result<Vec<u8>> {
+    let pass = Pass::new(&renderer.context.device, wgpu::TextureFormat::Rgba8Unorm);
+    render_layered_with(renderer, &pass, scene, underlay, foreground, None)
+}
+/// As `render_layered_to_rgba` through a caller-owned `Pass`, so blur reuse
+/// across renders (`backdrop_key`) can be checked against recomputation.
+fn render_layered_with(
+    renderer: &mut ChromeRenderer,
+    pass: &Pass,
+    scene: Scene<'_>,
+    underlay: &DrawList,
+    foreground: &DrawList,
+    backdrop_key: Option<u64>,
 ) -> Result<Vec<u8>> {
     let Scene {
         backdrop,
@@ -879,7 +930,6 @@ pub fn render_layered_to_rgba(
             &mut encoder,
         )?;
     }
-    let pass = Pass::new(&renderer.context.device, format);
     pass.draw_into(
         &renderer.context,
         &mut encoder,
@@ -895,6 +945,7 @@ pub fn render_layered_to_rgba(
             items,
             time_ms,
             theme,
+            backdrop_key,
         },
         renderer.group_depth > 0,
     )?;
@@ -944,6 +995,63 @@ mod tests {
         };
         assert_eq!(flat.backdrop_region(1., 200, 100).unwrap(), None);
         assert!(surface.backdrop_region(f32::NAN, 200, 100).is_err());
+    }
+    /// A checker backdrop under a frosted bar: the blur has real work to do.
+    fn frosted_scene(list: &DrawList) -> (Vec<Surface>, Scene<'_>) {
+        let items = vec![Surface {
+            rect: Rect::new(0., 0., 96., 14.),
+            radii: [0.; 4],
+            clips: vec![],
+            material: Material::Frosted(Frosted {
+                tint: Color::TRANSPARENT,
+                blur_radius: 6.,
+                saturation: 1.4,
+            }),
+        }];
+        let scene = Scene {
+            backdrop: Backdrop::DrawList(list),
+            items: &[],
+            width: 96,
+            height: 48,
+            scale: 1.,
+            time_ms: 0.,
+            theme: Theme::Dark,
+        };
+        (items, scene)
+    }
+    fn checker(shift: f32) -> DrawList {
+        let mut list = DrawList::default();
+        list.rect(Rect::new(0., 0., 96., 48.), 0., Color::hex("#101018"));
+        for i in 0..12 {
+            list.rect(
+                Rect::new(shift + i as f32 * 8., (i % 3) as f32 * 6., 4., 30.),
+                0.,
+                Color::hex("#2E6BFF"),
+            );
+        }
+        list
+    }
+    #[test]
+    fn blur_reuse_is_pixel_identical_and_only_on_equal_keys() {
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let pass = Pass::new(&renderer.context.device, wgpu::TextureFormat::Rgba8Unorm);
+        let none = DrawList::default();
+        let render = |renderer: &mut ChromeRenderer, list: &DrawList, key: Option<u64>| {
+            let (items, mut scene) = frosted_scene(list);
+            scene.items = &items;
+            render_layered_with(renderer, &pass, scene, &none, &none, key).unwrap()
+        };
+        let a = checker(0.);
+        let b = checker(3.);
+        let fresh_a = render(&mut renderer, &a, None);
+        let fresh_b = render(&mut renderer, &b, None);
+        assert_ne!(fresh_a, fresh_b, "the two backdrops must blur differently");
+        // First keyed render computes and caches; the second reuses: identical bytes.
+        assert_eq!(render(&mut renderer, &a, Some(1)), fresh_a);
+        assert_eq!(render(&mut renderer, &a, Some(1)), fresh_a);
+        // A different key over a different backdrop recomputes rather than reusing key 1.
+        assert_eq!(render(&mut renderer, &b, Some(2)), fresh_b);
+        assert_eq!(render(&mut renderer, &a, Some(1)), fresh_a);
     }
     #[test]
     fn zero_blur_still_samples_the_backdrop_and_fractional_edge_texels() {

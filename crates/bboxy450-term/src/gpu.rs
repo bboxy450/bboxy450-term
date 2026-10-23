@@ -421,6 +421,57 @@ impl Gpu {
     }
 }
 
+/// For each frosted material op, a digest of every op painted before it (its
+/// backdrop), the target and, if any of those ops is time-driven, the frame
+/// time. Equal digests mean an identical backdrop, so the blur is reused
+/// (materials::Frame::backdrop_key). Other ops get None, and so does every op
+/// once the prefix is too large to digest cheaply.
+fn backdrop_keys(ops: &[Paint], timing: FrameTime, size: wgpu::Extent3d) -> Vec<Option<u64>> {
+    use std::hash::{Hash, Hasher};
+    const LIMIT: usize = 256 * 1024;
+    fn timed(op: &Paint) -> bool {
+        match op {
+            Paint::Material { kind, .. } => {
+                matches!(kind, ui::Material::Glow | ui::Material::Lane)
+            }
+            Paint::Group { ops, .. } => ops.iter().any(timed),
+            _ => false,
+        }
+    }
+    let frosted = |op: &Paint| {
+        matches!(
+            op,
+            Paint::Material {
+                kind: ui::Material::Frosted,
+                ..
+            }
+        )
+    };
+    let mut keys = vec![None; ops.len()];
+    let Some(last) = ops.iter().rposition(frosted) else {
+        return keys;
+    };
+    let mut prefix = std::collections::hash_map::DefaultHasher::new();
+    (size.width, size.height, timing.scale.to_bits()).hash(&mut prefix);
+    let (mut bytes, mut dynamic) = (0, false);
+    for (index, op) in ops[..=last].iter().enumerate() {
+        if frosted(op) {
+            let mut key = prefix.clone();
+            if dynamic {
+                timing.time_ms.to_bits().hash(&mut key);
+            }
+            keys[index] = Some(key.finish());
+        }
+        let text = format!("{op:?}");
+        bytes += text.len();
+        if bytes > LIMIT {
+            break;
+        }
+        text.hash(&mut prefix);
+        dynamic |= timed(op);
+    }
+    keys
+}
 fn encode_ops(
     renderer: &mut ChromeRenderer,
     pass: &m::Pass,
@@ -434,7 +485,8 @@ fn encode_ops(
     let view = destination.create_view(&Default::default());
     let mut underlay = DrawList::default();
     let mut pending = DrawList::default();
-    for op in ops {
+    let keys = backdrop_keys(&ops, timing, destination.size());
+    for (index, op) in ops.into_iter().enumerate() {
         match op {
             Paint::Underlay(list) => underlay.primitives.extend(list.primitives),
             Paint::Draw(mut list) => {
@@ -572,6 +624,7 @@ fn encode_ops(
                         items: &items,
                         time_ms,
                         theme: ui::Theme::Dark,
+                        backdrop_key: keys[index],
                     },
                 )?;
             }
