@@ -47,8 +47,9 @@ enum Command {
         oneshot::Sender<Result<serde_json::Value>>,
     ),
     GuiSpawn(
+        Ulid,
         bbt_proto::SpawnSpec,
-        oneshot::Sender<Result<bbt_proto::GuiSeat>>,
+        oneshot::Sender<Result<bbt_proto::SeatId>>,
     ),
     GuiInput(
         Ulid,
@@ -207,10 +208,14 @@ impl LogicClient {
             self.unavailable("control outcome unavailable; query the original operation ID")
         })?
     }
-    pub async fn gui_spawn(&self, spec: bbt_proto::SpawnSpec) -> Result<bbt_proto::GuiSeat> {
+    pub async fn gui_spawn(
+        &self,
+        id: Ulid,
+        spec: bbt_proto::SpawnSpec,
+    ) -> Result<bbt_proto::SeatId> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::GuiSpawn(spec, tx))
+            .send(Command::GuiSpawn(id, spec, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await
@@ -891,6 +896,7 @@ struct Worker {
     control_deliveries: tokio::task::JoinSet<ControlDelivery>,
     control_journals: BTreeMap<Ulid, crate::mcp::journal::Journal>,
     provenance: crate::provenance::engine::Engine,
+    operator_journal: crate::mcp::journal::Journal,
     stale_gui_requests: u64,
 }
 impl Worker {
@@ -904,7 +910,8 @@ impl Worker {
         bus_window: Option<Ulid>,
     ) -> Result<Self> {
         let connections = Connections::open(providers)?;
-        let registry = Registry::new(SqliteStore::open(&object_dir(&config.run_dir, "account")?)?);
+        let account = SqliteStore::open(&object_dir(&config.run_dir, "account")?)?;
+        let registry = Registry::new(account.clone());
         let mut index = Index::open(
             &config.repository.join(".bboxy"),
             SqliteStore::open(&object_dir(&config.run_dir, "index")?)?,
@@ -965,6 +972,7 @@ impl Worker {
             control_deliveries: tokio::task::JoinSet::new(),
             control_journals: BTreeMap::new(),
             provenance,
+            operator_journal: crate::mcp::journal::Journal::new(account),
             stale_gui_requests: 0,
         };
         for (host, info) in worker.connections.owned_seats()? {
@@ -1037,6 +1045,11 @@ impl Worker {
         Ok(journal)
     }
     fn publish_control_audits(&self) -> Result<()> {
+        for event in self.operator_journal.pending(32)? {
+            let event_id = event.id;
+            self.publish("account", event)?;
+            self.operator_journal.published(event_id)?;
+        }
         for (id, journal) in &self.control_journals {
             for event in journal.pending(32)? {
                 let event_id = event.id;
@@ -3095,7 +3108,92 @@ impl Worker {
             message: reason,
         }))
     }
-    fn gui_spawn(&mut self, spec: bbt_proto::SpawnSpec) -> Result<bbt_proto::GuiSeat> {
+    fn gui_spawn(&mut self, id: Ulid, spec: bbt_proto::SpawnSpec) -> Result<bbt_proto::SeatId> {
+        let call = crate::mcp::Call {
+            op_id: id,
+            tool: "gui_spawn".into(),
+            args: serde_json::to_value(&spec)?,
+        };
+        call.validate()?;
+        let device_id = self
+            .identity
+            .status()?
+            .device_id
+            .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
+        let principal = crate::mcp::Principal::Operator { device_id };
+        let (retained, fresh) = self.operator_journal.admit(&principal, &call)?;
+        let result = if fresh {
+            let result = match self.prepare_gui_spawn(spec) {
+                Ok((record, harness, options)) => match self.launch(record, harness, options) {
+                    Ok(info) => crate::mcp::success(id, serde_json::json!({"seat":info.seat})),
+                    // Admission is durable before the native effect. A lost
+                    // supervisor reply cannot authorize a second launch.
+                    Err(error) => crate::mcp::error(id, "unknown", &error.to_string()),
+                },
+                Err(error) => crate::mcp::error(id, "rejected", &error.to_string()),
+            };
+            self.operator_journal.complete(&principal, &call, result)?
+        } else {
+            retained
+        };
+        if result["isError"] == true {
+            let error = &result["structuredContent"]["error"];
+            let code = error["code"].as_str().unwrap_or("unknown");
+            let message = error["message"]
+                .as_str()
+                .unwrap_or("spawn outcome unavailable");
+            // Existing named validation outcomes (notably LinkDown) retain
+            // their wire spelling. Unknown/conflict also carry journal status.
+            return Err(invalid(if code == "rejected" {
+                message.to_owned()
+            } else {
+                format!("{code}: {message}")
+            }));
+        }
+        let seat: Ulid = serde_json::from_value(result["structuredContent"]["seat"].clone())?;
+        Ok(bbt_proto::SeatId::from_u128(seat.0))
+    }
+
+    fn prepare_gui_spawn(
+        &self,
+        spec: bbt_proto::SpawnSpec,
+    ) -> Result<(
+        SeatRecord,
+        HarnessRecord,
+        crate::adapters::launch::LaunchOptions,
+    )> {
+        use bbt_proto::seat_state::Placement;
+        if spec.swarm.0.0 == 0 {
+            return Err(invalid("spawn_swarm_missing"));
+        }
+        if let Some(placement) = &spec.placement {
+            let tab = match placement {
+                Placement::NewTab { tab } | Placement::Split { tab, .. } => tab,
+            };
+            if tab.0.0 == 0 {
+                return Err(invalid("placement_tab_missing"));
+            }
+            if let Placement::Split {
+                target,
+                target_generation,
+                ..
+            } = placement
+            {
+                let anchor = self
+                    .registry
+                    .get(Ulid(target.0.0))
+                    .map_err(|_| invalid("placement_anchor_missing"))?;
+                if anchor.lifecycle != Lifecycle::Open {
+                    return Err(invalid("placement_anchor_missing"));
+                }
+                if anchor.generation != *target_generation {
+                    return Err(invalid("placement_anchor_changed"));
+                }
+                if anchor.swarm.0 != spec.swarm.0.0 {
+                    return Err(invalid("placement_swarm_changed"));
+                }
+            }
+        }
         let id = HostId::from(&spec.location);
         let host = self
             .connections
@@ -3133,7 +3231,7 @@ impl Worker {
         }
         let resume = spec.resume.is_some();
         record.harness_session_id = spec.resume;
-        let info = self.launch(
+        Ok((
             record,
             harness,
             crate::adapters::launch::LaunchOptions {
@@ -3146,8 +3244,7 @@ impl Worker {
                 user_zdotdir: std::env::var_os("ZDOTDIR").map(PathBuf::from),
                 resume,
             },
-        )?;
-        self.gui_seat(info.seat)
+        ))
     }
     fn refresh_providers(
         &mut self,
@@ -3252,8 +3349,8 @@ impl Worker {
                         let result = self.recover_seats();
                         let _ = reply.send(result);
                     }
-                    Command::GuiSpawn(spec, reply) => {
-                        let result = self.gui_spawn(spec);
+                    Command::GuiSpawn(id, spec, reply) => {
+                        let result = self.gui_spawn(id, spec);
                         let _ = reply.send(result);
                     }
                     Command::GuiInput(id, generation, input_id, bytes, reply) => {

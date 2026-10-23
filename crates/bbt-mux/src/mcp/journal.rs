@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use ulid::Ulid;
 
-use super::{Actor, Call, MAX_RESULT, error};
+use super::{Call, MAX_RESULT, Principal, error};
 use crate::store::{Result, digest, events::Draft, sqlite::SqliteStore};
 
 #[derive(Clone)]
@@ -15,7 +15,7 @@ pub(crate) struct Journal {
 
 #[derive(Serialize, Deserialize)]
 struct Entry {
-    actor: Actor,
+    actor: Principal,
     tool: String,
     args_digest: String,
     result: Value,
@@ -35,22 +35,23 @@ impl Journal {
 
     pub fn call(
         &self,
-        actor: &Actor,
+        actor: impl Into<Principal>,
         call: &Call,
         dispatch: impl FnOnce() -> Value,
     ) -> Result<Value> {
-        self.record(actor, call, dispatch, Mode::Read, |_| true)
+        self.record(&actor.into(), call, dispatch, Mode::Read, |_| true)
             .map(|(value, _)| value)
     }
 
     /// Reauthorize reads before consulting an old result. A current denial is
     /// audited and returned without revealing or replacing an old success.
-    pub fn checked(&self, actor: &Actor, call: &Call, value: Value) -> Result<Value> {
+    pub fn checked(&self, actor: impl Into<Principal>, call: &Call, value: Value) -> Result<Value> {
+        let actor = actor.into();
         if value["isError"] == true {
-            self.record(actor, call, || value, Mode::Rejected, |_| true)
+            self.record(&actor, call, || value, Mode::Rejected, |_| true)
                 .map(|(value, _)| value)
         } else {
-            self.call(actor, call, || value)
+            self.call(&actor, call, || value)
         }
     }
 
@@ -58,15 +59,16 @@ impl Journal {
     /// authority. Deny that replay without destroying the original evidence.
     pub fn checked_authorized(
         &self,
-        actor: &Actor,
+        actor: impl Into<Principal>,
         call: &Call,
         value: Value,
         retained_allowed: impl FnOnce(&Value) -> bool,
     ) -> Result<Value> {
+        let actor = actor.into();
         if value["isError"] == true {
-            return self.checked(actor, call, value);
+            return self.checked(&actor, call, value);
         }
-        self.record(actor, call, || value, Mode::Read, retained_allowed)
+        self.record(&actor, call, || value, Mode::Read, retained_allowed)
             .map(|(value, _)| value)
     }
 
@@ -74,27 +76,34 @@ impl Journal {
     /// held across W2.4. Missing outcomes remain unknown and never redispatch.
     pub fn effect(
         &self,
-        actor: &Actor,
+        actor: impl Into<Principal>,
         call: &Call,
         dispatch: impl FnOnce() -> Value,
     ) -> Result<Value> {
-        let (retained, fresh) = self.admit(actor, call)?;
+        let actor = actor.into();
+        let (retained, fresh) = self.admit(&actor, call)?;
         if !fresh {
             return Ok(retained);
         }
-        self.complete(actor, call, dispatch())
+        self.complete(&actor, call, dispatch())
     }
 
     /// Commit one durable attempt before asynchronous I/O; retained attempts
     /// never authorize another native submission, including unknown outcomes.
-    pub fn admit(&self, actor: &Actor, call: &Call) -> Result<(Value, bool)> {
-        self.record(actor,call,||error(
+    pub fn admit(&self, actor: impl Into<Principal>, call: &Call) -> Result<(Value, bool)> {
+        self.record(&actor.into(),call,||error(
             call.op_id,"unknown","durable attempt has no recorded outcome; retain the operation ID and check its receipts"
         ),Mode::Effect,|_|true)
     }
 
     /// Publish the result and outcome audit together after the admitted I/O.
-    pub fn complete(&self, actor: &Actor, call: &Call, value: Value) -> Result<Value> {
+    pub fn complete(
+        &self,
+        actor: impl Into<Principal>,
+        call: &Call,
+        value: Value,
+    ) -> Result<Value> {
+        let actor = actor.into();
         let result = if serde_json::to_vec(&value)?.len() > MAX_RESULT {
             error(
                 call.op_id,
@@ -112,7 +121,7 @@ impl Journal {
             |row| row.get(0),
         )?;
         let admitted: Entry = serde_json::from_slice(&admitted)?;
-        if admitted.actor != *actor
+        if admitted.actor != actor
             || admitted.tool != call.tool
             || admitted.args_digest != digest(&serde_json::to_vec(&call.args)?)
         {
@@ -138,7 +147,7 @@ impl Journal {
                 "control admission disappeared; effect outcome is unknown",
             ));
         }
-        let event = audit(actor, call, &entry.args_digest, &result, false, false);
+        let event = audit(&actor, call, &entry.args_digest, &result, false, false);
         tx.execute(
             "INSERT INTO kv VALUES(?1,?2)",
             params![
@@ -152,7 +161,7 @@ impl Journal {
 
     fn record(
         &self,
-        actor: &Actor,
+        actor: &Principal,
         call: &Call,
         dispatch: impl FnOnce() -> Value,
         mode: Mode,
@@ -261,28 +270,35 @@ impl Journal {
 }
 
 fn audit(
-    actor: &Actor,
+    actor: &Principal,
     call: &Call,
     hash: &str,
     result: &Value,
     replay: bool,
     admitted: bool,
 ) -> Draft {
+    let (subject, kind) = match actor {
+        Principal::Seat(actor) => (format!("seat/{}/control", actor.seat_id), "mcp"),
+        Principal::Operator { .. } => ("account/control".into(), "gui"),
+    };
     let mut event = Draft::new(
-        format!("seat/{}/control", actor.seat_id),
-        "mcp",
+        subject,
+        kind,
         json!({"op_id":call.op_id,"tool":call.tool,"actor":actor,
             "outcome":if admitted {"admitted"} else if replay {"replay"} else if result["structuredContent"]["status"]=="unknown" {"unknown"} else if result["isError"]==true {"rejected"} else {"applied"},
             "args_digest":hash,"replay":replay}),
     );
-    event.seat = Some(actor.seat_id);
-    event.generation = Some(actor.process_generation);
+    if let Principal::Seat(actor) = actor {
+        event.seat = Some(actor.seat_id);
+        event.generation = Some(actor.process_generation);
+    }
     event
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::mcp::Actor;
     use crate::messaging::wire::IssuerKind;
     use crate::registry::{Class, Role};
     use crate::store::Store;
@@ -307,6 +323,99 @@ mod tests {
             args: json!({"folder":"channels/fixture","name":"own"}),
         };
         (temp, store, actor, call)
+    }
+
+    #[test]
+    fn legacy_seat_actor_entries_replay_without_migration_or_dispatch() {
+        let (_temp, store, actor, call) = effect_fixture();
+        let result = super::super::success(call.op_id, json!({"status":"applied"}));
+        let old = json!({
+            "actor": actor,
+            "tool": call.tool,
+            "args_digest": digest(&serde_json::to_vec(&call.args).unwrap()),
+            "result": result,
+        });
+        let key = format!("control/op/{}", call.op_id);
+        store.put(&key, &serde_json::to_vec(&old).unwrap()).unwrap();
+        let journal = Journal::new(store.clone());
+        assert_eq!(
+            journal
+                .effect(&actor, &call, || panic!("legacy effect repeated"))
+                .unwrap(),
+            result
+        );
+        let stored: Value = serde_json::from_slice(&store.get(&key).unwrap().unwrap()).unwrap();
+        assert_eq!(stored, old);
+        let audits = journal.pending(128).unwrap();
+        assert_eq!(audits[0].subject, format!("seat/{}/control", actor.seat_id));
+        assert_eq!(audits[0].seat, Some(actor.seat_id));
+    }
+
+    #[test]
+    fn operator_reconnect_replays_the_account_result_and_rejects_another_device() {
+        let (temp, _, _, mut call) = effect_fixture();
+        let directory = crate::store::object_dir(temp.path(), "account").unwrap();
+        let store = SqliteStore::open(&directory).unwrap();
+        let operator = Principal::Operator {
+            device_id: Ulid::new(),
+        };
+        call.tool = "gui_spawn".into();
+        call.args = json!({"swarm":Ulid::new(),"harness":"zsh"});
+        let seat = Ulid::new();
+        let expected = super::super::success(call.op_id, json!({"seat":seat}));
+        let journal = Journal::new(store.clone());
+        assert_eq!(
+            journal
+                .effect(&operator, &call, || expected.clone())
+                .unwrap(),
+            expected
+        );
+        drop(journal);
+        let journal = Journal::new(SqliteStore::open(&directory).unwrap());
+        assert_eq!(
+            journal
+                .effect(&operator, &call, || panic!("operator launch repeated"))
+                .unwrap(),
+            expected
+        );
+        let other = Principal::Operator {
+            device_id: Ulid::new(),
+        };
+        let denied = journal
+            .effect(&other, &call, || panic!("different device dispatched"))
+            .unwrap();
+        assert_eq!(denied["structuredContent"]["error"]["code"], "conflict");
+        let audits = journal.pending(128).unwrap();
+        assert_eq!(audits.len(), 4); // admission, result, replay, authority conflict
+        assert!(audits.iter().all(|event| event.subject == "account/control"
+            && event.seat.is_none()
+            && event.generation.is_none()));
+        assert!(audits[2].payload["replay"].as_bool().unwrap());
+        assert_eq!(
+            audits[0].payload["actor"],
+            serde_json::to_value(&operator).unwrap()
+        );
+    }
+
+    #[test]
+    fn admitted_operator_without_a_result_stays_unknown_after_reopen() {
+        let (temp, store, _, mut call) = effect_fixture();
+        let operator = Principal::Operator {
+            device_id: Ulid::new(),
+        };
+        call.tool = "gui_spawn".into();
+        let journal = Journal::new(store);
+        let (unknown, fresh) = journal.admit(&operator, &call).unwrap();
+        assert!(fresh);
+        assert_eq!(unknown["structuredContent"]["status"], "unknown");
+        drop(journal);
+        let journal = Journal::new(SqliteStore::open(temp.path()).unwrap());
+        assert_eq!(
+            journal
+                .effect(&operator, &call, || panic!("unknown launch repeated"))
+                .unwrap(),
+            unknown
+        );
     }
 
     #[test]

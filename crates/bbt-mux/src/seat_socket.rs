@@ -346,10 +346,19 @@ async fn gui_session(
                 line=incoming.recv(),if actions<ACTION_BURST&&(actions==0||checks.is_empty())=> {
                     actions+=1;
                     let Some(Ok(Some(line)))=line else {break;};
-                    let request:GuiRequest=serde_json::from_slice(&line)?;
-                    if request.version!=1||request.capability!=capability {
+                    #[derive(Deserialize)]
+                    struct GuiAdmission { version:u16, capability:[u8;32] }
+                    // Inspect admission before the action schema, so an old
+                    // Spawn without an id gets the named version refusal.
+                    let admission:GuiAdmission=serde_json::from_slice(&line)?;
+                    if admission.capability!=capability {
                         return Err(invalid("GUI socket admission rejected"));
                     }
+                    if admission.version!=bbt_proto::gui::VERSION {
+                        send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:"GUI socket version mismatch".into()}).await?;
+                        return Err(invalid("GUI socket version mismatch"));
+                    }
+                    let request:GuiRequest=serde_json::from_slice(&line)?;
                     if consumer.is_none() {
                         // Subscribe before ListSeats: no state transition can
                         // disappear between the initial list and live events.
@@ -360,7 +369,7 @@ async fn gui_session(
                         send(&mut write,&GuiReply::Identity(client.gui_identity().await?)).await?;
                     }
                     let op=match &request.action {
-                        GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}=>*id,
+                        GuiAction::Spawn {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
@@ -368,7 +377,7 @@ async fn gui_session(
                         match request.action {
                             GuiAction::ListSeats=>Ok(GuiReply::Seats(client.gui_seats().await?)),
                             GuiAction::ListHosts=>Ok(GuiReply::Hosts(client.gui_hosts().await?)),
-                            GuiAction::Spawn {spec}=>Ok(GuiReply::Seat(client.gui_spawn(spec).await?)),
+                            GuiAction::Spawn {id,spec}=>Ok(GuiReply::Spawned {op:id,seat:client.gui_spawn(id,spec).await?}),
                             GuiAction::Watch {seat,view}=> {
                                 if view.seat!=Ulid::from(seat.0.0) {return Err(invalid("watch seat and view disagree"));}
                                 if views.len()>=1024&&!views.contains_key(&seat) {return Err(invalid("watch limit reached"));}
@@ -874,7 +883,7 @@ mod gui_tests {
         send(
             &mut write,
             &GuiRequest {
-                version: 1,
+                version: bbt_proto::gui::VERSION,
                 capability: endpoint.capability,
                 action: GuiAction::Watch {
                     seat,
@@ -893,7 +902,7 @@ mod gui_tests {
         send(
             &mut write,
             &GuiRequest {
-                version: 1,
+                version: bbt_proto::gui::VERSION,
                 capability: endpoint.capability,
                 action: GuiAction::Input {
                     seat,
@@ -920,7 +929,7 @@ mod gui_tests {
         send(
             &mut write,
             &GuiRequest {
-                version: 1,
+                version: bbt_proto::gui::VERSION,
                 capability: endpoint.capability,
                 action: GuiAction::Applied {
                     seat,
@@ -936,7 +945,7 @@ mod gui_tests {
         send(
             &mut write,
             &GuiRequest {
-                version: 1,
+                version: bbt_proto::gui::VERSION,
                 capability: endpoint.capability,
                 action: GuiAction::Resize {
                     seat,
@@ -951,7 +960,7 @@ mod gui_tests {
         send(
             &mut write,
             &GuiRequest {
-                version: 1,
+                version: bbt_proto::gui::VERSION,
                 capability: endpoint.capability,
                 action: GuiAction::Applied {
                     seat,

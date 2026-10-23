@@ -94,7 +94,7 @@ impl Gui {
     }
     async fn send(&mut self, action: GuiAction) {
         let mut bytes = serde_json::to_vec(&GuiRequest {
-            version: 1,
+            version: bbt_proto::gui::VERSION,
             capability: self.capability,
             action,
         })

@@ -54,6 +54,110 @@ pub struct SpawnSpec {
     #[serde(with = "location")]
     pub location: Where,
     pub resume: Option<String>,
+    /// Captured at the pick. Never resolve an anchor from later GUI focus.
+    #[serde(default)]
+    pub placement: Option<Placement>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum Placement {
+    NewTab {
+        #[serde(with = "text_id")]
+        tab: crate::TabId,
+    },
+    Split {
+        #[serde(with = "text_id")]
+        tab: crate::TabId,
+        #[serde(with = "text_id")]
+        target: SeatId,
+        target_generation: u64,
+        side: Side,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Side {
+    Right,
+    Bottom,
+}
+
+#[cfg(test)]
+mod placement_tests {
+    use super::*;
+
+    fn spec() -> SpawnSpec {
+        SpawnSpec {
+            swarm: SwarmId::from_u128(1),
+            harness_kind: "zsh".into(),
+            name: None,
+            role: None,
+            cwd: "/fixture".into(),
+            location: Where::Local,
+            resume: None,
+            placement: None,
+        }
+    }
+
+    #[test]
+    fn absent_placement_keeps_the_default_lane() {
+        let expected = spec();
+        let mut value = serde_json::to_value(&expected).unwrap();
+        value.as_object_mut().unwrap().remove("placement");
+        assert_eq!(
+            serde_json::from_value::<SpawnSpec>(value).unwrap(),
+            expected
+        );
+    }
+
+    #[test]
+    fn placement_roundtrip_keeps_the_captured_tab_anchor_and_generation() {
+        let mut expected = spec();
+        expected.placement = Some(Placement::Split {
+            tab: crate::TabId::from_u128(2),
+            target: SeatId::from_u128(3),
+            target_generation: 7,
+            side: Side::Bottom,
+        });
+        let value = serde_json::to_value(&expected).unwrap();
+        assert_eq!(
+            value["placement"]["tab"],
+            crate::TabId::from_u128(2).to_string()
+        );
+        assert_eq!(
+            value["placement"]["target"],
+            SeatId::from_u128(3).to_string()
+        );
+        assert_eq!(
+            serde_json::from_value::<SpawnSpec>(value.clone()).unwrap(),
+            expected
+        );
+        let mut invalid = value;
+        invalid["placement"]["side"] = serde_json::json!("diagonal");
+        assert!(serde_json::from_value::<SpawnSpec>(invalid).is_err());
+    }
+
+    #[test]
+    fn spawn_and_reply_keep_the_same_operation_id() {
+        let op = ulid::Ulid::new();
+        let action = crate::GuiAction::Spawn {
+            id: op,
+            spec: spec(),
+        };
+        let action: crate::GuiAction =
+            serde_json::from_slice(&serde_json::to_vec(&action).unwrap()).unwrap();
+        assert!(matches!(action, crate::GuiAction::Spawn { id, .. } if id == op));
+        let reply = crate::GuiReply::Spawned {
+            op,
+            seat: SeatId::from_u128(4),
+        };
+        let reply: crate::GuiReply =
+            serde_json::from_slice(&serde_json::to_vec(&reply).unwrap()).unwrap();
+        assert!(
+            matches!(reply, crate::GuiReply::Spawned { op: actual, seat } if actual == op && seat == SeatId::from_u128(4))
+        );
+    }
 }
 
 // UI-model deliberately has no serde dependency. Keep its wire adapters here,

@@ -118,7 +118,7 @@ enum FocusAction {
     Navigate(Navigation),
 }
 impl FocusState {
-    fn reconcile(&mut self, previous: Option<&UiModel>, next: &UiModel) {
+    fn reconcile(&mut self, _previous: Option<&UiModel>, next: &UiModel) {
         let owner = |seat| {
             if next.seats.get(&seat)?.lifecycle != bbt_ui_model::Lifecycle::Open {
                 return None;
@@ -131,24 +131,13 @@ impl FocusState {
                 focused: Some(seat),
             })
         };
-        // New membership may select a newly launched pane, just as the old
-        // scene did. Ordinary screen/state publications never replace Stage.
-        let new_seat = previous.and_then(|old| {
-            let tab = self.stage.as_ref()?.tab;
-            next.window
-                .sidebar
-                .swarms
-                .iter()
-                .flat_map(|s| &s.tabs)
-                .find(|t| Some(t.id) == tab)?
-                .tree
-                .leaves()
-                .into_iter()
-                .find(|id| !old.seats.contains_key(id))
-        });
-        self.stage = new_seat
+        // Metadata never selects a new seat. Only a correlated launch result
+        // or an explicit UI focus action changes the focused pane.
+        self.stage = self
+            .stage
+            .as_ref()
+            .and_then(|s| s.focused)
             .and_then(owner)
-            .or_else(|| self.stage.as_ref().and_then(|s| s.focused).and_then(owner))
             .or_else(|| Some(next.window.stage.clone()));
     }
     fn apply(
@@ -267,6 +256,9 @@ fn default_spawn(
         };
         if let Some(location) = location {
             return Some(live::UiMsg::Spawn {
+                id: bbt_mux::Ulid::new(),
+                swarm: None,
+                placement: None,
                 harness_kind: kind.into(),
                 name: None,
                 location,
@@ -274,6 +266,27 @@ fn default_spawn(
         }
     }
     None
+}
+
+fn spawn_pick(
+    id: &str,
+    modifiers: Modifiers,
+    model: Option<&bboxy450_term::model::Model>,
+    stage: Option<&Stage>,
+) -> Option<live::UiMsg> {
+    let (root, swarm, placement) =
+        bboxy450_term::launcher::captured_placement(id, modifiers, model, stage);
+    let mut message = default_spawn(root, Modifiers::default(), model)?;
+    if let live::UiMsg::Spawn {
+        swarm: selected,
+        placement: captured,
+        ..
+    } = &mut message
+    {
+        *selected = swarm;
+        *captured = Some(placement);
+    }
+    Some(message)
 }
 
 /// This is the same routing entry point used by winit and the synthetic tests.
@@ -601,6 +614,7 @@ struct App {
     pane_bounds: Vec<(SeatId, Rect)>,
     focus_bounds: Vec<(SeatId, Rect)>,
     focus: FocusState,
+    spawn_results_seen: BTreeMap<bbt_mux::Ulid, bboxy450_term::model::SpawnOutcome>,
     launcher: Option<LauncherController>,
     launcher_layout: Option<scene::LauncherLayout>,
     pointer: [f32; 2],
@@ -683,8 +697,12 @@ impl App {
                 self.request_redraw();
             }
             LauncherOutcome::Pick { id, modifiers } => {
-                if let Some(message) = default_spawn(&id, modifiers, self.live_state.as_deref())
-                    && self.live_commands.is_some()
+                if let Some(message) = spawn_pick(
+                    &id,
+                    modifiers,
+                    self.live_state.as_deref(),
+                    self.focus.stage.as_ref(),
+                ) && self.live_commands.is_some()
                 {
                     self.logger
                         .write(format!("launcher default spawn requested: id={id}"));
@@ -1021,6 +1039,18 @@ impl App {
             self.last_update = sequence;
         }
         if let Some(state) = self.live_updates.take() {
+            self.spawn_results_seen
+                .retain(|op, _| state.spawns.contains_key(op));
+            let results: Vec<_> = state
+                .spawns
+                .iter()
+                .filter_map(|(&op, request)| {
+                    (!request.consumed
+                        && request.outcome.is_result()
+                        && self.spawn_results_seen.get(&op) != Some(&request.outcome))
+                    .then_some((op, request.outcome.clone()))
+                })
+                .collect();
             self.focus
                 .reconcile(self.live_state.as_ref().map(|old| &old.ui), &state.ui);
             let refresh = self.live_state.as_ref().is_none_or(|old| {
@@ -1033,6 +1063,16 @@ impl App {
             self.scene
                 .set_model(&state, self.focus.stage.as_ref().expect("published stage"));
             self.live_state = Some(state);
+            for (op, outcome) in results {
+                if let bboxy450_term::model::SpawnOutcome::Placed(seat) = &outcome {
+                    self.focus_action(FocusAction::Activate(*seat, FocusOrigin::Keyboard));
+                } else {
+                    self.logger
+                        .write(format!("spawn {op} outcome: {outcome:?}"));
+                }
+                self.spawn_results_seen.insert(op, outcome);
+                self.queue(live::UiMsg::ConsumeSpawn { id: op });
+            }
             self.verify();
         }
         self.flush_commands();
@@ -1682,7 +1722,7 @@ impl ApplicationHandler<UiEvent> for App {
 }
 const PENDING_INPUT_BYTES: usize = 1024 * 1024;
 const PENDING_INPUT_ENTRIES: usize = 256;
-const PENDING_SPAWNS: usize = 8;
+const PENDING_SPAWNS: usize = bboxy450_term::model::PENDING_SPAWNS;
 
 #[derive(Debug, PartialEq, Eq)]
 enum AdmissionRefused {
@@ -2255,6 +2295,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         pane_bounds: vec![],
         focus_bounds: vec![],
         focus: FocusState::default(),
+        spawn_results_seen: BTreeMap::new(),
         launcher: args
             .iter()
             .any(|arg| arg == "--launcher")
@@ -2678,6 +2719,7 @@ mod input_tests {
                 }
                 live::UiMsg::Watched(panes) => watched = panes,
                 live::UiMsg::SpawnZsh | live::UiMsg::Spawn { .. } => spawns += 1,
+                live::UiMsg::ConsumeSpawn { .. } => {}
             }
         }
         assert_eq!(delivered, expected);
@@ -3116,6 +3158,9 @@ mod spawn_admission_tests {
 
     fn generic() -> live::UiMsg {
         live::UiMsg::Spawn {
+            id: bbt_mux::Ulid::new(),
+            swarm: None,
+            placement: None,
             harness_kind: "codex".into(),
             name: Some("named seat".into()),
             location: bbt_proto::Where::Local,
@@ -3159,7 +3204,7 @@ mod default_spawn_tests {
     fn default_picks_are_keyed_by_id_and_leave_placement_and_navigation_deferred() {
         for (kind, _, _, _, _) in LAUNCHABLES {
             assert!(
-                matches!(default_spawn(kind, Modifiers::default(), None), Some(live::UiMsg::Spawn { harness_kind, name: None, location: bbt_proto::Where::Local }) if harness_kind == kind)
+                matches!(default_spawn(kind, Modifiers::default(), None), Some(live::UiMsg::Spawn { harness_kind, name: None, location: bbt_proto::Where::Local, .. }) if harness_kind == kind)
             );
             for place in ["tab", "right", "bottom"] {
                 assert!(
@@ -3214,7 +3259,7 @@ mod default_spawn_tests {
             let host = bboxy450_term::hosts::key(&location);
             let id = format!("{host}:codex");
             assert!(
-                matches!(default_spawn(&id, Modifiers::default(), Some(&model)), Some(live::UiMsg::Spawn { harness_kind, name: None, location: actual }) if harness_kind == "codex" && actual == location)
+                matches!(default_spawn(&id, Modifiers::default(), Some(&model)), Some(live::UiMsg::Spawn { harness_kind, name: None, location: actual, .. }) if harness_kind == "codex" && actual == location)
             );
             assert!(
                 default_spawn(&format!("{id}:right"), Modifiers::default(), Some(&model)).is_none()
@@ -3253,5 +3298,112 @@ mod default_spawn_tests {
             );
         }
         assert!(default_spawn("ssh:missing:codex", Modifiers::default(), Some(&model)).is_none());
+    }
+}
+
+#[cfg(test)]
+mod placement_tests {
+    use super::*;
+    use bbt_ui_model::{Axis, Seat, SplitNode, Swarm, SwarmId, Tab, TabId};
+
+    fn model() -> bboxy450_term::model::Model {
+        let swarm = SwarmId::from_u128(1);
+        let mut a = Seat::new(SeatId::from_u128(2), swarm, [0; 32], "first", "zsh");
+        a.process_generation = 7;
+        let mut b = Seat::new(SeatId::from_u128(3), swarm, [1; 32], "second", "zsh");
+        b.process_generation = 11;
+        let tree = SplitNode::split(Axis::Row, 0.5, SplitNode::Leaf(a.id), SplitNode::Leaf(b.id));
+        bboxy450_term::model::Model {
+            ui: UiModel::new(
+                vec![Swarm::new(
+                    swarm,
+                    "swarm",
+                    vec![Tab::new(TabId::from_u128(4), "tab", tree)],
+                )],
+                vec![a, b],
+            )
+            .unwrap(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn spawn_pick_uses_ui_focus_and_only_known_catalogue_ids() {
+        let model = model();
+        let mut stage = model.ui.window.stage.clone();
+        stage.focused = Some(SeatId::from_u128(3));
+        let live::UiMsg::Spawn {
+            id,
+            swarm,
+            placement,
+            harness_kind,
+            ..
+        } = spawn_pick(
+            "codex:bottom",
+            Default::default(),
+            Some(&model),
+            Some(&stage),
+        )
+        .unwrap()
+        else {
+            panic!("spawn intent")
+        };
+        assert_ne!(id, bbt_mux::Ulid::nil());
+        assert_eq!(swarm, stage.swarm);
+        assert_eq!(harness_kind, "codex");
+        assert_eq!(
+            placement,
+            Some(bbt_proto::seat_state::Placement::Split {
+                tab: stage.tab.unwrap(),
+                target: SeatId::from_u128(3),
+                target_generation: 11,
+                side: bbt_proto::seat_state::Side::Bottom,
+            })
+        );
+        for unknown in ["graph", "settings", "something labelled zsh", "zsh:invalid"] {
+            assert!(spawn_pick(unknown, Default::default(), Some(&model), Some(&stage)).is_none());
+        }
+    }
+
+    #[test]
+    fn new_membership_does_not_focus_without_a_matching_spawn_result() {
+        let before = model();
+        let mut focus = FocusState::default();
+        focus.reconcile(None, &before.ui);
+        let added = Seat::new(
+            SeatId::from_u128(5),
+            SwarmId::from_u128(1),
+            [2; 32],
+            "unrelated",
+            "zsh",
+        );
+        let mut next = before.ui.clone();
+        next.seats.insert(added.id, added);
+        let next = bbt_ui_model::place(
+            &next,
+            SeatId::from_u128(5),
+            bbt_ui_model::Placement::Split {
+                target: SeatId::from_u128(2),
+                side: bbt_ui_model::Side::Right,
+            },
+        )
+        .unwrap();
+        focus.reconcile(Some(&before.ui), &next);
+        assert_eq!(
+            focus.stage.as_ref().unwrap().focused,
+            Some(SeatId::from_u128(2))
+        );
+        focus
+            .apply(
+                &next,
+                FocusAction::Activate(SeatId::from_u128(5), FocusOrigin::Keyboard),
+                &[],
+                Instant::now(),
+            )
+            .unwrap();
+        assert_eq!(
+            focus.stage.as_ref().unwrap().focused,
+            Some(SeatId::from_u128(5))
+        );
     }
 }

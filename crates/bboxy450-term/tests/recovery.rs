@@ -34,8 +34,9 @@ async fn start(root: &Path) -> Session {
     script(
         &executable,
         format!(
-            "#!/bin/sh\nPATH='{}':\"$PATH\" BBOXY_TEST_CUSTODY=memory exec '{}' \"$@\"\n",
+            "#!/bin/sh\nPATH='{}':\"$PATH\" BBOXY_TEST_CUSTODY='fixture:{}' exec '{}' \"$@\"\n",
             root.display(),
+            root.join("fixture-custody").display(),
             env!("CARGO_BIN_EXE_bboxy450-term")
         ),
     )
@@ -69,6 +70,7 @@ async fn spawn(session: &mut Session, root: &Path, harness: &str, resume: Option
         .collect();
     session
         .send(GuiAction::Spawn {
+            id: bbt_mux::Ulid::new(),
             spec: SpawnSpec {
                 swarm: SwarmId::from_u128(57),
                 harness_kind: harness.into(),
@@ -77,6 +79,7 @@ async fn spawn(session: &mut Session, root: &Path, harness: &str, resume: Option
                 cwd: root.to_string_lossy().into_owned(),
                 location: Where::Local,
                 resume: resume.map(str::to_owned),
+                placement: None,
             },
         })
         .await

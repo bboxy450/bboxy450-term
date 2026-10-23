@@ -9,6 +9,7 @@ use bbt_core::{
     Color, NamedColor,
     term::{TermMode, cell::Flags},
 };
+use bbt_mux::Ulid;
 use bbt_proto::{GuiSeat, Screen, SeatId, SeatRecord, SeatState, registry};
 use bbt_render::{
     cells::terminal::{
@@ -19,6 +20,32 @@ use bbt_render::{
 use bbt_ui_model::{self as ui, layout::Rect, tokens::Theme};
 
 use crate::grids::Grids;
+
+pub const PENDING_SPAWNS: usize = 8;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SpawnOutcome {
+    Pending,
+    AwaitingSeat(SeatId),
+    Placed(SeatId),
+    Partial { seat: SeatId, reason: String },
+    Rejected(String),
+    Held(String),
+    Unknown(String),
+}
+impl SpawnOutcome {
+    pub fn is_result(&self) -> bool {
+        !matches!(self, Self::Pending | Self::AwaitingSeat(_))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpawnRequest {
+    pub spec: bbt_proto::SpawnSpec,
+    pub outcome: SpawnOutcome,
+    pub consumed: bool,
+    pub ordinal: u64,
+}
 
 /// A complete immutable UI frame. The IO owner publishes one Arc<Model>; no
 /// terminal rows are cloned or locked by the UI while taking that Arc.
@@ -31,6 +58,9 @@ pub struct Model {
     pub states: BTreeMap<SeatId, SeatState>,
     /// Signing holds affect messaging, never whether terminal panes stay live.
     pub identity: Option<bbt_proto::GuiIdentity>,
+    /// Correlation survives Latest replacing an intermediate publication.
+    pub spawns: BTreeMap<Ulid, SpawnRequest>,
+    pub metadata_initialized: bool,
 }
 impl Default for Model {
     fn default() -> Self {
@@ -41,11 +71,226 @@ impl Default for Model {
             states: BTreeMap::new(),
             identity: None,
             hosts: vec![],
+            spawns: BTreeMap::new(),
+            metadata_initialized: false,
         }
     }
 }
 
 impl Model {
+    pub fn request_spawn(
+        &mut self,
+        op: Ulid,
+        spec: bbt_proto::SpawnSpec,
+    ) -> Result<bool, &'static str> {
+        if let Some(old) = self.spawns.get(&op) {
+            return if old.spec == spec {
+                Ok(false)
+            } else {
+                Err("spawn_id_conflict")
+            };
+        }
+        if self.spawns.len() >= PENDING_SPAWNS {
+            return Err("spawn_queue_full");
+        }
+        let ordinal = self
+            .spawns
+            .values()
+            .map(|request| request.ordinal)
+            .max()
+            .unwrap_or(0)
+            .saturating_add(1);
+        self.spawns.insert(
+            op,
+            SpawnRequest {
+                spec,
+                outcome: SpawnOutcome::Pending,
+                consumed: false,
+                ordinal,
+            },
+        );
+        Ok(true)
+    }
+
+    pub fn spawned(&mut self, op: Ulid, seat: SeatId) -> bool {
+        let Some(request) = self.spawns.get_mut(&op) else {
+            return false;
+        };
+        if !matches!(
+            request.outcome,
+            SpawnOutcome::Pending | SpawnOutcome::Unknown(_)
+        ) {
+            return false;
+        }
+        request.outcome = SpawnOutcome::AwaitingSeat(seat);
+        request.consumed = false;
+        true
+    }
+
+    pub fn spawn_rejected(&mut self, op: Ulid, reason: String) -> bool {
+        let Some(request) = self.spawns.get_mut(&op) else {
+            return false;
+        };
+        if !matches!(
+            request.outcome,
+            SpawnOutcome::Pending | SpawnOutcome::Unknown(_)
+        ) {
+            return false;
+        }
+        request.outcome = if reason.starts_with("held:") {
+            SpawnOutcome::Held(reason)
+        } else if reason.starts_with("unknown:") {
+            SpawnOutcome::Unknown(reason)
+        } else {
+            SpawnOutcome::Rejected(reason)
+        };
+        request.consumed = false;
+        true
+    }
+
+    pub fn spawns_disconnected(&mut self, reason: &str) -> bool {
+        let mut changed = false;
+        for request in self.spawns.values_mut() {
+            if request.outcome == SpawnOutcome::Pending {
+                request.outcome = SpawnOutcome::Unknown(format!("spawn_outcome_unknown: {reason}"));
+                request.consumed = false;
+                changed = true;
+            }
+        }
+        changed
+    }
+
+    pub fn consume_spawn(&mut self, op: Ulid) {
+        let Some(request) = self.spawns.get_mut(&op) else {
+            return;
+        };
+        if matches!(
+            request.outcome,
+            SpawnOutcome::Unknown(_) | SpawnOutcome::Held(_)
+        ) {
+            // Keep its captured request available for an explicit same-id query.
+            request.consumed = true;
+        } else if request.outcome.is_result() {
+            self.spawns.remove(&op);
+        }
+    }
+
+    pub fn resume_held_spawns(&mut self) -> Vec<(Ulid, bbt_proto::SpawnSpec)> {
+        let mut ready: Vec<_> = self
+            .spawns
+            .iter_mut()
+            .filter_map(|(&op, request)| {
+                if !matches!(request.outcome, SpawnOutcome::Held(_)) {
+                    return None;
+                }
+                request.outcome = SpawnOutcome::Pending;
+                request.consumed = false;
+                Some((request.ordinal, op, request.spec.clone()))
+            })
+            .collect();
+        ready.sort_by_key(|(ordinal, ..)| *ordinal);
+        ready.into_iter().map(|(_, op, spec)| (op, spec)).collect()
+    }
+
+    fn place_ready_spawns(&mut self) {
+        let ready: Vec<_> = self
+            .spawns
+            .iter()
+            .filter_map(|(&op, request)| {
+                if let SpawnOutcome::AwaitingSeat(seat) = request.outcome
+                    && self.ui.seats.contains_key(&seat)
+                {
+                    Some((op, seat, request.spec.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        for (op, seat, spec) in ready {
+            let result = self.captured_placement(seat, &spec).and_then(|placement| {
+                ui::place(&self.ui, seat, placement)
+                    .map_err(|error| format!("placement_failed: {error}"))
+            });
+            let outcome = match result {
+                Ok(next) => {
+                    self.ui = next;
+                    SpawnOutcome::Placed(seat)
+                }
+                Err(reason) => SpawnOutcome::Partial { seat, reason },
+            };
+            let request = self.spawns.get_mut(&op).expect("collected request");
+            request.outcome = outcome;
+            request.consumed = false;
+        }
+    }
+
+    fn captured_placement(
+        &self,
+        seat: SeatId,
+        spec: &bbt_proto::SpawnSpec,
+    ) -> Result<ui::Placement, String> {
+        use bbt_proto::seat_state::{Placement, Side};
+        if self.ui.seats[&seat].swarm != spec.swarm {
+            return Err("placement_swarm_changed".into());
+        }
+        match &spec.placement {
+            Some(Placement::NewTab { tab }) => Ok(ui::Placement::Tab {
+                swarm: spec.swarm,
+                tab: *tab,
+            }),
+            Some(Placement::Split {
+                tab,
+                target,
+                target_generation,
+                side,
+            }) => {
+                let anchor = self
+                    .ui
+                    .seats
+                    .get(target)
+                    .ok_or("placement_anchor_missing")?;
+                if anchor.process_generation != *target_generation {
+                    return Err("placement_anchor_changed".into());
+                }
+                let (si, ti) = self.ui.tab_of(*target).ok_or("placement_anchor_missing")?;
+                let owner = &self.ui.window.sidebar.swarms[si];
+                if owner.id != spec.swarm || owner.tabs[ti].id != *tab {
+                    return Err("placement_anchor_missing".into());
+                }
+                Ok(ui::Placement::Split {
+                    target: *target,
+                    side: match side {
+                        Side::Right => ui::Side::Right,
+                        Side::Bottom => ui::Side::Bottom,
+                    },
+                })
+            }
+            None => {
+                // Compatibility lane for Verify/default-shell callers: extend
+                // the existing swarm tree without resolving later GUI focus.
+                let target = self
+                    .ui
+                    .window
+                    .sidebar
+                    .swarms
+                    .iter()
+                    .find(|s| s.id == spec.swarm)
+                    .and_then(|s| s.tabs.first())
+                    .and_then(|t| t.tree.leaves().last().copied());
+                Ok(target.map_or(
+                    ui::Placement::Tab {
+                        swarm: spec.swarm,
+                        tab: ui::TabId::from_u128(spec.swarm.0.0),
+                    },
+                    |target| ui::Placement::Split {
+                        target,
+                        side: ui::Side::Right,
+                    },
+                ))
+            }
+        }
+    }
+
     pub fn provider_settings(&self) -> bbt_ui::modules::settings::Records {
         crate::hosts::settings(&self.hosts)
     }
@@ -75,6 +320,9 @@ impl Model {
 /// Pure assembly on IO. Keep the current layout when its membership is unchanged
 /// and keep every unchanged screen Arc; no screen content is copied here.
 pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
+    let bootstrap = !previous.metadata_initialized
+        && previous.ui.seats.is_empty()
+        && previous.spawns.is_empty();
     let screens: BTreeMap<_, _> = seats
         .iter()
         .filter_map(|record| {
@@ -166,21 +414,39 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
                     return old.clone();
                 }
                 let mut next = old.clone();
-                next.tabs = vec![ui::Tab::new(
-                    ui::TabId::from_u128(id.0.0),
-                    "seats",
-                    split(&ids),
-                )];
+                next.tabs = old
+                    .tabs
+                    .iter()
+                    .filter_map(|tab| {
+                        let mut tree = Some(tab.tree.clone());
+                        for removed in tab
+                            .tree
+                            .leaves()
+                            .into_iter()
+                            .filter(|seat| !ids.contains(seat))
+                        {
+                            tree = tree.and_then(|tree| ui::prune(&tree, removed));
+                        }
+                        let mut tab = tab.clone();
+                        tab.tree = tree?;
+                        tab.seats.retain(|seat| ids.contains(seat));
+                        Some(tab)
+                    })
+                    .collect();
                 return next;
             }
             ui::Swarm::new(
                 id,
                 "swarm",
-                vec![ui::Tab::new(
-                    ui::TabId::from_u128(id.0.0),
-                    "seats",
-                    split(&ids),
-                )],
+                if bootstrap {
+                    vec![ui::Tab::new(
+                        ui::TabId::from_u128(id.0.0),
+                        "seats",
+                        split(&ids),
+                    )]
+                } else {
+                    vec![]
+                },
             )
         })
         .collect();
@@ -250,14 +516,18 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
         .filter(|(id, _)| model.seats.contains_key(id))
         .map(|(id, state)| (*id, state.clone()))
         .collect();
-    Model {
+    let mut next = Model {
         hosts: previous.hosts.clone(),
         ui: model,
         screens,
         frames,
         states,
         identity: previous.identity.clone(),
-    }
+        spawns: previous.spawns.clone(),
+        metadata_initialized: true,
+    };
+    next.place_ready_spawns();
+    next
 }
 
 fn split(ids: &[SeatId]) -> ui::SplitNode {
@@ -511,6 +781,215 @@ mod tests {
     use super::*;
     use bbt_mux::Ulid;
     use bbt_proto::{Snapshot, Update, View};
+
+    fn spawn_record(id: u128) -> SeatRecord {
+        SeatRecord::new(Ulid(id), Ulid(1), format!("seat {id}"), "zsh")
+    }
+    fn spawn_spec(placement: Option<bbt_proto::seat_state::Placement>) -> bbt_proto::SpawnSpec {
+        bbt_proto::SpawnSpec {
+            swarm: ui::SwarmId::from_u128(1),
+            harness_kind: "zsh".into(),
+            name: None,
+            role: None,
+            cwd: "/fixture".into(),
+            location: ui::Where::Local,
+            resume: None,
+            placement,
+        }
+    }
+    fn split_spec(target: u128, side: bbt_proto::seat_state::Side) -> bbt_proto::SpawnSpec {
+        spawn_spec(Some(bbt_proto::seat_state::Placement::Split {
+            tab: ui::TabId::from_u128(1),
+            target: SeatId::from_u128(target),
+            target_generation: spawn_record(target).generation,
+            side,
+        }))
+    }
+    fn spawn_tree(model: &Model) -> ui::SplitNode {
+        model.ui.window.sidebar.swarms[0].tabs[0].tree.clone()
+    }
+
+    #[test]
+    fn reversed_spawn_replies_use_their_captured_anchors_and_duplicates_are_inert() {
+        use bbt_proto::seat_state::Side;
+        let grids = Grids::new();
+        let mut records = vec![spawn_record(10), spawn_record(20)];
+        let mut model = build(&records, &grids, &Model::default());
+        let original = spawn_tree(&model);
+        model
+            .request_spawn(Ulid(100), split_spec(10, Side::Right))
+            .unwrap();
+        model
+            .request_spawn(Ulid(200), split_spec(20, Side::Bottom))
+            .unwrap();
+        records.extend([spawn_record(30), spawn_record(40), spawn_record(50)]);
+        model = build(&records, &grids, &model);
+        assert_eq!(spawn_tree(&model), original); // metadata alone places none
+        assert!(model.spawned(Ulid(200), SeatId::from_u128(50)));
+        model = build(&records, &grids, &model);
+        assert!(model.ui.tab_of(SeatId::from_u128(40)).is_none());
+        assert!(model.spawned(Ulid(100), SeatId::from_u128(40)));
+        model = build(&records, &grids, &model);
+        let leaf = |id| ui::SplitNode::Leaf(SeatId::from_u128(id));
+        let expected = ui::SplitNode::split(
+            ui::Axis::Row,
+            0.5,
+            ui::SplitNode::split(ui::Axis::Row, 0.5, leaf(10), leaf(40)),
+            ui::SplitNode::split(ui::Axis::Column, 0.5, leaf(20), leaf(50)),
+        );
+        assert_eq!(spawn_tree(&model), expected);
+        assert!(model.ui.tab_of(SeatId::from_u128(30)).is_none());
+        assert!(!model.spawned(Ulid(100), SeatId::from_u128(40)));
+        records[0].name = "renamed metadata".into();
+        model = build(&records, &grids, &model);
+        assert_eq!(spawn_tree(&model), expected);
+        // A later publication retains both results until the UI consumes them.
+        model = build(&records, &grids, &model);
+        assert_eq!(
+            model.spawns[&Ulid(100)].outcome,
+            SpawnOutcome::Placed(SeatId::from_u128(40))
+        );
+        model.consume_spawn(Ulid(100));
+        assert!(!model.spawned(Ulid(100), SeatId::from_u128(40)));
+        assert_eq!(spawn_tree(&model), expected);
+    }
+
+    #[test]
+    fn removed_or_replaced_anchor_keeps_the_new_seat_and_names_the_partial_outcome() {
+        for replaced in [false, true] {
+            let grids = Grids::new();
+            let mut records = vec![spawn_record(10), spawn_record(20)];
+            let mut model = build(&records, &grids, &Model::default());
+            model
+                .request_spawn(
+                    Ulid(100),
+                    split_spec(10, bbt_proto::seat_state::Side::Right),
+                )
+                .unwrap();
+            if replaced {
+                records[0].generation += 1;
+            } else {
+                records.remove(0);
+            }
+            records.push(spawn_record(30));
+            assert!(model.spawned(Ulid(100), SeatId::from_u128(30)));
+            model = build(&records, &grids, &model);
+            let expected = if replaced {
+                "placement_anchor_changed"
+            } else {
+                "placement_anchor_missing"
+            };
+            assert_eq!(
+                model.spawns[&Ulid(100)].outcome,
+                SpawnOutcome::Partial {
+                    seat: SeatId::from_u128(30),
+                    reason: expected.into(),
+                }
+            );
+            assert!(model.ui.seats.contains_key(&SeatId::from_u128(30)));
+            assert!(model.ui.tab_of(SeatId::from_u128(30)).is_none());
+        }
+    }
+
+    #[test]
+    fn unknown_spawn_and_unrelated_metadata_never_place_or_lose_the_request() {
+        let grids = Grids::new();
+        let mut records = vec![spawn_record(10)];
+        let mut model = build(&records, &grids, &Model::default());
+        let original = spawn_tree(&model);
+        let stage = model.ui.window.stage.clone();
+        let spec = split_spec(10, bbt_proto::seat_state::Side::Right);
+        assert!(model.request_spawn(Ulid(100), spec.clone()).unwrap());
+        model.spawns_disconnected("logic disconnected");
+        model.consume_spawn(Ulid(100));
+        assert!(matches!(
+            model.spawns[&Ulid(100)].outcome,
+            SpawnOutcome::Unknown(_)
+        ));
+        assert_eq!(model.spawns[&Ulid(100)].spec, spec);
+        records.push(spawn_record(20));
+        model = build(&records, &grids, &model);
+        assert!(!model.spawned(Ulid(999), SeatId::from_u128(20)));
+        assert_eq!(spawn_tree(&model), original);
+        assert_eq!(model.ui.window.stage, stage);
+        assert!(model.spawned(Ulid(100), SeatId::from_u128(20)));
+        model = build(&records, &grids, &model);
+        assert_eq!(
+            model.spawns[&Ulid(100)].outcome,
+            SpawnOutcome::Placed(SeatId::from_u128(20))
+        );
+    }
+
+    #[test]
+    fn a_second_spawn_and_refresh_preserve_the_first_explicit_split() {
+        let grids = Grids::new();
+        let mut records = vec![spawn_record(10), spawn_record(20)];
+        let mut model = build(&records, &grids, &Model::default());
+        model
+            .request_spawn(
+                Ulid(100),
+                split_spec(10, bbt_proto::seat_state::Side::Right),
+            )
+            .unwrap();
+        records.push(spawn_record(30));
+        model.spawned(Ulid(100), SeatId::from_u128(30));
+        model = build(&records, &grids, &model);
+        let first_tree = spawn_tree(&model);
+        model.consume_spawn(Ulid(100));
+        let tab = ui::TabId::from_u128(99);
+        model
+            .request_spawn(
+                Ulid(200),
+                spawn_spec(Some(bbt_proto::seat_state::Placement::NewTab { tab })),
+            )
+            .unwrap();
+        records.push(spawn_record(40));
+        model.spawned(Ulid(200), SeatId::from_u128(40));
+        model = build(&records, &grids, &model);
+        records[0].name = "metadata refresh".into();
+        model = build(&records, &grids, &model);
+        assert_eq!(spawn_tree(&model), first_tree);
+        assert_eq!(model.ui.window.sidebar.swarms[0].tabs[1].id, tab);
+    }
+
+    #[test]
+    fn pending_spawns_are_bounded_and_a_reused_id_never_requeues_an_effect() {
+        let mut model = Model::default();
+        let spec = spawn_spec(None);
+        for id in 1..=PENDING_SPAWNS as u128 {
+            model.request_spawn(Ulid(id), spec.clone()).unwrap();
+        }
+        assert!(!model.request_spawn(Ulid(1), spec.clone()).unwrap());
+        assert_eq!(
+            model.request_spawn(Ulid(999), spec.clone()),
+            Err("spawn_queue_full")
+        );
+        let mut conflict = spec;
+        conflict.harness_kind = "codex".into();
+        assert_eq!(
+            model.request_spawn(Ulid(1), conflict),
+            Err("spawn_id_conflict")
+        );
+    }
+
+    #[test]
+    fn custody_held_spawns_release_in_admission_order_with_the_same_captured_requests() {
+        let mut model = Model::default();
+        let first = split_spec(10, bbt_proto::seat_state::Side::Right);
+        let second = spawn_spec(None);
+        model.request_spawn(Ulid(200), first.clone()).unwrap();
+        model.request_spawn(Ulid(100), second.clone()).unwrap();
+        model.spawn_rejected(Ulid(200), "held: custody unavailable".into());
+        model.spawn_rejected(Ulid(100), "held: custody unavailable".into());
+        model.consume_spawn(Ulid(200));
+        assert_eq!(
+            model.resume_held_spawns(),
+            vec![(Ulid(200), first), (Ulid(100), second)]
+        );
+        assert!(model.resume_held_spawns().is_empty());
+        model.spawns_disconnected("uncertain send");
+        assert!(model.resume_held_spawns().is_empty());
+    }
 
     fn install(grids: &mut Grids, record: &SeatRecord, term: &bbt_core::Term) -> SeatId {
         let id = SeatId::from_u128(record.id.0);

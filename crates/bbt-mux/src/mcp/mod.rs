@@ -59,6 +59,25 @@ pub struct Actor {
     pub issuer_kind: IssuerKind,
 }
 
+/// Logic resolves authority; GUI input never supplies an operator identity.
+/// Untagged seat encoding retains the existing journal's on-disk Actor shape.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum Principal {
+    Seat(Actor),
+    Operator { device_id: Ulid },
+}
+impl From<&Actor> for Principal {
+    fn from(actor: &Actor) -> Self {
+        Self::Seat(actor.clone())
+    }
+}
+impl From<&Principal> for Principal {
+    fn from(principal: &Principal) -> Self {
+        principal.clone()
+    }
+}
+
 pub(crate) fn success(op_id: Ulid, mut data: Value) -> Value {
     data["op_id"] = json!(op_id);
     json!({"content":[{"type":"text","text":data.to_string()}],"structuredContent":data,"isError":false})

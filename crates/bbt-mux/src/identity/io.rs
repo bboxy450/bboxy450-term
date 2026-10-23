@@ -102,14 +102,125 @@ impl DeviceKeyStore for BoundedStore {
     }
 }
 
-/// This switch and the process-owned test keys do not exist in release code.
+/// Test keys exist only in debug builds. Release refuses explicit fixtures.
 pub(super) fn process_test_store() -> Option<Arc<dyn DeviceKeyStore + Send + Sync>> {
+    selected_test_store(std::env::var_os("BBOXY_TEST_CUSTODY").as_deref())
+}
+
+fn selected_test_store(
+    selector: Option<&std::ffi::OsStr>,
+) -> Option<Arc<dyn DeviceKeyStore + Send + Sync>> {
+    if let Some(directory) = selector?.to_string_lossy().strip_prefix("fixture:") {
+        #[cfg(debug_assertions)]
+        return Some(Arc::new(FixtureKeys(std::path::PathBuf::from(directory))));
+        #[cfg(not(debug_assertions))]
+        {
+            let _ = directory;
+            eprintln!("refused: fixture custody is debug-only");
+            return Some(Arc::new(RefusedFixture));
+        }
+    }
     #[cfg(debug_assertions)]
-    if std::env::var_os("BBOXY_TEST_CUSTODY").as_deref() == Some(std::ffi::OsStr::new("memory")) {
+    if selector == Some(std::ffi::OsStr::new("memory")) {
         static KEYS: OnceLock<Arc<MemoryKeys>> = OnceLock::new();
         return Some(KEYS.get_or_init(Default::default).clone());
     }
     None
+}
+
+// A release never falls through from an explicit fixture selector to the real
+// Keychain. Its unavailable store exposes the named refusal and holds signing.
+#[cfg(not(debug_assertions))]
+struct RefusedFixture;
+#[cfg(not(debug_assertions))]
+impl DeviceKeyStore for RefusedFixture {
+    fn custody(&self) -> Custody {
+        Custody::Memory
+    }
+    fn custody_label(&self) -> &'static str {
+        "refused: fixture custody is debug-only"
+    }
+    fn load(&self, _: Ulid) -> Result<Option<SigningKey>> {
+        Err(E::StorageUnavailable)
+    }
+    fn create(&self, _: Ulid, _: &SigningKey) -> Result<()> {
+        Err(E::StorageUnavailable)
+    }
+}
+
+/// Explicit private test directory; normal first-launch code generates the
+/// keys. Atomic publication keeps a restarted child on the same fixture keys.
+#[cfg(debug_assertions)]
+struct FixtureKeys(std::path::PathBuf);
+#[cfg(debug_assertions)]
+impl FixtureKeys {
+    fn path(&self, id: Ulid) -> Result<std::path::PathBuf> {
+        if !self.0.is_absolute() {
+            return Err(E::StorageUnavailable);
+        }
+        Ok(self.0.join(id.to_string()))
+    }
+}
+#[cfg(debug_assertions)]
+impl DeviceKeyStore for FixtureKeys {
+    fn custody(&self) -> Custody {
+        Custody::Memory
+    }
+    fn custody_label(&self) -> &'static str {
+        "fixture custody (debug)"
+    }
+    fn load(&self, id: Ulid) -> Result<Option<SigningKey>> {
+        use std::io::Read;
+        let mut file = match std::fs::File::open(self.path(id)?) {
+            Ok(file) => file,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(_) => return Err(E::StorageUnavailable),
+        };
+        let mut seed = [0; 32];
+        file.read_exact(&mut seed)
+            .map_err(|_| E::StorageUnavailable)?;
+        let mut extra = [0];
+        if file.read(&mut extra).map_err(|_| E::StorageUnavailable)? != 0 {
+            seed.fill(0);
+            return Err(E::StorageUnavailable);
+        }
+        let key = SigningKey::from_bytes(&seed);
+        seed.fill(0);
+        Ok(Some(key))
+    }
+    fn create(&self, id: Ulid, key: &SigningKey) -> Result<()> {
+        use std::{
+            io::Write,
+            os::unix::fs::{DirBuilderExt, OpenOptionsExt},
+        };
+        let path = self.path(id)?;
+        std::fs::DirBuilder::new()
+            .recursive(true)
+            .mode(0o700)
+            .create(&self.0)
+            .map_err(|_| E::StorageUnavailable)?;
+        let temporary = self.0.join(format!(".{}", Ulid::new()));
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&temporary)
+            .map_err(|_| E::StorageUnavailable)?;
+        let result = (|| {
+            file.write_all(key.as_bytes())
+                .and_then(|_| file.sync_all())
+                .map_err(|_| E::StorageUnavailable)?;
+            std::fs::hard_link(&temporary, path).map_err(|error| {
+                if error.kind() == std::io::ErrorKind::AlreadyExists {
+                    E::JournalConflict
+                } else {
+                    E::StorageUnavailable
+                }
+            })
+        })();
+        let _ = std::fs::remove_file(temporary);
+        result
+    }
 }
 
 pub(super) fn process_store(
@@ -158,6 +269,20 @@ impl DeviceKeyStore for MemoryKeys {
 #[cfg(all(test, not(debug_assertions)))]
 mod release_tests {
     #[test]
+    fn release_refuses_fixture_custody_by_name_without_selecting_keychain() {
+        let store = super::selected_test_store(Some(std::ffi::OsStr::new("fixture:/unused")))
+            .expect("an explicit fixture request cannot fall through to Keychain");
+        assert_eq!(
+            store.custody_label(),
+            "refused: fixture custody is debug-only"
+        );
+        assert!(matches!(
+            store.load(super::Ulid::new()),
+            Err(super::E::StorageUnavailable)
+        ));
+    }
+
+    #[test]
     fn release_has_no_process_custody_override() {
         // Run this with BBOXY_TEST_CUSTODY=memory; no native Keychain call is made.
         assert!(super::process_test_store().is_none());
@@ -170,6 +295,78 @@ mod release_tests {
 
 #[cfg(all(test, debug_assertions))]
 mod debug_tests {
+    #[test]
+    fn fixture_generates_private_keys_once_and_reopens_without_a_known_key() {
+        use std::os::unix::fs::PermissionsExt;
+        let temp = tempfile::tempdir().unwrap();
+        let directory = temp.path().join("custody");
+        let selector = format!("fixture:{}", directory.display());
+        let store = super::selected_test_store(Some(std::ffi::OsStr::new(&selector))).unwrap();
+        let account = temp.path().join("account");
+        let super::super::LocalIssuerOutcome::Ready(first) =
+            super::super::local_dev_issuer_with_store(&account, store.as_ref())
+        else {
+            panic!("fixture first launch failed")
+        };
+        assert_eq!(store.custody_label(), "fixture custody (debug)");
+        let reopened = super::selected_test_store(Some(std::ffi::OsStr::new(&selector))).unwrap();
+        let super::super::LocalIssuerOutcome::Ready(second) =
+            super::super::local_dev_issuer_with_store(&account, reopened.as_ref())
+        else {
+            panic!("fixture restart failed")
+        };
+        assert_eq!(first.verifying_key(), second.verifying_key());
+        assert_eq!(
+            std::fs::metadata(&directory).unwrap().permissions().mode() & 0o777,
+            0o700
+        );
+        let entries: Vec<_> = std::fs::read_dir(&directory)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .collect();
+        assert_eq!(entries.len(), 2); // independent generated issuer and device keys
+        for path in entries {
+            assert_eq!(
+                std::fs::metadata(path).unwrap().permissions().mode() & 0o777,
+                0o600
+            );
+        }
+        let other = temp.path().join("other");
+        let other_selector = format!("fixture:{}", other.display());
+        let other =
+            super::selected_test_store(Some(std::ffi::OsStr::new(&other_selector))).unwrap();
+        let super::super::LocalIssuerOutcome::Ready(third) =
+            super::super::local_dev_issuer_with_store(
+                &temp.path().join("other-account"),
+                other.as_ref(),
+            )
+        else {
+            panic!("second fixture failed")
+        };
+        assert_ne!(first.verifying_key(), third.verifying_key());
+    }
+
+    #[test]
+    fn fixture_never_overwrites_a_key_or_accepts_a_relative_directory() {
+        use super::{DeviceKeyStore, E, FixtureKeys, Ulid};
+        let temp = tempfile::tempdir().unwrap();
+        let store = FixtureKeys(temp.path().join("keys"));
+        let id = Ulid::new();
+        let mut seed = [0; 32];
+        getrandom::fill(&mut seed).unwrap();
+        let key = super::SigningKey::from_bytes(&seed);
+        store.create(id, &key).unwrap();
+        assert!(matches!(store.create(id, &key), Err(E::JournalConflict)));
+        assert_eq!(
+            store.load(id).unwrap().unwrap().verifying_key(),
+            key.verifying_key()
+        );
+        assert!(matches!(
+            FixtureKeys("relative".into()).load(id),
+            Err(E::StorageUnavailable)
+        ));
+    }
+
     #[test]
     fn labels_describe_the_actual_store_and_survive_the_io_wrapper() {
         use super::{Custody, DeviceKeyStore, E, Result};
