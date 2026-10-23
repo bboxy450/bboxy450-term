@@ -145,24 +145,7 @@ impl Glyph {
                 Activity::Errored => Color::hex(TOKENS.color.state.errored),
             })
             .alpha(grade_alpha);
-        let symbol = match self.activity {
-            Activity::Active => "●",
-            Activity::Idle => "○",
-            Activity::Waiting(_) => "◐",
-            Activity::Errored => "✕",
-        };
-        ctx.label_with_shadow(
-            out,
-            r,
-            symbol,
-            TextStyle {
-                scale: TypeScale::Custom(r.h),
-                mono: true,
-                ..Default::default()
-            },
-            color,
-            shadow,
-        );
+        crate::marks::Mark::seat(self.activity).paint_with_shadow(r, color, shadow, out);
         let hair = STYLE.material.hairline_px as f32;
         if self.grade == Grade::Shim {
             out.push(Prim::Rect {

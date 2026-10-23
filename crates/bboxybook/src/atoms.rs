@@ -436,8 +436,9 @@ mod geometry_tests {
         case.fixture.as_mut().unwrap()["atoms"][0]["rect"]["h"] = json!(16);
         let resized = snapshots(&[case])?;
         assert_eq!(
-            resized[0]["tree"]["children"][0]["children"][0]["native"][3],
-            16.
+            resized[0]["tree"]["children"][0]["children"][0]["native"],
+            json!([10., 22., 12., 12.]),
+            "the circular mark fits and stays centred in a rectangular caller slot"
         );
         Ok(())
     }

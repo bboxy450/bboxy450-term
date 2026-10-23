@@ -78,8 +78,8 @@
       result.font_diagnostics={font:css.font,ascent:tm.fontBoundingBoxAscent,descent:tm.fontBoundingBoxDescent,baseline:marker.getBoundingClientRect().y-node.getBoundingClientRect().y,source:'inline-marker'};marker.remove();
       return result;
     };
-    const rawTextDiag=(node,preserveSpace=false)=>{
-      const span=document.createElement('span'),parent=node.parentNode;span.style.cssText='font:inherit;line-height:inherit;padding:0;margin:0;border:0;display:inline-block'+(preserveSpace?';white-space:pre':'');
+    const rawTextDiag=node=>{
+      const span=document.createElement('span'),parent=node.parentNode;span.style.cssText='font:inherit;line-height:inherit;padding:0;margin:0;border:0;display:inline-block';
       parent.replaceChild(span,node);span.append(node);const result=textDiag(span);parent.replaceChild(node,span);return result;
     };
     const diag=node=>{
@@ -259,7 +259,7 @@
       if(!graphCall&&!standalone)throw Error('Graph constructor missing');
       const node=(graphCall||standalone).node,view=graphCall?graphCall.args[0]:standalone.name==='provenanceCard'?{provenance:standalone.args[0],only:['provenance']}:{subscriptions:standalone.args[0],only:['subscriptions']};
       view.harnesses=C.LAUNCH.filter(l=>l.harness).map(l=>({name:l.harness,tile:l.tile}));
-      const diagnostics=[],add=(key,n,isText=false)=>{if(!n)throw Error('Missing graph diagnostic '+key);const vector=n.querySelector('.mark');diagnostics.push(isText&&!vector?{...textDiag(n),key}:{key,kind:'box',rect:bounds(n)});if(isText&&vector&&n.classList.contains('g-now'))diagnostics.push({...rawTextDiag(n.lastChild,true),key:key+'/title'});};
+      const diagnostics=[],add=(key,n,isText=false)=>{if(!n)throw Error('Missing graph diagnostic '+key);const vector=n.querySelector('.mark');if(isText&&!vector){const d=textDiag(n);if(n.matches('.tglyph')&&getComputedStyle(n).display.includes('flex')){const r=document.createRange();r.selectNodeContents(n);d.font_diagnostics.baseline=r.getBoundingClientRect().y-n.getBoundingClientRect().y+d.font_diagnostics.ascent;d.font_diagnostics.source='inline-flex-text-range';}diagnostics.push({...d,key});}else diagnostics.push({key,kind:'box',rect:bounds(n)});if(isText&&vector&&n.classList.contains('g-now')){diagnostics.push({key:key+'/mark',kind:'box',rect:bounds(n.querySelector('.tglyph'))});diagnostics.push({...rawTextDiag(n.lastChild),key:key+'/title'});}};
       if(graphCall)add('graph',node);
       const cards=graphCall?[...node.children]:[node];
       for(const card of cards){

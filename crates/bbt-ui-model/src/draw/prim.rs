@@ -208,6 +208,16 @@ pub enum Prim {
         color: Color,
         fill: Option<Color>,
     },
+    /// Blurred union coverage below a vector foreground, using the shared R8
+    /// mask cache. The shadow's radius/offset are logical pixels, not path units.
+    PathShadow {
+        origin: Pt,
+        scale: f32,
+        points: Arc<[super::PathCommand]>,
+        stroke: super::PathStroke,
+        filled: bool,
+        shadow: TextShadow,
+    },
     /// Isolated children: render at full strength, then filter/composite once.
     /// Child clips are balanced locally; an outer clip still bounds the group.
     Group {

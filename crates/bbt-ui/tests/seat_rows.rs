@@ -60,7 +60,7 @@ fn waiting_halo_does_not_move_the_row_or_its_glyph_at_any_density() {
             assert_eq!(
                 list.primitives
                     .iter()
-                    .filter(|p| matches!(p, Prim::TextShadow { .. }))
+                    .filter(|p| matches!(p, Prim::TextShadow { .. } | Prim::PathShadow { .. }))
                     .count(),
                 2
             );
@@ -72,7 +72,7 @@ fn waiting_halo_does_not_move_the_row_or_its_glyph_at_any_density() {
                 !list
                     .primitives
                     .iter()
-                    .any(|p| matches!(p, Prim::TextShadow { .. }))
+                    .any(|p| matches!(p, Prim::TextShadow { .. } | Prim::PathShadow { .. }))
             );
         }
     }
@@ -170,9 +170,9 @@ fn seat_identity_authority_and_activity_stay_independent_when_name_shrinks() {
             )
     );
     assert!(find(&layout, "authmark").is_some());
-    let painted = c::paint(&layout, ctx);
-    assert!(painted.iter().any(|op|matches!(op,c::Paint::Draw(d) if d.primitives.iter().any(|p|matches!(p,Prim::Text{text,..} if text.as_ref()=="●")))));
-    assert!(!painted.iter().any(|op|matches!(op,c::Paint::Draw(d) if d.primitives.iter().any(|p|matches!(p,Prim::Text{text,..} if text.as_ref()=="✕")))));
+    let painted = c::paint(&glyph.children[0], ctx);
+    assert!(painted.iter().any(|op|matches!(op,c::Paint::Draw(d) if d.primitives.iter().any(|p|matches!(p,Prim::Path{fill:Some(_),..})))));
+    assert!(!painted.iter().any(|op|matches!(op,c::Paint::Draw(d) if d.primitives.iter().any(|p|matches!(p,Prim::Path{fill:None,..})))));
 }
 #[test]
 fn subagents_filter_finished_work_and_overflow_after_seven() {

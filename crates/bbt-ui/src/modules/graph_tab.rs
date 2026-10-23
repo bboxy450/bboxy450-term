@@ -383,7 +383,7 @@ fn icon(key: &str, name: &str, size: f32, col: ui::Color) -> c::Element {
 }
 
 impl GraphTab {
-    fn agents(&self, ctx: ui::Context) -> c::Element {
+    fn agents(&self, ctx: ui::Context, m: &dyn c::Measure) -> c::Element {
         let key = "agents";
         let mut children = vec![];
         children.push(
@@ -510,7 +510,7 @@ impl GraphTab {
                     .into(),
                     text(
                         format!("{k}/now/title"),
-                        format!(" {}", t.title),
+                        &t.title,
                         12.5,
                         400,
                         false,
@@ -520,7 +520,16 @@ impl GraphTab {
                 ]);
                 inline.wrap = false;
                 inline.align = c::Alignment::Baseline;
-                inline.column_gap = ui::Length::Px(0.);
+                inline.column_gap = ui::Length::Px(m.width(
+                    " ",
+                    &bbt_ui_model::layout::TextStyle {
+                        size: 12.5,
+                        weight: 400,
+                        mono: false,
+                        italic: false,
+                        tracking_em: 0.,
+                    },
+                ));
                 inline.row_gap = ui::Length::Px(0.);
                 named(format!("{k}/now"), c::Element::Flow(inline))
             } else {
@@ -644,7 +653,7 @@ impl GraphTab {
                     task_color(&it.state)
                 };
                 let mark = if kind == "bug" {
-                    inline_icon(&format!("{k}/mark"), "bug", 11., 12., col)
+                    icon(&format!("{k}/mark"), "bug", 11., col)
                 } else if kind == "invariant" {
                     text(format!("{k}/mark"), "◆", 12., 400, true, col)
                 } else {
@@ -1262,7 +1271,7 @@ impl GraphTab {
         let want = |k: &str| self.only.as_ref().is_none_or(|v| v.iter().any(|s| s == k));
         let mut children = vec![];
         if want("agents") {
-            children.push(self.agents(ctx).into())
+            children.push(self.agents(ctx, m).into())
         }
         if want("work") {
             children.push(self.work(ctx).into())

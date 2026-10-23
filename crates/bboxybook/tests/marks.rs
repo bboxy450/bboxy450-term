@@ -144,3 +144,99 @@ fn seat_and_task_marks_are_pixel_centred_at_96px_in_both_painters() {
         out.display()
     );
 }
+
+#[test]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "headless coverage-cache and alpha regression"
+)]
+fn vector_shadow_reuses_tint_translation_and_bounds_alpha_before_blur() {
+    use bbt_ui_model::draw::TextShadow;
+    let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+    let mut list = DrawList::default();
+    list.rect(Rect::new(0., 0., 128., 128.), 0., Color::BLACK);
+    Mark::LeftHalf.paint(
+        Rect::new(16., 16., 96., 96.),
+        Color::WHITE.alpha(0.72),
+        &mut list,
+    );
+    let pixels = renderer.render_to_rgba(&list, 128, 128, 1.).unwrap();
+    let pixel = |x: usize, y: usize| &pixels[(y * 128 + x) * 4..(y * 128 + x) * 4 + 3];
+    assert_eq!(
+        pixel(29, 64),
+        pixel(46, 64),
+        "ring/pie overlap gets alpha once"
+    );
+    assert!(pixel(46, 64)[0] > 0);
+    assert_eq!(pixel(82, 64), [0, 0, 0], "right half stays open");
+
+    let draw = |x: f32, size: f32, tint: Color, offset: [f32; 2], alpha: f32| {
+        let mut list = DrawList::default();
+        list.rect(Rect::new(0., 0., 128., 96.), 0., Color::BLACK);
+        Mark::LeftHalf.paint_with_shadow(
+            Rect::new(x, 32.5, size, size),
+            Color::WHITE,
+            Some(TextShadow {
+                color: tint.alpha(alpha),
+                blur_radius: 6.,
+                offset,
+            }),
+            &mut list,
+        );
+        list
+    };
+    let amber = Color::hex("#FFB454");
+    let first = draw(20.25, 12., amber, [0.25, 0.5], 0.72);
+    bbt_render::passes::take();
+    renderer.render_to_rgba(&first, 128, 96, 1.).unwrap();
+    let with_shadow = bbt_render::passes::take();
+    let mut plain = first.clone();
+    plain
+        .primitives
+        .retain(|p| !matches!(p, bbt_ui_model::draw::Prim::PathShadow { .. }));
+    renderer.render_to_rgba(&plain, 128, 96, 1.).unwrap();
+    let without_shadow = bbt_render::passes::take();
+    assert_eq!(with_shadow.blur, 0, "the Gaussian adds no GPU blur pass");
+    assert_eq!(
+        with_shadow.passes(),
+        without_shadow.passes(),
+        "the shadow stays in the existing flat batch"
+    );
+    println!("mark scene passes: shadow={with_shadow:?}; plain={without_shadow:?}");
+    let a = renderer.text_cache_stats().coverage;
+    assert_eq!(a.shadow_blurs, 1);
+    let again = draw(28.25, 12., Color::hex("#2EE6A8"), [0.25, 0.5], 0.4);
+    renderer.render_to_rgba(&again, 128, 96, 1.).unwrap();
+    let b = renderer.text_cache_stats().coverage;
+    assert_eq!((a.misses, a.shadow_blurs), (b.misses, b.shadow_blurs));
+    assert!(
+        b.hits > a.hits,
+        "tint, alpha and integer translation reuse coverage"
+    );
+    for variant in [
+        draw(20.25, 18., amber, [0.25, 0.5], 0.72),
+        draw(20.25, 12., amber, [0.5, 0.5], 0.72),
+        draw(20.25, 12., amber, [0.25, 0.75], 0.72),
+    ] {
+        let before = renderer.text_cache_stats().coverage.misses;
+        renderer.render_to_rgba(&variant, 128, 96, 1.).unwrap();
+        assert!(
+            renderer.text_cache_stats().coverage.misses > before,
+            "scale and both phases bind coverage"
+        );
+    }
+    let before = renderer.text_cache_stats().coverage.misses;
+    renderer.render_to_rgba(&first, 256, 192, 2.).unwrap();
+    assert!(
+        renderer.text_cache_stats().coverage.misses > before,
+        "DPR binds coverage"
+    );
+    let before = renderer.text_cache_stats().coverage.shadow_requests;
+    let invisible = draw(20.25, 20., amber, [0., 0.], 0.);
+    renderer.render_to_rgba(&invisible, 128, 96, 1.).unwrap();
+    assert_eq!(
+        renderer.text_cache_stats().coverage.shadow_requests,
+        before,
+        "transparent shadows skip the cache"
+    );
+}

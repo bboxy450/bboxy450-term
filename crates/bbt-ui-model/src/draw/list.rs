@@ -75,6 +75,20 @@ impl DrawList {
                         return Err("invalid path transform or colour");
                     }
                 }
+                Prim::PathShadow {
+                    origin,
+                    scale,
+                    points,
+                    stroke,
+                    shadow,
+                    ..
+                } => {
+                    stroke.validate(points)?;
+                    shadow.validate()?;
+                    if origin.iter().any(|v| !v.is_finite()) || !scale.is_finite() || *scale <= 0. {
+                        return Err("invalid path shadow transform");
+                    }
+                }
                 Prim::Group {
                     primitives,
                     opacity,

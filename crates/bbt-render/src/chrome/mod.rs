@@ -5,6 +5,7 @@ pub mod diff;
 pub mod group;
 pub mod icons;
 pub mod materials;
+mod path_masks;
 mod paths;
 pub mod pipeline;
 pub mod text;
@@ -436,6 +437,50 @@ impl ChromeRenderer {
                         to[1] * scale,
                     ];
                     instances.push(item);
+                }
+                Prim::PathShadow {
+                    origin,
+                    scale: path_scale,
+                    points,
+                    stroke,
+                    filled,
+                    shadow,
+                } => {
+                    if shadow.color.0[3] <= 0. {
+                        continue;
+                    }
+                    let physical = [
+                        (origin[0] * scale).round() + shadow.offset[0] * scale,
+                        (origin[1] * scale).round() + shadow.offset[1] * scale,
+                    ];
+                    let key = path_masks::Key::new(
+                        points,
+                        stroke,
+                        *filled,
+                        *path_scale,
+                        scale,
+                        physical.map(|v| v.rem_euclid(1.)),
+                        shadow.blur_radius * 0.5 * scale,
+                    )?;
+                    if let Some(part) = self.text.shadow_path(key)? {
+                        // Path bounds are relative to the physical origin, with no
+                        // line box, font guard subtraction or baseline adjustment.
+                        let [x, y] =
+                            std::array::from_fn(|i| physical[i].floor() + part.offset[i] as f32);
+                        let [w, h] = part.size.map(|v| v as f32);
+                        if x >= clip.0.right() * scale
+                            || y >= clip.0.bottom() * scale
+                            || x + w <= clip.0.x * scale
+                            || y + h <= clip.0.y * scale
+                        {
+                            continue;
+                        }
+                        let mut item = make(Rect::default(), shadow.color, 2., clip);
+                        item.rect = [x, y, w, h];
+                        glyph_instances.push((instances.len(), part.id, [0.; 2]));
+                        instances.push(item);
+                        self.text.record_shadow_quad();
+                    }
                 }
                 Prim::TextShadow {
                     origin,

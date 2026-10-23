@@ -5,7 +5,7 @@ use bbt_ui_model::{
     Activity, Grade, TOKENS, WaitKind,
     draw::{
         Color, Draw, DrawCtx, DrawList, LineCap, LineJoin, PathCommand, PathStroke, Prim,
-        TextStyle, TypeScale,
+        TextShadow, TextStyle, TypeScale,
     },
     layout::Rect,
 };
@@ -85,13 +85,36 @@ impl Mark {
 
     /// Paint at the centre of an existing box without changing that box.
     pub fn paint(self, rect: Rect, color: Color, out: &mut DrawList) {
+        self.paint_with_shadow(rect, color, None, out);
+    }
+
+    /// Shadow the combined mark coverage; grade and ancestor alpha are supplied
+    /// once by the caller, and never affect its layout slot.
+    pub fn paint_with_shadow(
+        self,
+        rect: Rect,
+        color: Color,
+        shadow: Option<TextShadow>,
+        out: &mut DrawList,
+    ) {
         let side = rect.w.min(rect.h);
         if side <= 0. {
             return;
         }
         let geometry = self.geometry();
+        let origin = [rect.x + rect.w * 0.5, rect.y + rect.h * 0.5];
+        if let Some(shadow) = shadow {
+            out.push(Prim::PathShadow {
+                origin,
+                scale: side / 16.,
+                points: geometry.points.clone(),
+                stroke: geometry.stroke.clone(),
+                filled: geometry.filled,
+                shadow,
+            });
+        }
         out.push(Prim::Path {
-            origin: [rect.x + rect.w * 0.5, rect.y + rect.h * 0.5],
+            origin,
             scale: side / 16.,
             points: geometry.points,
             stroke: geometry.stroke,

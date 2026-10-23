@@ -2482,8 +2482,14 @@ fn paint_contents(
             for primitive in &atom.primitives {
                 let mut p = primitive.clone();
                 match &mut p {
-                    Prim::TextShadow { shadow, .. } => {
+                    Prim::TextShadow { shadow, .. } | Prim::PathShadow { shadow, .. } => {
                         shadow.color = draw.color(shadow.color).alpha(opacity);
+                    }
+                    Prim::Path { color, fill, .. } => {
+                        *color = draw.color(*color).alpha(opacity);
+                        if let Some(fill) = fill {
+                            *fill = draw.color(*fill).alpha(opacity);
+                        }
                     }
                     Prim::Text { color: c, .. }
                     | Prim::Icon { color: c, .. }
