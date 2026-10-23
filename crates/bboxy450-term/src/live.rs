@@ -117,6 +117,19 @@ fn publish(
     Ok(())
 }
 
+fn queue_action(outgoing: &mut VecDeque<GuiAction>, action: GuiAction) {
+    if let GuiAction::Unwatch { seat } = &action
+        && outgoing
+            .iter()
+            .rev()
+            .find(|old| matches!(old, GuiAction::Watch { seat: old_seat, .. } | GuiAction::Unwatch { seat: old_seat } if old_seat == seat))
+            .is_some_and(|old| matches!(old, GuiAction::Unwatch { .. }))
+    {
+        return;
+    }
+    outgoing.push_back(action);
+}
+
 async fn run(
     updates: Arc<Latest<Arc<Model>>>,
     mut commands: Commands,
@@ -162,26 +175,51 @@ async fn run(
     let mut retained = VecDeque::new();
     let mut in_flight = None;
     let mut closing = false;
+    // Accept one UI command's actions at a time. Watch diffs are finite;
+    // the stream allows one unapplied update per watch. Deduplicate Unwatch
+    // notifications so a full writer cannot create an unbounded control queue.
+    let mut outgoing = VecDeque::<GuiAction>::new();
     while !closing {
+        let mut writer_blocked = false;
+        if !lost {
+            while let Some(action) = outgoing.front() {
+                match session.send(action.clone()).await {
+                    Ok(()) => {
+                        outgoing.pop_front();
+                    }
+                    Err(error) if error.is::<cockpit::Busy>() => {
+                        writer_blocked = true;
+                        break;
+                    }
+                    Err(error) => {
+                        logger.write(format!("GUI writer stopped: {error}"));
+                        backend_lost(Some(error.to_string()));
+                        lost = true;
+                        break;
+                    }
+                }
+            }
+        }
+        let writer_ready = session.writer_ready();
         let result:Result<()>=async {
             tokio::select! {
                 command=async {
                     if !lost && let Some(message)=retained.pop_front() { return Some(message); }
                     commands.messages.recv().await
-                }, if !lost || retained.len() < COMMAND_CAPACITY=>match command {
+                }, if (lost && retained.len() < COMMAND_CAPACITY) || (!lost && outgoing.is_empty())=>match command {
                     Some(message) if lost=>retained.push_back(message),
                     Some(message)=> {
                     in_flight=Some(message);
                     match in_flight.as_ref().unwrap() {
-                    UiMsg::SpawnZsh=>session.send(GuiAction::Spawn {spec:SpawnSpec {
+                    UiMsg::SpawnZsh=>queue_action(&mut outgoing, GuiAction::Spawn {spec:SpawnSpec {
                         swarm:SwarmId::from_u128(swarm.0),harness_kind:"zsh".into(),name:None,role:None,
                         cwd:cwd.to_string_lossy().into_owned(),location:Where::Local,resume:None,
-                    }}).await?,
-                    UiMsg::Input {seat,generation,id,bytes}=>session.send(GuiAction::Input {seat:*seat,generation:*generation,id:*id,bytes:bytes.clone()}).await?,
-                    UiMsg::Resize {seat,generation,cols,rows}=>session.send(GuiAction::Resize {seat:*seat,generation:*generation,cols:*cols,rows:*rows}).await?,
+                    }}),
+                    UiMsg::Input {seat,generation,id,bytes}=>queue_action(&mut outgoing, GuiAction::Input {seat:*seat,generation:*generation,id:*id,bytes:bytes.clone()}),
+                    UiMsg::Resize {seat,generation,cols,rows}=>queue_action(&mut outgoing, GuiAction::Resize {seat:*seat,generation:*generation,cols:*cols,rows:*rows}),
                     UiMsg::Watched(panes)=> {
                         Arc::make_mut(&mut model).ui.window.stage.focused = panes.first().map(|(seat, _)| *seat);
-                        for action in grids.set_watched(panes) {session.send(action).await?;}
+                        for action in grids.set_watched(panes) {queue_action(&mut outgoing, action);}
                         publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                     }
                     }
@@ -190,6 +228,7 @@ async fn run(
                     None=>closing=true,
                 },
                 _=&mut commands.stop=>closing=true,
+                ready=writer_ready, if writer_blocked && !lost=>{ready?;},
                 event=session.event()=>match event.unwrap_or_else(|error| cockpit::Event::Disconnected(error.to_string())) {
                     cockpit::Event::Reply(reply)=>match *reply {
                         GuiReply::Identity(next)=> {
@@ -209,7 +248,7 @@ async fn run(
                             let id=SeatId::from_u128(seat.record.id.0);
                             if matches!(seat.state.process,ProcessStatus::Exited {..}|ProcessStatus::Retained) {
                                 grids.forget(id);
-                                session.send(GuiAction::Unwatch {seat:id}).await?;
+                                queue_action(&mut outgoing, GuiAction::Unwatch {seat:id});
                             }
                             logger.write(format!("seat {} activity={:?} process={:?}",seat.record.id,seat.state.activity,seat.state.process));
                             seats.insert(seat.record.id,seat);
@@ -226,7 +265,7 @@ async fn run(
                                     // A valid byte-equivalent update still needs
                                     // its ack; an unwatched in-flight one does not.
                                     if grids.screen(seat).is_some() {
-                                        session.send(GuiAction::Applied {seat,view,sequence}).await?;
+                                        queue_action(&mut outgoing, GuiAction::Applied {seat,view,sequence});
                                     }
                                 }
                                 Err(error)=>logger.write(format!("grid update rejected (no ack): {error}")),
@@ -278,6 +317,21 @@ async fn run(
 mod tests {
     use super::*;
     use std::{os::unix::fs::PermissionsExt, time::Duration};
+
+    #[test]
+    fn queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication() {
+        let seat = SeatId::from_u128(42);
+        let view = bbt_proto::View { seat: Ulid(seat.0.0), generation: 2, view_generation: Ulid::new() };
+        let mut outgoing = VecDeque::new();
+        queue_action(&mut outgoing, GuiAction::Unwatch { seat });
+        queue_action(&mut outgoing, GuiAction::Watch { seat, view });
+        queue_action(&mut outgoing, GuiAction::Unwatch { seat });
+        queue_action(&mut outgoing, GuiAction::Unwatch { seat });
+        assert_eq!(outgoing.len(), 3);
+        assert!(matches!(outgoing.pop_front(), Some(GuiAction::Unwatch { .. })));
+        assert!(matches!(outgoing.pop_front(), Some(GuiAction::Watch { view: token, .. }) if token == view));
+        assert!(matches!(outgoing.pop_front(), Some(GuiAction::Unwatch { .. })));
+    }
 
     struct NoWake;
     impl bbt_rt::Waker for NoWake {
@@ -448,6 +502,36 @@ mod tests {
         })
         .await;
         eprintln!("PASS real IO: standalone hi row in Replica, prepared frame published");
+        let expected: String = (0..256)
+            .map(|i| "0123456789abcdef".as_bytes()[i % 16] as char)
+            .collect();
+        let probe = format!(
+            "printf 'BURST_READY\\n'; IFS= read -r payload; if [ \"$payload\" = '{expected}' ]; then printf 'BURST_ORDER_OK\\n'; else printf 'BURST_ORDER_BAD\\n'; fi\r"
+        );
+        input(&sender, seat, view.generation, probe.as_bytes()).await;
+        until(&updates, &mut current, |model| {
+            lines(&model.screens[&seat])
+                .iter()
+                .any(|line| line.trim() == "BURST_READY")
+        })
+        .await;
+        tokio::time::timeout(Duration::from_secs(15), async {
+            for byte in expected.bytes() {
+                input(&sender, seat, view.generation, &[byte]).await;
+            }
+            input(&sender, seat, view.generation, b"\r").await;
+        })
+        .await
+        .expect("full-duplex input burst remained blocked");
+        until(&updates, &mut current, |model| {
+            lines(&model.screens[&seat])
+                .iter()
+                .any(|line| line.trim() == "BURST_ORDER_OK")
+        })
+        .await;
+        eprintln!(
+            "PASS full duplex: 256 distinct input IDs delivered all bytes in exact order while frames/replies were drained"
+        );
         sender
             .send(UiMsg::Resize {
                 seat,
