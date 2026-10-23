@@ -5,6 +5,7 @@
 
 pub mod draw;
 pub mod event;
+pub mod input;
 pub mod layout;
 pub mod model;
 pub mod tokens;

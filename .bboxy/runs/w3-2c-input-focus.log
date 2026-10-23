@@ -1,0 +1,95 @@
+L8.1 / W3.2c — pure focus core and terminal-safe navigation routing
+
+Source: 39a1e3fbe1f625434cb5de3e82c87fc5e01aeb66 on nyx-l8, parent main 237bfa9.
+Signature: G, fingerprint 9B07E849480C68328CA20684844ECC0587DE7AB0.
+Scope: approved pure model seam (Oracle f7825276-f712-4037-88b9-6584035144df);
+physical binding policy is decision 26 / gui-components.md §4.2.
+
+Mechanism and acceptance:
+- crates/bbt-ui-model/src/input/focus.rs:65 — row/pane activation updates existing
+  Stage without opening/shutting swarms; emits opposite-view Locate even on a
+  repeated activation; explicit activation clears any new unread notification.
+- focus.rs:91 — a cross-stage Locate waits for layout_ready to find that target;
+  repeated activations do not bypass the pending layout; it fires once, and
+  daemon close cancels stale intent. Invalid targets leave model/intent intact.
+- focus.rs:129 — forward/reverse cycling uses split-tree leaves, independent of
+  sidebar insertion order; directional navigation uses lab edge eligibility and
+  along+2*across scoring with tree-order ties, restricted to the current tab.
+- focus.rs:203 — pointer hits use supplied pane rects; layout movement re-hits
+  the pointer. Pane dwell needs 150 ms, keys guard strictly until more than 1 s,
+  blocked dwell waits for re-entry, and dwell never emits Locate.
+- crates/bbt-ui-model/src/input/keys.rs:49 — terminal plain/control/alt keys stay
+  Terminal; Cmd+Opt arrows and Tab/ShiftTab route to pane navigation. Plain
+  chrome navigation is allowed; fields, launcher and overlay keep local keys.
+  This router is called after global shortcuts and never encodes PTY bytes.
+- crates/bbt-ui-model/src/model/window.rs:234 and src/lib.rs:8 — expose the
+  existing internal focus operation and input module; no new dependencies,
+  event variants, draw changes or app edits.
+- crates/bbt-ui-model/tests/input.rs:88 — 15 synthetic tests cover these paths.
+
+Completed development checks:
+env CARGO_TARGET_DIR=target/l8-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0
+CARGO_BUILD_JOBS=2 cargo test -p bbt-ui-model --locked — exit 0; 51 passed / 0 failed.
+Same environment, cargo clippy -p bbt-ui-model --all-targets --locked -- -D warnings
+— exit 0. Raw logs retained in target/l8/model-tests-reviewed.log and
+target/l8/clippy-model-reviewed.log; the final clean gate below supersedes them.
+git diff --check — exit 0. No runtime dependency added (only existing build/dev
+dependencies in cargo tree -p bbt-ui-model --depth 1 --locked, exit 0).
+
+Earlier failures/disposition:
+Initial input fixture run exited 101 (1 pass / 9 fail): reversing Tab.seats before
+Model::new also changes its initial focus. The test fixture now explicitly
+selects leaf 1; existing Model::new behavior is unchanged. The reviewed suite is
+green. Source review then found the lab clears unread on already-focused clicks;
+the final code and regression assertion include it. The predecessor 954b0fb clean
+gate was intentionally stopped during build (own recorded cargo PID 56264,
+exit 143); no verification verdict claimed for it. Its compiler target (589 MiB) and
+clean worktree were removed after all its recorded processes exited.
+
+Final exact-commit CI:
+Clean detached /tmp/ci-nyx-l8-39a1e3f at the source SHA above, empty git status
+before and after. Environment: CARGO_TARGET_DIR=/tmp/nyx-l8-target-39a1e3f,
+CARGO_BUILD_JOBS=2, BBOXY_TEST_CUSTODY=memory, BBOXYBOOK_GALLERY=flow,
+PARITY_OUT=/Users/feral/mydev/bboxy450-term-nyx/target/l8/parity-flow.
+sh scripts/ci-local.sh --parity — exit 0, all gates passed, 08:30-08:45 UTC.
+Workspace build 0; workspace all-target strict Clippy 0; workspace tests
+658 passed / 0 failed / 15 ignored; UI IO lint 0; app --smoke 0;
+invariants 7 checks / 0 failures / 3 named slow skips. The socket-backlog check
+passed on this run, including the exact output replay after >60 seconds.
+The gate used default O1 and debug assertions; no ignored keychain tests ran.
+Raw committed log: .bboxy/runs/w3-2c-input-focus-ci-39a1e3f.log
+SHA256: 785b1b6c4d05d6d58e080ad3b374bad0e03ee982ec36bd3e7437c488a03cad52
+
+Scoped Flow/component regression: 40 web + 40 native PNGs; 40/40 within policy;
+0 unproven geometry / 0 geometry mismatches / 0 pixel reviews. Max rect error
+0.0283203125 px, max baseline error 0.0078125 px, worst changed pixels 0.8761%.
+Lab checks: 36 pages x 4 densities, 0 findings; self-test passed.
+Index: /Users/feral/mydev/bboxy450-term-nyx/target/l8/parity-flow/index.html
+This is the scoped Flow regression, not a new full-catalog replay. Input behavior
+is verified by synthetic events; the live winit/OS chord path is not wired here.
+
+Ten worst triplet basenames (each has web/, native/, diff/ under that index root;
+all within policy, ordered by changed pixels):
+- components/text-comfortable-dark.png — 0.8761%
+- components/text-compact-dark.png — 0.8761%
+- components/text-cozy-dark.png — 0.8761%
+- components/text-touch-dark.png — 0.8761%
+- components/text-comfortable-light.png — 0.8720%
+- components/text-compact-light.png — 0.8720%
+- components/text-cozy-light.png — 0.8720%
+- components/text-touch-light.png — 0.8720%
+- components/flow-comfortable-dark.png — 0.6454%
+- components/flow-compact-dark.png — 0.6454%
+
+Image read: web/native components/flow-cozy-dark shows the same two-line presence,
+two chip rows and spaced final row. The report records the small raster residue.
+Cleanup: after gate exit, removed only the private CI worktree and its compiler
+target (2,406,589,640 bytes); volume free rose to 19 GiB. Accepted parity artifacts
+and this worktree's small dev target are retained.
+
+
+Deliberately untouched: app main.rs/scene.rs, terminal encoding, physical key
+translation, launcher state, text editing, hit/drag/resize dispatch, effects,
+screens, and D1c files. This is a pure controller checkpoint, not live app wiring.
+Next launcher integration consumes Kestrel's accepted provider_launcher_items /
+provider_settings projections; no parallel provider view model.
