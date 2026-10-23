@@ -1,0 +1,13 @@
+$ cargo test --locked -p bbt-mux --test provider_gui -- --nocapture
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 2.87s
+     Running tests/provider_gui.rs (target/debug/deps/provider_gui-b4d98b1a61a0fbb4)
+
+running 1 test
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.87s
+
+
+exit=0 elapsed=5.01s

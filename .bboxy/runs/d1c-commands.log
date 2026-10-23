@@ -127,3 +127,20 @@ post-capture ps -p 34319 exit=1
 post-capture ps -p 34339 exit=1
 $ git diff --check
 exit=2 (four empty ps results left trailing spaces in command log; trimmed)
+git diff --check after trimming log0; scoped rustfmt links0; exact add0; signed99453e2 commit0. Oracle32cdfc19 authorized Velvet range dependency; git cherry-pick3c5916a0 (8995f60) authorship/hunks preserved. git fetch origin0; signedrebase origin/main0 ->626d34f atop1d9102b; no conflicts. Native captured rows read: Build box40ms, East worker60ms, West worker80ms, real zsh printed D1c local terminal alive. Own private native run dir deleted0; post-capture allfourrecordedPIDs absent(ps1).
+$ cargo test --locked -p bbt-mux --test provider_gui (memory/O1; providers96 gallery)
+exit=0
+$ cargo test --locked -p bbt-ui --test links --test provider_settings --test settings (memory/O1; providers96 gallery)
+exit=0
+$ cargo clippy --workspace --all-targets --locked -- -D warnings (memory/O1; providers96 gallery)
+exit=0
+$ cargo test --locked -p bbt-mux --test provider_gui -- --nocapture (actual admitted GUI Spawn on SSH/cloud, early LinkDown no record)
+exit=101
+$ sh scripts/parity.sh (memory/O1; providers96 gallery)
+exit=0
+$ cargo test --locked -p bbt-mux --test provider_gui -- --nocapture (corrected test conversion between portable Where and registry Location)
+exit=0
+Expanded96 preflight: sh scripts/parity.sh0/199.102s; capture96/96, render96/96, zero geometry failures/unproven,24pixelreviews advisory. Native GUI-spawn test first compile101 (test confused Where/registryLocation and doubly-unwrapped Ulid), corrected conversion only, rerun0/5.010s; five real PTYs including two GUI Spawn calls; early LinkDown creates no record. Failed raw d1c-gui-spawn-first.log retained.
+$ cargo clippy --workspace --all-targets --locked -- -D warnings (after GUI spawn acceptance extension)
+exit=0
+Final workspace strictclippy0 after GUI test extension. git fetch origin0 before final handoff gate; origin/main still1d9102b, already rebased. Viewed advisory Account native/web pair: same geometry/content, raster/avatar residue; remaining24advisory cases are Account8, Roles8, In-a-tab8. No change to those unrelated renderings; P3 owns broader parity. Native Screenshot uses prior same UI source; upstream rebase adds reaping only.

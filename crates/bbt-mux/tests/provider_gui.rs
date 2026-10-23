@@ -166,6 +166,30 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
             .filter(|h| !matches!(h.location, bbt_proto::Where::Local))
             .all(|h| h.state == HostState::Connecting)
     );
+    let spawn = |name: &str, location| GuiAction::Spawn {
+        spec: bbt_proto::SpawnSpec {
+            swarm: bbt_proto::SwarmId::from_u128(7),
+            harness_kind: "zsh".into(),
+            name: Some(name.into()),
+            role: None,
+            cwd: temp.path().to_string_lossy().into(),
+            location,
+            resume: None,
+        },
+    };
+    rt.block_on(gui.send(spawn(
+        "not-created",
+        bbt_proto::Where::Ssh {
+            host: "build-box".into(),
+        },
+    )));
+    loop {
+        if let GuiReply::Error { reason, .. } = rt.block_on(gui.recv()) {
+            assert!(reason.starts_with("LinkDown:"));
+            break;
+        }
+    }
+    assert!(rt.block_on(logic.client.gui_seats()).unwrap().is_empty());
     clock.set(300);
     let mut connected = false;
     while !connected {
@@ -173,6 +197,46 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
             connected = matches!(host.location, bbt_proto::Where::Ssh { .. })
                 && host.state == HostState::Connected { rtt_ms: 40 };
         }
+    }
+    let mut gui_spawned = Vec::new();
+    for (name, location) in [
+        (
+            "gui-ssh",
+            bbt_proto::Where::Ssh {
+                host: "build-box".into(),
+            },
+        ),
+        (
+            "gui-cloud",
+            bbt_proto::Where::Cloud {
+                provider: "nebula".into(),
+                host: "worker-east".into(),
+            },
+        ),
+    ] {
+        rt.block_on(gui.send(spawn(name, location.clone())));
+        let seat = loop {
+            match rt.block_on(gui.recv()) {
+                GuiReply::Seat(seat) if seat.record.name == name => break seat,
+                GuiReply::Error { reason, .. } => panic!("remote GUI spawn rejected: {reason}"),
+                _ => {}
+            }
+        };
+        let expected = match location {
+            bbt_proto::Where::Ssh { host } => Location::Ssh { host },
+            bbt_proto::Where::Cloud { provider, host } => Location::Cloud { provider, host },
+            bbt_proto::Where::Local => Location::Local,
+        };
+        assert_eq!(seat.record.location, expected);
+        let ProcessStatus::Running { pid } = seat.state.process else {
+            panic!("GUI spawn is not running")
+        };
+        let id = seat.record.id;
+        // The output marker is split across two commands so PTY echo of the
+        // input itself cannot satisfy this assertion.
+        rt.block_on(gui.input(id, &format!("printf 'echo-'; printf '{name}\\n'\n")));
+        wait_text(&rt, &logic, &clock, id, &format!("echo-{name}"));
+        gui_spawned.push((id, expected, pid));
     }
     let gate = temp.path().join("release");
     let ack = temp.path().join("written");
@@ -277,8 +341,13 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
         assert_eq!(seat.state.process, ProcessStatus::Running { pid: info.pid });
     }
     wait_text(&rt, &logic, &clock, remote, "during-drop");
+    for (id, location, pid) in gui_spawned {
+        let seat = rt.block_on(logic.client.gui_seat(id)).unwrap();
+        assert_eq!(seat.record.location, location);
+        assert_eq!(seat.state.process, ProcessStatus::Running { pid });
+    }
     logic.shutdown().unwrap();
     println!(
-        "D1c: one supervisor/lease/journal, three labelled PTYs, portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart"
+        "D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart"
     );
 }

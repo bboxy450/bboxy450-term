@@ -1,0 +1,25 @@
+$ cargo test --locked -p bbt-mux --test provider_gui -- --nocapture
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+error[E0308]: mismatched types
+   --> crates/bbt-mux/tests/provider_gui.rs:225:42
+    |
+225 |         assert_eq!(seat.record.location, location);
+    |                                          ^^^^^^^^ expected `Location`, found `Where`
+
+error[E0610]: `u128` is a primitive type and therefore doesn't have fields
+   --> crates/bbt-mux/tests/provider_gui.rs:229:46
+    |
+229 |         let id = Ulid::from(seat.record.id.0.0);
+    |                                              ^
+
+error[E0308]: mismatched types
+   --> crates/bbt-mux/tests/provider_gui.rs:341:42
+    |
+341 |         assert_eq!(seat.record.location, location);
+    |                                          ^^^^^^^^ expected `Location`, found `Where`
+
+Some errors have detailed explanations: E0308, E0610.
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `bbt-mux` (test "provider_gui") due to 3 previous errors
+
+exit=101 elapsed=0.709s
