@@ -321,16 +321,28 @@ mod tests {
     #[test]
     fn queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication() {
         let seat = SeatId::from_u128(42);
-        let view = bbt_proto::View { seat: Ulid(seat.0.0), generation: 2, view_generation: Ulid::new() };
+        let view = bbt_proto::View {
+            seat: Ulid(seat.0.0),
+            generation: 2,
+            view_generation: Ulid::new(),
+        };
         let mut outgoing = VecDeque::new();
         queue_action(&mut outgoing, GuiAction::Unwatch { seat });
         queue_action(&mut outgoing, GuiAction::Watch { seat, view });
         queue_action(&mut outgoing, GuiAction::Unwatch { seat });
         queue_action(&mut outgoing, GuiAction::Unwatch { seat });
         assert_eq!(outgoing.len(), 3);
-        assert!(matches!(outgoing.pop_front(), Some(GuiAction::Unwatch { .. })));
-        assert!(matches!(outgoing.pop_front(), Some(GuiAction::Watch { view: token, .. }) if token == view));
-        assert!(matches!(outgoing.pop_front(), Some(GuiAction::Unwatch { .. })));
+        assert!(matches!(
+            outgoing.pop_front(),
+            Some(GuiAction::Unwatch { .. })
+        ));
+        assert!(
+            matches!(outgoing.pop_front(), Some(GuiAction::Watch { view: token, .. }) if token == view)
+        );
+        assert!(matches!(
+            outgoing.pop_front(),
+            Some(GuiAction::Unwatch { .. })
+        ));
     }
 
     struct NoWake;

@@ -539,10 +539,17 @@ mod gui_io_tests {
                 let bytes = read_line(&mut reader).await.unwrap().unwrap();
                 let request: GuiRequest = serde_json::from_slice(&bytes).unwrap();
                 assert_eq!((request.version, request.capability), (1, capability));
-                let GuiAction::Input { seat, id, bytes } = request.action else {
+                let GuiAction::Input {
+                    seat,
+                    generation,
+                    id,
+                    bytes,
+                } = request.action
+                else {
                     panic!("unexpected action")
                 };
                 assert_eq!(seat, SeatId::from_u128(7));
+                assert_eq!(generation, 7);
                 assert_eq!(id, bbt_mux::Ulid::from(index as u128 + 1));
                 assert_eq!(bytes.len(), 4096);
                 assert_eq!(&bytes[..8], &(index as u64).to_le_bytes());
@@ -555,7 +562,7 @@ mod gui_io_tests {
                     let mut bytes = vec![b'a'; 4096];
                     bytes[..8].copy_from_slice(&(sent as u64).to_le_bytes());
                     match io.try_send(GuiAction::Input {
-                        seat: SeatId::from_u128(7), id: bbt_mux::Ulid::from(sent as u128 + 1), bytes,
+                        seat: SeatId::from_u128(7), generation: 7, id: bbt_mux::Ulid::from(sent as u128 + 1), bytes,
                     }) {
                         Ok(()) => sent += 1,
                         Err(error) if error.is::<Busy>() => {busy += 1; break;}
@@ -608,6 +615,7 @@ mod gui_io_tests {
         let error = io
             .try_send(GuiAction::Input {
                 seat: SeatId::from_u128(7),
+                generation: 7,
                 id: bbt_mux::Ulid::new(),
                 bytes: vec![255; 300_000],
             })
