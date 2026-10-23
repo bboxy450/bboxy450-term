@@ -35,6 +35,10 @@ float perim(vec2 q, vec2 hs, float r){ r = max(r, .001); vec2 b = hs - r; float 
   if (q.x > 0.)             { v = q - vec2(b.x, b.y);  return sx + a + sy + r*atan(v.y, v.x); }
   if (q.y > 0.)             { v = q - vec2(-b.x, b.y); return 2.*sx + 2.*a + sy + r*atan(-v.x, v.y); }
   v = q - vec2(-b.x, -b.y); return 2.*sx + 3.*a + 2.*sy + r*atan(-v.y, -v.x); }
+// wavelength closed on the perimeter: s wraps P -> 0 at the start of the top edge, so a wave of length lambda only meets
+// itself if P is a whole multiple of it. Each box rounds every along-border wavelength to P / round(P / lambda): a few
+// percent off the nominal length, motion unchanged, no seam (found by Seraph in the native port).
+float wl(float lambda, float P){ return P / max(1., floor(P / lambda + .5)); }
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); vec2 u = f*f*(3. - 2.*f);
   return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y); }
@@ -58,15 +62,16 @@ void main(){
 }`;
 const FX = {
   ribbon: { name: 'A · ribbon', say: 'one soft band whose distance from the edge travels as a single long sine', body: `
-    float c0 = .45 + .26*sin(TAU*(s/150. - t*.35));
+    float c0 = .45 + .26*sin(TAU*(s/wl(150., P) - t*.35));
     return amp * exp(-pow((u - c0) / .24, 2.));` },
   swell: { name: 'B · swell', say: 'the band hugs the edge; brightness crests roll along it like a slow swell', body: `
-    float crest = .5 + .5*sin(TAU*(s/230. - t*.28));
+    float crest = .5 + .5*sin(TAU*(s/wl(230., P) - t*.28));
     return amp * exp(-u*2.4) * (.22 + .78*crest*crest);` },
   tide: { name: 'C · tide', say: 'the ribbon displaced by three incommensurate sines: organic, never visibly repeating', body: `
-    float c0 = .44 + .15*sin(TAU*(s/190. - t*.31)) + .08*sin(TAU*(s/71. + t*.47) + 1.3) + .04*sin(TAU*(s/31. - t*.83) + 2.1);
-    float w = .22 + .05*sin(TAU*(s/260. + t*.2));
+    float c0 = .44 + .15*sin(TAU*(s/wl(190., P) - t*.31)) + .08*sin(TAU*(s/wl(71., P) + t*.47) + 1.3) + .04*sin(TAU*(s/wl(31., P) - t*.83) + 2.1);
+    float w = .22 + .05*sin(TAU*(s/wl(260., P) + t*.2));
     return amp * exp(-pow((u - c0) / w, 2.));` },
+  // aurora and caustics are not periodic along s, so they still seam where s wraps; they were not ported natively
   aurora: { name: 'D · aurora', say: 'fbm noise flowing along the perimeter: curtains that drift and dissolve', body: `
     float n = fbm(vec2(s/80. - t*.55, u*1.4 + t*.12));
     return amp * smoothstep(.28, .75, n) * exp(-u*1.3) * 1.15;` },
@@ -77,7 +82,7 @@ const FX = {
       g += exp(-pow(min(behind, ahead) / 28., 2.)) + .55*exp(-behind / (P*.12)) * smoothstep(0., 30., behind) * (1. - smoothstep(P*.3, P*.5, behind)); }
     return amp * (g * exp(-u*1.7) + .14*exp(-u*2.6));` },
   interference: { name: 'F · interference', say: 'two counter-travelling waves; standing nodes drift slowly round the box', body: `
-    float a = sin(TAU*(s/130. - t*.38)) + sin(TAU*(s/130. + t*.38) + 1.);
+    float a = sin(TAU*(s/wl(130., P) - t*.38)) + sin(TAU*(s/wl(130., P) + t*.38) + 1.);
     float c0 = .45 + .13*a;
     return amp * exp(-pow((u - c0) / .23, 2.)) * (.45 + .3*abs(a));` },
   caustics: { name: 'G · caustics', say: 'a faint water-light network in the lane, the lightest touch', body: `
@@ -85,9 +90,9 @@ const FX = {
     for (int i = 0; i < 3; i++) { z += .55*vec2(sin(z.y*1.7 + t*.9), cos(z.x*1.3 - t*.7)); k += 1. / (1. + 18.*abs(sin(z.x)*cos(z.y))); }
     return amp * k * .3 * exp(-u*1.1);` },
   silk: { name: 'I · silk', say: 'tide\u2019s thin moving core over swell\u2019s faint rolling bloom: the line moves, the light travels', body: `
-    float c0 = .40 + .14*sin(TAU*(s/190. - t*.31)) + .07*sin(TAU*(s/73. + t*.43) + 1.3);
+    float c0 = .40 + .14*sin(TAU*(s/wl(190., P) - t*.31)) + .07*sin(TAU*(s/wl(73., P) + t*.43) + 1.3);
     float core = exp(-pow((u - c0) / .16, 2.));
-    float crest = .5 + .5*sin(TAU*(s/260. - t*.22));
+    float crest = .5 + .5*sin(TAU*(s/wl(260., P) - t*.22));
     float bloom = exp(-u*2.2) * (.15 + .55*crest*crest);
     return amp * (core*(.55 + .45*crest) + bloom);` },
   breathe: { name: 'H · breathe (control)', say: 'today’s uniform breathing glow, confined to the lane: the baseline to beat', body: `
