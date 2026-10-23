@@ -102,6 +102,8 @@ W1.1, W3.1, W2.1, W3.2a, A, B, C, D, E, F, G, H(Claude), I, I2, M, S, T, kittens
 
 ## Communication graph (Oracle-controlled; operator 2026-10-21: "you control the communication graph")
 
+**Standing edge (2026-10-22): every agent may DM any other agent directly to coordinate shared files, seams or evidence; no per-pair edge is needed. Decisions still route through the Oracle (scope) or the Architect (design).**
+
 Who talks to whom, over what. Edges not listed do not exist; an agent that needs a new edge asks the Oracle by DM.
 
 ```
