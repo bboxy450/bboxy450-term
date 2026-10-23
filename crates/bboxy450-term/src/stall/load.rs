@@ -94,7 +94,7 @@ pub async fn run(
         return Err(reason);
     }
     let mut result=async {
-        disk_guard(&config.run_dir).await?;
+        disk_guard(&config.run_dir, config.real).await?;
         if config.real {
             let output=tokio::process::Command::new("sysctl").args(["-n","kern.tty.ptmx_max"]).output().await.map_err(|e|e.to_string())?;
             let maximum=String::from_utf8_lossy(&output.stdout).trim().parse::<usize>().map_err(|_|"r5-pty-ceiling-unavailable")?.saturating_sub(32);
@@ -133,7 +133,7 @@ pub async fn run(
     result
 }
 
-async fn disk_guard(path: &Path) -> Result<(), String> {
+async fn disk_guard(path: &Path, real: bool) -> Result<(), String> {
     let parent = if path.exists() {
         path
     } else {
@@ -157,8 +157,16 @@ async fn disk_guard(path: &Path) -> Result<(), String> {
         .and_then(|s| s.parse::<u64>().ok())
         .ok_or("r5-disk-probe-invalid")?
         * 1024;
-    if free < 10 * 1024 * 1024 * 1024 {
-        return Err(format!("r5-disk-guard: {free}bytes below10GiB"));
+    // Real output is journaled; the synthetic fixture writes no PTY history.
+    let minimum = if real {
+        10 * 1024 * 1024 * 1024
+    } else {
+        512 * 1024 * 1024
+    };
+    if free < minimum {
+        return Err(format!(
+            "r5-disk-guard: {free}bytes below required{minimum}"
+        ));
     }
     Ok(())
 }
@@ -299,7 +307,7 @@ async fn exercise(
     let executable = std::env::current_exe().map_err(|e| e.to_string())?;
     for i in 0..config.seats {
         if config.real && i % 25 == 0 {
-            disk_guard(&config.run_dir).await?;
+            disk_guard(&config.run_dir, true).await?;
         }
         let mut spec = LaunchSpec::new(executable.to_string_lossy(), &config.run_dir);
         spec.args = vec![
@@ -411,7 +419,7 @@ async fn exercise(
             return Err("r5-unsettled-after-producers-stopped".into());
         }
         if config.real && last_disk.elapsed() >= Duration::from_secs(1) {
-            disk_guard(&config.run_dir).await?;
+            disk_guard(&config.run_dir, true).await?;
             last_disk = Instant::now();
         }
         if previous.frames.len() == config.watched && warm.is_none() {
