@@ -20,9 +20,10 @@ pub enum Preset {
     ButtonPrimary,
     ButtonGhost,
     PaneGlow,
+    Hud,
 }
 impl Preset {
-    pub const ALL: [Self; 14] = [
+    pub const ALL: [Self; 15] = [
         Self::Card,
         Self::Row,
         Self::Band,
@@ -37,6 +38,7 @@ impl Preset {
         Self::ButtonPrimary,
         Self::ButtonGhost,
         Self::PaneGlow,
+        Self::Hud,
     ];
     pub const fn name(self) -> &'static str {
         match self {
@@ -54,6 +56,7 @@ impl Preset {
             Self::ButtonPrimary => "button-primary",
             Self::ButtonGhost => "button-ghost",
             Self::PaneGlow => "pane-glow",
+            Self::Hud => "hud",
         }
     }
 }
@@ -802,6 +805,22 @@ fn defaults(p: Preset) -> Base {
             });
             b.shadow = Shadow::Floating;
             b.padding = xy(Spacing(8), Spacing(9));
+        }
+        Preset::Hud => {
+            radius = Radius::Card;
+            b.material = Material::Frosted;
+            b.fill = Paint {
+                color: Color::Surface,
+                alpha: Alpha::Panel,
+            };
+            b.border = Some(Border {
+                outside: true,
+                ..hair
+            });
+            b.shadow = Shadow::Floating;
+            b.padding = xy(Spacing(5), Spacing(6));
+            b.text.step = TypeStep::Micro;
+            b.text.mono = true;
         }
         Preset::Strip => {
             b.fill = Paint::solid(Color::Seat);

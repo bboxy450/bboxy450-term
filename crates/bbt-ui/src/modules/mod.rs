@@ -2,6 +2,7 @@
 pub mod launcher;
 pub mod launcher_banner;
 pub mod mini_grid;
+pub mod perf_hud;
 pub mod pane;
 pub mod seat_row;
 pub mod sidebar;
