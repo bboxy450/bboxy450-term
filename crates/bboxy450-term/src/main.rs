@@ -735,6 +735,10 @@ impl App {
                 )
                 .map_err(|e| e.to_string())?,
         );
+        if self.launcher.is_some() {
+            window.set_ime_allowed(true);
+            self.logger.write("debug launcher open; query gap: caret, selection and IME preedit are not wired yet");
+        }
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::METAL,
             ..wgpu::InstanceDescriptor::new_without_display_handle()
@@ -1671,9 +1675,10 @@ const HELP: &str = "bboxy450-term: GPU terminal for agent swarms.
   --run-dir DIR        runtime directory (default: the user's)
 
 Debug and verification only, never for normal use:
+  --launcher           open the launcher at startup (same controller as Cmd+T)
   --capture PNG        write the first presented frame to PNG; Cmd+Shift+S re-captures
   --capture-after SECS re-capture once, SECS after the cockpit's first model
-  --spawn-zsh N        open N zsh seats once the cockpit is ready, as N x Cmd+T
+  --spawn-zsh N        open N zsh seats once the cockpit is ready (default zsh picks)
   BBOXY_VERIFY_INPUT   env: bytes typed into each new seat once, \\n sent as Return
   --smoke, --fake-source, --animate, --cadence-test, --pacing MODE: frozen scenes and pacing probes";
 
@@ -1847,7 +1852,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         pane_bounds: vec![],
         focus_bounds: vec![],
         focus: FocusState::default(),
-        launcher: None,
+        launcher: args
+            .iter()
+            .any(|arg| arg == "--launcher")
+            .then(|| new_launcher(None, 0)),
         launcher_layout: None,
         pointer: [0.; 2],
         backend_lost: false,
