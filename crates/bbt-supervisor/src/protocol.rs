@@ -297,7 +297,7 @@ pub enum Reply {
         context: InputContext,
     },
     RingRecovery {
-        status: crate::ring::Status,
+        status: Box<crate::ring::Status>,
         checkpoint: Option<Vec<u8>>,
     },
     RingHistory {

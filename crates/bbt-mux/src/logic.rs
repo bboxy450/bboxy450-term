@@ -2148,15 +2148,15 @@ impl Worker {
             if pending_event.is_none() {
                 pending_event = self.connection.receive(Duration::from_millis(10))?;
             }
-            if let Some(event) = pending_event.take() {
-                if let Err(error) = self.event(event.clone()) {
-                    if !is_capture_busy(&error) {
-                        return Err(error);
-                    }
-                    // A recovery read may have exhausted its bounded retry.
-                    // Preserve this event while continuing to service commands.
-                    pending_event = Some(event);
+            if let Some(event) = pending_event.take()
+                && let Err(error) = self.event(event.clone())
+            {
+                if !is_capture_busy(&error) {
+                    return Err(error);
                 }
+                // A recovery read exhausted its bounded retry. Keep the event
+                // while continuing to service commands.
+                pending_event = Some(event);
             }
             if adapters_at.elapsed() >= Duration::from_millis(200) {
                 self.refresh_adapters()?;

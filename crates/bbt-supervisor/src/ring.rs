@@ -566,7 +566,25 @@ impl Ring {
     }
     fn put_blob(&self, bytes: &[u8]) -> Result<String> {
         let blobs = LocalBlobs::open(&self.root)?;
-        blobs.put(bytes)
+        if self.grouped {
+            blobs.put_ordered(bytes)
+        } else {
+            blobs.put(bytes)
+        }
+    }
+    fn finish_group(&mut self) -> Result<()> {
+        if self.strong_dirty {
+            let started = std::time::Instant::now();
+            sync_directory(&File::open(&self.root)?)?;
+            // Ordering of every data/blob file precedes this marker; one full
+            // device flush makes the complete derived seal durable.
+            sync_file(&File::open(self.root.join("committed"))?, true)?;
+            self.stats.sync_ns += started.elapsed().as_nanos() as u64;
+            self.strong_dirty = false;
+            self.stats.durable_commits += 1;
+            self.retire_orphans()?;
+        }
+        Ok(())
     }
     pub fn directory(&self) -> &Path {
         &self.root
@@ -627,15 +645,14 @@ impl Ring {
         Ok(refs)
     }
     pub fn latest_checkpoint(&self) -> Result<Option<Vec<u8>>> {
-        if let Some(entry) = self.entries.iter().rev().find(|e| e.kind == 4) {
-            if self
+        if let Some(entry) = self.entries.iter().rev().find(|e| e.kind == 4)
+            && self
                 .boundary
                 .checkpoints
                 .last()
                 .is_none_or(|r| entry.sequence >= r.sequence)
-            {
-                return self.payload(entry).map(Some);
-            }
+        {
+            return self.payload(entry).map(Some);
         }
         if let Some(reference) = self.boundary.checkpoints.last() {
             let bytes = LocalBlobs::open(&self.root)?.get(&reference.digest)?;
@@ -697,7 +714,11 @@ impl Ring {
             return Ok(());
         }
         let seal_started = std::time::Instant::now();
-        self.flush()?;
+        if self.grouped {
+            self.commit(false)?;
+        } else {
+            self.flush()?;
+        }
         let cold_started = std::time::Instant::now();
         let raw = std::fs::read(self.data_path())?;
         if raw.len() as u64 != self.boundary.length {
@@ -735,8 +756,8 @@ impl Ring {
             .write(true)
             .create_new(true)
             .open(self.root.join(&next.file))?;
-        sync_file(&next_file, true)?;
-        self.publish_boundary_tier(&next, true)?;
+        sync_file(&next_file, !self.grouped)?;
+        self.publish_boundary_tier(&next, !self.grouped)?;
         self.durable = next.clone();
         self.last_commit = std::time::Instant::now();
         self.boundary = next;
@@ -744,7 +765,12 @@ impl Ring {
         self.entries.clear();
         self.sealed.push(segment);
         self.rebuild_index()?;
-        self.retire_orphans()?;
+        if self.grouped {
+            self.strong_dirty = true;
+            self.finish_group()?;
+        } else {
+            self.retire_orphans()?;
+        }
         self.stats.seals += 1;
         self.stats.max_seal_ns = self
             .stats
@@ -892,7 +918,12 @@ impl Ring {
     }
     /// Direct callers and segment seals require a durable derived boundary.
     pub fn flush(&mut self) -> Result<()> {
-        self.commit(true)
+        if self.grouped {
+            self.commit(false)?;
+            self.finish_group()
+        } else {
+            self.commit(true)
+        }
     }
     fn commit(&mut self, strong: bool) -> Result<()> {
         bbt_rt::assert_not_ui_thread();

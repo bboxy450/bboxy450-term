@@ -486,12 +486,22 @@ impl Tail {
                 return Ok(saved.sequence);
             }
         }
-        let record = journal.append(
+        // The parser can trail capture. Name the parsed frame, not the newer
+        // publication tail. A compacted prefix uses a conservative earlier floor
+        // (extra replay is safe; skipping unparsed records is not).
+        let covered = self
+            .records
+            .iter()
+            .rev()
+            .find(|r| r.kind != 4 && r.sequence <= saved.sequence)
+            .map(|r| r.position.clone())
+            .unwrap_or_else(|| journal.floor());
+        let record = journal.checkpoint(
             (saved.seat, saved.generation),
-            4,
             saved.sequence,
             saved.byte_end,
             &bytes,
+            &covered,
         )?;
         // Old checkpoints remain in the WAL for recovery, but only the newest
         // is projected. Counting superseded copies would seal mostly duplicates.
@@ -712,7 +722,7 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
                             let journal = journal.as_mut().unwrap();
                             match query {
                                 Query::Recovery => Ok(Reply::RingRecovery {
-                                    status: tail.status(),
+                                    status: Box::new(tail.status()),
                                     checkpoint: tail.checkpoint.as_ref().map(|(_, b)| b.clone()),
                                 }),
                                 Query::History { from, to } => tail
@@ -728,17 +738,17 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
                             }
                         })
                 };
-                if result.is_ok() && checkpoint {
-                    if let Err(e) =
+                if result.is_ok()
+                    && checkpoint
+                    && let Err(e) =
                         commit_group(&mut rings, journal.as_mut().unwrap(), &shared, true)
-                    {
-                        result = Err(e);
-                    }
+                {
+                    result = Err(e);
                 }
                 release(&shared, key, cost);
                 let result = result.map(|mut result| {
                     let status = match &mut result {
-                        Reply::RingRecovery { status, .. } => Some(status),
+                        Reply::RingRecovery { status, .. } => Some(status.as_mut()),
                         Reply::RingHistory { history } => Some(&mut history.status),
                         _ => None,
                     };
@@ -830,15 +840,15 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
                 };
                 // One projection at a time, then service requests/admissions.
                 // A stalled writer is not evidence that a seat became idle.
-                if let Some(key) = idle {
-                    if let Err(e) = rings.get_mut(&key).unwrap().compact(journal, false) {
-                        shared
-                            .queue
-                            .lock()
-                            .unwrap()
-                            .failures
-                            .insert(key, failure(e));
-                    }
+                if let Some(key) = idle
+                    && let Err(e) = rings.get_mut(&key).unwrap().compact(journal, false)
+                {
+                    shared
+                        .queue
+                        .lock()
+                        .unwrap()
+                        .failures
+                        .insert(key, failure(e));
                 }
             }
             shared.queue.lock().unwrap().timings.busy_ns += started.elapsed().as_nanos() as u64;

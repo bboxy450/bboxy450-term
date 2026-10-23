@@ -1,0 +1,447 @@
+['cargo', 'test', '--release', '--locked', '-p', 'bbt-supervisor', '--lib', '--test', 'journal_config', '--', '--nocapture']
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `release` profile [optimized] target(s) in 7.69s
+     Running unittests src/lib.rs (target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1)
+/Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1: replacing existing signature
+
+running 13 tests
+test ring::writer::crash_tests::capture_crash_child ... ignored, private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ignored, release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test ring::journal::tests::metadata_only_debt_keeps_the_five_second_full_flush_deadline ... ok
+test ring::journal::tests::bad_crc_and_oversized_header_never_commit_a_later_tick ... ok
+test ring::journal::tests::old_segment_waits_for_every_sealed_projection_and_checkpoint ... ok
+test ring::writer::tests::undurable_admission_budget_pauses_until_a_full_flush_returns_credit ... ok
+test ring::writer::tests::orderly_shutdown_leaves_a_durable_journal_that_rebuilds_the_projection ... ok
+test ring::journal::tests::checkpoint_carries_offset_and_rotated_tail_replays_without_effects ... ok
+test ring::journal::tests::crash_rebuilds_two_seats_only_through_the_last_tick_and_rejects_torn_suffix ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+
+test result: ok. 11 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.26s
+
+     Running tests/journal_config.rs (target/w1-2d/release/deps/journal_config-ef27c801a29fc69e)
+/Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/journal_config-ef27c801a29fc69e: replacing existing signature
+
+running 1 test
+test capture_requires_an_explicit_supervisor_journal_directory ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT 0
+['cargo', 'test', '--release', '--locked', '-p', 'bbt-supervisor', '--lib', 'capture_sigkill', '--', '--ignored', '--nocapture']
+    Finished `release` profile [optimized] target(s) in 0.06s
+     Running unittests src/lib.rs (target/w1-2d/release/deps/bbt_supervisor-8ea9bcc2827f59b1)
+
+running 1 test
+{"admitted":6208,"admitted_loss":448,"admitted_tick_bytes":576,"coalescing_limit":16384,"committed":5760,"crc_errors":0,"measured_pty_buffer":1024,"pre_capture_tail":128,"seat":"01M5K35F0QPQD860S0XYRSBA3S","signal":"SIGKILL","written":6336}
+{"admitted":5952,"admitted_loss":576,"admitted_tick_bytes":640,"coalescing_limit":16384,"committed":5376,"crc_errors":0,"measured_pty_buffer":1024,"pre_capture_tail":0,"seat":"01M5K35F153J5410HJGQGXV91J","signal":"SIGKILL","written":5952}
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.29s
+
+EXIT 0
+['cargo', 'clippy', '--locked', '-p', 'bbt-supervisor', '-p', 'bbt-mux', '--all-targets', '--', '-D', 'warnings']
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling libc v0.2.191
+    Checking cfg-if v1.0.5
+    Checking typenum v1.20.1
+   Compiling version_check v0.9.5
+    Checking subtle v2.6.1
+    Checking const-oid v0.9.6
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling zmij v1.0.23
+    Checking base64ct v1.8.3
+    Checking itoa v1.0.18
+   Compiling generic-array v0.14.7
+    Checking memchr v2.8.3
+   Compiling zerocopy v0.8.63
+    Checking pem-rfc7468 v0.7.0
+   Compiling serde_json v1.0.154
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.15
+   Compiling radium v0.7.0
+    Checking bytes v1.12.1
+   Compiling pkg-config v0.3.34
+    Checking log v0.4.34
+    Checking tap v1.0.1
+    Checking smallvec v1.16.3
+    Checking wyz v0.5.1
+   Compiling syn v2.0.119
+   Compiling syn v3.0.9
+    Checking funty v2.0.0
+    Checking base16ct v0.2.0
+   Compiling semver v1.0.28
+   Compiling getrandom v0.3.4
+   Compiling rustc_version v0.4.1
+    Checking bitvec v1.1.1
+    Checking hybrid-array v0.4.15
+   Compiling getrandom v0.4.3
+   Compiling jobserver v0.1.35
+   Compiling libm v0.2.16
+    Checking getrandom v0.2.17
+    Checking cpufeatures v0.2.17
+   Compiling cc v1.9.0
+    Checking rand_core v0.6.4
+    Checking errno v0.3.14
+   Compiling autocfg v1.5.1
+    Checking rand_core v0.10.1
+   Compiling parking_lot_core v0.9.12
+    Checking rand_core v0.9.5
+   Compiling num-traits v0.2.19
+   Compiling thiserror v1.0.69
+   Compiling crossbeam-utils v0.8.23
+   Compiling cfg_aliases v0.1.1
+    Checking pin-project-lite v0.2.17
+   Compiling thiserror v2.0.21
+    Checking scopeguard v1.2.0
+    Checking lock_api v0.4.14
+   Compiling nix v0.28.0
+    Checking bitflags v2.13.2
+    Checking block-buffer v0.12.1
+    Checking crypto-common v0.2.2
+    Checking signal-hook-registry v1.4.8
+    Checking socket2 v0.6.5
+    Checking ff v0.13.1
+    Checking mio v1.2.4
+    Checking group v0.13.0
+    Checking const-oid v0.10.2
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling ident_case v1.0.1
+    Checking base64 v0.22.1
+   Compiling anyhow v1.0.104
+   Compiling zstd-safe v8.2.0
+   Compiling strsim v0.11.1
+   Compiling fnv v1.0.7
+    Checking digest v0.11.3
+    Checking parking_lot v0.12.5
+    Checking foldhash v0.2.0
+   Compiling winnow v1.0.4
+    Checking unicode-width v0.2.2
+    Checking once_cell v1.21.4
+    Checking cursor-icon v1.2.0
+    Checking crossbeam-queue v0.3.14
+    Checking hashbrown v0.17.1
+    Checking num-integer v0.1.47
+   Compiling toml_parser v1.1.5+spec-1.1.0
+    Checking serial2 v0.2.38
+    Checking cpufeatures v0.3.1
+   Compiling serde_spanned v1.1.2
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling curve25519-dalek v4.1.3
+   Compiling toml_writer v1.1.3+spec-1.1.0
+    Checking shell-words v1.1.1
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.21
+   Compiling tokio-macros v2.7.2
+   Compiling num-bigint-dig v0.8.6
+   Compiling rustix v1.1.5
+   Compiling darling_core v0.20.11
+    Checking ppv-lite86 v0.2.21
+   Compiling winnow v0.7.15
+    Checking rand_chacha v0.9.0
+    Checking rand_chacha v0.3.1
+    Checking tokio v1.54.1
+    Checking rand v0.9.5
+    Checking downcast-rs v1.2.1
+    Checking spin v0.9.9
+    Checking lazy_static v1.5.1
+    Checking rand v0.8.8
+   Compiling zeroize_derive v1.5.0
+   Compiling thiserror-impl v1.0.69
+    Checking num-iter v0.1.46
+   Compiling vcpkg v0.2.15
+   Compiling unicode-segmentation v1.13.3
+    Checking zeroize v1.9.1
+    Checking der v0.7.10
+   Compiling httparse v1.10.1
+    Checking opaque-debug v0.3.1
+   Compiling rustversion v1.0.23
+    Checking filedescriptor v0.8.3
+   Compiling toml v0.9.12+spec-1.1.0
+    Checking portable-pty v0.9.0
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking inout v0.1.4
+    Checking crypto-bigint v0.5.5
+    Checking digest v0.10.7
+    Checking cipher v0.4.4
+    Checking universal-hash v0.5.1
+    Checking aead v0.5.2
+    Checking hmac v0.12.1
+    Checking signature v2.2.0
+    Checking sha2 v0.10.9
+    Checking hkdf v0.12.4
+    Checking rfc6979 v0.4.0
+    Checking ctr v0.9.2
+    Checking aes v0.8.4
+   Compiling darling_macro v0.20.11
+    Checking spki v0.7.3
+    Checking polyval v0.6.2
+    Checking pkcs8 v0.10.2
+    Checking dbl v0.3.2
+   Compiling libsqlite3-sys v0.38.2
+   Compiling darling v0.20.11
+   Compiling convert_case v0.10.0
+    Checking chacha20 v0.10.2
+    Checking keccak v0.1.6
+   Compiling derive_builder_core v0.20.2
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)
+   Compiling curve25519-dalek v5.0.0
+   Compiling heck v0.5.0
+    Checking equivalent v1.0.3
+   Compiling unicode-xid v0.2.6
+    Checking byteorder v1.5.0
+    Checking fastrand v2.5.0
+    Checking core-foundation-sys v0.8.7
+   Compiling crc24 v0.1.6
+   Compiling snafu-derive v0.9.2
+    Checking serdect v0.2.0
+    Checking arrayvec v0.7.8
+    Checking serde-big-array v0.5.1
+    Checking ulid v1.2.1
+    Checking sec1 v0.7.3
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+    Checking elliptic-curve v0.13.8
+    Checking serdect v0.3.0
+   Compiling derive_more-impl v2.1.1
+    Checking indexmap v2.14.2
+    Checking tempfile v3.27.0
+   Compiling derive_builder_macro v0.20.2
+   Compiling bitfields-impl v1.0.3
+    Checking rand v0.10.3
+    Checking ecdsa v0.16.9
+    Checking primeorder v0.13.6
+    Checking sha3 v0.10.9
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+    Checking pkcs1 v0.7.5
+    Checking cmac v0.7.2
+    Checking ghash v0.5.1
+    Checking ed25519 v2.2.3
+    Checking sha1 v0.10.7
+    Checking blake2 v0.10.6
+   Compiling num_enum_derive v0.7.6
+   Compiling futures-macro v0.3.34
+    Checking sha1 v0.11.0
+    Checking password-hash v0.5.0
+    Checking http v1.5.0
+    Checking futures-sink v0.3.34
+    Checking signature v3.0.0
+    Checking slab v0.4.12
+    Checking data-encoding v2.11.1
+    Checking zlib-rs v0.6.8
+    Checking futures-task v0.3.34
+    Checking foldhash v0.1.5
+    Checking futures-core v0.3.34
+    Checking same-file v1.0.6
+    Checking derive_more v2.1.1
+    Checking hashbrown v0.15.5
+    Checking walkdir v2.5.0
+    Checking futures-util v0.3.34
+    Checking snafu v0.9.2
+    Checking ed25519 v3.0.0
+    Checking num_enum v0.7.6
+    Checking argon2 v0.5.3
+    Checking bitfields v1.0.3
+    Checking ed25519-dalek v2.2.0
+    Checking sha1-checked v0.10.0
+    Checking rsa v0.9.10
+    Checking tungstenite v0.30.0
+    Checking eax v0.5.0
+    Checking aes-gcm v0.10.3
+    Checking cx448 v0.1.1
+    Checking p521 v0.13.3
+    Checking p384 v0.13.1
+    Checking p256 v0.13.2
+    Checking dsa v0.6.3
+    Checking k256 v0.13.4
+    Checking derive_builder v0.20.2
+    Checking core-foundation v0.10.1
+    Checking security-framework-sys v2.17.0
+    Checking flate2 v1.1.10
+    Checking blowfish v0.9.1
+    Checking camellia v0.1.0
+    Checking x25519-dalek v2.0.1
+    Checking aes-kw v0.2.1
+    Checking ocb3 v0.1.0
+    Checking twofish v0.7.1
+    Checking des v0.8.1
+    Checking cfb-mode v0.8.2
+    Checking cast5 v0.11.1
+    Checking idea v0.5.1
+    Checking md-5 v0.10.6
+    Checking ripemd v0.1.3
+    Checking block-padding v0.3.3
+    Checking hashlink v0.12.2
+    Checking sha2 v0.11.1
+    Checking notify-types v2.1.0
+    Checking fsevent-sys v4.1.0
+    Checking buffer-redux v1.1.0
+    Checking nom v8.0.0
+    Checking fallible-streaming-iterator v0.1.9
+    Checking replace_with v0.1.8
+    Checking fixedbitset v0.5.7
+    Checking hex v0.4.3
+    Checking ryu v1.0.23
+    Checking fallible-iterator v0.3.0
+    Checking unsafe-libyaml v0.2.11
+    Checking petgraph v0.8.3
+    Checking notify v8.2.0
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)
+    Checking ed25519-dalek v3.0.0
+    Checking security-framework v3.7.0
+    Checking serde_yaml v0.9.34+deprecated
+    Checking tokio-tungstenite v0.30.0
+    Checking zstd v0.14.3
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Checking pgp v0.21.0
+error: large size difference between variants
+   --> crates/bbt-supervisor/src/protocol.rs:366:1
+    |
+366 | /   pub enum Message {
+367 | | /     Reply {
+368 | | |         request_id: Ulid,
+369 | | |         result: Result<Reply, Failure>,
+370 | | |     },
+    | | |_____- the largest variant contains at least 304 bytes
+371 | | /     Event {
+372 | | |         event: Event,
+373 | | |     },
+    | | |_____- the second-largest variant contains at least 80 bytes
+374 | |   }
+    | |___^ the entire enum is at least 304 bytes
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#large_enum_variant
+    = note: `-D clippy::large-enum-variant` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+    |
+369 -         result: Result<Reply, Failure>,
+369 +         result: Box<Result<Reply, Failure>>,
+    |
+
+error: very complex type used. Consider factoring parts into `type` definitions
+  --> crates/bbt-supervisor/src/ring/journal.rs:49:14
+   |
+49 |     retired: Vec<(String, HashMap<Key, (Position, u64)>)>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#type_complexity
+   = note: `-D clippy::type-complexity` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::type_complexity)]`
+
+error: this `if` statement can be collapsed
+   --> crates/bbt-supervisor/src/ring/writer.rs:741:17
+    |
+741 | /                 if result.is_ok() && checkpoint {
+742 | |                     if let Err(e) =
+743 | |                         commit_group(&mut rings, journal.as_mut().unwrap(), &shared, true)
+...   |
+747 | |                 }
+    | |_________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#collapsible_if
+    = note: `-D clippy::collapsible-if` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+    |
+741 ~                 if result.is_ok() && checkpoint
+742 ~                     && let Err(e) =
+743 |                         commit_group(&mut rings, journal.as_mut().unwrap(), &shared, true)
+744 |                     {
+745 |                         result = Err(e);
+746 ~                     }
+    |
+
+error: this `if` statement can be collapsed
+   --> crates/bbt-supervisor/src/ring/writer.rs:843:17
+    |
+843 | /                 if let Some(key) = idle {
+844 | |                     if let Err(e) = rings.get_mut(&key).unwrap().compact(journal, false) {
+845 | |                         shared
+846 | |                             .queue
+...   |
+852 | |                 }
+    | |_________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#collapsible_if
+help: collapse nested if block
+    |
+843 ~                 if let Some(key) = idle
+844 ~                     && let Err(e) = rings.get_mut(&key).unwrap().compact(journal, false) {
+845 |                         shared
+...
+850 |                             .insert(key, failure(e));
+851 ~                     }
+    |
+
+error: this `if` statement can be collapsed
+   --> crates/bbt-supervisor/src/ring.rs:648:9
+    |
+648 | /         if let Some(entry) = self.entries.iter().rev().find(|e| e.kind == 4) {
+649 | |             if self
+650 | |                 .boundary
+651 | |                 .checkpoints
+...   |
+657 | |         }
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#collapsible_if
+help: collapse nested if block
+    |
+648 ~         if let Some(entry) = self.entries.iter().rev().find(|e| e.kind == 4)
+649 ~             && self
+650 |                 .boundary
+...
+655 |                 return self.payload(entry).map(Some);
+656 ~             }
+    |
+
+error: large size difference between variants
+   --> crates/bbt-supervisor/src/supervisor.rs:305:1
+    |
+305 | / enum Dispatch {
+306 | |     Ready(Result<Reply, Failure>),
+    | |     ----------------------------- the largest variant contains at least 288 bytes
+307 | |     Pending(CaptureResponse),
+    | |     ------------------------ the second-largest variant contains at least 16 bytes
+308 | | }
+    | |_^ the entire enum is at least 288 bytes
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#large_enum_variant
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+    |
+306 -     Ready(Result<Reply, Failure>),
+306 +     Ready(Box<Result<Reply, Failure>>),
+    |
+
+error: this `if` statement can be collapsed
+    --> crates/bbt-supervisor/src/supervisor.rs:1305:9
+     |
+1305 | /         if let Some(ring) = self.ring.as_mut() {
+1306 | |             if let Err(error) = ring.append_event(&event) {
+1307 | |                 let Event::Output { bytes, .. } = event else {
+1308 | |                     unreachable!()
+...    |
+1313 | |         }
+     | |_________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#collapsible_if
+help: collapse nested if block
+     |
+1305 ~         if let Some(ring) = self.ring.as_mut()
+1306 ~             && let Err(error) = ring.append_event(&event) {
+1307 |                 let Event::Output { bytes, .. } = event else {
+ ...
+1311 |                 return Err(error);
+1312 ~             }
+     |
+
+error: could not compile `bbt-supervisor` (lib) due to 7 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `bbt-supervisor` (lib test) due to 7 previous errors
+EXIT 101

@@ -313,6 +313,14 @@ struct PendingIo {
     response: CaptureResponse,
 }
 
+impl Drop for Actor {
+    fn drop(&mut self) {
+        // Drop seat handles while the capture writer is still alive. Their
+        // pending output/Close jobs must precede the writer's shutdown flush.
+        self.seats.clear();
+    }
+}
+
 impl Actor {
     fn token(&mut self) -> Token {
         let token = Token(self.next_token);
@@ -1302,14 +1310,14 @@ impl Seat {
             seq: self.next_seq,
             bytes,
         };
-        if let Some(ring) = self.ring.as_mut() {
-            if let Err(error) = ring.append_event(&event) {
-                let Event::Output { bytes, .. } = event else {
-                    unreachable!()
-                };
-                self.output = bytes;
-                return Err(error);
-            }
+        if let Some(ring) = self.ring.as_mut()
+            && let Err(error) = ring.append_event(&event)
+        {
+            let Event::Output { bytes, .. } = event else {
+                unreachable!()
+            };
+            self.output = bytes;
+            return Err(error);
         }
         self.output_since = None;
         self.sequence();

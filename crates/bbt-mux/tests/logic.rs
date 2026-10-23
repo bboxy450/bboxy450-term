@@ -943,7 +943,7 @@ fn ring_capture_throughput_with_logic_running_and_stopped() {
                 else {
                     panic!()
                 };
-                status
+                *status
             };
             if status.byte_end == raw_size as u64
                 && status.committed_sequence == status.captured_sequence

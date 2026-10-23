@@ -14,7 +14,10 @@ use crate::durability::{sync_directory, sync_file};
 use crate::store::Result;
 
 type Key = (Ulid, u64);
+type Coverage = HashMap<Key, (Position, u64)>;
 const COMMIT: u16 = 0xffff;
+const CHECKPOINT_PREFIX: usize = 28;
+const CHECKPOINT_MAGIC: &[u8; 4] = b"JCP2";
 const ROTATE: u64 = 64 * 1024 * 1024;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -34,6 +37,7 @@ pub(super) struct Record {
 }
 pub(super) struct Journal {
     root: PathBuf,
+    floor: Position,
     file: File,
     name: String,
     length: u64,
@@ -43,9 +47,9 @@ pub(super) struct Journal {
     buffer: Vec<u8>,
     last_full: std::time::Instant,
     files: HashMap<String, File>,
-    required: HashMap<Key, (Position, u64)>,
-    retired: Vec<(String, HashMap<Key, (Position, u64)>)>,
-    projected: HashMap<Key, (Position, u64)>,
+    required: Coverage,
+    retired: Vec<(String, Coverage)>,
+    projected: Coverage,
 }
 impl Journal {
     pub fn open(root: &Path) -> Result<Self> {
@@ -59,7 +63,22 @@ impl Journal {
             return Err(invalid("journal directory must be owned and not a symlink"));
         }
         std::fs::set_permissions(root, std::fs::Permissions::from_mode(0o700))?;
-        let name = format!("journal-{}.log", Ulid::new());
+        let existing = journal_files(root)?;
+        let previous = existing
+            .last()
+            .and_then(|p| p.file_name())
+            .and_then(|p| p.to_str());
+        let name = next_name(previous)?;
+        let floor = Position {
+            file: existing
+                .first()
+                .unwrap_or(&root.join(&name))
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .into_owned(),
+            offset: 0,
+        };
         let file = OpenOptions::new()
             .read(true)
             .append(true)
@@ -69,6 +88,7 @@ impl Journal {
         sync_file(&file, true)?;
         Ok(Self {
             root: root.into(),
+            floor,
             file,
             name,
             length: 0,
@@ -103,10 +123,43 @@ impl Journal {
         byte_start: u64,
         payload: &[u8],
     ) -> Result<Record> {
-        // A checkpoint explicitly names the preceding journal offset it covers.
+        if kind == 4 {
+            return Err(invalid("checkpoint requires a coverage cursor"));
+        }
+        self.append_at(key, kind, sequence, byte_start, payload, None)
+    }
+    pub fn floor(&self) -> Position {
+        self.floor.clone()
+    }
+    pub fn checkpoint(
+        &mut self,
+        key: Key,
+        sequence: u64,
+        byte_end: u64,
+        payload: &[u8],
+        covered: &Position,
+    ) -> Result<Record> {
+        self.append_at(key, 4, sequence, byte_end, payload, Some(covered))
+    }
+    fn append_at(
+        &mut self,
+        key: Key,
+        kind: u16,
+        sequence: u64,
+        byte_start: u64,
+        payload: &[u8],
+        covered: Option<&Position>,
+    ) -> Result<Record> {
         let checkpoint;
-        let payload = if kind == 4 {
-            checkpoint = [self.length.to_le_bytes().as_slice(), payload].concat();
+        let payload = if let Some(covered) = covered {
+            let id = Ulid::from_string(&covered.file[8..covered.file.len() - 4])?;
+            checkpoint = [
+                CHECKPOINT_MAGIC.as_slice(),
+                id.to_bytes().as_slice(),
+                covered.offset.to_le_bytes().as_slice(),
+                payload,
+            ]
+            .concat();
             checkpoint.as_slice()
         } else {
             payload
@@ -168,7 +221,7 @@ impl Journal {
         let mut bytes = vec![0; record.length];
         file.read_exact_at(&mut bytes, record.start + HEADER as u64)?;
         if record.kind == 4 {
-            Ok(bytes[8..].to_vec())
+            Ok(checkpoint_payload(&bytes)?.to_vec())
         } else {
             Ok(bytes)
         }
@@ -208,7 +261,7 @@ impl Journal {
         self.files.insert(self.name.clone(), self.file.try_clone()?);
         self.retired
             .push((self.name.clone(), std::mem::take(&mut self.required)));
-        self.name = format!("journal-{}.log", Ulid::new());
+        self.name = next_name(Some(&self.name))?;
         self.file = OpenOptions::new()
             .read(true)
             .append(true)
@@ -248,6 +301,32 @@ impl Journal {
         }
         Ok(())
     }
+}
+
+fn checkpoint_payload(bytes: &[u8]) -> Result<&[u8]> {
+    let prefix = if bytes.starts_with(CHECKPOINT_MAGIC) {
+        CHECKPOINT_PREFIX
+    } else {
+        8
+    };
+    bytes
+        .get(prefix..)
+        .ok_or_else(|| invalid("truncated journal checkpoint prefix"))
+}
+
+fn next_name(previous: Option<&str>) -> Result<String> {
+    let mut id = Ulid::new();
+    if let Some(previous) = previous {
+        let prior = Ulid::from_string(&previous[8..previous.len() - 4])?;
+        if id <= prior {
+            id = Ulid::from(
+                u128::from(prior)
+                    .checked_add(1)
+                    .ok_or_else(|| invalid("journal id exhausted"))?,
+            );
+        }
+    }
+    Ok(format!("journal-{id}.log"))
 }
 
 pub(super) fn journal_files(root: &Path) -> Result<Vec<PathBuf>> {
@@ -318,10 +397,22 @@ pub(super) fn scan(path: &Path) -> Result<(Vec<Record>, u64, bool)> {
                 break;
             }
             if kind == 4 {
-                if len < 8 || u64::from_le_bytes(payload[..8].try_into()?) != offset {
+                if payload.starts_with(CHECKPOINT_MAGIC) {
+                    if len < CHECKPOINT_PREFIX {
+                        break;
+                    }
+                    let covered_file = format!(
+                        "journal-{}.log",
+                        Ulid::from_bytes(payload[4..20].try_into()?)
+                    );
+                    let covered_offset = u64::from_le_bytes(payload[20..28].try_into()?);
+                    if covered_file > name || (covered_file == name && covered_offset > offset) {
+                        break;
+                    }
+                } else if len < 8 || u64::from_le_bytes(payload[..8].try_into()?) != offset {
                     break;
                 }
-                let saved = Saved::decode(&payload[8..])?;
+                let saved = Saved::decode(checkpoint_payload(&payload)?)?;
                 if saved.seat != seat
                     || saved.generation != generation
                     || saved.sequence != seq
@@ -358,7 +449,8 @@ pub(super) fn recover(ring: &mut Ring) -> Result<()> {
     if !link.exists() {
         return Ok(());
     }
-    let bytes = std::fs::read(link)?;
+    let mut bytes = Vec::new();
+    File::open(link)?.take(4097).read_to_end(&mut bytes)?;
     if bytes.len() > 4096 {
         return Err(invalid("oversized journal pointer"));
     }
@@ -399,7 +491,7 @@ pub(super) fn recover(ring: &mut Ring) -> Result<()> {
                     .map(|b| Saved::decode(&b).map(|s| s.sequence))
                     .transpose()?;
                 if latest.is_none_or(|seq| r.sequence >= seq) {
-                    ring.checkpoint(bytes[8..].to_vec())?;
+                    ring.checkpoint(checkpoint_payload(&bytes)?.to_vec())?;
                 }
             } else if r.sequence > ring.boundary.sequence {
                 if r.byte_start != ring.boundary.byte_end {
@@ -509,6 +601,40 @@ mod tests {
         assert!(!j.durable_due());
     }
     #[test]
+    fn legacy_checkpoint_publication_offsets_remain_readable() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("seat");
+        let seat = Ulid::new();
+        let ring = Ring::open(&root, seat, 1, 0, Settings::default()).unwrap();
+        let mut j = Journal::open(&temp.path().join("journal")).unwrap();
+        j.bind(&ring).unwrap();
+        let mut state = Playback::new(seat, 1, crate::SeatSize::default());
+        let e = Event::Output {
+            seat,
+            generation: 1,
+            seq: 1,
+            bytes: b"legacy".to_vec(),
+        };
+        state.apply(&e).unwrap();
+        j.append((seat, 1), 1, 1, 0, b"legacy").unwrap();
+        let legacy = [
+            j.length.to_le_bytes().as_slice(),
+            state.saved().encode().unwrap().as_slice(),
+        ]
+        .concat();
+        j.append_at((seat, 1), 4, 1, state.byte_end, &legacy, None)
+            .unwrap();
+        j.commit(true).unwrap();
+        assert_eq!(
+            Ring::open(&root, seat, 1, 0, Settings::default())
+                .unwrap()
+                .replay()
+                .unwrap()
+                .byte_end,
+            state.byte_end
+        );
+    }
+    #[test]
     fn bad_crc_and_oversized_header_never_commit_a_later_tick() {
         let temp = tempfile::tempdir().unwrap();
         let mut j = Journal::open(temp.path()).unwrap();
@@ -545,32 +671,47 @@ mod tests {
             bytes: b"\x1b[31mred".to_vec(),
         };
         playback.apply(&event).unwrap();
-        j.append((seat, 1), 1, 1, 0, b"\x1b[31mred").unwrap();
-        let offset = j.length;
+        let covered = j
+            .append((seat, 1), 1, 1, 0, b"\x1b[31mred")
+            .unwrap()
+            .position;
+        j.append((seat, 1), 1, 2, playback.byte_end, b"tail")
+            .unwrap();
+        let offset = covered.offset;
         let cp = j
-            .append(
+            .checkpoint(
                 (seat, 1),
-                4,
                 1,
                 playback.byte_end,
                 &playback.saved().encode().unwrap(),
+                &covered,
             )
             .unwrap();
-        let mut prefix = [0; 8];
+        let mut prefix = [0; CHECKPOINT_PREFIX];
         j.flush_buffer().unwrap();
         j.file
             .read_exact_at(&mut prefix, cp.start + HEADER as u64)
             .unwrap();
-        assert_eq!(u64::from_le_bytes(prefix), offset);
+        assert_eq!(
+            u64::from_le_bytes(prefix[20..28].try_into().unwrap()),
+            offset
+        );
+        assert_eq!(
+            format!(
+                "journal-{}.log",
+                Ulid::from_bytes(prefix[4..20].try_into().unwrap())
+            ),
+            covered.file
+        );
         j.rotate().unwrap();
-        j.append((seat, 1), 1, 2, playback.byte_end, b"tail")
+        j.append((seat, 1), 1, 3, playback.byte_end + 4, b"end")
             .unwrap();
         j.commit(true).unwrap();
         drop(j);
         let ring = Ring::open(&root, seat, 1, 0, Settings::default()).unwrap();
         let mut restored = ring.replay().unwrap();
-        assert_eq!(restored.sequence, 2);
-        assert_eq!(restored.byte_end, playback.byte_end + 4);
+        assert_eq!(restored.sequence, 3);
+        assert_eq!(restored.byte_end, playback.byte_end + 7);
         assert!(restored.term.take_events().is_empty());
         // A second open uses the compacted cursor and does not duplicate bytes.
         let again = Ring::open(&root, seat, 1, 0, Settings::default()).unwrap();

@@ -1,0 +1,38 @@
+SOURCE_COMMIT 1871a6d95106c28c35f6868691772d240059e16c
+COMMAND ['cargo', 'test', '--release', '--locked', '-p', 'bbt-mux', '--test', 'gates_seats', 'gate_memory', '--', '--ignored', '--nocapture', '--test-threads=1']
+{'GATE_RATE': '32kB/s', 'GATE_SECONDS': '60', 'GATE_KEEP_RUN': '1', 'GATE_RUN_DIR': '/Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs', 'GATE_SEATS': '400'}
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)
+   Compiling security-framework-sys v2.17.0
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling security-framework v3.7.0
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `release` profile [optimized] target(s) in 19.41s
+     Running tests/gates_seats.rs (target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0)
+/Users/feral/mydev/bboxy450-term-rook/target/w1-2d/release/deps/gates_seats-0a3918ce8c4823c0: replacing existing signature
+
+running 1 test
+test gate_memory ... GATE spawn progress=25/400 elapsed_s=0.845
+GATE spawn progress=50/400 elapsed_s=1.718
+GATE spawn progress=75/400 elapsed_s=2.719
+GATE spawn progress=100/400 elapsed_s=3.844
+GATE spawn progress=125/400 elapsed_s=4.969
+GATE spawn progress=150/400 elapsed_s=6.177
+GATE spawn progress=175/400 elapsed_s=7.413
+GATE spawn progress=200/400 elapsed_s=8.697
+GATE spawn progress=225/400 elapsed_s=10.132
+GATE spawn progress=250/400 elapsed_s=11.783
+GATE spawn progress=275/400 elapsed_s=13.439
+GATE spawn progress=300/400 elapsed_s=15.324
+GATE spawn progress=325/400 elapsed_s=17.414
+GATE spawn progress=350/400 elapsed_s=19.901
+GATE spawn progress=375/400 elapsed_s=22.450
+GATE spawn progress=400/400 elapsed_s=25.195
+GATE capture seats=400 load_wall_s=60.974 writer_busy_fraction=0.3099 busy_replies=0 heartbeat_max_ms=582.816 commit_p99_upper_ms=6.000 commit_max_ms=24.523
+GATE retained owned fixture /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-SHFZN9
+GATE memory value=849.344 unit=MiB budget=none MEASURED ptmx_max=999 seats=400 rate=32kB/s load_s=60 baseline_mib=12.2 peak_mib=849.3 per_seat_kib=2143.1 spawn_s=25.2 sample_seat_records=8032 sync_s=0.0 marker_s=0.0 sample_seat_full=252 disk_peak_mib=1189.0 observed_s=86.284 writer_busy_s=28.277 writer_s_per_wall_s=0.328 commit_rounds=5454 commit_p99_upper_ms=6.000 commit_max_ms=24.523 logic_alive=true
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 327.66s
+
+EXIT 0; wall_s=347.424

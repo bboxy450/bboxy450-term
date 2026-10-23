@@ -45,7 +45,9 @@ The `paused` display is delayed until pressure persists for one second.
 Seat rings are derived. Live history pages merge their retained prefix with
 bounded journal-tail references; checkpoint payloads remain opaque and are
 acknowledged only after a journal full flush. Checkpoint journal records prefix
-the payload with the covered journal offset. Idle work and seals compact tail
+the payload with a covered journal ULID and offset (versioned 28-byte prefix), referring to the
+parsed sequence, or a conservative earlier retained replay floor. Legacy
+8-byte publication cursors remain readable. Idle work and seals compact tail
 records into the existing cold-segment format; projection boundaries store the
 covered journal filename/offset. Reopening scans CRC-valid whole ticks and
 rebuilds a lagging projection. It rejects torn/uncommitted suffixes and never

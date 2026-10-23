@@ -1,0 +1,35 @@
+['cargo', 'clippy', '--locked', '-p', 'bbt-supervisor', '-p', 'bbt-mux', '--all-targets', '--', '-D', 'warnings']
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)
+    Checking security-framework-sys v2.17.0
+    Checking security-framework v3.7.0
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+error[E0308]: `if` and `else` have incompatible types
+   --> crates/bbt-mux/tests/logic.rs:944:17
+    |
+929 |                let status = if let Some(logic) = &logic {
+    |  ___________________________-
+930 | |/                 runtime
+931 | ||                     .block_on(logic.client.history(seat, 1, 1, 1))
+932 | ||                     .unwrap()
+933 | ||                     .status
+    | ||___________________________- expected because of this
+...   |
+944 | |                  status
+    | |                  ^^^^^^ expected `Status`, found `Box<Status>`
+945 | |              };
+    | |______________- `if` and `else` have incompatible types
+    |
+    = note: expected struct `Status`
+               found struct `std::boxed::Box<Status>`
+help: consider unboxing the value
+    |
+944 |                 *status
+    |                 +
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `bbt-mux` (test "logic") due to 1 previous error
+EXIT 101

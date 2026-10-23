@@ -27,6 +27,9 @@ impl LocalBlobs {
         }
         Ok(self.root.join(format!("{digest}.zst")))
     }
+    pub(crate) fn put_ordered(&self, bytes: &[u8]) -> Result<String> {
+        self.put_tier(bytes, false)
+    }
     /// The shared capture writer supplies the subsequent device-wide full
     /// flush. File and directory ordering must be established before returning.
     fn put_tier(&self, bytes: &[u8], strong: bool) -> Result<String> {
