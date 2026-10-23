@@ -268,13 +268,15 @@ impl Gpu {
             logger,
         );
     }
-    pub fn collect_gpu(&self, budget: &mut crate::budget::Budget) -> Option<(u64, Instant)> {
-        let mut completed = None;
+    pub fn collect_gpu(
+        &self,
+        budget: &mut crate::budget::Budget,
+        mut complete: impl FnMut(u64, Instant),
+    ) {
         for sample in self.gpu_samples.try_iter() {
-            completed = Some((sample.frame, sample.completed_at));
+            complete(sample.frame, sample.completed_at);
             budget.gpu(sample);
         }
-        completed
     }
     /// Prepare first-use text and pipelines on IO, before handing state to UI.
     pub fn warm(&mut self, ops: Vec<Paint>, scale: f32) -> Result<(), String> {

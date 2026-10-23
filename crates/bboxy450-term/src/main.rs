@@ -1031,6 +1031,9 @@ impl App {
             self.last_update = sequence;
         }
         if let Some(state) = self.live_updates.take() {
+            if let Some(stall) = &mut self.stall {
+                stall.model_received(&state);
+            }
             self.focus
                 .reconcile(self.live_state.as_ref().map(|old| &old.ui), &state.ui);
             let refresh = self.live_state.as_ref().is_none_or(|old| {
@@ -1226,11 +1229,7 @@ impl App {
                         .saturating_sub(if metal { Duration::ZERO } else { wait });
                 self.budget.cpu(self.meter.total_frames(), cpu);
             }
-            let completed = self.gpu.as_ref().unwrap().collect_gpu(&mut self.budget);
             if let Some(stall) = &mut self.stall {
-                if let Some((id, at)) = completed {
-                    stall.gpu_complete(id, at);
-                }
                 if let Some(model) = &self.live_state {
                     let cpu = bbt_rt::fault::thread_cpu_time().map_err(|e| e.to_string())?;
                     stall.frame(
@@ -1243,6 +1242,15 @@ impl App {
                     );
                 }
             }
+            let stall = &mut self.stall;
+            self.gpu
+                .as_ref()
+                .unwrap()
+                .collect_gpu(&mut self.budget, |id, at| {
+                    if let Some(stall) = stall {
+                        stall.gpu_complete(id, at);
+                    }
+                });
             if !self.animate {
                 self.pacer.as_ref().unwrap().set_active(false)?;
             }
@@ -1312,14 +1320,15 @@ impl ApplicationHandler<UiEvent> for App {
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: UiEvent) {
         match event {
             UiEvent::StallPoll => {
-                let completed = self
-                    .gpu
-                    .as_ref()
-                    .and_then(|gpu| gpu.collect_gpu(&mut self.budget));
+                let stall = &mut self.stall;
+                if let Some(gpu) = &self.gpu {
+                    gpu.collect_gpu(&mut self.budget, |id, at| {
+                        if let Some(stall) = stall {
+                            stall.gpu_complete(id, at);
+                        }
+                    });
+                }
                 if let Some(stall) = &mut self.stall {
-                    if let Some((id, at)) = completed {
-                        stall.gpu_complete(id, at);
-                    }
                     let pending = self.redraw_pending.get()
                         || !self.inbox.messages.is_empty()
                         || !self.inbox.output.is_empty();

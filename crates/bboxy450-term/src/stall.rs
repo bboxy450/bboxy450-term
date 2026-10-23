@@ -145,6 +145,8 @@ pub struct Measurements {
     pub frames: usize,
     pub hz: f64,
     pub input_to_gpu_complete_ms: Option<f64>,
+    pub input_to_prepared_model_ms: Option<f64>,
+    pub input_to_encoded_frame_ms: Option<f64>,
     pub input_budget_ms: f64,
     pub encoded_changes: BTreeMap<String, u64>,
     pub idle_frames: u64,
@@ -219,6 +221,8 @@ pub struct Native {
     changes: BTreeMap<String, u64>,
     probe_started: Option<(u64, Instant)>,
     probe_frame: Option<u64>,
+    model_ms: Option<f64>,
+    encoded_ms: Option<f64>,
     input_ms: Option<f64>,
     settled: Option<(u64, u64)>,
     idle: Option<(Instant, u64, u64)>,
@@ -284,6 +288,8 @@ impl Native {
             changes: BTreeMap::new(),
             probe_started: None,
             probe_frame: None,
+            model_ms: None,
+            encoded_ms: None,
             input_ms: None,
             settled: None,
             idle: None,
@@ -306,6 +312,17 @@ impl Native {
                     states.consumed.fetch_add(1, Ordering::Relaxed);
                 }
             }
+        }
+    }
+    pub fn model_received(&mut self, model: &Model) {
+        if self.model_ms.is_none()
+            && let Some((id, start)) = self.probe_started
+            && model
+                .screens
+                .values()
+                .any(|screen| contains(screen, &format!("R5P{id:08X}")))
+        {
+            self.model_ms = Some(start.elapsed().as_secs_f64() * 1000.);
         }
     }
     pub fn poll(
@@ -369,6 +386,8 @@ impl Native {
                 frames: self.cpu.len(),
                 hz,
                 input_to_gpu_complete_ms: self.input_ms,
+                input_to_prepared_model_ms: self.model_ms,
+                input_to_encoded_frame_ms: self.encoded_ms,
                 input_budget_ms: 2000. / hz,
                 encoded_changes: self.changes.clone(),
                 idle_frames: frames - old_frames,
@@ -442,6 +461,9 @@ impl Native {
                 let line_height = prepared.height as f32 / screen.rows as f32;
                 if rect.w * scale >= 11. * cell_width && rect.h * scale >= line_height {
                     self.probe_frame = Some(frame);
+                    self.encoded_ms = self
+                        .probe_started
+                        .map(|(_, start)| start.elapsed().as_secs_f64() * 1000.);
                 } else {
                     self.probe_clipped = true;
                 }

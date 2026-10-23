@@ -79,6 +79,7 @@ pub fn run(config: Config) -> Result<(), String> {
             }
         }
         let changed = if let Some(next) = updates.take() {
+            controller.model_received(&next);
             model = next;
             scene.set_model(&model, &model.ui.window.stage);
             true
