@@ -12,7 +12,7 @@ use crate::{
     store::{Result, invalid},
 };
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub use guard::{ArbiterView, Readiness, ReadyToken};
 pub use launch::{LaunchContext, LaunchPlan};
@@ -189,7 +189,6 @@ pub trait Adapter: Send + Sync {
         priority: Priority,
         allow_interrupt: bool,
     ) -> AdapterFuture<'a, WakeOutcome>;
-    fn resume_command(&self, cwd: &Path) -> Option<Vec<String>>;
 }
 impl Adapter for Session {
     fn record(&self) -> &HarnessRecord {
@@ -277,21 +276,5 @@ impl Adapter for Session {
             self.record_outcome(id, &outcome);
             outcome
         })
-    }
-    fn resume_command(&self, _cwd: &Path) -> Option<Vec<String>> {
-        match self.record.kind.as_str() {
-            "claude" => Some(vec![
-                self.record.command[0].clone(),
-                "--resume".into(),
-                self.binding.session.clone(),
-            ]),
-            "codex" => Some(vec![
-                self.record.command[0].clone(),
-                "resume".into(),
-                self.binding.session.clone(),
-            ]),
-            "zsh" => Some(self.record.command.clone()),
-            _ => None,
-        }
     }
 }

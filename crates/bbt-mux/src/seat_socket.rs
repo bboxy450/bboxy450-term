@@ -232,7 +232,11 @@ async fn gui_session(
                         consumer=Some(client.bus.subscribe(subscription).await?);
                         send(&mut write,&GuiReply::Identity(client.gui_identity().await?)).await?;
                     }
-                    let op=match &request.action {GuiAction::Input {id,..}=>*id,_=>Ulid::new()};
+                    let op=match &request.action {
+                        GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}=>*id,
+                        GuiAction::UndoClose {close_id,..}=>*close_id,
+                        _=>Ulid::new(),
+                    };
                     let reply:Result<GuiReply>=async {
                         match request.action {
                             GuiAction::ListSeats=>Ok(GuiReply::Seats(client.gui_seats().await?)),
@@ -262,7 +266,26 @@ async fn gui_session(
                                 client.gui_resize(Ulid::from(seat.0.0),generation,cols,rows).await?;
                                 Ok(GuiReply::Ok {op})
                             }
-                            GuiAction::ScheduleClose {..}|GuiAction::UndoClose {..}|GuiAction::GetHistory {..}=>Err(invalid("close, undo and history are not connected until C1c")),
+                            GuiAction::ScheduleClose {seat,id,position}=> {
+                                let seat=Ulid::from(seat.0.0);
+                                let record=client.record(seat).await?;
+                                client.close(seat,record.generation,id,position,60_000).await?;
+                                Ok(GuiReply::Seat(client.gui_seat(seat).await?))
+                            }
+                            GuiAction::UndoClose {seat,close_id,layout_revision}=> {
+                                let seat=Ulid::from(seat.0.0);
+                                let record=client.record(seat).await?;
+                                let close=record.close.as_ref().filter(|close|close.operation==close_id)
+                                    .ok_or_else(||invalid("stale close operation"))?;
+                                client.undo(seat,record.generation,close.revision,layout_revision).await?;
+                                Ok(GuiReply::Seat(client.gui_seat(seat).await?))
+                            }
+                            GuiAction::GetHistory {seat,from,to}=> {
+                                let id=Ulid::from(seat.0.0);
+                                let record=client.record(id).await?;
+                                let history=client.history(id,record.generation,from,to).await?;
+                                gui_history_reply(seat,record.generation,from,to,history)
+                            }
                         }
                     }.await;
                     send(&mut write,&reply.unwrap_or_else(|e|GuiReply::Error {op,reason:e.to_string()})).await?;
@@ -322,6 +345,76 @@ async fn gui_session(
         let _ = client.bus.unsubscribe(&consumer).await;
     }
     result
+}
+
+fn gui_history_reply(
+    seat: bbt_proto::SeatId,
+    generation: u64,
+    from: u64,
+    to: u64,
+    history: crate::ring::History,
+) -> Result<GuiReply> {
+    use bbt_proto::gui::HistoryRecord;
+    if history.status.generation != generation {
+        return Err(invalid("history belongs to another seat or generation"));
+    }
+    let mut records = Vec::new();
+    let gap = |from, to, source: &crate::ring::HistoryGap| HistoryRecord::Gap {
+        from,
+        to,
+        reason: source.reason.clone(),
+    };
+    if let Some(missing) = &history.gap {
+        match missing.retained_from {
+            Some(first) if from < first => records.push(gap(from, to.min(first - 1), missing)),
+            None => records.push(gap(from, to, missing)),
+            _ => {}
+        }
+    }
+    for record in history.records {
+        let record_generation = match &record.event {
+            crate::Event::Output { generation, .. }
+            | crate::Event::Resized { generation, .. }
+            | crate::Event::Exited { generation, .. } => *generation,
+        };
+        if record.event.seat() != Ulid::from(seat.0.0) || record_generation != generation {
+            return Err(invalid(
+                "history record belongs to another seat or generation",
+            ));
+        }
+        records.push(match record.event {
+            crate::Event::Output { seq, bytes, .. } => HistoryRecord::Bytes {
+                sequence: seq,
+                bytes,
+            },
+            crate::Event::Resized { seq, .. } | crate::Event::Exited { seq, .. } => {
+                HistoryRecord::Bytes {
+                    sequence: seq,
+                    bytes: Vec::new(),
+                }
+            }
+        });
+    }
+    // A suffix gap follows all available records, including later pages. Do
+    // not put it before data that the caller will fetch through next.
+    if history.next.is_none()
+        && let Some(missing) = &history.gap
+        && let Some(last) = missing.retained_to
+        && to > last
+    {
+        records.push(gap(from.max(last.saturating_add(1)), to, missing));
+    }
+    let reply = GuiReply::History {
+        seat,
+        records,
+        next: history.next,
+    };
+    if serde_json::to_vec(&reply)?.len() >= MAX_LINE {
+        return Err(invalid(
+            "HistoryFrameTooLarge: capture record exceeds GUI framing",
+        ));
+    }
+    Ok(reply)
 }
 
 pub async fn read_line(reader: &mut (impl AsyncBufRead + Unpin)) -> Result<Option<Vec<u8>>> {
