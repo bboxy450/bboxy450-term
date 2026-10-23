@@ -1,0 +1,41 @@
+$ ['date']
+Fri Oct 23 05:05:44 PDT 2026
+EXIT 0; elapsed 0.004s
+$ ['git', 'status', '--porcelain', '--untracked-files=no']
+EXIT 0; elapsed 0.027s
+$ ['git', 'fetch', 'origin']
+EXIT 0; elapsed 0.764s
+$ ['git', 'verify-commit', 'eed082d']
+gpg: Signature made Fri Oct 23 05:03:36 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+EXIT 0; elapsed 0.037s
+$ ['git', 'merge-base', '--is-ancestor', '3793e5f6ec27797d0391927e2ffdd5cd3d6d82ff', 'origin/main']
+EXIT 0; elapsed 0.026s
+$ ['git', 'rebase', '--gpg-sign', 'origin/main']
+Successfully rebased and updated refs/heads/exec5.
+EXIT 0; elapsed 0.075s
+$ ['git', 'rev-parse', 'HEAD', 'origin/main']
+eed082db82607fa70c13d79a6ae09abfc137d17c
+eed082db82607fa70c13d79a6ae09abfc137d17c
+EXIT 0; elapsed 0.023s
+
+$ ['git', 'fetch', 'origin']
+EXIT 0; elapsed 1.122s
+
+$ ['git', 'log', '--oneline', 'HEAD..origin/main']
+3f18f9f AGENTS: gate on a rebased tip; if main moves during the gate, hand off the gated commit (no re-gate) and the Oracle verifies the merged tree
+92e60dc merge R12-1: perf HUD sparkline as one layout-free Rects element; HUD share of busy UI time ~13.5% -> ~3.3%
+af10c95 Record R12-1 gate: perf byte-identical 48/48, full parity 334 reviews (P3 baseline), HUD share 13-14% -> 3-4%
+f748047 R12-1: perf HUD sparkline as one Rects node, not ~700 boxes
+b7354f0 arch: decision 29, explicit seat placement on the GUI wire (Nyx's seam, two simplifications)
+a1734db merge L8 checkpoint B + lab executor caption: launcher default picks spawn harnesses on local/registered hosts; captions show the true backend default role
+6c45382 Record generic launcher spawn and paired full parity evidence
+4fd0a1c arch: map records the signed work-item writes (DSSE provenance by the seat leaf key, W2.5d)
+2e038c5 Exercise unsupported and generic shell intents in the IO fixture
+05dce49 Route default launcher picks through a generic spawn intent
+6a4776d lab: app-launched harnesses default to executor
+EXIT 0; elapsed 0.037s
+
+$ ['git', 'diff', '--check']
+EXIT 0; elapsed 0.048s

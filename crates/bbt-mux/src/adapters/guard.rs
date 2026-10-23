@@ -33,6 +33,13 @@ pub enum Readiness {
     NotReady(&'static str),
     OperatorHandoff,
 }
+/// A literal paste consumes readiness; Enter is an explicit caller choice.
+#[derive(Clone, Copy)]
+pub struct LiteralInput<'a> {
+    pub id: Ulid,
+    pub text: &'a str,
+    pub submit: bool,
+}
 pub fn check(session: &Session, view: &ArbiterView, now_ms: u64) -> Readiness {
     if !matches!(session.record.kind.as_str(), "claude" | "codex" | "zsh") {
         return Readiness::OperatorHandoff;
@@ -86,6 +93,28 @@ impl Session {
         journal: &dyn crate::store::Store,
         write: impl FnOnce(Vec<u8>) -> Result<crate::InputReceipt>,
     ) -> Result<WakeOutcome> {
+        self.submit_literal(
+            view,
+            now_ms,
+            LiteralInput {
+                id,
+                text,
+                submit: true,
+            },
+            journal,
+            write,
+        )
+    }
+    /// Journal before a guarded literal paste, optionally submitting Enter.
+    pub fn submit_literal(
+        &mut self,
+        view: &ArbiterView,
+        now_ms: u64,
+        input: LiteralInput<'_>,
+        journal: &dyn crate::store::Store,
+        write: impl FnOnce(Vec<u8>) -> Result<crate::InputReceipt>,
+    ) -> Result<WakeOutcome> {
+        let id = input.id;
         let key = format!("adapter_input/{id}");
         if let Some(bytes) = journal.get(&key)? {
             let outcome: WakeOutcome = serde_json::from_slice(&bytes)?;
@@ -108,7 +137,7 @@ impl Session {
                 });
             }
         };
-        let bytes = self.prepare_input(token, view, now_ms, id, text)?;
+        let bytes = self.prepare_literal(token, view, now_ms, input)?;
         let pending = WakeOutcome::unknown(
             "PTY submission journaled; query the original supervisor input ID",
         );
@@ -166,6 +195,26 @@ impl Session {
         id: Ulid,
         text: &str,
     ) -> Result<Vec<u8>> {
+        self.prepare_literal(
+            token,
+            view,
+            now_ms,
+            LiteralInput {
+                id,
+                text,
+                submit: true,
+            },
+        )
+    }
+    /// Recheck and consume a positive token before encoding literal text.
+    pub fn prepare_literal(
+        &mut self,
+        token: ReadyToken,
+        view: &ArbiterView,
+        now_ms: u64,
+        input: LiteralInput<'_>,
+    ) -> Result<Vec<u8>> {
+        let LiteralInput { id, text, submit } = input;
         if token.binding != view.binding
             || token.operator_epoch != view.operator_epoch
             || token.expires_ms < now_ms
@@ -190,11 +239,14 @@ impl Session {
                 "multiline/tab input without bracketed paste needs operator handoff",
             ));
         }
-        let bytes = if view.bracketed_paste {
-            format!("\x1b[200~{text}\x1b[201~\r").into_bytes()
+        let mut bytes = if view.bracketed_paste {
+            format!("\x1b[200~{text}\x1b[201~").into_bytes()
         } else {
-            format!("{text}\r").into_bytes()
+            text.into_bytes()
         };
+        if submit {
+            bytes.push(b'\r');
+        }
         if bytes.len() > crate::protocol::MAX_INPUT_BYTES {
             return Err(invalid("input exceeds supervisor bound"));
         }

@@ -78,13 +78,23 @@ impl Journal {
         call: &Call,
         dispatch: impl FnOnce() -> Value,
     ) -> Result<Value> {
-        let (retained, fresh) = self.record(actor, call, || error(
-            call.op_id, "unknown", "durable attempt has no recorded outcome; retain the operation ID and check its receipts"
-        ), Mode::Effect, |_| true)?;
+        let (retained, fresh) = self.admit(actor, call)?;
         if !fresh {
             return Ok(retained);
         }
-        let value = dispatch();
+        self.complete(actor, call, dispatch())
+    }
+
+    /// Commit one durable attempt before asynchronous I/O; retained attempts
+    /// never authorize another native submission, including unknown outcomes.
+    pub fn admit(&self, actor: &Actor, call: &Call) -> Result<(Value, bool)> {
+        self.record(actor,call,||error(
+            call.op_id,"unknown","durable attempt has no recorded outcome; retain the operation ID and check its receipts"
+        ),Mode::Effect,|_|true)
+    }
+
+    /// Publish the result and outcome audit together after the admitted I/O.
+    pub fn complete(&self, actor: &Actor, call: &Call, value: Value) -> Result<Value> {
         let result = if serde_json::to_vec(&value)?.len() > MAX_RESULT {
             error(
                 call.op_id,
@@ -96,6 +106,20 @@ impl Journal {
         };
         let mut db = self.store.connection()?;
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let admitted: Vec<u8> = tx.query_row(
+            "SELECT value FROM kv WHERE key=?1",
+            [format!("control/op/{}", call.op_id)],
+            |row| row.get(0),
+        )?;
+        let admitted: Entry = serde_json::from_slice(&admitted)?;
+        if admitted.actor != *actor
+            || admitted.tool != call.tool
+            || admitted.args_digest != digest(&serde_json::to_vec(&call.args)?)
+        {
+            return Err(crate::store::invalid(
+                "control completion admission mismatch",
+            ));
+        }
         let entry = Entry {
             actor: actor.clone(),
             tool: call.tool.clone(),
