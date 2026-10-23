@@ -2,4 +2,5 @@
 pub mod cockpit;
 pub mod grids;
 pub mod hosts;
+pub mod launcher;
 pub mod model;
