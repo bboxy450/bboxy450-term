@@ -1,0 +1,13 @@
+2026-10-23T11:49Z RESUME: date, cat AGENTS.md, cat ICQ SKILL.md, git status --short --branch, git diff -- sprites.rs, rg task/spec/graph, gallery/sprite/local-note reads, git log -4, bounded inbox after5840, disk inventory: all EXIT0. Pending candidate patch existed before resume. HEAD e877187; previous frozen terminal-gallery native source23caced matches accepted terminal rendering paths.
+COMMAND ["cargo", "run", "-p", "bbt-render", "--example", "terminal_gallery", "--locked", "--", "/Users/feral/mydev/bboxy450-term-exec4/target/t2-layers-1792755548117251000/double-box-candidate"] ENV CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0
+EXIT 0 elapsed 7.204s; raw /Users/feral/mydev/bboxy450-term-exec4/target/t2-layers-1792755548117251000/double-box-build.log
+Candidate crop/profile comparison: Python Pillow+NumPy, original pixels; web|frozen accepted before|candidate; raw RGB threshold16 and mean error for row14 cols12..41. EXIT0. /Users/feral/mydev/bboxy450-term-exec4/target/t2-layers-1792755548117251000/double-box-candidate-metrics.json
+Added double_rules_join_without_stubs_or_filled_crossings. CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 cargo test -p bbt-render --lib double_rules_join_without_stubs_or_filled_crossings --locked: EXIT101, crossing center alpha59 instead of0, real red regression.
+COMMAND ["cargo", "test", "-p", "bbt-render", "--lib", "double_rules_join_without_stubs_or_filled_crossings", "--locked"] ENV CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0
+EXIT 101 elapsed 1.544s; raw /Users/feral/mydev/bboxy450-term-exec4/target/t2-layers-1792755548117251000/double-box-test.log
+First outlined-network test: EXIT101, center3/255 from antialiased corners. Test now allows <16/255 coverage in the open center; pre-fix59/255 still fails. This corrects the test, not the rasterizer.
+COMMAND ["cargo", "test", "-p", "bbt-render", "--lib", "double_rules_join_without_stubs_or_filled_crossings", "--locked"] ENV CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0
+EXIT 0 elapsed 2.755s; raw /Users/feral/mydev/bboxy450-term-exec4/target/t2-layers-1792755548117251000/double-box-test-final.log
+COMMAND ["cargo", "run", "-p", "bbt-render", "--example", "terminal_gallery", "--locked", "--", "/Users/feral/mydev/bboxy450-term-exec4/target/t2-layers-1792755548117251000/double-box-final"] ENV CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0
+EXIT 0 elapsed 7.957s; raw /Users/feral/mydev/bboxy450-term-exec4/target/t2-layers-1792755548117251000/double-box-gallery.log
+Original-pixel final box comparison/Pillow+NumPy EXIT0; final crop read via view_image(original); inspect DOM probe EXIT0; own Chrome11857 absent (ps EXIT1 expected); rustfmt --edition2024 sprites.rs EXIT0; git diff --stat EXIT0.
