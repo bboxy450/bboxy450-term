@@ -1,0 +1,24 @@
+# R12-1 gate (c9987eb on main e877187)
+(a) before perf parity exit=0 parity gate: pass (0 pixel reviews advisory)
+(b) after render exit=0 rendered 48 PNGs to <scratch>/r12-perf-after2/native
+    perf native sha256: before 48, after 48, missing 0, byte-different 0
+(c) ci-local --parity exit=0 parity: 1664 cases, 859 review; target/parity/legacy/index.html parity: 1704 cases, 334 review; target/parity/index.html parity gate: pass (334 pixel reviews advisory) ci-local: all gates passed 
+(d) perf named-geometry keys: before 1792, after 1792, only-before 0, only-after 0
+    perf cases in full run: 48, not within policy: 0
+done
+
+# Paths were tried first (rejected): perf changed px +0.12..0.61 pts, 8 hud-alone cases over 2%; relative rounding in the module
+# (running sum, per-height, floor) reached at best 4 cases at 2.05%. Root cause: the renderer snaps Rect edges in absolute device
+# space (bbt-render chrome/mod.rs physical_rect); paths are not snapped. Rects paint the identical Prim::Rect sequence: byte-identical.
+
+# Layout cost under the HUD, custody-clean (opt + debug assertions, memory custody: all six footers 'unsigned, local only')
+# binaries: before e877187 e85c733d46066947, after c9987eb d1435cbb710d7e5b
+# throttled seq firehose in 4 zsh panes, --meter, sample 8 s at t=5; Scene::foreground holds the HUD (and the launcher, closed here)
+pair  build   busy  foreground  HUD-layout  share   HUD CPU p50/p99
+1     before   600      79          51      13.2%   2.55/3.07 (idle capture)
+1     after    692      21          14       3.0%   4.74/8.00
+2     before   948     132          77      13.9%   5.29/9.66
+2     after    697      21          17       3.0%   4.92/7.65
+3     before   906     122          66      13.5%   5.37/10.42
+3     after    748      29          18       3.9%   5.28/8.33
+# HUD share of busy UI time 13.2-13.9% -> 3.0-3.9% (about -75%). Per-frame CPU is noisy (other agents' load); the sample share is the stable measure.
