@@ -480,8 +480,9 @@ briefs Executors from the specs, never from this note.
     `p1` is worker-class priority ≥ 7 on the 0–9 scale (restated from a
     wrong 0–255 threshold the same day). (e) Residuals from Nyx: under
     local-dev the operator's `role_grant_id` is the digest of the persisted
-    ID1d issuer record and `role_epoch` the local-dev epoch, never a minted
-    grant; the operator destination is the sink `operator/inbox` in every
+    first-launch record `identity/local-issuer` and `role_epoch` its epoch
+    (corrected the same day from `identity/issuer`, which exists only after
+    a cutover or reset; Nyx), never a minted grant, no IssuerState created; the operator destination is the sink `operator/inbox` in every
     swarm tree with recipient reference `operator:<device_id>`, delivering
     to the retained `operator/inbox/message`; replies address the same sink. (f) Every GUI messaging request names
     one `swarm_id`; `Send` and `Receipts` must agree with the swarm inferred
