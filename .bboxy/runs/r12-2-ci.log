@@ -1,0 +1,2779 @@
+layering: held
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling libc v0.2.191
+   Compiling cfg-if v1.0.5
+   Compiling serde_core v1.0.229
+   Compiling typenum v1.20.1
+   Compiling version_check v0.9.5
+   Compiling serde v1.0.229
+   Compiling subtle v2.6.1
+   Compiling const-oid v0.9.6
+   Compiling zmij v1.0.23
+   Compiling log v0.4.34
+   Compiling generic-array v0.14.7
+   Compiling zerocopy v0.8.63
+   Compiling libm v0.2.16
+   Compiling memchr v2.8.3
+   Compiling find-msvc-tools v0.1.15
+   Compiling autocfg v1.5.1
+   Compiling shlex v2.0.1
+   Compiling objc2-encode v4.1.0
+   Compiling smallvec v1.16.3
+   Compiling crc32fast v1.5.3
+   Compiling num-traits v0.2.19
+   Compiling thiserror v2.0.21
+   Compiling syn v2.0.119
+   Compiling syn v3.0.9
+   Compiling cfg_aliases v0.2.2
+   Compiling base64ct v1.8.3
+   Compiling itoa v1.0.18
+   Compiling jobserver v0.1.35
+   Compiling foldhash v0.2.0
+   Compiling objc2 v0.6.5
+   Compiling pem-rfc7468 v0.7.0
+   Compiling hashbrown v0.17.1
+   Compiling cc v1.9.0
+   Compiling getrandom v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling cpufeatures v0.2.17
+   Compiling serde_json v1.0.154
+   Compiling equivalent v1.0.3
+   Compiling indexmap v2.14.2
+   Compiling radium v0.7.0
+   Compiling unicode-width v0.2.2
+   Compiling tap v1.0.1
+   Compiling parking_lot_core v0.9.12
+   Compiling bitflags v2.13.2
+   Compiling wyz v0.5.1
+   Compiling simd-adler32 v0.3.10
+   Compiling block2 v0.6.2
+   Compiling dispatch2 v0.3.1
+   Compiling base16ct v0.2.0
+   Compiling scopeguard v1.2.0
+   Compiling funty v2.0.0
+   Compiling sha2-asm v0.6.4
+   Compiling lock_api v0.4.14
+   Compiling winnow v1.0.4
+   Compiling objc2-core-foundation v0.3.2
+   Compiling bitvec v1.1.1
+   Compiling arrayvec v0.7.8
+   Compiling pkg-config v0.3.34
+   Compiling once_cell v1.21.4
+   Compiling bytes v1.12.1
+   Compiling adler2 v2.0.1
+   Compiling semver v1.0.28
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling rustc_version v0.4.1
+   Compiling parking_lot v0.12.5
+   Compiling winnow v0.7.15
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.21
+   Compiling bytemuck_derive v1.12.1
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling bytemuck v1.25.2
+   Compiling ff v0.13.1
+   Compiling float-cmp v0.9.0
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling rustc-hash v1.1.0
+   Compiling strict-num v0.1.1
+   Compiling group v0.13.0
+   Compiling miniz_oxide v0.9.1
+   Compiling polycool v0.4.0
+   Compiling naga v30.0.1
+   Compiling objc2-foundation v0.3.2
+   Compiling hybrid-array v0.4.15
+   Compiling naga-types v30.0.1
+   Compiling zeroize_derive v1.5.0
+   Compiling zerocopy-derive v0.8.63
+   Compiling bit-vec v0.9.1
+   Compiling pin-project-lite v0.2.17
+   Compiling raw-window-handle v0.6.2
+   Compiling core-foundation-sys v0.8.7
+   Compiling arrayref v0.3.9
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling tiny-skia-path v0.12.0
+   Compiling bit-set v0.10.0
+   Compiling flate2 v1.1.10
+   Compiling zeroize v1.9.1
+   Compiling kurbo v0.13.1
+   Compiling der v0.7.10
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling inout v0.1.4
+   Compiling crypto-bigint v0.5.5
+   Compiling digest v0.10.7
+   Compiling cipher v0.4.4
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-ui-model)
+   Compiling hmac v0.12.1
+   Compiling signature v2.2.0
+   Compiling hkdf v0.12.4
+   Compiling sha2 v0.10.9
+   Compiling codespan-reporting v0.13.1
+   Compiling zlib-rs v0.6.8
+   Compiling objc-sys v0.3.5
+   Compiling spki v0.7.3
+   Compiling serdect v0.2.0
+   Compiling siphasher v1.0.4
+   Compiling pkcs8 v0.10.2
+   Compiling objc2-metal v0.3.2
+   Compiling getrandom v0.3.4
+   Compiling static_assertions v1.1.0
+   Compiling sec1 v0.7.3
+   Compiling wgpu-types v30.0.1
+   Compiling svgtypes v0.16.1
+   Compiling elliptic-curve v0.13.8
+   Compiling png v0.18.1
+   Compiling rfc6979 v0.4.0
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling simplecss v0.2.2
+   Compiling roxmltree v0.21.1
+   Compiling aho-corasick v1.1.5
+   Compiling wgpu-hal v30.0.1
+   Compiling ident_case v1.0.1
+   Compiling imagesize v0.15.0
+   Compiling fnv v1.0.7
+   Compiling data-url v0.3.2
+   Compiling regex-syntax v0.8.11
+   Compiling strsim v0.11.1
+   Compiling const-oid v0.10.2
+   Compiling pico-args v0.5.0
+   Compiling digest v0.11.3
+   Compiling usvg v0.48.1
+   Compiling darling_core v0.20.11
+   Compiling tiny-skia v0.12.0
+   Compiling ppv-lite86 v0.2.21
+   Compiling half v2.7.1
+   Compiling objc2-core-graphics v0.3.2
+   Compiling regex-automata v0.4.18
+   Compiling rgb v0.8.53
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling libloading v0.8.9
+   Compiling profiling v1.0.18
+   Compiling cursor-icon v1.2.0
+   Compiling darling_macro v0.20.11
+   Compiling resvg v0.48.1
+   Compiling rand_chacha v0.3.1
+   Compiling objc2-quartz-core v0.3.2
+   Compiling rand_core v0.9.5
+   Compiling objc2 v0.5.3
+   Compiling raw-window-metal v1.1.0
+   Compiling ecdsa v0.16.9
+   Compiling regex v1.13.1
+   Compiling curve25519-dalek v4.1.3
+   Compiling num-integer v0.1.47
+   Compiling euclid v0.22.14
+   Compiling cpufeatures v0.3.1
+   Compiling errno v0.3.14
+   Compiling wgpu-core v30.0.1
+   Compiling crossbeam-utils v0.8.23
+   Compiling litrs v1.0.1
+   Compiling cfg_aliases v0.1.1
+   Compiling rand_core v0.10.1
+   Compiling getrandom v0.4.3
+   Compiling num-bigint-dig v0.8.6
+   Compiling thiserror v1.0.69
+   Compiling spin v0.9.9
+   Compiling lazy_static v1.5.1
+   Compiling lyon_geom v1.0.20
+   Compiling nix v0.28.0
+   Compiling document-features v0.2.12
+   Compiling signal-hook-registry v1.4.8
+   Compiling num-iter v0.1.46
+   Compiling block2 v0.5.1
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.8.8
+   Compiling darling v0.20.11
+   Compiling primeorder v0.13.6
+   Compiling ctr v0.9.2
+   Compiling universal-hash v0.5.1
+   Compiling aead v0.5.2
+   Compiling core-foundation v0.9.4
+   Compiling thiserror-impl v1.0.69
+   Compiling foreign-types-macros v0.2.4
+   Compiling tokio-macros v2.7.2
+   Compiling socket2 v0.6.5
+   Compiling mio v1.2.4
+   Compiling wgpu v30.0.1
+   Compiling dispatch v0.2.0
+   Compiling bitflags v1.3.2
+   Compiling httparse v1.10.1
+   Compiling zstd-safe v8.2.0
+   Compiling rustversion v1.0.23
+   Compiling unsafe-libyaml v0.2.11
+   Compiling foreign-types-shared v0.3.1
+   Compiling unicode-segmentation v1.13.3
+   Compiling base64 v0.22.1
+   Compiling anyhow v1.0.104
+   Compiling opaque-debug v0.3.1
+   Compiling ryu v1.0.23
+   Compiling vcpkg v0.2.15
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling polyval v0.6.2
+   Compiling convert_case v0.10.0
+   Compiling foreign-types v0.5.0
+   Compiling libsqlite3-sys v0.38.2
+   Compiling core-graphics-types v0.1.3
+   Compiling objc2-foundation v0.2.2
+   Compiling tokio v1.54.1
+   Compiling derive_builder_core v0.20.2
+   Compiling rand v0.9.5
+   Compiling lyon_path v1.0.19
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling chacha20 v0.10.2
+   Compiling serde-big-array v0.5.1
+   Compiling aes v0.8.4
+   Compiling dbl v0.3.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling keccak v0.1.6
+   Compiling winit v0.30.13
+   Compiling unicode-xid v0.2.6
+   Compiling float_next_after v1.0.0
+   Compiling crc24 v0.1.6
+   Compiling tracing-core v0.1.36
+   Compiling byteorder v1.5.0
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling heck v0.5.0
+   Compiling snafu-derive v0.9.2
+   Compiling tracing v0.1.44
+   Compiling lyon_tessellation v1.0.22
+   Compiling derive_more-impl v2.1.1
+   Compiling sha3 v0.10.9
+   Compiling cmac v0.7.2
+   Compiling bbt-core v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-core)
+   Compiling rand v0.10.3
+   Compiling crossbeam-queue v0.3.14
+   Compiling objc2-app-kit v0.2.2
+   Compiling ulid v1.2.1
+   Compiling derive_builder_macro v0.20.2
+   Compiling bitfields-impl v1.0.3
+   Compiling filedescriptor v0.8.3
+   Compiling core-graphics v0.23.2
+   Compiling ghash v0.5.1
+   Compiling sha1 v0.11.0
+   Compiling objc2-core-text v0.3.2
+   Compiling bbt-ui v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-ui)
+   Compiling pkcs1 v0.7.5
+   Compiling serdect v0.3.0
+   Compiling ed25519 v2.2.3
+   Compiling blake2 v0.10.6
+   Compiling sha1 v0.10.7
+   Compiling num_enum_derive v0.7.6
+   Compiling futures-macro v0.3.34
+   Compiling http v1.5.0
+   Compiling password-hash v0.5.0
+   Compiling serial2 v0.2.38
+   Compiling data-encoding v2.11.1
+   Compiling slab v0.4.12
+   Compiling pollster v0.4.0
+   Compiling smol_str v0.2.2
+   Compiling futures-core v0.3.34
+   Compiling foldhash v0.1.5
+   Compiling same-file v1.0.6
+   Compiling shell-words v1.1.1
+   Compiling futures-sink v0.3.34
+   Compiling pulldown-cmark v0.13.4
+   Compiling signature v3.0.0
+   Compiling dpi v0.1.2
+   Compiling futures-task v0.3.34
+   Compiling downcast-rs v1.2.1
+   Compiling futures-util v0.3.34
+   Compiling portable-pty v0.9.0
+   Compiling ed25519 v3.0.0
+   Compiling walkdir v2.5.0
+   Compiling bbt-render v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-render)
+   Compiling hashbrown v0.15.5
+   Compiling tungstenite v0.30.0
+   Compiling argon2 v0.5.3
+   Compiling num_enum v0.7.6
+   Compiling sha1-checked v0.10.0
+   Compiling ed25519-dalek v2.2.0
+   Compiling cx448 v0.1.1
+   Compiling zstd v0.14.3
+   Compiling rsa v0.9.10
+   Compiling aes-gcm v0.10.3
+   Compiling bitfields v1.0.3
+   Compiling derive_builder v0.20.2
+   Compiling bbt-rt v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-rt)
+   Compiling derive_more v2.1.1
+   Compiling eax v0.5.0
+   Compiling snafu v0.9.2
+   Compiling camellia v0.1.0
+   Compiling blowfish v0.9.1
+   Compiling aes-kw v0.2.1
+   Compiling x25519-dalek v2.0.1
+   Compiling dsa v0.6.3
+   Compiling ocb3 v0.1.0
+   Compiling p256 v0.13.2
+   Compiling p384 v0.13.1
+   Compiling p521 v0.13.3
+   Compiling sha2 v0.11.1
+   Compiling k256 v0.13.4
+   Compiling idea v0.5.1
+   Compiling twofish v0.7.1
+   Compiling cast5 v0.11.1
+   Compiling des v0.8.1
+   Compiling cfb-mode v0.8.2
+   Compiling md-5 v0.10.6
+   Compiling ripemd v0.1.3
+   Compiling block-padding v0.3.3
+   Compiling core-foundation v0.10.1
+   Compiling security-framework-sys v2.17.0
+   Compiling notify-types v2.1.0
+   Compiling hashlink v0.12.2
+   Compiling fsevent-sys v4.1.0
+   Compiling buffer-redux v1.1.0
+   Compiling nom v8.0.0
+   Compiling unicase v2.10.0
+   Compiling replace_with v0.1.8
+   Compiling fallible-iterator v0.3.0
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling hex v0.4.3
+   Compiling fixedbitset v0.5.7
+   Compiling notify v8.2.0
+   Compiling petgraph v0.8.3
+   Compiling security-framework v3.7.0
+   Compiling ed25519-dalek v3.0.0
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-supervisor)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling pgp v0.21.0
+   Compiling bbt-proto v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-proto)
+   Compiling bboxybook v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bboxy450-term)
+   Compiling bbt-mermaid v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-mermaid)
+   Compiling objc2-app-kit v0.3.2
+   Compiling bboxy-firehose v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bboxy-firehose)
+   Compiling bbt-doc v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-doc)
+   Compiling rusqlite v0.40.2
+   Compiling bbt-mux v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 1m 33s
+    Checking cfg-if v1.0.5
+    Checking memchr v2.8.3
+    Checking itoa v1.0.18
+    Checking libc v0.2.191
+    Checking serde_core v1.0.229
+    Checking zmij v1.0.23
+    Checking log v0.4.34
+    Checking typenum v1.20.1
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-ui-model)
+    Checking smallvec v1.16.3
+    Checking zeroize v1.9.1
+    Checking zerocopy v0.8.63
+    Checking unicode-width v0.2.2
+    Checking scopeguard v1.2.0
+    Checking foldhash v0.2.0
+    Checking libm v0.2.16
+    Checking lock_api v0.4.14
+    Checking hashbrown v0.17.1
+    Checking equivalent v1.0.3
+    Checking cursor-icon v1.2.0
+    Checking once_cell v1.21.4
+    Checking thiserror v2.0.21
+    Checking simd-adler32 v0.3.10
+    Checking subtle v2.6.1
+    Checking adler2 v2.0.1
+    Checking pin-project-lite v0.2.17
+    Checking miniz_oxide v0.9.1
+    Checking crc32fast v1.5.3
+    Checking zlib-rs v0.6.8
+    Checking const-oid v0.9.6
+    Checking core-foundation-sys v0.8.7
+    Checking indexmap v2.14.2
+    Checking ryu v1.0.23
+    Checking unsafe-libyaml v0.2.11
+    Checking objc2-encode v4.1.0
+    Checking generic-array v0.14.7
+    Checking num-traits v0.2.19
+    Checking objc2 v0.6.5
+    Checking getrandom v0.2.17
+    Checking parking_lot_core v0.9.12
+    Checking rand_core v0.6.4
+    Checking parking_lot v0.12.5
+    Checking bytemuck v1.25.2
+    Checking rustc-hash v1.1.0
+    Checking naga-types v30.0.1
+    Checking bit-vec v0.9.1
+    Checking raw-window-handle v0.6.2
+    Checking codespan-reporting v0.13.1
+    Checking unicode-ident v1.0.27
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking static_assertions v1.1.0
+    Checking bit-set v0.10.0
+    Checking cpufeatures v0.2.17
+    Checking base64 v0.22.1
+    Checking digest v0.10.7
+    Checking float-cmp v0.9.0
+    Checking libloading v0.8.9
+    Checking profiling v1.0.18
+    Checking arrayref v0.3.9
+    Checking euclid v0.22.14
+    Checking strict-num v0.1.1
+    Checking miniz_oxide v0.8.9
+    Checking fdeflate v0.3.7
+    Checking siphasher v1.0.4
+    Checking tiny-skia-path v0.12.0
+    Checking serde v1.0.229
+    Checking serde_json v1.0.154
+    Checking bitflags v2.13.2
+    Checking roxmltree v0.21.1
+    Checking flate2 v1.1.10
+    Checking wgpu-types v30.0.1
+    Checking simplecss v0.2.2
+    Checking png v0.18.1
+    Checking arrayvec v0.7.8
+    Checking bbt-ui v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-ui)
+    Checking serde_yaml v0.9.34+deprecated
+    Checking block2 v0.6.2
+    Checking dispatch2 v0.3.1
+    Checking serde-big-array v0.5.1
+    Checking polycool v0.4.0
+    Checking bbt-core v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-core)
+    Checking lyon_geom v1.0.20
+    Checking kurbo v0.13.1
+    Checking objc2-core-foundation v0.3.2
+    Checking pico-args v0.5.0
+    Checking data-url v0.3.2
+    Checking imagesize v0.15.0
+    Checking lyon_path v1.0.19
+    Checking rgb v0.8.53
+    Checking tiny-skia v0.12.0
+    Checking float_next_after v1.0.0
+    Checking base64ct v1.8.3
+    Checking svgtypes v0.16.1
+    Checking lyon_tessellation v1.0.22
+    Checking pollster v0.4.0
+    Checking usvg v0.48.1
+    Checking bytes v1.12.1
+    Checking objc-sys v0.3.5
+    Checking pem-rfc7468 v0.7.0
+    Checking inout v0.1.4
+    Checking cipher v0.4.4
+    Checking der v0.7.10
+    Checking objc2 v0.5.3
+    Checking core-foundation v0.9.4
+    Checking dispatch v0.2.0
+    Checking bitflags v1.3.2
+    Checking foreign-types-shared v0.3.1
+    Checking sha2-asm v0.6.4
+    Checking half v2.7.1
+    Checking ppv-lite86 v0.2.21
+    Checking core-graphics-types v0.1.3
+    Checking foreign-types v0.5.0
+    Checking errno v0.3.14
+    Checking tap v1.0.1
+    Checking tracing-core v0.1.36
+    Checking core-graphics v0.23.2
+    Checking wyz v0.5.1
+    Checking sha2 v0.10.9
+    Checking resvg v0.48.1
+    Checking naga v30.0.1
+    Checking radium v0.7.0
+    Checking hmac v0.12.1
+    Checking tracing v0.1.44
+    Checking dpi v0.1.2
+    Checking block2 v0.5.1
+    Checking base16ct v0.2.0
+    Checking smol_str v0.2.2
+    Checking funty v2.0.0
+    Checking getrandom v0.3.4
+    Checking signature v2.2.0
+    Checking spki v0.7.3
+    Checking objc2-foundation v0.2.2
+    Checking serdect v0.2.0
+    Checking signal-hook-registry v1.4.8
+    Checking rand_core v0.9.5
+    Checking socket2 v0.6.5
+    Checking pkcs8 v0.10.2
+    Checking mio v1.2.4
+    Checking rand_core v0.10.1
+    Checking rand_chacha v0.9.0
+    Checking sec1 v0.7.3
+    Checking objc2-foundation v0.3.2
+    Checking crossbeam-utils v0.8.23
+    Checking hkdf v0.12.4
+    Checking crypto-bigint v0.5.5
+    Checking hybrid-array v0.4.15
+    Checking bbt-mermaid v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-mermaid)
+    Checking bitvec v1.1.1
+    Checking tokio v1.54.1
+    Checking crossbeam-queue v0.3.14
+    Checking rand v0.9.5
+    Checking getrandom v0.4.3
+    Checking unicase v2.10.0
+    Checking thiserror v1.0.69
+    Checking pulldown-cmark v0.13.4
+    Checking crypto-common v0.2.2
+    Checking ulid v1.2.1
+    Checking block-buffer v0.12.1
+    Checking zstd-sys v2.1.2+zstd.1.5.7
+    Checking rfc6979 v0.4.0
+    Checking const-oid v0.10.2
+    Checking unicode-segmentation v1.13.3
+    Checking zstd-safe v8.2.0
+    Checking nix v0.28.0
+    Checking digest v0.11.3
+    Checking filedescriptor v0.8.3
+    Checking anyhow v1.0.104
+    Checking serial2 v0.2.38
+    Checking shell-words v1.1.1
+    Checking downcast-rs v1.2.1
+    Checking zstd v0.14.3
+    Checking rand_chacha v0.3.1
+    Checking num-integer v0.1.47
+    Checking cpufeatures v0.3.1
+    Checking spin v0.9.9
+    Checking num-iter v0.1.46
+    Checking rand v0.8.8
+    Checking lazy_static v1.5.1
+    Checking aead v0.5.2
+    Checking ff v0.13.1
+    Checking ctr v0.9.2
+    Checking universal-hash v0.5.1
+    Checking group v0.13.0
+   Compiling rustix v1.1.5
+    Checking opaque-debug v0.3.1
+    Checking polyval v0.6.2
+    Checking elliptic-curve v0.13.8
+    Checking curve25519-dalek v4.1.3
+    Checking objc2-metal v0.3.2
+    Checking num-bigint-dig v0.8.6
+    Checking bbt-doc v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-doc)
+    Checking portable-pty v0.9.0
+    Checking chacha20 v0.10.2
+    Checking ecdsa v0.16.9
+    Checking primeorder v0.13.6
+    Checking aes v0.8.4
+    Checking keccak v0.1.6
+    Checking dbl v0.3.2
+    Checking byteorder v1.5.0
+    Checking rand v0.10.3
+    Checking cmac v0.7.2
+    Checking sha3 v0.10.9
+    Checking httparse v1.10.1
+    Checking ghash v0.5.1
+    Checking sha1 v0.11.0
+    Checking pkcs1 v0.7.5
+    Checking ed25519 v2.2.3
+    Checking serdect v0.3.0
+   Compiling bboxybook v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bboxybook)
+    Checking http v1.5.0
+    Checking password-hash v0.5.0
+    Checking blake2 v0.10.6
+    Checking sha1 v0.10.7
+    Checking futures-task v0.3.34
+    Checking foldhash v0.1.5
+    Checking data-encoding v2.11.1
+    Checking fastrand v2.5.0
+    Checking slab v0.4.12
+    Checking futures-core v0.3.34
+    Checking same-file v1.0.6
+    Checking futures-sink v0.3.34
+    Checking signature v3.0.0
+    Checking argon2 v0.5.3
+    Checking futures-util v0.3.34
+    Checking walkdir v2.5.0
+    Checking ed25519 v3.0.0
+    Checking hashbrown v0.15.5
+    Checking sha1-checked v0.10.0
+    Checking tungstenite v0.30.0
+    Checking objc2-app-kit v0.2.2
+    Checking num_enum v0.7.6
+    Checking rsa v0.9.10
+    Checking dsa v0.6.3
+    Checking tempfile v3.27.0
+    Checking cx448 v0.1.1
+    Checking ed25519-dalek v2.2.0
+    Checking libsqlite3-sys v0.38.2
+    Checking aes-gcm v0.10.3
+    Checking bitfields v1.0.3
+    Checking derive_builder v0.20.2
+    Checking blowfish v0.9.1
+    Checking camellia v0.1.0
+    Checking eax v0.5.0
+    Checking curve25519-dalek v5.0.0
+    Checking crc24 v0.1.6
+    Checking snafu v0.9.2
+    Checking derive_more v2.1.1
+    Checking aes-kw v0.2.1
+    Checking x25519-dalek v2.0.1
+    Checking p256 v0.13.2
+    Checking p384 v0.13.1
+    Checking p521 v0.13.3
+    Checking k256 v0.13.4
+    Checking bbt-rt v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-rt)
+    Checking ocb3 v0.1.0
+    Checking bbt-supervisor v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-supervisor)
+    Checking sha2 v0.11.1
+    Checking idea v0.5.1
+    Checking cast5 v0.11.1
+    Checking twofish v0.7.1
+    Checking des v0.8.1
+    Checking cfb-mode v0.8.2
+    Checking notify-types v2.1.0
+    Checking md-5 v0.10.6
+    Checking ripemd v0.1.3
+    Checking block-padding v0.3.3
+    Checking core-foundation v0.10.1
+    Checking security-framework-sys v2.17.0
+    Checking fsevent-sys v4.1.0
+    Checking hashlink v0.12.2
+    Checking buffer-redux v1.1.0
+    Checking nom v8.0.0
+    Checking replace_with v0.1.8
+    Checking fallible-iterator v0.3.0
+    Checking hex v0.4.3
+    Checking fallible-streaming-iterator v0.1.9
+    Checking fixedbitset v0.5.7
+    Checking tokio-tungstenite v0.30.0
+    Checking security-framework v3.7.0
+    Checking petgraph v0.8.3
+    Checking rusqlite v0.40.2
+    Checking notify v8.2.0
+    Checking objc2-core-graphics v0.3.2
+    Checking ed25519-dalek v3.0.0
+    Checking bbt-proto v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-proto)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bboxy450-term)
+    Checking bboxy-firehose v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bboxy-firehose)
+    Checking objc2-app-kit v0.3.2
+    Checking aho-corasick v1.1.5
+    Checking regex-syntax v0.8.11
+    Checking wgpu-naga-bridge v30.0.1
+    Checking winit v0.30.13
+    Checking objc2-quartz-core v0.3.2
+    Checking objc2-core-text v0.3.2
+    Checking raw-window-metal v1.1.0
+    Checking wgpu-hal v30.0.1
+    Checking pgp v0.21.0
+    Checking regex-automata v0.4.18
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking wgpu-core v30.0.1
+    Checking regex v1.13.1
+    Checking bbt-mux v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-mux)
+    Checking wgpu v30.0.1
+    Checking bbt-render v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-render)
+    Finished `dev` profile [optimized] target(s) in 20.09s
+   Compiling rustix v1.1.5
+   Compiling fastrand v2.5.0
+   Compiling aho-corasick v1.1.5
+   Compiling regex-syntax v0.8.11
+   Compiling bboxybook v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bboxybook)
+   Compiling bboxy-firehose v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bboxy-firehose)
+   Compiling bbt-render v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-render)
+   Compiling tempfile v3.27.0
+   Compiling bbt-mux v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-mux)
+   Compiling regex-automata v0.4.18
+   Compiling bbt-supervisor v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-supervisor)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bboxy450-term)
+   Compiling regex v1.13.1
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-ui-model)
+   Compiling bbt-doc v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-doc)
+   Compiling bbt-rt v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-rt)
+   Compiling bbt-mermaid v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-mermaid)
+   Compiling bbt-proto v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-proto)
+   Compiling bbt-core v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-core)
+   Compiling bbt-ui v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 48.62s
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bboxy_firehose-e37029a581a5db6d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bboxy_firehose-95bd166ff32b6564)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/cli-7c9115fd81009409)
+
+running 10 tests
+test rates_have_explicit_units_and_cumulative_deadlines ... ok
+test named_scene_and_bounded_loops_are_exact_bytes ... ok
+test playback_needs_no_corpus_files_in_its_working_directory ... ok
+test a_closed_downstream_pipe_stops_an_infinite_flood_cleanly ... ok
+test listing_and_checks_never_emit_terminal_control_bytes ... ok
+test seed_is_reproducible_and_reorders_the_complete_corpus ... ok
+test invalid_inputs_fail_before_emitting_ansi ... ok
+test interrupting_slow_playback_restores_modes_without_waiting_for_the_rate ... ok
+test byte_and_line_rate_caps_keep_the_exact_stream ... ok
+test real_pacing_preserves_scene_bytes ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.81s
+
+     Running tests/corpus.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/corpus-2e8cd9d70f8eba0b)
+
+running 4 tests
+test originals_are_control_only_and_embedded_verbatim ... ok
+test cursor_scenes_are_steady_and_the_next_scene_restores_the_default ... ok
+test scenes_exercise_real_grid_effects_and_leave_modes_balanced ... ok
+test frozen_semantic_screens_survive_arbitrary_pty_chunking ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bboxy450_term-c73f959280942a3a)
+
+running 7 tests
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test cockpit::gui_io_tests::writer_task_death_is_disconnected_even_while_the_reader_stays_connected ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test cockpit::gui_io_tests::oversized_request_is_rejected_before_enqueue_without_stopping_the_writer ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running unittests src/main.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bboxy450_term-1777b3d526f86f71)
+
+running 32 tests
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test budget::tests::hud_gpu_mean_counts_spans_without_a_cpu_row ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+test input_tests::text_bursts_keep_byte_order_first_id_and_generation_boundaries ... ok
+test input_tests::admission_limits_preserve_accepted_bytes_and_allow_merging_at_the_entry_cap ... ok
+test gpu::backdrop_key_tests::keys_follow_prior_content_and_only_timed_content_follows_time ... ok
+test gpu::backdrop_key_tests::a_frosted_op_after_host_drawing_is_never_keyed ... ok
+test default_spawn_tests::default_picks_are_keyed_by_id_and_leave_placement_and_navigation_deferred ... ok
+test input_tests::pane_controls_coalesce_to_the_latest_visible_set_and_size ... ok
+test input_tests::operator_keys_use_pty_bytes_and_keep_command_shortcuts_out_of_the_shell ... ok
+test input_tests::input_queued_while_backend_is_lost_survives_resume_and_a_full_queue ... ok
+test launcher_host_tests::modal_input_never_reaches_a_pty_and_picks_do_not_repeat ... ok
+test default_spawn_tests::host_picks_preserve_structured_location_without_parsing_labels ... ok
+test launcher_host_tests::terminal_keys_stay_byte_exact_while_explicit_chords_move_focus ... ok
+test launcher_host_tests::stage_switch_waits_for_the_new_outer_pane_before_locate_once ... ok
+test live::tests::queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication ... ok
+test launcher_host_tests::published_screens_do_not_undo_local_focus_or_create_locate ... ok
+test smoke_tests::idle_waits_for_producer_queued_work_and_late_frames_before_starting ... ok
+test launcher_host_tests::actual_controller_filters_picks_climbs_and_preserves_the_named_gaps ... ok
+test live::tests::generic_spawn_preserves_inputs_and_uses_io_defaults ... ok
+test smoke_tests::native_invalidation_restarts_settling_and_old_timers_cannot_end_the_new_window ... ok
+test spawn_admission_tests::generic_and_legacy_spawns_share_the_same_cap ... ok
+test verification_tests::verification_grid_validation_and_window_fit_use_real_cell_bounds ... ok
+test smoke_tests::flapping_native_events_never_pass_and_deadline_has_a_named_reason ... ok
+test verification_tests::live_screen_hash_matches_frozen_palette_unicode_and_link_fixtures ... ok
+test scene::lane_tests::the_lane_sets_gutter_and_inset_and_relayouts_at_runtime ... ok
+test scene::launcher_tests::retained_launcher_hit_regions_and_unwrapped_foreground_order ... ok
+test scene::lane_tests::pane_rects_are_identical_across_activity_states ... ok
+test scene::launcher_tests::no_launcher_paint_proof ... ok
+test input_tests::ten_minute_disconnect_bounds_admission_and_drains_accepted_input_in_order ... ok
+cockpit ready: supervisor=22453 logic=22457
+GUI operation 01M5MHAP5PR1X3B99CJC5AADCD rejected: not a built-in harness
+seat 01M5MHAP6B83AE2YSR8MNA4EDJ activity=Idle process=Running { pid: 22462 }
+seat 01M5MHAP6B83AE2YSR8MNA4EDJ activity=Idle process=Running { pid: 22462 }
+GUI operation 01M5MHAP941HMGP7NR3RDCHTDQ accepted
+GUI operation 01M5MHAPCS80J34E6H3XKX4M9R accepted
+GUI operation 01M5MHAP9ZP25ASBTSFGJ3E3K5 accepted
+GUI operation 01M5MHAPEA2D3H6Y0XW4AR9794 accepted
+GUI operation 01M5MHAPE04ZDVYF2GKFZF2ZFH accepted
+GUI operation 01M5MHAPF6TPKRVD93DBHC20KX accepted
+seat 01M5MHAP6B83AE2YSR8MNA4EDJ activity=Active process=Running { pid: 22462 }
+GUI operation 01M5MHAPGN20NSS4SQ62CHK7T9 accepted
+GUI operation 01M5MHAPGG3DJ7AWMC52CJ3F39 accepted
+GUI operation 01M5MHAPGG75C66XZ9K4JK9WHX accepted
+GUI operation 01M5MHAPGGW7HN3CTWF7014TY8 accepted
+GUI operation 01M5MHAPGGF7HZ1CVMZBM07SHZ accepted
+GUI operation 01M5MHAPGG8KXRKQ8RK23YD59V accepted
+GUI operation 01M5MHAPGGEYWXXCM9KRX38M9Y accepted
+GUI operation 01M5MHAPGGBHJCH8M1RHBYDX9Y accepted
+GUI operation 01M5MHAPGGCNVZKSW7AXA73MJN accepted
+GUI operation 01M5MHAPGG579JXQ4VM61ES73N accepted
+GUI operation 01M5MHAPGGCX5FDCKQ5FH75GT7 accepted
+GUI operation 01M5MHAPGGB2N59BS20GRMNY4G accepted
+GUI operation 01M5MHAPGGZ1S3XDVXNZP0JV8G accepted
+GUI operation 01M5MHAPGGHE44QJBX7Y3P6WK6 accepted
+GUI operation 01M5MHAPGGADT4BZ8G2P1W8037 accepted
+GUI operation 01M5MHAPGG5R9P8AM1NM0NAHD8 accepted
+GUI operation 01M5MHAPGGXX23CBH22890JBC6 accepted
+GUI operation 01M5MHAPGG598R2220PV030YHY accepted
+GUI operation 01M5MHAPGGQDTM49PHYDWFR3X1 accepted
+GUI operation 01M5MHAPGGFX46XTEHHADDR5PV accepted
+GUI operation 01M5MHAPGG8S49ZEJ1AQR52TVV accepted
+GUI operation 01M5MHAPGGZ7QDN985SYTTDZV0 accepted
+GUI operation 01M5MHAPGGVHBFB7HM3VY4C33F accepted
+GUI operation 01M5MHAPGGSVD95D6PSMR560FP accepted
+GUI operation 01M5MHAPGGPEQECWN7JFK21ZWV accepted
+GUI operation 01M5MHAPGGNKBWG8Q9T6B77SB1 accepted
+GUI operation 01M5MHAPGGX40F5K49QJNWWWZN accepted
+GUI operation 01M5MHAPGGRR2RF2VW71ZAHXS3 accepted
+GUI operation 01M5MHAPGGT793QC4HE4G4XW81 accepted
+GUI operation 01M5MHAPGGHWER6F2SWHPZZFCP accepted
+GUI operation 01M5MHAPGGPY04T6133VKQ2PXP accepted
+GUI operation 01M5MHAPGGH4YD2EXC1W61R76H accepted
+GUI operation 01M5MHAPGGZ4PZYKA9PETD1RAX accepted
+GUI operation 01M5MHAPGGSEYTM67QADPJY82G accepted
+GUI operation 01M5MHAPGG081GCMVRT739H73B accepted
+GUI operation 01M5MHAPGGREPD3QE73MB73N25 accepted
+GUI operation 01M5MHAPGGKNEEBQ2TFKP3E825 accepted
+GUI operation 01M5MHAPGGWZPYR1Z3GZ3X7PAQ accepted
+GUI operation 01M5MHAPGG7MMW7N8SXV0G5G32 accepted
+GUI operation 01M5MHAPGGN3RPW54RR6W7FHDJ accepted
+GUI operation 01M5MHAPGGWAHW4MXX6T4M3191 accepted
+GUI operation 01M5MHAPGGYG90AGQVA9NT5AV4 accepted
+GUI operation 01M5MHAPGGK9658K90T0K5WYNC accepted
+GUI operation 01M5MHAPGGMCJVGZSJ41B5MN61 accepted
+GUI operation 01M5MHAPGG2AH124J7D6NPYZ02 accepted
+GUI operation 01M5MHAPGGYPCRKD8A1TZ9GZRF accepted
+GUI operation 01M5MHAPGGCERJ1GRTT59DZTSW accepted
+GUI operation 01M5MHAPGGH8Y04Z9BGTMZWVYX accepted
+GUI operation 01M5MHAPGGV2SMDS6KNPEAGVRM accepted
+GUI operation 01M5MHAPGGPCCWTSKQNSSC1KC4 accepted
+GUI operation 01M5MHAPGG7ZSXQYVVB4AJ84XF accepted
+GUI operation 01M5MHAPGG23DC7QG6789EJCQM accepted
+GUI operation 01M5MHAPGGH3ECPMDNMS6QPT86 accepted
+GUI operation 01M5MHAPGG473EJXJ6E515CDA8 accepted
+GUI operation 01M5MHAPGGTKHCKHYVV94ESZFT accepted
+GUI operation 01M5MHAPGGMPF9HBTVDJ27QABE accepted
+GUI operation 01M5MHAPGG4X22288M77EJZNNY accepted
+GUI operation 01M5MHAPGGFQXBFN5FNZ2ETBB5 accepted
+GUI operation 01M5MHAPGGBAARZ5QBZB6T0NZV accepted
+GUI operation 01M5MHAPGG431H7FG5H7SMBCZW accepted
+GUI operation 01M5MHAPGGSBTFY9184HWCA5XX accepted
+GUI operation 01M5MHAPGG3N87T4Z2K8T8NNVC accepted
+GUI operation 01M5MHAPGGS9XCKAM7YDQ2ZJWH accepted
+GUI operation 01M5MHAPGGHRSCZK689KG0EBHN accepted
+GUI operation 01M5MHAPGGS9RH1RV5SSNBS3DR accepted
+GUI operation 01M5MHAPGGRJPS18ZBNPAD48YT accepted
+GUI operation 01M5MHAPGG1FA6HGGBCD12EXP6 accepted
+GUI operation 01M5MHAPGGKDEZDZHCZGHK9DGF accepted
+GUI operation 01M5MHAPGGVSE66HBDDR7QNZ82 accepted
+GUI operation 01M5MHAPGG2H6NJ94BE08YYQ2R accepted
+GUI operation 01M5MHAPGGD2P01J10C7ADYWTK accepted
+GUI operation 01M5MHAPGG6GFB7T1YQR47J839 accepted
+GUI operation 01M5MHAPGGASS9YVG10GCHXWCE accepted
+GUI operation 01M5MHAPGGYKMYPJYW1H0Y99PK accepted
+GUI operation 01M5MHAPGGQVBHGTHYZV9CWGTD accepted
+GUI operation 01M5MHAPGG4ZA30Y46HKGWF095 accepted
+GUI operation 01M5MHAPGG55EBTYCSW9XA546M accepted
+GUI operation 01M5MHAPGG9VEKER4VMV0VDYNJ accepted
+GUI operation 01M5MHAPGG36BJ33ET84SJXRBC accepted
+GUI operation 01M5MHAPGG1S0ACZ309MEDR3W8 accepted
+GUI operation 01M5MHAPGG0SA1AE75NX3XV0NH accepted
+GUI operation 01M5MHAPGGFYC0CRF6T2BMGMJM accepted
+GUI operation 01M5MHAPGG6G6F3G2QFKM2QP2N accepted
+GUI operation 01M5MHAPGGY7Z0TC71NZ8EQ0RM accepted
+GUI operation 01M5MHAPGGG0QEKM1556RXCHGM accepted
+GUI operation 01M5MHAPGGQJT3AKV2RP845NFE accepted
+GUI operation 01M5MHAPGG8A21H5V8SWHVTZ6A accepted
+GUI operation 01M5MHAPGGGFJJFSWEB93S4R9Y accepted
+GUI operation 01M5MHAPGGMCET4VES6J5MPR0R accepted
+GUI operation 01M5MHAPGG6BDT4XDN6TBX740P accepted
+GUI operation 01M5MHAPGG9NQ35KMMMC9R977G accepted
+GUI operation 01M5MHAPGG1GK4RF51VM881BP5 accepted
+GUI operation 01M5MHAPGGYH3N7F5CGJQR766A accepted
+GUI operation 01M5MHAPGG7GK1XMED0ANGJV7B accepted
+GUI operation 01M5MHAPGGGP0WX2D4WESBJ8EP accepted
+GUI operation 01M5MHAPGGBS1NFCSE7SJNDP27 accepted
+GUI operation 01M5MHAPGG9K9G0JYD4BX8YM6S accepted
+GUI operation 01M5MHAPGGPX3SM6ZZACM0VVZW accepted
+GUI operation 01M5MHAPGGCG1JZW0ZGVED2DXQ accepted
+GUI operation 01M5MHAPGG2FEJ5HTK1TQCE71H accepted
+GUI operation 01M5MHAPGGXKGDC5GTKT74XKDN accepted
+GUI operation 01M5MHAPGG1NPYKZ6HCNHP5X9T accepted
+GUI operation 01M5MHAPGGRTVWVGKY42VPD29F accepted
+GUI operation 01M5MHAPGGQYS484GQG177X8WQ accepted
+GUI operation 01M5MHAPGG1FQPMV36244DV1KR accepted
+GUI operation 01M5MHAPGGWQ5SZYCR13RW0KYB accepted
+GUI operation 01M5MHAPGGNE7FQ1DNCA4S4EZK accepted
+GUI operation 01M5MHAPGGZ2AGVABQ19QEAVWA accepted
+GUI operation 01M5MHAPGGM7RHNKMGCEQNA1F2 accepted
+GUI operation 01M5MHAPGG5WF6YHVS48YYAZTA accepted
+GUI operation 01M5MHAPGG04SZGCD0EXXDPW8S accepted
+GUI operation 01M5MHAPGGWQ4ATKHAWB7NZDRP accepted
+GUI operation 01M5MHAPGGNN85ESD3DX06YWER accepted
+GUI operation 01M5MHAPGG4AEDDJHHYHA4FP9F accepted
+GUI operation 01M5MHAPGGGTRW7YS9VPVDGTQM accepted
+GUI operation 01M5MHAPGGGN2HGJVSA1HF0FCE accepted
+GUI operation 01M5MHAPGGNWJ1R4G2VV8ACMMM accepted
+GUI operation 01M5MHAPGGYMQGF9E2H4N0KX1T accepted
+GUI operation 01M5MHAPGGCF2N5QK6M2MR0S3G accepted
+GUI operation 01M5MHAPGG8EFQ9KTVX945M5YT accepted
+GUI operation 01M5MHAPGG442JR7H3BD65KNR5 accepted
+GUI operation 01M5MHAPGGFGVY5P886NHDA93B accepted
+GUI operation 01M5MHAPGGZ234B5R4T7AH4HA5 accepted
+GUI operation 01M5MHAPGGVG0TNVHCD7FYZE0R accepted
+GUI operation 01M5MHAPGG6K5Z9HSMQMGHD6K7 accepted
+GUI operation 01M5MHARXCCP0PP02NFGTBZ85F accepted
+GUI operation 01M5MHAPGGVS9HJTBFDF4ZC2F3 accepted
+GUI operation 01M5MHAPGG2YH7G1W0G5Q9KC0N accepted
+GUI operation 01M5MHAPGGZ0A78RZB0H8KG11G accepted
+GUI operation 01M5MHAPGGA63Q2FZB4379VQK9 accepted
+GUI operation 01M5MHAPGGHMVK7KJ8KD1W9RN0 accepted
+GUI operation 01M5MHAPGGSGDP7F9W5SJ0J6CK accepted
+GUI operation 01M5MHAPGG04XYT31JN2AKG281 accepted
+GUI operation 01M5MHAPGGRTMVG3T38GRS7DBD accepted
+GUI operation 01M5MHAPGGBW82Q907ATQ7H4T4 accepted
+GUI operation 01M5MHAPGGW5XCZJMAV2FC4RGN accepted
+GUI operation 01M5MHAPGGP4Q55KNKVBA1VNAJ accepted
+GUI operation 01M5MHAPGG6NYW9JJ9XSQ5KFHM accepted
+GUI operation 01M5MHAPGGJANNN3WHKGZYERW6 accepted
+GUI operation 01M5MHAPGGJXY00BS2QFCPZKE8 accepted
+GUI operation 01M5MHAPGG8EDZBDA2BT5YG1QF accepted
+GUI operation 01M5MHAPGGW1E42Y3QMTZA38PP accepted
+GUI operation 01M5MHAPGGPEKTGA1DWZ8WJ57Q accepted
+GUI operation 01M5MHAPGGKF9XZB4KEGT3VAQQ accepted
+GUI operation 01M5MHAPGGT254KXB0KA6SMRHT accepted
+GUI operation 01M5MHAPGGV4M308NVK20854G3 accepted
+GUI operation 01M5MHAPGGAYS5DVNW72S09MSY accepted
+GUI operation 01M5MHAPGGQQDG5WXPM3FHMBDZ accepted
+GUI operation 01M5MHAPGG6T27JEK6KWES1VVN accepted
+GUI operation 01M5MHAPGGPFNJFHYYGFAS4PNQ accepted
+GUI operation 01M5MHAPGG8M2EPTFNS5C1KNR2 accepted
+GUI operation 01M5MHAPGGQ88N6BTXWMV9YJ76 accepted
+GUI operation 01M5MHAPGGM2SR2JG99G8YP3KF accepted
+GUI operation 01M5MHAPGGMBH0GYBF6J6XS6G8 accepted
+GUI operation 01M5MHAPGG6AJ6422TMPTRM8FR accepted
+GUI operation 01M5MHAPGG18VQVPZ5PG8CA2VA accepted
+GUI operation 01M5MHAPGGDVRTFDGDFKF10BEY accepted
+GUI operation 01M5MHAPGG5S83NHVTRF9NSGM7 accepted
+GUI operation 01M5MHAPGGHKEGT0P5CZNV60TM accepted
+GUI operation 01M5MHAPGGYQS5R5S8FXM3KJ4R accepted
+GUI operation 01M5MHAPGGHHYQTEJHY8JQ6N1E accepted
+GUI operation 01M5MHAPGGM3HH1381FBVAGTCW accepted
+GUI operation 01M5MHAPGGEE55QD2PAA00GAXH accepted
+GUI operation 01M5MHAPGGP9PQV93FK8QH697V accepted
+GUI operation 01M5MHAPGGZXK9T11C4C2B5D9B accepted
+GUI operation 01M5MHAPGGG8G35ZNJHR56HC77 accepted
+GUI operation 01M5MHAPGGWP4CW5V93WBNS1C8 accepted
+GUI operation 01M5MHAPGHPX60WQSX9Y1001TY accepted
+GUI operation 01M5MHAPGHKB71B8XRE4J7AGKE accepted
+GUI operation 01M5MHAPGHR5G267TT94P1JVVF accepted
+GUI operation 01M5MHAPGHKD0149WMZC2N0XMC accepted
+GUI operation 01M5MHAPGHNDR3KYVEJW0BD7BY accepted
+GUI operation 01M5MHAPGH4DBGD1G84PNTRGM4 accepted
+GUI operation 01M5MHAPGHAV7HKF487S6WV9JZ accepted
+GUI operation 01M5MHAPGHH8DNEMPE63KS5KQH accepted
+GUI operation 01M5MHAPGHFSA82RZYDFNBZWKM accepted
+GUI operation 01M5MHAPGHKRZETK3A97ATW90E accepted
+GUI operation 01M5MHAPGH33XHJSDQS2EXZS0B accepted
+GUI operation 01M5MHAPGHN2YRX9HP05YQWYQT accepted
+GUI operation 01M5MHAPGHNEBV87C2CNKWY37J accepted
+GUI operation 01M5MHAPGH9J4TWH90YZF02B0C accepted
+GUI operation 01M5MHAPGH2ME1F0V0ZTFHBEEQ accepted
+GUI operation 01M5MHAPGHGXC6V6HKS2CBZ8FJ accepted
+GUI operation 01M5MHAPGHFQK55GHWPZEQXD9W accepted
+GUI operation 01M5MHAPGHJFBXCG51Y0PNA44A accepted
+GUI operation 01M5MHAPGHG5G7J2VEJZH2GYZ8 accepted
+GUI operation 01M5MHAPGHHGFNKFR78HQ94B5G accepted
+GUI operation 01M5MHAPGHTGB0GGCF507GKM82 accepted
+GUI operation 01M5MHAPGH22WK6SVZPCFC5Y6Q accepted
+GUI operation 01M5MHAPGHAA6H6MD57PGK8ZJH accepted
+GUI operation 01M5MHAPGH9R7Z6C5ADDEEVXE3 accepted
+GUI operation 01M5MHAQ09X3585T909XCNF932 accepted
+GUI operation 01M5MHAQ09V6Y81VXF1ED8B153 accepted
+GUI operation 01M5MHAQ0991RN0CSFSRRYN0Q2 accepted
+GUI operation 01M5MHAQ09D6AAAYNFCT3EYRB5 accepted
+GUI operation 01M5MHAQ09JCAS51Y3BKH99X06 accepted
+GUI operation 01M5MHAQ0904AEC83XT4YDDBDA accepted
+GUI operation 01M5MHAQ09TCZ3180AHH1Q3TZ9 accepted
+GUI operation 01M5MHAQ09XSESH33NRJH5SH96 accepted
+GUI operation 01M5MHAQ09Y6VEK53GV6S5K07W accepted
+GUI operation 01M5MHAQ092TB25NPJX42NRQ1M accepted
+GUI operation 01M5MHAQ094GFY38FFXZH129WV accepted
+GUI operation 01M5MHAQ092QX8RHNT5S3VT7X1 accepted
+GUI operation 01M5MHAQ099AWZ65BB20V405T4 accepted
+GUI operation 01M5MHAQ09V06PMP0X929DRGS7 accepted
+GUI operation 01M5MHAQ098WZ3DGVGFWQZQGGG accepted
+GUI operation 01M5MHAQ091PGQ1PGDDVQNVSB1 accepted
+GUI operation 01M5MHAQ09H7Z2YWAZD1KB046R accepted
+GUI operation 01M5MHAQ09HVBT2AGEYKH5ANFK accepted
+GUI operation 01M5MHAQ09AY38J6NXWCJ1ZGEK accepted
+GUI operation 01M5MHAQ09DE8N3PM67GXPE34Q accepted
+GUI operation 01M5MHAQ096VSQ3Z252YGPCVSB accepted
+GUI operation 01M5MHAQ09WB19A6JTBVX37ZJE accepted
+GUI operation 01M5MHAQ09QZC71V9GFQJF16G3 accepted
+GUI operation 01M5MHAQ09V87YTG7PRKGC2AHW accepted
+GUI operation 01M5MHAQ09HADP6T8M2RTSH68A accepted
+GUI operation 01M5MHAQ099B07MY000ZJW0E76 accepted
+GUI operation 01M5MHAQ09GATX9GMGM4MGVSTT accepted
+GUI operation 01M5MHAQ09W0C4QXQANYG7GMXM accepted
+GUI operation 01M5MHAQJHQX83RDS556YQ5NCY accepted
+GUI operation 01M5MHAQJHHECWWEAB5Z44ESFJ accepted
+GUI operation 01M5MHAQJHC8W6G4PYMK9C0W0H accepted
+GUI operation 01M5MHAQJHX2J0BT8WGKQAEG7F accepted
+GUI operation 01M5MHAQJHX4AM6H6Z0DKW7T09 accepted
+GUI operation 01M5MHAQJHRQFGED0DDHBPZMNN accepted
+GUI operation 01M5MHAQJH4FERZCPYWWGJQ4BY accepted
+GUI operation 01M5MHAQJHH6YAZ8NBC7F29DRG accepted
+GUI operation 01M5MHAQJH7H5CY1D2PVNFHWG9 accepted
+GUI operation 01M5MHAQJHW7NEPPBDDQ34S3AC accepted
+GUI operation 01M5MHAQJHPXA5MWZZVZKFKRKA accepted
+GUI operation 01M5MHAQJHY7VAHWQZRA1507BX accepted
+GUI operation 01M5MHAQJHKXF2CHFJQNMWAAAC accepted
+GUI operation 01M5MHAQJH4DTFNYMH8F1D1321 accepted
+GUI operation 01M5MHAQJH1WQX8KW7FXN19AA1 accepted
+GUI operation 01M5MHAQJHR425AV76CSWBS8DB accepted
+GUI operation 01M5MHAQJHHG18WR1DCTB7SYYQ accepted
+GUI operation 01M5MHAQJHCJACQTRRTRCGCVAQ accepted
+GUI operation 01M5MHAQJHTNJ4BV8ZCT7M3W2V accepted
+GUI operation 01M5MHAQJH0RT6W0QQEHZBMM23 accepted
+GUI operation 01M5MHAQJH4VNDBN3VMQPCFRQW accepted
+GUI operation 01M5MHAQJH2KFCZ93SWY791SP9 accepted
+GUI operation 01M5MHAVEH4GFAARA76WT6WE02 accepted
+GUI operation 01M5MHAQJHTX6MQ46HCDJQNP3W accepted
+GUI operation 01M5MHAQJHYHMJZVVP7MESFX3M accepted
+GUI operation 01M5MHAQJHVPDETZ5B3V2X552M accepted
+GUI operation 01M5MHAQJHD54TRZ74Y02E03V2 accepted
+GUI operation 01M5MHAQJH7QTN8NTQFPG08EE6 accepted
+GUI operation 01M5MHAQJH791WZ5VGRTEVT4Y4 accepted
+GUI operation 01M5MHAQJHCFHPCQFZ50EZ7075 accepted
+GUI operation 01M5MHAR6CF4R0FYF3YH2GNXMR accepted
+GUI operation 01M5MHAR6C6RF67W7PXB0EN6H3 accepted
+GUI operation 01M5MHAR6CQVS5GESRW9BX2TP5 accepted
+GUI operation 01M5MHAR6CFF6H3ZA884TW8WR1 accepted
+GUI operation 01M5MHAR6C0FR1R4S1XSB4C2MN accepted
+GUI operation 01M5MHAR6CCFQ16N3E7T7Y4SN9 accepted
+GUI operation 01M5MHAR6C6VB5BWW0CH39H32R accepted
+GUI operation 01M5MHAR6CW6ME557KJSR442GM accepted
+GUI operation 01M5MHAR6C1WC4ZZSQEKQFW8XP accepted
+GUI operation 01M5MHAR6C0JW96DC25321CD1V accepted
+GUI operation 01M5MHAR6CTQ3TG0GX1N4N5J8M accepted
+GUI operation 01M5MHAVS5PXXY8FK9NZQ4NYKM accepted
+seat 01M5MHAP6B83AE2YSR8MNA4EDJ activity=Idle process=Running { pid: 22462 }
+GUI operation 01M5MHAVT740HVGDQPKJCAJ3VB accepted
+GUI operation 01M5MHAVTMTXPFZ7DKZM3VWF30 accepted
+GUI operation 01M5MHAVVEJ3Y7WW0AY8F8SZ5E accepted
+GUI operation 01M5MHAVVGDRKNX10ENZM4B0CS accepted
+seat 01M5MHAP6B83AE2YSR8MNA4EDJ activity=Idle process=Running { pid: 22462 }
+GUI operation 01M5MHAVXH9CYAAJ9T24AXKRH8 accepted
+GUI operation 01M5MHAVYV27DXCYC59EY8Z596 accepted
+GUI operation 01M5MHAVYS4P7E1A0FJTHY23T0 accepted
+GUI operation 01M5MHAVZYGJ1PJ8ETHQQ5P7F8 accepted
+GUI operation 01M5MHAVZYNP6643BVN0HY254Q accepted
+GUI operation 01M5MHAW0RQH9AW52W834VBABX accepted
+GUI operation 01M5MHAW10DQ0YADCPRCZ9P9MS accepted
+GUI operation 01M5MHAW1THCKWAMEMMM55RTDS accepted
+seat 01M5MHAP6B83AE2YSR8MNA4EDJ activity=Idle process=Running { pid: 22462 }
+GUI disconnected: GUI connection closed
+logic exited: signal: 9 (SIGKILL)
+GUI disconnected: recovery failed: logic exited during startup
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... ok
+
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.87s
+
+     Running tests/cockpit.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/cockpit-8d508e3d131d42ec)
+
+running 5 tests
+logic: orderly shutdown requested
+test app_io_owner_observes_both_child_process_exits ... ok
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test same_run_directory_relaunches_and_spawns_after_orderly_shutdown ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.61s
+
+     Running tests/custody.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/custody-1180325e10aa3ba7)
+
+running 1 test
+test custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.07s
+
+     Running tests/hosts.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/hosts-06c387817605b5de)
+
+running 1 test
+test provider_data_binds_settings_launcher_and_survives_model_rebuilds ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/launcher.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/launcher-670ee66ab4bffdfa)
+
+running 15 tests
+test left_and_backspace_leave_nonempty_queries_to_the_text_field ... ok
+test enter_picks_the_parent_default_and_right_still_opens_placements ... ok
+test a_provider_disconnect_invalidates_its_path_and_cannot_dive_again ... ok
+test direct_activation_outside_the_rows_is_local_and_preserves_selection ... ok
+test escape_climbs_one_explicit_level_before_closing_even_with_a_query ... ok
+test catalog_refresh_preserves_the_selected_id_across_reordering ... ok
+test digits_pick_or_dive_only_on_an_empty_query_and_preserve_modifiers ... ok
+test a_connecting_host_keeps_the_existing_browseable_projection ... ok
+test enter_descends_ordinary_parents_and_picks_the_typed_harness_default ... ok
+test each_down_provider_state_refuses_both_pick_and_dive ... ok
+test link_state_blocks_activation_even_without_the_legacy_down_flag ... ok
+test reroll_is_a_pure_name_request_and_does_not_discard_navigation ... ok
+test selection_wraps_and_empty_results_are_safe ... ok
+test the_cap_refuses_parent_and_leaf_picks_while_navigation_and_right_stay_live ... ok
+test typed_descent_then_right_commits_the_existing_projection_path ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/lifecycle.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/lifecycle-67e646ece33504b8)
+
+running 3 tests
+logic worker exited: supervisor disconnected
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_history_is_lazy_bounded_capture_pages_with_ordered_gaps_and_control_cursors ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position ... ok
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it has been running for over 60 seconds
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 61.00s
+
+     Running tests/recovery.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/recovery-4a49ffb73d34d094)
+
+running 5 tests
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test recovered_generation_admission_rejects_unknown_and_conflicting_launches_but_exact_retry_is_idempotent ... ok
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test partial_startup_survives_cancelled_poll_and_shutdown_reaps_its_child ... ok
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test shutdown_during_pending_recovery_reaps_children_without_restarting ... ok
+logic worker exited: supervisor disconnected
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test logic_death_keeps_pty_generation_rewatches_and_preserves_ack_backpressure ... ok
+StaleGeneration: GUI request for seat 01M5MHDQ27W90H4AJ0EEJPPAJH rejected: displayed generation 1, current 2; dropped=1
+StaleGeneration: GUI request for seat 01M5MHDQ27W90H4AJ0EEJPPAJH rejected: displayed generation 1, current 2; dropped=2
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.64s
+
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bboxybook-ade3129ab0fc882c)
+
+running 15 tests
+test documents::diagram_policy_tests::engine_body_height_is_excluded_but_chrome_padding_and_following_gaps_stay_gated ... ok
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test parity::tests::text_policy_requires_rects_and_baselines_even_when_pixels_pass ... ok
+test parity::tests::vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets ... ok
+test swarms::diagnostic_filter_keeps_every_partly_visible_part_and_every_non_descendant ... ok
+test gallery::tests::current_parity_matrix_has_unique_paths_and_geometry_routing ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test parity::tests::legacy_pixels_do_not_claim_geometry_or_weaken_the_current_gate ... ok
+test parity::tests::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry ... ok
+test parity::tests::historical_diffs_stay_visible_without_gating_the_current_design ... ok
+test atoms::geometry_tests::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics ... ok
+test styles::geometry_tests::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+test documents::repository::tests::flat_document_composition_preserves_pixels_including_clips_and_alpha ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+     Running unittests src/main.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bboxybook-9265e2ca39b65e20)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/atoms.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/atoms-f618475c49275791)
+
+running 3 tests
+test icon_phase_probe_compares_snapped_origins_and_baked_fractional_coverage ... ok
+test icon_size_gallery_renders_at_one_and_two_device_pixels_per_point ... ok
+test every_atom_renders_across_density_and_theme_and_references_have_canonical_keys ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running tests/blending.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/blending-1d27d27686ad07f9)
+
+running 1 test
+test chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests/clipping.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/clipping-263083728e3478d4)
+
+running 3 tests
+test different_surfaces_use_their_own_clip_ranges ... ok
+test retained_material_keeps_the_outer_rounding_when_an_inner_clip_is_square ... ok
+test every_material_obeys_each_rounded_ancestor_at_one_and_two_x ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running tests/components.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/components-f59d0bc0403d9b74)
+
+running 4 tests
+test component_cases_are_canonical_and_box_gallery_covers_materials_and_radii ... ok
+test retained_image_preserves_asset_colour_rounding_and_group_filtering ... ok
+test a_retained_group_keeps_material_coverage_and_filters_the_completed_layer ... ok
+test retained_scroll_content_moves_but_never_paints_outside_the_viewport ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+     Running tests/documents.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/documents-cf277159c7b7def9)
+
+running 4 tests
+test document_matrix_covers_all_types_and_both_modal_presentations_and_source ... ok
+test native_document_layout_consumes_public_records_not_css_or_child_geometry ... ok
+test document_mermaid_uses_the_real_engine_and_only_source_scroll_state_from_old_records ... ok
+test every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overflow ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.44s
+
+     Running tests/fixtures.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/fixtures-f84288539346a72c)
+
+running 1 test
+test sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/graphs.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/graphs-2c59f3b369ce7251)
+
+running 4 tests
+test former_graph_and_provenance_hand_painters_are_removed ... ok
+test graph_matrix_covers_each_live_card_and_the_empty_swarm ... ok
+test channel_layout_never_consumes_browser_svg_diagnostics ... ok
+test graph_layout_is_driven_by_records_not_browser_child_positions ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/icon_filter.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/icon_filter-93b2805963cd7bc2)
+
+running 1 test
+test icon_filter_interpolates_coverage_without_hidden_colour_or_atlas_neighbour_bleed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/launchers.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/launchers-343e47cfb04a7d25)
+
+running 3 tests
+test matrix_has_every_current_lab_state_and_separate_historical_keys ... ok
+test a_machine_subtitle_with_room_stays_on_one_line ... ok
+test geometry_uses_constructor_values_instead_of_child_dom_diagnostics ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/materials.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/materials-b35d5fb0c143f823)
+
+running 3 tests
+test source_over_glow_keeps_destination_alpha ... ok
+test backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed ... ok
+test material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests/metrics.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/metrics-05c4b2d538a850ab)
+
+running 3 tests
+test cache_hits_preserve_native_float_bits_and_instance_lifetime ... ok
+test every_app_font_key_field_including_float_bits_is_distinct ... ok
+test cached_coretext_values_match_the_raw_host_bit_for_bit ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/overlays.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/overlays-18c0fc16bfda569b)
+
+running 2 tests
+test layer_matrix_distinguishes_full_primitives_from_module_surfaces ... ok
+test overlay_blurs_only_the_backdrop_and_preserves_foreground_and_outside_pixels ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/panes.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/panes-a6f0c53f3ffb5c8b)
+
+running 4 tests
+test legacy_pane_calls_the_retained_composition_and_the_old_strip_painter_is_deleted ... ok
+test pane_registry_pairs_every_current_and_historical_case_without_collisions ... ok
+test legacy_pane_accepts_a_valid_hex_colour_after_its_hsl_round_trip ... ok
+test native_panes_ignore_child_web_bounds_and_font_diagnostics ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/parity_gate.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/parity_gate-0fe0334fd7686f2e)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test historical_geometry_review_exits_zero ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
+
+     Running tests/perf.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/perf-df673526a379a1a1)
+
+running 2 tests
+test perf_cases_cover_six_states_with_ascii_slugs ... ok
+test hud_width_is_the_spark_and_every_part_is_named ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/render.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/render-0d5ccd0502124813)
+
+running 1 test
+test every_registered_component_renders_on_metal ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.74s
+
+     Running tests/seat_rows.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/seat_rows-0c36e185d3dc1b0d)
+
+running 2 tests
+test seat_row_matrix_covers_lab_states_and_explicit_nested_row_fixtures ... ok
+test child_dom_rectangles_and_css_metrics_are_diagnostics_only ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests/settings.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/settings-a060476349eb1131)
+
+running 3 tests
+test placeholder_settings_hand_painter_is_removed ... ok
+test settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme ... ok
+test settings_uses_public_records_and_viewport_not_diagnostic_geometry_or_css ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/shaders.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/shaders-8f53a5eba6e99156)
+
+running 2 tests
+test lane_quad_and_parameters_are_validated ... ok
+test lane_effects_never_leave_the_lane ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests/shadow.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/shadow-39ca2e30ee34b407)
+
+running 2 tests
+test css_shadow_uses_gaussian_mask_sigma_half_blur_and_knocks_out_the_box ... ok
+test positioned_style_moves_only_its_shadow_in_the_existing_chrome_pass ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/streams.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/streams-01fa76821f30dd33)
+
+running 3 tests
+test old_stream_painter_is_deleted_in_favor_of_the_retained_composition ... ok
+test stream_matrix_covers_every_current_state_and_labels_legacy_cases ... ok
+test stream_layout_consumes_public_entries_but_never_browser_child_diagnostics ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/styles.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/styles-08e705aaf7a372bb)
+
+running 2 tests
+test per_node_glow_drives_state_grade_and_seed_without_changing_the_box ... ok
+test style_matrix_is_canonical_and_every_preset_renders_on_the_native_device ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests/swarms.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/swarms-12495b4bd4d649da)
+
+running 3 tests
+test old_swarm_card_and_sidebar_hand_painters_are_gone ... ok
+test swarm_matrix_covers_every_current_and_legacy_state_with_distinct_keys ... ok
+test captured_child_geometry_and_fonts_do_not_enter_card_or_sidebar_layout ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/tabs.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/tabs-f9b254ef7444e372)
+
+running 3 tests
+test old_module_and_json_painters_delegate_to_the_retained_compositions ... ok
+test all_current_and_legacy_tab_grid_cases_are_paired_without_key_collisions ... ok
+test tab_grid_layout_does_not_consume_child_dom_rectangles_fonts_or_backdrop_height ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/title_bars.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/title_bars-d3001fec6e761566)
+
+running 2 tests
+test titlebar_matrix_covers_current_states_and_keeps_legacy_diagnostic_only ... ok
+test native_titlebar_reads_public_strings_and_parent_width_not_child_diagnostics ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/widgets.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/widgets-41c935272f6f0a58)
+
+running 3 tests
+test control_matrix_has_canonical_keys_and_all_constructor_families ... ok
+test transparent_layout_border_does_not_cut_the_background_fill ... ok
+test thousand_row_views_clip_output_and_the_table_header_stays_fixed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
+
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bbt_core-348ec8df8d490e01)
+
+running 108 tests
+test vendor::alacritty::grid::storage::tests::indexing ... ok
+test vendor::alacritty::grid::storage::tests::shrink_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::rotate_wrap_zero ... ok
+test vendor::alacritty::grid::storage::tests::rotate ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_and_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_then_grow ... ok
+test vendor::alacritty::grid::storage::tests::initialize ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines ... ok
+test vendor::alacritty::grid::storage::tests::indexing_above_inner_len - should panic ... ok
+test vendor::alacritty::grid::storage::tests::grow_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::grow_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines_beginning ... ok
+test vendor::alacritty::grid::storage::tests::with_capacity ... ok
+test vendor::alacritty::grid::tests::accurate_size_hint ... ok
+test vendor::alacritty::grid::tests::grow_reflow ... ok
+test vendor::alacritty::grid::tests::grow_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::grow_reflow_multiline ... ok
+test vendor::alacritty::grid::tests::scroll_down ... ok
+test vendor::alacritty::grid::tests::scroll_up ... ok
+test vendor::alacritty::grid::tests::scroll_down_with_history ... ok
+test vendor::alacritty::grid::tests::shrink_reflow ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_empty_cell_inside_line ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_twice ... ok
+test vendor::alacritty::grid::tests::test_iter ... ok
+test vendor::alacritty::index::tests::add ... ok
+test vendor::alacritty::index::tests::add_clamp ... ok
+test vendor::alacritty::index::tests::add_grid_clamp ... ok
+test vendor::alacritty::index::tests::add_none_clamp ... ok
+test vendor::alacritty::index::tests::add_wrap ... ok
+test vendor::alacritty::index::tests::location_ordering ... ok
+test vendor::alacritty::index::tests::sub ... ok
+test vendor::alacritty::index::tests::sub_clamp ... ok
+test vendor::alacritty::index::tests::sub_grid_clamp ... ok
+test vendor::alacritty::index::tests::sub_none_clamp ... ok
+test vendor::alacritty::index::tests::sub_wrap ... ok
+test vendor::alacritty::term::cell::tests::cell_size_is_below_cap ... ok
+test vendor::alacritty::term::cell::tests::line_length_works ... ok
+test vendor::alacritty::term::cell::tests::line_length_works_with_wrapline ... ok
+test vendor::alacritty::term::tests::damage_cursor_movements ... ok
+test vendor::alacritty::term::tests::clear_saved_lines ... ok
+test vendor::alacritty::term::tests::input_line_drawing_character ... ok
+test vendor::alacritty::term::tests::damage_public_usage ... ok
+test vendor::alacritty::term::tests::parse_cargo_version ... ok
+test vendor::alacritty::term::tests::clearing_viewport_keeps_history_position ... ok
+test vendor::alacritty::term::tests::clearing_scrollback_resets_display_offset ... ok
+test vendor::alacritty::term::tests::window_title ... ok
+test vendor::vte::ansi::tests::contrast ... ok
+test vendor::vte::ansi::tests::mixed_sync_escape ... ok
+test vendor::vte::ansi::tests::parse_control_attribute ... ok
+test vendor::vte::ansi::tests::parse_designate_g0_as_line_drawing ... ok
+test vendor::vte::ansi::tests::parse_designate_g1_as_line_drawing_and_invoke ... ok
+test vendor::vte::ansi::tests::parse_invalid_legacy_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_invalid_number ... ok
+test vendor::alacritty::term::tests::grid_serde ... ok
+test vendor::vte::ansi::tests::parse_invalid_rgb_colors ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_active_cursor_pos ... ok
+test vendor::alacritty::term::tests::full_damage ... ok
+test vendor::vte::ansi::tests::parse_number_too_large ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_inactive_cursor_pos ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_inactive_cursor_pos ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors_no_semicolon ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_color ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_active_cursor_pos ... ok
+test vendor::vte::ansi::tests::parse_osc4_set_color ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_csi ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_esc ... ok
+test vendor::vte::ansi::tests::parse_valid_legacy_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_truecolor_attr ... ok
+test vendor::vte::ansi::tests::parse_valid_number ... ok
+test vendor::vte::ansi::tests::parse_valid_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_zsh_startup ... ok
+test vendor::vte::ansi::tests::partial_sync_updates ... ok
+test vendor::vte::ansi::tests::sync_bsu_with_esu ... ok
+test vendor::vte::tests::c1s ... ok
+test vendor::vte::tests::csi_reset ... ok
+test vendor::vte::tests::csi_subparameters ... ok
+test vendor::vte::tests::dcs_reset ... ok
+test vendor::vte::tests::esc_reset ... ok
+test vendor::vte::tests::esc_reset_intermediates ... ok
+test vendor::vte::tests::exceed_max_buffer_size ... ok
+test vendor::vte::tests::execute_anywhere ... ok
+test vendor::vte::tests::intermediate_reset_on_dcs_exit ... ok
+test vendor::vte::tests::invalid_utf8 ... ok
+test vendor::vte::tests::osc_bell_terminated ... ok
+test vendor::vte::tests::osc_c0_st_terminated ... ok
+test vendor::vte::tests::osc_containing_string_terminator ... ok
+test vendor::vte::tests::params_buffer_filled_with_subparam ... ok
+test vendor::vte::tests::parse_csi_max_params ... ok
+test vendor::vte::tests::parse_csi_params_ignore_long_params ... ok
+test vendor::vte::tests::parse_csi_params_leading_semicolon ... ok
+test vendor::vte::tests::parse_csi_params_trailing_semicolon ... ok
+test vendor::vte::tests::parse_dcs_max_params ... ok
+test vendor::vte::tests::parse_dcs ... ok
+test vendor::vte::tests::parse_empty_osc ... ok
+test vendor::vte::tests::parse_long_csi_param ... ok
+test vendor::vte::tests::parse_osc_max_params ... ok
+test vendor::vte::tests::parse_osc_with_utf8_arguments ... ok
+test vendor::vte::tests::parse_osc ... ok
+test vendor::vte::tests::partial_invalid_utf8 ... ok
+test vendor::vte::tests::partial_invalid_utf8_split ... ok
+test vendor::vte::tests::partial_utf8 ... ok
+test vendor::vte::tests::partial_utf8_into_esc ... ok
+test vendor::vte::tests::partial_utf8_separating_utf8 ... ok
+test vendor::vte::tests::unicode ... ok
+test vendor::vte::ansi::tests::sync_bursts_buffer ... ok
+
+test result: ok. 108 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/checkpoint.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/checkpoint-6527d8f6d8b42b26)
+
+running 7 tests
+test osc_7501_reaches_the_hook_with_raw_parameters_for_bel_and_st ... ok
+test viewport_only_drops_existing_history_even_while_the_primary_is_inactive ... ok
+test incomplete_osc_restores_without_replaying_old_effects_or_losing_the_live_hook ... ok
+test saved_cursor_and_inactive_primary_screen_survive_checkpoint ... ok
+test synchronized_output_buffer_and_preceding_character_survive_checkpoint ... ok
+test checkpoint_retains_an_incomplete_csi_and_utf8_codepoint ... ok
+test red_foreground_survives_4096_bytes_and_a_durable_checkpoint ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/resize.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/resize-b291b95d234b489f)
+
+running 1 test
+test resizing_reflows_content_keeps_the_cursor_in_bounds_and_preserves_modes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bbt_doc-89ce6354ae4d06aa)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/corpus.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/corpus-139cbc45a247d3fd)
+
+running 2 tests
+test corpus_gate_rejects_nested_malformed_frontmatter_with_path_and_source_line ... ok
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/layout.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/layout-8511f2ea4b243a64)
+
+running 7 tests
+test structured_frontmatter_links_project_to_chips_and_keep_the_original_mapping ... ok
+test real_mermaid_is_a_drawing_card_and_wide_code_scrolls_without_scaling ... ok
+test long_paths_and_emoji_wrap_at_grapheme_boundaries_without_rewriting_source ... ok
+test table_columns_keep_unbroken_words_and_scroll_when_their_minima_do_not_fit ... ok
+test matching_leading_h1_is_hidden_only_with_a_header_and_original_source_stays_intact ... ok
+test modal_body_override_preserves_the_shell_and_does_not_claim_yaml_signatures_verify ... ok
+test document_body_uses_a_bounded_measure_and_real_wrapping_for_rich_tables ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/markdown.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/markdown-462e70767a3952e8)
+
+running 5 tests
+test wikilinks_retain_labels_weights_and_do_not_activate_inside_code ... ok
+test gfm_tables_footnotes_links_and_mermaid_are_semantic_records ... ok
+test commonmark_builds_nested_blocks_and_keeps_original_utf8_offsets ... ok
+test malformed_metadata_and_html_remain_visible_source ... ok
+test metadata_errors_use_markdown_lines_including_delimiter_bom_and_crlf ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/mermaid.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/mermaid-e7d439bde8f45a76)
+
+running 6 tests
+test circle_markers_are_hollow_at_both_ends ... ok
+test geometry_uses_ui_fonts_and_true_size_and_retains_document_link_targets ... ok
+test figure_source_state_and_unsupported_syntax_keep_the_original_source_readable ... ok
+test sequence_keeps_duplicate_participants_notes_activations_and_frame_dividers ... ok
+test lab_diagram_inputs_stay_aligned_and_supported_cases_use_the_native_engine ... ok
+test every_real_bboxy_mermaid_block_lays_out_on_the_ui_measurement_contract ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bbt_mermaid-680f5ab4c870925d)
+
+running 11 tests
+test sequence::tests::rejects_unsupported ... ok
+test flowchart::tests::rejects_unsupported ... ok
+test state::tests::states_transitions_and_composites ... ok
+test flowchart::tests::shapes_groups_classes_and_subgraph_endpoints ... ok
+test text::tests::cleans_quotes_breaks_and_entities ... ok
+test layered::tests::pav_keeps_order_and_gaps ... ok
+test state::tests::rejects_unsupported ... ok
+test state::tests::notes_sit_beside_their_state ... ok
+test flowchart::tests::links ... ok
+test text::tests::statements_keep_quoted_newlines ... ok
+test sequence::tests::parses_messages_notes_and_blocks ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fixtures.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/fixtures-78626ccb56d08cdc)
+
+running 11 tests
+test subgraph_direction_is_honoured_unless_linked_outside ... ok
+test multi_edges_take_distinct_paths ... ok
+test unsupported_syntax_is_an_error ... ok
+test fixture_counts ... ok
+test clusters_hold_members_and_exclude_others ... ok
+test no_overlapping_nodes ... ok
+test everything_inside_the_size ... ok
+test every_fixture_lays_out ... ok
+test edges_start_and_end_on_borders ... ok
+test layout_is_deterministic ... ok
+test every_bboxy_mermaid_block_has_a_fixture ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bbt_mux-4acacf0e7bfff017)
+
+running 19 tests
+test identity::io::debug_tests::unset_process_fixture ... ignored, spawned-process fixture, invoked by debug_without_override_selects_keychain
+test identity::keychain::tests::denied_or_interactive_keychain_answers_have_a_named_hold ... ok
+test identity::agent::tests::malformed_agent_data_is_rejected ... ok
+test identity::io::debug_tests::labels_describe_the_actual_store_and_survive_the_io_wrapper ... ok
+test identity::agent::tests::agent_cancellation_and_bad_framing_fail_closed ... ok
+test mcp::journal::tests::audit_outbox_preserves_call_order_instead_of_random_ulid_order ... ok
+test identity::io::debug_tests::debug_without_override_selects_keychain ... ok
+test mcp::journal::tests::control_result_and_audit_commit_atomically_and_reopen_without_redispatch ... ok
+test mcp::journal::tests::crashed_admitted_mutation_reopens_unknown_without_redispatch ... ok
+test index::tests::oversized_documents_are_skipped_without_blocking_valid_edits ... ok
+test index::tests::unchanged_documents_are_not_reread_and_same_length_edits_are_indexed ... ok
+test mcp::journal::tests::outcome_audit_failure_keeps_the_original_unknown_intent ... ok
+test mcp::journal::tests::mutation_requires_audit_admission_and_releases_the_transaction_before_dispatch ... ok
+test index::tests::checked_writer_keeps_editor_changes_and_refuses_symlink_escapes ... ok
+test mcp::journal::tests::concurrent_operation_retries_return_one_committed_result ... ok
+test index::tests::checked_creation_has_one_winner_and_does_not_overwrite_it ... ok
+test identity::agent::tests::agent_deadline_is_bounded ... ok
+test seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... ok
+test index::tests::sibling_build_writes_do_not_dirty_watch_or_trigger_reconciliation ... ok
+
+test result: ok. 18 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.56s
+
+     Running tests/adapters.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/adapters-49ee68b2ac470a91)
+
+running 11 tests
+test adapters_custom_harness_cadence_and_reported_idle_never_create_readiness ... ok
+test adapters_claude_wire_capture_runs_through_term_callback_and_ends_only_running_rows ... ok
+test adapters_codex_native_readiness_and_hooks_only_subagents ... ok
+test adapters_native_claude_socket_writes_priority_without_claiming_consumption ... ok
+test adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect ... ok
+test adapters_positive_ready_is_consumed_and_journals_unknown_without_retyping ... ok
+test adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields ... ok
+test adapters_sessions_file_dialog_blocks_every_write_and_rejects_pid_session_reuse ... ok
+test adapters_real_zsh_overlay_reports_prompt_133_b_and_command_boundary ... ok
+test adapters_logic_launch_retains_overlay_until_exit_and_authenticates_shim_fallback ... ok
+test adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
+
+     Running tests/capture_busy.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/capture_busy-05ed9b53669f46d3)
+
+running 2 tests
+test capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint ... ok
+test large_capture_catchup_yields_to_control_between_history_pages ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.40s
+
+     Running tests/gates_seats.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/gates_seats-ed037d5cfcf11ecf)
+
+running 4 tests
+test gate_bus ... ignored, C1d gate 2: sh scripts/gates.sh bus
+test gate_memory ... ignored, C1d gate 1: sh scripts/gates.sh memory
+test gate_poller ... ignored, C1d gate 3: sh scripts/gates.sh poller
+test disk_guard_abort_terminates_owned_children_and_removes_the_run ... ok
+
+test result: ok. 1 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running tests/identity.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/identity-942cb5628c6031c0)
+
+running 14 tests
+test identity_keychain_device_local_item_and_cleanup ... ignored, uses the current login Keychain with an isolated, deleted test item; run for ID1a acceptance
+test identity_device_without_root_certification_is_refused_before_seat_issuance ... ok
+test identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ack_contracts ... ok
+test identity_locked_keychain_and_wrong_keygrip_install_nothing ... ok
+test identity_cutover_preserves_live_local_generation_and_fences_newer_local_sequences ... ok
+test identity_pending_failure_installs_no_authority_and_retries_same_device ... ok
+test identity_hold_range_stays_ephemeral_until_throwaway_device_enrollment_then_closes ... ok
+test identity_reset_is_explicit_monotonic_and_does_not_rewrite_old_chain_history ... ok
+test identity_status_is_available_as_data_through_the_bounded_logic_client ... ok
+test identity_seat_chain_checks_certificates_scope_expiry_and_revoked_epochs ... ok
+test identity_seat_renewal_never_uses_the_primary_and_roster_keeps_public_history ... ok
+test identity_bootstrap_external_certification_and_custody ... ok
+test identity_status_surfaces_renewal_expiry_custody_hold_and_live_legacy_count ... ok
+test identity_status_reports_no_primary_and_persists_safe_bootstrap_pending_reasons ... ok
+
+test result: ok. 13 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.46s
+
+     Running tests/identity_io.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/identity_io-281dd377f48f44d9)
+
+running 4 tests
+test memory_custody_process_fixture ... ignored, spawned-process fixture, invoked by debug_process_override_uses_only_memory_custody
+test interaction_required_is_pending_without_a_prompt_or_replacement ... ok
+test debug_process_override_uses_only_memory_custody ... ok
+test stuck_custody_has_a_two_second_bound_and_retry_does_not_add_workers ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 4.01s
+
+     Running tests/identity_local.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/identity_local-371ad1c56d4aa32e)
+
+running 7 tests
+test unavailable_and_missing_custody_hold_without_replacement_or_secret_file ... ok
+test concurrent_creators_read_one_atomic_winner ... ok
+test old_random_pin_is_not_silently_replaced ... ok
+test bus_seals_exact_hash_range_before_rekey_and_replays_retained_signed_bytes ... ok
+test held_queue_survives_reopen_and_refuses_changed_generation_role_epoch_and_routes ... ok
+test stable_machine_key_survives_logic_relaunch_and_is_shared_across_run_dirs ... ok
+test pending_logic_keeps_pty_live_retries_at_30s_and_releases_durable_sends_in_order ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.11s
+
+     Running tests/logic.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/logic-ad9f69e072dffe59)
+
+running 13 tests
+test external_logic_fixture ... ignored, subprocess fixture, invoked by the hard-kill acceptance test
+test ring_capture_throughput_with_logic_running_and_stopped ... ignored, cargo test -p bbt-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1
+test ring_capture_twenty_mib_profile_running_and_stopped ... ignored, W1.2f baseline instrumentation: run release ring_capture_twenty_mib_profile --ignored --nocapture
+test ring_cold_replay_twenty_mib_profile ... ignored, W1.2f O0 cold-start profile; producer latency is separately reported and gated
+test view_stream_coalesces_and_replica_refuses_wrong_baselines_atomically ... ok
+test ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshold ... ok
+test a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_identity ... ok
+test logic_reconnect_keeps_same_supervisor_child_and_exact_screen ... ok
+test real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap ... ok
+test supervisor_expires_grace_after_logic_stops_and_undo_preserves_process ... ok
+test hard_killed_separate_logic_process_recovers_the_same_zsh_view ... ok
+test ring_live_logic_catches_up_coalesced_notifications_after_a_stall ... ok
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... ok
+
+test result: ok. 9 passed; 0 failed; 4 ignored; 0 measured; 0 filtered out; finished in 15.65s
+
+     Running tests/logic_exit.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/logic_exit-858795e5a706ea39)
+
+running 1 test
+test queued_and_later_callers_keep_the_worker_error_and_panic_cause ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/mcp.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/mcp-4d2b3ba83a32eeb5)
+
+running 20 tests
+test mcp_installed_claude_and_codex_call_orient ... ignored, live installed-client interop; BBOXY_TEST_EXE must name the built app
+test mcp_framing_is_bounded_and_protocol_errors_never_echo_input ... ok
+test mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_result ... ok
+test mcp_artifact_partial_write_remains_unknown_and_is_not_reexecuted ... ok
+test mcp_role_scope_and_schema_cannot_be_spoofed_and_graph_reads_hide_foreign_items ... ok
+test mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_authority ... ok
+test mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_content ... ok
+test mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority ... ok
+test mcp_messages_bind_the_sender_retry_once_reply_list_and_ack_through_w24 ... ok
+test mcp_message_visibility_and_receipt_pages_preserve_current_w24_scope ... ok
+test mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check ... ignored, acceptance driver supplies the prebuilt bbt-doc corpus test binary
+test mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results ... ok
+test mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_arguments ... ok
+test mcp_unread_is_unknown_and_application_ack_is_a_separate_count ... ok
+test mcp_work_item_audit_admission_failure_executes_no_frontmatter_write ... ok
+test mcp_task_partial_wake_stays_unknown_after_restart_and_never_rewrites_the_file ... ok
+test mcp_work_item_signing_hold_keeps_the_original_file_and_terminals ... ok
+test mcp_fixture_first_turn_orients_reports_and_retains_signed_task_receipts ... ok
+test mcp_task_reassignment_reauthorizes_history_and_refuses_foreign_or_ambiguous_scope ... ok
+test mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_only ... ok
+
+test result: ok. 18 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 3.49s
+
+     Running tests/measurements.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/measurements-49d9599d863d7c93)
+
+running 2 tests
+test file_descriptors_at_200_live_seats_and_sqlite_objects ... ignored, finite 200-live-seat descriptor measurement
+test recursive_cte_vs_petgraph_and_thousand_subscriber_fanout ... ignored, finite synthetic 10k-document / 100k-link measurement
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/messaging.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/messaging-eeb05020c6894e70)
+
+running 15 tests
+test live_supervisor_admits_fresh_guard_and_rejects_replaced_foreground_evidence ... ok
+test filter_rate_pause_and_worker_self_subscription_are_bounded_by_folder_grants ... ok
+test nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths_after_reopen ... ok
+test arrival_path_limit_rejects_instead_of_silently_losing_an_unpaused_route ... ok
+test signed_envelope_covers_role_routing_thread_and_rejects_untrusted_issuer_and_noncanonical_counters ... ok
+test ambiguous_guarded_pty_stays_unknown_through_the_delivery_ledger ... ok
+test batching_never_jumps_over_an_earlier_eligible_route_in_worker_fifo ... ok
+test oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects ... ok
+test recipient_cursor_pages_do_not_skip_sinks_and_unsubscribing_survives_reopen ... ok
+test persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart ... ok
+test muted_peer_cannot_claim_the_authenticated_operator_direct_control_exception ... ok
+test mute_holds_both_directions_reopens_and_releases_only_under_current_grants ... ok
+test supervisor_final_fence_rejects_a_user_draft_without_accepting_any_guarded_bytes ... ok
+test priority_fifo_four_to_one_and_burst_overflow_are_receiver_local ... ok
+test live_logic_and_capability_socket_deliver_dm_native_written_without_claiming_model_receipt ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s
+
+     Running tests/provider.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/provider-5fb333b61e5e636c)
+
+running 3 tests
+test local_provider_preserves_the_existing_link_and_rejects_unknown_hosts ... ok
+test location_namespaces_select_one_link_and_only_the_local_link_waits ... ok
+test logic_routes_real_seats_recovery_history_ownership_and_close_by_location ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+     Running tests/provider_fake.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/provider_fake-525b0300ea804829)
+
+running 3 tests
+test all_requests_keep_their_reply_and_down_requests_never_execute_while_events_wait_for_rtt ... ok
+test fixture_is_the_host_source_and_invalid_scripts_are_rejected ... ok
+test headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_restart ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.63s
+
+     Running tests/provider_gui.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/provider_gui-27c25e2c9ee29d2a)
+
+running 1 test
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.62s
+
+     Running tests/ring.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/ring-088f9f79fba037d0)
+
+running 9 tests
+test ring_rejects_wrong_generation_sequence_and_corruption_without_unbounded_allocation ... ok
+test ring_group_commit_distinguishes_captured_bytes_from_the_durable_cursor ... ok
+test ring_red_sgr_checkpoint_restores_colour_and_replay_matches_every_live_cell ... ok
+test ring_logical_rows_ignore_osc_payload_newlines_and_advance_epochs_without_invented_tail_indexes ... ok
+test ring_corrupt_sealed_payload_is_an_error_not_a_complete_replay ... ok
+test ring_rejects_uncommitted_and_torn_suffix_then_can_commit_and_reopen_again ... ok
+test ring_checkpoint_preserves_incomplete_csi_utf8_osc_and_suppresses_replayed_effects ... ok
+test ring_ten_thousand_logical_lines_round_trip_with_paginated_history_and_index ... ok
+test ring_hot_rollover_keeps_crc_cold_history_and_two_checkpoint_references ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.72s
+
+     Running tests/seat_wiring.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/seat_wiring-b8c0d38a70cdf60b)
+
+running 2 tests
+test resumed_generation_gets_a_fresh_overlay_and_keeps_the_native_resume_path ... ok
+test first_logic_launch_wires_both_fixture_clients_without_user_config_writes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.40s
+
+     Running tests/socket_backlog.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/socket_backlog-39081e0c5c4b11f4)
+
+running 1 test
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 53.09s
+
+     Running tests/storage_bus_index.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/storage_bus_index-a363ed0271817214)
+
+running 9 tests
+test grammar_matches_tokens_and_rejects_mid_path_tail_wildcards ... ok
+test registry_keeps_session_mapping_mute_and_exact_close_revision_across_restart ... ok
+test request_reply_has_no_responders_and_fanout_is_not_replayed ... ok
+test index_resolves_annotated_links_retains_broken_frontmatter_and_rebuilds_from_sqlite ... ok
+test signed_events_dedupe_forever_reject_conflicts_tampering_and_torn_database ... ok
+test explicit_ack_redelivers_original_ids_survives_restart_and_never_redelivers_acked_work ... ok
+test sqlite_objects_blobs_and_alarms_round_trip_across_reopen ... ok
+test independent_streams_latest_snapshots_queue_gaps_and_nonretained_output ... ok
+test mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_changes ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/ui_guard.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/ui_guard-fcb832858b91934e)
+
+running 1 test
+test ui_thread_is_rejected_before_creating_a_database_directory ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bbt_proto-c4cc748d146af531)
+
+running 7 tests
+test gui::tests::identity_status_is_portable_and_contains_only_state_and_reason ... ok
+test gui::tests::gui_ids_keep_canonical_ulid_text_and_reject_malformed_ids ... ok
+test gui::tests::input_and_resize_require_an_explicit_displayed_generation ... ok
+test hosts::tests::host_states_and_namespaced_locations_round_trip_without_mux_types ... ok
+test gui::tests::gui_state_round_trips_portable_enums_without_a_mux_dependency ... ok
+test streams::tests::direct_metadata_preserves_custom_palette_cursor_and_resets ... ok
+test streams::tests::direct_metadata_matches_checkpoint_for_all_firehose_parser_scenes ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bbt_render-572252a5b2484aab)
+
+running 56 tests
+test atlas::tests::growth_keeps_uploaded_glyph_coordinates_and_masks ... ok
+test atlas::tests::color_atlas_growth_preserves_all_four_premultiplied_channels ... ok
+test cells::terminal::gpu::tests::emoji_joining_preserves_parser_positions_and_style_boundaries ... ok
+test chrome::diff::tests::tolerance_is_not_an_exact_byte_comparison ... ok
+test cells::terminal::sprites::tests::double_rules_join_without_stubs_or_filled_crossings ... ok
+test chrome::icons::tests::size_and_scale_cache_preserves_prior_rasters_and_rejects_unbounded_inputs ... ok
+test chrome::materials::tests::backdrop_copy_covers_fractional_support_and_clips_offscreen_edges ... ok
+test cells::terminal::gpu::tests::immutable_fonts_move_to_worker_with_identical_rasterization ... ok
+test chrome::group::tests::mask_bridge_preserves_destination_alpha_and_the_old_api ... ok
+test chrome::materials::tests::nonfinite_and_negative_material_parameters_are_rejected ... ok
+test chrome::materials::tests::zero_blur_still_samples_the_backdrop_and_fractional_edge_texels ... ok
+test chrome::paths::tests::cubic_dash_geometry_is_finite_and_invalid_input_is_rejected ... ok
+test cells::terminal::gpu::tests::prepared_frame_encodes_pane_offsets_clips_and_survives_atlas_growth ... ok
+test chrome::group::tests::empty_and_identity_groups_are_transparent_and_use_the_same_device_at_scale ... ok
+test chrome::group::tests::outer_and_child_clips_survive_group_splits_and_do_not_leak_to_following_paint ... ok
+test chrome::group::tests::css_saturation_unpremultiplies_before_filter_and_preserves_destination_alpha ... ok
+test chrome::paths::tests::sub_ulp_dash_remainder_advances_instead_of_repeating_a_vertex ... ok
+test chrome::paths::tests::unrepresentable_pattern_cannot_cycle_through_zero_length_phases ... ok
+test chrome::group::tests::isolated_text_carries_a_premultiplied_mask_and_matches_opaque_compositing ... ok
+test chrome::group::tests::overlapping_children_dim_once_and_nested_groups_keep_painter_order ... ok
+test chrome::group::tests::linear_mask_filters_the_completed_layer_once_at_1x_and_2x ... ok
+test chrome::paths::tests::zero_length_round_dashes_render_dots_and_crossings_composite_once ... ok
+test chrome::materials::tests::blur_reuse_is_pixel_identical_and_only_on_equal_keys ... ok
+test chrome::paths::tests::filled_and_hollow_triangles_and_translucent_polygon_use_real_fill_geometry ... ok
+test chrome::paths::tests::gpu_path_preserves_order_clip_alpha_and_retained_geometry ... ok
+test chrome::tests::empty_clipped_pass_retains_a_pending_gpu_reset_after_eviction ... ok
+test chrome::tests::glyph_dirty_writes_and_growth_keep_earlier_texture_coordinates_correct ... ok
+test chrome::tests::sdf_rounding_stroke_and_clip_survive_gpu_readback ... ok
+test chrome::tests::growth_in_a_later_group_preserves_the_earlier_encoded_texture ... ok
+test chrome::text::tests::coretext_shapes_unicode_and_ellipsizes_at_the_given_width ... ok
+test chrome::text::tests::italic_uses_real_family_faces_and_keeps_exact_ui_weight ... ok
+test chrome::text::tests::native_fonts_are_reused_per_thread_and_keyed_by_every_input ... ok
+test chrome::tests::immutable_icons_and_warm_glyphs_are_shared_across_isolated_passes ... ok
+test chrome::tests::svg_device_rasters_upload_once_and_survive_isolated_passes_and_scale_changes ... ok
+test chrome::text::tests::measurement_does_not_require_a_raster_canvas ... ok
+test chrome::text::tests::quarter_pixel_phases_change_coverage_without_changing_logical_metrics ... ok
+test chrome::text::tests::numeric_ui_weights_select_medium_and_semibold_between_regular_and_bold ... ok
+test chrome::text::tests::ui_weights_use_css_axis_values_and_menlo_medium_uses_regular_face ... ok
+test chrome::text::tests::zero_tracking_keeps_font_kerning_and_nonzero_tracking_is_applied ... ok
+test chrome::text_cache::tests::reordered_text_reuses_cached_glyph_phases ... ok
+test chrome::text_cache::tests::lru_evicts_unpinned_masks_and_repack_keeps_the_current_working_set ... ok
+test chrome::text_cache::tests::native_font_cache_moves_from_initializing_worker_to_renderer_thread ... ok
+test chrome::text_cache::tests::unchanged_lines_reuse_their_shape_and_every_input_is_in_the_key ... ok
+test chrome::materials::tests::headless_renders_reuse_one_pass_and_match_fresh_renderers ... ok
+test chrome::tests::colored_text_uses_css_source_over_with_opaque_and_transparent_backdrops ... ok
+test chrome::text::tests::optical_size_and_logical_shaping_do_not_change_with_backing_scale ... ok
+test chrome::text_glyphs::tests::fallback_font_variations_and_phases_bind_cache_keys ... ok
+test chrome::text_cache::tests::shapes_evict_least_recent_and_clear_on_scale_or_font_change ... ok
+test text::terminal::platform::tests::fullwidth_forms_use_cjk_fallback_and_ascii_keeps_primary_face ... ok
+test text::terminal::platform::tests::color_emoji_ink_fits_its_cell_box_at_each_density ... ok
+test chrome::tests::lru_repack_in_later_groups_preserves_prior_gpu_generations ... ok
+test chrome::text_glyphs::tests::compact_state_symbols_keep_exact_coverage_at_each_origin ... ok
+test chrome::tests::svg_origins_follow_measured_css_half_up_ties_at_both_device_scales ... ok
+test chrome::text_glyphs::tests::cropped_glyph_components_reproduce_native_line_masks ... ok
+test chrome::tests::arena_slices_match_per_draw_buffers_across_many_draws_and_mid_frame_growth ... ok
+test chrome::text::tests::measurement_matches_painted_metrics_bit_for_bit ... ok
+
+test result: ok. 56 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.82s
+
+     Running tests/chrome_x_height.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/chrome_x_height-f63461429b018812)
+
+running 1 test
+test coretext_x_height_uses_the_requested_logical_font_and_rejects_invalid_size ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/smoke.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/smoke-401e1be74272a7c1)
+
+running 3 tests
+test asymmetric_glyph_is_upright ... ok
+test metal_quad_and_80_by_24_cell_backgrounds ... ok
+test coretext_ink_lands_only_in_expected_ascii_cells ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/terminal.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/terminal-9f12140b6c00df8e)
+
+running 6 tests
+test integer_cells_double_with_backing_scale_and_reject_invalid_settings ... ok
+test coretext_fallback_styles_and_emoji_have_real_coverage ... ok
+test procedural_edges_join_and_second_frame_reuses_every_glyph ... ok
+test metal_grayscale_blending_preserves_coverage_in_both_polarities ... ok
+test cursor_shapes_and_bad_snapshots_are_observable ... ok
+test patterned_underlines_continue_across_cells_and_restart_after_a_gap ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/variants.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/variants-48d1c25f6a6c6cca)
+
+running 1 test
+test generate_smoke_font_size_scale_theme_matrix ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s
+
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bbt_rt-77f7ed4e4c506196)
+
+running 3 tests
+test meter::tests::idle_gaps_draw_as_stubs_never_count_and_report_time_since ... ok
+test meter::tests::perf_record_windows_percentiles_and_late_frames ... ok
+test meter::tests::bounded_samples_keep_lifetime_count_and_phase_hitches ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/runtime.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/runtime-af13b1f30e27cb25)
+
+running 8 tests
+test latest_and_view_ring_replace_old_values ... ok
+test ten_thousand_dirty_sets_wake_once_until_drained ... ok
+test singleton_runtime_and_ui_thread_guard ... ok
+test spawn_failure_and_early_cancel_always_complete ... ok
+test command_argv_cwd_env_stderr_and_exit_are_observable ... ok
+test million_messages_per_second_never_wait_for_a_consumer ... ok
+test cancel_kills_the_process_group_including_a_grandchild ... ok
+test hundred_megabyte_command_finishes_with_a_bounded_view ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bbt_supervisor-019968771092e121)
+
+running 39 tests
+test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+test client::tests::a_peer_closed_after_its_final_reply_does_not_hide_buffered_bytes_behind_timeout_setup ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test ring::checksum_tests::crc_matches_the_table_for_all_bytes_unaligned_splits_and_short_tails ... ok
+test ring::checksum_tests::fixed_sha_vectors_and_a_software_written_cold_blob_still_verify ... ok
+test ring::journal::tests::bad_crc_and_oversized_header_never_commit_a_later_tick ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test ring::journal::tests::metadata_only_debt_keeps_the_five_second_full_flush_deadline ... ok
+test ring::paging_tests::output_weight_bounds_real_json_for_all_bytes_and_boundary_metadata ... ok
+test ring::journal::tests::old_segment_waits_for_every_sealed_projection_and_checkpoint ... ok
+test ring::writer::crash_tests::capture_crash_child ... ignored, private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ignored, release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+test ring::paging_tests::a_full_page_returns_before_decoding_the_following_entry ... ok
+test ring::journal::tests::legacy_checkpoint_publication_offsets_remain_readable ... ok
+test ring::journal::tests::checkpoint_carries_offset_and_rotated_tail_replays_without_effects ... ok
+test ring::writer::tests::ring_and_journal_paging_is_contiguous_wire_bounded_and_does_not_decode_past_full ... ok
+test ring::writer::tests::orderly_shutdown_leaves_a_durable_journal_that_rebuilds_the_projection ... ok
+test ring::journal::tests::crash_rebuilds_two_seats_only_through_the_last_tick_and_rejects_torn_suffix ... ok
+test ring::writer::tests::undurable_admission_budget_pauses_until_a_full_flush_returns_credit ... ok
+test supervisor::capture_read_tests::exited_between_spawn_and_registration_emits_exactly_one_exit ... ok
+test supervisor::capture_read_tests::a_full_retained_capture_buffer_is_not_pty_eof ... ok
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+test supervisor::child_events::tests::a_live_child_cannot_make_the_shutdown_wait_infinite ... ok
+test transport::tests::fork_inherited_listener_is_live_until_the_child_releases_it ... ok
+test transport::tests::full_listener_backlog_is_live_and_never_unlinked ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test transport::tests::ownership_lock_persists_and_legacy_without_one_fails_closed ... ok
+test transport::tests::stale_and_live_socket_paths_survive_2000_parallel_iterations ... ignored, manual 2000-iteration parallel stale/live socket stress
+test transport::tests::refused_socket_rebinds_without_replacing_a_live_socket_or_file ... ok
+test supervisor::capture_read_tests::an_early_exiting_writer_is_drained_before_reaping_without_blocking_the_actor ... ok
+test transport::tests::saturated_events_leave_capacity_for_one_maximum_reply_without_growing_the_queue ... ok
+test transport::tests::invalid_lock_types_permissions_and_owner_are_rejected_without_changes ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+test supervisor::capture_read_tests::shutdown_closes_a_blocked_staged_pty_and_preserves_capture_and_one_exit ... ok
+test ring::paging_tests::hot_and_cold_pages_fit_the_wire_and_keep_every_record_in_order ... ok
+test client::tests::a_timed_out_request_blocks_new_writes_until_its_late_reply_is_drained ... ok
+test client::tests::an_unanswered_request_becomes_disconnected_at_the_bounded_recovery_deadline ... ok
+
+test result: ok. 36 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 10.00s
+
+     Running tests/journal_config.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/journal_config-11ba881d6b939c6b)
+
+running 2 tests
+test capture_requires_an_explicit_supervisor_journal_directory ... ok
+test supervisor_shutdown_preserves_every_already_admitted_byte_for_offline_reopen ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/reaping.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/reaping-b34786b4e091c369)
+
+running 3 tests
+test exit_events_at_machine_scale ... ignored, W1.2e before/after: GATE_SEATS=967 cargo test --release -p bbt-supervisor --test reaping -- --ignored --nocapture
+test stdio_eof_does_not_wait_for_a_still_running_child ... ok
+test final_output_and_exit_reach_the_owner ... ok
+
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/supervisor.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/supervisor-5b3d392fa2deb301)
+
+running 10 tests
+test validation_rejects_stale_and_oversized_input ... ok
+test natural_exit_follows_all_final_output ... ok
+test unix_socket_auth_framing_and_live_pty ... ok
+test zsh_echo_cwd_environment_and_resize ... ok
+test killed_child_reports_generation_and_fences_replacement ... ok
+test logic_and_writer_replacement_preserve_child_and_deduplicate_input ... ok
+test two_seats_interleave_without_cross_talk ... ok
+test slow_reader_backpressures_and_recovers_the_complete_output ... ok
+test fifty_seats_share_one_supervisor_poller ... ok
+test blocked_write_survives_fencing_and_becomes_unknown_without_replay ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.16s
+
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bbt_ui-b5cddadc0abfced2)
+
+running 2 tests
+test modules::pane::tests::constant_pane_border_keeps_activity_from_changing_height ... ok
+test modules::perf_hud::tests::lab_records_round_trip_and_idle_frames_stay_stubs ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/atoms.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/atoms-1ea7082a340a2a42)
+
+running 5 tests
+test a_waiting_kind_background_and_text_receive_dimming_once ... ok
+test icons_keep_the_requested_logical_name_bounds_and_tint ... ok
+test hairline_is_one_physical_pixel_and_spinner_phase_is_explicit ... ok
+test kind_colours_do_not_recolour_state_or_apply_grade_and_dim_twice ... ok
+test glyph_state_grade_and_wait_kind_are_independent_and_identity_is_not_recoloured ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/components.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/components-c471e5f4ac894697)
+
+running 16 tests
+test image_has_square_intrinsics_a_baseline_and_validated_asset_geometry ... ok
+test a_retained_box_keeps_its_own_glow_state_until_after_its_content ... ok
+test box_opacity_dim_and_forced_isolation_preserve_unfiltered_children_and_layout ... ok
+test natural_text_width_survives_float_subtraction_but_a_css_unit_still_wraps ... ok
+test mixed_type_rows_share_a_baseline ... ok
+test intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero ... ok
+test a_shrunk_row_remeasures_wrapped_text_before_choosing_its_height ... ok
+test mixed_text_runs_align_baselines_and_keep_selection_metadata ... ok
+test inline_middle_uses_the_parent_x_height_without_moving_the_content_box ... ok
+test column_snapshot_and_flex_spacer_are_solved_by_the_shared_engine ... ok
+test nested_filters_retain_boundaries_and_ancestor_clips_without_recoloring_the_atoms ... ok
+test path_fill_survives_retained_layout_and_theme_resolution ... ok
+test path_uses_declared_viewport_and_keeps_its_retained_stroke ... ok
+test rects_lay_out_as_one_slot_and_paint_box_rects_at_the_node_origin ... ok
+test scroll_offset_clamps_and_every_child_draw_is_clipped ... ok
+test wrapping_and_ellipsis_use_the_allocated_width ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/documents.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/documents-90e4a6daf1d3f81a)
+
+running 5 tests
+test unsupported_diagram_preserves_source_instead_of_a_partial_drawing ... ok
+test diagram_state_is_serializable_and_drawing_never_scales_to_the_document ... ok
+test modal_retains_explicit_scroll_and_leaves_actions_as_visual_data ... ok
+test short_code_cells_center_within_the_keys_padded_grid_row ... ok
+test document_metadata_and_unsigned_or_broken_evidence_remain_visible ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/flow.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/flow-6eb0ea24fc188170)
+
+running 4 tests
+test text_centers_or_ends_each_wrapped_line_and_ignores_collapsible_trailing_spaces ... ok
+test flow_wraps_in_source_order_with_independent_gaps_and_shared_row_baselines ... ok
+test nowrap_space_between_and_exact_fit_do_not_create_extra_rows ... ok
+test default_text_and_fitting_flow_keep_the_stack_geometry ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/graphs.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/graphs-d414c43a83c4bcab)
+
+running 6 tests
+test annotated_links_preserve_source_identity_display_and_weight ... ok
+test graph_projects_live_and_blocked_tasks_without_inferring_authority ... ok
+test work_tree_counts_terminal_items_and_keeps_artifacts_and_invariants_as_leaves ... ok
+test channels_compose_published_edges_at_true_size_and_scroll_in_the_viewport ... ok
+test subscriptions_wrap_at_available_width_without_changing_patterns ... ok
+test provenance_and_history_respect_signed_flags_and_bounded_reverse_order ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/italic.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/italic-66ab0b5e5b2dd97a)
+
+running 1 test
+test italic_is_backward_compatible_and_reaches_measurement_and_draw_records ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/launchers.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/launchers-465e2f48e9d1a1ca)
+
+running 6 tests
+test legacy_launcher_delegates_without_hand_painting ... ok
+test enter_picks_is_a_defaulted_public_constructor_input ... ok
+test typed_virtual_descent_and_explicit_paths_select_the_same_placement_level ... ok
+test lexical_tiers_are_stable_and_every_word_must_match ... ok
+test compact_selection_is_twenty_eight_percent_accent_over_surface ... ok
+test cap_keeps_navigation_available_and_dims_completed_launch_row_groups ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/links.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/links-c0a30fa55d6741fc)
+
+running 1 test
+test all_link_states_render_and_unavailable_launcher_rows_cannot_activate ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/masks.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/masks-3ab96d8a132cf937)
+
+running 1 test
+test mask_keeps_layout_and_translates_local_coordinates_only_when_painted ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/measurement_cache.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/measurement_cache-a0844084581304fb)
+
+running 3 tests
+test independent_passes_observe_changed_measurements_and_nodes ... ok
+test flow_keeps_distinct_node_sizes_while_reusing_min_content_queries ... ok
+test nesting_does_not_repeat_leaf_measurement_at_the_same_constraint ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/overlays.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/overlays-74754f8566fd7515)
+
+running 2 tests
+test blur_parameters_round_trip_and_keep_the_backdrop_separate_from_foreground_fill ... ok
+test overlay_centres_the_panel_and_narrow_bounds_reflow_its_content ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/panes.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/panes-3ee3b3f8aa04e5e5)
+
+running 2 tests
+test pane_height_is_content_or_minimum_and_an_unavailable_gap_never_invents_a_range ... ok
+test pane_preserves_history_content_and_capability_actions_while_disconnected ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/provider_settings.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/provider_settings-ee07bd75ee3011be)
+
+running 2 tests
+test settings_accepts_live_link_records_and_legacy_four_field_cloud_records ... ok
+test every_link_state_roundtrips_and_renders_in_both_settings_records ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/scroll_windowing.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/scroll_windowing-35a109140381f401)
+
+running 8 tests
+test anchor_survives_insert_remove_and_width_density_changes_by_stable_identity ... ok
+test invalid_style_or_gap_keeps_the_fallback_layout_error_instead_of_panicking ... ok
+test undeclared_content_uses_the_original_full_layout_without_measurement_shortcuts ... ok
+test nested_ancestors_keep_full_material_group_and_clip_rectangles ... ok
+test fractional_prefix_keeps_solver_addition_order_even_when_extent_sum_rounds_differently ... ok
+test real_sidebar_falls_back_for_a_variable_extra_and_anchors_survive_rebuilds ... ok
+test measurement_is_bounded_by_the_window_with_exact_extent_and_geometry ... ok
+test real_thousand_open_sidebar_matches_full_visible_geometry_and_extent_to_the_bit ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+     Running tests/seat_rows.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/seat_rows-5f145f18c3db67a9)
+
+running 6 tests
+test naturally_sized_text_is_not_truncated_by_float_subtraction ... ok
+test flex_max_violation_freezes_before_redistributing_remaining_space ... ok
+test compact_artifact_row_preserves_natural_chip_height_outside_its_flow_slot ... ok
+test subagents_filter_finished_work_and_overflow_after_seven ... ok
+test seat_identity_authority_and_activity_stay_independent_when_name_shrinks ... ok
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/settings.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/settings-9f4b3289ae422c08)
+
+running 5 tests
+test account_projects_the_pinned_identity_and_recovery_limits_without_actions ... ok
+test records_roundtrip_with_ordered_custom_harnesses_and_roles ... ok
+test custom_role_order_and_defaults_drive_the_changed_marker ... ok
+test draft_harness_never_claims_an_inferred_ready_state_can_submit ... ok
+test role_prompt_grows_to_its_content_then_retains_a_bounded_scroll_view ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/streams.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/streams-e19795a5a4e03acd)
+
+running 6 tests
+test routed_chips_keep_the_oracle_tint_visible_and_unknown_is_a_dashed_hollow_mark ... ok
+test chronology_foreign_authority_and_unknown_delivery_remain_independent ... ok
+test collapsed_epics_and_bounded_newest_first_external_lane_use_model_state ... ok
+test message_body_reflows_with_width_without_changing_the_model ... ok
+test ended_subagent_holds_the_target_and_hides_the_delivery_ladder ... ok
+test unread_marks_stay_round_and_compressed_chips_clip_their_text ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/style.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/style-5d8ea5bfb29ca815)
+
+running 5 tests
+test malformed_override_data_fails_instead_of_silently_changing_the_style ... ok
+test positioned_shadow_round_trips_validates_and_preserves_custom_defaults ... ok
+test token_references_and_nontrivial_overrides_round_trip_and_resolve_late ... ok
+test glow_state_round_trips_and_rejects_invalid_shader_inputs ... ok
+test presets_resolve_across_the_matrix_and_keep_effect_separate_from_fill_border ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/swarms.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/swarms-574dd6781c8cf6ff)
+
+running 6 tests
+test css_filter_uses_luminance_saturation_and_preserves_layout ... ok
+test a_literal_hyphen_is_a_wrap_opportunity_and_min_content_survives_flex_shrink ... ok
+test caption_line_limit_preserves_two_lines_and_marks_truncated_content ... ok
+test unfocused_card_dims_only_its_contents_and_keeps_the_identity_bumper ... ok
+test collapsed_thousand_seat_card_keeps_a_bounded_composition_and_clips_its_material ... ok
+test sidebar_scroll_and_phone_handle_use_the_supplied_viewport_without_reordering_cards ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/tabs.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/tabs-7394c130e600b8cd)
+
+running 6 tests
+test state_color_wins_over_focus_and_a_single_cell_keeps_the_grid_wrapper ... ok
+test single_seat_reduces_to_the_accepted_row_and_keeps_its_children ... ok
+test grid_preserves_ratio_nested_axis_and_big_root_gap ... ok
+test deeply_nested_grids_shrink_to_zero_but_their_cells_keep_the_two_pixel_minimum ... ok
+test collapsed_rollup_is_stable_worst_first_and_capped ... ok
+test expanded_tab_has_indented_seats_and_only_a_parent_shortcut ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/title_bars.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/title_bars-4d28ddc3b1de2dbf)
+
+running 3 tests
+test old_titlebar_is_a_component_delegate ... ok
+test blur_filters_only_identity_and_dots_while_sidebar_state_changes_its_toggle ... ok
+test narrow_bar_wraps_title_and_ellipsizes_crumb_without_shrinking_controls ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/widgets.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/widgets-be6bf8ec094a618e)
+
+running 4 tests
+test pressed_button_scales_visually_without_changing_its_flow_slot ... ok
+test side_border_consumes_only_its_edge_and_outline_rings_do_not_consume_layout ... ok
+test empty_input_keeps_its_control_height_and_invalid_input_keeps_its_error_caption ... ok
+test list_and_table_allocate_only_visible_rows_and_keep_full_scroll_extent ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bbt_ui_model-f26739e575d6365f)
+
+running 8 tests
+test draw::atoms::tests::dim_desaturates_content_and_preserves_identity ... ok
+test draw::atoms::tests::glyphs_encode_grade_and_wait_kind_and_clips_balance ... ok
+test draw::prim::color_tests::valid_rgb_boundary_colours_round_trip_inside_the_unit_gamut ... ok
+test draw::list::tests::group_filters_and_clip_scopes_validate_recursively ... ok
+test tokens::tests::density_and_theme_are_views_of_the_constants ... ok
+test model::ids::tests::canonical_ulid_round_trip_and_overflow ... ok
+test draw::path::tests::cubic_bounds_include_interior_extrema_not_control_hull ... ok
+test tokens::tests::every_exported_web_token_matches_generated_fields ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/input.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/input-f8f8fad143194fec)
+
+running 15 tests
+test chrome_can_navigate_plainly_while_fields_and_modal_controls_keep_local_keys ... ok
+test a_second_activation_does_not_bypass_the_pending_stage_layout ... ok
+test cross_stage_locate_waits_for_the_target_layout_and_fires_once ... ok
+test directional_navigation_scores_along_plus_twice_across_and_breaks_ties_in_tree_order ... ok
+test dwell_needs_150_ms_on_a_pane_and_never_locates_or_repeats ... ok
+test cycle_uses_tree_order_wraps_and_never_switches_a_tab_or_swarm ... ok
+test daemon_updates_do_not_focus_or_locate_and_cancel_stale_user_intent ... ok
+test layout_changes_rehit_the_pointer_and_leave_cancels_dwell ... ok
+test focus_change_clears_unread_once_without_mutating_the_activity_signal ... ok
+test invalid_activation_preserves_the_model_and_pending_locate ... ok
+test directional_score_prefers_alignment_over_the_nearest_centre ... ok
+test row_and_pane_activation_locate_the_other_view_without_changing_expansion ... ok
+test terminal_navigation_needs_command_option_and_keeps_reverse_tree_order_explicit ... ok
+test terminal_plain_keys_and_control_or_alt_keys_never_become_pane_navigation ... ok
+test typing_guard_is_strict_and_a_blocked_dwell_waits_for_reentry ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/layout.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/layout-876069635e046024)
+
+running 11 tests
+test invalid_lengths_and_zero_flex_weights_stay_finite ... ok
+test compact_and_touch_use_their_token_heights_and_scroll_stays_local ... ok
+test split_ratio_clamps_and_tiny_bounds_never_produce_negative_sizes ... ok
+test text_shrinks_before_flex_and_column_boxes_share_the_policy ... ok
+test sidebar_at_a_thousand_seats_only_allocates_the_visible_rows ... ok
+test phone_sheet_geometry_snap_and_touch_density_match_the_lab_frame ... ok
+test the_same_split_solver_supports_minigrid_and_banner_scales ... ok
+test sidebar_skips_closed_cards_outside_the_scroll_window ... ok
+test row_box_allocates_fixed_measured_fill_and_weighted_flex ... ok
+test scene_fifteen_matches_the_tagged_lab_ratios_at_the_fixture_gutter ... ok
+test scene_fifteen_gutters_are_one_glow_lane_wide ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/model.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/model-adbfbecb71908cf9)
+
+running 15 tests
+test duplicate_and_mismatched_tree_ids_are_rejected ... ok
+test mux_updates_do_not_locate_or_steal_focus ... ok
+test detach_removes_empty_tabs_without_touching_other_seats ... ok
+test new_tab_uses_caller_id_and_preserves_the_remaining_order ... ok
+test cross_swarm_move_is_an_explicit_error_per_grant_contract ... ok
+test open_harness_role_class_and_color_override_are_preserved ... ok
+test move_within_one_split_recomputes_the_target_after_pruning ... ok
+test expired_replaced_and_conflicting_undo_do_not_mutate_the_model ... ok
+test close_and_undo_restore_the_exact_split_and_ratio ... ok
+test placement_on_all_four_sides_is_half_and_collapses_the_source ... ok
+test prune_parent_and_replacement_match_lab_tree_algebra ... ok
+test reverse_undo_restores_multiple_closed_seats ... ok
+test settings_closes_directly_without_harness_grace ... ok
+test undo_keeps_a_sibling_subtrees_intervening_resize ... ok
+test undo_restores_a_removed_tab_at_its_original_index ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/showcase_overrides.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/showcase_overrides-cb65ef517a09894b)
+
+running 2 tests
+test the_guard_catches_an_override ... ok
+test showcase_sets_no_token_backed_property ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxy_firehose
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxy450_term
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxybook
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_core
+
+running 2 tests
+test crates/bbt-core/src/vendor/alacritty/term/mod.rs - vendor::alacritty::term::test::mock_term (line 2384) ... ok
+test crates/bbt-core/src/lib.rs - (line 3) ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.52s; merged doctests compilation took 0.38s
+   Doc-tests bbt_doc
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_mermaid
+
+running 1 test
+test crates/bbt-mermaid/src/lib.rs - (line 8) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.53s; merged doctests compilation took 0.14s
+   Doc-tests bbt_mux
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_proto
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_render
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_rt
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_supervisor
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_ui
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_ui_model
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling bbt-ui-model v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-rt)
+   Compiling bboxy450-term v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bboxy450-term)
+    Checking bbt-render v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-render)
+    Checking bbt-ui v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-ui)
+    Checking bbt-proto v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-proto)
+    Checking bbt-supervisor v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-supervisor)
+    Checking bbt-mux v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 5.37s
+    Finished `dev` profile [optimized] target(s) in 0.26s
+     Running `/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/bboxy450-term --smoke`
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+smoke bootstrap: early producer handled before GPU ready
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+first frame: native scene presented, seats=15
+idle probe settling: producer_done=true queued=false redraw_pending=false occluded=false frames=21 callbacks=21
+idle probe begins: frames=21 last_update=20
+idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=3.230ms p99=4.211ms samples=21 warm_encode_p50=2.416ms warm_encode_p99=3.276ms
+invariant clippy-clean: skipped (slow)
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling hashbrown v0.17.1
+   Compiling bitflags v2.13.2
+   Compiling serde_json v1.0.154
+   Compiling pulldown-cmark v0.13.4
+   Compiling indexmap v2.14.2
+   Compiling syn v3.0.9
+   Compiling serde_derive v1.0.229
+   Compiling bbt-ui v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-ui)
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling bbt-doc v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-doc)
+    Finished `test` profile [optimized] target(s) in 6.54s
+     Running tests/corpus.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/corpus-80a908cc437286bc)
+
+running 1 test
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.03s
+
+invariant frontmatter-parses: pass
+layering: held
+invariant layering: pass
+    Finished `test` profile [optimized] target(s) in 0.04s
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/bbt_mermaid-680f5ab4c870925d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/fixtures.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/fixtures-78626ccb56d08cdc)
+
+running 1 test
+test every_bboxy_mermaid_block_has_a_fixture ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.01s
+
+invariant mermaid-fixtures: pass
+   Compiling memchr v2.8.3
+   Compiling serde_json v1.0.154
+   Compiling bbt-ui v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 0.94s
+     Running tests/seat_rows.rs (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-ta/debug/deps/seat_rows-ec61c120ceb51aad)
+
+running 1 test
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+invariant modules-through-components: pass
+lab-check: self-test ok (10 checks fire on checks/bad.html)
+lab-check: 36 pages × 4 densities · 0 findings
+   Compiling bitflags v2.13.2
+   Compiling arrayvec v0.7.8
+   Compiling libc v0.2.191
+   Compiling num-traits v0.2.19
+   Compiling thiserror v2.0.21
+   Compiling smallvec v1.16.3
+   Compiling syn v2.0.119
+   Compiling flate2 v1.1.10
+   Compiling core-foundation-sys v0.8.7
+   Compiling serde v1.0.229
+   Compiling dispatch2 v0.3.1
+   Compiling polycool v0.4.0
+   Compiling objc2-foundation v0.2.2
+   Compiling kurbo v0.13.1
+   Compiling naga-types v30.0.1
+   Compiling png v0.18.1
+   Compiling pulldown-cmark v0.13.4
+   Compiling wgpu-types v30.0.1
+   Compiling bbt-ui v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-ui)
+   Compiling objc2-core-foundation v0.3.2
+   Compiling parking_lot_core v0.9.12
+   Compiling euclid v0.22.14
+   Compiling parking_lot v0.12.5
+   Compiling lyon_geom v1.0.20
+   Compiling svgtypes v0.16.1
+   Compiling core-foundation v0.9.4
+   Compiling usvg v0.48.1
+   Compiling objc2-foundation v0.3.2
+   Compiling core-graphics-types v0.1.3
+   Compiling lyon_path v1.0.19
+   Compiling tiny-skia v0.12.0
+   Compiling zerocopy-derive v0.8.63
+   Compiling objc2-app-kit v0.2.2
+   Compiling lyon_tessellation v1.0.22
+   Compiling resvg v0.48.1
+   Compiling zerocopy v0.8.63
+   Compiling objc2-metal v0.3.2
+   Compiling core-graphics v0.23.2
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling winit v0.30.13
+   Compiling bbt-doc v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-doc)
+   Compiling objc2-core-graphics v0.3.2
+   Compiling half v2.7.1
+   Compiling naga v30.0.1
+   Compiling objc2-quartz-core v0.3.2
+   Compiling raw-window-metal v1.1.0
+   Compiling objc2-core-text v0.3.2
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bbt-render)
+   Compiling bboxybook v0.0.1 (/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/r122b-after-wt/crates/bboxybook)
+    Finished `dev` profile [optimized] target(s) in 25.27s
+captured 100/1664
+captured 200/1664
+captured 300/1664
+captured 400/1664
+captured 500/1664
+captured 600/1664
+captured 700/1664
+captured 800/1664
+captured 900/1664
+captured 1000/1664
+captured 1100/1664
+captured 1200/1664
+captured 1300/1664
+captured 1400/1664
+captured 1500/1664
+captured 1600/1664
+web: 1664/1664 captured; 0 failures
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/1664
+rendered 200/1664
+rendered 300/1664
+rendered 400/1664
+rendered 500/1664
+rendered 600/1664
+rendered 700/1664
+rendered 800/1664
+rendered 900/1664
+rendered 1000/1664
+rendered 1100/1664
+rendered 1200/1664
+rendered 1300/1664
+rendered 1400/1664
+rendered 1500/1664
+rendered 1600/1664
+replayed 1664 images; geometry not requested
+parity: 1664 cases, 859 review; target/parity/legacy/index.html
+legacy diagnostic: 1664 cases; 859 pixel reviews (non-gating)
+captured 100/1704
+captured 200/1704
+captured 300/1704
+captured 400/1704
+captured 500/1704
+captured 600/1704
+captured 700/1704
+captured 800/1704
+captured 900/1704
+captured 1000/1704
+captured 1100/1704
+captured 1200/1704
+captured 1300/1704
+captured 1400/1704
+captured 1500/1704
+captured 1600/1704
+captured 1700/1704
+web: 1704/1704 captured; 0 failures
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/1704
+rendered 200/1704
+rendered 300/1704
+rendered 400/1704
+rendered 500/1704
+rendered 600/1704
+rendered 700/1704
+rendered 800/1704
+rendered 900/1704
+rendered 1000/1704
+rendered 1100/1704
+rendered 1200/1704
+rendered 1300/1704
+rendered 1400/1704
+rendered 1500/1704
+rendered 1600/1704
+rendered 1700/1704
+sidebar/10-seats-touch-dark.png: windowed diagnostics omitted 35 entirely clipped parts (listed in layouts.json)
+sidebar/10-seats-touch-light.png: windowed diagnostics omitted 35 entirely clipped parts (listed in layouts.json)
+sidebar/10-seats-comfortable-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/10-seats-comfortable-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/10-seats-cozy-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/10-seats-cozy-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/10-seats-compact-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/10-seats-compact-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/100-seats-touch-dark.png: windowed diagnostics omitted 218 entirely clipped parts (listed in layouts.json)
+sidebar/100-seats-touch-light.png: windowed diagnostics omitted 218 entirely clipped parts (listed in layouts.json)
+sidebar/100-seats-comfortable-dark.png: windowed diagnostics omitted 151 entirely clipped parts (listed in layouts.json)
+sidebar/100-seats-comfortable-light.png: windowed diagnostics omitted 151 entirely clipped parts (listed in layouts.json)
+sidebar/100-seats-cozy-dark.png: windowed diagnostics omitted 116 entirely clipped parts (listed in layouts.json)
+sidebar/100-seats-cozy-light.png: windowed diagnostics omitted 116 entirely clipped parts (listed in layouts.json)
+sidebar/100-seats-compact-dark.png: windowed diagnostics omitted 62 entirely clipped parts (listed in layouts.json)
+sidebar/100-seats-compact-light.png: windowed diagnostics omitted 62 entirely clipped parts (listed in layouts.json)
+sidebar/1000-seats-touch-dark.png: windowed diagnostics omitted 581 entirely clipped parts (listed in layouts.json)
+sidebar/1000-seats-touch-light.png: windowed diagnostics omitted 581 entirely clipped parts (listed in layouts.json)
+sidebar/1000-seats-comfortable-dark.png: windowed diagnostics omitted 503 entirely clipped parts (listed in layouts.json)
+sidebar/1000-seats-comfortable-light.png: windowed diagnostics omitted 503 entirely clipped parts (listed in layouts.json)
+sidebar/1000-seats-cozy-dark.png: windowed diagnostics omitted 474 entirely clipped parts (listed in layouts.json)
+sidebar/1000-seats-cozy-light.png: windowed diagnostics omitted 474 entirely clipped parts (listed in layouts.json)
+sidebar/1000-seats-compact-dark.png: windowed diagnostics omitted 446 entirely clipped parts (listed in layouts.json)
+sidebar/1000-seats-compact-light.png: windowed diagnostics omitted 446 entirely clipped parts (listed in layouts.json)
+sidebar/phone-sheet-touch-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/phone-sheet-touch-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/phone-sheet-comfortable-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/phone-sheet-comfortable-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/phone-sheet-cozy-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/phone-sheet-cozy-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/phone-sheet-compact-dark.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+sidebar/phone-sheet-compact-light.png: windowed diagnostics omitted 0 entirely clipped parts (listed in layouts.json)
+native/web layout snapshots: target/parity/native/layouts.json
+rendered 1704 PNGs to target/parity/native
+parity: 1704 cases, 226 review; target/parity/index.html
+geometry: 1600 required; 1600 measured; 0 unproven; 0 mismatches
+parity gate: pass (226 pixel reviews advisory)
+invariant parity-geometry: pass
+invariant seats-1000-bus: skipped (slow)
+invariant seats-400-memory-idle: skipped (slow)
+invariant signed-main: pass
+    Finished `dev` profile [optimized] target(s) in 0.51s
+invariant ui-never-waits: pass
+invariants: 7 checks, 0 failures, 3 slow checks skipped
+ci-local: all gates passed
