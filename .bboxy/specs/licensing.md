@@ -21,7 +21,7 @@ Why dual and not Apache-only: dual keeps GPLv2 compatibility through the MIT arm
 
 | Crate | Publishes as | License | Why | Vendored or third-party code |
 |---|---|---|---|---|
-| `bbt-core` | `bboxy450-term-core` | **Apache-2.0** | fork of `alacritty_terminal` (Apache-2.0 only) with the `vte` parser (MIT OR Apache-2.0) vendored; the crate takes the stricter upstream | `vendor/alacritty/*` (Apache-2.0, alacritty authors), `vendor/vte` (MIT OR Apache-2.0, vte authors); their notices stay verbatim |
+| `bbt-core` | `bboxy450-term-core` | **Apache-2.0** | fork of `alacritty_terminal` (Apache-2.0 only) with the `vte` parser (MIT OR Apache-2.0) vendored; the crate takes the stricter upstream | `vendor/alacritty/*` (Apache-2.0, alacritty authors), `vendor/vte` (MIT OR Apache-2.0, vte authors), and `src/keyboard.rs`, an adaptation of alacritty `input/keyboard.rs build_sequence` at 5421470 (Apache-2.0, upstream header kept plus a "modified by bboxy450" line; decision #36); their notices stay verbatim |
 | `bbt-rt` | `bboxy450-rt` | MIT OR Apache-2.0 | ours | none |
 | `bbt-yarn`, `bbt-yarn-macros` | `bboxy450-yarn`, `bboxy450-yarn-macros` | MIT OR Apache-2.0 | the operator's own library, dual upstream ([[yarn]] §1) | from `Gonzih/kittens-old` 293e134, the operator's code; upstream README and license files kept as provenance |
 | `bbt-mermaid` | `bboxy450-mermaid` | MIT OR Apache-2.0 | ours; the engine is our own parse and layout | test fixtures copied from the Mermaid docs are test data, attributed in the fixtures README (Mermaid is MIT) |
@@ -34,7 +34,7 @@ Why dual and not Apache-only: dual keeps GPLv2 compatibility through the MIT arm
 | `bbt-proto` | internal until decision #8's plateau | MIT OR Apache-2.0 | ours | none |
 | `bbt-mux` | internal until decision #8's plateau | MIT OR Apache-2.0 | ours | none |
 | `bboxy-firehose` | internal tool | MIT OR Apache-2.0 | ours | none |
-| `bboxy450-term` (the app) | the distributed binary | MIT OR Apache-2.0 for our code; the binary ships the NOTICE because it links `bbt-core` | the identity image `bboxy.png` is the operator's; fonts and icon sets, when bundled, carry their own license beside them and in NOTICE (none bundled today) |
+| `bboxy450-term` (the app) | the distributed binary | MIT OR Apache-2.0 for our code, and **only our code**: anything adapted from an Apache-only source goes into `bbt-core` (decision #36), so the app never needs a mixed SPDX expression; the binary ships the NOTICE because it links `bbt-core` | the identity image `bboxy.png` is the operator's; fonts and icon sets, when bundled, carry their own license beside them and in NOTICE (none bundled today) |
 
 ## 2. Files and where they go
 

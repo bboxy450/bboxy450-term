@@ -18,9 +18,11 @@ updated: 2026-10-23T15:54:43Z
 
 **Property** (operator, 2026-10-23: "for terminals we should adopt Kitty keyboard
 protocol … document that as a core invariant"; decision #32). Every key event a
-terminal pane receives is encoded by **the one app encoder**
-(`crates/bboxy450-term/src/keyboard.rs`, a port of alacritty's
-`input/keyboard.rs build_sequence`, Apache-2.0) against the **focused seat's live
+terminal pane receives is encoded by **the one encoder**
+(`crates/bbt-core/src/keyboard.rs`, a port of alacritty's
+`input/keyboard.rs build_sequence` at 5421470, Apache-2.0, which is why it
+lives in the Apache-only terminal crate, decision #36; the app maps the winit
+key event to bbt-core's neutral key model and calls it) against the **focused seat's live
 `TermMode`** as carried in `Screen.modes`: the full kitty progressive-enhancement
 stack (flags 1 disambiguate, 2 report events, 4 alternate keys, 8 all keys as
 escapes, 16 associated text; push, pop and query answered from the seat's stack)
@@ -29,13 +31,13 @@ PTY:** paste, operator typing and injected text all pass through the same
 encoder or are bytes the encoder never sees (bracketed paste is wrapped, not
 encoded). bbt-core already keeps the stacks (`C/lib.rs:77` `kitty_keyboard: true`).
 
-**Check.** `cargo test -p bboxy450-term --locked --lib kitty_keyboard_invariant -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
+**Check.** `cargo test -p bbt-core --locked --lib kitty_keyboard_invariant -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
 — exit 0 held. The pipe is deliberate: a filter that matches no test exits 0 in
 cargo, so the check demands that exactly this named test ran and passed. K1
 (Sable) creates `kitty_keyboard_invariant`, which must cover: encoding vectors
 for every flag combination against the kitty spec, push/pop/query round trips,
-legacy vectors with no flags, and a source scan proving no code outside
-`keyboard.rs` turns a key event into PTY bytes. Fast (a unit test), so it joins
+legacy vectors with no flags, and a source scan over the app proving no code outside the call into
+`bbt_core::keyboard` turns a key event into PTY bytes. Fast (a unit test), so it joins
 the default invariant set the day K1 lands: that commit removes `slow` and
 `gate` from this file (the switch lands with the load, not before it).
 
