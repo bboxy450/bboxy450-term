@@ -2,6 +2,7 @@
     clippy::disallowed_methods,
     reason = "test/fixture IO, not the UI thread"
 )]
+mod common;
 use std::{
     collections::BTreeMap,
     sync::{
@@ -476,7 +477,7 @@ fn bus_seals_exact_hash_range_before_rekey_and_replays_retained_signed_bytes() {
 #[test]
 fn pending_logic_keeps_pty_live_retries_at_30s_and_releases_durable_sends_in_order() {
     use bbt_mux::{
-        Config, LaunchSpec, Supervisor,
+        LaunchSpec, Supervisor,
         bus::{Consumer, Delivery},
         identity::{HoldWindow, IdentityState},
         logic::{Logic, LogicConfig},
@@ -497,7 +498,7 @@ fn pending_logic_keeps_pty_live_retries_at_30s_and_releases_durable_sends_in_ord
         .enable_all()
         .build()
         .unwrap();
-    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(root.path())).unwrap();
     let logic = Logic::start_custodied_with_store(
         supervisor.connect().unwrap(),
         LogicConfig {

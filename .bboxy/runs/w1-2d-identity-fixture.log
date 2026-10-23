@@ -1,0 +1,5 @@
+Command: CARGO_TARGET_DIR=target/w1-2d CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test --locked -p bbt-mux --test identity_local pending_logic_keeps_pty_live_retries_at_30s_and_releases_durable_sends_in_order -- --nocapture
+Actual exit: 0
+Observed stdout: ID1d: live PTY during pending custody; unsigned sends durable; actual 30s retry, status event, ordered release; no-primary range stays visibly ephemeral
+test result: ok. 1 passed; 0 failed; 0 ignored; 6 filtered out; finished in 30.11s
+Preceding isolated CI at c515053 failed 101 because this newly rebased capture fixture used Config::default() without the required explicit journal directory. Only this fixture now uses common::capture_config(root.path()); the identity implementation is unchanged.

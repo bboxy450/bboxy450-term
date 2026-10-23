@@ -1,0 +1,4 @@
+Cleanup at Thu Oct 22 18:02:19 2026; no own scale gate running; only owned GATE_RUN_DIR fixtures
+REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-Cau7pc allocated_bytes=9743536128
+REMOVED /Users/feral/mydev/bboxy450-term-rook/target/w1-2d-runs/c1d-gate-SHFZN9 allocated_bytes=1271988224
+OWN_ALLOCATED_BYTES_REMOVED=11015524352
