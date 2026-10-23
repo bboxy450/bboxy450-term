@@ -28,8 +28,9 @@ fn shade(v:Vertex)->vec4f {
             c*=vec4f(image.rgb/max(image.a,0.000001),image.a);
         }
     }
+    // CSS inset highlights start inside the border and paint beneath its stroke.
+    if i.params.w>0.0&&p.y<i.rect.y+i.params.y+1.5&&d< -i.params.y {c=vec4f(mix(c.rgb,vec3f(1),i.params.w),c.a);}
     if i.params.y>0.0&&kind<2u {let edge=clamp(d+i.params.y+0.5,0.0,1.0);c=mix(c,i.stroke,edge);}
-    if i.params.w>0.0&&p.y<i.rect.y+1.5&&d<0.0 {c=vec4f(mix(c.rgb,vec3f(1),i.params.w),c.a);}
     let alpha=c.a*a;
     return vec4f(c.rgb,alpha);
 }
