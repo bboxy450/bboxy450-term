@@ -1,0 +1,4 @@
+$ codex --version
+codex-cli 0.163.0
+
+exit=0

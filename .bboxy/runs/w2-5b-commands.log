@@ -1,0 +1,24 @@
+W2.5b brief2edbf40f, Executor Kestrel, solewritingexec5. Plan beforecode; no source edits yet. Spec w2-5-mcp-and-seat-wiring section3/5/7 and cockpit W2.5b clause read. Parked rook-w2-5b sourcea2318fc/evidence2a04ea7 read only, patch onlylaunch.rs and skillasset.
+Initial date/status/spec/AGENTS/graph/gitshow/diff/rg reads0; fetch0; signedrebase0; graph stale roster noted, latestOracleassignment governs W2.5b. Latest channel5471 requires936de7a (W1.2f root fix, no socket waiver), willrebasebeforegate. ICQCLAIM/Oracleack/Rookhandoverrequest preview0/send0, receipts stored not receiptby model.
+Local Codex0.163.0 --version0/--help0 confirms per-invocation -c TOML overrides; Claude version/help0 confirms session-only --plugin-dir and --mcp-config. Toolmetadata query overly broad printed GitHub metadata (no GitHub actions executed); narrowed officialdocs search metadata returnednone. Read-only roleprompt grep ended1 (no matches in MCP); GUIlaunch still role_prompt:String::new at logic.rs2155; Role onlyname/class. This gap will be sent inplan.
+$ codex --version (help/version only, no service call)
+exit=0
+$ codex --help (help/version only, no service call)
+exit=0
+$ claude --version (help/version only, no service call)
+exit=0
+$ claude --help (help/version only, no service call)
+exit=0
+$ git rebase --gpg-sign origin/main
+Successfully rebased and updated refs/heads/exec5.
+
+exit=0
+Rebase includes936de7a0; plan3b403205 dry-run0/send0 (recipient-stored); source-only cherry-pick -S a2318fc0 ->2e60267. Rook handover b61dfa44 received5479; inbox cursor5479. Protected config digest snapshot0 (no contents logged); Python tomllib available0. Official MCP env_vars verified https://learn.chatgpt.com/docs/extend/mcp?surface=cli (STDIO env_vars names forward local environment); local pinned CLI help primary for -c/Claude flags.
+$ cargo test --locked -p bbt-mux --test seat_wiring --test adapters --test mcp -- --nocapture — exit 101; full output .bboxy/runs/w2-5b-focused.log
+$ cargo test --locked -p bbt-mux --test seat_wiring --test adapters --test mcp -- --nocapture — exit 101; full output .bboxy/runs/w2-5b-focused.log
+$ cargo test --locked -p bbt-mux --test seat_wiring --test adapters --test mcp -- --nocapture — exit 0; full output .bboxy/runs/w2-5b-focused.log
+$ cargo clippy --workspace --all-targets --locked -- -D warnings — exit 0; full output .bboxy/runs/w2-5b-clippy.log
+Protected real config post-fixture comparison: 1697 entries, 0 changes; runtime/session exclusions: ~/.claude/projects/, ~/.claude/sessions/, ~/.claude/history.jsonl, ~/.codex/sessions/, ~/.codex/archived_sessions/, ~/.codex/history.jsonl, ~/.codex/state_*.sqlite*, ~/.codex/log/; only exact protected paths in spec5.3 compared.
+Plan approved Oracle08a659f6; inbox cursor5484. Scope: supplied role_prompt end-to-end, Settings hydrationL8, real-first-turnUNPROVEN, task_reportW2.5d, Codexinline-skill fallback. Rookack24fd755c preview0/send0. Progress345f7acf preview0/send0.
+Scoped rustfmt launch.rs/seat_wiring.rs0; git diff --check0. Read-only rg found no nested AGENTS in mux; no extra local instructions. First focused failure101 was fixture Snapshot.exit (wrong API), second101 broad bypass prose falsepositive; fixed test scope, final19 passed/1 ignored exit0. No production source touched except declared Rook overlay delta.
+Pre-commit cached diff --check reported four whitespace-only lines from verbatim codex --help (real exit2; following diffstat0). Normalized help trailing whitespace; canonical config JSON one entry per line retains every digest, modes and names. Both canonical manifests have identical digest/content.
