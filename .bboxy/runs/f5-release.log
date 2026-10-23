@@ -1,0 +1,23 @@
+# F5 release HUD, populated: BBOXY_TEST_CUSTODY=memory BBOXY_VERIFY_INPUT='while :; do date +%T; ls -la /usr/bin | tail -30; done
+' target/release/bboxy450-term --meter --spawn-zsh 4 --capture-after 8 --capture <png> --run-dir <mktemp 0700>
+# display: DELL S3222HN only (75 Hz); no 120 Hz panel on this machine
+# HUD at t=8 s: 70 Hz, interval 14.36 ms, budget 13.33; CPU p50 5.56 / p99 9.42 ms; GPU 3.00 ms; phase p50 drain 0.00 layout 0.25 draw 0.04 encode 5.24 present_wait 0.02; late 0 / 98
+# vs a 120 Hz budget (8.33 ms): CPU p50 fits, CPU p99 9.42 ms does not; encode is the cost
+# app, supervisor, logic stopped by recorded PID; run dir deleted
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+verification window resize: 1600x960 physical pixels
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=0
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+first frame: native scene presented, seats=0
+capture /private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/f5-rel.png: Ok(())
+cockpit ready: supervisor=43849 logic=43850
+seat 01M5KQDX19NN9BQX0M58YESQDD activity=Idle process=Running { pid: 43854 }
+seat 01M5KQDX6CP16F6QEV092YJ3YZ activity=Idle process=Running { pid: 43878 }
+seat 01M5KQDX8RKZ81DF1NDVNNWB66 activity=Idle process=Running { pid: 43898 }
+seat 01M5KQDXAVAYBFH9XSBT15FMQ9 activity=Idle process=Running { pid: 43916 }
+seat 01M5KQDX19NN9BQX0M58YESQDD activity=Idle process=Running { pid: 43854 }
+seat 01M5KQDX6CP16F6QEV092YJ3YZ activity=Idle process=Running { pid: 43878 }
+capture /private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/f5-rel.png: Ok(())
+
+# rerun on 5aa25b3 (rebased over C1i-2 admission, main 0102666), same command: capture landed in an output gap, header idle (last frame 141 ms ago); window: CPU p50 5.38 / p99 9.44 ms, GPU 2.94 ms, encode p50 5.07, late 0 / 120; 2 captures, 0 admission refusals; crop f5-release-hud-rebased.png

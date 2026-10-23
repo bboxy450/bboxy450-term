@@ -37,6 +37,7 @@ pub enum UiEvent {
     BackendLost(String),
     BackendReady,
     SmokeDeadline,
+    Capture,
 }
 struct Wake(EventLoopProxy<UiEvent>);
 impl bbt_rt::Waker for Wake {
@@ -111,6 +112,7 @@ struct App {
     cadence_test: bool,
     animation_start: Option<(Instant, u64)>,
     frozen_ms: f32,
+    verify: Verify,
 }
 impl App {
     fn queue(&mut self, message: live::UiMsg) {
@@ -382,6 +384,7 @@ impl App {
         if let Some(state) = self.live_updates.take() {
             self.scene.set_model(&state);
             self.live_state = Some(state);
+            self.verify();
         }
         self.flush_commands();
     }
@@ -602,6 +605,10 @@ impl ApplicationHandler<UiEvent> for App {
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: UiEvent) {
         match event {
             UiEvent::DemoFinished => self.demo_finished = true,
+            UiEvent::Capture => {
+                self.capture_pending = true;
+                self.request_redraw();
+            }
             UiEvent::Wake => {
                 if self.smoke && self.gpu.is_none() {
                     self.smoke_wake_seen = true;
@@ -1105,8 +1112,93 @@ fn perf_hud(r: bbt_rt::PerfRecord) -> bbt_ui::modules::perf_hud::PerfHud {
     }
 }
 
+const HELP: &str = "bboxy450-term: GPU terminal for agent swarms.
+
+  --meter              open with the perf HUD (Cmd+Opt+F toggles it)
+  --run-dir DIR        runtime directory (default: the user's)
+
+Debug and verification only, never for normal use:
+  --capture PNG        write the first presented frame to PNG; Cmd+Shift+S re-captures
+  --capture-after SECS re-capture once, SECS after the cockpit's first model
+  --spawn-zsh N        open N zsh seats once the cockpit is ready, as N x Cmd+T
+  BBOXY_VERIFY_INPUT   env: bytes typed into each new seat once, \\n sent as Return
+  --smoke, --fake-source, --animate, --cadence-test, --pacing MODE: frozen scenes and pacing probes";
+
+/// Verification-only automation (see HELP): seats, first input and a delayed capture,
+/// driven from the app's own queue so no OS input injection is needed.
+#[derive(Default)]
+struct Verify {
+    spawn: usize,
+    capture_after: Option<Duration>,
+    input: Option<Vec<u8>>,
+    typed: std::collections::BTreeSet<SeatId>,
+    started: bool,
+}
+impl Verify {
+    fn from_args(args: &[String]) -> Self {
+        let value = |flag: &str| {
+            args.windows(2)
+                .find(|pair| pair[0] == flag)
+                .map(|pair| pair[1].clone())
+        };
+        Self {
+            spawn: value("--spawn-zsh")
+                .and_then(|n| n.parse().ok())
+                .unwrap_or(0),
+            capture_after: value("--capture-after")
+                .and_then(|s| s.parse().ok())
+                .map(Duration::from_secs_f64),
+            input: std::env::var("BBOXY_VERIFY_INPUT")
+                .ok()
+                .map(|text| text.replace("\\n", "\r").into_bytes()),
+            ..Default::default()
+        }
+    }
+}
+impl App {
+    /// Runs on every live model: the first one means the cockpit is ready.
+    fn verify(&mut self) {
+        if !self.verify.started {
+            self.verify.started = true;
+            for _ in 0..self.verify.spawn {
+                self.queue(live::UiMsg::SpawnZsh);
+            }
+            if let Some(after) = self.verify.capture_after {
+                let proxy = self.proxy.clone();
+                bbt_rt::handle().spawn(async move {
+                    tokio::time::sleep(after).await;
+                    let _ = proxy.send_event(UiEvent::Capture);
+                });
+            }
+        }
+        let Some(bytes) = self.verify.input.clone() else {
+            return;
+        };
+        let fresh: Vec<_> = self
+            .live_state
+            .iter()
+            .flat_map(|model| model.ui.seats.iter())
+            .filter(|(id, _)| !self.verify.typed.contains(id))
+            .map(|(id, seat)| (*id, seat.process_generation))
+            .collect();
+        for (seat, generation) in fresh {
+            self.verify.typed.insert(seat);
+            self.queue(live::UiMsg::Input {
+                seat,
+                generation,
+                id: bbt_mux::Ulid::new(),
+                bytes: bytes.clone(),
+            });
+        }
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hook_args: Vec<_> = std::env::args().skip(1).collect();
+    if hook_args.iter().any(|arg| arg == "--help" || arg == "-h") {
+        println!("{HELP}");
+        return Ok(());
+    }
     if hook_args.iter().any(|arg| arg == "--capture") {
         std::panic::set_hook(Box::new(|info| {
             eprintln!(
@@ -1170,6 +1262,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .windows(2)
         .find(|pair| pair[0] == "--capture")
         .map(|pair| std::path::PathBuf::from(&pair[1]));
+    let verify = Verify::from_args(&args);
     let logger = log::Logger::new();
     let (render_context, rendering) = tokio::sync::oneshot::channel();
     let live_commands = if fake || animate {
@@ -1238,6 +1331,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         cadence_test,
         animation_start: None,
         frozen_ms: 450.,
+        verify,
     };
     event_loop.run_app(&mut app)?;
     if let Some(error) = app.error {
