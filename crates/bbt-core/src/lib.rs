@@ -114,6 +114,16 @@ impl Term {
         self.model.mode()
     }
 
+    /// Current terminal palette overrides.
+    pub fn colors(&self) -> &term::color::Colors {
+        self.model.colors()
+    }
+
+    /// Active cursor style, including the configured default.
+    pub fn cursor_style(&self) -> ansi::CursorStyle {
+        self.model.cursor_style()
+    }
+
     pub fn checkpoint(&self) -> Checkpoint {
         let mut model = self.model.clone();
         model.replace_event_proxy(Events::default());

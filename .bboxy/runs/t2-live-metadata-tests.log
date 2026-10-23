@@ -1,0 +1,35 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling libc v0.2.191
+   Compiling quote v1.0.47
+   Compiling serde_core v1.0.229
+   Compiling zerocopy v0.8.63
+   Compiling serde v1.0.229
+   Compiling serde_json v1.0.154
+   Compiling smallvec v1.16.3
+   Compiling log v0.4.34
+   Compiling getrandom v0.3.4
+   Compiling parking_lot_core v0.9.12
+   Compiling rand_core v0.9.5
+   Compiling parking_lot v0.12.5
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-ui-model)
+   Compiling syn v3.0.9
+   Compiling bitflags v2.13.2
+   Compiling serde_derive v1.0.229
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_chacha v0.9.0
+   Compiling rand v0.9.5
+   Compiling serde-big-array v0.5.1
+   Compiling arrayvec v0.7.8
+   Compiling ulid v1.2.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-core)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bbt-proto)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.99s
+     Running unittests src/lib.rs (target/debug/deps/bbt_proto-ea09ad65b18b8126)
+
+running 2 tests
+test streams::tests::direct_metadata_preserves_custom_palette_cursor_and_resets ... ok
+test streams::tests::direct_metadata_matches_checkpoint_for_all_firehose_parser_scenes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.47s
+
+EXIT=0

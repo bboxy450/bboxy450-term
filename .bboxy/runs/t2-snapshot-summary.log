@@ -1,0 +1,44 @@
+T2 speed metadata fix — Oracle authorization ddf789ab; landing-before-flood ruling fa7fc0d7.
+Only bbt-core/src/lib.rs read-only colors()/cursor_style() getters, and bbt-proto/src/streams.rs direct metadata serialization plus regression tests. Checkpoint/wire unchanged, serial20ms poll and one-in-flight Applied unchanged.
+cargo test -p bbt-proto --locked streams::tests -- --nocapture EXIT0:2 tests; exact full Screen equality against old constructor for all10 firehose corpus scenes, palette/cursor/reset/alternate/resize/restore states.
+Paired old/new benchmark in same optimized executable, 100 samples each after5 warmups, term history0; legacy result asserted equal before timing. Shared-machine wall times, no causal whole-app Hz claim.
+38x57: old p50=1.655708ms mean=1.855057ms; new p50=0.004334ms mean=0.006758ms.
+77x57: old p50=3.487625ms mean=3.546259ms; new p50=0.007209ms mean=0.007236ms.
+158x57: old p50=8.066959ms mean=8.647628ms; new p50=0.013584ms mean=0.013755ms.
+COMMAND CARGO_INCREMENTAL=0 cargo run --release --offline --manifest-path target/t2-live-1792738261650322000/speed-bench/Cargo.toml EXIT0. Standalone benchmark invokes no identity/PTY/GPU.
+Benchmark sourceSHA256=e2fc5471c2295a85bf0156448845a7b1e5e5e884c36d05f9133e2cddc2b0a00b
+use std::{hint::black_box,time::Instant};
+use bbt_core::{Term,Line,Column};
+fn legacy(t:&Term,cols:usize,rows:usize)->Screen {
+ let checkpoint=serde_json::to_value(t.checkpoint()).unwrap();let m=&checkpoint["model"];let g=t.grid();
+ Screen {cols,rows,cells:(0..rows).map(|r|(0..cols).map(|c|g[Line(r as i32)][Column(c)].clone()).collect()).collect(),cursor:(g.cursor.point.line.0,g.cursor.point.column.0),modes:t.mode().bits() as u64,palette:m["colors"].clone(),cursor_style:if m["cursor_style"].is_null(){m["config"]["default_cursor_style"].clone()}else{m["cursor_style"].clone()},title:String::new(),cwd:None,gap:None}
+}
+
+use bbt_proto::Screen;
+fn timed(mut f:impl FnMut(),n:usize)->serde_json::Value {
+    for _ in 0..5 { f(); }
+    let mut samples=Vec::with_capacity(n);
+    for _ in 0..n { let at=Instant::now(); f(); samples.push(at.elapsed().as_secs_f64()*1000.); }
+    samples.sort_by(f64::total_cmp);
+    serde_json::json!({"n":n,"mean_ms":samples.iter().sum::<f64>()/n as f64,"p50_ms":samples[n/2],"p95_ms":samples[n*95/100],"min_ms":samples[0]})
+}
+fn main(){
+    for (cols,rows,history) in [(38,57,0),(77,57,0),(158,57,0)] {
+        let mut term=Term::new(cols,rows,history);
+        let bytes=(1..=rows+history+10).map(|n|format!("{n}\r\n")).collect::<String>();
+        term.advance(bytes.as_bytes());
+        let screen=Screen::from_term(&term,String::new(),None,None);
+        assert_eq!(screen,legacy(&term,cols,rows));
+        let checkpoint_bytes=serde_json::to_vec(&term.checkpoint()).unwrap().len();
+        let result=serde_json::json!({"cols":cols,"rows":rows,"history_limit":history,"checkpoint_bytes":checkpoint_bytes,
+          "legacy_from_term_same_binary":timed(||{black_box(legacy(&term,cols,rows));},100),
+          "checkpoint_clone":timed(||{black_box(term.checkpoint());},100),
+          "checkpoint_to_json_value":timed(||{black_box(serde_json::to_value(term.checkpoint()).unwrap());},100),
+          "screen_from_term":timed(||{black_box(Screen::from_term(&term,String::new(),None,None));},100),
+          "visible_cells_clone":timed(||{let rows:Vec<Vec<_>>=(0..rows).map(|r|(0..cols).map(|c|term.grid()[Line(r as i32)][Column(c)].clone()).collect()).collect();black_box(rows);},100),
+          "screen_json_wire":timed(||{black_box(serde_json::to_vec(&screen).unwrap());},100)});
+        println!("{result}");
+    }
+}
+
+Unthrottled cadence remains UNPROVEN until Rook reply-queue fix; first own release+assertion run had healthy memory witness but lost backend before settling (raw t2-live-speed-before log). No second flood run; Oracle fa7fc0d7 authorizes landing equality/timing now.
