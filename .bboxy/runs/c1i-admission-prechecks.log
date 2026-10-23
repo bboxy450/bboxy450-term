@@ -1,0 +1,152 @@
+{
+  "runs": [
+    {
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "bboxy450-term",
+        "--locked"
+      ],
+      "exit": 0,
+      "elapsed_s": 176.3305506670149,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-dev-1792763202771535000/build.log",
+      "log_sha256": "54b1ab1e24c14cb2754f6f75286c721ce3e43102c0371efbc55446a2ded195f6"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term",
+        "--locked",
+        "live::tests::",
+        "--",
+        "--nocapture"
+      ],
+      "exit": 0,
+      "elapsed_s": 28.931511667004088,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-dev-1792763202771535000/tests.log",
+      "log_sha256": "e26df98e89534264441d41008e3c0ef6dd0af962f7edc03b8e0221a95ff04a6a"
+    },
+    {
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "bboxy450-term",
+        "--locked"
+      ],
+      "exit": 0,
+      "elapsed_s": 14.023947917012265,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-dev-1792763202771535000/build-final.log",
+      "log_sha256": "c93aa207bd396dab6323ff0366786a71dd62263046fab33416d747de7eae63a0"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term",
+        "--locked",
+        "live::tests::",
+        "--",
+        "--nocapture"
+      ],
+      "exit": 0,
+      "elapsed_s": 14.820285249996232,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-dev-1792763202771535000/tests-final.log",
+      "log_sha256": "d8399b90bf2ad1b3806b5ba352a5aba244b7f7fca4d2eef387499a7c00263986"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "bboxy450-term",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "elapsed_s": 51.9704825830122,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-dev-1792763202771535000/clippy.log",
+      "log_sha256": "f6f57470ee2a428ea23ff85169460d5d663ddd442a24e6d1527413fb36965185"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term",
+        "--locked",
+        "live::tests::first_refused_resize_converges_without_another_ui_resize",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "exit": 101,
+      "elapsed_s": 5.8899398329958785,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-dev-1792763202771535000/busy-starvation-red.log",
+      "expected": "red with repeated Busy extending the deadline",
+      "log_sha256": "1dfd8606826f339ac463236b8e157d0f98413cf219b527896cae40c62c3b729e"
+    },
+    {
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "bboxy450-term",
+        "--locked"
+      ],
+      "exit": 0,
+      "elapsed_s": 7.069431165989954,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-dev-1792763202771535000/build-reviewed.log",
+      "log_sha256": "eeab840f80cf47bba71b4254c719cb83f292f165608413f6dc5c1baad10a8404"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term",
+        "--locked",
+        "live::tests::",
+        "--",
+        "--nocapture"
+      ],
+      "exit": 0,
+      "elapsed_s": 12.493023207993247,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-dev-1792763202771535000/tests-reviewed.log",
+      "log_sha256": "fbf49cdc27ef3e4ee25832b06d701d176aad1b723ff5140f02d5fced0d4e70bb"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "bboxy450-term",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "elapsed_s": 2.667957249999745,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-dev-1792763202771535000/clippy-reviewed.log",
+      "log_sha256": "d778b989386dc52993c037cae1bee0e04449f59f74e433da2321184ff083bdf9"
+    }
+  ],
+  "note": "Prechecks in own writing worktree, not the exact clean gate. Expected red101 demonstrated repeated Busy extending a pending retry deadline; corrected to preserve already-scheduled retry. First refusal is an explicit policy fixture against real Term/Replica/Model, not a production server Busy reproduction."
+}

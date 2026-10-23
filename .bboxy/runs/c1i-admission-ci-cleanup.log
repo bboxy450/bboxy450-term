@@ -1,0 +1,14 @@
+{
+  "source": "db512198a19536a31eca3ba8733987367ea4d1d2",
+  "target": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-ci-db51219",
+  "allocated_bytes_removed": 2198274048,
+  "du_exit": 0,
+  "lsof_exit": 0,
+  "matching_open_files": [],
+  "target_removed": true,
+  "worktree": "/tmp/ci-aster-admission-db51219-1792763921007351000",
+  "worktree_remove_exit": 0,
+  "worktree_removed": true,
+  "galleries_and_raw_evidence_preserved": true,
+  "measurement": "allocated du -sk bytes removed; not net volume free-space delta"
+}

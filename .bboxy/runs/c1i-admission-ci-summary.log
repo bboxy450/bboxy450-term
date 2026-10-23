@@ -1,0 +1,27 @@
+{
+  "source": "db512198a19536a31eca3ba8733987367ea4d1d2",
+  "exit": 0,
+  "elapsed_s": 574.9967215840006,
+  "workspace_test_summaries_before_invariants": 124,
+  "workspace_passed": 759,
+  "workspace_failed": 0,
+  "workspace_ignored": 18,
+  "invariants_line": "invariants: 6 checks, 0 failures, 4 slow checks skipped",
+  "ci_log_sha256": "6cd887d594a08a006aaa2a638cb17e30f2fee50971a41ddabd02a27b0145ce89",
+  "clean_before": true,
+  "clean_after": true,
+  "remaining_log_context_before_invariants": [
+    "    Finished `dev` profile [optimized] target(s) in 5.67s",
+    "    Finished `dev` profile [optimized] target(s) in 0.27s",
+    "     Running `/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-ci-db51219/debug/bboxy450-term --smoke`",
+    "panel: Some(\"Monitor #53534\"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75",
+    "smoke bootstrap: early producer handled before GPU ready",
+    "renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15",
+    "Metal maximumDrawableCount=Some(3), configured latency=2",
+    "pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused",
+    "first frame: native scene presented, seats=15",
+    "idle probe settling: producer_done=true queued=false redraw_pending=false occluded=false frames=21 callbacks=21",
+    "idle probe begins: frames=21 last_update=20",
+    "idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=3.709ms p99=4.539ms samples=21 warm_encode_p50=2.928ms warm_encode_p99=3.146ms"
+  ]
+}

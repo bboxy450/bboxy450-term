@@ -1,0 +1,69 @@
+{
+  "source": "db512198a19536a31eca3ba8733987367ea4d1d2",
+  "base": "ed74a2b171a4d9de588e8abbc82c94a0f9f18f70",
+  "latest_main": "a8cbcc0535dad6888becc1a56432eecd79148104",
+  "main_live_source_diff_exit": 0,
+  "source_signature": "G machine9B07E849480C68328CA20684844ECC0587DE7AB0",
+  "mechanism": "live.rs:158/173/218/262/295/302/319 desired Watch/Resize state, coalesced/bounded100ms retries; live.rs:389 ordered send and transportBusy retention; :493 observed after publish thenApplied; :505 Busy server-error reconciliation",
+  "acceptance": {
+    "first_resize_refused": "live.rs:582 explicit Busy policy fixture, then actual Term->Replica->Model80x24 to37x57 with no newUIResize; repeatBusy at50ms cannot extend100ms retry",
+    "watch_refused": "live.rs:668 six thousand attempts over ten virtual minutes, one queued control/pane, latestsize and Unwatch cancellation",
+    "input_unchanged": "stable id/bytes preserved by queued-control filters; existing realIO test passes256distinctIDs,echo,PTYstty40x12->20x12/reflow/loss",
+    "early_coalescing": "live.rs:785 Resize-before-Watch, same-generation newview and process-generation changes preserve latest valid intent",
+    "clean_gate": {
+      "source": "db512198a19536a31eca3ba8733987367ea4d1d2",
+      "exit": 0,
+      "elapsed_s": 574.9967215840006,
+      "workspace_test_summaries_before_invariants": 124,
+      "workspace_passed": 759,
+      "workspace_failed": 0,
+      "workspace_ignored": 18,
+      "invariants_line": "invariants: 6 checks, 0 failures, 4 slow checks skipped",
+      "ci_log_sha256": "6cd887d594a08a006aaa2a638cb17e30f2fee50971a41ddabd02a27b0145ce89",
+      "clean_before": true,
+      "clean_after": true,
+      "remaining_log_context_before_invariants": [
+        "    Finished `dev` profile [optimized] target(s) in 5.67s",
+        "    Finished `dev` profile [optimized] target(s) in 0.27s",
+        "     Running `/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-ci-db51219/debug/bboxy450-term --smoke`",
+        "panel: Some(\"Monitor #53534\"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75",
+        "smoke bootstrap: early producer handled before GPU ready",
+        "renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15",
+        "Metal maximumDrawableCount=Some(3), configured latency=2",
+        "pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused",
+        "first frame: native scene presented, seats=15",
+        "idle probe settling: producer_done=true queued=false redraw_pending=false occluded=false frames=21 callbacks=21",
+        "idle probe begins: frames=21 last_update=20",
+        "idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=3.709ms p99=4.539ms samples=21 warm_encode_p50=2.928ms warm_encode_p99=3.146ms"
+      ]
+    }
+  },
+  "review": "Sable e60e8aa9 static IO seam reviewed906b9e8; live.rs identity proof todb51219 EXIT0, no blocking defect/no runtime rerun",
+  "not_checked": [
+    "actual server Busy refusal through run Error/timer/send path; first-refusal regression explicitly injects policy boundary, not a real server response",
+    "new native Busy/firehose capture",
+    "full --parity; no rendering/layout source changed, tree proofs0",
+    "slow invariant gates; default script named skips"
+  ],
+  "deliberately_untouched": [
+    "GUI/socket schema and server admission/W3.6 pacing",
+    "Input bytes/IDs/generation refusal",
+    "prepare->publish->Applied",
+    "rendering/fonts/shaders/UIlayout/materials"
+  ],
+  "cleanup": {
+    "source": "db512198a19536a31eca3ba8733987367ea4d1d2",
+    "target": "/Users/feral/mydev/bboxy450-term-exec4/target/c1i-admission-ci-db51219",
+    "allocated_bytes_removed": 2198274048,
+    "du_exit": 0,
+    "lsof_exit": 0,
+    "matching_open_files": [],
+    "target_removed": true,
+    "worktree": "/tmp/ci-aster-admission-db51219-1792763921007351000",
+    "worktree_remove_exit": 0,
+    "worktree_removed": true,
+    "galleries_and_raw_evidence_preserved": true,
+    "measurement": "allocated du -sk bytes removed; not net volume free-space delta"
+  },
+  "branch": "exec4; no push or merge; evidence-only successor carries this log"
+}
