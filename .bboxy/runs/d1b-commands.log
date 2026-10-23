@@ -1,0 +1,53 @@
+D1b GO cbaada7d-24c6-45ee-8a70-ab44b8c72956; D1a accepted f308e37. Initial date/status/log/fetch and skill/spec/AGENTS/help reads all exit 0.
+$ git branch exec5-d1a-accepted
+exit=0
+$ git rebase --gpg-sign origin/main
+Successfully rebased and updated refs/heads/exec5.
+exit=0
+Fixture/provider creation and validation edits: exit 0. rustfmt provider modules: exit 0. Initial rg named nonexistent fixtures directory before creation: exit 2; no code failure. Oracle RTT ruling a7e2b9a1 permits unchanged synchronous replies and due-time events; integration approved. ICQ start/coordination previews and sends exit 0.
+Applied named provider/logic integration and new headless tests, checked Python edits and scoped rustfmt: exit 0.
+$ cargo test --locked -p bbt-mux --test provider_fake --test provider --test capture_busy -- --nocapture (memory custody, compact O1 with debug assertions)
+owned cargo pid=28710
+exit=101
+Focused build exited 101: new exhaustive-action test used InputContext from mux rather than its defining direct dependency bbt_supervisor. Corrected that import; no production API change. Also made the provider-state consumer explicitly replay All so late subscription cannot miss initial transitions. Checked edits exit 0.
+$ cargo test --locked -p bbt-mux --test provider_fake --test provider --test capture_busy -- --nocapture (same memory/compact O1 env)
+owned cargo pid=33604
+exit=101
+Second focused compile exit 101: supervisor root also does not re-export InputContext. Inspected actual src/lib.rs exports (cat exit 0) and corrected the test to public bbt_supervisor::protocol::InputContext; checked edit exit 0. No export or production code change.
+$ cargo test --locked -p bbt-mux --test provider_fake --test provider --test capture_busy -- --nocapture (same memory/compact O1 env)
+owned cargo pid=35507
+exit=101
+Focused runtime exit 101: headless test saw only worker-west Connecting. Inspected bus.rs:60 and :264 (reads exit 0); trailing /state coalesces a shared subject. Fixed production provider event topic to non-coalescing account/providers/transition (apply_patch exit 0), preserving every host transition. Existing capture/provider tests and two new tests had passed.
+$ cargo test --locked -p bbt-mux --test provider_fake --test provider --test capture_busy -- --nocapture (same memory/compact O1 env)
+owned cargo pid=37973
+exit=0
+$ rustfmt --edition 2024 --config skip_children=true crates/bbt-mux/src/provider/mod.rs crates/bbt-mux/src/provider/fake.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/tests/provider_fake.rs
+exit=0
+$ git diff --check
+exit=0
+$ cargo tree --locked -p bbt-mux
+exit=0
+dependency scan: no SSH, quinn or cloud SDK package; exit 0
+$ git add -- crates/bbt-mux/src/provider/mod.rs crates/bbt-mux/src/provider/fake.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/fixtures/providers.json crates/bbt-mux/tests/provider_fake.rs
+exit=0
+$ git commit -S -m 'provider: add fixture-driven fake hosts and headless recovery'
+[exec5 e262bc9] provider: add fixture-driven fake hosts and headless recovery
+ 5 files changed, 968 insertions(+), 9 deletions(-)
+ create mode 100644 crates/bbt-mux/fixtures/providers.json
+ create mode 100644 crates/bbt-mux/src/provider/fake.rs
+ create mode 100644 crates/bbt-mux/tests/provider_fake.rs
+exit=0
+$ git fetch origin
+exit=0
+$ git rebase --gpg-sign origin/main
+Rebasing (1/1)
+Successfully rebased and updated refs/heads/exec5.
+exit=0
+$ git log -3 --oneline origin/main
+6bfe726 merge W1.2g: coalesce ring-backed supervisor events per (seat, generation, kind); no logic death under output floods
+d3c2151 arch: decision 25, the fake provider delays events not requests (D1b)
+f308e37 merge D1a: provider seam; seats routed by host through Provider, LocalProvider for this Mac
+exit=0
+$ cargo clippy --workspace --all-targets --locked -- -D warnings (memory/compact O1 env)
+owned cargo pid=43181
+exit=0
