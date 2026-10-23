@@ -1,0 +1,22 @@
+Silk public phase adapter after-fix controls.
+Source/reference455d35230dfecd6367c17a8458b0b0b2a1b990db includes final signed ac546a4 plus native Style pass and authorized Glow.attach capture hook.
+Native diagnostic binary sourcef65a87e, SHA256 cf23063d933da0bd9ef62c9dbe8b488a25581d12a7cc839f8dd9055785b052c8; Rust rendering code unchanged, public input phase now forwarded correctly.
+Oracle scope approval34e9cad7: Glow.attach interception only.
+node --check capture-inputs.js exit0; git diff --check exit0.
+Fresh18cases: Style8, Pose2, legacyMaterial8.10requiredgeometry complete,0mismatches/unproven;10withinpolicy,8unchangedMaterialpixel advisories.
+Public phase independent hash check:10items match FNV32(seat.key)%10000 exactly.
+Legacy particles:8seed sequences unchanged; all16web/native RGBA comparisons byte-identical to frozen accepted P3(9dd73ec).
+Style control:all24web/native/diff RGBA comparisons identical to the pre-adapter ac546a4 paired8proof.
+Critical before/after scores (same final silk lab content): TitleStrip focused-vs-unfocused4.725120% -> 0.6834369983948636%; Pane reconnected5.626954% -> 1.841154853425699%. Both nowwithinpolicy.
+Artifacts: /Users/feral/mydev/bboxy450-term-exec6/target/style-phase-controls-455d352
+Control proof: /Users/feral/mydev/bboxy450-term-exec6/target/style-phase-controls-455d352/adapter-control-proof.json
+Report SHA256: 98ca660d9a2d109758800e64aa54537ff938ce4d31708f7b94a388009f691793
+All commands and real exits:
+{"command": ["git", "verify-commit", "455d35230dfecd6367c17a8458b0b0b2a1b990db"], "cwd": "/Users/feral/mydev/bboxy450-term-exec6", "exit": 0, "seconds": 0.071}
+{"command": ["git", "worktree", "add", "--detach", "/tmp/velvet-style-controls-455d352", "455d35230dfecd6367c17a8458b0b0b2a1b990db"], "cwd": "/Users/feral/mydev/bboxy450-term-exec6", "exit": 0, "seconds": 0.599}
+{"command": ["sh", "scripts/lab-check.sh", "style.html", "pane.html", "title-strip.html", "materials.html"], "cwd": "/tmp/velvet-style-controls-455d352", "exit": 0, "seconds": 9.096}
+{"command": ["/Users/feral/mydev/bboxy450-term-exec6/target/style-lane-eight-focused-dev/bboxybook-style-lane-focused", "manifest"], "cwd": "/tmp/velvet-style-controls-455d352", "exit": 0, "seconds": 0.009}
+{"command": ["node", "crates/bboxybook/capture.mjs", "/Users/feral/mydev/bboxy450-term-exec6/target/style-phase-controls-455d352", "/Users/feral/mydev/bboxy450-term-exec6/target/style-phase-controls-455d352/requested.json"], "cwd": "/tmp/velvet-style-controls-455d352", "exit": 0, "seconds": 8.469}
+{"command": ["/Users/feral/mydev/bboxy450-term-exec6/target/style-lane-eight-focused-dev/bboxybook-style-lane-focused", "render", "--all", "--out", "/Users/feral/mydev/bboxy450-term-exec6/target/style-phase-controls-455d352/native", "--manifest", "/Users/feral/mydev/bboxy450-term-exec6/target/style-phase-controls-455d352/cases.json"], "cwd": "/tmp/velvet-style-controls-455d352", "exit": 0, "seconds": 2.067}
+{"command": ["/Users/feral/mydev/bboxy450-term-exec6/target/style-lane-eight-focused-dev/bboxybook-style-lane-focused", "compare", "--strict-geometry", "--out", "/Users/feral/mydev/bboxy450-term-exec6/target/style-phase-controls-455d352", "--manifest", "/Users/feral/mydev/bboxy450-term-exec6/target/style-phase-controls-455d352/cases.json"], "cwd": "/tmp/velvet-style-controls-455d352", "exit": 0, "seconds": 0.289}
+Independent adapter/legacy/Style control checker exit0. Temporary source clean and removed, cleanup0. Exact combined fullCI remains next.
