@@ -349,6 +349,24 @@ fn paint_box(
         }];
         pixels = materials::render_to_rgba(renderer, scene(&pixels, size, &items, ctx.theme))?;
     }
+    if s.material == Material::Lane {
+        // style.html explicitly shows an active, focused pane-glow fixture.
+        let state = s.glow.unwrap_or(bbt_ui::Glow {
+            focused: true,
+            ..Default::default()
+        });
+        let mut lane = crate::components::lane(ctx, Some(state));
+        for color in [&mut lane.color, &mut lane.waiting, &mut lane.errored] {
+            *color = color.alpha(s.opacity);
+        }
+        let items = [Surface {
+            rect,
+            radii: s.radii,
+            clips: vec![],
+            material: materials::Material::Lane(lane),
+        }];
+        pixels = materials::render_to_rgba(renderer, scene(&pixels, size, &items, ctx.theme))?;
+    }
     Ok(pixels)
 }
 
