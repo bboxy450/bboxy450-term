@@ -888,8 +888,137 @@ fn ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshol
     logic.shutdown().unwrap();
 }
 
-/// Run alone in an optimized build: this is a measured IO acceptance gate,
-/// rather than a timing assertion imposed on a contended debug CI runner.
+/// Explicit 20 MiB baseline: report timings, and assert capture continuity.
+#[test]
+#[ignore = "W1.2f baseline instrumentation: run release ring_capture_twenty_mib_profile --ignored --nocapture"]
+fn ring_capture_twenty_mib_profile_running_and_stopped() {
+    use sha2::{Digest, Sha256};
+
+    for running in [true, false] {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime = runtime();
+        let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
+        let initial = Logic::start(
+            supervisor.connect().unwrap(),
+            fixture(temp.path()),
+            SigningKey::from_bytes(&[29; 32]),
+            runtime.handle(),
+        )
+        .unwrap();
+        let size = 20 * 1024 * 1024;
+        let spec = ring_writer(temp.path(), size);
+        let seat = spec.seat;
+        let info = runtime
+            .block_on(initial.client.spawn(
+                SeatRecord::new(seat, Ulid::new(), "capture profile", "python"),
+                spec,
+            ))
+            .unwrap();
+        wait_for_prefix(&runtime, &initial, seat);
+        let (logic, stalled) = if running {
+            (Some(initial), None)
+        } else {
+            initial.shutdown().unwrap();
+            let client = supervisor.connect().unwrap();
+            let attachment = client.attach(seat, 1).unwrap();
+            (None, Some((client, attachment)))
+        };
+        println!(
+            "W12F_PROFILE baseline_only=true running={running} seat={seat} producer_pid={} bytes={size}",
+            info.pid
+        );
+        let started = Instant::now();
+        std::fs::write(temp.path().join("gate"), b"go").unwrap();
+        let until = started + Duration::from_secs(60);
+        while !temp.path().join("writer.json").exists() {
+            assert!(Instant::now() < until, "writer stalled: running={running}");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        let stats: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(temp.path().join("writer.json")).unwrap())
+                .unwrap();
+        println!("W12F_PROFILE writer running={running}: {stats}");
+        let raw_size = size + 8 + b"\x1b[31mRING-TAIL\x1b[0m\r\n".len();
+        let status = loop {
+            let status = if let Some(logic) = &logic {
+                runtime
+                    .block_on(logic.client.history(seat, 1, 1, 1))
+                    .unwrap()
+                    .status
+            } else {
+                let (client, attachment) = stalled.as_ref().unwrap();
+                let Reply::RingRecovery { status, .. } = client
+                    .request(Action::RingRecovery {
+                        attachment: attachment.clone(),
+                    })
+                    .unwrap()
+                else {
+                    panic!("capture status reply mismatch")
+                };
+                *status
+            };
+            if status.byte_end == raw_size as u64
+                && status.committed_sequence == status.captured_sequence
+            {
+                break status;
+            }
+            assert!(Instant::now() < until, "commit stalled: {status:?}");
+            std::thread::sleep(Duration::from_millis(1));
+        };
+        let elapsed = started.elapsed().as_secs_f64();
+        println!(
+            "W12F_PROFILE committed running={running} elapsed_s={} mib_s={} stats={}",
+            elapsed,
+            20.0 / elapsed,
+            serde_json::to_string(&status.capture).unwrap()
+        );
+        assert!(status.capture.peak_queue_bytes <= 64 * 1024 * 1024);
+        if let Some(logic) = logic {
+            logic.shutdown().unwrap();
+        }
+        let (client, attachment) = stalled.unwrap_or_else(|| {
+            let client = supervisor.connect().unwrap();
+            let attachment = client.attach(seat, 1).unwrap();
+            (client, attachment)
+        });
+        let mut from = 1;
+        let mut bytes = 0;
+        let mut actual = Sha256::new();
+        while from <= status.captured_sequence {
+            let Reply::RingHistory { history } = client
+                .request(Action::ReadRing {
+                    attachment: attachment.clone(),
+                    from,
+                    to: status.captured_sequence,
+                })
+                .unwrap()
+            else {
+                panic!("capture history reply mismatch")
+            };
+            assert!(history.gap.is_none());
+            assert!(!history.records.is_empty());
+            for record in history.records {
+                if let bbt_mux::Event::Output { bytes: output, .. } = record.event {
+                    bytes += output.len();
+                    actual.update(output);
+                }
+            }
+            from = history.next.unwrap_or(status.captured_sequence + 1);
+        }
+        let mut expected = Sha256::new();
+        expected.update(b"BEFORE\r\n");
+        for _ in 0..320 {
+            expected.update([b'x'; 65536]);
+        }
+        expected.update(b"\x1b[31mRING-TAIL\x1b[0m\r\n");
+        assert_eq!(bytes, raw_size);
+        assert_eq!(actual.finalize(), expected.finalize());
+        println!("W12F_PROFILE exact_capture running={running} bytes={bytes} no_gap=true");
+        supervisor.shutdown().unwrap();
+    }
+}
+
+/// W1.2c's original 128 MiB gate, retained for comparison.
 #[test]
 #[ignore = "cargo test -p bbt-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1"]
 fn ring_capture_throughput_with_logic_running_and_stopped() {
