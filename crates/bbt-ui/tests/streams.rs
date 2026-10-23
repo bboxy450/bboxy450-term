@@ -250,3 +250,36 @@ fn incomplete_channel_counts_keep_more_and_explicit_swarm_total() {
     assert!(serde_json::from_value::<UnreadCount>(serde_json::json!(-1)).is_err());
     assert_eq!(serde_json::to_value(UnreadCount::More).unwrap(), "more");
 }
+
+#[test]
+fn a_changed_task_keeps_its_reject_draft_visible_without_an_enabled_mutation() {
+    use bbt_ui::modules::composer::{RejectController, Report};
+    let reason = RejectController::new("keep this rebrief".into());
+    let view = StreamDock {
+        dock: true,
+        framed: false,
+        entries: vec![Entry::Report {
+            id: "actual-task".into(),
+            data: Report {
+                task: "Task changed".into(),
+                status: "accepted".into(),
+                reject: Some(reason.view),
+                ..Default::default()
+            },
+            review: false,
+        }],
+    };
+    let tree = layout(view.clone(), 300.);
+    assert!(node(&tree, "e0/reject/input").is_some());
+    assert!(labels(&tree).contains("keep this rebrief"));
+    let submit = node(&tree, "e0/reject/submit").unwrap().rect;
+    assert_eq!(
+        Regions::dock(&tree, &view).hit([submit.x + submit.w / 2., submit.y + submit.h / 2.]),
+        None
+    );
+    let cancel = node(&tree, "e0/reject/cancel").unwrap().rect;
+    assert_eq!(
+        Regions::dock(&tree, &view).hit([cancel.x + cancel.w / 2., cancel.y + cancel.h / 2.]),
+        Some(Action::CancelReject("actual-task".into()))
+    );
+}

@@ -121,6 +121,8 @@ fn a_disconnect_retries_the_captured_ids_and_ignores_the_old_unknown_publication
     client.replies(&results);
     assert_eq!(client.status, Status::Pending);
     assert!(!results.complete(Ulid::new(), Reply::Refused("unrelated".into())));
+    assert!(!results.complete(*id, Reply::Refused("old connection reply".into())));
+    assert!(results.requested(*id)); // explicit retry on the replacement connection
     assert!(results.complete(
         *id,
         Reply::Messaging(Response::Held {
@@ -268,6 +270,18 @@ fn result_byte_bound_includes_correlation_metadata_and_names_oversize_reads() {
     assert!(
         matches!(&rows[0].reply,Reply::Refused(s) if s.starts_with("operation_result_window_limit:"))
     );
+}
+
+#[test]
+fn repeated_disconnects_release_result_admission_without_accepting_old_socket_replies() {
+    let mut results = Results::default();
+    for _ in 0..100 {
+        let id = Ulid::new();
+        assert!(results.requested(id));
+        assert!(results.disconnected("owned fixture reconnect"));
+        assert!(!results.complete(id, Reply::Refused("old socket".into())));
+    }
+    assert!(results.rows().count() <= 64);
 }
 
 fn op_id(command: &UiMsg) -> Ulid {
@@ -431,6 +445,32 @@ fn receiving_does_not_mark_read_and_counts_require_complete_retained_coverage() 
     );
     history.cursor(8, 8, 0);
     assert_eq!(history.seat_unread("seat-author"), UnreadCount::Exact(0));
+}
+
+#[test]
+fn a_refused_retained_page_finishes_the_read_and_waits_for_an_explicit_retry() {
+    use bboxy450_term::messaging::{History, HistoryAction};
+    use bbt_ui::modules::stream_dock::Entry;
+    let mut history = History::default();
+    history.select(SwarmId::from_u128(79));
+    history.actions();
+    history.page_failed(1, "retained page refused by fixture");
+    assert!(history.actions().is_empty(), "no automatic refusal loop");
+    assert!(history.entries(&Default::default(),&Default::default(),&[]).iter().any(|entry| matches!(entry, Entry::Note {text,..} if text.contains("retained page refused"))));
+    history.more();
+    assert!(
+        history
+            .actions()
+            .iter()
+            .any(|action| matches!(action, HistoryAction::Page { after: 0, .. }))
+    );
+    history.page(2, 0, None);
+    assert!(
+        !history
+            .entries(&Default::default(), &Default::default(), &[])
+            .iter()
+            .any(|entry| matches!(entry, Entry::Note {text,..} if text.contains("refused")))
+    );
 }
 #[test]
 fn a_newer_live_cursor_cannot_make_an_old_empty_page_prove_newer_coverage() {

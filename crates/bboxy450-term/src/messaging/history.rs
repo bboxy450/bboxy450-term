@@ -36,6 +36,8 @@ pub struct History {
     page_pending: Option<(u64, u64)>, // requested after, previous completion revision
     page_revision: u64,
     page_next: Option<u64>,
+    failed_after: Option<u64>,
+    page_issue: Option<String>,
     covered_high: Option<u64>,
     chain_next: Option<u64>,
     gap_after: Option<u64>,
@@ -67,6 +69,9 @@ impl History {
     pub fn channel(&mut self, path: &str) {
         if path == "all" {
             self.read_sent = 0;
+        }
+        if self.page_pending.is_none() && self.failed_after.is_some() {
+            self.page_wanted = self.failed_after.take();
         }
         if self.selected != path {
             self.selected = path.into();
@@ -163,6 +168,8 @@ impl History {
             return;
         }
         self.page_pending = None;
+        self.page_issue = None;
+        self.failed_after = None;
         if after == 0 || self.chain_next == Some(after) || self.covered_high == Some(after) {
             self.chain_next = next;
             self.covered_high = if next.is_none() { Some(high) } else { None };
@@ -171,6 +178,16 @@ impl History {
             self.chain_next = next;
         }
         self.page_next = next;
+    }
+    pub fn page_failed(&mut self, revision: u64, reason: &str) {
+        self.page_revision = self.page_revision.max(revision);
+        if let Some((after, previous)) = self.page_pending
+            && revision > previous
+        {
+            self.page_pending = None;
+            self.failed_after = Some(after);
+            self.page_issue = Some(reason.chars().take(256).collect());
+        }
     }
     pub fn commands(&mut self) -> Vec<UiMsg> {
         let Some(scope) = self.scope else {
@@ -215,9 +232,11 @@ impl History {
         out
     }
     pub fn more(&mut self) {
-        self.list_wanted = self.list_next;
+        if self.list.is_none() {
+            self.list_wanted = self.list_next;
+        }
         if self.page_pending.is_none() {
-            self.page_wanted = self.page_next.or_else(|| {
+            self.page_wanted = self.failed_after.take().or(self.page_next).or_else(|| {
                 self.cursor
                     .filter(|(_, high, _)| self.covered_high.is_some_and(|covered| covered < *high))
                     .and(self.covered_high)
@@ -399,7 +418,7 @@ impl History {
                         .any(|r| r.row.id == *id && r.row.bus.as_ref() == bus.as_ref())
             })
             .count();
-        let note = if let Some(issue) = &self.issue {
+        let note = if let Some(issue) = self.page_issue.as_ref().or(self.issue.as_ref()) {
             Some(issue.clone())
         } else if missing > 0 {
             Some(format!(

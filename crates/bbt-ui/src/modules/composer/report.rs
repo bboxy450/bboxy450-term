@@ -372,7 +372,7 @@ impl Report {
                 .into(),
             );
         }
-        if status == "reported" && review {
+        if (status == "reported" && review) || self.reject.is_some() {
             if let Some(reject) = &self.reject {
                 let k = format!("{key}/reject");
                 let mut label_text = c::Text::new(
@@ -421,7 +421,9 @@ impl Report {
                                 id: "submit",
                                 label: "Reject",
                                 fill: Some(bad),
-                                enabled: !reject.reason.trim().is_empty(),
+                                enabled: review
+                                    && status == "reported"
+                                    && !reject.reason.trim().is_empty(),
                                 weight: 600,
                             },
                         ],

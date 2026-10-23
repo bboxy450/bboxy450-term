@@ -95,13 +95,16 @@ impl Regions {
                         }
                     }
                 }
-                Entry::Report { id, data, review } if *review && data.status == "reported" => {
+                Entry::Report { id, data, review }
+                    if (*review && data.status == "reported") || data.reject.is_some() =>
+                {
                     if let Some(reject) = &data.reject {
                         out.add(
                             &format!("{key}/reject/cancel"),
                             Action::CancelReject(id.clone()),
                         );
-                        if !reject.reason.trim().is_empty() {
+                        if *review && data.status == "reported" && !reject.reason.trim().is_empty()
+                        {
                             out.add(
                                 &format!("{key}/reject/submit"),
                                 Action::SubmitReject(id.clone()),

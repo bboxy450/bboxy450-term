@@ -301,6 +301,15 @@ fn disconnected_events(
     changed
 }
 
+fn discard_uncertain_actions(outgoing: &mut VecDeque<GuiAction>) {
+    outgoing.retain(|action| {
+        !matches!(
+            action,
+            GuiAction::Spawn { .. } | GuiAction::Messaging { .. } | GuiAction::Task { .. }
+        )
+    });
+}
+
 const CONTROL_RETRY: Duration = Duration::from_millis(100);
 
 struct DesiredPane {
@@ -605,6 +614,7 @@ async fn run(
                     }
                     Err(error) => {
                         logger.write(format!("GUI writer stopped: {error}"));
+                        operations_disconnected(&mut model, &updates, &error.to_string());
                         backend_lost(Some(error.to_string()));
                         lost = true;
                         history.disconnected();
@@ -612,6 +622,7 @@ async fn run(
                         if Arc::make_mut(&mut model).spawns_disconnected(&error.to_string()) {
                             updates.publish(model.clone());
                         }
+                        discard_uncertain_actions(&mut outgoing);
                         outgoing.retain(|action| !matches!(action, GuiAction::GetHistory { .. }));
                         if disconnected_events(&mut model, &mut outgoing, &error.to_string()) {
                             updates.publish(model.clone());
@@ -889,6 +900,7 @@ async fn run(
                          if Arc::make_mut(&mut model).spawns_disconnected(&reason) {
                              updates.publish(model.clone());
                          }
+                         discard_uncertain_actions(&mut outgoing);
                          outgoing.retain(|action| !matches!(action,GuiAction::GetHistory {..}));
                          if disconnected_events(&mut model,&mut outgoing,&reason) {updates.publish(model.clone());}
                     }
@@ -901,6 +913,7 @@ async fn run(
                          if Arc::make_mut(&mut model).spawns_disconnected(&reason) {
                              updates.publish(model.clone());
                          }
+                         discard_uncertain_actions(&mut outgoing);
                          outgoing.retain(|action| !matches!(action,GuiAction::GetHistory {..}));
                          if disconnected_events(&mut model,&mut outgoing,&reason) {updates.publish(model.clone());}
                     }
@@ -920,6 +933,7 @@ async fn run(
             if Arc::make_mut(&mut model).spawns_disconnected(&error.to_string()) {
                 updates.publish(model.clone());
             }
+            discard_uncertain_actions(&mut outgoing);
             outgoing.retain(|action| !matches!(action, GuiAction::GetHistory { .. }));
             if disconnected_events(&mut model, &mut outgoing, &error.to_string()) {
                 updates.publish(model.clone());
@@ -1064,6 +1078,37 @@ mod tests {
             );
         }
         assert!(replies.0.is_empty());
+    }
+
+    #[test]
+    fn disconnected_mutations_wait_for_explicit_retry_while_pane_controls_survive() {
+        let seat = SeatId::from_u128(1);
+        let mut outgoing = VecDeque::from([
+            GuiAction::Messaging {
+                id: Ulid::new(),
+                swarm_id: SwarmId::from_u128(2),
+                request: bbt_proto::messaging::Request::Unsubscribe {
+                    path: "channels/exact/member".into(),
+                },
+            },
+            GuiAction::Task {
+                id: Ulid::new(),
+                request: bbt_proto::messaging::TaskRequest::Accept {
+                    task_path: ".bboxy/tasks/exact.md".into(),
+                },
+            },
+            GuiAction::Resize {
+                seat,
+                generation: 1,
+                cols: 80,
+                rows: 24,
+            },
+        ]);
+        discard_uncertain_actions(&mut outgoing);
+        assert_eq!(outgoing.len(), 1);
+        assert!(
+            matches!(outgoing.front(), Some(GuiAction::Resize { seat: actual, cols: 80, rows: 24, .. }) if *actual == seat)
+        );
     }
 
     #[test]

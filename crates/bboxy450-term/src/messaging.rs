@@ -364,7 +364,7 @@ impl Results {
         true
     }
     pub fn disconnected(&mut self, reason: &str) -> bool {
-        let pending: Vec<_> = self.pending.iter().copied().collect();
+        let pending: Vec<_> = std::mem::take(&mut self.pending).into_iter().collect();
         for op in &pending {
             self.push(*op, Reply::Unknown(reason.into()));
         }
@@ -915,6 +915,7 @@ pub struct Records {
     pub omitted: usize,
     pub selected: Option<Ulid>,
     pub review_issue: Option<(Ulid, String)>,
+    review_completed: Option<(Ulid, Option<String>)>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Read {
@@ -948,6 +949,9 @@ impl Records {
     }
     pub fn doc(&self, id: Ulid) -> Option<&wire::TaskDoc> {
         self.docs.iter().find(|t| t.id == id)
+    }
+    pub fn take_review_completion(&mut self) -> Option<(Ulid, Option<String>)> {
+        self.review_completed.take()
     }
     pub fn nodes(&self) -> &[wire::Node] {
         &self.nodes
@@ -1322,6 +1326,14 @@ impl Records {
                     self.review_issue = None;
                     self.enqueue(Read::Tasks(None));
                     if let Some(task) = p.task {
+                        self.review_completed = Some((
+                            task,
+                            if let Saved::Task(TaskRequest::Reject { reason, .. }) = &p.command {
+                                Some(reason.clone())
+                            } else {
+                                None
+                            },
+                        ));
                         self.docs.retain(|d| d.id != task);
                         self.enqueue(Read::Detail(task));
                     }

@@ -128,6 +128,11 @@ enum FocusAction {
     Activate(SeatId, FocusOrigin),
     Navigate(Navigation),
 }
+#[derive(Clone, Copy)]
+enum TextFocus {
+    Composer(ComposeField),
+    Reject(bbt_mux::Ulid),
+}
 impl FocusState {
     fn reconcile(&mut self, _previous: Option<&UiModel>, next: &UiModel) {
         let owner = |seat| {
@@ -802,12 +807,14 @@ struct App {
     spawn_results_seen: BTreeMap<bbt_mux::Ulid, bboxy450_term::model::SpawnOutcome>,
     launcher: Option<LauncherController>,
     launcher_layout: Option<scene::LauncherLayout>,
+    launcher_parent: Option<TextFocus>,
     composer: ComposeController,
     composer_client: messaging::Client,
     composer_scope: Option<bbt_proto::SwarmId>,
     task_records: messaging::Records,
     task_regions: bbt_ui::modules::stream_dock::Regions,
     reject: Option<(bbt_mux::Ulid, composer::RejectController)>,
+    reject_report: Option<composer::Report>,
     reject_focus: bool,
     conversation: bbt_ui::modules::stream_dock::StreamDock,
     conversation_scroll: f32,
@@ -877,6 +884,7 @@ impl App {
             self.task_records
                 .select(stage.swarm.expect("catalog has swarm"));
             self.reject = None;
+            self.reject_report = None;
             self.reject_focus = false;
             self.conversation_scroll = 0.;
         }
@@ -929,6 +937,16 @@ impl App {
         self.conversation.entries = self
             .task_records
             .entries(model, self.reject.as_ref().map(|(id, r)| (*id, &r.view)));
+        if let Some((id, editor)) = &self.reject
+            && !self.conversation.entries.iter().any(|entry| matches!(entry, bbt_ui::modules::stream_dock::Entry::Report {id: actual,..} if actual == &id.to_string()))
+            && let Some(snapshot) = &self.reject_report {
+            let mut report = snapshot.clone();
+            if let Some(card) = self.task_records.task(*id) { report.status = card.status.clone(); report.task = card.title.clone(); }
+            let mut reason = editor.view.clone();
+            if reason.notice.is_none() { reason.notice = Some(composer::Notice {kind:"refused".into(),text:"Previous report · refreshing · reason kept".into()}); }
+            report.reject = Some(reason);
+            self.conversation.entries.push(bbt_ui::modules::stream_dock::Entry::Report {id:id.to_string(),data:report,review:false});
+        }
         self.scene.set_tasks(
             self.task_records
                 .tasks()
@@ -948,6 +966,7 @@ impl App {
         match action {
             Action::Task(id) => {
                 if let Some(id) = parse(&id) {
+                    self.blur_reject();
                     self.task_records.detail(id);
                 }
             }
@@ -965,18 +984,30 @@ impl App {
             }
             Action::Reject(id) => {
                 if let Some(id) = parse(&id) {
-                    self.composer.handle(ComposeCommand::Blur);
-                    if self.reject.as_ref().is_none_or(|(old, _)| *old != id) {
-                        self.reject = Some((id, composer::RejectController::default()));
+                    let snapshot = self
+                        .task_records
+                        .task(id)
+                        .zip(self.task_records.doc(id))
+                        .and_then(|(card, doc)| messaging::task_report(card, doc).ok().flatten());
+                    if let Some(snapshot) = snapshot {
+                        self.composer.handle(ComposeCommand::Blur);
+                        if self.reject.as_ref().is_none_or(|(old, _)| *old != id) {
+                            self.reject = Some((id, composer::RejectController::default()));
+                        }
+                        self.reject_report = Some(snapshot);
+                        if let Some((_, reject)) = &mut self.reject {
+                            reject.focus(true);
+                        }
+                        self.reject_focus = true;
+                    } else {
+                        self.task_records.detail(id);
+                        self.task_records.issue = Some("Report is refreshing".into());
                     }
-                    if let Some((_, reject)) = &mut self.reject {
-                        reject.focus(true);
-                    }
-                    self.reject_focus = true;
                 }
             }
             Action::CancelReject(_) => {
                 self.reject = None;
+                self.reject_report = None;
                 self.reject_focus = false;
             }
             Action::SubmitReject(id) => {
@@ -1026,6 +1057,15 @@ impl App {
         self.request_redraw();
     }
     fn review_task(&mut self, id: bbt_mux::Ulid, reason: Option<String>) {
+        if self.backend_lost || self.closing || self.live_commands.is_none() {
+            self.task_records.issue = Some("backend_unavailable".into());
+            if let Some((actual, editor)) = &mut self.reject
+                && *actual == id
+            {
+                editor.refused("backend_unavailable");
+            }
+            return;
+        }
         match self.task_records.review(id, reason) {
             Ok(command) => self.operation_backlog.push_back(command),
             Err(reason) => {
@@ -1120,7 +1160,7 @@ impl App {
         } else {
             match self.composer.handle(command) {
                 ComposeOutcome::Submit(draft) => {
-                    if self.live_commands.is_none() || self.closing {
+                    if self.live_commands.is_none() || self.closing || self.backend_lost {
                         self.composer_client.refused("backend_unavailable");
                     } else {
                         let prepared =
@@ -1225,6 +1265,16 @@ impl App {
         }
     }
     fn open_launcher(&mut self) {
+        if self.launcher.is_none() {
+            self.launcher_parent = if self.reject_focus {
+                self.reject.as_ref().map(|(id, _)| TextFocus::Reject(*id))
+            } else {
+                self.composer
+                    .view
+                    .focus
+                    .then_some(TextFocus::Composer(self.composer.view.field))
+            };
+        }
         self.blur_reject();
         self.composer.handle(ComposeCommand::Blur);
         self.composer_dragging = false;
@@ -1246,8 +1296,22 @@ impl App {
         self.launcher = None;
         self.launcher_layout = None;
         self.query_dragging = false;
+        match self.launcher_parent.take() {
+            Some(TextFocus::Composer(field)) => {
+                self.composer.handle(ComposeCommand::Focus(field));
+            }
+            Some(TextFocus::Reject(id)) => {
+                if let Some((actual, reason)) = &mut self.reject
+                    && *actual == id
+                {
+                    reason.focus(true);
+                    self.reject_focus = true;
+                }
+            }
+            None => {}
+        }
         if let Some(window) = &self.window {
-            window.set_ime_allowed(self.composer.view.focus);
+            window.set_ime_allowed(self.composer.view.focus || self.reject_focus);
         }
         self.request_redraw();
     }
@@ -1291,6 +1355,7 @@ impl App {
         }
     }
     fn focus_action(&mut self, action: FocusAction) {
+        self.launcher_parent = None;
         self.blur_reject();
         self.composer.handle(ComposeCommand::Blur);
         self.composer_dragging = false;
@@ -1682,20 +1747,22 @@ impl App {
             let records_changed = self
                 .task_records
                 .replies(&self.live_state.as_ref().unwrap().operation_results);
-            if records_changed && let Some((id, reason)) = &mut self.reject {
-                if let Some((actual, issue)) = &self.task_records.review_issue
-                    && *actual == *id
-                {
-                    reason.refused(issue);
-                }
-                if self
-                    .task_records
-                    .task(*id)
-                    .is_some_and(|card| card.status != "reported")
-                {
-                    self.reject = None;
-                    self.reject_focus = false;
-                }
+            if records_changed
+                && let Some((id, reason)) = &mut self.reject
+                && let Some((actual, issue)) = &self.task_records.review_issue
+                && *actual == *id
+            {
+                reason.refused(issue);
+            }
+            if let Some((task, submitted)) = self.task_records.take_review_completion()
+                && let Some((id, editor)) = &self.reject
+                && *id == task
+                && submitted.as_deref() == Some(editor.view.reason.as_str())
+                && !editor.composing()
+            {
+                self.reject = None;
+                self.reject_report = None;
+                self.reject_focus = false;
             }
             self.composer_catalog();
             self.operation_backlog.extend(self.task_records.commands());
@@ -1879,13 +1946,27 @@ impl App {
         let live = self.live_state.is_some();
         let mut ops = self.scene.paint(&layouts, logical, None, None);
         if !live {
-            ops.extend(self.scene.foreground_with_conversation(logical, self.launcher_layout.as_ref(), overlay.as_ref(), self.conversation_layout.as_ref()));
+            ops.extend(self.scene.foreground_with_conversation(
+                logical,
+                self.launcher_layout.as_ref(),
+                overlay.as_ref(),
+                self.conversation_layout.as_ref(),
+            ));
         }
         let pane_overlay = if let Some(model) = &self.live_state {
-            let mut ops = self.scene.history_foreground(model, &self.pane_bounds, scale)?;
-            ops.extend(self.scene.foreground_with_conversation(logical, self.launcher_layout.as_ref(), overlay.as_ref(), self.conversation_layout.as_ref()));
+            let mut ops = self
+                .scene
+                .history_foreground(model, &self.pane_bounds, scale)?;
+            ops.extend(self.scene.foreground_with_conversation(
+                logical,
+                self.launcher_layout.as_ref(),
+                overlay.as_ref(),
+                self.conversation_layout.as_ref(),
+            ));
             ops
-        } else { vec![] };
+        } else {
+            vec![]
+        };
         phases.draw = start.elapsed();
         if self.animate {
             if fifo {
@@ -2372,6 +2453,35 @@ impl ApplicationHandler<UiEvent> for App {
                     self.launcher_command(LauncherCommand::Hover(index));
                 }
             }
+            WindowEvent::MouseWheel { delta, .. }
+                if self.launcher.is_none()
+                    && self.conversation_layout.as_ref().is_some_and(|layout| {
+                        layout.actions.contains("conversation/rows", self.pointer)
+                    }) =>
+            {
+                let dy = match delta {
+                    MouseScrollDelta::LineDelta(_, y) => y * 28.,
+                    MouseScrollDelta::PixelDelta(p) => {
+                        p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
+                    }
+                };
+                let max = self
+                    .conversation_layout
+                    .as_ref()
+                    .and_then(|layout| {
+                        bbt_ui::modules::stream_dock::Regions::scroll_extent(
+                            &layout.layout,
+                            "conversation/rows",
+                        )
+                    })
+                    .map_or(0., |r| r[1]);
+                self.conversation_scroll = (self.conversation_scroll - dy).clamp(0., max);
+                if dy < 0. {
+                    self.task_records.more_tasks();
+                    self.operation_backlog.extend(self.task_records.commands());
+                }
+                self.request_redraw();
+            }
             WindowEvent::MouseWheel { delta, .. } if self.launcher.is_none() => {
                 if let Some((seat, rect)) = self.focus_bounds.iter().find(|(_, rect)| {
                     self.pointer[0] >= rect.x
@@ -2435,15 +2545,6 @@ impl ApplicationHandler<UiEvent> for App {
                     }
                     return;
                 }
-                if let Some(action) = self
-                    .conversation_layout
-                    .as_ref()
-                    .and_then(|layout| layout.actions.hit(self.pointer))
-                    .or_else(|| self.task_regions.hit(self.pointer))
-                {
-                    self.task_action(action);
-                    return;
-                }
                 if let Some(layout) = &self.conversation_layout
                     && layout.regions.contains(self.pointer)
                 {
@@ -2505,6 +2606,15 @@ impl ApplicationHandler<UiEvent> for App {
                     }
                     return;
                 }
+                if let Some(action) = self
+                    .conversation_layout
+                    .as_ref()
+                    .and_then(|layout| layout.actions.hit(self.pointer))
+                    .or_else(|| self.task_regions.hit(self.pointer))
+                {
+                    self.task_action(action);
+                    return;
+                }
                 if let Some((id, _)) = self.focus_bounds.iter().find(|(_, rect)| {
                     self.pointer[0] >= rect.x
                         && self.pointer[0] < rect.right()
@@ -2521,37 +2631,6 @@ impl ApplicationHandler<UiEvent> for App {
             } => {
                 self.query_dragging = false;
                 self.composer_dragging = false;
-            }
-            WindowEvent::MouseWheel { delta, .. } => {
-                if self.launcher.is_none()
-                    && self.conversation_layout.as_ref().is_some_and(|layout| {
-                        layout.actions.contains("conversation/rows", self.pointer)
-                    })
-                {
-                    let dy = match delta {
-                        MouseScrollDelta::LineDelta(_, y) => y * 28.,
-                        MouseScrollDelta::PixelDelta(p) => {
-                            p.y as f32
-                                / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
-                        }
-                    };
-                    let max = self
-                        .conversation_layout
-                        .as_ref()
-                        .and_then(|layout| {
-                            bbt_ui::modules::stream_dock::Regions::scroll_extent(
-                                &layout.layout,
-                                "conversation/rows",
-                            )
-                        })
-                        .map_or(0., |r| r[1]);
-                    self.conversation_scroll = (self.conversation_scroll - dy).clamp(0., max);
-                    if dy < 0. {
-                        self.task_records.more_tasks();
-                        self.operation_backlog.extend(self.task_records.commands());
-                    }
-                    self.request_redraw();
-                }
             }
             WindowEvent::Ime(Ime::Preedit(text, cursor)) => {
                 if self.launcher.is_some() {
@@ -2640,9 +2719,10 @@ impl ApplicationHandler<UiEvent> for App {
                         let routed = route_composer(
                             &input,
                             modes.unwrap_or_default(),
-                            if !self.reject_focus
-                                && (self.composer.view.kind_menu
-                                    || self.composer.view.attach_pick.is_some())
+                            if self.reject_focus {
+                                ComposeField::Body
+                            } else if self.composer.view.kind_menu
+                                || self.composer.view.attach_pick.is_some()
                             {
                                 ComposeField::Address
                             } else {
@@ -3438,6 +3518,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .any(|arg| arg == "--launcher")
             .then(|| new_launcher(None, 0)),
         launcher_layout: None,
+        launcher_parent: None,
         composer: ComposeController::new(composer::Composer {
             focus: args.iter().any(|arg| arg == "--compose"),
             ..Default::default()
@@ -3447,6 +3528,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         task_records: messaging::Records::default(),
         task_regions: Default::default(),
         reject: None,
+        reject_report: None,
         reject_focus: false,
         conversation: bbt_ui::modules::stream_dock::StreamDock {
             dock: true,
