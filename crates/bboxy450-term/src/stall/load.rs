@@ -1204,6 +1204,10 @@ async fn exercise(
             if let Some(task) = side.take() {
                 sides = task.finish().await?;
             }
+            if !config.real && !config.frame_gate {
+                // Synthetic PAUSED rows can only publish after the side-load join.
+                stopped_at = Some(Instant::now());
+            }
         }
         if stop_sent && pane_state.paused && progress.phase() == MEASURE {
             observed_seconds = measured.unwrap().elapsed().as_secs_f64();
