@@ -8,7 +8,6 @@ use bbt_ui_model::{
     layout::Rect,
 };
 use bytemuck::{Pod, Zeroable};
-use wgpu::util::DeviceExt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
@@ -364,6 +363,8 @@ pub struct Pass {
     format: wgpu::TextureFormat,
     /// Finished vertical-blur textures by blur key, most recent last.
     blurred: std::cell::RefCell<Vec<(u64, wgpu::Texture)>>,
+    /// Per-draw parameter slices, rewound by begin_frame at a submission boundary.
+    arenas: std::cell::RefCell<super::arena::Arenas>,
 }
 /// Frosted items per frame whose blur is kept for reuse.
 const BLUR_CACHE: usize = 4;
@@ -527,7 +528,12 @@ impl Pass {
             sampler,
             format,
             blurred: Default::default(),
+            arenas: std::cell::RefCell::new(super::arena::Arenas::new("material draw")),
         }
+    }
+    /// A submission boundary for this Pass's parameter slices (see ChromeRenderer::begin_frame).
+    pub fn begin_frame(&self) {
+        self.arenas.borrow_mut().begin_frame();
     }
     pub fn draw(
         &self,
@@ -583,32 +589,22 @@ impl Pass {
         if clip_instances.is_empty() {
             clip_instances.push(ClipInstance::default());
         }
-        let clip_data = context
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("material ancestor clip chain"),
-                contents: bytemuck::cast_slice(&clip_instances),
-                usage: wgpu::BufferUsages::STORAGE,
-            });
-        let data = context
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("material parameters"),
-                contents: bytemuck::cast_slice(&instances),
-                usage: wgpu::BufferUsages::STORAGE,
-            });
-        let view = context
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("material viewport and clock"),
-                contents: bytemuck::cast_slice(&[
-                    target.width as f32,
-                    target.height as f32,
-                    time_ms,
-                    target.scale,
-                ]),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+        let (clip_data, data, view) = {
+            let mut arenas = self.arenas.borrow_mut();
+            (
+                arenas.storage(context, bytemuck::cast_slice(&clip_instances)),
+                arenas.storage(context, bytemuck::cast_slice(&instances)),
+                arenas.uniform(
+                    context,
+                    bytemuck::cast_slice(&[
+                        target.width as f32,
+                        target.height as f32,
+                        time_ms,
+                        target.scale,
+                    ]),
+                ),
+            )
+        };
         let bind_backdrop = |backdrop: &wgpu::TextureView| {
             context
                 .device
@@ -618,11 +614,11 @@ impl Pass {
                     entries: &[
                         wgpu::BindGroupEntry {
                             binding: 0,
-                            resource: view.as_entire_binding(),
+                            resource: view.binding(),
                         },
                         wgpu::BindGroupEntry {
                             binding: 1,
-                            resource: data.as_entire_binding(),
+                            resource: data.binding(),
                         },
                         wgpu::BindGroupEntry {
                             binding: 2,
@@ -634,7 +630,7 @@ impl Pass {
                         },
                         wgpu::BindGroupEntry {
                             binding: 4,
-                            resource: clip_data.as_entire_binding(),
+                            resource: clip_data.binding(),
                         },
                     ],
                 })
@@ -866,6 +862,8 @@ fn render_layered_with(
     let texture = make("L2 material output");
     let behind_view = behind.create_view(&Default::default());
     let view = texture.create_view(&Default::default());
+    renderer.begin_frame();
+    pass.begin_frame();
     let mut encoder = renderer
         .context
         .device
