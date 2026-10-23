@@ -76,3 +76,18 @@ indexes separately and never reconstructs the terminal model merely to size or
 annotate a page. Orderly shutdown full-flushes the journal and leaves projections
 to recovery; it does not force all seat data through cold compaction. Old-process
 journals are conservatively retained if their projection proof is unavailable.
+
+The ignored real-process crash gate defaults to two seats. To exercise the
+measured maximum on this Mac, run
+`BBT_CRASH_SEATS=967 cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture --test-threads=1`.
+It compiles a small native synthetic producer, stages each seat behind a start
+file, kills the owning supervisor, and reopens every ring through production
+recovery. Successful producer writes and the mmap admission ledger are separate
+observations; per-seat prefix, CRC and both loss bounds are checked. This is a
+supervisor-kill test, not a power-cut test. The fixture stops before exhausting
+the 10 GiB free-disk reserve.
+
+The 60-second firehose gate in `bbt-mux/tests/gates_seats.rs` retains the strict
+writer-busy `<50%` and zero-`Busy` assertions at up to 400 seats. At the measured
+maximum, those counters are reported along with liveness and commit latency,
+per the Oracle's gate interpretation; there is no maximum-seat busy threshold.
