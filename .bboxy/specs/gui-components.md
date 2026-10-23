@@ -257,6 +257,10 @@ Every element implements `fn draw(&self, rect: Rect, ctx: &DrawCtx, out: &mut Dr
 
 ---
 
+### 3.5 Alive borders are a block property (operator, 2026-10-23, decision #43)
+
+The alive rim and the focus swell are style properties of any block (`border.rim`, `border.swell`), drawn by one rim pass over the block rect with per-block alive uniforms; panes, strips, seat rows, tabs and cards carry them by default. The rules, tokens and order are [[rim-glow]] §7 and §8; a waiting seat's attention loop is [[attention]].
+
 ## 4. Input
 
 ### 4.1 Routing

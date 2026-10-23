@@ -635,6 +635,52 @@ briefs Executors from the specs, never from this note.
     reviewer runs as a seat (Oracle's gap, same day). Rejected: a second
     signing path for ICQ sessions (the cockpit is the path).
 
+42. **The focus swell replaces the locate ripple (operator, 2026-10-23,
+    verbatim via Wren: "can we change focus circle effert to just using
+    silk border glow, and pulsing it to say 40pxs and then back, you know?
+    without changing spacing between blocks, as an indication of me
+    focusing it", "40px swell is fucking perfect!").** On focus the
+    block's silk swells 40 px past its rim and settles in 0.9 s on a sine
+    envelope, painted over gutter and neighbours, never layout; zero at
+    rest so the rim invariants are untouched; the lab reference sets the
+    alpha curve and records the peak weight over a neighbour's text cell
+    ([[rim-glow]] §7). Rejected: keeping the ripple beside the swell (two
+    focus signals); a swell that pushes neighbours (layout following focus).
+
+43. **Alive borders are a kit capability (operator, 2026-10-23, verbatim:
+    "each block in our UI GPUGUI system should have ability to define this
+    type of dynamic border and border swell and such! thats important, our
+    blocks should be sexy out of the box!").** Rim and swell become style
+    properties of any `bbt-ui` block (`border.rim`, `border.swell`), one
+    rim pass over the block rect with per-block alive uniforms through the
+    R12-2 arenas; shader in `bbt-render`, style types in `bbt-ui-model`,
+    defaults in `bbt-ui` (panes, strips, seat rows, tabs, cards), nothing in
+    the app (#39). Only the pane gutter and stage inset follow rim size;
+    other blocks draw the outer half into their existing spacing, clipped,
+    so `rim-size-is-layout` stands ([[rim-glow]] §8, [[gui-components]]
+    §3.5). Lands as G5 after G3. Rejected: pane-only rim code copied per
+    block; letting row spacing follow the slider.
+
+44. **Attention: a waiting seat swells, pulses and notifies; the
+    notification focuses it (operator, 2026-10-23, verbatim: "if harness
+    has a question for the user - its name in the tab left bar and its
+    borde should autoswell and pulsate a lot, and user should get desktop
+    notification that this harness needs attention - and clicking on that
+    notification would focus the harness terminal").** Spec [[attention]]:
+    trigger is the existing `Activity::Waiting(kind)` on the events lane,
+    no new detection; the row and block loop the swell in waiting amber
+    until the seat leaves waiting or is focused; paint only, never focus or
+    layout (#29); one `UNUserNotificationCenter` notification per episode,
+    identifier = seat id, click → `Focus(seat)` through the sidebar-click
+    path. Mechanism decision: the build produces `bboxy450-term.app` with an
+    `Info.plist` for every run, ad-hoc signed (Developer ID stays deferred,
+    #24), because a bare binary has no bundle identifier and cannot post a
+    clickable notification; the unbundled fallback is `osascript`, which
+    cannot route the click. Muted seats never notify. Rejected: polling
+    the harness for questions (the adapters already report them); a
+    notification that steals focus on its own; a separate notification
+    daemon.
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate

@@ -1,0 +1,6 @@
+flowchart LR
+  H["harness<br/>question / permission / auth"] -- "hook, app-server, OSC 7501" --> A["adapter in logic<br/>Activity::Waiting(kind)"]
+  A -- "seat/*/state on the events lane" --> UI["app<br/>row name and block border<br/>auto-swell, strong pulse, repeating"]
+  A -- "notify(seat, kind, first line)" --> N["macOS notification<br/>identifier = seat id"]
+  N -- "click" --> F["Focus(seat)<br/>raise window, space, tab, pane"]
+  UI -- "until the seat leaves waiting<br/>or the operator focuses it" --> A

@@ -11,7 +11,7 @@ links:
   - { to: "[[rim-never-covers-text]]", rel: invariant }
   - { to: "[[glow-never-moves-layout]]", rel: invariant }
 created: 2026-10-23T16:39:50Z
-updated: 2026-10-23T21:53:46Z
+updated: 2026-10-23T22:28:21Z
 ---
 # Rim glow
 
@@ -56,3 +56,25 @@ G0 Wren: promote `alive-rim` into the design system (pane, strip, style), tokens
 3. Glow GPU time per frame under the HUD at 15 open panes: lower than the lane's R4c figure, number recorded here.
 4. `sh scripts/ci-local.sh --parity` exit 0 in a clean worktree of the handed-off commit.
 5. Rim size 2, 4 and 8 give gutter 2, 4, 8 and inset 1, 2, 4 in native and lab alike, 0 geometry mismatches; [[rim-size-is-layout]] passes and joins the default set in G3's commit.
+
+## 7. Focus swell (operator, 2026-10-23, decision #42)
+
+Verbatim, from Wren's "focus swell" demo at 10/20/30/40 px: "can we change focus circle effert to just using silk border glow, and pulsing it to say 40pxs and then back, you know? without changing spacing between blocks, as an indication of me focusing it", then "40px swell is fucking perfect!".
+
+- **What.** On focus, the focused block's silk swells **40 px past its rim** and settles back over **0.9 s** with a sine envelope (`reach(t) = 40 · sin(π · t / 0.9)` px, t in seconds from focus), same colour and crest as the rim, weight falling to zero at the reach. It **replaces the locate ripple** everywhere the ripple fired (pane and row, click and keyboard focus; the ux-flow locate rules are superseded and Wren rewrites them with the reference).
+- **Paint, never layout.** The swell is drawn in the glow pass over the gutter and over neighbouring blocks; nothing moves ([[glow-never-moves-layout]], [[rim-size-is-layout]]). It is zero at rest, so the steady-state band and [[rim-never-covers-text]] are untouched.
+- **Legibility.** The focused block's own text is never covered (the swell lies outside its rim). A neighbour's text under the swell stays readable: the lab reference sets the alpha curve and records the peak weight over a text cell as acceptance; the native pass matches it under strict parity.
+- **Tokens.** `glow.swell = 40` (px past the rim), `glow.swell_ms = 900`; both read by the shader as uniforms.
+
+## 8. Alive borders are a kit capability (operator, 2026-10-23, decision #43)
+
+Verbatim: "and same swell and same border effect as on terminal blocks should be on the left, each block in our UI GPUGUI system should have ability to define this type of dynamic border and border swell and such! thats important, our blocks should be sexy out of the box!"
+
+- **Where it lives.** The rim and the swell are a **style property of any `bbt-ui` block**, not pane code: `border.rim { size, source }` and `border.swell { reach, ms }` on the block's style, with the same `materials.wgsl` rim pass run over the block's rect; the "alive" inputs (activity, seat colour, focus, pulse phase) arrive per block through the R12-2 arenas as uniforms. Shader in `bbt-render`, style types in `bbt-ui-model` (shared with the lab), defaults in `bbt-ui`; nothing in the app ([[layering]], decision #39).
+- **Defaults.** Panes and their strips, sidebar seat rows, tabs and cards carry the rim and the swell out of the box; a block opts out by style, never by code.
+- **Layout rule for blocks that are not panes.** Only the pane gutter and the stage inset follow the rim size ([[rim-size-is-layout]]). Every other block draws its outer half into the spacing it already has and is clipped there; its inner half and bloom stay inside its own padding, so a block with less padding than the bloom shows a shallower bloom, never glow over its content.
+- **Order.** Lands after G3 as **G5**: the capability, the defaults on rows, tabs and cards, Wren's references for each, one paired commit under strict geometry.
+
+## 9. Attention
+
+A seat waiting for the operator (question, permission, auth) auto-swells and pulses strongly until handled, and fires a desktop notification whose click focuses it: [[attention]] (decision #44).
