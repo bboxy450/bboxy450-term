@@ -561,12 +561,7 @@ impl App {
                     }
                 }
             }
-            if ((!self.fake
-                && self
-                    .live_state
-                    .as_ref()
-                    .is_some_and(|model| !model.hosts.is_empty()))
-                || (self.fake && self.last_update == 20))
+            if (!self.fake || self.last_update == 20)
                 && self.capture_pending
                 && let Some(path) = &self.capture
             {

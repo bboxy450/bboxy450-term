@@ -1,0 +1,17 @@
+D1c exact source=98b5818a2f75f19d296f3c10ab1a8553f17d8bf7
+UTC=2026-10-23T07:31:57.903323+00:00
+$ git worktree add --detach /private/tmp/ci-kestrel-d1c-98b5818 98b5818a2f75f19d296f3c10ab1a8553f17d8bf7
+HEAD is now at 98b5818 provider: accept host notifications in cockpit spawn fixture
+Preparing worktree (detached HEAD 98b5818)
+exit=0
+initial clean-worktree status exit=0 bytes=0
+git verify-commit exit=0
+gpg: Signature made Fri Oct 23 00:31:29 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+
+owned CI PID=58523 PGID=58523
+private CARGO_TARGET_DIR deleted immediately after gate exit; exit=0
+gate_exit=101 elapsed=213.079s
+git worktree remove exit=0
+

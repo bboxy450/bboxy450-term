@@ -150,3 +150,10 @@ exit=0
 $ cargo clippy --workspace --all-targets --locked -- -D warnings (multiplexed host notification fixture correction)
 exit=0
 App fixture correction: cargo test --locked -p bboxy450-term --test cockpit0 (5/0/0) /22.092s; strict workspacealltargetclippy0 /0.747s. Native constructor, generation semantics and assertions unchanged. Scope DMdb7173f9 sent Sable, failure DM1de814cf sent Oracle; receipts stored only. git fetch origin0; origin/main remains1d9102b.
+Second exactCI98b5818 failed101/212.575s after all app checks and gallery renderer checks at bboxybook/tests/seat_rows.rs:6 hardcoded224 vs new232cases. Private target/worktree cleaned0. Capture-compatibility audit concurrently found optional main predicate excludes --animate/cadence with no live model; restore main.rs from origin/main removes only own hunk and preserves Seraph flags. Attempted own-gate stop found treeempty/shellalreadyexited: no PID was signalled (d1c-capture-compatibility.log). Update gallery contract to232 for eight remote-link density/theme cases. Warm full-workspace tests next before a new exactgate.
+$ cargo test --workspace --locked (after multiplexed reply+gallery contract corrections; main capture hunk removed)
+exit=0
+$ cargo clippy --workspace --all-targets --locked -- -D warnings (after multiplexed reply+gallery contract corrections; main capture hunk removed)
+exit=0
+Final native capture with main.rs identical to origin/main: assertion0; app exit-15 via recorded-own-PID SIGTERM; run dir deleted0; raw d1c-native-final-capture.log.
+After fixture inventory corrections/main restore: cargo test --workspace --locked0/268.573s:635passed0failed15ignored. Strict workspacealltargetsClippy0/2.573s. Final native GPUcapture assertion0, app-15 via recorded ownPIDs, allfourPIDs absent(ps1), own run state removed0; finalPNG inspected, SHA828bf140f9342fc9ad44fe981e49967684deb9c922d819fea76e880a2c2cff44. git diff origin/main -- appmain is empty; existing animate/cadence capture remains byte-identical to main. git fetch origin0; still1d9102b. Aster5297 acknowledges no main.rs hunk; Sable5264 clears cockpit fixture.

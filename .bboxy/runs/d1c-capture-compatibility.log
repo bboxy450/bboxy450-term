@@ -1,0 +1,3 @@
+Source audit: the added first-host-snapshot capture predicate also blocks existing --animate/--cadence-test captures, which have no live model. Remove the optional predicate; existing Seraph --capture-after2 already produces the verified sidebar image. This removes the entire D1c main.rs hunk and keeps all existing capture modes unchanged. Stop only this recorded own gate before refreezing source.
+recorded own CI process tree=[]
+own CI shell already exited
