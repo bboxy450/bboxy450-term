@@ -44,3 +44,9 @@
 | W3.2d | [[2026-10-21-w3-2d-component-library]] bbt-ui layer cake: d.1 materials → d.7+ modules | Nyx Copperwing <EXECUTOR>, from d.1 | ASSIGNED |
 
 Rule: redundant passes write `-exec.md` next to the subagent's file. The Oracle converges both into `specs/`. Claim by replying on `#bboxy450-term` with `Name <EXECUTOR> CLAIM <Id>`. Finish one, claim the next.
+
+## Gate waivers (Oracle judgement, recorded 2026-10-23)
+
+- **socket_backlog flood failure** (`crates/bbt-mux/tests/socket_backlog.rs:129`, "logic stopped"): pre-existing on main, cause the supervisor reply queue starving under event floods. Accepted as the sole named external failure, with unreached stages run separately, for C1i-2 (a0afbd1 line), R10 ffb148c, T2 snapshot 61382c8, D1c 5746f5b. Root-fixed by W1.2f (c447d8a); no further waivers for it.
+- **pre-P3 null geometry** (parity tooling could not measure geometry): accepted for C1a 6c77492 and C1i a0c667f because the 648 gated keys matched the accepted C1b set with zero measured mismatches; P3 re-proves geometry over main.
+- **bbt-mermaid fixture** (f49b7c9 spec edit without its fixture): accepted as external for C1i-2 c2a6c41; fixed on main 103c5d8; invariant mermaid-fixtures now guards it.
