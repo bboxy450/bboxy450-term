@@ -3,7 +3,7 @@
 One file per invariant, type `invariant` ([[work-items]]): property, check
 command, the exit status that means held, cost of a violation. No command, no
 invariant. Owner: the Architect; anyone runs the checks; `sh scripts/ci-local.sh`
-runs every invariant before every handoff, except those marked `slow: true` in frontmatter, which run under `--slow` (all of them) or `--parity` (only `gate: parity`); the seat gates carry `gate: seats`, and `gate: ci` marks a check ci-local already runs directly; `scripts/invariants.sh` (P1 follow-up) will run every `check:` line here, so each line is one command, side-effect free apart from cargo's target dir.
+runs every invariant before every handoff, except those marked `slow: true` in frontmatter, which run under `--slow` (all of them) or `--parity` (only `gate: parity`); the seat gates carry `gate: seats`, `gate: ci` marks a check ci-local already runs directly, and `gate: pending-<task>` marks one whose test the named task has yet to create (skipped by default, fails by design under `--slow`, joins the default set when the task lands); `scripts/invariants.sh` (P1 follow-up) will run every `check:` line here, so each line is one command, side-effect free apart from cargo's target dir.
 
 | Invariant | Check | Last result |
 |---|---|---|
@@ -16,6 +16,7 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[seats-400-memory-idle]] 400 idle seats fit in 420 MiB | `GATE_SEATS=400 GATE_RATE=idle GATE_SECONDS=20 GATE_BUDGET=420 sh scripts/gates.sh memory` (slow) | median 333.7 MiB, 2026-10-22 |
 | [[clippy-clean]] zero clippy warnings on every target | `cargo clippy --workspace --all-targets --locked -- -D warnings` (run by ci-local itself; `gate: ci`) | clean at 3adccc6, 2026-10-22 |
 | [[mermaid-fixtures]] every .bboxy Mermaid block has a fixture the engine lays out | `cargo test -p bbt-mermaid --locked every_bboxy_mermaid_block_has_a_fixture -- --exact` | held, 2026-10-22 |
+| [[kitty-keyboard]] every key encoded once, kitty protocol against the seat's live mode | `cargo test -p bboxy450-term --locked --lib kitty_keyboard_invariant -- --exact \| grep -q '^test result: ok. 1 passed'` (pending K1; `gate: pending-k1`) | none yet |
 | [[signed-main]] every commit on main carries a good signature | `git log --format='%G?' HEAD \| grep -vc '^G$'` is 0 and the log is non-empty, on the handed-off commit | runner pass at 0bab92f, 2026-10-22 |
 
 A violation halts the work that broke it: the task goes `blocked` with

@@ -343,6 +343,21 @@ briefs Executors from the specs, never from this note.
     logic process generation (gone on restart, and spawn has no target
     generation to bind to).
 
+32. **The kitty keyboard protocol is a core terminal invariant (operator,
+    2026-10-23, verbatim: "also for terminals we should adotp Kitty keyboard
+    protocol!", "document that as a core invariant of our terminal
+    implementation").** Recorded as [[kitty-keyboard]]: one app encoder
+    (`keyboard.rs`, a port of alacritty's `build_sequence`) encodes every
+    key against the focused seat's live `TermMode` from `Screen.modes`, full
+    progressive-enhancement stack with push/pop/query, legacy encoding when
+    no flags are set, no second key path to the PTY. Check: one named unit
+    test that must exist and pass (a cargo filter matching nothing exits 0,
+    so the check greps for exactly one passed). K1 (Sable) builds it;
+    [[terminal-core]] row updated. Rejected: encoding in logic (the mode is
+    live in the app's model and the PTY write already has one id-deduped
+    path); a second encoder for injected text (two encoders drift);
+    enabling the protocol without the invariant (a preference, not a gate).
+
 ## Specs to touch (Architect, in this order)
 
 [[architecture]] drawn from the code ✔ → [[c1-live-seats]] ✔ (2, 6, 10, 11) → [[w2-5-mcp-and-seat-wiring]] ✔ (3) → [[d1-providers]] ✔ (7) → [[id1-seat-chain]] ✔ (4) → [[mux-daemon]] crate
