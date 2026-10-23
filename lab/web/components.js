@@ -51,7 +51,7 @@
     seat = seat || { key: 'x' };
     const color = state === 'active' ? seatColor(seat) : state === 'idle' ? 'var(--c-idle)' : state === 'waiting' ? 'var(--c-waiting)' : 'var(--c-errored)';
     const grade = seat.grade || 'reported', kind = state === 'waiting' ? (seat.waitKind || 'question') : null;
-    const g = el('span', { class: 'glyph ' + state + ' g-' + grade + (kind ? ' k-' + kind : ''), style: 'color:' + color, title: state + (kind ? ' · ' + kind : '') + ' · ' + GRADE_TITLE[grade] }, GLYPH[state]);
+    const g = el('span', { class: 'glyph ' + state + ' g-' + grade + (kind ? ' k-' + kind : ''), style: 'color:' + color, title: state + (kind ? ' · ' + kind : '') + ' · ' + GRADE_TITLE[grade] }, (SEAT_MARK[state] || SEAT_MARK.idle)());
     if (kind) g.append(el('i', { class: 'kind' }, KIND_MARK[kind]));
     return g;
   }
@@ -182,6 +182,23 @@
   // statuses are the work-item frontmatter statuses (work-items.md): the file is the contract
   const TASK_STATES = ['open', 'claimed', 'running', 'reported', 'accepted', 'rejected', 'blocked', 'done'];
   const TASK_GLYPH = { open: '○', claimed: '◔', running: '◑', reported: '◕', accepted: '●', done: '✓', rejected: '✕', blocked: '⊘' };
+  // State marks drawn as geometry, centred by construction (operator 2026-10-23: the font circles sat off centre when large, on web
+  // and native). A ring of radius 6 in a 16-unit box centred on the origin, a pie wedge from `from` turns past 12 o'clock sweeping
+  // `frac` clockwise: ◔ ◑ ◕ are .25/.5/.75, the seat's waiting ◐ is the left half (.5 from .5). Cross, check and slash share the
+  // ring's stroke. Each mark fills its box (.glyph, .tglyph), so the box decides the size and nothing moves.
+  const svgMark = (inner, cls) => { const m = el('span', { class: 'mark' + (cls ? ' ' + cls : '') }); m.innerHTML = '<svg viewBox="-8 -8 16 16" aria-hidden="true">' + inner + '</svg>'; return m; };
+  const RING = '<circle r="6" fill="none" stroke="currentColor" stroke-width="1.5"/>';
+  function circleMark(frac, from) {
+    const r = 6, a0 = (from || 0) * 2 * Math.PI, a1 = a0 + frac * 2 * Math.PI, P = a => (r * Math.sin(a)).toFixed(3) + ',' + (-r * Math.cos(a)).toFixed(3);
+    const fill = frac >= 1 ? '<circle r="6" fill="currentColor"/>' : frac > 0 ? '<path d="M0,0L' + P(a0) + 'A6,6 0 ' + (frac > .5 ? 1 : 0) + ' 1 ' + P(a1) + 'Z" fill="currentColor"/>' : '';
+    return svgMark(RING + fill, 'f' + Math.round(frac * 100));
+  }
+  const crossMark = () => svgMark('<path d="M-4.2,-4.2L4.2,4.2M4.2,-4.2L-4.2,4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>', 'cross');
+  const checkMark = () => svgMark('<path d="M-4.8,0.4L-1.5,3.7L4.8,-3.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>', 'check');
+  const slashMark = () => svgMark(RING + '<path d="M-4.24,4.24L4.24,-4.24" stroke="currentColor" stroke-width="1.5"/>', 'slash');
+  const TASK_MARK = { open: () => circleMark(0), claimed: () => circleMark(.25), running: () => circleMark(.5), reported: () => circleMark(.75), accepted: () => circleMark(1), done: checkMark, rejected: crossMark, blocked: slashMark };
+  const taskMark = st => (TASK_MARK[st] || TASK_MARK.open)();
+  const SEAT_MARK = { active: () => circleMark(1), idle: () => circleMark(0), waiting: () => circleMark(.5, .5), errored: crossMark };
   // nested subagent rows (subagent-detection): running only (active or waiting), in the parent seat's colour; grade from the source
   // (7501 → reported for Claude, hooks → shim for Codex); absent when the harness reports nothing; past 8 collapse into +N running
   function subagentRows(seat) {
@@ -298,7 +315,7 @@
     opts = opts || {};
     const bug = task.type === 'bug';
     const row = el('div', { class: 'task-row ' + task.state + (bug ? ' bug' : ''), 'data-task': task.id, title: (bug ? 'bug · ' : '') + task.title + ' · ' + task.state + (task.from ? ' · from ' + task.from : '') });
-    row.append(el('span', { class: 'tglyph' }, bug ? harnessIcon('bug') : TASK_GLYPH[task.state] || '○'), el('span', { class: 'ttitle' }, task.title));
+    row.append(el('span', { class: 'tglyph' }, bug ? harnessIcon('bug') : taskMark(task.state)), el('span', { class: 'ttitle' }, task.title));
     if (task.violates) row.append(invChip(task.violates, 'violates'));
     if (task.constrains) row.append(invChip(task.constrains, 'constrains'));
     if (task.state === 'blocked' && task.waits) row.append(el('span', { class: 'twaits' }, 'waits on ' + task.waits));
@@ -321,7 +338,7 @@
       const live = (s.tasks || []).find(t => ['claimed', 'running', 'reported'].includes(t.state));
       const blocked = (s.tasks || []).find(t => t.state === 'blocked');
       const tileCol = (LAUNCH.find(l => l.harness === s.harness) || {}).tile || 'var(--surface-2)';
-      agents.append(el('div', { class: 'g-row', 'data-key': s.key }, el('span', { class: 'g-seat' }, el('span', { class: 'tile', style: 'background:' + tileCol }, harnessIcon(s.harness)), el('b', { style: 'color:' + seatColor(s) }, s.name), glyph(s.state, s)), el('span', {}, s.role ? roleMark(s.role) : '', ' ', s.role || 'shell'), el('span', { class: 'g-now' }, live ? [el('span', { class: 'tglyph ' + live.state }, TASK_GLYPH[live.state]), ' ', live.title] : (s.state === 'waiting' ? 'waiting · ' + (s.waitKind || 'answer') : s.state)), el('span', { class: 'g-block' }, blocked ? 'waits on ' + blocked.waits : (s.state === 'waiting' ? 'the operator' : '—'))));
+      agents.append(el('div', { class: 'g-row', 'data-key': s.key }, el('span', { class: 'g-seat' }, el('span', { class: 'tile', style: 'background:' + tileCol }, harnessIcon(s.harness)), el('b', { style: 'color:' + seatColor(s) }, s.name), glyph(s.state, s)), el('span', {}, s.role ? roleMark(s.role) : '', ' ', s.role || 'shell'), el('span', { class: 'g-now' }, live ? [el('span', { class: 'tglyph ' + live.state }, taskMark(live.state)), ' ', live.title] : (s.state === 'waiting' ? 'waiting · ' + (s.waitKind || 'answer') : s.state)), el('span', { class: 'g-block' }, blocked ? 'waits on ' + blocked.waits : (s.state === 'waiting' ? 'the operator' : '—'))));
     }
     const tree = el('div', { class: 's-card' }, el('div', { class: 's-card-h' }, el('span', {}, 'Graph · epics → work')));
     const pre = el('div', { class: 'g-tree' });
@@ -330,7 +347,7 @@
       pre.append(el('div', { class: 'g-epic' }, el('span', { class: 'ekind' }, 'epic'), el('b', {}, ep.title), el('span', { class: 'ecount' }, done + '/' + (ep.items || []).length)));
       (ep.items || []).forEach((it, i, arr) => {
         const last = i === arr.length - 1;
-        const kind = it.type || 'task', glyphOf = kind === 'bug' ? harnessIcon('bug') : kind === 'invariant' ? '◆' : TASK_GLYPH[it.state] || '○';
+        const kind = it.type || 'task', glyphOf = kind === 'bug' ? harnessIcon('bug') : kind === 'invariant' ? '◆' : taskMark(it.state);
         const line = el('div', { class: 'g-item ' + it.state + ' k-' + kind }, el('span', { class: 'g-branch' }, last ? '└─' : '├─'), el('span', { class: 'tglyph' }, glyphOf), el('span', { class: 'ekind' }, kind === 'invariant' ? 'inv' : kind), el('span', { class: 'g-title' }, it.title));
         if (it.violates) line.append(invChip(it.violates, 'violates'));
         if (it.constrains) line.append(invChip(it.constrains, 'constrains'));
@@ -366,7 +383,7 @@
     const head = el('div', { class: 'ehead', onclick: () => { epic.open = epic.open === false; if (opts.onToggle) opts.onToggle(epic); } }, el('span', { class: 'ecaret' }, epic.open === false ? '▸' : '▾'), el('span', { class: 'ekind' }, 'epic'), el('span', { class: 'etitle' }, epic.title), el('span', { class: 'ecount' }, done + '/' + items.length));
     g.append(head);
     if (epic.open !== false) for (const it of items) {
-      const line = el('div', { class: 'eitem ' + it.state }, el('span', { class: 'tglyph' }, TASK_GLYPH[it.state] || '○'), el('span', { class: 'ekind' }, it.type || 'task'), el('span', { class: 'etitle' }, it.title));
+      const line = el('div', { class: 'eitem ' + it.state }, el('span', { class: 'tglyph' }, taskMark(it.state)), el('span', { class: 'ekind' }, it.type || 'task'), el('span', { class: 'etitle' }, it.title));
       if (it.assignee) line.append(el('span', { class: 'eass' }, (it.assigned ? '→ ' : '') + it.assignee));
       if (it.assigned) { line.classList.add('assigned'); line.append(el('span', { class: 'echip' }, 'assigned')); }
       if (opts.onDelegate && it.state === 'open' && !it.assignee) line.append(el('button', { class: 'edel', onclick: e => { e.stopPropagation(); opts.onDelegate(it); } }, 'Delegate…'));
@@ -631,9 +648,9 @@
     row('role', doc.role); row('parent', doc.parent); row('children', doc.children); row('depends_on', doc.depends_on);
     row('links', (doc.links || []).map(l => renderLinks(l))); row('allowed_paths', (doc.allowed_paths || []).map(x => el('code', {}, x))); row('verify', doc.verify ? el('code', {}, doc.verify) : null);
     row('created', doc.created); row('updated', doc.updated);
-    const glyphFor = doc.type === 'task' ? (TASK_GLYPH[doc.status] || '○') + ' ' : '';
+    const glyphFor = doc.type === 'task' ? taskMark(doc.status) : null;
     const head = el('div', { class: 'doc-head', style: '--doc:' + hue },
-      el('div', { class: 'doc-top' }, el('span', { class: 'doc-type' }, doc.type), el('span', { class: 'doc-status ' + (doc.status || 'none') }, glyphFor + (doc.status || 'current')), el('code', { class: 'doc-path' }, doc.path || '')),
+      el('div', { class: 'doc-top' }, el('span', { class: 'doc-type' }, doc.type), el('span', { class: 'doc-status ' + (doc.status || 'none') }, glyphFor, doc.status || 'current'), el('code', { class: 'doc-path' }, doc.path || '')),
       el('h1', {}, doc.title));
     if (doc.superseded_by) head.append(el('div', { class: 'doc-super' }, 'superseded by ', renderLinks(doc.superseded_by), ' · kept for provenance'));
     if (doc.broken) head.append(el('div', { class: 'doc-broken' }, 'frontmatter does not parse · ' + doc.broken + ' · shown, never skipped'));
@@ -1242,7 +1259,7 @@
   const ADDR_MARK = { seat: '', role: '', channel: '#', subagent: '↳ ' };
   const addrChip = a => el('span', { class: 'addr ' + a.kind, style: a.color ? '--c:' + a.color : '', title: a.kind + (a.n ? ' · fans out to ' + a.n + ' seats' : '') + (a.parent ? ' · inside ' + a.parent : '') },
     a.kind === 'seat' ? el('i', { class: 'dot' }) : null, a.kind === 'role' ? el('span', { class: 'rm' }, ROLE_MARK[a.role] || '') : null, (ADDR_MARK[a.kind] || '') + (a.parent ? a.parent + ' ▸ ' : '') + a.label, a.n ? el('small', {}, a.n) : null, el('span', { class: 'x' }, '×'));
-  const attachCard = a => el('span', { class: 'att ' + a.kind, title: a.kind + ' · ' + a.title }, el('span', { class: 'ak' }, a.kind === 'task' ? (TASK_GLYPH[a.state] || '○') : ART_GLYPH[a.akind] || '▢'), el('span', { class: 'at' }, a.title), a.state ? el('small', {}, a.state) : a.meta ? el('small', {}, a.meta) : null);
+  const attachCard = a => el('span', { class: 'att ' + a.kind, title: a.kind + ' · ' + a.title }, el('span', { class: 'ak' }, a.kind === 'task' ? taskMark(a.state) : ART_GLYPH[a.akind] || '▢'), el('span', { class: 'at' }, a.title), a.state ? el('small', {}, a.state) : a.meta ? el('small', {}, a.meta) : null);
   function composer(st, opts) {
     opts = opts || {};
     const mode = st.mode || 'message', to = st.to || [], att = st.attach || [], prio = st.prio || 'p1';
@@ -1260,7 +1277,7 @@
   // report-back card (work-items.md: the Executor's report is a handoff, not proof): what changed, what ran with its exit
   // status, each acceptance check, gaps; Accept and Re-brief belong to the delegator. Accepting flips the task to done.
   function reportCard(r, opts) {
-    const card = el('div', { class: 'report ' + (r.verdict || 'pending') }, el('div', { class: 'rh' }, el('span', { class: 'rk' }, TASK_GLYPH[r.state || 'reported'] || '◆'), el('b', {}, r.task), el('span', { class: 'rs' }, r.verdict === 'accepted' ? 'done' : 'reported')),
+    const card = el('div', { class: 'report ' + (r.verdict || 'pending') }, el('div', { class: 'rh' }, el('span', { class: 'rk' }, taskMark(r.state || 'reported')), el('b', {}, r.task), el('span', { class: 'rs' }, r.verdict === 'accepted' ? 'done' : 'reported')),
       el('div', { class: 'rsec' }, ...r.files.map(f => el('div', { class: 'rf' }, el('code', {}, f.path), el('span', { class: 'rd' }, el('i', { class: 'add' }, '+' + f.add), ' ', el('i', { class: 'del' }, '−' + f.del))))),
       el('div', { class: 'rsec' }, ...r.checks.map(k => el('div', { class: 'rc ' + (k.ok ? 'ok' : 'bad') }, el('span', { class: 'ck' }, k.ok ? '✓' : '✕'), el('code', {}, k.cmd), el('span', { class: 'ex' }, k.exit)))),
       r.gaps ? el('div', { class: 'rgap' }, 'gap · ' + r.gaps) : null, r.commit ? el('div', { class: 'rcommit' }, el('code', {}, r.commit), ' signed') : null);
@@ -1532,5 +1549,5 @@
     return root;
   }
 
-  window.C = { editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { circleMark, taskMark, SEAT_MARK, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();
