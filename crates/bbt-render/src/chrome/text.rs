@@ -159,21 +159,35 @@ pub fn rasterize(
     rasterize_at(text, style, max_width, scale, 0.)
 }
 
-/// Grayscale chrome mask at a fractional device-pixel line origin in [0, 1).
-/// Shaping/metrics stay logical; only glyph origins are quantized, as in Skia.
+/// CoreText owns logical shaping, fallback fonts and exact quarter-pixel origins.
 #[cfg(target_os = "macos")]
-pub fn rasterize_at(
+pub(super) struct GlyphRun {
+    pub font: objc2_core_foundation::CFRetained<objc2_core_text::CTFont>,
+    pub glyphs: Vec<u16>,
+    pub positions: Vec<objc2_core_foundation::CGPoint>,
+}
+#[cfg(target_os = "macos")]
+pub(super) struct ShapedLine {
+    pub width: u32,
+    pub height: u32,
+    pub advance: f32,
+    pub ascent: f32,
+    pub descent: f32,
+    pub scale: f32,
+    pub runs: Vec<GlyphRun>,
+}
+#[cfg(target_os = "macos")]
+pub(super) fn shape_at(
     text: &str,
     style: TextStyle,
     max_width: Option<f32>,
     scale: f32,
     phase_x: f32,
-) -> Result<LineMask> {
+) -> Result<ShapedLine> {
     use objc2_core_foundation::{
         CFArray, CFAttributedString, CFBoolean, CFDictionary, CFNumber, CFRange, CFRetained,
         CFString, CFType, CGPoint,
     };
-    use objc2_core_graphics::{CGBitmapContextCreate, CGColorSpace, CGContext};
     use objc2_core_text::{
         CTFont, CTLine, CTRun, kCTFontAttributeName, kCTForegroundColorFromContextAttributeName,
         kCTKernAttributeName,
@@ -249,36 +263,10 @@ pub fn rasterize_at(
     if width > 16_384 || height > 2_048 {
         return Err("chrome text line too large".into());
     }
-    let mut mask = vec![0; width as usize * height as usize];
-    let gray = CGColorSpace::new_device_gray().ok_or("grayscale colour space")?;
-    // SAFETY: fixed byte allocation, correct 8-bit grayscale stride; context is dropped before mask moves.
-    let context = unsafe {
-        CGBitmapContextCreate(
-            mask.as_mut_ptr().cast(),
-            width as usize,
-            height as usize,
-            8,
-            width as usize,
-            Some(&gray),
-            0,
-        )
-    }
-    .ok_or("chrome text bitmap")?;
-    CGContext::set_gray_fill_color(Some(&context), 1.0, 1.0);
-    CGContext::set_should_antialias(Some(&context), true);
-    CGContext::set_should_smooth_fonts(Some(&context), false);
-    CGContext::set_allows_font_smoothing(Some(&context), false);
-    CGContext::set_allows_font_subpixel_positioning(Some(&context), true);
-    CGContext::set_should_subpixel_position_fonts(Some(&context), true);
-    CGContext::set_allows_font_subpixel_quantization(Some(&context), false);
-    CGContext::set_should_subpixel_quantize_fonts(Some(&context), false);
-    let scale = f64::from(scale);
-    CGContext::scale_ctm(Some(&context), scale, scale);
-    let baseline = ((descent * scale).ceil() + 2.) / scale;
-    // CTLine's built-in quantization differs from Chrome. Keep its shaping and
-    // each fallback run's font, then draw at quarter-device-pixel x origins.
-    // SAFETY: CoreText owns immutable runs/attributes; copied buffers match the
-    // exact glyph count and all retained objects outlive the synchronous draw.
+    let device_scale = f64::from(scale);
+    let baseline = ((descent * device_scale).ceil() + 2.) / device_scale;
+    let mut output = Vec::new();
+    // SAFETY: immutable CoreText runs, checked buffer lengths and retained fonts.
     unsafe {
         let runs = CFRetained::cast_unchecked::<CFArray<CTRun>>(line.glyph_runs());
         for run in runs.iter() {
@@ -293,30 +281,87 @@ pub fn rasterize_at(
             run.positions(range, NonNull::new(positions.as_mut_ptr()).unwrap());
             let attrs =
                 CFRetained::cast_unchecked::<CFDictionary<CFString, CFType>>(run.attributes());
-            let run_font = attrs
+            let font = attrs
                 .get(kCTFontAttributeName)
                 .and_then(|v| v.downcast::<CTFont>().ok())
                 .ok_or("CoreText run font missing")?;
             for position in &mut positions {
-                position.x =
-                    ((position.x * scale + 2. + f64::from(phase_x)) * 4.).round() / (4. * scale);
+                position.x = ((position.x * device_scale + 2. + f64::from(phase_x)) * 4.).round()
+                    / (4. * device_scale);
                 position.y += baseline;
             }
-            run_font.draw_glyphs(
-                NonNull::new(glyphs.as_mut_ptr()).unwrap(),
-                NonNull::new(positions.as_mut_ptr()).unwrap(),
-                count,
+            output.push(GlyphRun {
+                font,
+                glyphs,
+                positions,
+            });
+        }
+    }
+    Ok(ShapedLine {
+        width,
+        height,
+        advance,
+        ascent: ascent as f32,
+        descent: descent as f32,
+        scale,
+        runs: output,
+    })
+}
+/// Grayscale chrome mask at a fractional device-pixel line origin in [0, 1).
+/// The reference raster path and glyph-cache path share shaping and fallback.
+#[cfg(target_os = "macos")]
+pub fn rasterize_at(
+    text: &str,
+    style: TextStyle,
+    max_width: Option<f32>,
+    scale: f32,
+    phase_x: f32,
+) -> Result<LineMask> {
+    use objc2_core_graphics::{CGBitmapContextCreate, CGColorSpace, CGContext};
+    use std::ptr::NonNull;
+    let line = shape_at(text, style, max_width, scale, phase_x)?;
+    let mut mask = vec![0; line.width as usize * line.height as usize];
+    let gray = CGColorSpace::new_device_gray().ok_or("grayscale colour space")?;
+    // SAFETY: fixed grayscale allocation; all native objects outlive the draw.
+    let context = unsafe {
+        CGBitmapContextCreate(
+            mask.as_mut_ptr().cast(),
+            line.width as usize,
+            line.height as usize,
+            8,
+            line.width as usize,
+            Some(&gray),
+            0,
+        )
+    }
+    .ok_or("chrome text bitmap")?;
+    CGContext::set_gray_fill_color(Some(&context), 1., 1.);
+    CGContext::set_should_antialias(Some(&context), true);
+    CGContext::set_should_smooth_fonts(Some(&context), false);
+    CGContext::set_allows_font_smoothing(Some(&context), false);
+    CGContext::set_allows_font_subpixel_positioning(Some(&context), true);
+    CGContext::set_should_subpixel_position_fonts(Some(&context), true);
+    CGContext::set_allows_font_subpixel_quantization(Some(&context), false);
+    CGContext::set_should_subpixel_quantize_fonts(Some(&context), false);
+    CGContext::scale_ctm(Some(&context), f64::from(line.scale), f64::from(line.scale));
+    for run in &line.runs {
+        // CTFontDrawGlyphs reads these immutable glyph and position arrays.
+        unsafe {
+            run.font.draw_glyphs(
+                NonNull::new(run.glyphs.as_ptr().cast_mut()).unwrap(),
+                NonNull::new(run.positions.as_ptr().cast_mut()).unwrap(),
+                run.glyphs.len(),
                 &context,
             );
         }
     }
     drop(context);
     Ok(LineMask {
-        width,
-        height,
-        advance,
-        ascent: ascent as f32,
-        descent: descent as f32,
+        width: line.width,
+        height: line.height,
+        advance: line.advance,
+        ascent: line.ascent,
+        descent: line.descent,
         mask,
     })
 }

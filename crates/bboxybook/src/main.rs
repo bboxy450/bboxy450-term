@@ -24,6 +24,9 @@ fn run() -> Result<()> {
             let root = value(&args, "--root")
                 .map(PathBuf::from)
                 .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."));
+            if args.iter().any(|a| a == "--single-renderer") {
+                return bboxybook::documents::repository::render_single_renderer(&root, &out);
+            }
             return bboxybook::documents::repository::render(&root, &out);
         }
         if args.iter().any(|a| a == "--geometry-only") {

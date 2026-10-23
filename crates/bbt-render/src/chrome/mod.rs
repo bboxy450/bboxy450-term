@@ -7,11 +7,9 @@ pub mod materials;
 mod paths;
 pub mod pipeline;
 pub mod text;
-use crate::{
-    RenderError, Result,
-    atlas::{AtlasRect, GlyphAtlas},
-    device::DeviceContext,
-};
+mod text_cache;
+mod text_glyphs;
+use crate::{RenderError, Result, device::DeviceContext};
 use bbt_ui_model::{
     draw::{Color, DrawList, Prim},
     layout::Rect,
@@ -28,14 +26,21 @@ pub struct ChromeTarget<'a> {
     pub format: wgpu::TextureFormat,
 }
 
+pub use text_cache::Stats as GlyphCacheStats;
+#[derive(Clone, Copy, Debug)]
+pub struct TextCacheStats {
+    pub mode: &'static str,
+    pub whole_line_masks: usize,
+    pub coverage: GlyphCacheStats,
+}
+
 pub struct ChromeRenderer {
     pub context: DeviceContext,
-    atlas: GlyphAtlas,
-    text: HashMap<String, (AtlasRect, f32)>,
+    text: text_cache::Cache,
     icons: icons::IconAtlas,
     icon_gpu: atlas_gpu::AtlasTexture,
     glyph_gpu: Option<atlas_gpu::AtlasTexture>,
-    dirty_glyphs: Vec<AtlasRect>,
+    glyph_reset_pending: bool,
     image_sampler: wgpu::Sampler,
     pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
     group_pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
@@ -43,6 +48,14 @@ pub struct ChromeRenderer {
     paths: paths::Renderer,
 }
 impl ChromeRenderer {
+    /// Read-only diagnostics for cache-capacity and long-lived-renderer gates.
+    pub fn text_cache_stats(&self) -> TextCacheStats {
+        TextCacheStats {
+            mode: "glyph-components",
+            whole_line_masks: 0,
+            coverage: self.text.stats(),
+        }
+    }
     #[allow(
         clippy::disallowed_methods,
         reason = "headless/offline capture; the app UI thread uses with_context and bbt-rt capture"
@@ -70,12 +83,11 @@ impl ChromeRenderer {
         icons.dirty.clear();
         Ok(Self {
             context,
-            atlas: GlyphAtlas::new(512, 8192)?,
-            text: HashMap::new(),
+            text: text_cache::Cache::new()?,
             icons,
             icon_gpu,
             glyph_gpu: None,
-            dirty_glyphs: Vec::new(),
+            glyph_reset_pending: false,
             image_sampler,
             pipelines: HashMap::new(),
             group_pipelines: HashMap::new(),
@@ -277,6 +289,9 @@ impl ChromeRenderer {
             return Err("invalid chrome viewport".into());
         }
         let mut instances = Vec::new();
+        // UVs are resolved only after every glyph in this flat pass is pinned.
+        // LRU repacking cannot invalidate an instance built earlier in the pass.
+        let mut glyph_instances = Vec::new();
         let mut clips = vec![(
             Rect::new(0.0, 0.0, width as f32 / scale, height as f32 / scale),
             [0.0; 4],
@@ -406,37 +421,41 @@ impl ChromeRenderer {
                     // Rounding the origin first loses eighth-pixel positions.
                     let physical_x = origin[0] * scale;
                     let phase = physical_x.rem_euclid(1.);
-                    let key = format!("{text}\0{style:?}\0{max_width:?}\0{scale}\0{phase}");
-                    let (atlas, advance) = if let Some(cached) = self.text.get(&key) {
-                        *cached
-                    } else {
-                        let line = text::rasterize_at(text, *style, *max_width, scale, phase)?;
-                        let rect = self.atlas.insert(line.width, line.height, &line.mask)?;
-                        self.dirty_glyphs.push(rect);
-                        let value = (rect, line.advance);
-                        self.text.insert(key, value);
-                        value
-                    };
-                    if advance <= 0.0 {
+                    let line = self.text.line(text, *style, *max_width, scale, phase)?;
+                    if line.advance <= 0.0 {
                         continue;
                     }
-                    let r = Rect::new(
-                        (physical_x.floor() - 2.) / scale,
-                        ((origin[1] + (style.pixels() * 1.4 - atlas.height as f32 / scale) * 0.5)
-                            * scale)
-                            .round()
-                            / scale,
-                        atlas.width as f32 / scale,
-                        atlas.height as f32 / scale,
-                    );
-                    let mut item = make(r, *color, 2.0, clip);
-                    item.uv = [
-                        atlas.x as f32,
-                        atlas.y as f32,
-                        atlas.width as f32,
-                        atlas.height as f32,
-                    ];
-                    instances.push(item);
+                    let left = physical_x.floor() - 2.;
+                    let top = ((origin[1]
+                        + (style.pixels() * 1.4 - line.height as f32 / scale) * 0.5)
+                        * scale)
+                        .round();
+                    for part in line.parts {
+                        // Preserve the old line canvas' clipping of overhangs.
+                        let x0 = part.offset[0].max(0);
+                        let y0 = part.offset[1].max(0);
+                        let x1 = (part.offset[0] + part.size[0] as i32).min(line.width as i32);
+                        let y1 = (part.offset[1] + part.size[1] as i32).min(line.height as i32);
+                        let x = left + x0 as f32;
+                        let y = top + y0 as f32;
+                        if x0 >= x1
+                            || y0 >= y1
+                            || x >= clip.0.right() * scale
+                            || y >= clip.0.bottom() * scale
+                            || x + (x1 - x0) as f32 <= clip.0.x * scale
+                            || y + (y1 - y0) as f32 <= clip.0.y * scale
+                        {
+                            continue;
+                        }
+                        let mut item = make(Rect::default(), *color, 2.0, clip);
+                        item.rect = [x, y, (x1 - x0) as f32, (y1 - y0) as f32];
+                        glyph_instances.push((
+                            instances.len(),
+                            part.id,
+                            [(x0 - part.offset[0]) as f32, (y0 - part.offset[1]) as f32],
+                        ));
+                        instances.push(item);
+                    }
                 }
                 Prim::Icon { rect, icon, color } => {
                     if rect.w == 0. || rect.h == 0. {
@@ -475,6 +494,22 @@ impl ChromeRenderer {
                 }
             }
         }
+        self.glyph_reset_pending |= self.text.finish(
+            &glyph_instances
+                .iter()
+                .map(|(_, id, _)| *id)
+                .collect::<Vec<_>>(),
+        )?;
+        for (index, id, offset) in glyph_instances {
+            let rect = self.text.rect(id)?;
+            let item = &mut instances[index];
+            item.uv = [
+                f32::from(rect.x) + offset[0],
+                f32::from(rect.y) + offset[1],
+                item.rect[2],
+                item.rect[3],
+            ];
+        }
         if instances.is_empty() {
             if let wgpu::LoadOp::Clear(color) = load {
                 clear(target, color, encoder);
@@ -484,13 +519,16 @@ impl ChromeRenderer {
         if instances.len() > 65_536 {
             return Err("chrome instance budget exceeded".into());
         }
+        let (atlas, dirty) = self.text.upload();
         atlas_gpu::sync_glyphs(
             &mut self.glyph_gpu,
             &self.context.device,
             &self.context.queue,
-            &self.atlas,
-            &mut self.dirty_glyphs,
+            atlas,
+            dirty,
+            self.glyph_reset_pending,
         );
+        self.glyph_reset_pending = false;
         for [x, y, width, height] in self.icons.dirty.drain(..) {
             let start = ((y * self.icons.size + x) * 4) as usize;
             let end = start + (((height - 1) * self.icons.size + width) * 4) as usize;
@@ -888,7 +926,7 @@ mod tests {
     fn glyph_dirty_writes_and_growth_keep_earlier_texture_coordinates_correct() {
         use bbt_ui_model::draw::{TextStyle, TypeScale};
         let mut cached = ChromeRenderer::new(vec![]).unwrap();
-        cached.atlas = GlyphAtlas::new(32, 1024).unwrap();
+        cached.text = text_cache::Cache::with_limits(32, 1024, 32 * 1024 * 1024, 32_768).unwrap();
         let style = TextStyle {
             scale: TypeScale::Custom(10.),
             ..Default::default()
@@ -915,7 +953,7 @@ mod tests {
             cached.glyph_gpu.as_ref().unwrap().generation,
             generation + 1
         );
-        assert!(cached.dirty_glyphs.is_empty());
+        assert!(cached.text.upload().1.is_empty());
         for y in 0..22 {
             let at = y * 256 * 4;
             assert_eq!(&first[at..at + 22 * 4], &grown[at..at + 22 * 4]);
@@ -930,7 +968,7 @@ mod tests {
     fn growth_in_a_later_group_preserves_the_earlier_encoded_texture() {
         use bbt_ui_model::draw::{TextStyle, TypeScale};
         let mut cached = ChromeRenderer::new(vec![]).unwrap();
-        cached.atlas = GlyphAtlas::new(32, 1024).unwrap();
+        cached.text = text_cache::Cache::with_limits(32, 1024, 32 * 1024 * 1024, 32_768).unwrap();
         let style = TextStyle {
             scale: TypeScale::Custom(10.),
             ..Default::default()
@@ -955,6 +993,82 @@ mod tests {
         assert_eq!(cached.glyph_gpu.as_ref().unwrap().generation, 2);
         let mut fresh = ChromeRenderer::new(vec![]).unwrap();
         assert_eq!(pixels, fresh.render_to_rgba(&list, 256, 80, 1.).unwrap());
+    }
+    #[test]
+    fn lru_repack_in_later_groups_preserves_prior_gpu_generations() {
+        use bbt_ui_model::draw::{TextStyle, TypeScale};
+        let mut cached = ChromeRenderer::new(vec![]).unwrap();
+        cached.text = text_cache::Cache::with_limits(64, 64, 4096, 6).unwrap();
+        let style = TextStyle {
+            scale: TypeScale::Custom(10.),
+            ..Default::default()
+        };
+        let mut list = DrawList::default();
+        list.rect(Rect::new(0., 0., 128., 160.), 0., Color::BLACK);
+        for (i, word) in ["ABCD", "EFGH", "IJKL", "MNOP", "QRST", "UVWX", "YZ01"]
+            .iter()
+            .enumerate()
+        {
+            let mut group = DrawList::default();
+            group.text(
+                Rect::new(2., 2. + i as f32 * 20., 120., 18.),
+                *word,
+                style,
+                Color::WHITE,
+            );
+            list.push(Prim::Group {
+                primitives: group.primitives,
+                opacity: 0.6,
+                saturation: 0.8,
+                mask: None,
+            });
+        }
+        let actual = cached.render_to_rgba(&list, 128, 160, 1.).unwrap();
+        assert!(cached.text.stats().evictions > 0);
+        assert!(cached.text.stats().rebuilds > 0);
+        assert!(cached.glyph_gpu.as_ref().unwrap().generation > 1);
+        let mut fresh = ChromeRenderer::new(vec![]).unwrap();
+        assert_eq!(actual, fresh.render_to_rgba(&list, 128, 160, 1.).unwrap());
+        assert_eq!(actual, cached.render_to_rgba(&list, 128, 160, 1.).unwrap());
+    }
+    #[test]
+    fn empty_clipped_pass_retains_a_pending_gpu_reset_after_eviction() {
+        use bbt_ui_model::draw::{TextStyle, TypeScale};
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        renderer.text = text_cache::Cache::with_limits(64, 64, 4096, 6).unwrap();
+        let style = TextStyle {
+            scale: TypeScale::Custom(10.),
+            ..Default::default()
+        };
+        let mut visible = DrawList::default();
+        visible.text(Rect::new(2., 2., 60., 18.), "ABCD", style, Color::WHITE);
+        let expected = renderer.render_to_rgba(&visible, 64, 24, 1.).unwrap();
+        let generation = renderer.glyph_gpu.as_ref().unwrap().generation;
+        let mut hidden = DrawList::default();
+        hidden.text(
+            Rect::new(2., 40., 250., 18.),
+            "EFGHIJKLMNOPQRSTUVWXYZ",
+            style,
+            Color::WHITE,
+        );
+        assert!(
+            renderer
+                .render_to_rgba(&hidden, 64, 24, 1.)
+                .unwrap()
+                .iter()
+                .all(|v| *v == 0)
+        );
+        assert!(renderer.glyph_reset_pending);
+        assert_eq!(generation, renderer.glyph_gpu.as_ref().unwrap().generation);
+        assert_eq!(
+            expected,
+            renderer.render_to_rgba(&visible, 64, 24, 1.).unwrap()
+        );
+        assert_eq!(
+            generation + 1,
+            renderer.glyph_gpu.as_ref().unwrap().generation
+        );
+        assert!(!renderer.glyph_reset_pending);
     }
     #[test]
     fn colored_text_uses_css_source_over_with_opaque_and_transparent_backdrops() {

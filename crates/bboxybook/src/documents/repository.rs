@@ -159,6 +159,42 @@ pub(super) fn page_pixels(
 }
 
 pub fn render(root: &Path, out: &Path) -> Result<()> {
+    render_mode(root, out, false)
+}
+
+pub fn render_single_renderer(root: &Path, out: &Path) -> Result<()> {
+    render_mode(root, out, true)
+}
+
+fn cache_snapshot(
+    renderer: &bbt_render::chrome::ChromeRenderer,
+    history: &mut Vec<serde_json::Value>,
+    context: serde_json::Value,
+) {
+    let status = renderer.text_cache_stats();
+    let s = status.coverage;
+    history.push(json!({
+        "context": context, "cache_mode": status.mode, "whole_line_masks": status.whole_line_masks,
+        "atlas_size": s.atlas_size, "atlas_allocated_bytes": u64::from(s.atlas_size).pow(2),
+        "atlas_mask_pixels": s.atlas_mask_pixels, "cached_mask_bytes": s.cached_mask_bytes,
+        "glyph_entries": s.glyph_entries, "overlap_entries": s.overlap_entries,
+        "atlas_entries": s.atlas_entries, "hits": s.hits, "misses": s.misses,
+        "evictions": s.evictions, "rebuilds": s.rebuilds,
+        "component_requests": s.component_requests, "overlap_requests": s.overlap_requests,
+        "max_component_glyphs": s.max_component_glyphs,
+    }));
+}
+fn write_cache_history(out: &Path, single: bool, history: &[serde_json::Value]) -> Result<()> {
+    fs::write(
+        out.join("cache-stats.json"),
+        serde_json::to_vec_pretty(&json!({
+            "renderer_mode": if single { "single" } else { "per-document" }, "samples": history,
+        }))?,
+    )?;
+    Ok(())
+}
+
+fn render_mode(root: &Path, out: &Path, single: bool) -> Result<()> {
     let paths = inputs(root)?;
     let total = paths.len();
     if paths.is_empty() {
@@ -166,15 +202,25 @@ pub fn render(root: &Path, out: &Path) -> Result<()> {
     }
     fs::create_dir_all(out)?;
     let metrics = Metrics::default();
+    let mut shared = if single {
+        Some(bbt_render::chrome::ChromeRenderer::new(crate::images()?)?)
+    } else {
+        None
+    };
+    let mut cache_history = Vec::new();
     let [width, height] = [1246u32, 900u32];
     let mut report = vec![];
     let mut html = String::from(
         "<!doctype html><meta charset=utf-8><title>bbt-doc · repository</title><style>body{font:14px system-ui;background:#10131c;color:#dde4fa;margin:24px}section{margin:24px 0}img{width:100%;max-width:1246px;border:1px solid #65718c}a{color:#8ebaff}summary{cursor:pointer}</style><h1>Native repository documents</h1><p>Tracked .bboxy Markdown · top, middle and end viewports · native Mermaid at true size.</p>",
     );
     for relative in paths {
-        // Each document is an independent offline case. Do not let hundreds of
-        // pages accumulate unrelated glyphs in one bounded atlas.
-        let mut renderer = bbt_render::chrome::ChromeRenderer::new(crate::images()?)?;
+        let mut isolated;
+        let renderer = if let Some(renderer) = shared.as_mut() {
+            renderer
+        } else {
+            isolated = bbt_render::chrome::ChromeRenderer::new(crate::images()?)?;
+            &mut isolated
+        };
         let source = fs::read_to_string(root.join(&relative))?;
         let markdown = bbt_doc::parse(&source);
         fn mermaid_blocks<'a>(blocks: &'a [bbt_doc::Block], out: &mut Vec<&'a str>) {
@@ -242,13 +288,22 @@ pub fn render(root: &Path, out: &Path) -> Result<()> {
                 let bg: Vec<u8> = (0..width * height)
                     .flat_map(|_| color.map(|v| (v * 255.).round() as u8))
                     .collect();
-                let pixels = page_pixels(
-                    &mut renderer,
+                let result = page_pixels(
+                    renderer,
                     c::paint_with_draw(&layout, DrawCtx::new(theme, ctx.density)),
                     bg,
                     [width, height],
                     ctx,
-                )?;
+                );
+                cache_snapshot(
+                    renderer,
+                    &mut cache_history,
+                    json!({"path":relative,"theme":gallery::theme_name(theme),"view":name,"error":result.as_ref().err().map(|e|e.to_string())}),
+                );
+                if result.is_err() {
+                    write_cache_history(out, single, &cache_history)?;
+                }
+                let pixels = result?;
                 let file = relative
                     .strip_prefix(".bboxy")?
                     .with_extension(format!("{}-{name}.png", gallery::theme_name(theme)));
@@ -275,13 +330,22 @@ pub fn render(root: &Path, out: &Path) -> Result<()> {
                 let bg = (0..size[0] * size[1])
                     .flat_map(|_| color.map(|v| (v * 255.).round() as u8))
                     .collect();
-                let pixels = page_pixels(
-                    &mut renderer,
+                let result = page_pixels(
+                    renderer,
                     c::paint_with_draw(&layout, DrawCtx::new(theme, ctx.density)),
                     bg,
                     size,
                     ctx,
-                )?;
+                );
+                cache_snapshot(
+                    renderer,
+                    &mut cache_history,
+                    json!({"path":relative,"theme":gallery::theme_name(theme),"mermaid":i+1,"error":result.as_ref().err().map(|e|e.to_string())}),
+                );
+                if result.is_err() {
+                    write_cache_history(out, single, &cache_history)?;
+                }
+                let pixels = result?;
                 let file = relative.strip_prefix(".bboxy")?.with_extension(format!(
                     "{}.mermaid{}.png",
                     gallery::theme_name(theme),
@@ -326,6 +390,7 @@ pub fn render(root: &Path, out: &Path) -> Result<()> {
         );
     }
     fs::write(out.join("report.json"), serde_json::to_vec_pretty(&report)?)?;
+    write_cache_history(out, single, &cache_history)?;
     fs::write(out.join("index.html"), html)?;
     println!(
         "{} documents rendered; {}",

@@ -66,8 +66,9 @@ pub(super) fn sync_glyphs(
     queue: &wgpu::Queue,
     cpu: &GlyphAtlas,
     dirty: &mut Vec<AtlasRect>,
+    reset: bool,
 ) {
-    if gpu.as_ref().is_none_or(|g| g.size != cpu.size()) {
+    if reset || gpu.as_ref().is_none_or(|g| g.size != cpu.size()) {
         let generation = gpu.as_ref().map_or(1, |g| g.generation + 1);
         *gpu = Some(AtlasTexture::new(
             device,
