@@ -1526,3 +1526,20 @@ details[open] > summary::before { transform: rotate(90deg); }
 .seat-row .where.degraded { color: var(--c-waiting); }
 .seat-row .where.disconnected, .seat-row .where.offline { color: var(--c-errored); }
 .seat-row .where.connecting { animation: link-pulse 1.2s ease-in-out infinite; }
+
+/* text editing state (components.js editField): the input keeps its box; the overlay draws text, selection, IME and caret */
+.ui-edit { position: relative; display: flex; flex: 1; min-width: 0; }
+.ui-edit > input { flex: 1; min-width: 0; color: transparent !important; caret-color: transparent; }
+.ui-edit > input::placeholder { color: transparent !important; }
+.ui-edit > .edit-field { position: absolute; inset: 0; display: flex; align-items: center; white-space: pre; overflow: hidden; pointer-events: none; color: var(--fg); }
+.ui-input .edit-field { font-size: var(--t-body); }
+.picker .ui-edit > .edit-field { padding: var(--s5) var(--s6); border-bottom: var(--hair-w) solid transparent; }
+.spot-back .picker .ui-edit > .edit-field { font-size: var(--t-input); padding: var(--s9) var(--s10) 18px; border-bottom: 0; font-weight: 400; }
+.edit-field .ph { color: var(--fg-dim); }
+.spot-back .picker .edit-field .ph { color: color-mix(in srgb, var(--fg-dim) 80%, transparent); }
+.edit-field .sel { background: color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 2px; }
+.edit-field .ime { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.edit-field .caret { position: relative; display: inline-block; width: 0; height: 1.2em; vertical-align: -0.2em; }
+.edit-field .caret::after { content: ''; position: absolute; left: -1px; top: 0; bottom: 0; width: 2px; border-radius: 1px; background: var(--accent); }
+.edit-field.blink .caret::after { animation: caret-blink 1.06s linear infinite; }   /* off in reference states: a frozen blink is a random phase */
+@keyframes caret-blink { 0%, 49.9% { opacity: 1; } 50%, 100% { opacity: 0; } }

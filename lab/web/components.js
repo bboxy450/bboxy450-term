@@ -1109,6 +1109,29 @@
       children: () => retained.map(r => ({ id: 'resume:' + r.seat.key, label: r.seat.name, sub: 'closed ' + r.closedAt + ' · ' + (RESUME[r.seat.harness] ? RESUME[r.seat.harness](r.session) : 'no resume: a new shell, history replayed above it'), harness: r.seat.harness, tile: tileOf(r.seat.harness), kind: 'Seat', resume: { ...r, cmd: RESUME[r.seat.harness] ? RESUME[r.seat.harness](r.session) : null }, enterPicks: true })) }] : [];
     return [...launchRows, ...remoteRows, ...resumeRow, goRow, graphRow, settingsRow];
   }
+  // Text-field editing state (Input and the launcher query), deterministic so parity can capture it. Public inputs:
+  // edit = { caret: index } | { select: [from, to] } | { caret: index, preedit: { text, caret } }; an edit object means focused.
+  // Every index is a UTF-16 code-unit offset (a JS string index), never inside a surrogate pair; the fixtures are ASCII.
+  // The real <input> keeps its box (its own text goes transparent), so nothing moves; .edit-field draws the runs over it:
+  // text, the selection band, IME marked text (underlined) and a 2 px accent caret centred on its advance, as tall as the line.
+  // The caret is steady unless edit.blink (reference states are snapshots). A selection hides the caret (macOS). Focused and
+  // empty: the caret sits at 0, before the dimmed placeholder.
+  function editField(input, edit) {
+    const v = input.value, run = (cls, t) => el('span', { class: cls }, t), caret = () => el('i', { class: 'caret' });
+    const f = el('span', { class: 'edit-field' + (edit.blink ? ' blink' : ''), 'aria-hidden': 'true' });
+    if (edit.select) { const [a, b] = edit.select; f.append(run('t', v.slice(0, a)), run('sel', v.slice(a, b)), run('t', v.slice(b))); }
+    else {
+      const at = Math.max(0, Math.min(v.length, edit.caret != null ? edit.caret : v.length)), pe = edit.preedit;
+      f.append(run('t', v.slice(0, at)));
+      if (pe) { const k = pe.caret != null ? pe.caret : pe.text.length; f.append(el('span', { class: 'ime' }, pe.text.slice(0, k), caret(), pe.text.slice(k))); }
+      else f.append(caret());
+      f.append(run('t', v.slice(at)));
+      if (!v && !pe && input.placeholder) f.append(run('ph', input.placeholder));
+    }
+    input.tabIndex = -1; input.readOnly = true;
+    return el('span', { class: 'ui-edit' }, input, f);
+  }
+
   function picker(opts) {
     opts = opts || {};
     // Nested choices: an item may carry `children` (array or function). Right / Enter dives in, Left / Backspace on an
@@ -1191,7 +1214,7 @@
       e.stopPropagation();
     });
     draw();
-    const inrow = el('div', { class: 'inrow' }, crumbs, input);
+    const inrow = el('div', { class: 'inrow' + (opts.edit ? ' editing' : '') }, crumbs, opts.edit ? editField(input, opts.edit) : input);
     box.append(inrow, list, foot);
     box.focus = () => input.focus();
     return box;
@@ -1509,5 +1532,5 @@
     return root;
   }
 
-  window.C = { linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();
