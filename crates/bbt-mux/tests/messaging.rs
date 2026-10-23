@@ -512,7 +512,7 @@ fn priority_fifo_four_to_one_and_burst_overflow_are_receiver_local() {
     // Per-recipient wakes (decision #23), still under the fair queue: four
     // Oracle messages, then the waiting worker, then the rest of the Oracle
     // credit (30 at 1000 each), then the overflow demoted to worker class.
-    let mut take = |f: &mut Fixture| {
+    let take = |f: &mut Fixture| {
         let work = f.take(1000);
         f.finish(&work, Evidence::NativeWritten, 1000);
         (

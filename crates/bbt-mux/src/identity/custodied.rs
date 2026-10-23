@@ -73,7 +73,7 @@ impl IdentityRuntime {
     pub fn open_custodied(root: &Path, handle: tokio::runtime::Handle) -> Result<Self> {
         Retry {
             root: root.into(),
-            store: None,
+            store: super::io::process_test_store().map(super::io::bounded_store),
             handle,
         }
         .open()
@@ -86,7 +86,7 @@ impl IdentityRuntime {
     ) -> Result<Self> {
         Retry {
             root: root.into(),
-            store: Some(store),
+            store: Some(super::io::bounded_store(store)),
             handle,
         }
         .open()

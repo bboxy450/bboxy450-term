@@ -1,0 +1,16 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 4.95s
+     Running unittests src/lib.rs (target/debug/deps/bbt_mux-17671b8325c510ff)
+/Users/feral/mydev/bboxy450-term-exec5/target/debug/deps/bbt_mux-17671b8325c510ff: replacing existing signature
+
+running 7 tests
+test identity::agent::tests::malformed_agent_data_is_rejected ... ok
+test identity::keychain::tests::denied_or_interactive_keychain_answers_have_a_named_hold ... ok
+test mcp::journal::tests::audit_outbox_preserves_call_order_instead_of_random_ulid_order ... ok
+test identity::agent::tests::agent_cancellation_and_bad_framing_fail_closed ... ok
+test mcp::journal::tests::control_result_and_audit_commit_atomically_and_reopen_without_redispatch ... ok
+test mcp::journal::tests::concurrent_operation_retries_return_one_committed_result ... ok
+test identity::agent::tests::agent_deadline_is_bounded ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+

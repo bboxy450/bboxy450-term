@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use ulid::Ulid;
 
-use super::{Custody, DeviceKeyStore, KeychainDeviceKeys, PendingReason as E, Result, transition};
+use super::{Custody, DeviceKeyStore, PendingReason as E, Result, transition};
 use crate::{
     messaging::wire::{Issuer, IssuerKind},
     store::{Store, object_dir, sqlite::SqliteStore},
@@ -55,11 +55,8 @@ pub fn local_dev_issuer(run_dir: &Path) -> LocalIssuerOutcome {
     let result = (|| {
         let account = account(run_dir)?;
         let context = context(&account)?;
-        let keys = match context.custody {
-            Some(custody) => KeychainDeviceKeys::resume(custody)?,
-            None => KeychainDeviceKeys::default(),
-        };
-        load(&account, &keys)
+        let keys = super::io::process_store(context.custody)?;
+        load(&account, keys.as_ref())
     })();
     outcome(result)
 }

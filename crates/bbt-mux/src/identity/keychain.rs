@@ -1,6 +1,9 @@
 use super::{PendingReason as E, Result};
 use ed25519_dalek::SigningKey;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::{
+    Arc,
+    atomic::{AtomicU8, Ordering},
+};
 use ulid::Ulid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -15,7 +18,13 @@ impl Custody {
         match self {
             Self::DataProtection => "data protection",
             Self::LoginKeychain => "dev custody",
-            Self::Memory => "test custody",
+            Self::Memory => {
+                #[cfg(debug_assertions)]
+                if super::io::process_test_store().is_some() {
+                    return "memory custody (debug)";
+                }
+                "test custody"
+            }
         }
     }
 }
@@ -29,15 +38,18 @@ pub trait DeviceKeyStore {
 
 /// Data Protection Keychain, or explicit dev custody after -34018 (#17).
 /// The production service is fixed; acceptance tests use an isolated service.
+#[derive(Clone)]
 pub struct KeychainDeviceKeys {
     service: String,
-    tier: AtomicU8,
+    tier: Arc<AtomicU8>,
+    io: Arc<super::io::CustodyIo>,
 }
 impl Default for KeychainDeviceKeys {
     fn default() -> Self {
         Self {
             service: "bboxy450-term".into(),
-            tier: AtomicU8::new(0),
+            tier: Arc::new(AtomicU8::new(0)),
+            io: super::io::keychain_io(),
         }
     }
 }
@@ -49,7 +61,8 @@ impl KeychainDeviceKeys {
         }
         Ok(Self {
             service: service.into(),
-            tier: AtomicU8::new(0),
+            tier: Arc::new(AtomicU8::new(0)),
+            io: super::io::keychain_io(),
         })
     }
     #[cfg(target_os = "macos")]
@@ -131,7 +144,8 @@ impl KeychainDeviceKeys {
         }
         Ok(Self {
             service: "bboxy450-term".into(),
-            tier: AtomicU8::new(u8::from(custody == Custody::LoginKeychain)),
+            tier: Arc::new(AtomicU8::new(u8::from(custody == Custody::LoginKeychain))),
+            io: super::io::keychain_io(),
         })
     }
     #[cfg(target_os = "macos")]
@@ -139,18 +153,30 @@ impl KeychainDeviceKeys {
         &self,
         run: impl Fn(Custody) -> security_framework::base::Result<T>,
     ) -> Result<T> {
+        // This is process-wide and intentionally never restored: identity
+        // custody never opens an access/unlock dialog, on either native path.
+        // SAFETY: this Security.framework call takes a Boolean and owns no pointers.
+        let status =
+            unsafe { security_framework_sys::keychain::SecKeychainSetUserInteractionAllowed(0) };
+        if status != 0 {
+            return Err(keychain_error(status));
+        }
         let tier = self.custody();
         match run(tier) {
             Err(e) if tier == Custody::DataProtection && e.code() == -34018 => {
                 self.tier.store(1, Ordering::Relaxed);
-                run(Custody::LoginKeychain).map_err(|e| E::KeychainUnavailable(e.code()))
+                run(Custody::LoginKeychain).map_err(|e| keychain_error(e.code()))
             }
-            result => result.map_err(|e| E::KeychainUnavailable(e.code())),
+            result => result.map_err(|e| keychain_error(e.code())),
         }
     }
     /// Only test items can be removed by this interface; production revocation
     /// retains custody and its historical attribution.
     pub fn delete_test_item(&self, device: Ulid) -> Result<()> {
+        let keys = self.clone();
+        self.io.run(move || keys.delete_test_item_inner(device))
+    }
+    fn delete_test_item_inner(&self, device: Ulid) -> Result<()> {
         if !self.service.starts_with("bboxy450-term.test.") {
             return Err(E::InvalidProof);
         }
@@ -186,15 +212,8 @@ impl KeychainDeviceKeys {
         }
     }
 }
-impl DeviceKeyStore for KeychainDeviceKeys {
-    fn custody(&self) -> Custody {
-        if self.tier.load(Ordering::Relaxed) == 0 {
-            Custody::DataProtection
-        } else {
-            Custody::LoginKeychain
-        }
-    }
-    fn load(&self, device: Ulid) -> Result<Option<SigningKey>> {
+impl KeychainDeviceKeys {
+    fn load_inner(&self, device: Ulid) -> Result<Option<SigningKey>> {
         bbt_rt::assert_not_ui_thread();
         #[cfg(target_os = "macos")]
         {
@@ -226,9 +245,9 @@ impl DeviceKeyStore for KeychainDeviceKeys {
             Err(E::KeychainUnavailable(-4))
         }
     }
-    fn create(&self, device: Ulid, key: &SigningKey) -> Result<()> {
+    fn create_inner(&self, device: Ulid, key: &SigningKey) -> Result<()> {
         bbt_rt::assert_not_ui_thread();
-        if device == Ulid::nil() || self.load(device)?.is_some() {
+        if device == Ulid::nil() || self.load_inner(device)?.is_some() {
             return Err(E::JournalConflict);
         }
         #[cfg(target_os = "macos")]
@@ -252,5 +271,53 @@ impl DeviceKeyStore for KeychainDeviceKeys {
             let _ = key;
             Err(E::KeychainUnavailable(-4))
         }
+    }
+}
+
+impl DeviceKeyStore for KeychainDeviceKeys {
+    fn custody(&self) -> Custody {
+        if self.tier.load(Ordering::Relaxed) == 0 {
+            Custody::DataProtection
+        } else {
+            Custody::LoginKeychain
+        }
+    }
+    fn load(&self, device: Ulid) -> Result<Option<SigningKey>> {
+        let keys = self.clone();
+        self.io.run(move || keys.load_inner(device))
+    }
+    fn create(&self, device: Ulid, key: &SigningKey) -> Result<()> {
+        let keys = self.clone();
+        let key = key.clone();
+        self.io.run(move || keys.create_inner(device, &key))
+    }
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn keychain_error(code: i32) -> E {
+    match code {
+        -128 | -25293 | -25308 | -25315 => E::KeychainInteractionRequired,
+        _ => E::KeychainUnavailable(code),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn denied_or_interactive_keychain_answers_have_a_named_hold() {
+        for code in [-128, -25293, -25308, -25315] {
+            assert_eq!(
+                super::keychain_error(code),
+                super::E::KeychainInteractionRequired
+            );
+        }
+        assert_eq!(
+            super::keychain_error(-34018),
+            super::E::KeychainUnavailable(-34018)
+        );
+        assert_eq!(
+            super::keychain_error(-25300),
+            super::E::KeychainUnavailable(-25300)
+        );
     }
 }
