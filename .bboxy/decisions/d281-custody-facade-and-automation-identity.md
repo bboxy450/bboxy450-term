@@ -16,7 +16,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: constrains }
   - { to: "[[cross-os-facade]]", rel: invariant }
 created: "2026-10-24T19:15:36Z"
-updated: "2026-10-24T19:15:36Z"
+updated: "2026-10-24T19:23:03Z"
 ---
 # Decision 281: custody is a facade; the automation identity has its own store
 
@@ -31,3 +31,5 @@ Decided by the operator on 2026-10-24 ("keychain should be also supporting linux
 **Rules.** [[id1-seat-chain]] §5: the facade API (`open(backend)`, `get`, `put`, `remove`, `acl`, each with the one-shot interaction act of #280), the backends and their states, the automation identity's grant scope and label, `--unattended`. The five crates lead the layering order beside the notification family and depend on nothing of ours; licence rows dual, ours; brand names. The e2e night (`e2e-acceptance` §4) runs under the automation identity when the display is locked and says so in every record it writes. Rejected: a self-opening operator key; copying the device key into a file; a macOS-only custody.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
+
+**Confirmed simpler (operator, same day, verbatim: "each agent can create its own sub gpg key from users key, or can have just a key without a passphrase, whatever design is simpler!").** The automation device key is a passphrase-less key file, mode 0600, root-granted and revocable by one signature; every seat already has its own generation leaf key from the device chain. The `-file` backend implies no passphrase and no key-wrapping key: the file is the secret, protected by its mode, the grant's scope and the label. Rejected: GPG subkeys per agent; a second identity system beside the Ed25519 device grants.
