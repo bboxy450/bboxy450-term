@@ -14,7 +14,7 @@ links:
   - { to: "[[d270-ctl-screen-input-wait]]", rel: builds-on }
   - { to: "[[work-items]]", rel: decides }
 created: "2026-10-24T15:24:41Z"
-updated: "2026-10-24T15:29:32Z"
+updated: "2026-10-24T17:32:12Z"
 ---
 # Decision 272: ctl is one grammar
 
@@ -31,3 +31,5 @@ Decided 2026-10-24 at the operator's word, via the Oracle, after three authority
 Owner: Corvin Duskmantle <ARCHITECT>.
 
 **Revision 2 (same day, operator verbatim: "build bboxy450-term in a way that makes it scriptable, bboxy450-term ctrl should expose commands (design cli interface yourself, dont take my suggestion as a rule) but bboxy term gives you full on control over everything programmatically so you never need to ask for my permissions, think about all the bits and pieces you will need to test things approve things inspect things debug things - make it happen!").** The grammar grows to eleven nouns to cover the full programmatic surface (app lifecycle with `--headless`, `ui`, `events`, `debug`, `batch`, and the seat verbs for typing, keys, paste, resize, watch and scrollback), under the same one-action-per-verb rule, reply shape and error model; the invariants are named in §5 and the secrets rule becomes [[ctl-never-prints-secrets]]. Rejected again: a prompts subsystem (recipes), and any verb without a window action behind it except `debug` reads and `app start`.
+
+**Addendum (Seraph's C-0 findings, 2026-10-24).** Verbs with no usable window action today are ruled by the spec's lens, the window gains the action first: close, undo-close, focus and spawn are relayed through the attached window (or the headless client), which owns `Position` and focus; rename and restart are logic actions the window reconciles from the state lane; `watch` is the events lane for state plus `ScreenRead` polled by `frame_seq` for the screen, never the window's grid-delta protocol. New actions named in [[ctl-cli]] §1a. Rejected: a logic-side close that invents a layout position; a CLI speaking the grid-delta protocol.

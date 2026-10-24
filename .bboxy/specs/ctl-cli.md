@@ -15,7 +15,7 @@ links:
   - { to: "[[d272-ctl-one-grammar]]", rel: decision }
   - { to: "[[work-items]]", rel: record-type }
 created: "2026-10-24T15:24:41Z"
-updated: "2026-10-24T17:30:10Z"
+updated: "2026-10-24T17:32:12Z"
 ---
 # ctl
 
@@ -51,6 +51,14 @@ flowchart LR
 | `recipe` | `list`; `detect <seat>` (which known prompts match the screen now); `run <recipe> <seat> [--dry-run]` | a data-driven composition of `seat screen`, `match`, `seat input`, `seat wait`, `report` (§4) |
 
 Flags on every verb: `--json` (default) or `--human`; `--op <ulid>` for an idempotent retry (#266 rule 1; omitted, the server mints and returns it); `--as "<label>"` or `BBOXY_CTL_ISSUER` for `issued_by` (#269; default `"<user>@<host>, shell"`); `--timeout <ms>` where a verb can wait; `--run-dir <path>` or `BBOXY_RUN_DIR` for discovery (#260).
+
+## 1a. Where a verb lands (Seraph's C-0 findings, 2026-10-24)
+
+Two kinds of action sit behind the verbs, and the rule is the lens above: the window gains the action first, `ctl` follows.
+
+- **Layout and focus belong to the window.** `seat close`, `seat undo-close`, `seat focus`, `seat spawn` and every `ui` verb are **relayed**: logic receives the `ctl` request under the operator principal and asks the attached window to perform it, the pattern `OperatorSpawned` already uses for spawn, because `ScheduleClose` and `UndoClose` carry the window's `Position` (tab, split path, ratios, `layout_revision`) that only the window knows, and focus is window state. In `--headless` mode the headless GUI client is the window and performs the same relay. New window actions this needs: `CloseSeat { seat }`, `UndoCloseSeat { seat }`, `FocusSeat { seat }`, taken by the window and turned into the existing `ScheduleClose`, `UndoClose` and focus with the window's own `Position`. No logic-side layout, ever.
+- **Registry and process belong to logic, and the window reconciles.** `seat rename` is a registry write (the seat's name), `seat restart` is the #11 restart-and-resume path for one seat (same seat id, generation + 1); both are logic actions the window learns from the state lane. New logic actions: `RenameSeat { seat, name }`, `RestartSeat { seat }`.
+- **`seat watch`** is two sources and no new protocol: seat state from the operator's events lane (`seat/*/state`, [[l9-messaging-tasks]] §3, never polled) and the screen by polling `ScreenRead` with its `frame_seq`, emitting a line only when the sequence changes. The window's `Watch`/`Applied` grid-delta protocol with its acks is the window's and is not what a command line speaks.
 
 ## 2. One reply shape
 
