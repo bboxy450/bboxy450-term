@@ -1,0 +1,254 @@
+E2E LAUNCH AUDIT — Aster Cinderwing <EXECUTOR>
+Recorded 2026-10-24 UTC. Read-mostly audit; no product fixes.
+
+RESULT
+Real Claude Code and Codex seats both start through the app's admitted launch
+path. After explicit operator prompts, both call bboxy orient, task and message
+tools, acknowledge the operator DM, send a reply, and file task_report. Both
+fixture task files end at status: reported. These are actual installed harness
+turns and independently observed backend effects, not the existing shim test.
+
+Automatic idle DM wake FAILS in this audit: a new follow-up to each idle harness
+stays recipient-stored, with "native attachment unavailable; no mutation
+attempted", and neither returns the follow-up token. Native harness sidebar
+pixels remain UNPROVEN: the approved scratch driver uses the genuine app
+Session/Spawn path but has no window. The separate native --capture below proves
+the launcher catalogue, not the two harnesses in the sidebar.
+
+AUTHORITY / SOURCE
+Oracle brief b7eab7c1-e5ac-47c9-a2ea-619d9e152ab5: real harness launch audit,
+memory custody, report here, no product fixes, --capture only for images.
+Oracle adfda6c4-b07d-4901-a1bb-0707191e8c6e (received seq 8135): scratch
+cockpit::Session -> GuiAction::Spawn is genuine launch evidence; native sidebar
+automation gap belongs to ctl A-1, spec #258 section 3.
+Oracle 6c0e6e68-13d4-46f2-8949-4473f2ffe4c4 (seq 8265): commit this evidence;
+Sable owns wake/trust fixes and Corvin rules on the Claude role label.
+Worktree /Users/feral/mydev/bboxy450-term-exec4, branch exec4.
+Exact audited product source: 7de32fcfbd8fe3cfef78e25d5f992308b7fdc94c.
+This was current main when the audit/build began. Later main was not substituted
+under running clients. All source file:line references below are at this SHA.
+
+RAW EVIDENCE ROOT (A)
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/aster-e2e-launch-wkjjycuv
+A/evidence-manifest.json binds 62 files to SHA256, plus metadata-only hashes of
+the two own native transcripts. Manifest SHA256:
+44142de7d632c6e65f6a7ba26e89dc9539dac4c4f5c214cf1e3d0582051b96da
+Raw transcripts, credentials and admission material are not committed here.
+The private disposable fixture and driver stay outside the product tree.
+
+BUILD / CUSTODY / COMMAND RESULTS
+claude --version — EXIT 0: Claude Code 2.1.304.
+codex --version — EXIT 0: codex-cli 0.163.0. Neither client was upgraded.
+cargo build --locked -p bboxy450-term --message-format=json — EXIT 0,
+65.551956334 s. Environment: CARGO_PROFILE_DEV_OPT_LEVEL=0,
+CARGO_PROFILE_DEV_DEBUG=0, CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true,
+CARGO_INCREMENTAL=0, CARGO_BUILD_JOBS=4, BBOXY_TEST_CUSTODY=memory,
+and one private CARGO_TARGET_DIR (manifest.json).
+App SHA256 80738878a067744162ae24e44cf0d9194e2b9aeef5c2960d9026038b6772a3e5;
+97,057,888 bytes; debug_assertions=true, overflow_checks=true, opt_level=0.
+The exact hash still matched after phase 2 (driver-result.json).
+crates/bbt-mux/src/identity/io.rs:123 — debug assertions plus selector=memory
+select MemoryKeys. The actual native app log also says
+"initial identity status: LocalDev, reason=None, selector=memory custody (debug)".
+No release app, production custody or keychain probe was used.
+
+Initial scratch manual-rustc link — EXIT 1, conflicting serde_core metadata;
+not a product error (A/driver-build.json). Replaced with a scratch Cargo package.
+cargo build --offline --manifest-path A/driver_crate/Cargo.toml — EXIT 0,
+13.335114458 s. Driver source and Cargo lock retained. It calls the public
+cockpit::Session API, uses its admitted GUI endpoint, and drains GuiReply.
+It does not extract, print or bypass the GUI capability.
+
+python3 A/run-driver.py (phase 1) — EXIT 0, own 900-second guard expired;
+timed_out=true. Both real processes started and native onboarding was observed.
+A long JSON Input failed in the helper's managed PTY canonical line discipline
+(BEL/truncation). That prompt was not admitted; it is not a product failure.
+The helper shut down orderly. First claimed tasks and logs were retained.
+
+python3 A/phase-2/run.py — EXIT 0, 1143.798339375 s, timed_out=false,
+reader_errors=[]. Phase 2 replaces only that helper transport with a regular
+command file -> pipe; no desktop or OS-input injection. Updates are reconstructed
+with exact view/base checks, published to the helper's immutable screen file,
+then Applied is sent. Commands and forwarded times are retained separately.
+
+The helper initially omitted GUI EventAck, causing repeated event projections
+and publication-not-acknowledged notices. Explicit ACKs after raw publication
+were added to the helper. This is a test-consumer limitation; it is not evidence
+of missing harness MCP calls or broken product event delivery. Message/tool
+claims below use direct replies, signed effects and own native transcript calls.
+
+Read-only source inspections succeeded except preliminary guessed paths/glob:
+the initial overlay* glob (EXIT 1), nonexistent gui.rs/wiring.rs test paths
+(rg EXIT 2), nonexistent identity/runtime.rs and adapters/hooks.rs (rg EXIT 2).
+Existing source was located with rg --files/rg; no file was created to fit a guess.
+No full ci-local, parity or cargo test gate was run: this assignment changes
+only this evidence log and explicitly requests a slot only if a full gate is
+needed. The actual debug build and real-process audit above are the verification.
+
+GENUINE LAUNCH / REPEATABLE PROCEDURE
+1. Use a fresh private run directory and disposable repository containing two
+   fixture tasks. Strip inherited CODEX_*, CLAUDE_*, CLAUDECODE and ICQ_* context
+   identifiers from the runner, retain normal installed user authentication,
+   and set BBOXY_TEST_CUSTODY=memory. Never borrow another session identity.
+2. Session::start(Config { binary, run_dir, repository, ... }) starts the app's
+   own debug supervisor/logic. Send GuiAction::Spawn with harness_kind claude
+   or codex, cwd=the disposable repository, location=local, fresh operation ID.
+   Observe Spawned, ListSeats Running and native terminal content via Watch.
+3. Resize to 120x40 and retain each returned View; ACK only reconstructed updates.
+   Use Task::Delegate and Messaging::Send to the exact seats/SEAT/inbox sink.
+4. Complete the installed client's normal native onboarding through the app's
+   own GuiAction::Input. No --bare, trust bypass, manually supplied trusted_hash,
+   external GUI events, osascript or desktop injection. Skip update advertisements.
+5. If the stored DM does not wake the model, record that before entering a
+   separate bracketed-paste operator prompt. Request orient, task_list,
+   task_status, message_list, reply/ack, then task_report. Do not equate that
+   operator prompt with native message delivery. Omit unrun verification/commit.
+6. Independently query Messaging list/receipts and inspect the signed fixture
+   task; do not accept only the model's final prose. Send a second unique DM
+   after the turn ends, give no further input, and observe automatic wake.
+7. Shut down through Session, confirm only recorded owned PIDs are gone, hash
+   the evidence and remove the private completed build target.
+
+PHASE 2 IDENTITIES AND ACCEPTANCE EVIDENCE
+Swarm 01M5P7A3N4E52VC94JDN29RMVM; nonce audit-046d89055a3b-p2.
+Claude: Lark Moonwhisker, seat 01M5P7D1ZCFC8DBPWX03SNCMZ4,
+PID 35209, generation 1, native session 01a16c76-880d-4632-919d-0721b331cf33.
+Task 01M5P7A3N4EBR0YDJG42HQA06D, .bboxy/tasks/claude-launch-audit.md.
+Codex: Tarin Emberpaw, seat 01M5P7D2A2PFGXNSSBCK1JY2MP,
+PID 35246, generation 1, native session 01a16c7b-bcad-7431-89fe-5037c828afb3.
+Task 01M5P7A3N5Y1GYEBVZCQNSCV3D, .bboxy/tasks/codex-launch-audit.md.
+
+Harnesses start: PROVEN. Spawned + Running records in phase-2/driver.stdout.jsonl
+and seats-latest.json, plus actual installed client TUI and native transcripts.
+Per-seat MCP: PROVEN. Claude native transcript lines 49, 56-58, 87-88 and 97
+contain mcp__bboxy__orient, task_list, task_status, message_list, message_send,
+message_ack and task_report. Exact own transcript path and hashes are in
+claude-tool-use-proof.json and evidence-manifest.json; no raw transcript copied.
+Codex native transcript lines 19, 24, 30, 37, 42, 47 and 55 contain orchestration
+calls to the same bboxy tools plus message_receipts. codex-tool-use-proof.json
+extracts the nested tool names; these exec calls are tool orchestration, not shell.
+Both fixtures end at status: reported, with seat authorship and report provenance.
+
+Original Claude operator DM 01M5P7FACD5FCN1BG6M0450Y99:
+application-acknowledged, explicit recipient application acknowledgement.
+Claude reply 01M5P7M2A0Q8Z3V6X9KTR4BWD1 and Task report envelope
+0GPB5FY7WGM7PZYRH7XCBKJ3YS were read independently in operator/inbox.
+Claude needed the explicit operator prompt forwarded 2026-10-24T05:54:13.728697Z.
+
+Original Codex operator DM 01M5P7FACDQB41213YDRAH957W:
+application-acknowledged, explicit recipient application acknowledgement.
+Codex reply 01M5P89N4QDW7RCBJ9T2HD573F and Task report envelope
+4JDZKEJ7B6RTTFC7PRV1GSEG94 were read independently in operator/inbox.
+Codex needed the explicit operator prompt forwarded 2026-10-24T06:06:13.341358Z,
+after hook review, and native Allow once for the assigned task_report.
+phase-2/final-messaging-proof.json contains all four seat-authored envelopes and
+the receipts. The two application acknowledgements prove retrieval after those
+operator prompts, not automatic wake. No shell verification or commit was claimed
+by either harness; verify_result and commit remain absent/null in the reports.
+
+BREAK 1 — IDLE NATIVE DM WAKE
+Fresh Claude DM 01M5P7Z7NQTHBA13W4BHGKRXEX sent 06:01:05.523894Z.
+Fresh Codex DM 01M5P8CCF7TX223SAYD46N7AQ9 sent 06:08:16.393174Z.
+Final observation 06:09:56.050854Z: each is recipient-stored with the identical
+note "native attachment unavailable; no mutation attempted". Neither feedback
+token appears in a model reply; no operator input follows either challenge.
+Observed idle windows are about 530 s (Claude) and 100 s (Codex).
+crates/bbt-mux/src/logic.rs:2967 — Claude endpoint discovery reads
+~/.claude/sessions/<bound-pid>.json and uses messagingSocketPath at :2975.
+crates/bbt-mux/src/adapters/native.rs:79 — file ownership, PID, process-start
+and native-session binding are checked before that session file is accepted.
+crates/bbt-mux/src/logic.rs:3002 — Codex endpoint is discovered at
+~/.codex/app-server-control/app-server-control.sock, bound to the native thread.
+crates/bbt-mux/src/adapters/native.rs:370 — wake wraps endpoint preflight/write;
+:413 collapses pre-write failures to this generic recipient-stored note.
+Specific missing/rejected endpoint or preflight error is UNPROVEN: the retained
+receipt does not distinguish those causes. No receiver policy, socket absence,
+authentication failure or model refusal is inferred. Inbox tools work; automatic
+native delivery on this real launch path does not. No PTY fallback was attempted.
+
+BREAK 2 — CODEX FIRST-LAUNCH HOOK REVIEW / TOOL CONSENT
+crates/bbt-mux/src/adapters/launch.rs:245 — Codex hook overlay is inline and
+operator trust is delegated to the installed client's native chooser.
+:253 creates 10 lifecycle hooks; :269 passes them using -c hooks={...}.
+Native screen sequence 20: Hooks need review, 10 app hooks not active yet.
+Sequence 67: selected PreToolUse hook trusted through native t.
+Sequence 72: remaining known own app hooks trusted via native trust-all;
+SessionStart now Installed=2/Active=2 (one existing global + one app hook).
+This proves active configuration, not that a missed initial SessionStart reran.
+The inspected command was this exact debug app followed by hook --agent codex.
+Sequence 1636: installed Codex asked "Allow the bboxy MCP server to run tool
+task_report?" for the exact assigned fixture. Allow once was submitted. No
+Always allow or manual trust-cache write was used. Sequence 2220: audit complete.
+phase-2/replayed-screen-proof.json pins every sequence to a raw Update line and
+reconstructed text digest. These normal onboarding steps block unattended
+first-launch execution until accepted. Native client's trust persistence is
+reported below; it is not a product-code workaround.
+
+BREAK 3 — CLAUDE DEFAULT ROLE CONFLICT
+crates/bbt-mux/src/adapters/mod.rs:64 — all built-in harnesses receive default
+Role { name: executor, class: Worker }, including Claude.
+crates/bbt-mux/src/adapters/launch.rs:182 — that role prompt is appended to
+Claude; :57 substitutes role into the injected bboxy450 skill.
+The native capture visibly labels Claude "executor by default". The real Claude
+orient response reports worker/executor and its signed task report flags the
+conflict with machine policy (Claude is Oracle/Architect/Creativity). Claude did
+only read/report work here. Policy disposition belongs to Corvin; no role changed.
+
+NATIVE IMAGE / SIDEBAR LIMIT
+crates/bboxy450-term/src/main.rs:3136 — available auto-spawn flag starts zsh
+only. It cannot pick a Claude/Codex launcher row without a new control hook.
+Oracle explicitly accepted the scratch Session route and assigned that hook gap.
+Exact native command, in a SEPARATE empty disposable repository:
+  BBOXY_TEST_CUSTODY=memory APP --run-dir OWN_RUN --launcher
+    --capture A/native-capture/launcher.png --capture-after 2 --quit-after 8
+EXIT 0 / 10.948367458 s; capture Ok; memory custody witnessed in app.log;
+orderly shutdown and both children reaped. Image read with view_image: launcher
+lists Claude, Codex, pi, omp, zsh and remote/navigation choices; Claude and Codex
+both display executor by default. This is a real --capture of the presented
+1600x960 frame, not a generated image or desktop screenshot.
+Real harness sidebar rendering and a native window containing either successful
+tool turn are UNPROVEN in this audit. Backend seat/status availability is proven.
+Incidental native-capture log rejection: "unknown GUI stream"; bus.rs:1234 and
+:1261 reject unknown stream reads/acks. Capture/shutdown still completed; the
+specific emitted stream/request was not correlated here and is not diagnosed.
+
+CONFIG PRESERVATION — DO NOT CLAIM BYTE IDENTITY
+Before/after hashes cover 868/870 filesystem records under the existing user
+Claude settings/plugins/skills, Codex config/hooks, and fixture/worktree .mcp.json.
+No authentication files were read; symlink-directory targets were not traversed.
+After shutdown, 9 records differ (user-config-delta.json). Observed differences:
+~/.codex/config.toml: 6354 -> 7875 bytes, hash changed after native hook review;
+the final hooks.state contains 10 /<session-flags>/config.toml entries, each with
+trusted_hash, plus the existing global-hook entries. Native approval persists
+trust automatically; no script edited config or supplied a trusted_hash.
+~/.claude.json changed after native disposable-folder trust and runtime use.
+Claude plugin runtime/cache/sync records changed, including own PID .in_use
+markers. Before data are hashes only; concurrent clients may mutate shared
+runtime files, so causality for every global delta is not established.
+~/.claude/settings.json, ~/.codex/hooks.json and the skill payload records in the
+scanned scope are unchanged. Both .mcp.json paths and settings.local.json remain
+absent. No manual rollback of native trust or user configuration was attempted.
+Thus strict global byte-identity is NOT proven. The per-launch MCP/settings/skill
+files are in the app's private overlay (launch.rs:68, :174, :222), not hand-written
+into the operator's config; native clients' own runtime persistence is visible.
+
+TEARDOWN / CLEANUP / HANDOFF STATE
+Phase 1 guard, phase 2 explicit driver shutdown and native --quit-after all used
+orderly app shutdown. Phase 2 stderr records logic/supervisor shutdown completed.
+ps -p for all 13 recorded driver/child/harness/native app PIDs — EXIT 1/no rows.
+ps -axo scoped by the exact own binary path — EXIT 0/no matching process rows.
+No broad kill or peer directory/process cleanup was performed.
+Private target removed only after completion: 1,449,807,872 allocated bytes,
+3266 unique-inode files. Shared-volume free delta +1,282,875,392 bytes; other
+processes affect that delta. App and scratch driver binaries retained under
+A/bin with exact hashes; raw evidence/PNG/tasks/manifests remain under A.
+cleanup.json records the accounting; APFS physical reclaim is not guaranteed.
+Only repository deliverable: this .bboxy/runs/e2e-launch-audit.log.
+Final verification: all 62 manifest artifact hashes match; original DM evidence
+is application-acknowledged for both seats and fresh DM evidence is only
+recipient-stored for both. Product paths diff against audited source is empty;
+audited source git verify-commit reports the machine key's good signature.
+No product source edits, new product tests, fixes, CI gate, push or merge.
+Follow-ups are assigned by the Oracle: Sable wake/trust, Corvin role policy,
+Seraph ctl/sidebar automation. R5g timing acceptance remains a separate future
+quiet-window assignment and was not run as part of this launch audit.
