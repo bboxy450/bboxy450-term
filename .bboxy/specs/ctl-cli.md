@@ -15,7 +15,7 @@ links:
   - { to: "[[d272-ctl-one-grammar]]", rel: decision }
   - { to: "[[work-items]]", rel: record-type }
 created: "2026-10-24T15:24:41Z"
-updated: "2026-10-24T15:29:32Z"
+updated: "2026-10-24T15:30:19Z"
 ---
 # ctl
 
@@ -38,7 +38,7 @@ flowchart LR
 
 | Noun | Verbs | Window action |
 |---|---|---|
-| `seat` | `ls`; `show <seat>`; `spawn <claude\|codex\|zsh> [--place right\|down\|tab\|space] [--role <role>] [--name <n>]`; `close <seat>`; `undo-close <seat>`; `rename <seat> <name>`; `focus <seat>`; `restart <seat>`; `screen <seat> [--scrollback <from>..<to>] [--cells]`; `watch <seat>` (stream screen diffs and state changes); `type <seat> <text>`; `key <seat> <named-key>…` (named keys, Kitty encoding when the program asked for it, #32); `paste <seat> <file\|->` (bracketed); `resize <seat> <cols>x<rows>`; `wait <seat> (--state idle\|waiting\|exited \| --text <pattern>) [--timeout <ms>]`; `capture <seat\|window> <path>` | `ListSeats`, `Spawn` (#29 placement, #262 role), `Close`, `UndoClose` (#27), rename and focus actions, restart (#11), `ScreenRead` and `GetHistory` (#27), the state subscription, `Input` for type, key and paste (the keyboard's one path, #270), `Resize`, `Capture` |
+| `seat` | `ls`; `show <seat>`; `spawn <claude\|codex\|zsh> [--place right\|down\|tab\|space] [--role <role>] [--name <n>]`; `close <seat>`; `undo-close <seat>`; `rename <seat> <name>`; `focus <seat>`; `restart <seat>`; `screen <seat> [--scrollback <from>..<to>] [--cells]` (**text**: the visible rows, the cursor position and shape, the seat state; with `--cells` every cell with its style; with `--scrollback` the history rows of that range through the lazy pages of #27); `watch <seat>` (stream screen diffs and state changes); `type <seat> <text>`; `key <seat> <named-key>…` (named keys, Kitty encoding when the program asked for it, #32); `paste <seat> <file\|->` (bracketed); `resize <seat> <cols>x<rows>`; `wait <seat> (--state idle\|waiting\|exited \| --text <pattern>) [--timeout <ms>]`; `capture <seat\|window> <path>` (**image**: the PNG of one pane or the window at true size, and in `data` the `frame_seq` it shows and `stale` and `occluded` flags, so a harness knows whether the picture is current, locked and occluded displays included) | **A harness picks text or image per call, whatever it needs** (operator, 2026-10-24). `ListSeats`, `Spawn` (#29 placement, #262 role), `Close`, `UndoClose` (#27), rename and focus actions, restart (#11), `ScreenRead` and `GetHistory` (#27), the state subscription, `Input` for type, key and paste (the keyboard's one path, #270), `Resize`, `Capture` |
 | `message` | `send (<destination> \| --reply-to <id>) <text>`; `inbox [--since <cursor>] [--swarm <s>]`; `receipts <id>`; `ack <id>`; `post <channel> <text>` | `GuiAction::Messaging` (#37, #38 (f); reply routing #264) |
 | `task` | `list [--unassigned \| --seat <s> \| --status <st>]`; `get <#N\|path>`; `delegate <#N\|path> <seat>`; `reassign`; `status`; `report`; `accept <#N>`; `reject <#N> --reason <r>` | `GuiAction::Task`, one verb per W2.5d tool (#38 (i) for `--unassigned`) |
 | `record` | `fetch <#N\|slug\|path>`; `search <query> [--type <t>] [--cursor <c>]`; `write <path> --frontmatter <json> --body <file>`; `changes --since <cursor>` | the [[knowledge-base]] contract over the wire, operator authority ([[mcp-control-plane]] write table: the operator writes every type) |
