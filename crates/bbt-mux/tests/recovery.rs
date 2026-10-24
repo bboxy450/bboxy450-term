@@ -414,6 +414,18 @@ fn checkpoint_bounded_recovery() {
     // fixtures cannot share this machine's 999-PTY ceiling.
     let count = std::env::var("R5G_SEATS").map_or(4, |n| n.parse::<usize>().unwrap());
     assert!((2..=967).contains(&count));
+    // #254 / 11b00370: only the full-count gate has a calibrated wall budget.
+    // Default functional fixtures retain every correctness assertion without it.
+    let budget = if count == 967 {
+        let ms = std::env::var("R5G_BUDGET_MS")
+            .expect("967-seat gate requires the calibrated R5G_BUDGET_MS")
+            .parse::<u64>()
+            .expect("R5G_BUDGET_MS must be a positive integer");
+        assert!(ms > 0, "R5G_BUDGET_MS must be positive");
+        Some(Duration::from_millis(ms))
+    } else {
+        None
+    };
     let temp = tempfile::Builder::new()
         .prefix("rook-recovery-")
         .tempdir_in("/tmp")
@@ -675,6 +687,12 @@ fn checkpoint_bounded_recovery() {
         assert_eq!(snapshot.screen, expected[&seat]);
     }
     let elapsed = started.elapsed();
+    if let Some(budget) = budget {
+        assert!(
+            elapsed <= budget,
+            "all {count} seats live in {elapsed:?}, above calibrated budget {budget:?}"
+        );
+    }
     assert!(!logic.client.capture_diagnostics().fixture_lossless);
     logic.shutdown().unwrap();
     let probe = supervisor.connect().unwrap();

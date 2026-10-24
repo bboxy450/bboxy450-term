@@ -1,0 +1,95 @@
+R5g calibrated budget and default invariant activation
+{
+  "at": "2026-10-24T06:29:34.213054-07:00",
+  "source_before_budget": "46f170e94cd043cd8a6557d2d889984237365ffc",
+  "base": "11b00370331839aedf7ffd3aa9a87aa22b756f6c",
+  "calibrated_original_source": "34cc1356244db4ac795c3c6c6e682208055e15dc",
+  "preserved_original_evidence": "7cf403e186ac25c46540c878c54b8910400a3ddf",
+  "activation_authority": "Oracle 03d27fe6-18d0-4784-8c8e-6daaa5d08b77 confirms 11b00370: test commit removes slow and gate; earlier Corvin-activates instruction superseded",
+  "mechanism": "Full 967-seat recovery requires a positive R5G_BUDGET_MS and checks restart-to-all-live time against it. All smaller functional counts ignore the time budget; correctness assertions remain. #254 default four-real-PTY check enabled.",
+  "calibrated_budget_ms": 71666,
+  "remaining": "Normal clean exact CI and separately scheduled 967/50 frame gate (watched seats settle; checkpoint RPC <=10% logic wall) remain unproven. R5i/#267 is untouched.",
+  "rebase_range_diff": " 1:  e440b369 !  1:  ff6b69de Bound checkpoint work outside live ingestion\n    @@ crates/bbt-mux/src/lib.rs: compile_error!(\"bbt-mux currently requires Unix PTYs\n     +mod checkpoint;\n      pub mod ctl_door;\n      pub mod identity;\n    - mod gui_events;\n    + mod gui_capture;\n     \n      ## crates/bbt-mux/src/logic.rs ##\n     @@ crates/bbt-mux/src/logic.rs: use ulid::Ulid;\n    @@ crates/bbt-mux/src/logic.rs: use ulid::Ulid;\n      use crate::bus::{Broker, BusHandle};\n     +use crate::checkpoint::{Age, Cursor as CheckpointCursor, Policy as CheckpointPolicy, Saves};\n      use crate::index::{FileWatch, Index};\n    + use crate::knowledge::{BboxySource, DataSource};\n      use crate::provider::{Connections, HostId, LocalProvider, Provider};\n    - use crate::registry::{Lifecycle, Position, Registry, SeatRecord};\n     @@ crates/bbt-mux/src/logic.rs: enum Command {\n              u64,\n              oneshot::Sender<Result<crate::ring::History>>,\n 2:  2bbdd3ba =  2:  8d01cf8b Record R5g development checks and resolved failures\n 3:  9c1d7370 =  3:  c3845dc3 Keep recovery producers alive and remove serial pre-kill observation\n 4:  a40c2e8b =  4:  51416e8b Check checkpoint debt and age on every catch-up return\n 5:  04a93338 =  5:  7aae920b Record the failed full-count R5g calibration\n 6:  0a3d612e =  6:  63dd09ec Trace checkpoint delivery and maintenance phases\n 7:  fa6dbd0d =  7:  ce3ba6e7 Match recovery calibration to the frame gate swarm shape\n 8:  5372b865 =  8:  bdbb492a Record full-count recovery diagnostic contention\n 9:  34cc1356 =  9:  319b904d Keep the recovery fixture audit lossless before SIGKILL\n10:  7cf403e1 = 10:  46f170e9 Record three full-count recovery calibrations\n",
+  "checks": [
+    {
+      "label": "budget-default4",
+      "status": {
+        "argv": [
+          "env",
+          "R5G_SEATS=4",
+          "R5G_BUDGET_MS=1",
+          "cargo",
+          "test",
+          "-p",
+          "bbt-mux",
+          "--locked",
+          "--test",
+          "recovery",
+          "checkpoint_bounded_recovery",
+          "--",
+          "--exact",
+          "--nocapture"
+        ],
+        "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+        "env": {
+          "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+          "CARGO_INCREMENTAL": "0",
+          "CARGO_PROFILE_DEV_DEBUG": "0",
+          "CARGO_PROFILE_TEST_DEBUG": "0",
+          "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+          "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+          "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+          "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+          "CARGO_BUILD_JOBS": "2",
+          "BBOXY_TEST_CUSTODY": "memory"
+        },
+        "at": "2026-10-24T06:15:44.534115-07:00",
+        "finished": true,
+        "source_diff_sha256": "63e07148a5be9f5e0020b21df3fb02b1e5b689654d73dd6ed13cda75b531c401",
+        "pid": 14326,
+        "exit": 0,
+        "elapsed_s": 96.52866524999263,
+        "source_diff_sha256_after": "63e07148a5be9f5e0020b21df3fb02b1e5b689654d73dd6ed13cda75b531c401"
+      },
+      "log_sha256": "7ebc2241b2ada95d6ad4d51ae8657d1532a04d8ac449d45a2d79ee269f6d9411",
+      "output": "   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)\n   Compiling unicase v2.10.0\n   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui)\n   Compiling pulldown-cmark v0.13.4\n   Compiling unicode-segmentation v1.13.3\n   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mermaid)\n   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)\n   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-doc)\n   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)\n   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-plugin)\n   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)\n    Finished `test` profile [optimized] target(s) in 1m 29s\n     Running tests/recovery.rs (target/r5g/debug/deps/recovery-98e645b4e6ee5e6f)\n\nrunning 1 test\ncheckpoint_recovery delivery={\"burst_held\":1033,\"burst_returned\":3,\"burst_seen\":1035,\"client\":{\"decoded_event_frames\":1148,\"empty_receives\":7545,\"queued_events\":0,\"queued_output_sequence\":null,\"queued_raw_events\":0,\"read_bytes\":117001413,\"read_calls\":16103,\"receive_calls\":8636,\"returned_events\":1091},\"held_released\":1,\"held_sequence\":null,\"inner_empty\":7545,\"inner_receive_calls\":8636,\"last_burst_returned_sequence\":1390,\"last_burst_seen_sequence\":1390,\"other_returned\":56,\"receive_calls\":7604,\"release_requested\":true}\ncheckpoint_recovery capture_phase_totals=[[\"logic_turn\",{\"busy\":0,\"bytes\":0,\"calls\":7684,\"elapsed_ns\":5592226031,\"errors\":0,\"max_ns\":119829541,\"pending_peak\":1,\"work\":812}],[\"commands\",{\"busy\":0,\"bytes\":0,\"calls\":7685,\"elapsed_ns\":221267706,\"errors\":0,\"max_ns\":88079750,\"pending_peak\":0,\"work\":10}],[\"receive\",{\"busy\":0,\"bytes\":0,\"calls\":7686,\"elapsed_ns\":3584240275,\"errors\":0,\"max_ns\":11959875,\"pending_peak\":0,\"work\":0}],[\"event\",{\"busy\":0,\"bytes\":0,\"calls\":877,\"elapsed_ns\":1516716983,\"errors\":0,\"max_ns\":16787500,\"pending_peak\":0,\"work\":0}],[\"replay_page\",{\"busy\":0,\"bytes\":12585984,\"calls\":813,\"elapsed_ns\":1393798166,\"errors\":0,\"max_ns\":16472916,\"pending_peak\":0,\"work\":832}],[\"capture_request\",{\"busy\":0,\"bytes\":0,\"calls\":9,\"elapsed_ns\":53327793,\"errors\":0,\"max_ns\":10244125,\"pending_peak\":0,\"work\":0}],[\"read_ring_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":814,\"elapsed_ns\":1200255683,\"errors\":0,\"max_ns\":16199916,\"pending_peak\":0,\"work\":0}],[\"recovery_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":4,\"elapsed_ns\":21736250,\"errors\":0,\"max_ns\":10243250,\"pending_peak\":0,\"work\":0}],[\"checkpoint_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":8,\"elapsed_ns\":73411666,\"errors\":0,\"max_ns\":22355583,\"pending_peak\":0,\"work\":0}],[\"parse\",{\"busy\":0,\"bytes\":12782634,\"calls\":869,\"elapsed_ns\":197948289,\"errors\":0,\"max_ns\":1887417,\"pending_peak\":0,\"work\":888}],[\"checkpoint\",{\"busy\":0,\"bytes\":0,\"calls\":14,\"elapsed_ns\":187160916,\"errors\":0,\"max_ns\":60527750,\"pending_peak\":0,\"work\":0}],[\"maintenance\",{\"busy\":0,\"bytes\":0,\"calls\":7685,\"elapsed_ns\":113523196,\"errors\":0,\"max_ns\":23138916,\"pending_peak\":0,\"work\":0}],[\"supervisor_turn\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_dispatch\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_query\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_sweep\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_providers\",{\"busy\":0,\"bytes\":0,\"calls\":27,\"elapsed_ns\":46286,\"errors\":0,\"max_ns\":2500,\"pending_peak\":0,\"work\":0}],[\"maintenance_adapters\",{\"busy\":0,\"bytes\":0,\"calls\":27,\"elapsed_ns\":6807994,\"errors\":0,\"max_ns\":2896625,\"pending_peak\":0,\"work\":0}],[\"maintenance_identity\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_messages\",{\"busy\":0,\"bytes\":0,\"calls\":54,\"elapsed_ns\":34638503,\"errors\":0,\"max_ns\":10452542,\"pending_peak\":0,\"work\":0}],[\"maintenance_provenance\",{\"busy\":0,\"bytes\":0,\"calls\":53,\"elapsed_ns\":52299252,\"errors\":0,\"max_ns\":16398459,\"pending_peak\":0,\"work\":123}],[\"checkpoint_service\",{\"busy\":0,\"bytes\":0,\"calls\":15370,\"elapsed_ns\":17254433,\"errors\":0,\"max_ns\":1440500,\"pending_peak\":0,\"work\":0}]]\ncheckpoint_recovery supervisor_notification={\"seat\":\"01M5Q0XVDYZP4N43NH99PN0A9H\",\"generation\":1,\"observed_ns\":2985966709,\"notified_sequence\":0,\"target_sequence\":0,\"ring_observed_ns\":0,\"captured_sequence\":0,\"committed_sequence\":0,\"applied_observed_ns\":0,\"applied_sequence\":0,\"last_progress_ns\":0,\"pages\":0,\"parsed_events\":0,\"parsed_bytes\":0,\"checkpoint_sequence\":0,\"checkpoint_byte_end\":0,\"parsed_byte_end\":0,\"checkpoint_pauses\":0,\"checkpoint_paused\":false,\"idle_checkpoints\":0,\"forced_checkpoints\":0,\"notification_attempts\":3797,\"notification_accepted\":1092,\"notification_last_attempt\":1390,\"notification_last_accepted\":1390}\ncheckpoint_recovery seat=01M5Q0XVDYZP4N43NH99PN0A9H parsed_debt=4209664 backlog=8385550 parsed=12585984 confirmed=8376320 tail=20971534\ncheckpoint_recovery seat=01M5Q0XVDYH0M1P96E8TZCH313 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5Q0XVDYSVKD04T5NYDXEPWM parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5Q0XVDYCTDETCN4J06NJA23 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery reaped_owned_pids=[15887, 15870, 15879, 15863]\ncheckpoint_recovery seats=4 every_seat_live_ms=495.422\ntest checkpoint_bounded_recovery ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 6.81s\n\n"
+    },
+    {
+      "label": "budget-clippy",
+      "status": {
+        "argv": [
+          "cargo",
+          "clippy",
+          "--workspace",
+          "--all-targets",
+          "--locked",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+        "env": {
+          "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+          "CARGO_INCREMENTAL": "0",
+          "CARGO_PROFILE_DEV_DEBUG": "0",
+          "CARGO_PROFILE_TEST_DEBUG": "0",
+          "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+          "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+          "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+          "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+          "CARGO_BUILD_JOBS": "2",
+          "BBOXY_TEST_CUSTODY": "memory"
+        },
+        "at": "2026-10-24T06:19:37.941951-07:00",
+        "finished": true,
+        "source_diff_sha256": "63e07148a5be9f5e0020b21df3fb02b1e5b689654d73dd6ed13cda75b531c401",
+        "pid": 23165,
+        "exit": 0,
+        "elapsed_s": 374.8120464999811,
+        "source_diff_sha256_after": "63e07148a5be9f5e0020b21df3fb02b1e5b689654d73dd6ed13cda75b531c401"
+      },
+      "log_sha256": "97eba8086ac8ee3e8e2399b934335cd0c3cbbeaef56a63f81155ebdc1759e1d7",
+      "output": "   Compiling serde_json v1.0.154\n   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)\n    Checking allocator-api2 v0.2.21\n    Checking hashbrown v0.17.1\n    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui)\n    Checking indexmap v2.14.2\n    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mermaid)\n    Checking serde_yaml v0.9.34+deprecated\n    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)\n    Checking tokio v1.54.1\n    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-doc)\n    Checking naga-types v30.0.1\n    Checking wgpu-types v30.0.1\n    Checking naga v30.0.1\n    Checking num-iter v0.1.46\n    Checking wgpu-naga-bridge v30.0.1\n    Checking elliptic-curve v0.13.8\n    Checking wgpu-hal v30.0.1\n    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)\n    Checking ecdsa v0.16.9\n    Checking wgpu-core-deps-apple v30.0.1\n    Checking primeorder v0.13.6\n    Checking wgpu-core v30.0.1\n    Checking num-bigint-dig v0.8.6\n    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)\n    Checking wgpu v30.0.1\n    Checking rsa v0.9.10\n    Checking cx448 v0.1.1\n    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-render)\n    Checking dsa v0.6.3\n    Checking p256 v0.13.2\n    Checking p384 v0.13.1\n    Checking p521 v0.13.3\n    Checking k256 v0.13.4\n    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)\n    Checking hashlink v0.12.2\n    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-plugin)\n    Checking rusqlite v0.40.2\n    Checking pgp v0.21.0\n    Checking petgraph v0.8.3\n    Checking tokio-tungstenite v0.30.0\n   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxybook)\n    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)\n   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-term)\n    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy-firehose)\n    Checking regex-automata v0.4.18\n   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn-macros)\n    Checking tokio-util v0.7.19\n    Checking trybuild v1.0.120\n    Checking regex v1.13.1\n    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn)\n    Checking num-bigint v0.4.8\n   Compiling ahash v0.8.12\n   Compiling ref-cast v1.0.27\n    Checking num-complex v0.4.6\n   Compiling ref-cast-impl v1.0.27\n    Checking num-rational v0.4.2\n   Compiling unicode-general-category v1.1.0\n    Checking num v0.4.3\n   Compiling jsonschema-value v0.60.1\n    Checking borrow-or-share v0.2.4\n    Checking bit-vec v0.8.0\n    Checking fluent-uri v0.4.1\n    Checking bit-set v0.8.0\n    Checking fraction v0.17.0\n   Compiling strum_macros v0.28.0\n    Checking percent-encoding v2.3.2\n    Checking outref v0.5.2\n    Checking num-cmp v0.1.0\n    Checking micromap v0.3.0\n    Checking vsimd v0.8.0\n    Checking bytecount v0.6.9\n    Checking uuid-simd v0.8.0\n    Checking referencing v0.60.1\n    Checking strum v0.28.0\n    Checking fancy-regex v0.19.2\n    Checking jsonschema-regex v0.60.1\n    Checking email_address v0.2.9\n    Checking toml_edit v0.25.17+spec-1.1.0\n    Checking jsonschema v0.60.1\n    Checking proc-macro-crate v3.5.0\n    Finished `dev` profile [optimized] target(s) in 6m 14s\n"
+    }
+  ]
+}
