@@ -4,7 +4,7 @@ type: "spec"
 number: 105
 title: "Work items — epics, specs, tasks as Markdown with frontmatter"
 created: "2026-10-21T22:23:16Z"
-updated: "2026-10-24T19:30:43Z"
+updated: "2026-10-24T19:33:37Z"
 links:
   - { to: "[[d18-executor-harness-override]]", rel: decision }
   - { to: "[[d28-structured-task-verification]]", rel: decision }
@@ -157,4 +157,4 @@ Links: [[vision]] [[mcp-control-plane]] [[mux-daemon]] [[ux-prototype]] [[plan]]
 
 ## Authorization is the task record ([[d285-no-gated-communications]], 2026-10-24)
 
-An Oracle's brief authorizes an Executor's in-scope work, edits, builds, tests and the records push inside its own worktree and the brief's `allowed_paths`, and nothing else: never work outside the worktree, destructive git, publishing, changes to the user's harness directories, or desktop input. The authorization is the task record itself, signed and numbered in the tree with `allowed_paths` and `verify`, delivered by `Delegate`; a chat line authorizes nothing, and an Executor confirms the task record exists before acting. How a Codex seat acts on it without a pane prompt is the `~/.codex` hooks and rules configuration the Oracle owns.
+An Oracle's brief authorizes an Executor's in-scope work, edits, builds, tests and the records push inside its own worktree and the brief's `allowed_paths`, and nothing else: never work outside the worktree, destructive git, publishing, changes to the user's harness directories, or desktop input. For an in-app seat the authorization is the task record itself, signed and numbered in the tree with `allowed_paths` and `verify`, delivered by `Delegate`; a chat line authorizes nothing, and the seat confirms the record exists before acting. For this swarm's own Executors outside the app, briefed over ICQ, an authenticated brief from the Oracle key listed in `graph.md` is the authorization for in-scope work in their own worktree, with the same refusals (`~/.agents/AGENTS.md`). How a Codex seat acts on it without a pane prompt is the `~/.codex` hooks and rules configuration the Oracle owns.
