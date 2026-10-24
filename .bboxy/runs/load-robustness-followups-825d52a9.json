@@ -1,0 +1,69 @@
+{
+  "source": "825d52a9dd6cd23b75c417df930105c4f53a9c1e",
+  "scope": "separate in-place native smoke and default invariants after the clean normal gate failed due to 17 native occlusion invalidations; not a replacement exit code for that gate",
+  "invariants": {
+    "id": "9f57dd0d3f144b348e351fa1719cef37",
+    "argv": [
+      "env",
+      "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/load-robustness",
+      "CARGO_INCREMENTAL=0",
+      "CARGO_PROFILE_DEV_DEBUG=0",
+      "CARGO_PROFILE_TEST_DEBUG=0",
+      "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+      "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+      "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+      "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+      "BBOXY_TEST_CUSTODY=memory",
+      "CARGO_TERM_COLOR=never",
+      "RUST_BACKTRACE=1",
+      "sh",
+      "scripts/invariants.sh"
+    ],
+    "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+    "started_utc": "2026-10-24T05:16:08.618193+00:00",
+    "pid": 61415,
+    "exit": 0,
+    "elapsed_seconds": 82.08378524996806,
+    "log": "/private/tmp/sable-load-dvljplc5/cmd-9f57dd0d3f144b348e351fa1719cef37.log",
+    "sha256": "cedebd9c2ce7e11cd8ba6dd47f34d15af40dea06da810a27e0be1fac23dd2293",
+    "path": ".bboxy/runs/load-robustness-invariants-825d52a9.log"
+  },
+  "smoke": {
+    "id": "4b0c5e5f76404bdbac3c9c23361b1959",
+    "argv": [
+      "env",
+      "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/load-robustness",
+      "CARGO_INCREMENTAL=0",
+      "CARGO_PROFILE_DEV_DEBUG=0",
+      "CARGO_PROFILE_TEST_DEBUG=0",
+      "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+      "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+      "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+      "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+      "BBOXY_TEST_CUSTODY=memory",
+      "CARGO_TERM_COLOR=never",
+      "RUST_BACKTRACE=1",
+      "cargo",
+      "run",
+      "-p",
+      "bboxy450-term",
+      "--locked",
+      "--",
+      "--smoke"
+    ],
+    "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+    "started_utc": "2026-10-24T05:18:14.129424+00:00",
+    "pid": 70847,
+    "exit": 0,
+    "elapsed_seconds": 29.15740695904242,
+    "log": "/private/tmp/sable-load-dvljplc5/cmd-4b0c5e5f76404bdbac3c9c23361b1959.log",
+    "sha256": "b1118629d3bfaf0be3196c1f6d1b2b15c5975a3ce558e815660d837677be0fe7",
+    "path": ".bboxy/runs/load-robustness-smoke-825d52a9.log"
+  },
+  "smoke_binary": {
+    "path": "/Users/feral/mydev/bboxy450-term-exec3/target/load-robustness/debug/bboxy450-term",
+    "sha256": "556e7c5ebc0146a7d969096eea17075dff43917c20ed53898008ba898d08f13a"
+  },
+  "code_diff_from_source": "empty; only untracked evidence files exist",
+  "recorded_utc": "2026-10-24T05:19:40.673522+00:00"
+}

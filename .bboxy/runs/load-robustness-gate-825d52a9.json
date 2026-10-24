@@ -1,0 +1,314 @@
+{
+  "attempt": 3,
+  "source": "825d52a9dd6cd23b75c417df930105c4f53a9c1e",
+  "upstream": "7de32fcfbd8fe3cfef78e25d5f992308b7fdc94c",
+  "grant": "95995fc4-c7aa-4150-8b6e-645f88dc0a3c",
+  "slot": 2,
+  "worktree": "/private/tmp/ci-sable-load3-n7ud2uz6",
+  "target": "/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d",
+  "created_utc": "2026-10-24T05:02:13.927215+00:00",
+  "socket_test_blob": "d00e300f8a8e0d2e1740852318488ce32a0ee8e2",
+  "source_files": [
+    ".bboxy/runs/load-robustness-49a1f8c2-discovery.log",
+    ".bboxy/runs/load-robustness-49a1f8c2-failures.log",
+    ".bboxy/runs/load-robustness-49a1f8c2-manifest.log",
+    ".bboxy/runs/load-robustness-49a1f8c2-run-1.log",
+    ".bboxy/runs/load-robustness-49a1f8c2-run-2.log",
+    ".bboxy/runs/load-robustness-49a1f8c2-run-3.log",
+    ".bboxy/runs/load-robustness-49a1f8c2-run-4.log",
+    ".bboxy/runs/load-robustness-49a1f8c2-run-5.log",
+    ".bboxy/runs/load-robustness-49a1f8c2-runner.log",
+    ".bboxy/runs/load-robustness-app-build-41e96a8c.log",
+    ".bboxy/runs/load-robustness-ci-af3ffda4.log",
+    ".bboxy/runs/load-robustness-ci-attempt-1-analysis.log",
+    ".bboxy/runs/load-robustness-ci-attempt-2-analysis.log",
+    ".bboxy/runs/load-robustness-ci-ff8550e4.log",
+    ".bboxy/runs/load-robustness-fixture-41e96a8c.json",
+    ".bboxy/runs/load-robustness-gate-af3ffda4.json",
+    ".bboxy/runs/load-robustness-gate-ff8550e4.json",
+    ".bboxy/runs/load-robustness-live-tests-41e96a8c.log",
+    ".bboxy/runs/load-robustness-num2-fixture-audit.json",
+    ".bboxy/runs/load-robustness-replay-7be700f0-manifest.log",
+    ".bboxy/runs/load-robustness-replay-7be700f0-run-01.log",
+    ".bboxy/runs/load-robustness-replay-7be700f0-run-02.log",
+    ".bboxy/runs/load-robustness-replay-7be700f0-run-03.log",
+    ".bboxy/runs/load-robustness-replay-7be700f0-run-04.log",
+    ".bboxy/runs/load-robustness-replay-7be700f0-run-05.log",
+    ".bboxy/runs/load-robustness-replay-7be700f0-run-06.log",
+    ".bboxy/runs/load-robustness-replay-7be700f0-run-07.log",
+    ".bboxy/runs/load-robustness-replay-7be700f0-run-08.log",
+    ".bboxy/runs/load-robustness-replay-7be700f0-run-09.log",
+    ".bboxy/runs/load-robustness-replay-7be700f0-run-10.log",
+    ".bboxy/runs/load-robustness-replay-7be700f0-runner.log",
+    ".bboxy/runs/load-robustness-replay-7be700f0-summary.log",
+    ".bboxy/runs/load-robustness-source-clock-audit-49a1f8c2.json",
+    ".bboxy/runs/load-robustness-strict-clippy-af3ffda4.log",
+    ".bboxy/runs/load-robustness-strict-clippy-ff8550e4.log",
+    "crates/bboxy450-term/src/live.rs",
+    "crates/bboxy450-term/tests/messaging_flow.rs",
+    "crates/bbt-mux/tests/logic.rs",
+    "crates/bbt-mux/tests/socket_backlog.rs",
+    "crates/bbt-mux/tests/storage_bus_index.rs"
+  ],
+  "strict": {
+    "command_id": "c3eb16b3efc443e5b18c67b33b82002a",
+    "root_pid": 42072,
+    "session_id": 90844,
+    "state": "completed",
+    "id": "c3eb16b3efc443e5b18c67b33b82002a",
+    "argv": [
+      "env",
+      "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d",
+      "CARGO_INCREMENTAL=0",
+      "CARGO_PROFILE_DEV_DEBUG=0",
+      "CARGO_PROFILE_TEST_DEBUG=0",
+      "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+      "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+      "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+      "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+      "BBOXY_TEST_CUSTODY=memory",
+      "CARGO_TERM_COLOR=never",
+      "RUST_BACKTRACE=1",
+      "cargo",
+      "clippy",
+      "--workspace",
+      "--all-targets",
+      "--no-deps",
+      "--locked",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "cwd": "/private/tmp/ci-sable-load3-n7ud2uz6",
+    "started_utc": "2026-10-24T05:02:24.881887+00:00",
+    "pid": 42072,
+    "exit": 0,
+    "elapsed_seconds": 56.919467959029134,
+    "log": "/private/tmp/sable-load-dvljplc5/cmd-c3eb16b3efc443e5b18c67b33b82002a.log",
+    "sha256": "9737ae97ba6e2e6c0b7d69412e33bf58d092c17bdae677c192f5b70da7dd4152",
+    "path": ".bboxy/runs/load-robustness-strict-clippy-825d52a9.log"
+  },
+  "ci": {
+    "command_id": "26ebc6841b2f4652bd9476d2a1fb6fea",
+    "root_pid": 45953,
+    "session_id": 24338,
+    "state": "completed",
+    "id": "26ebc6841b2f4652bd9476d2a1fb6fea",
+    "argv": [
+      "env",
+      "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d",
+      "CARGO_INCREMENTAL=0",
+      "CARGO_PROFILE_DEV_DEBUG=0",
+      "CARGO_PROFILE_TEST_DEBUG=0",
+      "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+      "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+      "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+      "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+      "BBOXY_TEST_CUSTODY=memory",
+      "CARGO_TERM_COLOR=never",
+      "RUST_BACKTRACE=1",
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "cwd": "/private/tmp/ci-sable-load3-n7ud2uz6",
+    "started_utc": "2026-10-24T05:03:46.017159+00:00",
+    "pid": 45953,
+    "exit": 1,
+    "elapsed_seconds": 646.415070499992,
+    "log": "/private/tmp/sable-load-dvljplc5/cmd-26ebc6841b2f4652bd9476d2a1fb6fea.log",
+    "sha256": "a644bbabf32ba2467293f41c442d62319a5ec99cee45d3824c9939ebbb1ebb25",
+    "path": ".bboxy/runs/load-robustness-ci-825d52a9.log"
+  },
+  "recorded_owned_processes": {
+    "45953": {
+      "pid": 45953,
+      "ppid": 45943,
+      "start": "Fri Oct 23 22:03:46 2026",
+      "command": "sh scripts/ci-local.sh"
+    },
+    "45958": {
+      "pid": 45958,
+      "ppid": 45953,
+      "start": "Fri Oct 23 22:03:46 2026",
+      "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo build --workspace --locked"
+    },
+    "46902": {
+      "pid": 46902,
+      "ppid": 45958,
+      "start": "Fri Oct 23 22:04:12 2026",
+      "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name objc2_app_kit --edition=2021 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/objc2-app-kit-0.2.2/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --cfg feature=\"NSAppearance\" --cfg feature=\"NSApplication\" --cfg feature=\"NSBitmapImageRep\" --cfg feature=\"NSButton\" --cfg feature=\"NSColor\" --cfg feature=\"NSControl\" --cfg feature=\"NSCursor\" --cfg feature=\"NSDragging\" --cfg feature=\"NSEvent\" --cfg feature=\"NSGraphics\" --cfg feature=\"NSGraphicsContext\" --cfg feature=\"NSImage\" --cfg feature=\"NSImageRep\" --cfg feature=\"NSMenu\" --cfg feature=\"NSMenuItem\" --cfg feature=\"NSOpenGLView\" --cfg feature=\"NSPasteboard\" --cfg feature=\"NSResponder\" --cfg feature=\"NSRunningApplication\" --cfg feature=\"NSScreen\" --cfg feature=\"NSTextInputClient\" --cfg feature=\"NSTextInputContext\" --cfg feature=\"NSView\" --cfg feature=\"NSWindow\" --cfg feature=\"NSWindowScripting\" --cfg feature=\"NSWindowTabGroup\" --cfg feature=\"alloc\" --cfg feature=\"bitflags\" --cfg feature=\"default\" --cfg feature=\"std\" --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"AppKitDefines\", \"AppKitErrors\", \"NSATSTypesetter\", \"NSAccessibility\", \"NSAccessibilityColor\", \"NSAccessibilityConstants\", \"NSAccessibilityCustomAction\", \"NSAccessibilityCustomRotor\", \"NSAccessibilityElement\", \"NSAccessibilityProtocols\", \"NSActionCell\", \"NSAffineTransform\", \"NSAlert\", \"NSAlignmentFeedbackFilter\", \"NSAnimation\", \"NSAnimationContext\", \"NSAppearance\", \"NSAppleScriptExtensions\", \"NSApplication\", \"NSApplicationScripting\", \"NSArrayController\", \"NSAttributedString\", \"NSBezierPath\", \"NSBitmapImageRep\", \"NSBox\", \"NSBrowser\", \"NSBrowserCell\", \"NSButton\", \"NSButtonCell\", \"NSButtonTouchBarItem\", \"NSCIImageRep\", \"NSCachedImageRep\", \"NSCandidateListTouchBarItem\", \"NSCell\", \"NSClickGestureRecognizer\", \"NSClipView\", \"NSCollectionView\", \"NSCollectionViewCompositionalLayout\", \"NSCollectionViewFlowLayout\", \"NSCollectionViewGridLayout\", \"NSCollectionViewLayout\", \"NSCollectionViewTransitionLayout\", \"NSColor\", \"NSColorList\", \"NSColorPanel\", \"NSColorPicker\", \"NSColorPickerTouchBarItem\", \"NSColorPicking\", \"NSColorSampler\", \"NSColorSpace\", \"NSColorWell\", \"NSComboBox\", \"NSComboBoxCell\", \"NSComboButton\", \"NSControl\", \"NSController\", \"NSCursor\", \"NSCustomImageRep\", \"NSCustomTouchBarItem\", \"NSDataAsset\", \"NSDatePicker\", \"NSDatePickerCell\", \"NSDictionaryController\", \"NSDiffableDataSource\", \"NSDockTile\", \"NSDocument\", \"NSDocumentController\", \"NSDocumentScripting\", \"NSDragging\", \"NSDraggingItem\", \"NSDraggingSession\", \"NSDrawer\", \"NSEPSImageRep\", \"NSErrors\", \"NSEvent\", \"NSFilePromiseProvider\", \"NSFilePromiseReceiver\", \"NSFileWrapperExtensions\", \"NSFont\", \"NSFontAssetRequest\", \"NSFontCollection\", \"NSFontDescriptor\", \"NSFontManager\", \"NSFontPanel\", \"NSForm\", \"NSFormCell\", \"NSGestureRecognizer\", \"NSGlyphGenerator\", \"NSGlyphInfo\", \"NSGradient\", \"NSGraphics\", \"NSGraphicsContext\", \"NSGridView\", \"NSGroupTouchBarItem\", \"NSHapticFeedback\", \"NSHelpManager\", \"NSImage\", \"NSImageCell\", \"NSImageRep\", \"NSImageView\", \"NSInputManager\", \"NSInputServer\", \"NSInterfaceStyle\", \"NSItemProvider\", \"NSKeyValueBinding\", \"NSLayoutAnchor\", \"NSLayoutConstraint\", \"NSLayoutGuide\", \"NSLayoutManager\", \"NSLevelIndicator\", \"NSLevelIndicatorCell\", \"NSMagnificationGestureRecognizer\", \"NSMatrix\", \"NSMediaLibraryBrowserController\", \"NSMenu\", \"NSMenuItem\", \"NSMenuItemBadge\", \"NSMenuItemCell\", \"NSMenuToolbarItem\", \"NSMovie\", \"NSNib\", \"NSNibDeclarations\", \"NSNibLoading\", \"NSObjectController\", \"NSOpenGL\", \"NSOpenGLLayer\", \"NSOpenGLView\", \"NSOpenPanel\", \"NSOutlineView\", \"NSPDFImageRep\", \"NSPDFInfo\", \"NSPDFPanel\", \"NSPICTImageRep\", \"NSPageController\", \"NSPageLayout\", \"NSPanGestureRecognizer\", \"NSPanel\", \"NSParagraphStyle\", \"NSPasteboard\", \"NSPasteboardItem\", \"NSPathCell\", \"NSPathComponentCell\", \"NSPathControl\", \"NSPathControlItem\", \"NSPersistentDocument\", \"NSPickerTouchBarItem\", \"NSPopUpButton\", \"NSPopUpButtonCell\", \"NSPopover\", \"NSPopoverTouchBarItem\", \"NSPredicateEditor\", \"NSPredicateEditorRowTemplate\", \"NSPressGestureRecognizer\", \"NSPressureConfiguration\", \"NSPreviewRepresentingActivityItem\", \"NSPrintInfo\", \"NSPrintOperation\", \"NSPrintPanel\", \"NSPrinter\", \"NSProgressIndicator\", \"NSResponder\", \"NSRotationGestureRecognizer\", \"NSRuleEditor\", \"NSRulerMarker\", \"NSRulerView\", \"NSRunningApplication\", \"NSSavePanel\", \"NSScreen\", \"NSScrollView\", \"NSScroller\", \"NSScrubber\", \"NSScrubberItemView\", \"NSScrubberLayout\", \"NSSearchField\", \"NSSearchFieldCell\", \"NSSearchToolbarItem\", \"NSSecureTextField\", \"NSSegmentedCell\", \"NSSegmentedControl\", \"NSShadow\", \"NSSharingService\", \"NSSharingServicePickerToolbarItem\", \"NSSharingServicePickerTouchBarItem\", \"NSSlider\", \"NSSliderAccessory\", \"NSSliderCell\", \"NSSliderTouchBarItem\", \"NSSound\", \"NSSpeechRecognizer\", \"NSSpeechSynthesizer\", \"NSSpellChecker\", \"NSSpellProtocol\", \"NSSplitView\", \"NSSplitViewController\", \"NSSplitViewItem\", \"NSStackView\", \"NSStatusBar\", \"NSStatusBarButton\", \"NSStatusItem\", \"NSStepper\", \"NSStepperCell\", \"NSStepperTouchBarItem\", \"NSStoryboard\", \"NSStoryboardSegue\", \"NSStringDrawing\", \"NSSwitch\", \"NSTabView\", \"NSTabViewController\", \"NSTabViewItem\", \"NSTableCellView\", \"NSTableColumn\", \"NSTableHeaderCell\", \"NSTableHeaderView\", \"NSTableRowView\", \"NSTableView\", \"NSTableViewDiffableDataSource\", \"NSTableViewRowAction\", \"NSText\", \"NSTextAlternatives\", \"NSTextAttachment\", \"NSTextAttachmentCell\", \"NSTextCheckingClient\", \"NSTextCheckingController\", \"NSTextContainer\", \"NSTextContent\", \"NSTextContentManager\", \"NSTextElement\", \"NSTextField\", \"NSTextFieldCell\", \"NSTextFinder\", \"NSTextInputClient\", \"NSTextInputContext\", \"NSTextInsertionIndicator\", \"NSTextLayoutFragment\", \"NSTextLayoutManager\", \"NSTextLineFragment\", \"NSTextList\", \"NSTextListElement\", \"NSTextRange\", \"NSTextSelection\", \"NSTextSelectionNavigation\", \"NSTextStorage\", \"NSTextStorageScripting\", \"NSTextTable\", \"NSTextView\", \"NSTextViewportLayoutController\", \"NSTintConfiguration\", \"NSTitlebarAccessoryViewController\", \"NSTokenField\", \"NSTokenFieldCell\", \"NSToolbar\", \"NSToolbarItem\", \"NSToolbarItemGroup\", \"NSTouch\", \"NSTouchBar\", \"NSTouchBarItem\", \"NSTrackingArea\", \"NSTrackingSeparatorToolbarItem\", \"NSTreeController\", \"NSTreeNode\", \"NSTypesetter\", \"NSUserActivity\", \"NSUserDefaultsController\", \"NSUserInterfaceCompression\", \"NSUserInterfaceItemIdentification\", \"NSUserInterfaceItemSearching\", \"NSUserInterfaceLayout\", \"NSUserInterfaceValidation\", \"NSView\", \"NSViewController\", \"NSVisualEffectView\", \"NSWindow\", \"NSWindowController\", \"NSWindowRestoration\", \"NSWindowScripting\", \"NSWindowTab\", \"NSWindowTabGroup\", \"NSWorkspace\", \"all\", \"alloc\", \"apple\", \"bitflags\", \"block2\", \"default\", \"gnustep-1-7\", \"gnustep-1-8\", \"gnustep-1-9\", \"gnustep-2-0\", \"gnustep-2-1\", \"libc\", \"objc2-core-data\", \"objc2-core-image\", \"objc2-quartz-core\", \"std\")) -C metadata=969d7e0121ff1fbc -C extra-filename=-9c1d4ac59178253b --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern bitflags=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbitflags-09e6e56e8d7c5d2b.rmeta --extern objc2=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libobjc2-a59bdcf142da198d.rmeta --extern objc2_foundation=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libobjc2_foundation-d6ee06b339d5948d.rmeta --cap-lints allow"
+    },
+    "46996": {
+      "pid": 46996,
+      "ppid": 45958,
+      "start": "Fri Oct 23 22:04:14 2026",
+      "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_ui --edition=2024 crates/bbt-ui/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=f641aa65fdb2e915 -C extra-filename=-67d814d68f8e9820 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_ui_model-7188f0efeb88a382.rmeta --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde-eaf9d4dd6ad19406.rmeta"
+    },
+    "47039": {
+      "pid": 47039,
+      "ppid": 45958,
+      "start": "Fri Oct 23 22:04:15 2026",
+      "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name wgpu_hal --edition=2021 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wgpu-hal-30.0.1/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --cfg feature=\"metal\" --cfg feature=\"portable-atomic\" --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"device_lost_panic\", \"drm\", \"dx12\", \"fragile-send-sync-non-atomic-wasm\", \"gles\", \"internal_error_panic\", \"metal\", \"portable-atomic\", \"renderdoc\", \"static-dxc\", \"validation_canary\", \"vulkan\")) -C metadata=adb8c162785c936c -C extra-filename=-5e45ad436569fa4a --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern arrayvec=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libarrayvec-86f0a30c2d5ccb23.rmeta --extern bitflags=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbitflags-09e6e56e8d7c5d2b.rmeta --extern block2=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libblock2-6e4c72fc1b5f0c85.rmeta --extern bytemuck=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbytemuck-1561f3954e4b3884.rmeta --extern cfg_if=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libcfg_if-280618cc35ec8b09.rmeta --extern hashbrown=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libhashbrown-83ba00cd91bbf2ec.rmeta --extern libloading=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/liblibloading-d0bb308f864f1f5d.rmeta --extern log=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/liblog-1c70e5cdc71f0ae6.rmeta --extern naga=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libnaga-051e2ef8c8417285.rmeta --extern naga_types=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libnaga_types-f0bad3dd02a279fc.rmeta --extern objc2=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libobjc2-eed2c0165e02779e.rmeta --extern objc2_core_foundation=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libobjc2_core_foundation-72092071b2262948.rmeta --extern objc2_core_graphics=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libobjc2_core_graphics-a6a0c2a512d0c70b.rmeta --extern objc2_foundation=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libobjc2_foundation-51627c4d4b7a7cc9.rmeta --extern objc2_metal=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libobjc2_metal-9d73330de0b98a97.rmeta --extern objc2_quartz_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libobjc2_quartz_core-76f6689793fda31e.rmeta --extern parking_lot=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libparking_lot-aadea28aa1a1c95b.rmeta --extern profiling=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libprofiling-34d841dfb110ccdc.rmeta --extern raw_window_handle=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libraw_window_handle-f4cd0fefea7e3839.rmeta --extern raw_window_metal=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libraw_window_metal-659cee6b33e0765e.rmeta --extern smallvec=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libsmallvec-0f61bc15961cd818.rmeta --extern static_assertions=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libstatic_assertions-0332fd983b51e436.rmeta --extern thiserror=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libthiserror-e33f9dd6756764fd.rmeta --extern wgpu_naga_bridge=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libwgpu_naga_bridge-8b871ddbd4a255e4.rmeta --extern wgpu_types=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libwgpu_types-a9af6922544c6445.rmeta --cap-lints allow --cfg native --cfg send_sync --cfg metal --cfg any_backend --cfg supports_64bit_atomics --cfg supports_ptr_atomics --check-cfg cfg(native) --check-cfg cfg(send_sync) --check-cfg cfg(webgl) --check-cfg cfg(Emscripten) --check-cfg cfg(dx12) --check-cfg cfg(gles) --check-cfg cfg(gles_with_std) --check-cfg cfg(metal) --check-cfg cfg(vulkan) --check-cfg cfg(drm) --check-cfg cfg(any_backend) --check-cfg cfg(static_dxc) --check-cfg cfg(supports_64bit_atomics) --check-cfg cfg(supports_ptr_atomics)"
+    },
+    "47066": {
+      "pid": 47066,
+      "ppid": 45958,
+      "start": "Fri Oct 23 22:04:16 2026",
+      "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name data_encoding --edition=2018 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/data-encoding-2.11.1/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --cfg feature=\"alloc\" --cfg feature=\"default\" --cfg feature=\"std\" --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"alloc\", \"default\", \"std\")) -C metadata=84218aa4edc3b627 -C extra-filename=-6dcce49653aea84b --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --cap-lints allow"
+    },
+    "47141": {
+      "pid": 47141,
+      "ppid": 45958,
+      "start": "Fri Oct 23 22:04:18 2026",
+      "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name cx448 --edition=2021 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cx448-0.1.1/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --cfg feature=\"default\" --cfg feature=\"pkcs8\" --cfg feature=\"signing\" --cfg feature=\"std\" --cfg feature=\"zeroize\" --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"alloc\", \"default\", \"pkcs8\", \"serde\", \"signing\", \"std\", \"zeroize\")) -C metadata=7248bd1d813c910a -C extra-filename=-4bc25e8445b455f8 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern crypto_bigint=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libcrypto_bigint-186e5d92309fc277.rmeta --extern elliptic_curve=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libelliptic_curve-f4797ce75ab3296e.rmeta --extern pkcs8=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libpkcs8-f403645e9fdbbe80.rmeta --extern rand_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/librand_core-9f3c5f1d56ca1794.rmeta --extern serdect=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserdect-98d7a555a3c90338.rmeta --extern sha3=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libsha3-9613ac9f5a5bd274.rmeta --extern crypto_signature=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libsignature-5ffe90af5acf4653.rmeta --extern subtle=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libsubtle-d41abac97070d7cb.rmeta --extern zeroize=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libzeroize-8c6a66d8771b8f76.rmeta --cap-lints allow"
+    },
+    "47166": {
+      "pid": 47166,
+      "ppid": 45958,
+      "start": "Fri Oct 23 22:04:19 2026",
+      "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name zstd --edition=2018 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zstd-0.14.3/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --cfg feature=\"arrays\" --cfg feature=\"default\" --cfg feature=\"legacy\" --cfg feature=\"zdict_builder\" --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"arrays\", \"bindgen\", \"cmake\", \"debug\", \"default\", \"doc-cfg\", \"experimental\", \"fat-lto\", \"legacy\", \"no_asm\", \"pkg-config\", \"thin\", \"thin-lto\", \"vendored\", \"wasm\", \"with-rust-allocator\", \"zdict_builder\", \"zstdmt\")) -C metadata=70311f97e7ec7ce7 -C extra-filename=-96ad92601cea887a --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern zstd_safe=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libzstd_safe-8a020df9cc6cbd29.rmeta --cap-lints allow -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/build/zstd-sys-afc5294c131af0bb/out"
+    },
+    "47168": {
+      "pid": 47168,
+      "ppid": 45958,
+      "start": "Fri Oct 23 22:04:19 2026",
+      "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name curve25519_dalek --edition=2024 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/curve25519-dalek-5.0.0/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --cfg feature=\"digest\" --cfg feature=\"precomputed-tables\" --cfg feature=\"zeroize\" --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"alloc\", \"default\", \"digest\", \"ff\", \"group\", \"legacy_compatibility\", \"lizard\", \"precomputed-tables\", \"rand_core\", \"serde\", \"zeroize\")) -C metadata=47b8272bdc9f930d -C extra-filename=-854adb4d38b942d0 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern cfg_if=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libcfg_if-280618cc35ec8b09.rmeta --extern digest=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libdigest-b6bbac9a3c19c406.rmeta --extern subtle=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libsubtle-d41abac97070d7cb.rmeta --extern zeroize=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libzeroize-8c6a66d8771b8f76.rmeta --cap-lints allow --cfg curve25519_dalek_bits=\"64\" --cfg curve25519_dalek_backend=\"serial\""
+    },
+    "47181": {
+      "pid": 47181,
+      "ppid": 45958,
+      "start": "Fri Oct 23 22:04:19 2026",
+      "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name aes_kw --edition=2021 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aes-kw-0.2.1/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --cfg feature=\"alloc\" --cfg feature=\"std\" --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"alloc\", \"std\")) -C metadata=3ea5447d2d0ad019 -C extra-filename=-c775be0136418a4f --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern aes=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libaes-98b45b8f1bcfc12c.rmeta --cap-lints allow"
+    },
+    "47185": {
+      "pid": 47185,
+      "ppid": 45958,
+      "start": "Fri Oct 23 22:04:19 2026",
+      "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_rt --edition=2024 crates/bbt-rt/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --cfg feature=\"default\" --cfg feature=\"runtime\" --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"default\", \"runtime\")) -C metadata=1d434c4e8e0b28a1 -C extra-filename=-76caffde7e7e3889 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern crossbeam_queue=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libcrossbeam_queue-bfbcc6d6eb4a1d69.rmeta --extern libc=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/liblibc-06ffd3ef319b2d80.rmeta --extern tokio=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libtokio-083087a89aca9172.rmeta"
+    },
+    "48488": {
+      "pid": 48488,
+      "ppid": 45953,
+      "start": "Fri Oct 23 22:05:28 2026",
+      "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo test --workspace --locked"
+    },
+    "49443": {
+      "pid": 49443,
+      "ppid": 48488,
+      "start": "Fri Oct 23 22:05:52 2026",
+      "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name messaging --edition=2024 crates/bbt-proto/tests/messaging.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=e80c1c09dda16425 -C extra-filename=-ab5d1997dfb1349c --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_core-e2b88c06378299f4.rlib --extern bbt_proto=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_proto-686677f7c52a4397.rlib --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_ui_model-7188f0efeb88a382.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde_json-69c93a5d27575a33.rlib --extern ulid=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libulid-f62a65f6cbb158b0.rlib"
+    },
+    "49444": {
+      "pid": 49444,
+      "ppid": 49443,
+      "start": "Fri Oct 23 22:05:52 2026",
+      "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name messaging --edition=2024 crates/bbt-proto/tests/messaging.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=e80c1c09dda16425 -C extra-filename=-ab5d1997dfb1349c --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_core-e2b88c06378299f4.rlib --extern bbt_proto=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_proto-686677f7c52a4397.rlib --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_ui_model-7188f0efeb88a382.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde_json-69c93a5d27575a33.rlib --extern ulid=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libulid-f62a65f6cbb158b0.rlib"
+    },
+    "49519": {
+      "pid": 49519,
+      "ppid": 48488,
+      "start": "Fri Oct 23 22:05:54 2026",
+      "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_proto --edition=2024 crates/bbt-proto/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=1ce83b61fd19cd38 -C extra-filename=-ba0506448f1a91e0 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_core-e2b88c06378299f4.rlib --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_ui_model-7188f0efeb88a382.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde_json-69c93a5d27575a33.rlib --extern ulid=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libulid-f62a65f6cbb158b0.rlib"
+    },
+    "49520": {
+      "pid": 49520,
+      "ppid": 49519,
+      "start": "Fri Oct 23 22:05:54 2026",
+      "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_proto --edition=2024 crates/bbt-proto/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=1ce83b61fd19cd38 -C extra-filename=-ba0506448f1a91e0 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_core-e2b88c06378299f4.rlib --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_ui_model-7188f0efeb88a382.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde_json-69c93a5d27575a33.rlib --extern ulid=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libulid-f62a65f6cbb158b0.rlib"
+    },
+    "50014": {
+      "pid": 50014,
+      "ppid": 48488,
+      "start": "Fri Oct 23 22:06:12 2026",
+      "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_supervisor --edition=2024 crates/bbt-supervisor/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=4a32d1cfb2c063d2 -C extra-filename=-a40083577abda42d --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_core-e2b88c06378299f4.rlib --extern bbt_rt=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_rt-0d9aa24382fb4b08.rlib --extern getrandom=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libgetrandom-31b5cf3b134abf5e.rlib --extern libc=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/liblibc-06ffd3ef319b2d80.rlib --extern mio=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libmio-ef16b1c034b20124.rlib --extern portable_pty=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libportable_pty-aed9d66b548f00f2.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde_json-69c93a5d27575a33.rlib --extern sha2=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libsha2-47898c2a3e5fa7bc.rlib --extern tempfile=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libtempfile-9f258efe0acc7852.rlib --extern ulid=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libulid-f62a65f6cbb158b0.rlib --extern zstd=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libzstd-96ad92601cea887a.rlib -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/build/sha2-asm-3da27d49616d4323/out -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/build/zstd-sys-afc5294c131af0bb/out"
+    },
+    "50016": {
+      "pid": 50016,
+      "ppid": 50014,
+      "start": "Fri Oct 23 22:06:12 2026",
+      "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_supervisor --edition=2024 crates/bbt-supervisor/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=4a32d1cfb2c063d2 -C extra-filename=-a40083577abda42d --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_core-e2b88c06378299f4.rlib --extern bbt_rt=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_rt-0d9aa24382fb4b08.rlib --extern getrandom=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libgetrandom-31b5cf3b134abf5e.rlib --extern libc=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/liblibc-06ffd3ef319b2d80.rlib --extern mio=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libmio-ef16b1c034b20124.rlib --extern portable_pty=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libportable_pty-aed9d66b548f00f2.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde_json-69c93a5d27575a33.rlib --extern sha2=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libsha2-47898c2a3e5fa7bc.rlib --extern tempfile=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libtempfile-9f258efe0acc7852.rlib --extern ulid=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libulid-f62a65f6cbb158b0.rlib --extern zstd=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libzstd-96ad92601cea887a.rlib -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/build/sha2-asm-3da27d49616d4323/out -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/build/zstd-sys-afc5294c131af0bb/out"
+    },
+    "50534": {
+      "pid": 50534,
+      "ppid": 48488,
+      "start": "Fri Oct 23 22:06:21 2026",
+      "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_ui --edition=2024 crates/bbt-ui/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=e0e6e90c47b5be54 -C extra-filename=-fd65d3015bbc0c56 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_ui_model-7188f0efeb88a382.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde_json-69c93a5d27575a33.rlib"
+    },
+    "50536": {
+      "pid": 50536,
+      "ppid": 50534,
+      "start": "Fri Oct 23 22:06:21 2026",
+      "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_ui --edition=2024 crates/bbt-ui/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=e0e6e90c47b5be54 -C extra-filename=-fd65d3015bbc0c56 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_ui_model-7188f0efeb88a382.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde_json-69c93a5d27575a33.rlib"
+    },
+    "50666": {
+      "pid": 50666,
+      "ppid": 48488,
+      "start": "Fri Oct 23 22:06:31 2026",
+      "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_mux --edition=2024 crates/bbt-mux/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=c4657a4ed2e5efbd -C extra-filename=-4ba418da7790389f --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern base64=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbase64-777f1afc90fc002e.rmeta --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_core-e2b88c06378299f4.rmeta --extern bbt_proto=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_proto-686677f7c52a4397.rmeta --extern bbt_rt=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_rt-0d9aa24382fb4b08.rmeta --extern bbt_supervisor=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_supervisor-92c7903e257851d5.rmeta --extern core_foundation=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libcore_foundation-639a3fb7810f8816.rmeta --extern ed25519_dalek=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libed25519_dalek-a90f332ada939479.rmeta --extern futures_util=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libfutures_util-776ffc55d7c61ec6.rmeta --extern getrandom=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libgetrandom-31b5cf3b134abf5e.rmeta --extern hkdf=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libhkdf-1522593bea99454b.rmeta --extern libc=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/liblibc-06ffd3ef319b2d80.rmeta --extern mio=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libmio-ef16b1c034b20124.rmeta --extern notify=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libnotify-55ae0d28bd58f3e2.rmeta --extern petgraph=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libpetgraph-44a37696b68aa575.rmeta --extern pgp=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libpgp-76c0a571cab7cb59.rmeta --extern rusqlite=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/librusqlite-543fd82035198d09.rmeta --extern security_framework=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libsecurity_framework-2d2763e99aebe492.rmeta --extern security_framework_sys=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libsecurity_framework_sys-302e6bb73f33615e.rmeta --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde-eaf9d4dd6ad19406.rmeta --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde_json-69c93a5d27575a33.rmeta --extern serde_yaml=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde_yaml-1ed061145fe1be34.rmeta --extern sha2=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libsha2-47898c2a3e5fa7bc.rmeta --extern tokio=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libtokio-6002a594f59b2d04.rmeta --extern tokio_tungstenite=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libtokio_tungstenite-3ca5012de7151952.rmeta --extern ulid=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libulid-f62a65f6cbb158b0.rmeta -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/build/sha2-asm-3da27d49616d4323/out -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/build/zstd-sys-afc5294c131af0bb/out -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/build/libsqlite3-sys-8ea266920802d896/out"
+    },
+    "50670": {
+      "pid": 50670,
+      "ppid": 48488,
+      "start": "Fri Oct 23 22:06:31 2026",
+      "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_mux --edition=2024 crates/bbt-mux/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=6ecf518880469272 -C extra-filename=-473c72bf5b8eb358 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern base64=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbase64-777f1afc90fc002e.rlib --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_core-e2b88c06378299f4.rlib --extern bbt_proto=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_proto-686677f7c52a4397.rlib --extern bbt_rt=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_rt-0d9aa24382fb4b08.rlib --extern bbt_supervisor=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_supervisor-92c7903e257851d5.rlib --extern core_foundation=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libcore_foundation-639a3fb7810f8816.rlib --extern ed25519_dalek=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libed25519_dalek-a90f332ada939479.rlib --extern futures_util=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libfutures_util-776ffc55d7c61ec6.rlib --extern getrandom=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libgetrandom-31b5cf3b134abf5e.rlib --extern hkdf=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libhkdf-1522593bea99454b.rlib --extern libc=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/liblibc-06ffd3ef319b2d80.rlib --extern mio=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libmio-ef16b1c034b20124.rlib --extern notify=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libnotify-55ae0d28bd58f3e2.rlib --extern petgraph=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libpetgraph-44a37696b68aa575.rlib --extern pgp=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libpgp-76c0a571cab7cb59.rlib --extern rusqlite=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/librusqlite-543fd82035198d09.rlib --extern security_framework=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libsecurity_framework-2d2763e99aebe492.rlib --extern security_framework_sys=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libsecurity_framework_sys-302e6bb73f33615e.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde_json-69c93a5d27575a33.rlib --extern serde_yaml=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde_yaml-1ed061145fe1be34.rlib --extern sha2=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libsha2-47898c2a3e5fa7bc.rlib --extern tempfile=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libtempfile-9f258efe0acc7852.rlib --extern tokio=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libtokio-6002a594f59b2d04.rlib --extern tokio_tungstenite=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libtokio_tungstenite-3ca5012de7151952.rlib --extern ulid=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libulid-f62a65f6cbb158b0.rlib -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/build/sha2-asm-3da27d49616d4323/out -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/build/zstd-sys-afc5294c131af0bb/out -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/build/libsqlite3-sys-8ea266920802d896/out"
+    },
+    "50675": {
+      "pid": 50675,
+      "ppid": 50670,
+      "start": "Fri Oct 23 22:06:32 2026",
+      "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_mux --edition=2024 crates/bbt-mux/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=6ecf518880469272 -C extra-filename=-473c72bf5b8eb358 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps --extern base64=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbase64-777f1afc90fc002e.rlib --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_core-e2b88c06378299f4.rlib --extern bbt_proto=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_proto-686677f7c52a4397.rlib --extern bbt_rt=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_rt-0d9aa24382fb4b08.rlib --extern bbt_supervisor=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libbbt_supervisor-92c7903e257851d5.rlib --extern core_foundation=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libcore_foundation-639a3fb7810f8816.rlib --extern ed25519_dalek=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libed25519_dalek-a90f332ada939479.rlib --extern futures_util=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libfutures_util-776ffc55d7c61ec6.rlib --extern getrandom=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libgetrandom-31b5cf3b134abf5e.rlib --extern hkdf=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libhkdf-1522593bea99454b.rlib --extern libc=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/liblibc-06ffd3ef319b2d80.rlib --extern mio=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libmio-ef16b1c034b20124.rlib --extern notify=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libnotify-55ae0d28bd58f3e2.rlib --extern petgraph=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libpetgraph-44a37696b68aa575.rlib --extern pgp=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libpgp-76c0a571cab7cb59.rlib --extern rusqlite=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/librusqlite-543fd82035198d09.rlib --extern security_framework=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libsecurity_framework-2d2763e99aebe492.rlib --extern security_framework_sys=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libsecurity_framework_sys-302e6bb73f33615e.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde_json-69c93a5d27575a33.rlib --extern serde_yaml=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libserde_yaml-1ed061145fe1be34.rlib --extern sha2=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libsha2-47898c2a3e5fa7bc.rlib --extern tempfile=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libtempfile-9f258efe0acc7852.rlib --extern tokio=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libtokio-6002a594f59b2d04.rlib --extern tokio_tungstenite=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libtokio_tungstenite-3ca5012de7151952.rlib --extern ulid=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/libulid-f62a65f6cbb158b0.rlib -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/build/sha2-asm-3da27d49616d4323/out -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/build/zstd-sys-afc5294c131af0bb/out -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/build/libsqlite3-sys-8ea266920802d896/out"
+    },
+    "52065": {
+      "pid": 52065,
+      "ppid": 48488,
+      "start": "Fri Oct 23 22:07:54 2026",
+      "command": "/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/custody-8850d282d357f112"
+    },
+    "52068": {
+      "pid": 52068,
+      "ppid": 52065,
+      "start": "Fri Oct 23 22:07:54 2026",
+      "command": "/bin/zsh -f -c printf 'GUI-READY\\n'; while read -r line; do printf 'GUI-ECHO:%s\\n' \"$line\"; done"
+    },
+    "54048": {
+      "pid": 54048,
+      "ppid": 48488,
+      "start": "Fri Oct 23 22:10:35 2026",
+      "command": "/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/deps/logic-9a4a56bb05a54644"
+    },
+    "54054": {
+      "pid": 54054,
+      "ppid": 54048,
+      "start": "Fri Oct 23 22:10:35 2026",
+      "command": "/opt/homebrew/Cellar/python@3.15/3.15.0_1/Frameworks/Python.framework/Versions/3.15/Resources/Python.app/Contents/MacOS/Python -c \\012import os, time, json\\012os.write(1, b'BEFORE\\n')\\012while not os.path.exists(os.environ['BBOXY_TEST_GATE']): time.sleep(0.005)\\012remaining=int(os.environ['BBOXY_TEST_BYTES']); total=remaining\\012chunk=b'x'*65536; latencies=[]; calls=0; started=time.perf_counter()\\012while remaining:\\012    before=time.perf_counter(); n=os.write(1, chunk[:min(remaining,len(chunk))])\\012    latencies.append(time.perf_counter()-before); remaining-=n; calls+=1\\012before=time.perf_counter(); os.write(1,b'\\x1b[31mRING-TAIL\\x1b[0m\\n')\\012latencies.append(time.perf_counter()-before); calls+=1\\012elapsed=time.perf_counter()-started; latencies.sort()\\012stats={'bytes':total,'elapsed_s':elapsed,'max_write_s':max(latencies),'p99_write_s':latencies[max(0,(len(latencies)*99+99)//100-1)],'mib_s':total/(1024*1024)/elapsed,'calls':calls}\\012path=os.environ['BBOXY_TEST_STATS']\\012with open(path+'.tmp','w') as f: json.dump(stats,f)\\012os.replace(path+'.tmp',path)\\012while True: time.sleep(0.1)\\012"
+    },
+    "59265": {
+      "pid": 59265,
+      "ppid": 45953,
+      "start": "Fri Oct 23 22:13:32 2026",
+      "command": "/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d/debug/bboxy450-term --smoke"
+    }
+  },
+  "workspace": {
+    "printed_suite_results": 148,
+    "passed": 1037,
+    "failed": 0,
+    "ignored": 22
+  },
+  "failure": {
+    "stage": "native smoke",
+    "reason": "idle window never stable within 30 seconds",
+    "native_invalidations": 17,
+    "invariants_reached": false,
+    "source_changed": false
+  },
+  "recorded_gate_survivors": [],
+  "worktree_status_after": "",
+  "target_allocated_bytes_before_cleanup": 2849529856,
+  "cleanup": {
+    "worktree_removed": "/private/tmp/ci-sable-load3-n7ud2uz6",
+    "target_removed": "/Users/feral/mydev/bboxy450-term-exec3/target/ci-load3-l8gngj1d",
+    "target_allocated_bytes_before": 2849529856,
+    "at_utc": "2026-10-24T05:15:59.699374+00:00"
+  }
+}

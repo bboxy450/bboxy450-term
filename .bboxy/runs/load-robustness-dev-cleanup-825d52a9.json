@@ -1,0 +1,13 @@
+{
+  "target": "/Users/feral/mydev/bboxy450-term-exec3/target/load-robustness",
+  "allocated_bytes_removed": 6281793536,
+  "at_utc": "2026-10-24T05:21:20.568010+00:00",
+  "known_root_commands_completed": [
+    29473,
+    42072,
+    45953,
+    61415,
+    70847
+  ],
+  "remaining_gate_target": false
+}

@@ -1,0 +1,17 @@
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/load-robustness CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true BBOXY_TEST_CUSTODY=memory CARGO_TERM_COLOR=never RUST_BACKTRACE=1 cargo run -p bboxy450-term --locked -- --smoke
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T05:18:14.129424+00:00
+OWNED_COMMAND_PID 70847
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 14.89s
+     Running `target/load-robustness/debug/bboxy450-term --smoke`
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+smoke bootstrap: early producer handled before GPU ready
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+first frame: native scene presented, seats=15
+idle probe settling: producer_done=true queued=false redraw_pending=false occluded=false frames=21 callbacks=21
+idle probe begins: frames=21 last_update=20
+idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=13.210ms p99=17.724ms samples=21 warm_encode_p50=12.334ms warm_encode_p99=16.755ms
+EXIT 0 elapsed_seconds=29.157 PID=70847

@@ -1,0 +1,21 @@
+LOAD ROBUSTNESS HANDOFF — Sable Embertail <EXECUTOR>
+Signed source: 825d52a9dd6cd23b75c417df930105c4f53a9c1e on base 7de32fcfbd8fe3cfef78e25d5f992308b7fdc94c.
+Oracle accepted and merged the source as 8a0f6aa6; disposition 9378a78e-e3ac-4db3-a7fe-d110fa0d3e4f records the native smoke failure as environmental. This record does not turn CI EXIT 1 into EXIT 0.
+
+Mechanism:
+- crates/bbt-mux/tests/socket_backlog.rs:139 — wait for observed Exit plus snapshot.sequence == exit_sequence; the same 90s allowance now guards absence of real progress, independently of Logic RPC completion. Bounded request count, monotonic replay cursor and Exit advance the watchdog; duplicate prefixes do not. All original byte/hash/order/gap/notification assertions remain.
+- crates/bboxy450-term/src/live.rs:2221 and tests/messaging_flow.rs:78 — number: 1 in each fresh raw task fixture, satisfying NUM2 without changing product code, assertions or deadlines.
+- crates/bbt-mux/tests/logic.rs:201 and storage_bus_index.rs:242,285,288 — valid unique numbers for the remaining positive raw fixtures; intentional malformed, missing, ambiguous and duplicate-number cases stay unchanged.
+- .bboxy/runs/load-robustness-source-clock-audit-49a1f8c2.json — 55 nonignored/nonpaused direct sleep-or-elapsed candidates retained, only the reproduced failure fixed per Oracle.
+
+Verification and failures:
+1. Five O0 default workspace runs on 49a1f8c2 under eight bounded CPU workers: four EXIT 0, one EXIT 101 at socket_backlog.rs:148. Pass 5 completed 10000 requests in 54s, then total 90s observation expired while replay advanced to 3396 of exit 6089. Full failure list was reported before fixes.
+2. Ten O0 target socket_backlog runs after the functional repair, under the same eight workers: 10/10 EXIT 0, every run 67108877 exact bytes, SHA256 9ce315ede056aaa42a4a7f6dba33c1e82ae80b2d8932f01221b8af579187f844. Socket source blob d00e300f8a8e0d2e1740852318488ce32a0ee8e2 is unchanged in the final source. Discovery used workspace feature unification; target verification used package features. Loads were observed, not quiet controlled. All recorded workers were reaped.
+3. First normal CI ff8550e4: EXIT 101 at the unnumbered live task fixture; second af3ffda4: EXIT 101 at the unnumbered messaging_flow fixture. Both failures and logs are retained. Separate raw-fixture migration was authorized, with no product or timeout change.
+4. Full final precheck on 825d52a9: cargo build --workspace --locked EXIT 0 / 37.255s; cargo test --workspace --no-fail-fast --locked EXIT 0 / 448.253s, 1037 passed / 0 failed / 22 ignored across 148 printed suite results, including doctests. Raw precheck SHA256 11cc33e3385917cac5c66fca10a7db7df98adb9cd5b911491c2635ed6e905194.
+5. Strict all-target workspace clippy --no-deps --locked -- -D warnings: EXIT 0 / 56.919s in a clean detached worktree of 825d52a9.
+6. Final clean detached NORMAL ci-local on 825d52a9: EXIT 1 / 646.415s. Build, clippy, all 1037 workspace tests and UI lint passed. Native smoke emitted 17 Occluded invalidations, interrupted one measured window, and failed with 'idle window never stable within 30 seconds'; invariant stage was not reached. Raw CI SHA256 a644bbabf32ba2467293f41c442d62319a5ec99cee45d3824c9939ebbb1ebb25. See log lines 2873-2923.
+7. Separate default invariants on unchanged 825d52a9: EXIT 0 / 82.084s, 16 checks / 0 failures / 7 slow skips. SHA256 cedebd9c2ce7e11cd8ba6dd47f34d15af40dea06da810a27e0be1fac23dd2293.
+8. One separate native-only cargo run --smoke on unchanged source: EXIT 0 / 29.157s; idle 10.002s, frames 0, callbacks 0, updates 20. SHA256 b1118629d3bfaf0be3196c1f6d1b2b15c5975a3ce558e815660d837677be0fe7. This is additional evidence, not a replacement full CI exit status.
+
+All real-process verification used explicit debug memory custody. No ignored real-Keychain tests or slow scale/parity gates were enabled. No UI/renderer/lab/product path changed, so no parity rerun. Existing clocks other than the reproduced socket failure were deliberately left alone. Private CI target/worktree and the one dev target were removed; slot 2 was released. The following smoke-occlusion assignment is separate.
