@@ -1,0 +1,6 @@
+flowchart LR
+  O["Oracle, outside the app<br/>bboxy450-term ctl over gui.sock<br/>operator principal, no new authority"] -- "dm, delegate #N, inbox, receipts, reports" --> L["logic<br/>GuiAction::Messaging / Task<br/>journaled control/op"]
+  L -- "message, task" --> S["in-app seat: Claude or Codex<br/>wired with our MCP, hooks, skill"]
+  S -- "screen_read, seat_*, message_*, task_*,<br/>graph_read, documents, app --capture" --> APP["the app<br/>never the operator's desktop"]
+  S -- "task_report with verify_result<br/>e2e record updated by signed write<br/>feedback as DM and comment records" --> K["knowledge base<br/>.bboxy/e2e/*.md, numbered"]
+  K -- "pass / fail / blocked per promised function" --> O
