@@ -229,6 +229,7 @@ impl Markdown {
             width,
             diagrams: &[],
             record_links: None,
+            scrolls: None,
         };
         let mut children = vec![];
         if !self.frontmatter.fields.is_empty() || self.frontmatter.error.is_some() {
@@ -266,6 +267,7 @@ impl Markdown {
             width,
             diagrams,
             record_links: None,
+            scrolls: None,
         };
         r.blocks(self.display_blocks(title), "")
     }
@@ -285,6 +287,7 @@ impl Markdown {
             width: finite_width(width).min(STYLE.spacing.doc_measure as f32),
             diagrams,
             record_links: Some(links),
+            scrolls: None,
         }
         .blocks(self.display_blocks(title), "")
     }
@@ -297,6 +300,7 @@ impl Markdown {
         m: &dyn c::Measure,
         width: f32,
         links: &ui::modules::document_modal::controller::RecordLinks,
+        scrolls: &std::collections::BTreeMap<String, f32>,
     ) -> c::Element {
         let r = Render {
             ctx,
@@ -304,6 +308,7 @@ impl Markdown {
             width: finite_width(width).min(STYLE.spacing.doc_measure as f32),
             diagrams: &[],
             record_links: Some(links),
+            scrolls: Some(scrolls),
         };
         let typed = self.frontmatter.fields.contains_key("type");
         let extra: Vec<_> = self
@@ -396,6 +401,7 @@ impl Markdown {
                     width,
                     diagrams: &[],
                     record_links: None,
+                    scrolls: None,
                 };
                 let extra: Vec<_> = self
                     .frontmatter
@@ -452,6 +458,7 @@ struct Render<'a> {
     width: f32,
     diagrams: &'a [Diagram],
     record_links: Option<&'a ui::modules::document_modal::controller::RecordLinks>,
+    scrolls: Option<&'a std::collections::BTreeMap<String, f32>>,
 }
 #[derive(Clone)]
 enum Piece {
@@ -533,7 +540,7 @@ impl Render<'_> {
             ),
             BlockKind::Code { info, text } => {
                 if info.split_whitespace().next() == Some("mermaid") {
-                    let options = self
+                    let mut options = self
                         .diagrams
                         .iter()
                         .find(|d| d.source.trim_end() == text.trim_end())
@@ -542,6 +549,12 @@ impl Render<'_> {
                             scroll_x: d.scroll_x,
                         })
                         .unwrap_or_default();
+                    if let Some(offset) = self
+                        .scrolls
+                        .and_then(|scrolls| scrolls.get(&format!("{key}/drawing")))
+                    {
+                        options.scroll_x = *offset;
+                    }
                     (
                         named(
                             key,
@@ -1031,7 +1044,10 @@ impl Render<'_> {
         let child = if w > inner + 0.01 {
             c::Element::ScrollView(c::ScrollView {
                 viewport: [inner, h],
-                offset: [0.; 2],
+                offset: [
+                    self.scrolls.and_then(|s| s.get(key)).copied().unwrap_or(0.),
+                    0.,
+                ],
                 content_width: Some(w),
                 content: Box::new(e),
             })
@@ -1175,7 +1191,10 @@ impl Render<'_> {
             vec![
                 c::Element::ScrollView(c::ScrollView {
                     viewport: [(self.width - 2.).max(0.), h],
-                    offset: [0.; 2],
+                    offset: [
+                        self.scrolls.and_then(|s| s.get(key)).copied().unwrap_or(0.),
+                        0.,
+                    ],
                     content_width: Some(canvas),
                     content: Box::new(content),
                 })

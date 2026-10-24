@@ -3633,17 +3633,33 @@ impl ApplicationHandler<UiEvent> for App {
                 }
             }
             WindowEvent::MouseWheel { delta, .. } if self.document.open => {
-                let dy = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => -y * 28.,
+                let [mut dx, mut dy] = match delta {
+                    MouseScrollDelta::LineDelta(x, y) => [-x * 28., -y * 28.],
                     MouseScrollDelta::PixelDelta(p) => {
-                        -p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
+                        let scale = self.window.as_ref().map_or(1., |w| w.scale_factor() as f32);
+                        [-p.x as f32 / scale, -p.y as f32 / scale]
                     }
                 };
-                if let Some(layout) = &self.document_layout
-                    && self.document.scroll.scroll([0., dy], layout.regions.extent)
-                {
-                    self.document_layout = None;
-                    self.request_redraw();
+                if self.modifiers.shift_key() && dx == 0. {
+                    dx = dy;
+                    dy = 0.;
+                }
+                if let Some(layout) = &self.document_layout {
+                    let horizontal = layout.regions.horizontal_at(self.pointer).cloned();
+                    let extent = layout.regions.extent;
+                    let root_dx = if horizontal.as_ref().is_some_and(|r| r.root) {
+                        dx
+                    } else {
+                        0.
+                    };
+                    let mut changed = self.document.scroll.scroll([root_dx, dy], extent);
+                    if let Some(region) = horizontal.filter(|r| !r.root) {
+                        changed |= self.document.scroll.pan(&region.key, dx, region.max);
+                    }
+                    if changed {
+                        self.document_layout = None;
+                        self.request_redraw();
+                    }
                 }
             }
             WindowEvent::MouseWheel { delta, .. }

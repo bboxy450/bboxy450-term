@@ -1247,6 +1247,7 @@ impl Scene {
                     &self.metrics,
                     width,
                     &host.links,
+                    host.scroll.horizontal(),
                 )
             } else {
                 c::Element::Text(c::Text::new(

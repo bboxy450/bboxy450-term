@@ -73,3 +73,82 @@ fn provider_metadata_has_no_fabricated_yaml_and_uses_the_shared_number_resolver(
         "note.md"
     );
 }
+
+#[test]
+fn wide_mermaid_code_and_tables_pan_in_their_own_retained_viewports() {
+    use bbt_ui::modules::document_modal::{DocumentModal, controller::Controller};
+    fn view(markdown: &bbt_doc::Markdown, control: &Controller) -> c::Layout {
+        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let shell = DocumentModal {
+            document: markdown.document("wide.md"),
+            modal: true,
+            viewport: [900., 600.],
+            ..Default::default()
+        };
+        shell
+            .element_with_body(ctx, &Metrics, [900., 600.], &|w| {
+                markdown.hosted_body_element(
+                    "Wide",
+                    ctx,
+                    &Metrics,
+                    w,
+                    &RecordLinks::new(),
+                    control.horizontal(),
+                )
+            })
+            .layout(Rect::new(0., 0., 846., 492.), ctx, &Metrics)
+            .unwrap()
+    }
+    fn offsets<'a>(n: &'a c::Layout, scope: Option<&'a str>, out: &mut Vec<(String, f32)>) {
+        let scope = if let c::LayoutKind::Named(name) = &n.kind {
+            Some(name.as_str())
+        } else {
+            scope
+        };
+        if let c::LayoutKind::ScrollView { offset, .. } = &n.kind {
+            out.push((scope.unwrap_or("").into(), offset[0]));
+        }
+        for child in &n.children {
+            offsets(child, scope, out);
+        }
+    }
+    let code = format!("```text\n{}\n```", "w".repeat(250));
+    let table = format!(
+        "|{}|{}|{}|\n|---|---|---|\n|one|two|three|",
+        "LongColumn".repeat(12),
+        "LongColumn".repeat(12),
+        "LongColumn".repeat(12)
+    );
+    let mermaid="```mermaid\nflowchart LR\n A[one] --> B[two] --> C[three] --> D[four] --> E[five] --> F[six] --> G[seven] --> H[eight] --> I[nine] --> J[ten]\n```".to_owned();
+    for source in [code, table, mermaid] {
+        let mut markdown = bbt_doc::parse(&source);
+        markdown
+            .set_metadata(&serde_json::json!({"type":"note","title":"Wide"}))
+            .unwrap();
+        let mut control = Controller::default();
+        let before = view(&markdown, &control);
+        let regions = Regions::retained(&before);
+        let horizontal = regions
+            .horizontal()
+            .iter()
+            .find(|r| !r.root)
+            .expect("native overflow viewport");
+        let delta = 40_f32.min(horizontal.max);
+        assert!(control.pan(&horizontal.key, delta, horizontal.max));
+        let after = view(&markdown, &control);
+        let mut actual = vec![];
+        offsets(&after, None, &mut actual);
+        assert!(
+            actual
+                .iter()
+                .any(|(key, x)| key == &horizontal.key && (*x - delta).abs() < 0.01),
+            "{}: {actual:?}",
+            horizontal.key
+        );
+        assert!(
+            regions
+                .horizontal_at([horizontal.rect.x + 1., horizontal.rect.y + 1.])
+                .is_some()
+        );
+    }
+}

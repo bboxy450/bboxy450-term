@@ -51,11 +51,19 @@ pub enum Action {
     Close,
     Unavailable(&'static str),
 }
+#[derive(Debug, Clone)]
+pub struct Horizontal {
+    pub key: String,
+    pub rect: Rect,
+    pub max: f32,
+    pub root: bool,
+}
 #[derive(Default)]
 pub struct Regions {
     links: Vec<(Rect, Action)>,
     pub viewport: Option<Rect>,
     pub extent: [f32; 2],
+    horizontal: Vec<Horizontal>,
 }
 
 pub fn intersection(a: Rect, b: Rect) -> Rect {
@@ -70,11 +78,29 @@ pub fn intersection(a: Rect, b: Rect) -> Rect {
 }
 impl Regions {
     pub fn retained(layout: &c::Layout) -> Self {
-        fn visit(n: &c::Layout, clip: Option<Rect>, out: &mut Regions) {
+        fn visit<'a>(
+            n: &'a c::Layout,
+            clip: Option<Rect>,
+            scope: Option<&'a str>,
+            out: &mut Regions,
+        ) {
+            let scope = if let c::LayoutKind::Named(name) = &n.kind {
+                Some(name.as_str())
+            } else {
+                scope
+            };
             if let c::LayoutKind::Named(name) = &n.kind {
                 let action = name
                     .split_once(PREFIX)
                     .map(|(_, target)| Action::Open(target.into()))
+                    .or_else(|| {
+                        name.ends_with("/button-source")
+                            .then_some(Action::Unavailable("Diagram source"))
+                    })
+                    .or_else(|| {
+                        name.ends_with("/expand")
+                            .then_some(Action::Unavailable("Expand diagram"))
+                    })
                     .or_else(|| {
                         (name == "action6" || name.ends_with("/action6")).then_some(Action::Close)
                     })
@@ -98,16 +124,27 @@ impl Regions {
                     }
                 }
             }
-            // The shell owns the first viewport. A nested diagram's horizontal
-            // scroller must not replace the document's vertical scroll extent.
-            if let c::LayoutKind::ScrollView { content, .. } = &n.kind
-                && out.viewport.is_none()
-            {
-                out.viewport = Some(n.rect);
-                out.extent = [
+            // The shell owns the first viewport; nested horizontal viewports
+            // keep their own retained key, clip and extent.
+            if let c::LayoutKind::ScrollView { content, .. } = &n.kind {
+                let root = out.viewport.is_none();
+                let extent = [
                     (content[0] - n.rect.w).max(0.),
                     (content[1] - n.rect.h).max(0.),
                 ];
+                if root {
+                    out.viewport = Some(n.rect);
+                    out.extent = extent;
+                }
+                let rect = clip.map_or(n.rect, |old| intersection(old, n.rect));
+                if extent[0] > 0. && rect.w > 0. && rect.h > 0. {
+                    out.horizontal.push(Horizontal {
+                        key: scope.unwrap_or("scroller").into(),
+                        rect,
+                        max: extent[0],
+                        root,
+                    });
+                }
             }
             let clip = if matches!(
                 n.kind,
@@ -118,12 +155,23 @@ impl Regions {
                 clip
             };
             for child in &n.children {
-                visit(child, clip, out);
+                visit(child, clip, scope, out);
             }
         }
         let mut out = Self::default();
-        visit(layout, None, &mut out);
+        visit(layout, None, None, &mut out);
         out
+    }
+    pub fn horizontal_at(&self, at: [f32; 2]) -> Option<&Horizontal> {
+        self.horizontal.iter().rev().find(|r| {
+            at[0] >= r.rect.x
+                && at[0] < r.rect.right()
+                && at[1] >= r.rect.y
+                && at[1] < r.rect.bottom()
+        })
+    }
+    pub fn horizontal(&self) -> &[Horizontal] {
+        &self.horizontal
     }
     pub fn hit(&self, at: [f32; 2]) -> Option<Action> {
         self.links
@@ -134,11 +182,27 @@ impl Regions {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Controller {
     pub offset: [f32; 2],
+    horizontal: BTreeMap<String, f32>,
 }
 impl Controller {
+    pub fn horizontal(&self) -> &BTreeMap<String, f32> {
+        &self.horizontal
+    }
+    pub fn pan(&mut self, key: &str, delta: f32, max: f32) -> bool {
+        if !delta.is_finite() || !max.is_finite() {
+            return false;
+        }
+        let old = self.horizontal.get(key).copied().unwrap_or(0.);
+        let next = (old + delta).clamp(0., max.max(0.));
+        if next == old {
+            return false;
+        }
+        self.horizontal.insert(key.into(), next);
+        true
+    }
     pub fn scroll(&mut self, delta: [f32; 2], extent: [f32; 2]) -> bool {
         let before = self.offset;
         for ((offset, delta), extent) in self.offset.iter_mut().zip(delta).zip(extent) {
