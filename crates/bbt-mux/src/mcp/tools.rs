@@ -67,6 +67,17 @@ pub(crate) fn catalogue(actor: &Actor) -> Value {
     tools.extend(super::work_items::catalogue(&super::Actor::from(actor)));
     tools.extend(super::seats::catalogue(actor));
     tools.extend(super::knowledge::catalogue());
+    for tool in &mut tools {
+        tool["inputSchema"]["properties"]["op_id"] = json!({
+            "type":"string",
+            "pattern":"^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+            "description":"Optional. Omit unless you are retrying: the server mints and returns it. Reuse with the same arguments returns the first result; different arguments are refused as op_id_reused."
+        });
+        tool["inputSchema"]["required"]
+            .as_array_mut()
+            .unwrap()
+            .retain(|field| field != "op_id");
+    }
     json!({"tools":tools})
 }
 

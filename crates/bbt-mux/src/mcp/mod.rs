@@ -8,13 +8,6 @@ pub(crate) mod seats;
 pub(crate) mod tools;
 pub(crate) mod work_items;
 
-pub(crate) fn mutation(tool: &str) -> bool {
-    messaging::mutation(tool)
-        || work_items::mutation(tool)
-        || seats::mutation(tool)
-        || knowledge::mutation(tool)
-}
-
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use ulid::Ulid;

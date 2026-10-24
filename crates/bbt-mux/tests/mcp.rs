@@ -802,7 +802,7 @@ fn mcp_seat_input_consumes_readiness_and_enter_is_explicit() {
             "seat_input_text",
             f.input_args(target.id, "DIFFERENT", true),
         ),
-        "conflict",
+        "op_id_reused",
     );
     refused(
         f.mutate(
@@ -1249,7 +1249,10 @@ fn mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_a
     let store = SqliteStore::open(&fixture.config.run_dir.join(format!("seat-{own}"))).unwrap();
     let bytes = store.get(&format!("control/op/{op}")).unwrap().unwrap();
     let conflict = fixture.call(own, op, "seat_get", json!({"seat_id":own}));
-    assert_eq!(conflict["structuredContent"]["error"]["code"], "conflict");
+    assert_eq!(
+        conflict["structuredContent"]["error"]["code"],
+        "op_id_reused"
+    );
     assert_eq!(
         store.get(&format!("control/op/{op}")).unwrap().unwrap(),
         bytes
@@ -1283,7 +1286,7 @@ fn mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_a
         json!({"graph":"execution"}),
     );
     assert_eq!(old["isError"], true);
-    assert_eq!(old["structuredContent"]["error"]["code"], "conflict");
+    assert_eq!(old["structuredContent"]["error"]["code"], "op_id_reused");
     assert_eq!(
         fixture.call(
             oracle,
@@ -1725,7 +1728,10 @@ fn mcp_messages_bind_the_sender_retry_once_reply_list_and_ack_through_w24() {
         "message_send",
         json!({"destination":destination,"text":"changed"}),
     );
-    assert_eq!(changed["structuredContent"]["error"]["code"], "conflict");
+    assert_eq!(
+        changed["structuredContent"]["error"]["code"],
+        "op_id_reused"
+    );
     f.restart();
     assert_eq!(f.mutate(own, op, "message_send", args), first);
     let inbox = data(f.call(peer, Ulid::new(), "message_list", json!({})));
@@ -2074,14 +2080,19 @@ fn mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority() 
     let mut bridge = f.bridge(own);
     initialize(&mut bridge);
     let args = json!({"destination":format!("seats/{}/inbox",f.peer.id),"text":"fixture"});
-    let missing = rpc(
+    let minted = rpc(
         &mut bridge,
         2,
         "tools/call",
         json!({"name":"message_send","arguments":args}),
     );
-    assert_eq!(missing["error"]["code"], -32602);
-    let op = Ulid::new();
+    assert_eq!(minted["result"]["isError"], false);
+    let op = minted["result"]["structuredContent"]["op_id"]
+        .as_str()
+        .unwrap()
+        .parse::<Ulid>()
+        .unwrap();
+    assert_ne!(op, Ulid::nil());
     for invalid_id in [json!("not-a-ulid"), json!(Ulid::nil()), json!("#1")] {
         let mut invalid = args.clone();
         invalid["op_id"] = invalid_id;
@@ -2104,6 +2115,7 @@ fn mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority() 
         json!({"name":"message_send","arguments":original}),
     );
     assert_eq!(first["result"]["isError"], false);
+    assert_eq!(first["result"], minted["result"]);
     let compatible = rpc(
         &mut bridge,
         4,
@@ -2111,6 +2123,28 @@ fn mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority() 
         json!({"name":"message_send","arguments":args,"_meta":{"bboxy450/op_id":op}}),
     );
     assert_eq!(compatible["result"], first["result"]);
+    let reordered = rpc(
+        &mut bridge,
+        4,
+        "tools/call",
+        json!({"name":"message_send","arguments":{
+            "text":"fixture","op_id":op,"destination":args["destination"]
+        }}),
+    );
+    assert_eq!(reordered["result"], first["result"]);
+    let changed = rpc(
+        &mut bridge,
+        4,
+        "tools/call",
+        json!({"name":"message_send","arguments":{
+            "op_id":op,"destination":args["destination"],"text":"different"
+        }}),
+    );
+    assert_eq!(changed["result"]["isError"], true);
+    assert_eq!(
+        changed["result"]["structuredContent"]["error"]["code"],
+        "op_id_reused"
+    );
     let mismatch = rpc(
         &mut bridge,
         5,
@@ -2177,6 +2211,63 @@ fn mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority() 
             .len(),
         1
     );
+}
+
+#[test]
+fn mcp_minted_read_ids_are_retryable_and_every_catalogue_explains_optional_ids() {
+    let f = Fixture::new();
+    for seat in [f.own.id, f.oracle.id] {
+        let mut bridge = f.bridge(seat);
+        initialize(&mut bridge);
+        let catalogue = rpc(&mut bridge, 2, "tools/list", json!({}));
+        for tool in catalogue["result"]["tools"].as_array().unwrap() {
+            let schema = &tool["inputSchema"];
+            assert!(
+                schema["properties"]["op_id"]["description"]
+                    .as_str()
+                    .unwrap()
+                    .contains("retry")
+            );
+            assert!(
+                schema["required"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .all(|field| field != "op_id")
+            );
+        }
+        let first = rpc(
+            &mut bridge,
+            3,
+            "tools/call",
+            json!({"name":"self_status","arguments":{}}),
+        );
+        assert_eq!(first["result"]["isError"], false);
+        let id = first["result"]["structuredContent"]["op_id"]
+            .as_str()
+            .unwrap()
+            .parse::<Ulid>()
+            .unwrap();
+        assert_ne!(id, Ulid::nil());
+        let retry = rpc(
+            &mut bridge,
+            4,
+            "tools/call",
+            json!({"name":"self_status","arguments":{"op_id":id}}),
+        );
+        assert_eq!(retry["result"], first["result"]);
+        let different_tool = rpc(
+            &mut bridge,
+            5,
+            "tools/call",
+            json!({"name":"seat_list","arguments":{"op_id":id}}),
+        );
+        assert_eq!(different_tool["result"]["isError"], true);
+        assert_eq!(
+            different_tool["result"]["structuredContent"]["error"]["code"],
+            "op_id_reused"
+        );
+    }
 }
 
 // Work-item fixtures deliberately use local zsh PTYs and fixture MCP clients.
@@ -2360,7 +2451,10 @@ fn mcp_fixture_first_turn_orients_reports_and_retains_signed_task_receipts() {
             "task_report",
             json!({"task_path":f.task_path(),"summary":"different"}),
         );
-        assert_eq!(changed["structuredContent"]["error"]["code"], "conflict");
+        assert_eq!(
+            changed["structuredContent"]["error"]["code"],
+            "op_id_reused"
+        );
     }
 }
 
@@ -2638,7 +2732,7 @@ fn mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_conte
             "artifact_claim",
             json!({"kind":"file","ref":"changed"})
         )["structuredContent"]["error"]["code"],
-        "conflict"
+        "op_id_reused"
     );
     assert_eq!(
         f.mutate(
@@ -3026,7 +3120,7 @@ fn seat_native_fixture() {
     args["text"] = json!("different");
     refused(
         f.mutate(f.oracle.id, op, "seat_interrupt", args),
-        "conflict",
+        "op_id_reused",
     );
     assert!(frames.try_recv().is_err());
     server.abort();

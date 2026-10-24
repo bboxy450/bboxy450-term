@@ -194,9 +194,7 @@ impl Bridge {
                     .get("arguments")
                     .cloned()
                     .unwrap_or_else(|| json!({}));
-                if !args.is_object()
-                    || !serde_json::to_vec(&args).is_ok_and(|b| b.len() <= super::MAX_ARGS)
-                {
+                if !args.is_object() {
                     return Some(rpc_error(id, -32602, "Invalid or oversized arguments"));
                 }
                 let meta_id = match params.get("_meta").and_then(|m| m.get("bboxy450/op_id")) {
@@ -212,35 +210,29 @@ impl Bridge {
                 };
                 // The model can set tool arguments; native clients need not
                 // expose custom request metadata to support an explicit retry.
-                let argument_id = if super::mutation(tool) {
-                    match args.as_object_mut().unwrap().remove("op_id") {
-                        Some(value) => match value
-                            .as_str()
-                            .and_then(|s| s.parse::<Ulid>().ok())
-                            .filter(|id| *id != Ulid::nil())
-                        {
-                            Some(id) => Some(id),
-                            None => return Some(rpc_error(id, -32602, "Invalid op_id argument")),
-                        },
-                        None => None,
-                    }
-                } else {
-                    None
+                let argument_id = match args.as_object_mut().unwrap().remove("op_id") {
+                    Some(value) => match value
+                        .as_str()
+                        .and_then(|s| s.parse::<Ulid>().ok())
+                        .filter(|id| *id != Ulid::nil())
+                    {
+                        Some(id) => Some(id),
+                        None => return Some(rpc_error(id, -32602, "Invalid op_id argument")),
+                    },
+                    None => None,
                 };
                 let op_id = match (argument_id, meta_id) {
                     (Some(a), Some(b)) if a != b => {
                         return Some(rpc_error(id, -32602, "op_id argument/_meta mismatch"));
                     }
                     (Some(value), _) | (_, Some(value)) => value,
-                    (None, None) if super::mutation(tool) => {
-                        return Some(rpc_error(
-                            id,
-                            -32602,
-                            "op_id is required for mutating tools",
-                        ));
-                    }
                     (None, None) => Ulid::new(),
                 };
+                // The operation ID is retry metadata, not a tool argument and
+                // must not make an otherwise bounded retry exceed MAX_ARGS.
+                if !serde_json::to_vec(&args).is_ok_and(|b| b.len() <= super::MAX_ARGS) {
+                    return Some(rpc_error(id, -32602, "Invalid or oversized arguments"));
+                }
                 let call = Call {
                     op_id,
                     tool: tool.into(),

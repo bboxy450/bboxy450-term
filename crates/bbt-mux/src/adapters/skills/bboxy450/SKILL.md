@@ -36,7 +36,9 @@ inventing a call, bypassing it with shell writes, or claiming the effect happene
    produced, linked to their task. Responsibility and provenance do not confer
    permission to read or control another seat.
 
-Preserve the original operation ID for an explicit retry. If a tool result is
+Omit `op_id` unless you are retrying: every tool mints and returns one for you.
+Preserve that ID for a retry with the same arguments; different arguments are
+refused as `op_id_reused`. If a tool result is
 unknown, query the original operation; do not automatically repeat a message,
 spawn, paste or Enter. Never expose `BBOXY_CAPABILITY`. Seat state, output silence,
 OSC 7501 and ordinary hooks do not by themselves prove composer readiness.
