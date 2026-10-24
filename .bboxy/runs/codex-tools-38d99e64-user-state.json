@@ -1,0 +1,85 @@
+{
+  "before": {
+    "read_utc": "2026-10-24T08:25:45.023691+00:00",
+    "path": "/Users/feral/.codex/config.toml",
+    "sha256": "a8b60d2a768c1f8a1b90c83f3e163169fd9cc7df2605257f2819bab263eba55a",
+    "bytes": 7875,
+    "projects": {
+      "/Users/feral/mydev/bboxy450-term": {
+        "present": true,
+        "trust_level": "trusted"
+      },
+      "/Users/feral/mydev/bboxy450-term-exec3": {
+        "present": false,
+        "trust_level": null
+      }
+    },
+    "mcp_servers": {
+      "paperhands": {
+        "enabled": true,
+        "default_tools_approval_mode": null,
+        "per_tool_approval_modes": {}
+      },
+      "node_repl": {
+        "enabled": true,
+        "default_tools_approval_mode": null,
+        "per_tool_approval_modes": {}
+      },
+      "rea": {
+        "enabled": true,
+        "default_tools_approval_mode": null,
+        "per_tool_approval_modes": {}
+      }
+    },
+    "hook_trust_source_count": 20
+  },
+  "after": {
+    "utc": "2026-10-24T09:12:10.365811+00:00",
+    "config_sha256": "a8b60d2a768c1f8a1b90c83f3e163169fd9cc7df2605257f2819bab263eba55a",
+    "config_bytes": 7875,
+    "config_bytes_equal_before": true,
+    "version": {
+      "dismissed_version": "0.159.2",
+      "mtime_utc": "2026-10-23T21:03:31.051596+00:00",
+      "sha256": "36067d60ac0b3f9907d8cb1fbbd1f22e79a941a4e9087b8559783c044c6af38c"
+    },
+    "recorded_probe3_pids": [
+      {
+        "pid": 90567,
+        "ps_exit": 1,
+        "current": ""
+      },
+      {
+        "pid": 90584,
+        "ps_exit": 1,
+        "current": ""
+      },
+      {
+        "pid": 90585,
+        "ps_exit": 1,
+        "current": ""
+      },
+      {
+        "pid": 90603,
+        "ps_exit": 1,
+        "current": ""
+      },
+      {
+        "pid": 91163,
+        "ps_exit": 1,
+        "current": ""
+      }
+    ],
+    "post_gate_config": {
+      "utc": "2026-10-24T09:24:28.948143+00:00",
+      "sha256": "a8b60d2a768c1f8a1b90c83f3e163169fd9cc7df2605257f2819bab263eba55a",
+      "bytes": 7875
+    }
+  },
+  "version_after_escape": {
+    "path": "/Users/feral/.codex/version.json",
+    "dismissed_version": "0.159.2",
+    "mtime_utc": "2026-10-23T21:03:31.051596+00:00",
+    "sha256": "36067d60ac0b3f9907d8cb1fbbd1f22e79a941a4e9087b8559783c044c6af38c"
+  }
+}

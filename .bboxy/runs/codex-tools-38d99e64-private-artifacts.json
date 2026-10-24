@@ -1,0 +1,212 @@
+{
+  "probe1/app.py": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/app.py",
+    "bytes": 1663,
+    "sha256": "7f0a65954e20b5160554e9212e1781df18dd26b18ea660e52d0c07db1f5b6649"
+  },
+  "probe1/initial-private-screen.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/initial-private-screen.json",
+    "bytes": 206641,
+    "sha256": "9cc0fd5306943cae62a63c6db4838034406d10cdd3400b094b1f5581f473d0ad"
+  },
+  "probe1/initial-private-screen.txt": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/initial-private-screen.txt",
+    "bytes": 1949,
+    "sha256": "439db3a27cb7868a7d1d942f9dd6e3d5cc8df2aebeabeed8f0ac5e1daed8f115"
+  },
+  "probe1/initial-screen-summary.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/initial-screen-summary.json",
+    "bytes": 337,
+    "sha256": "f7abb0dc4074c1c2890166493ec459ede7e91a9b3e2520bf9fb32a91e4297288"
+  },
+  "probe1/native-app.log": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/native-app.log",
+    "bytes": 1735,
+    "sha256": "5d85584fecf9bb5060c1a899ddd1ca5ad6304bd8fd2675726a8cbd3ded384b9e"
+  },
+  "probe1/native-ctl-commands.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/native-ctl-commands.json",
+    "bytes": 2779,
+    "sha256": "45d96db52135aa061d36b7dd1f150ca6af8585058fb094319e37545504c60aa8"
+  },
+  "probe1/native-delegate.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/native-delegate.json",
+    "bytes": 145,
+    "sha256": "66a9f2b926f979a541fd5a1c1d1f6a1fbb215a6ae7cca44ae08014455137e324"
+  },
+  "probe1/native-process.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/native-process.json",
+    "bytes": 586,
+    "sha256": "ed9f102395c3dee9059b8a599c5fee14b89c80613f277d91b1869e70f970f61b"
+  },
+  "probe1/native-result.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/native-result.json",
+    "bytes": 108,
+    "sha256": "d9207b274e5d1a52241c5268b236e72abecfcf4bda6b00b307f3b1620879dc82"
+  },
+  "probe1/native-seat.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/native-seat.json",
+    "bytes": 127,
+    "sha256": "18b91c3c59b31845b967859900ce9272a1ad124896dff068ae52a8564962f46e"
+  },
+  "probe1/probe.py": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe.py",
+    "bytes": 5528,
+    "sha256": "49cd33c85c8b2089bca1a678a0791b656a26cc52648b92b491d595591c9998d1"
+  },
+  "probe2/app.py": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/app.py",
+    "bytes": 1663,
+    "sha256": "b449fe52ee8afaf5d91315de9afa39e9f5902192e91821fd863f6392ff3a9b9f"
+  },
+  "probe2/before-private-screen.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/before-private-screen.json",
+    "bytes": 206641,
+    "sha256": "e7c21d193391bfff288b180fc48057334f3fcc88ad960c92f1373921387548c6"
+  },
+  "probe2/before-private-screen.txt": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/before-private-screen.txt",
+    "bytes": 1949,
+    "sha256": "439db3a27cb7868a7d1d942f9dd6e3d5cc8df2aebeabeed8f0ac5e1daed8f115"
+  },
+  "probe2/before-screen-summary.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/before-screen-summary.json",
+    "bytes": 337,
+    "sha256": "84281400fe7b44ee2c7813b0dfa6ac8d500017c47c7821c5fa72b5cadd69ea97"
+  },
+  "probe2/native-app.log": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-app.log",
+    "bytes": 57351,
+    "sha256": "7d64403c33cae93e4e02afa9408ff6a81a5308398126b6e99aa981b13343b0c2"
+  },
+  "probe2/native-ctl-commands.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-ctl-commands.json",
+    "bytes": 32670,
+    "sha256": "98239da67bb6b38e543e457d73de8cd14337f4eb2f060140b3678f8402e08b04"
+  },
+  "probe2/native-delegate.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-delegate.json",
+    "bytes": 145,
+    "sha256": "6a5127cdd0bd0b448e033470a373ca8f47651b3b0cbad0c214c3d7705e80dc3b"
+  },
+  "probe2/native-process.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-process.json",
+    "bytes": 600,
+    "sha256": "1e9bea45c830fe60b77ffc499b30175b6e8be94450ca9d7ab44cdf003c80c0be"
+  },
+  "probe2/native-result.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-result.json",
+    "bytes": 108,
+    "sha256": "e09c9c3120ebbb1b34163bd999734a7ff40e7708e7057862fd6b2c5dfc554d29"
+  },
+  "probe2/native-seat.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-seat.json",
+    "bytes": 127,
+    "sha256": "79bbcf8d715140e701e8ff0c4efd857ef3a3abd899faf1aab771cda0c6849ebe"
+  },
+  "probe2/native-seed-proof.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-seed-proof.json",
+    "bytes": 323,
+    "sha256": "e2589c8b249b368020279a7649590f99fad834fde7ecb20c0b0379f7f9470554"
+  },
+  "probe2/probe.py": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/probe.py",
+    "bytes": 6562,
+    "sha256": "e196cb3293adfe659e56fc5522d7d3d7e037c06813ae6f23e90d65e2cf81a0a0"
+  },
+  "probe2/ready-private-screen.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/ready-private-screen.json",
+    "bytes": 198052,
+    "sha256": "89d6deceadd1c8a757ada90925342a3e0837979b4be65974d546813cf274bd6e"
+  },
+  "probe2/ready-private-screen.txt": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/ready-private-screen.txt",
+    "bytes": 1945,
+    "sha256": "4b69ea2fcf2c1d60187bcdf0b6febd1b73b8a27aebb1fc2615166f3ac9c38fa5"
+  },
+  "probe2/ready-screen-summary.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/ready-screen-summary.json",
+    "bytes": 337,
+    "sha256": "feeb694c6e7e91874b716b36c15a2943b6e7ec6375330d0249e2965abec16c4b"
+  },
+  "probe2/update-skip-proof.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/update-skip-proof.json",
+    "bytes": 227,
+    "sha256": "085c847eefa68015370d811a29d06c904b0f513c929de98ed377aae01f873311"
+  },
+  "probe3/app.py": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/app.py",
+    "bytes": 1663,
+    "sha256": "b449fe52ee8afaf5d91315de9afa39e9f5902192e91821fd863f6392ff3a9b9f"
+  },
+  "probe3/before-private-screen.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/before-private-screen.json",
+    "bytes": 197822,
+    "sha256": "07a4920967d8c9235cb84019535566e7f354bec99929748302a7b273acb33f96"
+  },
+  "probe3/before-private-screen.txt": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/before-private-screen.txt",
+    "bytes": 1943,
+    "sha256": "0a22a0c4c6b172686441095830ab5f3d11bb77de4560035b0748382a73c8912e"
+  },
+  "probe3/before-screen-summary.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/before-screen-summary.json",
+    "bytes": 338,
+    "sha256": "39876b46fc9cf22fb78cee66773e53a1680298c2e4c12229ecffdcb98b9bda7f"
+  },
+  "probe3/native-app.log": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/native-app.log",
+    "bytes": 49618,
+    "sha256": "c86af8893fd45e3ff4694a1eb055f104f4fc8fe74ae3e75a2833d88705bb5e28"
+  },
+  "probe3/native-ctl-commands.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/native-ctl-commands.json",
+    "bytes": 2946,
+    "sha256": "d71be9ddb8ac12a5aaa53f89449ef4ea9e30a0556ad5f8db7bf17fc3d7b3d684"
+  },
+  "probe3/native-delegate.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/native-delegate.json",
+    "bytes": 145,
+    "sha256": "17d26f97c2c7c48f52cf6430be646c3a827356fb03773a79a3f13df9647f601a"
+  },
+  "probe3/native-process.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/native-process.json",
+    "bytes": 600,
+    "sha256": "b7479e6edffd2af05cad9665f84786ef41ac579c7b892683f815b4f37ba6b850"
+  },
+  "probe3/native-result.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/native-result.json",
+    "bytes": 108,
+    "sha256": "3ffe36747de1153236c082d1823c3dfc38392c8cac7674138f306b44dd87ee99"
+  },
+  "probe3/native-seat.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/native-seat.json",
+    "bytes": 127,
+    "sha256": "ee46f8d2e5b22ece2ebd7ec4afe5a85c3e63117ba3ce8211328504aadd7d23b8"
+  },
+  "probe3/probe.py": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/probe.py",
+    "bytes": 5814,
+    "sha256": "18c3d5bb404e1350e01a7d707ae53eb0b0c2c8c9404f7eb3cc58938fa7293b49"
+  },
+  "probe3/ready-private-screen.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/ready-private-screen.json",
+    "bytes": 199429,
+    "sha256": "ae8a969bf390a1ef1e7cfb13321ca0f24971470caac6bd3a03e31183944e830b"
+  },
+  "probe3/ready-private-screen.txt": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/ready-private-screen.txt",
+    "bytes": 1946,
+    "sha256": "a12c1c977cb7c564e3cd9180ea727cc3cad3eec89af7c6bd17c214b5c3aaa8d4"
+  },
+  "probe3/ready-screen-summary.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/ready-screen-summary.json",
+    "bytes": 336,
+    "sha256": "81aa4f5796ec5fd60cd11a99f290f9b31c8b5145986c8c4e99c683f481a4886e"
+  },
+  "probe3/initial-owned-processes.json": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/initial-owned-processes.json",
+    "bytes": 1484,
+    "sha256": "bb1cc4da83f255bb02f84fe9c7a700bf1ddf35539acb82a7ce2b00058b46942a"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "source": "38d99e646ff59861b2b0a2cd009018bc726e3b4e",
+  "base": "6ac6fcac2ed1ed3ef34bcb5b972fcbd2b620ddff",
+  "paths": [
+    "crates/bbt-mux/src/adapters/launch.rs",
+    "crates/bbt-mux/tests/adapters.rs"
+  ],
+  "blobs": {
+    "crates/bbt-mux/src/adapters/launch.rs": "683cd0adb65fd5978ffdea7af5d9fbabf047f23d",
+    "crates/bbt-mux/tests/adapters.rs": "fdaf205bd28758eeceae97c137e0452b51439143"
+  },
+  "changed_paths": [
+    "crates/bbt-mux/src/adapters/launch.rs",
+    "crates/bbt-mux/tests/adapters.rs"
+  ],
+  "signatures": [
+    "38d99e646ff59861b2b0a2cd009018bc726e3b4e G Disable Codex update checks per in-app invocation",
+    "375e7dc7ebb78b56ca3271d5d2fa1f861e75a560 G Scope Codex MCP tool approval to the bboxy launch overlay"
+  ]
+}
