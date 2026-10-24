@@ -541,7 +541,12 @@ async fn gui_session(
                                 let active=lane.as_ref().ok_or_else(||invalid("GuiEventsHeld: events lane is not attached"))?;
                                 gui_events_page(client.bus.gui_page(&active.lease,&stream,after,limit,crate::gui_events::PAGE_BYTES).await?)
                             }
-                            GuiAction::Spawn {id,spec}=>Ok(GuiReply::Spawned {op:id,seat:client.gui_spawn(id,spec,door).await?}),
+                            GuiAction::Spawn {id,spec}=> {
+                                let seat=client.gui_spawn(id,spec.clone(),door).await?;
+                                // The window places a seat another door spawned, as its own pick.
+                                if door==crate::mcp::Door::Ctl {client.captures.spawned(id,seat,spec);}
+                                Ok(GuiReply::Spawned {op:id,seat})
+                            }
                             GuiAction::Messaging {id,swarm_id,request}=>Ok(GuiReply::Messaging {op:id,response:client.gui_messaging(id,Ulid::from(swarm_id.0.0),request,door).await?}),
                             GuiAction::Task {id,request}=>Ok(GuiReply::Task {op:id,response:client.gui_task(id,request,door).await?}),
                             GuiAction::Watch {seat,view}=> {
@@ -609,7 +614,7 @@ async fn gui_session(
                 }
                 ask=async {capture_asks.as_mut().unwrap().recv().await},if admitted&&capture_asks.is_some()=> {
                     match ask {
-                        Ok(ask)=>send(&mut write,&GuiReply::CaptureAsk {op:ask.id,path:ask.path,seat:ask.seat}).await?,
+                        Ok(notice)=>send(&mut write,&notice.reply()).await?,
                         Err(tokio::sync::broadcast::error::RecvError::Lagged(_))=>{}
                         Err(tokio::sync::broadcast::error::RecvError::Closed)=>capture_asks=None,
                     }

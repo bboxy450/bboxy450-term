@@ -608,6 +608,75 @@ async fn ctl_capture_is_answered_by_the_window() {
     let (ok, lines) = ctl_in(&run, &root, &["capture", "x.png", "--seat", "nobody"]);
     assert!(!ok && lines[0]["kind"] == "error", "{lines:?}");
 
+    // A seat ctl spawns is handed to the window to place on stage, as its own pick is.
+    let (ok, lines) = ctl_in(
+        &run,
+        &root,
+        &[
+            "spawn",
+            "zsh",
+            "--placement",
+            "new-tab",
+            "--cwd",
+            root.to_str().unwrap(),
+        ],
+    );
+    assert!(ok, "{lines:?}");
+    let spawned = lines[0]["seat"].as_str().unwrap().to_owned();
+    loop {
+        let event = tokio::time::timeout(Duration::from_secs(20), session.event())
+            .await
+            .expect("the window hears of the ctl spawn")
+            .unwrap();
+        if let Event::Reply(reply) = event
+            && let GuiReply::OperatorSpawned { seat, spec, .. } = *reply
+        {
+            assert_eq!(seat.to_string(), spawned);
+            assert!(matches!(
+                spec.placement,
+                Some(bbt_proto::seat_state::Placement::NewTab { .. })
+            ));
+            break;
+        }
+    }
+
+    // SIGTERM to logic closes the door: gui.endpoint is removed (invariant #261). The
+    // restarted logic writes a fresh one, with a new capability.
+    let before = std::fs::read_to_string(&endpoint).unwrap();
+    let logic = session.logic.id().unwrap().to_string();
+    assert!(
+        Command::new("kill")
+            .args(["-TERM", &logic])
+            .status()
+            .unwrap()
+            .success()
+    );
+    loop {
+        let event = tokio::time::timeout(Duration::from_secs(20), session.event())
+            .await
+            .expect("logic exits on SIGTERM")
+            .unwrap();
+        if let Event::Exited {
+            process: "logic", ..
+        } = event
+        {
+            break;
+        }
+    }
+    assert!(!endpoint.exists(), "SIGTERM removes gui.endpoint");
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while !endpoint.exists() {
+        assert!(
+            Instant::now() < deadline,
+            "the restarted logic reopens the door"
+        );
+        let _ = tokio::time::timeout(Duration::from_millis(250), session.event()).await;
+    }
+    let after = until("the new endpoint", &root.join("none"), || {
+        std::fs::read_to_string(&endpoint).ok()
+    });
+    assert_ne!(before, after, "a restart writes a fresh endpoint");
+
     session.shutdown().await.unwrap();
 }
 

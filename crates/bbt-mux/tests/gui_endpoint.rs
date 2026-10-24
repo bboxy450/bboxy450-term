@@ -122,6 +122,9 @@ async fn ctl_endpoint_opt_in_and_ancestry_refusal() {
 
     // 1. Off by default: nothing on disk.
     assert!(!file.exists(), "no gui.endpoint without ctl");
+    // A stale file a killed run left behind is replaced when the door opens (below).
+    std::fs::create_dir_all(&run).unwrap();
+    std::fs::write(&file, r#"{"path":"/stale","capability":"00"}"#).unwrap();
 
     // A stand-in supervisor: a shell that waits, then starts a child that knocks on the door.
     let script = r#"import os, socket, sys

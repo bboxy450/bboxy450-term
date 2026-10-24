@@ -1,7 +1,9 @@
-//! Window capture on the operator's behalf: a `GuiAction::Capture` from any operator door
-//! (the window or `ctl`) is relayed to the window's own session as `GuiReply::CaptureAsk`;
-//! the window writes the PNG off its UI thread and answers with `GuiAction::Captured`,
-//! which completes the asker's wait. Logic renders nothing; it only relays.
+//! What another operator door asks of the window, relayed to the window's own session.
+//! Capture: a `GuiAction::Capture` from any operator door (the window or `ctl`) becomes
+//! `GuiReply::CaptureAsk`; the window writes the PNG off its UI thread and answers with
+//! `GuiAction::Captured`, which completes the asker's wait. Spawn: a seat spawned through
+//! `ctl` becomes `GuiReply::OperatorSpawned`, so the window places it on stage. Logic
+//! renders nothing; it only relays.
 use crate::Ulid;
 use std::{collections::HashMap, sync::Mutex, time::Duration};
 use tokio::sync::{broadcast, oneshot};
@@ -18,8 +20,33 @@ pub(crate) struct Ask {
     pub seat: Option<Ulid>,
 }
 
+/// What the window's session forwards.
+#[derive(Debug, Clone)]
+pub(crate) enum Notice {
+    Capture(Ask),
+    Spawned {
+        op: Ulid,
+        seat: bbt_proto::SeatId,
+        spec: bbt_proto::SpawnSpec,
+    },
+}
+impl Notice {
+    pub(crate) fn reply(self) -> bbt_proto::GuiReply {
+        match self {
+            Self::Capture(ask) => bbt_proto::GuiReply::CaptureAsk {
+                op: ask.id,
+                path: ask.path,
+                seat: ask.seat,
+            },
+            Self::Spawned { op, seat, spec } => {
+                bbt_proto::GuiReply::OperatorSpawned { op, seat, spec }
+            }
+        }
+    }
+}
+
 pub(crate) struct Captures {
-    asks: broadcast::Sender<Ask>,
+    asks: broadcast::Sender<Notice>,
     pending: Mutex<HashMap<Ulid, oneshot::Sender<Option<String>>>>,
 }
 impl Default for Captures {
@@ -32,7 +59,7 @@ impl Default for Captures {
 }
 impl Captures {
     /// The window's session listens here.
-    pub(crate) fn subscribe(&self) -> broadcast::Receiver<Ask> {
+    pub(crate) fn subscribe(&self) -> broadcast::Receiver<Notice> {
         self.asks.subscribe()
     }
     /// Asks the window for `ask` and waits for its answer.
@@ -43,7 +70,7 @@ impl Captures {
         let id = ask.id;
         let (done, answer) = oneshot::channel();
         self.lock().insert(id, done);
-        if self.asks.send(ask).is_err() {
+        if self.asks.send(Notice::Capture(ask)).is_err() {
             self.lock().remove(&id);
             return Err("no window is attached to capture".into());
         }
@@ -55,6 +82,10 @@ impl Captures {
             Ok(Err(_)) => Err("the window dropped the capture".into()),
             Err(_) => Err("the window did not answer the capture in time".into()),
         }
+    }
+    /// Tells the window about a seat spawned through another door; no window, no notice.
+    pub(crate) fn spawned(&self, op: Ulid, seat: bbt_proto::SeatId, spec: bbt_proto::SpawnSpec) {
+        let _ = self.asks.send(Notice::Spawned { op, seat, spec });
     }
     /// The window's answer; an id nobody waits for is ignored.
     pub(crate) fn answer(&self, id: Ulid, error: Option<String>) {
@@ -99,7 +130,9 @@ mod tests {
             let ask = ask.clone();
             async move { captures.ask(ask).await }
         });
-        let seen = window.recv().await.unwrap();
+        let Notice::Capture(seen) = window.recv().await.unwrap() else {
+            panic!("a capture notice")
+        };
         assert_eq!((seen.id, seen.path), (ask.id, path));
         captures.answer(Ulid::new(), Some("not this one".into()));
         captures.answer(ask.id, Some("readback failed".into()));

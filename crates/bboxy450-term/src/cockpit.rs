@@ -350,6 +350,7 @@ async fn supervisor_main() -> Result<()> {
 }
 
 async fn logic_main() -> Result<()> {
+    use tokio::signal::unix::{SignalKind, signal};
     let mut input = BufReader::new(tokio::io::stdin());
     let line = read_line(&mut input)
         .await?
@@ -397,7 +398,15 @@ async fn logic_main() -> Result<()> {
         },
     )
     .await?;
-    wait_for_stop(&mut input).await?;
+    // SIGTERM and SIGINT stop logic in order too, so the ctl door closes and its
+    // gui.endpoint is removed (invariant #261), as on the window's stop.
+    let mut terminate = signal(SignalKind::terminate())?;
+    let mut interrupt = signal(SignalKind::interrupt())?;
+    tokio::select! {
+        stopped = wait_for_stop(&mut input) => stopped?,
+        _ = terminate.recv() => eprintln!("logic: SIGTERM"),
+        _ = interrupt.recv() => eprintln!("logic: SIGINT"),
+    }
     eprintln!("logic: orderly shutdown requested");
     drop(door);
     logic.shutdown()?;
@@ -669,6 +678,7 @@ impl Session {
                 | GuiReply::Update { .. }
                 | GuiReply::Ok { .. }
                 | GuiReply::CaptureAsk { .. }
+                | GuiReply::OperatorSpawned { .. }
                 | GuiReply::Hosts(_)
                 | GuiReply::HostState { .. } => {}
                 _ => return Err(invalid("unexpected GUI startup reply")),
