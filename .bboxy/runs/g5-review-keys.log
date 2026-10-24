@@ -1,0 +1,18 @@
+cases 1768 1800 | reviews base 172 new 172
+geometry incomplete []
+NEW review keys outside swell: 0
+cleared: []
+swell cases 32 Counter({'within policy': 32})
+  swell/rows-cozy-light.png 0.0073/0.02 within policy
+  swell/rows-cozy-dark.png 0.0071/0.02 within policy
+  swell/rows-compact-light.png 0.0070/0.02 within policy
+  swell/rows-compact-dark.png 0.0069/0.02 within policy
+  swell/rows-touch-light.png 0.0052/0.02 within policy
+
+moved vs G3 baseline: 656 | changed fraction up: 491 down: 86
+by gallery: {'documents': 30, 'settings': 21, 'graph': 24, 'harness-icon': 2, 'perf': 16, 'message-row': 2, 'seat-row': 232, 'stream': 16, 'sidebar': 40, 'tab-row': 40, 'glyph': 56, 'space-header': 32, 'titlebar': 7, 'title-strip': 80, 'launcher': 4, 'paths': 1, 'pane': 40, 'components': 6, 'documents-surface': 6, 'style': 1}
+newly over budget: []
+largest rise: glyph/grades-reported-shim-inferred-cozy-light.png 0.0034 -> 0.0107 0.02 within policy
+new swell keys: 32 all within policy: True
+
+First gate on b3d787b failed: 320 geometry-incomplete cases (kit rim canvas exported as a part); fixed in 9fab331; this is the re-gate.
