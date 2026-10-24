@@ -4,6 +4,7 @@
 # that is actually on origin/main. Any non-zero step stops everything after it.
 # Usage: sh scripts/records-push.sh "<commit message>" <path>...
 set -eu
+export RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER=  # no machine-wide sccache, #287 sixth instance (a29f839d)
 cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 message=$1; shift
 [ "$#" -gt 0 ] || { echo "records-push: no paths" >&2; exit 2; }

@@ -15,7 +15,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: decision }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-24T19:32:03Z"
-updated: "2026-10-24T21:38:02Z"
+updated: "2026-10-24T22:06:11Z"
 ---
 # No bottlenecks and no chokepoints
 
@@ -39,7 +39,14 @@ held-read responsiveness check); the Oracle as the slot-grant chokepoint
 (fixed, self-service slots); the supervisor's retained-notification retry
 sweep that restarted from the first seat every pass and starved the tail
 (Rook's 967/50 analysis: three watched seats, zero admissions in 12,409
-attempts; fair rotation approved, gate [[no-seat-starves]]).
+attempts; fair rotation approved, gate [[no-seat-starves]]); the
+machine-wide sccache server that every gate compiled through (six Executors
+saw clients idle at 0 % CPU for three to seven minutes, 2,649 hits against
+36,258 misses, so the cache cost every build and paid almost none; fixed at
+a29f839d: `scripts/ci-local.sh` and `scripts/invariants.sh` export
+`RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER=`, the global config untouched;
+an empty `rustc-wrapper` in a repo `.cargo/config.toml` did **not** override
+the global one, tested, so the bypass is the environment, not a config file).
 
 **Wire grammar of the self-service protocol (2026-10-24).** Self-service only
 works when every detector parses the channel the same way, so the slot and
