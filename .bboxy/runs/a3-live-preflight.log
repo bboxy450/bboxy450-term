@@ -1,0 +1,81 @@
+A-3 live DataSource / ctl e2e preflight
+Worktree: /Users/feral/mydev/bboxy450-term-exec6
+Approved brief: 4a664b86-c876-42b8-9bb8-a76e663e183d; plan approval: 09ea2f6b-55cb-4cb2-9a1d-4933708db2ca
+Transport base: accepted origin/main 56e4c62e; loader checkpoint 794d08a7; Wren fault reference 49837277 consumed as 7e2607fe.
+These are dev-worktree prechecks, NOT the exact clean full gate. Every status record binds the real argv, source file hashes, actual exit and log SHA-256.
+
+loader-tests
+command: ["cargo", "test", "-p", "bboxy450-term", "--test", "knowledge_e2e", "--locked"]
+exit: 0; elapsed_seconds: 178.284
+log: target/a3-live-proof/loader-tests.log; sha256: db90cbda9f194c50011667935e0cb5e0ef2fba03d870e4ce379b78c9c72d5631
+
+read-dispatch-tests
+command: ["cargo", "test", "-p", "bbt-mux", "--test", "knowledge_gui", "--locked"]
+exit: 0; elapsed_seconds: 68.516
+log: target/a3-live-proof/read-dispatch-tests.log; sha256: cfe94dc68f42d3ec91576c6851bd9bc0558db648f250d324d570af5c917235dc
+
+live-compile
+command: ["cargo", "check", "-p", "bboxy450-term", "--all-targets", "--locked"]
+exit: 0; elapsed_seconds: 77.925
+log: target/a3-live-proof/live-compile.log; sha256: f1441242aecd0f8337d99b3e32b1f2afa4391b8f2b4002bf73f3a7f3e33a0817
+
+live-tests
+command: ["cargo", "test", "-p", "bboxy450-term", "--all-targets", "--locked"]
+exit: 101; elapsed_seconds: 40.71
+log: target/a3-live-proof/live-tests.log; sha256: 7e2a21e438422ec402f3881eadce618113ce6e0abf9598cad0f3d1a48fdd15a2
+failure disposition: Fixture compile: serde_yaml was not an app dependency; changed the test to JSON frontmatter, without adding dependencies.
+
+live-tests-v2
+command: ["cargo", "test", "-p", "bboxy450-term", "--all-targets", "--locked"]
+exit: 101; elapsed_seconds: 42.286
+log: target/a3-live-proof/live-tests-v2.log; sha256: 4eaa77547683c1007c5617f7f7644bda24f26dca74fc09444a935726bde6cae1
+failure disposition: Fixture frontmatter closing delimiter lacked a newline; the real loader correctly refused the malformed input.
+
+live-corpus-proof
+command: ["cargo", "test", "-p", "bboxy450-term", "--bin", "bboxy450-term", "live_e2e_and_ctl_share_one_corpus_and_refresh_from_document_events", "--locked", "--", "--nocapture"]
+exit: 101; elapsed_seconds: 9.886
+log: target/a3-live-proof/live-corpus-proof.log; sha256: 628439587ffbfd590573b8156b8cc37a20d09b81d3bccde659a068dadceccd93
+failure disposition: Fixture misspelled tracked-by as tracked_by; the canonical projection correctly refused to treat it as tracked.
+
+live-corpus-proof-v2
+command: ["cargo", "test", "-p", "bboxy450-term", "--bin", "bboxy450-term", "live_e2e_and_ctl_share_one_corpus_and_refresh_from_document_events", "--locked", "--", "--nocapture"]
+exit: 0; elapsed_seconds: 20.61
+log: target/a3-live-proof/live-corpus-proof-v2.log; sha256: 0f3b95a284ae99d2d064089e87582f3a09ff87858f1b5e40950b1b1f6b4f2875
+
+app-suite
+command: ["cargo", "test", "-p", "bboxy450-term", "--all-targets", "--locked"]
+exit: 0; elapsed_seconds: 134.21
+log: target/a3-live-proof/app-suite.log; sha256: 26cf44b9b5bd5d59d1bca5e5b9eb21f48fe3548d85152a72687cb01bbdc5219c
+
+workspace-clippy
+command: ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"]
+exit: 101; elapsed_seconds: 36.934
+log: target/a3-live-proof/workspace-clippy.log; sha256: 47874410ee1d61b97f01d27f3e4d27475c0764591c3091d3af0b3cd997c703b0
+failure disposition: New tokio test lacked the standard test-only disallowed_methods exemption; added the same scoped exemption as adjacent fixture tests.
+
+workspace-clippy-v2
+command: ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"]
+exit: 0; elapsed_seconds: 13.021
+log: target/a3-live-proof/workspace-clippy-v2.log; sha256: f06a59f9d0c4439b023bc303b07dd3b8f240d801dd71bc2ad07da8e588a7a2c1
+
+scope-tool-build
+command: ["cargo", "build", "-p", "bboxybook", "--locked"]
+exit: 0; elapsed_seconds: 46.902
+log: target/a3-live-proof/scope-tool-build.log; sha256: da4e61a6e8f6f981e080109bd2695233d9b78805fa18854de8692a23875e236a
+
+provider-fault8
+command: ["python3", "/tmp/velvet-a3-live-scoped.py"]
+exit: 0; elapsed_seconds: 39.167
+log: target/a3-live-proof/provider-fault8.log; sha256: 4f0be4030f3136fd28fb0b7bf0b497b5eff91795d1c03b55b11f5614c6a3ae06
+
+PASS evidence:
+app-suite: 172 passed, 0 failed, 0 ignored across 14 targets; includes the 3 loader tests and real IO owner / external ctl fixture.
+live-corpus-proof-v2: 54 records; the Model checklist and ctl JSON are equal; last_run and run_by preserved; terminal group has 8 rows plus the same GLOBAL summary; unknown group refuses.
+live-corpus-proof-v2: task/doc events drive amber -> red -> green; provider invalid record forces RED despite cached pass rows; close/reopen recovers; no pane placement or focus changes; memory custody and orderly child reaping logged.
+knowledge_e2e: 1000 wakes coalesce into one bounded refresh; identical rows do not dirty the UI; idle does not poll; no reads while hidden/disconnected; old-epoch replies cannot release a current request.
+knowledge_gui: only resolve/fetch/list/changes_since admitted by the helper; writes, search, graph, resource and read/ACK mutations refused; provider request/response/page bounds enforced.
+provider-fault8: capture 0, native render 0, strict compare 0; 8 required / 8 measured / 0 unproven / 0 mismatches / 0 pixel reviews.
+provider-fault8 report sha256: 6f38dc1d21388136db699f21ed532ea5ddaf52096f02f639639df4b65851235e
+Read web/native cozy-dark PNGs: both show RED 1 fault and the explicit provider-offline message; no pixel compensation or tolerance change.
+
+Pending: rebase onto current main once final transport lands; exact clean ci-local --parity in the Oracle slot after04:00; full review-key delta; no production record seeding or model run claimed.

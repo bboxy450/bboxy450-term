@@ -2,7 +2,10 @@
 use std::{
     collections::{BTreeMap, VecDeque},
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     time::{Duration, Instant},
 };
 
@@ -10,6 +13,7 @@ use crate::{UiEvent, log::Logger};
 use bboxy450_term::{
     cockpit::{self, Session},
     grids::Grids,
+    knowledge,
     model::{self, Model, PanePreparer},
     scrollback::History,
 };
@@ -72,9 +76,23 @@ fn spawn_spec(message: &UiMsg, swarm: Ulid, cwd: &Path) -> Option<SpawnSpec> {
 
 pub struct CommandSender {
     sender: mpsc::Sender<UiMsg>,
+    knowledge: Arc<KnowledgeDemand>,
     // Dropping the UI owner wakes shutdown even when the queue and retained
     // retry slot are full. No polling timer and no UI wait are needed.
     _stop: oneshot::Sender<()>,
+}
+#[derive(Default)]
+struct KnowledgeDemand {
+    enabled: AtomicBool,
+    notify: tokio::sync::Notify,
+}
+impl CommandSender {
+    /// A desired observer state, independent of the bounded command queue.
+    pub fn observe_knowledge(&self, enabled: bool) {
+        if self.knowledge.enabled.swap(enabled, Ordering::AcqRel) != enabled {
+            self.knowledge.notify.notify_one();
+        }
+    }
 }
 impl std::ops::Deref for CommandSender {
     type Target = mpsc::Sender<UiMsg>;
@@ -85,18 +103,22 @@ impl std::ops::Deref for CommandSender {
 struct Commands {
     messages: mpsc::Receiver<UiMsg>,
     stop: oneshot::Receiver<()>,
+    knowledge: Arc<KnowledgeDemand>,
 }
 fn command_channel() -> (CommandSender, Commands) {
     let (sender, messages) = mpsc::channel(COMMAND_CAPACITY);
     let (stop, stopped) = oneshot::channel();
+    let knowledge = Arc::new(KnowledgeDemand::default());
     (
         CommandSender {
             sender,
+            knowledge: knowledge.clone(),
             _stop: stop,
         },
         Commands {
             messages,
             stop: stopped,
+            knowledge,
         },
     )
 }
@@ -213,6 +235,7 @@ enum ActionReply {
     History(SeatId),
     Messaging(Ulid),
     Task(Ulid),
+    Knowledge(Ulid),
     Events { stream: String },
     EventCursor,
 }
@@ -234,6 +257,7 @@ impl ActionReplies {
             GuiAction::GetHistory { seat, .. } => ActionReply::History(*seat),
             GuiAction::Messaging { id, .. } => ActionReply::Messaging(*id),
             GuiAction::Task { id, .. } => ActionReply::Task(*id),
+            GuiAction::Knowledge { id, .. } => ActionReply::Knowledge(*id),
             GuiAction::GetEvents { stream, .. } => ActionReply::Events {
                 stream: stream.clone(),
             },
@@ -252,11 +276,14 @@ impl ActionReplies {
                 *expected == ActionReply::Operation
             }
             GuiReply::Error { op, .. } => match expected {
-                ActionReply::Messaging(id) | ActionReply::Task(id) => op == id,
+                ActionReply::Messaging(id) | ActionReply::Task(id) | ActionReply::Knowledge(id) => {
+                    op == id
+                }
                 _ => *op != Ulid::nil(),
             },
             GuiReply::Messaging { op, .. } => *expected == ActionReply::Messaging(*op),
             GuiReply::Task { op, .. } => *expected == ActionReply::Task(*op),
+            GuiReply::Knowledge { op, .. } => *expected == ActionReply::Knowledge(*op),
             GuiReply::Seats(_) => *expected == ActionReply::Seats,
             GuiReply::Hosts(_) => *expected == ActionReply::Hosts,
             GuiReply::History { seat, .. } => *expected == ActionReply::History(*seat),
@@ -356,7 +383,10 @@ fn discard_uncertain_actions(outgoing: &mut VecDeque<GuiAction>) {
     outgoing.retain(|action| {
         !matches!(
             action,
-            GuiAction::Spawn { .. } | GuiAction::Messaging { .. } | GuiAction::Task { .. }
+            GuiAction::Spawn { .. }
+                | GuiAction::Messaging { .. }
+                | GuiAction::Task { .. }
+                | GuiAction::Knowledge { .. }
         )
     });
 }
@@ -621,6 +651,8 @@ async fn run(
     let mut controls = PaneControls::default();
     let mut history = History::default();
     let mut action_replies = ActionReplies::default();
+    let mut knowledge_watch = knowledge::Watch::new(knowledge::promises().map_err(invalid)?);
+    knowledge_watch.observe(commands.knowledge.enabled.load(Ordering::Acquire));
     let mut in_flight = None;
     let mut closing = false;
     // Accept one UI command's actions at a time. Watch diffs are finite;
@@ -630,6 +662,10 @@ async fn run(
     attach_events(&mut model, &mut outgoing);
     updates.publish(model.clone());
     while !closing {
+        knowledge_watch.connection(!lost);
+        if let Some(action) = knowledge_watch.next_action() {
+            queue_action(&mut outgoing, action);
+        }
         let mut writer_blocked = false;
         if !lost {
             controls.queue_due(&grids, &mut outgoing, Instant::now());
@@ -685,6 +721,11 @@ async fn run(
                 }
             }
         }
+        knowledge_watch.connection(!lost);
+        if let Some(snapshot) = knowledge_watch.publication() {
+            Arc::make_mut(&mut model).e2e = Some(snapshot);
+            updates.publish(model.clone());
+        }
         let retry_at = controls
             .deadline(&grids, &outgoing)
             .into_iter()
@@ -693,6 +734,9 @@ async fn run(
         let writer_ready = session.writer_ready();
         let result:Result<()>=async {
             tokio::select! {
+                _=commands.knowledge.notify.notified()=> {
+                    knowledge_watch.observe(commands.knowledge.enabled.load(Ordering::Acquire));
+                },
                 command=async {
                     if !lost && let Some(message)=retained.pop_front() { return Some(message); }
                     commands.messages.recv().await
@@ -802,6 +846,9 @@ async fn run(
                                 Ok(action)=>ack=action,
                                 Err(error)=> {logger.write(format!("event rejected (no ACK): {error}"));return Ok(());}
                             }
+                            if subject.starts_with("doc/") || subject.starts_with("activity/") || subject.starts_with("task/") {
+                                knowledge_watch.changed();
+                            }
                             match payload {
                                 GuiEventPayload::Seat {seat}=>Some(GuiReply::Seat(*seat)),
                                 GuiEventPayload::Identity {identity}=>Some(GuiReply::Identity(identity)),
@@ -814,6 +861,7 @@ async fn run(
                                 Ok(action)=>ack=action,
                                 Err(error)=> {logger.write(format!("event gap rejected (no ACK): {error}"));return Ok(());}
                             }
+                            knowledge_watch.changed();
                             None
                         }
                         GuiReply::Events {page}=> {
@@ -914,6 +962,9 @@ async fn run(
                             logger.write(format!("GUI operation {op} accepted"));
                         },
                         GuiReply::Error {op,reason}=> {
+                            if terminal_reply == Some(ActionReply::Knowledge(op)) {
+                                knowledge_watch.response(op,Err(bbt_mux::knowledge::data_source::CommandError::new("transport",reason.clone())));
+                            }
                             operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Refused(reason.clone()));
                             publish_page_refusal(&mut model,&updates,terminal_reply.as_ref(),&reason)?;
                             if matches!(&terminal_reply,Some(ActionReply::History(_)))
@@ -930,6 +981,12 @@ async fn run(
                         }
                         GuiReply::Messaging {op,response}=>operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Messaging(response)),
                         GuiReply::Task {op,response}=>operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Task(response)),
+                        GuiReply::Knowledge {op,response}=> {
+                            if terminal_reply == Some(ActionReply::Knowledge(op)) {
+                                let result=serde_json::from_value(response).unwrap_or_else(|error| Err(bbt_mux::knowledge::data_source::CommandError::new("invalid_provider_result",format!("invalid knowledge reply: {error}"))));
+                                knowledge_watch.response(op,result);
+                            }
+                        },
                         GuiReply::History {seat,records,next}=> {
                             if terminal_reply == Some(ActionReply::History(seat))
                                 && let Err(reason) = history.accept(seat,records,next) {
@@ -1014,6 +1071,72 @@ async fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "test/fixture IO, not the UI thread"
+    )]
+    #[tokio::test]
+    async fn knowledge_demand_survives_a_full_command_queue_and_coalesces() {
+        let (sender, commands) = command_channel();
+        for _ in 0..COMMAND_CAPACITY {
+            sender.try_send(UiMsg::SpawnZsh).unwrap();
+        }
+        assert!(sender.try_send(UiMsg::SpawnZsh).is_err());
+        sender.observe_knowledge(true);
+        sender.observe_knowledge(false);
+        sender.observe_knowledge(true);
+        tokio::time::timeout(
+            Duration::from_millis(100),
+            commands.knowledge.notify.notified(),
+        )
+        .await
+        .unwrap();
+        assert!(commands.knowledge.enabled.load(Ordering::Acquire));
+        assert!(
+            tokio::time::timeout(
+                Duration::from_millis(10),
+                commands.knowledge.notify.notified()
+            )
+            .await
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn knowledge_reply_correlation_cannot_consume_an_unrelated_result() {
+        let mut replies = ActionReplies::default();
+        let id = Ulid::new();
+        replies.sent(&GuiAction::Knowledge {
+            id,
+            method: "list".into(),
+            args: serde_json::json!({}),
+        });
+        for op in [Ulid::nil(), Ulid::new()] {
+            assert_eq!(
+                replies.take(&GuiReply::Knowledge {
+                    op,
+                    response: serde_json::json!({})
+                }),
+                None
+            );
+            assert_eq!(
+                replies.take(&GuiReply::Error {
+                    op,
+                    reason: "unrelated".into()
+                }),
+                None
+            );
+        }
+        assert_eq!(
+            replies.take(&GuiReply::Knowledge {
+                op: id,
+                response: serde_json::json!({})
+            }),
+            Some(ActionReply::Knowledge(id))
+        );
+        assert!(replies.0.is_empty());
+    }
 
     #[test]
     fn event_terminal_replies_release_fifo_while_status_and_gap_pushes_never_do() {
@@ -1832,6 +1955,245 @@ mod tests {
         assert!(updates.take().is_none());
     }
 
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "test/fixture IO, not the UI thread"
+    )]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn live_e2e_and_ctl_share_one_corpus_and_refresh_from_document_events() {
+        use bbt_ui::modules::e2e_checklist::Tone;
+        use serde_json::{Value, json};
+        let root = tempfile::Builder::new()
+            .prefix("a3-live-")
+            .tempdir()
+            .unwrap();
+        let repository = root.path().join("repository");
+        let run_dir = root.path().join("run");
+        for name in ["e2e", "tasks"] {
+            tokio::fs::create_dir_all(repository.join(".bboxy").join(name))
+                .await
+                .unwrap();
+        }
+        let task = repository.join(".bboxy/tasks/tracked.md");
+        let task_text =
+            "---\nnumber: 1\ntype: task\ntitle: A3 fixture task\nstatus: running\n---\n";
+        tokio::fs::write(&task, task_text).await.unwrap();
+        let promises = knowledge::promises().unwrap();
+        for (i, promise) in promises.iter().enumerate() {
+            let row = json!({"number":i+2,"type":"e2e","function":promise.id,
+                "status":if promise.id=="T1" {"fail"} else if promise.id=="S3" {"manual"} else {"pass"},
+                "last_run":"2026-10-24T00:00:00Z","run_by":"fixture-seat",
+                "links":if promise.id=="T1" {json!([{"rel":"tracked-by","to":"#1"}])} else {json!([])}});
+            let text = format!(
+                "---\n{}\n---\nFixture only.\n",
+                serde_json::to_string_pretty(&row).unwrap()
+            );
+            tokio::fs::write(
+                repository.join(format!(".bboxy/e2e/{}.md", promise.id)),
+                text,
+            )
+            .await
+            .unwrap();
+        }
+        let binary = std::env::current_exe()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("bboxy450-term");
+        assert!(
+            binary.is_file(),
+            "build the app before its real-process test"
+        );
+        let executable = root.path().join("test-app");
+        tokio::fs::write(
+            &executable,
+            format!(
+                "#!/bin/sh\nBBOXY_TEST_CUSTODY=memory exec '{}' \"$@\"\n",
+                binary.to_string_lossy().replace('\'', "'\\''")
+            ),
+        )
+        .await
+        .unwrap();
+        tokio::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o700))
+            .await
+            .unwrap();
+        let session = Session::start(cockpit::Config {
+            executable,
+            socket: run_dir.join("mux.sock"),
+            run_dir: run_dir.clone(),
+            repository: repository.clone(),
+            shell_config: None,
+            ctl: true,
+        })
+        .await
+        .unwrap();
+        let owned = (
+            session.supervisor.id().unwrap(),
+            session.logic.id().unwrap(),
+        );
+        tokio::fs::write(
+            root.path().join("owned-pids.log"),
+            format!("supervisor={} logic={}\n", owned.0, owned.1),
+        )
+        .await
+        .unwrap();
+        eprintln!("A3 owned supervisor={} logic={}", owned.0, owned.1);
+        let context = Arc::new(DeviceContext::new().await.unwrap());
+        let dirty = bbt_rt::DirtySet::new(1, Arc::new(NoWake));
+        let updates = Arc::new(Latest::new(dirty.source(0)));
+        let (sender, commands) = command_channel();
+        let (render, rendering) = oneshot::channel();
+        render
+            .send(RenderContext {
+                context,
+                scale: 1.,
+                theme: bbt_ui_model::tokens::Theme::Dark,
+            })
+            .ok()
+            .unwrap();
+        let task_updates = updates.clone();
+        let io = tokio::spawn(async move {
+            run(
+                task_updates,
+                commands,
+                Logger::new(),
+                session,
+                repository,
+                rendering,
+                |_| {},
+                |_| {},
+            )
+            .await
+        });
+        let mut current = Arc::new(Model::default());
+        sender.observe_knowledge(true);
+        until(&updates, &mut current, |m| {
+            m.e2e
+                .as_ref()
+                .is_some_and(|e| e.records.len() == 54 && e.faults.is_empty())
+        })
+        .await;
+        assert_eq!(
+            current.e2e.as_ref().unwrap().project().summary.tone,
+            Tone::Amber,
+            "{:?}",
+            current.e2e.as_ref().unwrap().project().summary
+        );
+        let stage = current.ui.window.stage.clone();
+        let ctl = |group: Option<&str>| {
+            let binary = binary.clone();
+            let run_dir = run_dir.clone();
+            let group = group.map(str::to_owned);
+            tokio::task::spawn_blocking(move || {
+                let mut command = std::process::Command::new(binary);
+                command.args(["ctl", "e2e"]).env("BBOXY_RUN_DIR", run_dir);
+                if let Some(group) = group {
+                    command.args(["--group", &group]);
+                }
+                let output = command.output().unwrap();
+                let lines = String::from_utf8(output.stdout)
+                    .unwrap()
+                    .lines()
+                    .map(|l| serde_json::from_str::<Value>(l).unwrap())
+                    .collect::<Vec<_>>();
+                (output.status.success(), lines)
+            })
+        };
+        let (ok, lines) = ctl(None).await.unwrap();
+        assert!(ok, "{lines:?}");
+        assert_eq!(
+            lines,
+            knowledge::e2e_lines(current.e2e.as_ref().unwrap(), None).unwrap()
+        );
+        assert_eq!(lines[0]["last_run"], "2026-10-24T00:00:00Z");
+        assert_eq!(lines[0]["run_by"], "fixture-seat");
+        let (ok, group) = ctl(Some("terminal")).await.unwrap();
+        assert!(ok);
+        assert_eq!(group.len(), 9);
+        assert_eq!(
+            group.last(),
+            lines.last(),
+            "group filters rows, never the global summary"
+        );
+        assert!(!ctl(Some("missing-group")).await.unwrap().0);
+
+        tokio::fs::write(&task, task_text.replace("running", "accepted"))
+            .await
+            .unwrap();
+        until(&updates, &mut current, |m| {
+            m.e2e
+                .as_ref()
+                .is_some_and(|e| e.faults.is_empty() && e.project().summary.untracked == 1)
+        })
+        .await;
+        assert_eq!(
+            current.e2e.as_ref().unwrap().project().summary.tone,
+            Tone::Red
+        );
+        let failed = root.path().join("repository/.bboxy/e2e/T1.md");
+        let text = tokio::fs::read_to_string(&failed).await.unwrap();
+        let passed = text.replace("\"status\": \"fail\"", "\"status\": \"pass\"");
+        tokio::fs::write(&failed, &passed).await.unwrap();
+        until(&updates, &mut current, |m| {
+            m.e2e
+                .as_ref()
+                .is_some_and(|e| e.project().summary.tone == Tone::Green)
+        })
+        .await;
+        let (_, lines) = ctl(None).await.unwrap();
+        assert_eq!(
+            lines,
+            knowledge::e2e_lines(current.e2e.as_ref().unwrap(), None).unwrap()
+        );
+        assert_eq!(
+            stage, current.ui.window.stage,
+            "knowledge cannot place or focus a pane"
+        );
+
+        tokio::fs::write(
+            &failed,
+            passed.replace("\"type\": \"e2e\"", "\"type\": \"task\""),
+        )
+        .await
+        .unwrap();
+        until(&updates, &mut current, |m| {
+            m.e2e.as_ref().is_some_and(|e| !e.faults.is_empty())
+        })
+        .await;
+        assert_eq!(
+            current.e2e.as_ref().unwrap().project().summary.tone,
+            Tone::Red
+        );
+        let (_, lines) = ctl(None).await.unwrap();
+        assert_eq!(
+            lines.last().unwrap()["state"],
+            "red",
+            "bad provider rows never leave stale green"
+        );
+        sender.observe_knowledge(false);
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        tokio::fs::write(&failed, &passed).await.unwrap();
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        sender.observe_knowledge(true);
+        until(&updates, &mut current, |m| {
+            m.e2e
+                .as_ref()
+                .is_some_and(|e| e.project().summary.tone == Tone::Green)
+        })
+        .await;
+        drop(sender);
+        tokio::time::timeout(Duration::from_secs(15), io)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+        eprintln!(
+            "PASS A3: 54 live records; screen == ctl JSON; terminal group8 + global summary; doc/task wakes amber -> red -> green; provider fault red; close/reopen recovers; children reaped"
+        );
+    }
+
     fn lines(screen: &bbt_proto::Screen) -> Vec<String> {
         screen
             .cells
@@ -1864,7 +2226,11 @@ mod tests {
         .await
         .unwrap_or_else(|_| {
             panic!(
-                "model condition timed out; screens: {:?}",
+                "model condition timed out; e2e: {:?}; screens: {:?}",
+                current
+                    .e2e
+                    .as_ref()
+                    .map(|e| (&e.faults, e.records.len(), e.project().summary)),
                 current
                     .screens
                     .iter()

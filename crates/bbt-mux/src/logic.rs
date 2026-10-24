@@ -68,6 +68,11 @@ enum Command {
         crate::mcp::Door,
         oneshot::Sender<Result<bbt_proto::messaging::TaskResponse>>,
     ),
+    GuiKnowledge(
+        String,
+        serde_json::Value,
+        oneshot::Sender<crate::knowledge::data_source::Result<serde_json::Value>>,
+    ),
     GuiMessageRow(
         Ulid,
         Ulid,
@@ -324,6 +329,21 @@ impl LogicClient {
         rx.await.map_err(|_| {
             self.unavailable("task outcome unknown; retry the original operation ID")
         })?
+    }
+    /// Only the admitted GUI session calls this read port. The IO owner keeps
+    /// the existing Index; hydration reads create no journal, watcher or ACK.
+    pub async fn gui_knowledge(
+        &self,
+        method: String,
+        args: serde_json::Value,
+    ) -> Result<crate::knowledge::data_source::Result<serde_json::Value>> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiKnowledge(method, args, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await
+            .map_err(|_| self.unavailable("knowledge read interrupted"))
     }
     pub async fn gui_message_row(
         &self,
@@ -3987,6 +4007,11 @@ impl Worker {
                     Command::GuiTask(id, request, door, reply) => {
                         let result = self.gui_task(id, request, door);
                         let _ = reply.send(result);
+                    }
+                    Command::GuiKnowledge(method, args, reply) => {
+                        let source = crate::knowledge::BboxySource::new(&self.index)
+                            .with_registry(&self.registry);
+                        let _ = reply.send(crate::knowledge::read(&source, &method, args));
                     }
                     Command::GuiMessageRow(swarm, message, reply) => {
                         let result = self.identity.status().and_then(|status| {

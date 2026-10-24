@@ -111,20 +111,35 @@ impl E2eLoader {
         self.queue.push_back(Work::Changes);
     }
     fn fail(&mut self, error: d::CommandError) {
-        self.snapshot.faults = vec![format!(
+        let faults = vec![format!(
             "Acceptance records unavailable: {}",
             error.to_string().chars().take(512).collect::<String>()
         )];
-        self.revision = self.revision.wrapping_add(1);
+        if self.snapshot.faults != faults {
+            self.snapshot.faults = faults;
+            self.revision = self.revision.wrapping_add(1);
+        }
         self.pending = None;
         self.queue.clear();
         self.loading = false;
     }
     fn finish(&mut self) {
-        self.snapshot.records = std::mem::take(&mut self.records);
-        self.snapshot.tasks = std::mem::take(&mut self.tasks);
-        self.snapshot.faults.clear();
-        self.revision = self.revision.wrapping_add(1);
+        if self.dirty {
+            // A notice arrived after this scan began. Do not publish a green
+            // snapshot that predates it; coalesce into one fresh scan instead.
+            self.loading = false;
+            return;
+        }
+        let next = Checklist {
+            promises: self.snapshot.promises.clone(),
+            records: std::mem::take(&mut self.records),
+            tasks: std::mem::take(&mut self.tasks),
+            faults: vec![],
+        };
+        if self.snapshot != next {
+            self.snapshot = next;
+            self.revision = self.revision.wrapping_add(1);
+        }
         self.loading = false;
     }
     pub fn next_request(&mut self) -> Option<ReadCall> {
@@ -322,6 +337,88 @@ impl E2eLoader {
             return Err(error("acceptance snapshot byte bound exceeded"));
         }
         Ok(())
+    }
+}
+
+/// IO-owned observer. One request may be on the wire; closing stops further
+/// reads and reconnecting refuses replies from the previous source epoch.
+pub struct Watch {
+    loader: E2eLoader,
+    observing: bool,
+    connected: bool,
+    pending: Option<bbt_mux::Ulid>,
+    restart: bool,
+    published: u64,
+}
+impl Watch {
+    pub fn new(promises: Vec<Promise>) -> Self {
+        Self {
+            loader: E2eLoader::new(promises),
+            observing: false,
+            connected: false,
+            pending: None,
+            restart: false,
+            published: 0,
+        }
+    }
+    /// Called only for a coalesced UI demand notification. A close/open pair
+    /// may coalesce to true, so true also forces a fresh source snapshot.
+    pub fn observe(&mut self, enabled: bool) {
+        self.observing = enabled;
+        if enabled {
+            if self.pending.is_some() {
+                self.restart = true;
+            } else {
+                self.loader.reconnect();
+            }
+        }
+    }
+    pub fn connection(&mut self, connected: bool) {
+        if self.connected != connected {
+            self.connected = connected;
+            self.pending = None;
+            self.restart = false;
+            if self.observing {
+                self.loader.reconnect();
+            }
+        }
+    }
+    pub fn changed(&mut self) {
+        if self.observing {
+            self.loader.changed();
+        }
+    }
+    pub fn next_action(&mut self) -> Option<bbt_proto::GuiAction> {
+        if !self.observing || !self.connected || self.pending.is_some() {
+            return None;
+        }
+        let call = self.loader.next_request()?;
+        let id = bbt_mux::Ulid::new();
+        self.pending = Some(id);
+        Some(bbt_proto::GuiAction::Knowledge {
+            id,
+            method: call.method.into(),
+            args: call.args,
+        })
+    }
+    pub fn response(&mut self, op: bbt_mux::Ulid, result: d::Result<Value>) {
+        if self.pending != Some(op) {
+            return;
+        }
+        self.pending = None;
+        if self.restart || !self.observing {
+            self.restart = false;
+            self.loader.reconnect();
+        } else {
+            self.loader.respond(result);
+        }
+    }
+    pub fn publication(&mut self) -> Option<std::sync::Arc<Checklist>> {
+        if !self.observing || self.published == self.loader.revision() {
+            return None;
+        }
+        self.published = self.loader.revision();
+        Some(std::sync::Arc::new(self.loader.snapshot().clone()))
     }
 }
 fn validate_record(record: &d::Record, reference: &d::RecordRef) -> d::Result<()> {

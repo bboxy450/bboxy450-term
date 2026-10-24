@@ -2,7 +2,7 @@
     clippy::disallowed_methods,
     reason = "test/fixture IO, not the UI thread"
 )]
-use bboxy450_term::knowledge::{E2eLoader, e2e_lines, promises};
+use bboxy450_term::knowledge::{E2eLoader, Watch, e2e_lines, promises};
 use bbt_mux::{
     Ulid,
     index::Index,
@@ -185,6 +185,7 @@ fn one_signed_corpus_drives_the_screen_and_ctl_projection_through_changes() {
         "red"
     );
     assert!(loader.snapshot().faults[0].contains("fixture offline"));
+    assert!(screen(&loader).contains("fault · Acceptance records unavailable:"));
     loader.reconnect();
     let call = loader.next_request().unwrap();
     assert_eq!(call.args["cursor"], "0");
@@ -218,4 +219,100 @@ fn malformed_repeated_and_oversized_pages_fail_closed_instead_of_publishing_part
     ));
     assert!(loader.snapshot().faults[0].contains("bound"));
     assert!(loader.next_request().is_none());
+}
+
+#[test]
+fn observer_coalesces_wakes_stops_when_hidden_and_refuses_previous_epoch_replies() {
+    use bbt_proto::GuiAction;
+    let mut fixture = Fixture::new();
+    let promises = promises().unwrap();
+    for promise in &promises {
+        fixture.write(
+            &format!("e2e/{}.md", promise.id),
+            json!({
+                "type":"e2e", "function":promise.id, "status":"pass"
+            }),
+        );
+    }
+    let mut watch = Watch::new(promises);
+    assert!(watch.next_action().is_none());
+    watch.observe(true);
+    assert!(
+        watch.next_action().is_none(),
+        "disconnected reads never queue"
+    );
+    watch.connection(true);
+    let source = BboxySource::new(&fixture.index);
+    let drive = |watch: &mut Watch| {
+        let mut calls = 0;
+        while let Some(GuiAction::Knowledge { id, method, args }) = watch.next_action() {
+            assert!(calls < 1024);
+            assert!(watch.next_action().is_none());
+            watch.response(id, read(&source, &method, args));
+            calls += 1;
+        }
+        calls
+    };
+    assert_eq!(drive(&mut watch), 56);
+    let snapshot = watch.publication().unwrap();
+    assert_eq!(snapshot.project().summary.tone, Tone::Green);
+    assert!(watch.next_action().is_none(), "idle never polls");
+    for _ in 0..1000 {
+        watch.changed();
+    }
+    assert_eq!(
+        drive(&mut watch),
+        56,
+        "wakes coalesce to one bounded refresh"
+    );
+    assert!(
+        watch.publication().is_none(),
+        "identical rows do not dirty UI"
+    );
+
+    watch.changed();
+    let GuiAction::Knowledge { id: old, .. } = watch.next_action().unwrap() else {
+        unreachable!()
+    };
+    watch.connection(false);
+    assert_eq!(
+        watch.publication().unwrap().project().summary.tone,
+        Tone::Red
+    );
+    watch.connection(true);
+    let GuiAction::Knowledge {
+        id: fresh,
+        method,
+        args,
+    } = watch.next_action().unwrap()
+    else {
+        unreachable!()
+    };
+    assert_eq!(args["cursor"], "0");
+    watch.response(old, Ok(json!({"changed":[],"next":"stale"})));
+    assert!(
+        watch.next_action().is_none(),
+        "stale reply cannot release current read"
+    );
+    watch.response(fresh, read(&source, &method, args));
+    drive(&mut watch);
+    assert_eq!(
+        watch.publication().unwrap().project().summary.tone,
+        Tone::Green
+    );
+
+    watch.changed();
+    let GuiAction::Knowledge { id, method, args } = watch.next_action().unwrap() else {
+        unreachable!()
+    };
+    watch.observe(false);
+    watch.response(id, read(&source, &method, args));
+    assert!(watch.next_action().is_none());
+    assert!(watch.publication().is_none());
+    watch.observe(true);
+    assert_eq!(drive(&mut watch), 56, "reopen forces a fresh snapshot");
+    assert_eq!(
+        watch.publication().unwrap().project().summary.tone,
+        Tone::Green
+    );
 }

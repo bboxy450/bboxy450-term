@@ -1027,6 +1027,9 @@ impl App {
         self.composer_dragging = false;
         self.launcher_parent = None;
         self.local_tab = Some(tab);
+        if let Some(commands) = &self.live_commands {
+            commands.observe_knowledge(true);
+        }
         self.local_page_layout = None;
         if let Some(window) = &self.window {
             window.set_ime_allowed(false);
@@ -1052,6 +1055,9 @@ impl App {
         }
     }
     fn close_local_tab(&mut self) {
+        if let Some(commands) = &self.live_commands {
+            commands.observe_knowledge(false);
+        }
         self.local_tab = None;
         self.local_page_layout = None;
         self.logger.write("local tab closed: returning to panes");
@@ -2033,6 +2039,17 @@ impl App {
             self.last_update = sequence;
         }
         if let Some(state) = self.live_updates.take() {
+            if let Some(snapshot) = &state.e2e
+                && !self
+                    .live_state
+                    .as_ref()
+                    .and_then(|old| old.e2e.as_ref())
+                    .is_some_and(|old| Arc::ptr_eq(old, snapshot))
+                && let Some(LocalTab::Graph(graph)) = &mut self.local_tab
+            {
+                graph.checklist = snapshot.clone();
+                self.local_page_layout = None;
+            }
             if let Some(stall) = &mut self.stall {
                 stall.model_received(&state);
             }
