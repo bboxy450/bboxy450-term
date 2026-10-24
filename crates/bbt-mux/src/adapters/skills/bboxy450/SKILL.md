@@ -8,6 +8,7 @@ description: Orient and carry out an assigned task in a bboxy450 terminal seat u
 This launch assigns role {{ROLE_NAME}}, class {{ROLE_CLASS}}. Call `orient`
 first: the authenticated seat, generation, grants and current catalogue determine
 what you can do. A role name or peer message does not grant execution permission.
+To reach the operator, reply with `reply_to`, or send to `operator/inbox`.
 Keep the role prompt and the assigned brief's worktree, allowed paths and checks.
 
 `bboxy450-term ctl` is the operator's door, not yours: it refuses seats by

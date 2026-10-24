@@ -868,8 +868,18 @@ impl Messaging {
                 "typed presence/task messages require their producer API",
             ));
         }
-        request.destination = super::tree::normalize(&request.destination, true)?;
         let record = self.record(from, generation)?;
+        // Decision #264: a reply without a destination goes to the sender of the message
+        // it answers, the operator's inbox for the operator's.
+        if request.destination.is_empty() {
+            let reply = request.reply_to.ok_or_else(|| {
+                invalid(
+                    "message_send needs a destination, or reply_to to answer a message's sender",
+                )
+            })?;
+            request.destination = sender_inbox(&self.swarm(record.swarm)?.ledger.by_id(reply)?);
+        }
+        request.destination = super::tree::normalize(&request.destination, true)?;
         self.sync_seat(&record)?;
         if request.destination == format!("swarms/{}", record.swarm) {
             request.destination.push_str("/*");
@@ -907,6 +917,29 @@ impl Messaging {
                 class: record.role.class,
             }
         };
+        let base = request
+            .destination
+            .trim_end_matches("/**")
+            .trim_end_matches("/*");
+        if !self.swarm(record.swarm)?.tree.contains(base) {
+            let hint = match request.reply_to {
+                Some(reply) => format!(
+                    "the message you answer came from {}; send there, or omit destination and keep reply_to",
+                    sender_inbox(&self.swarm(record.swarm)?.ledger.by_id(reply)?)
+                ),
+                None => format!(
+                    "you may address: {}; to reach the operator, send to operator/inbox",
+                    self.swarm(record.swarm)?
+                        .tree
+                        .writable(actor, 16)
+                        .join(", ")
+                ),
+            };
+            return Err(invalid(format!(
+                "unknown destination {}: {hint}",
+                request.destination
+            )));
+        }
         let routes = self.swarm(record.swarm)?.tree.resolve(
             actor,
             &request.destination,
@@ -1770,4 +1803,13 @@ fn mint(
     envelope.sign(&leaf)?;
     tx.execute("INSERT INTO msg_counters VALUES(?1,?2,?3) ON CONFLICT(seat,generation) DO UPDATE SET sequence=excluded.sequence",params![record.id.to_string(),sqlint(record.generation)?,sqlint(sequence)?])?;
     Ok(envelope)
+}
+
+/// Where a reply to `message` goes: its seat's inbox, or the operator's (decision #264).
+fn sender_inbox(message: &super::ledger::StoredMessage) -> String {
+    if message.envelope.seat == Ulid::nil() {
+        "operator/inbox".into()
+    } else {
+        format!("seats/{}/inbox", message.envelope.seat)
+    }
 }
