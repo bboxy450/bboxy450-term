@@ -61,6 +61,8 @@ Who decides what:
 
 The operator, 2026-10-24: "the entire app should be automatically testable and smoke testable automatically, that's the core", and bboxy450-term "gives you full control over everything programmatically, so you never need to ask for my permissions".
 
+- **Never block the swarm** (operator, 2026-10-24: "NEVER BLOCK SWARM"). The Oracle rules on the spot and work continues; the Architect records afterwards. No agent waits on a record, a ruling or the operator: blocked work is reassigned.
+- **e2e never touches the operator's account or identity.** Each run creates its own throwaway test account (a harness-generated root key in file custody, in the run's private dirs). Verdicts come from deterministic `ctl` scripts and their exit codes; an agent's self-report is never a verdict. Agents are tested only for agent behaviour, verified from the app's own records.
 - **Every smoke test, agent test and e2e run works with nobody at the machine**: a locked display, no display, overnight. A step that waits for the operator (a GUI click, a login-Keychain prompt, a physical probe, a pane authorization) is a design bug: route it to an automated path and name the gap; never put it on the operator's list as the plan.
 - **`bboxy450-term ctl` is the control surface**: start the app (headless when there is no display), spawn and inspect seats, read any pane as text or image, type text and terminal codes into a seat's own PTY, message, delegate and read reports. Typing goes into our seat's PTY, never the OS desktop.
 - **Harness prompts are answered by `ctl` recipes** under written rules (e.g. Codex hook review: the count matches our own hooks and the repo has no hook source of its own). Anything outside a rule stops and shows the screen.
