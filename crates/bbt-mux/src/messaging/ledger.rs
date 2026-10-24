@@ -39,6 +39,13 @@ impl Work {
 }
 /// Messages per wake at most; the 40 KiB text budget usually binds first.
 const MAX_BATCH: u64 = 64;
+
+pub(crate) struct InboxSummary {
+    pub received: u64,
+    pub pending_ack: u64,
+    pub ids: Vec<Ulid>,
+}
+
 pub struct Ledger {
     pub(crate) store: SqliteStore,
     swarm: Ulid,
@@ -658,6 +665,40 @@ impl Ledger {
             [recipient.to_string()],|row|u64_at(row,0),
         )?)
     }
+
+    /// One read snapshot: total addressed messages and a bounded pending-ack page.
+    pub(crate) fn inbox_summary(&self, recipient: Ulid, limit: usize) -> Result<InboxSummary> {
+        if limit == 0 || limit > 128 {
+            return Err(invalid("acknowledgement page limit must be 1..128"));
+        }
+        let mut db = self.store.connection()?;
+        let tx = db.transaction()?;
+        let (received, pending_ack) = tx.query_row(
+            "SELECT COUNT(DISTINCT message), COUNT(DISTINCT CASE WHEN evidence<>'application-acknowledged' THEN message END) FROM msg_deliveries WHERE recipient=?1",
+            [recipient.to_string()],
+            |row| Ok((u64_at(row, 0)?, u64_at(row, 1)?)),
+        )?;
+        let ids = {
+            let mut q = tx.prepare_cached(
+                "SELECT DISTINCT m.id,m.seq FROM msg_deliveries d JOIN msg_messages m ON m.seq=d.message WHERE d.recipient=?1 AND d.evidence<>'application-acknowledged' ORDER BY m.seq LIMIT ?2",
+            )?;
+            q.query_map(params![recipient.to_string(), limit as i64], |row| {
+                row.get::<_, String>(0)
+            })?
+            .map(|id| {
+                id?.parse()
+                    .map_err(|_| invalid("invalid stored message id"))
+            })
+            .collect::<Result<Vec<Ulid>>>()?
+        };
+        tx.commit()?;
+        Ok(InboxSummary {
+            received,
+            pending_ack,
+            ids,
+        })
+    }
+
     pub fn bus_outbox(&self) -> Result<Vec<Draft>> {
         let db = self.store.connection()?;
         let mut q = db.prepare_cached(

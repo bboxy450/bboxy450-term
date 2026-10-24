@@ -802,7 +802,7 @@ fn mcp_seat_input_consumes_readiness_and_enter_is_explicit() {
             "seat_input_text",
             f.input_args(target.id, "DIFFERENT", true),
         ),
-        "conflict",
+        "op_id_reused",
     );
     refused(
         f.mutate(
@@ -1132,8 +1132,9 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     assert_eq!(data["actor"]["role"]["name"], "executor");
     assert_eq!(data["tasks"]["items"][0]["id"], json!(fixture.task));
     assert_eq!(data["tasks"]["items"][0]["verify"], "true");
-    assert!(data["unread_count"].is_null());
-    assert_eq!(data["pending_application_ack"], 0);
+    assert_eq!(data["unread"], json!({"count":0,"basis":"no_cursor_yet"}));
+    assert_eq!(data["pending_ack"]["count"], 0);
+    assert_eq!(data["pending_ack"]["ids"], json!([]));
     let second = rpc(&mut bridge, 5, "tools/call", params);
     assert_eq!(first["result"], second["result"]);
     let audit = fixture.audits(fixture.own.id, 2);
@@ -1249,7 +1250,10 @@ fn mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_a
     let store = SqliteStore::open(&fixture.config.run_dir.join(format!("seat-{own}"))).unwrap();
     let bytes = store.get(&format!("control/op/{op}")).unwrap().unwrap();
     let conflict = fixture.call(own, op, "seat_get", json!({"seat_id":own}));
-    assert_eq!(conflict["structuredContent"]["error"]["code"], "conflict");
+    assert_eq!(
+        conflict["structuredContent"]["error"]["code"],
+        "op_id_reused"
+    );
     assert_eq!(
         store.get(&format!("control/op/{op}")).unwrap().unwrap(),
         bytes
@@ -1283,7 +1287,7 @@ fn mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_a
         json!({"graph":"execution"}),
     );
     assert_eq!(old["isError"], true);
-    assert_eq!(old["structuredContent"]["error"]["code"], "conflict");
+    assert_eq!(old["structuredContent"]["error"]["code"], "op_id_reused");
     assert_eq!(
         fixture.call(
             oracle,
@@ -1389,7 +1393,7 @@ fn mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_
 }
 
 #[test]
-fn mcp_unread_is_unknown_and_application_ack_is_a_separate_count() {
+fn mcp_orient_unread_has_a_basis_and_acknowledgement_remains_separate() {
     use bbt_mux::messaging::{api, wire::SendRequest};
     let fixture = Fixture::new();
     let own = fixture.own.id;
@@ -1404,8 +1408,15 @@ fn mcp_unread_is_unknown_and_application_ack_is_a_separate_count() {
         ))
         .unwrap();
     let first = fixture.call(own, Ulid::new(), "orient", json!({}));
-    assert!(first["structuredContent"]["unread_count"].is_null());
-    assert_eq!(first["structuredContent"]["pending_application_ack"], 1);
+    assert_eq!(
+        first["structuredContent"]["unread"],
+        json!({"count":1,"basis":"no_cursor_yet"})
+    );
+    assert_eq!(first["structuredContent"]["pending_ack"]["count"], 1);
+    assert_eq!(
+        first["structuredContent"]["pending_ack"]["ids"],
+        json!([message])
+    );
     fixture
         .runtime
         .block_on(fixture.client().messaging(
@@ -1418,8 +1429,12 @@ fn mcp_unread_is_unknown_and_application_ack_is_a_separate_count() {
         ))
         .unwrap();
     let second = fixture.call(own, Ulid::new(), "orient", json!({}));
-    assert!(second["structuredContent"]["unread_count"].is_null());
-    assert_eq!(second["structuredContent"]["pending_application_ack"], 0);
+    assert_eq!(
+        second["structuredContent"]["unread"],
+        json!({"count":1,"basis":"no_cursor_yet"})
+    );
+    assert_eq!(second["structuredContent"]["pending_ack"]["count"], 0);
+    assert_eq!(second["structuredContent"]["pending_ack"]["ids"], json!([]));
 }
 
 #[test]
@@ -1725,7 +1740,10 @@ fn mcp_messages_bind_the_sender_retry_once_reply_list_and_ack_through_w24() {
         "message_send",
         json!({"destination":destination,"text":"changed"}),
     );
-    assert_eq!(changed["structuredContent"]["error"]["code"], "conflict");
+    assert_eq!(
+        changed["structuredContent"]["error"]["code"],
+        "op_id_reused"
+    );
     f.restart();
     assert_eq!(f.mutate(own, op, "message_send", args), first);
     let inbox = data(f.call(peer, Ulid::new(), "message_list", json!({})));
@@ -2074,14 +2092,19 @@ fn mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority() 
     let mut bridge = f.bridge(own);
     initialize(&mut bridge);
     let args = json!({"destination":format!("seats/{}/inbox",f.peer.id),"text":"fixture"});
-    let missing = rpc(
+    let minted = rpc(
         &mut bridge,
         2,
         "tools/call",
         json!({"name":"message_send","arguments":args}),
     );
-    assert_eq!(missing["error"]["code"], -32602);
-    let op = Ulid::new();
+    assert_eq!(minted["result"]["isError"], false);
+    let op = minted["result"]["structuredContent"]["op_id"]
+        .as_str()
+        .unwrap()
+        .parse::<Ulid>()
+        .unwrap();
+    assert_ne!(op, Ulid::nil());
     for invalid_id in [json!("not-a-ulid"), json!(Ulid::nil()), json!("#1")] {
         let mut invalid = args.clone();
         invalid["op_id"] = invalid_id;
@@ -2104,6 +2127,7 @@ fn mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority() 
         json!({"name":"message_send","arguments":original}),
     );
     assert_eq!(first["result"]["isError"], false);
+    assert_eq!(first["result"], minted["result"]);
     let compatible = rpc(
         &mut bridge,
         4,
@@ -2111,6 +2135,28 @@ fn mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority() 
         json!({"name":"message_send","arguments":args,"_meta":{"bboxy450/op_id":op}}),
     );
     assert_eq!(compatible["result"], first["result"]);
+    let reordered = rpc(
+        &mut bridge,
+        4,
+        "tools/call",
+        json!({"name":"message_send","arguments":{
+            "text":"fixture","op_id":op,"destination":args["destination"]
+        }}),
+    );
+    assert_eq!(reordered["result"], first["result"]);
+    let changed = rpc(
+        &mut bridge,
+        4,
+        "tools/call",
+        json!({"name":"message_send","arguments":{
+            "op_id":op,"destination":args["destination"],"text":"different"
+        }}),
+    );
+    assert_eq!(changed["result"]["isError"], true);
+    assert_eq!(
+        changed["result"]["structuredContent"]["error"]["code"],
+        "op_id_reused"
+    );
     let mismatch = rpc(
         &mut bridge,
         5,
@@ -2177,6 +2223,434 @@ fn mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority() 
             .len(),
         1
     );
+}
+
+#[test]
+fn mcp_minted_read_ids_are_retryable_and_every_catalogue_explains_optional_ids() {
+    let f = Fixture::new();
+    for seat in [f.own.id, f.oracle.id] {
+        let mut bridge = f.bridge(seat);
+        initialize(&mut bridge);
+        let catalogue = rpc(&mut bridge, 2, "tools/list", json!({}));
+        for tool in catalogue["result"]["tools"].as_array().unwrap() {
+            let schema = &tool["inputSchema"];
+            assert!(
+                schema["properties"]["op_id"]["description"]
+                    .as_str()
+                    .unwrap()
+                    .contains("retry")
+            );
+            assert!(
+                schema["required"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .all(|field| field != "op_id")
+            );
+        }
+        let first = rpc(
+            &mut bridge,
+            3,
+            "tools/call",
+            json!({"name":"self_status","arguments":{}}),
+        );
+        assert_eq!(first["result"]["isError"], false);
+        let id = first["result"]["structuredContent"]["op_id"]
+            .as_str()
+            .unwrap()
+            .parse::<Ulid>()
+            .unwrap();
+        assert_ne!(id, Ulid::nil());
+        let retry = rpc(
+            &mut bridge,
+            4,
+            "tools/call",
+            json!({"name":"self_status","arguments":{"op_id":id}}),
+        );
+        assert_eq!(retry["result"], first["result"]);
+        let different_tool = rpc(
+            &mut bridge,
+            5,
+            "tools/call",
+            json!({"name":"seat_list","arguments":{"op_id":id}}),
+        );
+        assert_eq!(different_tool["result"]["isError"], true);
+        assert_eq!(
+            different_tool["result"]["structuredContent"]["error"]["code"],
+            "op_id_reused"
+        );
+    }
+}
+
+#[test]
+fn mcp_list_and_graph_pages_explain_authenticated_scope_and_empty_views() {
+    let f = Fixture::new();
+    let mut bridge = f.bridge(f.peer.id);
+    initialize(&mut bridge);
+    let expected = json!({
+        "seat":f.peer.id,"role":f.peer.role.name,"class":f.peer.role.class
+    });
+    for (tool, args, reason) in [
+        ("task_list", json!({}), "nothing_assigned"),
+        ("graph_read", json!({"graph":"task"}), "nothing_assigned"),
+        (
+            "graph_read",
+            json!({"graph":"markdown"}),
+            "not_visible_to_role",
+        ),
+        ("message_list", json!({}), "nothing_yet"),
+        (
+            "seat_list",
+            json!({"after":Ulid::from(u128::MAX)}),
+            "nothing_yet",
+        ),
+    ] {
+        let response = rpc(
+            &mut bridge,
+            2,
+            "tools/call",
+            json!({"name":tool,"arguments":args}),
+        );
+        assert_eq!(response["result"]["isError"], false, "{tool}: {response}");
+        let value = &response["result"]["structuredContent"];
+        assert_eq!(value["scope"], expected, "{tool}");
+        assert_eq!(value["empty_reason"], reason, "{tool}");
+        let line = value["empty_message"].as_str().unwrap();
+        assert!(!line.is_empty() && !line.contains('\n'));
+    }
+    for (tool, args, collection) in [
+        ("seat_list", json!({"limit":1}), "items"),
+        (
+            "ch_ls",
+            json!({"path":format!("seats/{}/inbox",f.peer.id)}),
+            "nodes",
+        ),
+        (
+            "screen_read",
+            json!({"seat_id":f.peer.id,"expected_process_generation":"1","limit_rows":1}),
+            "rows",
+        ),
+        (
+            "history_read",
+            json!({"seat_id":f.peer.id,"expected_process_generation":"1","limit_records":1}),
+            "records",
+        ),
+    ] {
+        let response = rpc(
+            &mut bridge,
+            3,
+            "tools/call",
+            json!({"name":tool,"arguments":args}),
+        );
+        assert_eq!(response["result"]["isError"], false, "{tool}: {response}");
+        let value = &response["result"]["structuredContent"];
+        assert_eq!(value["scope"], expected, "{tool}");
+        if value[collection].as_array().unwrap().is_empty() {
+            assert_eq!(value["empty_reason"], "nothing_yet");
+        } else {
+            assert!(value.get("empty_reason").is_none());
+        }
+    }
+    let denied = rpc(
+        &mut bridge,
+        4,
+        "tools/call",
+        json!({"name":"graph_read","arguments":{"graph":"execution"}}),
+    );
+    assert_eq!(denied["result"]["isError"], true);
+    let mut oracle = f.bridge(f.oracle.id);
+    initialize(&mut oracle);
+    let folder = rpc(
+        &mut oracle,
+        5,
+        "tools/call",
+        json!({"name":"ch_ls","arguments":{"path":"channels"}}),
+    );
+    assert_eq!(folder["result"]["isError"], false);
+    let folder = &folder["result"]["structuredContent"];
+    assert_eq!(folder["nodes"], json!([]));
+    assert_eq!(
+        folder["scope"],
+        json!({"seat":f.oracle.id,"role":"oracle","class":Class::Oracle})
+    );
+    assert_eq!(folder["empty_reason"], "nothing_yet");
+}
+
+#[test]
+fn mcp_counts_have_a_basis_and_ack_ids_without_equating_acknowledgement_with_reading() {
+    let f = Fixture::new();
+    let mut sender = f.bridge(f.peer.id);
+    let mut receiver = f.bridge(f.own.id);
+    initialize(&mut sender);
+    initialize(&mut receiver);
+    let mut ids = Vec::new();
+    for text in ["first", "second"] {
+        let response = rpc(
+            &mut sender,
+            2,
+            "tools/call",
+            json!({"name":"message_send","arguments":{
+                "destination":format!("seats/{}/inbox",f.own.id),"text":text
+            }}),
+        );
+        assert_eq!(response["result"]["isError"], false);
+        ids.push(response["result"]["structuredContent"]["message"]["envelope"]["id"].clone());
+    }
+    let first = rpc(
+        &mut receiver,
+        3,
+        "tools/call",
+        json!({"name":"message_list","arguments":{}}),
+    );
+    assert_eq!(first["result"]["isError"], false);
+    let first = &first["result"]["structuredContent"];
+    assert_eq!(first["unread"], json!({"count":2,"basis":"no_cursor_yet"}));
+    assert_eq!(first["pending_ack"]["count"], 2);
+    assert_eq!(first["pending_ack"]["ids"], json!(ids));
+    assert_eq!(first["pending_ack"]["ids_truncated"], false);
+    assert_eq!(
+        first["pending_ack"]["action"],
+        "call message_ack for each id listed"
+    );
+    let ack = rpc(
+        &mut receiver,
+        4,
+        "tools/call",
+        json!({"name":"message_ack","arguments":{"message":ids[0]}}),
+    );
+    assert_eq!(ack["result"]["isError"], false);
+    let after = rpc(
+        &mut receiver,
+        5,
+        "tools/call",
+        json!({"name":"message_list","arguments":{}}),
+    );
+    let after = &after["result"]["structuredContent"];
+    assert_eq!(after["unread"], json!({"count":2,"basis":"no_cursor_yet"}));
+    assert_eq!(after["pending_ack"]["count"], 1);
+    assert_eq!(after["pending_ack"]["ids"], json!([ids[1]]));
+    let outbox = rpc(
+        &mut sender,
+        6,
+        "tools/call",
+        json!({"name":"message_list","arguments":{}}),
+    );
+    let outbox = &outbox["result"]["structuredContent"];
+    assert_eq!(outbox["unread"], json!({"count":0,"basis":"no_cursor_yet"}));
+    assert_eq!(outbox["pending_ack"]["count"], 0);
+    let receipts = rpc(
+        &mut sender,
+        7,
+        "tools/call",
+        json!({"name":"message_receipts","arguments":{"message":ids[1]}}),
+    );
+    let receipts = &receipts["result"]["structuredContent"];
+    assert_eq!(receipts["scope"]["seat"], json!(f.peer.id));
+    assert!(receipts.get("empty_reason").is_none());
+}
+
+#[test]
+fn mcp_destinations_explain_rights_and_write_only_reads_without_expanding_grants() {
+    let f = Fixture::new();
+    f.prepare_operator();
+    operator_dm(&f, f.peer.id, "operator fixture asks");
+    data(f.mutate(
+        f.peer.id,
+        Ulid::new(),
+        "message_send",
+        json!({"destination":"operator/inbox","text":"operator-only fixture"}),
+    ));
+    for seat in [f.oracle.id, f.own.id] {
+        let mut bridge = f.bridge(seat);
+        initialize(&mut bridge);
+        let orient = rpc(&mut bridge, 2, "tools/call", json!({"name":"orient"}));
+        assert_eq!(orient["result"]["isError"], false, "{orient}");
+        let rows = orient["result"]["structuredContent"]["destinations"]
+            .as_array()
+            .unwrap();
+        let rights =
+            |path: &str| rows.iter().find(|row| row["path"] == path).unwrap()["rights"].clone();
+        assert_eq!(rights("operator/inbox"), json!(["write-only"]));
+        assert_eq!(
+            rights(&format!("seats/{seat}/inbox")),
+            json!(["read", "post"])
+        );
+        assert!(!rows.iter().any(|row| {
+            row["path"]
+                .as_str()
+                .unwrap()
+                .contains(&f.outside.id.to_string())
+        }));
+        for path in ["operator/inbox", "operator"] {
+            for (tool, args) in [
+                ("ch_ls", json!({"path":path})),
+                ("message_list", json!({"channel":path})),
+            ] {
+                let denied = rpc(
+                    &mut bridge,
+                    3,
+                    "tools/call",
+                    json!({"name":tool,"arguments":args}),
+                );
+                assert_eq!(denied["result"]["isError"], true, "{tool}: {denied}");
+                assert!(
+                    denied["result"]["structuredContent"]["error"]["message"]
+                        .as_str()
+                        .unwrap()
+                        .contains("write-only; it is in your destinations"),
+                    "{denied}"
+                );
+            }
+        }
+    }
+    assert!(
+        operator_inbox(&f)
+            .iter()
+            .any(|text| text.contains("operator-only fixture"))
+    );
+    let mut worker = f.bridge(f.own.id);
+    initialize(&mut worker);
+    let peer = format!("seats/{}/inbox", f.peer.id);
+    let first = rpc(&mut worker, 4, "tools/call", json!({"name":"orient"}));
+    let rows = first["result"]["structuredContent"]["destinations"]
+        .as_array()
+        .unwrap();
+    assert_eq!(
+        rows.iter().find(|row| row["path"] == peer).unwrap()["rights"],
+        json!(["write-only"])
+    );
+    let denied = rpc(
+        &mut worker,
+        5,
+        "tools/call",
+        json!({"name":"ch_ls","arguments":{"path":peer}}),
+    );
+    assert_eq!(denied["result"]["isError"], true);
+    assert!(
+        denied["result"]["structuredContent"]["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("write-only; it is in your destinations")
+    );
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "ch_grant",
+        json!({"path":peer,"seat":f.own.id,"rights":[]}),
+    ));
+    let changed = rpc(&mut worker, 6, "tools/call", json!({"name":"orient"}));
+    assert_eq!(changed["result"]["isError"], false);
+    assert!(
+        !changed["result"]["structuredContent"]["destinations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["path"] == peer)
+    );
+    let send = rpc(
+        &mut worker,
+        7,
+        "tools/call",
+        json!({"name":"message_send","arguments":{"destination":peer,"text":"refused after revocation"}}),
+    );
+    assert_eq!(send["result"]["isError"], true);
+    let page = data(f.call(f.peer.id, Ulid::new(), "message_list", json!({})));
+    assert!(!texts(&page).contains("refused after revocation"));
+    // The hint must not advertise a posting grant that was explicitly revoked.
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "ch_grant",
+        json!({"path":"operator","seat":f.own.id,"rights":[]}),
+    ));
+    let changed = rpc(&mut worker, 8, "tools/call", json!({"name":"orient"}));
+    assert_eq!(changed["result"]["isError"], false);
+    assert!(
+        changed["result"]["structuredContent"]["destinations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|row| row["path"] != "operator/inbox")
+    );
+    let denied = rpc(
+        &mut worker,
+        9,
+        "tools/call",
+        json!({"name":"ch_ls","arguments":{"path":"operator/inbox"}}),
+    );
+    assert_eq!(denied["result"]["isError"], true);
+    assert!(
+        denied["result"]["structuredContent"]["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("no posting grant")
+    );
+}
+
+#[test]
+fn mcp_orient_cold_start_names_identity_allowed_tools_tasks_counts_and_actions() {
+    let f = Fixture::new();
+    for record in [&f.own, &f.peer, &f.oracle] {
+        let mut bridge = f.bridge(record.id);
+        initialize(&mut bridge);
+        let catalogue = rpc(&mut bridge, 2, "tools/list", json!({}));
+        let response = rpc(&mut bridge, 3, "tools/call", json!({"name":"orient"}));
+        assert_eq!(response["result"]["isError"], false, "{response}");
+        let value = &response["result"]["structuredContent"];
+        assert_eq!(value["actor"]["seat_id"], json!(record.id));
+        assert_eq!(value["actor"]["swarm_id"], json!(record.swarm));
+        assert_eq!(value["actor"]["process_generation"], record.generation);
+        assert_eq!(value["actor"]["role"], json!(record.role));
+        assert_eq!(value["seat"]["record"]["name"], record.name);
+        assert_eq!(
+            value["scope"],
+            json!({"seat":record.id,"role":record.role.name,"class":record.role.class})
+        );
+        let expected = catalogue["result"]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tool| json!({"name":tool["name"],"description":tool["description"]}))
+            .collect::<Vec<_>>();
+        assert_eq!(value["tools"], json!(expected));
+        let tools = value["tools"].as_array().unwrap();
+        assert_eq!(
+            tools.iter().any(|tool| tool["name"] == "ch_grant"),
+            record.role.class == Class::Oracle
+        );
+        for tool in tools {
+            let line = tool["description"].as_str().unwrap();
+            assert!(!line.is_empty() && !line.contains('\n'));
+        }
+        assert_eq!(value["tasks"]["scope"], value["scope"]);
+        if record.id == f.own.id {
+            assert_eq!(value["tasks"]["items"][0]["id"], json!(f.task));
+            assert!(value["tasks"].get("empty_reason").is_none());
+        } else {
+            assert_eq!(value["tasks"]["items"], json!([]));
+            assert_eq!(value["tasks"]["empty_reason"], "nothing_assigned");
+            assert!(!value["tasks"]["empty_message"].as_str().unwrap().is_empty());
+        }
+        assert_eq!(value["execution"]["scope"], value["scope"]);
+        assert_eq!(value["channels"]["scope"], value["scope"]);
+        assert_eq!(value["unread"], json!({"count":0,"basis":"no_cursor_yet"}));
+        assert_eq!(value["pending_ack"]["count"], 0);
+        assert_eq!(value["pending_ack"]["ids"], json!([]));
+        assert_eq!(
+            value["pending_ack"]["action"],
+            "call message_ack for each id listed"
+        );
+        assert_eq!(
+            value["operator"],
+            "to reach the operator, reply with reply_to, or send to operator/inbox"
+        );
+        assert_eq!(
+            value["op_id_guidance"],
+            "ids are minted for you unless you retry"
+        );
+        assert!(value.get("unread_count").is_none());
+        assert!(value.get("pending_application_ack").is_none());
+    }
 }
 
 // Work-item fixtures deliberately use local zsh PTYs and fixture MCP clients.
@@ -2360,7 +2834,10 @@ fn mcp_fixture_first_turn_orients_reports_and_retains_signed_task_receipts() {
             "task_report",
             json!({"task_path":f.task_path(),"summary":"different"}),
         );
-        assert_eq!(changed["structuredContent"]["error"]["code"], "conflict");
+        assert_eq!(
+            changed["structuredContent"]["error"]["code"],
+            "op_id_reused"
+        );
     }
 }
 
@@ -2638,7 +3115,7 @@ fn mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_conte
             "artifact_claim",
             json!({"kind":"file","ref":"changed"})
         )["structuredContent"]["error"]["code"],
-        "conflict"
+        "op_id_reused"
     );
     assert_eq!(
         f.mutate(
@@ -3026,7 +3503,7 @@ fn seat_native_fixture() {
     args["text"] = json!("different");
     refused(
         f.mutate(f.oracle.id, op, "seat_interrupt", args),
-        "conflict",
+        "op_id_reused",
     );
     assert!(frames.try_recv().is_err());
     server.abort();
@@ -3406,11 +3883,23 @@ fn verify_knowledge_record(record: &Value) -> [u8; 32] {
 #[test]
 fn mcp_knowledge_real_bridge_writes_with_the_seat_key_and_replays_without_reallocation() {
     let mut f = Fixture::new();
-    let op = Ulid::new();
     let mut args = knowledge_args("e2e/t1.md", "# Untested T1\n");
     args["frontmatter"]["authorship"] =
         json!({"signer":"device:forged","kind":"device","public_key":"forged"});
-    let first = f.mutate(f.own.id, op, "knowledge_write", args.clone());
+    let mut bridge = f.bridge(f.own.id);
+    initialize(&mut bridge);
+    let first = rpc(
+        &mut bridge,
+        2,
+        "tools/call",
+        json!({"name":"knowledge_write","arguments":args}),
+    )["result"]
+        .clone();
+    let op = first["structuredContent"]["op_id"]
+        .as_str()
+        .unwrap()
+        .parse::<Ulid>()
+        .unwrap();
     let value = data(first.clone());
     assert_eq!(value["record"]["id"], json!(op));
     assert_eq!(value["record"]["number"], 3);
@@ -3439,7 +3928,7 @@ fn mcp_knowledge_real_bridge_writes_with_the_seat_key_and_replays_without_reallo
     conflicting["body"] = json!("changed arguments");
     refused(
         f.mutate(f.own.id, op, "knowledge_write", conflicting),
-        "conflict",
+        "op_id_reused",
     );
     let fetched = data(knowledge_fetch(&f, f.own.id, "#3"));
     assert_eq!(fetched["id"], json!(op));
@@ -3488,7 +3977,7 @@ fn mcp_knowledge_real_bridge_writes_with_the_seat_key_and_replays_without_reallo
         "string"
     );
     assert!(
-        write["inputSchema"]["required"]
+        !write["inputSchema"]["required"]
             .as_array()
             .unwrap()
             .contains(&json!("op_id"))
@@ -3603,15 +4092,18 @@ fn mcp_knowledge_refuses_outside_paths_forged_authority_type_ids_and_stale_etags
     );
     let mut bridge = f.bridge(f.own.id);
     initialize(&mut bridge);
+    let mut invalid_id = knowledge_args("e2e/no-op.md", "denied");
+    invalid_id["op_id"] = json!("not-a-ulid");
     assert_eq!(
         rpc(
             &mut bridge,
             2,
             "tools/call",
-            json!({"name":"knowledge_write","arguments":knowledge_args("e2e/no-op.md","denied")})
+            json!({"name":"knowledge_write","arguments":invalid_id})
         )["error"]["code"],
         -32602
     );
+    assert!(!f.config.repository.join(".bboxy/e2e/no-op.md").exists());
 }
 
 #[test]

@@ -318,7 +318,7 @@ fn operator_spawn_replays_across_connections_logic_and_supervisor_restart_withou
     assert!(
         rt.block_on(gui.spawn(op, changed))
             .unwrap_err()
-            .contains("conflict")
+            .contains("op_id_reused")
     );
     assert_eq!(rt.block_on(logic.client.gui_seats()).unwrap().len(), 1);
     let account = SqliteStore::open(&object_dir(&config.run_dir, "account").unwrap()).unwrap();

@@ -1,0 +1,71 @@
+MCP #266 COMMON FEEDBACK RULES — EVIDENCE HANDOFF
+Aster Cinderwing <EXECUTOR>
+
+Exact source: e5f61f201077db07d777ee1f42032216d2d20986.
+Base: 4946033567f70a296bf144671da10093e80e174f, includes accepted #264 merge5fd01b7b.
+Worktree /Users/feral/mydev/bboxy450-term-exec4; branch aster-mcp-266.
+Assigned rules1/2/3/5/6. Kestrel owns rule4 knowledge search/type policy.
+No merge, push, publication or real-model launch by this task.
+
+SOURCE COMMITS
+e5f61f201077db07d777ee1f42032216d2d20986 G Enforce write-only destinations at the shared read boundary (#266)
+708fc3bbdf6f0611649044776347a679efa85b9e G Make MCP orient actionable with destinations and counts (#266)
+bf30d11332ec9a7bcb10d46ef5ff02daa9625615 G Align accepted knowledge bridge with minted MCP IDs (#266)
+8c368c1a98634e7c891fa25307219acb525c854a G Explain MCP list scope and inbox count basis (#266)
+de87a5ce9891326d6a33558634a6074410644f56 G Mint MCP operation IDs and name conflicting retries (#266)
+
+MECHANISMS (line numbers at exact source)
+crates/bbt-mux/src/mcp/bridge.rs:229 — Mints an omitted external operation ID for every tool; supplied argument/_meta IDs remain validated retries.
+crates/bbt-mux/src/mcp/journal.rs:189 — Names conflicting operation-ID reuse while retaining the original durable result and authority binding.
+crates/bbt-mux/src/mcp/tools.rs:151 — Adds authenticated seat/role-name/serialized-class and canonical empty_reason/empty_message after filtering.
+crates/bbt-mux/src/mcp/tools.rs:74 — Final catalogue normalization runs after every extension and explains optional IDs/retry semantics.
+crates/bbt-mux/src/mcp/messaging.rs:453 — Scopes message pages, receipt pages and tree listings without changing trusted-operator results.
+crates/bbt-mux/src/mcp/messaging.rs:438 — Returns never-null unread with basis and pending_ack count/IDs/action; IDs bounded128 with truncation flag.
+crates/bbt-mux/src/messaging/ledger.rs:670 — Reads addressed-message count and bounded pending-ack IDs from one read transaction; failures never become zero.
+crates/bbt-mux/src/messaging/service.rs:452 — Resolves current seat/generation and effective tree grants for the metadata projection.
+crates/bbt-mux/src/messaging/tree.rs:185 — Shared read boundary rejects write-only reads before Oracle controls bypass; trusted operator remains allowed.
+crates/bbt-mux/src/logic.rs:2179 — Cold-start answer includes authenticated identity, current class catalogue summaries, scoped tasks/graphs/channels, destinations/rights, counts, operator help and retry guidance.
+crates/bbt-mux/src/adapters/skills/bboxy450/SKILL.md:39 — Seat guidance says omit op_id unless retrying; #264 operator routing text preserved.
+crates/bbt-mux/tests/provider_gui.rs:321 — Shared journal GUI-spawn compatibility expectation migrated to the named reuse code.
+
+PER-RULE REAL-BRIDGE PROOF
+crates/bbt-mux/tests/mcp.rs:2089 — 1: omitted mutation ID minted, same args/meta/key order replay first result, changed args op_id_reused, spoof/nil/size fences preserved.
+crates/bbt-mux/tests/mcp.rs:2229 — 1: read IDs minted and replayed, changed tool refused, every class catalogue normalizes the ID contract.
+crates/bbt-mux/tests/mcp.rs:2286 — 2: tasks/graphs/messages/tree/seats/screen/history carry scope and explain empty authorized pages; forbidden execution graph remains refused.
+crates/bbt-mux/tests/mcp.rs:2453 — 3: effective read/post/write-only rights, every seat including Oracle refused operator inbox reads; trusted operator still reads; explicit revocations remove a destination.
+crates/bbt-mux/tests/mcp.rs:2380 — 5: two received messages, pending ack IDs, acknowledgement reduces pending only, sent copies do not inflate incoming unread.
+crates/bbt-mux/tests/mcp.rs:2591 — 6: worker/Oracle identity and exact permitted catalogue summaries, task-or-empty explanation, scoped projections, counts and actions, preserved #264 operator help and minted-ID guidance.
+
+VERIFIED CHECKS SO FAR
+Final fixed code: cargo test --locked -p bbt-mux --test mcp EXIT0 (42 passed, 3 ignored); cargo test --locked -p bbt-mux --test messaging EXIT0 (17 passed); cargo clippy --workspace --all-targets --locked -- -D warnings EXIT0. Raw operator-read-fixed-checks.json plus logs.
+Exact clean sh scripts/ci-local.sh EXIT 0 in 1811.349 s, 2026-10-24T11:39:15.070763+00:00 -> 2026-10-24T12:09:26.414850+00:00. Source e5f61f20, clean detached checkout, fresh target, BBOXY_TEST_CUSTODY=memory, O1 with debug assertions. Workspace: 156 summaries, 1114 passed / 0 failed / 22 ignored, including doctests. Strict workspace Clippy0, UI lint0, native idle10.002s with frames0/callbacks0; invariants17 checks/0 failures/8 slow skips. Raw ci-local.log:3575 says all gates passed. Checkout HEAD and source hashes reverified after gate; git status empty. Slot1 released (8c8aa59a).
+Source UI/render/app/book/lab diff against base is empty; no parity run is claimed or required for this MCP-only change.
+Initial pre-#264 Rule1 bridge31/0/journal9/0/provider3/0/mux-clippy0; initial scope-counts bridge33/0; accepted-A0 integration bridge36/0/provider3/0/mux-clippy0. See corresponding *checks.json and raw logs.
+
+FAILED / CANCELED ATTEMPTS (all retained)
+Accepted-A0 first integration: EXIT101, obsolete missing-ID assertion expected JSON-RPC -32602. Migrated to invalid supplied-ID refusal with no write; rerun36/0.
+708fc3bb clean gate canceled with SIGTERM during build after233.154s (child -15, wrapper241), before any all-gates result; no pass claimed. Only three recorded owned PIDs signaled. Canceled log/state archived; own target freed1,069,973,504 bytes, clean worktree removed.
+operator-read-red: EXIT101 at unbound operator-device fixture; corrected fixture by using existing operator-message path.
+operator-read-red2: EXIT101 on old missing-read-right wording for a worker.
+operator-read-red3: EXIT101, actual Oracle message_list returned peer operator-only fixture content. Product fix moved enforcement to Tree::check; final42/0,17/0,strict workspace0.
+First rebase over accepted A0 returned1 for mod/tools textual conflicts; preserved module/extension and placed normalization last; rebase--continue0. Subsequent #264 and current-base rebases0.
+Administrative read-only lookups: one guessed decision filename failed128 and one tail path typo failed1; both corrected, no source effect.
+
+BOUNDARIES / GAPS
+No persisted read cursor exists. unread basis is no_cursor_yet and counts received addressed messages; application acknowledgement never stands in for reading. Pending IDs page is128, full count retained with ids_truncated.
+Metadata follows current effective grants, preserving explicit revocations. Normal operator inbox grant is write-only for every seat; an explicitly revoked posting grant is not advertised or silently restored.
+Original retained read results keep their original bytes on an explicit-ID retry, including pre-upgrade results; fresh omitted-ID reads get new metadata. Existing authority/epoch/visibility fences remain.
+Existing argument/frame/result bounds and protocol versions remain; no database/checkpoint/wire migration.
+Real MCP bridge uses admitted fixture seats/zsh PTYs and explicit fixture keys. No new real Claude/Codex feedback session is claimed. Kestrel rule4 remains separate; A0 fetch/write behavior unchanged except obsolete helper deletion and compatibility assertions.
+No UI/render/lab files, terminal pixels, socket scheduling, keychain store, global harness config or role-grant table edited.
+
+Artifact root: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/aster-mcp-266-hsbeprvt
+PROVENANCE / CLEANUP
+Raw log SHA256 09b321ba75e83bed02f785d91794d5f6e81f5174985cf6dfd4439546151de629 (194930 bytes).
+A/evidence-manifest.json SHA256 f69bc150b15f4c53ccf87ad243abeea26eb3403b16af41216829224d74c051d4; binds 63 artifacts plus the source manifest (13 changed files +5 context files).
+CI/dev cache cleanup: 4937404416 allocated bytes removed (du -sk); canceled target: 1069973504 bytes. Total current-task allocated target bytes removed: 6007377920.
+Own clean CI worktree removed with git worktree remove EXIT0. Source/data/logs retained. No peer directory or process touched. No owned build/app/capture remains.
+Main observed after the gate: 9d69f7adf28ce3c3fe2aca6e029c809111952daf. It gained A-3 live checklist/GUI knowledge hydration (60ecf53b) and GUI admission rejection (9d69f7ad). Its logic.rs hunks are Command::GuiKnowledge, LogicClient::gui_knowledge and that command handler, separate from this task's MCP control/read hunks. All newer paths/commits are in A/main-since-gate.json. Not rebased after the exact gate; the Oracle verifies the merged tree.
+This evidence-only successor adds .bboxy/runs/mcp-266-handoff.log. Code remains the exact gated e5f61f20; diff proof is checked at commit time. No push or main merge by the Executor.
+Administrative metrics parsing first expected a UI-lint text marker and exited1; corrected to the unique standalone smoke command boundary (ui-lint is Clippy only). No verification rerun or source effect.
+Ready for Oracle verification; acceptance/main SHA remains pending.

@@ -419,6 +419,51 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Option<Request>, Str
     Ok(Some(req))
 }
 
+pub(crate) fn destination_list(rows: Vec<crate::messaging::tree::Destination>) -> Value {
+    json!(
+        rows.into_iter()
+            .map(|row| {
+                let rights = match (row.read, row.post) {
+                    (true, true) => vec!["read", "post"],
+                    (true, false) => vec!["read"],
+                    (false, true) => vec!["write-only"],
+                    (false, false) => unreachable!("destination has no granted right"),
+                };
+                json!({"path":row.path,"rights":rights})
+            })
+            .collect::<Vec<_>>()
+    )
+}
+
+pub(crate) fn with_counts(
+    mut value: Value,
+    summary: crate::messaging::ledger::InboxSummary,
+) -> Value {
+    // No persisted read cursor exists yet. Application acknowledgement is
+    // separate evidence and never substitutes for a read cursor.
+    value["unread"] = json!({"count":summary.received,"basis":"no_cursor_yet"});
+    let truncated = summary.pending_ack > summary.ids.len() as u64;
+    value["pending_ack"] = json!({
+        "count":summary.pending_ack,"ids":summary.ids,
+        "action":"call message_ack for each id listed","ids_truncated":truncated
+    });
+    value
+}
+
+pub(crate) fn result_for_seat(actor: &super::SeatActor, response: Response) -> Value {
+    let empty = match &response {
+        Response::Messages { page } => Some(page.items.is_empty()),
+        Response::Receipts { page } => Some(page.items.is_empty()),
+        Response::Tree { nodes, .. } => Some(nodes.is_empty()),
+        _ => None,
+    };
+    let value = result(response);
+    match empty {
+        Some(empty) => tools::scoped_list(actor, value, empty.then_some("nothing_yet")),
+        None => value,
+    }
+}
+
 pub(crate) fn result(response: Response) -> Value {
     let status = match &response {
         Response::Stored { .. } | Response::Held { .. } => Some("accepted"),

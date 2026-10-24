@@ -1226,7 +1226,21 @@ impl Worker {
             return match self.prepare_seat_control(&actor, &record, &call) {
                 Ok(request) if request.is_read() => {
                     let value = match self.read_seat_control(&request) {
-                        Ok(value) => crate::mcp::success(call.op_id, value),
+                        Ok(value) => {
+                            let empty = value
+                                .get("records")
+                                .or_else(|| value.get("rows"))
+                                .and_then(serde_json::Value::as_array)
+                                .is_some_and(Vec::is_empty);
+                            crate::mcp::success(
+                                call.op_id,
+                                crate::mcp::tools::scoped_list(
+                                    &actor,
+                                    value,
+                                    empty.then_some("nothing_yet"),
+                                ),
+                            )
+                        }
                         Err(reason) => crate::mcp::error(call.op_id, "rejected", &reason),
                     };
                     journal.checked(&actor, &call, value)
@@ -1253,13 +1267,13 @@ impl Worker {
         match crate::mcp::messaging::request(&authority, &call) {
             Ok(Some(request)) if crate::mcp::messaging::mutation(&call.tool) => {
                 journal.effect(&actor, &call, || {
-                    self.control_message(&record, &call, request)
+                    self.control_message(&actor, &record, &call, request)
                 })
             }
             Ok(Some(request)) => {
                 // Destination grants can change without changing the seat's
                 // role epoch. Recheck W2.4 before revealing a retained read.
-                let value = self.control_message(&record, &call, request);
+                let value = self.control_message(&actor, &record, &call, request);
                 journal.checked(&actor, &call, value)
             }
             prepared => {
@@ -1339,20 +1353,30 @@ impl Worker {
     ) -> Result<serde_json::Value> {
         self.scan()?;
         match crate::mcp::work_items::prepare(&self.index, &self.registry, actor, call) {
-            Ok(crate::mcp::work_items::Prepared::Read(value)) => journal.checked_authorized(
-                actor,
-                call,
-                crate::mcp::success(call.op_id, value),
-                |old| {
-                    crate::mcp::work_items::retained_allowed(
-                        &self.index,
-                        &self.registry,
-                        actor,
-                        call,
-                        old,
-                    )
-                },
-            ),
+            Ok(crate::mcp::work_items::Prepared::Read(value)) => {
+                let value = if call.tool == "task_list"
+                    && let Some(seat) = actor.seat()
+                {
+                    let empty = value["items"].as_array().is_some_and(Vec::is_empty);
+                    crate::mcp::tools::scoped_list(seat, value, empty.then_some("nothing_assigned"))
+                } else {
+                    value
+                };
+                journal.checked_authorized(
+                    actor,
+                    call,
+                    crate::mcp::success(call.op_id, value),
+                    |old| {
+                        crate::mcp::work_items::retained_allowed(
+                            &self.index,
+                            &self.registry,
+                            actor,
+                            call,
+                            old,
+                        )
+                    },
+                )
+            }
             Ok(crate::mcp::work_items::Prepared::Effect(effect)) => {
                 journal.effect(actor, call, || self.control_work_item(actor, call, *effect))
             }
@@ -2115,6 +2139,7 @@ impl Worker {
     }
     fn control_message(
         &mut self,
+        actor: &crate::mcp::SeatActor,
         record: &SeatRecord,
         call: &crate::mcp::Call,
         request: crate::messaging::api::Request,
@@ -2125,7 +2150,21 @@ impl Worker {
             .request(record.id, record.generation, request, false, None, now_ms())
         {
             Ok(response) => {
-                crate::mcp::success(call.op_id, crate::mcp::messaging::result(response))
+                let mut value = crate::mcp::messaging::result_for_seat(actor, response);
+                if call.tool == "message_list" {
+                    let summary = match self.messaging.inbox_summary(record.id, record.generation) {
+                        Ok(summary) => summary,
+                        Err(_) => {
+                            return crate::mcp::error(
+                                call.op_id,
+                                "unavailable",
+                                "inbox counts are unavailable; no count was substituted",
+                            );
+                        }
+                    };
+                    value = crate::mcp::messaging::with_counts(value, summary);
+                }
+                crate::mcp::success(call.op_id, value)
             }
             Err(error)
                 if error
@@ -2174,13 +2213,38 @@ impl Worker {
                         now_ms(),
                     )
                     .map_err(|e| e.to_string())?;
-                Ok(
-                    json!({"actor":actor,"seat":self.control_seat(record),"tasks":tools::orient_documents(&source,record)?,
+                let tasks = tools::orient_documents(&source, record)?;
+                let empty = tasks["items"].as_array().is_some_and(Vec::is_empty);
+                let tasks = tools::scoped_list(actor, tasks, empty.then_some("nothing_assigned"));
+                let destinations = crate::mcp::messaging::destination_list(
+                    self.messaging
+                        .destinations(record.id, record.generation)
+                        .map_err(|e| e.to_string())?,
+                );
+                let summary = self
+                    .messaging
+                    .inbox_summary(record.id, record.generation)
+                    .map_err(|_| "inbox counts are unavailable; no count was substituted")?;
+                let catalogue = tools::catalogue(actor);
+                let tools = catalogue["tools"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|tool| json!({"name":tool["name"],"description":tool["description"]}))
+                    .collect::<Vec<_>>();
+                let value = json!({
+                    "actor":actor,"seat":self.control_seat(record),"tasks":tasks,"tools":tools,
+                    "destinations":destinations,
                     "operator":"to reach the operator, reply with reply_to, or send to operator/inbox",
+                    "op_id_guidance":"ids are minted for you unless you retry",
                     "execution":tools::graph(&self.index,&source,actor,record,&tools::GraphRead{graph:"execution".into(),after:None,limit:Some(32)},true)?,
-                    "channels":channels,"unread_count":null,"unread_unavailable":"no read cursor exists; delivery and application acknowledgment are separate evidence",
-                    "pending_application_ack":self.messaging.pending_application_ack(record.id,record.generation).map_err(|e|e.to_string())?}),
-                )
+                    "channels":crate::mcp::messaging::result_for_seat(actor, channels)
+                });
+                Ok(tools::scoped_list(
+                    actor,
+                    crate::mcp::messaging::with_counts(value, summary),
+                    None,
+                ))
             }
             "self_status" => {
                 let _: tools::Empty = tools::parse(&call.args)?;
@@ -2221,9 +2285,12 @@ impl Worker {
                 records.sort_by_key(|r| r.id);
                 let more = records.len() > limit;
                 records.truncate(limit);
-                Ok(
+                let empty = records.is_empty();
+                Ok(tools::scoped_list(
+                    actor,
                     json!({"items":records.iter().map(|r|self.control_seat(r)).collect::<Vec<_>>(),"next":if more{records.last().map(|r|r.id)}else{None}}),
-                )
+                    empty.then_some("nothing_yet"),
+                ))
             }
             "graph_read" => {
                 let args: tools::GraphRead = tools::parse(&call.args)?;

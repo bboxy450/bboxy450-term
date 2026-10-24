@@ -186,7 +186,7 @@ impl Journal {
                 (
                     error(
                         call.op_id,
-                        "conflict",
+                        "op_id_reused",
                         "operation ID belongs to different arguments or authority",
                     ),
                     false,
@@ -393,7 +393,7 @@ mod tests {
         let denied = journal
             .effect(&other, &call, || panic!("different device dispatched"))
             .unwrap();
-        assert_eq!(denied["structuredContent"]["error"]["code"], "conflict");
+        assert_eq!(denied["structuredContent"]["error"]["code"], "op_id_reused");
         let audits = journal.pending(128).unwrap();
         assert_eq!(audits.len(), 4); // admission, result, replay, authority conflict
         assert!(audits.iter().all(|event| event.subject == "account/control"
@@ -479,7 +479,7 @@ mod tests {
             journal
                 .effect(&actor, &changed, || panic!("conflict dispatched"))
                 .unwrap()["structuredContent"]["error"]["code"],
-            "conflict"
+            "op_id_reused"
         );
         let events = journal.pending(128).unwrap();
         assert_eq!(
