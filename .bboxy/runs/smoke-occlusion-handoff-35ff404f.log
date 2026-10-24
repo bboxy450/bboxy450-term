@@ -1,0 +1,21 @@
+NATIVE SMOKE OCCLUSION — Sable Embertail <EXECUTOR>
+Brief: Vesper 9378a78e-e3ac-4db3-a7fe-d110fa0d3e4f; source 35ff404fedf16cac21f244637d685320f08f26e5 (good signature), branch sable-smoke-occlusion, exec3.
+Base: 5d2a2f6ac9cc15a78ed51922893691ca6d5142af. origin/main did not advance during the exact gate. No rebase or source edit during the gate.
+
+Mechanism (only crates/bboxy450-term/src/main.rs changed):
+- IdleQuiescence::native_invalidation returns an explicit error for Resize/ScaleFactorChanged and invalidates the active epoch, even if no frame/callback changed.
+- ApplicationHandler::window_event has an early --smoke-only occlusion branch: log the OS event and return without pausing/repainting/resetting the measurement. The non-smoke/cadence occlusion behavior is preserved.
+- After the demo has armed the idle probe, any existing non-occlusion native invalidation fails immediately. Startup size events remain ordinary startup behavior.
+- Existing producer-finished/queued-work settling, epoch-tagged EndIdle, the 10-second idle window, 30-second deadline, zero-frame/zero-callback and update20 assertions are retained.
+
+Verification:
+1. cargo test -p bboxy450-term --bin bboxy450-term --locked smoke_tests -- --nocapture: EXIT 0 / 127.266s; 4 passed / 0 failed. Regression covers 100 alternating true/false Occluded events preserving the measurement and stale-timer fence; another Resized event returns 'idle probe invalidated by Resized' with no counter change and prevents the old epoch finishing. Producer/late-work/deadline cases pass. This was source 618d85a3; its main.rs blob 0f28946cea53e003a2e18976c011094d019fcbb8 is identical to final source; all four tests also passed in final clean CI.
+2. Native cargo run -p bboxy450-term --locked -- --smoke on 618d85a3: EXIT 0 / 55.726s including build; 10.002s idle, frames0/callbacks0/updates20.
+3. After rebase onto accepted main, the same native command on 35ff404f: EXIT 0 / 44.583s including build; 10.001s idle, frames0/callbacks0/updates20.
+4. Exact clean detached NORMAL sh scripts/ci-local.sh on 35ff404f: EXIT 0 / 762.729s; 'ci-local: all gates passed'. Workspace 1044 passed / 0 failed / 22 ignored across 148 printed results before native smoke; strict workspace all-target Clippy -D warnings and UI lint passed; native smoke 10.000s idle with frames0/callbacks0/updates20; default invariants 16 checks / 0 failures / 8 named slow skips (including the pending ctl-opt-in gate).
+5. Full CI log: .bboxy/runs/smoke-occlusion-ci-35ff404f.log, SHA256 cb6b94cd151569de346dff9ef14ef24cde05e1c9c7b7cc3245d8c72326b7e1bf. Gate command/root PID and all exact command argv/exit/SHA metadata are in smoke-occlusion-evidence-35ff404f.json and the verbatim logs.
+6. All runtime commands used debug assertions and explicit BBOXY_TEST_CUSTODY=memory. No desktop-driving tools, real Keychain probe, --ignored, --slow or --parity run was used.
+
+Gap: actual locked/occluded-true native coverage is UNPROVEN. All three native runs logged only Occluded(false); read-only ioreg and CGSession queries exposed no locked flag. The 100-flip regression proves the policy for both boolean values, not that this native display was locked. This limit was reported before and after the gate.
+
+Cleanup: own detached gate worktree, private CI target and one dev target removed; 4127207424 allocated bytes removed, no recorded gate PID/start survivors. Slot2 released in DM 1b06d00e-5f49-4787-9735-2dff782287e7. No code beyond the smoke probe/tests, no production renderer/paint/layout changes, and no tolerance/deadline increase. Evidence-only successor requires no additional code gate; Oracle acceptance remains separate.

@@ -1,0 +1,399 @@
+{
+  "brief": "9378a78e-e3ac-4db3-a7fe-d110fa0d3e4f",
+  "base": "8a0f6aa636de65b8e00d591cbbca4e615a1b41dd",
+  "root": "/Users/feral/mydev/bboxy450-term-exec3",
+  "scratch": "/private/tmp/sable-smoke-occlusion-bd4t1frs",
+  "target": "/Users/feral/mydev/bboxy450-term-exec3/target/smoke-occlusion-zwbtvovr",
+  "inbox_cursor": 8180,
+  "slot": null,
+  "status": "verified; slot2 released; evidence-only handoff",
+  "prior_task_evidence": "9a68e96fef663f63c0d9a2165f74b965a4264087",
+  "source": "35ff404fedf16cac21f244637d685320f08f26e5",
+  "focused": {
+    "command_id": "00699c5817044f38b37613e80a5546af",
+    "exit": 0,
+    "passed": 4,
+    "elapsed_seconds": 127.26582425000379,
+    "id": "00699c5817044f38b37613e80a5546af",
+    "argv": [
+      "env",
+      "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/smoke-occlusion-zwbtvovr",
+      "CARGO_INCREMENTAL=0",
+      "CARGO_PROFILE_DEV_DEBUG=0",
+      "CARGO_PROFILE_TEST_DEBUG=0",
+      "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+      "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+      "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+      "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+      "BBOXY_TEST_CUSTODY=memory",
+      "CARGO_TERM_COLOR=never",
+      "RUST_BACKTRACE=1",
+      "cargo",
+      "test",
+      "-p",
+      "bboxy450-term",
+      "--bin",
+      "bboxy450-term",
+      "--locked",
+      "smoke_tests",
+      "--",
+      "--nocapture"
+    ],
+    "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+    "started_utc": "2026-10-24T05:27:56.175726+00:00",
+    "pid": 90549,
+    "log": "/private/tmp/sable-smoke-occlusion-bd4t1frs/cmd-00699c5817044f38b37613e80a5546af.log",
+    "sha256": "2a161cae83952800a60192425ee7c4960e46b77d25c68c14789334f804b2b360",
+    "state": "completed"
+  },
+  "native": {
+    "command_id": "7b3bc8df6b2a4fadafe6b010458c5519",
+    "session_id": 35662,
+    "root_pid": 97122,
+    "state": "completed",
+    "id": "7b3bc8df6b2a4fadafe6b010458c5519",
+    "argv": [
+      "env",
+      "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/smoke-occlusion-zwbtvovr",
+      "CARGO_INCREMENTAL=0",
+      "CARGO_PROFILE_DEV_DEBUG=0",
+      "CARGO_PROFILE_TEST_DEBUG=0",
+      "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+      "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+      "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+      "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+      "BBOXY_TEST_CUSTODY=memory",
+      "CARGO_TERM_COLOR=never",
+      "RUST_BACKTRACE=1",
+      "cargo",
+      "run",
+      "-p",
+      "bboxy450-term",
+      "--locked",
+      "--",
+      "--smoke"
+    ],
+    "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+    "started_utc": "2026-10-24T05:30:26.898644+00:00",
+    "pid": 97122,
+    "exit": 0,
+    "elapsed_seconds": 55.72641079197638,
+    "log": "/private/tmp/sable-smoke-occlusion-bd4t1frs/cmd-7b3bc8df6b2a4fadafe6b010458c5519.log",
+    "sha256": "f7a3b847c6ef6230fb962dafec373aa69456f25c5aaec7dc914f23d0c44218dc"
+  },
+  "env": [
+    "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/smoke-occlusion-zwbtvovr",
+    "CARGO_INCREMENTAL=0",
+    "CARGO_PROFILE_DEV_DEBUG=0",
+    "CARGO_PROFILE_TEST_DEBUG=0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+    "BBOXY_TEST_CUSTODY=memory",
+    "CARGO_TERM_COLOR=never",
+    "RUST_BACKTRACE=1"
+  ],
+  "gate": {
+    "source": "35ff404fedf16cac21f244637d685320f08f26e5",
+    "upstream": "5d2a2f6ac9cc15a78ed51922893691ca6d5142af",
+    "slot": 2,
+    "grant": "9378a78e-e3ac-4db3-a7fe-d110fa0d3e4f",
+    "worktree": "/private/tmp/ci-sable-smoke-qqrh7g1s",
+    "target": "/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r",
+    "created_utc": "2026-10-24T05:35:57.940953+00:00",
+    "ci": {
+      "command_id": "859ed7594d324ad5b904b5629886cc59",
+      "root_pid": 6655,
+      "session_id": 12466,
+      "state": "completed",
+      "id": "859ed7594d324ad5b904b5629886cc59",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TERM_COLOR=never",
+        "RUST_BACKTRACE=1",
+        "sh",
+        "scripts/ci-local.sh"
+      ],
+      "cwd": "/private/tmp/ci-sable-smoke-qqrh7g1s",
+      "started_utc": "2026-10-24T05:36:44.025473+00:00",
+      "pid": 6655,
+      "exit": 0,
+      "elapsed_seconds": 762.7285523749888,
+      "log": "/private/tmp/sable-smoke-occlusion-bd4t1frs/cmd-859ed7594d324ad5b904b5629886cc59.log",
+      "sha256": "cb6b94cd151569de346dff9ef14ef24cde05e1c9c7b7cc3245d8c72326b7e1bf",
+      "path": ".bboxy/runs/smoke-occlusion-ci-35ff404f.log"
+    },
+    "recorded_owned_processes": {
+      "6655": {
+        "pid": 6655,
+        "ppid": 6644,
+        "start": "Fri Oct 23 22:36:44 2026",
+        "command": "sh scripts/ci-local.sh"
+      },
+      "6660": {
+        "pid": 6660,
+        "ppid": 6655,
+        "start": "Fri Oct 23 22:36:44 2026",
+        "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo build --workspace --locked"
+      },
+      "9238": {
+        "pid": 9238,
+        "ppid": 6660,
+        "start": "Fri Oct 23 22:37:24 2026",
+        "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_ui --edition=2024 crates/bbt-ui/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=f641aa65fdb2e915 -C extra-filename=-67d814d68f8e9820 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_ui_model-7188f0efeb88a382.rmeta --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde-eaf9d4dd6ad19406.rmeta"
+      },
+      "9610": {
+        "pid": 9610,
+        "ppid": 6660,
+        "start": "Fri Oct 23 22:37:34 2026",
+        "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name p521 --edition=2021 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/p521-0.13.3/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --cfg feature=\"alloc\" --cfg feature=\"arithmetic\" --cfg feature=\"default\" --cfg feature=\"digest\" --cfg feature=\"ecdh\" --cfg feature=\"ecdsa\" --cfg feature=\"ecdsa-core\" --cfg feature=\"getrandom\" --cfg feature=\"pem\" --cfg feature=\"pkcs8\" --cfg feature=\"rand_core\" --cfg feature=\"sha512\" --cfg feature=\"std\" --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"alloc\", \"arithmetic\", \"default\", \"digest\", \"ecdh\", \"ecdsa\", \"ecdsa-core\", \"getrandom\", \"hash2curve\", \"jwk\", \"pem\", \"pkcs8\", \"rand_core\", \"serde\", \"serdect\", \"sha512\", \"std\", \"test-vectors\", \"voprf\")) -C metadata=f61fd2fcbebc9d25 -C extra-filename=-e2eea45aec02db4b --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern base16ct=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbase16ct-5e0318e410cc2269.rmeta --extern ecdsa_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libecdsa-26e673ca7e3405fc.rmeta --extern elliptic_curve=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libelliptic_curve-f4797ce75ab3296e.rmeta --extern primeorder=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libprimeorder-acca562299e33713.rmeta --extern rand_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/librand_core-9f3c5f1d56ca1794.rmeta --extern sha2=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libsha2-47898c2a3e5fa7bc.rmeta --cap-lints allow -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/build/sha2-asm-3da27d49616d4323/out"
+      },
+      "9640": {
+        "pid": 9640,
+        "ppid": 6660,
+        "start": "Fri Oct 23 22:37:35 2026",
+        "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name wgpu_core --edition=2021 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wgpu-core-30.0.1/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --cfg feature=\"default\" --cfg feature=\"metal\" --cfg feature=\"portable-atomic\" --cfg feature=\"renderdoc\" --cfg feature=\"std\" --cfg feature=\"wgpu-core-deps-apple\" --cfg feature=\"wgsl\" --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"angle\", \"api_log_info\", \"counters\", \"default\", \"drm\", \"dx12\", \"fragile-send-sync-non-atomic-wasm\", \"gles\", \"glsl\", \"macro_rules_attribute\", \"metal\", \"noop\", \"observe_locks\", \"portable-atomic\", \"renderdoc\", \"replay\", \"resource_log_info\", \"serde\", \"spirv\", \"static-dxc\", \"std\", \"strict_asserts\", \"trace\", \"vulkan\", \"vulkan-portability\", \"webgl\", \"wgpu-core-deps-apple\", \"wgpu-core-deps-emscripten\", \"wgpu-core-deps-wasm\", \"wgpu-core-deps-windows-linux-android\", \"wgsl\")) -C metadata=d492c06e396839f1 -C extra-filename=-68c16a0eb02e971f --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern arrayvec=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libarrayvec-86f0a30c2d5ccb23.rmeta --extern bit_set=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbit_set-8912d2f317594dbb.rmeta --extern bit_vec=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbit_vec-58d6913b2d84685e.rmeta --extern bitflags=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbitflags-09e6e56e8d7c5d2b.rmeta --extern bytemuck=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbytemuck-1561f3954e4b3884.rmeta --extern document_features=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libdocument_features-16ee647f69e046c7.dylib --extern hashbrown=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libhashbrown-83ba00cd91bbf2ec.rmeta --extern indexmap=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libindexmap-d3eb9fec01b6847b.rmeta --extern log=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/liblog-1c70e5cdc71f0ae6.rmeta --extern naga=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libnaga-051e2ef8c8417285.rmeta --extern naga_types=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libnaga_types-f0bad3dd02a279fc.rmeta --extern once_cell=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libonce_cell-f6a3570b99c508cd.rmeta --extern parking_lot=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libparking_lot-aadea28aa1a1c95b.rmeta --extern profiling=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libprofiling-34d841dfb110ccdc.rmeta --extern raw_window_handle=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libraw_window_handle-f4cd0fefea7e3839.rmeta --extern rustc_hash=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/librustc_hash-b8b939d894f58684.rmeta --extern smallvec=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libsmallvec-0f61bc15961cd818.rmeta --extern thiserror=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libthiserror-e33f9dd6756764fd.rmeta --extern wgpu_core_deps_apple=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libwgpu_core_deps_apple-d1210d9b59ec2031.rmeta --extern wgpu_hal=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libwgpu_hal-5e45ad436569fa4a.rmeta --extern wgpu_naga_bridge=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libwgpu_naga_bridge-8b871ddbd4a255e4.rmeta --extern wgpu_types=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libwgpu_types-a9af6922544c6445.rmeta --cap-lints allow --cfg send_sync --cfg metal --cfg supports_64bit_atomics --check-cfg cfg(windows_linux_android) --check-cfg cfg(send_sync) --check-cfg cfg(dx12) --check-cfg cfg(webgl) --check-cfg cfg(gles) --check-cfg cfg(vulkan) --check-cfg cfg(drm) --check-cfg cfg(metal) --check-cfg cfg(supports_64bit_atomics)"
+      },
+      "9663": {
+        "pid": 9663,
+        "ppid": 6660,
+        "start": "Fri Oct 23 22:37:36 2026",
+        "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name twofish --edition=2021 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/twofish-0.7.1/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"zeroize\")) -C metadata=f0c4bb78872ed132 -C extra-filename=-c2a2c1ecbdb74d63 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern cipher=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libcipher-8945a059b93e0523.rmeta --cap-lints allow"
+      },
+      "9668": {
+        "pid": 9668,
+        "ppid": 6660,
+        "start": "Fri Oct 23 22:37:36 2026",
+        "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name ripemd --edition=2018 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ripemd-0.1.3/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --cfg feature=\"default\" --cfg feature=\"oid\" --cfg feature=\"std\" --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"default\", \"oid\", \"std\")) -C metadata=8b9755f58c460c98 -C extra-filename=-8c2b30e3f13f8642 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern digest=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libdigest-a88af89a30c711c4.rmeta --cap-lints allow"
+      },
+      "9672": {
+        "pid": 9672,
+        "ppid": 6660,
+        "start": "Fri Oct 23 22:37:37 2026",
+        "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name md5 --edition=2018 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.10.6/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --cfg feature=\"default\" --cfg feature=\"oid\" --cfg feature=\"std\" --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"asm\", \"default\", \"force-soft\", \"loongarch64_asm\", \"md5-asm\", \"oid\", \"std\")) -C metadata=76f15e84de449273 -C extra-filename=-83fb0005e00aa7a7 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern cfg_if=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libcfg_if-280618cc35ec8b09.rmeta --extern digest=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libdigest-a88af89a30c711c4.rmeta --cap-lints allow"
+      },
+      "9684": {
+        "pid": 9684,
+        "ppid": 6660,
+        "start": "Fri Oct 23 22:37:37 2026",
+        "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name block_padding --edition=2021 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/block-padding-0.3.3/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"std\")) -C metadata=be56edcf40d4ce16 -C extra-filename=-35c72cc4fb825231 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern generic_array=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libgeneric_array-7fb4b91718a34cbd.rmeta --cap-lints allow"
+      },
+      "9689": {
+        "pid": 9689,
+        "ppid": 6660,
+        "start": "Fri Oct 23 22:37:37 2026",
+        "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name core_foundation --edition=2021 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/core-foundation-0.10.1/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --cfg feature=\"default\" --cfg feature=\"link\" --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"default\", \"link\", \"mac_os_10_7_support\", \"mac_os_10_8_features\", \"with-uuid\")) -C metadata=7456551e156451fc -C extra-filename=-639a3fb7810f8816 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern core_foundation_sys=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libcore_foundation_sys-f0fa94cd43024a4e.rmeta --extern libc=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/liblibc-06ffd3ef319b2d80.rmeta --cap-lints allow"
+      },
+      "9701": {
+        "pid": 9701,
+        "ppid": 6660,
+        "start": "Fri Oct 23 22:37:37 2026",
+        "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name security_framework_sys --edition=2021 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/security-framework-sys-2.17.0/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --cfg feature=\"OSX_10_13\" --cfg feature=\"OSX_10_15\" --cfg feature=\"default\" --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"OSX_10_10\", \"OSX_10_11\", \"OSX_10_12\", \"OSX_10_13\", \"OSX_10_14\", \"OSX_10_15\", \"OSX_10_9\", \"default\", \"macos-12\")) -C metadata=a13822687c900a98 -C extra-filename=-302e6bb73f33615e --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern core_foundation_sys=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libcore_foundation_sys-f0fa94cd43024a4e.rmeta --extern libc=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/liblibc-06ffd3ef319b2d80.rmeta --cap-lints allow"
+      },
+      "9702": {
+        "pid": 9702,
+        "ppid": 6660,
+        "start": "Fri Oct 23 22:37:37 2026",
+        "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name notify_types --edition=2021 /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/notify-types-2.1.0/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values(\"serde\", \"serialization-compat-6\", \"web-time\")) -C metadata=95efe3bf729bee28 -C extra-filename=-44eaa398fc29c65a --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern bitflags=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbitflags-09e6e56e8d7c5d2b.rmeta --cap-lints allow"
+      },
+      "13367": {
+        "pid": 13367,
+        "ppid": 6655,
+        "start": "Fri Oct 23 22:39:38 2026",
+        "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo test --workspace --locked"
+      },
+      "14373": {
+        "pid": 14373,
+        "ppid": 13367,
+        "start": "Fri Oct 23 22:39:52 2026",
+        "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name messaging --edition=2024 crates/bbt-proto/tests/messaging.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=e80c1c09dda16425 -C extra-filename=-ab5d1997dfb1349c --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_core-e2b88c06378299f4.rlib --extern bbt_proto=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_proto-686677f7c52a4397.rlib --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_ui_model-7188f0efeb88a382.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde_json-69c93a5d27575a33.rlib --extern ulid=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libulid-f62a65f6cbb158b0.rlib"
+      },
+      "14374": {
+        "pid": 14374,
+        "ppid": 14373,
+        "start": "Fri Oct 23 22:39:52 2026",
+        "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name messaging --edition=2024 crates/bbt-proto/tests/messaging.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=e80c1c09dda16425 -C extra-filename=-ab5d1997dfb1349c --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_core-e2b88c06378299f4.rlib --extern bbt_proto=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_proto-686677f7c52a4397.rlib --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_ui_model-7188f0efeb88a382.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde_json-69c93a5d27575a33.rlib --extern ulid=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libulid-f62a65f6cbb158b0.rlib"
+      },
+      "14445": {
+        "pid": 14445,
+        "ppid": 13367,
+        "start": "Fri Oct 23 22:39:53 2026",
+        "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_proto --edition=2024 crates/bbt-proto/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=1ce83b61fd19cd38 -C extra-filename=-ba0506448f1a91e0 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_core-e2b88c06378299f4.rlib --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_ui_model-7188f0efeb88a382.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde_json-69c93a5d27575a33.rlib --extern ulid=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libulid-f62a65f6cbb158b0.rlib"
+      },
+      "14446": {
+        "pid": 14446,
+        "ppid": 14445,
+        "start": "Fri Oct 23 22:39:53 2026",
+        "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_proto --edition=2024 crates/bbt-proto/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=1ce83b61fd19cd38 -C extra-filename=-ba0506448f1a91e0 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_core-e2b88c06378299f4.rlib --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_ui_model-7188f0efeb88a382.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde_json-69c93a5d27575a33.rlib --extern ulid=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libulid-f62a65f6cbb158b0.rlib"
+      },
+      "15010": {
+        "pid": 15010,
+        "ppid": 13367,
+        "start": "Fri Oct 23 22:40:08 2026",
+        "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_supervisor --edition=2024 crates/bbt-supervisor/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=31d7f5e39caeb1a1 -C extra-filename=-92c7903e257851d5 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_core-e2b88c06378299f4.rmeta --extern bbt_rt=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_rt-0d9aa24382fb4b08.rmeta --extern getrandom=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libgetrandom-31b5cf3b134abf5e.rmeta --extern libc=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/liblibc-06ffd3ef319b2d80.rmeta --extern mio=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libmio-ef16b1c034b20124.rmeta --extern portable_pty=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libportable_pty-aed9d66b548f00f2.rmeta --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde-eaf9d4dd6ad19406.rmeta --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde_json-69c93a5d27575a33.rmeta --extern sha2=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libsha2-47898c2a3e5fa7bc.rmeta --extern ulid=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libulid-f62a65f6cbb158b0.rmeta --extern zstd=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libzstd-96ad92601cea887a.rmeta -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/build/sha2-asm-3da27d49616d4323/out -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/build/zstd-sys-afc5294c131af0bb/out"
+      },
+      "15070": {
+        "pid": 15070,
+        "ppid": 13367,
+        "start": "Fri Oct 23 22:40:09 2026",
+        "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_supervisor --edition=2024 crates/bbt-supervisor/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=4a32d1cfb2c063d2 -C extra-filename=-a40083577abda42d --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_core-e2b88c06378299f4.rlib --extern bbt_rt=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_rt-0d9aa24382fb4b08.rlib --extern getrandom=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libgetrandom-31b5cf3b134abf5e.rlib --extern libc=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/liblibc-06ffd3ef319b2d80.rlib --extern mio=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libmio-ef16b1c034b20124.rlib --extern portable_pty=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libportable_pty-aed9d66b548f00f2.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde_json-69c93a5d27575a33.rlib --extern sha2=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libsha2-47898c2a3e5fa7bc.rlib --extern tempfile=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libtempfile-9f258efe0acc7852.rlib --extern ulid=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libulid-f62a65f6cbb158b0.rlib --extern zstd=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libzstd-96ad92601cea887a.rlib -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/build/sha2-asm-3da27d49616d4323/out -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/build/zstd-sys-afc5294c131af0bb/out"
+      },
+      "15072": {
+        "pid": 15072,
+        "ppid": 15070,
+        "start": "Fri Oct 23 22:40:09 2026",
+        "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_supervisor --edition=2024 crates/bbt-supervisor/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=4a32d1cfb2c063d2 -C extra-filename=-a40083577abda42d --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern bbt_core=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_core-e2b88c06378299f4.rlib --extern bbt_rt=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_rt-0d9aa24382fb4b08.rlib --extern getrandom=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libgetrandom-31b5cf3b134abf5e.rlib --extern libc=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/liblibc-06ffd3ef319b2d80.rlib --extern mio=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libmio-ef16b1c034b20124.rlib --extern portable_pty=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libportable_pty-aed9d66b548f00f2.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde_json-69c93a5d27575a33.rlib --extern sha2=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libsha2-47898c2a3e5fa7bc.rlib --extern tempfile=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libtempfile-9f258efe0acc7852.rlib --extern ulid=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libulid-f62a65f6cbb158b0.rlib --extern zstd=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libzstd-96ad92601cea887a.rlib -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/build/sha2-asm-3da27d49616d4323/out -L native=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/build/zstd-sys-afc5294c131af0bb/out"
+      },
+      "15483": {
+        "pid": 15483,
+        "ppid": 13367,
+        "start": "Fri Oct 23 22:40:15 2026",
+        "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name streams --edition=2024 crates/bbt-ui/tests/streams.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=bb1639be92660601 -C extra-filename=-a275b040f7817e14 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern bbt_ui=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_ui-67d814d68f8e9820.rlib --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_ui_model-7188f0efeb88a382.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde_json-69c93a5d27575a33.rlib"
+      },
+      "15484": {
+        "pid": 15484,
+        "ppid": 15483,
+        "start": "Fri Oct 23 22:40:15 2026",
+        "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name streams --edition=2024 crates/bbt-ui/tests/streams.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=bb1639be92660601 -C extra-filename=-a275b040f7817e14 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern bbt_ui=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_ui-67d814d68f8e9820.rlib --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_ui_model-7188f0efeb88a382.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde_json-69c93a5d27575a33.rlib"
+      },
+      "15608": {
+        "pid": 15608,
+        "ppid": 13367,
+        "start": "Fri Oct 23 22:40:17 2026",
+        "command": "/opt/homebrew/bin/sccache /Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_ui --edition=2024 crates/bbt-ui/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=e0e6e90c47b5be54 -C extra-filename=-fd65d3015bbc0c56 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_ui_model-7188f0efeb88a382.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde_json-69c93a5d27575a33.rlib"
+      },
+      "15609": {
+        "pid": 15609,
+        "ppid": 15608,
+        "start": "Fri Oct 23 22:40:17 2026",
+        "command": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name bbt_ui --edition=2024 crates/bbt-ui/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=1 -C embed-bitcode=no -C debug-assertions=on --test --check-cfg cfg(docsrs,test) --check-cfg cfg(feature, values()) -C metadata=e0e6e90c47b5be54 -C extra-filename=-fd65d3015bbc0c56 --out-dir /Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps -C strip=debuginfo -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps --extern bbt_ui_model=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libbbt_ui_model-7188f0efeb88a382.rlib --extern serde=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde-eaf9d4dd6ad19406.rlib --extern serde_json=/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/libserde_json-69c93a5d27575a33.rlib"
+      },
+      "24101": {
+        "pid": 24101,
+        "ppid": 13367,
+        "start": "Fri Oct 23 22:44:50 2026",
+        "command": "/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r/debug/deps/logic-9a4a56bb05a54644"
+      },
+      "24112": {
+        "pid": 24112,
+        "ppid": 24101,
+        "start": "Fri Oct 23 22:44:51 2026",
+        "command": "/opt/homebrew/Cellar/python@3.15/3.15.0_1/Frameworks/Python.framework/Versions/3.15/Resources/Python.app/Contents/MacOS/Python -c \\012import os, time, json\\012os.write(1, b'BEFORE\\n')\\012while not os.path.exists(os.environ['BBOXY_TEST_GATE']): time.sleep(0.005)\\012remaining=int(os.environ['BBOXY_TEST_BYTES']); total=remaining\\012chunk=b'x'*65536; latencies=[]; calls=0; started=time.perf_counter()\\012while remaining:\\012    before=time.perf_counter(); n=os.write(1, chunk[:min(remaining,len(chunk))])\\012    latencies.append(time.perf_counter()-before); remaining-=n; calls+=1\\012before=time.perf_counter(); os.write(1,b'\\x1b[31mRING-TAIL\\x1b[0m\\n')\\012latencies.append(time.perf_counter()-before); calls+=1\\012elapsed=time.perf_counter()-started; latencies.sort()\\012stats={'bytes':total,'elapsed_s':elapsed,'max_write_s':max(latencies),'p99_write_s':latencies[max(0,(len(latencies)*99+99)//100-1)],'mib_s':total/(1024*1024)/elapsed,'calls':calls}\\012path=os.environ['BBOXY_TEST_STATS']\\012with open(path+'.tmp','w') as f: json.dump(stats,f)\\012os.replace(path+'.tmp',path)\\012while True: time.sleep(0.1)\\012"
+      },
+      "29938": {
+        "pid": 29938,
+        "ppid": 6655,
+        "start": "Fri Oct 23 22:48:38 2026",
+        "command": "sh scripts/invariants.sh"
+      },
+      "30577": {
+        "pid": 30577,
+        "ppid": 29938,
+        "start": "Fri Oct 23 22:48:58 2026",
+        "command": "sh -c test \"$(git log --format='%G?' HEAD | grep -c .)\" -gt 0 && test \"$(git log --format='%G?' HEAD | grep -vc '^G$')\" = 0"
+      },
+      "31773": {
+        "pid": 31773,
+        "ppid": 30577,
+        "start": "Fri Oct 23 22:49:09 2026",
+        "command": "sh -c test \"$(git log --format='%G?' HEAD | grep -c .)\" -gt 0 && test \"$(git log --format='%G?' HEAD | grep -vc '^G$')\" = 0"
+      },
+      "31774": {
+        "pid": 31774,
+        "ppid": 31773,
+        "start": "Fri Oct 23 22:49:09 2026",
+        "command": "/Applications/Xcode.app/Contents/Developer/usr/bin/git log --format=%G? HEAD"
+      },
+      "31775": {
+        "pid": 31775,
+        "ppid": 31773,
+        "start": "Fri Oct 23 22:49:09 2026",
+        "command": "grep -vc ^G$"
+      },
+      "32866": {
+        "pid": 32866,
+        "ppid": 31774,
+        "start": "Fri Oct 23 22:49:21 2026",
+        "command": "(gpg)"
+      }
+    },
+    "workspace": {
+      "printed_suite_results": 148,
+      "passed": 1044,
+      "failed": 0,
+      "ignored": 22
+    },
+    "native_pass": "idle probe PASS: idle 10.000s frames=0 callbacks=0 updates=20 CPU p50=13.349ms p99=13.930ms samples=21 warm_encode_p50=12.258ms warm_encode_p99=12.956ms",
+    "native_occlusion_true": false,
+    "invariants": "invariants: 16 checks, 0 failures, 8 slow checks skipped",
+    "recorded_gate_survivors": [],
+    "target_allocated_bytes_before_cleanup": 2954502144,
+    "worktree_status_after": "clean",
+    "smoke_binary_sha256": "ddcbc763cf5168aefe245eafe09d290d0f1c03d0ba88a02e71a55d964358fb81",
+    "cleanup": {
+      "gate_worktree_removed": "/private/tmp/ci-sable-smoke-qqrh7g1s",
+      "gate_target_removed": "/Users/feral/mydev/bboxy450-term-exec3/target/ci-smoke-39gkgo3r",
+      "gate_target_allocated_bytes": 2954502144,
+      "dev_target_removed": "/Users/feral/mydev/bboxy450-term-exec3/target/smoke-occlusion-zwbtvovr",
+      "dev_target_allocated_bytes": 1172705280,
+      "total_allocated_bytes_removed": 4127207424,
+      "utc": "2026-10-24T05:52:59.232739+00:00"
+    },
+    "released_by_dm": "1b06d00e-5f49-4787-9735-2dff782287e7"
+  },
+  "native_after_rebase": {
+    "command_id": "b3b67d0d2de941c39d6ba142f713e5eb",
+    "exit": 0,
+    "elapsed_seconds": 44.582812584005296,
+    "idle_seconds": 10.001,
+    "frames": 0,
+    "callbacks": 0,
+    "updates": 20,
+    "observed_occlusion_true": false,
+    "id": "b3b67d0d2de941c39d6ba142f713e5eb",
+    "argv": [
+      "env",
+      "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/smoke-occlusion-zwbtvovr",
+      "CARGO_INCREMENTAL=0",
+      "CARGO_PROFILE_DEV_DEBUG=0",
+      "CARGO_PROFILE_TEST_DEBUG=0",
+      "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+      "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+      "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+      "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+      "BBOXY_TEST_CUSTODY=memory",
+      "CARGO_TERM_COLOR=never",
+      "RUST_BACKTRACE=1",
+      "cargo",
+      "run",
+      "-p",
+      "bboxy450-term",
+      "--locked",
+      "--",
+      "--smoke"
+    ],
+    "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+    "started_utc": "2026-10-24T05:33:16.326529+00:00",
+    "pid": 1158,
+    "log": "/private/tmp/sable-smoke-occlusion-bd4t1frs/cmd-b3b67d0d2de941c39d6ba142f713e5eb.log",
+    "sha256": "55058ccb74e91dde48999335cbff1a9af98b1e96f653c67c2f6e10d8001022e3",
+    "state": "completed"
+  },
+  "locked_native_coverage": "UNPROVEN: all native runs logged only Occluded(false); ioreg and CGSession read-only probes exposed no locked field. Repeated true/false occlusion is covered by the pure policy regression.",
+  "source_main_blob": "0f28946cea53e003a2e18976c011094d019fcbb8",
+  "focused_main_blob": "0f28946cea53e003a2e18976c011094d019fcbb8",
+  "origin_main_at_handoff": "5d2a2f6ac9cc15a78ed51922893691ca6d5142af",
+  "main_advanced_during_gate": [],
+  "runner_sha256": "e7833a6455f55dc625b50d92d9a39c80b6153356e803ab38ae54967e27814f6c",
+  "signed_source_status": "35ff404fedf16cac21f244637d685320f08f26e5 G 5d2a2f6ac9cc15a78ed51922893691ca6d5142af"
+}
