@@ -399,6 +399,9 @@ impl Pane {
             }
         };
         style.overrides.rim = Some(ui::Rim {
+            // The seat's focus swell and attention loop (rim-glow §7, attention §2).
+            swell: seat.swell,
+            attention: seat.attention,
             activity: seat.activity.into(),
             inferred_multiplier: if seat.grade == Grade::Inferred {
                 0.5

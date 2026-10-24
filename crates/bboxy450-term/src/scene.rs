@@ -19,7 +19,7 @@ use bbt_ui_model::{
     draw::{Color, DrawList, TextStyle, TypeScale},
     layout::{Axis, Rect, TextMeasure, TextStyle as MeasureStyle, stage_split},
 };
-use std::{cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, collections::HashMap, time::Instant};
 
 /// Settings > Rim size range (rim-glow §3).
 pub const RIM_MIN: f32 = TOKENS.glow.rim_min as f32;
@@ -79,6 +79,10 @@ pub struct Scene {
     /// The rim size R (Settings > Rim size, 2-8 px), centred on each pane's border: the
     /// gutter between panes is R and the stage inset R/2, so changing it relayouts.
     rim: f32,
+    /// When each seat's focus swell started (rim-glow §7); it runs glow.swell_ms.
+    swells: HashMap<SeatId, Instant>,
+    /// Seats waiting for the operator (attention §2): since when, and whether muted.
+    attention: HashMap<SeatId, (Instant, bool)>,
 }
 type FontKey = (u32, u16, bool, bool, u32);
 #[derive(Default)]
@@ -208,6 +212,8 @@ impl Scene {
             hosts: vec![],
             metrics: Metrics::default(),
             rim: TOKENS.glow.rim as f32,
+            swells: HashMap::new(),
+            attention: HashMap::new(),
         }
         .with_env_rim()
     }
@@ -225,6 +231,43 @@ impl Scene {
     pub fn set_rim(&mut self, px: f32) {
         self.rim = px.clamp(RIM_MIN, RIM_MAX);
     }
+    /// Plays the focus swell on a seat's blocks from `at` (rim-glow §7): it replaces the
+    /// locate ripple and is paint only.
+    pub fn swell(&mut self, seat: SeatId, at: Instant) {
+        self.swells.insert(seat, at);
+    }
+    /// A seat waiting for the operator loops the swell in its waiting amber until handled
+    /// (attention §2); muted, it keeps the ordinary waiting rim. None: handled.
+    // Fed from Model.attention once ATTENTION (Kestrel) lands; tests drive it until then.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub fn set_attention(&mut self, seat: SeatId, state: Option<(Instant, bool)>) {
+        match state {
+            Some(state) => self.attention.insert(seat, state),
+            None => self.attention.remove(&seat),
+        };
+    }
+    /// Whether any swell or attention loop still needs frames at `now`.
+    pub fn animating(&self, now: Instant) -> bool {
+        let ms = TOKENS.glow.swell_ms as f32;
+        self.attention.values().any(|(_, muted)| !muted)
+            || self
+                .swells
+                .values()
+                .any(|at| (now.saturating_duration_since(*at).as_secs_f32() * 1000.) < ms)
+    }
+    /// The seat's swell envelope at `now` and whether it is the attention loop: |sin| for
+    /// attention, one half sine over glow.swell_ms for a focus swell, else 0.
+    fn envelope(&self, seat: SeatId, now: Instant) -> (f32, bool) {
+        let ms = TOKENS.glow.swell_ms as f32;
+        let t = |at: &Instant| now.saturating_duration_since(*at).as_secs_f32() * 1000.;
+        if let Some((since, false)) = self.attention.get(&seat) {
+            return ((std::f32::consts::PI * t(since) / ms).sin().abs(), true);
+        }
+        match self.swells.get(&seat).map(t) {
+            Some(t) if t < ms => ((std::f32::consts::PI * t / ms).sin(), false),
+            _ => (0., false),
+        }
+    }
     pub fn live() -> Self {
         Self {
             seats: vec![],
@@ -237,6 +280,8 @@ impl Scene {
             hosts: vec![],
             metrics: Metrics::default(),
             rim: TOKENS.glow.rim as f32,
+            swells: HashMap::new(),
+            attention: HashMap::new(),
         }
         .with_env_rim()
     }
@@ -372,7 +417,21 @@ impl Scene {
         }
     }
     pub fn layout(&self, size: [f32; 2], effects: bool) -> Result<Vec<c::Layout>, String> {
+        self.layout_at(size, effects, Instant::now())
+    }
+    /// As `layout`, with every seat's swell and attention evaluated at `now`.
+    pub fn layout_at(
+        &self,
+        size: [f32; 2],
+        effects: bool,
+        now: Instant,
+    ) -> Result<Vec<c::Layout>, String> {
         let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        // Rows, tabs and panes carry each seat's swell and attention (rim-glow §7-8).
+        let mut seats = self.seats.clone();
+        for (id, index) in &self.seat_index {
+            (seats[*index].swell, seats[*index].attention) = self.envelope(*id, now);
+        }
         let title = STYLE.spacing.title_bar as f32;
         let sidebar_width = 300_f32.min(size[0] * 0.35);
         let footer_height = if self.identity.is_some() { 24. } else { 0. };
@@ -387,14 +446,14 @@ impl Scene {
             key: "swarm".into(),
             name: "swarm".into(),
             color: Color::hex("#2E6BFF").0,
-            seats: self.seats.clone(),
+            seats: seats.clone(),
             expanded: true,
             closed: false,
             unfocused: false,
             body: true,
             new_seat: true,
             extra: if self.tree.is_none() {
-                self.seats
+                seats
                     .iter()
                     .map(|seat| seat.element_in_swarm(ctx))
                     .collect()
@@ -410,8 +469,7 @@ impl Scene {
                         name: if self.live { "seats" } else { "all fifteen" }.into(),
                         shortcut: Some("⌘1".into()),
                         tree: self.mini(tree),
-                        seats: self
-                            .seats
+                        seats: seats
                             .iter()
                             .map(|row| TabSeat {
                                 row: row.clone(),
@@ -466,7 +524,7 @@ impl Scene {
             .map(|tree| stage_split(tree, bounds, self.rim).panes)
             .unwrap_or_default()
         {
-            let seat = self.seats[self.seat_index[&id]].clone();
+            let seat = seats[self.seat_index[&id]].clone();
             let pane_ctx = ui::Context {
                 seat: seat.color.unwrap_or(ctx.seat),
                 focused: seat.focused,
@@ -806,6 +864,86 @@ mod depth_tests {
         assert_eq!(scene.rim, RIM_MAX);
         scene.set_rim(0.5);
         assert_eq!(scene.rim, RIM_MIN);
+    }
+
+    /// Every rim the scene paints for one seat, its row (phase from the key) and its pane
+    /// (seeded by the seat id), as (swell, attention).
+    fn rims_of(scene: &Scene, seat: SeatId, now: Instant) -> Vec<(f32, bool)> {
+        let key = &scene.seats[scene.seat_index[&seat]].key;
+        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let mut out = vec![];
+        for layout in scene.layout_at([1600., 960.], true, now).unwrap() {
+            for op in c::paint(&layout, ctx) {
+                if let c::Paint::Material {
+                    kind: ui::Material::Rim,
+                    rim: Some(r),
+                    ..
+                } = op
+                    && (r.seed == ui::rim_phase(key) || r.seed == seat.0.0 as u32)
+                {
+                    out.push((r.swell, r.attention));
+                }
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn the_focus_swell_rises_and_settles_over_swell_ms_and_keeps_frames_until_then() {
+        let mut scene = Scene::new();
+        let t0 = Instant::now();
+        let ms = |n: u64| t0 + std::time::Duration::from_millis(n);
+        let seat = SeatId::from_u128(3);
+        assert!(!scene.animating(t0));
+        assert!(rims_of(&scene, seat, t0).iter().all(|r| *r == (0., false)));
+        scene.swell(seat, t0);
+        let peak = rims_of(&scene, seat, ms(TOKENS.glow.swell_ms as u64 / 2));
+        assert!(peak.len() >= 2, "the row and the pane swell: {peak:?}");
+        assert!(
+            peak.iter().all(|(e, a)| (*e - 1.).abs() < 1e-3 && !a),
+            "{peak:?}"
+        );
+        assert!(scene.animating(ms(100)));
+        let done = ms(TOKENS.glow.swell_ms as u64 + 1);
+        assert!(!scene.animating(done));
+        assert!(
+            rims_of(&scene, seat, done)
+                .iter()
+                .all(|r| *r == (0., false))
+        );
+        // Another seat never swells with it.
+        assert!(
+            rims_of(&scene, SeatId::from_u128(4), ms(450))
+                .iter()
+                .all(|r| r.0 == 0.)
+        );
+    }
+
+    #[test]
+    fn attention_loops_until_handled_and_a_muted_seat_stays_quiet() {
+        let mut scene = Scene::new();
+        let t0 = Instant::now();
+        let seat = SeatId::from_u128(5);
+        scene.set_attention(seat, Some((t0, false)));
+        // |sin(pi t / swell_ms)|: a peak every swell_ms, forever, and frames keep coming.
+        for n in 0..4 {
+            let at = t0 + std::time::Duration::from_millis(TOKENS.glow.swell_ms as u64 * n + 450);
+            assert!(
+                rims_of(&scene, seat, at)
+                    .iter()
+                    .all(|(e, a)| (*e - 1.).abs() < 1e-3 && *a)
+            );
+            assert!(scene.animating(at));
+        }
+        scene.set_attention(seat, Some((t0, true)));
+        assert!(!scene.animating(t0));
+        assert!(
+            rims_of(&scene, seat, t0 + std::time::Duration::from_millis(450))
+                .iter()
+                .all(|r| *r == (0., false))
+        );
+        scene.set_attention(seat, None);
+        assert!(!scene.animating(t0));
     }
 
     #[test]
