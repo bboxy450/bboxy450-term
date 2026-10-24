@@ -2598,6 +2598,20 @@ mod capture_read_tests {
         let event = rx.try_recv().unwrap();
         assert_eq!(event.seat(), hot);
         assert_eq!(event.sequence(), Some(11));
+
+        // An attached seat with no remaining notification also loses its turn.
+        actor.seats.get_mut(&waiting).unwrap().writer = Some((client, Ulid::new()));
+        actor.seats.get_mut(&waiting).unwrap().pending_event = None;
+        publish(&mut actor, hot, Some(12));
+        publish(&mut actor, waiting, Some(4));
+        actor.seats.get_mut(&waiting).unwrap().pending_event = None;
+        assert_eq!(rx.try_recv().unwrap().sequence(), Some(12));
+        publish(&mut actor, hot, Some(13));
+        actor.tick_seats().unwrap();
+        let event = rx.try_recv().unwrap();
+        assert_eq!(event.seat(), hot);
+        assert_eq!(event.sequence(), Some(13));
+        assert!(actor.seats[&waiting].writer.is_some());
     }
 
     #[test]
