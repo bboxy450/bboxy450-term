@@ -13,11 +13,12 @@ links:
   - { to: "[[mux-daemon]]", rel: constrains }
   - { to: "[[seats-967-frame]]", rel: unblocks }
 created: "2026-10-24T04:20:48Z"
-updated: "2026-10-24T05:23:06Z"
+updated: "2026-10-24T10:46:38Z"
 ---
 # Crash recovery work per seat stays under the checkpoint bound
 
-**Property.** Under the firehose at the gate's seat count, `SIGKILL` logic
+**Property.** Under the firehose at the gate's seat count, in the load fixture's
+swarm shape of one or two swarms (never one swarm per seat), `SIGKILL` logic
 mid-replay and restart (a fixture that starts 20 MiB behind has backlog, not
 debt, and is valid): every seat's **parsed debt** at the kill, the replay from its last confirmed
 checkpoint cursor to where parsing stood, is at most **2R = 16 MiB**

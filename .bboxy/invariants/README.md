@@ -38,6 +38,7 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[seats-967-frame]] the sidebar and 50 watched panes hold frame time at 967 seats | `GATE_SEATS=967 GATE_WATCHED=50 GATE_SECONDS=10 GATE_BUDGET=8.33 sh scripts/gates.sh frame` | pending a settled run (slow, gated) |
 | [[checkpoint-bounded]] crash recovery work per seat stays under the checkpoint bound | `cargo test -p bbt-mux --locked --test recovery checkpoint_bounded_recovery -- --exact` | pending R5g (slow, gated) |
 | [[ctl-opt-in]] no gui.endpoint exists unless ctl is enabled, and the app's own seats are refused at the door | `cargo test -p bbt-mux --locked --test gui_endpoint ctl_endpoint_opt_in_and_ancestry_refusal -- --exact` | pending A-1 (slow, gated) |
+| [[idle-swarms-cost-nothing]] the message pump's cost is independent of the number of idle swarms | `cargo test -p bbt-mux --locked --test logic pump_scans_only_dirty_swarms -- --exact` | pending R5i (slow, gated) |
 
 A violation halts the work that broke it: the task goes `blocked` with
 `[[invariant|violates]]`, and the halt names the invariant, the evidence and
