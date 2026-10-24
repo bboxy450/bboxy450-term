@@ -1,0 +1,186 @@
+R5g exact normal CI evidence and pending frame acceptance
+{
+  "task": "R5g checkpoint scheduling: exact normal CI handoff, frame acceptance still pending",
+  "at": "2026-10-24T07:23:19.557552-07:00",
+  "role": "Rook Ashwhisker <EXECUTOR>",
+  "worktree": "/Users/feral/mydev/bboxy450-term-rook",
+  "branch": "rook-r5g-idle-checkpoints",
+  "gated_source": "c71b86944801fc9de34215302573e4250bd22c3b",
+  "base": "fffc95e51c6b2ec1fafd4fd62de8ac31a1e1afc2",
+  "gate_authority": "Oracle6f19c7b8-c2eb-4c7a-a7f4-9687056e968a: exact source as-is, Oracle handles newer main",
+  "signature": "G 9B07E849480C68328CA20684844ECC0587DE7AB0",
+  "mechanisms": [
+    "crates/bbt-mux/src/checkpoint.rs:14/48/90 \u2014 policy data, oldest-arrival age and K=4 prepared immutable cursors; one active leased-stream request; generation/ack guards.",
+    "crates/bbt-mux/src/logic.rs:3065/3102/3171 \u2014 prepare owned images, nonblocking completion, confirmed-cursor application and side-task encoding/publication.",
+    "crates/bbt-mux/src/logic.rs:3458/3475 \u2014 debt and age checked on every catch_up return; only the indebted seat pauses at2R.",
+    "crates/bbt-mux/src/logic.rs:156/4461 \u2014 bounded command service/deferred RPC work while the existing serial supervisor link is owned; no synchronous save await in live ingest.",
+    "crates/bbt-mux/src/provider/mod.rs:129 and provider/shared.rs:27 \u2014 shared ownership of existing leased links, nonblocking receive; no second connection or protocol change.",
+    "crates/bbt-supervisor/src/client.rs:131 and supervisor.rs:235 \u2014 bounded delivery/maintenance diagnostics; opt-in lossless fixture recorder before SIGKILL, product recorder nonblocking by default.",
+    "crates/bbt-mux/tests/checkpoint_scheduling.rs:290/398/425 \u2014 held-save local responsiveness,20MiB backlog idle exclusion,100MiB partial-replay debt and forced spacing.",
+    "crates/bbt-mux/tests/recovery.rs:412 \u2014 default4 realPTY and explicit967 fixture, two swarms, finite producer output then park, SIGKILL mid-replay, frozen audit before assertions, exact replay/screens/PIDs, parsed debt separated from backlog.",
+    ".bboxy/invariants/checkpoint-bounded.md:6 \u2014 active default4 check; Architect text and clock preserved; full967 budget env71666ms."
+  ],
+  "checks": [
+    {
+      "command": "sh scripts/ci-local.sh",
+      "status": {
+        "argv": [
+          "sh",
+          "scripts/ci-local.sh"
+        ],
+        "cwd": "/tmp/rook-r5g-ci2-d3gp48ux/tree",
+        "env": {
+          "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+          "CARGO_INCREMENTAL": "0",
+          "CARGO_PROFILE_DEV_DEBUG": "0",
+          "CARGO_PROFILE_TEST_DEBUG": "0",
+          "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+          "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+          "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+          "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+          "CARGO_BUILD_JOBS": "2",
+          "BBOXY_TEST_CUSTODY": "memory"
+        },
+        "source": "c71b86944801fc9de34215302573e4250bd22c3b",
+        "at": "2026-10-24T06:58:30.142030-07:00",
+        "load_before": [
+          3.60693359375,
+          5.35693359375,
+          8.9189453125
+        ],
+        "free_bytes_before": 60986535936,
+        "finished": true,
+        "git_status_before": "",
+        "pid": 87720,
+        "exit": 0,
+        "elapsed_s": 1201.7027472499758,
+        "load_after": [
+          10.6259765625,
+          14.64697265625,
+          16.0009765625
+        ],
+        "free_bytes_after": 58113556480,
+        "git_status_after": "",
+        "log_sha256": "b9aa15aff82c7f78e017e4aab1dddf61ba9fec06918752cd8142ec3d32e05b84"
+      },
+      "raw_log": ".bboxy/runs/r5g-final-ci.log",
+      "sha256": "b9aa15aff82c7f78e017e4aab1dddf61ba9fec06918752cd8142ec3d32e05b84"
+    },
+    {
+      "command": "git diff --quiet c71b8694 -- crates scripts Cargo.toml Cargo.lock",
+      "exit": 0,
+      "meaning": "No product/test/script/manifest changes after the exact gated source"
+    }
+  ],
+  "acceptance": {
+    "backlogged_idle_checkpoint_exclusion": "PASS exactCI scheduling regression",
+    "hundred_mib_R_spacing_and_two_R_debt": "PASS exactCI scheduling regression",
+    "held_save_actor_service": "PASS exactCI causal Snapshot/Status fixture; RPC-dependent Input/Resize still defer behind the single leased stream",
+    "default_four_real_pty_SIGKILL_recovery": "PASS exactCI; after-readiness synchronous-save count asserted zero",
+    "three_full_count_calibrations": {
+      "source": "34cc1356244db4ac795c3c6c6e682208055e15dc",
+      "runs": [
+        {
+          "label": "calibration-v3-1-lossless",
+          "source": "34cc1356244db4ac795c3c6c6e682208055e15dc",
+          "exit": 0,
+          "seats": 967,
+          "every_seat_live_ms": "57539.188",
+          "max_parsed_debt": 4199424,
+          "max_backlog": 8388622,
+          "missed": 0,
+          "untracked": 0,
+          "fixture_lossless": true,
+          "synchronous_saves_after_readiness": 0,
+          "log_sha256": "26aae8067a97eb3d5e99f389d0eb4f290f829563c63790e4ee2067fb07cde23b",
+          "frozen_sha256": "f5956d2c23531737617c2a512cb42f238e2c94c4d0363ba94a5e45ba3c836905",
+          "reaped_pids": 967,
+          "remaining": [],
+          "run_dir_exists": false,
+          "at": "2026-10-24T05:54:35.521567-07:00"
+        },
+        {
+          "label": "calibration-v3-2",
+          "source": "34cc1356244db4ac795c3c6c6e682208055e15dc",
+          "exit": 0,
+          "seats": 967,
+          "every_seat_live_ms": "57231.718",
+          "max_parsed_debt": 4201472,
+          "max_backlog": 8381454,
+          "missed": 0,
+          "untracked": 0,
+          "fixture_lossless": true,
+          "synchronous_saves_after_readiness": 0,
+          "log_sha256": "3b70a0c45ca1a472a37cd4ae543331d28c844ee11e886a1dbabd71a5f6793fae",
+          "frozen_sha256": "f228fd874516dfd15c904ed3765a407d95e7fe1482913d4cb1dd0de85d94a21c",
+          "reaped_pids": 967,
+          "remaining": [],
+          "run_dir_exists": false,
+          "at": "2026-10-24T05:59:45.374291-07:00"
+        },
+        {
+          "label": "calibration-v3-3",
+          "source": "34cc1356244db4ac795c3c6c6e682208055e15dc",
+          "exit": 0,
+          "seats": 967,
+          "every_seat_live_ms": "57332.734",
+          "max_parsed_debt": 4199424,
+          "max_backlog": 8384526,
+          "missed": 0,
+          "untracked": 0,
+          "fixture_lossless": true,
+          "synchronous_saves_after_readiness": 0,
+          "log_sha256": "2f980476e100bc5a5a4c0c95745ed4a36879d7006f5661becac465912658b77a",
+          "frozen_sha256": "001cb50d3a94ffe29b5e3717006a037ac01560c305dfa5781f5fa6131c080f99",
+          "reaped_pids": 967,
+          "remaining": [],
+          "run_dir_exists": false,
+          "at": "2026-10-24T06:06:37.820590-07:00"
+        }
+      ],
+      "median_ms": "57332.734",
+      "median_plus_25_ms": "71665.91750",
+      "budget_ms": 71666,
+      "rounding": "ceil to whole millisecond",
+      "clock": "immediately before replacement Logic::start through all967 snapshots matching frozen tails; excludes preceding diagnostic ring probes/expected replay",
+      "free_bytes_after": 49646501888
+    },
+    "full_count_budget": "71666ms, Architect11b00370/3103ed83. Three measured calibrated-source results are below the bound; the newly added full-count budget assertion was not a fourth967 run.",
+    "exact_clean_normal_ci": "PASS exit0,1201.703s; layering/build/strictworkspaceclippy/alltests/doctests/uiIOlint/nativeSmoke; invariants18/0 with7slow skips",
+    "separate_967_50_frame": "PENDING Oracle-scheduled window: watched seats settle and CheckpointRpc <=10%logicwall; no claim from normalCI or recovery calibrations"
+  },
+  "cleanup": {
+    "at": "2026-10-24T07:20:10.537539-07:00",
+    "deleted_only": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "owned_source": "ci-state.json single private target",
+    "gate_exit": 0,
+    "recorded_gate_pids": [
+      87704,
+      87720
+    ],
+    "pids_gone_ps_exit": 1,
+    "allocated_bytes_removed": 3930423296,
+    "free_bytes_before": 56918601728,
+    "free_bytes_after": 60614598656,
+    "observed_free_delta": 3695996928,
+    "target_exists_after": false
+  },
+  "preserved_failures": [
+    {
+      "log": ".bboxy/runs/r5g-calibration-invalid.log",
+      "meaning": "Original finite-lifetime/prekill serialRPC fixture invalid; not a calibration result"
+    },
+    {
+      "log": ".bboxy/runs/r5g-calibration-v2-1.log",
+      "meaning": "967-distinct-swarm failure and stalled burst parsing; not a settled recovery result"
+    },
+    {
+      "log": ".bboxy/runs/r5g-calibration-v3-1.log",
+      "meaning": "Two-swarm first attempt failed missed==0 with2 diagnostic misses; no measured restart time; assertion retained and fixture recorder corrected"
+    }
+  ],
+  "declared_workload_correction": "Architectef0e2092/Oracled6aff179: recovery fixture now one/two swarms as stall/load.rs;4/64/65 distinct-swarm message-pump evidence retained in r5g-delivery-diagnostics.log; corrected-shape evidence in r5g-workload-correction.log; not a controlled speedup claim. R5i/#267 deferred until R5g accepted.",
+  "exceptions": "Forced checkpoints may be awaited synchronously only before #11 readiness during cold bootstrap and explicit recovery. Close/seal/resize/shutdown/handover strong-commit paths and D21/D22 tick/5s/16MiB contract retained.",
+  "deliberately_untouched": "No watched-seat priority, ReadRing batching, messaging dirty-set fix, wire schema, second lease, ring/journal durability format, or peer-tree edits. Newer main is for Oracle merged-tree verification, per explicit gate grant.",
+  "remaining": "Separate967/50frame acceptance; Oracle verification/merge. No active Rook build,gate,load or cache target remains."
+}
