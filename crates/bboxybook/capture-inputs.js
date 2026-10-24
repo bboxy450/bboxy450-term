@@ -169,7 +169,8 @@
       r.css={font:css.font,line_height:css.lineHeight,background:css.backgroundColor,shadow:css.boxShadow,opacity:css.opacity,border_radius:css.borderRadius,flex:css.flex,padding:css.padding};out.push(r);
       if(!leaf(node)&&!(window.bboxyPaneFixture&&node.classList.contains('term'))){const counts={};for(const ch of [...node.childNodes]){
         if(ch.nodeType===Node.TEXT_NODE&&ch.textContent.trim()){out.push({...rawTextDiag(ch),key:(path?path+'/':'')+'text'});continue;}
-        if(ch.nodeType!==Node.ELEMENT_NODE)continue;
+        // A kit block's rim canvas (rim-glow §8) is its paint surface, not a part: native draws the rim as a material.
+        if(ch.nodeType!==Node.ELEMENT_NODE||ch.matches('canvas.rim'))continue;
         const cls=ch.classList[0]||ch.tagName.toLowerCase(),i=counts[cls]||0;counts[cls]=i+1;parts(ch,(path?path+'/':'')+cls+(i?i:''),out);
       }}
       return out;
