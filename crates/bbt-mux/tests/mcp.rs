@@ -51,11 +51,15 @@ impl Fixture {
         oracle.role.name = "custom director".into();
         oracle.role.class = Class::Oracle;
         let outside = SeatRecord::new(Ulid::new(), Ulid::new(), "Outside", "zsh");
-        for (id, seat, title) in [
+        for (number, (id, seat, title)) in [
             (task, own.id, "Own fixture task"),
             (foreign_task, outside.id, "Foreign fixture task"),
-        ] {
-            std::fs::write(repository.join(format!(".bboxy/tasks/{id}.md")),format!("---\nid: {id}\ntype: task\ntitle: {title}\nstatus: running\nassignee: {seat}\nverify: 'true'\n---\nSynthetic fixture brief only.\n")).unwrap();
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let number = number + 1;
+            std::fs::write(repository.join(format!(".bboxy/tasks/{id}.md")),format!("---\nid: {id}\ntype: task\nnumber: {number}\ntitle: {title}\nstatus: running\nassignee: {seat}\nverify: 'true'\n---\nSynthetic fixture brief only.\n")).unwrap();
         }
         let config = LogicConfig {
             run_dir: temp.path().join("run"),
@@ -2039,7 +2043,7 @@ fn mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority() 
     );
     assert_eq!(missing["error"]["code"], -32602);
     let op = Ulid::new();
-    for invalid_id in [json!("not-a-ulid"), json!(Ulid::nil())] {
+    for invalid_id in [json!("not-a-ulid"), json!(Ulid::nil()), json!("#1")] {
         let mut invalid = args.clone();
         invalid["op_id"] = invalid_id;
         assert_eq!(
@@ -2162,7 +2166,7 @@ impl Fixture {
         )
     }
     fn task_metadata(&self) -> Value {
-        json!({"id":self.task,"type":"task","title":"Fixture: quotes ' and colon: retained","status":"running",
+        json!({"id":self.task,"type":"task","number":1,"title":"Fixture: quotes ' and colon: retained","status":"running",
             "assignee":format!("seat:{}",self.own.id),"delegated_by":format!("seat:{}",self.oracle.id),
             "verify":"true","allowed_paths":["fixture/**"],"custom":{"nested":["untouched",42]}})
     }
@@ -2565,6 +2569,7 @@ fn mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_conte
         .join(format!(".bboxy/artifacts/{op}.md"));
     let source = std::fs::read_to_string(&path).unwrap();
     let artifact = bbt_mux::index::Document::parse(&format!("artifacts/{op}.md"), &source);
+    assert_eq!(artifact.metadata["number"], 3);
     assert_eq!(
         artifact.metadata["produced_by"],
         format!("seat:{}", f.own.id)
@@ -2672,7 +2677,7 @@ fn mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert!(String::from_utf8_lossy(&output.stdout).contains("0 parse errors"));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("positive unique numbers, 0 errors"));
 }
 
 #[test]
@@ -2690,6 +2695,10 @@ fn mcp_artifact_partial_write_remains_unknown_and_is_not_reexecuted() {
         .repository
         .join(format!(".bboxy/artifacts/{op}.md"));
     let written = std::fs::read_to_string(&artifact_path).unwrap();
+    assert_eq!(
+        bbt_mux::index::Document::parse("artifact.md", &written).metadata["number"],
+        3
+    );
     assert_eq!(f.task_document().digest, original.digest);
     db.execute_batch("DROP TRIGGER fixture_task_write_failure")
         .unwrap();
@@ -3148,4 +3157,138 @@ fn seat_native_fixture() {
     }
     server.abort();
     std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn mcp_record_numbers_resolve_before_the_existing_task_authority_fences() {
+    let f = Fixture::new();
+    f.task_file(f.task_metadata());
+    for args in [json!({"task_path":"#1"}), json!({"task_id":"#1"})] {
+        let task = data(f.call(f.own.id, Ulid::new(), "task_status", args));
+        assert_eq!(task["id"], f.task.to_string());
+        assert_eq!(task["metadata"]["number"], 1);
+        assert_eq!(task["path"], f.task_path());
+    }
+    for caller in [f.own.id, f.oracle.id] {
+        let denied = f.call(
+            caller,
+            Ulid::new(),
+            "task_status",
+            json!({"task_path":"#2"}),
+        );
+        assert_eq!(denied["isError"], true);
+        assert!(!denied.to_string().contains("Foreign fixture task"));
+    }
+    assert_eq!(
+        f.mutate(
+            f.own.id,
+            Ulid::new(),
+            "task_accept",
+            json!({"task_path":"#1"})
+        )["isError"],
+        true
+    );
+    data(f.mutate(f.own.id, Ulid::new(), "task_report", json!({"task_path":"#1","summary":"Numbered report","verify_result":verification("true",0,json!([]))})));
+    assert_eq!(
+        data(f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "task_accept",
+            json!({"task_path":"#1"})
+        ))["task_status"],
+        "accepted"
+    );
+    assert_eq!(f.task_document().metadata["number"], 1);
+    assert_eq!(
+        f.call(f.own.id, Ulid::new(), "task_list", json!({"after":"#1"}))["isError"],
+        true
+    );
+}
+
+#[test]
+fn mcp_artifact_number_uses_unindexed_records_of_every_type_and_keeps_retry_bytes() {
+    let mut f = Fixture::new();
+    f.task_file(f.task_metadata());
+    let nested = f.config.repository.join(".bboxy/nested");
+    std::fs::create_dir(&nested).unwrap();
+    std::fs::write(
+        nested.join("spec.md"),
+        format!(
+            "\u{feff}---\r\nid: {}\r\ntype: spec\r\nnumber: 9001\r\n---\r\nnumber: 999999\r\n",
+            Ulid::new()
+        ),
+    )
+    .unwrap();
+    let op = Ulid::new();
+    let args = json!({"kind":"file","ref":"fixture: numbered artifact","task":"#1"});
+    let first = f.mutate(f.own.id, op, "artifact_claim", args.clone());
+    data(first.clone());
+    let path = f
+        .config
+        .repository
+        .join(format!(".bboxy/artifacts/{op}.md"));
+    let source = std::fs::read_to_string(&path).unwrap();
+    let doc = bbt_mux::index::Document::parse("artifact.md", &source);
+    assert_eq!(doc.metadata["number"], 9002);
+    assert_item_signature(&doc, f.own.id);
+    assert_eq!(f.task_document().metadata["number"], 1);
+    f.restart();
+    assert_eq!(f.mutate(f.own.id, op, "artifact_claim", args), first);
+    assert_eq!(std::fs::read_to_string(path).unwrap(), source);
+}
+
+#[test]
+fn mcp_numeric_selectors_refuse_invalid_missing_and_ambiguous_handles() {
+    let f = Fixture::new();
+    for locator in [
+        "#0",
+        "#01",
+        "#-1",
+        "#1.5",
+        "#1x",
+        "#18446744073709551616",
+        "#999",
+    ] {
+        for field in ["task_path", "task_id"] {
+            assert_eq!(
+                f.call(f.own.id, Ulid::new(), "task_status", json!({field:locator}))["isError"],
+                true,
+                "{field} {locator}"
+            );
+        }
+    }
+    let path = f.config.repository.join(".bboxy/duplicate.md");
+    std::fs::write(
+        path,
+        format!(
+            "---\nid: {}\ntype: spec\nnumber: 1\n---\nPrivate duplicate content\n",
+            Ulid::new()
+        ),
+    )
+    .unwrap();
+    let result = f.call(
+        f.own.id,
+        Ulid::new(),
+        "task_status",
+        json!({"task_path":"#1"}),
+    );
+    assert_eq!(result["isError"], true);
+    assert!(result.to_string().contains("ambiguous"));
+    assert!(!result.to_string().contains("Private duplicate content"));
+    let op = Ulid::new();
+    assert_eq!(
+        f.mutate(
+            f.own.id,
+            op,
+            "artifact_claim",
+            json!({"kind":"file","ref":"must not write"})
+        )["isError"],
+        true
+    );
+    assert!(
+        !f.config
+            .repository
+            .join(format!(".bboxy/artifacts/{op}.md"))
+            .exists()
+    );
 }

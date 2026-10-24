@@ -33,6 +33,8 @@ pub(crate) fn mutation(tool: &str) -> bool {
 }
 pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     let id = json!({"type":"string","pattern":"^[0-7][0-9A-HJKMNP-TV-Z]{25}$"});
+    let record_id =
+        json!({"type":"string","pattern":"^(?:[0-7][0-9A-HJKMNP-TV-Z]{25}|#[1-9][0-9]*)$"});
     let path = json!({"type":"string","minLength":1,"maxLength":4096});
     let text = json!({"type":"string","minLength":1,"maxLength":16384});
     let evidence = json!({"type":"array","maxItems":128,"items":{"type":"object","additionalProperties":false,"properties":{
@@ -48,8 +50,8 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
         ),
         (
             "task_status",
-            "Read an authorized task by path or ID; workers see only the current assignment.",
-            json!({"task_path":path,"task_id":id}),
+            "Read an authorized task by path, ID or #N; workers see only the current assignment.",
+            json!({"task_path":path,"task_id":record_id}),
             vec![],
         ),
         (
@@ -90,7 +92,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
 #[serde(deny_unknown_fields)]
 struct Status {
     task_path: Option<String>,
-    task_id: Option<Ulid>,
+    task_id: Option<String>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -301,7 +303,12 @@ pub(crate) fn prepare(
             let args: Status = tools::parse(&call.args)?;
             let locator = match (args.task_path, args.task_id) {
                 (Some(path), None) => path,
-                (None, Some(id)) if id != Ulid::nil() => id.to_string(),
+                (None, Some(id))
+                    if number_handle(&id)?.is_some()
+                        || id.parse::<Ulid>().is_ok_and(|id| id != Ulid::nil()) =>
+                {
+                    id
+                }
                 _ => return Err("supply exactly one task_path or task_id".into()),
             };
             return Ok(Prepared::Read(projection(&task(&locator)?)));
@@ -459,33 +466,51 @@ pub(crate) fn retained_allowed(
 fn is_task(doc: &Document) -> bool {
     matches!(doc.metadata["type"].as_str(), Some("task" | "bug"))
 }
-fn locate(index: &Index, locator: &str) -> Checked<Document> {
-    let path = if let Ok(id) = locator.parse::<Ulid>() {
-        let docs: Vec<_> = index
-            .documents
-            .values()
-            .filter(|d| d.id == id.to_string())
-            .collect();
-        if docs.len() != 1 {
-            return Err("task ID missing or ambiguous".into());
-        }
-        docs[0].path.clone()
-    } else {
-        let path = locator.strip_prefix(".bboxy/").unwrap_or(locator);
-        if path.len() > 4096
-            || Path::new(path).is_absolute()
-            || Path::new(path)
-                .components()
-                .any(|c| !matches!(c, Component::Normal(_)))
-        {
-            return Err("task path must stay inside .bboxy".into());
-        }
-        path.into()
+fn number_handle(locator: &str) -> Checked<Option<u64>> {
+    let Some(digits) = locator.strip_prefix('#') else {
+        return Ok(None);
     };
-    let doc = index
-        .current(&path)
-        .map_err(|e| e.to_string())?
-        .ok_or("task unavailable")?;
+    digits
+        .parse::<u64>()
+        .ok()
+        .filter(|number| *number > 0 && number.to_string() == digits)
+        .map(Some)
+        .ok_or_else(|| "invalid task number handle".into())
+}
+fn locate(index: &Index, locator: &str) -> Checked<Document> {
+    let doc = if let Some(number) = number_handle(locator)? {
+        index
+            .by_number(number)
+            .map_err(|_| "task number unavailable or ambiguous".to_owned())?
+            .ok_or("task number unavailable")?
+    } else {
+        let path = if let Ok(id) = locator.parse::<Ulid>() {
+            let docs: Vec<_> = index
+                .documents
+                .values()
+                .filter(|d| d.id == id.to_string())
+                .collect();
+            if docs.len() != 1 {
+                return Err("task ID missing or ambiguous".into());
+            }
+            docs[0].path.clone()
+        } else {
+            let path = locator.strip_prefix(".bboxy/").unwrap_or(locator);
+            if path.len() > 4096
+                || Path::new(path).is_absolute()
+                || Path::new(path)
+                    .components()
+                    .any(|c| !matches!(c, Component::Normal(_)))
+            {
+                return Err("task path must stay inside .bboxy".into());
+            }
+            path.into()
+        };
+        index
+            .current(&path)
+            .map_err(|e| e.to_string())?
+            .ok_or("task unavailable")?
+    };
     if doc.error.is_some()
         || !is_task(&doc)
         || doc.metadata["id"]
@@ -493,7 +518,7 @@ fn locate(index: &Index, locator: &str) -> Checked<Document> {
             .and_then(|id| id.parse::<Ulid>().ok())
             .is_none()
     {
-        return Err("task requires valid id/type frontmatter".into());
+        return Err("task requires valid id/type/number frontmatter".into());
     }
     if index
         .documents

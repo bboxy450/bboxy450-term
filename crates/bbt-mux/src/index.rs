@@ -20,6 +20,13 @@ use crate::store::{Result, Store, digest, events::Draft, invalid, sqlite::Sqlite
 
 const MAX_DOCUMENT: u64 = 2 * 1024 * 1024;
 
+fn record_number(metadata: &Value) -> Option<u64> {
+    metadata
+        .get("number")
+        .and_then(Value::as_u64)
+        .filter(|number| *number > 0)
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 struct FileState {
     len: u64,
@@ -97,8 +104,20 @@ impl Document {
             error: None,
             links: Vec::new(),
         };
-        if let Some(after) = text.strip_prefix("---\n") {
-            if let Some((front, body)) = after.split_once("\n---\n") {
+        let source = text.strip_prefix('\u{feff}').unwrap_or(text);
+        if let Some(after) = source
+            .strip_prefix("---\n")
+            .or_else(|| source.strip_prefix("---\r\n"))
+        {
+            let mut offset = 0;
+            let closing = after.split_inclusive('\n').find_map(|line| {
+                let start = offset;
+                offset += line.len();
+                matches!(line.trim_end_matches(['\r', '\n']), "---" | "...")
+                    .then_some((start, offset))
+            });
+            if let Some((end, body_start)) = closing {
+                let (front, body) = (&after[..end], &after[body_start..]);
                 match serde_yaml::from_str::<Value>(front) {
                     Ok(value) if value.is_object() => {
                         doc.metadata = value;
@@ -117,6 +136,9 @@ impl Document {
             } else {
                 doc.error = Some("frontmatter id is not a ULID".into());
             }
+        }
+        if doc.error.is_none() && record_number(&doc.metadata).is_none() {
+            doc.error = Some("frontmatter number must be a positive integer".into());
         }
         doc.links = wikilinks(text);
         if let Some(links) = doc.metadata.get("links").and_then(Value::as_array) {
@@ -538,6 +560,74 @@ impl Index {
         }
         Ok(Some(Document::parse(path, &String::from_utf8(bytes)?)))
     }
+    /// Numbers come from the current files, not the watcher's cached mirror.
+    /// Refuse an incomplete/ambiguous store instead of guessing a free handle.
+    fn record_numbers(&self) -> Result<BTreeMap<u64, String>> {
+        let mut paths = Vec::new();
+        collect(&self.root, &mut paths)?;
+        paths.sort_by(|a, b| a.0.cmp(&b.0));
+        let mut numbers = BTreeMap::new();
+        for (path, _) in paths {
+            let relative = path
+                .strip_prefix(&self.root)
+                .ok()
+                .and_then(Path::to_str)
+                .ok_or_else(|| invalid("record path is not relative UTF-8"))?;
+            let doc = self
+                .current(relative)?
+                .ok_or_else(|| invalid("record disappeared during number scan"))?;
+            let number = record_number(&doc.metadata)
+                .ok_or_else(|| invalid(format!("{relative}: invalid or missing record number")))?;
+            if let Some(previous) = numbers.insert(number, relative.to_owned()) {
+                return Err(invalid(format!(
+                    "duplicate record number {number}: {previous} and {relative}"
+                )));
+            }
+        }
+        Ok(numbers)
+    }
+    pub(crate) fn by_number(&self, number: u64) -> Result<Option<Document>> {
+        let numbers = self.record_numbers()?;
+        let Some(path) = numbers.get(&number) else {
+            return Ok(None);
+        };
+        let doc = self
+            .current(path)?
+            .ok_or_else(|| invalid("numbered record disappeared"))?;
+        if record_number(&doc.metadata) != Some(number) {
+            return Err(invalid("record number changed during lookup"));
+        }
+        Ok(Some(doc))
+    }
+    fn assign_number(&self, update: &mut Update, current: Option<&Document>) -> Result<()> {
+        let map = update
+            .metadata
+            .as_object_mut()
+            .ok_or_else(|| invalid("frontmatter must be a mapping"))?;
+        let numbers = self.record_numbers()?;
+        let number = if let Some(current) = current {
+            record_number(&current.metadata)
+                .ok_or_else(|| invalid("existing record has no valid number; repair the record"))?
+        } else {
+            numbers
+                .last_key_value()
+                .map_or(0, |(number, _)| *number)
+                .checked_add(1)
+                .ok_or_else(|| invalid("record number exhausted"))?
+        };
+        if let Some(supplied) = map.get("number") {
+            if supplied.as_u64() != Some(number) {
+                return Err(invalid(if current.is_some() {
+                    "existing record number is immutable".into()
+                } else {
+                    format!("new record number must be next free number {number}")
+                }));
+            }
+        } else {
+            map.insert("number".into(), json!(number));
+        }
+        Ok(())
+    }
     /// Reject a detected editor conflict; creation never replaces an existing file.
     #[cfg(test)]
     pub(crate) fn apply(&self, update: Update, seat: Ulid, key: &SigningKey) -> Result<()> {
@@ -609,11 +699,18 @@ impl Index {
         guarded: bool,
     ) -> Result<()> {
         bbt_rt::assert_not_ui_thread();
+        // One OS lock per store root spans the fresh scan, signature and
+        // atomic publication. Closing this descriptor also releases it after
+        // an error or process exit; no counter/reservation state is needed.
+        let number_lock = std::fs::File::open(&self.root)?;
+        number_lock.lock()?;
         let key = author.key;
         let destination = self.destination(&update.path)?;
         if guarded {
             self.unchanged(&update)?;
         }
+        let current = self.current(&update.path)?;
+        self.assign_number(&mut update, current.as_ref())?;
         let metadata = &mut update.metadata;
         let body = &update.body;
         let path = Path::new(&update.path);
