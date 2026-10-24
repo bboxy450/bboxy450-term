@@ -1,6 +1,6 @@
 flowchart LR
   F["plugins/ folder<br/>bboxy450-term-&lt;system&gt;-&lt;provider&gt;"] --> R["registry<br/>shape, version, health, timings"]
-  R -- "--shape, once at trust,<br/>cached by sha256" --> P["plugin binary<br/>subprocess, JSON-RPC over stdio<br/>or a socket it names"]
+  R -- "--shape, once at trust,<br/>cached by sha256" --> P["plugin binary<br/>an MCP server over stdio<br/>its tools are the contract methods"]
   R -- "status / login / health" --> P
   C["system contracts<br/>task_system, event_sink, session,<br/>data_source, repo_graph,<br/>decision_model, provider"] --> R
   P -- "fulfils one or more contracts" --> C

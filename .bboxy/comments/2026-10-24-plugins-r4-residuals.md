@@ -3,7 +3,7 @@ id: 01M5NVR3020JNEYE79NFV87S8G
 number: 250
 type: comment
 title: "revision 4 closes all 18; four small inconsistencies it introduced"
-status: open
+status: resolved
 author: name:Seraph key:eec764b7d2f4b9b8
 on: "[[plugins]]"
 on_digest: "sha256:72e328fea370f08575b601f9f46a11498dc64da2499100e2d52f9473f1a8a6d1"
@@ -12,7 +12,7 @@ kind: objection
 links:
   - { to: "[[plugins]]", rel: on }
 created: 2026-10-24T02:27:28Z
-updated: 2026-10-24T02:27:28Z
+updated: "2026-10-24T02:29:01Z"
 ---
 # revision 4 closes all 18; four small inconsistencies it introduced
 
