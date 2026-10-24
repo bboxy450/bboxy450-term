@@ -1,0 +1,496 @@
+{
+  "source": "15755436a3d5a9f38fa2fdcbb8e432c2fd292bcf",
+  "ci": {
+    "source": "15755436a3d5a9f38fa2fdcbb8e432c2fd292bcf",
+    "wrapper_pid": 49828,
+    "started_utc": "2026-10-24T06:52:33.377582+00:00",
+    "worktree": "/private/tmp/velvet-e2e-ci-15755436",
+    "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-ci-15755436",
+    "parity": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-parity-15755436",
+    "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/ci-15755436.log",
+    "free_bytes_before": 79172128768,
+    "command": [
+      "sh",
+      "scripts/ci-local.sh",
+      "--parity"
+    ],
+    "phase": "finished",
+    "environment": {
+      "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-ci-15755436",
+      "PARITY_OUT": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-parity-15755436",
+      "CARGO_BUILD_JOBS": "2",
+      "CARGO_INCREMENTAL": "0",
+      "CARGO_PROFILE_DEV_DEBUG": "0",
+      "CARGO_PROFILE_TEST_DEBUG": "0",
+      "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+      "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+      "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+      "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+      "BBOXY_TEST_CUSTODY": "memory"
+    },
+    "command_pid": 49851,
+    "exit": 0,
+    "gate_elapsed_seconds": 2385.967,
+    "worktree_status_after": "",
+    "head_after": "15755436a3d5a9f38fa2fdcbb8e432c2fd292bcf",
+    "report_sha256": "9acd8ad2edd2102fb6d9bc5c090c778ef31dc7fe1a04a7ab9ae77c4d1bd70b5e",
+    "target_allocated_bytes": 3544203264,
+    "target_deleted": true,
+    "worktree_remove_exit": 0,
+    "elapsed_seconds": 2388.585,
+    "free_bytes_after": 60812025856,
+    "log_sha256": "fa5613d7a55737e815a002e4a0187ee7d319dc34a7cc2c5bb9f9bca148975599"
+  },
+  "baseline_report": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-parity-deb5e2a0/report.json",
+  "baseline_source": "deb5e2a0e8384331aa8cd045319aafbdfd6e0e1d",
+  "cases": 2064,
+  "modules": {
+    "components": {
+      "cases": 128,
+      "required": 128,
+      "measured": 128
+    },
+    "compose": {
+      "cases": 192,
+      "required": 192,
+      "measured": 192
+    },
+    "documents": {
+      "cases": 136,
+      "required": 136,
+      "measured": 136,
+      "reviews": 16
+    },
+    "documents-surface": {
+      "cases": 8
+    },
+    "glyph": {
+      "cases": 56,
+      "required": 56,
+      "measured": 56
+    },
+    "graph": {
+      "cases": 104,
+      "required": 104,
+      "measured": 104
+    },
+    "harness-icon": {
+      "cases": 56,
+      "reviews": 48
+    },
+    "launcher": {
+      "cases": 144,
+      "required": 144,
+      "measured": 144
+    },
+    "launcher-surface": {
+      "cases": 8
+    },
+    "materials": {
+      "cases": 32,
+      "reviews": 8
+    },
+    "message-row": {
+      "cases": 120,
+      "required": 120,
+      "measured": 120
+    },
+    "mini-grid": {
+      "cases": 64,
+      "required": 64,
+      "measured": 64
+    },
+    "pane": {
+      "cases": 48,
+      "required": 48,
+      "measured": 48
+    },
+    "paths": {
+      "cases": 48,
+      "required": 48,
+      "measured": 48
+    },
+    "perf": {
+      "cases": 48,
+      "required": 48,
+      "measured": 48
+    },
+    "picker": {
+      "cases": 64,
+      "required": 64,
+      "measured": 64
+    },
+    "seat-row": {
+      "cases": 240,
+      "required": 240,
+      "measured": 240
+    },
+    "settings": {
+      "cases": 72,
+      "required": 72,
+      "measured": 72
+    },
+    "sidebar": {
+      "cases": 40,
+      "required": 40,
+      "measured": 40
+    },
+    "space-header": {
+      "cases": 32,
+      "required": 32,
+      "measured": 32
+    },
+    "stream": {
+      "cases": 104,
+      "required": 104,
+      "measured": 104
+    },
+    "style": {
+      "cases": 120,
+      "required": 120,
+      "measured": 120
+    },
+    "swell": {
+      "cases": 32,
+      "required": 32,
+      "measured": 32
+    },
+    "tab-row": {
+      "cases": 40,
+      "required": 40,
+      "measured": 40
+    },
+    "title-strip": {
+      "cases": 88,
+      "required": 88,
+      "measured": 88
+    },
+    "titlebar": {
+      "cases": 40,
+      "required": 40,
+      "measured": 40
+    }
+  },
+  "reviews": 72,
+  "baseline_reviews": 72,
+  "new_review_keys": [],
+  "removed_review_keys": [],
+  "added_case_keys": [
+    "graph/e2e-all-pass-comfortable-dark.png",
+    "graph/e2e-all-pass-comfortable-light.png",
+    "graph/e2e-all-pass-compact-dark.png",
+    "graph/e2e-all-pass-compact-light.png",
+    "graph/e2e-all-pass-cozy-dark.png",
+    "graph/e2e-all-pass-cozy-light.png",
+    "graph/e2e-all-pass-touch-dark.png",
+    "graph/e2e-all-pass-touch-light.png",
+    "graph/e2e-all-untested-comfortable-dark.png",
+    "graph/e2e-all-untested-comfortable-light.png",
+    "graph/e2e-all-untested-compact-dark.png",
+    "graph/e2e-all-untested-compact-light.png",
+    "graph/e2e-all-untested-cozy-dark.png",
+    "graph/e2e-all-untested-cozy-light.png",
+    "graph/e2e-all-untested-touch-dark.png",
+    "graph/e2e-all-untested-touch-light.png",
+    "graph/e2e-empty-catalogue-comfortable-dark.png",
+    "graph/e2e-empty-catalogue-comfortable-light.png",
+    "graph/e2e-empty-catalogue-compact-dark.png",
+    "graph/e2e-empty-catalogue-compact-light.png",
+    "graph/e2e-empty-catalogue-cozy-dark.png",
+    "graph/e2e-empty-catalogue-cozy-light.png",
+    "graph/e2e-empty-catalogue-touch-dark.png",
+    "graph/e2e-empty-catalogue-touch-light.png",
+    "graph/e2e-failures-tracked-comfortable-dark.png",
+    "graph/e2e-failures-tracked-comfortable-light.png",
+    "graph/e2e-failures-tracked-compact-dark.png",
+    "graph/e2e-failures-tracked-compact-light.png",
+    "graph/e2e-failures-tracked-cozy-dark.png",
+    "graph/e2e-failures-tracked-cozy-light.png",
+    "graph/e2e-failures-tracked-touch-dark.png",
+    "graph/e2e-failures-tracked-touch-light.png",
+    "graph/e2e-mixed-comfortable-dark.png",
+    "graph/e2e-mixed-comfortable-light.png",
+    "graph/e2e-mixed-compact-dark.png",
+    "graph/e2e-mixed-compact-light.png",
+    "graph/e2e-mixed-cozy-dark.png",
+    "graph/e2e-mixed-cozy-light.png",
+    "graph/e2e-mixed-touch-dark.png",
+    "graph/e2e-mixed-touch-light.png"
+  ],
+  "removed_case_keys": [],
+  "e2e": {
+    "cases": 40,
+    "statuses": {
+      "within policy": 40
+    },
+    "max_rect_error": 0.08001708984375,
+    "max_baseline_error": 0.0078125
+  },
+  "capture": {
+    "status": "captured",
+    "baseline": "cf0227793e495025af5192a666aa9d72fb5b84f7",
+    "supplementalReference": "Layer fixtures, @component entries and settings_tab/new harness use frozen committed HEAD lab components",
+    "revision": "15755436a3d5a9f38fa2fdcbb8e432c2fd292bcf",
+    "browser": "Chrome/156.0.8078.48",
+    "profile": "isolated ephemeral profile",
+    "deviceScaleFactor": 1,
+    "floatingSurfaceScope": "Container surfaces only: module children hidden, full context retained in context/, external content slot height recorded",
+    "freeze": "CSS animation playback paused; floating surfaces fixed at final animation state; module content hidden only for explicitly marked surface pairs; L2/L3 canvas rAF clock fixed at 450ms with seeded counter-hash Math.random; L5 glyph CSS pulse and L7 pane CSS/canvas pose fixed at 0ms; no transcript normalization; original web content retained",
+    "supplementalWebHashes": {
+      "components.js": "7d30ed1d71b8cec7a3e7deda92492e8f961a4d006b24043e076bd12c28c57ca2",
+      "lab.css": "427a0b1041b7d399fb6f7f8168f44687e4ad7da929c0a5d02dab8cf079e20075",
+      "lab.js": "82349b9ef711cefc6a47cc03e250535f1d8bcf7b1fdce58b92b5fa9ebd059c63",
+      "tokens.js": "4c773de52578235c0f8a4440bda9bac9d35af94ffbac11868be41c2eb1e5e77e",
+      "showcase.js": "bde779223d94aa2e248ba8a64011e7d562aa1d0e10f0454563c60ba52f853da7",
+      "showcase.html": "6747e59bc7f7ab610d339a0eccb7a31e4252fa922015cfd505fcd6821cfb4bc5",
+      "fixtures.js": "c676c85b49ebc220d74a614001d6c81c2cb935b3e6f5c3b848b140eecd404588",
+      "ui.js": "51b96d77594d80dfae2821c2905eadea043412a3065c26660a2219ad6de631a3",
+      "materials.html": "2f54fadc1c4816b53110deb4acc969b212341539715a5694b67f96a3e3ed3152",
+      "style.html": "dffd4ae66eb9aedd05f9b768c0b240a92669a6f311c41aad13b4462317906ac1",
+      "components.html": "8ff08c3b5f412e324ab0553cbea2847dbc33244f04d9e97f361f7b66d011c553",
+      "launcher.html": "b5bdb34b1be1f6eb6b73aad201ccee3266691b8df952548c1b4e4effe78f7c0a",
+      "documents.html": "bad49bd5e0d585f8bfdfaddb3a24115dcd3fc2cbb8a2107baafa3cc018b77374",
+      "mini-grid.html": "18e28bb0dbb07ad5b2b7d59a973feddbe22d752cb9c661d28074f7786efc1054",
+      "tab-row.html": "85476360ad6bc166b6913c64250821d7647920c266bdf94de9cba869db478013",
+      "sidebar.html": "f0e80096083b1755199a551c8de2efa4313afa4139944ea8cd2b61e5c39a189a",
+      "space-header.html": "1c2bf93a890b2f8efea20fc2464d932c1948951f23356dfff35aa5055cfcee36",
+      "pane.html": "76a70692f26c28f44ee2136fe1646b8a11b3cb11cc4e7b3a9880e933e2193ea6",
+      "title-strip.html": "65286bf6c00cb73df953024f9fd38a68fbbea9eb72ae665f9660a4164bb7177d",
+      "glow.js": "9eb125954274ed015775fe926ac3f8f3c54b6469c3991a31fdb0c8738e2385bb",
+      "stream.html": "ab04a7e3874ae826877464458f0312f7c6621c38cc43846fc36b321171d0a5b1",
+      "message-row.html": "5b7bd179adc0b5f38fc399890738ca5219b0c76af826f0df3effd39fa0869130",
+      "graph.html": "9e28f3ab21be03174532f8dc128f87c41690defd546e54c5cdece3241b83b6a2",
+      "paths.html": "23bd0b05e36831e59def7d938c9d070a1d50578d12eb466d69e518b8b402ca98",
+      "settings.html": "86822857e9ac093973634759aa3eca27c0294fc11e475be266b3e5c3c18a087c",
+      "compose.html": "f7928f1c4dbb636b6e9a95851fe47971df1c85e493390b93e8ee3223e08227e4"
+    },
+    "cases": 2064,
+    "failures": []
+  },
+  "unchanged_native_PNGs": 2014,
+  "moved_native_keys": [
+    "graph/full-compact-light.png",
+    "graph/full-touch-light.png",
+    "settings/in-a-tab-comfortable-dark.png",
+    "settings/in-a-tab-comfortable-light.png",
+    "settings/in-a-tab-compact-dark.png",
+    "settings/in-a-tab-compact-light.png",
+    "settings/in-a-tab-cozy-dark.png",
+    "settings/in-a-tab-cozy-light.png",
+    "settings/in-a-tab-touch-dark.png",
+    "settings/in-a-tab-touch-light.png"
+  ],
+  "geometry_changed_keys": [],
+  "report_sha256": "9acd8ad2edd2102fb6d9bc5c090c778ef31dc7fe1a04a7ab9ae77c4d1bd70b5e",
+  "png_hashes_sha256": "2020861cd5594c7394097520da8fb001e872296e517114bb4437104d0d9a0d41",
+  "dev_cleanup": {
+    "utc": "2026-10-24T07:34:27.791802+00:00",
+    "path": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev",
+    "allocated_bytes_before": 2233962496,
+    "deleted": true,
+    "all_recorded_dev_commands_finished": true
+  },
+  "existing_native_pixel_deltas": [
+    {
+      "key": "graph/full-compact-light.png",
+      "changed_pixels": 51,
+      "over8_pixels": 0,
+      "max_channels": [
+        0,
+        0,
+        1,
+        0
+      ],
+      "bbox": [
+        1231,
+        26,
+        1232,
+        902
+      ]
+    },
+    {
+      "key": "graph/full-touch-light.png",
+      "changed_pixels": 51,
+      "over8_pixels": 0,
+      "max_channels": [
+        0,
+        0,
+        1,
+        0
+      ],
+      "bbox": [
+        1231,
+        26,
+        1232,
+        902
+      ]
+    },
+    {
+      "key": "settings/in-a-tab-comfortable-dark.png",
+      "changed_pixels": 1472,
+      "over8_pixels": 0,
+      "max_channels": [
+        2,
+        2,
+        2,
+        0
+      ],
+      "bbox": [
+        29,
+        78,
+        262,
+        132
+      ]
+    },
+    {
+      "key": "settings/in-a-tab-comfortable-light.png",
+      "changed_pixels": 1320,
+      "over8_pixels": 0,
+      "max_channels": [
+        2,
+        2,
+        1,
+        0
+      ],
+      "bbox": [
+        29,
+        78,
+        262,
+        132
+      ]
+    },
+    {
+      "key": "settings/in-a-tab-compact-dark.png",
+      "changed_pixels": 1028,
+      "over8_pixels": 0,
+      "max_channels": [
+        2,
+        1,
+        2,
+        0
+      ],
+      "bbox": [
+        29,
+        78,
+        222,
+        116
+      ]
+    },
+    {
+      "key": "settings/in-a-tab-compact-light.png",
+      "changed_pixels": 213,
+      "over8_pixels": 0,
+      "max_channels": [
+        1,
+        1,
+        1,
+        0
+      ],
+      "bbox": [
+        29,
+        78,
+        222,
+        116
+      ]
+    },
+    {
+      "key": "settings/in-a-tab-cozy-dark.png",
+      "changed_pixels": 1353,
+      "over8_pixels": 0,
+      "max_channels": [
+        1,
+        1,
+        2,
+        0
+      ],
+      "bbox": [
+        29,
+        78,
+        262,
+        124
+      ]
+    },
+    {
+      "key": "settings/in-a-tab-cozy-light.png",
+      "changed_pixels": 167,
+      "over8_pixels": 0,
+      "max_channels": [
+        1,
+        1,
+        1,
+        0
+      ],
+      "bbox": [
+        29,
+        78,
+        262,
+        124
+      ]
+    },
+    {
+      "key": "settings/in-a-tab-touch-dark.png",
+      "changed_pixels": 1972,
+      "over8_pixels": 0,
+      "max_channels": [
+        2,
+        3,
+        4,
+        0
+      ],
+      "bbox": [
+        29,
+        78,
+        262,
+        162
+      ]
+    },
+    {
+      "key": "settings/in-a-tab-touch-light.png",
+      "changed_pixels": 1807,
+      "over8_pixels": 0,
+      "max_channels": [
+        3,
+        3,
+        2,
+        0
+      ],
+      "bbox": [
+        29,
+        78,
+        262,
+        162
+      ]
+    }
+  ],
+  "existing_native_pixel_delta_method": "Pillow ImageChops.difference of decoded RGBA; count changed and any channel >8, per-channel maxima, RGB bounding box; command exit0. Root cause not attributed.",
+  "cleanup_allocated_bytes_total": 5778165760,
+  "committed_ci_log": ".bboxy/runs/a3-e2e-checklist-ci.log",
+  "committed_preflight_log": ".bboxy/runs/a3-e2e-checklist-preflight.log",
+  "main_at_handoff": "8d7ca48ee874b0f777fa940edf839a61dea170d6",
+  "main_advanced_during_gate": [
+    "8d7ca48e Merge #263 stale control socket recovery (Seraph)",
+    "da6bf60f #263: focused bbt-mux + bboxy450-term evidence for b40e15be (356 passed, 0 failed)",
+    "cfed48f8 Merge K-0 knowledge base data source (Kestrel)",
+    "297ab02d Record K-0 conformance and exact parity gate evidence",
+    "b40e15be supervisor: a stale lockless mux.sock is reclaimed after a connect probe (decision #263)",
+    "bd63beed decision #263: stale mux.sock recovery, lock first then connect probe, unlink and bind only when nothing listens",
+    "77d9ad3d Merge MCP readiness + recovery argv fixtures (Sable, tests only)",
+    "b4e12cc9 Record loaded readiness and deterministic resume publication verification",
+    "8c076321 Wait for the initial fixture publication before gating its replacement",
+    "1647186a Prove resumed argv publication can lag the reported process",
+    "6d800cc8 Wait for resumed fixture argv publication before asserting exact launches",
+    "00d99d4f Wait for MCP input readiness and hold the consumed fixture state",
+    "40cec4b9 Route knowledge records through the bundled data source",
+    "ac098b04 Define portable data_source contract and conformance fixtures"
+  ],
+  "main_path_overlap": [],
+  "limitations": [
+    "App starts with canonical54 missing/untested rows; no live record IO (A-0) or actual54-promise test results claimed.",
+    "Graph host uses the app Scene dark/cozy context; pure checklist matrix covers4densities x2themes.",
+    "last_run formatting expects UTC Z/+00:00; no non-UTC fixture.",
+    "No manual desktop/keyboard injection; shared key-routing tests and native retained layout are the app-host evidence.",
+    "Six slow invariants skipped by normal --parity selection; ignored real-keychain tests not run.",
+    "10existing native PNGs differ only below tolerance (maximum4channel steps, zero pixels above8); no causal attribution claimed.",
+    "Frozen15755436 not rebased after main advanced; Oracle verifies the merged tree."
+  ]
+}
