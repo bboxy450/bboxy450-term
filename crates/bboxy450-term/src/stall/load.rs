@@ -28,6 +28,37 @@ struct CaptureSnapshot {
     logic: bbt_mux::supervisor::capture_diagnostics::Snapshot,
     supervisor: bbt_mux::supervisor::capture_diagnostics::Snapshot,
 }
+
+#[derive(Default, Serialize)]
+struct CaptureStages {
+    capture_at_measure: Option<CaptureSnapshot>,
+    capture_at_stop: Option<CaptureSnapshot>,
+    capture_at_settled: Option<CaptureSnapshot>,
+}
+impl CaptureStages {
+    fn observe_settled(&mut self, phase: u8, capture: impl FnOnce() -> CaptureSnapshot) {
+        if phase == IDLE && self.capture_at_settled.is_none() {
+            self.capture_at_settled = Some(capture());
+        }
+    }
+
+    fn export(&self) -> serde_json::Value {
+        serde_json::json!({
+            "capture_at_measure": self.capture_at_measure,
+            "capture_at_stop": self.capture_at_stop,
+            "capture_at_settled": self.capture_at_settled,
+            "gating_interval": "producer_stop_to_first_observed_settled",
+            "informational_interval": "measure_start_to_producer_stop",
+            "notes": [
+                "settled is the first IO observation of phase IDLE; it is never refreshed during the idle witness",
+                "null means the boundary was not observed; Finish cannot substitute a later snapshot",
+                "owners are sampled sequentially, not as an atomic cut; compare clocks only within one process_id",
+                "totals are completion-accounted inclusive spans, not clipped intervals; inspect in_flight, missed and overwritten_spans",
+            ],
+        })
+    }
+}
+
 impl Core {
     fn capture_diagnostics(&self) -> CaptureSnapshot {
         CaptureSnapshot {
@@ -1124,6 +1155,7 @@ async fn exercise(
     let mut stop_sent = false;
     let mut stopped_at = None;
     let mut last_disk = Instant::now();
+    let mut capture_stages = CaptureStages::default();
     let start = Instant::now();
     let mut tick = tokio::time::interval(Duration::from_millis(5));
     let mut sides = SideStats::default();
@@ -1162,6 +1194,7 @@ async fn exercise(
             )
             .await);
         }
+        capture_stages.observe_settled(progress.phase(), || core.capture_diagnostics());
         if config.real && last_disk.elapsed() >= Duration::from_secs(1) {
             disk_guard(&config.run_dir, true).await?;
             last_disk = Instant::now();
@@ -1180,6 +1213,7 @@ async fn exercise(
         if warm.is_some_and(|t| t.elapsed() >= Duration::from_secs(2)) && measured.is_none() {
             progress.set_phase(MEASURE);
             measured = Some(Instant::now());
+            capture_stages.capture_at_measure = Some(core.capture_diagnostics());
             let client = core.logic.client.clone();
             let p = progress.clone();
             let sender = messages.clone();
@@ -1224,6 +1258,12 @@ async fn exercise(
                 }
                 Some(Control::Finish(metrics))=>{
                     let (failures,timing_failures)=assess(config,&metrics,&sides);
+                    // Metrics are already frozen. Reuse the existing producer-stop
+                    // cut, and export without taking a fresh settled observation.
+                    capture_stages.capture_at_stop=io_lock(&core.capture_at_stop).clone();
+                    let bytes=serde_json::to_vec_pretty(&capture_stages.export()).expect("capture fields serialize");
+                    tokio::fs::write(config.report.with_extension("capture.json"),bytes).await
+                        .map_err(|e|format!("r5-capture-export: {e}"))?;
                     return Ok(Report {
                         kind:if config.real {"real-pty"} else {"synthetic-render-state"},
                         rows:records.len(), real_ptys:pids.len(), watched:config.watched,
@@ -1532,6 +1572,69 @@ pub fn private_entry(args: &[String]) -> Option<Result<(), String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn capture_export_keeps_the_first_settled_cut_and_serializes_frozen_boundaries() {
+        use bbt_mux::supervisor::capture_diagnostics::Recorder;
+
+        let logic = Arc::new(Recorder::default());
+        let supervisor = Arc::new(Recorder::default());
+        logic.enable();
+        supervisor.enable();
+        let capture = || CaptureSnapshot {
+            logic: logic.snapshot(),
+            supervisor: supervisor.snapshot(),
+        };
+        let seat = Ulid::from(1);
+        let mut stages = CaptureStages {
+            capture_at_measure: Some(capture()),
+            ..Default::default()
+        };
+        logic.seat(seat, 1, |row, _| row.pages = 1);
+        stages.capture_at_stop = Some(capture());
+        stages.observe_settled(SETTLE, || panic!("SETTLE is not the settled boundary"));
+        assert!(stages.export()["capture_at_settled"].is_null());
+        logic.seat(seat, 1, |row, _| row.pages = 2);
+        stages.observe_settled(IDLE, capture);
+        logic.seat(seat, 1, |row, _| row.pages = 3);
+        stages.observe_settled(IDLE, || panic!("idle must not refresh the frozen cut"));
+
+        let bytes = serde_json::to_vec_pretty(&stages.export()).unwrap();
+        let exported: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert!(
+            exported["capture_at_measure"]["logic"]["seats"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(exported["capture_at_stop"]["logic"]["seats"][0]["pages"], 1);
+        assert_eq!(
+            exported["capture_at_settled"]["logic"]["seats"][0]["pages"],
+            2
+        );
+        assert_eq!(logic.snapshot().seats[0].pages, 3);
+        for boundary in [
+            "capture_at_measure",
+            "capture_at_stop",
+            "capture_at_settled",
+        ] {
+            assert_eq!(
+                exported[boundary]["logic"]["process_id"],
+                std::process::id()
+            );
+            assert!(exported[boundary]["logic"]["in_flight"].is_array());
+            assert!(exported[boundary]["supervisor"]["spans"].is_array());
+            assert_eq!(exported[boundary]["logic"]["missed"], 0);
+        }
+        assert_eq!(
+            exported["gating_interval"],
+            "producer_stop_to_first_observed_settled"
+        );
+        assert_eq!(
+            exported["informational_interval"],
+            "measure_start_to_producer_stop"
+        );
+    }
 
     struct ScriptedConnection {
         calls: Arc<Mutex<Vec<Action>>>,
