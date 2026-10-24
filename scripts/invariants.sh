@@ -1,6 +1,9 @@
 #!/bin/sh
 # Run the one-line shell checks in invariant frontmatter. README/body text is not executable.
 set -eu
+# The machine-wide sccache server stalls agent builds (clients idle at 0% CPU for minutes,
+# ~7% hits across private targets): a chokepoint under no-chokepoints (#287). Call rustc directly.
+export RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER=
 cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 
 frontmatter_field() {

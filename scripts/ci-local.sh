@@ -5,6 +5,9 @@
 # Usage: sh scripts/ci-local.sh [--parity] [--slow]
 # --parity runs visual parity; --slow also runs the scale gates.
 set -eu
+# The machine-wide sccache server stalls agent builds (clients idle at 0% CPU for minutes,
+# ~7% hits across private targets): a chokepoint under no-chokepoints (#287). Call rustc directly.
+export RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER=
 # Disk is tight: gates need no incremental cache and no debug info (about half the target size).
 export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}" CARGO_PROFILE_DEV_DEBUG="${CARGO_PROFILE_DEV_DEBUG:-0}" CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
 # Bulk replay/render checks need O1 inside the startup budget; keep debug guards on.

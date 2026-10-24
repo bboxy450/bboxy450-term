@@ -4,6 +4,8 @@ type: invariant
 number: 314
 title: "no seat starves under a full retained-notification queue: every seat with a pending retained notification is admitted within one rotation of the retry sweep"
 status: pending
+slow: true
+gate: pending-no-seat-starves
 check: cargo test -p bbt-supervisor --locked no_seat_starves_under_full_queue -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: the seats at the end of the sweep order never get their retained notifications admitted while the hot first seats take every credit; their panes go stale, their watchers see nothing, and with hundreds of seats the tail is silent for the life of the run
 links:
