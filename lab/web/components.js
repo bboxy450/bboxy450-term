@@ -34,9 +34,12 @@
   // the product's seat-name pool (crates/bbt-proto/src/seat_names.json, generated into window.SEAT_NAMES; T1): a new seat takes the
   // first pool name not used in its swarm, then '<name> 2', '<name> 3', ... as the backend allocates; k is the k-th such name (reroll)
   function poolName(used, k) {
-    const P = window.SEAT_NAMES || [], u = new Set(used || []); let i = 0;
-    for (let s = 1; s < 100; s++) for (const n of P) { const c = s === 1 ? n : n + ' ' + s; if (!u.has(c) && i++ === (k || 0)) return c; }
-    return 'seat';
+    const P = window.SEAT_NAMES || [], u = new Set(used || []), want = k || 0;
+    if (!P.length) throw new Error('the seat-name pool is empty');
+    // at most u.size names are taken, so ceil((u.size + want + 1) / |P|) tiers, plus one, always hold the want-th free name
+    const tiers = Math.ceil((u.size + want + 1) / P.length) + 1; let i = 0;
+    for (let s = 1; s <= tiers; s++) for (const n of P) { const c = s === 1 ? n : n + ' ' + s; if (!u.has(c) && i++ === want) return c; }
+    throw new Error('unreachable: no free pool name within ' + tiers + ' tiers');
   }
 
   const HARNESSES = ['claude', 'codex', 'pi', 'omp', 'zsh'];
