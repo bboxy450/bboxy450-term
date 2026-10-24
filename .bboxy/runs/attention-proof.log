@@ -1,0 +1,120 @@
+Physical native behaviours: UNPROVEN. Operator session required by desktop-notifications section5.5/5.6; no executor-driven permission or click.
+Frozen bundle artifact (all recorded file hashes rechecked; no writes):
+{
+  "source": "35857f7ad6e2fe915a9c2cca94e672b532127afb",
+  "bundle": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe-final.app",
+  "bundle_manifest_sha256": "69c7e7eea6f60ab6fbe881a7504a5fc1b6561f1d34ea53d8bf719b347a25604f",
+  "binary_sha256": "a6b1c6c003eabd3fe7eb2f459dcb6aaad152f841f400bb1b6e932fd03243d2b4",
+  "native_behaviours": "UNPROVEN; bundle not opened"
+}
+Canonical bundle file manifest:
+[{"path":"Contents/Info.plist","sha256":"d49d286fe896c41c6f2c64164ad517151ebd10a3b44eb72dcfaf88030b5c5b93","size":702},{"path":"Contents/MacOS/notification_probe","sha256":"a6b1c6c003eabd3fe7eb2f459dcb6aaad152f841f400bb1b6e932fd03243d2b4","size":1945888},{"path":"Contents/Resources/LICENSE-APACHE","sha256":"cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30","size":11358},{"path":"Contents/Resources/LICENSE-MIT","sha256":"e3012f47cfba2c19c3ee490477faf30d45d1234759c86508a18f487ebe564c0a","size":1059},{"path":"Contents/Resources/NOTICE","sha256":"e3bf876931c7709d403042dc1a3478f05831db07c11f42a2874ed658fd0b8ea4","size":1597},{"path":"Contents/_CodeSignature/CodeResources","sha256":"54dbd75c3a075f033018090c6d50d0e9b2c29c92a22246d96e2e7d3102bfc848","size":2896}]
+Blob/signature checks:
+[
+  {
+    "argv": [
+      "git",
+      "diff",
+      "--exit-code",
+      "35857f7",
+      "0517bb101d2a7e51022a96bfa9e733be5a19727d",
+      "--",
+      "crates/bboxy450-desktop-notifications",
+      "crates/bboxy450-desktop-notifications-macos",
+      "crates/bboxy450-desktop-notifications-windows",
+      "crates/bboxy450-desktop-notifications-linux",
+      "crates/bboxy450-term/examples/notification_probe.rs"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "git",
+      "verify-commit",
+      "0517bb101d2a7e51022a96bfa9e733be5a19727d"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "gpg: Signature made Fri Oct 23 18:05:10 2026 PDT\ngpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0\ngpg: Good signature from \"Boxy (bboxy450) <bboxy450@gmail.com>\" [ultimate]\n"
+  },
+  {
+    "argv": [
+      "codesign",
+      "--verify",
+      "--strict",
+      "--verbose=2",
+      "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe-final.app"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe-final.app: valid on disk\n/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe-final.app: satisfies its Designated Requirement\n"
+  }
+]
+Bare (unbundled) probe, expected native exit1, driver0:
+{"argv": ["/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/examples/notification_probe"], "pid": 9211, "exit": 1, "seconds": 0.21533383399946615, "expected_NoBundle": true}
+probe open: NoBundle
+Error: NoBundle
+Release exclusion CFG proof, expected compiler101, driver0:
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+error: notification_probe is debug-only; it must not be included in release builds
+ --> crates/bboxy450-term/examples/notification_probe.rs:8:1
+  |
+8 | compile_error!("notification_probe is debug-only; it must not be included in release builds");
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: could not compile `bboxy450-term` (example "notification_probe") due to 1 previous error
+Full gate state and actual exit:
+{
+  "source": "c52c0233e39ffea30e1af3a7e09d138c7bb81fce",
+  "slot": "Vesper f002c006-db18-4dd9-9d34-c69721dd384e",
+  "ci_exit": 1,
+  "driver_exit": 1,
+  "cleanup": "private gate target removed",
+  "environment": {
+    "CARGO_TARGET_DIR": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/gate-target",
+    "PARITY_OUT": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/gate-target/parity",
+    "BBOXY_TEST_CUSTODY": "memory",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true"
+  },
+  "started_utc": "2026-10-24T00:37:44Z",
+  "pid": 58127,
+  "seconds": 1431.3715375839965,
+  "ci_log_sha256": "fd0b01be884196d5b004d29346f810fe4c5d4292ee3bbac8d679b2f2ec5d1ac1",
+  "finished_utc": "2026-10-24T01:01:37Z"
+}
+Parity report SHA256 39742c428a8bd34a4aae2164f5b856a12eb27adad715b074572eab820b40cbfc
+Raw array summary (geometry rows include optional non-required scopes; required count1664 is in the CI log):
+{
+  "rows": 1768,
+  "status_counts": {
+    "review pixels": 172,
+    "within policy": 1596
+  },
+  "geometry_rows": 1720,
+  "complete_geometry_rows": 1720,
+  "incomplete_geometry_rows": 0
+}
+
+['cargo', 'tree', '--locked', '-p', 'bboxy450-desktop-notifications', '--target', 'aarch64-apple-darwin', '-e', 'normal'] — exit0; macOS facade graph includes only macOS backend:
+bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+└── bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+    ├── block2 v0.6.2
+    │   └── objc2 v0.6.5
+    │       └── objc2-encode v4.1.0
+    ├── objc2 v0.6.5 (*)
+    ├── objc2-foundation v0.3.2
+    │   ├── bitflags v2.13.2
+    │   └── objc2 v0.6.5 (*)
+    └── objc2-user-notifications v0.3.2
+        ├── bitflags v2.13.2
+        ├── block2 v0.6.2 (*)
+        ├── objc2 v0.6.5 (*)
+        └── objc2-foundation v0.3.2 (*)

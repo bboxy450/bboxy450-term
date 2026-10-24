@@ -1,0 +1,119 @@
+Source 0517bb101d2a7e51022a96bfa9e733be5a19727d; rebased onto accepted licence-parser fix56cd6e40. Oracle40058fa2-b5d7-44cb-b1d3-b9a6e2a9e9f1 explicitly requires no full rerun.
+sh scripts/licenses.sh — exit0
+licenses: 19 workspace crates, SPDX map and required root/crate files present
+
+sh scripts/invariants.sh — exit0;16 checks,0 failures,6 named slow skips
+brand: held
+invariant bboxy450-prefix: pass
+invariant clippy-clean: skipped (slow)
+cross-os: held
+invariant cross-os-facade: pass
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling hashbrown v0.17.1
+   Compiling unicase v2.10.0
+   Compiling bitflags v2.13.2
+   Compiling serde_json v1.0.154
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+   Compiling unicode-segmentation v1.13.3
+   Compiling pulldown-cmark v0.13.4
+   Compiling indexmap v2.14.2
+   Compiling syn v3.0.9
+   Compiling serde_derive v1.0.229
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Finished `test` profile [optimized] target(s) in 31.05s
+     Running tests/corpus.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/corpus-80a908cc437286bc)
+
+running 1 test
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.03s
+
+invariant frontmatter-parses: pass
+invariant glow-never-moves-layout: pass
+images: held
+invariant images-resolve: pass
+invariant kitty-keyboard: pass
+layering: held
+invariant layering: pass
+licenses: 19 workspace crates, SPDX map and required root/crate files present
+invariant licenses-present: pass
+local-first: held
+invariant local-first: pass
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Finished `test` profile [optimized] target(s) in 1.15s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/bbt_mermaid-680f5ab4c870925d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/fixtures.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/fixtures-78626ccb56d08cdc)
+
+running 1 test
+test every_bboxy_mermaid_block_has_a_fixture ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.05s
+
+invariant mermaid-fixtures: pass
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 0.44s
+     Running tests/seat_rows.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/seat_rows-ec61c120ceb51aad)
+
+running 1 test
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.01s
+
+invariant modules-through-components: pass
+deps-licences: held
+invariant no-copyleft-deps: pass
+invariant parity-geometry: skipped (slow)
+invariant restart-keeps-state: skipped (slow)
+invariant rim-never-covers-text: pass
+invariant rim-size-is-layout: pass
+invariant seats-1000-bus: skipped (slow)
+invariant seats-400-memory-idle: skipped (slow)
+invariant seats-967-frame: skipped (slow)
+invariant signed-main: pass
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 16.91s
+invariant ui-never-waits: pass
+invariants: 16 checks, 0 failures, 6 slow checks skipped
+
+cargo clippy --workspace --locked --all-targets --features bboxy450-term/notification-probe -- -D warnings — exit0
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn-macros)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Checking bboxy450-desktop-notifications-linux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-linux)
+    Checking bboxy450-desktop-notifications-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-windows)
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Finished `dev` profile [optimized] target(s) in 35.29s
