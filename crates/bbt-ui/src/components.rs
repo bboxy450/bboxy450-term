@@ -26,6 +26,9 @@ pub struct Path {
 pub struct Rects {
     pub size: [f32; 2],
     pub rects: std::sync::Arc<[(Rect, crate::Paint)]>,
+    /// Repeat the tile along this axis at a logical-pixel period, clipped to the
+    /// assigned slot. None paints the supplied rects once.
+    pub repeat: Option<(Axis, f32)>,
 }
 
 pub trait Measure: TextMeasure {
@@ -584,6 +587,7 @@ pub enum LayoutKind {
     Rects {
         rects: std::sync::Arc<[(Rect, [f32; 4])]>,
         scale: f32,
+        repeat: Option<(Axis, f32)>,
     },
 }
 #[derive(Debug, Clone)]
@@ -953,7 +957,10 @@ impl Element {
             Self::Glyph { size, .. } => Ok(([*size; 2], *size)),
             Self::Text(t) => {
                 let (_, mut size, base) = text_lines(t, width, ctx, m)?;
-                if (t.max_content_basis || t.align != Alignment::Start) && t.wrap && width.is_finite() {
+                if (t.max_content_basis || t.align != Alignment::Start)
+                    && t.wrap
+                    && width.is_finite()
+                {
                     size[0] = size[0].max(self.natural_in(f32::INFINITY, pass)?.0[0].min(width));
                 }
                 Ok((size, base))
@@ -972,6 +979,8 @@ impl Element {
             }
             Self::Rects(r) => {
                 if r.size.iter().any(|n| !n.is_finite() || *n < 0.)
+                    || r.repeat
+                        .is_some_and(|(_, period)| !period.is_finite() || period <= 0.)
                     || r.rects.iter().any(|(rect, _)| {
                         [rect.x, rect.y, rect.w, rect.h]
                             .iter()
@@ -1215,6 +1224,7 @@ impl Element {
                         .map(|(rect, paint)| Ok((*rect, paint.resolve(ctx)?)))
                         .collect::<crate::style::Result<_>>()?,
                     scale: 1.,
+                    repeat: r.repeat,
                 },
                 vec![],
             ),
@@ -2564,22 +2574,43 @@ fn paint_contents(
             });
             finish(list, clips, out);
         }
-        LayoutKind::Rects { rects, scale } => {
+        LayoutKind::Rects {
+            rects,
+            scale,
+            repeat,
+        } => {
             let mut list = list_with_clips(clips);
-            for (r, rgba) in rects.iter() {
-                list.push(Prim::Rect {
-                    rect: Rect::new(
-                        node.rect.x + r.x * scale,
-                        node.rect.y + r.y * scale,
-                        r.w * scale,
-                        r.h * scale,
-                    ),
-                    radii: [0.; 4],
-                    fill: color(*rgba, draw, opacity),
-                    stroke: None,
-                    inner_highlight: None,
-                    shadow: None,
-                });
+            let (count, step) = repeat.map_or((1, [0.; 2]), |(axis, period)| {
+                let step = period * scale;
+                let (extent, offset) = match axis {
+                    Axis::Row => (node.rect.w, [step, 0.]),
+                    Axis::Column => (node.rect.h, [0., step]),
+                };
+                (((extent / step).ceil().max(0.)) as usize, offset)
+            });
+            if repeat.is_some() {
+                list.clip(node.rect, [0.; 4]);
+            }
+            for index in 0..count {
+                let offset = step.map(|v| v * index as f32);
+                for (r, rgba) in rects.iter() {
+                    list.push(Prim::Rect {
+                        rect: Rect::new(
+                            node.rect.x + r.x * scale + offset[0],
+                            node.rect.y + r.y * scale + offset[1],
+                            r.w * scale,
+                            r.h * scale,
+                        ),
+                        radii: [0.; 4],
+                        fill: color(*rgba, draw, opacity),
+                        stroke: None,
+                        inner_highlight: None,
+                        shadow: None,
+                    });
+                }
+            }
+            if repeat.is_some() {
+                list.unclip();
             }
             finish(list, clips, out);
         }

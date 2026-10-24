@@ -1026,6 +1026,25 @@ impl Message {
         let mut rail = plain(None, [0.; 4], STYLE.radius.mark as f32);
         rail.overrides.width = Some(ui::Length::Px(3.));
         rail.overrides.fill = Some(ui::Paint::solid(color));
+        let mut rail = c::Box::new(rail, vec![]);
+        if role == "creativity" {
+            rail.style.overrides.fill = Some(ui::Paint::solid(ui::Color::Transparent));
+            rail.clip = true;
+            rail.align = c::Alignment::Stretch;
+            rail.gap = ui::Length::Px(0.);
+            rail.children.push(
+                c::Element::Rects(c::Rects {
+                    size: [3., 0.],
+                    rects: vec![(
+                        bbt_ui_model::layout::Rect::new(0., 0., 3., 4.),
+                        ui::Paint::solid(color),
+                    )]
+                    .into(),
+                    repeat: Some((Axis::Column, 7.)),
+                })
+                .into(),
+            );
+        }
         let mut style = base;
         if role == "oracle" {
             style.overrides.fill = Some(tint(color, 0.08));
@@ -1042,11 +1061,7 @@ impl Message {
             if dock { sp.s4 as f32 } else { sp.s5 as f32 },
             c::Alignment::Stretch,
             vec![
-                named(
-                    format!("{key}/rail"),
-                    c::Element::Box(c::Box::new(rail, vec![])),
-                )
-                .into(),
+                named(format!("{key}/rail"), c::Element::Box(rail)).into(),
                 fill(column(
                     format!("{key}/body"),
                     plain(None, [0.; 4], 0.),
