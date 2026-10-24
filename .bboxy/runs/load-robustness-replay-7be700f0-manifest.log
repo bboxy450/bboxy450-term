@@ -1,0 +1,2658 @@
+{
+  "source": "7be700f04e51fc927a68be89d2d1cd6ceea438a0",
+  "load_authorization_message": "5d4b876f-3d83-448d-91f4-703e9f4446db",
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--test",
+    "socket_backlog",
+    "--locked",
+    "--",
+    "--nocapture"
+  ],
+  "profile_env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec3/target/load-robustness",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "0",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "0",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "BBOXY_TEST_CUSTODY": "memory",
+    "RUST_BACKTRACE": "1"
+  },
+  "cpu_count": 10,
+  "worker_count": 8,
+  "run_limit_seconds": 1200,
+  "test_threads": "host libtest default; RUST_TEST_THREADS unset",
+  "test_binary": "/Users/feral/mydev/bboxy450-term-exec3/target/load-robustness/debug/deps/socket_backlog-c1f05ea42125a43f",
+  "test_binary_sha256": "e93cf20ff68c4e131606ab07d1ef904e0577ee9b406b92af8accf7dd4592b9a1",
+  "worker_compile": [
+    "cc",
+    "-O0",
+    "-std=c11",
+    "/private/tmp/sable-load-dvljplc5/replay-verification/cpu-worker.c",
+    "-o",
+    "/private/tmp/sable-load-dvljplc5/replay-verification/cpu-worker"
+  ],
+  "worker_binary_sha256": "b9b5f26b55841e67c46ea1f323a5b4131faf0138cbbcc1a5685cf039d1ba8c42",
+  "runs": [
+    {
+      "index": 1,
+      "started_utc": "2026-10-24T03:30:51.166289+00:00",
+      "load_before": [
+        4.51171875,
+        11.52685546875,
+        23.0390625
+      ],
+      "workers": [
+        {
+          "pid": 30636,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-1-worker-0.log",
+          "ready": "READY pid=30636 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 30639,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-1-worker-1.log",
+          "ready": "READY pid=30639 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 30640,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-1-worker-2.log",
+          "ready": "READY pid=30640 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 30641,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-1-worker-3.log",
+          "ready": "READY pid=30641 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 30642,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-1-worker-4.log",
+          "ready": "READY pid=30642 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 30643,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-1-worker-5.log",
+          "ready": "READY pid=30643 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 30644,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-1-worker-6.log",
+          "ready": "READY pid=30644 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 30645,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-1-worker-7.log",
+          "ready": "READY pid=30645 bound_seconds=1215.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 1.229200279340148e-05,
+          "load": [
+            4.51171875,
+            11.52685546875,
+            23.0390625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 10.193654541973956,
+          "load": [
+            9.70166015625,
+            12.4130859375,
+            23.21923828125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 20.398694208008237,
+          "load": [
+            14.45849609375,
+            13.33837890625,
+            23.4208984375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 30.582563416974153,
+          "load": [
+            19.67529296875,
+            14.4951171875,
+            23.71337890625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 40.77813912497368,
+          "load": [
+            24.25732421875,
+            15.6474609375,
+            24.01416015625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 50.98565587500343,
+          "load": [
+            30.47900390625,
+            17.283203125,
+            24.49755859375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 61.18228516698582,
+          "load": [
+            34.623046875,
+            18.6064453125,
+            24.8828125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 71.37698108301265,
+          "load": [
+            38.40234375,
+            19.9375,
+            25.28125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 81.57284899998922,
+          "load": [
+            43.404296875,
+            21.60498046875,
+            25.8095703125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 91.5858872079989,
+          "load": [
+            45.24755859375,
+            22.7197265625,
+            26.15625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 101.78858166700229,
+          "load": [
+            47.82275390625,
+            24.0126953125,
+            26.57470703125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 111.81848829198861,
+          "load": [
+            47.89111328125,
+            24.81689453125,
+            26.83056640625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 122.00186308298726,
+          "load": [
+            45.662109375,
+            25.1015625,
+            26.908203125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 132.21677058300702,
+          "load": [
+            41.32861328125,
+            24.8505859375,
+            26.7978515625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 142.46363462496083,
+          "load": [
+            36.591796875,
+            24.3779296875,
+            26.60693359375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 152.71156395797152,
+          "load": [
+            32.86474609375,
+            23.9853515625,
+            26.44140625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 162.90488300001016,
+          "load": [
+            30.75537109375,
+            23.8349609375,
+            26.359375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 173.11487933300668,
+          "load": [
+            28.21728515625,
+            23.51220703125,
+            26.21435546875
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T03:30:51.372507+00:00",
+      "load_at_test_start": [
+        4.51171875,
+        11.52685546875,
+        23.0390625
+      ],
+      "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-1.log",
+      "cargo_pid": 30646,
+      "exit": 0,
+      "elapsed_seconds": 182.83456250000745,
+      "load_after": [
+        25.48974609375,
+        23.0830078125,
+        26.0302734375
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "3a1813f3469208b9096b8888a19f7f8a055e91ccbc182d0698c9a0f7926641fd",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 30646,
+          "start": "Fri Oct 23 20:30:51 2026    "
+        },
+        {
+          "pid": 30649,
+          "start": "Fri Oct 23 20:30:51 2026    "
+        },
+        {
+          "pid": 30661,
+          "start": "Fri Oct 23 20:30:52 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T03:33:54.219669+00:00"
+    },
+    {
+      "index": 2,
+      "started_utc": "2026-10-24T03:33:54.287946+00:00",
+      "load_before": [
+        25.48974609375,
+        23.0830078125,
+        26.0302734375
+      ],
+      "workers": [
+        {
+          "pid": 35113,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-2-worker-0.log",
+          "ready": "READY pid=35113 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 35114,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-2-worker-1.log",
+          "ready": "READY pid=35114 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 35115,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-2-worker-2.log",
+          "ready": "READY pid=35115 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 35116,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-2-worker-3.log",
+          "ready": "READY pid=35116 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 35117,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-2-worker-4.log",
+          "ready": "READY pid=35117 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 35118,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-2-worker-5.log",
+          "ready": "READY pid=35118 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 35119,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-2-worker-6.log",
+          "ready": "READY pid=35119 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 35120,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-2-worker-7.log",
+          "ready": "READY pid=35120 bound_seconds=1215.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 5.792011506855488e-06,
+          "load": [
+            25.48974609375,
+            23.0830078125,
+            26.0302734375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 10.226614749990404,
+          "load": [
+            25.8974609375,
+            23.2587890625,
+            26.05810546875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 20.39897016703617,
+          "load": [
+            24.34326171875,
+            23.01806640625,
+            25.93994140625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 30.62079158303095,
+          "load": [
+            22.5654296875,
+            22.68994140625,
+            25.77099609375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 40.8228395000333,
+          "load": [
+            20.94091796875,
+            22.33740234375,
+            25.609375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 51.048195542010944,
+          "load": [
+            19.33837890625,
+            21.947265625,
+            25.43212890625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 61.267118707997724,
+          "load": [
+            19.39453125,
+            21.88037109375,
+            25.36767578125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 71.48363750003045,
+          "load": [
+            18.50390625,
+            21.60498046875,
+            25.228515625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 81.6959903750103,
+          "load": [
+            18.48046875,
+            21.50146484375,
+            25.1494140625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 91.91912408301141,
+          "load": [
+            17.890625,
+            21.27099609375,
+            25.02490234375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 102.10937470803037,
+          "load": [
+            18.57958984375,
+            21.296875,
+            24.9892578125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 112.34609545802232,
+          "load": [
+            17.5546875,
+            20.98974609375,
+            24.8369140625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 122.60064075002447,
+          "load": [
+            16.55322265625,
+            20.66064453125,
+            24.6748046875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 132.84375716699287,
+          "load": [
+            15.62548828125,
+            20.32568359375,
+            24.50830078125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 143.07678820803994,
+          "load": [
+            16.66259765625,
+            20.3828125,
+            24.478515625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 153.29129529203055,
+          "load": [
+            15.9580078125,
+            20.1064453125,
+            24.33251953125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 163.53384045802522,
+          "load": [
+            15.04150390625,
+            19.7734375,
+            24.1650390625
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T03:33:54.315865+00:00",
+      "load_at_test_start": [
+        25.48974609375,
+        23.0830078125,
+        26.0302734375
+      ],
+      "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-2.log",
+      "cargo_pid": 35121,
+      "exit": 0,
+      "elapsed_seconds": 170.71103291702457,
+      "load_after": [
+        15.1181640625,
+        19.71044921875,
+        24.1171875
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "823d07120057156d4e44777862a147d0e55ed6d9994ebdbdbce7c4d34ed3a476",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 35121,
+          "start": "Fri Oct 23 20:33:54 2026    "
+        },
+        {
+          "pid": 35127,
+          "start": "Fri Oct 23 20:33:54 2026    "
+        },
+        {
+          "pid": 35129,
+          "start": "Fri Oct 23 20:33:54 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T03:36:45.037825+00:00"
+    },
+    {
+      "index": 3,
+      "started_utc": "2026-10-24T03:36:45.104163+00:00",
+      "load_before": [
+        14.0673828125,
+        19.416015625,
+        23.9873046875
+      ],
+      "workers": [
+        {
+          "pid": 37681,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-3-worker-0.log",
+          "ready": "READY pid=37681 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 37682,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-3-worker-1.log",
+          "ready": "READY pid=37682 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 37683,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-3-worker-2.log",
+          "ready": "READY pid=37683 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 37684,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-3-worker-3.log",
+          "ready": "READY pid=37684 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 37685,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-3-worker-4.log",
+          "ready": "READY pid=37685 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 37686,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-3-worker-5.log",
+          "ready": "READY pid=37686 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 37687,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-3-worker-6.log",
+          "ready": "READY pid=37687 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 37688,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-3-worker-7.log",
+          "ready": "READY pid=37688 bound_seconds=1215.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 4.666042514145374e-06,
+          "load": [
+            14.0673828125,
+            19.416015625,
+            23.9873046875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 10.192505291022826,
+          "load": [
+            15.2958984375,
+            19.51416015625,
+            23.96923828125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 20.390661791025195,
+          "load": [
+            15.6181640625,
+            19.44677734375,
+            23.89306640625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 30.60895875003189,
+          "load": [
+            16.390625,
+            19.48193359375,
+            23.85302734375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 40.84458487504162,
+          "load": [
+            17.4892578125,
+            19.6005859375,
+            23.8427734375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 51.05992395803332,
+          "load": [
+            18.67529296875,
+            19.779296875,
+            23.85595703125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 61.267474375024904,
+          "load": [
+            25.06689453125,
+            21.10498046875,
+            24.27783203125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 71.48072958301054,
+          "load": [
+            30.90478515625,
+            22.484375,
+            24.72998046875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 81.66918600001372,
+          "load": [
+            37.7060546875,
+            24.22705078125,
+            25.32275390625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 91.86575445800554,
+          "load": [
+            40.17236328125,
+            25.20556640625,
+            25.6572265625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 102.116570083017,
+          "load": [
+            42.80078125,
+            26.26708984375,
+            26.02880859375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 112.32249862502795,
+          "load": [
+            45.28125,
+            27.33056640625,
+            26.408203125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 122.54711779102217,
+          "load": [
+            45.90673828125,
+            28.05908203125,
+            26.677734375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 132.75093291600933,
+          "load": [
+            51.794921875,
+            29.92822265625,
+            27.35791015625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 142.95881520799594,
+          "load": [
+            51.7041015625,
+            30.623046875,
+            27.6337890625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 153.17166858300334,
+          "load": [
+            50.67919921875,
+            31.09619140625,
+            27.83642578125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 163.4020714579965,
+          "load": [
+            51.56103515625,
+            31.91845703125,
+            28.1650390625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 173.61391445802292,
+          "load": [
+            48.6201171875,
+            31.9365234375,
+            28.21533203125
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T03:36:45.128894+00:00",
+      "load_at_test_start": [
+        14.0673828125,
+        19.416015625,
+        23.9873046875
+      ],
+      "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-3.log",
+      "cargo_pid": 37689,
+      "exit": 0,
+      "elapsed_seconds": 183.56533604103606,
+      "load_after": [
+        43.7646484375,
+        31.44482421875,
+        28.083984375
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "ac8636a21cdd0f8acff1d522ac299e89c73e6c22981c1af8545573b1b35ed2c9",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 37689,
+          "start": "Fri Oct 23 20:36:45 2026    "
+        },
+        {
+          "pid": 37694,
+          "start": "Fri Oct 23 20:36:45 2026    "
+        },
+        {
+          "pid": 37698,
+          "start": "Fri Oct 23 20:36:45 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T03:39:48.707788+00:00"
+    },
+    {
+      "index": 4,
+      "started_utc": "2026-10-24T03:39:48.797398+00:00",
+      "load_before": [
+        43.7646484375,
+        31.44482421875,
+        28.083984375
+      ],
+      "workers": [
+        {
+          "pid": 44806,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-4-worker-0.log",
+          "ready": "READY pid=44806 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 44807,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-4-worker-1.log",
+          "ready": "READY pid=44807 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 44808,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-4-worker-2.log",
+          "ready": "READY pid=44808 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 44809,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-4-worker-3.log",
+          "ready": "READY pid=44809 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 44810,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-4-worker-4.log",
+          "ready": "READY pid=44810 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 44811,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-4-worker-5.log",
+          "ready": "READY pid=44811 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 44812,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-4-worker-6.log",
+          "ready": "READY pid=44812 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 44813,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-4-worker-7.log",
+          "ready": "READY pid=44813 bound_seconds=1215.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 1.0207993909716606e-05,
+          "load": [
+            43.7646484375,
+            31.44482421875,
+            28.083984375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 10.227011916984338,
+          "load": [
+            41.43994140625,
+            31.34814453125,
+            28.08837890625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 20.46140883298358,
+          "load": [
+            37.201171875,
+            30.77587890625,
+            27.9228515625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 30.677927958022337,
+          "load": [
+            33.10546875,
+            30.10791015625,
+            27.71875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 40.89434658299433,
+          "load": [
+            32.025390625,
+            29.97265625,
+            27.6982421875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 51.125282208027784,
+          "load": [
+            30.7265625,
+            29.7724609375,
+            27.654296875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 61.36774679197697,
+          "load": [
+            27.9140625,
+            29.20263671875,
+            27.47705078125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 71.59926891699433,
+          "load": [
+            24.7509765625,
+            28.44091796875,
+            27.2353515625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 81.80612441699486,
+          "load": [
+            24.349609375,
+            28.24267578125,
+            27.17919921875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 92.00937341700774,
+          "load": [
+            22.8857421875,
+            27.8046875,
+            27.0361328125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 102.23638337501325,
+          "load": [
+            24.55859375,
+            27.99365234375,
+            27.111328125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 112.4491314580082,
+          "load": [
+            23.72607421875,
+            27.71142578125,
+            27.021484375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 122.65634537499864,
+          "load": [
+            22.5791015625,
+            27.34033203125,
+            26.89794921875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 132.89202491700416,
+          "load": [
+            21.54150390625,
+            26.96533203125,
+            26.77001953125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 143.1161545420182,
+          "load": [
+            20.97412109375,
+            26.65576171875,
+            26.66162109375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 153.34988308302127,
+          "load": [
+            19.92724609375,
+            26.23974609375,
+            26.513671875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 163.5874299579882,
+          "load": [
+            19.33544921875,
+            25.90234375,
+            26.39013671875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 173.7835282079759,
+          "load": [
+            18.50830078125,
+            25.509765625,
+            26.2451171875
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T03:39:48.827479+00:00",
+      "load_at_test_start": [
+        43.7646484375,
+        31.44482421875,
+        28.083984375
+      ],
+      "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-4.log",
+      "cargo_pid": 44814,
+      "exit": 0,
+      "elapsed_seconds": 175.84965420799563,
+      "load_after": [
+        18.50830078125,
+        25.509765625,
+        26.2451171875
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "c966fe6fc54a603afc0fd762740ba33f3ebaff5a3126475a3b4ccb39c8a1a212",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 44814,
+          "start": "Fri Oct 23 20:39:48 2026    "
+        },
+        {
+          "pid": 44818,
+          "start": "Fri Oct 23 20:39:49 2026    "
+        },
+        {
+          "pid": 44820,
+          "start": "Fri Oct 23 20:39:49 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T03:42:44.692830+00:00"
+    },
+    {
+      "index": 5,
+      "started_utc": "2026-10-24T03:42:44.762054+00:00",
+      "load_before": [
+        18.50830078125,
+        25.509765625,
+        26.2451171875
+      ],
+      "workers": [
+        {
+          "pid": 47159,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-5-worker-0.log",
+          "ready": "READY pid=47159 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 47160,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-5-worker-1.log",
+          "ready": "READY pid=47160 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 47161,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-5-worker-2.log",
+          "ready": "READY pid=47161 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 47162,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-5-worker-3.log",
+          "ready": "READY pid=47162 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 47163,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-5-worker-4.log",
+          "ready": "READY pid=47163 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 47164,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-5-worker-5.log",
+          "ready": "READY pid=47164 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 47165,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-5-worker-6.log",
+          "ready": "READY pid=47165 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 47166,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-5-worker-7.log",
+          "ready": "READY pid=47166 bound_seconds=1215.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 6.459013093262911e-06,
+          "load": [
+            18.50830078125,
+            25.509765625,
+            26.2451171875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 10.224781709024683,
+          "load": [
+            19.34228515625,
+            25.47216796875,
+            26.22412109375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 20.448573041998316,
+          "load": [
+            18.94970703125,
+            25.19091796875,
+            26.11572265625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 30.676056875032373,
+          "load": [
+            25.97998046875,
+            26.373046875,
+            26.51708984375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 40.895222791994456,
+          "load": [
+            26.38623046875,
+            26.45654296875,
+            26.544921875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 51.096770959033165,
+          "load": [
+            25.53173828125,
+            26.275390625,
+            26.4794921875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 61.31444037501933,
+          "load": [
+            25.0908203125,
+            26.16455078125,
+            26.43798828125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 71.55561450001551,
+          "load": [
+            26.40283203125,
+            26.3935546875,
+            26.5146484375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 81.75205208401894,
+          "load": [
+            25.283203125,
+            26.150390625,
+            26.42626953125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 91.9558271249989,
+          "load": [
+            24.74267578125,
+            25.99853515625,
+            26.3681640625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 102.17212537501473,
+          "load": [
+            23.43994140625,
+            25.68408203125,
+            26.251953125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 112.38994583400199,
+          "load": [
+            21.8408203125,
+            25.26611328125,
+            26.09619140625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 122.59971741703339,
+          "load": [
+            20.4013671875,
+            24.8447265625,
+            25.9365234375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 132.82056633400498,
+          "load": [
+            19.34326171875,
+            24.470703125,
+            25.79052734375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 143.03703708399553,
+          "load": [
+            18.1337890625,
+            24.04296875,
+            25.623046875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 153.24755191704025,
+          "load": [
+            17.18408203125,
+            23.6455078125,
+            25.46337890625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 163.4443514170125,
+          "load": [
+            16.30615234375,
+            23.2451171875,
+            25.2998046875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 173.6367576670018,
+          "load": [
+            19.2275390625,
+            23.64697265625,
+            25.41845703125
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T03:42:44.787293+00:00",
+      "load_at_test_start": [
+        18.50830078125,
+        25.509765625,
+        26.2451171875
+      ],
+      "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-5.log",
+      "cargo_pid": 47167,
+      "exit": 0,
+      "elapsed_seconds": 174.92534291703487,
+      "load_after": [
+        19.2275390625,
+        23.64697265625,
+        25.41845703125
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "d13571500216c138201cbfa5ae2b752de93968d369d9d11ef945596776dd3b31",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 47167,
+          "start": "Fri Oct 23 20:42:44 2026    "
+        },
+        {
+          "pid": 47169,
+          "start": "Fri Oct 23 20:42:45 2026    "
+        },
+        {
+          "pid": 47171,
+          "start": "Fri Oct 23 20:42:45 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T03:45:39.730895+00:00"
+    },
+    {
+      "index": 6,
+      "started_utc": "2026-10-24T03:45:39.800926+00:00",
+      "load_before": [
+        19.2275390625,
+        23.64697265625,
+        25.41845703125
+      ],
+      "workers": [
+        {
+          "pid": 49051,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-6-worker-0.log",
+          "ready": "READY pid=49051 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 49052,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-6-worker-1.log",
+          "ready": "READY pid=49052 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 49053,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-6-worker-2.log",
+          "ready": "READY pid=49053 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 49054,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-6-worker-3.log",
+          "ready": "READY pid=49054 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 49055,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-6-worker-4.log",
+          "ready": "READY pid=49055 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 49056,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-6-worker-5.log",
+          "ready": "READY pid=49056 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 49057,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-6-worker-6.log",
+          "ready": "READY pid=49057 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 49058,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-6-worker-7.log",
+          "ready": "READY pid=49058 bound_seconds=1215.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 1.1167023330926895e-05,
+          "load": [
+            19.2275390625,
+            23.64697265625,
+            25.41845703125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 10.223513707984239,
+          "load": [
+            20.11767578125,
+            23.70458984375,
+            25.41845703125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 20.251195041986648,
+          "load": [
+            19.34326171875,
+            23.41845703125,
+            25.2958984375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 30.48970370797906,
+          "load": [
+            20.27001953125,
+            23.47216796875,
+            25.29248046875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 40.71100337500684,
+          "load": [
+            19.23828125,
+            23.1435546875,
+            25.154296875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 50.95691012497991,
+          "load": [
+            18.046875,
+            22.6806640625,
+            24.95361328125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 61.19664679199923,
+          "load": [
+            17.123046875,
+            22.32861328125,
+            24.8017578125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 71.42771141702542,
+          "load": [
+            17.28955078125,
+            22.18701171875,
+            24.72216796875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 81.64400212501641,
+          "load": [
+            17.763671875,
+            22.11669921875,
+            24.6669921875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 91.87993345799623,
+          "load": [
+            17.4375,
+            21.8994140625,
+            24.55908203125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 102.10832325002411,
+          "load": [
+            17.38916015625,
+            21.73828125,
+            24.470703125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 112.35076062497683,
+          "load": [
+            16.7333984375,
+            21.45068359375,
+            24.33642578125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 122.35435375000816,
+          "load": [
+            16.28076171875,
+            21.20361328125,
+            24.21484375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 132.55989179201424,
+          "load": [
+            15.39453125,
+            20.85107421875,
+            24.05419921875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 142.56969400000526,
+          "load": [
+            14.88525390625,
+            20.56005859375,
+            23.9130859375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 152.78674850001698,
+          "load": [
+            16.013671875,
+            20.62158203125,
+            23.89599609375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 163.0107494579861,
+          "load": [
+            17.8974609375,
+            20.8525390625,
+            23.9384765625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 173.21646354201948,
+          "load": [
+            18.2841796875,
+            20.8271484375,
+            23.89208984375
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T03:45:39.824540+00:00",
+      "load_at_test_start": [
+        19.2275390625,
+        23.64697265625,
+        25.41845703125
+      ],
+      "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-6.log",
+      "cargo_pid": 49059,
+      "exit": 0,
+      "elapsed_seconds": 173.47326320799766,
+      "load_after": [
+        18.2841796875,
+        20.8271484375,
+        23.89208984375
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "430a4bda6d6c29ac0337f435634795abee94e302fbd317da9eee74a3a02b9442",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 49059,
+          "start": "Fri Oct 23 20:45:39 2026    "
+        },
+        {
+          "pid": 49061,
+          "start": "Fri Oct 23 20:45:40 2026    "
+        },
+        {
+          "pid": 49064,
+          "start": "Fri Oct 23 20:45:40 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T03:48:33.315529+00:00"
+    },
+    {
+      "index": 7,
+      "started_utc": "2026-10-24T03:48:33.382562+00:00",
+      "load_before": [
+        18.2841796875,
+        20.8271484375,
+        23.89208984375
+      ],
+      "workers": [
+        {
+          "pid": 51151,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-7-worker-0.log",
+          "ready": "READY pid=51151 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 51152,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-7-worker-1.log",
+          "ready": "READY pid=51152 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 51153,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-7-worker-2.log",
+          "ready": "READY pid=51153 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 51154,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-7-worker-3.log",
+          "ready": "READY pid=51154 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 51155,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-7-worker-4.log",
+          "ready": "READY pid=51155 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 51156,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-7-worker-5.log",
+          "ready": "READY pid=51156 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 51157,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-7-worker-6.log",
+          "ready": "READY pid=51157 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 51158,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-7-worker-7.log",
+          "ready": "READY pid=51158 bound_seconds=1215.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 4.999979864805937e-06,
+          "load": [
+            18.2841796875,
+            20.8271484375,
+            23.89208984375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 10.234740666986909,
+          "load": [
+            19.86376953125,
+            21.07958984375,
+            23.94580078125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 20.452856207964942,
+          "load": [
+            19.95166015625,
+            21.0595703125,
+            23.90478515625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 30.664031541964505,
+          "load": [
+            19.61865234375,
+            20.95654296875,
+            23.83544921875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 40.88342620799085,
+          "load": [
+            18.3603515625,
+            20.64404296875,
+            23.6904296875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 51.111590416985564,
+          "load": [
+            17.59619140625,
+            20.40771484375,
+            23.57080078125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 61.3185359579511,
+          "load": [
+            17.04296875,
+            20.1962890625,
+            23.45849609375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 71.52795866696397,
+          "load": [
+            16.10693359375,
+            19.892578125,
+            23.3125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 81.73393187497277,
+          "load": [
+            16.71142578125,
+            19.89599609375,
+            23.2734375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 91.9328802919481,
+          "load": [
+            15.53173828125,
+            19.537109375,
+            23.10595703125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 102.17218224995304,
+          "load": [
+            15.15478515625,
+            19.32177734375,
+            22.9873046875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 112.40394016698701,
+          "load": [
+            14.8427734375,
+            19.05810546875,
+            22.82958984375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 122.60652633296559,
+          "load": [
+            14.09130859375,
+            18.75927734375,
+            22.67919921875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 132.83370449999347,
+          "load": [
+            13.68310546875,
+            18.51953125,
+            22.5478515625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 143.0392712499597,
+          "load": [
+            13.0361328125,
+            18.22216796875,
+            22.39501953125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 153.26518441695953,
+          "load": [
+            13.0302734375,
+            18.0498046875,
+            22.28466796875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 163.50280845799716,
+          "load": [
+            13.0380859375,
+            17.8837890625,
+            22.17578125
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T03:48:33.417170+00:00",
+      "load_at_test_start": [
+        18.2841796875,
+        20.8271484375,
+        23.89208984375
+      ],
+      "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-7.log",
+      "cargo_pid": 51159,
+      "exit": 0,
+      "elapsed_seconds": 173.69225845800247,
+      "load_after": [
+        13.30078125,
+        17.78662109375,
+        22.0908203125
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "1d51a977304d29ee702fbb6148fbfc6da7a9cbb6d4f1aefeff2d5fcfa9915edc",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 51159,
+          "start": "Fri Oct 23 20:48:33 2026    "
+        },
+        {
+          "pid": 51163,
+          "start": "Fri Oct 23 20:48:33 2026    "
+        },
+        {
+          "pid": 51173,
+          "start": "Fri Oct 23 20:48:33 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T03:51:27.121233+00:00"
+    },
+    {
+      "index": 8,
+      "started_utc": "2026-10-24T03:51:27.184990+00:00",
+      "load_before": [
+        13.30078125,
+        17.78662109375,
+        22.0908203125
+      ],
+      "workers": [
+        {
+          "pid": 53208,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-8-worker-0.log",
+          "ready": "READY pid=53208 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 53209,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-8-worker-1.log",
+          "ready": "READY pid=53209 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 53210,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-8-worker-2.log",
+          "ready": "READY pid=53210 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 53211,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-8-worker-3.log",
+          "ready": "READY pid=53211 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 53212,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-8-worker-4.log",
+          "ready": "READY pid=53212 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 53213,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-8-worker-5.log",
+          "ready": "READY pid=53213 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 53214,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-8-worker-6.log",
+          "ready": "READY pid=53214 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 53215,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-8-worker-7.log",
+          "ready": "READY pid=53215 bound_seconds=1215.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 1.1458003427833319e-05,
+          "load": [
+            13.30078125,
+            17.78662109375,
+            22.0908203125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 10.22136958304327,
+          "load": [
+            13.193359375,
+            17.61279296875,
+            21.97802734375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 20.44661833299324,
+          "load": [
+            14.82568359375,
+            17.80859375,
+            21.99560546875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 30.66732549999142,
+          "load": [
+            15.361328125,
+            17.82958984375,
+            21.9541015625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 40.87340924999444,
+          "load": [
+            15.5068359375,
+            17.7841796875,
+            21.8896484375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 51.100749792007264,
+          "load": [
+            15.697265625,
+            17.75634765625,
+            21.83203125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 61.31951645802474,
+          "load": [
+            15.3623046875,
+            17.61572265625,
+            21.734375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 71.53236387501238,
+          "load": [
+            14.9794921875,
+            17.46240234375,
+            21.6318359375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 81.7328632500139,
+          "load": [
+            14.662109375,
+            17.314453125,
+            21.5302734375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 91.92143408302218,
+          "load": [
+            14.0185546875,
+            17.08935546875,
+            21.40087890625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 102.11085741699208,
+          "load": [
+            14.40283203125,
+            17.0693359375,
+            21.34326171875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 112.3009009170346,
+          "load": [
+            14.3466796875,
+            16.9677734375,
+            21.2568359375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 122.55581354204332,
+          "load": [
+            14.25146484375,
+            16.85498046875,
+            21.16552734375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 132.7803563750349,
+          "load": [
+            13.6708984375,
+            16.64501953125,
+            21.04052734375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 143.00404358300148,
+          "load": [
+            13.259765625,
+            16.458984375,
+            20.9228515625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 153.23855983302929,
+          "load": [
+            12.6845703125,
+            16.2294921875,
+            20.78857421875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 163.44772695802385,
+          "load": [
+            12.27783203125,
+            16.0244140625,
+            20.662109375
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T03:51:27.205986+00:00",
+      "load_at_test_start": [
+        13.30078125,
+        17.78662109375,
+        22.0908203125
+      ],
+      "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-8.log",
+      "cargo_pid": 53216,
+      "exit": 0,
+      "elapsed_seconds": 173.1876543330145,
+      "load_after": [
+        11.9208984375,
+        15.82568359375,
+        20.537109375
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "12bece337a4fd9b82d4321d45844095ebb1365215a1c4b9d15f8de2b35c9da7d",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 53216,
+          "start": "Fri Oct 23 20:51:27 2026    "
+        },
+        {
+          "pid": 53221,
+          "start": "Fri Oct 23 20:51:27 2026    "
+        },
+        {
+          "pid": 53226,
+          "start": "Fri Oct 23 20:51:27 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T03:54:20.406070+00:00"
+    },
+    {
+      "index": 9,
+      "started_utc": "2026-10-24T03:54:20.470937+00:00",
+      "load_before": [
+        11.9208984375,
+        15.82568359375,
+        20.537109375
+      ],
+      "workers": [
+        {
+          "pid": 54700,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-9-worker-0.log",
+          "ready": "READY pid=54700 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 54701,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-9-worker-1.log",
+          "ready": "READY pid=54701 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 54702,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-9-worker-2.log",
+          "ready": "READY pid=54702 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 54703,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-9-worker-3.log",
+          "ready": "READY pid=54703 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 54704,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-9-worker-4.log",
+          "ready": "READY pid=54704 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 54705,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-9-worker-5.log",
+          "ready": "READY pid=54705 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 54706,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-9-worker-6.log",
+          "ready": "READY pid=54706 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 54707,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-9-worker-7.log",
+          "ready": "READY pid=54707 bound_seconds=1215.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 8.792034350335598e-06,
+          "load": [
+            11.9208984375,
+            15.82568359375,
+            20.537109375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 10.225429125013761,
+          "load": [
+            12.4482421875,
+            15.8134765625,
+            20.4775390625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 20.430419542011805,
+          "load": [
+            13.5126953125,
+            15.92041015625,
+            20.46044921875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 30.629191167012323,
+          "load": [
+            14.4140625,
+            16.00439453125,
+            20.41064453125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 40.85335904202657,
+          "load": [
+            14.36279296875,
+            15.9384765625,
+            20.33544921875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 51.0500213750056,
+          "load": [
+            13.92529296875,
+            15.7919921875,
+            20.2314453125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 61.25377179204952,
+          "load": [
+            13.46875,
+            15.6337890625,
+            20.123046875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 71.48301533301128,
+          "load": [
+            14.357421875,
+            15.74560546875,
+            20.10986328125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 81.69339020800544,
+          "load": [
+            14.43017578125,
+            15.71923828125,
+            20.04931640625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 91.89512066700263,
+          "load": [
+            14.29638671875,
+            15.64599609375,
+            19.97216796875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 102.08974770799978,
+          "load": [
+            14.09033203125,
+            15.55810546875,
+            19.89013671875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 112.33755020803073,
+          "load": [
+            13.7431640625,
+            15.439453125,
+            19.79736328125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 122.5330248750397,
+          "load": [
+            13.09375,
+            15.24365234375,
+            19.6767578125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 132.7252152080182,
+          "load": [
+            12.69775390625,
+            15.0869140625,
+            19.56884765625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 142.94104600005085,
+          "load": [
+            13.0576171875,
+            15.083984375,
+            19.51513671875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 153.16201125003863,
+          "load": [
+            12.66064453125,
+            14.9326171875,
+            19.4091796875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 163.37756725004874,
+          "load": [
+            12.24462890625,
+            14.76953125,
+            19.298828125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 173.59238662500866,
+          "load": [
+            12.693359375,
+            14.77734375,
+            19.24853515625
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T03:54:20.493798+00:00",
+      "load_at_test_start": [
+        11.9208984375,
+        15.82568359375,
+        20.537109375
+      ],
+      "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-9.log",
+      "cargo_pid": 54708,
+      "exit": 0,
+      "elapsed_seconds": 174.13020479201805,
+      "load_after": [
+        12.693359375,
+        14.77734375,
+        19.24853515625
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "f4269d8b71e35b06b7ba68969a653455f55f71a871aed22f06bd47fabaf38792",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 54708,
+          "start": "Fri Oct 23 20:54:20 2026    "
+        },
+        {
+          "pid": 54716,
+          "start": "Fri Oct 23 20:54:20 2026    "
+        },
+        {
+          "pid": 54721,
+          "start": "Fri Oct 23 20:54:21 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T03:57:14.634121+00:00"
+    },
+    {
+      "index": 10,
+      "started_utc": "2026-10-24T03:57:14.702431+00:00",
+      "load_before": [
+        12.693359375,
+        14.77734375,
+        19.24853515625
+      ],
+      "workers": [
+        {
+          "pid": 55835,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-10-worker-0.log",
+          "ready": "READY pid=55835 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 55836,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-10-worker-1.log",
+          "ready": "READY pid=55836 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 55837,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-10-worker-2.log",
+          "ready": "READY pid=55837 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 55838,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-10-worker-3.log",
+          "ready": "READY pid=55838 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 55839,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-10-worker-4.log",
+          "ready": "READY pid=55839 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 55840,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-10-worker-5.log",
+          "ready": "READY pid=55840 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 55841,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-10-worker-6.log",
+          "ready": "READY pid=55841 bound_seconds=1215.000",
+          "exit": -15
+        },
+        {
+          "pid": 55842,
+          "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-10-worker-7.log",
+          "ready": "READY pid=55842 bound_seconds=1215.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 8.082948625087738e-06,
+          "load": [
+            12.693359375,
+            14.77734375,
+            19.24853515625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 10.214840665983502,
+          "load": [
+            14.9951171875,
+            15.2099609375,
+            19.35009765625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 20.412853207963053,
+          "load": [
+            15.6552734375,
+            15.3359375,
+            19.345703125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 30.634257332945708,
+          "load": [
+            16.24267578125,
+            15.47216796875,
+            19.3466796875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 40.83105179097038,
+          "load": [
+            16.29150390625,
+            15.505859375,
+            19.31298828125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 51.04345362499589,
+          "load": [
+            16.2783203125,
+            15.52294921875,
+            19.27392578125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 61.2520348749822,
+          "load": [
+            15.94677734375,
+            15.47314453125,
+            19.2119140625
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 71.48372504097642,
+          "load": [
+            15.5859375,
+            15.408203125,
+            19.14501953125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 81.68142449995503,
+          "load": [
+            16.05615234375,
+            15.51904296875,
+            19.11865234375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 91.873703790945,
+          "load": [
+            16.24853515625,
+            15.58251953125,
+            19.09912109375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 102.09288666595239,
+          "load": [
+            15.96337890625,
+            15.5458984375,
+            19.04443359375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 112.3236379159498,
+          "load": [
+            15.12646484375,
+            15.37939453125,
+            18.9443359375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 122.54609858297044,
+          "load": [
+            14.6455078125,
+            15.26806640625,
+            18.86279296875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 132.781942624948,
+          "load": [
+            14.49169921875,
+            15.2099609375,
+            18.7998046875
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 142.99373495799955,
+          "load": [
+            13.9482421875,
+            15.0703125,
+            18.7080078125
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 153.2249842499732,
+          "load": [
+            13.888671875,
+            15.0185546875,
+            18.646484375
+          ],
+          "workers_alive": 8
+        },
+        {
+          "elapsed": 163.22588641598122,
+          "load": [
+            13.51123046875,
+            14.90185546875,
+            18.5625
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T03:57:14.733370+00:00",
+      "load_at_test_start": [
+        12.693359375,
+        14.77734375,
+        19.24853515625
+      ],
+      "log": "/private/tmp/sable-load-dvljplc5/replay-verification/run-10.log",
+      "cargo_pid": 55843,
+      "exit": 0,
+      "elapsed_seconds": 172.68138533295132,
+      "load_after": [
+        14.0859375,
+        14.97216796875,
+        18.5439453125
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "4ec418f3f09b0ab872fab237e3def34aaebab8192c5a0bf811e8d7478bbc1a5d",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 55843,
+          "start": "Fri Oct 23 20:57:14 2026    "
+        },
+        {
+          "pid": 55845,
+          "start": "Fri Oct 23 20:57:15 2026    "
+        },
+        {
+          "pid": 55850,
+          "start": "Fri Oct 23 20:57:15 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T04:00:07.427188+00:00"
+    }
+  ]
+}
