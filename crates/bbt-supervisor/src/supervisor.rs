@@ -660,6 +660,7 @@ impl Supervisor {
             clients: HashMap::new(),
             routes: HashMap::new(),
             seats: BTreeMap::new(),
+            last_notified_seat: None,
             active: None,
             next_token: 2,
             pending_io: Vec::new(),
@@ -876,6 +877,7 @@ struct Actor {
     clients: HashMap<Ulid, Target>,
     routes: HashMap<Token, Route>,
     seats: BTreeMap<Ulid, Seat>,
+    last_notified_seat: Option<Ulid>,
     active: Option<(Ulid, Ulid)>,
     next_token: usize,
     pending_io: Vec<PendingIo>,
@@ -905,6 +907,22 @@ impl Drop for Actor {
 }
 
 impl Actor {
+    fn tick_seats(&mut self) -> io::Result<()> {
+        let mut ids: Vec<_> = self.seats.keys().copied().collect();
+        if let Some(last) = self.last_notified_seat {
+            // Rotate on admissions, not sweeps: a full channel must not let
+            // the same hot seat reclaim every credit the receiver returns.
+            let start = ids.partition_point(|id| *id <= last);
+            ids.rotate_left(start);
+        }
+        for id in ids {
+            let mut seat = self.seats.remove(&id).unwrap();
+            seat.tick(self)?;
+            self.seats.insert(id, seat);
+        }
+        Ok(())
+    }
+
     fn token(&mut self) -> Token {
         let token = Token(self.next_token);
         self.next_token = self
@@ -974,12 +992,7 @@ impl Actor {
                 0,
                 0,
             );
-            let ids: Vec<_> = self.seats.keys().copied().collect();
-            for id in ids {
-                let mut seat = self.seats.remove(&id).unwrap();
-                seat.tick(self)?;
-                self.seats.insert(id, seat);
-            }
+            self.tick_seats()?;
             sweep.finish(capture_diagnostics::Outcome::Ok, self.seats.len() as u64, 0);
             self.flush_sockets();
             let ready = self.seats.values().any(|seat| {
@@ -1558,6 +1571,9 @@ impl Actor {
                 .unwrap_or(false),
             None => false,
         };
+        if accepted {
+            self.last_notified_seat = Some(event.seat());
+        }
         let generation = match event {
             Event::Output { generation, .. }
             | Event::Resized { generation, .. }
@@ -2444,12 +2460,72 @@ mod capture_read_tests {
             clients: HashMap::new(),
             routes: HashMap::new(),
             seats: BTreeMap::new(),
+            last_notified_seat: None,
             active: None,
             next_token: 2,
             pending_io: Vec::new(),
             capture_diagnostics: Arc::new(capture_diagnostics::Recorder::default()),
             capture_writer,
         }
+    }
+
+    #[test]
+    fn no_seat_starves_under_full_queue() {
+        let root = tempfile::tempdir().unwrap();
+        let mut actor = fixture_actor(root.path());
+        let client = Ulid::new();
+        let (tx, rx) = mpsc::sync_channel(1);
+        actor.clients.insert(client, Target::Local(tx));
+        actor.active = Some((client, Ulid::new()));
+        let hot = Ulid::from(1u128);
+        let waiting = Ulid::from(2u128);
+        for id in [hot, waiting] {
+            let mut spec = LaunchSpec::new("/bin/sleep", root.path());
+            spec.seat = id;
+            spec.args = vec!["60".into()];
+            let token = actor.token();
+            let mut seat = Seat::spawn(spec, token, actor.poll.registry()).unwrap();
+            seat.writer = Some((client, Ulid::new()));
+            seat.pending_event = Some(Event::Output {
+                seat: id,
+                generation: 1,
+                seq: 1,
+                bytes: vec![b'x'],
+            });
+            actor.seats.insert(id, seat);
+        }
+
+        let mut hot_sequence = 1;
+        let mut delivered = Vec::new();
+        for _ in 0..8 {
+            let seat = actor.seats.get_mut(&hot).unwrap();
+            if seat.pending_event.is_none() {
+                hot_sequence += 1;
+                seat.pending_event = Some(Event::Output {
+                    seat: hot,
+                    generation: 1,
+                    seq: hot_sequence,
+                    bytes: vec![b'x'],
+                });
+            }
+            actor.tick_seats().unwrap();
+            // Exactly one credit is returned per sweep, independently of time.
+            delivered.push(rx.try_recv().unwrap());
+        }
+        assert_eq!(delivered[0].seat(), hot);
+        assert_eq!(
+            delivered[1].seat(),
+            waiting,
+            "fixed sweep order starved the retained second-seat notification"
+        );
+        assert_eq!(
+            delivered
+                .iter()
+                .filter(|event| event.seat() == hot)
+                .map(|event| event.sequence().unwrap())
+                .collect::<Vec<_>>(),
+            (1..=7).collect::<Vec<_>>()
+        );
     }
 
     #[test]
