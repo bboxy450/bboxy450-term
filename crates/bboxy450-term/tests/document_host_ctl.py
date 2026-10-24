@@ -71,7 +71,16 @@ try:
             assert time.monotonic() < deadline and proc.poll() is None, 'document never reached its capture-ready state'
             time.sleep(0.2)
         text = log_path.read_text()
-        assert 'fixture custody (debug)' in text and 'document #44: "loaded"' in text, 'document/custody readiness was not proven'
+        assert 'document #44: "loaded"' in text, 'document readiness was not proven'
+        assert custody.is_dir() and not custody.is_symlink(), 'private fixture custody was not created'
+        keys = list(custody.iterdir())
+        key_metadata = [{'size': key.stat().st_size, 'mode': key.stat().st_mode & 0o777}
+                        for key in keys if key.is_file() and not key.is_symlink()]
+        assert 2 <= len(keys) <= 8 and len(key_metadata) == len(keys), 'fixture key set was not proven'
+        assert custody.stat().st_mode & 0o777 == 0o700, 'fixture directory is not private'
+        assert all(key == {'size': 32, 'mode': 0o600} for key in key_metadata), 'fixture keys are not private'
+        proof['fixture_store'] = {'generated_keys': len(keys), 'directory_mode': 0o700,
+                                  'key_metadata': key_metadata}
         assert 'document #44: "refused"' not in text, 'document read was refused'
         frame = ctl('seat', 'capture', 'window', str(png))
         assert Path(frame['path']).resolve() == png and png.is_file()
