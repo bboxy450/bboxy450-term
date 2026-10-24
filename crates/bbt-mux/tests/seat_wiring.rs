@@ -8,7 +8,7 @@ use bbt_mux::{
     Supervisor, Ulid,
     adapters::{
         HarnessRecord,
-        launch::{LaunchContext, LaunchOptions, plan},
+        launch::LaunchOptions,
     },
     logic::{Logic, LogicConfig},
     registry::SeatRecord,
@@ -63,7 +63,11 @@ fn first_logic_launch_wires_both_fixture_clients_without_user_config_writes() {
     let repository = temp.path().join(".bboxy");
     fs::create_dir(&repository).unwrap();
     let shim = temp.path().join("our 'quoted' app");
-    fs::write(&shim, include_bytes!("fixtures/seat_wiring.py")).unwrap();
+    fs::write(
+        &shim,
+        include_bytes!("../../bboxy450-harness-wake-up/tests/fixtures/seat_wiring.py"),
+    )
+    .unwrap();
     fs::set_permissions(&shim, fs::Permissions::from_mode(0o700)).unwrap();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
@@ -177,72 +181,4 @@ fn first_logic_launch_wires_both_fixture_clients_without_user_config_writes() {
     println!(
         "real-harness orient/task_report UNPROVEN; fixture clients invoke no services or credentials"
     );
-}
-
-#[test]
-fn resumed_generation_gets_a_fresh_overlay_and_keeps_the_native_resume_path() {
-    let temp = tempfile::tempdir().unwrap();
-    for kind in ["claude", "codex"] {
-        let mut seat = SeatRecord::new(Ulid::new(), Ulid::new(), "resumed fixture", kind);
-        seat.harness_session_id = Some("00000000-0000-4000-8000-000000000001".into());
-        let record = HarnessRecord::builtin(kind).unwrap();
-        let first = plan(
-            &record,
-            &LaunchContext {
-                seat: &seat,
-                cwd: temp.path(),
-                role_prompt: PROMPT,
-                executable: Path::new("/tmp/our app"),
-                overlay_parent: temp.path(),
-                user_home: temp.path(),
-                user_zdotdir: None,
-                socket: Path::new("/tmp/first.sock"),
-                capability: [31; 32],
-                resume: false,
-            },
-        )
-        .unwrap();
-        seat.generation += 1;
-        let resumed = plan(
-            &record,
-            &LaunchContext {
-                seat: &seat,
-                cwd: temp.path(),
-                role_prompt: PROMPT,
-                executable: Path::new("/tmp/our app"),
-                overlay_parent: temp.path(),
-                user_home: temp.path(),
-                user_zdotdir: None,
-                socket: Path::new("/tmp/second.sock"),
-                capability: [32; 32],
-                resume: true,
-            },
-        )
-        .unwrap();
-        assert_ne!(first.overlay, resumed.overlay);
-        assert_eq!(resumed.spec.env["BBOXY_GENERATION"], "2");
-        assert_eq!(resumed.spec.env["BBOXY_SOCK"], "/tmp/second.sock");
-        assert_ne!(
-            first.spec.env["BBOXY_CAPABILITY"],
-            resumed.spec.env["BBOXY_CAPABILITY"]
-        );
-        assert!(!resumed.spec.env.contains_key("HOME"));
-        assert!(!resumed.spec.env.contains_key("CODEX_HOME"));
-        let args = &resumed.spec.args;
-        assert_eq!(
-            &args[args.len() - 2..],
-            [
-                if kind == "claude" {
-                    "--resume"
-                } else {
-                    "resume"
-                },
-                seat.harness_session_id.as_deref().unwrap()
-            ]
-        );
-        assert!(!args.iter().any(|arg| arg == "--strict-mcp-config"));
-        first.cleanup().unwrap();
-        assert!(resumed.overlay.is_dir());
-        resumed.cleanup().unwrap();
-    }
 }

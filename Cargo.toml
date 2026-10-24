@@ -5,6 +5,7 @@ members = [
   "crates/bbt-yarn-macros",
   "crates/bbt-yarn",
   "crates/bbt-core",
+  "crates/bboxy450-harness-wake-up",
   "crates/bbt-mermaid",
   "crates/bbt-supervisor",
   "crates/bbt-mux",
@@ -28,6 +29,7 @@ authors = ["Boxy <bboxy450@gmail.com>"]
 rust-version = "1.99"
 
 [workspace.dependencies]
+bboxy450-harness-wake-up = { path = "crates/bboxy450-harness-wake-up" }
 bbt-core = { path = "crates/bbt-core" }
 bbt-supervisor = { path = "crates/bbt-supervisor" }
 bbt-mux = { path = "crates/bbt-mux" }

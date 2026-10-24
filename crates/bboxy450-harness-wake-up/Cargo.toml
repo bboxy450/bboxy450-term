@@ -1,0 +1,30 @@
+[package]
+name = "bboxy450-harness-wake-up"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "Launch, observe and safely wake terminal harnesses through their native protocols"
+
+[features]
+default = []
+runtime-assertions = ["dep:bbt-rt"]
+
+[dependencies]
+bbt-core.workspace = true
+bbt-rt = { path = "../bbt-rt", optional = true }
+base64 = "0.22"
+futures-util = { version = "0.3", features = ["sink"] }
+libc = "0.2"
+mio = { version = "1", features = ["os-poll", "os-ext", "net"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt", "sync", "time", "net", "io-util", "macros"] }
+tokio-tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"] }
+ulid = { version = "1", features = ["serde"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread"] }
+tempfile = "3"

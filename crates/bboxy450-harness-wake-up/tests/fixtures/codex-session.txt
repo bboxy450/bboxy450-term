@@ -1,0 +1,26 @@
+› ROLE: EXECUTOR — cost the reuse options for the messaging layer
+
+• Reading .kb/tasks/2026-10-21-agent-messaging-research.md
+
+• Ran cat ~/.cargo/registry/src/*/icq-0.20.2/Cargo.toml | sed -n 100,220p
+  └ [dependencies.quinn]
+    version = "=0.11.12"
+    [dependencies.stunclient]
+    version = "0.4"
+
+• Ran grep -n "fn connect_peer_resolving" src/runtime.rs
+  └ 824:    async fn connect_peer_resolving<F, Fut>(
+
+• Ran grep -n "pub async fn establish" src/rendezvous.rs
+  └ 851:    pub async fn establish(
+
+• Three options costed. Linking icq keeps its 64-identity cap
+  (store.rs:233). Fronting the daemon cannot add signed role fields
+  to the v2 envelope (wire.rs:51). Rebuild on quinn chosen.
+
+• Wrote .kb/specs/messaging.md (118 lines)
+
+• Ran git diff --check
+  └ exit 0
+
+• B complete for review. 35 qualified pointers, zero invalid.
