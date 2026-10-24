@@ -1,0 +1,45 @@
+LOAD-ROBUSTNESS DISCOVERY — Sable Embertail <EXECUTOR>
+Source: 49a1f8c2a3e8041d6bbe9651db9cfb67aceb2f16 (current main when the slot started; frozen for all five passes).
+Worktree: /Users/feral/mydev/bboxy450-term-exec3; branch sable-load-robustness.
+Slot: 2, granted by Vesper in 155e96ab-4396-4056-bd77-6560507db9ae.
+Command each pass: cargo test --workspace --no-fail-fast --locked.
+DEV/TEST OPT_LEVEL=0, DEBUG=0, DEBUG_ASSERTIONS=true; CARGO_INCREMENTAL=0; explicit BBOXY_TEST_CUSTODY=memory. Default libtest thread count (RUST_TEST_THREADS unset), default ignored set, doctests included.
+Eight separately recorded CPU workers compiled with cc -O0 -std=c11. Workers are bounded at1215s; each full-suite experiment has a1200s safety horizon. No test deadline was changed. All8 workers were alive through every suite exit, then explicitly reaped before the next pass.
+
+pass | cargo exit | elapsed seconds | passed | failed | ignored | observed one-minute load min..max | workers alive at exit
+1 | 0 | 544.591 | 983 | 0 | 21 | 7.521..27.002 | 8
+2 | 0 | 508.220 | 983 | 0 | 21 | 16.478..49.621 | 8
+3 | 0 | 511.535 | 983 | 0 | 21 | 27.790..53.674 | 8
+4 | 0 | 504.785 | 983 | 0 | 21 | 28.175..58.718 | 8
+5 | 101 | 442.732 | 982 | 1 | 21 | 24.670..81.750 | 8
+
+Full observed failed-assertion list: 1 unique test names.
+
+TEST socket_request_flood_replays_exact_output_and_delivers_exit_to_logic
+PASSES [5]
+socket backlog: owned_pid=12118 seat=01M5NYPCCST7TA9QPM63ZAJG6B
+socket backlog: 10000 requests completed in 54.062633291s
+
+thread 'socket_request_flood_replays_exact_output_and_delivers_exit_to_logic' (22337058) panicked at crates/bbt-mux/tests/socket_backlog.rs:148:9:
+socket backlog failure: observation=Err(Elapsed(())), actor_exit=Ok(()), requests=10000, replayed=3396, exit_sequence=6089
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: socket_backlog::socket_request_flood_replays_exact_output_and_delivers_exit_to_logic
+   3: socket_backlog::socket_request_flood_replays_exact_output_and_delivers_exit_to_logic::{closure#0}
+   4: <socket_backlog::socket_request_flood_replays_exact_output_and_delivers_exit_to_logic::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+TARGET ERROR LINES (including crashes or non-assertion errors)
+pass1: []
+pass2: []
+pass3: []
+pass4: []
+pass5: ["error: test failed, to rerun pass `-p bbt-mux --test socket_backlog`", "error: 1 target failed:"]
+
+Evidence/limits:
+- No repository source edits or fixes preceded this report; each pass checked the same HEAD and clean worktree.
+- Complete raw per-pass output is preserved, including every reported assertion, error and result; per-pass SHA256 and owned worker/process metadata are in the manifest.
+- Load is observed host load, not a quiet or isolated control. No causal throughput/latency claim is made from it.
+- Default ignored scale/Keychain/measurement tests were not enabled. This discovery is not ci-local, strict Clippy, parity, or a final repair handoff.
+- Clock-dependency source audit and functional/paused-clock repairs are still outstanding. No deadline was raised and no default test was disabled.

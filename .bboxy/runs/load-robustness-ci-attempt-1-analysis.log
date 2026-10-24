@@ -1,0 +1,11 @@
+NORMAL CI ATTEMPT 1 — source ff8550e49584955d0a570104cf61f1fd29d24d6e
+Strict standalone workspace all-target Clippy: EXIT 0, 41.102s.
+Normal sh scripts/ci-local.sh: EXIT 101, 206.435s.
+Layering, workspace build and script Clippy passed. Cargo test failed before the mux suite, UI lint, native smoke or default invariants completed.
+Failure: live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame, crates/bboxy450-term/src/live.rs:1838. App main target:72 passed/1 failed.
+Real echo and compose/send/read-mark phases passed; the next Task Delegate wait at live.rs:1966-1967 required a claimed Activity that never arrived.
+Source diagnosis: live.rs:2221 writes one raw task record with id/type/status/verify but no number. NUM2 Document::parse at mux/index.rs:141 marks that invalid; work_items.rs:546 refuses invalid id/type/number frontmatter. The generic until() masks the rejected operation behind a15s condition timeout; no timeout increase is needed.
+App live.rs blob402a864df248493c2ed9c470513ad9b92c524c0f is byte-identical at accepted main ef193a2a and this gate. The raw Task error payload itself was not printed; the source rejection chain, fixture bytes, predicate and stack are the diagnosis evidence.
+Raw CI SHA2568594007d067e11a124042d63dca8db1f95943973c5eaa9db2b85309729ef2c46 is preserved in load-robustness-ci-ff8550e4.log. Strict log and owned-process/source/cleanup metadata are adjacent.
+Owned recorded descendants had no surviving PID/start matches; fixture supervisor77205 and logic77211 were gone. Own clean detached worktree and target removed;2,575,134,720 allocated target bytes removed. One dev target retained for assigned work.
+Reported failure and released slot in9abdb9dd. Vesper54295f10 authorizes only adding a unique valid number to the raw app fixture, as a separate signed commit, focused live::tests, then a normal gate rerun in slot1. This record is not a green gate or a waiver.

@@ -13,14 +13,17 @@ links:
   - { to: "[[mux-daemon]]", rel: constrains }
   - { to: "[[seats-967-frame]]", rel: unblocks }
 created: "2026-10-24T04:20:48Z"
-updated: "2026-10-24T04:20:48Z"
+updated: "2026-10-24T04:31:55Z"
 ---
 # Crash recovery work per seat stays under the checkpoint bound
 
 **Property.** Under the firehose at the gate's seat count, `SIGKILL` logic
-mid-replay and restart: every seat's replay from its last checkpoint cursor to
-the ring tail is at most **2R = 16 MiB** ([[d253-checkpoint-policy]] rules 2
-and 3), no seat received a maintenance checkpoint while backlogged, and the
+mid-replay and restart (a fixture that starts 20 MiB behind has backlog, not
+debt, and is valid): every seat's **parsed debt** at the kill, the replay from its last confirmed
+checkpoint cursor to where parsing stood, is at most **2R = 16 MiB**
+([[d253-checkpoint-policy]] rules 2 and 3; the unparsed backlog, ring tail
+minus parsed cursor, is the catch-up gap and is reported beside it, not
+bounded here), no seat received a maintenance checkpoint while backlogged, and the
 time until every seat is live again is under a budget written here from the
 first three settled runs (median + 25 %). The ingest loop never awaited a save.
 

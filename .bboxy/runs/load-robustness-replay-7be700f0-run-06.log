@@ -1,0 +1,18 @@
+SOURCE 7be700f04e51fc927a68be89d2d1cd6ceea438a0
+COMMAND ['cargo', 'test', '-p', 'bbt-mux', '--test', 'socket_backlog', '--locked', '--', '--nocapture']
+START 2026-10-24T03:45:39.824540+00:00
+WORKERS [49051, 49052, 49053, 49054, 49055, 49056, 49057, 49058]
+    Finished `test` profile [unoptimized] target(s) in 0.36s
+     Running tests/socket_backlog.rs (target/load-robustness/debug/deps/socket_backlog-c1f05ea42125a43f)
+
+running 1 test
+socket backlog: owned_pid=49064 seat=01M5P078XK2ZDPVFBMSQ79WAJF
+socket backlog: 10000 requests completed in 24.985796208s
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic has been running for over 60 seconds
+socket backlog: requests=10000, exact_bytes=67108877, sha256=9ce315ede056aaa42a4a7f6dba33c1e82ae80b2d8932f01221b8af579187f844, exit_sequence=5730, logic_replayed_records=5728
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 172.79s
+
+
+EXIT 0 elapsed_seconds=173.473263

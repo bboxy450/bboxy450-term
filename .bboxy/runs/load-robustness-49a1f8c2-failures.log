@@ -1,0 +1,11 @@
+[
+  {
+    "name": "socket_request_flood_replays_exact_output_and_delivers_exit_to_logic",
+    "runs": [
+      5
+    ],
+    "assertions": [
+      "socket backlog: owned_pid=12118 seat=01M5NYPCCST7TA9QPM63ZAJG6B\nsocket backlog: 10000 requests completed in 54.062633291s\n\nthread 'socket_request_flood_replays_exact_output_and_delivers_exit_to_logic' (22337058) panicked at crates/bbt-mux/tests/socket_backlog.rs:148:9:\nsocket backlog failure: observation=Err(Elapsed(())), actor_exit=Ok(()), requests=10000, replayed=3396, exit_sequence=6089\nstack backtrace:\n   0: __rustc::rust_begin_unwind\n   1: core::panicking::panic_fmt\n   2: socket_backlog::socket_request_flood_replays_exact_output_and_delivers_exit_to_logic\n   3: socket_backlog::socket_request_flood_replays_exact_output_and_delivers_exit_to_logic::{closure#0}\n   4: <socket_backlog::socket_request_flood_replays_exact_output_and_delivers_exit_to_logic::{closure#0} as core::ops::function::FnOnce<()>>::call_once\nnote: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace."
+    ]
+  }
+]

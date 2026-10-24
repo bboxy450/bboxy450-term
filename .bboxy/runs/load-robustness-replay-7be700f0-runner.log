@@ -1,0 +1,237 @@
+FILE cpu-worker.c
+SHA256 49697cf90d5e78e2087941a7716b19be8314a0cab4c1f6cb9479b6b6ad575591
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
+
+static double now(void) {
+    struct timespec t;
+    if (clock_gettime(CLOCK_MONOTONIC, &t)) exit(2);
+    return (double)t.tv_sec + (double)t.tv_nsec / 1e9;
+}
+
+int main(int argc, char **argv) {
+    if (argc != 2) return 2;
+    double bound = strtod(argv[1], NULL);
+    if (bound <= 0 || bound > 1800) return 2;
+    double start = now();
+    volatile uint64_t state = (uint64_t)getpid();
+    for (unsigned i = 0; i != 100000; ++i) state = state * 6364136223846793005ULL + 1;
+    printf("READY pid=%d bound_seconds=%.3f\n", getpid(), bound);
+    fflush(stdout);
+    while (now() - start < bound) {
+        for (unsigned i = 0; i != 16384; ++i) state = state * 6364136223846793005ULL + 1;
+    }
+    printf("BOUNDED_EXIT pid=%d elapsed_seconds=%.6f checksum=%llu\n", getpid(), now() - start, (unsigned long long)state);
+    return 0;
+}
+
+FILE sweep.py
+SHA256 e99b0ee5cfda9508bfff529565d8bdae8e34fcb45b1a1317561a07d65a7183c1
+import datetime
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import signal
+import subprocess
+import threading
+import time
+
+root = Path(__file__).parent
+state = json.loads((root / 'state.json').read_text())
+if not state.get('load_authorization_message'):
+    raise SystemExit('load_authorization_required: targeted eight-worker verification waits for the scoped Oracle instruction')
+with (root / 'sweep-started.lock').open('x') as lock:
+    lock.write(f'owned_runner_pid={os.getpid()}\n')
+repo = Path(state['worktree'])
+source = state['source']
+burner = root / 'cpu-worker'
+run_limit = 1200
+env = os.environ.copy()
+env.pop('RUST_TEST_THREADS', None)
+env.update(CARGO_TARGET_DIR=state['target'], CARGO_INCREMENTAL='0',
+           CARGO_PROFILE_DEV_DEBUG='0', CARGO_PROFILE_TEST_DEBUG='0',
+           CARGO_PROFILE_DEV_OPT_LEVEL='0', CARGO_PROFILE_TEST_OPT_LEVEL='0',
+           CARGO_PROFILE_DEV_DEBUG_ASSERTIONS='true', CARGO_PROFILE_TEST_DEBUG_ASSERTIONS='true',
+           BBOXY_TEST_CUSTODY='memory', CARGO_TERM_COLOR='never', RUST_BACKTRACE='1')
+command = ['cargo', 'test', '-p', 'bbt-mux', '--test', 'socket_backlog', '--locked', '--', '--nocapture']
+manifest = {'source': source, 'load_authorization_message': state['load_authorization_message'],
+            'command': command, 'profile_env': {k: v for k, v in env.items() if k.startswith('CARGO_PROFILE_') or k in ['CARGO_TARGET_DIR', 'CARGO_INCREMENTAL', 'BBOXY_TEST_CUSTODY', 'RUST_TEST_THREADS', 'RUST_BACKTRACE']},
+            'cpu_count': os.cpu_count(), 'worker_count': 8, 'run_limit_seconds': run_limit,
+            'test_threads': 'host libtest default; RUST_TEST_THREADS unset',
+            'test_binary':state['test_binary'],'test_binary_sha256':state['test_binary_sha256'],
+            'worker_compile': ['cc', '-O0', '-std=c11', str(root / 'cpu-worker.c'), '-o', str(burner)],
+            'worker_binary_sha256': hashlib.sha256(burner.read_bytes()).hexdigest(), 'runs': []}
+
+def timestamp():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+def write_manifest():
+    (root / 'sweep.json').write_text(json.dumps(manifest, indent=2) + '\n')
+
+def processes():
+    data = subprocess.check_output(['ps', '-axo', 'pid=,ppid=,lstart='], text=True)
+    rows = {}
+    for line in data.splitlines():
+        fields = line.split(None, 2)
+        if len(fields) == 3:
+            rows[int(fields[0])] = (int(fields[1]), fields[2])
+    return rows
+
+def record_owned(pid, owned):
+    rows = processes()
+    if pid in rows:
+        owned.setdefault(pid, rows[pid][1])
+    live_owned = {child for child, start in owned.items() if child in rows and rows[child][1] == start}
+    changed = True
+    while changed:
+        changed = False
+        for child, (parent, start) in rows.items():
+            if parent in live_owned and child not in owned:
+                owned[child] = start
+                live_owned.add(child)
+                changed = True
+
+def stop_recorded(owned, events):
+    # Only descendants started by this run and recorded with the same start
+    # timestamp are eligible; no process-name, pattern or process-group kills.
+    for sig in [signal.SIGTERM, signal.SIGKILL]:
+        current = processes()
+        for pid, start in sorted(owned.items(), reverse=True):
+            if pid not in current or current[pid][1] != start:
+                continue
+            try:
+                os.kill(pid, sig)
+                events.append({'pid': pid, 'recorded_start': start, 'signal': int(sig), 'at': timestamp()})
+            except ProcessLookupError:
+                pass
+        if sig == signal.SIGTERM:
+            time.sleep(0.5)
+
+write_manifest()
+for index in range(1, 11):
+    assert subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repo, text=True).strip() == source
+    assert not subprocess.check_output(['git', 'status', '--porcelain'], cwd=repo, text=True).strip()
+    assert hashlib.sha256(Path(state['test_binary']).read_bytes()).hexdigest() == state['test_binary_sha256']
+    info = {'index': index, 'started_utc': timestamp(), 'load_before': os.getloadavg(),
+            'workers': [], 'load_samples': [], 'cleanup_signals': [], 'timed_out': False}
+    manifest['runs'].append(info)
+    workers = []
+    handles = []
+    cargo = None
+    owned = {}
+    try:
+        for worker in range(8):
+            log = root / f'run-{index}-worker-{worker}.log'
+            proc = subprocess.Popen([str(burner), str(run_limit + 15)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            workers.append((proc, log))
+            info['workers'].append({'pid': proc.pid, 'log': str(log), 'ready': None})
+            print(f'RUN {index} OWNED_WORKER_PID {proc.pid} STARTED', flush=True)
+            write_manifest()
+            first = proc.stdout.readline().strip()
+            assert first.startswith(f'READY pid={proc.pid} '), first
+            log.write_text(first + '\n')
+            info['workers'][-1]['ready'] = first
+            print(f'RUN {index} OWNED_WORKER_PID {proc.pid} {first}', flush=True)
+        info['test_start_utc'] = timestamp()
+        info['load_at_test_start'] = os.getloadavg()
+        log = root / f'run-{index}.log'
+        info['log'] = str(log)
+        output = log.open('w')
+        handles.append(output)
+        output.write(f'SOURCE {source}\nCOMMAND {command!r}\nSTART {info["test_start_utc"]}\nWORKERS {[x[0].pid for x in workers]}\n')
+        output.flush()
+        cargo = subprocess.Popen(command, cwd=repo, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        info['cargo_pid'] = cargo.pid
+        print(f'RUN {index} OWNED_CARGO_PID {cargo.pid} START', flush=True)
+        def drain():
+            for line in cargo.stdout:
+                output.write(line)
+                output.flush()
+                if 'FAILED' in line or line.startswith('test result:') or line.startswith('error:'):
+                    print(f'RUN {index} {line}', end='', flush=True)
+        reader = threading.Thread(target=drain, daemon=True)
+        reader.start()
+        started = time.monotonic()
+        sampled = -10.0
+        recorded = -5.0
+        while cargo.poll() is None:
+            elapsed = time.monotonic() - started
+            if elapsed - sampled >= 10:
+                sample = {'elapsed': elapsed, 'load': os.getloadavg(), 'workers_alive': sum(p.poll() is None for p, _ in workers)}
+                info['load_samples'].append(sample)
+                sampled = elapsed
+                print(f'RUN {index} PROGRESS {elapsed:.1f}s load={sample["load"]} workers={sample["workers_alive"]}', flush=True)
+                assert sample['workers_alive'] == 8, 'bounded_worker_exited_before_suite_end'
+                write_manifest()
+            if elapsed - recorded >= 5:
+                record_owned(cargo.pid, owned)
+                recorded = elapsed
+            if elapsed > run_limit:
+                info['timed_out'] = True
+                record_owned(cargo.pid, owned)
+                stop_recorded(owned, info['cleanup_signals'])
+                break
+            time.sleep(0.25)
+        info['exit'] = cargo.wait(timeout=10)
+        info['elapsed_seconds'] = time.monotonic() - started
+        info['load_after'] = os.getloadavg()
+        info['workers_alive_at_suite_exit'] = sum(p.poll() is None for p, _ in workers)
+        if not info['timed_out']:
+            assert info['workers_alive_at_suite_exit'] == 8, 'bounded_worker_exited_before_suite_end'
+        reader.join(timeout=5)
+        if reader.is_alive():
+            stop_recorded(owned, info['cleanup_signals'])
+            reader.join(timeout=5)
+        assert not reader.is_alive(), 'owned_output_pipe_did_not_close'
+        output.write(f'\nEXIT {info["exit"]} elapsed_seconds={info["elapsed_seconds"]:.6f}\n')
+        output.flush()
+        info['log_sha256'] = hashlib.sha256(log.read_bytes()).hexdigest()
+        text = log.read_text()
+        results = re.findall(r'test result: (\w+)\. (\d+) passed; (\d+) failed; (\d+) ignored', text)
+        info['test_results'] = {'stages': len(results), 'passed': sum(int(r[1]) for r in results),
+                                'failed': sum(int(r[2]) for r in results), 'ignored': sum(int(r[3]) for r in results)}
+        info['failure_blocks'] = []
+        for match in re.finditer(r'^---- (.+?) (?:stdout|stderr) ----\n(.*?)(?=^---- |^failures:|^test result:|\Z)', text, re.M | re.S):
+            info['failure_blocks'].append({'name': match[1], 'assertion_and_trace': match[2].strip()})
+        info['target_errors'] = [line for line in text.splitlines() if line.startswith('error:')]
+        if info['exit']:
+            info['failure_tail'] = '\n'.join(text.splitlines()[-160:])
+        print(f'RUN {index} COMPLETE EXIT {info["exit"]} {info["test_results"]}', flush=True)
+    finally:
+        if cargo is not None and cargo.poll() is None:
+            record_owned(cargo.pid, owned)
+            stop_recorded(owned, info['cleanup_signals'])
+            cargo.wait(timeout=10)
+        info['recorded_owned_processes'] = [{'pid': pid, 'start': start} for pid, start in sorted(owned.items())]
+        for proc, log in workers:
+            if proc.poll() is None:
+                proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+            with log.open('a') as stream:
+                stream.write(proc.stdout.read())
+                stream.write(f'CONTROLLED_EXIT {proc.returncode}\n')
+            next(w for w in info['workers'] if w['pid'] == proc.pid)['exit'] = proc.returncode
+        for handle in handles:
+            handle.close()
+        info['ended_utc'] = timestamp()
+        write_manifest()
+    if info['timed_out']:
+        raise SystemExit('sweep_run_horizon_exceeded: incomplete run reported, no silent unloaded continuation')
+
+failures = {}
+for info in manifest['runs']:
+    for failure in info['failure_blocks']:
+        row = failures.setdefault(failure['name'], {'name': failure['name'], 'runs': [], 'assertions': []})
+        row['runs'].append(info['index'])
+        row['assertions'].append(failure['assertion_and_trace'])
+(root / 'failures.json').write_text(json.dumps({'source': source, 'runs': manifest['runs'], 'failures': list(failures.values())}, indent=2) + '\n')
+print(f'SWEEP COMPLETE: {len(failures)} unique assertion blocks; per-run target errors/exits retained for raw-log review; ten targeted verifications finished; inspect every target exit and exact-byte result', flush=True)

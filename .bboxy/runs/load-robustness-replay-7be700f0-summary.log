@@ -1,0 +1,27 @@
+SOCKET-BACKLOG FUNCTIONAL REPAIR — Sable Embertail <EXECUTOR>
+Source: 7be700f04e51fc927a68be89d2d1cd6ceea438a0; signed fix on main 65468df0, frozen throughout all ten target verifications.
+Scope: crates/bbt-mux/tests/socket_backlog.rs only, plus the requested 55-candidate audit record.
+Instruction: Vesper 5d4b876f-3d83-448d-91f4-703e9f4446db; full-workspace discovery was reported before source fixes and its slot released.
+Command: cargo test -p bbt-mux --test socket_backlog --locked -- --nocapture
+Profiles: DEV/TEST OPT_LEVEL=0, DEBUG=0, DEBUG_ASSERTIONS=true; CARGO_INCREMENTAL=0; BBOXY_TEST_CUSTODY=memory; RUST_TEST_THREADS unset.
+Test binary: /Users/feral/mydev/bboxy450-term-exec3/target/load-robustness/debug/deps/socket_backlog-c1f05ea42125a43f
+Test binary SHA256: e93cf20ff68c4e131606ab07d1ef904e0577ee9b406b92af8accf7dd4592b9a1
+Workers: eight bounded cc -O0 workers per pass, same worker binary as discovery; all80 workers alive through their test exit, explicitly reaped afterward. No recorded owned descendants survive the final PID/start check.
+
+pass | cargo exit | elapsed seconds | exact bytes | exit sequence | replayed records | observed one-minute load min..max | workers alive at exit
+1 | 0 | 182.835 | 67108877 | 5821 | 5819 | 4.512..47.891 | 8
+2 | 0 | 170.711 | 67108877 | 5673 | 5671 | 15.042..25.897 | 8
+3 | 0 | 183.565 | 67108877 | 5661 | 5659 | 14.067..51.795 | 8
+4 | 0 | 175.850 | 67108877 | 5649 | 5647 | 18.508..43.765 | 8
+5 | 0 | 174.925 | 67108877 | 5821 | 5819 | 16.306..26.403 | 8
+6 | 0 | 173.473 | 67108877 | 5730 | 5728 | 14.885..20.270 | 8
+7 | 0 | 173.692 | 67108877 | 5689 | 5687 | 13.030..19.952 | 8
+8 | 0 | 173.188 | 67108877 | 5753 | 5751 | 12.278..15.697 | 8
+9 | 0 | 174.130 | 67108877 | 5694 | 5692 | 11.921..14.430 | 8
+10 | 0 | 172.681 | 67108877 | 5638 | 5636 | 12.693..16.292 | 8
+
+All ten raw logs independently contain one passed test, zero failures/ignored, 10,000 requests, 67,108,877 exact bytes, and SHA256 9ce315ede056aaa42a4a7f6dba33c1e82ae80b2d8932f01221b8af579187f844.
+The test waits for an observed Exit and a snapshot at exactly that sequence; original zero-gap, tail, per-record order, complete-byte/hash, replay and notification-bound checks remain.
+The unchanged90s allowance is a no-progress watchdog, independently polled during Logic RPCs. Progress is bounded request count, monotonic ReadRing record cursor, or the Exit sequence; repeated reads of the same prefix do not renew it. This replaces the total elapsed-time assertion; no production policy or deadline changed.
+The ten target checks use the package's dependency features; the five discovery runs used workspace-wide feature unification. Host load is observed, not quiet-controlled; these are functional results, not a speed comparison.
+This record is not the normal ci-local/strict-Clippy handoff. Those checks follow in the assigned normal gate slot. Other source-clock candidates remain unmodified as directed.

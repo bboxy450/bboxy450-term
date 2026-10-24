@@ -20,6 +20,7 @@ struct RequestFlood {
     armed: Arc<AtomicBool>,
     requests: Arc<AtomicU64>,
     replayed: Arc<AtomicU64>,
+    replayed_through: Arc<AtomicU64>,
     exit: Arc<AtomicU64>,
 }
 impl SupervisorConnection for RequestFlood {
@@ -31,6 +32,9 @@ impl SupervisorConnection for RequestFlood {
         if let Reply::RingHistory { history } = &reply {
             self.replayed
                 .fetch_add(history.records.len() as u64, Ordering::Release);
+            if let Some(sequence) = history.records.last().and_then(|r| r.event.sequence()) {
+                self.replayed_through.fetch_max(sequence, Ordering::Release);
+            }
         }
         Ok(reply)
     }
@@ -79,6 +83,7 @@ fn socket_request_flood_replays_exact_output_and_delivers_exit_to_logic() {
     let armed = Arc::new(AtomicBool::new(false));
     let requests = Arc::new(AtomicU64::new(0));
     let replayed = Arc::new(AtomicU64::new(0));
+    let replayed_through = Arc::new(AtomicU64::new(0));
     let exit = Arc::new(AtomicU64::new(0));
     let gate = root.path().join("start");
     let connection = RequestFlood {
@@ -87,6 +92,7 @@ fn socket_request_flood_replays_exact_output_and_delivers_exit_to_logic() {
         armed: armed.clone(),
         requests: requests.clone(),
         replayed: replayed.clone(),
+        replayed_through: replayed_through.clone(),
         exit: exit.clone(),
     };
     let repository = root.path().join("repository");
@@ -129,26 +135,60 @@ os.write(1, b'\r\nW12G-TAIL\r\n')
     eprintln!("socket backlog: owned_pid={} seat={seat}", info.pid);
     armed.store(true, Ordering::Release);
     let observation = runtime.block_on(async {
-        tokio::time::timeout(Duration::from_secs(90), async {
+        let completion = async {
             loop {
                 let status = logic.client.adapter_status(seat, 1).await?;
-                if status.source == "exit" {
+                let exit_sequence = exit.load(Ordering::Acquire);
+                if status.source == "exit" && exit_sequence != 0 {
                     assert_eq!(status.detail.as_deref(), Some("exit 0"));
-                    break Ok::<(), bbt_mux::store::Error>(());
+                    let snapshot = logic.client.snapshot(seat, 1).await?;
+                    if snapshot.sequence == exit_sequence {
+                        break Ok::<_, bbt_mux::store::Error>(snapshot);
+                    }
                 }
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
-        })
-        .await
+        };
+        // This is an ordering/exact-replay regression, not a throughput gate.
+        // A loaded O0 build can spend most of the former total 90 s allowance
+        // on the request flood alone. Keep the same allowance as a no-progress
+        // watchdog, polled independently while a Logic RPC is outstanding.
+        let watchdog = async {
+            let progress = || {
+                (
+                    requests.load(Ordering::Acquire),
+                    replayed_through.load(Ordering::Acquire),
+                    exit.load(Ordering::Acquire),
+                )
+            };
+            let mut previous = progress();
+            let mut changed_at = Instant::now();
+            loop {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+                let current = progress();
+                if current != previous {
+                    previous = current;
+                    changed_at = Instant::now();
+                } else if changed_at.elapsed() >= Duration::from_secs(90) {
+                    break;
+                }
+            }
+        };
+        tokio::select! {
+            biased;
+            result = completion => Some(result),
+            () = watchdog => None,
+        }
     });
-    if !matches!(&observation, Ok(Ok(()))) {
+    if !matches!(&observation, Some(Ok(_))) {
         // Drop otherwise discards the actor's actual error and leaves only
-        // "logic stopped". Preserve it without changing the deadline or retrying.
+        // "logic stopped". Preserve it without retrying the failed fixture.
         let actor_exit = logic.shutdown();
         panic!(
-            "socket backlog failure: observation={observation:?}, actor_exit={actor_exit:?}, requests={}, replayed={}, exit_sequence={}",
+            "socket backlog failure (None means 90 s without request/replay/exit progress): observation={observation:?}, actor_exit={actor_exit:?}, requests={}, replayed={}, replayed_through={}, exit_sequence={}",
             requests.load(Ordering::Acquire),
             replayed.load(Ordering::Acquire),
+            replayed_through.load(Ordering::Acquire),
             exit.load(Ordering::Acquire),
         );
     }
@@ -163,7 +203,7 @@ os.write(1, b'\r\nW12G-TAIL\r\n')
         exit_sequence > 1024,
         "fixture must exceed the old notification cap"
     );
-    let snapshot = runtime.block_on(logic.client.snapshot(seat, 1)).unwrap();
+    let snapshot = observation.unwrap().unwrap();
     assert_eq!(snapshot.sequence, exit_sequence);
     assert!(snapshot.screen.gap.is_none());
     let text: String = snapshot

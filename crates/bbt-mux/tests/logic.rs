@@ -198,7 +198,7 @@ fn a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_ident
     let swarm = Ulid::new();
     std::fs::write(
         config.repository.join(".bboxy/task.md"),
-        format!("---\nid: {id}\ntype: task\nstatus: running\nswarm_id: {swarm}\n---\nfixture\n"),
+        format!("---\nid: {id}\ntype: task\nnumber: 1\nstatus: running\nswarm_id: {swarm}\n---\nfixture\n"),
     )
     .unwrap();
     let until = Instant::now() + Duration::from_secs(5);
