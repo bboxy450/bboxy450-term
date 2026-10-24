@@ -15,7 +15,7 @@ links:
   - { to: "[[d272-ctl-one-grammar]]", rel: decision }
   - { to: "[[work-items]]", rel: record-type }
 created: "2026-10-24T15:24:41Z"
-updated: "2026-10-24T19:38:52Z"
+updated: "2026-10-24T22:31:13Z"
 ---
 # ctl
 
@@ -47,7 +47,7 @@ flowchart LR
 | `ui` | `open <graph\|settings\|launcher\|docs <path>>`; `key <named-key>…` (the window's own chrome keys, ⌘T, ⌘G, ⌘M, Esc); `focus <pane>`; `layout` (dump the solved layout tree) | the same `GuiAction`s the window's keyboard and menu issue; `layout` is the model the UI already holds, read |
 | `events` | `tail [--since <seq>] [--subject <glob>]` | `EventsRead` pages of the retained streams by the client's cursor, JSON lines, no attach, no ack, never a second consumer (§1a) |
 | `debug` | `logs <app\|logic\|supervisor> [--since]`; `journal <query>`; `metrics`; `snapshot <path>` (the R5 diagnostics table); `ps` (the app's own process tree); `invariants [--slow]` (runs `scripts/invariants.sh` on the checked-out tree) | reads of what the processes already write; `invariants` is a local command and touches no seat |
-| `identity` | `status` (custody tier, the Keychain item's ACL state, whether a hold is active); `unlock` (the one-shot interactive Keychain access, [[d280-keychain-regrant]]) | the same actions as Settings › Identity, operator principal, audited |
+| `identity` | `status` (custody tier, the Keychain item's ACL state, whether a hold is active); `unlock` (the one-shot interactive Keychain access, [[d280-keychain-regrant]]; with no hold active replies `ok` with `hold: none`) | the same actions as Settings › Identity, operator principal, audited; **both admitted during a custody hold** on the door's capability plus the journal-validated device ID, audited before the attempt with `signature: pending` ([[d315-unlock-admitted-under-hold]]); no other verb is |
 | `batch` | `run <file\|->` [--stop-on-error] | one command per JSONL line in, one reply line out per command in order, the same shapes as §2 and §3; the way scripts drive a night |
 | `recipe` | `list`; `detect <seat>` (which known prompts match the screen now); `run <recipe> <seat> [--dry-run]` | a data-driven composition of `seat screen`, `match`, `seat input`, `seat wait`, `report` (§4) |
 
