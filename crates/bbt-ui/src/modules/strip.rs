@@ -175,7 +175,7 @@ impl Strip {
             ),
             0.,
         ));
-        if let Some(role) = &seat.role {
+        if let Some(role) = seat.role.as_ref().filter(|role| role.as_str() != "shell") {
             let mark = match role.as_str() {
                 "oracle" => "♔",
                 "creativity" => "♝",

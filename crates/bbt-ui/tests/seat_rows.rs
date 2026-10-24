@@ -27,6 +27,26 @@ fn context() -> ui::Context {
 }
 
 #[test]
+fn shell_role_has_no_seat_or_strip_chip_but_other_roles_keep_theirs() {
+    let ctx = context();
+    let mut row = SeatRow::new("shell", "Shell", "zsh");
+    for (role, has_chip) in [("shell", false), ("executor", true), ("oracle", true)] {
+        row.role = Some(role.into());
+        let layout = row
+            .element(ctx)
+            .layout(Rect::new(0., 0., 320., 0.), ctx, &Metrics)
+            .unwrap();
+        assert_eq!(find(&layout, "rmark").is_some(), has_chip);
+        let strip = bbt_ui::modules::strip::Strip::new(row.clone());
+        let layout = strip
+            .element(ctx)
+            .layout(Rect::new(0., 0., 320., 40.), ctx, &Metrics)
+            .unwrap();
+        assert_eq!(find(&layout, "pane/strip/rmark").is_some(), has_chip);
+    }
+}
+
+#[test]
 fn waiting_halo_does_not_move_the_row_or_its_glyph_at_any_density() {
     for theme in [ui::Theme::Dark, ui::Theme::Light] {
         for density in [

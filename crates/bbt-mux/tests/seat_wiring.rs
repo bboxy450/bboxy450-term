@@ -86,7 +86,7 @@ fn first_logic_launch_wires_both_fixture_clients_without_user_config_writes() {
 
     for kind in ["claude", "codex"] {
         let mut record = SeatRecord::new(Ulid::new(), Ulid::new(), "wiring fixture", kind);
-        record.role.name = "executor 'quoted' \"role\"".into();
+        record.role = bbt_mux::adapters::role_preset("executor").unwrap();
         let seat = record.id;
         let role = record.role.name.clone();
         let output = temp.path().join(format!("{kind}.json"));

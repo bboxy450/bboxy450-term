@@ -396,7 +396,7 @@ impl SeatRow {
             0.,
             None,
         ));
-        if let Some(role) = &self.role {
+        if let Some(role) = self.role.as_ref().filter(|role| role.as_str() != "shell") {
             let mut mark = label(
                 role_mark(role),
                 d.glyph as f32 - 1.,

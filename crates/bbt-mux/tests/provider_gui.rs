@@ -145,6 +145,84 @@ impl Gui {
 }
 
 #[test]
+fn gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker() {
+    let directory = tempfile::tempdir().unwrap();
+    let repository = directory.path().join("repository");
+    std::fs::create_dir_all(repository.join(".bboxy")).unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let supervisor = Supervisor::start(Config {
+        journal_directory: Some(directory.path().join("journal")),
+        ..Default::default()
+    })
+    .unwrap();
+    let run_dir = directory.path().join("run");
+    let key = ed25519_dalek::SigningKey::from_bytes(&[42; 32]);
+    prepare_gui_identity(&run_dir, &key);
+    let logic = Logic::start(
+        supervisor.connect().unwrap(),
+        LogicConfig {
+            run_dir: run_dir.clone(),
+            repository,
+            ring: Default::default(),
+        },
+        key,
+        runtime.handle(),
+    )
+    .unwrap();
+    let mut gui = runtime.block_on(Gui::open(&logic));
+    let mut spec = bbt_proto::SpawnSpec {
+        swarm: bbt_proto::SwarmId::from_u128(7),
+        harness_kind: "codex".into(),
+        name: Some("role fixture".into()),
+        role: None,
+        cwd: directory.path().to_string_lossy().into(),
+        location: bbt_proto::Where::Local,
+        resume: None,
+        placement: None,
+    };
+    for (role, reason) in [
+        ("oracle", "codex_oracle_role_forbidden"),
+        ("architect", "codex_oracle_role_forbidden"),
+        ("director", "unknown_role_preset"),
+    ] {
+        spec.role = Some(role.into());
+        assert!(
+            runtime
+                .block_on(gui.spawn(Ulid::new(), spec.clone()))
+                .unwrap_err()
+                .contains(reason)
+        );
+        assert!(
+            runtime
+                .block_on(logic.client.gui_seats())
+                .unwrap()
+                .is_empty()
+        );
+    }
+    spec.harness_kind = "zsh".into();
+    spec.role = None;
+    let seat = runtime.block_on(gui.spawn(Ulid::new(), spec)).unwrap();
+    let record = runtime
+        .block_on(logic.client.gui_seat(Ulid(seat.0.0)))
+        .unwrap()
+        .record;
+    assert_eq!(
+        record.role,
+        bbt_mux::adapters::role_preset("shell").unwrap()
+    );
+    let object = SqliteStore::open(&run_dir.join(format!("seat-{seat}"))).unwrap();
+    use bbt_mux::store::Store;
+    let launch: serde_json::Value =
+        serde_json::from_slice(&object.get("recovery_launch").unwrap().unwrap()).unwrap();
+    assert_eq!(launch["role_prompt"], "");
+    logic.shutdown().unwrap();
+}
+
+#[test]
 fn operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch() {
     use bbt_mux::{
         identity::{Custody, DeviceKeyStore, PendingReason},

@@ -8,7 +8,7 @@ pub mod observe;
 
 use crate::{
     Ulid,
-    registry::Role,
+    registry::{Class, Role},
     store::{Result, invalid},
 };
 use serde::{Deserialize, Serialize};
@@ -47,7 +47,39 @@ pub struct HarnessRecord {
     pub state_source: StateSource,
     pub hooks: bool,
 }
+
+/// Enforce harness authority before admitting a launch, including direct PTYs.
+pub fn validate_role(kind: &str, role: &Role) -> Result<()> {
+    if kind == "codex" && role.class == Class::Oracle {
+        return Err(invalid("codex_oracle_role_forbidden"));
+    }
+    if role.class != role_preset(&role.name)?.class {
+        return Err(invalid("role_class_mismatch"));
+    }
+    Ok(())
+}
+
+/// Resolve the five decided role names to their grant authority (#262).
+pub fn role_preset(name: &str) -> Result<Role> {
+    let class = match name {
+        "oracle" | "architect" => Class::Oracle,
+        "creativity" | "executor" | "shell" => Class::Worker,
+        _ => return Err(invalid("unknown_role_preset")),
+    };
+    Ok(Role {
+        name: name.into(),
+        class,
+    })
+}
+
 impl HarnessRecord {
+    /// A spawn preset changes the name and class together; absence uses settings.
+    pub fn resolve_role(&self, preset: Option<&str>) -> Result<Role> {
+        let role = role_preset(preset.unwrap_or(&self.default_role.name))?;
+        validate_role(&self.kind, &role)?;
+        Ok(role)
+    }
+
     pub fn builtin(kind: &str) -> Result<Self> {
         let (name, command, wake_method) = match kind {
             "claude" => ("Claude", "claude", WakeMethod::ClaudeSocket),
@@ -61,10 +93,11 @@ impl HarnessRecord {
             command: vec![command.into()],
             tile: "#7397d4".into(),
             icon: kind.into(),
-            default_role: Role {
-                name: "executor".into(),
-                class: crate::registry::Class::Worker,
-            },
+            default_role: role_preset(match kind {
+                "claude" => "oracle",
+                "zsh" => "shell",
+                _ => "executor",
+            })?,
             wake_method,
             state_source: StateSource::Reported,
             hooks: kind != "zsh",
@@ -81,7 +114,7 @@ impl HarnessRecord {
         {
             return Err(invalid("invalid harness record"));
         }
-        Ok(())
+        validate_role(&self.kind, &self.default_role)
     }
 }
 

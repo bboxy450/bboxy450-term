@@ -38,10 +38,11 @@ const COMMAND_CAPACITY: usize = 64;
 /// Pure translation on the IO side. UI inputs never choose argv, cwd, role
 /// authority or a process handle; the existing backend validates the spec.
 fn spawn_spec(message: &UiMsg, swarm: Ulid, cwd: &Path) -> Option<SpawnSpec> {
-    let (harness_kind, name, location, selected_swarm, placement) = match message {
+    let (harness_kind, name, role, location, selected_swarm, placement) = match message {
         UiMsg::Spawn {
             harness_kind,
             name,
+            role,
             location,
             swarm,
             placement,
@@ -49,18 +50,19 @@ fn spawn_spec(message: &UiMsg, swarm: Ulid, cwd: &Path) -> Option<SpawnSpec> {
         } => (
             harness_kind.as_str(),
             name.clone(),
+            role.clone(),
             location.clone(),
             *swarm,
             placement.clone(),
         ),
-        UiMsg::SpawnZsh => ("zsh", None, Where::Local, None, None),
+        UiMsg::SpawnZsh => ("zsh", None, None, Where::Local, None, None),
         _ => return None,
     };
     Some(SpawnSpec {
         swarm: selected_swarm.unwrap_or_else(|| SwarmId::from_u128(swarm.0)),
         harness_kind: harness_kind.into(),
         name,
-        role: None,
+        role,
         cwd: cwd.to_string_lossy().into_owned(),
         location,
         resume: None,
@@ -680,7 +682,7 @@ async fn run(
                     Some(message) if lost=>retained.push_back(message),
                     Some(message)=> {
                     let message=match message {
-                        UiMsg::SpawnZsh=>UiMsg::Spawn {id:Ulid::new(),swarm:None,placement:None,harness_kind:"zsh".into(),name:None,location:Where::Local},
+                        UiMsg::SpawnZsh=>UiMsg::Spawn {id:Ulid::new(),swarm:None,placement:None,harness_kind:"zsh".into(),name:None,role:None,location:Where::Local},
                         message=>message,
                     };
                     in_flight=Some(message);
@@ -1619,6 +1621,7 @@ mod tests {
                 placement: None,
                 harness_kind: "codex".into(),
                 name: Some("named seat".into()),
+                role: Some("executor".into()),
                 location: location.clone(),
             };
             let spec = spawn_spec(&message, swarm, cwd).unwrap();
@@ -1627,7 +1630,7 @@ mod tests {
             assert_eq!(spec.name.as_deref(), Some("named seat"));
             assert_eq!(spec.location, location);
             assert_eq!(spec.cwd, "/fixture/repository with spaces");
-            assert_eq!(spec.role, None);
+            assert_eq!(spec.role.as_deref(), Some("executor"));
             assert_eq!(spec.resume, None);
             let wire = serde_json::to_value(&spec).unwrap();
             assert_eq!(serde_json::from_value::<SpawnSpec>(wire).unwrap(), spec);
@@ -1638,6 +1641,7 @@ mod tests {
             placement: None,
             harness_kind: "zsh".into(),
             name: None,
+            role: None,
             location: Where::Local,
         };
         assert_eq!(
@@ -1653,6 +1657,7 @@ mod tests {
             placement: None,
             harness_kind: "pi".into(),
             name: None,
+            role: None,
             location: Where::Local,
         };
         assert_eq!(
@@ -2306,6 +2311,7 @@ mod tests {
                 placement: None,
                 harness_kind: "pi".into(),
                 name: None,
+                role: None,
                 location: Where::Local,
             })
             .await
@@ -2317,6 +2323,7 @@ mod tests {
                 placement: None,
                 harness_kind: "zsh".into(),
                 name: Some("generic shell".into()),
+                role: None,
                 location: Where::Local,
             })
             .await
