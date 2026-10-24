@@ -16,7 +16,7 @@ links:
   - { to: "[[rim-glow]]", rel: promises }
   - { to: "[[attention]]", rel: promises }
 created: "2026-10-24T05:17:08Z"
-updated: "2026-10-24T15:24:41Z"
+updated: "2026-10-24T17:59:06Z"
 ---
 # E2E acceptance
 
@@ -45,7 +45,7 @@ Every promised user-facing function, one line of expectation each, from [[vision
 - **T4** a pane shows real cells: colours, bold, italics, underline, wide glyphs and emoji align to the grid; the cursor shape follows the program
 - **T5** the app is killed and relaunched: every seat is attached to the same PTY, layout, focus and scroll positions are identical, the programs never noticed
 - **T6** the supervisor dies: seats survive; the app says so, restarts it, re-attaches, resumes by session id
-- **T7** closing a pane shows the grace strip for 60 s, ⌘Z brings it back with the PTY and its position; after grace it is gone and says so
+- **T7** closing a pane shows the grace strip for 60 s, ⌘Z brings it back with the PTY and its position; after grace it is gone and says so: the pane and its sidebar row leave, one stream line reads "<name> closed; its history is kept" (nothing is deleted, the ring and the records stay reachable from the seat's record and the Graph tab, [[mantras]] 22), and ⌘Z is no longer offered for it (ruling 2026-10-24; not implemented in the window as of this date, Velvet builds it with Wren's reference)
 - **T8** OSC 7501 state from a harness shows as reported grade; a harness that stays silent shows idle, never an invented state
 
 ### launcher and placement
