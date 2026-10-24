@@ -1,0 +1,51 @@
+{
+  "gate": {
+    "head": "e91906fc30c4305e5b85e69be9b269b253b2778b",
+    "slot": "a7331587-1b08-49fe-a23b-6668787696d1",
+    "scratch": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/velvet-settings-ci-_0kjzwyf",
+    "worktree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/velvet-settings-ci-_0kjzwyf/tree",
+    "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/velvet-settings-ci-_0kjzwyf/target",
+    "parity": "/Users/feral/mydev/bboxy450-term-exec6/target/settings-parity-e91906fc30c4",
+    "log": "/Users/feral/mydev/bboxy450-term-exec6/.bboxy/runs/settings-checkpoint1-ci-e91906fc30c4.log",
+    "command": [
+      "sh",
+      "scripts/ci-local.sh",
+      "--parity"
+    ],
+    "environment": {
+      "CARGO_TARGET_DIR": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/velvet-settings-ci-_0kjzwyf/target",
+      "CARGO_INCREMENTAL": "0",
+      "CARGO_PROFILE_DEV_DEBUG": "0",
+      "CARGO_PROFILE_TEST_DEBUG": "0",
+      "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+      "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+      "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+      "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+      "BBOXY_TEST_CUSTODY": "memory",
+      "CARGO_BUILD_JOBS": "2",
+      "PARITY_OUT": "/Users/feral/mydev/bboxy450-term-exec6/target/settings-parity-e91906fc30c4"
+    },
+    "started_utc": "2026-10-24T18:14:20.639795+00:00",
+    "exit": 0,
+    "pid": 89550,
+    "driver_pid": 89467,
+    "ended_utc": "2026-10-24T19:01:51.100083+00:00",
+    "elapsed_s": 2850.4705337080004,
+    "log_sha256": "73f0de4d42bb6d4a6986e871c2abb66cce59f8f9fc2bd5c5a4ac06ce92e73ebc",
+    "target_du_kib": "4011540\t/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/velvet-settings-ci-_0kjzwyf/target",
+    "target_deleted": true,
+    "worktree_remove_exit": 0,
+    "worktree_remove_output": "",
+    "cleanup_utc": "2026-10-24T19:01:56.224675+00:00"
+  },
+  "development": {
+    "path": "/Users/feral/mydev/bboxy450-term-exec6/target/settings-dev",
+    "ownership": "dedicated Settings development target created in this task",
+    "active_processes": [],
+    "du_exit": 0,
+    "allocated_bytes": 2865606656,
+    "deleted_utc": "2026-10-24T19:08:03.639411+00:00",
+    "gate_target_already_deleted": true,
+    "exists_after": false
+  }
+}

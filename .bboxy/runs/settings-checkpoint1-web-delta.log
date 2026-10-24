@@ -1,0 +1,1458 @@
+[
+  {
+    "key": "documents/as-modal-cozy-dark.png",
+    "different_pixels": 96,
+    "total_pixels": 1020474,
+    "fraction": 9.407393035001382e-05,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      815,
+      41,
+      911,
+      42
+    ]
+  },
+  {
+    "key": "documents/as-modal-touch-dark.png",
+    "different_pixels": 319,
+    "total_pixels": 1020474,
+    "fraction": 0.0003125998310589001,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      592,
+      41,
+      911,
+      42
+    ]
+  },
+  {
+    "key": "documents/as-modal-source-touch-light.png",
+    "different_pixels": 714,
+    "total_pixels": 1020474,
+    "fraction": 0.0006996748569782278,
+    "max_channel_delta": 19,
+    "bbox_rgb": [
+      133,
+      62,
+      1019,
+      695
+    ]
+  },
+  {
+    "key": "documents/as-modal-source-comfortable-dark.png",
+    "different_pixels": 1,
+    "total_pixels": 1020474,
+    "fraction": 9.799367744793107e-07,
+    "max_channel_delta": 25,
+    "bbox_rgb": [
+      815,
+      610,
+      816,
+      611
+    ]
+  },
+  {
+    "key": "documents/as-modal-source-touch-dark.png",
+    "different_pixels": 98,
+    "total_pixels": 1020474,
+    "fraction": 9.603380389897244e-05,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      133,
+      688,
+      271,
+      707
+    ]
+  },
+  {
+    "key": "titlebar/long-crumb-touch-dark.png",
+    "different_pixels": 1,
+    "total_pixels": 196868,
+    "fraction": 5.079545685433895e-06,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      106,
+      43,
+      107,
+      44
+    ]
+  },
+  {
+    "key": "titlebar/long-crumb-cozy-dark.png",
+    "different_pixels": 1,
+    "total_pixels": 196868,
+    "fraction": 5.079545685433895e-06,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      106,
+      43,
+      107,
+      44
+    ]
+  },
+  {
+    "key": "sidebar/100-seats-cozy-dark.png",
+    "different_pixels": 516,
+    "total_pixels": 732648,
+    "fraction": 0.0007042945589150588,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      268,
+      57,
+      269,
+      573
+    ]
+  },
+  {
+    "key": "perf/hud-alone-comfortable-dark.png",
+    "different_pixels": 132,
+    "total_pixels": 315238,
+    "fraction": 0.0004187312443296811,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      297,
+      26,
+      563,
+      128
+    ]
+  },
+  {
+    "key": "perf/hud-alone-compact-dark.png",
+    "different_pixels": 259,
+    "total_pixels": 315238,
+    "fraction": 0.0008216014566771772,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      13,
+      26,
+      563,
+      128
+    ]
+  },
+  {
+    "key": "perf/hud-alone-touch-dark.png",
+    "different_pixels": 132,
+    "total_pixels": 315238,
+    "fraction": 0.0004187312443296811,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      297,
+      26,
+      563,
+      128
+    ]
+  },
+  {
+    "key": "sidebar/100-seats-compact-light.png",
+    "different_pixels": 4,
+    "total_pixels": 732648,
+    "fraction": 5.4596477435275875e-06,
+    "max_channel_delta": 4,
+    "bbox_rgb": [
+      110,
+      428,
+      206,
+      555
+    ]
+  },
+  {
+    "key": "sidebar/100-seats-comfortable-dark.png",
+    "different_pixels": 573,
+    "total_pixels": 732648,
+    "fraction": 0.0007820945392603269,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      22,
+      49,
+      269,
+      573
+    ]
+  },
+  {
+    "key": "sidebar/1000-seats-comfortable-dark.png",
+    "different_pixels": 79,
+    "total_pixels": 732648,
+    "fraction": 0.00010782804293466986,
+    "max_channel_delta": 8,
+    "bbox_rgb": [
+      139,
+      21,
+      1224,
+      96
+    ]
+  },
+  {
+    "key": "sidebar/1000-seats-comfortable-light.png",
+    "different_pixels": 29,
+    "total_pixels": 732648,
+    "fraction": 3.958244614057501e-05,
+    "max_channel_delta": 16,
+    "bbox_rgb": [
+      139,
+      22,
+      1224,
+      96
+    ]
+  },
+  {
+    "key": "titlebar/window-unfocused-compact-dark.png",
+    "different_pixels": 1,
+    "total_pixels": 196868,
+    "fraction": 5.079545685433895e-06,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      106,
+      43,
+      107,
+      44
+    ]
+  },
+  {
+    "key": "titlebar/window-unfocused-cozy-dark.png",
+    "different_pixels": 1,
+    "total_pixels": 196868,
+    "fraction": 5.079545685433895e-06,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      106,
+      43,
+      107,
+      44
+    ]
+  },
+  {
+    "key": "titlebar/window-unfocused-touch-dark.png",
+    "different_pixels": 1,
+    "total_pixels": 196868,
+    "fraction": 5.079545685433895e-06,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      106,
+      43,
+      107,
+      44
+    ]
+  },
+  {
+    "key": "sidebar/1000-seats-touch-light.png",
+    "different_pixels": 27,
+    "total_pixels": 732648,
+    "fraction": 3.685262226881122e-05,
+    "max_channel_delta": 16,
+    "bbox_rgb": [
+      744,
+      22,
+      1224,
+      27
+    ]
+  },
+  {
+    "key": "sidebar/100-seats-touch-light.png",
+    "different_pixels": 19,
+    "total_pixels": 732648,
+    "fraction": 2.593332678175604e-05,
+    "max_channel_delta": 14,
+    "bbox_rgb": [
+      22,
+      46,
+      269,
+      517
+    ]
+  },
+  {
+    "key": "sidebar/10-seats-touch-light.png",
+    "different_pixels": 5,
+    "total_pixels": 732648,
+    "fraction": 6.824559679409484e-06,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      24,
+      273,
+      269,
+      280
+    ]
+  },
+  {
+    "key": "titlebar/narrow-window-touch-dark.png",
+    "different_pixels": 2,
+    "total_pixels": 196868,
+    "fraction": 1.015909137086779e-05,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      105,
+      43,
+      107,
+      45
+    ]
+  },
+  {
+    "key": "titlebar/narrow-window-comfortable-dark.png",
+    "different_pixels": 2,
+    "total_pixels": 196868,
+    "fraction": 1.015909137086779e-05,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      105,
+      43,
+      107,
+      45
+    ]
+  },
+  {
+    "key": "titlebar/narrow-window-compact-dark.png",
+    "different_pixels": 2,
+    "total_pixels": 196868,
+    "fraction": 1.015909137086779e-05,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      105,
+      43,
+      107,
+      45
+    ]
+  },
+  {
+    "key": "titlebar/narrow-window-cozy-dark.png",
+    "different_pixels": 2,
+    "total_pixels": 196868,
+    "fraction": 1.015909137086779e-05,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      105,
+      43,
+      107,
+      45
+    ]
+  },
+  {
+    "key": "titlebar/narrow-window-comfortable-light.png",
+    "different_pixels": 2,
+    "total_pixels": 196868,
+    "fraction": 1.015909137086779e-05,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      105,
+      43,
+      107,
+      45
+    ]
+  },
+  {
+    "key": "titlebar/narrow-window-compact-light.png",
+    "different_pixels": 2,
+    "total_pixels": 196868,
+    "fraction": 1.015909137086779e-05,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      105,
+      43,
+      107,
+      45
+    ]
+  },
+  {
+    "key": "titlebar/narrow-window-touch-light.png",
+    "different_pixels": 2,
+    "total_pixels": 196868,
+    "fraction": 1.015909137086779e-05,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      105,
+      43,
+      107,
+      45
+    ]
+  },
+  {
+    "key": "launcher/ssh-rig-codex-placements-touch-light.png",
+    "different_pixels": 3,
+    "total_pixels": 732648,
+    "fraction": 4.094735807645691e-06,
+    "max_channel_delta": 7,
+    "bbox_rgb": [
+      321,
+      65,
+      384,
+      88
+    ]
+  },
+  {
+    "key": "seat-row/artifacts-cozy-dark.png",
+    "different_pixels": 3,
+    "total_pixels": 623000,
+    "fraction": 4.815409309791332e-06,
+    "max_channel_delta": 13,
+    "bbox_rgb": [
+      500,
+      99,
+      503,
+      136
+    ]
+  },
+  {
+    "key": "seat-row/artifacts-comfortable-dark.png",
+    "different_pixels": 1,
+    "total_pixels": 623000,
+    "fraction": 1.6051364365971107e-06,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      502,
+      183,
+      503,
+      184
+    ]
+  },
+  {
+    "key": "seat-row/task-states-compact-dark.png",
+    "different_pixels": 2,
+    "total_pixels": 623000,
+    "fraction": 3.2102728731942214e-06,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      45,
+      124,
+      46,
+      185
+    ]
+  },
+  {
+    "key": "pane/reconnecting-touch-dark.png",
+    "different_pixels": 3,
+    "total_pixels": 378784,
+    "fraction": 7.920081101630481e-06,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      1194,
+      43,
+      1200,
+      46
+    ]
+  },
+  {
+    "key": "pane/reconnecting-comfortable-light.png",
+    "different_pixels": 3,
+    "total_pixels": 378784,
+    "fraction": 7.920081101630481e-06,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      1194,
+      43,
+      1200,
+      46
+    ]
+  },
+  {
+    "key": "compose/delegate--rejected-compact-dark.png",
+    "different_pixels": 802,
+    "total_pixels": 525812,
+    "fraction": 0.001525259978851757,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      346
+    ]
+  },
+  {
+    "key": "compose/delegate--rejected-touch-dark.png",
+    "different_pixels": 1022,
+    "total_pixels": 525812,
+    "fraction": 0.0019436604718036103,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      346
+    ]
+  },
+  {
+    "key": "seat-row/subagents-12-cozy-dark.png",
+    "different_pixels": 1,
+    "total_pixels": 284088,
+    "fraction": 3.5200360451691025e-06,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      52,
+      49,
+      53,
+      50
+    ]
+  },
+  {
+    "key": "compose/delegate--rejected-cozy-dark.png",
+    "different_pixels": 1820,
+    "total_pixels": 525812,
+    "fraction": 0.0034613131689653336,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      346
+    ]
+  },
+  {
+    "key": "compose/delegate--rejected-comfortable-dark.png",
+    "different_pixels": 771,
+    "total_pixels": 525812,
+    "fraction": 0.0014663035457539958,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      346
+    ]
+  },
+  {
+    "key": "compose/delegate--report-back-touch-dark.png",
+    "different_pixels": 1898,
+    "total_pixels": 550732,
+    "fraction": 0.003446322349164385,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      207,
+      295,
+      418
+    ]
+  },
+  {
+    "key": "compose/delegate--report-back-comfortable-dark.png",
+    "different_pixels": 1091,
+    "total_pixels": 550732,
+    "fraction": 0.0019809998329496014,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      207,
+      295,
+      418
+    ]
+  },
+  {
+    "key": "compose/delegate--report-back-cozy-dark.png",
+    "different_pixels": 448,
+    "total_pixels": 550732,
+    "fraction": 0.0008134628094971783,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      207,
+      295,
+      418
+    ]
+  },
+  {
+    "key": "compose/delegate--report-back-compact-dark.png",
+    "different_pixels": 1215,
+    "total_pixels": 550732,
+    "fraction": 0.002206154717721142,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      207,
+      295,
+      418
+    ]
+  },
+  {
+    "key": "graph/e2e-all-pass-comfortable-light.png",
+    "different_pixels": 93,
+    "total_pixels": 1440376,
+    "fraction": 6.456647430948586e-05,
+    "max_channel_delta": 16,
+    "bbox_rgb": [
+      13,
+      14,
+      1233,
+      1026
+    ]
+  },
+  {
+    "key": "compose/delegate--accepted-compact-dark.png",
+    "different_pixels": 828,
+    "total_pixels": 510860,
+    "fraction": 0.001620796304271229,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      346
+    ]
+  },
+  {
+    "key": "compose/delegate--accepted-touch-dark.png",
+    "different_pixels": 1012,
+    "total_pixels": 510860,
+    "fraction": 0.0019809732607759464,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      346
+    ]
+  },
+  {
+    "key": "compose/delegate--accepted-comfortable-dark.png",
+    "different_pixels": 1423,
+    "total_pixels": 510860,
+    "fraction": 0.0027854989625337666,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      346
+    ]
+  },
+  {
+    "key": "compose/delegate--accepted-cozy-dark.png",
+    "different_pixels": 89,
+    "total_pixels": 510860,
+    "fraction": 0.00017421602787456446,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      346
+    ]
+  },
+  {
+    "key": "compose/delegate--rejected-comfortable-light.png",
+    "different_pixels": 2168,
+    "total_pixels": 525812,
+    "fraction": 0.0041231466759982655,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      346
+    ]
+  },
+  {
+    "key": "compose/delegate--rejected-cozy-light.png",
+    "different_pixels": 692,
+    "total_pixels": 525812,
+    "fraction": 0.0013160597323758302,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      346
+    ]
+  },
+  {
+    "key": "compose/delegate--rejected-touch-light.png",
+    "different_pixels": 2748,
+    "total_pixels": 525812,
+    "fraction": 0.005226202521053152,
+    "max_channel_delta": 3,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      346
+    ]
+  },
+  {
+    "key": "compose/delegate--rejected-compact-light.png",
+    "different_pixels": 698,
+    "total_pixels": 525812,
+    "fraction": 0.0013274706549108806,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      346
+    ]
+  },
+  {
+    "key": "graph/e2e-all-pass-compact-dark.png",
+    "different_pixels": 17,
+    "total_pixels": 1440376,
+    "fraction": 1.1802473798508167e-05,
+    "max_channel_delta": 15,
+    "bbox_rgb": [
+      14,
+      14,
+      1232,
+      103
+    ]
+  },
+  {
+    "key": "compose/delegate--report-back-cozy-light.png",
+    "different_pixels": 89,
+    "total_pixels": 550732,
+    "fraction": 0.00016160310277957336,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      207,
+      295,
+      418
+    ]
+  },
+  {
+    "key": "compose/delegate--report-back-touch-light.png",
+    "different_pixels": 260,
+    "total_pixels": 550732,
+    "fraction": 0.0004720989519403267,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      207,
+      295,
+      418
+    ]
+  },
+  {
+    "key": "compose/delegate--report-back-compact-light.png",
+    "different_pixels": 1028,
+    "total_pixels": 550732,
+    "fraction": 0.001866606625364061,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      28,
+      207,
+      295,
+      418
+    ]
+  },
+  {
+    "key": "compose/delegate--report-back-comfortable-light.png",
+    "different_pixels": 276,
+    "total_pixels": 550732,
+    "fraction": 0.0005011511951366545,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      207,
+      295,
+      418
+    ]
+  },
+  {
+    "key": "compose/delegate--accepted-compact-light.png",
+    "different_pixels": 1504,
+    "total_pixels": 510860,
+    "fraction": 0.002944055122734213,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      346
+    ]
+  },
+  {
+    "key": "compose/delegate--accepted-cozy-light.png",
+    "different_pixels": 1117,
+    "total_pixels": 510860,
+    "fraction": 0.002186509023998747,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      346
+    ]
+  },
+  {
+    "key": "compose/delegate--accepted-touch-light.png",
+    "different_pixels": 45,
+    "total_pixels": 510860,
+    "fraction": 8.808675566691462e-05,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      346
+    ]
+  },
+  {
+    "key": "compose/delegate--accepted-comfortable-light.png",
+    "different_pixels": 1182,
+    "total_pixels": 510860,
+    "fraction": 0.002313745448850957,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      346
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-refused-cozy-dark.png",
+    "different_pixels": 2005,
+    "total_pixels": 630476,
+    "fraction": 0.0031801369124280702,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      483
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-refused-compact-dark.png",
+    "different_pixels": 577,
+    "total_pixels": 630476,
+    "fraction": 0.0009151815453720681,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      483
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-refused-touch-dark.png",
+    "different_pixels": 3603,
+    "total_pixels": 630476,
+    "fraction": 0.005714729823181216,
+    "max_channel_delta": 3,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      483
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-refused-comfortable-dark.png",
+    "different_pixels": 1691,
+    "total_pixels": 630476,
+    "fraction": 0.0026821005081874645,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      483
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-refused-compact-light.png",
+    "different_pixels": 2449,
+    "total_pixels": 630476,
+    "fraction": 0.003884366732437079,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      483
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-refused-cozy-light.png",
+    "different_pixels": 2372,
+    "total_pixels": 630476,
+    "fraction": 0.0037622367861742554,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      483
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-refused-touch-light.png",
+    "different_pixels": 590,
+    "total_pixels": 630476,
+    "fraction": 0.0009358008869489084,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      483
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-refused-comfortable-light.png",
+    "different_pixels": 822,
+    "total_pixels": 630476,
+    "fraction": 0.0013037768289355979,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      483
+    ]
+  },
+  {
+    "key": "message-row/arrival-ripple-compact-dark.png",
+    "different_pixels": 12,
+    "total_pixels": 168210,
+    "fraction": 7.133939718209382e-05,
+    "max_channel_delta": 34,
+    "bbox_rgb": [
+      24,
+      52,
+      33,
+      61
+    ]
+  },
+  {
+    "key": "message-row/arrival-ripple-compact-light.png",
+    "different_pixels": 12,
+    "total_pixels": 168210,
+    "fraction": 7.133939718209382e-05,
+    "max_channel_delta": 27,
+    "bbox_rgb": [
+      24,
+      52,
+      33,
+      61
+    ]
+  },
+  {
+    "key": "message-row/arrival-ripple-touch-light.png",
+    "different_pixels": 12,
+    "total_pixels": 168210,
+    "fraction": 7.133939718209382e-05,
+    "max_channel_delta": 27,
+    "bbox_rgb": [
+      24,
+      52,
+      33,
+      61
+    ]
+  },
+  {
+    "key": "perf/hitch-present-compact-dark.png",
+    "different_pixels": 218,
+    "total_pixels": 558208,
+    "fraction": 0.00039053542765420774,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      952,
+      67,
+      1218,
+      267
+    ]
+  },
+  {
+    "key": "perf/hitch-present-cozy-dark.png",
+    "different_pixels": 218,
+    "total_pixels": 558208,
+    "fraction": 0.00039053542765420774,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      952,
+      67,
+      1218,
+      267
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-typed-compact-dark.png",
+    "different_pixels": 2042,
+    "total_pixels": 583128,
+    "fraction": 0.0035018040636018164,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      445
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-typed-comfortable-dark.png",
+    "different_pixels": 2401,
+    "total_pixels": 583128,
+    "fraction": 0.004117449342168443,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      445
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-typed-cozy-dark.png",
+    "different_pixels": 1730,
+    "total_pixels": 583128,
+    "fraction": 0.0029667585847361127,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      445
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-typed-touch-dark.png",
+    "different_pixels": 1730,
+    "total_pixels": 583128,
+    "fraction": 0.0029667585847361127,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      445
+    ]
+  },
+  {
+    "key": "perf/hitch-layout-touch-dark.png",
+    "different_pixels": 218,
+    "total_pixels": 558208,
+    "fraction": 0.00039053542765420774,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      952,
+      67,
+      1218,
+      267
+    ]
+  },
+  {
+    "key": "perf/steady-120-hz-compact-dark.png",
+    "different_pixels": 86,
+    "total_pixels": 558208,
+    "fraction": 0.00015406443476266912,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      952,
+      169,
+      1218,
+      267
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-reason-touch-dark.png",
+    "different_pixels": 798,
+    "total_pixels": 583128,
+    "fraction": 0.0013684817055603573,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      445
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-reason-compact-dark.png",
+    "different_pixels": 429,
+    "total_pixels": 583128,
+    "fraction": 0.0007356875334403424,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      445
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-reason-comfortable-dark.png",
+    "different_pixels": 1189,
+    "total_pixels": 583128,
+    "fraction": 0.0020390034434978254,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      445
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-reason-cozy-dark.png",
+    "different_pixels": 1357,
+    "total_pixels": 583128,
+    "fraction": 0.0023271048551947427,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      445
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-typed-cozy-light.png",
+    "different_pixels": 2930,
+    "total_pixels": 583128,
+    "fraction": 0.005024625811142665,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      445
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-typed-touch-light.png",
+    "different_pixels": 292,
+    "total_pixels": 583128,
+    "fraction": 0.0005007476917589278,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      445
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-typed-comfortable-light.png",
+    "different_pixels": 2943,
+    "total_pixels": 583128,
+    "fraction": 0.005046919372762069,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      445
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-typed-compact-light.png",
+    "different_pixels": 3543,
+    "total_pixels": 583128,
+    "fraction": 0.0060758529859653455,
+    "max_channel_delta": 3,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      445
+    ]
+  },
+  {
+    "key": "message-row/arrival-ripple-comfortable-dark.png",
+    "different_pixels": 12,
+    "total_pixels": 168210,
+    "fraction": 7.133939718209382e-05,
+    "max_channel_delta": 34,
+    "bbox_rgb": [
+      24,
+      52,
+      33,
+      61
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-reason-compact-light.png",
+    "different_pixels": 2752,
+    "total_pixels": 583128,
+    "fraction": 0.00471937550589236,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      445
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-reason-touch-light.png",
+    "different_pixels": 655,
+    "total_pixels": 583128,
+    "fraction": 0.0011232525277469097,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      445
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-reason-comfortable-light.png",
+    "different_pixels": 1458,
+    "total_pixels": 583128,
+    "fraction": 0.002500308680083961,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      445
+    ]
+  },
+  {
+    "key": "compose/delegate--reject-reason-cozy-light.png",
+    "different_pixels": 1489,
+    "total_pixels": 583128,
+    "fraction": 0.0025534702500994637,
+    "max_channel_delta": 2,
+    "bbox_rgb": [
+      28,
+      168,
+      295,
+      445
+    ]
+  },
+  {
+    "key": "message-row/arrival-ripple-comfortable-light.png",
+    "different_pixels": 12,
+    "total_pixels": 168210,
+    "fraction": 7.133939718209382e-05,
+    "max_channel_delta": 27,
+    "bbox_rgb": [
+      24,
+      52,
+      33,
+      61
+    ]
+  },
+  {
+    "key": "message-row/arrival-ripple-cozy-light.png",
+    "different_pixels": 12,
+    "total_pixels": 168210,
+    "fraction": 7.133939718209382e-05,
+    "max_channel_delta": 27,
+    "bbox_rgb": [
+      24,
+      52,
+      33,
+      61
+    ]
+  },
+  {
+    "key": "documents-surface/as-modal-comfortable-light.png",
+    "different_pixels": 5,
+    "total_pixels": 1020474,
+    "fraction": 4.899683872396553e-06,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      133,
+      689,
+      135,
+      695
+    ]
+  },
+  {
+    "key": "documents-surface/as-modal-touch-light.png",
+    "different_pixels": 5,
+    "total_pixels": 1020474,
+    "fraction": 4.899683872396553e-06,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      133,
+      689,
+      135,
+      695
+    ]
+  },
+  {
+    "key": "documents/modal-plain-markdown-touch-dark.png",
+    "different_pixels": 176,
+    "total_pixels": 1020474,
+    "fraction": 0.00017246887230835866,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      911,
+      41,
+      1093,
+      42
+    ]
+  },
+  {
+    "key": "title-strip/row-pane-breathe-together-comfortable-light.png",
+    "different_pixels": 309,
+    "total_pixels": 787472,
+    "fraction": 0.00039239490419976835,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      622,
+      201,
+      805,
+      223
+    ]
+  },
+  {
+    "key": "perf/60-hz-display-compact-dark.png",
+    "different_pixels": 218,
+    "total_pixels": 558208,
+    "fraction": 0.00039053542765420774,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      952,
+      67,
+      1218,
+      267
+    ]
+  },
+  {
+    "key": "graph/e2e-all-untested-cozy-light.png",
+    "different_pixels": 153,
+    "total_pixels": 1421686,
+    "fraction": 0.00010761870061321558,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      13,
+      181,
+      1233,
+      900
+    ]
+  },
+  {
+    "key": "graph/e2e-all-untested-touch-light.png",
+    "different_pixels": 153,
+    "total_pixels": 1421686,
+    "fraction": 0.00010761870061321558,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      13,
+      181,
+      1233,
+      900
+    ]
+  },
+  {
+    "key": "pane/reconnected-comfortable-light.png",
+    "different_pixels": 3,
+    "total_pixels": 378784,
+    "fraction": 7.920081101630481e-06,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      1194,
+      43,
+      1200,
+      46
+    ]
+  },
+  {
+    "key": "title-strip/three-seats-one-focused-cozy-dark.png",
+    "different_pixels": 27,
+    "total_pixels": 488432,
+    "fraction": 5.527893340321682e-05,
+    "max_channel_delta": 9,
+    "bbox_rgb": [
+      606,
+      43,
+      1203,
+      216
+    ]
+  },
+  {
+    "key": "title-strip/active-compact-light.png",
+    "different_pixels": 36,
+    "total_pixels": 311500,
+    "fraction": 0.00011556982343499198,
+    "max_channel_delta": 12,
+    "bbox_rgb": [
+      638,
+      42,
+      1230,
+      207
+    ]
+  },
+  {
+    "key": "components/box-compact-light.png",
+    "different_pixels": 184,
+    "total_pixels": 256676,
+    "fraction": 0.0007168570493540495,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      476,
+      107,
+      1115,
+      167
+    ]
+  },
+  {
+    "key": "components/input-preedit-cozy-light.png",
+    "different_pixels": 337,
+    "total_pixels": 176932,
+    "fraction": 0.0019046865462437547,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      622,
+      63,
+      829,
+      107
+    ]
+  },
+  {
+    "key": "components/input-selection-cozy-light.png",
+    "different_pixels": 207,
+    "total_pixels": 176932,
+    "fraction": 0.0011699409942802885,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      622,
+      106,
+      829,
+      107
+    ]
+  },
+  {
+    "key": "documents-surface/as-modal-touch-dark.png",
+    "different_pixels": 559,
+    "total_pixels": 1020474,
+    "fraction": 0.0005477846569339346,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      209,
+      41,
+      1093,
+      42
+    ]
+  },
+  {
+    "key": "documents-surface/as-modal-compact-dark.png",
+    "different_pixels": 98,
+    "total_pixels": 1020474,
+    "fraction": 9.603380389897244e-05,
+    "max_channel_delta": 3,
+    "bbox_rgb": [
+      133,
+      688,
+      271,
+      707
+    ]
+  },
+  {
+    "key": "documents-surface/as-modal-cozy-dark.png",
+    "different_pixels": 98,
+    "total_pixels": 1020474,
+    "fraction": 9.603380389897244e-05,
+    "max_channel_delta": 3,
+    "bbox_rgb": [
+      133,
+      688,
+      271,
+      707
+    ]
+  },
+  {
+    "key": "documents-surface/as-modal-comfortable-dark.png",
+    "different_pixels": 559,
+    "total_pixels": 1020474,
+    "fraction": 0.0005477846569339346,
+    "max_channel_delta": 1,
+    "bbox_rgb": [
+      209,
+      41,
+      1093,
+      42
+    ]
+  }
+]

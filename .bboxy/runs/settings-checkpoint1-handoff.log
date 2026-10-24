@@ -1,0 +1,51 @@
+Settings checkpoint 1: evidence handoff, pending Oracle verification
+Gated source: e91906fc30c4305e5b85e69be9b269b253b2778b (good signature), exec6.
+Base: 0b2aae3f023f93f2d3153fab7d60094e5523d0b1; accepted ATTENTION 0e00439b is an ancestor.
+Wren b62f8515 dependency, authorship preserved, now 7189207b. Native core cdcbcd49, original native-probe evidence daab2846, final ATTENTION binding e91906fc. Evidence successor changes runs files only. No source rebase after the exact gate started.
+
+Files and mechanisms:
+crates/bboxy450-term/src/settings.rs:24,144,242,461,549 — preferences, real read-only records, revision ownership and ATTENTION policy, bounded comment-preserving TOML patches under a directory lock with synced atomic replacement, one coalesced IO owner. Symlink and permissions preserved; load does not create a file.
+crates/bboxy450-term/src/main.rs:1225,1270,1381,1403,2109,3357 — LocalTab Settings, sole shared IME policy, context application, actual focused-seat journaled mute, persisted notification policy and union of frontmost handling with Settings blur/drag cancellation. Cmd-comma/launcher, pointer/key/search/scroll/range/reset are routed through the controller; unsupported window controls have no edit hits.
+crates/bboxy450-term/src/scene.rs:291,868 — effective UI context and appearance, one inner Settings viewport/scroller with dock exclusion and clipped focus/IME geometry; existing G5 material order retained.
+crates/bboxy450-term/src/live.rs:91; src/model.rs:502,522,1065 — coalesced context updates before preparation; settings, attention/episodes/original focus Instant, history, results, events and e2e survive metadata rebuild; subtitles prepared/cached on IO.
+crates/bboxy450-term/src/e2e_checklist.rs:8; src/lib.rs:14; Cargo.toml:31; Cargo.lock — Settings LocalTab variant, module and existing locked toml_edit/libc dependency edges.
+crates/bbt-ui/src/modules/settings.rs:79,135,1129,2532 — Notifications records/nav/bell, shared editable presentation, actual read-only host records, visibly unavailable opacity/blur/radius, master-off retention and disabled controls; inline icon labels follow the CSS strut/centred baseline.
+crates/bbt-ui/src/modules/settings/controller.rs:12,93,411 — typed patches, pure text-edit/search/section/focus/reset/range handling and retained clipped hit regions.
+crates/bbt-ui-model/src/model/window.rs:39 — Notifications section.
+crates/bboxybook/capture-inputs.js:252; src/settings.rs:24,30; tests/settings.rs — public options.notifications, three new states, 96-case Settings matrix. The document adapter half is untouched.
+crates/bboxy450-term/tests/settings.rs:11,59,142; crates/bbt-ui/tests/settings.rs:252; controller.rs:614 — coalesced saves/restart, real projections, metadata/context persistence, mute correlation/refusal and runtime policy suppression, disabled-value/reset/search/IME/scroll/geometry regressions.
+lab/web/components.js:1504,1514,1705; settings.html:8; lab.css:1603; documents.html — Wren's signed reference for Notifications plus held document-link states, unchanged in content from b62f8515. Document hosting belongs to Nyx.
+
+Commands and actual results:
+Original prechecks, failed premises and their corrections are retained in settings-checkpoint1-core.log and settings-checkpoint1-native-ce991313.log. Binding/rebase checks and source unions are retained in settings-checkpoint1-binding.log. Initial Notifications geometry failures, the mixed delayed-capture/idle probe failure, and the accidental default-target UI-lint stop at 143 remain named there; none is hidden as a green run.
+Final git fetch origin / git rebase --gpg-sign origin/main: exit 0, clean onto 0b2aae3f; log target/settings-proof/settings-final-rebase.log. This includes Corvin's generated-catalog repair after the static stale-T7 finding; no tolerance change.
+Exact clean BBOXY_TEST_CUSTODY=memory sh scripts/ci-local.sh --parity: EXIT 0 in 2850.471s (47m30.471s), granted slot a7331587-1b08-49fe-a23b-6668787696d1. Dedicated detached worktree and target, jobs2, no incremental/debug info, O1 with debug assertions.
+Parent set-e sequence proves layering/build/strict workspace all-target Clippy/workspace tests/UI IO lint/native smoke/invariants each exited0. Workspace totals 1187 passed/0 failed/23 ignored (169 groups, before invariant test reruns). Native idle at CI:3733: 10.002 s, 0 frames, 0 callbacks. Settings runtime restart/policy tests at CI:1730-1731 pass. Invariants at CI:3990: 19 checks, 0 failures, 8 named slow skips. CI:3991 all gates passed; :3993 GATE_EXIT 0.
+Final report reader/hash/A-B/Pillow readers: exit 0; git diff --check exit 0. The first report reader counted all 2080 complete geometry payloads; required policy geometry is 2024 (parity.rs:674), corrected in the verdict. The gate and reports were unchanged.
+
+Acceptance:
+- Appearance and Notifications persist through restart without losing unrelated keys/comments; rejected/busy/symlink/stale saves and coalesced edits are covered by store/controller/integration tests. The configured values supply the live theme/density/rim/glow/subtitle context and ATTENTION policy.
+- Other Settings sections show actual provider/identity/backend/default-role data; absent authority is named unavailable. Opacity/blur/radius explicitly say "not yet applied to the window". Cmd-M uses actual focused visible seat plus backend metadata; no optimistic mute.
+- CI:3974-3975: 2128 current cases, 2024 required/measured geometry, 0 unproven, 0 mismatches. Settings 96/96 within policy, 0 reviews, maximum rectangle error 0.0204086304 px. Three new Notifications states add 24 cases; the existing 72 intentionally gain the nav row. Native/web final master-off cozy-light pair was viewed; subordinate values remain visibly disabled.
+- Advisory review keys 72 -> 72, 0 new, 0 removed against accepted ATTENTION report (2104 cases, SHA 56f17276f7198592606afba54cf0349cda1d5e2d938ecb655208daa5c9d6934c). Modules remain harness-icon 48, documents 16, materials 8. Budgets/policies unchanged.
+- Native pixel A/B: all 2032 shared non-Settings PNGs BYTE-IDENTICAL; all 72 shared Settings PNGs move. Web A/B has 112 additional changed captures outside Settings (no size changes, at most 0.6076% raw pixels; the max channel delta 34 is 12 pixels in an arrival-ripple reference). These are recorded, cause not isolated, and no native compensation was made. They create 0 new review keys. Exact per-case results are in verdict/web-delta logs.
+
+Retained artifacts and provenance:
+{
+  "gallery": "/Users/feral/mydev/bboxy450-term-exec6/target/settings-parity-e91906fc30c4",
+  "source": "e91906fc30c4305e5b85e69be9b269b253b2778b",
+  "report_sha256": "f0a3964169f464e1e6816c1acf16136a8e59b5b9e05445eb8e5d36753f93d00e",
+  "capture_sha256": "2070f4976ba5485769f7fb90f06eed74bc84fef63f35e245df222f119a2cacbe",
+  "ci_log_sha256": "73f0de4d42bb6d4a6986e871c2abb66cce59f8f9fc2bd5c5a4ac06ce92e73ebc",
+  "hash_manifest": ".bboxy/runs/settings-checkpoint1-gallery-hashes.log",
+  "files": 8641,
+  "bytes": 707204829,
+  "manifest_sha256": "2a6ed8fc2de2065d7132937ffc7f9eafe8f24d96490aaa6ba8433031b2219399",
+  "elapsed_s": 3.1383240839932114
+}
+The gallery is Nyx's named document-hosting A/B baseline: native/web/backdrops/diff, cases/requested/capture, layouts, report and file hashes stay. Legacy diagnostic remains separate: 1664 cases/851 advisory reviews, non-gating. Per-file hashes cover current files plus legacy JSON provenance.
+Cleanup: private gate target removed immediately (4,011,540 KiB), detached worktree removal 0; inactive dedicated development target removed after verifying no active executable/compiler from it (2,865,606,656 allocated bytes). See cleanup log. No peer process, target or baseline touched.
+
+Limits and later-main scope:
+Physical OS notification delivery is Kestrel's accepted evidence, not repeated here. No production Keychain/config, code signing, real hands-on key/pointer/IME exercise, window opacity/compositor implementation, ignored heavy seat gates, or T7 implementation claimed. Controller/routing/layout tests and owned native capture cover the host; the raw native capture was on original signed core ce991313 and is separately bound, while the final exact source has fresh smoke and full module parity.
+Main moved during the gate: last observed ea63bdcf includes Wren T7 bfa88945/ff88b19a, Sable HK-0 f64cf82e and Seraph ctl C-0 ea63bdcf plus records. Those later changes are outside this frozen gate; no automatic rebase/re-gate. Cargo.lock and lab/web/components.js overlap by file with unrelated dependency/closed-strip hunks; the Oracle verifies the union. T7 planning starts only after Settings acceptance, against the landed ff88b19a reference and c13b0ba5 ending.
