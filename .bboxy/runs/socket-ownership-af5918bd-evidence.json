@@ -1,0 +1,2429 @@
+{
+  "source": "af5918bdfcddef64a41fbdd796a4237562d3c58b",
+  "fix_base": "3308784fded5c71f1825ad822c4ba8fadcf9f359",
+  "assignment": "0dc91345-48cc-4a33-8711-65b90aa1b890",
+  "approval": "40c2843d-107f-4e3e-a2e1-311f1dadb886",
+  "source_identity": {
+    "commit": "af5918bdfcddef64a41fbdd796a4237562d3c58b",
+    "transport_sha256": "c32495b139708246f6b065bcf409600d4fe5e1be1a247fd48c5ec826d5d6f63b",
+    "provider_gui_sha256": "8e748eef4abbea02667a92fd9ca44bce9e2de4fdf834302b00bc907f281ad5b4",
+    "worker_sha256": "65a1b44e81e8dec1ea1d6ea5c30e6e9d05f881001f2126256371889e7bbb1608",
+    "clean_tracked_diff": 0
+  },
+  "transport_git_blob": "b1434a53585f0e67b0f3d0a071611c1194520252",
+  "commands": [
+    {
+      "id": "11a70e1622d54955977a15efd2d29dc4",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j",
+        "CARGO_BUILD_JOBS=2",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=0",
+        "cargo",
+        "build",
+        "--locked",
+        "-p",
+        "bbt-supervisor"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T13:47:57.804996+00:00",
+      "pid": 74371,
+      "exit": 0,
+      "elapsed_seconds": 19.553673500020523,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cmd-11a70e1622d54955977a15efd2d29dc4.log",
+      "sha256": "0e80e0f454717bccb5389ba197e7c07b062ed8f30bb895e83ed9a5490416d69c"
+    },
+    {
+      "id": "d1219854edc244b5bca15359f86817e5",
+      "argv": [
+        "rustc",
+        "--edition=2024",
+        "-Dwarnings",
+        "-Copt-level=0",
+        "-Cdebuginfo=1",
+        "-L",
+        "dependency=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps",
+        "--extern",
+        "bbt_supervisor=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/libbbt_supervisor-14951b6730a928f9.rlib",
+        "--extern",
+        "libc=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/liblibc-49852bdd3013f4d0.rlib",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/lock_probe.rs",
+        "-o",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/lock_probe"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T13:50:25.988068+00:00",
+      "pid": 76957,
+      "exit": 0,
+      "elapsed_seconds": 1.0781756669748574,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cmd-d1219854edc244b5bca15359f86817e5.log",
+      "sha256": "79084000e1580133f8324812afe9f25b923dc8677a9a30ca9aa98d4f59a71009"
+    },
+    {
+      "id": "7f34529b7d6f4694ac0c91f5b4a3c38c",
+      "argv": [
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/lock_probe",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/p"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T13:51:00.915777+00:00",
+      "pid": 77398,
+      "exit": 0,
+      "elapsed_seconds": 0.2702554169809446,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cmd-7f34529b7d6f4694ac0c91f5b4a3c38c.log",
+      "sha256": "d02058a39ae788638a03111a3b2498ebc1496cb4bb2f24c913434b87a30c989c"
+    },
+    {
+      "id": "4f5dde95ebac4a20a966e92f36158b7f",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j",
+        "CARGO_BUILD_JOBS=2",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "bbt-supervisor",
+        "--lib",
+        "transport::tests::dropping_owner_releases_flock_while_a_fork_child_keeps_the_descriptor",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T14:01:52.077321+00:00",
+      "pid": 93766,
+      "exit": 101,
+      "elapsed_seconds": 23.13068820798071,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cmd-4f5dde95ebac4a20a966e92f36158b7f.log",
+      "sha256": "cd36e55a043298386d7c437e932b49219f785a8b7c70aad0faa37b882dabbc5d"
+    },
+    {
+      "id": "e7cb800f35514a31b4b5f5697648a6e5",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j",
+        "CARGO_BUILD_JOBS=2",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "bbt-supervisor",
+        "--",
+        "--nocapture"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T14:03:36.570044+00:00",
+      "pid": 98421,
+      "exit": 0,
+      "elapsed_seconds": 32.304224082967266,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cmd-e7cb800f35514a31b4b5f5697648a6e5.log",
+      "sha256": "6056325406089bf1653cb8819b8120f3ecd3d51dbb7bf48b4fa63be6a094cffe"
+    },
+    {
+      "id": "427dacf5f48b4f438b7ce2d32464b12d",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j",
+        "CARGO_BUILD_JOBS=2",
+        "cargo",
+        "clippy",
+        "--locked",
+        "-p",
+        "bbt-supervisor",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T14:05:10.752695+00:00",
+      "pid": 1007,
+      "exit": 0,
+      "elapsed_seconds": 36.2782704999554,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cmd-427dacf5f48b4f438b7ce2d32464b12d.log",
+      "sha256": "7c8ba47ec4b6ebde26d32da90a719c61da4db19d2b25dbff7cb488fd5f3063dc"
+    },
+    {
+      "id": "61e6857542f246cf814ee58da219f434",
+      "argv": [
+        "rustfmt",
+        "--check",
+        "--edition",
+        "2024",
+        "crates/bbt-supervisor/src/transport.rs"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T14:06:11.794079+00:00",
+      "pid": 2703,
+      "exit": 0,
+      "elapsed_seconds": 0.06549579196143895,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cmd-61e6857542f246cf814ee58da219f434.log",
+      "sha256": "ea19869554999d44c60356b73c533d5482f8076bfab0f45bedf957e218a475d2"
+    },
+    {
+      "id": "4c74898f92e0463e80ff2875b29b1d40",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j",
+        "CARGO_BUILD_JOBS=2",
+        "BBOXY_TEST_CUSTODY=memory",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "provider_gui",
+        "--",
+        "--nocapture"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T14:06:35.587749+00:00",
+      "pid": 3140,
+      "exit": 0,
+      "elapsed_seconds": 108.34078145900276,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cmd-4c74898f92e0463e80ff2875b29b1d40.log",
+      "sha256": "5bc329cf218fc5983b36be1cd47ab143e42168b3cc09c404fbd489c238ca2b91"
+    },
+    {
+      "id": "d657d24791c14bb4a3d750b32b8c3298",
+      "argv": [
+        "cc",
+        "-O0",
+        "-std=c11",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cpu-worker.c",
+        "-o",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cpu-worker"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T14:09:22.466225+00:00",
+      "pid": 10876,
+      "exit": 0,
+      "elapsed_seconds": 0.14738479198422283,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cmd-d657d24791c14bb4a3d750b32b8c3298.log",
+      "sha256": "6186e82708bf2efbf1fa5932667803546b690c2f48712a72ac4d221c1153cef3"
+    },
+    {
+      "id": "7b9716eb1fa24a37a66db90822ede0ad",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j",
+        "CARGO_BUILD_JOBS=2",
+        "BBOXY_TEST_CUSTODY=memory",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "recovery",
+        "--test",
+        "lifecycle",
+        "--",
+        "--nocapture"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T14:08:23.976480+00:00",
+      "pid": 8048,
+      "exit": 0,
+      "elapsed_seconds": 156.03408337495057,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cmd-7b9716eb1fa24a37a66db90822ede0ad.log",
+      "sha256": "e8916f0dea0250fcfe03733d6c82d0508f4768a8f161e74ed4d5a65da2daa5b3"
+    },
+    {
+      "id": "fc30dc8cf1e34f599869a9afbc4b6c43",
+      "argv": [
+        "python3",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/dependents.py"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T14:06:35.484629+00:00",
+      "pid": 3138,
+      "exit": 0,
+      "elapsed_seconds": 264.55839154100977,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cmd-fc30dc8cf1e34f599869a9afbc4b6c43.log",
+      "sha256": "083bd90f063cb5b31a5fc43bd676b241e23bb3e9b47572db3770845a4ba06d1d"
+    },
+    {
+      "id": "a642cdde2d4f4fcba0d90af4709ae5ce",
+      "argv": [
+        "env",
+        "SABLE_STRESS_CPU_WORKERS=2",
+        "python3",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/stress.py",
+        "fixed-all",
+        "50",
+        "all"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T14:11:28.180038+00:00",
+      "pid": 15793,
+      "exit": 0,
+      "elapsed_seconds": 185.89336691703647,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cmd-a642cdde2d4f4fcba0d90af4709ae5ce.log",
+      "sha256": "01cbb37e735e95f6ee7d82a653b0c534809c46ee7c43dd689454d1cde4f653e5"
+    }
+  ],
+  "setup_failure": "Initial rustc argv builder EXIT1 before invoking rustc: both build-dependency and normal libc artifacts existed; selected normal extra_traits artifact from Cargo fingerprints, link EXIT0.",
+  "regression_red_source_sha256": "506cd0e5a72b0d7e6072d643e02f1ac91fd6bdc7fa8241fca9eb747f51463a73",
+  "regression_patch_sha256": "eef7606a6c840267495c974bd800bc584efdaf834a11c504996b05069e5a3a36",
+  "regression_patch": "diff --git a/crates/bbt-supervisor/src/transport.rs b/crates/bbt-supervisor/src/transport.rs\nindex 048183d0..5c132ac5 100644\n--- a/crates/bbt-supervisor/src/transport.rs\n+++ b/crates/bbt-supervisor/src/transport.rs\n@@ -798,6 +798,88 @@ mod tests {\n         assert!(!path.exists());\n     }\n \n+    #[test]\n+    fn dropping_owner_releases_flock_while_a_fork_child_keeps_the_descriptor() {\n+        let root = tempfile::tempdir().unwrap();\n+        let path = root.path().join(\"run/mux.sock\");\n+        let lock_path = root.path().join(\"run/mux.sock.lock\");\n+        let bound = BoundSocket::bind(&path).unwrap();\n+        let before = fs::symlink_metadata(&path).unwrap();\n+        let lock_before = fs::symlink_metadata(&lock_path).unwrap();\n+        let ownership_fd = bound._ownership.as_raw_fd();\n+        let (mut parent_gate, child_gate) = std::os::unix::net::UnixStream::pair().unwrap();\n+        let parent_fd = parent_gate.as_raw_fd();\n+        let child_fd = child_gate.as_raw_fd();\n+        // SAFETY: after fork the child only uses valid inherited descriptors\n+        // with libc and _exit; it never allocates or runs Rust destructors.\n+        let pid = unsafe { libc::fork() };\n+        assert!(pid >= 0, \"fork: {}\", io::Error::last_os_error());\n+        if pid == 0 {\n+            // SAFETY: the gate and ownership descriptors were opened above.\n+            unsafe {\n+                libc::close(parent_fd);\n+                for _ in 0..2 {\n+                    let flags = libc::fcntl(ownership_fd, libc::F_GETFD);\n+                    let state = u8::from(flags >= 0 && flags & libc::FD_CLOEXEC != 0);\n+                    if libc::write(child_fd, (&state as *const u8).cast(), 1) != 1 {\n+                        libc::_exit(2);\n+                    }\n+                    let mut command = 0u8;\n+                    if libc::read(child_fd, (&mut command as *mut u8).cast(), 1) != 1 {\n+                        libc::_exit(3);\n+                    }\n+                }\n+                libc::_exit(0);\n+            }\n+        }\n+        eprintln!(\"ownership release owned_fork_child_pid={pid}\");\n+        drop(child_gate);\n+        let mut initial_flags = [0u8];\n+        let ready = parent_gate.read_exact(&mut initial_flags);\n+        drop(bound);\n+        // The child is blocked on its gate and still has the same open file\n+        // description. Closing only the parent's File leaves its flock held.\n+        let replacement = BoundSocket::bind(&path);\n+        let check = parent_gate.write_all(&[1]);\n+        let mut retained_flags = [0u8];\n+        let retained = parent_gate.read_exact(&mut retained_flags);\n+        let release = parent_gate.write_all(&[2]);\n+        drop(parent_gate);\n+        let mut status = 0;\n+        let reaped = loop {\n+            // SAFETY: pid is our fork child and status is writable.\n+            let result = unsafe { libc::waitpid(pid, &mut status, 0) };\n+            if result < 0 && io::Error::last_os_error().kind() == io::ErrorKind::Interrupted {\n+                continue;\n+            }\n+            break result;\n+        };\n+        // Reap before asserting so a failed restart cannot leak a held child.\n+        ready.unwrap();\n+        check.unwrap();\n+        retained.unwrap();\n+        release.unwrap();\n+        assert_eq!(reaped, pid);\n+        assert_eq!(status, 0);\n+        assert_eq!(initial_flags, [1], \"child inherited the CLOEXEC descriptor\");\n+        assert_eq!(retained_flags, [1], \"child still has it after owner drop\");\n+        let replacement = replacement.expect(\"owner drop must release its inherited flock\");\n+        let after = fs::symlink_metadata(&path).unwrap();\n+        assert_ne!((before.dev(), before.ino()), (after.dev(), after.ino()));\n+        let lock_after = fs::symlink_metadata(&lock_path).unwrap();\n+        assert_eq!(\n+            (lock_before.dev(), lock_before.ino()),\n+            (lock_after.dev(), lock_after.ino()),\n+            \"ownership authority must retain its persistent inode\",\n+        );\n+        let live = BoundSocket::bind(&path).err().unwrap();\n+        assert_eq!(live.kind(), io::ErrorKind::AddrInUse);\n+        let still_live = fs::symlink_metadata(&path).unwrap();\n+        assert_eq!((after.dev(), after.ino()), (still_live.dev(), still_live.ino()));\n+        drop(replacement);\n+        assert!(!path.exists());\n+    }\n+\n     #[test]\n     #[ignore = \"manual 2000-iteration parallel stale/live socket stress\"]\n     fn stale_and_live_socket_paths_survive_2000_parallel_iterations() {\n",
+  "public_api_probe": {
+    "source": "fffc95e51c6b2ec1fafd4fd62de8ac31a1e1afc2",
+    "source_sha256": "78860e76ba477d6569bcd80d3a30283ad16a780ecaf788600647582e6164b867",
+    "binary_sha256": "da71bcc9ec907eb860f1f15bb46d7783d061b30e7de27189a6f782739b5bf703",
+    "results": {
+      "ordinary_restart_controls": 10,
+      "ordinary_restart_passed": 10,
+      "parent_original_fd_after_shutdown": "EBADF9",
+      "fork_child_pid": 77403,
+      "fork_child_reaped_status": 0,
+      "held_child_restart": "AddrInUse / flock EWOULDBLOCK35",
+      "after_child_reaped_restart": "success",
+      "natural_failure_holder": "unproven",
+      "probe_command_id": "7f34529b7d6f4694ac0c91f5b4a3c38c"
+    },
+    "source_code": "use bbt_supervisor::{Config, Supervisor};\nuse std::{ffi::CStr, io, path::{Path, PathBuf}, process::Command};\n\nfn config(path: &Path) -> Config {\n    Config { socket_path: Some(path.into()), ..Default::default() }\n}\nfn path_for_fd(fd: i32) -> Option<PathBuf> {\n    let mut buffer = [0u8; 1024];\n    let result = unsafe { libc::fcntl(fd, libc::F_GETPATH, buffer.as_mut_ptr()) };\n    (result == 0).then(|| PathBuf::from(unsafe { CStr::from_ptr(buffer.as_ptr().cast()) }.to_string_lossy().into_owned()))\n}\nfn lock_fd(path: &Path) -> i32 {\n    let expected = path.canonicalize().unwrap();\n    (0..4096).find(|&fd| path_for_fd(fd).as_deref() == Some(expected.as_path())).expect(\"supervisor ownership fd\")\n}\nfn pipe() -> [i32; 2] {\n    let mut fds = [-1; 2];\n    assert_eq!(unsafe { libc::pipe(fds.as_mut_ptr()) }, 0);\n    fds\n}\nstruct Child { pid: i32, release: i32 }\nimpl Drop for Child {\n    fn drop(&mut self) {\n        let byte = [1u8];\n        unsafe { libc::write(self.release, byte.as_ptr().cast(), 1); libc::close(self.release); }\n        let mut status = 0;\n        loop {\n            let result = unsafe { libc::waitpid(self.pid, &mut status, 0) };\n            if result == self.pid { break; }\n            assert_eq!(io::Error::last_os_error().kind(), io::ErrorKind::Interrupted);\n        }\n        println!(\"child_reaped pid={} wait_status={status}\", self.pid);\n        assert_eq!(status, 0);\n    }\n}\nfn main() {\n    let root = PathBuf::from(std::env::args_os().nth(1).expect(\"private probe directory\"));\n    std::fs::create_dir_all(&root).unwrap();\n    let socket = root.join(\"run/mux.sock\");\n    let lock = root.join(\"run/mux.sock.lock\");\n    println!(\"probe_pid={} socket={}\", std::process::id(), socket.display());\n    for iteration in 1..=10 {\n        let server = Supervisor::start(config(&socket)).unwrap();\n        let fd = lock_fd(&lock);\n        let flags = unsafe { libc::fcntl(fd, libc::F_GETFD) };\n        assert_ne!(flags & libc::FD_CLOEXEC, 0);\n        server.shutdown().unwrap();\n        let parent_released = path_for_fd(fd).as_deref() != Some(lock.canonicalize().unwrap().as_path());\n        assert!(parent_released);\n        Supervisor::start(config(&socket)).unwrap().shutdown().unwrap();\n        println!(\"no_fork iteration={iteration} original_fd={fd} cloexec=true parent_released=true immediate_restart=ok\");\n    }\n    let server = Supervisor::start(config(&socket)).unwrap();\n    let fd = lock_fd(&lock);\n    let release = pipe(); let ready = pipe();\n    let pid = unsafe { libc::fork() };\n    assert!(pid >= 0);\n    if pid == 0 {\n        // After a multi-threaded fork, use only these libc operations until _exit.\n        unsafe {\n            libc::close(release[1]); libc::close(ready[0]);\n            let flags = libc::fcntl(fd, libc::F_GETFD);\n            let state = [u8::from(flags >= 0 && flags & libc::FD_CLOEXEC != 0)];\n            libc::write(ready[1], state.as_ptr().cast(), 1); libc::close(ready[1]);\n            let mut poll = libc::pollfd { fd: release[0], events: libc::POLLIN, revents: 0 };\n            let waited = libc::poll(&mut poll, 1, 20_000);\n            let mut byte = [0u8];\n            let read = if waited > 0 { libc::read(release[0], byte.as_mut_ptr().cast(), 1) } else { -1 };\n            libc::_exit(if read == 1 { 0 } else { 124 });\n        }\n    }\n    unsafe { libc::close(release[0]); libc::close(ready[1]); }\n    let child = Child { pid, release: release[1] };\n    let mut poll = libc::pollfd { fd: ready[0], events: libc::POLLIN, revents: 0 };\n    assert_eq!(unsafe { libc::poll(&mut poll, 1, 20_000) }, 1);\n    let mut state = [0u8];\n    assert_eq!(unsafe { libc::read(ready[0], state.as_mut_ptr().cast(), 1) }, 1);\n    unsafe { libc::close(ready[0]); }\n    assert_eq!(state, [1]);\n    let live = Supervisor::start(config(&socket)).err().expect(\"live owner must refuse\");\n    assert_eq!(live.kind(), io::ErrorKind::AddrInUse);\n    println!(\"fork_child_ready pid={pid} inherited_fd={fd} cloexec=true live_owner_refused={live}\");\n    server.shutdown().unwrap();\n    let after = unsafe { libc::fcntl(fd, libc::F_GETFD) };\n    let parent_error = io::Error::last_os_error();\n    println!(\"after_shutdown original_parent_fd={fd} f_getfd={after} errno={parent_error}\");\n    assert_eq!(after, -1);\n    assert_eq!(parent_error.raw_os_error(), Some(libc::EBADF));\n    let blocked = Supervisor::start(config(&socket)).err().expect(\"inherited lock must still block\");\n    println!(\"after_shutdown fork_child_alive={pid} restart_kind={:?} restart_error={blocked}\", blocked.kind());\n    assert_eq!(blocked.kind(), io::ErrorKind::AddrInUse);\n    assert!(blocked.to_string().contains(\"ownership lock\"));\n    let lsof = Command::new(\"/usr/sbin/lsof\").args([\"-nP\", \"-a\", \"-p\", &pid.to_string(), \"--\"]).arg(&lock).output().unwrap();\n    println!(\"lsof_exit={}\\n{}\", lsof.status, String::from_utf8_lossy(&lsof.stdout));\n    assert!(lsof.status.success());\n    drop(child);\n    Supervisor::start(config(&socket)).unwrap().shutdown().unwrap();\n    println!(\"after_child_reaped immediate_restart=ok\");\n}\n"
+  },
+  "loaded_phase": {
+    "phase": "fixed-all",
+    "source": "af5918bdfcddef64a41fbdd796a4237562d3c58b",
+    "git_diff": "",
+    "test_binary": "/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e",
+    "binary_sha256": "6ec9cd1d4472015fd4d2df615a5e4b616b08d6633f50a71c8f0262edf70468b9",
+    "command": [
+      "nice",
+      "-n",
+      "10",
+      "/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e",
+      "--nocapture"
+    ],
+    "temporary_diagnostic_overlay": null,
+    "worker_count": 2,
+    "worker_bound_seconds": 900,
+    "worker_cflags": "-O0 -std=c11",
+    "rust_profile": "unoptimized test, CARGO_PROFILE_TEST_OPT_LEVEL=0",
+    "workers": [
+      {
+        "pid": 15798,
+        "ready": "READY pid=15798 bound_seconds=900.000"
+      },
+      {
+        "pid": 15802,
+        "ready": "READY pid=15802 bound_seconds=900.000"
+      }
+    ],
+    "runs": [
+      {
+        "index": 1,
+        "started_utc": "2026-10-24T14:11:28.469353+00:00",
+        "load_before": [
+          14.36181640625,
+          18.82177734375,
+          17.45703125
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 15804,
+        "exit": 0,
+        "elapsed_seconds": 2.483583875000477,
+        "load_after": [
+          13.53173828125,
+          18.57568359375,
+          17.3779296875
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-1.log",
+        "log_sha256": "ad4403a73f9d3e2bf180b73f04462e95f28f1c4a5a34cfb946be79eb28ef5d23",
+        "owned_pids": [
+          15804,
+          15807,
+          15902,
+          15907,
+          15973,
+          15996,
+          15993,
+          16070,
+          16073,
+          16078
+        ]
+      },
+      {
+        "index": 2,
+        "started_utc": "2026-10-24T14:11:31.398505+00:00",
+        "load_before": [
+          13.53173828125,
+          18.57568359375,
+          17.3779296875
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 16323,
+        "exit": 0,
+        "elapsed_seconds": 2.2652017080108635,
+        "load_after": [
+          13.53173828125,
+          18.57568359375,
+          17.3779296875
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-2.log",
+        "log_sha256": "dbaa63b385a05fc7fe0379290662bb160603b9e1bd2502dd52654c474841c23d",
+        "owned_pids": [
+          16323,
+          16443,
+          16483,
+          16484,
+          16539,
+          16541,
+          16547,
+          16600,
+          16615,
+          16617,
+          16611,
+          16614,
+          16708,
+          16711,
+          16715,
+          16725,
+          16737
+        ]
+      },
+      {
+        "index": 3,
+        "started_utc": "2026-10-24T14:11:34.112144+00:00",
+        "load_before": [
+          13.53173828125,
+          18.57568359375,
+          17.3779296875
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 16762,
+        "exit": 0,
+        "elapsed_seconds": 2.5094368340214714,
+        "load_after": [
+          12.92822265625,
+          18.36669921875,
+          17.31103515625
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-3.log",
+        "log_sha256": "30b1479f9a3e82bbc48833b4dc866928a6e437acb59d46d91113a75a1fce3fa2",
+        "owned_pids": [
+          16762,
+          16764,
+          16787,
+          16846,
+          16849,
+          16895,
+          16945,
+          16920,
+          16922,
+          16942,
+          16946,
+          16926,
+          16931,
+          17036,
+          17037,
+          17065,
+          17067,
+          17069
+        ]
+      },
+      {
+        "index": 4,
+        "started_utc": "2026-10-24T14:11:37.065667+00:00",
+        "load_before": [
+          12.92822265625,
+          18.36669921875,
+          17.31103515625
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 17108,
+        "exit": 0,
+        "elapsed_seconds": 2.2396818750421517,
+        "load_after": [
+          12.92822265625,
+          18.36669921875,
+          17.31103515625
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-4.log",
+        "log_sha256": "aca04b0b47ee618656cce9ac58b85f68bf2169cbd55b689dda984f03431d980e",
+        "owned_pids": [
+          17108,
+          17111,
+          17134,
+          17194,
+          17196,
+          17201,
+          17246,
+          17247,
+          17253,
+          17290,
+          17297,
+          17270,
+          17291,
+          17292,
+          17345,
+          17348,
+          17353
+        ]
+      },
+      {
+        "index": 5,
+        "started_utc": "2026-10-24T14:11:39.747511+00:00",
+        "load_before": [
+          12.92822265625,
+          18.36669921875,
+          17.31103515625
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 17391,
+        "exit": 0,
+        "elapsed_seconds": 2.529182291997131,
+        "load_after": [
+          12.61328125,
+          18.2109375,
+          17.26220703125
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-5.log",
+        "log_sha256": "5b481655f8448ada70385f4e6a64f7f767e05a162486c41937142363f21f7c3b",
+        "owned_pids": [
+          17391,
+          17395,
+          17448,
+          17534,
+          17560,
+          17563,
+          17633,
+          17637,
+          17644,
+          17674
+        ]
+      },
+      {
+        "index": 6,
+        "started_utc": "2026-10-24T14:11:42.726954+00:00",
+        "load_before": [
+          12.61328125,
+          18.2109375,
+          17.26220703125
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 17718,
+        "exit": 0,
+        "elapsed_seconds": 3.606344540952705,
+        "load_after": [
+          12.88427734375,
+          18.173828125,
+          17.25439453125
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-6.log",
+        "log_sha256": "e473f95724d579675ed950125cd281d942d0ec74779bf5fbd6442d21f2707094",
+        "owned_pids": [
+          17718,
+          17765,
+          17811,
+          17812,
+          17777,
+          17804,
+          17814,
+          17865,
+          17866,
+          17872,
+          17925,
+          17943,
+          17944,
+          18044,
+          18051,
+          18055
+        ]
+      },
+      {
+        "index": 7,
+        "started_utc": "2026-10-24T14:11:46.818993+00:00",
+        "load_before": [
+          12.88427734375,
+          18.173828125,
+          17.25439453125
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 18151,
+        "exit": 0,
+        "elapsed_seconds": 3.714182416035328,
+        "load_after": [
+          12.81298828125,
+          18.0712890625,
+          17.22314453125
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-7.log",
+        "log_sha256": "7a1b7aa794d69fdbbab71c0c83296824d0d7a9bc8550a1455d1b122d6830490b",
+        "owned_pids": [
+          18151,
+          18169,
+          18175,
+          18187,
+          18192,
+          18232,
+          18224,
+          18231,
+          18303,
+          18305,
+          18315,
+          18317,
+          18342,
+          18343,
+          18386,
+          18389,
+          18391
+        ]
+      },
+      {
+        "index": 8,
+        "started_utc": "2026-10-24T14:11:50.982767+00:00",
+        "load_before": [
+          12.81298828125,
+          18.0712890625,
+          17.22314453125
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 18482,
+        "exit": 0,
+        "elapsed_seconds": 3.4505997499800287,
+        "load_after": [
+          12.81298828125,
+          18.0712890625,
+          17.22314453125
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-8.log",
+        "log_sha256": "6314418576754c1dd9a0940c51374fa074f664597ecae2bc2fd3842fa5a16910",
+        "owned_pids": [
+          18482,
+          18498,
+          18514,
+          18563,
+          18564,
+          18567,
+          18607,
+          18632,
+          18634,
+          18640,
+          18642,
+          18655,
+          18676,
+          18739,
+          18749,
+          18761,
+          18785,
+          18794
+        ]
+      },
+      {
+        "index": 9,
+        "started_utc": "2026-10-24T14:11:54.929855+00:00",
+        "load_before": [
+          12.81298828125,
+          18.0712890625,
+          17.22314453125
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 18821,
+        "exit": 0,
+        "elapsed_seconds": 2.5353920409688726,
+        "load_after": [
+          12.50732421875,
+          17.92041015625,
+          17.1748046875
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-9.log",
+        "log_sha256": "2196cc2627d42c15bb646ec2439cf9b081699c2299ff38c384f5fd609f6f73bc",
+        "owned_pids": [
+          18821,
+          18830,
+          18934,
+          18929,
+          19003,
+          19041,
+          19022,
+          19042,
+          19100,
+          19101,
+          19116,
+          19122,
+          19132
+        ]
+      },
+      {
+        "index": 10,
+        "started_utc": "2026-10-24T14:11:57.923287+00:00",
+        "load_before": [
+          12.50732421875,
+          17.92041015625,
+          17.1748046875
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 19267,
+        "exit": 0,
+        "elapsed_seconds": 2.539577791991178,
+        "load_after": [
+          12.46630859375,
+          17.82177734375,
+          17.14404296875
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-10.log",
+        "log_sha256": "f400246c467409c2b5c04cd07b3e6ebf1090880973209b3227b1f256b98da677",
+        "owned_pids": [
+          19267,
+          19275,
+          19372,
+          19434,
+          19435,
+          19538,
+          19543,
+          19561,
+          19587
+        ]
+      },
+      {
+        "index": 11,
+        "started_utc": "2026-10-24T14:12:00.947870+00:00",
+        "load_before": [
+          12.46630859375,
+          17.82177734375,
+          17.14404296875
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 19640,
+        "exit": 0,
+        "elapsed_seconds": 2.512935667007696,
+        "load_after": [
+          12.46630859375,
+          17.82177734375,
+          17.14404296875
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-11.log",
+        "log_sha256": "b78d69dbe79723671342d8cee16b72a317f920814eb9560a9ba74b46dfa86cd6",
+        "owned_pids": [
+          19640,
+          19643,
+          19717,
+          19719,
+          19724,
+          19784,
+          19799,
+          19801,
+          19795,
+          19800,
+          19859,
+          19860,
+          19873,
+          19877,
+          19893,
+          19911,
+          19940
+        ]
+      },
+      {
+        "index": 12,
+        "started_utc": "2026-10-24T14:12:03.910513+00:00",
+        "load_before": [
+          12.46630859375,
+          17.82177734375,
+          17.14404296875
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 19985,
+        "exit": 0,
+        "elapsed_seconds": 6.173083833011333,
+        "load_after": [
+          13.7099609375,
+          17.99072265625,
+          17.20751953125
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-12.log",
+        "log_sha256": "a17eb07157ce8d8b9f696a26d3153e96778b74e805f81881b754d00f0037e8c3",
+        "owned_pids": [
+          19985,
+          20005,
+          20011,
+          20032,
+          20017,
+          20033,
+          20027,
+          20046,
+          20049,
+          20067,
+          20075,
+          20094,
+          20095,
+          20101,
+          20126,
+          20145,
+          20146,
+          20150,
+          20178,
+          20192,
+          20194,
+          20195,
+          20202,
+          20211,
+          20242,
+          20263,
+          20298,
+          20314,
+          20315,
+          20341,
+          20348,
+          20352,
+          20394
+        ]
+      },
+      {
+        "index": 13,
+        "started_utc": "2026-10-24T14:12:10.550409+00:00",
+        "load_before": [
+          14.13330078125,
+          18.00732421875,
+          17.2177734375
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 20427,
+        "exit": 0,
+        "elapsed_seconds": 3.337078415963333,
+        "load_after": [
+          14.13330078125,
+          18.00732421875,
+          17.2177734375
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-13.log",
+        "log_sha256": "547eb69005ad6deea9204004b5f717f9d1eaea7d0dd2f157025efca90266a86c",
+        "owned_pids": [
+          20427,
+          20431,
+          20435,
+          20459,
+          20462,
+          20455,
+          20457,
+          20468,
+          20505,
+          20506,
+          20523,
+          20543,
+          20544,
+          20548,
+          20555,
+          20575,
+          20618,
+          20621,
+          20625
+        ]
+      },
+      {
+        "index": 14,
+        "started_utc": "2026-10-24T14:12:14.339281+00:00",
+        "load_before": [
+          14.13330078125,
+          18.00732421875,
+          17.2177734375
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 20677,
+        "exit": 0,
+        "elapsed_seconds": 3.0293329170090146,
+        "load_after": [
+          14.04248046875,
+          17.923828125,
+          17.19287109375
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-14.log",
+        "log_sha256": "334385dc0541b20ae1d3438a81afd95c862b63885387cb289ab84588db2875fe",
+        "owned_pids": [
+          20677,
+          20684,
+          20698,
+          20699,
+          20703,
+          20754,
+          20751,
+          20755,
+          20763,
+          20792,
+          20821,
+          20831,
+          20882,
+          20915,
+          20917,
+          20919,
+          20927
+        ]
+      },
+      {
+        "index": 15,
+        "started_utc": "2026-10-24T14:12:17.822320+00:00",
+        "load_before": [
+          14.04248046875,
+          17.923828125,
+          17.19287109375
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 20970,
+        "exit": 0,
+        "elapsed_seconds": 2.74609008297557,
+        "load_after": [
+          13.158203125,
+          17.67578125,
+          17.109375
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-15.log",
+        "log_sha256": "ef29ec9492fac8bf80bf79c4ce1a9efe0434b8292cadffe06563a00acc3dd9c5",
+        "owned_pids": [
+          20970,
+          20974,
+          20987,
+          20988,
+          21045,
+          21042,
+          21046,
+          21084,
+          21085,
+          21090,
+          21110,
+          21133,
+          21135,
+          21191,
+          21202,
+          21208,
+          21214
+        ]
+      },
+      {
+        "index": 16,
+        "started_utc": "2026-10-24T14:12:21.034172+00:00",
+        "load_before": [
+          13.158203125,
+          17.67578125,
+          17.109375
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 21293,
+        "exit": 0,
+        "elapsed_seconds": 3.3059229999780655,
+        "load_after": [
+          13.158203125,
+          17.67578125,
+          17.109375
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-16.log",
+        "log_sha256": "3cbfb723dff419dd9e2ff6315b9c18d245e3cb44107405b4f79cb18153ec2d19",
+        "owned_pids": [
+          21293,
+          21297,
+          21368,
+          21372,
+          21397,
+          21400,
+          21436,
+          21465,
+          21483,
+          21484,
+          21519,
+          21536,
+          21542,
+          21549
+        ]
+      },
+      {
+        "index": 17,
+        "started_utc": "2026-10-24T14:12:24.811515+00:00",
+        "load_before": [
+          13.158203125,
+          17.67578125,
+          17.109375
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 21582,
+        "exit": 0,
+        "elapsed_seconds": 4.4966483330354095,
+        "load_after": [
+          13.0654296875,
+          17.58154296875,
+          17.0791015625
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-17.log",
+        "log_sha256": "3b3daaabe801a7f0126a4f918bc55832073f6ef840308da6a6858fced3102743",
+        "owned_pids": [
+          21582,
+          21584,
+          21597,
+          21643,
+          21644,
+          21639,
+          21646,
+          21707,
+          21731,
+          21732,
+          21741,
+          21755,
+          21803,
+          21881,
+          21899,
+          21923,
+          21976
+        ]
+      },
+      {
+        "index": 18,
+        "started_utc": "2026-10-24T14:12:29.790454+00:00",
+        "load_before": [
+          13.0654296875,
+          17.58154296875,
+          17.0791015625
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 22070,
+        "exit": 0,
+        "elapsed_seconds": 4.999418292019982,
+        "load_after": [
+          14.90185546875,
+          17.88720703125,
+          17.18994140625
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-18.log",
+        "log_sha256": "78959cbffb9cca0bf82f45c9e63892540d69c5dbfe481236fcb9b6595adbb778",
+        "owned_pids": [
+          22070,
+          22088,
+          22091,
+          22106,
+          22107,
+          22093,
+          22100,
+          22110,
+          22168,
+          22172,
+          22115,
+          22193,
+          22200,
+          22229,
+          22225,
+          22239,
+          22265,
+          22266,
+          22274,
+          22273,
+          22341,
+          22432,
+          22453,
+          22474
+        ]
+      },
+      {
+        "index": 19,
+        "started_utc": "2026-10-24T14:12:35.242794+00:00",
+        "load_before": [
+          14.90185546875,
+          17.88720703125,
+          17.18994140625
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 22618,
+        "exit": 0,
+        "elapsed_seconds": 2.992540667008143,
+        "load_after": [
+          14.98974609375,
+          17.85546875,
+          17.1826171875
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-19.log",
+        "log_sha256": "25d89fffdc6f8f2f2e9a3ca457c61926cf153cdcaabeb08b85b2ed32c209e8e7",
+        "owned_pids": [
+          22618,
+          22656,
+          22661,
+          22673,
+          22676,
+          22635,
+          22662,
+          22672,
+          22714,
+          22740,
+          22781,
+          22790,
+          22856,
+          22802,
+          22852,
+          22857,
+          22890,
+          22895,
+          22904
+        ]
+      },
+      {
+        "index": 20,
+        "started_utc": "2026-10-24T14:12:38.684152+00:00",
+        "load_before": [
+          14.98974609375,
+          17.85546875,
+          17.1826171875
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 22972,
+        "exit": 0,
+        "elapsed_seconds": 2.502988708030898,
+        "load_after": [
+          14.189453125,
+          17.6416015625,
+          17.11083984375
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-20.log",
+        "log_sha256": "93f6b2c2dcec80fb7aa472bb3db7bd79ddde044c6af43d18960c8020d5c3083b",
+        "owned_pids": [
+          22972,
+          22976,
+          22987,
+          23055,
+          23004,
+          23052,
+          23054,
+          23058,
+          23098,
+          23119,
+          23173,
+          23174,
+          23181,
+          23144,
+          23209,
+          23212,
+          23214
+        ]
+      },
+      {
+        "index": 21,
+        "started_utc": "2026-10-24T14:12:41.679777+00:00",
+        "load_before": [
+          14.189453125,
+          17.6416015625,
+          17.11083984375
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 23243,
+        "exit": 0,
+        "elapsed_seconds": 3.4770355409709737,
+        "load_after": [
+          14.189453125,
+          17.6416015625,
+          17.11083984375
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-21.log",
+        "log_sha256": "7d5d88f2a5c558cf8b546ba7c6f33584caf411dc6a6507a830eceb435af2f8a6",
+        "owned_pids": [
+          23243,
+          23245,
+          23247,
+          23270,
+          23250,
+          23258,
+          23272,
+          23255,
+          23264,
+          23301,
+          23309,
+          23312,
+          23324,
+          23313,
+          23315,
+          23349,
+          23351,
+          23355,
+          23368,
+          23373,
+          23399,
+          23400,
+          23406,
+          23417,
+          23423,
+          23425,
+          23432
+        ]
+      },
+      {
+        "index": 22,
+        "started_utc": "2026-10-24T14:12:45.645760+00:00",
+        "load_before": [
+          13.853515625,
+          17.5146484375,
+          17.06884765625
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 23472,
+        "exit": 0,
+        "elapsed_seconds": 3.31041458400432,
+        "load_after": [
+          13.853515625,
+          17.5146484375,
+          17.06884765625
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-22.log",
+        "log_sha256": "4e212df3c812b7b3d21444c58225a5b385ca386f763e1c0cface10e10120ac3e",
+        "owned_pids": [
+          23472,
+          23480,
+          23560,
+          23562,
+          23503,
+          23558,
+          23533,
+          23623,
+          23629,
+          23684,
+          23685,
+          23689,
+          23706,
+          23708,
+          23711
+        ]
+      },
+      {
+        "index": 23,
+        "started_utc": "2026-10-24T14:12:49.433666+00:00",
+        "load_before": [
+          13.853515625,
+          17.5146484375,
+          17.06884765625
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 23741,
+        "exit": 0,
+        "elapsed_seconds": 3.3328805830096826,
+        "load_after": [
+          14.505859375,
+          17.5888671875,
+          17.09765625
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-23.log",
+        "log_sha256": "582d22408a35282127b41c7de44ef2fc233485c144107255acc87324839d6c75",
+        "owned_pids": [
+          23741,
+          23743,
+          23756,
+          23757,
+          23815,
+          23817,
+          23819,
+          23789,
+          23842,
+          23848,
+          23889,
+          23892,
+          23893,
+          23914,
+          23935,
+          23936,
+          23940,
+          23954,
+          23958,
+          23962,
+          23966
+        ]
+      },
+      {
+        "index": 24,
+        "started_utc": "2026-10-24T14:12:53.250000+00:00",
+        "load_before": [
+          14.505859375,
+          17.5888671875,
+          17.09765625
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 24005,
+        "exit": 0,
+        "elapsed_seconds": 3.06505441700574,
+        "load_after": [
+          14.46533203125,
+          17.52880859375,
+          17.0791015625
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-24.log",
+        "log_sha256": "2054e9d69cfcbee0434abe3ca8eee7c694ef1979d8dfa0846eb6c784b8910fd4",
+        "owned_pids": [
+          24005,
+          24015,
+          24009,
+          24011,
+          24014,
+          24017,
+          24036,
+          24032,
+          24066,
+          24081,
+          24107,
+          24108,
+          24106,
+          24128,
+          24130,
+          24136,
+          24161,
+          24193,
+          24195,
+          24198
+        ]
+      },
+      {
+        "index": 25,
+        "started_utc": "2026-10-24T14:12:56.763721+00:00",
+        "load_before": [
+          14.46533203125,
+          17.52880859375,
+          17.0791015625
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 24231,
+        "exit": 0,
+        "elapsed_seconds": 3.3520181250059977,
+        "load_after": [
+          14.46533203125,
+          17.52880859375,
+          17.0791015625
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-25.log",
+        "log_sha256": "f06c37afd4e55315adf739aeb33936aaf30790bdbd80c04d6270f1fef591e288",
+        "owned_pids": [
+          24231,
+          24233,
+          24238,
+          24276,
+          24263,
+          24264,
+          24271,
+          24293,
+          24294,
+          24300,
+          24322,
+          24361,
+          24382,
+          24412,
+          24421,
+          24419,
+          24426,
+          24433
+        ]
+      },
+      {
+        "index": 26,
+        "started_utc": "2026-10-24T14:13:00.588268+00:00",
+        "load_before": [
+          16.029296875,
+          17.80224609375,
+          17.17822265625
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 24489,
+        "exit": 0,
+        "elapsed_seconds": 2.5031235000351444,
+        "load_after": [
+          16.029296875,
+          17.80224609375,
+          17.17822265625
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-26.log",
+        "log_sha256": "17f557f377b899e492b418c3a0a62e759d29062def44e10b90e1dca4ebfad2e4",
+        "owned_pids": [
+          24489,
+          24493,
+          24565,
+          24571,
+          24631,
+          24726,
+          24733,
+          24736
+        ]
+      },
+      {
+        "index": 27,
+        "started_utc": "2026-10-24T14:13:03.535403+00:00",
+        "load_before": [
+          16.029296875,
+          17.80224609375,
+          17.17822265625
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 24764,
+        "exit": 0,
+        "elapsed_seconds": 3.96970495802816,
+        "load_after": [
+          17.78857421875,
+          18.13720703125,
+          17.2998046875
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-27.log",
+        "log_sha256": "3006887e6a9e6fd62a2ea23ba6eb6c628b6a081ff3e6337ba16f5dc007a02779",
+        "owned_pids": [
+          24764,
+          24766,
+          24838,
+          24841,
+          24855,
+          24857,
+          24862,
+          24886,
+          24911,
+          24922,
+          24924,
+          24927,
+          24949,
+          24951,
+          24964,
+          24965,
+          24984,
+          24994,
+          24992,
+          24999,
+          25021
+        ]
+      },
+      {
+        "index": 28,
+        "started_utc": "2026-10-24T14:13:07.986595+00:00",
+        "load_before": [
+          17.78857421875,
+          18.13720703125,
+          17.2998046875
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 25032,
+        "exit": 0,
+        "elapsed_seconds": 3.0147379590198398,
+        "load_after": [
+          17.16455078125,
+          18.001953125,
+          17.2568359375
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-28.log",
+        "log_sha256": "39daa54ed8561ed44b8344e7e3fc2405013eaa1a3811bcb78ced57e323237234",
+        "owned_pids": [
+          25032,
+          25034,
+          25089,
+          25091,
+          25114,
+          25115,
+          25135,
+          25171,
+          25174,
+          25173,
+          25177,
+          25202,
+          25238,
+          25239,
+          25245,
+          25267,
+          25270,
+          25280,
+          25273
+        ]
+      },
+      {
+        "index": 29,
+        "started_utc": "2026-10-24T14:13:11.448969+00:00",
+        "load_before": [
+          17.16455078125,
+          18.001953125,
+          17.2568359375
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 25325,
+        "exit": 0,
+        "elapsed_seconds": 2.7441385830170475,
+        "load_after": [
+          17.16455078125,
+          18.001953125,
+          17.2568359375
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-29.log",
+        "log_sha256": "7ca95ffc208590212bbd20c2140b1c7814172b08144c46cdf18d23d153ffbd3a",
+        "owned_pids": [
+          25325,
+          25329,
+          25403,
+          25405,
+          25554,
+          25617,
+          25531,
+          25609,
+          25610,
+          25619,
+          25697,
+          25722,
+          25758
+        ]
+      },
+      {
+        "index": 30,
+        "started_utc": "2026-10-24T14:13:14.644794+00:00",
+        "load_before": [
+          17.16455078125,
+          18.001953125,
+          17.2568359375
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 25822,
+        "exit": 0,
+        "elapsed_seconds": 2.7156724170199595,
+        "load_after": [
+          16.4306640625,
+          17.83544921875,
+          17.2021484375
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-30.log",
+        "log_sha256": "b4d254f4f59a41eaa660b88cb91a288799188a444f84bfa4e2cd66af15435962",
+        "owned_pids": [
+          25822,
+          25830,
+          25843,
+          25844,
+          25848,
+          25906,
+          25945,
+          25946,
+          25965,
+          26031,
+          26032,
+          26054,
+          26057,
+          26059
+        ]
+      },
+      {
+        "index": 31,
+        "started_utc": "2026-10-24T14:13:17.800666+00:00",
+        "load_before": [
+          16.4306640625,
+          17.83544921875,
+          17.2021484375
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 26088,
+        "exit": 0,
+        "elapsed_seconds": 3.82191308302572,
+        "load_after": [
+          15.83544921875,
+          17.6884765625,
+          17.15380859375
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-31.log",
+        "log_sha256": "b4d4f18f43b8ff39231c10d482c72536671cedda959abff05a44439ec80a3a03",
+        "owned_pids": [
+          26088,
+          26090,
+          26117,
+          26169,
+          26171,
+          26175,
+          26220,
+          26221,
+          26232,
+          26244,
+          26247,
+          26261,
+          26263,
+          26328,
+          26334,
+          26340,
+          26359
+        ]
+      },
+      {
+        "index": 32,
+        "started_utc": "2026-10-24T14:13:22.067350+00:00",
+        "load_before": [
+          15.83544921875,
+          17.6884765625,
+          17.15380859375
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 26393,
+        "exit": 0,
+        "elapsed_seconds": 3.705056125007104,
+        "load_after": [
+          15.84814453125,
+          17.66015625,
+          17.14697265625
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-32.log",
+        "log_sha256": "8e71a06180f838a8fae793102708542a73d202ad3deeddd750762164551e27a4",
+        "owned_pids": [
+          26393,
+          26398,
+          26429,
+          26430,
+          26436,
+          26433,
+          26437,
+          26471,
+          26563,
+          26575,
+          26630,
+          26710,
+          26712,
+          26715
+        ]
+      },
+      {
+        "index": 33,
+        "started_utc": "2026-10-24T14:13:26.243949+00:00",
+        "load_before": [
+          15.84814453125,
+          17.66015625,
+          17.14697265625
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 26811,
+        "exit": 0,
+        "elapsed_seconds": 4.811141709040385,
+        "load_after": [
+          18.42236328125,
+          18.16357421875,
+          17.32763671875
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-33.log",
+        "log_sha256": "80b44563e853947d8ab2e3cf1631df70e9e0e35ab7ae003b58c52203de8183bb",
+        "owned_pids": [
+          26811,
+          26814,
+          26829,
+          26823,
+          26818,
+          26825,
+          26832,
+          26846,
+          26848,
+          26887,
+          26898,
+          26904,
+          26915,
+          26914,
+          26926,
+          26927,
+          26949,
+          26956,
+          26958,
+          26977,
+          26981,
+          26986,
+          26989,
+          27028,
+          27031,
+          27034,
+          27042
+        ]
+      },
+      {
+        "index": 34,
+        "started_utc": "2026-10-24T14:13:31.533408+00:00",
+        "load_before": [
+          18.42236328125,
+          18.16357421875,
+          17.32763671875
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 27080,
+        "exit": 0,
+        "elapsed_seconds": 4.552270082989708,
+        "load_after": [
+          17.50732421875,
+          17.97802734375,
+          17.26708984375
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-34.log",
+        "log_sha256": "ca560000bf6314cf94e04e2adb1ffc00d5cb02b09919fcedc65d221cdb210b0c",
+        "owned_pids": [
+          27080,
+          27082,
+          27084,
+          27137,
+          27138,
+          27136,
+          27144,
+          27186,
+          27205,
+          27212,
+          27203,
+          27208,
+          27213,
+          27226,
+          27236,
+          27238,
+          27244,
+          27250,
+          27276,
+          27277,
+          27308,
+          27314,
+          27326
+        ]
+      },
+      {
+        "index": 35,
+        "started_utc": "2026-10-24T14:13:36.548126+00:00",
+        "load_before": [
+          17.50732421875,
+          17.97802734375,
+          17.26708984375
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 27367,
+        "exit": 0,
+        "elapsed_seconds": 4.085736916982569,
+        "load_after": [
+          17.94677734375,
+          18.06103515625,
+          17.30029296875
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-35.log",
+        "log_sha256": "a93c844f19e99919f7ccdaacf6f7f79905db2619cf23a6e12f104b56f1d14a5e",
+        "owned_pids": [
+          27367,
+          27371,
+          27375,
+          27417,
+          27416,
+          27473,
+          27482,
+          27490,
+          27499,
+          27501,
+          27519,
+          27522,
+          27570,
+          27583,
+          27582,
+          27592,
+          27591,
+          27594
+        ]
+      },
+      {
+        "index": 36,
+        "started_utc": "2026-10-24T14:13:41.106762+00:00",
+        "load_before": [
+          17.94677734375,
+          18.06103515625,
+          17.30029296875
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 27621,
+        "exit": 0,
+        "elapsed_seconds": 2.8733264160109684,
+        "load_after": [
+          17.94677734375,
+          18.06103515625,
+          17.30029296875
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-36.log",
+        "log_sha256": "d0406f157d4a31b4ff11619ca37ee1f5751a8e5aa1c4c79f464dfbd4057d8444",
+        "owned_pids": [
+          27621,
+          27624,
+          27627,
+          27632,
+          27677,
+          27683,
+          27658,
+          27684,
+          27726,
+          27727,
+          27740,
+          27765,
+          27771,
+          27832,
+          27837,
+          27841
+        ]
+      },
+      {
+        "index": 37,
+        "started_utc": "2026-10-24T14:13:44.453919+00:00",
+        "load_before": [
+          17.94677734375,
+          18.06103515625,
+          17.30029296875
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 27889,
+        "exit": 0,
+        "elapsed_seconds": 3.519263166002929,
+        "load_after": [
+          18.91162109375,
+          18.2587890625,
+          17.37451171875
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-37.log",
+        "log_sha256": "79fca4fb8800d1695ad32b743a8e3984a86f25b37f1335d0335f7b8384d39cc7",
+        "owned_pids": [
+          27889,
+          27894,
+          27918,
+          27919,
+          27923,
+          27963,
+          27964,
+          27993,
+          27987,
+          27989,
+          27991,
+          27994,
+          28001,
+          28003,
+          28022,
+          28033,
+          28034,
+          28038,
+          28058,
+          28062,
+          28064,
+          28068
+        ]
+      },
+      {
+        "index": 38,
+        "started_utc": "2026-10-24T14:13:48.435152+00:00",
+        "load_before": [
+          18.91162109375,
+          18.2587890625,
+          17.37451171875
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 28091,
+        "exit": 0,
+        "elapsed_seconds": 2.7683215840370394,
+        "load_after": [
+          17.79736328125,
+          18.03857421875,
+          17.3017578125
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-38.log",
+        "log_sha256": "8f339f233cc3774ad61494ad58a627fe40e43c1b8581c4fe2944c5ad9c954e03",
+        "owned_pids": [
+          28091,
+          28096,
+          28111,
+          28112,
+          28180,
+          28177,
+          28181,
+          28229,
+          28230,
+          28254,
+          28242,
+          28322,
+          28329,
+          28336,
+          28332,
+          28334,
+          28353
+        ]
+      },
+      {
+        "index": 39,
+        "started_utc": "2026-10-24T14:13:51.667011+00:00",
+        "load_before": [
+          17.79736328125,
+          18.03857421875,
+          17.3017578125
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 28361,
+        "exit": 0,
+        "elapsed_seconds": 2.5139344159979373,
+        "load_after": [
+          17.79736328125,
+          18.03857421875,
+          17.3017578125
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-39.log",
+        "log_sha256": "03019dab4bae136f40562248337fc97faca5216d551e26e4c51462e0987d89a9",
+        "owned_pids": [
+          28361,
+          28363,
+          28416,
+          28493,
+          28497,
+          28518,
+          28583,
+          28587,
+          28589,
+          28593
+        ]
+      },
+      {
+        "index": 40,
+        "started_utc": "2026-10-24T14:13:54.631509+00:00",
+        "load_before": [
+          17.79736328125,
+          18.03857421875,
+          17.3017578125
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 28639,
+        "exit": 0,
+        "elapsed_seconds": 3.2443854580051266,
+        "load_after": [
+          17.4130859375,
+          17.95458984375,
+          17.2763671875
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-40.log",
+        "log_sha256": "2c1c1ea475b732be8428429ca431ff6ce6c8d4b692907482dcfb6d7a01cd2fdb",
+        "owned_pids": [
+          28639,
+          28654,
+          28643,
+          28680,
+          28681,
+          28658,
+          28685,
+          28692,
+          28695,
+          28711,
+          28731,
+          28732,
+          28735,
+          28770,
+          28773,
+          28786,
+          28833,
+          28835,
+          28840
+        ]
+      },
+      {
+        "index": 41,
+        "started_utc": "2026-10-24T14:13:58.330212+00:00",
+        "load_before": [
+          17.4130859375,
+          17.95458984375,
+          17.2763671875
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 28860,
+        "exit": 0,
+        "elapsed_seconds": 3.5269391250330955,
+        "load_after": [
+          18.8212890625,
+          18.2373046875,
+          17.3798828125
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-41.log",
+        "log_sha256": "aa018218a61133fcb39da112b5a7e9b07009a7aba2f3a9363a82808df7e5de21",
+        "owned_pids": [
+          28860,
+          28863,
+          28866,
+          28896,
+          28898,
+          28903,
+          28929,
+          28950,
+          28954,
+          28969,
+          28968,
+          28987,
+          29045,
+          29048,
+          29051
+        ]
+      },
+      {
+        "index": 42,
+        "started_utc": "2026-10-24T14:14:02.323515+00:00",
+        "load_before": [
+          18.8212890625,
+          18.2373046875,
+          17.3798828125
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 29075,
+        "exit": 0,
+        "elapsed_seconds": 3.506697124976199,
+        "load_after": [
+          19.71630859375,
+          18.43212890625,
+          17.45361328125
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-42.log",
+        "log_sha256": "c3e93409d7ea85a1f6e46b4b0d2224e6fc9db1312a9665b3563ab34e775d65fb",
+        "owned_pids": [
+          29075,
+          29097,
+          29078,
+          29092,
+          29093,
+          29131,
+          29136,
+          29156,
+          29167,
+          29190,
+          29188,
+          29205,
+          29206,
+          29209,
+          29222,
+          29225,
+          29246,
+          29271,
+          29283,
+          29287,
+          29291
+        ]
+      },
+      {
+        "index": 43,
+        "started_utc": "2026-10-24T14:14:06.319717+00:00",
+        "load_before": [
+          19.71630859375,
+          18.43212890625,
+          17.45361328125
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 29311,
+        "exit": 0,
+        "elapsed_seconds": 3.2354921670048498,
+        "load_after": [
+          19.71630859375,
+          18.43212890625,
+          17.45361328125
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-43.log",
+        "log_sha256": "85cf6661a3c7718b074444d6eb1651cf6d8ff6bbc7b1b5d851103e8218f5d682",
+        "owned_pids": [
+          29311,
+          29314,
+          29318,
+          29358,
+          29362,
+          29361,
+          29405,
+          29420,
+          29425,
+          29432,
+          29434,
+          29454,
+          29478,
+          29510,
+          29515,
+          29523,
+          29518,
+          29521
+        ]
+      },
+      {
+        "index": 44,
+        "started_utc": "2026-10-24T14:14:10.019407+00:00",
+        "load_before": [
+          19.71630859375,
+          18.43212890625,
+          17.45361328125
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 29554,
+        "exit": 0,
+        "elapsed_seconds": 2.9559120829799213,
+        "load_after": [
+          18.61767578125,
+          18.2255859375,
+          17.38623046875
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-44.log",
+        "log_sha256": "82ae6307845dae092deb5c794af0489034ab2f9c41125364672c4e132df8f6c3",
+        "owned_pids": [
+          29554,
+          29556,
+          29630,
+          29634,
+          29679,
+          29681,
+          29691,
+          29702,
+          29783,
+          29788,
+          29790
+        ]
+      },
+      {
+        "index": 45,
+        "started_utc": "2026-10-24T14:14:13.440775+00:00",
+        "load_before": [
+          18.61767578125,
+          18.2255859375,
+          17.38623046875
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 29837,
+        "exit": 0,
+        "elapsed_seconds": 2.778710125014186,
+        "load_after": [
+          18.88818359375,
+          18.2880859375,
+          17.4130859375
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-45.log",
+        "log_sha256": "68145c921854edd05c88352193fe3cc86208def5068315a2cbdd8d3eefe3bf24",
+        "owned_pids": [
+          29837,
+          29841,
+          29917,
+          29975,
+          29987,
+          29998,
+          30007,
+          30003,
+          30008,
+          30011,
+          30104,
+          30165,
+          30176,
+          30183
+        ]
+      },
+      {
+        "index": 46,
+        "started_utc": "2026-10-24T14:14:16.682265+00:00",
+        "load_before": [
+          18.88818359375,
+          18.2880859375,
+          17.4130859375
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 30217,
+        "exit": 0,
+        "elapsed_seconds": 2.9906199160031974,
+        "load_after": [
+          18.88818359375,
+          18.2880859375,
+          17.4130859375
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-46.log",
+        "log_sha256": "0ae06c12085a4f968464fd315932d0a93362a0bea5a2ec3624846920133e49f4",
+        "owned_pids": [
+          30217,
+          30220,
+          30236,
+          30237,
+          30286,
+          30287,
+          30351,
+          30354,
+          30360,
+          30379,
+          30407,
+          30440,
+          30461,
+          30463,
+          30466
+        ]
+      },
+      {
+        "index": 47,
+        "started_utc": "2026-10-24T14:14:20.134786+00:00",
+        "load_before": [
+          18.88818359375,
+          18.2880859375,
+          17.4130859375
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 30507,
+        "exit": 0,
+        "elapsed_seconds": 2.5085690830019303,
+        "load_after": [
+          17.93603515625,
+          18.1005859375,
+          17.35205078125
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-47.log",
+        "log_sha256": "79b73522b1f7dc32c28440972fc8c5ac1d41dc2d217f697b30d46b40e69b4fad",
+        "owned_pids": [
+          30507,
+          30509,
+          30583,
+          30587,
+          30632,
+          30643,
+          30660,
+          30661,
+          30668,
+          30664,
+          30667,
+          30743,
+          30751,
+          30746,
+          30749,
+          30752
+        ]
+      },
+      {
+        "index": 48,
+        "started_utc": "2026-10-24T14:14:23.163578+00:00",
+        "load_before": [
+          17.93603515625,
+          18.1005859375,
+          17.35205078125
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 30781,
+        "exit": 0,
+        "elapsed_seconds": 3.2714529159711674,
+        "load_after": [
+          17.38037109375,
+          17.982421875,
+          17.314453125
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-48.log",
+        "log_sha256": "143e9ca8e688e59f4db95c42a553bec9f386241476ed3eb56931b24aa092554b",
+        "owned_pids": [
+          30781,
+          30785,
+          30786,
+          30813,
+          30811,
+          30830,
+          30832,
+          30862,
+          30863,
+          30859,
+          30865,
+          30885,
+          30900,
+          30933,
+          30934,
+          30967,
+          30969,
+          30974,
+          30992
+        ]
+      },
+      {
+        "index": 49,
+        "started_utc": "2026-10-24T14:14:26.886907+00:00",
+        "load_before": [
+          17.38037109375,
+          17.982421875,
+          17.314453125
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 31027,
+        "exit": 0,
+        "elapsed_seconds": 2.983087250031531,
+        "load_after": [
+          17.38037109375,
+          17.982421875,
+          17.314453125
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-49.log",
+        "log_sha256": "28fe2321966ef13c1a93c7154a85c4928e7c6df86598f2d6f80d53d84e6391a2",
+        "owned_pids": [
+          31027,
+          31033,
+          31112,
+          31114,
+          31161,
+          31172,
+          31185,
+          31187,
+          31223,
+          31190,
+          31222,
+          31257,
+          31261,
+          31265
+        ]
+      },
+      {
+        "index": 50,
+        "started_utc": "2026-10-24T14:14:30.319370+00:00",
+        "load_before": [
+          17.38037109375,
+          17.982421875,
+          17.314453125
+        ],
+        "worker_alive_before": 2,
+        "test_pid": 31290,
+        "exit": 0,
+        "elapsed_seconds": 2.777771416003816,
+        "load_after": [
+          17.109375,
+          17.916015625,
+          17.294921875
+        ],
+        "worker_alive_after": 2,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/fixed-all/run-50.log",
+        "log_sha256": "d0b735a5baf23de220a4ad25f8fb4356f10a3ea28a8a2e084b991f8adc01df3e",
+        "owned_pids": [
+          31290,
+          31293,
+          31299,
+          31335,
+          31337,
+          31339,
+          31360,
+          31362,
+          31363,
+          31405,
+          31402,
+          31403,
+          31453,
+          31456,
+          31547,
+          31558,
+          31597
+        ]
+      }
+    ],
+    "started_utc": "2026-10-24T14:11:28.277962+00:00",
+    "worker_exits": [
+      {
+        "pid": 15798,
+        "exit": -15
+      },
+      {
+        "pid": 15802,
+        "exit": -15
+      }
+    ],
+    "signals": [
+      {
+        "pid": 15802,
+        "start": [
+          "Sat",
+          "Oct",
+          "24",
+          "07:11:28",
+          "2026"
+        ],
+        "signal": "SIGTERM",
+        "at_utc": "2026-10-24T14:14:33.593887+00:00"
+      },
+      {
+        "pid": 15798,
+        "start": [
+          "Sat",
+          "Oct",
+          "24",
+          "07:11:28",
+          "2026"
+        ],
+        "signal": "SIGTERM",
+        "at_utc": "2026-10-24T14:14:33.593933+00:00"
+      },
+      {
+        "pid": 15802,
+        "start": [
+          "Sat",
+          "Oct",
+          "24",
+          "07:11:28",
+          "2026"
+        ],
+        "signal": "SIGKILL",
+        "at_utc": "2026-10-24T14:14:33.819099+00:00"
+      },
+      {
+        "pid": 15798,
+        "start": [
+          "Sat",
+          "Oct",
+          "24",
+          "07:11:28",
+          "2026"
+        ],
+        "signal": "SIGKILL",
+        "at_utc": "2026-10-24T14:14:33.819121+00:00"
+      }
+    ],
+    "ended_utc": "2026-10-24T14:14:34.024430+00:00",
+    "remaining_owned_workers": []
+  },
+  "dependent_results": {
+    "provider_gui": {
+      "passed": 4,
+      "failed": 0,
+      "command": "4c74898f92e0463e80ff2875b29b1d40"
+    },
+    "app_lifecycle": {
+      "passed": 3,
+      "failed": 0
+    },
+    "app_recovery": {
+      "passed": 5,
+      "failed": 0
+    },
+    "app_command": "7b9716eb1fa24a37a66db90822ede0ad"
+  },
+  "cleanup": {
+    "target": "/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j",
+    "allocated_file_bytes_removed": 3692281856,
+    "files": 6281,
+    "active_target_pids": [],
+    "utc": "2026-10-24T14:17:06.751309+00:00",
+    "target_exists_after": false
+  },
+  "raw_log": {
+    "path": ".bboxy/runs/socket-ownership-af5918bd-raw.log",
+    "sha256": "7488ab6d629cc4a5d1d307f24e11cfee9ba820c831d72aabbf11c8ec68e49e5e"
+  },
+  "worker": {
+    "source": "#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <unistd.h>\n\nstatic double now(void) {\n    struct timespec t;\n    if (clock_gettime(CLOCK_MONOTONIC, &t)) exit(2);\n    return (double)t.tv_sec + (double)t.tv_nsec / 1e9;\n}\n\nint main(int argc, char **argv) {\n    if (argc != 2) return 2;\n    double bound = strtod(argv[1], NULL);\n    if (bound <= 0 || bound > 1800) return 2;\n    double start = now();\n    volatile uint64_t state = (uint64_t)getpid();\n    for (unsigned i = 0; i != 100000; ++i) state = state * 6364136223846793005ULL + 1;\n    printf(\"READY pid=%d bound_seconds=%.3f\\n\", getpid(), bound);\n    fflush(stdout);\n    while (now() - start < bound) {\n        for (unsigned i = 0; i != 16384; ++i) state = state * 6364136223846793005ULL + 1;\n    }\n    printf(\"BOUNDED_EXIT pid=%d elapsed_seconds=%.6f checksum=%llu\\n\", getpid(), now() - start, (unsigned long long)state);\n    return 0;\n}\n",
+    "source_sha256": "49697cf90d5e78e2087941a7716b19be8314a0cab4c1f6cb9479b6b6ad575591",
+    "binary_sha256": "65a1b44e81e8dec1ea1d6ea5c30e6e9d05f881001f2126256371889e7bbb1608"
+  },
+  "runner": {
+    "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/stress.py",
+    "sha256": "6f05b45abb50804596a57cc656e88b6083eed81313e11c5eab98bb65c7cbc58b"
+  },
+  "origin_main_at_handoff": "c775112d45c24e9b181911c9d40efc0a9b639bf8"
+}

@@ -1,0 +1,28 @@
+CONTROL SOCKET OWNERSHIP RELEASE — Sable Embertail <EXECUTOR>
+Signed source: af5918bdfcddef64a41fbdd796a4237562d3c58b, sable-supervisor-lock-diag, exec3.
+Base: accepted main 3308784f. Scope: transport.rs only, approved by Oracle 40c2843d after diagnosis 0dc91345. No source rebase during verification.
+
+Mechanism:
+- The neighboring provider_gui restart test previously failed after successful Supervisor::shutdown with AddrInUse / ownership flock EWOULDBLOCK (35). Its original holder PID was not sampled; that identity remains UNPROVEN.
+- Public Supervisor probe at fffc95e5: ten ordinary shutdown/restart controls passed. With a controlled fork child retaining the ownership descriptor, shutdown closed the parent's original fd (F_GETFD -> EBADF (9)), yet restart failed with the same flock error. lsof independently identified the child holding the lock file. Reaping it immediately restored restart. Child 77403 reaped status 0.
+- CLOEXEC closes at exec, not at fork. A descriptor inherited during the native launch interval can therefore extend the open-file-description flock past owner shutdown. Parent actor joining was already correct. This acquisition/release branch predates #263 (ab4ef00e); #263 left it unchanged.
+
+Change, exact scope:
+- crates/bbt-supervisor/src/transport.rs:317 — after unlinking its own socket inode, BoundSocket::Drop explicitly LOCK_UNs its valid ownership fd before File close. EINTR retries; other unlock errors are logged once. The persistent lock inode, startup validation, live-owner/connect checks and O_CLOEXEC remain.
+- transport.rs:813 — deterministic two-phase fork/gate regression. The child reports that the inherited CLOEXEC fd remains valid both before owner drop and after the replacement bind attempt. Replacement must succeed before child release/reap; the lock inode stays the same; the replacement's live ownership still refuses a second bind without changing its socket inode. The test reaps before assertions and has no sleeps or wall-clock success criterion.
+
+Actual commands/results (all argv, raw outputs and digests in the evidence files):
+1. Diagnostic cargo build --locked -p bbt-supervisor: EXIT 0 /19.554s. Initial rustc argv setup EXIT 1 before rustc ran because Cargo produced two libc variants; normal extra_traits artifact then selected from fingerprints. rustc --edition=2024 -Dwarnings -Copt-level=0 against the public library: EXIT 0 /1.078s. Public probe: EXIT 0 /0.270s, including expected live/held-owner refusals and post-child recovery.
+2. New regression against OLD close-only code: EXIT 101 /23.131s including build, 0 passed /1 failed. Panic names the exact ownership EWOULDBLOCK; child was released/reaped before the failing assertion. Test-only source hash and patch bind this control to base 3308784f.
+3. FINAL cargo test --locked -p bbt-supervisor -- --nocapture: EXIT 0 /32.304s; 56 passed /0 failed /4 existing ignored. Includes the new regression, live backlog, inherited live listener, lock validation, reply framing/fencing, journal preservation and PTY integration.
+4. FINAL cargo clippy --locked -p bbt-supervisor --all-targets -- -D warnings: EXIT 0 /36.278s. rustfmt --check: EXIT 0. git diff --check: EXIT 0.
+5. FINAL cargo test --locked -p bbt-mux --test provider_gui -- --nocapture: EXIT 0 /108.341s including build; 4/0, including both the original drain fixture and the neighboring restart case.
+6. FINAL cargo test --locked -p bboxy450-term --test recovery --test lifecycle -- --nocapture: EXIT 0 /156.034s including build; lifecycle 3/0 and recovery 5/0. Actual logic/supervisor deaths, stale generations, resume argv, close/undo/history and shutdown cancellation retained. App fixtures used explicit memory custody.
+7. FINAL loaded WHOLE provider_gui module: 50/50 runs, 200 passed /0 failed, runner EXIT 0 /185.893s. Two bounded C -O0 workers alive before/after every run; Rust test binary unoptimized, nice10; observed load1 approximately 12.47-19.72, not a quiet or matched latency control. All workers reaped, remaining recorded workers[]. No narrowed test selection or deadline change.
+
+Provenance and cleanup:
+- Final provider_gui binary SHA256 6ec9cd1d4472015fd4d2df615a5e4b616b08d6633f50a71c8f0262edf70468b9.
+- socket-ownership-af5918bd-raw.log SHA256 7488ab6d629cc4a5d1d307f24e11cfee9ba820c831d72aabbf11c8ec68e49e5e contains actual command logs and every loaded module output.
+- socket-ownership-af5918bd-evidence.json SHA256 72c643b88d5a970dbfaa84e0ad799d93b27086535ae7373efb34b1bebc28d5e6 binds source/probe code, test-only red patch, command exits, worker source, source/binary digests, manifests and cleanup. ICQ transcripts excluded.
+- Own target/sable-lock-lifetime-j6afdt2j removed after verification: 3692281856 allocated file bytes / 6281 files; no active commands referencing it. Source remained af5918bd throughout final checks. Main advanced meanwhile; its transport.rs remains byte-identical to our base, outside this patch.
+- No full ci-local, parity or ignored stress/crash gate run. Oracle 40c2843d reserved the full-gate decision until these focused checks complete; that decision is pending this handoff. No desktop driving, global config, dependency or protocol change.

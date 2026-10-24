@@ -1,0 +1,27 @@
+NORMAL CI — CONTROL SOCKET OWNERSHIP RELEASE — Sable Embertail <EXECUTOR>
+Exact signed code source: 5885941c84fc8ca82ea5a332da483200ede6d710
+Base: c775112d45c24e9b181911c9d40efc0a9b639bf8; branch sable-supervisor-lock-diag, exec3.
+Slot 2 approval: b5e40846-a3d0-4b18-95f4-c05e2bbbd256. Slot released in DM 44cbe176.
+This supersedes the pending-full-gate status in socket-ownership-af5918bd-handoff.log.
+
+Source and isolation:
+- Rebase onto origin/main c775112d was clean. Source 5885941c is the rebased af5918bd; transport blob b1434a53585f0e67b0f3d0a071611c1194520252 is identical before/after rebase. Focused proof remains reachable at sable-lock-focused-53a280b7.
+- The exact CODE commit, before its evidence-only successor, ran in a freshly created clean detached worktree. Tracked diff stayed empty; its own target-ci was the only untracked output. After target cleanup git status was empty, then the detached worktree was removed normally.
+- Scope stays crates/bbt-supervisor/src/transport.rs:317 (explicit LOCK_UN after owned-endpoint unlink) and :813 (fork-held-descriptor regression). No code edits during or after CI.
+
+Exact command and result:
+  env CARGO_TARGET_DIR=<own ci-normal/target-ci> CARGO_BUILD_JOBS=2 CARGO_TERM_COLOR=never BBOXY_TEST_CUSTODY=memory RUST_BACKTRACE=1 sh scripts/ci-local.sh
+  EXIT 0; elapsed 1060.607 s; final marker: ci-local: all gates passed
+- Layering passed; workspace build passed; strict workspace/all-target Clippy -D warnings passed.
+- Workspace phase: 158 reported result summaries, 1,134 passed / 0 failed / 22 ignored. New fork-held-descriptor regression and both provider_gui restart/drain cases pass in this exact gate.
+- UI lint passed. Native smoke: idle 10.001 s, frames=0, callbacks=0 (21 warm samples; CPU p50=12.767ms, p99=14.356ms). This is the probe result, not a frame-budget or locked-display claim.
+- Default invariants: 17 checks / 0 failures; 8 slow checks skipped by normal mode. Kitty-keyboard, ownership-related default tests and UI-never-waits passed. No --parity, --slow or ignored stress/crash gate requested or run.
+
+Evidence:
+- socket-ownership-5885941c-ci.log is the full unedited output; SHA256 3f61428b9c810d0dc887f2bec6c5e253cd43b04cbedded6ca8bdd260a425c837.
+- socket-ownership-5885941c-ci-evidence.json SHA256 4e5d684e5e69686dcd47c01b0d836ec078b1c22b387a53a74dda0d6374724253; exact argv/cwd/exit, source tree, rebased transport identity, app binary/script/lock digests, summaries and cleanup.
+- Prior focused evidence socket-ownership-af5918bd-* retains the OLD-code failure, public-Supervisor diagnosis, scoped lint, supervisor56/ 0, mux4/ 0, app lifecycle3/ 0/recovery5/ 0, and 50 loaded modules/200 tests. The natural original holder PID was not sampled; the inherited-descriptor defect and its release are deterministic.
+
+Cleanup:
+- No active command referenced the target at deletion. Own target removed: 3611525120 allocated file bytes / 9683 files. git worktree remove EXIT 0; target and detached worktree absent. Slot 2 released; no gate or worker remains active.
+- Current main may move independently. The handed-off code is the exact gated source above; no rebase or repeated gate after completion. Acceptance and merged-tree verification remain Oracle's.
