@@ -3667,11 +3667,23 @@ fn verify_knowledge_record(record: &Value) -> [u8; 32] {
 #[test]
 fn mcp_knowledge_real_bridge_writes_with_the_seat_key_and_replays_without_reallocation() {
     let mut f = Fixture::new();
-    let op = Ulid::new();
     let mut args = knowledge_args("e2e/t1.md", "# Untested T1\n");
     args["frontmatter"]["authorship"] =
         json!({"signer":"device:forged","kind":"device","public_key":"forged"});
-    let first = f.mutate(f.own.id, op, "knowledge_write", args.clone());
+    let mut bridge = f.bridge(f.own.id);
+    initialize(&mut bridge);
+    let first = rpc(
+        &mut bridge,
+        2,
+        "tools/call",
+        json!({"name":"knowledge_write","arguments":args}),
+    )["result"]
+        .clone();
+    let op = first["structuredContent"]["op_id"]
+        .as_str()
+        .unwrap()
+        .parse::<Ulid>()
+        .unwrap();
     let value = data(first.clone());
     assert_eq!(value["record"]["id"], json!(op));
     assert_eq!(value["record"]["number"], 3);
@@ -3700,7 +3712,7 @@ fn mcp_knowledge_real_bridge_writes_with_the_seat_key_and_replays_without_reallo
     conflicting["body"] = json!("changed arguments");
     refused(
         f.mutate(f.own.id, op, "knowledge_write", conflicting),
-        "conflict",
+        "op_id_reused",
     );
     let fetched = data(knowledge_fetch(&f, f.own.id, "#3"));
     assert_eq!(fetched["id"], json!(op));
@@ -3749,7 +3761,7 @@ fn mcp_knowledge_real_bridge_writes_with_the_seat_key_and_replays_without_reallo
         "string"
     );
     assert!(
-        write["inputSchema"]["required"]
+        !write["inputSchema"]["required"]
             .as_array()
             .unwrap()
             .contains(&json!("op_id"))
@@ -3864,15 +3876,18 @@ fn mcp_knowledge_refuses_outside_paths_forged_authority_type_ids_and_stale_etags
     );
     let mut bridge = f.bridge(f.own.id);
     initialize(&mut bridge);
+    let mut invalid_id = knowledge_args("e2e/no-op.md", "denied");
+    invalid_id["op_id"] = json!("not-a-ulid");
     assert_eq!(
         rpc(
             &mut bridge,
             2,
             "tools/call",
-            json!({"name":"knowledge_write","arguments":knowledge_args("e2e/no-op.md","denied")})
+            json!({"name":"knowledge_write","arguments":invalid_id})
         )["error"]["code"],
         -32602
     );
+    assert!(!f.config.repository.join(".bboxy/e2e/no-op.md").exists());
 }
 
 #[test]

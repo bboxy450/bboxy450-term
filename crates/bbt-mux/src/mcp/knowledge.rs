@@ -11,10 +11,6 @@ use crate::knowledge::{DataSource, data_source as d};
 pub(crate) fn handles(tool: &str) -> bool {
     matches!(tool, "knowledge_fetch" | "knowledge_write")
 }
-pub(crate) fn mutation(tool: &str) -> bool {
-    tool == "knowledge_write"
-}
-
 pub(crate) fn catalogue() -> Vec<Value> {
     let contract = d::method_schema("write", false).expect("contract write schema");
     let mut write = contract["$defs"]["WriteRequest"].clone();
