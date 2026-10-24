@@ -150,6 +150,18 @@ pub enum GuiAction {
     Screen {
         id: Ulid,
         seat: Ulid,
+        /// With every cell's style, as runs of equal style per row (`ctl seat screen --cells`).
+        #[serde(default)]
+        cells: bool,
+    },
+    /// Page a retained stream by the caller's cursor (ctl-cli §1a, #272): read-only, no
+    /// attachment, no ack, never a second consumer of the operator's lane; filtered to the
+    /// subjects the operator's lane may see.
+    EventsRead {
+        id: Ulid,
+        stream: String,
+        after: u64,
+        limit: usize,
     },
     /// Who issues this connection's operator requests (decision #269): `ctl --as LABEL`.
     /// Attribution only, recorded on the envelopes the operator principal signs; it grants
@@ -181,6 +193,9 @@ pub struct CaptureFrame {
     pub occluded: bool,
     /// When the captured frame was presented, in Unix milliseconds.
     pub presented_at_ms: Option<u64>,
+    /// The window's presented-frame count for that frame (ctl-cli §1 `frame_seq`).
+    #[serde(default)]
+    pub frame_seq: u64,
 }
 /// The text of one seat's screen, for `ctl screen` and `ctl wait`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -192,6 +207,32 @@ pub struct SeatScreen {
     pub cursor: (i32, usize),
     pub modes: u64,
     pub title: String,
+    #[serde(default)]
+    pub cols: usize,
+    /// The capture sequence this screen shows; it changes when the screen does.
+    #[serde(default)]
+    pub sequence: u64,
+    /// With `cells`: each row as runs of equal style.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cells: Option<Vec<Vec<StyledRun>>>,
+}
+/// One retained event as `EventsRead` pages it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RetainedEvent {
+    pub seq: u64,
+    pub subject: String,
+    pub source: String,
+    pub ts: u64,
+    pub payload: serde_json::Value,
+}
+/// A run of cells in one row with the same colours and attributes.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StyledRun {
+    pub text: String,
+    pub fg: bbt_core::Color,
+    pub bg: bbt_core::Color,
+    /// bbt-core cell flags (bold, italic, underline, inverse, …) as their bits.
+    pub flags: u16,
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body")]
@@ -286,6 +327,13 @@ pub enum GuiReply {
         #[serde(with = "text_id")]
         seat: SeatId,
         spec: SpawnSpec,
+    },
+    /// A page of retained events, oldest first; `next` is the cursor to continue from.
+    EventsRead {
+        op: Ulid,
+        stream: String,
+        events: Vec<RetainedEvent>,
+        next: Option<u64>,
     },
     /// One seat's visible screen: text rows (trailing blanks trimmed), the cursor, the
     /// terminal modes (keyboard protocol included) and the process generation input targets.

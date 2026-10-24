@@ -558,7 +558,7 @@ async fn gui_session(
                         continue;
                     }
                     let op=match &request.action {
-                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}=>*id,
+                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
@@ -643,9 +643,21 @@ async fn gui_session(
                                 if receipt.state==crate::InputState::PartialUnknown {return Err(invalid("input result is partial/unknown; keep the original id"));}
                                 Ok(GuiReply::Ok {op:id})
                             }
-                            GuiAction::Screen {id,seat}=>Ok(GuiReply::Screen {op:id,screen:client.gui_screen(seat).await?}),
+                            GuiAction::EventsRead {id,stream,after,limit}=> {
+                                let filter=crate::gui_events::filters(client.gui_messaging_subjects().await?);
+                                let (envelopes,next)=client.bus.read_page(&stream,filter,after,limit).await?;
+                                let events=envelopes.into_iter().map(|e| bbt_proto::gui::RetainedEvent {seq:e.seq,subject:e.event.subject,source:e.event.source,ts:e.event.ts,payload:e.event.payload}).collect();
+                                Ok(GuiReply::EventsRead {op:id,stream,events,next})
+                            }
+                            GuiAction::Screen {id,seat,cells}=>Ok(GuiReply::Screen {op:id,screen:client.gui_screen(seat,cells).await?}),
                             GuiAction::Resize {seat,generation,cols,rows}=> {
-                                client.gui_resize(Ulid::from(seat.0.0),generation,cols,rows).await?;
+                                if door==crate::mcp::Door::Ctl {
+                                    // Journaled under the op this reply returns; a resize to the
+                                    // same size is idempotent, so a retry needs no --op.
+                                    client.ctl_resize(Ulid::from(seat.0.0),generation,cols,rows,op,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
+                                } else {
+                                    client.gui_resize(Ulid::from(seat.0.0),generation,cols,rows).await?;
+                                }
                                 Ok(GuiReply::Ok {op})
                             }
                             GuiAction::ScheduleClose {seat,id,position}=> {

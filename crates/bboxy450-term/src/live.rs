@@ -1027,7 +1027,7 @@ async fn run(
                         GuiReply::CaptureAsk {op,path,seat}=>capture(CaptureAsk {id:op,path:PathBuf::from(path),seat:seat.map(|seat| SeatId::from_u128(seat.0))}),
                         GuiReply::Captured {op,path,..}=>logger.write(format!("capture {op} written: {path}")),
                         // The window never asks for a screen as text; ctl does.
-                        GuiReply::Screen {op,..}=>logger.write(format!("screen reply {op} unused by the window")),
+                        GuiReply::Screen {op,..}|GuiReply::EventsRead {op,..}=>logger.write(format!("ctl reply {op} unused by the window")),
                         GuiReply::OperatorSpawned {op,seat,spec}=> {
                             // Placed and focused as the launcher's own pick is.
                             let placed=Arc::make_mut(&mut model);

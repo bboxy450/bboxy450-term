@@ -1895,6 +1895,7 @@ impl App {
                     stale: true,
                     occluded: self.occluded,
                     presented_at_ms: unix_ms(self.last_presented),
+                    frame_seq: self.meter.total_frames(),
                 };
                 self.capture_for(ask, scale, frame);
             }
@@ -2608,6 +2609,7 @@ impl App {
                     stale: false,
                     occluded: false,
                     presented_at_ms: unix_ms(self.last_presented),
+                    frame_seq: self.meter.total_frames(),
                 };
                 self.capture_for(ask, scale, frame);
             }

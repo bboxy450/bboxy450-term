@@ -1323,6 +1323,51 @@ impl Broker {
         self.gui_cursor(lease, stream)
     }
 
+    fn read_page(
+        &self,
+        name: &str,
+        filter: &[String],
+        after: u64,
+        limit: usize,
+    ) -> Result<(Vec<Envelope>, Option<u64>)> {
+        let Some(stream) = self.streams.get(name) else {
+            return Ok((vec![], None));
+        };
+        let limit = limit.clamp(1, 128);
+        let db = sqlite::open(&stream.log.path)?;
+        let rows = {
+            let mut statement = db.prepare(
+                "SELECT seq,length(payload),subject FROM events WHERE seq>?1 ORDER BY seq LIMIT ?2",
+            )?;
+            statement
+                .query_map(params![sqlint(after)?, limit as i64], |row| {
+                    Ok((
+                        gui_uint(row, 0)?,
+                        gui_uint(row, 1)?,
+                        row.get::<_, String>(2)?,
+                    ))
+                })?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        };
+        let full = rows.len() == limit;
+        let mut through = after;
+        let mut events = Vec::new();
+        for (sequence, length, subject) in rows {
+            through = sequence;
+            // The operator's own lane filter; an event too large for one page is skipped
+            // and stays retained, as on the window's pages.
+            if !filter.iter().any(|p| matches(p, &subject)) || length > 64 * 1024 {
+                continue;
+            }
+            let envelope = stream
+                .log
+                .at(sequence)?
+                .ok_or_else(|| invalid("retained event missing"))?;
+            envelope.verify()?;
+            events.push(envelope);
+        }
+        Ok((events, full.then_some(through)))
+    }
     fn gui_page(
         &self,
         lease: &GuiLease,
@@ -1492,6 +1537,13 @@ enum Command {
     GuiDetach(GuiLease, oneshot::Sender<Result<()>>),
     GuiCursor(GuiLease, String, oneshot::Sender<Result<GuiCursor>>),
     GuiRead(GuiLease, String, u64, oneshot::Sender<Result<GuiCursor>>),
+    ReadPage(
+        String,
+        Vec<String>,
+        u64,
+        usize,
+        oneshot::Sender<Result<(Vec<Envelope>, Option<u64>)>>,
+    ),
     GuiPage(
         GuiLease,
         String,
@@ -1573,6 +1625,9 @@ impl BusHandle {
                     }
                     Command::GuiRead(lease, stream, sequence, reply) => {
                         let _ = reply.send(broker.gui_read(&lease, &stream, sequence));
+                    }
+                    Command::ReadPage(stream, filter, after, limit, reply) => {
+                        let _ = reply.send(broker.read_page(&stream, &filter, after, limit));
                     }
                     Command::GuiPage(lease, stream, after, limit, bytes, reply) => {
                         let _ = reply.send(broker.gui_page(&lease, &stream, after, limit, bytes));
@@ -1732,6 +1787,23 @@ impl BusHandle {
             .await
             .map_err(|_| invalid("GUI event router stopped"))?;
         rx.await.map_err(|_| invalid("GUI event router stopped"))?
+    }
+    /// A read-only page of a retained stream after `after`, filtered by `filter`: no
+    /// consumer, no attachment, no ack (ctl `EventsRead`, #272). Returns the verified events
+    /// and the cursor to continue from, None at the head.
+    pub(crate) async fn read_page(
+        &self,
+        stream: &str,
+        filter: Vec<String>,
+        after: u64,
+        limit: usize,
+    ) -> Result<(Vec<Envelope>, Option<u64>)> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::ReadPage(stream.into(), filter, after, limit, tx))
+            .await
+            .map_err(|_| invalid("event router stopped"))?;
+        rx.await.map_err(|_| invalid("event router stopped"))?
     }
     pub(crate) async fn gui_page(
         &self,

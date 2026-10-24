@@ -692,6 +692,7 @@ async fn ctl_capture_is_answered_by_the_window() {
         stale: false,
         occluded: false,
         presented_at_ms: Some(1_792_900_000_000),
+        frame_seq: 7,
     };
     let (path, seat) = answer(&mut session, None, current).await;
     assert_eq!((path.as_str(), seat), (out.to_str().unwrap(), None));
@@ -724,6 +725,7 @@ async fn ctl_capture_is_answered_by_the_window() {
         stale: true,
         occluded: true,
         presented_at_ms: Some(1_792_800_000_000),
+        frame_seq: 7,
     };
     answer(&mut session, None, stale).await;
     let (ok, lines) = asked.await.unwrap();
@@ -731,6 +733,7 @@ async fn ctl_capture_is_answered_by_the_window() {
     assert_eq!(lines[0]["stale"], true, "{lines:?}");
     assert_eq!(lines[0]["occluded"], true, "{lines:?}");
     assert_eq!(lines[0]["frame_presented_at"], 1_792_800_000_000u64);
+    assert_eq!(lines[0]["frame_seq"], 7);
 
     // The window's refusal reaches ctl as its error and exit 1.
     let asked = tokio::task::spawn_blocking({
@@ -1035,6 +1038,79 @@ async fn ctl_screen_input_and_wait_drive_a_seat() {
         "{plain}"
     );
 
+    // --cells gives each row as runs of equal style; --scrollback replays the capture range
+    // into the seat's size and gives its rows, history included (#27).
+    let (ok, lines) = ctl(&["seat", "screen", &seat, "--cells"]);
+    assert!(ok, "{lines:?}");
+    let runs = lines[0]["data"]["cells"].as_array().unwrap();
+    assert_eq!(
+        runs.len(),
+        lines[0]["data"]["rows"].as_array().unwrap().len()
+    );
+    assert!(
+        runs.iter().any(|row| row
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|run| run["text"].as_str().unwrap().contains("hello-42"))),
+        "{runs:?}"
+    );
+    let sequence = lines[0]["data"]["sequence"].as_u64().unwrap();
+    assert!(sequence > 0);
+    let range = format!("1..{sequence}");
+    let (ok, lines) = ctl(&["seat", "screen", &seat, "--scrollback", &range]);
+    assert!(ok, "{lines:?}");
+    let history: Vec<&str> = lines[0]["data"]["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r.as_str().unwrap())
+        .collect();
+    assert!(history.contains(&"hello-42"), "{history:?}");
+    let (ok, lines) = ctl(&["seat", "screen", &seat, "--scrollback", "9..1"]);
+    assert!(!ok && lines[0]["error"]["kind"] == "usage", "{lines:?}");
+
+    // resize goes through the window's resize path and the seat's screen follows.
+    let (ok, lines) = ctl(&["seat", "resize", &seat, "100x30"]);
+    assert!(ok && lines[0]["verb"] == "resize", "{lines:?}");
+    let resized = until("the seat at 100 columns", &root.join("none"), || {
+        let (_, lines) = ctl(&["seat", "screen", &seat]);
+        (lines[0]["data"]["cols"] == 100).then_some(lines)
+    });
+    assert_eq!(resized[0]["data"]["rows"].as_array().unwrap().len(), 30);
+
+    // watch: event lines (state from the seat's retained stream, the screen when its
+    // sequence moves), then one done line counting them.
+    let watched = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+        .args(["ctl", "seat", "watch", &seat, "--timeout", "1500"])
+        .env("BBOXY_RUN_DIR", &run)
+        .output()
+        .unwrap();
+    assert_eq!(watched.status.code(), Some(0));
+    let events: Vec<Value> = String::from_utf8_lossy(&watched.stdout)
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    let done = events.last().unwrap();
+    assert_eq!(done["done"], true, "{events:?}");
+    assert_eq!(
+        done["data"]["events"].as_u64().unwrap() as usize,
+        events.len() - 1
+    );
+    assert!(
+        events.iter().any(|e| e["event"]["kind"] == "screen"
+            && e["event"]["rows"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|r| r == "hello-42")),
+        "{events:?}"
+    );
+    assert!(
+        events.iter().any(|e| e["event"]["kind"] == "state"),
+        "{events:?}"
+    );
+
     // A wait that never matches is a timeout (exit 3) whose message ends with the screen.
     let timed = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
         .args([
@@ -1318,6 +1394,10 @@ async fn ctl_never_prints_secrets() {
         ],
         vec!["seat", "screen", &seat],
         vec!["seat", "screen", &seat, "--human"],
+        vec!["seat", "screen", &seat, "--cells"],
+        vec!["seat", "screen", &seat, "--scrollback", "1..4000"],
+        vec!["seat", "watch", &seat, "--timeout", "500"],
+        vec!["seat", "resize", &seat, "90x25"],
         vec!["seat", "type", &seat, "echo x"],
         vec!["seat", "key", &seat, "enter"],
         vec!["seat", "paste", &seat, paste],
