@@ -116,6 +116,21 @@ pub struct Glow {
     /// None: the glow.rim token.
     #[serde(default)]
     pub rim: Option<f32>,
+    /// The outer half drawn, px: None is R/2 (a pane, whose gutter fits it); a block clips
+    /// it to the spacing it has (rim-glow §8).
+    #[serde(default)]
+    pub outer: Option<f32>,
+    /// The rim's weight at rest, 0 to 1 (idle rows carry none); None: 1. Never scales the
+    /// swell.
+    #[serde(default)]
+    pub rim_alpha: Option<f32>,
+    /// The focus swell's envelope this frame, 0 to 1 (rim-glow §7); the host computes it
+    /// from when the swell started.
+    #[serde(default)]
+    pub swell: f32,
+    /// The waiting attention loop (attention §2).
+    #[serde(default)]
+    pub attention: bool,
 }
 impl Default for Glow {
     fn default() -> Self {
@@ -129,6 +144,10 @@ impl Default for Glow {
             tint: None,
             depth: None,
             rim: None,
+            outer: None,
+            rim_alpha: None,
+            swell: 0.,
+            attention: false,
         }
     }
 }

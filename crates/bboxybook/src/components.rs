@@ -664,6 +664,13 @@ pub(crate) fn rim(ctx: ui::Context, state: Option<ui::Glow>) -> materials::Rim {
             .unwrap_or(bbt_ui_model::TOKENS.glow.depth as f32),
         size: state.rim.unwrap_or(bbt_ui_model::TOKENS.glow.rim as f32),
         phase_ms: (state.seed % 10_000) as f32,
+        outer: state.outer.unwrap_or(f32::MAX).clamp(
+            0.,
+            state.rim.unwrap_or(bbt_ui_model::TOKENS.glow.rim as f32) / 2.,
+        ),
+        alpha: state.rim_alpha.unwrap_or(1.),
+        swell: state.swell.clamp(0., 1.),
+        attention: state.attention,
     }
 }
 pub(crate) fn configure_glow(g: &mut materials::Glow, ctx: ui::Context, state: Option<ui::Glow>) {

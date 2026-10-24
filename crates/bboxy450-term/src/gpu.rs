@@ -811,6 +811,13 @@ fn encode_ops(
                             depth: s.depth.unwrap_or(TOKENS.glow.depth as f32),
                             size: s.rim.unwrap_or(TOKENS.glow.rim as f32),
                             phase_ms: (s.seed % 10_000) as f32,
+                            outer: s
+                                .outer
+                                .unwrap_or(f32::MAX)
+                                .clamp(0., s.rim.unwrap_or(TOKENS.glow.rim as f32) / 2.),
+                            alpha: s.rim_alpha.unwrap_or(1.),
+                            swell: s.swell.clamp(0., 1.),
+                            attention: s.attention,
                         })
                     }
                     ui::Material::Glow => {

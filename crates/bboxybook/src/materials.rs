@@ -54,6 +54,10 @@ pub fn material(kind: Kind, theme: Theme) -> Material {
             depth: TOKENS.glow.depth as f32,
             size: TOKENS.glow.rim as f32,
             phase_ms: 0.,
+            outer: TOKENS.glow.rim as f32 / 2.,
+            alpha: 1.,
+            swell: 0.,
+            attention: false,
         }),
     }
 }

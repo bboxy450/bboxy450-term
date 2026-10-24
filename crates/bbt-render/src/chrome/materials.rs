@@ -3,7 +3,7 @@
 use super::{ChromeRenderer, ChromeTarget};
 use crate::{Result, device::DeviceContext};
 use bbt_ui_model::{
-    Theme,
+    TOKENS, Theme,
     draw::{Color, DrawList},
     layout::Rect,
 };
@@ -94,6 +94,16 @@ pub struct Rim {
     pub depth: f32,
     /// Added to the frame clock, so neighbouring panes do not move in step.
     pub phase_ms: f32,
+    /// The outer half actually drawn, px: R/2 for a pane, clipped to the spacing a block
+    /// has for any other block (rim-glow §8; 0 for rows that stack edge to edge).
+    pub outer: f32,
+    /// The rim's weight at rest (idle rows carry none); never scales the swell.
+    pub alpha: f32,
+    /// The focus swell's envelope, 0 to 1 (rim-glow §7): it reaches glow.swell px past the
+    /// rim's outer edge at 1. The host computes it from the swell's start on its clock.
+    pub swell: f32,
+    /// The waiting attention loop (attention §2): hue held, the rim pulsing with the swell.
+    pub attention: bool,
 }
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Material {
@@ -282,8 +292,10 @@ impl Surface {
                 };
                 // The state colour keeps the seat's alpha (an inferred seat draws at .5).
                 i.color = [state[0], state[1], state[2], r.color.0[3]];
-                // The rim's outer half lies outside the box: the quad grows by R/2 (vs adds one pixel).
-                i.p0[3] = r.size * 0.5 * scale;
+                // The rim's outer half and the swell lie outside the box: the quad grows by both
+                // (vs adds one pixel).
+                let reach = TOKENS.glow.swell as f32 * r.swell;
+                i.p0[3] = (r.outer + reach) * scale;
                 i.p1 = [
                     r.size * scale,
                     match r.activity {
@@ -295,10 +307,20 @@ impl Surface {
                     r.focus,
                     r.depth * scale,
                 ];
-                i.p2[0] = r.phase_ms;
-                if !(1.0..=32.).contains(&r.depth)
+                i.p2 = [
+                    r.phase_ms,
+                    reach * scale,
+                    r.swell,
+                    if r.attention { 1. } else { 0. },
+                ];
+                i.p3[0] = r.alpha;
+                i.p3[1] = r.outer * scale;
+                if !(0.0..=32.).contains(&r.depth)
                     || !(1.0..=16.).contains(&r.size)
+                    || !(0.0..=r.size * 0.5).contains(&r.outer)
                     || !(0.0..=1.).contains(&r.focus)
+                    || !(0.0..=1.).contains(&r.alpha)
+                    || !(0.0..=1.).contains(&r.swell)
                 {
                     return Err("invalid rim parameters".into());
                 }

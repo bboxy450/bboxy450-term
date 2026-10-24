@@ -417,6 +417,7 @@ impl Pane {
                 ui::Color::Rgba(c) => Some(c),
                 _ => None,
             },
+            ..ui::Glow::default()
         });
         // The rim lies inside the pane, above its strip and terminal like the lab's rim canvas:
         // the pane box carries it (a material paints after the box's children). A plain box
