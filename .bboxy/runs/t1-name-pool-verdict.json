@@ -1,0 +1,47 @@
+{
+  "source": "780e819362ff09d69b049f69c726cee96dfd542f",
+  "ci_exit": 0,
+  "clean_before": true,
+  "clean_after": true,
+  "strict_workspace_clippy": 0,
+  "workspace_tests": {
+    "scope": "workspace cargo test output before the smoke command",
+    "passed": 1263,
+    "failed": 0,
+    "ignored": 24,
+    "result_lines": 184
+  },
+  "smoke": "idle probe PASS: idle 10.002s frames=0 callbacks=0 updates=20 CPU p50=5.027ms p99=6.705ms samples=21 warm_encode_p50=4.151ms warm_encode_p99=4.524ms",
+  "current_cases": 2144,
+  "status_counts": {
+    "review pixels": 72,
+    "within policy": 2072
+  },
+  "geometry_required": 2040,
+  "geometry_measured": 2040,
+  "geometry_unproven": 0,
+  "geometry_mismatches": 0,
+  "strict_geometry_passed": true,
+  "reviews": 72,
+  "new_review_keys": [],
+  "removed_review_keys": [],
+  "review_baseline": "e733fe14254a accepted documents checkpoint",
+  "invariants": [
+    "invariants: 23 checks, 0 failures, 9 slow checks skipped"
+  ],
+  "gallery_manifest": {
+    "path": "/Users/feral/mydev/bboxy450-term-nyx/target/t1-name/gate-780e8193/gallery-hashes.jsonl",
+    "files": 13793,
+    "bytes": 813567623,
+    "sha256": "e0c36eea7a98095be18174d10e289f66ec8ab37fc6680aced789b373214b6708"
+  },
+  "report_sha256": "4bf8a98af72eabea79c390d25cc289d1c57fbedda354de2d10e08b0274c1554e",
+  "night": {
+    "source": "4d0d5994fcecff5323fc4a1972296d53ff72ed43",
+    "t1_script_exit": 0,
+    "runner_exit": 1,
+    "other_terminal_promises": "7 intentionally untested; no full-terminal green claim",
+    "u0_pending_base": "9dab09a1"
+  },
+  "scope": "one canonical name pool, GUI/MCP defaults, explicit overrides and restart persistence; no role, journal, placement or renderer change"
+}

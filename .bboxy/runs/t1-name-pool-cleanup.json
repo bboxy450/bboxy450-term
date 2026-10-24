@@ -1,0 +1,22 @@
+{
+  "gate": {
+    "removed": "/Users/feral/mydev/bboxy450-term-nyx/target/t1-ci-780e8193",
+    "files": 10105,
+    "allocated_unique_inode_bytes": 4162695168,
+    "complete": true,
+    "time": "2026-10-24T23:37:42.199096+00:00",
+    "ci_exit": 0,
+    "source": "780e819362ff09d69b049f69c726cee96dfd542f",
+    "gallery_retained": "/Users/feral/mydev/bboxy450-term-nyx/target/t1-name/gate-780e8193/parity"
+  },
+  "dev": {
+    "removed": "/Users/feral/mydev/bboxy450-term-nyx/target/t1-name-dev-direct",
+    "files": 8635,
+    "allocated_unique_inode_bytes": 2581299200,
+    "complete": true,
+    "time": "2026-10-24T22:25:36.560097+00:00",
+    "reason": "all owned dev/unit/night processes completed; retained exact sources/logs/digests outside cache"
+  },
+  "slot_released": "f40233e9-3e0a-4d72-912f-5527a7b6e043",
+  "owned_cache_allocated_bytes_removed": 6743994368
+}

@@ -1,0 +1,40 @@
+T1 shared name pool — Nyx Copperwing <EXECUTOR> handoff
+
+Exact signed gated source: 780e819362ff09d69b049f69c726cee96dfd542f.
+Branch nyx-seat-names, worktree /Users/feral/mydev/bboxy450-term-nyx.
+Clean detached cut target/ci-t1-780e8193; clean before and after.
+Base 40dafd1b9de5b8460051c30dcc6503e47c0136e1. Main moved during this gate to bd29abc353af6b069c8169bd24009ebbad5184e3; no post-gate rebase.
+This successor changes evidence paths only. No source or thresholds changed after the gate.
+
+Mechanism and acceptance
+crates/bbt-proto/src/seat_names.json:1 — canonical 14-name pool; src/seat_names.rs:4 checked const, :26 equality/unique/nonempty test.
+crates/bbt-mux/src/logic.rs:47 — first unused per-swarm registry name, including closed reservations; numbered tiers after exhaustion.
+logic.rs:2579 and :5152 — MCP and GUI default constructors use it; explicit names remain exact; :5087 registry helper.
+crates/bboxybook/src/modules.rs:54 — compile-time include_str data, parsed once; the original 15 sample values/order including explicit zsh remain identical. No dependency/lockfile/build.rs change.
+lab/web/components.js:36 and showcase.js:252/:373 — same generated pool for product spawn/reroll, including pending names; fixtures retain their explicit demo names.
+scripts/e2e/T1.sh:12 — three live default spawns have distinct nonempty names; explicit --name preserved. Existing default-spawn routes name=None (main.rs:337, live.rs:45).
+provider_gui replay test — real GUI, logic restart and supervisor restart retain the first pool name and one process; isolated MCP spawn test retains its pool name across restart.
+
+Actual verification
+sh scripts/ci-local.sh --parity — EXIT 0, exact clean source above, direct compiler, private target. Raw output t1-name-pool-ci.log.
+Strict all-target workspace Clippy -D warnings 0; workspace tests 1263 passed / 0 failed / 24 inherited ignores; UI I/O lint 0.
+Native smoke 0: idle 10.002s, 0 frames/callbacks. Standalone CLI logs no notification bundle, so this is not a notification-delivery proof.
+23 invariants passed, 0 failures; 9 slow checks skipped (no 967/load/performance claim).
+Current catalogue 2144 cases; strict required geometry 2040/2040 measured, 0 unproven/mismatches. 72 advisory review keys EXACTLY equal accepted document source e733fe14254a, 0 new/removed.
+Legacy diagnostic 1664 cases / 851 non-gating pixel reviews, unchanged policy.
+Focused checks/failures and exact commands are retained in core/focused logs: proto1/0, allocator2/0, real GUI replay1/0, isolated MCP1/0, token1/0, bboxybook16/0, lab40x4 with0 findings; pool exhaustion after1680 occupied names.
+
+Unattended night acceptance, Oracle-approved separate source
+4d0d5994fcecff5323fc4a1972296d53ff72ed43 stacks the same four T1 code commits on pending U0 9dab09a1. Union build0. This is not a U0 acceptance claim.
+Exact T1 script EXIT0 using generated private file custody, isolated HOME/records and real PTYs. The signed record is issued_by/run_by test-account:01M5R073FM0KRGB8YWBMM75558.
+Runner EXIT1 solely because T2-T8 intentionally have no selected script (untested); all8 record writes succeeded. No full-terminal green claim. Oracle repeats T1 on accepted U0 per 70175797.
+Night input digests, raw JSONL, verdict and signed record are committed alongside; the verification branch nyx-seat-names-night-proof retains the exact source. No operator/login Keychain/display/click/pane authorization was used.
+
+Scope held
+No role/default/authority, wire version, journal, placement, focus, renderer or existing-seat rename change. No merge/push/publication by this Executor.
+The initial sccache stall and initial missing-proto-import Clippy101 are disclosed in core; fixed locally/by the shared wrapper bypass. Broad pre-existing rustfmt differences were left alone, touched-file format checks0.
+
+Retention and cleanup
+Read-only gallery target/t1-name/gate-780e8193/parity, with capture/cases/layouts/report/web/native/backdrops; signed per-file hash manifest alongside.
+Gate target removed (4162695168 allocated bytes); dev target removed (2581299200); total6743994368. Slot3 released f40233e9. Build binaries retired with cache; exact signed source and reports/hashes/logs remain.
+Original document checkpoint is already accepted at main5e85ef2f; its signed handoff and retained named cut remain intact.
