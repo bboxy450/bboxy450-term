@@ -2355,7 +2355,10 @@ impl Worker {
                     Ok(path) => (crate::adapters::Endpoint::Claude { path }, None),
                     Err(reason) => (
                         crate::adapters::Endpoint::None,
-                        Some(format!("stored Claude socket registration: {reason}")),
+                        Some(crate::adapters::observe::short(
+                            &format!("stored Claude socket registration: {reason}"),
+                            512,
+                        )),
                     ),
                 },
                 None => (
@@ -3068,8 +3071,9 @@ impl Worker {
                                 view.adapter.invalidate();
                                 if matches!(view.delivery_endpoint, crate::adapters::Endpoint::None)
                                 {
-                                    view.delivery_failure = Some(format!(
-                                        "Claude session-file discovery failed: {error}"
+                                    view.delivery_failure = Some(crate::adapters::observe::short(
+                                        &format!("Claude session-file discovery failed: {error}"),
+                                        512,
                                     ));
                                 }
                             }
@@ -3211,8 +3215,9 @@ impl Worker {
                                 && outcome.evidence == Evidence::RecipientStored
                                 && let Some(reason) = delivery_failure
                             {
-                                outcome.note = format!(
-                                    "native attachment unavailable: {reason}; no mutation attempted"
+                                outcome.note = crate::adapters::observe::short(
+                                    &format!("native attachment unavailable: {reason}; no mutation attempted"),
+                                    640,
                                 );
                             }
                             Delivery {
