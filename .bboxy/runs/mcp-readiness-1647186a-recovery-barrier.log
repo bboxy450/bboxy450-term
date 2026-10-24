@@ -1,0 +1,25 @@
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0 CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true BBOXY_TEST_CUSTODY=memory CARGO_TERM_COLOR=never RUST_BACKTRACE=1 cargo test -p bboxy450-term --locked --test recovery supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv -- --exact --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T06:40:08.755373+00:00
+OWNED_COMMAND_PID 18931
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 3.50s
+     Running tests/recovery.rs (target/mcp-readiness-zkyjpv_0/debug/deps/recovery-eeacdfa6a781cfc0)
+
+running 1 test
+logic worker exited: supervisor disconnected
+claude resume argv first read: 2, expected 2
+codex resume argv first read: 1, expected 2
+codex resume argv publication wait was needed: first=Some(1), observed=2
+StaleGeneration: GUI request for seat 01M5PA6WAVZ5APA8FFENG73DNN rejected: displayed generation 1, current 2; dropped=1
+StaleGeneration: GUI request for seat 01M5PA6WAVZ5APA8FFENG73DNN rejected: displayed generation 1, current 2; dropped=2
+supervisor recovery: 3 stable seat IDs, gen1->2, zsh/Claude/Codex new PIDs; 100x30, retained screen, explicit gap, actual resume argv, post-restart echo; stale Input ID preserved, drops1/2 counted, stale input file absent, stale resize rejected at PTY30x100
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 1.98s
+
+EXIT 0 elapsed_seconds=5.693 PID=18931

@@ -1,0 +1,8 @@
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0 CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=0 CARGO_PROFILE_TEST_OPT_LEVEL=0 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true BBOXY_TEST_CUSTODY=memory CARGO_TERM_COLOR=never RUST_BACKTRACE=1 cargo test -p bbt-mux --test mcp --no-run --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T06:23:19.809593+00:00
+OWNED_COMMAND_PID 97027
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 3.12s
+  Executable tests/mcp.rs (target/mcp-readiness-zkyjpv_0/debug/deps/mcp-d15c0064ae7b8fd0)
+EXIT 0 elapsed_seconds=3.168 PID=97027

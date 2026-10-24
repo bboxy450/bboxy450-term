@@ -1,0 +1,27 @@
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
+
+static double now(void) {
+    struct timespec t;
+    if (clock_gettime(CLOCK_MONOTONIC, &t)) exit(2);
+    return (double)t.tv_sec + (double)t.tv_nsec / 1e9;
+}
+
+int main(int argc, char **argv) {
+    if (argc != 2) return 2;
+    double bound = strtod(argv[1], NULL);
+    if (bound <= 0 || bound > 1800) return 2;
+    double start = now();
+    volatile uint64_t state = (uint64_t)getpid();
+    for (unsigned i = 0; i != 100000; ++i) state = state * 6364136223846793005ULL + 1;
+    printf("READY pid=%d bound_seconds=%.3f\n", getpid(), bound);
+    fflush(stdout);
+    while (now() - start < bound) {
+        for (unsigned i = 0; i != 16384; ++i) state = state * 6364136223846793005ULL + 1;
+    }
+    printf("BOUNDED_EXIT pid=%d elapsed_seconds=%.6f checksum=%llu\n", getpid(), now() - start, (unsigned long long)state);
+    return 0;
+}

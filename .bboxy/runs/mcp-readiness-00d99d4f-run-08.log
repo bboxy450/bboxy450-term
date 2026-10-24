@@ -1,0 +1,14 @@
+SOURCE 00d99d4fe0b8e13a320eabe76c94e79bce53bd5f
+COMMAND ['cargo', 'test', '-p', 'bbt-mux', '--test', 'mcp', '--locked', 'mcp_seat_input_consumes_readiness_and_enter_is_explicit', '--', '--exact', '--nocapture']
+START 2026-10-24T06:24:24.992913+00:00
+WORKERS [98309, 98311, 98312, 98314, 98315, 98317, 98320, 98322]
+    Finished `test` profile [unoptimized] target(s) in 0.40s
+     Running tests/mcp.rs (target/mcp-readiness-zkyjpv_0/debug/deps/mcp-d15c0064ae7b8fd0)
+
+running 1 test
+test mcp_seat_input_consumes_readiness_and_enter_is_explicit ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 31 filtered out; finished in 1.68s
+
+
+EXIT 0 elapsed_seconds=2.319535

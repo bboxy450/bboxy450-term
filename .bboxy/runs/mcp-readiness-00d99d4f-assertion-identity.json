@@ -1,0 +1,7 @@
+{
+  "verification": "Original assigned test body is byte-identical after mapping only new fixture setup, two spawn arguments and the two wait call sites back to baseline. Every original assertion and mutation/retry argument remains unchanged.",
+  "base": "96e6ce70b8f6af533e5f313ff97f87bc619dfe74",
+  "baseline_body_sha256": "96f753b0e2f775584addfdf019c4866b45bd35f10f4d756111c4522ab0da3742",
+  "normalized_new_body_sha256": "96f753b0e2f775584addfdf019c4866b45bd35f10f4d756111c4522ab0da3742",
+  "changed_file": "crates/bbt-mux/tests/mcp.rs"
+}

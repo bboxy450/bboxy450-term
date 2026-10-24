@@ -1,0 +1,1086 @@
+{
+  "source": "6d800cc80df38d985ec74f3d24a846dc6c852280",
+  "load_authorization_message": "672476dd-1654-4a57-9ee3-acf69a48250b",
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "bboxy450-term",
+    "--test",
+    "recovery",
+    "--locked",
+    "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+    "--",
+    "--exact",
+    "--nocapture"
+  ],
+  "profile_env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "BBOXY_TEST_CUSTODY": "memory",
+    "RUST_BACKTRACE": "1"
+  },
+  "cpu_count": 10,
+  "worker_count": 8,
+  "run_limit_seconds": 90,
+  "test_threads": "host libtest default; RUST_TEST_THREADS unset",
+  "test_binary": "/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0/debug/deps/recovery-eeacdfa6a781cfc0",
+  "test_binary_sha256": "1fffb5c15f67740fa47306b28d348e38bf4554594157cf4dbb3009fe71ffdf33",
+  "worker_compile": [
+    "cc",
+    "-O0",
+    "-std=c11",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/cpu-worker.c",
+    "-o",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/cpu-worker"
+  ],
+  "worker_binary_sha256": "0d5cf2dabde7fd66ccce1543050558a412db16b6c4385a9795bea900c47600e5",
+  "runs": [
+    {
+      "index": 1,
+      "started_utc": "2026-10-24T06:38:06.109403+00:00",
+      "load_before": [
+        6.86962890625,
+        10.40966796875,
+        13.48828125
+      ],
+      "workers": [
+        {
+          "pid": 17060,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-1-worker-0.log",
+          "ready": "READY pid=17060 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17061,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-1-worker-1.log",
+          "ready": "READY pid=17061 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17062,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-1-worker-2.log",
+          "ready": "READY pid=17062 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17063,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-1-worker-3.log",
+          "ready": "READY pid=17063 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17064,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-1-worker-4.log",
+          "ready": "READY pid=17064 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17065,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-1-worker-5.log",
+          "ready": "READY pid=17065 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17066,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-1-worker-6.log",
+          "ready": "READY pid=17066 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17068,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-1-worker-7.log",
+          "ready": "READY pid=17068 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 1.995800994336605e-05,
+          "load": [
+            6.86962890625,
+            10.40966796875,
+            13.48828125
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:38:06.373254+00:00",
+      "load_at_test_start": [
+        6.86962890625,
+        10.40966796875,
+        13.48828125
+      ],
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-1.log",
+      "cargo_pid": 17069,
+      "exit": 0,
+      "elapsed_seconds": 3.332712250004988,
+      "load_after": [
+        7.5205078125,
+        10.48583984375,
+        13.4970703125
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "c34d1091efde111728d46a49eba4a9bfaaf74f1a677554b74769614bc38d5418",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 17069,
+          "start": "Fri Oct 23 23:38:06 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:38:09.723386+00:00"
+    },
+    {
+      "index": 2,
+      "started_utc": "2026-10-24T06:38:09.796535+00:00",
+      "load_before": [
+        7.5205078125,
+        10.48583984375,
+        13.4970703125
+      ],
+      "workers": [
+        {
+          "pid": 17130,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-2-worker-0.log",
+          "ready": "READY pid=17130 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17131,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-2-worker-1.log",
+          "ready": "READY pid=17131 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17132,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-2-worker-2.log",
+          "ready": "READY pid=17132 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17134,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-2-worker-3.log",
+          "ready": "READY pid=17134 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17135,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-2-worker-4.log",
+          "ready": "READY pid=17135 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17136,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-2-worker-5.log",
+          "ready": "READY pid=17136 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17137,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-2-worker-6.log",
+          "ready": "READY pid=17137 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17138,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-2-worker-7.log",
+          "ready": "READY pid=17138 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 7.750000804662704e-06,
+          "load": [
+            7.5205078125,
+            10.48583984375,
+            13.4970703125
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:38:09.855232+00:00",
+      "load_at_test_start": [
+        7.5205078125,
+        10.48583984375,
+        13.4970703125
+      ],
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-2.log",
+      "cargo_pid": 17140,
+      "exit": 0,
+      "elapsed_seconds": 3.0853701670421287,
+      "load_after": [
+        7.5205078125,
+        10.48583984375,
+        13.4970703125
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "0cf4e8eb370c5e6ea99d8b1cfa82b52a379d4be2c6995db287094d0fb8348bda",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 17140,
+          "start": "Fri Oct 23 23:38:09 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:38:12.966480+00:00"
+    },
+    {
+      "index": 3,
+      "started_utc": "2026-10-24T06:38:13.058117+00:00",
+      "load_before": [
+        7.5205078125,
+        10.48583984375,
+        13.4970703125
+      ],
+      "workers": [
+        {
+          "pid": 17206,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-3-worker-0.log",
+          "ready": "READY pid=17206 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17207,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-3-worker-1.log",
+          "ready": "READY pid=17207 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17208,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-3-worker-2.log",
+          "ready": "READY pid=17208 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17209,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-3-worker-3.log",
+          "ready": "READY pid=17209 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17210,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-3-worker-4.log",
+          "ready": "READY pid=17210 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17211,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-3-worker-5.log",
+          "ready": "READY pid=17211 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17212,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-3-worker-6.log",
+          "ready": "READY pid=17212 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17213,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-3-worker-7.log",
+          "ready": "READY pid=17213 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 8.833012543618679e-06,
+          "load": [
+            7.5205078125,
+            10.48583984375,
+            13.4970703125
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:38:13.109898+00:00",
+      "load_at_test_start": [
+        7.5205078125,
+        10.48583984375,
+        13.4970703125
+      ],
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-3.log",
+      "cargo_pid": 17214,
+      "exit": 0,
+      "elapsed_seconds": 3.5982249170192517,
+      "load_after": [
+        8.83984375,
+        10.7099609375,
+        13.55859375
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "61dd4cf3861aea44be6586863dc7703be07195c6b415137ece60039b05090af6",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 17214,
+          "start": "Fri Oct 23 23:38:13 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:38:16.721516+00:00"
+    },
+    {
+      "index": 4,
+      "started_utc": "2026-10-24T06:38:16.789390+00:00",
+      "load_before": [
+        8.83984375,
+        10.7099609375,
+        13.55859375
+      ],
+      "workers": [
+        {
+          "pid": 17276,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-4-worker-0.log",
+          "ready": "READY pid=17276 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17277,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-4-worker-1.log",
+          "ready": "READY pid=17277 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17278,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-4-worker-2.log",
+          "ready": "READY pid=17278 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17279,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-4-worker-3.log",
+          "ready": "READY pid=17279 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17280,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-4-worker-4.log",
+          "ready": "READY pid=17280 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17281,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-4-worker-5.log",
+          "ready": "READY pid=17281 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17282,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-4-worker-6.log",
+          "ready": "READY pid=17282 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17283,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-4-worker-7.log",
+          "ready": "READY pid=17283 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 1.3790966477245092e-05,
+          "load": [
+            8.83984375,
+            10.7099609375,
+            13.55859375
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:38:16.833076+00:00",
+      "load_at_test_start": [
+        8.83984375,
+        10.7099609375,
+        13.55859375
+      ],
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-4.log",
+      "cargo_pid": 17284,
+      "exit": 0,
+      "elapsed_seconds": 3.086082833004184,
+      "load_after": [
+        9.5732421875,
+        10.83056640625,
+        13.58447265625
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "f30739f216dd080b5585d15722038c9f990d61d5fe274dde0e338408b45940fe",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 17284,
+          "start": "Fri Oct 23 23:38:16 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:38:19.938642+00:00"
+    },
+    {
+      "index": 5,
+      "started_utc": "2026-10-24T06:38:20.015883+00:00",
+      "load_before": [
+        9.5732421875,
+        10.83056640625,
+        13.58447265625
+      ],
+      "workers": [
+        {
+          "pid": 17376,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-5-worker-0.log",
+          "ready": "READY pid=17376 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17377,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-5-worker-1.log",
+          "ready": "READY pid=17377 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17378,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-5-worker-2.log",
+          "ready": "READY pid=17378 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17379,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-5-worker-3.log",
+          "ready": "READY pid=17379 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17380,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-5-worker-4.log",
+          "ready": "READY pid=17380 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17381,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-5-worker-5.log",
+          "ready": "READY pid=17381 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17382,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-5-worker-6.log",
+          "ready": "READY pid=17382 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17383,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-5-worker-7.log",
+          "ready": "READY pid=17383 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 9.334005881100893e-06,
+          "load": [
+            9.5732421875,
+            10.83056640625,
+            13.58447265625
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:38:20.059849+00:00",
+      "load_at_test_start": [
+        9.5732421875,
+        10.83056640625,
+        13.58447265625
+      ],
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-5.log",
+      "cargo_pid": 17384,
+      "exit": 0,
+      "elapsed_seconds": 3.6484757920261472,
+      "load_after": [
+        9.5732421875,
+        10.83056640625,
+        13.58447265625
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "650bdc1ed11146e3bac02ee0518b8d53ca8b3da5bd41d7ffb3f6a95ade20db4e",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 17384,
+          "start": "Fri Oct 23 23:38:20 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:38:23.741475+00:00"
+    },
+    {
+      "index": 6,
+      "started_utc": "2026-10-24T06:38:23.865943+00:00",
+      "load_before": [
+        10.16748046875,
+        10.9326171875,
+        13.60400390625
+      ],
+      "workers": [
+        {
+          "pid": 17534,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-6-worker-0.log",
+          "ready": "READY pid=17534 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17535,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-6-worker-1.log",
+          "ready": "READY pid=17535 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17536,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-6-worker-2.log",
+          "ready": "READY pid=17536 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17537,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-6-worker-3.log",
+          "ready": "READY pid=17537 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17538,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-6-worker-4.log",
+          "ready": "READY pid=17538 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17539,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-6-worker-5.log",
+          "ready": "READY pid=17539 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17540,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-6-worker-6.log",
+          "ready": "READY pid=17540 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17541,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-6-worker-7.log",
+          "ready": "READY pid=17541 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 7.333001121878624e-06,
+          "load": [
+            10.16748046875,
+            10.9326171875,
+            13.60400390625
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:38:23.937171+00:00",
+      "load_at_test_start": [
+        10.16748046875,
+        10.9326171875,
+        13.60400390625
+      ],
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-6.log",
+      "cargo_pid": 17542,
+      "exit": 0,
+      "elapsed_seconds": 3.1033857080037706,
+      "load_after": [
+        10.16748046875,
+        10.9326171875,
+        13.60400390625
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "135d3fc6837289e01c1ccaf965d0b1e6b2fb1104e93be0cb031311ea19045be9",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 17542,
+          "start": "Fri Oct 23 23:38:23 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:38:27.058099+00:00"
+    },
+    {
+      "index": 7,
+      "started_utc": "2026-10-24T06:38:27.117269+00:00",
+      "load_before": [
+        10.16748046875,
+        10.9326171875,
+        13.60400390625
+      ],
+      "workers": [
+        {
+          "pid": 17593,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-7-worker-0.log",
+          "ready": "READY pid=17593 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17594,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-7-worker-1.log",
+          "ready": "READY pid=17594 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17595,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-7-worker-2.log",
+          "ready": "READY pid=17595 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17596,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-7-worker-3.log",
+          "ready": "READY pid=17596 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17597,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-7-worker-4.log",
+          "ready": "READY pid=17597 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17598,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-7-worker-5.log",
+          "ready": "READY pid=17598 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17599,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-7-worker-6.log",
+          "ready": "READY pid=17599 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17600,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-7-worker-7.log",
+          "ready": "READY pid=17600 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 1.1541997082531452e-05,
+          "load": [
+            10.16748046875,
+            10.9326171875,
+            13.60400390625
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:38:27.158382+00:00",
+      "load_at_test_start": [
+        10.16748046875,
+        10.9326171875,
+        13.60400390625
+      ],
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-7.log",
+      "cargo_pid": 17601,
+      "exit": 0,
+      "elapsed_seconds": 2.877436625014525,
+      "load_after": [
+        10.79443359375,
+        11.0498046875,
+        13.62939453125
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "bc29f091f3556c97f6197949a59f663a2c2307c54077d4456856484d3dda915c",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 17601,
+          "start": "Fri Oct 23 23:38:27 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:38:30.051644+00:00"
+    },
+    {
+      "index": 8,
+      "started_utc": "2026-10-24T06:38:30.125135+00:00",
+      "load_before": [
+        10.79443359375,
+        11.0498046875,
+        13.62939453125
+      ],
+      "workers": [
+        {
+          "pid": 17653,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-8-worker-0.log",
+          "ready": "READY pid=17653 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17654,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-8-worker-1.log",
+          "ready": "READY pid=17654 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17655,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-8-worker-2.log",
+          "ready": "READY pid=17655 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17656,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-8-worker-3.log",
+          "ready": "READY pid=17656 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17657,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-8-worker-4.log",
+          "ready": "READY pid=17657 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17658,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-8-worker-5.log",
+          "ready": "READY pid=17658 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17659,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-8-worker-6.log",
+          "ready": "READY pid=17659 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17661,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-8-worker-7.log",
+          "ready": "READY pid=17661 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 1.291697844862938e-05,
+          "load": [
+            10.79443359375,
+            11.0498046875,
+            13.62939453125
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:38:30.156233+00:00",
+      "load_at_test_start": [
+        10.79443359375,
+        11.0498046875,
+        13.62939453125
+      ],
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-8.log",
+      "cargo_pid": 17662,
+      "exit": 0,
+      "elapsed_seconds": 3.368952166987583,
+      "load_after": [
+        10.79443359375,
+        11.0498046875,
+        13.62939453125
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "85d5ad1aea219ac603606a5faf39d6caf05cfe12be47cdb33459de75963ff7c3",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 17662,
+          "start": "Fri Oct 23 23:38:30 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:38:33.546895+00:00"
+    },
+    {
+      "index": 9,
+      "started_utc": "2026-10-24T06:38:33.619991+00:00",
+      "load_before": [
+        10.79443359375,
+        11.0498046875,
+        13.62939453125
+      ],
+      "workers": [
+        {
+          "pid": 17727,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-9-worker-0.log",
+          "ready": "READY pid=17727 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17728,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-9-worker-1.log",
+          "ready": "READY pid=17728 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17729,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-9-worker-2.log",
+          "ready": "READY pid=17729 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17730,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-9-worker-3.log",
+          "ready": "READY pid=17730 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17731,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-9-worker-4.log",
+          "ready": "READY pid=17731 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17732,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-9-worker-5.log",
+          "ready": "READY pid=17732 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17733,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-9-worker-6.log",
+          "ready": "READY pid=17733 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17734,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-9-worker-7.log",
+          "ready": "READY pid=17734 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 1.2208998668938875e-05,
+          "load": [
+            10.79443359375,
+            11.0498046875,
+            13.62939453125
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:38:33.657504+00:00",
+      "load_at_test_start": [
+        10.79443359375,
+        11.0498046875,
+        13.62939453125
+      ],
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-9.log",
+      "cargo_pid": 17735,
+      "exit": 0,
+      "elapsed_seconds": 3.3544197500450537,
+      "load_after": [
+        12.251953125,
+        11.34765625,
+        13.71923828125
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "72a450c66355d30f4abe09998d65dba3c6d2b8b4b32e2ed0a9928d7ab57e00ab",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 17735,
+          "start": "Fri Oct 23 23:38:33 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:38:37.047702+00:00"
+    },
+    {
+      "index": 10,
+      "started_utc": "2026-10-24T06:38:37.111631+00:00",
+      "load_before": [
+        12.251953125,
+        11.34765625,
+        13.71923828125
+      ],
+      "workers": [
+        {
+          "pid": 17841,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-10-worker-0.log",
+          "ready": "READY pid=17841 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17842,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-10-worker-1.log",
+          "ready": "READY pid=17842 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17843,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-10-worker-2.log",
+          "ready": "READY pid=17843 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17844,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-10-worker-3.log",
+          "ready": "READY pid=17844 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17845,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-10-worker-4.log",
+          "ready": "READY pid=17845 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17846,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-10-worker-5.log",
+          "ready": "READY pid=17846 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17847,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-10-worker-6.log",
+          "ready": "READY pid=17847 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 17848,
+          "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-10-worker-7.log",
+          "ready": "READY pid=17848 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 1.0500021744519472e-05,
+          "load": [
+            12.251953125,
+            11.34765625,
+            13.71923828125
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:38:37.143619+00:00",
+      "load_at_test_start": [
+        12.251953125,
+        11.34765625,
+        13.71923828125
+      ],
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/run-10.log",
+      "cargo_pid": 17849,
+      "exit": 0,
+      "elapsed_seconds": 2.8363789999857545,
+      "load_after": [
+        12.7919921875,
+        11.474609375,
+        13.75
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "7d5f3d0b0f494a4b7ef7f0e0b1e93758e5931884a2647b517733a8cf4d3b7ada",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 17849,
+          "start": "Fri Oct 23 23:38:37 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:38:40.000448+00:00"
+    }
+  ]
+}

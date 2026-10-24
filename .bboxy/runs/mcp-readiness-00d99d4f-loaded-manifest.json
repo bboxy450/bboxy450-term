@@ -1,0 +1,1086 @@
+{
+  "source": "00d99d4fe0b8e13a320eabe76c94e79bce53bd5f",
+  "load_authorization_message": "abb9ecfa-92c0-45f5-ac81-c57096206ec5",
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--test",
+    "mcp",
+    "--locked",
+    "mcp_seat_input_consumes_readiness_and_enter_is_explicit",
+    "--",
+    "--exact",
+    "--nocapture"
+  ],
+  "profile_env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "0",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "0",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "BBOXY_TEST_CUSTODY": "memory",
+    "RUST_BACKTRACE": "1"
+  },
+  "cpu_count": 10,
+  "worker_count": 8,
+  "run_limit_seconds": 90,
+  "test_threads": "host libtest default; RUST_TEST_THREADS unset",
+  "test_binary": "/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0/debug/deps/mcp-d15c0064ae7b8fd0",
+  "test_binary_sha256": "7dcba9ca712346c214bc0bb67a5225437910071c88f56a33a7408bec948cb64a",
+  "worker_compile": [
+    "cc",
+    "-O0",
+    "-std=c11",
+    "/private/tmp/sable-mcp-ready-yqdlc2t3/cpu-worker.c",
+    "-o",
+    "/private/tmp/sable-mcp-ready-yqdlc2t3/cpu-worker"
+  ],
+  "worker_binary_sha256": "0d5cf2dabde7fd66ccce1543050558a412db16b6c4385a9795bea900c47600e5",
+  "runs": [
+    {
+      "index": 1,
+      "started_utc": "2026-10-24T06:24:07.462230+00:00",
+      "load_before": [
+        6.35986328125,
+        13.02099609375,
+        14.9482421875
+      ],
+      "workers": [
+        {
+          "pid": 97704,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-1-worker-0.log",
+          "ready": "READY pid=97704 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97705,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-1-worker-1.log",
+          "ready": "READY pid=97705 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97706,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-1-worker-2.log",
+          "ready": "READY pid=97706 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97707,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-1-worker-3.log",
+          "ready": "READY pid=97707 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97708,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-1-worker-4.log",
+          "ready": "READY pid=97708 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97709,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-1-worker-5.log",
+          "ready": "READY pid=97709 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97710,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-1-worker-6.log",
+          "ready": "READY pid=97710 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97711,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-1-worker-7.log",
+          "ready": "READY pid=97711 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 1.087499549612403e-05,
+          "load": [
+            6.35986328125,
+            13.02099609375,
+            14.9482421875
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:24:07.614842+00:00",
+      "load_at_test_start": [
+        6.35986328125,
+        13.02099609375,
+        14.9482421875
+      ],
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-1.log",
+      "cargo_pid": 97712,
+      "exit": 0,
+      "elapsed_seconds": 2.836948374984786,
+      "load_after": [
+        8.65283203125,
+        13.3857421875,
+        15.0654296875
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "b004f51e3b0cc09319dcfe756c078d0eb26702a503f5a813608639173dc06972",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 97712,
+          "start": "Fri Oct 23 23:24:07 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:24:10.467734+00:00"
+    },
+    {
+      "index": 2,
+      "started_utc": "2026-10-24T06:24:10.559690+00:00",
+      "load_before": [
+        8.65283203125,
+        13.3857421875,
+        15.0654296875
+      ],
+      "workers": [
+        {
+          "pid": 97769,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-2-worker-0.log",
+          "ready": "READY pid=97769 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97770,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-2-worker-1.log",
+          "ready": "READY pid=97770 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97772,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-2-worker-2.log",
+          "ready": "READY pid=97772 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97773,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-2-worker-3.log",
+          "ready": "READY pid=97773 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97774,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-2-worker-4.log",
+          "ready": "READY pid=97774 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97775,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-2-worker-5.log",
+          "ready": "READY pid=97775 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97776,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-2-worker-6.log",
+          "ready": "READY pid=97776 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97777,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-2-worker-7.log",
+          "ready": "READY pid=97777 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 1.0458985343575478e-05,
+          "load": [
+            8.65283203125,
+            13.3857421875,
+            15.0654296875
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:24:10.612947+00:00",
+      "load_at_test_start": [
+        8.65283203125,
+        13.3857421875,
+        15.0654296875
+      ],
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-2.log",
+      "cargo_pid": 97778,
+      "exit": 0,
+      "elapsed_seconds": 2.30736766703194,
+      "load_after": [
+        8.65283203125,
+        13.3857421875,
+        15.0654296875
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "5482a3d6d03b4f7030ecab02b0423b3a50fc5da8f745051bcb96c7dc95f39796",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 97778,
+          "start": "Fri Oct 23 23:24:10 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:24:12.945891+00:00"
+    },
+    {
+      "index": 3,
+      "started_utc": "2026-10-24T06:24:13.029513+00:00",
+      "load_before": [
+        8.65283203125,
+        13.3857421875,
+        15.0654296875
+      ],
+      "workers": [
+        {
+          "pid": 97904,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-3-worker-0.log",
+          "ready": "READY pid=97904 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97905,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-3-worker-1.log",
+          "ready": "READY pid=97905 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97906,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-3-worker-2.log",
+          "ready": "READY pid=97906 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97907,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-3-worker-3.log",
+          "ready": "READY pid=97907 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97908,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-3-worker-4.log",
+          "ready": "READY pid=97908 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97909,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-3-worker-5.log",
+          "ready": "READY pid=97909 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97910,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-3-worker-6.log",
+          "ready": "READY pid=97910 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97911,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-3-worker-7.log",
+          "ready": "READY pid=97911 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 1.1749973054975271e-05,
+          "load": [
+            8.65283203125,
+            13.3857421875,
+            15.0654296875
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:24:13.069884+00:00",
+      "load_at_test_start": [
+        8.65283203125,
+        13.3857421875,
+        15.0654296875
+      ],
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-3.log",
+      "cargo_pid": 97912,
+      "exit": 0,
+      "elapsed_seconds": 2.316991583968047,
+      "load_after": [
+        9.40087890625,
+        13.4619140625,
+        15.08251953125
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "8a574ca7badeb7fae4d144f91fce037a43593deabe7a238da03225d5fd2e07b6",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 97912,
+          "start": "Fri Oct 23 23:24:13 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:24:15.399952+00:00"
+    },
+    {
+      "index": 4,
+      "started_utc": "2026-10-24T06:24:15.489924+00:00",
+      "load_before": [
+        9.40087890625,
+        13.4619140625,
+        15.08251953125
+      ],
+      "workers": [
+        {
+          "pid": 97972,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-4-worker-0.log",
+          "ready": "READY pid=97972 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97973,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-4-worker-1.log",
+          "ready": "READY pid=97973 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97974,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-4-worker-2.log",
+          "ready": "READY pid=97974 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97975,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-4-worker-3.log",
+          "ready": "READY pid=97975 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97976,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-4-worker-4.log",
+          "ready": "READY pid=97976 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97977,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-4-worker-5.log",
+          "ready": "READY pid=97977 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97978,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-4-worker-6.log",
+          "ready": "READY pid=97978 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 97979,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-4-worker-7.log",
+          "ready": "READY pid=97979 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 7.750000804662704e-06,
+          "load": [
+            9.40087890625,
+            13.4619140625,
+            15.08251953125
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:24:15.529114+00:00",
+      "load_at_test_start": [
+        9.40087890625,
+        13.4619140625,
+        15.08251953125
+      ],
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-4.log",
+      "cargo_pid": 97980,
+      "exit": 0,
+      "elapsed_seconds": 2.3310485419933684,
+      "load_after": [
+        9.40087890625,
+        13.4619140625,
+        15.08251953125
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "531f15d5c5d8c056640957d6ac97bd3417fd48b30e82fccc7dcafba380ea83c4",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 97980,
+          "start": "Fri Oct 23 23:24:15 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:24:17.867984+00:00"
+    },
+    {
+      "index": 5,
+      "started_utc": "2026-10-24T06:24:17.951190+00:00",
+      "load_before": [
+        9.40087890625,
+        13.4619140625,
+        15.08251953125
+      ],
+      "workers": [
+        {
+          "pid": 98038,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-5-worker-0.log",
+          "ready": "READY pid=98038 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98039,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-5-worker-1.log",
+          "ready": "READY pid=98039 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98040,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-5-worker-2.log",
+          "ready": "READY pid=98040 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98041,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-5-worker-3.log",
+          "ready": "READY pid=98041 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98042,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-5-worker-4.log",
+          "ready": "READY pid=98042 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98043,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-5-worker-5.log",
+          "ready": "READY pid=98043 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98046,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-5-worker-6.log",
+          "ready": "READY pid=98046 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98050,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-5-worker-7.log",
+          "ready": "READY pid=98050 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 1.4750054106116295e-05,
+          "load": [
+            9.40087890625,
+            13.4619140625,
+            15.08251953125
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:24:17.987736+00:00",
+      "load_at_test_start": [
+        9.40087890625,
+        13.4619140625,
+        15.08251953125
+      ],
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-5.log",
+      "cargo_pid": 98051,
+      "exit": 0,
+      "elapsed_seconds": 2.130898541014176,
+      "load_after": [
+        11.93115234375,
+        13.9189453125,
+        15.234375
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "ee6414367f09e946a1b49a88e2073cc6457fb5ccf9eed8e253d33fa97288246a",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 98051,
+          "start": "Fri Oct 23 23:24:17 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:24:20.140216+00:00"
+    },
+    {
+      "index": 6,
+      "started_utc": "2026-10-24T06:24:20.226563+00:00",
+      "load_before": [
+        11.93115234375,
+        13.9189453125,
+        15.234375
+      ],
+      "workers": [
+        {
+          "pid": 98151,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-6-worker-0.log",
+          "ready": "READY pid=98151 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98152,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-6-worker-1.log",
+          "ready": "READY pid=98152 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98153,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-6-worker-2.log",
+          "ready": "READY pid=98153 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98154,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-6-worker-3.log",
+          "ready": "READY pid=98154 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98155,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-6-worker-4.log",
+          "ready": "READY pid=98155 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98158,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-6-worker-5.log",
+          "ready": "READY pid=98158 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98159,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-6-worker-6.log",
+          "ready": "READY pid=98159 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98161,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-6-worker-7.log",
+          "ready": "READY pid=98161 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 1.1374999303370714e-05,
+          "load": [
+            11.93115234375,
+            13.9189453125,
+            15.234375
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:24:20.261802+00:00",
+      "load_at_test_start": [
+        11.93115234375,
+        13.9189453125,
+        15.234375
+      ],
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-6.log",
+      "cargo_pid": 98162,
+      "exit": 0,
+      "elapsed_seconds": 2.312233499949798,
+      "load_after": [
+        11.93115234375,
+        13.9189453125,
+        15.234375
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "50fbe0a8043fe8185c98c3d2e16430106cab018ab0c396ae26eb3726c7563bf9",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 98162,
+          "start": "Fri Oct 23 23:24:20 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:24:22.592286+00:00"
+    },
+    {
+      "index": 7,
+      "started_utc": "2026-10-24T06:24:22.704562+00:00",
+      "load_before": [
+        11.93115234375,
+        13.9189453125,
+        15.234375
+      ],
+      "workers": [
+        {
+          "pid": 98239,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-7-worker-0.log",
+          "ready": "READY pid=98239 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98240,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-7-worker-1.log",
+          "ready": "READY pid=98240 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98241,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-7-worker-2.log",
+          "ready": "READY pid=98241 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98242,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-7-worker-3.log",
+          "ready": "READY pid=98242 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98243,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-7-worker-4.log",
+          "ready": "READY pid=98243 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98244,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-7-worker-5.log",
+          "ready": "READY pid=98244 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98245,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-7-worker-6.log",
+          "ready": "READY pid=98245 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98246,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-7-worker-7.log",
+          "ready": "READY pid=98246 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 8.709030225872993e-06,
+          "load": [
+            11.93115234375,
+            13.9189453125,
+            15.234375
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:24:22.748820+00:00",
+      "load_at_test_start": [
+        11.93115234375,
+        13.9189453125,
+        15.234375
+      ],
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-7.log",
+      "cargo_pid": 98247,
+      "exit": 0,
+      "elapsed_seconds": 2.0673428750014864,
+      "load_after": [
+        13.2177734375,
+        14.15234375,
+        15.30908203125
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "55f72df1939910318e3470af1b5d13822f9d272262f4284f9858da74c5daa944",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 98247,
+          "start": "Fri Oct 23 23:24:22 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:24:24.842313+00:00"
+    },
+    {
+      "index": 8,
+      "started_utc": "2026-10-24T06:24:24.953695+00:00",
+      "load_before": [
+        13.2177734375,
+        14.15234375,
+        15.30908203125
+      ],
+      "workers": [
+        {
+          "pid": 98309,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-8-worker-0.log",
+          "ready": "READY pid=98309 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98311,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-8-worker-1.log",
+          "ready": "READY pid=98311 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98312,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-8-worker-2.log",
+          "ready": "READY pid=98312 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98314,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-8-worker-3.log",
+          "ready": "READY pid=98314 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98315,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-8-worker-4.log",
+          "ready": "READY pid=98315 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98317,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-8-worker-5.log",
+          "ready": "READY pid=98317 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98320,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-8-worker-6.log",
+          "ready": "READY pid=98320 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98322,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-8-worker-7.log",
+          "ready": "READY pid=98322 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 9.292038157582283e-06,
+          "load": [
+            13.2177734375,
+            14.15234375,
+            15.30908203125
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:24:24.992913+00:00",
+      "load_at_test_start": [
+        13.2177734375,
+        14.15234375,
+        15.30908203125
+      ],
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-8.log",
+      "cargo_pid": 98323,
+      "exit": 0,
+      "elapsed_seconds": 2.3195345000131056,
+      "load_after": [
+        13.2177734375,
+        14.15234375,
+        15.30908203125
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "d9ffa5b330d4965c3b37efd21dcaeea0a39ad5a169c1f997b23350f27c4970af",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 98323,
+          "start": "Fri Oct 23 23:24:24 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:24:27.324330+00:00"
+    },
+    {
+      "index": 9,
+      "started_utc": "2026-10-24T06:24:27.416995+00:00",
+      "load_before": [
+        13.2177734375,
+        14.15234375,
+        15.30908203125
+      ],
+      "workers": [
+        {
+          "pid": 98415,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-9-worker-0.log",
+          "ready": "READY pid=98415 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98416,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-9-worker-1.log",
+          "ready": "READY pid=98416 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98417,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-9-worker-2.log",
+          "ready": "READY pid=98417 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98418,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-9-worker-3.log",
+          "ready": "READY pid=98418 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98419,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-9-worker-4.log",
+          "ready": "READY pid=98419 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98420,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-9-worker-5.log",
+          "ready": "READY pid=98420 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98421,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-9-worker-6.log",
+          "ready": "READY pid=98421 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98422,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-9-worker-7.log",
+          "ready": "READY pid=98422 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 8.957984391599894e-06,
+          "load": [
+            13.2177734375,
+            14.15234375,
+            15.30908203125
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:24:27.497962+00:00",
+      "load_at_test_start": [
+        13.2177734375,
+        14.15234375,
+        15.30908203125
+      ],
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-9.log",
+      "cargo_pid": 98423,
+      "exit": 0,
+      "elapsed_seconds": 2.087211375008337,
+      "load_after": [
+        13.6005859375,
+        14.2158203125,
+        15.32470703125
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "9e7d2186327b4491ce22fcab4365868bd774609503898897295349a87c548db3",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 98423,
+          "start": "Fri Oct 23 23:24:27 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:24:29.665942+00:00"
+    },
+    {
+      "index": 10,
+      "started_utc": "2026-10-24T06:24:29.798435+00:00",
+      "load_before": [
+        13.6005859375,
+        14.2158203125,
+        15.32470703125
+      ],
+      "workers": [
+        {
+          "pid": 98502,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-10-worker-0.log",
+          "ready": "READY pid=98502 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98503,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-10-worker-1.log",
+          "ready": "READY pid=98503 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98504,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-10-worker-2.log",
+          "ready": "READY pid=98504 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98505,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-10-worker-3.log",
+          "ready": "READY pid=98505 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98506,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-10-worker-4.log",
+          "ready": "READY pid=98506 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98507,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-10-worker-5.log",
+          "ready": "READY pid=98507 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98508,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-10-worker-6.log",
+          "ready": "READY pid=98508 bound_seconds=105.000",
+          "exit": -15
+        },
+        {
+          "pid": 98509,
+          "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-10-worker-7.log",
+          "ready": "READY pid=98509 bound_seconds=105.000",
+          "exit": -15
+        }
+      ],
+      "load_samples": [
+        {
+          "elapsed": 1.0000017937272787e-05,
+          "load": [
+            13.6005859375,
+            14.2158203125,
+            15.32470703125
+          ],
+          "workers_alive": 8
+        }
+      ],
+      "cleanup_signals": [],
+      "timed_out": false,
+      "test_start_utc": "2026-10-24T06:24:29.844093+00:00",
+      "load_at_test_start": [
+        13.6005859375,
+        14.2158203125,
+        15.32470703125
+      ],
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/run-10.log",
+      "cargo_pid": 98510,
+      "exit": 0,
+      "elapsed_seconds": 2.0612425840226933,
+      "load_after": [
+        13.6005859375,
+        14.2158203125,
+        15.32470703125
+      ],
+      "workers_alive_at_suite_exit": 8,
+      "log_sha256": "1726c18195af16647b9238dc07e79dfedd7f0fdaf868114ca29cd148d3485a2d",
+      "test_results": {
+        "stages": 1,
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      "failure_blocks": [],
+      "target_errors": [],
+      "recorded_owned_processes": [
+        {
+          "pid": 98510,
+          "start": "Fri Oct 23 23:24:29 2026    "
+        }
+      ],
+      "ended_utc": "2026-10-24T06:24:31.917172+00:00"
+    }
+  ]
+}

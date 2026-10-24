@@ -31,7 +31,7 @@ async fn start(root: &Path) -> Session {
     // Fixture binaries record actual argv, then act as PTY readers. No native
     // Claude/Codex session, account or approval store is touched.
     for harness in ["claude", "codex"] {
-        script(&root.join(harness), format!("#!/bin/sh\nprintf '%s\\n' \"$@\" >> '{}'\nprintf 'fixture-ready\\n'\nwhile IFS= read -r line; do printf 'fixture: %s\\n' \"$line\"; done\n", root.join(format!("{harness}-argv")).display())).await;
+        script(&root.join(harness), format!("#!/bin/sh\nwhile [ -e '{}' ]; do sleep 0.01; done\nprintf '%s\\n' \"$@\" >> '{}'\nprintf 'fixture-ready\\n'\nwhile IFS= read -r line; do printf 'fixture: %s\\n' \"$line\"; done\n", root.join(format!("{harness}-hold-argv")).display(), root.join(format!("{harness}-argv")).display())).await;
     }
     let executable = root.join("test-app");
     script(
@@ -404,6 +404,32 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
         cols: 77,
         rows: 7,
     };
+    // Confirm the first fixture has executed before holding only its replacement.
+    let mut initial_argv = String::new();
+    let initial_published = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            initial_argv = tokio::fs::read_to_string(root.path().join("codex-argv"))
+                .await
+                .unwrap_or_default();
+            let args: Vec<_> = initial_argv.lines().collect();
+            if args
+                .windows(2)
+                .any(|pair| pair == ["resume", "fixture-codex-thread"])
+            {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await;
+    assert!(
+        initial_published.is_ok(),
+        "initial Codex argv publication timed out: {initial_argv}"
+    );
+    // A spawned process can be reported before its fixture has published argv.
+    // Hold that child-side publication to exercise the observation race exactly.
+    let argv_hold = root.path().join("codex-hold-argv");
+    tokio::fs::write(&argv_hold, b"").await.unwrap();
     session.supervisor.start_kill().unwrap();
     let seats = restarted(&mut session).await;
     assert_eq!(seats.len(), 3);
@@ -430,9 +456,42 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
         ("claude", "--resume", "fixture-claude-session"),
         ("codex", "resume", "fixture-codex-thread"),
     ] {
-        let argv = tokio::fs::read_to_string(root.path().join(format!("{harness}-argv")))
-            .await
-            .unwrap();
+        let path = root.path().join(format!("{harness}-argv"));
+        let mut argv = String::new();
+        let mut first_count = None;
+        let mut observed_count = 0;
+        let published = tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                argv = tokio::fs::read_to_string(&path).await.unwrap();
+                let args: Vec<_> = argv.lines().collect();
+                observed_count = args
+                    .windows(2)
+                    .filter(|pair| pair == &[flag, session_id])
+                    .count();
+                if first_count.is_none() {
+                    first_count = Some(observed_count);
+                    println!("{harness} resume argv first read: {observed_count}, expected 2");
+                    if harness == "codex" {
+                        assert_eq!(observed_count, 1, "fixture argv publication gate");
+                        tokio::fs::remove_file(&argv_hold).await.unwrap();
+                    }
+                }
+                if observed_count >= 2 {
+                    return;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await;
+        assert!(
+            published.is_ok(),
+            "{harness} resume argv publication timed out: first={first_count:?}, observed={observed_count}, expected=2\n{argv}"
+        );
+        if first_count != Some(observed_count) {
+            println!(
+                "{harness} resume argv publication wait was needed: first={first_count:?}, observed={observed_count}"
+            );
+        }
         let args: Vec<_> = argv.lines().collect();
         assert_eq!(
             args.windows(2)
