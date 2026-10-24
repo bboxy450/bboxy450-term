@@ -1,0 +1,85 @@
+{
+  "head": "3ab1a78a2bd48111daaaddbf775e971085e62ec5",
+  "worktree": "/private/tmp/ci-velvet-knowledge-3ab1a78a2bd4",
+  "target": "/Users/feral/mydev/bboxy450-term-exec6/target/knowledge-ci-build-3ab1a78a2bd4",
+  "log": "/Users/feral/mydev/bboxy450-term-exec6/target/knowledge-responsiveness/ci-3ab1a78a2bd4.log",
+  "start": "2026-10-24T13:58:58.761669+00:00",
+  "wrapper_pid": 88452,
+  "commands": [
+    {
+      "command": [
+        "sh",
+        "scripts/ci-local.sh"
+      ],
+      "exit": 0,
+      "seconds": 960.835
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--lib",
+        "--locked",
+        "held_read_does_not_stall",
+        "--",
+        "--nocapture"
+      ],
+      "exit": 0,
+      "seconds": 27.001
+    }
+  ],
+  "worktree_add_exit": 0,
+  "child_pid": 34633,
+  "ci_exit": 0,
+  "focused_exit": 0,
+  "verification_exit": 0,
+  "target_bytes": 3644760064,
+  "target_removed": true,
+  "worktree_remove_exit": 0,
+  "seconds": 991.137,
+  "finished": "2026-10-24T14:15:29.902231+00:00",
+  "log_sha256": "5209a6c58c80af7f7f2a11923cb3e16e52f88d2c65a88141192c28e5dc68aca7",
+  "base": "3308784fded5c71f1825ad822c4ba8fadcf9f359",
+  "latest_main_at_handoff": "c775112d45c24e9b181911c9d40efc0a9b639bf8",
+  "main_changed_files": [
+    ".bboxy/runs/capture-occluded-ci.log",
+    ".bboxy/runs/capture-occluded-focused.log",
+    ".bboxy/runs/ctl-issuer-ci.log",
+    ".bboxy/runs/d269-workspace.log",
+    "crates/bboxy450-term/src/cockpit.rs",
+    "crates/bboxy450-term/src/ctl.rs",
+    "crates/bboxy450-term/src/live.rs",
+    "crates/bboxy450-term/src/main.rs",
+    "crates/bboxy450-term/tests/ctl.rs",
+    "crates/bbt-mux/src/adapters/skills/bboxy450/SKILL.md",
+    "crates/bbt-mux/src/gui_capture.rs",
+    "crates/bbt-mux/src/identity/chain.rs",
+    "crates/bbt-mux/src/identity/status.rs",
+    "crates/bbt-mux/src/logic.rs",
+    "crates/bbt-mux/src/mcp/journal.rs",
+    "crates/bbt-mux/src/mcp/messaging.rs",
+    "crates/bbt-mux/src/mcp/mod.rs",
+    "crates/bbt-mux/src/messaging/keys.rs",
+    "crates/bbt-mux/src/messaging/ledger.rs",
+    "crates/bbt-mux/src/messaging/service.rs",
+    "crates/bbt-mux/src/messaging/wire.rs",
+    "crates/bbt-mux/src/seat_socket.rs",
+    "crates/bbt-mux/tests/mcp.rs",
+    "crates/bbt-mux/tests/messaging.rs",
+    "crates/bbt-proto/src/gui.rs",
+    "crates/bbt-proto/src/messaging.rs"
+  ],
+  "main_overlap_with_source": [
+    "crates/bboxy450-term/src/live.rs",
+    "crates/bbt-mux/src/logic.rs",
+    "crates/bbt-mux/src/seat_socket.rs"
+  ],
+  "post_fetch_exit": 0,
+  "workspace_test_summaries": {
+    "passed": 1134,
+    "failed": 0,
+    "ignored": 22
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-24T14:16:37.659460+00:00",
+  "source": "3ab1a78a2bd48111daaaddbf775e971085e62ec5",
+  "private_ci_target": {
+    "path": "/Users/feral/mydev/bboxy450-term-exec6/target/knowledge-ci-build-3ab1a78a2bd4",
+    "removed": true,
+    "unique_regular_allocated_bytes": 3644760064
+  },
+  "private_ci_worktree": {
+    "path": "/private/tmp/ci-velvet-knowledge-3ab1a78a2bd4",
+    "remove_exit": 0,
+    "removed": true
+  },
+  "dev_target": {
+    "path": "/Users/feral/mydev/bboxy450-term-exec6/target/knowledge-dev",
+    "removed": true,
+    "unique_regular_allocated_bytes": 1581199360,
+    "unique_regular_files": 6993
+  },
+  "total_retired_unique_regular_allocated_bytes": 5225959424,
+  "kept": [
+    "target/knowledge-responsiveness",
+    "target/a3-live-parity-86744957990f",
+    "target/e2e-parity-15755436"
+  ],
+  "note": "Only targets created for this task were retired; allocated file bytes are counted by unique device/inode, not a concurrent-machine df delta."
+}
