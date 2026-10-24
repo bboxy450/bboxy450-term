@@ -28,6 +28,7 @@ const PAGE: usize = 128;
 
 pub const USAGE: &str = "usage: bboxy450-term ctl [--endpoint FILE] [--as LABEL] <command>
   spawn <claude|codex|zsh> [--placement new-tab] [--name NAME] [--cwd DIR] [--swarm ID]
+        [--role oracle|architect|creativity|executor|shell]
   seats
   dm <seat> <text>        questions and feedback; work goes by delegate
   post <destination> <text> [--swarm ID]
@@ -86,6 +87,8 @@ pub enum Command {
         swarm: Option<Ulid>,
         /// A fresh tab; without it the backend places the seat as the launcher's default.
         new_tab: bool,
+        /// A role preset (#262); the backend resolves and guards it as the launcher does.
+        role: Option<String>,
     },
     Seats,
     Dm {
@@ -146,6 +149,7 @@ pub fn parse(args: &[String]) -> Result<(Option<PathBuf>, Command), String> {
             name: flag("name"),
             cwd: flag("cwd").map(PathBuf::from),
             swarm,
+            role: flag("role"),
             new_tab: match flag("placement").as_deref() {
                 None => false,
                 Some("new-tab") => true,
@@ -203,6 +207,7 @@ pub fn parse(args: &[String]) -> Result<(Option<PathBuf>, Command), String> {
             "placement",
             "seat",
             "group",
+            "role",
         ]
         .contains(&k.as_str())
     }) {
@@ -439,6 +444,7 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
             cwd,
             swarm,
             new_tab,
+            role,
         } => {
             // The launcher's defaults (live.rs `spawn_spec`): the first seat's swarm, else a
             // new one; the backend validates the spec as it does for the GUI.
@@ -457,7 +463,7 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
                 swarm: SwarmId::from_u128(swarm.0),
                 harness_kind: harness.clone(),
                 name,
-                role: None,
+                role,
                 cwd: cwd.to_string_lossy().into_owned(),
                 location: Where::Local,
                 resume: None,
@@ -720,7 +726,8 @@ mod tests {
                 name: Some("Rook".into()),
                 cwd: None,
                 swarm: None,
-                new_tab: false
+                new_tab: false,
+                role: None,
             }
         );
         assert_eq!(
