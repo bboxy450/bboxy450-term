@@ -33,8 +33,9 @@
   function rollName(r) { return pick(r, FIRST) + ' ' + pick(r, LAST); }
 
   const HARNESSES = ['claude', 'codex', 'pi', 'omp', 'zsh'];
-  // What the app launches: every harness starts as an executor, least privilege until Settings › Roles says otherwise.
-  const DEFAULT_ROLE = { claude: 'executor', codex: 'executor', pi: 'executor', omp: 'executor', zsh: null };
+  // What the app launches (decision #262, AGENTS.md): Claude supervises, so oracle; Codex implements, so executor and never an oracle
+  // class; a shell has no harness to prompt, so shell (worker class, no chip). A launcher preset or the row's role chip overrides.
+  const DEFAULT_ROLE = { claude: 'oracle', codex: 'executor', pi: 'executor', omp: 'executor', zsh: 'shell' };
   // Demo cohorts only: a swarm with its oracle, so the lab shows every role mark.
   const DEMO_ROLE = { claude: 'oracle', codex: 'executor', pi: 'executor', omp: 'executor', zsh: 'shell' };   // decision #262: a shell's role is shell
   const STATES = ['active', 'idle', 'waiting', 'errored'];
