@@ -477,10 +477,23 @@
 
   // Wikilinks with the annotation form: [[slug]] · [[slug|display]] · [[slug]]{rel:w}. Rendered as a link chip plus a relation badge.
   const LINK_RE = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\](?:\{([a-z_]+)(?::([0-9.]+))?\})?/g;
+  // Numbered records (decisions #47, #48): every record has one global number; [[#N]] and [[slug|#N]] link to it. RECORDS is the index a
+  // page loads (number -> { n, title, type, path, slug }). With it, a numbered link resolves (the chip opens the record through a
+  // bubbling doclink event, detail the record) or is missing ('#N · no record', dim, inert). A page with no index draws plain chips.
+  const RECORDS = new Map();
+  const recordOf = target => { const n = /^#(\d+)$/.exec(target); if (n) return RECORDS.get(+n[1]) || null; for (const r of RECORDS.values()) if (r.slug === target) return r; return null; };
   function renderLinks(text) {
     const frag = el('span', { class: 'links' }); let last = 0, m;
     while ((m = LINK_RE.exec(text))) {
       if (m.index > last) frag.append(text.slice(last, m.index));
+      const numbered = RECORDS.size && (/^#\d+$/.test(m[1]) || /^#\d+$/.test(m[2] || ''));
+      if (numbered) {
+        const rec = recordOf(m[1]), label = /^#\d+$/.test(m[1]) ? m[1] : m[2];
+        const chip = rec ? el('span', { class: 'wl rec', role: 'link', tabindex: '0', title: 'opens #' + rec.n + ' · ' + rec.type + ' · ' + rec.title }, el('span', { class: 'wl-slug' }, label))
+          : el('span', { class: 'wl missing', title: label + ' · no record with that number' }, el('span', { class: 'wl-slug' }, label + ' · no record'));
+        if (rec) chip.addEventListener('click', () => chip.dispatchEvent(new CustomEvent('doclink', { detail: rec, bubbles: true })));
+        frag.append(chip); last = m.index + m[0].length; continue;
+      }
       const chip = el('span', { class: 'wl', title: m[1] + (m[3] ? ' · ' + m[3] + (m[4] ? ' · weight ' + m[4] : '') : '') }, el('span', { class: 'wl-slug' }, m[2] || m[1]));
       if (m[3]) chip.append(el('span', { class: 'wl-rel ' + m[3] }, m[3] + (m[4] ? ' ' + m[4] : '')));
       frag.append(chip); last = m.index + m[0].length;
@@ -1356,6 +1369,16 @@
       el('span', { class: 'ak' }, it.kind === 'task' ? taskMark(it.status) : ART_GLYPH[it.akind] || '▢'), el('span', { class: 'apt' }, it.title), el('span', { class: 'aps' }, it.kind === 'task' ? it.status : it.meta || ''), el('span', { class: 'apk' }, it.kind))) : [el('div', { class: 'apempty' }, 'nothing matches "' + ap.query + '"')]));
     return el('div', { class: 'apick' }, head, list, el('div', { class: 'apfoot' }, '↵ attach · ↑↓ · esc'));
   }
+  // record lookup ({ query, edit, sel }; not ⌘F, which searches inside the open document): '#' then a number (prefix of the record number) or words (in the title), over RECORDS; one row
+  // each (#N, title, file name, type), the launcher's selection band; ↵ opens it as a document, ↑↓ moves, esc closes
+  function recordLookup(st) {
+    const q = (st.query || '').trim().toLowerCase(), byNum = /^\d+$/.test(q);
+    const rows = [...RECORDS.values()].filter(r => !q || (byNum ? String(r.n).startsWith(q) : r.title.toLowerCase().includes(q))).sort((a, b) => a.n - b.n), sel = Math.min(st.sel || 0, Math.max(0, rows.length - 1));
+    const head = el('div', { class: 'aphead' }, el('span', { class: 'apq' }, '#'), el('span', { class: 'apin edit-text' }, ...editRuns(st.query || '', st.edit || {}, 'a number or words from the title')));
+    const list = el('div', { class: 'aplist', role: 'listbox' }, ...(rows.length ? rows.map((r, i) => el('div', { class: 'apopt' + (i === sel ? ' sel' : ''), role: 'option', 'aria-selected': String(i === sel) },
+      el('span', { class: 'ak rn' }, '#' + r.n), el('span', { class: 'apt' }, r.title), el('span', { class: 'aps', title: r.path || '' }, (r.path || '').split('/').pop()), el('span', { class: 'apk' }, r.type))) : [el('div', { class: 'apempty' }, 'no record matches "' + st.query + '"')]));
+    return el('div', { class: 'apick rlook' }, head, list, el('div', { class: 'apfoot' }, '↵ open · ↑↓ · esc'));
+  }
   function composer(st, opts) {
     opts = opts || {};
     const mode = st.mode || 'message', to = st.to || [], att = st.attach || [], priority = st.priority != null ? st.priority : 0, kind = st.kind || 'text';
@@ -1478,23 +1501,28 @@
       pi: { role: 'executor', wake: 'pty', hooks: false, command: 'pi', tile: LT('pi'), icon: 'pi', stateFrom: 'output cadence' },
       omp: { role: 'executor', wake: 'pty', hooks: false, command: 'omp', tile: LT('omp'), icon: 'omp', stateFrom: 'output cadence' },
     },
+    // notifications (attention §3, decision #44), in the native field names (attention.rs Notifications): on by default; harnesses
+    // listed in disabled_harnesses are silenced; optionally only while the window is not frontmost. A muted seat (⌘M) never notifies.
+    notifications: { enabled: true, only_when_not_frontmost: false, disabled_harnesses: [] },
     appearance: { theme: 'auto', density: 'cozy', rim: TOKENS.glow.rim, glow: true, subtitle: false, opacity: TOKENS.window.opacity, blur: TOKENS.window.blur, blurRadius: TOKENS.window.blur_radius },
     shortcuts: [['New tab', '⌘T'], ['Split right', '⌘D'], ['Split down', '⌘⇧D'], ['Mute seat', '⌘M'], ['Undo close', '⌘Z'], ['Settings', '⌘,'], ['Focus next pane', 'Tab'], ['Focus previous pane', '⇧Tab']],
   };
   const SET = JSON.parse(JSON.stringify(SET_DEF));
   SET.roles.creativity.prompt += ' Name the Censor when it fires.'; SET.harness.pi.role = 'creativity';
-  // settingsPage({ section, onChange }) — onChange(section, key, value): 'appearance' per value; 'roles' / 'harness' with the record, null on delete
+  // settingsPage({ section, onChange, notifications }) — onChange(section, key, value): 'appearance' and 'notifications' per field; 'roles' /
+  // 'harness' with the record, null on delete. notifications: a state's own values instead of SET.notifications
   function settingsPage(opts) {
     opts = opts || {};
     const emit = (s, k, v) => { if (opts.onChange) opts.onChange(s, k, v); };
-    const sections = ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Appearance', 'Shortcuts'];
-    const NAV_ICON = { Account: 'key', Cloud: 'cloud', Machines: 'ssh', Roles: 'roles', Harnesses: 'gear', Appearance: 'sun', Shortcuts: 'keys' };
+    const sections = ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Appearance', 'Notifications', 'Shortcuts'];
+    const NAV_ICON = { Account: 'key', Cloud: 'cloud', Machines: 'ssh', Roles: 'roles', Harnesses: 'gear', Appearance: 'sun', Notifications: 'bell', Shortcuts: 'keys' };
     const SENDS = ['all channels · all DMs', 'own swarm · operator DM', 'operator DM only'], WAKES = ['socket', 'hook', 'mcp', 'pty'], STATE_FROM = ['osc7501', 'hooks', 'output cadence'];
     const MARKS = ['♔', '♖', '♟', '♝', '♜', '♞', '♚'], ICONS = ['claude', 'codex', 'pi', 'omp', 'zsh'];
     const HUES = [0, 30, 55, 95, 160, 190, 215, 250, 285, 325], hue = i => 'hsl(' + HUES[((i % HUES.length) + HUES.length) % HUES.length] + ' 85% 64%)';
     // marks the settings page alone needs; everything else comes from ICON_SVG
     const SVG = {
       roles: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M5 19h14M5.5 16 3.5 7l5 3.5L12 5l3.5 5.5 5-3.5-2 9z"/></svg>',
+      bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>',
       keys: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7.5 14h9"/></svg>',
       search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15.5 15.5 20 20"/></svg>',
       copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/></svg>',
@@ -1503,6 +1531,7 @@
     };
     const icon = name => ICON_SVG[name] ? harnessIcon(name) : el('span', { class: 'hicon', html: SVG[name] || '' });
     let cur = opts.section || 'Account', draftRole = null, draftHarness = opts.draftHarness || null;
+    const NV = opts.notifications || SET.notifications;   // a reference state can pass its own
     const root = el('div', { class: 'settings' });
     const nav = el('div', { class: 's-nav' });
     const q = el('input', { class: 's-q', placeholder: 'Search settings', type: 'search' });
@@ -1511,7 +1540,7 @@
     const diff = (changed, onReset) => changed ? el('span', { class: 'diff' }, el('i', { title: 'differs from config.toml default' }), el('button', { onclick: onReset }, 'reset')) : null;
     const row = (label, hint, control, changed, onReset) => el('div', { class: 's-row' + (changed ? ' changed' : '') }, el('div', { class: 'lbl' }, label, hint ? el('small', {}, hint) : null), el('div', { class: 'ctl' }, control), diff(changed, onReset));
     const select = selectBox;
-    const toggle = (on, cb) => el('span', { class: 'toggle' + (on ? ' on' : ''), role: 'switch', 'aria-checked': String(on), onclick: () => cb && cb(!on) });
+    const toggle = (on, cb, off) => el('span', { class: 'toggle' + (on ? ' on' : '') + (off ? ' disabled' : ''), role: 'switch', 'aria-checked': String(on), ...(off ? { 'aria-disabled': 'true' } : { onclick: () => cb && cb(!on) }) });
     const card = (title, kids, extra, cls) => el('div', { class: 's-card' + (cls ? ' ' + cls : '') }, title ? el('div', { class: 's-card-h' }, el('span', { class: 't' }, title), extra || null) : null, ...kids);
     const btn = (label, iconName, kind) => el('button', { class: 's-btn' + (kind ? ' ' + kind : '') }, iconName ? icon(iconName) : null, label);
     const dot = (on, title) => el('i', { class: 'sdot' + (on ? ' on' : ''), title: title || (on ? 'connected' : 'not connected') });
@@ -1673,6 +1702,20 @@
         ]));
       }
 
+      if (cur === 'Notifications' || needle) {
+        // onChange('notifications', 'enabled' | 'only_when_not_frontmost', bool) and ('notifications', 'disabled_harnesses', [ids]) from
+        // one toggle per harness; with enabled off the rest stays visible but disabled, so turning it back on restores what was set
+        const v = NV, d = SET_DEF.notifications, on = v.enabled, setN = k => x => { v[k] = x; emit('notifications', k, x); draw(); };
+        const hon = h => !v.disabled_harnesses.includes(h), hdef = h => !d.disabled_harnesses.includes(h);
+        const setH = h => x => { v.disabled_harnesses = x ? v.disabled_harnesses.filter(k => k !== h) : [...v.disabled_harnesses, h]; emit('notifications', 'disabled_harnesses', v.disabled_harnesses); draw(); }, rsH = h => () => setH(h)(hdef(h));
+        add('Notifications', card('Notifications', [
+          row('Desktop notifications', 'a seat that needs your answer posts one; clicking it focuses the seat', toggle(on, setN('enabled')), on !== d.enabled, () => setN('enabled')(d.enabled)),
+          row('Only in the background', 'none while this window is frontmost', toggle(v.only_when_not_frontmost, setN('only_when_not_frontmost'), !on), v.only_when_not_frontmost !== d.only_when_not_frontmost, () => setN('only_when_not_frontmost')(d.only_when_not_frontmost)),
+          group('Per harness', 'off silences every seat of that harness'),
+          ...Object.keys(SET.harness).map(h => row(el('span', { class: 'nh' }, harnessIcon(SET.harness[h].icon || 'zsh'), h), null, toggle(hon(h), setH(h), !on), hon(h) !== hdef(h), rsH(h))),
+          note('A muted seat (⌘M) never notifies and keeps the ordinary waiting rim.'),
+        ]));
+      }
       if (cur === 'Shortcuts' || needle) add('Shortcuts', card('Shortcuts', [el('div', { class: 'keys' }, ...SET.shortcuts.map(([l, k]) => el('div', { class: 'kr' }, el('span', {}, l), el('span', { class: 'kbd' }, k))))]));
       if (!main.children.length) main.append(note('nothing matches "' + q.value + '"'));
     };
@@ -1681,5 +1724,5 @@
     return root;
   }
 
-  window.C = { e2eSummary, e2eChecklist, notification, NOTIFY_BODY, circleMark, taskMark, SEAT_MARK, prioChip, atHM, hhmm, editRuns, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { RECORDS, recordLookup, e2eSummary, e2eChecklist, notification, NOTIFY_BODY, circleMark, taskMark, SEAT_MARK, prioChip, atHM, hhmm, editRuns, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

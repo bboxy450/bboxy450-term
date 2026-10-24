@@ -362,6 +362,8 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .settings .toggle.on { background: var(--accent); }
 .settings .toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: left var(--hover-ms); }
 .settings .toggle.on::after { left: 14px; background: #fff; }
+.settings .toggle.disabled { opacity: .4; cursor: not-allowed; }   /* notifications off: the rows keep their values, greyed */
+.settings .nh { display: inline-flex; align-items: center; gap: var(--s3); } .settings .nh .hicon { width: 16px; height: 16px; }
 .settings .sdot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-idle); display: inline-block; flex: none; }
 .settings .sdot.on { background: var(--c-ok); box-shadow: 0 0 6px color-mix(in srgb, var(--c-ok) 60%, transparent); }
 .settings .segc { display: inline-flex; padding: var(--s1); border-radius: var(--r-tile); background: var(--badge); gap: var(--s1); }
@@ -1598,18 +1600,24 @@ details[open] > summary::before { transform: rotate(90deg); }
 .report .racts .reject[disabled] { opacity: .4; cursor: not-allowed; }
 /* [[ attach picker above the composer, the launcher's row look */
 .composer .apick { position: absolute; left: var(--s4); right: var(--s4); bottom: calc(100% + 6px); border-radius: var(--r-card); background: var(--surface); box-shadow: var(--sh-float), 0 0 0 var(--hair-w) var(--hair); z-index: 3; overflow: hidden; }
-.composer .aphead { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s5); border-bottom: var(--hair-w) solid var(--hair); font-size: var(--t-row); }
-.composer .apq { font-family: var(--font-mono); color: var(--accent); }
-.composer .apin { flex: 1; min-width: 0; white-space: pre; overflow: hidden; }
-.composer .aplist { display: grid; padding: var(--s2) 0; max-height: 220px; overflow: hidden; }
-.composer .apopt { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto auto; align-items: center; gap: var(--s4); padding: var(--s3) var(--s5); margin: 0 var(--s2); border-radius: var(--r-row); font-size: var(--t-small); color: var(--fg); white-space: nowrap; }
-.composer .apopt.sel { background: color-mix(in srgb, var(--accent) 28%, var(--surface)); }
-.composer .apopt .ak { color: var(--fg-dim); text-align: center; }
-.composer .apopt .apt { overflow: hidden; text-overflow: ellipsis; }
-.composer .apopt .aps, .composer .apopt .apk { color: var(--fg-dim); font-size: var(--t-small); }
-.composer .apopt .apk { font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .06em; font-size: var(--t-micro); }
-.composer .apempty { padding: var(--s4) var(--s5); color: var(--fg-dim); font-size: var(--t-small); }
-.composer .apfoot { padding: var(--s2) var(--s5); border-top: var(--hair-w) solid var(--hair); font-size: var(--t-small); color: var(--fg-dim); }
+.composer .aphead, .rlook .aphead { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s5); border-bottom: var(--hair-w) solid var(--hair); font-size: var(--t-row); }
+.composer .apq, .rlook .apq { font-family: var(--font-mono); color: var(--accent); }
+.composer .apin, .rlook .apin { flex: 1; min-width: 0; white-space: pre; overflow: hidden; }
+.composer .aplist, .rlook .aplist { display: grid; padding: var(--s2) 0; max-height: 220px; overflow: hidden; }
+.composer .apopt, .rlook .apopt { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto auto; align-items: center; gap: var(--s4); padding: var(--s3) var(--s5); margin: 0 var(--s2); border-radius: var(--r-row); font-size: var(--t-small); color: var(--fg); white-space: nowrap; }
+.composer .apopt.sel, .rlook .apopt.sel { background: color-mix(in srgb, var(--accent) 28%, var(--surface)); }
+.composer .apopt .ak, .rlook .apopt .ak { color: var(--fg-dim); text-align: center; }
+.composer .apopt .apt, .rlook .apopt .apt { overflow: hidden; text-overflow: ellipsis; }
+.composer .apopt .aps, .composer .apopt .apk, .rlook .apopt .aps, .rlook .apopt .apk { color: var(--fg-dim); font-size: var(--t-small); }
+.composer .apopt .apk, .rlook .apopt .apk { font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .06em; font-size: var(--t-micro); }
+.composer .apempty, .rlook .apempty { padding: var(--s4) var(--s5); color: var(--fg-dim); font-size: var(--t-small); }
+.composer .apfoot, .rlook .apfoot { padding: var(--s2) var(--s5); border-top: var(--hair-w) solid var(--hair); font-size: var(--t-small); color: var(--fg-dim); }
+/* record lookup (recordLookup): the attach picker's rows in a floating card; numbered links resolved or missing (renderLinks) */
+.rlook { width: 520px; max-width: 100%; border-radius: var(--r-card); background: var(--surface); box-shadow: var(--sh-float), 0 0 0 var(--hair-w) var(--hair); overflow: hidden; }
+.rlook .apopt { grid-template-columns: 44px minmax(0, 1fr) auto auto; }
+.rlook .apopt .ak.rn { font-family: var(--font-mono); font-size: var(--t-small); text-align: left; }
+.wl.rec { cursor: pointer; } .wl.rec:hover .wl-slug { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+.wl.missing { box-shadow: 0 0 0 var(--hair-w) var(--hair) inset; } .wl.missing .wl-slug { color: var(--fg-dim); background: transparent; opacity: .7; }
 .seat-row .badge.more, .ch-tab b.more { font-style: italic; letter-spacing: .02em; }
 
 /* E2E checklist (components.js e2eChecklist, spec #258 A-3): the summary band reads from across the room: the state word and what is
