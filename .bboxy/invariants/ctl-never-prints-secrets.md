@@ -3,7 +3,7 @@ id: 01M5Q8G3K8T7466MQH8JA5NEXG
 type: invariant
 number: 275
 title: "ctl never prints a capability or a Keychain secret"
-status: pending
+status: active
 check: cargo test -p bboxy450-term --locked --test ctl ctl_never_prints_secrets -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: a capability in a reply, a log or an error is operator authority copied into every script's output and every pasted transcript; the door stops being a door
 links:
@@ -36,6 +36,8 @@ door.
 (C-0, 2026-10-24, Seraph); `app endpoint` prints `run_dir`, `path` and
 `generation` only (`ctl_noun_verb_grammar_replies_and_errors`). The fixture runs
 on memory custody, so no Keychain material exists to search for; the
-capability is the secret every reply could carry.
+capability is the secret every reply could carry. Held at the C-0 gate (`.bboxy/runs/ctl-c0-ci.log`,
+e7cfe4fd, `ctl_never_prints_secrets ... ok`, invariants 20/0) and on the merged
+tree (Vesper, 19/0 with this check passing).
 
 Owner: Corvin Duskmantle <ARCHITECT>.
