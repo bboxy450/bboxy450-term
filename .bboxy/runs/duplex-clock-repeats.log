@@ -1,0 +1,573 @@
+=== warmup-library ===
+{"label": "warmup-library", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:21.077185-07:00", "loadavg_before": [7.8681640625, 11.39794921875, 17.79833984375], "free_bytes_before": 77036969984, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/warmup-library.log"}
+    Finished `test` profile [optimized] target(s) in 0.50s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 718; no write deadline; elapsed 76.098125ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.08s
+
+
+{"label": "warmup-library", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:21.077185-07:00", "loadavg_before": [7.8681640625, 11.39794921875, 17.79833984375], "free_bytes_before": 77036969984, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/warmup-library.log", "pid": 54968, "exit": 0, "elapsed_s": 0.6476314579485916, "loadavg_after": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_after": 77021863936}
+
+=== unloaded-01 ===
+{"label": "unloaded-01", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:21.727104-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77021851648, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-01.log"}
+    Finished `test` profile [optimized] target(s) in 0.50s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 379; no write deadline; elapsed 76.98825ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.08s
+
+
+{"label": "unloaded-01", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:21.727104-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77021851648, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-01.log", "pid": 55004, "exit": 0, "elapsed_s": 0.6393086249590851, "loadavg_after": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_after": 77020999680}
+
+=== unloaded-02 ===
+{"label": "unloaded-02", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:22.367604-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77020995584, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-02.log"}
+    Finished `test` profile [optimized] target(s) in 0.26s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 629; no write deadline; elapsed 191.638583ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.19s
+
+
+{"label": "unloaded-02", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:22.367604-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77020995584, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-02.log", "pid": 55038, "exit": 0, "elapsed_s": 0.5206299590063281, "loadavg_after": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_after": 77018816512}
+
+=== unloaded-03 ===
+{"label": "unloaded-03", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:22.889557-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77018816512, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-03.log"}
+    Finished `test` profile [optimized] target(s) in 0.47s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 410; no write deadline; elapsed 79.291958ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.08s
+
+
+{"label": "unloaded-03", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:22.889557-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77018816512, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-03.log", "pid": 55067, "exit": 0, "elapsed_s": 0.6076495000161231, "loadavg_after": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_after": 77007294464}
+
+=== unloaded-04 ===
+{"label": "unloaded-04", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:23.498082-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77007294464, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-04.log"}
+    Finished `test` profile [optimized] target(s) in 0.20s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 97; no write deadline; elapsed 52.396167ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.05s
+
+
+{"label": "unloaded-04", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:23.498082-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77007294464, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-04.log", "pid": 55096, "exit": 0, "elapsed_s": 0.30299687501974404, "loadavg_after": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_after": 77007060992}
+
+=== unloaded-05 ===
+{"label": "unloaded-05", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:23.801930-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77007060992, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-05.log"}
+    Finished `test` profile [optimized] target(s) in 0.19s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 243; no write deadline; elapsed 59.691833ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.06s
+
+
+{"label": "unloaded-05", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:23.801930-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77007060992, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-05.log", "pid": 55098, "exit": 0, "elapsed_s": 0.2963497919845395, "loadavg_after": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_after": 77006770176}
+
+=== unloaded-06 ===
+{"label": "unloaded-06", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:24.099643-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77006757888, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-06.log"}
+    Finished `test` profile [optimized] target(s) in 0.20s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 271; no write deadline; elapsed 56.20825ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.06s
+
+
+{"label": "unloaded-06", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:24.099643-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77006757888, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-06.log", "pid": 55101, "exit": 0, "elapsed_s": 0.30921720899641514, "loadavg_after": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_after": 77006131200}
+
+=== unloaded-07 ===
+{"label": "unloaded-07", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:24.410019-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77006131200, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-07.log"}
+    Finished `test` profile [optimized] target(s) in 0.22s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 86; no write deadline; elapsed 68.225291ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.07s
+
+
+{"label": "unloaded-07", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:24.410019-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77006131200, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-07.log", "pid": 55104, "exit": 0, "elapsed_s": 0.33740529196802527, "loadavg_after": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_after": 77005754368}
+
+=== unloaded-08 ===
+{"label": "unloaded-08", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:24.748295-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77005754368, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-08.log"}
+    Finished `test` profile [optimized] target(s) in 0.20s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 268; no write deadline; elapsed 67.175458ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.07s
+
+
+{"label": "unloaded-08", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:24.748295-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77005754368, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-08.log", "pid": 55109, "exit": 0, "elapsed_s": 0.3161035419907421, "loadavg_after": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_after": 77005139968}
+
+=== unloaded-09 ===
+{"label": "unloaded-09", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:25.066272-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77005139968, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-09.log"}
+    Finished `test` profile [optimized] target(s) in 0.21s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 119; no write deadline; elapsed 56.289083ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.06s
+
+
+{"label": "unloaded-09", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:25.066272-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77005139968, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-09.log", "pid": 55122, "exit": 0, "elapsed_s": 0.3064334589871578, "loadavg_after": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_after": 77000974336}
+
+=== unloaded-10 ===
+{"label": "unloaded-10", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:25.374060-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77000974336, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-10.log"}
+    Finished `test` profile [optimized] target(s) in 0.18s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 244; no write deadline; elapsed 64.263792ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.06s
+
+
+{"label": "unloaded-10", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:25.374060-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 77000974336, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-10.log", "pid": 55126, "exit": 0, "elapsed_s": 0.28278374997898936, "loadavg_after": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_after": 76996677632}
+
+=== unloaded-11 ===
+{"label": "unloaded-11", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:25.658192-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 76996677632, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-11.log"}
+    Finished `test` profile [optimized] target(s) in 0.22s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 337; no write deadline; elapsed 67.805208ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.07s
+
+
+{"label": "unloaded-11", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:25.658192-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 76996677632, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-11.log", "pid": 55129, "exit": 0, "elapsed_s": 0.32964545901631936, "loadavg_after": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_after": 76987961344}
+
+=== unloaded-12 ===
+{"label": "unloaded-12", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:25.989457-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 76987957248, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-12.log"}
+    Finished `test` profile [optimized] target(s) in 0.18s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 29; no write deadline; elapsed 44.611916ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.04s
+
+
+{"label": "unloaded-12", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:25.989457-07:00", "loadavg_before": [7.79833984375, 11.32470703125, 17.73486328125], "free_bytes_before": 76987957248, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-12.log", "pid": 55137, "exit": 0, "elapsed_s": 0.28025549999438226, "loadavg_after": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_after": 76964524032}
+
+=== unloaded-13 ===
+{"label": "unloaded-13", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:26.270856-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76964524032, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-13.log"}
+    Finished `test` profile [optimized] target(s) in 0.18s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 161; no write deadline; elapsed 50.423375ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.05s
+
+
+{"label": "unloaded-13", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:26.270856-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76964524032, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-13.log", "pid": 55143, "exit": 0, "elapsed_s": 0.267422583012376, "loadavg_after": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_after": 76963966976}
+
+=== unloaded-14 ===
+{"label": "unloaded-14", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:26.539456-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76963966976, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-14.log"}
+    Finished `test` profile [optimized] target(s) in 0.20s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 370; no write deadline; elapsed 83.819583ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.08s
+
+
+{"label": "unloaded-14", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:26.539456-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76963966976, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-14.log", "pid": 55146, "exit": 0, "elapsed_s": 0.3310502499807626, "loadavg_after": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_after": 76953653248}
+
+=== unloaded-15 ===
+{"label": "unloaded-15", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:26.872512-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76953653248, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-15.log"}
+    Finished `test` profile [optimized] target(s) in 0.17s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 316; no write deadline; elapsed 70.628291ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.07s
+
+
+{"label": "unloaded-15", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:26.872512-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76953653248, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-15.log", "pid": 55151, "exit": 0, "elapsed_s": 0.2737314170226455, "loadavg_after": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_after": 76948299776}
+
+=== unloaded-16 ===
+{"label": "unloaded-16", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:27.147256-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76948299776, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-16.log"}
+    Finished `test` profile [optimized] target(s) in 0.20s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 139; no write deadline; elapsed 65.468125ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.07s
+
+
+{"label": "unloaded-16", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:27.147256-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76948299776, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-16.log", "pid": 55172, "exit": 0, "elapsed_s": 0.2991561249946244, "loadavg_after": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_after": 76947820544}
+
+=== unloaded-17 ===
+{"label": "unloaded-17", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:27.447390-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76947820544, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-17.log"}
+    Finished `test` profile [optimized] target(s) in 0.22s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 323; no write deadline; elapsed 67.205709ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.07s
+
+
+{"label": "unloaded-17", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:27.447390-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76947820544, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-17.log", "pid": 55178, "exit": 0, "elapsed_s": 0.3438104169908911, "loadavg_after": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_after": 76938928128}
+
+=== unloaded-18 ===
+{"label": "unloaded-18", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:27.792350-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76938928128, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-18.log"}
+    Finished `test` profile [optimized] target(s) in 0.19s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 90; no write deadline; elapsed 44.054042ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.04s
+
+
+{"label": "unloaded-18", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:27.792350-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76938928128, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-18.log", "pid": 55210, "exit": 0, "elapsed_s": 0.28151820797938854, "loadavg_after": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_after": 76935577600}
+
+=== unloaded-19 ===
+{"label": "unloaded-19", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:28.074673-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76935577600, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-19.log"}
+    Finished `test` profile [optimized] target(s) in 0.18s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 5; no write deadline; elapsed 43.335834ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.04s
+
+
+{"label": "unloaded-19", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:28.074673-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76935577600, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-19.log", "pid": 55227, "exit": 0, "elapsed_s": 0.2570364159764722, "loadavg_after": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_after": 76933427200}
+
+=== unloaded-20 ===
+{"label": "unloaded-20", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:28.333028-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76933427200, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-20.log"}
+    Finished `test` profile [optimized] target(s) in 0.19s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 177; no write deadline; elapsed 56.265917ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.06s
+
+
+{"label": "unloaded-20", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:28.333028-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76933427200, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/unloaded-20.log", "pid": 55232, "exit": 0, "elapsed_s": 0.2866978329839185, "loadavg_after": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_after": 76932943872}
+
+=== loaded-01 ===
+{"label": "loaded-01", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:28.642412-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76932927488, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-01.log"}
+    Finished `test` profile [optimized] target(s) in 0.62s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 90; no write deadline; elapsed 94.62475ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.10s
+
+
+{"label": "loaded-01", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:28.642412-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76932927488, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-01.log", "pid": 55245, "exit": 0, "elapsed_s": 0.8348033749498427, "loadavg_after": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_after": 76930170880}
+
+=== loaded-02 ===
+{"label": "loaded-02", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:29.478390-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76930158592, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-02.log"}
+    Finished `test` profile [optimized] target(s) in 0.23s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 122; no write deadline; elapsed 63.260625ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.06s
+
+
+{"label": "loaded-02", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:29.478390-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76930158592, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-02.log", "pid": 55317, "exit": 0, "elapsed_s": 0.353914791950956, "loadavg_after": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_after": 76928352256}
+
+=== loaded-03 ===
+{"label": "loaded-03", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:29.834557-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76928352256, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-03.log"}
+    Finished `test` profile [optimized] target(s) in 0.25s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 321; no write deadline; elapsed 148.460416ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.15s
+
+
+{"label": "loaded-03", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:29.834557-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76928352256, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-03.log", "pid": 55330, "exit": 0, "elapsed_s": 0.4614673330215737, "loadavg_after": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_after": 76927799296}
+
+=== loaded-04 ===
+{"label": "loaded-04", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:30.297576-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76927795200, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-04.log"}
+    Finished `test` profile [optimized] target(s) in 0.19s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 204; no write deadline; elapsed 70.327458ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.07s
+
+
+{"label": "loaded-04", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:30.297576-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76927795200, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-04.log", "pid": 55337, "exit": 0, "elapsed_s": 0.34009520802646875, "loadavg_after": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_after": 76927156224}
+
+=== loaded-05 ===
+{"label": "loaded-05", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:30.638667-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76927156224, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-05.log"}
+    Finished `test` profile [optimized] target(s) in 0.22s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 104; no write deadline; elapsed 73.128042ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.07s
+
+
+{"label": "loaded-05", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:30.638667-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76927156224, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-05.log", "pid": 55343, "exit": 0, "elapsed_s": 0.34843166603241116, "loadavg_after": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_after": 76926042112}
+
+=== loaded-06 ===
+{"label": "loaded-06", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:30.989225-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76926042112, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-06.log"}
+    Finished `test` profile [optimized] target(s) in 0.22s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 453; no write deadline; elapsed 95.926375ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.10s
+
+
+{"label": "loaded-06", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:30.989225-07:00", "loadavg_before": [7.494140625, 11.20263671875, 17.654296875], "free_bytes_before": 76926042112, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-06.log", "pid": 55355, "exit": 0, "elapsed_s": 0.42732408398296684, "loadavg_after": [9.6162109375, 11.5810546875, 17.75], "free_bytes_after": 77137682432}
+
+=== loaded-07 ===
+{"label": "loaded-07", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:31.419077-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77137682432, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-07.log"}
+    Finished `test` profile [optimized] target(s) in 0.28s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 252; no write deadline; elapsed 81.166292ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.08s
+
+
+{"label": "loaded-07", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:31.419077-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77137682432, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-07.log", "pid": 55375, "exit": 0, "elapsed_s": 0.4332332499907352, "loadavg_after": [9.6162109375, 11.5810546875, 17.75], "free_bytes_after": 77138403328}
+
+=== loaded-08 ===
+{"label": "loaded-08", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:31.853840-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77138391040, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-08.log"}
+    Finished `test` profile [optimized] target(s) in 0.24s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 544; no write deadline; elapsed 91.459792ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.09s
+
+
+{"label": "loaded-08", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:31.853840-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77138391040, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-08.log", "pid": 55379, "exit": 0, "elapsed_s": 0.37178704200778157, "loadavg_after": [9.6162109375, 11.5810546875, 17.75], "free_bytes_after": 77134319616}
+
+=== loaded-09 ===
+{"label": "loaded-09", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:32.227916-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77134319616, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-09.log"}
+    Finished `test` profile [optimized] target(s) in 0.24s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 362; no write deadline; elapsed 73.499458ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.07s
+
+
+{"label": "loaded-09", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:32.227916-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77134319616, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-09.log", "pid": 55387, "exit": 0, "elapsed_s": 0.35557408299064264, "loadavg_after": [9.6162109375, 11.5810546875, 17.75], "free_bytes_after": 77133422592}
+
+=== loaded-10 ===
+{"label": "loaded-10", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:32.587260-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77133422592, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-10.log"}
+    Finished `test` profile [optimized] target(s) in 0.24s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 608; no write deadline; elapsed 81.218375ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.08s
+
+
+{"label": "loaded-10", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:32.587260-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77133422592, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-10.log", "pid": 55391, "exit": 0, "elapsed_s": 0.39337316603632644, "loadavg_after": [9.6162109375, 11.5810546875, 17.75], "free_bytes_after": 77132599296}
+
+=== loaded-11 ===
+{"label": "loaded-11", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:32.982744-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77132599296, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-11.log"}
+    Finished `test` profile [optimized] target(s) in 0.22s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 551; no write deadline; elapsed 84.087875ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.08s
+
+
+{"label": "loaded-11", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:32.982744-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77132599296, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-11.log", "pid": 55401, "exit": 0, "elapsed_s": 0.35528370895190164, "loadavg_after": [9.6162109375, 11.5810546875, 17.75], "free_bytes_after": 77131964416}
+
+=== loaded-12 ===
+{"label": "loaded-12", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:33.339875-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77131964416, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-12.log"}
+    Finished `test` profile [optimized] target(s) in 0.25s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 663; no write deadline; elapsed 85.630959ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.09s
+
+
+{"label": "loaded-12", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:33.339875-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77131964416, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-12.log", "pid": 55405, "exit": 0, "elapsed_s": 0.39046966697787866, "loadavg_after": [9.6162109375, 11.5810546875, 17.75], "free_bytes_after": 77130608640}
+
+=== loaded-13 ===
+{"label": "loaded-13", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:33.732642-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77130608640, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-13.log"}
+    Finished `test` profile [optimized] target(s) in 0.24s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 606; no write deadline; elapsed 165.338459ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.17s
+
+
+{"label": "loaded-13", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:33.732642-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77130608640, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-13.log", "pid": 55410, "exit": 0, "elapsed_s": 0.45735270803561434, "loadavg_after": [9.6162109375, 11.5810546875, 17.75], "free_bytes_after": 77130080256}
+
+=== loaded-14 ===
+{"label": "loaded-14", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:34.191417-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77130080256, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-14.log"}
+    Finished `test` profile [optimized] target(s) in 0.22s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 604; no write deadline; elapsed 79.552041ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.08s
+
+
+{"label": "loaded-14", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:34.191417-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77130080256, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-14.log", "pid": 55416, "exit": 0, "elapsed_s": 0.3507286660023965, "loadavg_after": [9.6162109375, 11.5810546875, 17.75], "free_bytes_after": 77129691136}
+
+=== loaded-15 ===
+{"label": "loaded-15", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:34.543104-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77129691136, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-15.log"}
+    Finished `test` profile [optimized] target(s) in 0.24s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 24; no write deadline; elapsed 55.999875ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.06s
+
+
+{"label": "loaded-15", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:34.543104-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77129691136, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-15.log", "pid": 55421, "exit": 0, "elapsed_s": 0.35601849999511614, "loadavg_after": [9.6162109375, 11.5810546875, 17.75], "free_bytes_after": 77129261056}
+
+=== loaded-16 ===
+{"label": "loaded-16", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:34.901257-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77129261056, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-16.log"}
+    Finished `test` profile [optimized] target(s) in 0.21s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 46; no write deadline; elapsed 55.486375ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.06s
+
+
+{"label": "loaded-16", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:34.901257-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77129261056, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-16.log", "pid": 55425, "exit": 0, "elapsed_s": 0.3337868749513291, "loadavg_after": [9.6162109375, 11.5810546875, 17.75], "free_bytes_after": 77128863744}
+
+=== loaded-17 ===
+{"label": "loaded-17", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:35.237656-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77128863744, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-17.log"}
+    Finished `test` profile [optimized] target(s) in 0.25s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 158; no write deadline; elapsed 76.176417ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.08s
+
+
+{"label": "loaded-17", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:35.237656-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77128863744, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-17.log", "pid": 55433, "exit": 0, "elapsed_s": 0.36949729098705575, "loadavg_after": [9.6162109375, 11.5810546875, 17.75], "free_bytes_after": 77125873664}
+
+=== loaded-18 ===
+{"label": "loaded-18", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:35.609217-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77125873664, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-18.log"}
+    Finished `test` profile [optimized] target(s) in 0.25s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 107; no write deadline; elapsed 57.906792ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.06s
+
+
+{"label": "loaded-18", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:35.609217-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77125873664, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-18.log", "pid": 55507, "exit": 0, "elapsed_s": 0.3585485409712419, "loadavg_after": [9.6162109375, 11.5810546875, 17.75], "free_bytes_after": 77125349376}
+
+=== loaded-19 ===
+{"label": "loaded-19", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:35.969293-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77125349376, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-19.log"}
+    Finished `test` profile [optimized] target(s) in 0.23s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 413; no write deadline; elapsed 78.315083ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.08s
+
+
+{"label": "loaded-19", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:35.969293-07:00", "loadavg_before": [9.6162109375, 11.5810546875, 17.75], "free_bytes_before": 77125349376, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-19.log", "pid": 55509, "exit": 0, "elapsed_s": 0.36069087497889996, "loadavg_after": [11.0078125, 11.8369140625, 17.80419921875], "free_bytes_after": 77124993024}
+
+=== loaded-20 ===
+{"label": "loaded-20", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:36.331447-07:00", "loadavg_before": [11.0078125, 11.8369140625, 17.80419921875], "free_bytes_before": 77124993024, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-20.log"}
+    Finished `test` profile [optimized] target(s) in 0.20s
+     Running unittests src/lib.rs (target/duplex-clock/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 1 test
+full-duplex: 1000 inputs / 1000 replies, ordered; Busy 241; no write deadline; elapsed 74.945625ms
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.08s
+
+
+{"label": "loaded-20", "argv": ["cargo", "test", "-p", "bboxy450-term", "--lib", "--locked", "cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline", "--", "--exact", "--nocapture"], "cwd": "/Users/feral/mydev/bboxy450-term-rook", "at": "2026-10-23T16:57:36.331447-07:00", "loadavg_before": [11.0078125, 11.8369140625, 17.80419921875], "free_bytes_before": 77124993024, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/loaded-20.log", "pid": 55514, "exit": 0, "elapsed_s": 0.4095183339668438, "loadavg_after": [11.0078125, 11.8369140625, 17.80419921875], "free_bytes_after": 77124427776}

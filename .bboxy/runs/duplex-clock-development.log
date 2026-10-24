@@ -1,0 +1,93 @@
+Duplex fixture/controlled-clock verification
+2026-10-24T00:05:23.972787+00:00
+Signed code: 8513a0bd524f328d6704411cde9e96d7cb838da7; rebased from e24de37bfd2d8b202f58cd0402435a173bebebae; parent eabcaec410c51297640e9f3ab56b8a8bef2e3101.
+Assignment: 7f5561b9; dev-only tokio/test-util, paused-clock test and evidence scope: eb63a56c.
+Only app Cargo.toml dev feature and cockpit.rs tests changed. Product write_frame is byte-identical; Cargo.lock unchanged in this change.
+Burst fixture: json_frame framing bound + write_all on fake peer; finite 1000 input/reply completion without the test timeout; Busy barrier and all ordering/data assertions preserved.
+Controlled deadline: separate start_paused unit arms the real product writer on a full duplex buffer, verifies pending before deadline, then verifies Elapsed at two seconds of virtual time (millisecond timer-wheel resolution). No wall-clock bound used by that assertion.
+
+Clock/transport group: exit 0; 4 passed / 0 failed; raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/clock-group.log.
+Command: cargo test -p bboxy450-term --lib --locked cockpit::gui_io_tests -- --nocapture
+Strict workspace/all-target Clippy: exit 0; raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-duplex-clock-fgn1l2fh/clippy.log.
+Command: cargo clippy --workspace --all-targets --locked -- -D warnings
+Repeated exact test: 20 without added load + 20 with 8 bounded owned CPU children, all exit 0; every run observed Busy > 0; all 8 load children waited/reaped. All full child output is in duplex-clock-repeats.log.
+No-added-load is not a quiet-host claim. Ambient loadavg ranged 7.49-7.80; with the 8 owned workers 7.49-11.01. No claim that this reproduces the Oracle's 25-30 load condition; fixture wall-clock dependencies were removed structurally.
+{
+  "unloaded": {
+    "runs": 20,
+    "busy_min": 5,
+    "busy_max": 629,
+    "loadavg_min": 7.494140625,
+    "loadavg_max": 7.79833984375
+  },
+  "loaded": {
+    "runs": 20,
+    "busy_min": 24,
+    "busy_max": 663,
+    "loadavg_min": 7.494140625,
+    "loadavg_max": 11.0078125
+  },
+  "load_children": [
+    {
+      "pid": 55237,
+      "started": "2026-10-23T16:57:28.623562-07:00",
+      "max_seconds": 180,
+      "exit": -15,
+      "stopped": "2026-10-23T16:57:36.743011-07:00"
+    },
+    {
+      "pid": 55238,
+      "started": "2026-10-23T16:57:28.625771-07:00",
+      "max_seconds": 180,
+      "exit": -15,
+      "stopped": "2026-10-23T16:57:36.744021-07:00"
+    },
+    {
+      "pid": 55239,
+      "started": "2026-10-23T16:57:28.627471-07:00",
+      "max_seconds": 180,
+      "exit": -15,
+      "stopped": "2026-10-23T16:57:36.744526-07:00"
+    },
+    {
+      "pid": 55240,
+      "started": "2026-10-23T16:57:28.629935-07:00",
+      "max_seconds": 180,
+      "exit": -15,
+      "stopped": "2026-10-23T16:57:36.745497-07:00"
+    },
+    {
+      "pid": 55241,
+      "started": "2026-10-23T16:57:28.632735-07:00",
+      "max_seconds": 180,
+      "exit": -15,
+      "stopped": "2026-10-23T16:57:36.745929-07:00"
+    },
+    {
+      "pid": 55242,
+      "started": "2026-10-23T16:57:28.635170-07:00",
+      "max_seconds": 180,
+      "exit": -15,
+      "stopped": "2026-10-23T16:57:36.746368-07:00"
+    },
+    {
+      "pid": 55243,
+      "started": "2026-10-23T16:57:28.638510-07:00",
+      "max_seconds": 180,
+      "exit": -15,
+      "stopped": "2026-10-23T16:57:36.746764-07:00"
+    },
+    {
+      "pid": 55244,
+      "started": "2026-10-23T16:57:28.641691-07:00",
+      "max_seconds": 180,
+      "exit": -15,
+      "stopped": "2026-10-23T16:57:36.747163-07:00"
+    }
+  ]
+}
+
+Signing history: the first git commit did not create a commit because keydb_search timed out on a lock attributed to dead PID 87181. Its individual git exit was not captured (outer shell continued diagnostics); the failure was caught and source metadata corrected to uncommitted before verification. No unsigned bypass or ~/.gnupg change. Oracle 83974a6f reported a healthy replacement keyboxd/signing probe and directed retry. Captured retry exit 0, then rebased source signature exit 0.
+All code bytes and Cargo.toml bytes are unchanged across the rebase; backend R5f arrived on main while this fixture was developed. Exact clean-worktree normal CI still pending a new slot at this record.
+cockpit.rs SHA256 edb13de452b3e6e7d212706f9deecf8bac06ae49cb74d06eb73a1f068f8776ef
+app Cargo.toml SHA256 0c041c7a2a9286a655e00a983d789b52a84c07e33defe0f588e15451afc41b63
