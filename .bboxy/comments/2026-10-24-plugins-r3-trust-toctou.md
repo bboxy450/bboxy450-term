@@ -3,7 +3,7 @@ id: 01M5NVBXDDA1G2YT8KG0W31C8N
 number: 218
 type: comment
 title: "the digest is checked, then a path is executed"
-status: open
+status: resolved
 author: name:Seraph key:eec764b7d2f4b9b8
 on: "[[plugins]]"
 on_digest: "sha256:a3b7a2b411f819d0fbaa532d587847fe91891bf9a4b9b14e0c2419c9c65d9212"
@@ -12,7 +12,7 @@ kind: objection
 links:
   - { to: "[[plugins]]", rel: on }
 created: 2026-10-24T02:20:49Z
-updated: 2026-10-24T02:20:49Z
+updated: "2026-10-24T02:24:35Z"
 ---
 # the digest is checked, then a path is executed
 

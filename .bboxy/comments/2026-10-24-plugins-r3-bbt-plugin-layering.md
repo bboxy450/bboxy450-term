@@ -3,7 +3,7 @@ id: 01M5NVBXDW1HCPDPCDD94ECJZY
 number: 224
 type: comment
 title: "below bbt-proto, bbt-plugin cannot name the types its contracts carry"
-status: open
+status: resolved
 author: name:Seraph key:eec764b7d2f4b9b8
 on: "[[plugins]]"
 on_digest: "sha256:a3b7a2b411f819d0fbaa532d587847fe91891bf9a4b9b14e0c2419c9c65d9212"
@@ -12,7 +12,7 @@ kind: objection
 links:
   - { to: "[[plugins]]", rel: on }
 created: 2026-10-24T02:20:49Z
-updated: 2026-10-24T02:20:49Z
+updated: "2026-10-24T02:24:35Z"
 ---
 # below bbt-proto, bbt-plugin cannot name the types its contracts carry
 

@@ -15,9 +15,12 @@ links:
   - { to: "[[plugins]]", rel: "decides" }
   - { to: "[[work-items]]", rel: "decides" }
 created: "2026-10-23T19:56:20Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-10-24T02:24:35Z"
 ---
 # Decision 41: Plugins: planned and logged, not built
+
+**Superseded summary.** The paragraph above is the original ruling of 2026-10-23 and is kept as history; the current design is [[plugins]] revision 4: `--shape` read once at trust (a bare run is a courtesy), seven contracts including `decision_model`, trust before any run with a content-addressed copy, and a plugin is an MCP server (Seraph's review, #213 to #230, 2026-10-24).
+
 
 **Plugins: planned and logged, not built (operator, 2026-10-23, verbatim
 in [[plugins]] §0).** A folder of binaries named `<app>-<system>-
