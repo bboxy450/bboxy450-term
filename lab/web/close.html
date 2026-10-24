@@ -5,8 +5,9 @@
 <script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
 </head><body><script>
 const el = Lab.el;
-// the 'gone' notice: a presence line in the swarm's stream dock (ux-flow 'a closed seat can come back after its grace')
-const GONE = seat => el('div', { class: 'stream-dock' }, C.messageRow({ kind: 'presence', text: seat.name + ' closed · history retained · Resume in ⌘T', ts: C.atHM('14:31') }));
+// the 'gone' notice (T7 ruling, c13b0ba5): one presence line in the swarm's stream dock, exactly '<name> closed; its history is kept';
+// nothing is deleted and ⌘Z is no longer offered for it
+const GONE = seat => el('div', { class: 'stream-dock' }, C.messageRow({ kind: 'presence', text: seat.name + ' closed; its history is kept', ts: C.atHM('14:31') }));
 function t7(phase) {
   const S = (k, name, harness, role, state) => ({ key: k, name, harness, role, state, title: { codex: 'messaging spec', claude: 'swarm control', zsh: '~' }[harness] });
   const a = S('t1', 'Vesper Greywind', 'claude', 'oracle', 'active'), b = S('t2', 'Nyx Copperwing', 'codex', 'executor', 'idle'), victim = S('cv', 'Tamsin Voss', 'codex', 'executor', 'active');
@@ -22,7 +23,7 @@ function t7(phase) {
   const v = C.splitView(tree, { paneOpts: t => ({ focused: t.key === focus.key, unfocused: t.key !== focus.key, shortcut: '⌘' + (seats.indexOf(t) + 1) }) });
   frame.append(sb, el('div', { class: 'stage tiled', style: 'flex:1;display:flex;min-width:0' }, (v.style.flex = '1', v)));
   const say = { open: 'Before: three panes; the red dot in Tamsin Voss’s strip closes it.', 'in grace': 'Closed 8 s ago: the pane left the split and its neighbour took the room; the strip in the swarm counts down 52 s and offers undo ⌘Z; the process still runs.',
-    undone: '⌘Z within grace: the same process back in its split position, focused (the focus swell plays); no new generation.', gone: 'After 60 s: the strip is gone and the stream says so; the seat is retained, ⌘T Resume brings it back as a new process.' }[phase];
+    undone: '⌘Z within grace: the same process back in its split position, focused (the focus swell plays); no new generation.', gone: 'After 60 s: the pane and its row have left and one stream line says so; nothing is deleted (the ring and records stay reachable from the seat’s record and the Graph tab) and ⌘Z is no longer offered for it.' }[phase];
   return el('div', {}, frame, el('div', { class: 'lab-note', style: 'padding-top:8px' }, say));
 }
 Lab.page({ title: 'close', wide: true, note: 'Closing is reversible and has no confirm (vision: undo close). The red dot in the strip closes; the seat collapses into a closed strip in its swarm while the process keeps running for the grace window (60 s, setting); the hairline drains; ⌘Z or undo restores it in place, same process, same split. After grace it is retained: history and the session mapping stay, and ⌘T Resume brings it back as a new process. Purge (row menu) is the only confirm and skips grace.',

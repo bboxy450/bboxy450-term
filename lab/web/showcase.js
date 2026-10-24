@@ -416,7 +416,7 @@
   // a new or resumed seat gets the theme-aware colour and the grade from its harness record, like the built-in seats
   function dressSeat(seat) { if (seat.pal == null) seat.pal = (seats.length + 3) % 15; if (!Object.getOwnPropertyDescriptor(seat, 'color') || !Object.getOwnPropertyDescriptor(seat, 'color').get) Object.defineProperty(seat, 'color', { get() { return (theme() === 'light' ? PAL_LIGHT : PAL)[this.pal]; }, enumerable: true, configurable: true }); if (!Object.getOwnPropertyDescriptor(seat, 'grade')) Object.defineProperty(seat, 'grade', { get() { return gradeFor(this.harness); }, enumerable: true, configurable: true }); return seat; }
   // past grace: closed_retained. History and the harness-session mapping stay; Resume in the launcher starts a new generation.
-  function retain(sp, seat) { sp.retained = sp.retained || []; sp.retained.unshift({ seat, closedAt: new Date().toTimeString().slice(0, 5), session: C.hash32(seat.key + 's').toString(16).slice(0, 8) }); streamLine(sp, seat.name + ' closed · history retained · Resume in ⌘T'); }
+  function retain(sp, seat) { sp.retained = sp.retained || []; sp.retained.unshift({ seat, closedAt: new Date().toTimeString().slice(0, 5), session: C.hash32(seat.key + 's').toString(16).slice(0, 8) }); streamLine(sp, seat.name + ' closed; its history is kept'); }   // T7 ruling c13b0ba5
   function resumeSeat(sp, r) {
     sp.retained = (sp.retained || []).filter(x => x !== r && x.seat !== r.seat);
     const seat = dressSeat(r.seat); seat.generation = (seat.generation || 1) + 1; seat.resumed = { gen: seat.generation, cmd: r.cmd }; seat.state = 'active';
