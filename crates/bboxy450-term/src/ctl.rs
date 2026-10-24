@@ -35,6 +35,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl [--endpoint FILE] <command>
   receipts <message-id>
   delegate <#N|path|id> <seat>
   reports [--since TIME]
+  capture <file.png> [--seat SEAT]
 A <seat> is a seat id or a unique seat name. Output is one JSON object per line.";
 
 /// Where the app's `gui.sock` is and the capability that admits a client.
@@ -106,6 +107,10 @@ pub enum Command {
     Reports {
         since: Option<String>,
     },
+    Capture {
+        path: PathBuf,
+        seat: Option<String>,
+    },
 }
 
 /// Parses everything after `ctl`; returns the endpoint file override and the command.
@@ -174,11 +179,15 @@ pub fn parse(args: &[String]) -> Result<(Option<PathBuf>, Command), String> {
         ["reports"] => Command::Reports {
             since: flag("since"),
         },
+        ["capture", path] => Command::Capture {
+            path: std::path::absolute(path).map_err(|e| format!("capture {path}: {e}"))?,
+            seat: flag("seat"),
+        },
         _ => return Err(USAGE.into()),
     };
     if let Some(unknown) = flags
         .keys()
-        .find(|k| !["swarm", "name", "cwd", "since", "placement"].contains(&k.as_str()))
+        .find(|k| !["swarm", "name", "cwd", "since", "placement", "seat"].contains(&k.as_str()))
     {
         return Err(format!("unknown flag --{unknown}\n{USAGE}"));
     }
@@ -289,6 +298,19 @@ impl Client {
             |r| matches!(r, GuiReply::Messaging { op, .. } if *op == id),
         )? {
             GuiReply::Messaging { response, .. } => Ok(response),
+            _ => unreachable!(),
+        }
+    }
+    /// Asks the window for a PNG of itself, or of one seat's pane; returns the written path.
+    pub fn capture(&mut self, path: &Path, seat: Option<Ulid>) -> Result<String, String> {
+        let id = Ulid::new();
+        let path = path.to_str().ok_or("capture path is not UTF-8")?.to_owned();
+        match self.call(
+            Some(id),
+            GuiAction::Capture { id, path, seat },
+            |r| matches!(r, GuiReply::Captured { op, .. } if *op == id),
+        )? {
+            GuiReply::Captured { path, .. } => Ok(path),
             _ => unreachable!(),
         }
     }
@@ -478,6 +500,14 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
                 json!({ "kind": "delegated", "task": task, "seat": seat.record.id, "response": to_value(&response) }),
             ]
         }
+        Command::Capture { path, seat } => {
+            let seat = match seat {
+                Some(seat) => Some(resolve(&client.seats()?, &seat)?.record.id),
+                None => None,
+            };
+            let path = client.capture(&path, seat)?;
+            vec![json!({ "kind": "captured", "path": path, "seat": seat })]
+        }
         Command::Reports { since } => {
             let mut cards = vec![];
             let mut after = None;
@@ -551,6 +581,10 @@ mod erased {
 
 /// The `ctl` subcommand: parse, connect, run, print one JSON object per line.
 pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
+    if args.iter().any(|arg| arg == "--help" || arg == "-h") {
+        println!("{USAGE}");
+        return Ok(());
+    }
     let (endpoint, command) = parse(args)?;
     let endpoint = Endpoint::read(endpoint.as_deref().unwrap_or(default_endpoint))?;
     let mut client = Client::connect(&endpoint)?;

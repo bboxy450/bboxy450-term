@@ -137,6 +137,20 @@ pub enum GuiAction {
         from: u64,
         to: u64,
     },
+    /// The operator asks for a PNG of the window, or of one seat's pane, written to `path`
+    /// (absolute). Answered with [`GuiReply::Captured`] once the window has written it.
+    Capture {
+        id: Ulid,
+        path: String,
+        #[serde(default)]
+        seat: Option<Ulid>,
+    },
+    /// The window's answer to [`GuiReply::CaptureAsk`]: written, or why not.
+    Captured {
+        id: Ulid,
+        #[serde(default)]
+        error: Option<String>,
+    },
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body")]
@@ -209,6 +223,18 @@ pub enum GuiReply {
         records: Vec<HistoryRecord>,
         /// First capture sequence not included in this bounded page.
         next: Option<u64>,
+    },
+    /// Sent to the window: capture the next presented frame to `path`, cropped to `seat`'s
+    /// pane when named, and answer with [`GuiAction::Captured`].
+    CaptureAsk {
+        op: Ulid,
+        path: String,
+        seat: Option<Ulid>,
+    },
+    /// The PNG the window wrote for [`GuiAction::Capture`].
+    Captured {
+        op: Ulid,
+        path: String,
     },
 }
 

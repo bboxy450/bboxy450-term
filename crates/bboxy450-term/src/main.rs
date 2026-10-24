@@ -63,6 +63,8 @@ pub enum UiEvent {
     VerifyClose,
     VerifyFailed(String),
     Capture,
+    /// A capture asked through an operator door (`ctl capture`); answered when written.
+    CaptureFor(live::CaptureAsk),
     StallPoll,
 }
 struct Wake(EventLoopProxy<UiEvent>);
@@ -864,6 +866,8 @@ struct App {
     error: Option<String>,
     capture: Option<std::path::PathBuf>,
     capture_pending: bool,
+    /// Operator captures waiting for the next presented frame.
+    ctl_captures: Vec<live::CaptureAsk>,
     pending_resize: Option<LogicalSize<f64>>,
     animate: bool,
     cadence_test: bool,
@@ -1487,6 +1491,49 @@ impl App {
             generation,
             request,
         });
+    }
+    /// Writes the presented frame for an operator capture, cropped to the seat's pane.
+    fn capture_for(&self, ask: live::CaptureAsk, scale: f32) {
+        let crop = match ask.seat {
+            None => None,
+            Some(seat) => match self.pane_bounds.iter().find(|(id, _)| *id == seat) {
+                Some((_, rect)) => Some(capture::Crop {
+                    x: (rect.x * scale).round() as u32,
+                    y: (rect.y * scale).round() as u32,
+                    width: (rect.w * scale).round() as u32,
+                    height: (rect.h * scale).round() as u32,
+                }),
+                None => {
+                    self.answer_capture(ask.id, Err(format!("seat {seat} has no pane on screen")));
+                    return;
+                }
+            },
+        };
+        let Some(sender) = self.live_commands.as_ref().map(|sender| (**sender).clone()) else {
+            return;
+        };
+        let id = ask.id;
+        self.gpu
+            .as_ref()
+            .unwrap()
+            .capture(ask.path, crop, self.logger.clone(), move |result| {
+                bbt_rt::handle().spawn(async move {
+                    let _ = sender
+                        .send(live::UiMsg::Captured {
+                            id,
+                            error: result.err(),
+                        })
+                        .await;
+                });
+            });
+    }
+    fn answer_capture(&self, id: bbt_mux::Ulid, result: Result<(), String>) {
+        if let Some(sender) = &self.live_commands {
+            let _ = sender.try_send(live::UiMsg::Captured {
+                id,
+                error: result.err(),
+            });
+        }
     }
     fn flush_commands(&mut self) {
         self.flush_operations();
@@ -2136,10 +2183,13 @@ impl App {
                 self.gpu
                     .as_ref()
                     .unwrap()
-                    .capture(path.clone(), self.logger.clone());
+                    .capture(path.clone(), None, self.logger.clone(), |_| {});
                 if self.verify.grid_hash {
                     self.dump_grid_hash(path.clone(), scale);
                 }
+            }
+            for ask in std::mem::take(&mut self.ctl_captures) {
+                self.capture_for(ask, scale);
             }
             if self.fake && self.last_update == 20 && !self.idle_scheduled {
                 self.idle_scheduled = true;
@@ -2214,6 +2264,14 @@ impl ApplicationHandler<UiEvent> for App {
             UiEvent::Capture => {
                 self.capture_pending = true;
                 self.request_redraw();
+            }
+            UiEvent::CaptureFor(ask) => {
+                if self.gpu.is_none() {
+                    self.answer_capture(ask.id, Err("the window is not presenting".into()));
+                } else {
+                    self.ctl_captures.push(ask);
+                    self.request_redraw();
+                }
             }
             UiEvent::VerifyScrollTop => {
                 self.logger.write(format!(
@@ -3477,7 +3535,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(result) = stall::private_entry(&hook_args) {
         return result.map_err(Into::into);
     }
-    if hook_args.iter().any(|arg| arg == "--help" || arg == "-h") {
+    // `ctl --help` is ctl's own usage, printed by ctl.
+    if hook_args.first().is_none_or(|arg| arg != "ctl")
+        && hook_args.iter().any(|arg| arg == "--help" || arg == "-h")
+    {
         println!("{HELP}\n{}", stall::HELP);
         return Ok(());
     }
@@ -3682,6 +3743,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         error: None,
         capture,
         capture_pending: true,
+        ctl_captures: Vec::new(),
         pending_resize: None,
         animate,
         cadence_test,

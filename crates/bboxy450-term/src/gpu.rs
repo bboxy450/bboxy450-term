@@ -266,13 +266,21 @@ impl Gpu {
         let layer = surface.render_layer().try_lock()?;
         Some(layer.maximumDrawableCount())
     }
-    pub fn capture(&self, path: std::path::PathBuf, logger: crate::log::Logger) {
+    pub fn capture(
+        &self,
+        path: std::path::PathBuf,
+        crop: Option<crate::capture::Crop>,
+        logger: crate::log::Logger,
+        done: impl FnOnce(Result<(), String>) + Send + 'static,
+    ) {
         crate::capture::save(
             &self.renderer.context.device,
             &self.renderer.context.queue,
             &self.target,
             path,
+            crop,
             logger,
+            done,
         );
     }
     pub fn collect_gpu(

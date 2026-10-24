@@ -125,6 +125,12 @@ pub fn start(
                     let event = reason.map_or(UiEvent::BackendReady, UiEvent::BackendLost);
                     let _ = proxy.send_event(event);
                 },
+                {
+                    let proxy = proxy.clone();
+                    move |ask| {
+                        let _ = proxy.send_event(UiEvent::CaptureFor(ask));
+                    }
+                },
             )
             .await
         }
@@ -135,6 +141,16 @@ pub fn start(
         let _ = proxy.send_event(UiEvent::BackendStopped(result.map_err(|e| e.to_string())));
     });
     sender
+}
+
+/// A capture logic relays from an operator door: the window writes the next presented
+/// frame (cropped to `seat`'s pane when named) to `path` and answers with
+/// [`UiMsg::Captured`].
+#[derive(Debug)]
+pub struct CaptureAsk {
+    pub id: Ulid,
+    pub path: PathBuf,
+    pub seat: Option<SeatId>,
 }
 
 fn publish(
@@ -550,6 +566,7 @@ async fn run(
     cwd: PathBuf,
     rendering: oneshot::Receiver<RenderContext>,
     backend_lost: impl Fn(Option<String>),
+    capture: impl Fn(CaptureAsk),
 ) -> Result<()> {
     logger.write(format!(
         "cockpit ready: supervisor={} logic={}",
@@ -711,6 +728,7 @@ async fn run(
                     },
                     UiMsg::EventPage {stream,after,limit}=>queue_action(&mut outgoing,GuiAction::GetEvents {stream:stream.clone(),after:*after,limit:*limit}),
                     UiMsg::EventCursor {stream}=>queue_action(&mut outgoing,GuiAction::GetEventCursor {stream:stream.clone()}),
+                    UiMsg::Captured {id,error}=>queue_action(&mut outgoing,GuiAction::Captured {id:*id,error:error.clone()}),
                     UiMsg::MarkEventsRead {stream,sequence}=>queue_action(&mut outgoing,GuiAction::MarkEventsRead {stream:stream.clone(),seq:*sequence}),
                     UiMsg::Resize {seat,generation,cols,rows}=> {
                         if seats.get(&Ulid(seat.0.0)).is_some_and(|metadata| metadata.state.generation==*generation) {
@@ -917,6 +935,8 @@ async fn run(
                                 if changed {publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;}
                             }
                         },
+                        GuiReply::CaptureAsk {op,path,seat}=>capture(CaptureAsk {id:op,path:PathBuf::from(path),seat:seat.map(|seat| SeatId::from_u128(seat.0))}),
+                        GuiReply::Captured {op,path}=>logger.write(format!("capture {op} written: {path}")),
                         GuiReply::Event {..}|GuiReply::Gap {..}|GuiReply::Events {..}|GuiReply::EventCursor {..}|GuiReply::EventStatus {..}=>unreachable!("handled before state dispatch"),
                       }}
                       // Every accepted projection is in the published Model
@@ -2095,6 +2115,7 @@ mod tests {
                 |reason| {
                     assert!(reason.is_none(), "unexpected backend loss: {reason:?}");
                 },
+                |_| {},
             )
             .await
         });
@@ -2295,6 +2316,7 @@ mod tests {
                 |reason| {
                     let _ = lost_sender.send(reason);
                 },
+                |_| {},
             )
             .await
         });
