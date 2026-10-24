@@ -617,7 +617,11 @@ async fn ctl_capture_is_answered_by_the_window() {
     session.list().await.unwrap();
 
     // Answers the next CaptureAsk as the window does: written, or why not.
-    async fn answer(session: &mut Session, error: Option<&str>) -> (String, Option<String>) {
+    async fn answer(
+        session: &mut Session,
+        error: Option<&str>,
+        frame: bbt_proto::gui::CaptureFrame,
+    ) -> (String, Option<String>) {
         loop {
             let event = tokio::time::timeout(Duration::from_secs(20), session.event())
                 .await
@@ -633,6 +637,7 @@ async fn ctl_capture_is_answered_by_the_window() {
                     .send(GuiAction::Captured {
                         id: op,
                         error: error.map(Into::into),
+                        frame,
                     })
                     .await
                     .unwrap();
@@ -647,20 +652,61 @@ async fn ctl_capture_is_answered_by_the_window() {
         let (run, root) = (run.clone(), root.clone());
         move || ctl_in(&run, &root, &["capture", "window.png"])
     });
-    let (path, seat) = answer(&mut session, None).await;
+    let current = bbt_proto::gui::CaptureFrame {
+        stale: false,
+        occluded: false,
+        presented_at_ms: Some(1_792_900_000_000),
+    };
+    let (path, seat) = answer(&mut session, None, current).await;
     assert_eq!((path.as_str(), seat), (out.to_str().unwrap(), None));
     let (ok, lines) = asked.await.unwrap();
     assert!(ok, "{lines:?}");
     assert_eq!(lines[0]["kind"], "captured", "{lines:?}");
     assert_eq!(lines[0]["path"], out.to_str().unwrap());
+    assert_eq!(
+        (
+            &lines[0]["stale"],
+            &lines[0]["occluded"],
+            &lines[0]["frame_presented_at"]
+        ),
+        (
+            &Value::Bool(false),
+            &Value::Bool(false),
+            &serde_json::json!(1_792_900_000_000u64)
+        ),
+        "{lines:?}"
+    );
     assert!(std::fs::read(&out).unwrap().starts_with(b"\x89PNG"));
+
+    // An occluded window answers with its last frame, and says it is stale, so a judge
+    // never takes it for the current one.
+    let asked = tokio::task::spawn_blocking({
+        let (run, root) = (run.clone(), root.clone());
+        move || ctl_in(&run, &root, &["capture", "occluded.png"])
+    });
+    let stale = bbt_proto::gui::CaptureFrame {
+        stale: true,
+        occluded: true,
+        presented_at_ms: Some(1_792_800_000_000),
+    };
+    answer(&mut session, None, stale).await;
+    let (ok, lines) = asked.await.unwrap();
+    assert!(ok, "{lines:?}");
+    assert_eq!(lines[0]["stale"], true, "{lines:?}");
+    assert_eq!(lines[0]["occluded"], true, "{lines:?}");
+    assert_eq!(lines[0]["frame_presented_at"], 1_792_800_000_000u64);
 
     // The window's refusal reaches ctl as its error and exit 1.
     let asked = tokio::task::spawn_blocking({
         let (run, root) = (run.clone(), root.clone());
         move || ctl_in(&run, &root, &["capture", "/nonexistent/x.png"])
     });
-    answer(&mut session, Some("the window is not presenting")).await;
+    answer(
+        &mut session,
+        Some("the window is not presenting"),
+        Default::default(),
+    )
+    .await;
     let (ok, lines) = asked.await.unwrap();
     assert!(!ok);
     assert_eq!(lines[0]["kind"], "error", "{lines:?}");

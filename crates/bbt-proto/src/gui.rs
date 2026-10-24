@@ -156,6 +156,8 @@ pub enum GuiAction {
         id: Ulid,
         #[serde(default)]
         error: Option<String>,
+        #[serde(default)]
+        frame: CaptureFrame,
     },
     /// Read-only portable data_source call. `args` is the existing method DTO;
     /// admission is the same operator GUI admission as every other view read.
@@ -164,6 +166,15 @@ pub enum GuiAction {
         method: String,
         args: serde_json::Value,
     },
+}
+/// Which frame a capture holds. A stale frame (the last one drawn before the window stopped
+/// presenting) is never passed off as current: a judge reads `stale` and refuses it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CaptureFrame {
+    pub stale: bool,
+    pub occluded: bool,
+    /// When the captured frame was presented, in Unix milliseconds.
+    pub presented_at_ms: Option<u64>,
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body")]
@@ -244,10 +255,12 @@ pub enum GuiReply {
         path: String,
         seat: Option<Ulid>,
     },
-    /// The PNG the window wrote for [`GuiAction::Capture`].
+    /// The PNG the window wrote for [`GuiAction::Capture`], and which frame it holds.
     Captured {
         op: Ulid,
         path: String,
+        #[serde(default)]
+        frame: CaptureFrame,
     },
     /// Sent to the window: a seat spawned through another operator door (`ctl spawn`).
     /// The window places it as it places its own launcher pick.

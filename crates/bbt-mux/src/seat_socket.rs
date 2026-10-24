@@ -627,8 +627,8 @@ async fn gui_session(
                                 Ok(GuiReply::Seat(client.gui_seat(seat).await?))
                             }
                             GuiAction::Capture {id,path,seat}=> {
-                                client.captures.ask(crate::gui_capture::Ask {id,path:path.clone(),seat}).await.map_err(invalid)?;
-                                Ok(GuiReply::Captured {op:id,path})
+                                let frame=client.captures.ask(crate::gui_capture::Ask {id,path:path.clone(),seat}).await.map_err(invalid)?;
+                                Ok(GuiReply::Captured {op:id,path,frame})
                             }
                             GuiAction::Issuer {label}=> {
                                 if label.trim().is_empty()||label.len()>bbt_proto::messaging::MAX_ISSUER||label.chars().any(char::is_control) {
@@ -637,9 +637,9 @@ async fn gui_session(
                                 issued_by=Some(label);
                                 Ok(GuiReply::Ok {op})
                             }
-                            GuiAction::Captured {id,error}=> {
+                            GuiAction::Captured {id,error,frame}=> {
                                 if capture_asks.is_none() {return Err(invalid("only the window answers a capture"));}
-                                client.captures.answer(id,error);
+                                client.captures.answer(id,error.map_or(Ok(frame),Err));
                                 Ok(GuiReply::Ok {op:id})
                             }
                             GuiAction::GetHistory {seat,from,to}=> {

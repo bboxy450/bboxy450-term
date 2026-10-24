@@ -47,7 +47,7 @@ impl Notice {
 
 pub(crate) struct Captures {
     asks: broadcast::Sender<Notice>,
-    pending: Mutex<HashMap<Ulid, oneshot::Sender<Option<String>>>>,
+    pending: Mutex<HashMap<Ulid, oneshot::Sender<Result<bbt_proto::gui::CaptureFrame, String>>>>,
 }
 impl Default for Captures {
     fn default() -> Self {
@@ -63,7 +63,7 @@ impl Captures {
         self.asks.subscribe()
     }
     /// Asks the window for `ask` and waits for its answer.
-    pub(crate) async fn ask(&self, ask: Ask) -> Result<(), String> {
+    pub(crate) async fn ask(&self, ask: Ask) -> Result<bbt_proto::gui::CaptureFrame, String> {
         if !std::path::Path::new(&ask.path).is_absolute() {
             return Err("capture path must be absolute".into());
         }
@@ -77,8 +77,7 @@ impl Captures {
         let answer = tokio::time::timeout(WAIT, answer).await;
         self.lock().remove(&id);
         match answer {
-            Ok(Ok(None)) => Ok(()),
-            Ok(Ok(Some(error))) => Err(error),
+            Ok(Ok(answer)) => answer,
             Ok(Err(_)) => Err("the window dropped the capture".into()),
             Err(_) => Err("the window did not answer the capture in time".into()),
         }
@@ -88,12 +87,17 @@ impl Captures {
         let _ = self.asks.send(Notice::Spawned { op, seat, spec });
     }
     /// The window's answer; an id nobody waits for is ignored.
-    pub(crate) fn answer(&self, id: Ulid, error: Option<String>) {
+    pub(crate) fn answer(&self, id: Ulid, answer: Result<bbt_proto::gui::CaptureFrame, String>) {
         if let Some(done) = self.lock().remove(&id) {
-            let _ = done.send(error);
+            let _ = done.send(answer);
         }
     }
-    fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<Ulid, oneshot::Sender<Option<String>>>> {
+    fn lock(
+        &self,
+    ) -> std::sync::MutexGuard<
+        '_,
+        HashMap<Ulid, oneshot::Sender<Result<bbt_proto::gui::CaptureFrame, String>>>,
+    > {
         self.pending.lock().unwrap_or_else(|e| e.into_inner())
     }
 }
@@ -134,8 +138,8 @@ mod tests {
             panic!("a capture notice")
         };
         assert_eq!((seen.id, seen.path), (ask.id, path));
-        captures.answer(Ulid::new(), Some("not this one".into()));
-        captures.answer(ask.id, Some("readback failed".into()));
+        captures.answer(Ulid::new(), Err("not this one".into()));
+        captures.answer(ask.id, Err("readback failed".into()));
         assert_eq!(asker.await.unwrap(), Err("readback failed".into()));
     }
 }
