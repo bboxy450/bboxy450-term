@@ -558,7 +558,7 @@ async fn gui_session(
                         continue;
                     }
                     let op=match &request.action {
-                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}=>*id,
+                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
@@ -641,6 +641,17 @@ async fn gui_session(
                                 }
                                 let receipt=client.gui_input(Ulid::from(seat.0.0),generation,id,bytes).await?;
                                 if receipt.state==crate::InputState::PartialUnknown {return Err(invalid("input result is partial/unknown; keep the original id"));}
+                                Ok(GuiReply::Ok {op:id})
+                            }
+                            GuiAction::RenameSeat {id,seat,name}=> {
+                                client.ctl_rename(seat,name,id,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
+                                Ok(GuiReply::Ok {op:id})
+                            }
+                            GuiAction::FocusSeat {id,seat}=> {
+                                client.record(seat).await?;
+                                if !client.captures.attached() {return Err(invalid("no window is attached to focus"));}
+                                client.ctl_record(id,"seat_focus",serde_json::json!({"seat":seat}),crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
+                                client.captures.focus(id,bbt_proto::SeatId::from_u128(seat.0)).map_err(invalid)?;
                                 Ok(GuiReply::Ok {op:id})
                             }
                             GuiAction::EventsRead {id,stream,after,limit}=> {

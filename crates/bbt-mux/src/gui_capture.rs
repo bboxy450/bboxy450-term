@@ -29,6 +29,10 @@ pub(crate) enum Notice {
         seat: bbt_proto::SeatId,
         spec: bbt_proto::SpawnSpec,
     },
+    Focus {
+        op: Ulid,
+        seat: bbt_proto::SeatId,
+    },
 }
 impl Notice {
     pub(crate) fn reply(self) -> bbt_proto::GuiReply {
@@ -41,6 +45,7 @@ impl Notice {
             Self::Spawned { op, seat, spec } => {
                 bbt_proto::GuiReply::OperatorSpawned { op, seat, spec }
             }
+            Self::Focus { op, seat } => bbt_proto::GuiReply::OperatorFocus { op, seat },
         }
     }
 }
@@ -85,6 +90,17 @@ impl Captures {
     /// Tells the window about a seat spawned through another door; no window, no notice.
     pub(crate) fn spawned(&self, op: Ulid, seat: bbt_proto::SeatId, spec: bbt_proto::SpawnSpec) {
         let _ = self.asks.send(Notice::Spawned { op, seat, spec });
+    }
+    /// Whether a window's session is listening for relayed asks.
+    pub(crate) fn attached(&self) -> bool {
+        self.asks.receiver_count() > 0
+    }
+    /// Asks the window to focus a seat; refused when no window listens.
+    pub(crate) fn focus(&self, op: Ulid, seat: bbt_proto::SeatId) -> Result<(), String> {
+        self.asks
+            .send(Notice::Focus { op, seat })
+            .map(drop)
+            .map_err(|_| "no window is attached to focus".into())
     }
     /// The window's answer; an id nobody waits for is ignored.
     pub(crate) fn answer(&self, id: Ulid, answer: Result<bbt_proto::gui::CaptureFrame, String>) {

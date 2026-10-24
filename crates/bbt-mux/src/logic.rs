@@ -99,6 +99,20 @@ enum Command {
         bool,
         oneshot::Sender<Result<bbt_proto::gui::SeatScreen>>,
     ),
+    CtlRename(
+        Ulid,
+        String,
+        Ulid,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<()>>,
+    ),
+    CtlRecord(
+        Ulid,
+        String,
+        serde_json::Value,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<()>>,
+    ),
     CtlResize(
         Ulid,
         u64,
@@ -470,6 +484,38 @@ impl LogicClient {
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await
             .map_err(|_| self.unavailable("input outcome unknown; keep the original input id"))?
+    }
+    /// Rename a seat through the ctl door: a journaled registry write and a state event.
+    pub async fn ctl_rename(
+        &self,
+        seat: Ulid,
+        name: String,
+        op: Ulid,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::CtlRename(seat, name, op, origin, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await
+            .map_err(|_| self.unavailable("rename outcome unknown"))?
+    }
+    /// Journals a ctl operation whose effect happens in the window (a relay), so it is
+    /// recorded and audited like every other ctl op.
+    pub async fn ctl_record(
+        &self,
+        op: Ulid,
+        tool: &str,
+        args: serde_json::Value,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::CtlRecord(op, tool.into(), args, origin, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("outcome unknown"))?
     }
     /// Resize through the ctl door: the window's resize, journaled once per id like input.
     pub async fn ctl_resize(
@@ -3385,6 +3431,35 @@ impl Worker {
             this.seat_input(id, generation, input_id, bytes).map(drop)
         })
     }
+    /// Rename through `ctl`: the registry name, then a state event so the window refreshes
+    /// the seat (ctl-cli §1a). A name is 1 to 64 printable characters.
+    fn ctl_rename(
+        &mut self,
+        id: Ulid,
+        name: String,
+        op: Ulid,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        let name = name.trim().to_owned();
+        if name.is_empty() || name.chars().count() > 64 || name.chars().any(char::is_control) {
+            return Err(invalid("a seat name is 1 to 64 printable characters"));
+        }
+        let args = serde_json::json!({"seat":id,"name":name});
+        self.ctl_journaled(op, "seat_rename", args, origin, |this| {
+            this.registry.update(id, |record| {
+                record.name = name.clone();
+                Ok(())
+            })?;
+            this.publish(
+                &format!("seat-{id}"),
+                Draft::new(
+                    format!("seat/{id}/state"),
+                    "rename",
+                    serde_json::json!({"name": name}),
+                ),
+            )
+        })
+    }
     /// Resize through `ctl`: the window's resize path, journaled as `gui_resize`.
     fn ctl_resize(
         &mut self,
@@ -5061,6 +5136,14 @@ impl Worker {
                     }
                     Command::GuiScreen(id, cells, reply) => {
                         let result = self.seat_screen(id, cells);
+                        let _ = reply.send(result);
+                    }
+                    Command::CtlRename(id, name, op, origin, reply) => {
+                        let result = self.ctl_rename(id, name, op, origin);
+                        let _ = reply.send(result);
+                    }
+                    Command::CtlRecord(op, tool, args, origin, reply) => {
+                        let result = self.ctl_journaled(op, &tool, args, origin, |_| Ok(()));
                         let _ = reply.send(result);
                     }
                     Command::CtlResize(id, generation, cols, rows, op, origin, reply) => {

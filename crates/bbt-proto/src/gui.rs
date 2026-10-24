@@ -154,6 +154,18 @@ pub enum GuiAction {
         #[serde(default)]
         cells: bool,
     },
+    /// Rename a seat (ctl-cli §1a): a registry write the window reconciles from the state lane.
+    RenameSeat {
+        id: Ulid,
+        seat: Ulid,
+        name: String,
+    },
+    /// Focus a seat in the window (ctl-cli §1a): relayed to the window, which focuses it as
+    /// its own row click does.
+    FocusSeat {
+        id: Ulid,
+        seat: Ulid,
+    },
     /// Page a retained stream by the caller's cursor (ctl-cli §1a, #272): read-only, no
     /// attachment, no ack, never a second consumer of the operator's lane; filtered to the
     /// subjects the operator's lane may see.
@@ -327,6 +339,12 @@ pub enum GuiReply {
         #[serde(with = "text_id")]
         seat: SeatId,
         spec: SpawnSpec,
+    },
+    /// Sent to the window: focus this seat, asked through another operator door.
+    OperatorFocus {
+        op: Ulid,
+        #[serde(with = "text_id")]
+        seat: SeatId,
     },
     /// A page of retained events, oldest first; `next` is the cursor to continue from.
     EventsRead {

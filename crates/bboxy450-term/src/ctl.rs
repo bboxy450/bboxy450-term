@@ -36,7 +36,12 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
                                           pageup pagedown delete shift-tab ctrl-<letter>; Kitty when on
   seat paste <seat> <file|->              bracketed when the program asked
   seat wait <seat> (--state idle|waiting|exited | --text REGEX) [--timeout MS]   default 30000
-  seat capture <seat|window> <file.png>   with stale, occluded and frame_presented_at
+  seat capture <seat|window> <file.png>   with stale, occluded, frame_presented_at, frame_seq
+  seat screen <seat> --cells | --scrollback FROM..TO   styled runs, or history rows
+  seat resize <seat> <cols>x<rows>
+  seat rename <seat> <name>
+  seat focus <seat>                       the window focuses it
+  seat watch <seat> [--timeout MS]        state and screen changes as event lines, then done
   message send (<seat|destination> | --reply-to ID) <text> [--swarm ID]
   message post <destination> <text> [--swarm ID]
   message inbox [--since SEQ]
@@ -144,6 +149,15 @@ pub enum Command {
         seat: String,
         timeout: Duration,
     },
+    /// `seat rename <seat> <name>`.
+    Rename {
+        seat: String,
+        name: String,
+    },
+    /// `seat focus <seat>`: the window focuses it.
+    Focus {
+        seat: String,
+    },
     /// `seat resize <seat> <cols>x<rows>`.
     Resize {
         seat: String,
@@ -211,6 +225,8 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("seat", "wait", "Screen"),
     ("seat", "resize", "Resize"),
     ("seat", "watch", "EventsRead"),
+    ("seat", "rename", "RenameSeat"),
+    ("seat", "focus", "FocusSeat"),
     ("seat", "capture", "Capture"),
     ("message", "send", "Messaging"),
     ("message", "post", "Messaging"),
@@ -374,6 +390,11 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
                 .transpose()?,
             cells: cells_flag,
         },
+        ["seat", "rename", seat, name] => Command::Rename {
+            seat: seat.into(),
+            name: name.into(),
+        },
+        ["seat", "focus", seat] => Command::Focus { seat: seat.into() },
         ["seat", "watch", seat] => Command::Watch {
             seat: seat.into(),
             timeout: Duration::from_millis(
@@ -1151,6 +1172,8 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
             }
         }
         Command::Watch { .. }
+        | Command::Rename { .. }
+        | Command::Focus { .. }
         | Command::Send { .. }
         | Command::Ack { .. }
         | Command::TaskList { .. }
@@ -1442,6 +1465,30 @@ fn run_verb(
                 .map_err(|e| e.to_string())?;
             }
             return Ok(());
+        }
+        Command::Rename { seat, name } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let op = client.mint();
+            client.call(
+                Some(op),
+                GuiAction::RenameSeat {
+                    id: op,
+                    seat,
+                    name: name.clone(),
+                },
+                |r| matches!(r, GuiReply::Ok { op: o } if *o == op),
+            )?;
+            json!({ "seat": seat, "name": name })
+        }
+        Command::Focus { seat } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let op = client.mint();
+            client.call(
+                Some(op),
+                GuiAction::FocusSeat { id: op, seat },
+                |r| matches!(r, GuiReply::Ok { op: o } if *o == op),
+            )?;
+            json!({ "seat": seat })
         }
         Command::Watch { seat, timeout } => {
             // State: the seat's retained stream paged by our own cursor, never the window's
@@ -1789,6 +1836,12 @@ mod tests {
                 after: 0,
                 limit: 1,
             },
+            GuiAction::RenameSeat {
+                id,
+                seat: id,
+                name: "n".into(),
+            },
+            GuiAction::FocusSeat { id, seat: id },
             GuiAction::Input {
                 seat,
                 generation: 1,
@@ -1859,6 +1912,8 @@ mod tests {
             "e2e list",
             "app endpoint",
             "seat watch s",
+            "seat rename s n",
+            "seat focus s",
             "seat resize s 80x24",
         ] {
             let parsed = parse_full(&args(line)).unwrap_or_else(|e| panic!("{line}: {e}"));
@@ -1867,7 +1922,7 @@ mod tests {
                 .unwrap_or_else(|| panic!("{line}: not a table verb"));
             assert!(line.starts_with(&format!("{noun} {verb}")));
         }
-        assert_eq!(VERBS.len(), 20, "a new verb needs a parse line above");
+        assert_eq!(VERBS.len(), 22, "a new verb needs a parse line above");
     }
     #[test]
     fn errors_name_a_kind_a_hint_and_an_exit() {

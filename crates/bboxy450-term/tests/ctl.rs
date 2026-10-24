@@ -787,6 +787,26 @@ async fn ctl_capture_is_answered_by_the_window() {
         }
     }
 
+    // seat focus is relayed to the window (ctl-cli §1a), which focuses as a row click does.
+    let focus = tokio::task::spawn_blocking({
+        let (run, root, spawned) = (run.clone(), root.clone(), spawned.clone());
+        move || ctl_in(&run, &root, &["seat", "focus", &spawned])
+    });
+    loop {
+        let event = tokio::time::timeout(Duration::from_secs(20), session.event())
+            .await
+            .expect("the window is asked to focus")
+            .unwrap();
+        if let Event::Reply(reply) = event
+            && let GuiReply::OperatorFocus { seat, .. } = *reply
+        {
+            assert_eq!(seat.to_string(), spawned);
+            break;
+        }
+    }
+    let (ok, lines) = focus.await.unwrap();
+    assert!(ok && lines[0]["verb"] == "focus", "{lines:?}");
+
     // SIGTERM to logic closes the door: gui.endpoint is removed (invariant #261). The
     // restarted logic writes a fresh one, with a new capability.
     let before = std::fs::read_to_string(&endpoint).unwrap();
@@ -1111,6 +1131,21 @@ async fn ctl_screen_input_and_wait_drive_a_seat() {
         "{events:?}"
     );
 
+    // rename writes the registry name; the seat list shows it; a blank name is refused.
+    let (ok, lines) = ctl(&["seat", "rename", &seat, "night-shell"]);
+    assert!(ok && lines[0]["data"]["name"] == "night-shell", "{lines:?}");
+    let (_, lines) = ctl(&["seat", "ls"]);
+    assert!(
+        lines[0]["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|s| s["record"]["name"] == "night-shell"),
+        "{lines:?}"
+    );
+    let (ok, lines) = ctl(&["seat", "rename", &seat, " "]);
+    assert!(!ok && lines[0]["error"]["kind"] == "refused", "{lines:?}");
+
     // A wait that never matches is a timeout (exit 3) whose message ends with the screen.
     let timed = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
         .args([
@@ -1398,6 +1433,8 @@ async fn ctl_never_prints_secrets() {
         vec!["seat", "screen", &seat, "--scrollback", "1..4000"],
         vec!["seat", "watch", &seat, "--timeout", "500"],
         vec!["seat", "resize", &seat, "90x25"],
+        vec!["seat", "rename", &seat, "renamed-in-secrets-test"],
+        vec!["seat", "focus", &seat],
         vec!["seat", "type", &seat, "echo x"],
         vec!["seat", "key", &seat, "enter"],
         vec!["seat", "paste", &seat, paste],
