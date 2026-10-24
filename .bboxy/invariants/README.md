@@ -1,6 +1,6 @@
 ---
 id: "3T6C0NK1JHAAQ8EKP0ZVD4PEKC"
-type: "invariant"
+type: "note"
 number: 138
 title: "Invariants — the law the day runs under"
 created: "2026-10-22T21:14:24Z"

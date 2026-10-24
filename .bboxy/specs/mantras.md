@@ -14,7 +14,7 @@ updated: 2026-10-24T00:06:11Z
 ---
 # Mantras
 
-Owner: Corvin Duskmantle <ARCHITECT>. Distilled 2026-10-23 by a read-only subagent from all 156 records under `.bboxy/` plus `AGENTS.md`, under the Architect's brief and the operator's list of that evening (verbatim where quoted). Twenty-four mantras. Each names where it already binds, the executable gate that holds it today, the candidate gate where none exists, and the mantra it trades against. A mantra with no gate is judgement, and says so: no command, no invariant ([[README]]). The operator's words that lived only in chat are recorded here for the first time and marked **chat**.
+Owner: Corvin Duskmantle <ARCHITECT>. Distilled 2026-10-23 by a read-only subagent from all 156 records under `.bboxy/` plus `AGENTS.md`, under the Architect's brief and the operator's list of that evening (verbatim where quoted). Twenty-four mantras. Each names where it already binds, the executable gate that holds it today, the candidate gate where none exists, and the mantra it trades against. A mantra with no gate is judgement, and says so: no command, no invariant ([[invariants/README|README]]). The operator's words that lived only in chat are recorded here for the first time and marked **chat**.
 
 Order: the operator ranked 1 and 2 first ([[d53-evolve-and-restart]]). The rest is grouped: product, surface, system, law.
 
@@ -80,11 +80,11 @@ Operator: "all those crates are reusable part of #bboxy450-* suite, term is just
 
 ## 16. LESS IS MORE; KISS; super good enough, not perfect
 
-Operator: "LESS IS MORE, KISS, super good enough, not perfect." (#1 to #12 round); "KISS for now so we can keep developing our system" ([[d47-decision-nodes]]); v0.1 cut down ([[vision]]); "high velocity is the goal" ([[README]] of tasks). Binds: every spec's lens line, taffy refused ([[gui-components]]), #24. Gate: none; judgement only, a line or dependency budget invites gaming; #39 keeps the app's line count against the crates as an advisory drift signal read at each architecture round. Tension: 3, 4, 8 all pull the other way, and the operator overruled the Architect once to lean in on identity (#4 of round one).
+Operator: "LESS IS MORE, KISS, super good enough, not perfect." (#1 to #12 round); "KISS for now so we can keep developing our system" ([[d47-decision-nodes]]); v0.1 cut down ([[vision]]); "high velocity is the goal" ([[tasks/README|README]] of tasks). Binds: every spec's lens line, taffy refused ([[gui-components]]), #24. Gate: none; judgement only, a line or dependency budget invites gaming; #39 keeps the app's line count against the crates as an advisory drift signal read at each architecture round. Tension: 3, 4, 8 all pull the other way, and the operator overruled the Architect once to lean in on identity (#4 of round one).
 
 ## 17. The spec signs off, not the agent; hard gates block, judgement advises; no command, no invariant
 
-Operator: "embody it" (#16); the Architect's rules recorded as direction in [[vision]]. Binds: [[work-items]] rules, #28 (`verify_result`), `task_accept` refusals ([[mcp-control-plane]], [[w2-5-mcp-and-seat-wiring]]), [[README]] of invariants, every spec's "Acceptance, the spec signs off". Gate: the invariant set itself through `scripts/invariants.sh` on every handoff. Candidate: a named test that `task_accept` refuses the two cases #28 rejects. Tension: 1 is outside the gate on purpose.
+Operator: "embody it" (#16); the Architect's rules recorded as direction in [[vision]]. Binds: [[work-items]] rules, #28 (`verify_result`), `task_accept` refusals ([[mcp-control-plane]], [[w2-5-mcp-and-seat-wiring]]), [[invariants/README|README]] of invariants, every spec's "Acceptance, the spec signs off". Gate: the invariant set itself through `scripts/invariants.sh` on every handoff. Candidate: a named test that `task_accept` refuses the two cases #28 rejects. Tension: 1 is outside the gate on purpose.
 
 ## 18. Harnesses lie; a report is a claim; verification beats trust; a harness reads the images
 
