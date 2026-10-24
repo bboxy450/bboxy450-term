@@ -50,7 +50,7 @@ Subagent {
 Rules:
 
 - Sidebar state words map from the wire: `working→active`, `blocked→waiting`, `idle→idle`, `error→errored`, `done→idle` with `detail` = last message (a seat is not "done", its turn is). [[ux-sidebar]] §2: a state change never moves a row.
-- A subagent row shows **running subagents only** (decision S8 in [[README]]; superseded the earlier 30 s linger): on `ended_at`, `state=clear:id=` or an Idle task observation the row leaves the sidebar and its record stays in the seat's history and the Graph tab. We keep order and show all running ones, collapsing past 8 into `+N` (1000-seat budget, [[ux-sidebar]] §8).
+- A subagent row shows **running subagents only** (decision S8 in [[specs/README|README]]; superseded the earlier 30 s linger): on `ended_at`, `state=clear:id=` or an Idle task observation the row leaves the sidebar and its record stays in the seat's history and the Graph tab. We keep order and show all running ones, collapsing past 8 into `+N` (1000-seat budget, [[ux-sidebar]] §8).
 - Swarm and tab roll-ups: `waiting` count bubbles up; `active` subagents count toward the seat's activity glyph.
 - `status_source=reported` outranks `shim` outranks `inferred`. A lower source never overwrites a higher one younger than 5 s.
 
