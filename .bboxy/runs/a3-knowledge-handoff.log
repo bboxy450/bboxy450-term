@@ -1,0 +1,51 @@
+A-3 Knowledge responsiveness + LocalTab handoff — Velvet Vulpine <EXECUTOR>
+Source: 3ab1a78a2bd48111daaaddbf775e971085e62ec5; branch exec6, /Users/feral/mydev/bboxy450-term-exec6.
+Base at gate start: 3308784fded5c71f1825ad822c4ba8fadcf9f359. Source signature verified with machine key 9B07E849480C68328CA20684844ECC0587DE7AB0.
+Oracle brief86b6bbeb, shape approval3130d98c, slot1 grant0384aae9.
+
+FILES / MECHANISM (lines on the exact gated source)
+crates/bbt-mux/src/index.rs:259 — Clone supports immutable owned Index snapshots; same root/store/activity, no new reader, watcher, number allocator or store.
+crates/bbt-mux/src/logic.rs:1035 — Arc<Index> makes dispatch snapshot acquisition O(1); scans (:2524) and provenance mutation (:4746) use copy-on-write.
+crates/bbt-mux/src/logic.rs:4296 — two globally admitted GUI reads; owned snapshot/registry/permit sent to spawn_blocking, reply via existing oneshot. A cancelled waiter does not release a running read's permit. Excess reads return provider_busy with retry_after_ms.
+crates/bbt-mux/src/logic.rs:80 — cfg(test)-only source injection per Worker; no production provider override.
+crates/bbt-mux/src/seat_socket.rs:455 — worker interruptions become a small portable provider_unavailable error with the original operation ID.
+crates/bbt-mux/src/seat_socket.rs:518 — at most two session waiters, after capability/version admission; independent completions at :677 are written by the existing single socket owner. Ordinary Input/Resize processing does not await provider reads.
+crates/bboxy450-term/src/live.rs:270 — Knowledge results correlate by operation ID anywhere in the bounded queue; ordinary replies retain FIFO after skipping pending Knowledge. Regression at :1169 covers held/out-of-order Knowledge, history refusal and controls.
+crates/bbt-mux/src/knowledge/responsiveness_tests.rs:125 — real Supervisor/Logic, explicit fixture key, two admitted GUI sessions and a deliberately held synchronous DataSource. Both same- and other-session Input/Resize must complete while held; :226 checks actual PTY echo and 66x22 grid before release. Session/global saturation, cancellation retention and max-active=2 are asserted; original operation IDs survive completion.
+.bboxy/specs/knowledge-base.md:55 — effective GUI document cap is 256 KiB for the serialized portable Result INCLUDING ERRORS, frontmatter and resources; body shares that ceiling. Separate from 2 MiB Index document and 1 MiB GUI frame bounds. Existing read.rs enforces the response cap; no bound was raised.
+.bboxy/runs/a3-localtab-host-contract.log:1 — read-only map of accepted60ecf53b/checked11b00370 open/close/route/scroll/focus. Names Settings IME/theme/variant/inner-scroll adaptations without implementing them. Nyx confirmed consumption in8d27f34e.
+.bboxy/runs/a3-knowledge-preflight.log:1 — baseline, repaired setup/compile failures, focused checks and strict Clippy raw output, with content hashes.
+.bboxy/runs/a3-knowledge-ci.log:1 — exact clean source, normal CI and post-CI clean-source probe raw output.
+.bboxy/runs/a3-knowledge-ci-status.json:1 — actual argv, exits, times, SHA/provenance, cleanup results and main movement.
+.bboxy/runs/a3-knowledge-cleanup.json:1 — only owned private CI/dev targets and detached CI source removed; named prior hosting/parity baselines retained.
+
+VERIFICATION COMMANDS / REAL RESULTS
+Test/dev environment: CARGO_TARGET_DIR=target/knowledge-dev; CARGO_INCREMENTAL=0; DEV/TEST_DEBUG=0; DEV/TEST_OPT_LEVEL=1; BBOXY_TEST_CUSTODY=memory.
+1. cargo test -p bbt-mux --lib --locked held_read_does_not_stall -- --nocapture
+   a. initial fixture setup EXIT101 (JournalDirectoryRequired, before exercising the provider); repaired journal config. Raw preflight:8.
+   b. before-fix main11b00370 + fixture seam EXIT101: both regressions fail. Same session pending501.888ms; other session pending501.031ms. Controls finish only after source release. Raw preflight:300/306/312/328.
+   c. first offload compile EXIT101: provenance::step still requested mutable Index; repaired with Arc::make_mut, no provenance semantics changed. Raw preflight:330.
+   d. fixed dev EXIT0, two tests. Same session Input12.062/Resize14.380ms; other11.600/14.184ms; actual echo/grid while held; capacity/cancel assertions pass. Raw preflight:345.
+2. cargo test -p bbt-mux --locked --lib --test knowledge_gui --test storage_bus_index — EXIT0 (62 lib +2 provider +14 Index pass, 2 ignored).
+3. cargo test -p bboxy450-term --bin bboxy450-term --locked knowledge — EXIT0, 4 pass.
+4. cargo clippy --workspace --all-targets --locked -- -D warnings — EXIT0. Full normal CI reran it on the rebased exact source, also0.
+5. git diff --check; sh scripts/layering.sh — EXIT0. git rebase --gpg-sign origin/main — EXIT0; exact source verified signed. No rebase after gate start.
+6. BBOXY_TEST_CUSTODY=memory CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec6/target/knowledge-ci-build-3ab1a78a2bd4 sh scripts/ci-local.sh
+   cwd=/private/tmp/ci-velvet-knowledge-3ab1a78a2bd4, clean detached worktree of 3ab1a78a2bd48111daaaddbf775e971085e62ec5.
+   EXIT0, 960.835s. Workspace1134 passed/0 failed/22 ignored; strict workspace all-target Clippy held; native idle10.002s, frames0/callbacks0 (:3594); invariants17 checks/0 failures/8 slow skips (:3673); all gates passed (:3674).
+7. On the SAME clean exact source/private target, cargo test -p bbt-mux --lib --locked held_read_does_not_stall -- --nocapture
+   EXIT0, 27.001s (Cargo rebuilt the package lib test for this selection).
+   Same session Input12.564708ms/Resize15.121875ms (:3682), other Input12.612667ms/Resize15.030292ms (:3684), both completed_while_held=true; max_provider_reads=2; 2/0. Final verification exit0.
+8. git worktree add --detach —0; git worktree remove —0; private target removal verified; post-gate git fetch origin —0. Own inactive dev target removed. Total retired unique regular allocated bytes: 5225959424. This is an allocation count, not a concurrent-machine df delta.
+
+ACCEPTANCE / LIMITS
+The before tests fail at the synchronous production-dispatch seam; the after tests pass through real GUI/Logic/PTY controls while the fixture provider remains held. No second record loader or DTO and no production custody in the fixture. The bounded concurrency/cancellation tests prove a cancelled waiter cannot create unlimited blocking jobs. The source and records above are a handoff, pending Oracle verification.
+The cap is documented in the spec and here. The LocalTab host note is complete and read by Nyx; Settings/document hosting was not implemented.
+No --parity, --slow, ignored Keychain tests, 967-seat run or large-corpus throughput benchmark was run for this non-paint change. The 22 default ignores and 8 named slow skips remain named in the logs. No desktop driving, code signing or peer process/target cleanup. Cancellation does not hard-stop synchronous provider IO; its permit remains occupied until it returns. Copy-on-write catalogue update cost under a very large concurrent corpus was not measured. Seat MCP knowledge calls and R5g's checkpoint-specific serial-link scheduling are outside this change.
+
+MAIN MOVED DURING THE GATE — kept exact source frozen under AGENTS.md
+Latest fetched main: c775112d45c24e9b181911c9d40efc0a9b639bf8.
+Overlapping paths: crates/bboxy450-term/src/live.rs, crates/bbt-mux/src/logic.rs, crates/bbt-mux/src/seat_socket.rs.
+Actual additions are Seraph #269 (Origin/issued_by for Messaging/Task; Issuer session action) and capture-occluded (CaptureFrame in Captured transport/dispatch). They do not alter GuiKnowledge or ActionReplies correlation. Their adjacent seat_socket init/dispatch hunks must be retained alongside this change. No integration merge or re-gate performed by the Executor; Oracle verifies the merged tree. Rook's frozen c71b8694 pattern was read, not cherry-picked.
+
+CI log SHA-256: 5209a6c58c80af7f7f2a11923cb3e16e52f88d2c65a88141192c28e5dc68aca7

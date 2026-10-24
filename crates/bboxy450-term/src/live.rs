@@ -240,9 +240,9 @@ enum ActionReply {
     EventCursor,
 }
 
-/// gui_session produces one terminal result per action in request order.
-/// State/grid pushes may interleave, so they never consume this bounded FIFO.
-/// This supplies correlation for GetHistory's legacy, operation-less Error.
+/// Ordinary terminal results retain request order, including GetHistory's
+/// operation-less Error. Knowledge completes independently by operation ID;
+/// neither it nor state/grid pushes consume an ordinary request's slot.
 #[derive(Default)]
 struct ActionReplies(VecDeque<ActionReply>);
 impl ActionReplies {
@@ -268,7 +268,21 @@ impl ActionReplies {
         });
     }
     fn take(&mut self, reply: &GuiReply) -> Option<ActionReply> {
-        let expected = self.0.front()?;
+        let knowledge = match reply {
+            GuiReply::Knowledge { op, .. } | GuiReply::Error { op, .. } => self
+                .0
+                .iter()
+                .position(|r| *r == ActionReply::Knowledge(*op)),
+            _ => None,
+        };
+        if let Some(at) = knowledge {
+            return self.0.remove(at);
+        }
+        let at = self
+            .0
+            .iter()
+            .position(|r| !matches!(r, ActionReply::Knowledge(_)))?;
+        let expected = &self.0[at];
         let matches = match reply {
             // Unsolicited seat state is wrapped in Event; a raw Seat is the
             // terminal ScheduleClose/UndoClose result.
@@ -293,7 +307,7 @@ impl ActionReplies {
             GuiReply::EventCursor { .. } => *expected == ActionReply::EventCursor,
             _ => false,
         };
-        if matches { self.0.pop_front() } else { None }
+        if matches { self.0.remove(at) } else { None }
     }
     fn clear(&mut self) {
         self.0.clear();
@@ -1147,6 +1161,73 @@ mod tests {
                 response: serde_json::json!({})
             }),
             Some(ActionReply::Knowledge(id))
+        );
+        assert!(replies.0.is_empty());
+    }
+
+    #[test]
+    fn held_and_reordered_knowledge_replies_do_not_block_control_or_history_results() {
+        let mut replies = ActionReplies::default();
+        let a = Ulid::new();
+        let b = Ulid::new();
+        let seat = SeatId::from_u128(42);
+        for action in [
+            GuiAction::Knowledge {
+                id: a,
+                method: "list".into(),
+                args: serde_json::json!({}),
+            },
+            GuiAction::GetHistory {
+                seat,
+                from: 0,
+                to: 1,
+            },
+            GuiAction::Input {
+                seat,
+                generation: 1,
+                id: Ulid::new(),
+                bytes: vec![b'x'],
+            },
+            GuiAction::Knowledge {
+                id: b,
+                method: "fetch".into(),
+                args: serde_json::json!({}),
+            },
+            GuiAction::Resize {
+                seat,
+                generation: 1,
+                cols: 80,
+                rows: 24,
+            },
+        ] {
+            replies.sent(&action);
+        }
+        assert_eq!(
+            replies.take(&GuiReply::Error {
+                op: Ulid::new(),
+                reason: "history refused".into()
+            }),
+            Some(ActionReply::History(seat))
+        );
+        assert_eq!(
+            replies.take(&GuiReply::Knowledge {
+                op: b,
+                response: serde_json::json!({"Err":{"code":"provider_busy"}})
+            }),
+            Some(ActionReply::Knowledge(b))
+        );
+        for _ in 0..2 {
+            assert_eq!(
+                replies.take(&GuiReply::Ok { op: Ulid::new() }),
+                Some(ActionReply::Operation)
+            );
+        }
+        assert_eq!(
+            replies.take(&GuiReply::Knowledge {
+                op: a,
+                response: serde_json::json!({})
+            }),
+            Some(ActionReply::Knowledge(a))
         );
         assert!(replies.0.is_empty());
     }
