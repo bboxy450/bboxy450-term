@@ -12,7 +12,7 @@ links:
   - { to: "[[rim-glow]]", rel: "decides" }
   - { to: "[[gui-components]]", rel: "decides" }
 created: "2026-10-23T22:28:51Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-10-24T00:26:29Z"
 ---
 # Decision 43: Alive borders are a kit capability
 
@@ -20,7 +20,7 @@ updated: "2026-10-24T00:10:38Z"
 "each block in our UI GPUGUI system should have ability to define this
 type of dynamic border and border swell and such! thats important, our
 blocks should be sexy out of the box!").** Rim and swell become style
-properties of any `bbt-ui` block (`Style.border { rim, swell }`,
+properties of any `bbt-ui` block (`Style.rim { size, outer, rim_alpha, swell, attention }` beside the existing hairline `Style.border` (Oracle wording fix, same day),
 replacing the pane-only `style.overrides.glow` that `Pane` sets at
 `modules/pane.rs:398`), one rim pass over the block rect with per-block alive uniforms through the
 R12-2 arenas; shader in `bbt-render`, style types in `bbt-ui-model`,
