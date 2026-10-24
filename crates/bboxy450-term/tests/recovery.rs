@@ -429,9 +429,38 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
         ("claude", "--resume", "fixture-claude-session"),
         ("codex", "resume", "fixture-codex-thread"),
     ] {
-        let argv = tokio::fs::read_to_string(root.path().join(format!("{harness}-argv")))
-            .await
-            .unwrap();
+        let path = root.path().join(format!("{harness}-argv"));
+        let mut argv = String::new();
+        let mut first_count = None;
+        let mut observed_count = 0;
+        let published = tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                argv = tokio::fs::read_to_string(&path).await.unwrap();
+                let args: Vec<_> = argv.lines().collect();
+                observed_count = args
+                    .windows(2)
+                    .filter(|pair| pair == &[flag, session_id])
+                    .count();
+                if first_count.is_none() {
+                    first_count = Some(observed_count);
+                    println!("{harness} resume argv first read: {observed_count}, expected 2");
+                }
+                if observed_count >= 2 {
+                    return;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await;
+        assert!(
+            published.is_ok(),
+            "{harness} resume argv publication timed out: first={first_count:?}, observed={observed_count}, expected=2\n{argv}"
+        );
+        if first_count != Some(observed_count) {
+            println!(
+                "{harness} resume argv publication wait was needed: first={first_count:?}, observed={observed_count}"
+            );
+        }
         let args: Vec<_> = argv.lines().collect();
         assert_eq!(
             args.windows(2)
