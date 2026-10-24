@@ -4576,8 +4576,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         return Ok(());
     }
-    // `ctl --help` is ctl's own usage, printed by ctl.
-    if hook_args.first().is_none_or(|arg| arg != "ctl")
+    // `ctl --help` and `e2e --help` are their own usages, printed by them.
+    if hook_args.first().is_none_or(|arg| arg != "ctl" && arg != "e2e")
         && hook_args.iter().any(|arg| arg == "--help" || arg == "-h")
     {
         println!("{HELP}\n{}", stall::HELP);
@@ -4606,6 +4606,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if hook_args.first().is_some_and(|arg| arg == "mcp") {
         bbt_mux::mcp::run_cli()?;
         return Ok(());
+    }
+    if hook_args.first().is_some_and(|arg| arg == "e2e") {
+        // The unattended e2e runner (#282): its own windowless app, ctl scripts as verdicts.
+        match bboxy450_term::e2e_night::main(&hook_args[1..]) {
+            Ok(green) => std::process::exit(bboxy450_term::e2e_night::exit_code(green)),
+            Err(reason) => {
+                eprintln!("{reason}");
+                std::process::exit(2);
+            }
+        }
     }
     if hook_args.first().is_some_and(|arg| arg == "ctl") {
         // The operator's door from outside the app (e2e-acceptance §3, decision #260):

@@ -2,6 +2,7 @@
 pub mod attention;
 pub mod cockpit;
 pub mod ctl;
+pub mod e2e_night;
 pub mod grids;
 pub mod hosts;
 pub mod keyboard;

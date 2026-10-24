@@ -1114,7 +1114,7 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
                 std::fs::File::open(&source).and_then(|mut f| f.read_to_end(&mut text))
             }
             .map_err(|e| format!("seat paste {source}: {e}"))?;
-            input(client, &seat, "paste", |modes| Ok(bracketed(&text, modes)))?
+            paste(client, &seat, &text)?
         }
         Command::Wait {
             seat,
@@ -1772,6 +1772,29 @@ fn input(
     Ok(vec![
         json!({ "ok": true, "op": op, "noun": "seat", "verb": verb,
         "data": { "seat": seat, "generation": screen.generation, "bytes": count } }),
+    ])
+}
+
+/// The most one input carries: the supervisor refuses more than 64 KiB in one write.
+const PASTE_CHUNK: usize = 32 * 1024;
+
+/// A paste of any size: bracketed once around the whole text when the program asked, sent
+/// as inputs of at most `PASTE_CHUNK` bytes in order, each its own journaled op.
+fn paste(client: &mut Client, seat: &str, text: &[u8]) -> Result<Vec<Value>, String> {
+    let seat = resolve(&client.seats()?, seat)?.record.id;
+    let (_, screen) = client.screen(seat)?;
+    let bytes = bracketed(text, screen.modes);
+    if bytes.is_empty() {
+        return Err("seat paste: nothing to send".into());
+    }
+    let mut ops = vec![];
+    for chunk in bytes.chunks(PASTE_CHUNK) {
+        ops.push(client.input(seat, screen.generation, chunk.to_vec())?);
+    }
+    Ok(vec![
+        json!({ "ok": true, "op": ops[0], "noun": "seat", "verb": "paste",
+        "data": { "seat": seat, "generation": screen.generation, "bytes": bytes.len(),
+            "inputs": ops.len() } }),
     ])
 }
 

@@ -224,6 +224,9 @@ pub struct SeatScreen {
     /// The capture sequence this screen shows; it changes when the screen does.
     #[serde(default)]
     pub sequence: u64,
+    /// The cursor shape the program asked for (DECSCUSR), as the window draws it.
+    #[serde(default)]
+    pub cursor_style: serde_json::Value,
     /// With `cells`: each row as runs of equal style.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cells: Option<Vec<Vec<StyledRun>>>,
