@@ -16,7 +16,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: constrains }
   - { to: "[[cross-os-facade]]", rel: invariant }
 created: "2026-10-24T19:15:36Z"
-updated: "2026-10-24T19:24:37Z"
+updated: "2026-10-24T23:41:01Z"
 ---
 # Decision 281: custody is a facade; the automation identity has its own store
 
@@ -29,6 +29,8 @@ Decided by the operator on 2026-10-24 ("keychain should be also supporting linux
 **Reason.** Custody is OS-specific by nature and #46 says every OS-specific thing is a facade; the exception for `bbt-mux`'s `core-foundation` and `security-framework` in `scripts/cross-os.sh` retires when `-macos` takes them. The automation identity is the honest answer to unattended nights: **a store a process can open by itself is a store any same-user process can open** (the same truth as #260 and the plugin trust record), so the key in it is a *separate* key with a *scoped* grant and its own label, never the operator's device key and never a copy of it; a night that runs on it leaves records that say automation signed them. (c) would make the operator's key self-opening, which is the one thing custody exists to prevent.
 
 **Rules.** [[id1-seat-chain]] §5: the facade API (`open(backend)`, `get`, `put`, `remove`, `acl`, each with the one-shot interaction act of #280), the backends and their states, the automation identity's grant scope and label, `--unattended`. The five crates lead the layering order beside the notification family and depend on nothing of ours; licence rows dual, ours; brand names. The e2e night (`e2e-acceptance` §4) runs under the automation identity when the display is locked and says so in every record it writes. Rejected: a self-opening operator key; copying the device key into a file; a macOS-only custody.
+
+**Scope note (Oracle, 2026-10-24).** The port of the native path onto the `bboxy450-keychain` facade is cut out of Kestrel's current #280/#315 cut and lands in a later one; the facade's shape is unchanged, only its order.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
 
