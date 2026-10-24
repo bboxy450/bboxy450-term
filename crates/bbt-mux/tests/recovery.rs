@@ -278,6 +278,11 @@ fn checkpoint_recovery_child() {
     let go = root.join("go");
     // Finite output avoids a growing ramp dataset. Small seats trickle at
     // 32 KiB/s; the large seat provides a genuine partially parsed backlog.
+    // Match stall/load.rs's 967/50 gate: the first 50 seats share one swarm,
+    // the remainder share a second. The earlier one-swarm-per-seat workload
+    // exposed O(swarms) message-pump cost (r5g-delivery-diagnostics.log).
+    // Oracle d6aff179 declares this correction; messaging performance is separate.
+    let swarms = [Ulid::new(), Ulid::new()];
     for (i, &seat) in seats.iter().enumerate() {
         let mut launch = LaunchSpec::new(root.join("producer").to_string_lossy(), &root);
         launch.seat = seat;
@@ -291,7 +296,12 @@ fn checkpoint_recovery_child() {
         ];
         runtime
             .block_on(logic.client.spawn(
-                SeatRecord::new(seat, Ulid::new(), "recovery fixture", "fixture"),
+                SeatRecord::new(
+                    seat,
+                    swarms[usize::from(i >= 50)],
+                    "recovery fixture",
+                    "fixture",
+                ),
                 launch,
             ))
             .unwrap();
