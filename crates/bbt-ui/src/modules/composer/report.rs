@@ -182,7 +182,7 @@ impl Report {
                 .as_ref()
                 .is_some_and(|v| v.exit_code == 0)
     }
-    pub fn element(&self, key: &str, review: bool) -> c::Element {
+    pub fn element(&self, ctx: ui::Context, key: &str, review: bool) -> c::Element {
         let sp = &STYLE.spacing;
         let t = &STYLE.r#type;
         let status = if self.status.is_empty() {
@@ -476,6 +476,21 @@ impl Report {
             },
             outside: false,
         }]);
+        // Glow.blocks gives every report the kit's idle rim, outside its clipped
+        // contents. Its own padding is zero, so bloom never reaches the text.
+        s.overrides.rim = Some(ui::Rim::block(
+            ui::GlowActivity::Idle,
+            false,
+            Some(
+                ui::Paint::solid(ui::Color::Accent)
+                    .resolve(ctx)
+                    .expect("accent token"),
+            ),
+            ui::rim_phase(&self.task),
+            false,
+            TOKENS.glow.rim as f32 * 0.5,
+            0.,
+        ));
         let mut panel = c::Box::new(s, children);
         panel.direction = Axis::Column;
         panel.gap = ui::Length::Px(0.);
@@ -484,7 +499,7 @@ impl Report {
         column(
             format!("{key}/margin"),
             plain(None, [sp.s3 as f32, 0., 0., 0.], 0.),
-            vec![named(key, c::Element::Box(panel)).into()],
+            vec![named(format!("{key}/wrapper"), named(key, c::Element::Box(panel))).into()],
         )
     }
 }

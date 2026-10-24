@@ -415,7 +415,14 @@ pub fn evidence(key: &str, state: &str, m: &dyn c::Measure) -> c::Element {
     )
 }
 impl Message {
-    pub fn element(&self, key: &str, dock: bool, show_ch: bool, m: &dyn c::Measure) -> c::Element {
+    pub fn element(
+        &self,
+        ctx: ui::Context,
+        key: &str,
+        dock: bool,
+        show_ch: bool,
+        m: &dyn c::Measure,
+    ) -> c::Element {
         let mut view = self.clone();
         if let Some(author) = &self.author {
             view.from = author.name.clone();
@@ -426,9 +433,16 @@ impl Message {
         if self.kind.as_deref() == Some("presence") {
             view.presence = true;
         }
-        view.element_view(key, dock, show_ch, m)
+        view.element_view(ctx, key, dock, show_ch, m)
     }
-    fn element_view(&self, key: &str, dock: bool, show_ch: bool, m: &dyn c::Measure) -> c::Element {
+    fn element_view(
+        &self,
+        ctx: ui::Context,
+        key: &str,
+        dock: bool,
+        show_ch: bool,
+        m: &dyn c::Measure,
+    ) -> c::Element {
         let t = &STYLE.r#type;
         let sp = &STYLE.spacing;
         let caption = t.caption as f32;
@@ -1019,7 +1033,7 @@ impl Message {
         if let Some(report) = &self.report {
             body.push(
                 report
-                    .element(&format!("{key}/body/report"), self.review)
+                    .element(ctx, &format!("{key}/body/report"), self.review)
                     .into(),
             );
         }
@@ -1412,7 +1426,7 @@ fn external(key: &str, events: &[External], open: bool) -> c::Element {
     )
 }
 impl StreamDock {
-    pub fn items_at(&self, start: usize, m: &dyn c::Measure) -> Vec<c::Item> {
+    pub fn items_at(&self, ctx: ui::Context, start: usize, m: &dyn c::Measure) -> Vec<c::Item> {
         let sp = &STYLE.spacing;
         let t = &STYLE.r#type;
         let mut children = vec![];
@@ -1421,11 +1435,11 @@ impl StreamDock {
             children.push(
                 match entry {
                     Entry::Message { data, show_channel } => {
-                        data.element(&key, self.dock, show_channel.unwrap_or(true), m)
+                        data.element(ctx, &key, self.dock, show_channel.unwrap_or(true), m)
                     }
                     Entry::Epic { data } => data.element(&key),
                     Entry::Task { data, delegate } => task_item(data, &key, *delegate),
-                    Entry::Report { data, review, .. } => data.element(&key, *review),
+                    Entry::Report { data, review, .. } => data.element(ctx, &key, *review),
                     Entry::External { events, open } => external(&key, events, *open),
                     Entry::Filter { name } => row(
                         &key,
@@ -1604,11 +1618,15 @@ impl StreamDock {
         }
         children
     }
-    pub fn content(&self, m: &dyn c::Measure) -> c::Element {
-        column("dock/rows", plain(None, [0.; 4], 0.), self.items_at(0, m))
+    pub fn content(&self, ctx: ui::Context, m: &dyn c::Measure) -> c::Element {
+        column(
+            "dock/rows",
+            plain(None, [0.; 4], 0.),
+            self.items_at(ctx, 0, m),
+        )
     }
     pub fn element(&self, ctx: ui::Context, m: &dyn c::Measure) -> c::Element {
-        self.frame(ctx, self.items_at(0, m))
+        self.frame(ctx, self.items_at(ctx, 0, m))
     }
     pub fn frame(&self, ctx: ui::Context, children: Vec<c::Item>) -> c::Element {
         let sp = &STYLE.spacing;

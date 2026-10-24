@@ -172,7 +172,7 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
                         entries: vec![serde_json::from_value(entry)?],
                         ..view.clone()
                     };
-                    items.extend(one.items_at(i, &crate::components::Metrics));
+                    items.extend(one.items_at(ctx, i, &crate::components::Metrics));
                 }
             }
             let host = &frame["host"];

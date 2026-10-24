@@ -339,6 +339,7 @@
       };
       const report=(out,key,node)=>{
         semantic(out,key,node);
+        if(node.parentElement.matches('.glow-wrap.kit'))semantic(out,key+'/wrapper',node.parentElement);
         for(const [part,sel,text] of [['head','.rh'],['glyph','.rk',true],['title','.rh b',true],['status','.rs'],['summary','.rsum'],['checks','.rsec'],['verify','.rc'],['verify/mark','.ck',true],['verify/command','.rc code',true],['verify/exit','.ex',true],['commit','.rcommit'],['commit/text','.rcommit code',true],['gap','.rgap'],['actions',':scope > .racts'],['reject',':scope > .racts > .rebrief'],['accept',':scope > .racts > .accept']])semantic(out,key+'/'+part,node.querySelector(sel),text);
         const commit=out.find(p=>p.key===key+'/commit/text');if(commit)commit.native_inline=true;
         contentText(out,key+'/summary/text',node.querySelector('.rsum'));contentText(out,key+'/gap/text',node.querySelector('.rgap'));
@@ -421,7 +422,10 @@
           const all=parts(entry.node,key);
           // Audit lines use one styled inline text flow, not positioned children.
           // Chip and tick content is captured as its semantic box plus text range.
-          const drop=p=>p.key.endsWith('/ripple')||p.key.includes('/aline/')||p.key.includes('/rj-t/')||p.key.startsWith(key+'/body/report')||p.key.startsWith(key+'/body/attach/');
+          // The G5 kit rim wraps a clipped report. Capture that wrapper and all
+          // report descendants through report(), with the same native keys.
+          const wrappedReport=entry.node.querySelector(':scope > .body > .glow-wrap.kit > .report');
+          const drop=p=>p.key.endsWith('/ripple')||p.key.includes('/aline/')||p.key.includes('/rj-t/')||p.key.startsWith(key+'/body/report')||(wrappedReport&&p.key.startsWith(key+'/body/glow-wrap'))||p.key.startsWith(key+'/body/attach/');
           const array=all.filter(p=>!drop(p));
           for(const p of array){
             const n=entry.node;

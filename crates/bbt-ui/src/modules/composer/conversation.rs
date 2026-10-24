@@ -36,7 +36,7 @@ impl Conversation {
             viewport: [inner, rows_h],
             offset: [0., self.scroll],
             content_width: Some(inner),
-            content: Box::new(self.stream.content(m)),
+            content: Box::new(self.stream.content(ctx, m)),
         });
         let mut style = plain(
             Some(height),

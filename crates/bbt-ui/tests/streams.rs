@@ -94,6 +94,58 @@ fn task_review_hits_follow_the_painted_clip_and_zero_exit_gate() {
     assert_eq!(Regions::dock(&scroll, &view).hit(at), None);
 }
 #[test]
+fn report_rim_surrounds_the_clipped_card_without_changing_its_geometry() {
+    use bbt_ui::modules::composer::Report;
+    let view = messages(vec![Message {
+        text: "a report".into(),
+        report: Some(Report {
+            task: "real task key".into(),
+            summary: "summary inside the clipped report".into(),
+            ..Default::default()
+        }),
+        ..Default::default()
+    }]);
+    for theme in [ui::Theme::Dark, ui::Theme::Light] {
+        let ctx = ui::Context::new(theme, ui::Density::Cozy);
+        let tree = view
+            .element(ctx, &Metrics)
+            .layout(Rect::new(0., 0., 300., 0.), ctx, &Metrics)
+            .unwrap();
+        let card = node(&tree, "e0/body/report").unwrap();
+        assert_eq!(
+            node(&tree, "e0/body/report/wrapper").unwrap().rect,
+            card.rect
+        );
+        let ops = c::paint(&tree, ctx);
+        let (rim_index, state, clips) = ops
+            .iter()
+            .enumerate()
+            .find_map(|(i, op)| match op {
+                c::Paint::Material {
+                    rect,
+                    rim: Some(rim),
+                    clips,
+                    ..
+                } if *rect == card.rect => Some((i, rim, clips)),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(state.activity, ui::GlowActivity::Idle);
+        assert_eq!(state.seed, ui::rim_phase("real task key"));
+        assert_eq!(
+            state.tint,
+            Some(ui::Paint::solid(ui::Color::Accent).resolve(ctx).unwrap())
+        );
+        assert_eq!(state.depth, Some(0.));
+        assert_eq!(
+            state.outer,
+            Some(bbt_ui_model::TOKENS.glow.rim as f32 * 0.5)
+        );
+        assert!(!clips.iter().any(|clip| clip.rect == card.rect));
+        assert!(ops[..rim_index].iter().any(|op| matches!(op, c::Paint::Draw(list) if list.primitives.iter().any(|p| matches!(p, bbt_ui_model::draw::Prim::Text { .. })))));
+    }
+}
+#[test]
 fn chronology_foreign_authority_and_unknown_delivery_remain_independent() {
     let a = Message {
         from: "first worker".into(),
