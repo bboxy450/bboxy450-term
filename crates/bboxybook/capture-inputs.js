@@ -313,7 +313,18 @@
       // regions. They are comparison output only, never native layout inputs.
       const semantic=(out,key,node,text=false)=>{
         if(!node)return;
-        out.push(text&&node.textContent?{...textDiag(node),key}:{key,rect:bounds(node)});
+        if(text&&node.textContent){
+          const d=textDiag(node);
+          // MK1 centres the mark slot with inline-flex. An artifact's text
+          // glyph shares that slot; a zero-height marker is cross-centred,
+          // so its y is not a text baseline. Measure the real text range.
+          if(node.matches('.ak')&&getComputedStyle(node).display.includes('flex')){
+            const range=document.createRange();range.selectNodeContents(node);
+            d.font_diagnostics.baseline=range.getBoundingClientRect().y-node.getBoundingClientRect().y+d.font_diagnostics.ascent;
+            d.font_diagnostics.source='inline-flex-text-range';
+          }
+          out.push({...d,key});
+        }else out.push({key,rect:bounds(node)});
       };
       const raw=(out,key,node)=>{const n=[...node.childNodes].find(n=>n.nodeType===Node.TEXT_NODE&&n.textContent.trim());if(n)out.push({...rawTextDiag(n),key});};
       const contentText=(out,key,node)=>{
