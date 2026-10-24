@@ -1,0 +1,20 @@
+{
+  "source": "41e96a8c1ddbf971d7e3a810afa60432576595ad",
+  "scope_authorization": "54295f10-9c9c-4d28-b11f-d3cf0465504b",
+  "source_change": "one number: 1 field in raw task fixture; all deadlines/assertions unchanged",
+  "profile": "O1 debug assertions; BBOXY_TEST_CUSTODY=memory",
+  "checks": {
+    "app-build": {
+      "path": ".bboxy/runs/load-robustness-app-build-41e96a8c.log",
+      "sha256": "1b76ba6f7800a16a911c25eececc37ed368fd05eca46b29b7e30c1783d33f140",
+      "exit": 0,
+      "elapsed_seconds": 90.506
+    },
+    "live-tests": {
+      "path": ".bboxy/runs/load-robustness-live-tests-41e96a8c.log",
+      "sha256": "c0fb67ffbbef800bc86bea78466c533097721bb6c8c71b77a812d0ddfe995f4a",
+      "exit": 0,
+      "elapsed_seconds": 35.756
+    }
+  }
+}
