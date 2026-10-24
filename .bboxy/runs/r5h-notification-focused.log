@@ -1,0 +1,139 @@
+R5h retained-notification admission fairness / invariant #314
+Owner Rook Ashwhisker <EXECUTOR>
+Authority: Oracle 8ab17d55-7164-4bd5-8177-f8f451a47ff5; activation/check path fef38f2e-2118-497b-8fb8-02c505dcd985.
+Implementation source f85912a03db8dba69abd8393c789236d4b3b84c7, signed G, parent accepted main 5609d6de.
+Raw diagnostics of the motivating failed frame: .bboxy/runs/r5h-frame-6e762c67.log, accepted source merge 5609d6de.
+One pending notification retained per seat already existed. Fixed-order retries let hot first seats reclaim each freed credit, leaving three watched seats with zero admissions in 12,409/12,409/12,408 attempts during stop-to-timeout.
+Change: Actor keeps last_notified_seat; only successful notify advances it. tick_seats starts after that seat with wraparound, preserving the same per-seat tick body. No additional queue or runtime task.
+Production channel remains 128 slots. No wire, frame/body budget, raw FIFO, lifecycle, Exit, generation, ring, capture, replay, checkpoint or PTY rate change.
+Code: crates/bbt-supervisor/src/supervisor.rs Actor field/init, tick_seats extraction/rotation, notify success cursor, private counterexample test.
+Invariant: .bboxy/invariants/no-seat-starves.md active with full unit-test check; README row matches. --lib plus full module path and the one-passed assertion prevent zero-test false success.
+The default fixture owns two /bin/sleep children and a capacity-1 local channel; it returns one credit per sweep while replenishing the first seat. No clock assertion. Second seat receives the next credit; hot-seat sequences remain FIFO.
+
+Before fix, same extracted tick loop but fixed BTreeMap order, test initially named a_hot_seat_cannot_take_every_notification_credit:
+{"elapsed_s": 26.35648075, "exit": 101, "log_sha256": "ababac9446860d6e670512e7ceba66c4ee41bfc8ea00f9f534610b5c62fbfada"}
+before-fix.patch SHA256 bc7d6a7c30475540bc087d25dc6fe7ae8ffc6385ab76f8789d76c9aa971874ab
+Original assertion failure: fixed sweep order starved the retained second-seat notification; left Ulid(1), right Ulid(2). 0 passed / 1 failed, runtime 0.02 s.
+The test was then renamed to the recorded no_seat_starves_under_full_queue; its behavior/assertions did not change.
+
+Initial post-fix checks:
+{"command": ["cargo", "fmt", "--package", "bbt-supervisor", "--", "--check"], "elapsed_s": 0.272418834, "exit": 0, "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "name": "format"}
+{"command": ["nice", "-n", "10", "cargo", "test", "-p", "bbt-supervisor", "--locked", "--lib", "supervisor::capture_read_tests::a_hot_seat_cannot_take_every_notification_credit", "--", "--exact", "--nocapture"], "elapsed_s": 6.227927375, "exit": 0, "log_sha256": "6686b3b46f5c36662fae9c5cf7f59c3d8d0f76a2d898dbc0c48b7f8288208359", "name": "after-fix"}
+{"command": ["nice", "-n", "10", "cargo", "test", "-p", "bbt-supervisor", "--locked"], "elapsed_s": 16.707381708, "exit": 0, "log_sha256": "d94fafd6ff4bead4a4b01ff05b9ad0737c81be600392a522e9ddbc154f17cb83", "name": "supervisor-tests"}
+{"command": ["nice", "-n", "10", "cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "elapsed_s": 363.09216637500003, "exit": -15, "log_sha256": "3f2e7a944978db5e178a4bfb03cdcc792cd562080aaaca115084c746a42f66c8", "name": "workspace-clippy"}
+Supervisor suite result: 59 passed / 0 failed / 4 existing manual ignored; no --ignored run.
+Initial strict workspace lint was stopped with SIGTERM (-15), not reported as a pass. Its own compiler-wrapper clients remained at 0 CPU for over two minutes with no matching compiler process and no log progress; only recorded owned clients/cargo PIDs were signalled. Shared sccache daemon/config untouched.
+Final checks used RUSTC_WRAPPER="" locally to bypass the shared wrapper. This changes no source or product behavior.
+
+Final named regression, exact executable invariant, and strict all-target workspace lint:
+{"command": ["nice", "-n", "10", "cargo", "test", "-p", "bbt-supervisor", "--locked", "--lib", "supervisor::capture_read_tests::no_seat_starves_under_full_queue", "--", "--exact", "--nocapture"], "elapsed_s": 3.685525375, "exit": 0, "log_sha256": "bef8e0747a2bada82bae806cf2721441bc8e5e4d5f8b4a1ec68cee90915648ad", "name": "named-regression", "rustc_wrapper": "disabled locally; shared daemon untouched"}
+{"command": ["sh", "-c", "cargo test -p bbt-supervisor --locked --lib supervisor::capture_read_tests::no_seat_starves_under_full_queue -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'"], "elapsed_s": 0.21819850000000018, "exit": 0, "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "name": "invariant-command", "rustc_wrapper": "disabled locally; shared daemon untouched"}
+{"command": ["nice", "-n", "10", "cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "elapsed_s": 35.599702959, "exit": 0, "log_sha256": "d1ec7c57de3af70ce58ba3e2a937f2f4465040a36102ff274899c22cc63b3a42", "name": "workspace-clippy-direct", "rustc_wrapper": "disabled locally; shared daemon untouched"}
+
+Raw failing control:
+   Compiling libc v0.2.191
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling cfg-if v1.0.5
+   Compiling quote v1.0.47
+   Compiling serde_core v1.0.229
+   Compiling jobserver v0.1.35
+   Compiling find-msvc-tools v0.1.15
+   Compiling shlex v2.0.1
+   Compiling cc v1.9.0
+   Compiling version_check v0.9.5
+   Compiling generic-array v0.14.7
+   Compiling syn v3.0.9
+   Compiling zerocopy v0.8.63
+   Compiling getrandom v0.3.4
+   Compiling pkg-config v0.3.34
+   Compiling serde v1.0.229
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling serde_derive v1.0.229
+   Compiling bitflags v2.13.2
+   Compiling typenum v1.20.1
+   Compiling syn v2.0.119
+   Compiling cfg_aliases v0.1.1
+   Compiling thiserror v1.0.69
+   Compiling parking_lot_core v0.9.12
+   Compiling nix v0.28.0
+   Compiling thiserror-impl v1.0.69
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_core v0.9.5
+   Compiling sha2-asm v0.6.4
+   Compiling smallvec v1.16.3
+   Compiling anyhow v1.0.104
+   Compiling rustix v1.1.5
+   Compiling zstd-safe v8.2.0
+   Compiling scopeguard v1.2.0
+   Compiling log v0.4.34
+   Compiling getrandom v0.4.3
+   Compiling zmij v1.0.23
+   Compiling lock_api v0.4.14
+   Compiling rand_chacha v0.9.0
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling errno v0.3.14
+   Compiling memchr v2.8.3
+   Compiling serde_json v1.0.154
+   Compiling digest v0.10.7
+   Compiling rand v0.9.5
+   Compiling filedescriptor v0.8.3
+   Compiling parking_lot v0.12.5
+   Compiling serde-big-array v0.5.1
+   Compiling arrayvec v0.7.8
+   Compiling cpufeatures v0.2.17
+   Compiling serial2 v0.2.38
+   Compiling unicode-width v0.2.2
+   Compiling downcast-rs v1.2.1
+   Compiling once_cell v1.21.4
+   Compiling cursor-icon v1.2.0
+   Compiling base64 v0.22.1
+   Compiling fastrand v2.5.0
+   Compiling itoa v1.0.18
+   Compiling shell-words v1.1.1
+   Compiling portable-pty v0.9.0
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+   Compiling tempfile v3.27.0
+   Compiling sha2 v0.10.9
+   Compiling zstd v0.14.3
+   Compiling ulid v1.2.1
+   Compiling mio v1.2.4
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `test` profile [unoptimized] target(s) in 26.08s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-fairness-ci6gdrl6/target/debug/deps/bbt_supervisor-45e7b1757b187788)
+
+running 1 test
+
+thread 'supervisor::capture_read_tests::a_hot_seat_cannot_take_every_notification_credit' (30362324) panicked at crates/bbt-supervisor/src/supervisor.rs:2504:9:
+assertion `left == right` failed: fixed sweep order starved the retained second-seat notification
+  left: Ulid(1)
+ right: Ulid(2)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test supervisor::capture_read_tests::a_hot_seat_cannot_take_every_notification_credit ... FAILED
+
+failures:
+
+failures:
+    supervisor::capture_read_tests::a_hot_seat_cannot_take_every_notification_credit
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p bbt-supervisor --lib`
+
+Raw passing named regression:
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `test` profile [unoptimized] target(s) in 3.45s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-fairness-ci6gdrl6/target/debug/deps/bbt_supervisor-45e7b1757b187788)
+
+running 1 test
+test supervisor::capture_read_tests::no_seat_starves_under_full_queue ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.01s
+
+
+All commands ran in /Users/feral/mydev/bboxy450-term-rook; O0, debug assertions on, debuginfo0, two jobs, explicit memory custody.
+Artifact root /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-fairness-ci6gdrl6
+No full gate or new 967 attempt is claimed in this log. Next: clean exact normal ci-local, then one 967/50 attempt with no other full gate running, load1<8, disk>=10GiB, self-called quiet window, all assertions/deadlines unchanged.
+NG1 remains after this separately approved admission fix. No other source files touched.

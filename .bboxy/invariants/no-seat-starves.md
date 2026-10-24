@@ -3,10 +3,8 @@ id: 01M5QXJV03J5WH1X4DT2P227ND
 type: invariant
 number: 314
 title: "no seat starves under a full retained-notification queue: every seat with a pending retained notification is admitted within one rotation of the retry sweep"
-status: pending
-slow: true
-gate: pending-no-seat-starves
-check: cargo test -p bbt-supervisor --locked no_seat_starves_under_full_queue -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
+status: active
+check: cargo test -p bbt-supervisor --locked --lib supervisor::capture_read_tests::no_seat_starves_under_full_queue -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: the seats at the end of the sweep order never get their retained notifications admitted while the hot first seats take every credit; their panes go stale, their watchers see nothing, and with hundreds of seats the tail is silent for the life of the run
 links:
   - { to: "[[no-chokepoints]]", rel: instance-of }
@@ -14,7 +12,7 @@ links:
   - { to: "[[seats-967-frame]]", rel: unblocks }
   - { to: "[[mux-daemon]]", rel: constrains }
 created: "2026-10-24T21:38:02Z"
-updated: "2026-10-24T21:38:02Z"
+updated: "2026-10-24T21:50:28Z"
 ---
 # No seat starves under a full retained-notification queue
 
@@ -34,13 +32,13 @@ rule for one sweep. (c) Fair rotation over the same bounded queue and the same
 rules. **Choice** (c), Oracle, 2026-10-24, with a deterministic counterexample
 test as the gate.
 
-**Check.** `cargo test -p bbt-supervisor --locked no_seat_starves_under_full_queue -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
-— exit 0 held. **Pending** until Rook's fair-rotation commit lands that test
-against the recorded counterexample (first seats hot, three later seats with
-pending notifications, full queue); if the landing commit names the test
-differently, it edits this line and the README row in the same commit, and the
-Oracle flips `status` to active on acceptance. Until then the gate is listed as
-pending and runs nowhere.
+**Check.** `cargo test -p bbt-supervisor --locked --lib supervisor::capture_read_tests::no_seat_starves_under_full_queue -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
+— exit 0 held. The deterministic fixture uses two pending seats, a one-slot
+channel and exactly one returned credit per pass. The first seat stays hot;
+the second must receive the next credit, and the hot seat's sequences remain
+FIFO. The same test failed on the fixed-order sweep before the rotation fix.
+The fully qualified unit-test name and one-passed assertion prevent a zero-test
+run from satisfying the check. The production channel remains 128 slots.
 
 **Cost of a violation.** The seats at the end of the sweep order never get
 their retained notifications admitted while the hot first seats take every
@@ -54,5 +52,9 @@ so three watched seats took zero admissions in 12,409 attempts while the hot
 first seats held every credit of the 128-slot queue. Reported by the Oracle
 to the Architect the same day; the fair-rotation fix was approved by the Oracle
 on the spot.
+
+Fair rotation and the executable counterexample: signed source
+`f85912a03db8dba69abd8393c789236d4b3b84c7`; the cursor advances only after
+successful admission, and the next sweep starts after that seat.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
