@@ -63,7 +63,7 @@ try:
             assert time.monotonic() < deadline and proc.poll() is None, 'private ctl endpoint never became ready'
             time.sleep(0.2)
         spawned = ctl('seat', 'spawn', 'zsh', '--name', 'DocsFixture')
-        seat = spawned['seat']['record']['id']
+        seat = spawned['seat']
         marker = '__DOCUMENT_CTL_IO_LIVE__'
         ctl('seat', 'type', seat, "printf '" + marker + "\\n'\r")
         ctl('seat', 'wait', seat, '--text', '(?m)^' + marker + '[ \\t]*$', '--timeout', '10000')
