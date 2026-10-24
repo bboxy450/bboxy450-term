@@ -856,7 +856,9 @@
       for (const t of (s.tasks || [])) { w.append(taskRow(t, s, { onAccept: opts.onAccept })); for (const a of (t.artifacts || [])) w.append(artifactRow(a)); }
       return w;
     }
-    const row = el('div', { class: 'tab-row' }, el('span', { class: 'caret' }, opts.expanded ? '▾' : '▸'), el('span', { class: 'tname' }, tab.name));
+    // the tab's alive border reads its worst seat (rim-glow §8): state and colour
+    const worst = rollup(seats)[0];
+    const row = el('div', { class: 'tab-row', 'data-rim-state': worst.state, style: '--seat:' + seatColor(worst) }, el('span', { class: 'caret' }, opts.expanded ? '▾' : '▸'), el('span', { class: 'tname' }, tab.name));
     if (!opts.expanded) {
       const roll = el('span', { class: 'roll' });
       const rolled = rollup(seats).slice(0, T.sidebar.collapse_glyphs);

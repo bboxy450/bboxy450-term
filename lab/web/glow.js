@@ -124,17 +124,26 @@
   const ACT = { idle: 0, active: 1, waiting: 2, errored: 3 };
 
   function rim(wrap, seat, opts) {
-    const box = wrap.querySelector('.pane') || [...wrap.children].find(c => c.tagName !== 'CANVAS');
+    const box = opts.box || wrap.querySelector('.pane') || [...wrap.children].find(c => c.tagName !== 'CANVAS');
     const cv = document.createElement('canvas'); cv.className = 'rim'; wrap.append(cv);   // above the pane: the rim is inside it
     const ctx = cv.getContext('2d');
     const phase = opts.phase_ms != null ? opts.phase_ms : window.C.hash32(String(seat.key || '')) % 10000;
     cv.dataset.phaseMs = phase;
-    let held = null;
+    let held = null, blank = false;
     function frame(ts) {
       if (!cv.isConnected) return;
       // reconnecting: the rim freezes on its last frame (reconnect_overlay)
       if (held === null || !wrap.querySelector('.pane.stale')) held = ts;
       const S = shared(); if (!S || !box) return;
+      // a kit block (opts.live) reads its state, focus and colour off the element each frame, so re-renders and focus moves show
+      const state = opts.live ? box.dataset.rimState || window.C.STATES.find(k => box.classList.contains(k)) || 'idle' : seat.state in ACT ? seat.state : 'idle';
+      const focused = opts.live ? box.classList.contains('focused') : opts.focused;
+      const rimA = opts.live && opts.idle_bare && state === 'idle' && !focused ? 0 : opts.rim_alpha != null ? opts.rim_alpha : 1;
+      const SW = window.TOKENS.glow.swell, SMS = window.TOKENS.glow.swell_ms, attn = !!opts.attn;
+      const st = opts.swell_at != null ? opts.swell_at : attn ? held + phase : wrap.dataset.swellT0 ? ts - +wrap.dataset.swellT0 : -1;
+      const env = attn ? Math.abs(Math.sin(Math.PI * st / SMS)) : st >= 0 && st < SMS ? Math.sin(Math.PI * st / SMS) : 0;
+      if (rimA === 0 && env === 0) { if (!blank) { ctx.clearRect(0, 0, cv.width, cv.height); blank = true; } requestAnimationFrame(frame); return; }   // nothing to paint
+      blank = false;
       const dpr = devicePixelRatio, cr = cv.getBoundingClientRect(), br = box.getBoundingClientRect();
       const w = Math.round(cr.width * dpr), h = Math.round(cr.height * dpr);
       if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
@@ -142,18 +151,14 @@
       const css = getComputedStyle(box), depthPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glow-depth')) || window.TOKENS.glow.depth;
       // the cell edge rule (rim-glow §3): the band is [0, min(depth, padding)), so no pixel of the text grid is ever lit
       const term = box.querySelector('.term'), pad = term ? parseFloat(getComputedStyle(term).paddingLeft) : opts.block ? Math.min(parseFloat(css.paddingTop), parseFloat(css.paddingLeft)) : Infinity, depthEff = Math.min(depthPx, pad);
-      const state = seat.state in ACT ? seat.state : 'idle';
-      const root = getComputedStyle(document.documentElement), col = rgb(state === 'waiting' ? root.getPropertyValue('--c-waiting') : state === 'errored' ? root.getPropertyValue('--c-errored') : opts.color || window.C.seatColor(seat));
+      const root = getComputedStyle(document.documentElement), col = rgb(state === 'waiting' ? root.getPropertyValue('--c-waiting') : state === 'errored' ? root.getPropertyValue('--c-errored') : opts.live ? css.getPropertyValue('--seat') || root.getPropertyValue('--accent') : opts.color || window.C.seatColor(seat));
       gl.viewport(0, 0, w, h); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); gl.useProgram(S.prog);
       gl.uniform2f(U.uOrigin, br.left - cr.left, br.top - cr.top); gl.uniform2f(U.uSize, br.width, br.height);
       gl.uniform1f(U.uR, parseFloat(css.borderTopLeftRadius) || 0); const rimPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glow-rim')) || window.TOKENS.glow.rim;
       const space = parseFloat(css.getPropertyValue('--rim-space')), out = isNaN(space) ? rimPx / 2 : Math.min(rimPx / 2, space);   // the outer half, clipped to the block's spacing
       gl.uniform1f(U.uRim, rimPx / 2 + out); gl.uniform1f(U.uRimOut, out); gl.uniform1f(U.uDepth, depthEff); gl.uniform1f(U.uDpr, dpr); gl.uniform1f(U.uH, h);
-      gl.uniform1f(U.uTime, held + phase); gl.uniform1f(U.uAct, ACT[state]); gl.uniform1f(U.uFocus, opts.focused ? 1 : 0);
-      gl.uniform4f(U.uCol, col[0], col[1], col[2], seat.grade === 'inferred' ? 0.5 : 1); gl.uniform1f(U.uRimA, opts.rim_alpha != null ? opts.rim_alpha : 1);
-      const SW = window.TOKENS.glow.swell, SMS = window.TOKENS.glow.swell_ms, attn = !!opts.attn;
-      const st = opts.swell_at != null ? opts.swell_at : attn ? held + phase : wrap.dataset.swellT0 ? ts - +wrap.dataset.swellT0 : -1;
-      const env = attn ? Math.abs(Math.sin(Math.PI * st / SMS)) : st >= 0 && st < SMS ? Math.sin(Math.PI * st / SMS) : 0;
+      gl.uniform1f(U.uTime, held + phase); gl.uniform1f(U.uAct, ACT[state]); gl.uniform1f(U.uFocus, focused ? 1 : 0);
+      gl.uniform4f(U.uCol, col[0], col[1], col[2], seat.grade === 'inferred' ? 0.5 : 1); gl.uniform1f(U.uRimA, rimA);
       gl.uniform3f(U.uSw, SW * env, env, attn ? 1 : 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       ctx.clearRect(0, 0, w, h); ctx.drawImage(S.cv, 0, 0);
@@ -166,5 +171,22 @@
   function attach(wrap, seat, opts) { opts = opts || {}; return opts.legacy ? particles(wrap, seat, opts) : rim(wrap, seat, opts); }
   // fire the focus swell on a block's wrap (replaces the locate ripple, rim-glow §7)
   function swell(wrap) { wrap.dataset.swellT0 = performance.now(); }
-  window.Glow = { attach, swell, STATE };
+  // Kit defaults (rim-glow §8): every seat row, tab row and report card a page renders carries the alive rim and takes the swell,
+  // with no page code. A block opts out by style (--rim: none). Rows and tabs stack edge to edge (--rim-space 0, no bloom) and
+  // carry no rim at rest while idle (glow.row_idle); a tab reads its worst seat (data-rim-state, --seat); a card takes --seat,
+  // else the accent. A block the page attached itself (el.__rim) is left alone.
+  const BLOCKS = '.seat-row:not(.phantom), .tab-row, .report';
+  function blocks(root) {
+    const found = root.matches && root.matches(BLOCKS) ? [root] : [];
+    for (const n of [...found, ...(root.querySelectorAll ? root.querySelectorAll(BLOCKS) : [])]) {
+      if (n.__rim || getComputedStyle(n).getPropertyValue('--rim').trim() === 'none') continue;
+      n.__rim = true;
+      let wrap = n;
+      if (n.classList.contains('report')) { wrap = document.createElement('div'); wrap.className = 'glow-wrap kit'; n.replaceWith(wrap); wrap.append(n); }   // cards clip their overflow
+      const state = n.dataset.rimState || window.C.STATES.find(k => n.classList.contains(k)) || 'idle';
+      window.Glow.attach(wrap, { key: n.dataset.key || n.textContent.slice(0, 24), state }, { box: n, live: true, block: true, focused: n.classList.contains('focused'), idle_bare: !n.classList.contains('report') && !window.TOKENS.glow.row_idle });   // through attach, so a capture that wraps it sees every block
+    }
+  }
+  if (!document.body || !document.body.classList.contains('live')) new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) blocks(n); }).observe(document.documentElement, { childList: true, subtree: true });
+  window.Glow = { attach, swell, blocks, STATE };
 })();

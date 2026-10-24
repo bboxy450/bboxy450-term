@@ -276,6 +276,11 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .glow-wrap canvas.rim { position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); pointer-events: none; z-index: 2; }
 .pane-wrap.swells canvas.rim, .glow-wrap.swells canvas.rim { inset: -48px; width: calc(100% + 96px); height: calc(100% + 96px); }
 .seat-row, .tab-row { --rim-space: 0px; }   /* rows stack edge to edge: the outer half has no spacing to draw into */
+.tab-row { position: relative; }
+/* the kit default rim (Glow.blocks): rows draw only inside themselves at rest, a card only its outer half (at most rim_max / 2) past
+   its edge, so neither widens a scroller; pages that swell a block give it a .swells wrap (swell.html) */
+.seat-row > canvas.rim, .tab-row > canvas.rim { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+.glow-wrap.kit canvas.rim { inset: -4px; width: calc(100% + 8px); height: calc(100% + 8px); }
 .pane-wrap .pane { position: relative; z-index: 1; }
 
 /* phone sheet open/closed */

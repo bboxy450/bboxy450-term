@@ -18,6 +18,7 @@ const QUESTION = 'Allow Bash(git push origin main)?';
 const glowing = [];
 function block(child, sd, o) {
   o = o || {};
+  child.__rim = true;   // attached here with its own options, not by the kit default
   const w = el('div', { class: (o.pane ? 'pane-wrap' : 'glow-wrap') + ' swells' }, child);
   const opts = { focused: !!o.swell, block: !o.pane, rim_alpha: o.rim_alpha, ...(sd.color ? { color: sd.color } : {}), attn: !!o.attn, ...(o.swell && !LIVE ? { swell_at: AT } : {}), ...(o.attn && !LIVE ? { swell_at: AT } : {}) };
   requestAnimationFrame(() => Glow.attach(w, sd, opts));
@@ -42,7 +43,7 @@ Lab.page({ title: 'swell', wide: true, note: 'The alive border and the ' + G.swe
       cap('Every row that is not idle carries the same alive rim as its pane (idle rows carry none at rest, glow.row_idle). Rows sit edge to edge, so only the inner half (' + G.rim / 2 + ' px) shows and there is no bloom (no vertical padding); the swell still paints over the neighbouring rows.'));
     if (s === 'tabs') {
       const r = C.rng('swell-tabs'), tabs = [['gpu research', 3], ['messaging', 2], ['parse logs', 5]].map(([name, n], j) => { const ss = Array.from({ length: n }, (_, k) => C.makeSeat(r, 10 * j + k)); return { name, shortcut: '⌘' + (j + 1), seats: ss, tree: C.makeTree(r, ss) }; });
-      body.append(side(...tabs.map((t, j) => { const worst = C.rollup(t.seats)[0]; return block(C.tabRow(t, {}).firstChild, { key: 'tab' + j, state: worst.state, color: C.seatColor(worst) }, j === 1 ? { swell: true } : {}); })),
+      body.append(side(...tabs.map((t, j) => { const worst = C.rollup(t.seats)[0], r = C.tabRow(t, {}).firstChild; r.remove(); return block(r, { key: 'tab' + j, state: worst.state, color: C.seatColor(worst) }, j === 1 ? { swell: true } : {}); })),
         cap('A collapsed tab is a block too: its rim takes the colour and state of its worst seat, and it swells when focus lands on one of its seats.'));
     }
     if (s === 'cards') {
