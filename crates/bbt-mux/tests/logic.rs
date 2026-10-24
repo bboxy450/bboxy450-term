@@ -1,5 +1,12 @@
 #![allow(clippy::disallowed_methods)] // Disposable IO/process test harness.
+#[path = "common/capture_priority.rs"]
+mod capture_priority;
 mod common;
+
+#[test]
+fn watched_lane_gets_at_least_half_of_replay_pages() {
+    capture_priority::watched_tail_with_background_backlogs();
+}
 use std::io::Write;
 use std::path::Path;
 use std::time::{Duration, Instant};

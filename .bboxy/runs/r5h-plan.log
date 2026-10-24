@@ -1,0 +1,39 @@
+R5h — watched replay priority
+Owner: Rook Ashwhisker <EXECUTOR>
+Authorization: operator direct local authorization; Oracle e9a95500-911f-4f7b-ac0a-878ed9152717.
+Policy: decision #253 rule 5 and invariant #276 at 7cd55951.
+Writing tree: /Users/feral/mydev/bboxy450-term-rook, rook-r5h-watched-replay.
+
+Scope
+- logic.rs: private session lifetime/refcount registry; local actor admission;
+  two pending replay queues, 3 watched quanta per background quantum; either
+  empty lane donates; lane membership changes preserve FIFO and remaining quota.
+- seat_socket.rs: Watch/Unwatch and removed-view forwarding; disconnect releases
+  its session's interest before awaited cleanup, or through Drop on cancellation.
+- tests/logic.rs + tests/common/capture_priority.rs: named #276 check using four
+  real PTYs, one swarm, explicit fixture key, held notifications and fixed replay
+  page budget; exact serial Screens and background completion retained.
+- private logic unit tests: refcounts, idempotence, stale admission/generation,
+  disconnect, bounded queue churn, donation, per-lane rotation and Exit ordering.
+- watched-replay-priority.md: activate only with its named executable check.
+- .bboxy/runs/r5h-*.log: plan and actual command evidence.
+
+Preserved: capture/protocol/ReadRing schema, one leased stream, checkpoint/debt
+policy, provider parking, per-page command yield, generation and lifecycle rules.
+No watched priority inferred from Snapshot. No watched-seat throttling.
+
+Validation order
+1. Focused deterministic unit tests and four-PTY page-budget regression.
+2. Same new external-protocol regression against immediate parent f4ac1dba, expected fail
+   on visible-tail/page allocation; preserve the actual result, never adjust time.
+3. Existing fairness, link-down liveness, checkpoint scheduling, generation/Exit.
+4. Strict workspace/all-target Clippy; signed exact source; Oracle slot request.
+5. Clean detached exact normal ci-local; no full gate without explicit slot.
+6. Separately scheduled one 967/50 acceptance window, no scale run in this plan.
+
+Observed development failures
+- First pending_tests compile: E0061, new private wrapper omitted unavailable's
+  context argument twice. Corrected to existing logic-stopped cause mapping.
+- Its shell status capture used zsh's read-only status name. Cargo failure is
+  preserved in /tmp/rook-r5h-checks/pending-tests.log; subsequent wrappers use
+  run_status and report the actual cargo exit.
