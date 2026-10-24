@@ -1279,11 +1279,13 @@
   }
   // report-back card (work-items.md: the Executor's report is a handoff, not proof): what changed, what ran with its exit
   // status, each acceptance check, gaps; Accept and Re-brief belong to the delegator. Accepting flips the task to done.
-  // the desktop notification (attention §3), the lab's picture of the macOS banner: app icon, seat and harness, what it asks
+  // the desktop notification (attention §3), the lab's picture of the macOS banner. v1 is title + body only, as attention.rs
+  // builds them: title 'name · harness', body the first line of the seat's detail, else by wait kind (NOTIFY_BODY)
+  const NOTIFY_BODY = { permission: 'Permission requested', auth: 'Authentication requested', question: 'Your answer is needed' };
   function notification(seat, line, onClick) {
     return el('div', { class: 'notif', role: 'button', tabindex: '0', onclick: onClick }, logo(32, { square: true }),
-      el('div', { class: 'nb' }, el('div', { class: 'nt' }, el('b', {}, seat.name), el('span', {}, '· ' + seat.harness), el('span', { class: 'nw' }, 'now')),
-        el('div', { class: 'ns' }, 'needs your answer'), el('div', { class: 'nm' }, line)));
+      el('div', { class: 'nb' }, el('div', { class: 'nt' }, el('b', {}, seat.name + ' · ' + seat.harness), el('span', { class: 'nw' }, 'now')),
+        el('div', { class: 'nm' }, line || NOTIFY_BODY[seat.waitKind] || NOTIFY_BODY.question)));
   }
   function reportCard(r, opts) {
     const card = el('div', { class: 'report ' + (r.verdict || 'pending'), 'data-rim-key': r.task }, el('div', { class: 'rh' }, el('span', { class: 'rk' }, taskMark(r.state || 'reported')), el('b', {}, r.task), el('span', { class: 'rs' }, r.verdict === 'accepted' ? 'done' : 'reported')),
@@ -1558,5 +1560,5 @@
     return root;
   }
 
-  window.C = { notification, circleMark, taskMark, SEAT_MARK, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { notification, NOTIFY_BODY, circleMark, taskMark, SEAT_MARK, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

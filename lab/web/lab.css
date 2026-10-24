@@ -1552,7 +1552,6 @@ details[open] > summary::before { transform: rotate(90deg); }
 .notif { display: flex; gap: 10px; align-items: flex-start; width: 340px; padding: 10px 12px; border-radius: 14px; cursor: default;
   background: color-mix(in srgb, var(--surface) 82%, transparent); backdrop-filter: blur(20px); box-shadow: 0 8px 24px rgba(0,0,0,.25), inset 0 0 0 var(--hair-w) var(--hair); }
 .notif .nb { flex: 1; min-width: 0; font-size: var(--font); line-height: 1.35; }
-.notif .nt { display: flex; gap: 4px; } .notif .nt span { color: var(--fg-dim); } .notif .nw { margin-left: auto; font-size: var(--font-small); }
-.notif .ns { color: var(--c-waiting); font-size: var(--font-small); }
+.notif .nt { display: flex; gap: 4px; } .notif .nw { margin-left: auto; font-size: var(--font-small); }
 .notif .nm { font-family: var(--font-mono); font-size: var(--font-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .notifs { position: fixed; top: calc(var(--title-bar-h) + 8px); right: 12px; z-index: 60; display: flex; flex-direction: column; gap: 8px; }

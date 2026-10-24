@@ -547,9 +547,8 @@
     main.querySelectorAll('.seat-row[data-key]').forEach(n => { const s = seats.find(x => x.key === n.dataset.key); n.classList.toggle('attn', !!s && needs(s)); });
     for (const n of [...notifs.children]) { const s = seats.find(x => x.key === n.dataset.key); if (!s || !needs(s)) n.remove(); }
     for (const s of seats) if (needs(s) && !notifs.querySelector('[data-key="' + s.key + '"]')) {
-      // the body is the first line of what it asks: the replay line that stopped it, else the waiting screen's prompt (fakeTerm)
-      const ask = s.waitLine || ((s.replay && s.replay.buf) || []).slice().reverse().find(l => /Allow|\?\s*$/.test(l)) || 'Allow Bash(git push)?';
-      const n = C.notification(s, ask.trim(), () => setFocus(s.key, { locate: 'both' }));
+      // the body is the first line of the seat's detail (here the replay line that stopped it), else by wait kind, as attention.rs
+      const n = C.notification(s, s.waitLine, () => setFocus(s.key, { locate: 'both' }));
       n.dataset.key = s.key; notifs.append(n);
     }
   }
