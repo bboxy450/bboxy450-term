@@ -31,7 +31,7 @@ Runner EXIT1 solely because T2-T8 intentionally have no selected script (unteste
 Night input digests, raw JSONL, verdict and signed record are committed alongside; the verification branch nyx-seat-names-night-proof retains the exact source. No operator/login Keychain/display/click/pane authorization was used.
 
 Scope held
-No role/default/authority, wire version, journal, placement, focus, renderer or existing-seat rename change. No merge/push/publication by this Executor.
+No role defaults, authority, wire version, journal, placement, focus, renderer or existing-seat rename change. No merge/push/publication by this Executor.
 The initial sccache stall and initial missing-proto-import Clippy101 are disclosed in core; fixed locally/by the shared wrapper bypass. Broad pre-existing rustfmt differences were left alone, touched-file format checks0.
 
 Retention and cleanup
