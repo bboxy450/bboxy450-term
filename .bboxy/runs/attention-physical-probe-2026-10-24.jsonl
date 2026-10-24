@@ -1,0 +1,231 @@
+{"pid":59260,"record":{"data":{"cold_fixture":"00000000000000000000000003","delegate_installed_before_run_app":true,"executable":"/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe-final.app/Contents/MacOS/notification_probe"},"kind":"launch"},"ts_ms":"1792855734743"}
+{"pid":59260,"record":{"data":{"keys":"A P R C D Q","pid":59260},"kind":"window_ready"},"ts_ms":"1792855734814"}
+{"pid":59260,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792855734843"}
+{"pid":59260,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792855734844"}
+{"pid":59260,"record":{"key":"a","kind":"native","result":"authorize: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855740528"}
+{"pid":59260,"record":{"data":"authorize: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855740529"}
+{"pid":59260,"record":{"key":"p","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855741301"}
+{"pid":59260,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855741302"}
+{"pid":59260,"record":{"key":"p","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855741773"}
+{"pid":59260,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855741773"}
+{"pid":59260,"record":{"key":"p","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855741929"}
+{"pid":59260,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855741929"}
+{"pid":59260,"record":{"key":"r","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855743327"}
+{"pid":59260,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855743327"}
+{"pid":59260,"record":{"key":"r","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855743473"}
+{"pid":59260,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855743473"}
+{"pid":59260,"record":{"key":"c","kind":"native","result":"delivered: Ok([])"},"ts_ms":"1792855743729"}
+{"pid":59260,"record":{"data":"delivered: Ok([])","kind":"native_result"},"ts_ms":"1792855743729"}
+{"pid":59260,"record":{"key":"c","kind":"native","result":"delivered: Ok([])"},"ts_ms":"1792855743893"}
+{"pid":59260,"record":{"data":"delivered: Ok([])","kind":"native_result"},"ts_ms":"1792855743893"}
+{"pid":59260,"record":{"key":"a","kind":"native","result":"authorize: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855745608"}
+{"pid":59260,"record":{"data":"authorize: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855745608"}
+{"pid":59260,"record":{"key":"a","kind":"native","result":"authorize: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855745811"}
+{"pid":59260,"record":{"data":"authorize: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855745811"}
+{"pid":59260,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792855746851"}
+{"pid":59260,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792855748214"}
+{"pid":59260,"record":{"key":"a","kind":"native","result":"authorize: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855749461"}
+{"pid":59260,"record":{"data":"authorize: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855749461"}
+{"pid":59260,"record":{"key":"a","kind":"native","result":"authorize: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855749669"}
+{"pid":59260,"record":{"data":"authorize: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855749669"}
+{"pid":59260,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792855750413"}
+{"pid":59260,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792855751029"}
+{"pid":59260,"record":{"key":"a","kind":"native","result":"authorize: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855753375"}
+{"pid":59260,"record":{"data":"authorize: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855753376"}
+{"pid":59260,"record":{"key":"p","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855754604"}
+{"pid":59260,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855754605"}
+{"pid":59260,"record":{"key":"p","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855754797"}
+{"pid":59260,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855754797"}
+{"pid":59260,"record":{"key":"r","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855755130"}
+{"pid":59260,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855755130"}
+{"pid":59260,"record":{"key":"r","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855755279"}
+{"pid":59260,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855755279"}
+{"pid":59260,"record":{"key":"r","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855755458"}
+{"pid":59260,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855755458"}
+{"pid":59260,"record":{"key":"r","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855755628"}
+{"pid":59260,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855755629"}
+{"pid":59260,"record":{"key":"r","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855755773"}
+{"pid":59260,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855755773"}
+{"pid":59260,"record":{"key":"r","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855755940"}
+{"pid":59260,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855755940"}
+{"pid":59260,"record":{"key":"c","kind":"native","result":"delivered: Ok([])"},"ts_ms":"1792855756330"}
+{"pid":59260,"record":{"data":"delivered: Ok([])","kind":"native_result"},"ts_ms":"1792855756331"}
+{"pid":59260,"record":{"key":"c","kind":"native","result":"delivered: Ok([])"},"ts_ms":"1792855756479"}
+{"pid":59260,"record":{"data":"delivered: Ok([])","kind":"native_result"},"ts_ms":"1792855756479"}
+{"pid":59260,"record":{"key":"c","kind":"native","result":"delivered: Ok([])"},"ts_ms":"1792855756645"}
+{"pid":59260,"record":{"data":"delivered: Ok([])","kind":"native_result"},"ts_ms":"1792855756645"}
+{"pid":59260,"record":{"key":"d","kind":"native","result":"remove: Ok(())"},"ts_ms":"1792855757080"}
+{"pid":59260,"record":{"data":"remove: Ok(())","kind":"native_result"},"ts_ms":"1792855757080"}
+{"pid":59260,"record":{"key":"d","kind":"native","result":"remove: Ok(())"},"ts_ms":"1792855757227"}
+{"pid":59260,"record":{"data":"remove: Ok(())","kind":"native_result"},"ts_ms":"1792855757228"}
+{"pid":59260,"record":{"data":{"pid":59260},"kind":"exit"},"ts_ms":"1792855757992"}
+{"pid":61161,"record":{"data":{"cold_fixture":"00000000000000000000000003","delegate_installed_before_run_app":true,"executable":"/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe-final.app/Contents/MacOS/notification_probe"},"kind":"launch"},"ts_ms":"1792855797178"}
+{"pid":61161,"record":{"data":{"keys":"A P R C D Q","pid":61161},"kind":"window_ready"},"ts_ms":"1792855797245"}
+{"pid":61161,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792855797269"}
+{"pid":61161,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792855797270"}
+{"pid":61161,"record":{"key":"a","kind":"native","result":"authorize: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855799929"}
+{"pid":61161,"record":{"data":"authorize: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855799930"}
+{"pid":61161,"record":{"key":"a","kind":"native","result":"authorize: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855800284"}
+{"pid":61161,"record":{"data":"authorize: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855800285"}
+{"pid":61161,"record":{"key":"p","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855800817"}
+{"pid":61161,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855800818"}
+{"pid":61161,"record":{"key":"p","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855800970"}
+{"pid":61161,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855800970"}
+{"pid":61161,"record":{"key":"p","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855801121"}
+{"pid":61161,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855801121"}
+{"pid":61161,"record":{"key":"r","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855801402"}
+{"pid":61161,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855801402"}
+{"pid":61161,"record":{"key":"r","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855801552"}
+{"pid":61161,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855801552"}
+{"pid":61161,"record":{"key":"r","kind":"native","result":"post: Err(Backend(\"Notifications are not allowed for this application\"))"},"ts_ms":"1792855801688"}
+{"pid":61161,"record":{"data":"post: Err(Backend(\"Notifications are not allowed for this application\"))","kind":"native_result"},"ts_ms":"1792855801688"}
+{"pid":61161,"record":{"key":"c","kind":"native","result":"delivered: Ok([])"},"ts_ms":"1792855802152"}
+{"pid":61161,"record":{"data":"delivered: Ok([])","kind":"native_result"},"ts_ms":"1792855802152"}
+{"pid":61161,"record":{"key":"c","kind":"native","result":"delivered: Ok([])"},"ts_ms":"1792855802302"}
+{"pid":61161,"record":{"data":"delivered: Ok([])","kind":"native_result"},"ts_ms":"1792855802302"}
+{"pid":61161,"record":{"key":"c","kind":"native","result":"delivered: Ok([])"},"ts_ms":"1792855802468"}
+{"pid":61161,"record":{"data":"delivered: Ok([])","kind":"native_result"},"ts_ms":"1792855802468"}
+{"pid":61161,"record":{"key":"d","kind":"native","result":"remove: Ok(())"},"ts_ms":"1792855802858"}
+{"pid":61161,"record":{"data":"remove: Ok(())","kind":"native_result"},"ts_ms":"1792855802858"}
+{"pid":61161,"record":{"key":"d","kind":"native","result":"remove: Ok(())"},"ts_ms":"1792855803009"}
+{"pid":61161,"record":{"data":"remove: Ok(())","kind":"native_result"},"ts_ms":"1792855803010"}
+{"pid":61161,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792855803869"}
+{"pid":61161,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792855804402"}
+{"pid":61161,"record":{"data":{"pid":61161},"kind":"exit"},"ts_ms":"1792855810252"}
+{"pid":62270,"record":{"data":{"cold_fixture":"00000000000000000000000003","delegate_installed_before_run_app":true,"executable":"/Users/feral/Applications/bboxy450-notification-probe.app/Contents/MacOS/notification_probe"},"kind":"launch"},"ts_ms":"1792855823459"}
+{"pid":62270,"record":{"data":{"keys":"A P R C D Q","pid":62270},"kind":"window_ready"},"ts_ms":"1792855823534"}
+{"pid":62270,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792855823559"}
+{"pid":62270,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792855823559"}
+{"pid":62270,"record":{"key":"a","kind":"native","result":"authorize: Err(Backend(\"authorization completion: timed out waiting on channel\"))"},"ts_ms":"1792855827974"}
+{"pid":62270,"record":{"key":"a","kind":"native","result":"authorize: Ok(Denied)"},"ts_ms":"1792855827975"}
+{"pid":62270,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792855827976"}
+{"pid":62270,"record":{"data":"authorize: Err(Backend(\"authorization completion: timed out waiting on channel\"))","kind":"native_result"},"ts_ms":"1792855827976"}
+{"pid":62270,"record":{"data":"authorize: Ok(Denied)","kind":"native_result"},"ts_ms":"1792855827976"}
+{"pid":62270,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792855829151"}
+{"pid":62270,"record":{"key":"p","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855842640"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855842640"}
+{"pid":62270,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792855844072"}
+{"pid":62270,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792855846084"}
+{"pid":62270,"record":{"key":"r","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855847800"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855847800"}
+{"pid":62270,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792855849499"}
+{"pid":62270,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792855850959"}
+{"pid":62270,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792855851053"}
+{"pid":62270,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792855852733"}
+{"pid":62270,"record":{"key":"p","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855853385"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855853385"}
+{"pid":62270,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792855854530"}
+{"pid":62270,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792855857382"}
+{"pid":62270,"record":{"key":"a","kind":"native","result":"authorize: Ok(Granted)"},"ts_ms":"1792855858284"}
+{"pid":62270,"record":{"data":"authorize: Ok(Granted)","kind":"native_result"},"ts_ms":"1792855858284"}
+{"pid":62270,"record":{"key":"p","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855859517"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855859517"}
+{"pid":62270,"record":{"key":"p","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855860040"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855860041"}
+{"pid":62270,"record":{"key":"r","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855860459"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855860459"}
+{"pid":62270,"record":{"key":"c","kind":"native","result":"delivered: Ok([])"},"ts_ms":"1792855860878"}
+{"pid":62270,"record":{"data":"delivered: Ok([])","kind":"native_result"},"ts_ms":"1792855860879"}
+{"pid":62270,"record":{"key":"c","kind":"native","result":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])"},"ts_ms":"1792855861091"}
+{"pid":62270,"record":{"data":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])","kind":"native_result"},"ts_ms":"1792855861091"}
+{"pid":62270,"record":{"key":"d","kind":"native","result":"remove: Ok(())"},"ts_ms":"1792855864178"}
+{"pid":62270,"record":{"data":"remove: Ok(())","kind":"native_result"},"ts_ms":"1792855864179"}
+{"pid":62270,"record":{"key":"c","kind":"native","result":"delivered: Ok([])"},"ts_ms":"1792855865138"}
+{"pid":62270,"record":{"data":"delivered: Ok([])","kind":"native_result"},"ts_ms":"1792855865139"}
+{"pid":62270,"record":{"key":"d","kind":"native","result":"remove: Ok(())"},"ts_ms":"1792855866085"}
+{"pid":62270,"record":{"data":"remove: Ok(())","kind":"native_result"},"ts_ms":"1792855866086"}
+{"pid":62270,"record":{"key":"c","kind":"native","result":"delivered: Ok([])"},"ts_ms":"1792855866444"}
+{"pid":62270,"record":{"data":"delivered: Ok([])","kind":"native_result"},"ts_ms":"1792855866445"}
+{"pid":62270,"record":{"key":"r","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855866894"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855866895"}
+{"pid":62270,"record":{"key":"r","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855867121"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855867121"}
+{"pid":62270,"record":{"key":"p","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855867494"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855867495"}
+{"pid":62270,"record":{"key":"p","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855867673"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855867674"}
+{"pid":62270,"record":{"key":"p","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855867808"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855867809"}
+{"pid":62270,"record":{"key":"a","kind":"native","result":"authorize: Ok(Granted)"},"ts_ms":"1792855869295"}
+{"pid":62270,"record":{"data":"authorize: Ok(Granted)","kind":"native_result"},"ts_ms":"1792855869295"}
+{"pid":62270,"record":{"key":"a","kind":"native","result":"authorize: Ok(Granted)"},"ts_ms":"1792855869698"}
+{"pid":62270,"record":{"data":"authorize: Ok(Granted)","kind":"native_result"},"ts_ms":"1792855869698"}
+{"pid":62270,"record":{"key":"p","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855870405"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855870405"}
+{"pid":62270,"record":{"key":"r","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855872745"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855872745"}
+{"pid":62270,"record":{"key":"c","kind":"native","result":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])"},"ts_ms":"1792855875806"}
+{"pid":62270,"record":{"data":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])","kind":"native_result"},"ts_ms":"1792855875807"}
+{"pid":62270,"record":{"key":"c","kind":"native","result":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])"},"ts_ms":"1792855876943"}
+{"pid":62270,"record":{"data":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])","kind":"native_result"},"ts_ms":"1792855876944"}
+{"pid":62270,"record":{"key":"c","kind":"native","result":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])"},"ts_ms":"1792855877125"}
+{"pid":62270,"record":{"data":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])","kind":"native_result"},"ts_ms":"1792855877125"}
+{"pid":62270,"record":{"key":"c","kind":"native","result":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])"},"ts_ms":"1792855877290"}
+{"pid":62270,"record":{"data":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])","kind":"native_result"},"ts_ms":"1792855877290"}
+{"pid":62270,"record":{"key":"c","kind":"native","result":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])"},"ts_ms":"1792855877457"}
+{"pid":62270,"record":{"data":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])","kind":"native_result"},"ts_ms":"1792855877457"}
+{"pid":62270,"record":{"key":"d","kind":"native","result":"remove: Ok(())"},"ts_ms":"1792855878057"}
+{"pid":62270,"record":{"data":"remove: Ok(())","kind":"native_result"},"ts_ms":"1792855878058"}
+{"pid":62270,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792855879875"}
+{"pid":62270,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792855913265"}
+{"pid":62270,"record":{"key":"p","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855914613"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855914613"}
+{"pid":62270,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792855918984"}
+{"pid":62270,"record":{"data":{"id":"00000000000000000000000003"},"kind":"clicked"},"ts_ms":"1792855919050"}
+{"pid":62270,"record":{"data":{"deferred_landing":true,"raise_requested":true,"seat":"00000000000000000000000003","tab":"00000000000000000000000002"},"kind":"focused"},"ts_ms":"1792855919055"}
+{"pid":62270,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792855919376"}
+{"pid":62270,"record":{"key":"p","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855921208"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855921209"}
+{"pid":62270,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792855922719"}
+{"pid":62270,"record":{"data":{"id":"00000000000000000000000003"},"kind":"clicked"},"ts_ms":"1792855922817"}
+{"pid":62270,"record":{"data":{"deferred_landing":false,"raise_requested":true,"seat":"00000000000000000000000003","tab":"00000000000000000000000002"},"kind":"focused"},"ts_ms":"1792855922821"}
+{"pid":62270,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792855923134"}
+{"pid":62270,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792855924146"}
+{"pid":62270,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792855928562"}
+{"pid":62270,"record":{"key":"r","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855929503"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855929504"}
+{"pid":62270,"record":{"key":"c","kind":"native","result":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])"},"ts_ms":"1792855931933"}
+{"pid":62270,"record":{"data":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])","kind":"native_result"},"ts_ms":"1792855931934"}
+{"pid":62270,"record":{"key":"c","kind":"native","result":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])"},"ts_ms":"1792855932639"}
+{"pid":62270,"record":{"data":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])","kind":"native_result"},"ts_ms":"1792855932639"}
+{"pid":62270,"record":{"key":"c","kind":"native","result":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])"},"ts_ms":"1792855932838"}
+{"pid":62270,"record":{"data":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])","kind":"native_result"},"ts_ms":"1792855932838"}
+{"pid":62270,"record":{"key":"c","kind":"native","result":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])"},"ts_ms":"1792855932999"}
+{"pid":62270,"record":{"data":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])","kind":"native_result"},"ts_ms":"1792855933000"}
+{"pid":62270,"record":{"key":"c","kind":"native","result":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])"},"ts_ms":"1792855933508"}
+{"pid":62270,"record":{"data":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])","kind":"native_result"},"ts_ms":"1792855933508"}
+{"pid":62270,"record":{"key":"c","kind":"native","result":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])"},"ts_ms":"1792855933692"}
+{"pid":62270,"record":{"data":"delivered: Ok([NotificationId(\"00000000000000000000000003\")])","kind":"native_result"},"ts_ms":"1792855933693"}
+{"pid":62270,"record":{"key":"d","kind":"native","result":"remove: Ok(())"},"ts_ms":"1792855934708"}
+{"pid":62270,"record":{"data":"remove: Ok(())","kind":"native_result"},"ts_ms":"1792855934708"}
+{"pid":62270,"record":{"key":"r","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855935972"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855935972"}
+{"pid":62270,"record":{"key":"p","kind":"native","result":"post: Ok(())"},"ts_ms":"1792855936975"}
+{"pid":62270,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792855936977"}
+{"pid":62270,"record":{"key":"d","kind":"native","result":"remove: Ok(())"},"ts_ms":"1792855937859"}
+{"pid":62270,"record":{"data":"remove: Ok(())","kind":"native_result"},"ts_ms":"1792855937859"}
+{"pid":62270,"record":{"key":"d","kind":"native","result":"remove: Ok(())"},"ts_ms":"1792855938653"}
+{"pid":62270,"record":{"data":"remove: Ok(())","kind":"native_result"},"ts_ms":"1792855938654"}
+{"pid":62270,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792855944188"}
+{"pid":62270,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792855944794"}
+{"pid":62270,"record":{"data":{"pid":62270},"kind":"exit"},"ts_ms":"1792855950637"}
+{"pid":73566,"record":{"data":{"cold_fixture":"00000000000000000000000003","delegate_installed_before_run_app":true,"executable":"/Users/feral/Applications/bboxy450-notification-probe.app/Contents/MacOS/notification_probe"},"kind":"launch"},"ts_ms":"1792856138392"}
+{"pid":73566,"record":{"data":{"keys":"A P R C D Q","pid":73566},"kind":"window_ready"},"ts_ms":"1792856138515"}
+{"pid":73566,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792856138556"}
+{"pid":73566,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792856138557"}
+{"pid":73566,"record":{"key":"p","kind":"native","result":"post: Ok(())"},"ts_ms":"1792856150415"}
+{"pid":73566,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792856150415"}
+{"pid":73566,"record":{"key":"p","kind":"native","result":"post: Ok(())"},"ts_ms":"1792856159776"}
+{"pid":73566,"record":{"data":"post: Ok(())","kind":"native_result"},"ts_ms":"1792856159776"}
+{"pid":73566,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792856160882"}
+{"pid":73566,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792856161581"}
+{"pid":73566,"record":{"data":{"pid":73566},"kind":"exit"},"ts_ms":"1792856162363"}
+{"pid":74411,"record":{"data":{"cold_fixture":"00000000000000000000000003","delegate_installed_before_run_app":true,"executable":"/Users/feral/Applications/bboxy450-notification-probe.app/Contents/MacOS/notification_probe"},"kind":"launch"},"ts_ms":"1792856163472"}
+{"pid":74411,"record":{"data":{"keys":"A P R C D Q","pid":74411},"kind":"window_ready"},"ts_ms":"1792856163570"}
+{"pid":74411,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792856163595"}
+{"pid":74411,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792856163596"}
+{"pid":74411,"record":{"data":{"id":"00000000000000000000000003"},"kind":"clicked"},"ts_ms":"1792856163601"}
+{"pid":74411,"record":{"data":{"deferred_landing":true,"raise_requested":true,"seat":"00000000000000000000000003","tab":"00000000000000000000000002"},"kind":"focused"},"ts_ms":"1792856163602"}
+{"pid":74411,"record":{"data":{"focused":false},"kind":"window_focus"},"ts_ms":"1792856165049"}
+{"pid":74411,"record":{"data":{"focused":true},"kind":"window_focus"},"ts_ms":"1792856359949"}
+{"pid":74411,"record":{"data":{"pid":74411},"kind":"exit"},"ts_ms":"1792856362403"}
