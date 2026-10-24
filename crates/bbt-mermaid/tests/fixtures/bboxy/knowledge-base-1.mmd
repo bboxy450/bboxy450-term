@@ -1,0 +1,5 @@
+flowchart LR
+  V["views: document modal, Graph tab,<br/>sidebar, later the swarm canvas<br/>(always ours)"] -- "data_source contract" --> H["knowledge host in logic<br/>roots, provider per root, Settings swap"]
+  H -- "in process" --> B["bundled provider<br/>bboxy450-term-data_source-bboxy<br/>the .bboxy store: records, wikilinks, numbers, images"]
+  H -- "MCP over stdio, same contract" --> X["another provider<br/>Obsidian vault, Notion, GitKB, …<br/>swapped in Settings"]
+  B -- "plugin check: --shape and stdio serve" --> C["bbt-plugin<br/>data_source schema, tiers, ceilings"]
