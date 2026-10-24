@@ -1,0 +1,92 @@
+R5g invalid calibration attempt; NOT recovery or acceptance evidence.
+Source aa640b2f7518a510fb36b16e1a453430049419e3, clean detached tree.
+Started under grant 8a7a5b63 at load4.3389. Slot reordered by c92a6e91 during the run; that message was not read until later. Subsequent gates require a fresh grant.
+Producer300s lifetime expired during serial observer setup; all producers exited before controlled SIGKILL/recovery. Agent stopped only the recorded owned logic child with SIGTERM. No recovery time was obtained.
+
+calibration-1-status.json
+{
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--test",
+    "recovery",
+    "checkpoint_bounded_recovery",
+    "--",
+    "--exact",
+    "--nocapture"
+  ],
+  "cwd": "/tmp/rook-r5g-ci-tkvvx0cl/tree",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory",
+    "R5G_SEATS": "967"
+  },
+  "source": "aa640b2f7518a510fb36b16e1a453430049419e3",
+  "at": "2026-10-23T22:53:22.796073-07:00",
+  "load_before": [
+    4.3388671875,
+    8.55029296875,
+    12.17236328125
+  ],
+  "free_bytes_before": 83311636480,
+  "finished": true,
+  "git_status_before": "",
+  "pid": 37184,
+  "exit": 101,
+  "elapsed_s": 1304.4642953339498,
+  "load_after": [
+    9.5830078125,
+    17.51904296875,
+    15.68603515625
+  ],
+  "free_bytes_after": 84932947968,
+  "git_status_after": "",
+  "log_sha256": "6a80cdd7724f1fbab49023ddb0829be93de7e7862d627b7f9b247ec1f7f8ce8f"
+}
+
+calibration-1-abort.json
+{
+  "at": 1792822505.937526,
+  "reason": "fixture invalid: 967 finite producers naturally exited after 300s, before serial capture setup finished; no recovery time or valid calibration result",
+  "source": "aa640b2f7518a510fb36b16e1a453430049419e3",
+  "owned_logic_child": 37217,
+  "owner": "37217 37195 /Users/feral/mydev/bboxy450-term-rook/target/r5g/debug/deps/recovery-7d0788ad483062a2",
+  "signal": "SIGTERM",
+  "progress": "{\"captured\":967}",
+  "go_mtime": 1792821833.5842178,
+  "load": [
+    9.5830078125,
+    17.51904296875,
+    15.68603515625
+  ]
+}
+
+calibration-1-cleanup.json
+{
+  "at": 1792822595.94495,
+  "attempt": "invalid calibration 1, EXIT101 after recorded stop",
+  "removed_target": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+  "removed_allocated_bytes": 1392840704,
+  "removed_worktree": "/tmp/rook-r5g-ci-tkvvx0cl/tree",
+  "owned_test_pids_gone": [
+    37184,
+    37195,
+    37217
+  ],
+  "run_directory_gone": true,
+  "free_bytes_now": 85922304000
+}
+
+RAW COMMAND OUTPUT (JSON string preserves exact whitespace)
+"    Finished `test` profile [optimized] target(s) in 0.36s\n     Running tests/recovery.rs (/Users/feral/mydev/bboxy450-term-rook/target/r5g/debug/deps/recovery-7d0788ad483062a2)\n\nrunning 1 test\ntest checkpoint_bounded_recovery has been running for over 60 seconds\n\nthread 'checkpoint_bounded_recovery' (23263561) panicked at crates/bbt-mux/tests/recovery.rs:393:9:\nchild exited Some(ExitStatus(unix_wait_status(15))): \nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\ntest checkpoint_bounded_recovery ... FAILED\n\nfailures:\n\nfailures:\n    checkpoint_bounded_recovery\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 1303.78s\n\nerror: test failed, to rerun pass `-p bbt-mux --test recovery`\n"

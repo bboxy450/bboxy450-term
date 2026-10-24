@@ -44,7 +44,8 @@ fn main() {
     }
     out.write_all(b"RECOVERY_READY").unwrap();
     out.flush().unwrap();
-    std::thread::sleep(Duration::from_secs(300));
+    std::fs::write(&args[3], b"done").unwrap();
+    loop { std::thread::park(); } // Only the owned supervisor ends this child.
 }
 "#;
 
@@ -214,6 +215,10 @@ fn checkpoint_recovery_child() {
         launch.args = vec![
             go.to_string_lossy().into(),
             if i == 0 { BURST } else { 64 * 1024 }.to_string(),
+            root.join("done")
+                .join(seat.to_string())
+                .to_string_lossy()
+                .into(),
         ];
         runtime
             .block_on(logic.client.spawn(
@@ -232,6 +237,27 @@ fn checkpoint_recovery_child() {
         &json!({"root":endpoint.path.parent().unwrap()}),
     );
     std::fs::write(&go, b"go").unwrap();
+    // Completion files acknowledge finite stdout writes, not capture. Capture
+    // is checked by exact ring byte counts after SIGKILL. Avoid 967 serial
+    // observer RPCs while the worker is supposed to be ingesting this burst.
+    let mut completed = 0;
+    let mut advanced = Instant::now();
+    while completed < seats.len() {
+        let count = std::fs::read_dir(root.join("done")).unwrap().count();
+        if count != completed {
+            completed = count;
+            advanced = Instant::now();
+            write_json(
+                &root.join("progress.json"),
+                &json!({"producers_done":count}),
+            );
+        }
+        assert!(
+            advanced.elapsed() < Duration::from_secs(90),
+            "finite producers made no progress"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
     let mut byte_end = 0;
     let mut advanced = Instant::now();
     while byte_end < BURST + 14 {
@@ -247,28 +273,6 @@ fn checkpoint_recovery_child() {
             "burst capture made no progress"
         );
         std::thread::sleep(Duration::from_millis(5));
-    }
-    for (i, &seat) in seats.iter().enumerate().skip(1) {
-        let mut previous = 0;
-        let mut advanced = Instant::now();
-        loop {
-            let history = runtime
-                .block_on(logic.client.history(seat, 1, 1, 1))
-                .unwrap();
-            if history.status.byte_end >= 64 * 1024 + 14 {
-                break;
-            }
-            if history.status.byte_end != previous {
-                previous = history.status.byte_end;
-                advanced = Instant::now();
-            }
-            assert!(
-                advanced.elapsed() < Duration::from_secs(90),
-                "trickling capture stopped"
-            );
-            std::thread::sleep(Duration::from_millis(5));
-        }
-        write_json(&root.join("progress.json"), &json!({"captured":i+1}));
     }
     held.store(false, Ordering::Release);
     let until = Instant::now() + Duration::from_secs(90);
@@ -345,6 +349,7 @@ fn checkpoint_bounded_recovery() {
         String::from_utf8_lossy(&compiler.stderr)
     );
     std::fs::create_dir(root.join("repository")).unwrap();
+    std::fs::create_dir(root.join("done")).unwrap();
     let supervisor = Supervisor::start(Config {
         socket_path: Some(root.join("supervisor.sock")),
         journal_directory: Some(root.join("journal")),
@@ -418,6 +423,15 @@ fn checkpoint_bounded_recovery() {
     assert_eq!(rows.len(), count);
     // Probe only after the old owner has died, using one admitted serial link.
     let probe = supervisor.connect().unwrap();
+    let Reply::Seats { seats: owned } = probe.request(Action::ListOwnedSeats).unwrap() else {
+        panic!()
+    };
+    assert_eq!(owned.len(), count);
+    assert!(
+        owned.iter().all(|info| info.exited.is_none()),
+        "a producer exited before the controlled kill/restart"
+    );
+    let owned_pids: BTreeMap<_, _> = owned.iter().map(|info| (info.seat, info.pid)).collect();
     let mut tails = BTreeMap::new();
     let mut expected = BTreeMap::new();
     for &seat in &seats {
@@ -434,7 +448,10 @@ fn checkpoint_bounded_recovery() {
         else {
             panic!()
         };
-        let Reply::RingRecovery { status, checkpoint } = probe
+        let Reply::RingRecovery {
+            mut status,
+            mut checkpoint,
+        } = probe
             .request(Action::RingRecovery {
                 attachment: attachment.clone(),
             })
@@ -442,6 +459,37 @@ fn checkpoint_bounded_recovery() {
         else {
             panic!()
         };
+        let expected_bytes = if seat == seats[0] { BURST } else { 64 * 1024 } + 14;
+        let mut previous = status.byte_end;
+        let mut advanced = Instant::now();
+        while status.byte_end < expected_bytes {
+            let Reply::RingRecovery {
+                status: next,
+                checkpoint: saved,
+            } = probe
+                .request(Action::RingRecovery {
+                    attachment: attachment.clone(),
+                })
+                .unwrap()
+            else {
+                panic!()
+            };
+            if next.byte_end != previous {
+                previous = next.byte_end;
+                advanced = Instant::now();
+            }
+            assert!(
+                advanced.elapsed() < Duration::from_secs(90),
+                "ring capture did not reach the producer's completed byte count"
+            );
+            status = next;
+            checkpoint = saved;
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert_eq!(
+            status.byte_end, expected_bytes,
+            "unexpected producer output"
+        );
         let row = rows[&seat];
         let parsed = row["parsed_byte_end"].as_u64().unwrap();
         let confirmed = row["checkpoint_byte_end"].as_u64().unwrap();
@@ -505,9 +553,42 @@ fn checkpoint_bounded_recovery() {
         assert!(snapshot.sequence >= tails[&seat]);
         assert_eq!(snapshot.screen, expected[&seat]);
     }
+    let elapsed = started.elapsed();
+    logic.shutdown().unwrap();
+    let probe = supervisor.connect().unwrap();
+    let Reply::Seats { seats: recovered } = probe.request(Action::ListOwnedSeats).unwrap() else {
+        panic!()
+    };
+    assert_eq!(recovered.len(), count);
+    for info in recovered {
+        assert_eq!(info.pid, owned_pids[&info.seat]);
+        assert!(
+            info.exited.is_none(),
+            "recovery returned an exited producer"
+        );
+    }
+    drop(probe);
+    supervisor.shutdown().unwrap();
+    for pid in owned_pids.values() {
+        let mut status = 0;
+        // SAFETY: these are this fixture's recorded direct children, the status
+        // pointer is valid, and WNOHANG never waits for a still-running child.
+        let result = unsafe { libc::waitpid(*pid as libc::pid_t, &mut status, libc::WNOHANG) };
+        assert_eq!(
+            result, -1,
+            "supervisor failed to reap its owned child {pid}"
+        );
+        assert_eq!(
+            std::io::Error::last_os_error().raw_os_error(),
+            Some(libc::ECHILD)
+        );
+    }
+    println!(
+        "checkpoint_recovery reaped_owned_pids={:?}",
+        owned_pids.values().collect::<Vec<_>>()
+    );
     println!(
         "checkpoint_recovery seats={count} every_seat_live_ms={:.3}",
-        started.elapsed().as_secs_f64() * 1000.0
+        elapsed.as_secs_f64() * 1000.0
     );
-    logic.shutdown().unwrap();
 }
