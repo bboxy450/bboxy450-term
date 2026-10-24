@@ -202,3 +202,49 @@ fn a_foreign_nonempty_directory_never_becomes_a_test_identity() {
         b"owned by a different fixture"
     );
 }
+
+#[test]
+fn startup_allows_the_selected_private_run_inside_the_account_directory() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("test-account");
+    let run = root.join("run");
+    // Session prepares its private run before starting logic.
+    bboxy450_keychain::open(bboxy450_keychain::Backend::File {
+        directory: root.clone(),
+    })
+    .unwrap();
+    bboxy450_keychain::open(bboxy450_keychain::Backend::File {
+        directory: run.clone(),
+    })
+    .unwrap();
+    let first = TestAccount::open(&root, &run).unwrap();
+    let before = serde_json::to_value(public(&run)).unwrap();
+    let reopened = TestAccount::open(&root, &run).unwrap();
+    assert_eq!(first.issued_by(), reopened.issued_by());
+    assert_eq!(serde_json::to_value(public(&run)).unwrap(), before);
+    assert!(root.join("test_root").is_file());
+}
+
+#[test]
+fn startup_refuses_a_foreign_issuer_before_creating_test_keys_or_context() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("keys");
+    let run = temp.path().join("run");
+    for directory in [run.clone(), run.join("account")] {
+        bboxy450_keychain::open(bboxy450_keychain::Backend::File { directory }).unwrap();
+    }
+    let account = SqliteStore::open(&object_dir(&run, "account").unwrap()).unwrap();
+    account
+        .put("identity/issuer", b"existing account issuer")
+        .unwrap();
+    let error = TestAccount::open(&root, &run)
+        .err()
+        .expect("foreign issuer refused");
+    assert!(error.to_string().contains("TestAccountMismatch"), "{error}");
+    assert!(!root.join("test_root").exists());
+    assert!(account.get("identity/test-account").unwrap().is_none());
+    assert_eq!(
+        account.get("identity/issuer").unwrap().unwrap(),
+        b"existing account issuer"
+    );
+}

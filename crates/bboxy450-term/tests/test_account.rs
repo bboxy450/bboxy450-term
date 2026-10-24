@@ -70,7 +70,8 @@ async fn logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authori
     let shell_config = root.path().join("zsh-config");
     tokio::fs::create_dir_all(&repository).await.unwrap();
     tokio::fs::create_dir_all(&shell_config).await.unwrap();
-    let run = root.path().join("run");
+    let account = root.path().join("keys");
+    let run = account.join("run");
     let mut session = Session::start(Config {
         executable: env!("CARGO_BIN_EXE_bboxy450-term").into(),
         socket: run.join("mux.sock"),
@@ -78,7 +79,7 @@ async fn logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authori
         repository,
         shell_config: Some(shell_config),
         ctl: true,
-        test_account: Some(root.path().join("keys")),
+        test_account: Some(account),
     })
     .await
     .unwrap();

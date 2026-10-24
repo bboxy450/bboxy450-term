@@ -545,6 +545,9 @@ impl Session {
     /// Spawn both private processes and connect their admitted GUI endpoint.
     pub async fn start(config: Config) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
+        if let Some(directory) = &config.test_account {
+            bbt_mux::identity::TestAccount::prepare_directory(directory)?;
+        }
         let supervisor = start_supervisor(&config).await?;
         let logic = start_logic(&config, &supervisor.ready, false).await?;
         Ok(Self {

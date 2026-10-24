@@ -85,6 +85,15 @@ pub struct TestAccount {
     label: String,
 }
 impl TestAccount {
+    /// Validate or create the selected private custody directory before the
+    /// app prepares a nested run directory within it.
+    pub fn prepare_directory(directory: &Path) -> crate::store::Result<()> {
+        bbt_rt::assert_not_ui_thread();
+        bboxy450_keychain::open(Backend::File {
+            directory: directory.into(),
+        })?;
+        Ok(())
+    }
     /// Generate once, then reopen the same root/device after a logic restart.
     /// Both directories are explicit, absolute and private. A foreign account
     /// is refused, and this function has no native or in-memory fallback.
@@ -106,10 +115,13 @@ impl TestAccount {
         let account = SqliteStore::open(&object_dir(&run_dir, "account")?)?;
         let old_context = account.get(CONTEXT)?;
         if old_context.is_none() {
-            for key in ["identity/head", "identity/local-issuer", "messaging/issuer"] {
-                if account.get(key)?.is_some() {
-                    return Err(invalid(E::TestAccountMismatch.to_string()));
-                }
+            let has_identity: bool = account.connection()?.query_row(
+                "SELECT EXISTS(SELECT 1 FROM kv WHERE key GLOB 'identity/*' OR key='messaging/issuer')",
+                [],
+                |row| row.get(0),
+            )?;
+            if has_identity {
+                return Err(invalid(E::TestAccountMismatch.to_string()));
             }
         }
         if store.get("test_root")?.is_none() {
@@ -118,10 +130,16 @@ impl TestAccount {
                     "test_account_root_missing: existing run is never rekeyed",
                 ));
             }
-            if std::fs::read_dir(directory)?.next().transpose()?.is_some() {
-                return Err(invalid(
-                    "test_account_directory_not_empty: use a fresh private directory",
-                ));
+            let key_directory = directory.canonicalize()?;
+            let nested_run = (run_dir.parent() == Some(key_directory.as_path()))
+                .then(|| run_dir.file_name())
+                .flatten();
+            for entry in std::fs::read_dir(&key_directory)? {
+                if Some(entry?.file_name().as_os_str()) != nested_run {
+                    return Err(invalid(
+                        "test_account_directory_not_empty: use a fresh private directory",
+                    ));
+                }
             }
             let mut fresh = RootSeed {
                 version: 1,
