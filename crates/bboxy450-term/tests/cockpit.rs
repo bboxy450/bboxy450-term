@@ -188,13 +188,18 @@ async fn gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames()
         bytes.push(b'\n');
         write.write_all(&bytes).await.unwrap();
         let mut reader = BufReader::new(read);
-        if capability == session.endpoint.capability {
-            let reply = read_line(&mut reader).await.unwrap().unwrap();
-            assert!(matches!(
-                serde_json::from_slice::<GuiReply>(&reply).unwrap(),
-                GuiReply::Error { reason, .. } if reason == "GUI socket version mismatch"
-            ));
-        }
+        // Each refusal names itself, then the socket closes: a wrong capability says
+        // admission was rejected, as a wrong version says it mismatched.
+        let expected = if capability == session.endpoint.capability {
+            "GUI socket version mismatch"
+        } else {
+            "GUI socket admission rejected"
+        };
+        let reply = read_line(&mut reader).await.unwrap().unwrap();
+        assert!(matches!(
+            serde_json::from_slice::<GuiReply>(&reply).unwrap(),
+            GuiReply::Error { reason, .. } if reason == expected
+        ));
         assert!(
             tokio::time::timeout(Duration::from_secs(3), read_line(&mut reader))
                 .await

@@ -696,6 +696,52 @@ fn ctl_in(run: &Path, cwd: &Path, args: &[&str]) -> (bool, Vec<Value>) {
     (output.status.success(), lines)
 }
 
+/// A wrong capability is refused with the reason, which ctl prints, not a closed socket.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_wrong_capability_is_refused_with_its_reason() {
+    let root = tempfile::tempdir().unwrap();
+    let root = root.path().canonicalize().unwrap();
+    let run = root.join("run");
+    let repository = root.join("repository");
+    std::fs::create_dir_all(&repository).unwrap();
+    std::fs::create_dir_all(root.join("zsh-config")).unwrap();
+    let app = root.join("test-app");
+    executable(
+        &app,
+        &format!(
+            "#!/bin/sh\nBBOXY_TEST_CUSTODY=memory exec {} \"$@\"\n",
+            quote(&PathBuf::from(env!("CARGO_BIN_EXE_bboxy450-term")))
+        ),
+    );
+    let session = Session::start(Config {
+        executable: app,
+        socket: run.join("mux.sock"),
+        run_dir: run.clone(),
+        repository,
+        shell_config: Some(root.join("zsh-config")),
+        ctl: true,
+    })
+    .await
+    .unwrap();
+    let endpoint = run.join("gui.endpoint");
+    until("gui.endpoint", &root.join("none"), || {
+        endpoint.exists().then_some(())
+    });
+    let mut forged: Value = serde_json::from_slice(&std::fs::read(&endpoint).unwrap()).unwrap();
+    forged["capability"] = Value::String("00".repeat(32));
+    let forged_file = root.join("forged.endpoint");
+    std::fs::write(&forged_file, forged.to_string()).unwrap();
+    let (ok, lines) = ctl_in(
+        &run,
+        &root,
+        &["--endpoint", forged_file.to_str().unwrap(), "seats"],
+    );
+    assert!(!ok, "{lines:?}");
+    assert_eq!(lines[0]["kind"], "error", "{lines:?}");
+    assert_eq!(lines[0]["reason"], "GUI socket admission rejected");
+    session.shutdown().await.unwrap();
+}
+
 #[test]
 fn ctl_help_prints_its_own_usage() {
     let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
