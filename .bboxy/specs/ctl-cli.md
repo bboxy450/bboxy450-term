@@ -15,7 +15,7 @@ links:
   - { to: "[[d272-ctl-one-grammar]]", rel: decision }
   - { to: "[[work-items]]", rel: record-type }
 created: "2026-10-24T15:24:41Z"
-updated: "2026-10-24T19:13:30Z"
+updated: "2026-10-24T19:18:29Z"
 ---
 # ctl
 
@@ -42,8 +42,8 @@ flowchart LR
 | `message` | `send (<destination> \| --reply-to <id>) <text>`; `inbox [--since <cursor>] [--swarm <s>]`; `receipts <id>`; `ack <id>`; `post <channel> <text>` | `GuiAction::Messaging` (#37, #38 (f); reply routing #264) |
 | `task` | `list [--unassigned \| --seat <s> \| --status <st>]`; `get <#N\|path>`; `delegate <#N\|path> <seat>`; `reassign`; `status`; `report`; `accept <#N>`; `reject <#N> --reason <r>` | `GuiAction::Task`, one verb per W2.5d tool (#38 (i) for `--unassigned`) |
 | `record` | `fetch <#N\|slug\|path>`; `search <query> [--type <t>] [--cursor <c>]`; `write <path> --frontmatter <json> --body <file>`; `changes --since <cursor>` | the [[knowledge-base]] contract over the wire, operator authority ([[mcp-control-plane]] write table: the operator writes every type) |
-| `e2e` | `list [--group <g>]`; `run <function-id> <seat>` | the checklist view ([[e2e-acceptance]] §4 summary states); `run` is `task delegate` of the promise's e2e task |
-| `app` | `start [--headless] [--run-dir <d>] [--ctl]`; `stop`; `status`; `version`; `endpoint` | launch and shut down the app itself; **`--headless`** runs supervisor, logic and a headless GUI client (the capture renderer) with no window, so `screen`, `capture` and every other verb work on a locked display for the e2e nights; the run directory and whether `ctl` is enabled; the build |
+| `e2e` | `list [--group <g>]`; `run <function-id> <seat>`; `night [--group <g>]` (the unattended runner, [[e2e-acceptance]] §4a) | the checklist view ([[e2e-acceptance]] §4 summary states); `run` is `task delegate` of the promise's e2e task |
+| `app` | `start [--headless] [--unattended] [--run-dir <d>] [--ctl]` (`--unattended` selects the automation identity in file custody, #281, and refuses to start if the login Keychain would be needed); `stop`; `status`; `version`; `endpoint` | launch and shut down the app itself; **`--headless`** runs supervisor, logic and a headless GUI client (the capture renderer) with no window, so `screen`, `capture` and every other verb work on a locked display for the e2e nights; the run directory and whether `ctl` is enabled; the build |
 | `ui` | `open <graph\|settings\|launcher\|docs <path>>`; `key <named-key>…` (the window's own chrome keys, ⌘T, ⌘G, ⌘M, Esc); `focus <pane>`; `layout` (dump the solved layout tree) | the same `GuiAction`s the window's keyboard and menu issue; `layout` is the model the UI already holds, read |
 | `events` | `tail [--since <seq>] [--subject <glob>]` | `EventsRead` pages of the retained streams by the client's cursor, JSON lines, no attach, no ack, never a second consumer (§1a) |
 | `debug` | `logs <app\|logic\|supervisor> [--since]`; `journal <query>`; `metrics`; `snapshot <path>` (the R5 diagnostics table); `ps` (the app's own process tree); `invariants [--slow]` (runs `scripts/invariants.sh` on the checked-out tree) | reads of what the processes already write; `invariants` is a local command and touches no seat |

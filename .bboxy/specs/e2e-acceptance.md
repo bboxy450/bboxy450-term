@@ -16,7 +16,7 @@ links:
   - { to: "[[rim-glow]]", rel: promises }
   - { to: "[[attention]]", rel: promises }
 created: "2026-10-24T05:17:08Z"
-updated: "2026-10-24T18:11:18Z"
+updated: "2026-10-24T19:18:29Z"
 ---
 # E2E acceptance
 
@@ -172,6 +172,10 @@ The Oracle sits outside the app (its own session, ICQ) and talks to the seats in
 - **Judging.** Expected versus observed is the seat's judgement, stated plainly in `result` with the evidence (the screen read, the capture path, the receipt ids). Geometry and pixels the seat cannot judge go to the parity gate, not to a guess.
 - **Reporting.** `task_report` with a structured `verify_result` (decision #28): the command is the step that proved it (`screen_read` with its arguments, or the capture), the exit code is 0 on pass; the e2e record's `status`, `last_run`, `result`, `run_by` and `evidence` are updated by a signed `write`. **Feedback** on what is unintuitive or broken goes two ways: a DM to the Oracle for the day, and a `comment` record (kind `suggestion` or `objection`, pinned to the spec's digest) for the record, so it enters the RFC loop ([[work-items]]). A promise that cannot be tested from inside is `blocked` with the reason, or `manual` if only an eye can judge it.
 - **Acceptance of the swarm's job, deterministically (Velvet's A-3 question, 2026-10-24).** The canonical list is **§1 of this spec, parsed**: every line matching `- **<ID>** <text>` under a `###` group is one promise, in group order, ids unique; a test asserts the parse yields the count stated in §1. No second copy of the list exists anywhere; A-0 writes one e2e record per parsed promise and the view joins records to promises by `function`. A promise with no record, or with two, shows `untested` and names the fault. A `fail` is **tracked** when its record carries `{ to: "[[<task>]]", rel: tracked-by }` to a task whose status is one of `open`, `claimed`, `running`, `reported`, `blocked`; `accepted` and `rejected` close a task, so a fail pointing only at a closed task is **untracked**. The summary has three states and no fourth: **green** when every promise has one usable record, none `untested`, and zero `fail`; **amber: N failures tracked** when the only non-pass records are `fail` rows each tracked by an open task (and `manual` rows judged by the Oracle, which are listed, not hidden); **red** when any promise is missing, doubled, `untested`, or a `fail` is untracked. Fail rows are red in every state; `blocked` rows count as fails for the summary and carry their reason. The Oracle accepts a night at amber or green from this view, never from a report, and amber says what is still owed.
+
+## 4a. Unattended ([[d282-app-tests-itself-unattended]], 2026-10-24)
+
+The night needs nobody present. `bboxy450-term e2e night [--group]` starts the identity-signed bundle the day produced with `--headless --unattended --ctl` under the automation identity (#281, file custody, `issued_by: automation` on everything it signs), spawns the worker testers through `ctl`, delegates every e2e record, answers known harness prompts through recipes ([[ctl-cli]] §4), waits, collects every `verify_result`, updates the checklist, and exits `0` only when the summary is green or amber (every failure tracked by an open task), `1` otherwise with the red rows. Nothing is built or signed at night. The one operator act is the automation device's enrollment, one root signature, once. Invariant [[e2e-runs-unattended]].
 
 ## 5. Order (the Oracle's briefs; Executors start in parallel)
 
