@@ -558,7 +558,7 @@ async fn gui_session(
                         continue;
                     }
                     let op=match &request.action {
-                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}=>*id,
+                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
@@ -635,10 +635,15 @@ async fn gui_session(
                                 Ok(GuiReply::Ok {op})
                             }
                             GuiAction::Input {seat,generation,id,bytes}=> {
+                                if door==crate::mcp::Door::Ctl {
+                                    client.ctl_input(Ulid::from(seat.0.0),generation,id,bytes,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
+                                    return Ok(GuiReply::Ok {op:id});
+                                }
                                 let receipt=client.gui_input(Ulid::from(seat.0.0),generation,id,bytes).await?;
                                 if receipt.state==crate::InputState::PartialUnknown {return Err(invalid("input result is partial/unknown; keep the original id"));}
                                 Ok(GuiReply::Ok {op:id})
                             }
+                            GuiAction::Screen {id,seat}=>Ok(GuiReply::Screen {op:id,screen:client.gui_screen(seat).await?}),
                             GuiAction::Resize {seat,generation,cols,rows}=> {
                                 client.gui_resize(Ulid::from(seat.0.0),generation,cols,rows).await?;
                                 Ok(GuiReply::Ok {op})

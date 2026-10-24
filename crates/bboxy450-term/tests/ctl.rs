@@ -11,7 +11,7 @@
 //! bridge (`bboxy450-term mcp`) like a harness would, so no model and no network run.
 use bboxy450_term::cockpit::{Config, Event, Session};
 use bbt_proto::{GuiAction, GuiReply};
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::{
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
@@ -896,4 +896,213 @@ fn ctl_help_prints_its_own_usage() {
     let text = String::from_utf8_lossy(&output.stdout);
     assert!(text.starts_with("usage: bboxy450-term ctl"), "{text}");
     assert!(text.contains("capture <file.png>"), "{text}");
+}
+
+/// Decision #270: the operator reads and types into a seat from outside the app. A real zsh
+/// seat echoes typed text, a named key reaches the PTY as its exact bytes, the screen shows
+/// both, a wait that never matches names what the screen showed, and each input is journaled
+/// as a ctl operation.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ctl_screen_input_and_wait_drive_a_seat() {
+    let root = tempfile::tempdir().unwrap();
+    let root = root.path().canonicalize().unwrap();
+    let run = root.join("run");
+    let repository = root.join("repository");
+    std::fs::create_dir_all(&repository).unwrap();
+    std::fs::create_dir_all(root.join("zsh-config")).unwrap();
+    let app = root.join("test-app");
+    executable(
+        &app,
+        &format!(
+            "#!/bin/sh\nBBOXY_TEST_CUSTODY=memory exec {} \"$@\"\n",
+            quote(&PathBuf::from(env!("CARGO_BIN_EXE_bboxy450-term")))
+        ),
+    );
+    let session = Session::start(Config {
+        executable: app,
+        socket: run.join("mux.sock"),
+        run_dir: run.clone(),
+        repository,
+        shell_config: Some(root.join("zsh-config")),
+        ctl: true,
+    })
+    .await
+    .unwrap();
+    let endpoint = run.join("gui.endpoint");
+    until("gui.endpoint", &root.join("none"), || {
+        endpoint.exists().then_some(())
+    });
+    let ctl = |args: &[&str]| ctl_in(&run, &root, args);
+    let (ok, lines) = ctl(&["spawn", "zsh", "--cwd", root.to_str().unwrap()]);
+    assert!(ok, "{lines:?}");
+    let seat = lines[0]["seat"].as_str().unwrap().to_owned();
+
+    // Typed text runs and its output shows on the screen (ctl-cli rev. 2 seat verbs, §2 shape).
+    let (ok, lines) = ctl(&["seat", "type", &seat, "echo hello-$((40+2))"]);
+    assert!(ok, "{lines:?}");
+    assert_eq!(
+        (&lines[0]["ok"], &lines[0]["noun"], &lines[0]["verb"]),
+        (&Value::Bool(true), &json!("seat"), &json!("type")),
+        "{lines:?}"
+    );
+    assert!(ctl(&["seat", "key", &seat, "enter"]).0);
+    let (ok, lines) = ctl(&[
+        "seat",
+        "wait",
+        &seat,
+        "--text",
+        "(?m)^hello-42$",
+        "--timeout",
+        "20000",
+    ]);
+    assert!(ok && lines[0]["done"] == true, "{lines:?}");
+
+    // Named keys reach the PTY byte for byte: cat -v shows the up arrow as ^[[A and Ctrl-A
+    // as ^A; typed text is literal, a backslash stays a backslash.
+    assert!(ctl(&["seat", "type", &seat, "cat -v"]).0);
+    assert!(ctl(&["seat", "key", &seat, "enter"]).0);
+    std::thread::sleep(Duration::from_millis(500));
+    assert!(ctl(&["seat", "key", &seat, "up"]).0);
+    assert!(ctl(&["seat", "type", &seat, "x"]).0);
+    assert!(ctl(&["seat", "key", &seat, "ctrl-a"]).0);
+    assert!(ctl(&["seat", "type", &seat, "y"]).0);
+    assert!(ctl(&["seat", "key", &seat, "enter"]).0);
+    assert!(ctl(&["seat", "type", &seat, "lit\\e"]).0);
+    assert!(ctl(&["seat", "key", &seat, "enter"]).0);
+    let (ok, lines) = ctl(&[
+        "seat",
+        "wait",
+        &seat,
+        "--text",
+        r"(?m)^\^\[\[Ax\^Ay$",
+        "--timeout",
+        "20000",
+    ]);
+    assert!(ok, "{lines:?}");
+    let (ok, lines) = ctl(&[
+        "seat",
+        "wait",
+        &seat,
+        "--text",
+        r"(?m)^lit\\e$",
+        "--timeout",
+        "20000",
+    ]);
+    assert!(ok, "typed text arrives as written: {lines:?}");
+    assert!(ctl(&["seat", "key", &seat, "ctrl-c"]).0);
+
+    // A paste from a file arrives whole at the prompt.
+    let pasted = root.join("paste.txt");
+    std::fs::write(&pasted, "echo pasted-$((6*7))").unwrap();
+    let (ok, lines) = ctl(&["seat", "paste", &seat, pasted.to_str().unwrap()]);
+    assert!(ok && lines[0]["verb"] == "paste", "{lines:?}");
+    assert!(ctl(&["seat", "key", &seat, "enter"]).0);
+    let (ok, lines) = ctl(&[
+        "seat",
+        "wait",
+        &seat,
+        "--text",
+        "(?m)^pasted-42$",
+        "--timeout",
+        "20000",
+    ]);
+    assert!(ok, "{lines:?}");
+
+    // The screen: the data is the window action's reply; --human renders it as text.
+    let (ok, lines) = ctl(&["seat", "screen", &seat]);
+    assert!(ok, "{lines:?}");
+    let data = &lines[0]["data"];
+    let rows: Vec<&str> = data["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r.as_str().unwrap())
+        .collect();
+    assert!(rows.contains(&"hello-42"), "{rows:?}");
+    assert!(data["generation"].as_u64().unwrap() > 0);
+    let plain = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+        .args(["ctl", "seat", "screen", &seat, "--human"])
+        .env("BBOXY_RUN_DIR", &run)
+        .output()
+        .unwrap();
+    let plain = String::from_utf8_lossy(&plain.stdout);
+    assert!(plain.lines().any(|l| l == "hello-42"), "{plain}");
+    assert!(
+        plain.lines().last().unwrap().starts_with("-- cursor "),
+        "{plain}"
+    );
+
+    // A wait that never matches is a timeout (exit 3) whose message ends with the screen.
+    let timed = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+        .args([
+            "ctl",
+            "seat",
+            "wait",
+            &seat,
+            "--text",
+            "never-there",
+            "--timeout",
+            "800",
+        ])
+        .env("BBOXY_RUN_DIR", &run)
+        .output()
+        .unwrap();
+    assert_eq!(timed.status.code(), Some(3));
+    let timed: Value = serde_json::from_slice(&timed.stdout).unwrap();
+    assert_eq!(timed["ok"], false);
+    assert_eq!(timed["error"]["kind"], "timeout");
+    assert!(
+        timed["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("hello-42"),
+        "{timed}"
+    );
+    assert!(timed["error"]["hint"].is_string());
+    let (ok, lines) = ctl(&["seat", "wait", &seat, "--state", "sideways"]);
+    assert!(!ok && lines[0]["kind"] == "error", "{lines:?}");
+
+    // Each ctl input is journaled under the operator principal through the ctl door.
+    let account = bbt_mux::store::sqlite::SqliteStore::open(
+        &bbt_mux::store::object_dir(&run, "account").unwrap(),
+    )
+    .unwrap();
+    let inputs: Vec<Value> = account
+        .connection()
+        .unwrap()
+        .prepare("SELECT value FROM kv WHERE key LIKE 'control/op/%'")
+        .unwrap()
+        .query_map([], |row| row.get::<_, Vec<u8>>(0))
+        .unwrap()
+        .map(|v| serde_json::from_slice::<Value>(&v.unwrap()).unwrap())
+        .filter(|entry| entry.to_string().contains("gui_input"))
+        .collect();
+    assert!(inputs.len() >= 13, "{inputs:?}");
+    assert!(
+        inputs.iter().all(|e| e["actor"]["door"] == "ctl"),
+        "{inputs:?}"
+    );
+    session.shutdown().await.unwrap();
+}
+
+/// The Codex hook-review recipe's expected list (#270): generated from the launch overlay.
+#[test]
+fn hook_list_names_the_codex_overlay_from_launch_rs() {
+    let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+        .args(["hook", "--list", "codex"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let lines: Vec<Value> = String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    let events: Vec<&str> = lines.iter().map(|l| l["event"].as_str().unwrap()).collect();
+    assert_eq!(events, bbt_mux::adapters::launch::CODEX_HOOK_EVENTS);
+    assert!(lines.iter().all(|l| {
+        l["command"]
+            .as_str()
+            .unwrap()
+            .ends_with("bboxy450-term' hook --agent codex")
+    }));
 }

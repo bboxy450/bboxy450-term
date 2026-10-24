@@ -94,6 +94,15 @@ enum Command {
         oneshot::Sender<Result<crate::InputReceipt>>,
     ),
     GuiResize(Ulid, u64, u16, u16, oneshot::Sender<Result<()>>),
+    GuiScreen(Ulid, oneshot::Sender<Result<bbt_proto::gui::SeatScreen>>),
+    CtlInput(
+        Ulid,
+        u64,
+        Ulid,
+        Vec<u8>,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<()>>,
+    ),
     GuiEndpoint(oneshot::Sender<Result<EndpointInfo>>),
     GuiSeats(oneshot::Sender<Result<Vec<crate::seat_socket::GuiSeat>>>),
     GuiSeat(Ulid, oneshot::Sender<Result<crate::seat_socket::GuiSeat>>),
@@ -417,6 +426,33 @@ impl LogicClient {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::GuiInput(seat, generation, id, bytes, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await
+            .map_err(|_| self.unavailable("input outcome unknown; keep the original input id"))?
+    }
+    /// One seat's visible screen as text, from the snapshot the window watches.
+    pub async fn gui_screen(&self, seat: Ulid) -> Result<bbt_proto::gui::SeatScreen> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiScreen(seat, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
+    }
+    /// Input through the ctl door: the window's input path, journaled and audited as a
+    /// `ctl` operation with its door and issuer, since nobody sits at that keyboard.
+    pub async fn ctl_input(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        id: Ulid,
+        bytes: Vec<u8>,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::CtlInput(seat, generation, id, bytes, origin, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await
@@ -1999,20 +2035,7 @@ impl Worker {
                 let end = (row + limit).min(snapshot.screen.rows);
                 let mut rows = Vec::new();
                 for cells in &snapshot.screen.cells[row..end] {
-                    let mut text = String::new();
-                    for cell in cells {
-                        if cell.flags.intersects(
-                            bbt_core::term::cell::Flags::WIDE_CHAR_SPACER
-                                | bbt_core::term::cell::Flags::LEADING_WIDE_CHAR_SPACER,
-                        ) {
-                            continue;
-                        }
-                        text.push(cell.c);
-                        if let Some(extra) = cell.zerowidth() {
-                            text.extend(extra);
-                        }
-                    }
-                    rows.push(text);
+                    rows.push(row_text(cells));
                 }
                 if serde_json::to_vec(&rows)
                     .map_err(|_| "viewport encoding unavailable")?
@@ -3220,6 +3243,100 @@ impl Worker {
         // when its adapter remains in the initial state until the first output.
         self.publish_adapter(info.seat, self.views[&info.seat].adapter.status.clone())?;
         Ok(info)
+    }
+    /// The window's input path: the displayed generation, then the seat's attachment.
+    fn seat_input(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        input_id: Ulid,
+        bytes: Vec<u8>,
+    ) -> Result<crate::InputReceipt> {
+        self.check_gui_generation(id, generation)?;
+        let attachment = self
+            .attachments
+            .get(&id)
+            .ok_or_else(|| invalid("seat not attached"))?
+            .clone();
+        match self.request_for_seat(
+            id,
+            Action::Input {
+                attachment,
+                input_id,
+                bytes,
+            },
+        )? {
+            Reply::Input { receipt } => Ok(receipt),
+            _ => Err(invalid("input receipt mismatch")),
+        }
+    }
+    /// Input through `ctl`: the operator principal with its door and issuer, journaled once
+    /// per input id (a retry replays, never types twice) and audited on `account/control`.
+    /// The journal keeps the byte count and digest, never the bytes.
+    fn ctl_input(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        input_id: Ulid,
+        bytes: Vec<u8>,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        let device_id = self
+            .identity
+            .status()?
+            .device_id
+            .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
+        let principal = crate::mcp::Principal::Operator {
+            device_id,
+            door: origin.door,
+            issued_by: origin.issued_by,
+        };
+        let call = crate::mcp::Call {
+            op_id: input_id,
+            tool: "gui_input".into(),
+            args: serde_json::json!({"seat":id,"generation":generation,
+                "bytes":bytes.len(),"digest":crate::store::digest(&bytes)}),
+        };
+        call.validate()?;
+        let (retained, fresh) = self.operator_journal.admit(&principal, &call)?;
+        let result = if fresh {
+            let result = match self.seat_input(id, generation, input_id, bytes) {
+                Ok(_) => crate::mcp::success(input_id, serde_json::json!({"seat":id})),
+                Err(error) => crate::mcp::error(input_id, "rejected", &error.to_string()),
+            };
+            self.operator_journal.complete(&principal, &call, result)?
+        } else {
+            retained
+        };
+        if result["isError"] == true {
+            let message = result["structuredContent"]["error"]["message"]
+                .as_str()
+                .unwrap_or("input outcome unavailable");
+            return Err(invalid(message.to_owned()));
+        }
+        Ok(())
+    }
+    /// One seat's visible screen as text rows, trailing blanks trimmed.
+    fn seat_screen(&self, id: Ulid) -> Result<bbt_proto::gui::SeatScreen> {
+        let generation = self
+            .views
+            .get(&id)
+            .ok_or_else(|| invalid("unknown seat"))?
+            .generation;
+        let snapshot = self.snapshot(id, generation)?;
+        Ok(bbt_proto::gui::SeatScreen {
+            seat: id,
+            generation,
+            rows: snapshot
+                .screen
+                .cells
+                .iter()
+                .map(|cells| row_text(cells).trim_end().to_owned())
+                .collect(),
+            cursor: snapshot.screen.cursor,
+            modes: snapshot.screen.modes,
+            title: snapshot.screen.title,
+        })
     }
     fn snapshot(&self, id: Ulid, generation: u64) -> Result<Snapshot> {
         let state = self
@@ -4845,25 +4962,15 @@ impl Worker {
                         let _ = reply.send(result);
                     }
                     Command::GuiInput(id, generation, input_id, bytes, reply) => {
-                        let result = (|| {
-                            self.check_gui_generation(id, generation)?;
-                            let attachment = self
-                                .attachments
-                                .get(&id)
-                                .ok_or_else(|| invalid("seat not attached"))?
-                                .clone();
-                            match self.request_for_seat(
-                                id,
-                                Action::Input {
-                                    attachment,
-                                    input_id,
-                                    bytes,
-                                },
-                            )? {
-                                Reply::Input { receipt } => Ok(receipt),
-                                _ => Err(invalid("input receipt mismatch")),
-                            }
-                        })();
+                        let result = self.seat_input(id, generation, input_id, bytes);
+                        let _ = reply.send(result);
+                    }
+                    Command::GuiScreen(id, reply) => {
+                        let result = self.seat_screen(id);
+                        let _ = reply.send(result);
+                    }
+                    Command::CtlInput(id, generation, input_id, bytes, origin, reply) => {
+                        let result = self.ctl_input(id, generation, input_id, bytes, origin);
                         let _ = reply.send(result);
                     }
                     Command::GuiResize(id, generation, cols, rows, reply) => {
@@ -5449,6 +5556,24 @@ fn check_size(cols: usize, rows: usize) -> Result<()> {
     Ok(())
 }
 
+/// One screen row as text: wide-glyph spacers skipped, zero-width marks kept.
+fn row_text(cells: &[bbt_core::Cell]) -> String {
+    let mut text = String::new();
+    for cell in cells {
+        if cell.flags.intersects(
+            bbt_core::term::cell::Flags::WIDE_CHAR_SPACER
+                | bbt_core::term::cell::Flags::LEADING_WIDE_CHAR_SPACER,
+        ) {
+            continue;
+        }
+        text.push(cell.c);
+        if let Some(extra) = cell.zerowidth() {
+            text.extend(extra);
+        }
+    }
+    text
+}
+
 #[cfg(test)]
 mod pending_tests {
     use super::*;
@@ -5586,3 +5711,4 @@ mod pending_tests {
         assert!(pending.is_empty());
     }
 }
+

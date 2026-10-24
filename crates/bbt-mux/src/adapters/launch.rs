@@ -41,6 +41,22 @@ impl LaunchPlan {
         Ok(())
     }
 }
+/// The lifecycle events a Codex seat's inline hook overlay installs, one hook each, all
+/// running `<this binary> hook --agent codex`. The Codex hook-review recipe (#270) matches
+/// Codex's count against this list and never a typed number.
+pub const CODEX_HOOK_EVENTS: [&str; 10] = [
+    "SessionStart",
+    "SessionEnd",
+    "UserPromptSubmit",
+    "PreToolUse",
+    "PostToolUse",
+    "Stop",
+    "SubagentStart",
+    "SubagentStop",
+    "PreCompact",
+    "PostCompact",
+];
+
 fn write(path: &Path, bytes: &[u8]) -> Result<()> {
     let mut file = std::fs::OpenOptions::new()
         .write(true)
@@ -51,7 +67,7 @@ fn write(path: &Path, bytes: &[u8]) -> Result<()> {
     file.sync_all()?;
     Ok(())
 }
-fn quote(text: &str) -> String {
+pub(crate) fn quote(text: &str) -> String {
     format!("'{}'", text.replace('\'', "'\\''"))
 }
 fn skill(context: &LaunchContext<'_>) -> Result<String> {
@@ -254,18 +270,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
                     quote(&context.executable.to_string_lossy())
                 );
                 let mut entries = Vec::new();
-                for ev in [
-                    "SessionStart",
-                    "SessionEnd",
-                    "UserPromptSubmit",
-                    "PreToolUse",
-                    "PostToolUse",
-                    "Stop",
-                    "SubagentStart",
-                    "SubagentStop",
-                    "PreCompact",
-                    "PostCompact",
-                ] {
+                for ev in CODEX_HOOK_EVENTS {
                     entries.push(format!(
                         "{ev}=[{{hooks=[{{type=\"command\",command={}}}]}}]",
                         serde_json::to_string(&cmd)?

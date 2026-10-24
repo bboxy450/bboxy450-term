@@ -145,6 +145,12 @@ pub enum GuiAction {
         #[serde(default)]
         seat: Option<Ulid>,
     },
+    /// The operator reads one seat's visible screen as text (`ctl screen`), from the same
+    /// snapshot the window watches.
+    Screen {
+        id: Ulid,
+        seat: Ulid,
+    },
     /// Who issues this connection's operator requests (decision #269): `ctl --as LABEL`.
     /// Attribution only, recorded on the envelopes the operator principal signs; it grants
     /// nothing.
@@ -175,6 +181,17 @@ pub struct CaptureFrame {
     pub occluded: bool,
     /// When the captured frame was presented, in Unix milliseconds.
     pub presented_at_ms: Option<u64>,
+}
+/// The text of one seat's screen, for `ctl screen` and `ctl wait`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SeatScreen {
+    pub seat: Ulid,
+    pub generation: u64,
+    pub rows: Vec<String>,
+    /// Row and column of the cursor in the visible screen.
+    pub cursor: (i32, usize),
+    pub modes: u64,
+    pub title: String,
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body")]
@@ -269,6 +286,12 @@ pub enum GuiReply {
         #[serde(with = "text_id")]
         seat: SeatId,
         spec: SpawnSpec,
+    },
+    /// One seat's visible screen: text rows (trailing blanks trimmed), the cursor, the
+    /// terminal modes (keyboard protocol included) and the process generation input targets.
+    Screen {
+        op: Ulid,
+        screen: SeatScreen,
     },
     /// Serialized data_source Result<Value, CommandError>, bounded by the
     /// provider page limit. It carries no new document or error DTO.
