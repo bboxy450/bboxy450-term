@@ -104,7 +104,7 @@ impl Probe {
         window.set_minimized(false);
         window.focus_window();
         window.set_title("bboxy450 notification probe — focused fixture seat 3 / tab 2");
-        self.log("focused",serde_json::json!({"seat":ID,"tab":self.model.window.stage.tab.map(|id|id.0.to_string()),"deferred_landing":switched,"window_raised":true}));
+        self.log("focused",serde_json::json!({"seat":ID,"tab":self.model.window.stage.tab.map(|id|id.0.to_string()),"deferred_landing":switched,"raise_requested":true}));
     }
 }
 impl ApplicationHandler<Event> for Probe {
@@ -138,6 +138,10 @@ impl ApplicationHandler<Event> for Probe {
         event: WindowEvent,
     ) {
         let key = match event {
+            WindowEvent::Focused(focused) => {
+                self.log("window_focus", serde_json::json!({"focused":focused}));
+                None
+            }
             WindowEvent::CloseRequested => Some('q'),
             WindowEvent::KeyboardInput { event, .. }
                 if event.state == ElementState::Pressed && !event.repeat =>
@@ -258,7 +262,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     app.log(
         "launch",
-        serde_json::json!({"cold_fixture":ID,"delegate_installed_before_run_app":true}),
+        serde_json::json!({"cold_fixture":ID,"delegate_installed_before_run_app":true,"executable":std::env::current_exe().ok()}),
     );
     let result = event_loop.run_app(&mut app);
     drop(app);
