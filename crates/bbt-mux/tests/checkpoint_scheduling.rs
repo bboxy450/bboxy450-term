@@ -238,18 +238,31 @@ impl Fixture {
         }
     }
     fn catch_up(&self, through: u64, end: u64) {
+        self.catch_up_with_rows(through, end, || self.row(self.seat));
+    }
+    fn catch_up_with_rows(
+        &self,
+        through: u64,
+        end: u64,
+        mut row: impl FnMut() -> Option<bbt_mux::supervisor::capture_diagnostics::Seat>,
+    ) {
+        const NO_PROGRESS: Duration = Duration::from_secs(30);
         self.held.store(false, Ordering::Release);
         let mut last = 0;
+        let mut last_sequence = 0;
         let mut progress = Instant::now();
         loop {
-            if let Some(row) = self.row(self.seat) {
+            let mut stale = true;
+            if let Some(row) = row() {
                 assert!(
                     row.parsed_byte_end.saturating_sub(row.checkpoint_byte_end) <= 2 * R,
                     "parsed debt: {row:?}"
                 );
                 if row.parsed_byte_end != last {
                     last = row.parsed_byte_end;
+                    last_sequence = last_sequence.max(row.applied_sequence);
                     progress = Instant::now();
+                    stale = false;
                 }
                 if row.applied_sequence < through {
                     assert_eq!(
@@ -261,8 +274,30 @@ impl Fixture {
                     return;
                 }
             }
+            if stale {
+                // Recorder writes are best-effort. A lost final row must not
+                // turn a completed parser into a permanent watchdog failure.
+                let snapshot = self.runtime.block_on(async {
+                    tokio::time::timeout(
+                        NO_PROGRESS.saturating_sub(progress.elapsed()),
+                        self.logic().client.snapshot(self.seat, 1),
+                    )
+                    .await
+                    .expect("authoritative parser query did not answer within 30 s")
+                    .unwrap()
+                });
+                // through is the captured ring watermark for end, so this
+                // authoritative cursor covers those same bytes.
+                if snapshot.sequence >= through {
+                    return;
+                }
+                if snapshot.sequence > last_sequence {
+                    last_sequence = snapshot.sequence;
+                    progress = Instant::now();
+                }
+            }
             assert!(
-                progress.elapsed() < Duration::from_secs(30),
+                progress.elapsed() < NO_PROGRESS,
                 "parser stopped advancing at {last}; diagnostics={}",
                 serde_json::to_string(&self.logic().client.capture_diagnostics()).unwrap()
             );
@@ -284,6 +319,25 @@ impl Drop for Fixture {
         drop(self.supervisor.take());
         drop(self.other_supervisor.take());
     }
+}
+
+#[test]
+fn a_stale_recorder_row_cannot_hide_authoritative_parser_completion() {
+    let fixture = Fixture::new();
+    fixture.spawn(fixture.seat, 64 * 1024);
+    let (through, end) = fixture.start_and_capture(64 * 1024);
+    let stale = fixture.row(fixture.seat).unwrap();
+    assert!(stale.parsed_byte_end < end);
+    fixture.catch_up_with_rows(through, end, || Some(stale.clone()));
+    assert!(
+        fixture
+            .runtime
+            .block_on(fixture.logic().client.snapshot(fixture.seat, 1))
+            .unwrap()
+            .sequence
+            >= through
+    );
+    fixture.finish();
 }
 
 #[test]
@@ -385,6 +439,15 @@ fn a_held_checkpoint_does_not_hold_snapshot_or_status_service() {
         .row(remote)
         .is_none_or(|row| row.parsed_byte_end < 20 * 1024 * 1024 + 8)
     {
+        fixture.runtime.block_on(async {
+            tokio::time::timeout(
+                until.saturating_duration_since(Instant::now()),
+                fixture.logic().client.snapshot(remote, 1),
+            )
+            .await
+            .expect("paused-seat progress query exceeded the existing deadline")
+            .unwrap();
+        });
         assert!(
             Instant::now() < until,
             "matching checkpoint did not resume the paused seat"
