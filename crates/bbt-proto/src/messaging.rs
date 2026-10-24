@@ -8,6 +8,29 @@ use ulid::Ulid;
 use crate::registry::{Class, Role};
 
 pub const MAX_TEXT: usize = 16 * 1024;
+/// The longest `issued_by` label an operator envelope carries (decision #269).
+pub const MAX_ISSUER: usize = 128;
+
+/// The operator's two doors on `gui.sock` (decisions #260, #269): the app's own window, or
+/// `bboxy450-term ctl`. An operator envelope names the one it came through.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Door {
+    #[default]
+    Gui,
+    Ctl,
+}
+impl Door {
+    pub fn is_gui(&self) -> bool {
+        *self == Self::Gui
+    }
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Gui => "gui",
+            Self::Ctl => "ctl",
+        }
+    }
+}
 pub const MAX_ENVELOPE: usize = 64 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -124,6 +147,13 @@ pub struct Envelope {
     pub kind: MessageKind,
     pub body: Body,
     pub attachments: Vec<String>,
+    /// Operator envelopes only (decision #269): the door the operator came through and who
+    /// issued it there, attribution and never authority. Signed when present; absent on
+    /// seat envelopes and on operator envelopes from before #269.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub door: Option<Door>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub issued_by: Option<String>,
     pub signature: String,
 }
 

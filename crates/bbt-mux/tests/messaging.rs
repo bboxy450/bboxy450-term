@@ -42,6 +42,8 @@ fn envelope(keys: &LocalSeatKeys, seat: Ulid, swarm: Ulid) -> Envelope {
             text: "signed message".into(),
         },
         attachments: vec!["[[tasks/fixture]]".into()],
+        door: None,
+        issued_by: None,
         signature: String::new(),
     }
 }

@@ -59,13 +59,13 @@ enum Command {
         Ulid,
         Ulid,
         crate::messaging::api::Request,
-        crate::mcp::Door,
+        crate::mcp::Origin,
         oneshot::Sender<Result<crate::messaging::api::Response>>,
     ),
     GuiTask(
         Ulid,
         bbt_proto::messaging::TaskRequest,
-        crate::mcp::Door,
+        crate::mcp::Origin,
         oneshot::Sender<Result<bbt_proto::messaging::TaskResponse>>,
     ),
     GuiKnowledge(
@@ -304,11 +304,11 @@ impl LogicClient {
         id: Ulid,
         swarm: Ulid,
         request: crate::messaging::api::Request,
-        door: crate::mcp::Door,
+        origin: crate::mcp::Origin,
     ) -> Result<crate::messaging::api::Response> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::GuiMessaging(id, swarm, request, door, tx))
+            .send(Command::GuiMessaging(id, swarm, request, origin, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| {
@@ -319,11 +319,11 @@ impl LogicClient {
         &self,
         id: Ulid,
         request: bbt_proto::messaging::TaskRequest,
-        door: crate::mcp::Door,
+        origin: crate::mcp::Origin,
     ) -> Result<bbt_proto::messaging::TaskResponse> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::GuiTask(id, request, door, tx))
+            .send(Command::GuiTask(id, request, origin, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| {
@@ -1641,9 +1641,19 @@ impl Worker {
         }
         let operator = match actor {
             crate::mcp::Actor::Seat(_) => None,
-            crate::mcp::Actor::Operator { device_id, .. } => match self.identity.operator_signing()
-            {
-                Ok(authority) if authority.device_id == *device_id => Some(authority),
+            crate::mcp::Actor::Operator {
+                device_id,
+                door,
+                issued_by,
+            } => match self.identity.operator_signing() {
+                Ok(mut authority) if authority.device_id == *device_id => {
+                    // The Delegate message records who issued it, through which door (#269).
+                    authority.origin = crate::mcp::Origin {
+                        door: *door,
+                        issued_by: issued_by.clone(),
+                    };
+                    Some(authority)
+                }
                 Ok(_) => return crate::mcp::error(call.op_id, "held", "operator device changed"),
                 Err(error) => return crate::mcp::error(call.op_id, "held", &error.to_string()),
             },
@@ -3885,14 +3895,18 @@ impl Worker {
         id: Ulid,
         swarm: Ulid,
         request: crate::messaging::api::Request,
-        door: crate::mcp::Door,
+        origin: crate::mcp::Origin,
     ) -> Result<crate::messaging::api::Response> {
         let device_id = self
             .identity
             .status()?
             .device_id
             .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
-        let actor = crate::mcp::Actor::Operator { device_id, door };
+        let actor = crate::mcp::Actor::Operator {
+            device_id,
+            door: origin.door,
+            issued_by: origin.issued_by.clone(),
+        };
         let call = crate::mcp::Call {
             op_id: id,
             tool: "gui_messaging".into(),
@@ -3908,7 +3922,8 @@ impl Worker {
                 return operator_response(result);
             }
         };
-        let authority = self.identity.operator_signing()?;
+        let mut authority = self.identity.operator_signing()?;
+        authority.origin = origin;
         if authority.device_id != device_id {
             return Err(invalid("held: operator device changed"));
         }
@@ -3958,14 +3973,18 @@ impl Worker {
         &mut self,
         id: Ulid,
         request: bbt_proto::messaging::TaskRequest,
-        door: crate::mcp::Door,
+        origin: crate::mcp::Origin,
     ) -> Result<bbt_proto::messaging::TaskResponse> {
         let device_id = self
             .identity
             .status()?
             .device_id
             .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
-        let actor = crate::mcp::Actor::Operator { device_id, door };
+        let actor = crate::mcp::Actor::Operator {
+            device_id,
+            door: origin.door,
+            issued_by: origin.issued_by.clone(),
+        };
         let call = crate::mcp::work_items::call(id, request).map_err(invalid)?;
         call.validate()?;
         if crate::mcp::work_items::mutation(&call.tool) {
@@ -3992,7 +4011,11 @@ impl Worker {
             .status()?
             .device_id
             .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
-        let principal = crate::mcp::Principal::Operator { device_id, door };
+        let principal = crate::mcp::Principal::Operator {
+            device_id,
+            door,
+            issued_by: None,
+        };
         let (retained, fresh) = self.operator_journal.admit(&principal, &call)?;
         let result = if fresh {
             let result = match self.prepare_gui_spawn(spec) {
@@ -4271,12 +4294,12 @@ impl Worker {
                         let result = self.gui_spawn(id, spec, door);
                         let _ = reply.send(result);
                     }
-                    Command::GuiMessaging(id, swarm, request, door, reply) => {
-                        let result = self.gui_messaging(id, swarm, request, door);
+                    Command::GuiMessaging(id, swarm, request, origin, reply) => {
+                        let result = self.gui_messaging(id, swarm, request, origin);
                         let _ = reply.send(result);
                     }
-                    Command::GuiTask(id, request, door, reply) => {
-                        let result = self.gui_task(id, request, door);
+                    Command::GuiTask(id, request, origin, reply) => {
+                        let result = self.gui_task(id, request, origin);
                         let _ = reply.send(result);
                     }
                     Command::GuiKnowledge(method, args, reply) => {

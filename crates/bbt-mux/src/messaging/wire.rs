@@ -47,7 +47,7 @@ pub trait EnvelopeExt {
 impl EnvelopeExt for Envelope {
     fn signing_bytes(&self) -> Result<Vec<u8>> {
         // Nest two fixed tuples to stay within serde's tuple implementation bound.
-        let payload = serde_json::to_vec(&(
+        let fields = (
             (
                 self.version,
                 self.id,
@@ -75,7 +75,14 @@ impl EnvelopeExt for Envelope {
                 &self.body,
                 &self.attachments,
             ),
-        ))?;
+        );
+        // Decision #269: door and issuer are signed when present; an envelope without them
+        // keeps the bytes it was signed with before #269.
+        let payload = if self.door.is_none() && self.issued_by.is_none() {
+            serde_json::to_vec(&fields)?
+        } else {
+            serde_json::to_vec(&(fields, (self.door, &self.issued_by)))?
+        };
         let mut bytes = b"bboxy450/message/v1\0".to_vec();
         bytes.extend_from_slice(&(payload.len() as u64).to_be_bytes());
         bytes.extend(payload);
@@ -115,6 +122,12 @@ impl EnvelopeExt for Envelope {
             || self.role.name.len() > 128
             || self.role.name.chars().any(char::is_control)
             || self.priority_class != self.role.class
+            || (!operator && (self.door.is_some() || self.issued_by.is_some()))
+            || self.issued_by.as_ref().is_some_and(|label| {
+                label.trim().is_empty()
+                    || label.len() > bbt_proto::messaging::MAX_ISSUER
+                    || label.chars().any(char::is_control)
+            })
             || self.timestamp > (1u64 << 53) - 1
             || serde_json::to_vec(self)?.len() > MAX_ENVELOPE
         {

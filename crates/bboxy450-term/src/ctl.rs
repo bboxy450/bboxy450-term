@@ -26,10 +26,10 @@ const FRAME_LIMIT: usize = 1 << 20;
 const TIMEOUT: Duration = Duration::from_secs(15);
 const PAGE: usize = 128;
 
-pub const USAGE: &str = "usage: bboxy450-term ctl [--endpoint FILE] <command>
+pub const USAGE: &str = "usage: bboxy450-term ctl [--endpoint FILE] [--as LABEL] <command>
   spawn <claude|codex|zsh> [--placement new-tab] [--name NAME] [--cwd DIR] [--swarm ID]
   seats
-  dm <seat> <text>
+  dm <seat> <text>        questions and feedback; work goes by delegate
   post <destination> <text> [--swarm ID]
   inbox [--since SEQ]
   receipts <message-id>
@@ -37,7 +37,9 @@ pub const USAGE: &str = "usage: bboxy450-term ctl [--endpoint FILE] <command>
   reports [--since TIME]
   capture <file.png> [--seat SEAT]
   e2e [--group GROUP]
-A <seat> is a seat id or a unique seat name. Output is one JSON object per line.";
+A <seat> is a seat id or a unique seat name. Output is one JSON object per line.
+--as LABEL (or BBOXY_CTL_ISSUER) names who issues the messages, e.g. 'Vesper (Oracle)';
+seats read 'the operator principal, via ctl, issued by LABEL'. It is attribution only.";
 
 /// Where the app's `gui.sock` is and the capability that admits a client.
 #[derive(Debug, Clone)]
@@ -284,6 +286,13 @@ impl Client {
                 return Ok(reply);
             }
         }
+    }
+    /// Names who issues this connection's operator requests (decision #269).
+    pub fn issue(&mut self, label: String) -> Result<(), String> {
+        self.call(None, GuiAction::Issuer { label }, |r| {
+            matches!(r, GuiReply::Ok { .. })
+        })
+        .map(drop)
     }
     pub fn seats(&mut self) -> Result<Vec<GuiSeat>, String> {
         match self.call(None, GuiAction::ListSeats, |r| {
@@ -640,9 +649,22 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
         println!("{USAGE}");
         return Ok(());
     }
-    let (endpoint, command) = parse(args)?;
+    // --as names the issuer (decision #269); it is not a command flag.
+    let mut args = args.to_vec();
+    let mut issuer = std::env::var("BBOXY_CTL_ISSUER").ok();
+    if let Some(at) = args.iter().position(|arg| arg == "--as") {
+        args.remove(at);
+        if at >= args.len() {
+            return Err("--as needs a value".into());
+        }
+        issuer = Some(args.remove(at));
+    }
+    let (endpoint, command) = parse(&args)?;
     let endpoint = Endpoint::read(endpoint.as_deref().unwrap_or(default_endpoint))?;
     let mut client = Client::connect(&endpoint)?;
+    if let Some(label) = issuer.filter(|label| !label.is_empty()) {
+        client.issue(label)?;
+    }
     let stdout = std::io::stdout();
     let mut out = stdout.lock();
     for line in run(&mut client, command)? {

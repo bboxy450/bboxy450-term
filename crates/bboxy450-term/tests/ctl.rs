@@ -210,7 +210,7 @@ async fn ctl_drives_a_claude_seat_from_outside_the_app() {
             quote(&binary)
         ),
     );
-    let session = Session::start(Config {
+    let mut session = Session::start(Config {
         executable: app,
         socket: run.join("mux.sock"),
         run_dir: run.clone(),
@@ -284,9 +284,71 @@ async fn ctl_drives_a_claude_seat_from_outside_the_app() {
 
     // delegate, then the seat reports, then reports returns its verify_result.
     // By #N, the selector the spec promises (NUM2); the report names the path.
-    let delegated = ctl(&run, &["delegate", "#1", &seat]);
+    // Issued as 'Vesper (Oracle)' (decision #269): the Delegate message and the DM carry
+    // door ctl and that issuer in their signed envelopes.
+    let issuer = "Vesper (Oracle)";
+    let delegated = ctl(&run, &["--as", issuer, "delegate", "#1", &seat]);
     assert_eq!(delegated[0]["kind"], "delegated", "{delegated:?}");
-    ctl(&run, &["dm", &seat, &format!("report {task_path}")]);
+    ctl(
+        &run,
+        &["--as", issuer, "dm", &seat, &format!("report {task_path}")],
+    );
+    let swarm: bbt_mux::Ulid = spawned[0]["swarm"].as_str().unwrap().parse().unwrap();
+    let list = bbt_mux::Ulid::new();
+    session
+        .send(GuiAction::Messaging {
+            id: list,
+            swarm_id: bbt_proto::SwarmId::from_u128(swarm.0),
+            request: bbt_proto::messaging::Request::List {
+                thread: None,
+                channel: Some(format!("seats/{seat}/inbox")),
+                after: 0,
+                limit: 128,
+            },
+        })
+        .await
+        .unwrap();
+    let page = loop {
+        let event = tokio::time::timeout(Duration::from_secs(20), session.event())
+            .await
+            .expect("the seat's inbox page")
+            .unwrap();
+        if let Event::Reply(reply) = event
+            && let GuiReply::Messaging {
+                op,
+                response: bbt_proto::messaging::Response::Messages { page },
+            } = *reply
+            && op == list
+        {
+            break page;
+        }
+    };
+    let issued: Vec<_> = page
+        .items
+        .iter()
+        .filter(|m| m.envelope.issued_by.as_deref() == Some(issuer))
+        .collect();
+    assert!(
+        issued
+            .iter()
+            .any(|m| m.envelope.kind == bbt_proto::messaging::MessageKind::Task),
+        "the Delegate message names its issuer: {:?}",
+        page.items
+            .iter()
+            .map(|m| (&m.envelope.kind, &m.envelope.issued_by))
+            .collect::<Vec<_>>()
+    );
+    assert!(
+        issued
+            .iter()
+            .any(|m| m.envelope.body.text() == Some(&format!("report {task_path}"))),
+        "the DM names its issuer"
+    );
+    assert!(
+        issued
+            .iter()
+            .all(|m| m.envelope.door == Some(bbt_proto::messaging::Door::Ctl))
+    );
     let report = until("the task's report in ctl reports", &log, || {
         ctl(&run, &["reports"])
             .into_iter()

@@ -68,22 +68,19 @@ pub enum Actor {
         /// Omitted for the window, so existing journal records keep their bytes.
         #[serde(default, skip_serializing_if = "Door::is_gui")]
         door: Door,
+        /// Who issued it through that door (decision #269); attribution, not authority.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        issued_by: Option<String>,
     },
 }
 /// The operator's two doors on `gui.sock` (decision #260), told apart on `account/control`.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Door {
-    /// The app's own window.
-    #[default]
-    Gui,
-    /// `bboxy450-term ctl`, opened by `--ctl`.
-    Ctl,
-}
-impl Door {
-    pub fn is_gui(&self) -> bool {
-        *self == Self::Gui
-    }
+pub use bbt_proto::messaging::Door;
+/// Where an operator request came from: its door and, through `ctl`, who issued it
+/// (decision #269). Attribution only; authority is the operator principal's.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Origin {
+    pub door: Door,
+    pub issued_by: Option<String>,
 }
 impl Actor {
     pub(crate) fn class(&self) -> crate::registry::Class {

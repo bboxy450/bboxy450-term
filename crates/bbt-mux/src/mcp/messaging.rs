@@ -47,7 +47,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     let mut definitions = vec![
         (
             "message_send",
-            "Send within your current W2.4 destination grants as this seat. To answer a message, pass reply_to and omit destination: the reply goes to its sender (the operator is operator/inbox). Stored/held means durable acceptance, not model receipt; use message_receipts for delivery evidence.",
+            "Send within your current W2.4 destination grants as this seat. To answer a message, pass reply_to and omit destination: the reply goes to its sender (the operator is operator/inbox). A DM is for questions and feedback; work arrives only as a delegated task. Stored/held means durable acceptance, not model receipt; use message_receipts for delivery evidence.",
             json!({"destination":path,"text":{"type":"string","maxLength":16384},"thread_id":id,"reply_to":id,
              "priority":{"type":"integer","minimum":0,"maximum":9},"kind":{"enum":["text","chunk","decision"]},
              "attachments":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":512}}}),

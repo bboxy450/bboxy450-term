@@ -497,6 +497,8 @@ async fn gui_session(
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     // Only the window captures: its session relays the operator's asks.
     let mut capture_asks = (door == crate::mcp::Door::Gui).then(|| client.captures.subscribe());
+    // Who issues this connection's operator requests, once it says (decision #269).
+    let mut issued_by: Option<String> = None;
     let result:Result<()>=async {
         loop {
             tokio::select! {
@@ -577,8 +579,8 @@ async fn gui_session(
                                 if door==crate::mcp::Door::Ctl {client.captures.spawned(id,seat,spec);}
                                 Ok(GuiReply::Spawned {op:id,seat})
                             }
-                            GuiAction::Messaging {id,swarm_id,request}=>Ok(GuiReply::Messaging {op:id,response:client.gui_messaging(id,Ulid::from(swarm_id.0.0),request,door).await?}),
-                            GuiAction::Task {id,request}=>Ok(GuiReply::Task {op:id,response:client.gui_task(id,request,door).await?}),
+                            GuiAction::Messaging {id,swarm_id,request}=>Ok(GuiReply::Messaging {op:id,response:client.gui_messaging(id,Ulid::from(swarm_id.0.0),request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?}),
+                            GuiAction::Task {id,request}=>Ok(GuiReply::Task {op:id,response:client.gui_task(id,request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?}),
                             GuiAction::Knowledge {id,method,args}=>Ok(GuiReply::Knowledge {op:id,response:serde_json::to_value(client.gui_knowledge(method,args).await?)?}),
                             GuiAction::Watch {seat,view}=> {
                                 if view.seat!=Ulid::from(seat.0.0) {return Err(invalid("watch seat and view disagree"));}
@@ -627,6 +629,13 @@ async fn gui_session(
                             GuiAction::Capture {id,path,seat}=> {
                                 client.captures.ask(crate::gui_capture::Ask {id,path:path.clone(),seat}).await.map_err(invalid)?;
                                 Ok(GuiReply::Captured {op:id,path})
+                            }
+                            GuiAction::Issuer {label}=> {
+                                if label.trim().is_empty()||label.len()>bbt_proto::messaging::MAX_ISSUER||label.chars().any(char::is_control) {
+                                    return Err(invalid(format!("issuer label must be 1-{} printable characters",bbt_proto::messaging::MAX_ISSUER)));
+                                }
+                                issued_by=Some(label);
+                                Ok(GuiReply::Ok {op})
                             }
                             GuiAction::Captured {id,error}=> {
                                 if capture_asks.is_none() {return Err(invalid("only the window answers a capture"));}
