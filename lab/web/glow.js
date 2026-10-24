@@ -174,7 +174,8 @@
   // Kit defaults (rim-glow §8): every seat row, tab row and report card a page renders carries the alive rim and takes the swell,
   // with no page code. A block opts out by style (--rim: none). Rows and tabs stack edge to edge (--rim-space 0, no bloom) and
   // carry no rim at rest while idle (glow.row_idle); a tab reads its worst seat (data-rim-state, --seat); a card takes --seat,
-  // else the accent. A block the page attached itself (el.__rim) is left alone.
+// else the accent. The rim's phase hashes data-rim-key (tab name, pending op), else data-key (the seat), so native can match it;
+  // a block the page attached itself (el.__rim) is left alone.
   const BLOCKS = '.seat-row:not(.phantom), .tab-row, .report';
   function blocks(root) {
     const found = root.matches && root.matches(BLOCKS) ? [root] : [];
@@ -184,7 +185,7 @@
       let wrap = n;
       if (n.classList.contains('report')) { wrap = document.createElement('div'); wrap.className = 'glow-wrap kit'; n.replaceWith(wrap); wrap.append(n); }   // cards clip their overflow
       const state = n.dataset.rimState || window.C.STATES.find(k => n.classList.contains(k)) || 'idle';
-      window.Glow.attach(wrap, { key: n.dataset.key || n.textContent.slice(0, 24), state }, { box: n, live: true, block: true, focused: n.classList.contains('focused'), idle_bare: !n.classList.contains('report') && !window.TOKENS.glow.row_idle });   // through attach, so a capture that wraps it sees every block
+      window.Glow.attach(wrap, { key: n.dataset.rimKey || n.dataset.key || n.textContent.slice(0, 24), state }, { box: n, live: true, block: true, focused: n.classList.contains('focused'), idle_bare: !n.classList.contains('report') && !window.TOKENS.glow.row_idle });   // through attach, so a capture that wraps it sees every block
     }
   }
   if (!document.body || !document.body.classList.contains('live')) new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) blocks(n); }).observe(document.documentElement, { childList: true, subtree: true });

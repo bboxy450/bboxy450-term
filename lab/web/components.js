@@ -308,7 +308,7 @@
     const say = PENDING_SAY[st] + ' · ' + (st === 'accepted' ? 'by ' + (p.by || 'the Oracle') : st === 'rejected' ? (p.reason || 'no reason given') : (p.outcome || (st === 'unknown' ? 'no confirmation from the mux · never retried' : 'some effects applied')));
     const top = el('span', { class: 'ptop' }, el('span', { class: 'tname' }, p.name));
     if (st !== 'accepted' && opts.onDismiss) top.append(el('button', { class: 'undo', onclick: e => { e.stopPropagation(); opts.onDismiss(p); } }, 'dismiss'));
-    return el('div', { class: 'tab-row pending ' + st, title: (p.op ? 'op ' + p.op + ' · ' : '') + say }, mark, harnessIcon(p.harness), el('span', { class: 'pcol' }, top, el('span', { class: 'pcap' }, say)));
+    return el('div', { class: 'tab-row pending ' + st, 'data-rim-key': p.op || p.name, title: (p.op ? 'op ' + p.op + ' · ' : '') + say }, mark, harnessIcon(p.harness), el('span', { class: 'pcol' }, top, el('span', { class: 'pcap' }, say)));
   }
   // invariant chip (work-items.md): outlined "inv · <title>" where an item is constrained, red "breaks inv · <title>" where a bug violates
   const invChip = (title, rel) => el('span', { class: 'invchip ' + rel, title: (rel === 'violates' ? 'violates invariant ' : 'constrained by invariant ') + title }, rel === 'violates' ? 'breaks ' : 'inv ', el('b', {}, title));
@@ -858,7 +858,7 @@
     }
     // the tab's alive border reads its worst seat (rim-glow §8): state and colour
     const worst = rollup(seats)[0];
-    const row = el('div', { class: 'tab-row', 'data-rim-state': worst.state, style: '--seat:' + seatColor(worst) }, el('span', { class: 'caret' }, opts.expanded ? '▾' : '▸'), el('span', { class: 'tname' }, tab.name));
+    const row = el('div', { class: 'tab-row', 'data-rim-key': tab.name, 'data-rim-state': worst.state, style: '--seat:' + seatColor(worst) }, el('span', { class: 'caret' }, opts.expanded ? '▾' : '▸'), el('span', { class: 'tname' }, tab.name));
     if (!opts.expanded) {
       const roll = el('span', { class: 'roll' });
       const rolled = rollup(seats).slice(0, T.sidebar.collapse_glyphs);
@@ -1286,7 +1286,7 @@
         el('div', { class: 'ns' }, 'needs your answer'), el('div', { class: 'nm' }, line)));
   }
   function reportCard(r, opts) {
-    const card = el('div', { class: 'report ' + (r.verdict || 'pending') }, el('div', { class: 'rh' }, el('span', { class: 'rk' }, taskMark(r.state || 'reported')), el('b', {}, r.task), el('span', { class: 'rs' }, r.verdict === 'accepted' ? 'done' : 'reported')),
+    const card = el('div', { class: 'report ' + (r.verdict || 'pending'), 'data-rim-key': r.task }, el('div', { class: 'rh' }, el('span', { class: 'rk' }, taskMark(r.state || 'reported')), el('b', {}, r.task), el('span', { class: 'rs' }, r.verdict === 'accepted' ? 'done' : 'reported')),
       el('div', { class: 'rsec' }, ...r.files.map(f => el('div', { class: 'rf' }, el('code', {}, f.path), el('span', { class: 'rd' }, el('i', { class: 'add' }, '+' + f.add), ' ', el('i', { class: 'del' }, '−' + f.del))))),
       el('div', { class: 'rsec' }, ...r.checks.map(k => el('div', { class: 'rc ' + (k.ok ? 'ok' : 'bad') }, el('span', { class: 'ck' }, k.ok ? '✓' : '✕'), el('code', {}, k.cmd), el('span', { class: 'ex' }, k.exit)))),
       r.gaps ? el('div', { class: 'rgap' }, 'gap · ' + r.gaps) : null, r.commit ? el('div', { class: 'rcommit' }, el('code', {}, r.commit), ' signed') : null);
