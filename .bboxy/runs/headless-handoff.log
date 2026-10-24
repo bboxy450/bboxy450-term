@@ -1,0 +1,92 @@
+U-1 HEADLESS LIFECYCLE — Aster Cinderwing <EXECUTOR>
+Status: scoped executable proof green; final clean ci-local --parity PENDING.
+This record is not a passing full-gate claim or an acceptance claim.
+Source: 4181393da3b1d07501889453048e63a261d0615a; aster-headless, base5609d6de. Six signed patches.
+
+Implemented:
+- ctl app start --headless --ctl starts the real GUI/Session without winit/NSWindow.
+  Readiness is printed only after backend and first GPU-completed composition.
+- ctl app status reports actual backend/custody/generation/events readiness and frame sequence.
+- ctl app stop relays through the admitted owner, acknowledges before orderly shutdown;
+  logic and supervisor are reaped. No PID-kill fallback (Oracle ruling9abee6d2/e716b269).
+- One bounded live IO path, immutable prepared models and publish-before-Applied preserved.
+  Shared native FocusState and pane/watch/resize admission. No R5 polling loop.
+- Captures use the actual offscreen texture; a fresh frame is required per request,
+  with frame_seq/offscreen/rendered_at_ms and no false presentation timestamp.
+- Default CI smoke uses private repository inputs, run directory and debug memory custody;
+  ten-second idle probe has0 frames/0 callbacks. External status during idle fails the probe.
+
+Verification completed:
+- 4181393d strict workspace/all-target Clippy -D warnings: EXIT0 (pre-final-clippy).
+- 4181393d headless integration: EXIT0,5/5 (pre-final-headless-direct).
+  Tests cover real zsh PTYs/two tabs/focus/type/key/wait/screen/capture/status/stop,
+  idle0/0, active-probe rejection, unavailable endpoint, no unsafe custody fallback.
+- Plain-shell proof5 EXIT0, source4181393d, actual memory backend/windows0/generation1.
+  Fresh pane frame23 and whole composition frame24, offscreen=true/stale=false;
+  PNGs inspected: marker HEADLESS-SHELL-PROOF-42 and sidebar/real shell visible.
+  Binary SHA256: 26851bfb91b43f29b9ee086cc0bd698bdd0dc8cf82650e6c9b1e7b5a950e645f.
+- Prior dc912364 rebased app137/0 and ctl10/0; exact full gate retry passed ALL workspace
+  tests, strict Clippy and UI lint before the then-unisolated smoke failed (see below).
+- Old/rebased patch range-diff:6/6 identical patches across683e6bd1->5609d6de.
+- Final clean full gate/parity has not passed yet. Two peer gates occupy capacity;
+  this source is ready for the next self-service slot. No grant/operator action requested.
+
+Mechanisms / source pointers:
+- src/ctl/app.rs:13,97 — local startup/readiness pipe; admitted stop then endpoint removal.
+- src/headless.rs:44 — real live::start_with_sink, event-driven offscreen GUI owner;
+  bounds/FocusState shared with native, one frame in flight, bounded captures/outbox.
+- src/live.rs:start_with_sink — shared Session/event sink; no transport/recovery algorithm change.
+- src/cockpit.rs:LogicReady — custody_backend comes from runtime store status, not env guesses.
+  Private fixture_hosts stays true normally, false only for finite --smoke.
+- src/gpu.rs:VerificationFrame::draw_notifying/capture — existing begin_frame/flush/copy path;
+  waits, PNG and file IO remain off UI.
+- bbt-proto/src/gui.rs:AppStatus/AppRequest and mux gui_capture/seat_socket — additive relay;
+  ctl reply is written before the stop commit is delivered to the GUI.
+- scripts/ci-local.sh — build normal debug app, execute it from a private fixture repo;
+  unrelated checkout provenance activity is not an idle workload.
+
+Failures and disposition (raw logs retained):
+1. dc912364 clean CI EXIT101/728.392s, ended21:16:35.069UTC. Sole failure:
+   bbt-supervisor/tests/supervisor.rs:161 fifty_seats... openpty ENXIO/code6.
+   Rook's actual967-PTY interval21:15:04.447882..21:16:57.079 overlapped this test;
+   host ptmx_max999. No supervisor diff in U1. After Rook END/all969 PIDs gone,
+   focused50-seat test EXIT0, all50 echo in0.90s. Rook9a96e7f0 + Oraclea8eb0606.
+2. dc912364 retry CI EXIT1/531.052s: all workspace tests/strict/UI lint pass, then
+   standalone smoke in the real checkout reports12 frames/24 callbacks/10.002s.
+   Instrumented trace identifies successive index activity/provenance/gap records.
+   Identical binary/flags, only cwd changed to private empty repo: EXIT0,0/0/10.005s.
+   CI fixture isolation fixed; thresholds and actual GUI work remain unchanged.
+3. Product finding, reported separately: repository156 refs exceeds detector's128 bound.
+   Read-only SQLite on the stopped test run shows seq579..586 repeatedly contain
+   git-ref-scan-bound: retained first128 refs. detector.rs:676-680 enqueues on every
+   clipped snapshot before comparison; engine.rs:242-248 publishes/pops it every tick.
+   Same diagnostic, new envelopes, no new ref change required. No backend fix in U1.
+4. Old app burst fixture timed out once (app-units-1 EXIT101); isolated and rebased full
+   app suites passed. Initial finite smoke saw a fixture SSH disconnect at12s; only
+   smoke now uses local-only hosts. Initial standalone proof exceeded SUN_LEN112;
+   its run dir moved to short/private /tmp. Intermediate compile/lint fixes are logged.
+5. pre-final-headless was deliberately cancelled after7min of two idle sccache clients,
+   no own rustc. Only owned clients70412/70413 were SIGTERMed; Cargo EXIT101 recorded.
+   Shared daemon/peers untouched. RUSTC_WRAPPER= locally bypassed it; actual Rustc and5/5
+   headless tests then completed. Final gate will clear both wrapper variables per-run.
+6. Whole-workspace fmt check EXIT1 listed legacy formatting including untouched files;
+   new modules formatted, no broad formatting churn. Not a ci-local gate.
+
+Evidence:
+Artifact root: /Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z
+Machine manifest: .bboxy/runs/headless-manifest.json (commands, exits, log hashes).
+Proof: plain-shell-proof-5/calls.json, summary.json, pane.png, window.png.
+Failures: headless-ci.log/status, headless-ci-retry.log/status; model traces and
+same-binary comparison smoke-{model-diagnostic,model-reason,empty-repository,empty-final}.*.
+Source pins preserved on aster-u1-pre-rebase-756957a3; no successful parity claimed.
+
+Limits:
+- U0/file-backed --test-account is Kestrel's independent work; this source refuses
+  unsupported --test-account/--unattended before Session, no Keychain fallback.
+  Own tests use fresh private dirs/debug memory, never operator identity or login Keychain.
+- Native windowed lifecycle not newly exercised; this brief proves no-window mode.
+- Headless automation uses ctl; legacy window Verify launch/input hooks are not claimed.
+- T7 close/status extension and U0 integration are separate signed stacks. Shared seams
+  reviewed by DM; no acceptance claim for those patches or the full54-promises night run.
+- HK1 remains paused/unmodified. No release/publish/merge, TTY write, desktop injection,
+  physical probe, operator secret or production Keychain access.
