@@ -280,6 +280,12 @@ fn t7_headless_close_uses_the_window_intent_and_restores_the_same_split() {
         "undo changed the actual pane extent"
     );
     f.ok(&["app", "stop"]);
+    await_value(&f, || {
+        f.log()
+            .contains("headless GUI stopped: Ok(())")
+            .then_some(Value::Bool(true))
+    });
+    f.pid = None;
 }
 
 #[test]
