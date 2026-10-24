@@ -4,7 +4,7 @@ type: "spec"
 number: 126
 title: "Open-source libraries — bboxy450-*"
 created: "2026-10-22T17:03:48Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-10-24T15:28:01Z"
 links:
   - { to: "[[d39-suite-is-the-product]]", rel: decision }
 ---
@@ -23,6 +23,8 @@ The suite is the product and the terminal is its first app (decision [[d39-suite
 | `bboxy450-render` | `bbt-render` | wgpu renderer: device, passes, chrome (rects, shadows, materials, text, icons, paths, groups), cell grid, headless capture | `bboxy450-ui-core`, wgpu |
 | `bboxy450-ui` | L3–L6 of `bbt-ui` | component library: Style, materials, atoms, Box/Text/Stack/Flow, widgets, overlays | `bboxy450-ui-core` |
 | `bboxy450-book` | `bboxybook` (later) | native storybook and web↔native parity loop | the three above |
+| `bboxy450-harness-wake-up` | `bbt-mux/src/adapters` ([[harness-kits]] §2) | how to tap into a harness: launch wired in, observe state, deliver natively, say whether it can be woken, fall back under a guard | `bboxy450-term-core`, tokio, tokio-tungstenite, mio |
+| `bboxy450-harness-host` | `bbt-supervisor` ([[harness-kits]] §3) | run programs in PTYs, leases, capture rings, checkpoints, resume, input receipts | `bboxy450-term-core`, portable-pty, mio |
 
 Stays private, inside bboxy450-term: the app, `bbt-core`, `bbt-mux`, and a new `bbt-term-ui` holding everything domain-specific: seats, swarms, tabs, sidebar layout, L7 modules (SeatRow, SwarmCard, Pane, StreamDock, …), seat kinds and colours.
 

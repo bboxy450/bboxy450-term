@@ -14,7 +14,7 @@ links:
   - { to: "[[d270-ctl-screen-input-wait]]", rel: builds-on }
   - { to: "[[work-items]]", rel: decides }
 created: "2026-10-24T15:24:41Z"
-updated: "2026-10-24T15:24:41Z"
+updated: "2026-10-24T15:29:32Z"
 ---
 # Decision 272: ctl is one grammar
 
@@ -29,3 +29,5 @@ Decided 2026-10-24 at the operator's word, via the Oracle, after three authority
 **Rules.** [[ctl-cli]] §1 to §5; `recipe` joins the record types of [[work-items]]; the mapping table, reply and error shapes are tested (§6). Rejected: any `ctl` behaviour the window lacks; a `ctl`-specific output schema; an error without a hint; a prompts subsystem.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
+
+**Revision 2 (same day, operator verbatim: "build bboxy450-term in a way that makes it scriptable, bboxy450-term ctrl should expose commands (design cli interface yourself, dont take my suggestion as a rule) but bboxy term gives you full on control over everything programmatically so you never need to ask for my permissions, think about all the bits and pieces you will need to test things approve things inspect things debug things - make it happen!").** The grammar grows to eleven nouns to cover the full programmatic surface (app lifecycle with `--headless`, `ui`, `events`, `debug`, `batch`, and the seat verbs for typing, keys, paste, resize, watch and scrollback), under the same one-action-per-verb rule, reply shape and error model; the invariants are named in §5 and the secrets rule becomes [[ctl-never-prints-secrets]]. Rejected again: a prompts subsystem (recipes), and any verb without a window action behind it except `debug` reads and `app start`.

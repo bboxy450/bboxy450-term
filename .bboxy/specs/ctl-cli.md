@@ -15,7 +15,7 @@ links:
   - { to: "[[d272-ctl-one-grammar]]", rel: decision }
   - { to: "[[work-items]]", rel: record-type }
 created: "2026-10-24T15:24:41Z"
-updated: "2026-10-24T15:24:41Z"
+updated: "2026-10-24T15:29:32Z"
 ---
 # ctl
 
@@ -34,17 +34,21 @@ flowchart LR
 
 ## 1. Grammar
 
-`bboxy450-term ctl <noun> <verb> [args] [flags]`. Seven nouns, the things the operator acts on in the window; verbs are plain words; arguments are positional, flags are named. Every verb maps to exactly one `GuiAction` the window issues, so there is no behaviour `ctl` has that the window lacks.
+`bboxy450-term ctl <noun> <verb> [args] [flags]`. Eleven nouns (revision 2, 2026-10-24, the operator's full control surface), the things the operator acts on in the window and the app itself; verbs are plain words; arguments are positional, flags are named. Every verb maps to exactly one `GuiAction` the window issues, or to a read of what the processes already write (`debug`), or to launching the app itself (`app start`), so there is no behaviour `ctl` has that the window lacks.
 
 | Noun | Verbs | Window action |
 |---|---|---|
-| `seat` | `list`; `spawn <claude\|codex\|zsh> [--place right\|down\|tab\|space] [--role <role>] [--name <n>]`; `screen <seat>`; `input <seat> <text> [--codes]`; `wait <seat> (--state idle\|waiting\|exited \| --text <pattern>) [--timeout <ms>]`; `close <seat>`; `capture <seat\|window> <path>` | `ListSeats`, `Spawn` (decision #29 placement, #262 role), `ScreenRead`, `Input` (the keyboard's path, #270), state subscription, `Close`, `Capture` |
+| `seat` | `ls`; `show <seat>`; `spawn <claude\|codex\|zsh> [--place right\|down\|tab\|space] [--role <role>] [--name <n>]`; `close <seat>`; `undo-close <seat>`; `rename <seat> <name>`; `focus <seat>`; `restart <seat>`; `screen <seat> [--scrollback <from>..<to>] [--cells]`; `watch <seat>` (stream screen diffs and state changes); `type <seat> <text>`; `key <seat> <named-key>…` (named keys, Kitty encoding when the program asked for it, #32); `paste <seat> <file\|->` (bracketed); `resize <seat> <cols>x<rows>`; `wait <seat> (--state idle\|waiting\|exited \| --text <pattern>) [--timeout <ms>]`; `capture <seat\|window> <path>` | `ListSeats`, `Spawn` (#29 placement, #262 role), `Close`, `UndoClose` (#27), rename and focus actions, restart (#11), `ScreenRead` and `GetHistory` (#27), the state subscription, `Input` for type, key and paste (the keyboard's one path, #270), `Resize`, `Capture` |
 | `message` | `send (<destination> \| --reply-to <id>) <text>`; `inbox [--since <cursor>] [--swarm <s>]`; `receipts <id>`; `ack <id>`; `post <channel> <text>` | `GuiAction::Messaging` (#37, #38 (f); reply routing #264) |
 | `task` | `list [--unassigned \| --seat <s> \| --status <st>]`; `get <#N\|path>`; `delegate <#N\|path> <seat>`; `reassign`; `status`; `report`; `accept <#N>`; `reject <#N> --reason <r>` | `GuiAction::Task`, one verb per W2.5d tool (#38 (i) for `--unassigned`) |
 | `record` | `fetch <#N\|slug\|path>`; `search <query> [--type <t>] [--cursor <c>]`; `write <path> --frontmatter <json> --body <file>`; `changes --since <cursor>` | the [[knowledge-base]] contract over the wire, operator authority ([[mcp-control-plane]] write table: the operator writes every type) |
 | `e2e` | `list [--group <g>]`; `run <function-id> <seat>` | the checklist view ([[e2e-acceptance]] §4 summary states); `run` is `task delegate` of the promise's e2e task |
-| `app` | `endpoint`; `events [--since <seq>] [--subject <glob>]`; `version` | the run directory and whether `ctl` is enabled; the operator's events lane as lines; the build |
-| `recipe` | `list`; `run <recipe> <seat> [--dry-run]` | a data-driven composition of `seat screen`, `match`, `seat input`, `seat wait`, `report` (§4) |
+| `app` | `start [--headless] [--run-dir <d>] [--ctl]`; `stop`; `status`; `version`; `endpoint` | launch and shut down the app itself; **`--headless`** runs supervisor, logic and a headless GUI client (the capture renderer) with no window, so `screen`, `capture` and every other verb work on a locked display for the e2e nights; the run directory and whether `ctl` is enabled; the build |
+| `ui` | `open <graph\|settings\|launcher\|docs <path>>`; `key <named-key>…` (the window's own chrome keys, ⌘T, ⌘G, ⌘M, Esc); `focus <pane>`; `layout` (dump the solved layout tree) | the same `GuiAction`s the window's keyboard and menu issue; `layout` is the model the UI already holds, read |
+| `events` | `tail [--since <seq>] [--subject <glob>]` | the operator's durable events lane (#37, #38) as JSON lines from its cursor, never a second consumer |
+| `debug` | `logs <app\|logic\|supervisor> [--since]`; `journal <query>`; `metrics`; `snapshot <path>` (the R5 diagnostics table); `ps` (the app's own process tree); `invariants [--slow]` (runs `scripts/invariants.sh` on the checked-out tree) | reads of what the processes already write; `invariants` is a local command and touches no seat |
+| `batch` | `run <file\|->` [--stop-on-error] | one command per JSONL line in, one reply line out per command in order, the same shapes as §2 and §3; the way scripts drive a night |
+| `recipe` | `list`; `detect <seat>` (which known prompts match the screen now); `run <recipe> <seat> [--dry-run]` | a data-driven composition of `seat screen`, `match`, `seat input`, `seat wait`, `report` (§4) |
 
 Flags on every verb: `--json` (default) or `--human`; `--op <ulid>` for an idempotent retry (#266 rule 1; omitted, the server mints and returns it); `--as "<label>"` or `BBOXY_CTL_ISSUER` for `issued_by` (#269; default `"<user>@<host>, shell"`); `--timeout <ms>` where a verb can wait; `--run-dir <path>` or `BBOXY_RUN_DIR` for discovery (#260).
 
@@ -64,6 +68,8 @@ A recipe is a **record** (`type: recipe`, numbered, in `.bboxy/recipes/`), not c
 
 One principal: the operator's device key signs every `ctl` operation (#31). One door: the endpoint file exists only when the app runs with `--ctl` (#261); a peer descended from the app's own supervisor is refused and told why (#260). One label: `door: ctl` and `issued_by` travel in the signed body and show in the seat's native frame (#269). One audit kind: every call is `control/op` with kind `ctl` and audited on `account/control`; the Graph tab's provenance card shows the Oracle's hand and the operator's apart. No new authority: a verb that cannot be done in the window does not exist here. The desktop is never touched: `seat input` is our own PTY through the window's own `Input` action (#270).
 
+**The invariants, named.** Every operation is under the operator principal with `door: ctl` and `issued_by`, journaled and audited ([[ctl-opt-in]] holds the door closed by default). Seats are refused by ancestry (#260). No OS or desktop input, ever: `seat type`, `seat key` and `ui key` end in our own PTY or our own window. Nothing leaves the machine. **The capability and every Keychain secret are never printed**: `app endpoint` shows the path and the generation, never the capability; no reply, log line or error carries one ([[ctl-never-prints-secrets]]). Approval rules are explicit and data-driven (recipes, §4) and a refusal says what it saw.
+
 ## 6. Acceptance, the spec signs off
 
 1. Every verb in §1 maps to one `GuiAction` and no verb exists without one (a test enumerates the mapping table).
@@ -74,6 +80,8 @@ One principal: the operator's device key signs every `ctl` operation (#31). One 
 
 ## 7. Order
 
-C-0 the grammar, the mapping table, the reply and error shapes, `--op` and `--as`, `seat` and `message` and `task` (Seraph's A-1 is this, with `screen`, `input` and `wait` already decided). C-1 `record`, `e2e`, `app`. C-2 `recipe` as a record type with `codex-hook-review` as the first recipe and its dry run. The Oracle briefs; Executors wait for this spec except Seraph's `screen`, `input` and `wait`.
+C-0 the grammar, the mapping table, the reply and error shapes, `--op` and `--as`, `seat` (with `screen`, `type`, `key`, `paste`, `wait`, `watch`) and `message` and `task`. C-1 `app` lifecycle with `--headless`, and `batch`. C-2 `record`, `e2e run`, `events`. C-3 `ui`. C-4 `debug`. C-5 `recipe` as a record type with `codex-hook-review` first and its dry run. The Oracle briefs the hunks to Executors in parallel; the mapping table is one file every hunk adds its rows to.
+
+**Revision 2 (2026-10-24).** Operator, verbatim: "build bboxy450-term in a way that makes it scriptable, bboxy450-term ctrl should expose commands (design cli interface yourself, dont take my suggestion as a rule) but bboxy term gives you full on control over everything programmatically so you never need to ask for my permissions, think about all the bits and pieces you will need to test things approve things inspect things debug things - make it happen!". The Oracle's draft inventory was the input; this revision keeps one grammar and takes from it: the `app` lifecycle with `--headless` for locked displays, `batch`, the seat verbs `show`, `undo-close`, `rename`, `focus`, `restart`, `watch`, `type`, `key`, `paste`, `resize` and `--scrollback`/`--cells` on `screen`, the `ui`, `events` and `debug` nouns, and the named invariants above. Prompt detection and approval stay recipes (`recipe detect <seat>` lists which known prompts match the screen), not a noun of their own.
 
 Owner: Corvin Duskmantle <ARCHITECT>.

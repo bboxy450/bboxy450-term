@@ -11,12 +11,12 @@ links:
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decision }
   - { to: "scripts/layering.sh", rel: check }
 created: 2026-10-22T19:02:24Z
-updated: "2026-10-24T04:47:36Z"
+updated: "2026-10-24T15:28:01Z"
 ---
 # Crate layering
 
 **Property.** Every workspace crate depends only on crates earlier in the order
-`bboxy450-desktop-notifications-macos bboxy450-desktop-notifications-windows bboxy450-desktop-notifications-linux bboxy450-desktop-notifications bbt-yarn-macros bbt-yarn bbt-rt bbt-core bbt-mermaid bboxy-firehose bbt-ui-model bbt-render bbt-ui bbt-doc bboxybook bbt-supervisor bbt-plugin bbt-proto bbt-mux bboxy450-term` (the ORDER line of `scripts/layering.sh` is the truth; this prose follows it).
+`bboxy450-desktop-notifications-macos bboxy450-desktop-notifications-windows bboxy450-desktop-notifications-linux bboxy450-desktop-notifications bbt-yarn-macros bbt-yarn bbt-rt bbt-core bboxy450-harness-wake-up bbt-mermaid bboxy-firehose bbt-ui-model bbt-render bbt-ui bbt-doc bboxybook bbt-supervisor bbt-plugin bbt-proto bbt-mux bboxy450-term` (the ORDER line of `scripts/layering.sh` is the truth; this prose follows it).
 Any prefix of that order builds and publishes without the rest. A new crate gets
 its place in the order in the commit that adds it.
 

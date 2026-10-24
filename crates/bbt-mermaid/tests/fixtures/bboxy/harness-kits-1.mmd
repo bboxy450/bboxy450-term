@@ -1,0 +1,6 @@
+flowchart LR
+  APP["bboxy450-term, bbt-mux<br/>seat registry, messaging, roles, journal<br/>maps the kits' vocabulary to the wire"] --> W["bboxy450-harness-wake-up<br/>launch plans, hook shim, OSC 7501/7502/133,<br/>native sockets, wake method and fallback guard"]
+  APP --> H["bboxy450-harness-host<br/>PTY spawn, leases, capture rings, journal,<br/>checkpoints, resume, input receipts"]
+  W -. "produces LaunchPlan, consumes InputContext<br/>through the app's mapping, never a dependency" .-> H
+  W --> C["bboxy450-term-core<br/>Term, on_unknown_osc, checkpoints"]
+  H --> C
