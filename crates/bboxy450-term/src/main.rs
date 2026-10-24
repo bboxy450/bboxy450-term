@@ -9,16 +9,21 @@ mod log;
 mod scene;
 mod stall;
 
-use bboxy450_term::keyboard;
 use bboxy450_term::launcher::{
     CaretMove, Command as LauncherCommand, Controller as LauncherController,
     Outcome as LauncherOutcome,
 };
 use bboxy450_term::scrollback::Request as ScrollRequest;
+use bboxy450_term::{keyboard, messaging};
 use bbt_proto::{SeatId, View};
 use bbt_rt::{HitchMeter, Latest, Phases, UiInbox, UiMsg};
+use bbt_ui::modules::composer::{
+    self, Command as ComposeCommand, Controller as ComposeController, Field as ComposeField,
+    Outcome as ComposeOutcome,
+};
+use bbt_ui::text_edit::Command as EditCommand;
 use bbt_ui_model::{
-    Model as UiModel, Stage,
+    Model as UiModel, STYLE, Stage,
     event::Event as InputEvent,
     input::{
         Direction, Focus, FocusContext, FocusOrigin, KeyRoute, Modifiers, Navigation,
@@ -123,6 +128,11 @@ enum FocusAction {
     Activate(SeatId, FocusOrigin),
     Navigate(Navigation),
 }
+#[derive(Clone, Copy)]
+enum TextFocus {
+    Composer(ComposeField),
+    Reject(bbt_mux::Ulid),
+}
 impl FocusState {
     fn reconcile(&mut self, _previous: Option<&UiModel>, next: &UiModel) {
         let owner = |seat| {
@@ -206,6 +216,9 @@ enum RoutedKey {
     OpenLauncher,
     ToggleHud,
     Launcher(LauncherCommand),
+    Composer(ComposeCommand),
+    ComposerVertical { backwards: bool, extend: bool },
+    ComposerLineEdge { end: bool, extend: bool },
     Pane(Navigation),
     Scroll(ScrollKey),
     Terminal(Vec<u8>),
@@ -462,8 +475,15 @@ fn route_input(
     modes: u64,
     query: Option<&str>,
 ) -> RoutedKey {
-    let was_local = state.suppressed(input.physical_key, input.state, input.repeat);
     let routed = route_key(input, modes, query);
+    finish_route(state, input, routed)
+}
+fn finish_route(
+    state: &mut keyboard::State,
+    input: &keyboard::Input<'_>,
+    routed: RoutedKey,
+) -> RoutedKey {
+    let was_local = state.suppressed(input.physical_key, input.state, input.repeat);
     if was_local
         && (input.state == ElementState::Released || matches!(routed, RoutedKey::Terminal(_)))
     {
@@ -473,6 +493,123 @@ fn route_input(
         state.consumed(input.physical_key, input.state);
     }
     routed
+}
+fn route_composer(input: &keyboard::Input<'_>, modes: u64, field: ComposeField) -> RoutedKey {
+    if input.state == ElementState::Released {
+        return RoutedKey::Local;
+    }
+    let global = route_key(input, modes, Some(""));
+    if matches!(
+        global,
+        RoutedKey::Quit | RoutedKey::OpenLauncher | RoutedKey::ToggleHud
+    ) {
+        return global;
+    }
+    let mods = input.modifiers.state;
+    let command = mods.super_key();
+    let navigation = match &input.logical_key {
+        Key::Named(NamedKey::ArrowLeft) => NavigationKey::Arrow(Direction::Left),
+        Key::Named(NamedKey::ArrowRight) => NavigationKey::Arrow(Direction::Right),
+        Key::Named(NamedKey::ArrowUp) => NavigationKey::Arrow(Direction::Up),
+        Key::Named(NamedKey::ArrowDown) => NavigationKey::Arrow(Direction::Down),
+        Key::Named(NamedKey::Tab) => NavigationKey::Tab,
+        _ => NavigationKey::Other,
+    };
+    if let KeyRoute::Pane(navigation) =
+        route_navigation(navigation, input_modifiers(mods), FocusContext::TextField)
+    {
+        return RoutedKey::Pane(navigation);
+    }
+    let edit = match &input.logical_key {
+        Key::Named(NamedKey::Enter)
+            if command
+                && !mods.alt_key()
+                && !mods.control_key()
+                && !mods.shift_key()
+                && !input.repeat =>
+        {
+            return RoutedKey::Composer(ComposeCommand::Send);
+        }
+        Key::Named(NamedKey::Enter) if command => return RoutedKey::Local,
+        Key::Named(NamedKey::Enter) if field == ComposeField::Address && !input.repeat => {
+            return RoutedKey::Composer(ComposeCommand::ChooseSelected);
+        }
+        Key::Named(NamedKey::Enter) if field == ComposeField::Body => {
+            EditCommand::Insert("\n".into())
+        }
+        Key::Named(NamedKey::Tab) => {
+            return RoutedKey::Composer(ComposeCommand::Focus(if field == ComposeField::Body {
+                ComposeField::Address
+            } else {
+                ComposeField::Body
+            }));
+        }
+        Key::Named(NamedKey::Escape) if !input.repeat => {
+            return RoutedKey::Composer(ComposeCommand::Escape);
+        }
+        Key::Named(NamedKey::ArrowUp | NamedKey::ArrowDown) if field == ComposeField::Address => {
+            return RoutedKey::Composer(ComposeCommand::Next {
+                backwards: input.logical_key == Key::Named(NamedKey::ArrowUp),
+            });
+        }
+        Key::Named(NamedKey::ArrowUp | NamedKey::ArrowDown) => {
+            return RoutedKey::ComposerVertical {
+                backwards: input.logical_key == Key::Named(NamedKey::ArrowUp),
+                extend: mods.shift_key(),
+            };
+        }
+        Key::Named(NamedKey::Home | NamedKey::End) if field == ComposeField::Body => {
+            return RoutedKey::ComposerLineEdge {
+                end: input.logical_key == Key::Named(NamedKey::End),
+                extend: mods.shift_key(),
+            };
+        }
+        Key::Named(NamedKey::ArrowLeft | NamedKey::ArrowRight)
+            if command && field == ComposeField::Body =>
+        {
+            return RoutedKey::ComposerLineEdge {
+                end: input.logical_key == Key::Named(NamedKey::ArrowRight),
+                extend: mods.shift_key(),
+            };
+        }
+        Key::Named(NamedKey::Home) => EditCommand::Move {
+            motion: CaretMove::Start,
+            extend: mods.shift_key(),
+        },
+        Key::Named(NamedKey::End) => EditCommand::Move {
+            motion: CaretMove::End,
+            extend: mods.shift_key(),
+        },
+        Key::Named(NamedKey::ArrowLeft) => EditCommand::Move {
+            motion: if command {
+                CaretMove::Start
+            } else {
+                CaretMove::Left
+            },
+            extend: mods.shift_key(),
+        },
+        Key::Named(NamedKey::ArrowRight) => EditCommand::Move {
+            motion: if command {
+                CaretMove::End
+            } else {
+                CaretMove::Right
+            },
+            extend: mods.shift_key(),
+        },
+        Key::Named(NamedKey::Backspace) => EditCommand::Delete { backwards: true },
+        Key::Named(NamedKey::Delete) => EditCommand::Delete { backwards: false },
+        Key::Character(value) if command && value.eq_ignore_ascii_case("a") => {
+            EditCommand::SelectAll
+        }
+        Key::Character(value) if !command && !mods.control_key() => {
+            EditCommand::Insert(input.text.unwrap_or(value).into())
+        }
+        Key::Named(NamedKey::Space) if !command && !mods.control_key() => {
+            EditCommand::Insert(" ".into())
+        }
+        _ => return RoutedKey::Local,
+    };
+    RoutedKey::Composer(ComposeCommand::Edit(edit))
 }
 
 fn preedit_command(text: String, cursor: Option<(usize, usize)>) -> LauncherCommand {
@@ -670,6 +807,23 @@ struct App {
     spawn_results_seen: BTreeMap<bbt_mux::Ulid, bboxy450_term::model::SpawnOutcome>,
     launcher: Option<LauncherController>,
     launcher_layout: Option<scene::LauncherLayout>,
+    launcher_parent: Option<TextFocus>,
+    composer: ComposeController,
+    composer_client: messaging::Client,
+    composer_scope: Option<bbt_proto::SwarmId>,
+    task_records: messaging::Records,
+    message_history: messaging::History,
+    events_seen: Option<Arc<bboxy450_term::model::EventLane>>,
+    task_regions: bbt_ui::modules::stream_dock::Regions,
+    reject: Option<(bbt_mux::Ulid, composer::RejectController)>,
+    reject_report: Option<composer::Report>,
+    reject_focus: bool,
+    conversation: bbt_ui::modules::stream_dock::StreamDock,
+    conversation_scroll: f32,
+    conversation_layout: Option<scene::ConversationLayout>,
+    composer_dragging: bool,
+    compose_startup: bool,
+    operation_backlog: VecDeque<live::UiMsg>,
     pointer: [f32; 2],
     query_dragging: bool,
     backend_lost: bool,
@@ -710,7 +864,490 @@ struct App {
     stall: Option<stall::Native>,
 }
 impl App {
+    fn composer_catalog(&mut self) {
+        let Some(model) = &self.live_state else {
+            return;
+        };
+        let Some(stage) = &self.focus.stage else {
+            return;
+        };
+        let Some((channel, mut choices)) = messaging::catalog(model, stage) else {
+            return;
+        };
+        if self.composer_scope != stage.swarm {
+            if self.composer_scope.is_some() {
+                self.composer.view.to.clear();
+                self.composer_client
+                    .refused("swarm changed; choose a destination");
+            } else if self.composer.view.to.is_empty() {
+                self.composer.view.to = vec![channel];
+            }
+            self.composer_scope = stage.swarm;
+            self.task_records
+                .select(stage.swarm.expect("catalog has swarm"));
+            self.message_history
+                .select(stage.swarm.expect("catalog has swarm"));
+            self.events_seen = None;
+            self.reject = None;
+            self.reject_report = None;
+            self.reject_focus = false;
+            self.conversation_scroll = 0.;
+        }
+        self.conversation_events();
+        for (folder, title, kind) in [
+            ("channels/", "Channels", "channel"),
+            ("groups/", "Groups", "group"),
+        ] {
+            let items: Vec<_> = self
+                .task_records
+                .nodes()
+                .iter()
+                .filter(|n| n.path.starts_with(folder))
+                .map(|n| composer::Address {
+                    kind: kind.into(),
+                    id: n.path.clone(),
+                    label: n.path.trim_start_matches(folder).into(),
+                    destination: n.path.clone(),
+                    ..Default::default()
+                })
+                .collect();
+            if let Some(group) = choices.iter_mut().find(|g| g.title == title) {
+                group.items.extend(items);
+            } else if !items.is_empty() {
+                choices.push(composer::PickGroup {
+                    title: title.into(),
+                    items,
+                });
+            }
+        }
+        self.composer.replace_choices(choices);
+        self.composer.replace_attachments(
+            self.task_records
+                .tasks()
+                .iter()
+                .chain(self.task_records.unassigned())
+                .map(messaging::task_attachment)
+                .chain(self.message_history.artifacts().cloned())
+                .collect(),
+        );
+    }
+    fn conversation_events(&mut self) {
+        let Some(model) = &self.live_state else {
+            return;
+        };
+        if self
+            .events_seen
+            .as_ref()
+            .is_some_and(|old| Arc::ptr_eq(old, &model.events))
+        {
+            return;
+        }
+        if self
+            .events_seen
+            .as_ref()
+            .is_some_and(|old| !matches!(old.state(), bboxy450_term::model::EventLaneState::Active))
+            && matches!(
+                model.events.state(),
+                bboxy450_term::model::EventLaneState::Active
+            )
+        {
+            self.message_history.reconnect();
+            self.task_records.refresh();
+        }
+        for task in self.message_history.observe(&model.events) {
+            self.task_records.task_notice(task);
+        }
+        self.events_seen = Some(model.events.clone());
+    }
+    fn conversation_reads(&mut self, viewed: bool) {
+        if viewed && let Some(action) = self.message_history.viewed_all() {
+            self.operation_backlog.push_back(action.into());
+        }
+        self.operation_backlog.extend(
+            self.message_history
+                .actions()
+                .into_iter()
+                .map(live::UiMsg::from),
+        );
+        self.operation_backlog
+            .extend(self.message_history.commands());
+    }
+    fn blur_reject(&mut self) {
+        self.reject_focus = false;
+        if let Some((_, reject)) = &mut self.reject {
+            reject.focus(false);
+        }
+    }
+    fn refresh_conversation(&mut self) {
+        let Some(model) = self.live_state.as_deref() else {
+            return;
+        };
+        self.conversation.entries = self.message_history.entries(
+            model,
+            self.composer_client.groups(),
+            self.task_records.nodes(),
+        );
+        self.conversation.entries.extend(
+            self.task_records
+                .entries(model, self.reject.as_ref().map(|(id, r)| (*id, &r.view))),
+        );
+        if let Some((id, editor)) = &self.reject
+            && !self.conversation.entries.iter().any(|entry| matches!(entry, bbt_ui::modules::stream_dock::Entry::Report {id: actual,..} if actual == &id.to_string()))
+            && let Some(snapshot) = &self.reject_report {
+            let mut report = snapshot.clone();
+            if let Some(card) = self.task_records.task(*id) { report.status = card.status.clone(); report.task = card.title.clone(); }
+            let mut reason = editor.view.clone();
+            if reason.notice.is_none() { reason.notice = Some(composer::Notice {kind:"refused".into(),text:"Previous report · refreshing · reason kept".into()}); }
+            report.reject = Some(reason);
+            self.conversation.entries.push(bbt_ui::modules::stream_dock::Entry::Report {id:id.to_string(),data:report,review:false});
+        }
+        self.scene.set_tasks(
+            self.task_records
+                .tasks()
+                .iter()
+                .filter_map(|card| {
+                    let seat = messaging::assignee_seat(card.assignee.as_deref()?)?;
+                    let (row, exit) = messaging::task_row(card);
+                    Some((seat, card.id.to_string(), row, exit))
+                })
+                .collect(),
+        );
+        let unread = model
+            .ui
+            .seats
+            .iter()
+            .filter(|(_, seat)| Some(seat.swarm) == self.composer_scope)
+            .map(|(id, _)| (*id, self.message_history.seat_unread(&id.to_string())))
+            .collect();
+        self.scene.set_unread(&unread);
+        self.conversation_layout = None;
+    }
+    fn task_action(&mut self, action: bbt_ui::modules::stream_dock::Action) {
+        use bbt_ui::modules::stream_dock::Action;
+        let parse = |id: &str| id.parse::<bbt_mux::Ulid>().ok();
+        match action {
+            Action::Task(id) => {
+                if let Some(id) = parse(&id) {
+                    self.blur_reject();
+                    self.task_records.detail(id);
+                }
+            }
+            Action::Delegate(id) => {
+                if let Some(task) = parse(&id).and_then(|id| self.task_records.task(id)) {
+                    let attachment = messaging::task_attachment(task);
+                    self.blur_reject();
+                    self.composer_command(ComposeCommand::Delegate(attachment));
+                }
+            }
+            Action::Accept(id) => {
+                if let Some(id) = parse(&id) {
+                    self.review_task(id, None);
+                }
+            }
+            Action::Reject(id) => {
+                if let Some(id) = parse(&id) {
+                    let snapshot = self
+                        .task_records
+                        .task(id)
+                        .zip(self.task_records.doc(id))
+                        .and_then(|(card, doc)| messaging::task_report(card, doc).ok().flatten());
+                    if let Some(snapshot) = snapshot {
+                        self.composer.handle(ComposeCommand::Blur);
+                        if self.reject.as_ref().is_none_or(|(old, _)| *old != id) {
+                            self.reject = Some((id, composer::RejectController::default()));
+                        }
+                        self.reject_report = Some(snapshot);
+                        if let Some((_, reject)) = &mut self.reject {
+                            reject.focus(true);
+                        }
+                        self.reject_focus = true;
+                    } else {
+                        self.task_records.detail(id);
+                        self.task_records.issue = Some("Report is refreshing".into());
+                    }
+                }
+            }
+            Action::CancelReject(_) => {
+                self.reject = None;
+                self.reject_report = None;
+                self.reject_focus = false;
+            }
+            Action::SubmitReject(id) => {
+                if let Some(id) = parse(&id)
+                    && let Some((actual, reason)) = &mut self.reject
+                    && *actual == id
+                {
+                    match reason.submission() {
+                        Ok(reason) => self.review_task(id, Some(reason)),
+                        Err(reason) => self.reject.as_mut().unwrap().1.refused(reason),
+                    }
+                }
+            }
+            Action::RejectInput(id) => {
+                if let Some(id) = parse(&id)
+                    && let Some((actual, reason)) = &mut self.reject
+                    && *actual == id
+                {
+                    self.composer.handle(ComposeCommand::Blur);
+                    self.reject_focus = true;
+                    reason.focus(true);
+                    if let Some(layout) = &self.conversation_layout
+                        && let Some(at) = self.scene.reject_index(
+                            layout,
+                            &id.to_string(),
+                            &reason.view.reason,
+                            self.pointer,
+                        )
+                    {
+                        reason.handle(EditCommand::SetCaret {
+                            at,
+                            extend: self.modifiers.shift_key(),
+                        });
+                    }
+                    self.composer_dragging = true;
+                }
+            }
+            Action::Channel(name) => {
+                self.message_history.channel(&if name == "all" {
+                    name
+                } else {
+                    format!("channels/{}", name.trim_start_matches("channels/"))
+                });
+                self.conversation_scroll = 0.;
+                self.conversation_reads(true);
+            }
+        }
+        self.operation_backlog.extend(self.task_records.commands());
+        self.refresh_conversation();
+        if let Some(window) = &self.window {
+            window.set_ime_allowed(
+                self.launcher.is_some() || self.composer.view.focus || self.reject_focus,
+            );
+        }
+        self.request_redraw();
+    }
+    fn review_task(&mut self, id: bbt_mux::Ulid, reason: Option<String>) {
+        if self.backend_lost || self.closing || self.live_commands.is_none() {
+            self.task_records.issue = Some("backend_unavailable".into());
+            if let Some((actual, editor)) = &mut self.reject
+                && *actual == id
+            {
+                editor.refused("backend_unavailable");
+            }
+            return;
+        }
+        match self.task_records.review(id, reason) {
+            Ok(command) => self.operation_backlog.push_back(command),
+            Err(reason) => {
+                self.task_records.issue = Some(reason.into());
+                if let Some((actual, edit)) = &mut self.reject
+                    && *actual == id
+                {
+                    edit.refused(reason);
+                }
+            }
+        }
+    }
+    fn composer_notice(&mut self) {
+        self.composer.view.notice = match &self.composer_client.status {
+            messaging::Status::Idle => None,
+            messaging::Status::Pending => Some(composer::Notice {
+                kind: "pending".into(),
+                text: "sending".into(),
+            }),
+            messaging::Status::Stored { id, sends } => Some(composer::Notice {
+                kind: "sent".into(),
+                text: if *sends > 1 {
+                    format!("stored · {sends} recipients · {id}")
+                } else {
+                    format!("stored · {id}")
+                },
+            }),
+            messaging::Status::Held(reason) => Some(composer::Notice {
+                kind: "held".into(),
+                text: reason.clone(),
+            }),
+            messaging::Status::Refused(reason) => Some(composer::Notice {
+                kind: "refused".into(),
+                text: reason.clone(),
+            }),
+            messaging::Status::Unknown(reason) => Some(composer::Notice {
+                kind: "refused".into(),
+                text: format!("outcome unknown · Send retries the same operation · {reason}"),
+            }),
+            messaging::Status::Partial { stored, reason } => Some(composer::Notice {
+                kind: "refused".into(),
+                text: format!("{stored} stored · {reason}"),
+            }),
+        };
+    }
+    fn composer_command(&mut self, command: ComposeCommand) {
+        if self.reject_focus {
+            if let Some((_, reason)) = &mut self.reject {
+                match command {
+                    ComposeCommand::Edit(EditCommand::Insert(text) | EditCommand::Commit(text))
+                        if text.contains(['\n', '\r']) => {}
+                    ComposeCommand::Edit(edit) => {
+                        reason.handle(edit);
+                    }
+                    ComposeCommand::Escape => {
+                        if reason.composing() {
+                            reason.handle(EditCommand::CancelPreedit);
+                        } else {
+                            self.blur_reject();
+                        }
+                    }
+                    ComposeCommand::Focus(field) => {
+                        self.blur_reject();
+                        self.composer.handle(ComposeCommand::Focus(field));
+                    }
+                    _ => {}
+                }
+            }
+            self.refresh_conversation();
+            if let Some(window) = &self.window {
+                window.set_ime_allowed(
+                    self.launcher.is_some() || self.composer.view.focus || self.reject_focus,
+                );
+            }
+            self.request_redraw();
+            return;
+        }
+        if matches!(command, ComposeCommand::Focus(ComposeField::Address)) {
+            self.composer_catalog();
+        }
+        if matches!(command, ComposeCommand::Send)
+            && !self.composer.composing()
+            && matches!(self.composer_client.status, messaging::Status::Unknown(_))
+        {
+            if !self.backend_lost
+                && self.live_commands.is_some()
+                && self.operation_backlog.is_empty()
+            {
+                self.operation_backlog.extend(self.composer_client.retry());
+                self.composer_client.retry_admitted();
+            }
+        } else {
+            match self.composer.handle(command) {
+                ComposeOutcome::Submit(draft) => {
+                    if self.live_commands.is_none() || self.closing || self.backend_lost {
+                        self.composer_client.refused("backend_unavailable");
+                    } else {
+                        let prepared =
+                            match self.live_state.as_deref().zip(self.focus.stage.as_ref()) {
+                                Some((model, stage)) => {
+                                    self.composer_client.prepare_for(model, stage, draft)
+                                }
+                                None => Err("swarm_required"),
+                            };
+                        match prepared {
+                            Ok(batch) => self
+                                .operation_backlog
+                                .extend(self.composer_client.admitted(batch)),
+                            Err(reason) => self.composer_client.refused(reason),
+                        }
+                    }
+                }
+                ComposeOutcome::Refused(reason) => self.composer_client.refused(reason),
+                _ => {}
+            }
+        }
+        self.composer_notice();
+        if let Some(window) = &self.window {
+            window.set_ime_allowed(self.launcher.is_some() || self.composer.view.focus);
+        }
+        self.request_redraw();
+    }
+    fn composer_move(&mut self, vertical: Option<bool>, end: Option<bool>, extend: bool) {
+        if self.reject_focus {
+            if let Some(end) = end {
+                self.composer_command(ComposeCommand::Edit(EditCommand::Move {
+                    motion: if end {
+                        bbt_ui::text_edit::Motion::End
+                    } else {
+                        bbt_ui::text_edit::Motion::Start
+                    },
+                    extend,
+                }));
+            }
+            return;
+        }
+        if self.composer.view.attach_pick.is_some() {
+            if let Some(end) = end {
+                self.composer_command(ComposeCommand::Edit(EditCommand::Move {
+                    motion: if end {
+                        bbt_ui::text_edit::Motion::End
+                    } else {
+                        bbt_ui::text_edit::Motion::Start
+                    },
+                    extend,
+                }));
+            }
+            return;
+        }
+        if self.composer.composing() {
+            return;
+        }
+        let Some(layout) = &self.conversation_layout else {
+            return;
+        };
+        let caret = self
+            .composer
+            .view
+            .edit
+            .as_ref()
+            .and_then(|e| e.caret)
+            .unwrap_or(self.composer.view.text.encode_utf16().count());
+        let mut at = self
+            .scene
+            .conversation_position(layout, &self.composer.view.text, caret);
+        if let Some(backwards) = vertical {
+            at[1] += if backwards { -1. } else { 1. }
+                * (STYLE.r#type.caption as f32 * 1.45 * 64.).floor()
+                / 64.;
+        }
+        if let Some(end) = end {
+            at[0] = if end { 1_000_000. } else { -1_000_000. };
+        }
+        let index = self
+            .scene
+            .conversation_index(layout, &self.composer.view.text, at);
+        self.composer_command(ComposeCommand::Edit(EditCommand::SetCaret {
+            at: index,
+            extend,
+        }));
+    }
+    fn flush_operations(&mut self) {
+        if self.backend_lost || self.closing {
+            return;
+        }
+        while self
+            .pending_commands
+            .iter()
+            .filter(|m| is_operation(m))
+            .count()
+            < PENDING_OPERATIONS
+        {
+            let Some(message) = self.operation_backlog.pop_front() else {
+                break;
+            };
+            queue_pending(&mut self.pending_commands, message).expect("reserved operation slot");
+        }
+    }
     fn open_launcher(&mut self) {
+        if self.launcher.is_none() {
+            self.launcher_parent = if self.reject_focus {
+                self.reject.as_ref().map(|(id, _)| TextFocus::Reject(*id))
+            } else {
+                self.composer
+                    .view
+                    .focus
+                    .then_some(TextFocus::Composer(self.composer.view.field))
+            };
+        }
+        self.blur_reject();
+        self.composer.handle(ComposeCommand::Blur);
+        self.composer_dragging = false;
         let used = self
             .pending_commands
             .iter()
@@ -729,8 +1366,22 @@ impl App {
         self.launcher = None;
         self.launcher_layout = None;
         self.query_dragging = false;
+        match self.launcher_parent.take() {
+            Some(TextFocus::Composer(field)) => {
+                self.composer.handle(ComposeCommand::Focus(field));
+            }
+            Some(TextFocus::Reject(id)) => {
+                if let Some((actual, reason)) = &mut self.reject
+                    && *actual == id
+                {
+                    reason.focus(true);
+                    self.reject_focus = true;
+                }
+            }
+            None => {}
+        }
         if let Some(window) = &self.window {
-            window.set_ime_allowed(false);
+            window.set_ime_allowed(self.composer.view.focus || self.reject_focus);
         }
         self.request_redraw();
     }
@@ -774,6 +1425,15 @@ impl App {
         }
     }
     fn focus_action(&mut self, action: FocusAction) {
+        self.launcher_parent = None;
+        self.blur_reject();
+        self.composer.handle(ComposeCommand::Blur);
+        self.composer_dragging = false;
+        if self.launcher.is_none()
+            && let Some(window) = &self.window
+        {
+            window.set_ime_allowed(false);
+        }
         let Some(model) = &self.live_state else {
             return;
         };
@@ -820,6 +1480,7 @@ impl App {
         });
     }
     fn flush_commands(&mut self) {
+        self.flush_operations();
         if let Some(sender) = &self.live_commands {
             if flush_pending(sender, &mut self.pending_commands, self.backend_lost).is_err() {
                 self.backend_lost = true;
@@ -970,9 +1631,9 @@ impl App {
                 )
                 .map_err(|e| e.to_string())?,
         );
-        if self.launcher.is_some() {
+        if self.launcher.is_some() || self.composer.view.focus {
             window.set_ime_allowed(true);
-            self.logger.write("debug launcher open");
+            self.logger.write("debug text field open");
         }
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::METAL,
@@ -1142,7 +1803,43 @@ impl App {
             }
             self.scene
                 .set_model(&state, self.focus.stage.as_ref().expect("published stage"));
+            let (completed, follow_up) = self.composer_client.replies(&state.operation_results);
+            if let Some(draft) = completed {
+                if draft.delegate {
+                    self.task_records.refresh();
+                }
+                self.composer.stored(&draft);
+                self.conversation_layout = None;
+            }
+            self.operation_backlog.extend(follow_up);
+            self.composer_notice();
             self.live_state = Some(state);
+            let records_changed = self
+                .task_records
+                .replies(&self.live_state.as_ref().unwrap().operation_results);
+            self.message_history
+                .replies(&self.live_state.as_ref().unwrap().operation_results);
+            if records_changed
+                && let Some((id, reason)) = &mut self.reject
+                && let Some((actual, issue)) = &self.task_records.review_issue
+                && *actual == *id
+            {
+                reason.refused(issue);
+            }
+            if let Some((task, submitted)) = self.task_records.take_review_completion()
+                && let Some((id, editor)) = &self.reject
+                && *id == task
+                && submitted.as_deref() == Some(editor.view.reason.as_str())
+                && !editor.composing()
+            {
+                self.reject = None;
+                self.reject_report = None;
+                self.reject_focus = false;
+            }
+            self.composer_catalog();
+            self.conversation_reads(false);
+            self.operation_backlog.extend(self.task_records.commands());
+            self.refresh_conversation();
             for (op, outcome) in results {
                 if let bboxy450_term::model::SpawnOutcome::Placed(seat) = &outcome {
                     self.focus_action(FocusAction::Activate(*seat, FocusOrigin::Keyboard));
@@ -1249,10 +1946,25 @@ impl App {
         let scale = self.window.as_ref().unwrap().scale_factor() as f32;
         let logical = [size.width as f32 / scale, size.height as f32 / scale];
         let start = Instant::now();
-        let layouts = self
-            .scene
-            .layout(logical, self.animation_start.is_some() || self.animate)?;
+        self.conversation_layout = if self.live_state.is_some() || self.compose_startup {
+            Some(self.scene.conversation_layout(
+                logical,
+                &composer::Conversation {
+                    stream: self.conversation.clone(),
+                    composer: self.composer.view.clone(),
+                    scroll: self.conversation_scroll,
+                },
+            )?)
+        } else {
+            None
+        };
+        let layouts = self.scene.layout_with_dock(
+            logical,
+            self.animation_start.is_some() || self.animate,
+            self.conversation_layout.as_ref().map_or(0., |l| l.height),
+        )?;
         let bounds = self.scene.pane_bounds(&layouts);
+        self.task_regions = self.scene.task_regions(&layouts);
         self.focus_bounds = self.scene.focus_bounds(&layouts);
         if let Some(model) = &self.live_state {
             for event in self.focus.layout_ready(&model.ui, &self.focus_bounds) {
@@ -1279,6 +1991,23 @@ impl App {
                 winit::dpi::LogicalSize::new(caret.w, caret.h),
             );
         }
+        if self.launcher.is_none()
+            && (self.composer.view.focus || self.reject_focus)
+            && let Some(layout) = &self.conversation_layout
+        {
+            let caret = if self.reject_focus {
+                self.reject
+                    .as_ref()
+                    .and_then(|(id, _)| layout.actions.candidate_area(&id.to_string()))
+                    .unwrap_or_else(|| layout.regions.candidate_area())
+            } else {
+                layout.regions.candidate_area()
+            };
+            self.window.as_ref().unwrap().set_ime_cursor_area(
+                winit::dpi::LogicalPosition::new(caret.x, caret.y),
+                winit::dpi::LogicalSize::new(caret.w, caret.h),
+            );
+        }
         phases.layout = start.elapsed();
         let overlay = self.overlay.then(|| {
             perf_hud(
@@ -1288,24 +2017,24 @@ impl App {
         });
         let start = Instant::now();
         let live = self.live_state.is_some();
-        let ops = self.scene.paint(
-            &layouts,
-            logical,
-            if live { None } else { overlay.as_ref() },
-            if live {
-                None
-            } else {
-                self.launcher_layout.as_ref()
-            },
-        );
+        let mut ops = self.scene.paint(&layouts, logical, None, None);
+        if !live {
+            ops.extend(self.scene.foreground_with_conversation(
+                logical,
+                self.launcher_layout.as_ref(),
+                overlay.as_ref(),
+                self.conversation_layout.as_ref(),
+            ));
+        }
         let pane_overlay = if let Some(model) = &self.live_state {
             let mut ops = self
                 .scene
                 .history_foreground(model, &self.pane_bounds, scale)?;
-            ops.extend(self.scene.foreground(
+            ops.extend(self.scene.foreground_with_conversation(
                 logical,
                 self.launcher_layout.as_ref(),
                 overlay.as_ref(),
+                self.conversation_layout.as_ref(),
             ));
             ops
         } else {
@@ -1741,6 +2470,42 @@ impl ApplicationHandler<UiEvent> for App {
                     .as_ref()
                     .map_or(1., |window| window.scale_factor()) as f32;
                 self.pointer = [position.x as f32 / scale, position.y as f32 / scale];
+                if self.composer_dragging && self.launcher.is_none() {
+                    if self.reject_focus {
+                        if let Some((id, reason)) = &self.reject
+                            && let Some(layout) = &self.conversation_layout
+                            && let Some(at) = self.scene.reject_index(
+                                layout,
+                                &id.to_string(),
+                                &reason.view.reason,
+                                self.pointer,
+                            )
+                        {
+                            self.composer_command(ComposeCommand::Edit(EditCommand::SetCaret {
+                                at,
+                                extend: true,
+                            }));
+                        }
+                        return;
+                    }
+                    if let Some(layout) = &self.conversation_layout {
+                        let at = if let Some(p) = &self.composer.view.attach_pick {
+                            self.scene
+                                .conversation_attachment_index(layout, &p.query, self.pointer)
+                        } else {
+                            self.scene.conversation_index(
+                                layout,
+                                &self.composer.view.text,
+                                self.pointer,
+                            )
+                        };
+                        self.composer_command(ComposeCommand::Edit(EditCommand::SetCaret {
+                            at,
+                            extend: true,
+                        }));
+                    }
+                    return;
+                }
                 if self.query_dragging {
                     if let (Some(layout), Some(launcher)) = (&self.launcher_layout, &self.launcher)
                     {
@@ -1760,6 +2525,37 @@ impl ApplicationHandler<UiEvent> for App {
                 {
                     self.launcher_command(LauncherCommand::Hover(index));
                 }
+            }
+            WindowEvent::MouseWheel { delta, .. }
+                if self.launcher.is_none()
+                    && self.conversation_layout.as_ref().is_some_and(|layout| {
+                        layout.actions.contains("conversation/rows", self.pointer)
+                    }) =>
+            {
+                let dy = match delta {
+                    MouseScrollDelta::LineDelta(_, y) => y * 28.,
+                    MouseScrollDelta::PixelDelta(p) => {
+                        p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
+                    }
+                };
+                let max = self
+                    .conversation_layout
+                    .as_ref()
+                    .and_then(|layout| {
+                        bbt_ui::modules::stream_dock::Regions::scroll_extent(
+                            &layout.layout,
+                            "conversation/rows",
+                        )
+                    })
+                    .map_or(0., |r| r[1]);
+                self.conversation_scroll = (self.conversation_scroll - dy).clamp(0., max);
+                if dy < 0. {
+                    self.message_history.more();
+                    self.task_records.more_tasks();
+                    self.operation_backlog.extend(self.task_records.commands());
+                }
+                self.conversation_reads(true);
+                self.request_redraw();
             }
             WindowEvent::MouseWheel { delta, .. } if self.launcher.is_none() => {
                 if let Some((seat, rect)) = self.focus_bounds.iter().find(|(_, rect)| {
@@ -1824,6 +2620,82 @@ impl ApplicationHandler<UiEvent> for App {
                     }
                     return;
                 }
+                if let Some(layout) = &self.conversation_layout
+                    && layout.regions.contains(self.pointer)
+                {
+                    use composer::Hit;
+                    let hit = layout.regions.hit(self.pointer);
+                    let at = if hit == Some(Hit::AttachQuery) {
+                        self.composer.view.attach_pick.as_ref().map(|p| {
+                            self.scene
+                                .conversation_attachment_index(layout, &p.query, self.pointer)
+                        })
+                    } else if hit == Some(Hit::Body) {
+                        Some(self.scene.conversation_index(
+                            layout,
+                            &self.composer.view.text,
+                            self.pointer,
+                        ))
+                    } else {
+                        None
+                    };
+                    self.blur_reject();
+                    match hit {
+                        Some(Hit::Body) => {
+                            self.composer_command(ComposeCommand::Focus(ComposeField::Body));
+                            self.composer_dragging = true;
+                            self.composer_command(ComposeCommand::Edit(EditCommand::SetCaret {
+                                at: at.unwrap(),
+                                extend: self.modifiers.shift_key(),
+                            }));
+                        }
+                        Some(Hit::Address) => {
+                            self.composer_command(ComposeCommand::Focus(ComposeField::Address))
+                        }
+                        Some(Hit::Choose(index)) => {
+                            self.composer_command(ComposeCommand::Choose(index))
+                        }
+                        Some(Hit::Remove(index)) => {
+                            self.composer_command(ComposeCommand::Remove(index))
+                        }
+                        Some(Hit::Priority) => self.composer_command(ComposeCommand::Priority(
+                            (self.composer.view.priority + 1) % 10,
+                        )),
+                        Some(Hit::Kind) => self.composer_command(ComposeCommand::ToggleKindMenu),
+                        Some(Hit::KindChoice(index)) => self.composer_command(
+                            ComposeCommand::Kind(composer::SEND_KINDS[index].into()),
+                        ),
+                        Some(Hit::Send) => self.composer_command(ComposeCommand::Send),
+                        Some(Hit::Attach) => self.composer_command(ComposeCommand::PickAttachments),
+                        Some(Hit::AttachChoice(index)) => {
+                            self.composer_command(ComposeCommand::ChooseAttachment(index))
+                        }
+                        Some(Hit::AttachQuery) => {
+                            self.composer_dragging = true;
+                            self.composer_command(ComposeCommand::Edit(EditCommand::SetCaret {
+                                at: at.unwrap(),
+                                extend: self.modifiers.shift_key(),
+                            }));
+                        }
+                        _ => {}
+                    }
+                    return;
+                }
+                if let Some(action) = self
+                    .conversation_layout
+                    .as_ref()
+                    .and_then(|layout| layout.actions.hit(self.pointer))
+                    .or_else(|| self.task_regions.hit(self.pointer))
+                {
+                    self.task_action(action);
+                    return;
+                }
+                if self.conversation_layout.as_ref().is_some_and(|layout| {
+                    layout.actions.contains("conversation/rows", self.pointer)
+                }) {
+                    self.conversation_reads(true);
+                    return;
+                }
                 if let Some((id, _)) = self.focus_bounds.iter().find(|(_, rect)| {
                     self.pointer[0] >= rect.x
                         && self.pointer[0] < rect.right()
@@ -1837,16 +2709,39 @@ impl ApplicationHandler<UiEvent> for App {
                 state: ElementState::Released,
                 button: MouseButton::Left,
                 ..
-            } => self.query_dragging = false,
-            WindowEvent::Ime(Ime::Preedit(text, cursor)) => {
-                self.launcher_command(preedit_command(text, cursor));
+            } => {
+                self.query_dragging = false;
+                self.composer_dragging = false;
             }
-            WindowEvent::Ime(Ime::Disabled) => self.launcher_command(LauncherCommand::Preedit {
-                text: String::new(),
-                caret: None,
-            }),
+            WindowEvent::Ime(Ime::Preedit(text, cursor)) => {
+                if self.launcher.is_some() {
+                    self.launcher_command(preedit_command(text, cursor));
+                } else if self.composer.view.focus || self.reject_focus {
+                    let LauncherCommand::Preedit { text, caret } = preedit_command(text, cursor)
+                    else {
+                        unreachable!()
+                    };
+                    self.composer_command(ComposeCommand::Edit(EditCommand::Preedit {
+                        text,
+                        caret,
+                    }));
+                }
+            }
+            WindowEvent::Ime(Ime::Disabled) => {
+                self.launcher_command(LauncherCommand::Preedit {
+                    text: String::new(),
+                    caret: None,
+                });
+                if self.composer.view.focus || self.reject_focus {
+                    self.composer_command(ComposeCommand::Edit(EditCommand::CancelPreedit));
+                }
+            }
             WindowEvent::Ime(Ime::Commit(text)) => {
-                self.launcher_command(LauncherCommand::Commit(text));
+                if self.launcher.is_some() {
+                    self.launcher_command(LauncherCommand::Commit(text));
+                } else if self.composer.view.focus || self.reject_focus {
+                    self.composer_command(ComposeCommand::Edit(EditCommand::Commit(text)));
+                }
             }
             WindowEvent::KeyboardInput { event, .. } => {
                 let input = self.keyboard.event(&event, self.modifiers);
@@ -1900,14 +2795,32 @@ impl ApplicationHandler<UiEvent> for App {
                             .get(&seat)
                             .map(|screen| screen.modes)
                     });
-                let routed = route_input(
-                    &mut self.keyboard,
-                    &input,
-                    modes.unwrap_or_default(),
-                    self.launcher
-                        .as_ref()
-                        .map(|launcher| launcher.launcher.query.as_str()),
-                );
+                let routed =
+                    if self.launcher.is_none() && (self.composer.view.focus || self.reject_focus) {
+                        let routed = route_composer(
+                            &input,
+                            modes.unwrap_or_default(),
+                            if self.reject_focus {
+                                ComposeField::Body
+                            } else if self.composer.view.kind_menu
+                                || self.composer.view.attach_pick.is_some()
+                            {
+                                ComposeField::Address
+                            } else {
+                                self.composer.view.field
+                            },
+                        );
+                        finish_route(&mut self.keyboard, &input, routed)
+                    } else {
+                        route_input(
+                            &mut self.keyboard,
+                            &input,
+                            modes.unwrap_or_default(),
+                            self.launcher
+                                .as_ref()
+                                .map(|launcher| launcher.launcher.query.as_str()),
+                        )
+                    };
                 match routed {
                     RoutedKey::Quit => self.request_close(event_loop),
                     RoutedKey::OpenLauncher => self.open_launcher(),
@@ -1917,6 +2830,13 @@ impl ApplicationHandler<UiEvent> for App {
                         self.request_redraw();
                     }
                     RoutedKey::Launcher(command) => self.launcher_command(command),
+                    RoutedKey::Composer(command) => self.composer_command(command),
+                    RoutedKey::ComposerVertical { backwards, extend } => {
+                        self.composer_move(Some(backwards), None, extend)
+                    }
+                    RoutedKey::ComposerLineEdge { end, extend } => {
+                        self.composer_move(None, Some(end), extend)
+                    }
                     RoutedKey::Pane(navigation) => {
                         self.focus_action(FocusAction::Navigate(navigation))
                     }
@@ -1971,30 +2891,46 @@ impl ApplicationHandler<UiEvent> for App {
 const PENDING_INPUT_BYTES: usize = 1024 * 1024;
 const PENDING_INPUT_ENTRIES: usize = 256;
 const PENDING_SPAWNS: usize = bboxy450_term::model::PENDING_SPAWNS;
+const PENDING_OPERATIONS: usize = 32;
+fn is_operation(message: &live::UiMsg) -> bool {
+    matches!(
+        message,
+        live::UiMsg::Messaging { .. } | live::UiMsg::Task { .. }
+    )
+}
 
 #[derive(Debug, PartialEq, Eq)]
 enum AdmissionRefused {
     Input,
     Spawn,
+    Operation,
 }
 
 #[derive(Default)]
 struct AdmissionRefusals {
     input: u64,
     spawn: u64,
+    operation: u64,
 }
 impl AdmissionRefusals {
     fn record(&mut self, kind: AdmissionRefused) {
         let count = match kind {
             AdmissionRefused::Input => &mut self.input,
             AdmissionRefused::Spawn => &mut self.spawn,
+            AdmissionRefused::Operation => &mut self.operation,
         };
         *count = count.saturating_add(1);
     }
     fn report(&self) -> String {
         format!(
-            "admission refused: input={} spawn={} (pending input limit={} bytes/{} entries; spawn limit={})",
-            self.input, self.spawn, PENDING_INPUT_BYTES, PENDING_INPUT_ENTRIES, PENDING_SPAWNS,
+            "admission refused: input={} spawn={} operation={} (pending input limit={} bytes/{} entries; spawn limit={}; operation limit={})",
+            self.input,
+            self.spawn,
+            self.operation,
+            PENDING_INPUT_BYTES,
+            PENDING_INPUT_ENTRIES,
+            PENDING_SPAWNS,
+            PENDING_OPERATIONS,
         )
     }
 }
@@ -2003,6 +2939,11 @@ fn queue_pending(
     pending: &mut VecDeque<live::UiMsg>,
     mut message: live::UiMsg,
 ) -> Result<(), AdmissionRefused> {
+    if is_operation(&message)
+        && pending.iter().filter(|m| is_operation(m)).count() >= PENDING_OPERATIONS
+    {
+        return Err(AdmissionRefused::Operation);
+    }
     if let live::UiMsg::Input { bytes, .. } = &message {
         let mut input_bytes = 0;
         let mut input_entries = 0;
@@ -2189,6 +3130,7 @@ const HELP: &str = "bboxy450-term: GPU terminal for agent swarms.
 
 Debug and verification only, never for normal use:
   --launcher           open the launcher at startup (same controller as Cmd+T)
+  --compose            focus the inline composer at startup
   --capture PNG        write the first presented frame to PNG; Cmd+Shift+S re-captures
   --capture-after SECS re-capture once, SECS after the cockpit's first model
   --spawn-zsh N        open N zsh seats once the cockpit is ready (default zsh picks)
@@ -2657,6 +3599,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .any(|arg| arg == "--launcher")
             .then(|| new_launcher(None, 0)),
         launcher_layout: None,
+        launcher_parent: None,
+        composer: ComposeController::new(composer::Composer {
+            focus: args.iter().any(|arg| arg == "--compose"),
+            ..Default::default()
+        }),
+        composer_client: messaging::Client::default(),
+        composer_scope: None,
+        task_records: messaging::Records::default(),
+        message_history: messaging::History::default(),
+        events_seen: None,
+        task_regions: Default::default(),
+        reject: None,
+        reject_report: None,
+        reject_focus: false,
+        conversation: bbt_ui::modules::stream_dock::StreamDock {
+            dock: true,
+            framed: false,
+            ..Default::default()
+        },
+        conversation_layout: None,
+        conversation_scroll: 0.,
+        composer_dragging: false,
+        compose_startup: args.iter().any(|arg| arg == "--compose"),
+        operation_backlog: VecDeque::new(),
         pointer: [0.; 2],
         query_dragging: false,
         backend_lost: false,
@@ -3983,5 +4949,117 @@ mod placement_tests {
             focus.stage.as_ref().unwrap().focused,
             Some(SeatId::from_u128(5))
         );
+    }
+}
+
+#[cfg(test)]
+mod composer_host_tests {
+    use super::*;
+    #[test]
+    fn composer_submit_is_focus_local_and_newline_tab_navigation_remain_local() {
+        let enter = Key::Named(NamedKey::Enter);
+        let input = test_key(
+            &enter,
+            PhysicalKey::Code(KeyCode::Enter),
+            None,
+            ModifiersState::SUPER,
+            false,
+        );
+        assert_eq!(
+            route_composer(&input, 0, ComposeField::Body),
+            RoutedKey::Composer(ComposeCommand::Send)
+        );
+        assert!(!matches!(
+            route_key(&input, 0, None),
+            RoutedKey::Composer(_)
+        ));
+        let plain = test_key(
+            &enter,
+            PhysicalKey::Code(KeyCode::Enter),
+            None,
+            ModifiersState::empty(),
+            false,
+        );
+        assert_eq!(
+            route_composer(&plain, 0, ComposeField::Body),
+            RoutedKey::Composer(ComposeCommand::Edit(EditCommand::Insert("\n".into())))
+        );
+        assert_eq!(
+            route_key(&plain, 0, None),
+            RoutedKey::Terminal(b"\r".to_vec())
+        );
+        let tab = test_key(
+            &Key::Named(NamedKey::Tab),
+            PhysicalKey::Code(KeyCode::Tab),
+            None,
+            ModifiersState::empty(),
+            false,
+        );
+        assert_eq!(
+            route_composer(&tab, 0, ComposeField::Body),
+            RoutedKey::Composer(ComposeCommand::Focus(ComposeField::Address))
+        );
+        assert_eq!(
+            route_key(&tab, 0, None),
+            RoutedKey::Terminal(b"\t".to_vec())
+        );
+    }
+    #[test]
+    fn consumed_composer_press_never_leaks_a_kitty_release_after_focus_changes() {
+        let mut state = keyboard::State::default();
+        let mut input = test_key(
+            &Key::Character("x".into()),
+            PhysicalKey::Code(KeyCode::KeyX),
+            Some("x"),
+            ModifiersState::empty(),
+            false,
+        );
+        let routed = route_composer(&input, 3 << 18, ComposeField::Body);
+        assert!(matches!(
+            finish_route(&mut state, &input, routed),
+            RoutedKey::Composer(_)
+        ));
+        input.state = ElementState::Released;
+        assert!(matches!(
+            route_key(&input, 3 << 18, None),
+            RoutedKey::Terminal(_)
+        ));
+        assert_eq!(
+            route_input(&mut state, &input, 3 << 18, None),
+            RoutedKey::Local
+        );
+    }
+    #[test]
+    fn operation_admission_is_bounded_without_consuming_terminal_input_capacity() {
+        let mut pending = VecDeque::new();
+        let operation = || live::UiMsg::Task {
+            id: bbt_mux::Ulid::new(),
+            request: bbt_proto::messaging::TaskRequest::List {
+                unassigned: false,
+                swarm_id: None,
+                status: None,
+                assignee: None,
+                after: None,
+                limit: Some(1),
+            },
+        };
+        for _ in 0..PENDING_OPERATIONS {
+            queue_pending(&mut pending, operation()).unwrap();
+        }
+        assert_eq!(
+            queue_pending(&mut pending, operation()),
+            Err(AdmissionRefused::Operation)
+        );
+        queue_pending(
+            &mut pending,
+            live::UiMsg::Input {
+                seat: SeatId::from_u128(1),
+                generation: 1,
+                id: bbt_mux::Ulid::new(),
+                bytes: b"x".to_vec(),
+            },
+        )
+        .unwrap();
+        assert_eq!(pending.len(), PENDING_OPERATIONS + 1);
     }
 }

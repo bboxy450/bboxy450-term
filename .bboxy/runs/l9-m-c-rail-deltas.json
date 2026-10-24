@@ -1,0 +1,910 @@
+{
+  "before_source": "9c2022a7288286981f0cb3a5b1938691bf8a3bf5",
+  "after_source": "69d2fc542eab35bb83f490d75ebb3f6981c49a58",
+  "input_cases_sha256": "8afc92e2d69fba0a0821ce8ef26600d46efb92a828f29a647aa4c5b4e9f2b575",
+  "cases": 1768,
+  "byte_identical": 1728,
+  "changed": 40,
+  "method": "Every RGBA difference must be inside the preserved input capture Creativity rail rectangles; no pixel allowance elsewhere.",
+  "approval_message": "93dbb857-8ba6-44b0-92a6-a388f6906e3b",
+  "source_rail_commit": "1fae4199",
+  "all_changed_pixels_within_rails": true,
+  "rows": [
+    {
+      "key": "stream/swarm-stream-touch-dark.png",
+      "changed_bbox": [
+        19,
+        362,
+        22,
+        393
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          19,
+          362,
+          22,
+          394
+        ]
+      ],
+      "changed_pixels": 40,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "stream/swarm-stream-touch-light.png",
+      "changed_bbox": [
+        19,
+        362,
+        22,
+        393
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          19,
+          362,
+          22,
+          394
+        ]
+      ],
+      "changed_pixels": 40,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "stream/swarm-stream-comfortable-dark.png",
+      "changed_bbox": [
+        19,
+        362,
+        22,
+        393
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          19,
+          362,
+          22,
+          394
+        ]
+      ],
+      "changed_pixels": 40,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "stream/swarm-stream-comfortable-light.png",
+      "changed_bbox": [
+        19,
+        362,
+        22,
+        393
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          19,
+          362,
+          22,
+          394
+        ]
+      ],
+      "changed_pixels": 40,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "stream/swarm-stream-cozy-dark.png",
+      "changed_bbox": [
+        19,
+        362,
+        22,
+        393
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          19,
+          362,
+          22,
+          394
+        ]
+      ],
+      "changed_pixels": 40,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "stream/swarm-stream-cozy-light.png",
+      "changed_bbox": [
+        19,
+        362,
+        22,
+        393
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          19,
+          362,
+          22,
+          394
+        ]
+      ],
+      "changed_pixels": 40,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "stream/swarm-stream-compact-dark.png",
+      "changed_bbox": [
+        19,
+        362,
+        22,
+        393
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          19,
+          362,
+          22,
+          394
+        ]
+      ],
+      "changed_pixels": 40,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "stream/swarm-stream-compact-light.png",
+      "changed_bbox": [
+        19,
+        362,
+        22,
+        393
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          19,
+          362,
+          22,
+          394
+        ]
+      ],
+      "changed_pixels": 40,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "stream/messages-touch-dark.png",
+      "changed_bbox": [
+        19,
+        251,
+        22,
+        282
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          19,
+          250,
+          22,
+          282
+        ]
+      ],
+      "changed_pixels": 40,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "stream/messages-touch-light.png",
+      "changed_bbox": [
+        19,
+        251,
+        22,
+        282
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          19,
+          250,
+          22,
+          282
+        ]
+      ],
+      "changed_pixels": 40,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "stream/messages-comfortable-dark.png",
+      "changed_bbox": [
+        19,
+        251,
+        22,
+        282
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          19,
+          250,
+          22,
+          282
+        ]
+      ],
+      "changed_pixels": 40,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "stream/messages-comfortable-light.png",
+      "changed_bbox": [
+        19,
+        251,
+        22,
+        282
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          19,
+          250,
+          22,
+          282
+        ]
+      ],
+      "changed_pixels": 40,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "stream/messages-cozy-dark.png",
+      "changed_bbox": [
+        19,
+        251,
+        22,
+        282
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          19,
+          250,
+          22,
+          282
+        ]
+      ],
+      "changed_pixels": 40,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "stream/messages-cozy-light.png",
+      "changed_bbox": [
+        19,
+        251,
+        22,
+        282
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          19,
+          250,
+          22,
+          282
+        ]
+      ],
+      "changed_pixels": 40,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "stream/messages-compact-dark.png",
+      "changed_bbox": [
+        19,
+        251,
+        22,
+        282
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          19,
+          250,
+          22,
+          282
+        ]
+      ],
+      "changed_pixels": 40,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "stream/messages-compact-light.png",
+      "changed_bbox": [
+        19,
+        251,
+        22,
+        282
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          19,
+          250,
+          22,
+          282
+        ]
+      ],
+      "changed_pixels": 40,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/creativity-touch-dark.png",
+      "changed_bbox": [
+        21,
+        27,
+        24,
+        149
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          27,
+          24,
+          83
+        ],
+        [
+          21,
+          94,
+          24,
+          150
+        ]
+      ],
+      "changed_pixels": 142,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/creativity-touch-light.png",
+      "changed_bbox": [
+        21,
+        27,
+        24,
+        149
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          27,
+          24,
+          83
+        ],
+        [
+          21,
+          94,
+          24,
+          150
+        ]
+      ],
+      "changed_pixels": 142,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/creativity-comfortable-dark.png",
+      "changed_bbox": [
+        21,
+        27,
+        24,
+        149
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          27,
+          24,
+          83
+        ],
+        [
+          21,
+          94,
+          24,
+          150
+        ]
+      ],
+      "changed_pixels": 142,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/creativity-comfortable-light.png",
+      "changed_bbox": [
+        21,
+        27,
+        24,
+        149
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          27,
+          24,
+          83
+        ],
+        [
+          21,
+          94,
+          24,
+          150
+        ]
+      ],
+      "changed_pixels": 142,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/creativity-cozy-dark.png",
+      "changed_bbox": [
+        21,
+        27,
+        24,
+        149
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          27,
+          24,
+          83
+        ],
+        [
+          21,
+          94,
+          24,
+          150
+        ]
+      ],
+      "changed_pixels": 142,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/creativity-cozy-light.png",
+      "changed_bbox": [
+        21,
+        27,
+        24,
+        149
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          27,
+          24,
+          83
+        ],
+        [
+          21,
+          94,
+          24,
+          150
+        ]
+      ],
+      "changed_pixels": 142,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/creativity-compact-dark.png",
+      "changed_bbox": [
+        21,
+        27,
+        24,
+        149
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          27,
+          24,
+          83
+        ],
+        [
+          21,
+          94,
+          24,
+          150
+        ]
+      ],
+      "changed_pixels": 142,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/creativity-compact-light.png",
+      "changed_bbox": [
+        21,
+        27,
+        24,
+        149
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          27,
+          24,
+          83
+        ],
+        [
+          21,
+          94,
+          24,
+          150
+        ]
+      ],
+      "changed_pixels": 142,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/stream-touch-dark.png",
+      "changed_bbox": [
+        21,
+        178,
+        24,
+        234
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          178,
+          24,
+          234
+        ]
+      ],
+      "changed_pixels": 74,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/stream-touch-light.png",
+      "changed_bbox": [
+        21,
+        178,
+        24,
+        234
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          178,
+          24,
+          234
+        ]
+      ],
+      "changed_pixels": 74,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/stream-comfortable-dark.png",
+      "changed_bbox": [
+        21,
+        178,
+        24,
+        234
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          178,
+          24,
+          234
+        ]
+      ],
+      "changed_pixels": 74,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/stream-comfortable-light.png",
+      "changed_bbox": [
+        21,
+        178,
+        24,
+        234
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          178,
+          24,
+          234
+        ]
+      ],
+      "changed_pixels": 74,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/stream-cozy-dark.png",
+      "changed_bbox": [
+        21,
+        178,
+        24,
+        234
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          178,
+          24,
+          234
+        ]
+      ],
+      "changed_pixels": 74,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/stream-cozy-light.png",
+      "changed_bbox": [
+        21,
+        178,
+        24,
+        234
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          178,
+          24,
+          234
+        ]
+      ],
+      "changed_pixels": 74,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/stream-compact-dark.png",
+      "changed_bbox": [
+        21,
+        178,
+        24,
+        234
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          178,
+          24,
+          234
+        ]
+      ],
+      "changed_pixels": 74,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/stream-compact-light.png",
+      "changed_bbox": [
+        21,
+        178,
+        24,
+        234
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          178,
+          24,
+          234
+        ]
+      ],
+      "changed_pixels": 74,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/evidence-touch-dark.png",
+      "changed_bbox": [
+        21,
+        142,
+        24,
+        362
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          142,
+          24,
+          180
+        ],
+        [
+          21,
+          306,
+          24,
+          362
+        ]
+      ],
+      "changed_pixels": 123,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/evidence-touch-light.png",
+      "changed_bbox": [
+        21,
+        142,
+        24,
+        362
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          142,
+          24,
+          180
+        ],
+        [
+          21,
+          306,
+          24,
+          362
+        ]
+      ],
+      "changed_pixels": 123,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/evidence-comfortable-dark.png",
+      "changed_bbox": [
+        21,
+        142,
+        24,
+        362
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          142,
+          24,
+          180
+        ],
+        [
+          21,
+          306,
+          24,
+          362
+        ]
+      ],
+      "changed_pixels": 123,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/evidence-comfortable-light.png",
+      "changed_bbox": [
+        21,
+        142,
+        24,
+        362
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          142,
+          24,
+          180
+        ],
+        [
+          21,
+          306,
+          24,
+          362
+        ]
+      ],
+      "changed_pixels": 123,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/evidence-cozy-dark.png",
+      "changed_bbox": [
+        21,
+        142,
+        24,
+        362
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          142,
+          24,
+          180
+        ],
+        [
+          21,
+          306,
+          24,
+          362
+        ]
+      ],
+      "changed_pixels": 123,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/evidence-cozy-light.png",
+      "changed_bbox": [
+        21,
+        142,
+        24,
+        362
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          142,
+          24,
+          180
+        ],
+        [
+          21,
+          306,
+          24,
+          362
+        ]
+      ],
+      "changed_pixels": 123,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/evidence-compact-dark.png",
+      "changed_bbox": [
+        21,
+        142,
+        24,
+        362
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          142,
+          24,
+          180
+        ],
+        [
+          21,
+          306,
+          24,
+          362
+        ]
+      ],
+      "changed_pixels": 123,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    },
+    {
+      "key": "message-row/evidence-compact-light.png",
+      "changed_bbox": [
+        21,
+        142,
+        24,
+        362
+      ],
+      "captured_creativity_rail_boxes": [
+        [
+          21,
+          142,
+          24,
+          180
+        ],
+        [
+          21,
+          306,
+          24,
+          362
+        ]
+      ],
+      "changed_pixels": 123,
+      "outside_rails_pixels": 0,
+      "outside_rails_bbox": null
+    }
+  ]
+}

@@ -6,10 +6,20 @@ use super::{
 use crate::{self as ui, components as c};
 use bbt_ui_model::{STYLE, TOKENS, draw::Color as DrawColor, layout::Axis};
 use serde::{Deserialize, Serialize};
+mod actions;
+pub use actions::{Action, Regions};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Message {
+    pub author: Option<Author>,
+    #[serde(rename = "issuer_kind")]
+    pub issuer_kind: Option<String>,
+    #[serde(rename = "priority_class")]
+    pub priority_class: Option<String>,
+    pub priority: u8,
+    pub ts: Option<u64>,
+    pub receipts: Option<Receipts>,
     pub from: String,
     pub role: String,
     pub time: String,
@@ -29,6 +39,25 @@ pub struct Message {
     pub via: Option<String>,
     pub to: Option<String>,
     pub held: Option<String>,
+    pub to_label: Option<String>,
+    pub attach: Vec<super::composer::Attachment>,
+    pub report: Option<super::composer::Report>,
+    pub review: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Author {
+    pub kind: String,
+    pub id: String,
+    pub name: String,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Receipts {
+    pub delivered: usize,
+    pub acked: usize,
+    pub held: usize,
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -48,9 +77,13 @@ pub struct Group {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct WorkItem {
+    pub id: String,
+    pub path: String,
     pub title: String,
+    #[serde(rename = "status", alias = "state")]
     pub state: String,
     pub assignee: String,
+    pub delegated_by: Option<String>,
     pub waits: String,
     #[serde(rename = "type")]
     pub kind: String,
@@ -61,6 +94,7 @@ pub struct Epic {
     pub title: String,
     pub open: Option<bool>,
     pub items: Vec<WorkItem>,
+    pub delegate: bool,
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -69,11 +103,58 @@ pub struct External {
     pub text: String,
     pub time: String,
 }
+/// A badge is numeric only when the retained pages prove its count.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnreadCount {
+    Exact(u64),
+    More,
+}
+impl Default for UnreadCount {
+    fn default() -> Self {
+        Self::Exact(0)
+    }
+}
+impl UnreadCount {
+    pub fn any(self) -> bool {
+        self != Self::Exact(0)
+    }
+}
+impl std::fmt::Display for UnreadCount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Exact(n) => write!(f, "{n}"),
+            Self::More => f.write_str("more"),
+        }
+    }
+}
+impl Serialize for UnreadCount {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Exact(n) => s.serialize_u64(*n),
+            Self::More => s.serialize_str("more"),
+        }
+    }
+}
+impl<'de> Deserialize<'de> for UnreadCount {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Value {
+            Number(u64),
+            Marker(String),
+        }
+        match Value::deserialize(d)? {
+            Value::Number(n) => Ok(Self::Exact(n)),
+            Value::Marker(s) if s == "more" => Ok(Self::More),
+            _ => Err(serde::de::Error::custom("unread must be a count or more")),
+        }
+    }
+}
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Channel {
     pub name: String,
-    pub unread: usize,
+    pub unread: UnreadCount,
     pub muted: bool,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,6 +168,15 @@ pub enum Entry {
     Epic {
         data: Epic,
     },
+    Task {
+        data: WorkItem,
+        delegate: bool,
+    },
+    Report {
+        id: String,
+        data: super::composer::Report,
+        review: bool,
+    },
     External {
         events: Vec<External>,
         open: bool,
@@ -94,6 +184,8 @@ pub enum Entry {
     Tabs {
         channels: Vec<Channel>,
         selected: String,
+        #[serde(default)]
+        total: Option<u64>,
     },
     Filter {
         name: String,
@@ -114,16 +206,16 @@ fn framed() -> bool {
     true
 }
 
-fn rgba(hex: &str) -> ui::Color {
+pub(super) fn rgba(hex: &str) -> ui::Color {
     ui::Color::Rgba(DrawColor::hex(hex).0)
 }
-fn tint(color: ui::Color, alpha: f32) -> ui::Paint {
+pub(super) fn tint(color: ui::Color, alpha: f32) -> ui::Paint {
     ui::Paint {
         color,
         alpha: ui::Alpha::Value(alpha),
     }
 }
-fn text_style(size: f32, weight: u16, mono: bool, color: ui::Color) -> ui::Text {
+pub(super) fn text_style(size: f32, weight: u16, mono: bool, color: ui::Color) -> ui::Text {
     ui::Text {
         size: Some(size),
         weight,
@@ -133,7 +225,7 @@ fn text_style(size: f32, weight: u16, mono: bool, color: ui::Color) -> ui::Text 
         ..Default::default()
     }
 }
-fn label(
+pub(super) fn label(
     key: impl Into<String>,
     value: impl Into<String>,
     style: ui::Text,
@@ -144,7 +236,7 @@ fn label(
     t.ellipsis = !wrap;
     named(key, c::Element::Text(t))
 }
-fn row(
+pub(super) fn row(
     key: impl Into<String>,
     style: ui::Style,
     gap: f32,
@@ -156,26 +248,30 @@ fn row(
     b.align = align;
     named(key, c::Element::Box(b))
 }
-fn column(key: impl Into<String>, style: ui::Style, children: Vec<c::Item>) -> c::Element {
+pub(super) fn column(
+    key: impl Into<String>,
+    style: ui::Style,
+    children: Vec<c::Item>,
+) -> c::Element {
     let mut b = c::Box::new(style, children);
     b.direction = Axis::Column;
     b.gap = ui::Length::Px(0.);
     b.align = c::Alignment::Stretch;
     named(key, c::Element::Box(b))
 }
-fn fill(e: c::Element) -> c::Item {
+pub(super) fn fill(e: c::Element) -> c::Item {
     c::Item {
         element: e,
         extent: c::Extent::Fill,
     }
 }
-fn shrink(e: c::Element) -> c::Item {
+pub(super) fn shrink(e: c::Element) -> c::Item {
     c::Item {
         element: e,
         extent: c::Extent::MinContent,
     }
 }
-fn spacer() -> c::Item {
+pub(super) fn spacer() -> c::Item {
     fill(c::Element::Spacer)
 }
 // An auto start margin consumes spare width without adding another flex gap.
@@ -203,7 +299,7 @@ fn aligned_text(key: &str, value: &str, style: ui::Text, wrap: bool) -> c::Eleme
     text.align = c::Alignment::Center;
     named(key, c::Element::Text(text))
 }
-fn badge(
+pub(super) fn badge(
     key: &str,
     value: &str,
     mut style: ui::Text,
@@ -319,7 +415,34 @@ pub fn evidence(key: &str, state: &str, m: &dyn c::Measure) -> c::Element {
     )
 }
 impl Message {
-    pub fn element(&self, key: &str, dock: bool, show_ch: bool, m: &dyn c::Measure) -> c::Element {
+    pub fn element(
+        &self,
+        ctx: ui::Context,
+        key: &str,
+        dock: bool,
+        show_ch: bool,
+        m: &dyn c::Measure,
+    ) -> c::Element {
+        let mut view = self.clone();
+        if let Some(author) = &self.author {
+            view.from = author.name.clone();
+        }
+        if let Some(ts) = self.ts {
+            view.time = format!("{:02}:{:02}", (ts / 3_600_000) % 24, (ts / 60_000) % 60);
+        }
+        if self.kind.as_deref() == Some("presence") {
+            view.presence = true;
+        }
+        view.element_view(ctx, key, dock, show_ch, m)
+    }
+    fn element_view(
+        &self,
+        ctx: ui::Context,
+        key: &str,
+        dock: bool,
+        show_ch: bool,
+        m: &dyn c::Measure,
+    ) -> c::Element {
         let t = &STYLE.r#type;
         let sp = &STYLE.spacing;
         let caption = t.caption as f32;
@@ -540,34 +663,56 @@ impl Message {
             };
             return column(key, s, vec![c::Element::Flow(flow).into()]);
         }
-        let role = if self.role.is_empty() {
-            "unsigned"
+        let author_kind = self.author.as_ref().map(|a| a.kind.as_str());
+        let role = if author_kind == Some("operator") {
+            "oracle"
+        } else if self.role.is_empty() {
+            if self.author.is_some() {
+                ""
+            } else {
+                "unsigned"
+            }
         } else {
             &self.role
         };
-        let color = role_color(role);
+        let color = if role.is_empty() {
+            ui::Color::Muted
+        } else {
+            role_color(role)
+        };
+        let mark = match author_kind {
+            Some("operator") => Some("OPERATOR".into()),
+            Some("observer") => Some("OBSERVER".into()),
+            _ => (!role.is_empty()).then(|| role.to_uppercase()),
+        };
         let head_key = format!("{key}/body/head");
-        let mut head = vec![
-            shrink(label(
-                format!("{head_key}/who"),
-                &self.from,
-                text_style(
-                    if dock { small } else { t.section as f32 },
-                    600,
-                    false,
-                    ui::Color::Foreground,
-                ),
-                true,
-            )),
-            label(
-                format!("{head_key}/role"),
-                format!("<{}>", role.to_uppercase()),
-                text_style(caption, 400, true, color),
+        let mut head = vec![shrink(label(
+            format!("{head_key}/who"),
+            &self.from,
+            text_style(
+                if dock { small } else { t.section as f32 },
+                600,
                 false,
-            )
-            .into(),
-        ];
-        if role == "oracle" && !self.foreign {
+                ui::Color::Foreground,
+            ),
+            true,
+        ))];
+        if let Some(mark) = mark {
+            head.push(
+                label(
+                    format!("{head_key}/role"),
+                    format!("<{mark}>"),
+                    text_style(caption, 400, true, color),
+                    false,
+                )
+                .into(),
+            );
+        }
+        let p0 = self
+            .priority_class
+            .as_deref()
+            .map_or(role == "oracle" && !self.foreign, |class| class == "oracle");
+        if p0 {
             head.push(
                 badge(
                     &format!("{head_key}/p0"),
@@ -579,7 +724,48 @@ impl Message {
                 )
                 .into(),
             );
+        } else if self.priority_class.as_deref() == Some("worker") && self.priority >= 7 {
+            head.push(
+                badge(
+                    &format!("{head_key}/p1"),
+                    "p1",
+                    text_style(t.micro as f32, 400, true, ui::Color::Accent),
+                    Some(tint(ui::Color::Accent, 0.14)),
+                    Some(ui::Paint {
+                        color: ui::Color::Line,
+                        alpha: ui::Alpha::Hairline,
+                    }),
+                    (STYLE.radius.tag as f32, 5., Some(16.), false),
+                )
+                .into(),
+            );
         }
+        if self.issuer_kind.as_deref() == Some("local-dev") {
+            let color = rgba(TOKENS.color.state.waiting);
+            let mut ts = text_style(t.micro as f32, 400, false, color);
+            ts.tracking_em = 0.02;
+            ts.line_height = 14. / t.micro as f32;
+            let mut style = plain(None, [0., 5., 0., 5.], STYLE.radius.tag as f32);
+            style.overrides.fill = Some(tint(color, 0.14));
+            // CSS may wrap the issuer at its real hyphen, never in a word.
+            let flow = c::Flow {
+                children: vec![
+                    label("", "local-", ts, false).into(),
+                    label("", "dev", ts, false).into(),
+                ],
+                wrap: true,
+                justify: c::Justify::Start,
+                align: c::Alignment::Center,
+                row_gap: ui::Length::Px(0.),
+                column_gap: ui::Length::Px(0.),
+            };
+            head.push(shrink(column(
+                format!("{head_key}/issuer"),
+                style,
+                vec![c::Element::Flow(flow).into()],
+            )));
+        }
+
         if show_ch && let Some(ch) = &self.ch {
             head.push(
                 label(
@@ -591,7 +777,11 @@ impl Message {
                 .into(),
             );
         }
-        if let Some(kind) = self.kind.as_deref().filter(|s| *s != "message") {
+        if let Some(kind) = self
+            .kind
+            .as_deref()
+            .filter(|s| *s != "message" && *s != "text")
+        {
             let col = match kind {
                 "chunk" => rgba(TOKENS.color.ui.ok),
                 "decision" => rgba(TOKENS.color.ui.invariant),
@@ -710,6 +900,34 @@ impl Message {
                 )
                 .into(),
             );
+        } else if let Some(receipts) = &self.receipts {
+            head.push(
+                label(
+                    format!("{head_key}/receipts"),
+                    format!(
+                        "{} delivered · {} acked{}",
+                        receipts.delivered,
+                        receipts.acked,
+                        if receipts.held > 0 {
+                            format!(" · {} held", receipts.held)
+                        } else {
+                            String::new()
+                        }
+                    ),
+                    text_style(
+                        t.tiny as f32,
+                        400,
+                        true,
+                        if receipts.held > 0 {
+                            rgba(TOKENS.color.state.waiting)
+                        } else {
+                            ui::Color::Muted
+                        },
+                    ),
+                    false,
+                )
+                .into(),
+            );
         } else if let Some(ev) = &self.evidence {
             head.push(evidence(&format!("{head_key}/ticks"), ev, m).into());
         }
@@ -755,6 +973,24 @@ impl Message {
                 .into(),
             );
         }
+        if let Some(to) = &self.to_label {
+            body.push(
+                column(
+                    format!("{key}/body/to"),
+                    plain(None, [0.; 4], 0.),
+                    vec![
+                        label(
+                            format!("{key}/body/to/text"),
+                            format!("→ {to}"),
+                            text_style(small, 400, false, ui::Color::Muted),
+                            false,
+                        )
+                        .into(),
+                    ],
+                )
+                .into(),
+            );
+        }
         let mut ts = text_style(
             body_size,
             if role == "oracle" { 500 } else { 400 },
@@ -773,9 +1009,56 @@ impl Message {
             )
             .into(),
         );
+        if !self.attach.is_empty() {
+            let mut attachments = c::Box::new(
+                plain(None, [0.; 4], 0.),
+                self.attach
+                    .iter()
+                    .enumerate()
+                    .map(|(i, a)| a.element(&format!("{key}/body/attach/a{i}")).into())
+                    .collect(),
+            );
+            attachments.direction = Axis::Column;
+            attachments.gap = ui::Length::Spacing(2);
+            attachments.align = c::Alignment::Stretch;
+            body.push(
+                column(
+                    format!("{key}/body/attach-margin"),
+                    plain(None, [sp.s2 as f32, 0., 0., 0.], 0.),
+                    vec![named(format!("{key}/body/attach"), c::Element::Box(attachments)).into()],
+                )
+                .into(),
+            );
+        }
+        if let Some(report) = &self.report {
+            body.push(
+                report
+                    .element(ctx, &format!("{key}/body/report"), self.review)
+                    .into(),
+            );
+        }
         let mut rail = plain(None, [0.; 4], STYLE.radius.mark as f32);
         rail.overrides.width = Some(ui::Length::Px(3.));
         rail.overrides.fill = Some(ui::Paint::solid(color));
+        let mut rail = c::Box::new(rail, vec![]);
+        if role == "creativity" {
+            rail.style.overrides.fill = Some(ui::Paint::solid(ui::Color::Transparent));
+            rail.clip = true;
+            rail.align = c::Alignment::Stretch;
+            rail.gap = ui::Length::Px(0.);
+            rail.children.push(
+                c::Element::Rects(c::Rects {
+                    size: [3., 0.],
+                    rects: vec![(
+                        bbt_ui_model::layout::Rect::new(0., 0., 3., 4.),
+                        ui::Paint::solid(color),
+                    )]
+                    .into(),
+                    repeat: Some((Axis::Column, 7.)),
+                })
+                .into(),
+            );
+        }
         let mut style = base;
         if role == "oracle" {
             style.overrides.fill = Some(tint(color, 0.08));
@@ -792,11 +1075,7 @@ impl Message {
             if dock { sp.s4 as f32 } else { sp.s5 as f32 },
             c::Alignment::Stretch,
             vec![
-                named(
-                    format!("{key}/rail"),
-                    c::Element::Box(c::Box::new(rail, vec![])),
-                )
-                .into(),
+                named(format!("{key}/rail"), c::Element::Box(rail)).into(),
                 fill(column(
                     format!("{key}/body"),
                     plain(None, [0.; 4], 0.),
@@ -871,6 +1150,104 @@ fn kind_chip(key: &str, value: &str) -> c::Element {
         vec![label(format!("{key}/text"), value, ts, false).into()],
     )
 }
+fn task_item(item: &WorkItem, k: &str, delegate: bool) -> c::Element {
+    let sp = &STYLE.spacing;
+    let t = &STYLE.r#type;
+    let col = match item.state.as_str() {
+        "running" => ui::Color::Accent,
+        "reported" => rgba(TOKENS.color.state.waiting),
+        "accepted" | "done" => rgba(TOKENS.color.ui.ok),
+        "rejected" | "blocked" => rgba(TOKENS.color.state.errored),
+        _ => ui::Color::Muted,
+    };
+    let mut cells = vec![
+        named(
+            format!("{k}/tglyph"),
+            ui::marks::Mark::task(&item.state).element(11., ui::Paint::solid(col)),
+        )
+        .into(),
+        kind_chip(
+            &format!("{k}/ekind"),
+            if item.kind.is_empty() {
+                "task"
+            } else {
+                &item.kind
+            },
+        )
+        .into(),
+        fill(clipped_text(
+            &format!("{k}/etitle"),
+            &item.title,
+            text_style(t.caption as f32, 400, false, ui::Color::Foreground),
+        )),
+    ];
+    if !item.assignee.is_empty() {
+        cells.push(
+            label(
+                format!("{k}/eass"),
+                if item.state == "claimed" {
+                    format!("→ {}", item.assignee)
+                } else {
+                    item.assignee.clone()
+                },
+                text_style(t.small as f32, 400, false, ui::Color::Muted),
+                false,
+            )
+            .into(),
+        );
+    }
+    if item.state == "claimed" {
+        cells.push(
+            badge(
+                &format!("{k}/echip"),
+                "claimed",
+                text_style(t.micro as f32, 400, false, role_color("executor")),
+                None,
+                Some(tint(role_color("executor"), 0.6)),
+                (STYLE.radius.pill as f32, sp.s2 as f32, None, true),
+            )
+            .into(),
+        );
+    }
+    if delegate && item.state == "open" && item.assignee.is_empty() {
+        cells.push(
+            badge(
+                &format!("{k}/edel"),
+                "Delegate…",
+                text_style(t.small as f32, 400, false, ui::Color::Foreground),
+                None,
+                Some(ui::Paint {
+                    color: ui::Color::Line,
+                    alpha: ui::Alpha::Hairline,
+                }),
+                (STYLE.radius.pill as f32, sp.s3 as f32, None, false),
+            )
+            .into(),
+        );
+    }
+    if item.state == "blocked" && !item.waits.is_empty() {
+        cells.push(
+            label(
+                format!("{k}/twaits"),
+                format!("waits on {}", item.waits),
+                text_style(t.tiny as f32, 400, false, rgba(TOKENS.color.state.errored)),
+                false,
+            )
+            .into(),
+        );
+    }
+    row(
+        k,
+        plain(
+            None,
+            [sp.s1 as f32, sp.s4 as f32, sp.s1 as f32, sp.s10 as f32],
+            0.,
+        ),
+        sp.s3 as f32,
+        c::Alignment::Center,
+        cells,
+    )
+}
 impl Epic {
     pub fn element(&self, key: &str) -> c::Element {
         let t = &STYLE.r#type;
@@ -929,70 +1306,7 @@ impl Epic {
                     "{key}/eitem{}",
                     if i == 0 { String::new() } else { i.to_string() }
                 );
-                let col = match item.state.as_str() {
-                    "running" => ui::Color::Accent,
-                    "reported" => rgba(TOKENS.color.state.waiting),
-                    "accepted" | "done" => rgba(TOKENS.color.ui.ok),
-                    "rejected" | "blocked" => rgba(TOKENS.color.state.errored),
-                    _ => ui::Color::Muted,
-                };
-                let mut cells = vec![
-                    named(
-                        format!("{k}/tglyph"),
-                        ui::marks::Mark::task(&item.state).element(11., ui::Paint::solid(col)),
-                    )
-                    .into(),
-                    kind_chip(
-                        &format!("{k}/ekind"),
-                        if item.kind.is_empty() {
-                            "task"
-                        } else {
-                            &item.kind
-                        },
-                    )
-                    .into(),
-                    fill(clipped_text(
-                        &format!("{k}/etitle"),
-                        &item.title,
-                        text_style(t.caption as f32, 400, false, ui::Color::Foreground),
-                    )),
-                ];
-                if !item.assignee.is_empty() {
-                    cells.push(
-                        label(
-                            format!("{k}/eass"),
-                            &item.assignee,
-                            text_style(t.small as f32, 400, false, ui::Color::Muted),
-                            false,
-                        )
-                        .into(),
-                    );
-                }
-                if item.state == "blocked" && !item.waits.is_empty() {
-                    cells.push(
-                        label(
-                            format!("{k}/twaits"),
-                            format!("waits on {}", item.waits),
-                            text_style(t.tiny as f32, 400, false, rgba(TOKENS.color.state.errored)),
-                            false,
-                        )
-                        .into(),
-                    );
-                }
-                children.push(
-                    row(
-                        &k,
-                        plain(
-                            None,
-                            [sp.s1 as f32, sp.s4 as f32, sp.s1 as f32, sp.s10 as f32],
-                            0.,
-                        ),
-                        sp.s3 as f32,
-                        c::Alignment::Center,
-                        cells,
-                    )
-                    .into(),
-                );
+                children.push(task_item(item, &k, self.delegate).into());
             }
         }
         column(
@@ -1112,18 +1426,20 @@ fn external(key: &str, events: &[External], open: bool) -> c::Element {
     )
 }
 impl StreamDock {
-    pub fn element(&self, ctx: ui::Context, m: &dyn c::Measure) -> c::Element {
+    pub fn items_at(&self, ctx: ui::Context, start: usize, m: &dyn c::Measure) -> Vec<c::Item> {
         let sp = &STYLE.spacing;
         let t = &STYLE.r#type;
         let mut children = vec![];
         for (i, entry) in self.entries.iter().enumerate() {
-            let key = format!("e{i}");
+            let key = format!("e{}", i + start);
             children.push(
                 match entry {
                     Entry::Message { data, show_channel } => {
-                        data.element(&key, self.dock, show_channel.unwrap_or(true), m)
+                        data.element(ctx, &key, self.dock, show_channel.unwrap_or(true), m)
                     }
                     Entry::Epic { data } => data.element(&key),
+                    Entry::Task { data, delegate } => task_item(data, &key, *delegate),
+                    Entry::Report { data, review, .. } => data.element(ctx, &key, *review),
                     Entry::External { events, open } => external(&key, events, *open),
                     Entry::Filter { name } => row(
                         &key,
@@ -1172,10 +1488,23 @@ impl StreamDock {
                             .into(),
                         ],
                     ),
-                    Entry::Tabs { channels, selected } => {
+                    Entry::Tabs {
+                        channels,
+                        selected,
+                        total,
+                    } => {
                         let all = Channel {
                             name: "all".into(),
-                            unread: channels.iter().filter(|c| !c.muted).map(|c| c.unread).sum(),
+                            unread: total.map(UnreadCount::Exact).unwrap_or_else(|| {
+                                channels
+                                    .iter()
+                                    .filter(|c| !c.muted)
+                                    .try_fold(0u64, |sum, c| match c.unread {
+                                        UnreadCount::Exact(n) => sum.checked_add(n),
+                                        UnreadCount::More => None,
+                                    })
+                                    .map_or(UnreadCount::More, UnreadCount::Exact)
+                            }),
                             muted: false,
                         };
                         let cells = std::iter::once(&all)
@@ -1242,17 +1571,25 @@ impl StreamDock {
                                         )
                                         .into(),
                                     );
-                                } else if ch.unread > 0 {
+                                } else if ch.unread.any() {
                                     cells.push(
                                         badge(
                                             &format!("{k}/b"),
                                             &ch.unread.to_string(),
-                                            text_style(
-                                                t.micro as f32,
-                                                600,
-                                                false,
-                                                ui::Color::OnAccent,
-                                            ),
+                                            ui::Text {
+                                                italic: ch.unread == UnreadCount::More,
+                                                tracking_em: if ch.unread == UnreadCount::More {
+                                                    0.02
+                                                } else {
+                                                    0.
+                                                },
+                                                ..text_style(
+                                                    t.micro as f32,
+                                                    600,
+                                                    false,
+                                                    ui::Color::OnAccent,
+                                                )
+                                            },
                                             Some(ui::Paint::solid(ui::Color::Accent)),
                                             None,
                                             (STYLE.radius.pill as f32, 5., Some(13.), false),
@@ -1279,6 +1616,20 @@ impl StreamDock {
                 .into(),
             );
         }
+        children
+    }
+    pub fn content(&self, ctx: ui::Context, m: &dyn c::Measure) -> c::Element {
+        column(
+            "dock/rows",
+            plain(None, [0.; 4], 0.),
+            self.items_at(ctx, 0, m),
+        )
+    }
+    pub fn element(&self, ctx: ui::Context, m: &dyn c::Measure) -> c::Element {
+        self.frame(ctx, self.items_at(ctx, 0, m))
+    }
+    pub fn frame(&self, ctx: ui::Context, children: Vec<c::Item>) -> c::Element {
+        let sp = &STYLE.spacing;
         let mut frame = plain(
             None,
             if self.dock {

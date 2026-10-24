@@ -167,7 +167,8 @@
     const touched = seat.touched || 0;
     if (touched) right.append(el('span', { class: 'touched', title: touched + ' artifact' + (touched === 1 ? '' : 's') + ' touched by this seat' }, harnessIcon('archive'), String(touched)));
     const unread = opts.unread != null ? opts.unread : seat.unread, unreadRole = opts.unreadRole || seat.unreadRole || 'executor';
-    if (unread) right.append(el('span', { class: 'badge', style: 'background:var(--role-' + unreadRole + ')' }, unread));
+    // unread is a count only when the retained pages prove it; otherwise the literal 'more', a named gap, never a guessed number
+    if (unread) right.append(el('span', { class: 'badge' + (unread === 'more' ? ' more' : ''), style: 'background:var(--role-' + unreadRole + ')', title: unread === 'more' ? 'unread beyond the retained pages · count not proven' : unread + ' unread' }, unread));
     if (opts.shortcut) right.append(kbd(opts.shortcut));
     // lifecycle (lifecycle.html): starting → a spinner stands in for the glyph; exited → the ✕ with an 'exited' chip carrying the reason
     if (seat.life === 'exited') right.append(el('span', { class: 'exited', title: exitSay(seat.exit) }, 'exited'));
@@ -200,6 +201,14 @@
   const TASK_MARK = { open: () => circleMark(0), claimed: () => circleMark(.25), running: () => circleMark(.5), reported: () => circleMark(.75), accepted: () => circleMark(1), done: checkMark, rejected: crossMark, blocked: slashMark };
   const taskMark = st => (TASK_MARK[st] || TASK_MARK.open)();
   const SEAT_MARK = { active: () => circleMark(1), idle: () => circleMark(0), waiting: () => circleMark(.5, .5), errored: crossMark };
+  // L9 projections (decision #38; bbt-proto messaging.rs MessageRow, TaskCard, TaskReport): the lab's message and task inputs carry
+  // the projection's own fields and the work-items status names, so native parses them as they are, with no label mapping.
+  // Priority chip: p0 = oracle class, p1 = worker class at priority >= 7 on the 0-9 scale, p2 otherwise; display only, never order.
+  const prioChip = m => m.priority_class === 'oracle' ? 'p0' : (m.priority || 0) >= 7 ? 'p1' : 'p2';
+  // ts is epoch ms, shown as HH:MM in UTC so a pure view formats it the same on any machine with no time-zone IO. atHM builds a
+  // fixture ts at that UTC wall-clock time.
+  const atHM = hm => { const [h, mi] = hm.split(':').map(Number); return Date.UTC(2026, 9, 23, h, mi); };
+  const hhmm = ts => { if (ts == null) return ''; const d = new Date(ts); return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0'); };
   // nested subagent rows (subagent-detection): running only (active or waiting), in the parent seat's colour; grade from the source
   // (7501 → reported for Claude, hooks → shim for Codex); absent when the harness reports nothing; past 8 collapse into +N running
   function subagentRows(seat) {
@@ -315,14 +324,15 @@
   function taskRow(task, seat, opts) {
     opts = opts || {};
     const bug = task.type === 'bug';
-    const row = el('div', { class: 'task-row ' + task.state + (bug ? ' bug' : ''), 'data-task': task.id, title: (bug ? 'bug · ' : '') + task.title + ' · ' + task.state + (task.from ? ' · from ' + task.from : '') });
-    row.append(el('span', { class: 'tglyph' }, bug ? harnessIcon('bug') : taskMark(task.state)), el('span', { class: 'ttitle' }, task.title));
+    const row = el('div', { class: 'task-row ' + task.status + (bug ? ' bug' : ''), 'data-task': task.id, title: (bug ? 'bug · ' : '') + task.title + ' · ' + task.status + (task.delegated_by ? ' · delegated by ' + task.delegated_by : '') });
+    row.append(el('span', { class: 'tglyph' }, bug ? harnessIcon('bug') : taskMark(task.status)), el('span', { class: 'ttitle' }, task.title));
     if (task.violates) row.append(invChip(task.violates, 'violates'));
     if (task.constrains) row.append(invChip(task.constrains, 'constrains'));
-    if (task.state === 'blocked' && task.waits) row.append(el('span', { class: 'twaits' }, 'waits on ' + task.waits));
+    if (task.status === 'blocked' && task.waits) row.append(el('span', { class: 'twaits' }, 'waits on ' + task.waits));
     const right = el('span', { class: 'right' });
-    if (task.state === 'reported' && opts.onAccept) right.append(el('button', { class: 'accept', onclick: e => { e.stopPropagation(); opts.onAccept(task, seat); } }, 'accept'));
-    right.append(el('span', { class: 'tstate' }, task.state));
+    if (task.verify) right.append(el('span', { class: 'tverify' + (task.verify.exit_code === 0 ? ' ok' : ' bad'), title: 'verify exit ' + task.verify.exit_code }, 'exit ' + task.verify.exit_code));
+    if (task.status === 'reported' && (opts.review || opts.onAccept)) right.append(el('button', { class: 'accept', onclick: e => { e.stopPropagation(); if (opts.onAccept) opts.onAccept(task, seat); } }, 'accept'));
+    right.append(el('span', { class: 'tstate' }, task.status));
     row.append(right);
     return row;
   }
@@ -336,20 +346,20 @@
     const hdr = el('div', { class: 'g-row g-hdr' }, el('span', {}, 'seat'), el('span', {}, 'role'), el('span', {}, 'now'), el('span', {}, 'blocked on'));
     agents.append(hdr);
     for (const s of seats) {
-      const live = (s.tasks || []).find(t => ['claimed', 'running', 'reported'].includes(t.state));
-      const blocked = (s.tasks || []).find(t => t.state === 'blocked');
+      const live = (s.tasks || []).find(t => ['claimed', 'running', 'reported'].includes(t.status));
+      const blocked = (s.tasks || []).find(t => t.status === 'blocked');
       const tileCol = (LAUNCH.find(l => l.harness === s.harness) || {}).tile || 'var(--surface-2)';
-      agents.append(el('div', { class: 'g-row', 'data-key': s.key }, el('span', { class: 'g-seat' }, el('span', { class: 'tile', style: 'background:' + tileCol }, harnessIcon(s.harness)), el('b', { style: 'color:' + seatColor(s) }, s.name), glyph(s.state, s)), el('span', {}, s.role ? roleMark(s.role) : '', ' ', s.role || 'shell'), el('span', { class: 'g-now' }, live ? [el('span', { class: 'tglyph ' + live.state }, taskMark(live.state)), ' ', live.title] : (s.state === 'waiting' ? 'waiting · ' + (s.waitKind || 'answer') : s.state)), el('span', { class: 'g-block' }, blocked ? 'waits on ' + blocked.waits : (s.state === 'waiting' ? 'the operator' : '—'))));
+      agents.append(el('div', { class: 'g-row', 'data-key': s.key }, el('span', { class: 'g-seat' }, el('span', { class: 'tile', style: 'background:' + tileCol }, harnessIcon(s.harness)), el('b', { style: 'color:' + seatColor(s) }, s.name), glyph(s.state, s)), el('span', {}, s.role ? roleMark(s.role) : '', ' ', s.role || 'shell'), el('span', { class: 'g-now' }, live ? [el('span', { class: 'tglyph ' + live.status }, taskMark(live.status)), ' ', live.title] : (s.state === 'waiting' ? 'waiting · ' + (s.waitKind || 'answer') : s.state)), el('span', { class: 'g-block' }, blocked ? 'waits on ' + blocked.waits : (s.state === 'waiting' ? 'the operator' : '—'))));
     }
     const tree = el('div', { class: 's-card' }, el('div', { class: 's-card-h' }, el('span', {}, 'Graph · epics → work')));
     const pre = el('div', { class: 'g-tree' });
     for (const ep of epics) {
-      const done = (ep.items || []).filter(i => ['accepted', 'done'].includes(i.state)).length;
+      const done = (ep.items || []).filter(i => ['accepted', 'done'].includes(i.status)).length;
       pre.append(el('div', { class: 'g-epic' }, el('span', { class: 'ekind' }, 'epic'), el('b', {}, ep.title), el('span', { class: 'ecount' }, done + '/' + (ep.items || []).length)));
       (ep.items || []).forEach((it, i, arr) => {
         const last = i === arr.length - 1;
-        const kind = it.type || 'task', glyphOf = kind === 'bug' ? harnessIcon('bug') : kind === 'invariant' ? '◆' : taskMark(it.state);
-        const line = el('div', { class: 'g-item ' + it.state + ' k-' + kind }, el('span', { class: 'g-branch' }, last ? '└─' : '├─'), el('span', { class: 'tglyph' }, glyphOf), el('span', { class: 'ekind' }, kind === 'invariant' ? 'inv' : kind), el('span', { class: 'g-title' }, it.title));
+        const kind = it.type || 'task', glyphOf = kind === 'bug' ? harnessIcon('bug') : kind === 'invariant' ? '◆' : taskMark(it.status);
+        const line = el('div', { class: 'g-item ' + it.status + ' k-' + kind }, el('span', { class: 'g-branch' }, last ? '└─' : '├─'), el('span', { class: 'tglyph' }, glyphOf), el('span', { class: 'ekind' }, kind === 'invariant' ? 'inv' : kind), el('span', { class: 'g-title' }, it.title));
         if (it.violates) line.append(invChip(it.violates, 'violates'));
         if (it.constrains) line.append(invChip(it.constrains, 'constrains'));
         if (kind === 'invariant') { pre.append(line); for (const b of (it.binds || [])) pre.append(el('div', { class: 'g-bind' }, el('span', { class: 'g-branch' }, (last ? '   ' : '│  ') + '└─'), el('span', { class: 'g-bound' + (b.rel === 'violated-by' ? ' bugb' : '') }, b.rel === 'violated-by' ? harnessIcon('bug') : '○'), el('span', { class: 'g-title' }, b.title), el('span', { class: 'g-rel ' + (b.rel || 'constrains') }, b.rel || 'constrains'))); return; }
@@ -379,16 +389,17 @@
   // Epic group: a collapsible header in the stream dock with the epic's specs and tasks as lines (work-items.md)
   function epicGroup(epic, opts) {
     opts = opts || {};
-    const items = epic.items || [], done = items.filter(i => ['accepted', 'done'].includes(i.state)).length;
+    const items = epic.items || [], done = items.filter(i => ['accepted', 'done'].includes(i.status)).length;
     const g = el('div', { class: 'epic' + (epic.open === false ? ' shut' : '') });
     const head = el('div', { class: 'ehead', onclick: () => { epic.open = epic.open === false; if (opts.onToggle) opts.onToggle(epic); } }, el('span', { class: 'ecaret' }, epic.open === false ? '▸' : '▾'), el('span', { class: 'ekind' }, 'epic'), el('span', { class: 'etitle' }, epic.title), el('span', { class: 'ecount' }, done + '/' + items.length));
     g.append(head);
     if (epic.open !== false) for (const it of items) {
-      const line = el('div', { class: 'eitem ' + it.state }, el('span', { class: 'tglyph' }, taskMark(it.state)), el('span', { class: 'ekind' }, it.type || 'task'), el('span', { class: 'etitle' }, it.title));
-      if (it.assignee) line.append(el('span', { class: 'eass' }, (it.assigned ? '→ ' : '') + it.assignee));
-      if (it.assigned) { line.classList.add('assigned'); line.append(el('span', { class: 'echip' }, 'assigned')); }
-      if (opts.onDelegate && it.state === 'open' && !it.assignee) line.append(el('button', { class: 'edel', onclick: e => { e.stopPropagation(); opts.onDelegate(it); } }, 'Delegate…'));
-      if (it.state === 'blocked' && it.waits) line.append(el('span', { class: 'twaits' }, 'waits on ' + it.waits));
+      // TaskCard: status is the work-items name; delegation sets claimed (task_delegate, work-items.md), so a fresh hand-off reads claimed
+      const line = el('div', { class: 'eitem ' + it.status, title: it.title + ' · ' + it.status + (it.delegated_by ? ' · delegated by ' + it.delegated_by : '') }, el('span', { class: 'tglyph' }, taskMark(it.status)), el('span', { class: 'ekind' }, it.type || 'task'), el('span', { class: 'etitle' }, it.title));
+      if (it.assignee) line.append(el('span', { class: 'eass' }, (it.status === 'claimed' ? '→ ' : '') + it.assignee));
+      if (it.status === 'claimed') line.append(el('span', { class: 'echip' }, 'claimed'));
+      if ((opts.delegate || opts.onDelegate) && it.status === 'open' && !it.assignee) line.append(el('button', { class: 'edel', onclick: e => { e.stopPropagation(); if (opts.onDelegate) opts.onDelegate(it); } }, 'Delegate…'));
+      if (it.status === 'blocked' && it.waits) line.append(el('span', { class: 'twaits' }, 'waits on ' + it.waits));
       g.append(line);
     }
     return g;
@@ -740,10 +751,13 @@
   function streamTabs(chs, opts) {
     opts = opts || {};
     const bar = el('div', { class: 'ch-tabs', role: 'tablist' });
-    const all = { name: 'all', unread: chs.reduce((n, c) => n + (c.muted ? 0 : c.unread || 0), 0) };
+    // the server's swarm total (opts.total) is authoritative when given: it also counts bare-stream messages, so the subchannels
+    // need not sum to it; without it, 'all' is 'more' when a subchannel's count is not proven, else the sum
+    const gap = chs.some(c => !c.muted && c.unread === 'more');
+    const all = { name: 'all', unread: opts.total != null ? opts.total : gap ? 'more' : chs.reduce((n, c) => n + (c.muted ? 0 : c.unread || 0), 0) };
     for (const c of [all, ...chs]) {
       const t = el('button', { class: 'ch-tab' + (opts.sel === c.name ? ' on' : '') + (c.muted ? ' muted' : ''), role: 'tab', title: c.name === 'all' ? 'the swarm stream: chunks, decisions, presence' : '#' + c.name + (c.muted ? ' · muted (right-click to unmute)' : ' · right-click to mute'), onclick: () => opts.onSel && opts.onSel(c.name) },
-        c.name === 'all' ? 'all' : '#' + c.name, c.muted ? harnessIcon('muted') : c.unread ? el('b', {}, String(c.unread)) : null);
+        c.name === 'all' ? 'all' : '#' + c.name, c.muted ? harnessIcon('muted') : c.unread ? el('b', { class: c.unread === 'more' ? 'more' : null }, String(c.unread)) : null);
       if (c.name !== 'all') t.addEventListener('contextmenu', e => { e.preventDefault(); opts.onMute && opts.onMute(c.name); });
       bar.append(t);
     }
@@ -853,7 +867,7 @@
     if (seats.length === 1) {
       const s = seats[0];
       const w = el('div', {}, seatRow(s, { focused: s.key === opts.focusedKey, shortcut: tab.shortcut }), ...subagentRows(s));
-      for (const t of (s.tasks || [])) { w.append(taskRow(t, s, { onAccept: opts.onAccept })); for (const a of (t.artifacts || [])) w.append(artifactRow(a)); }
+      for (const t of (s.tasks || [])) { w.append(taskRow(t, s, { onAccept: opts.onAccept, review: !!(opts.review || opts.onAccept) })); for (const a of (t.artifacts || [])) w.append(artifactRow(a)); }
       return w;
     }
     // the tab's alive border reads its worst seat (rim-glow §8): state and colour
@@ -874,7 +888,7 @@
     const wrap = el('div', {}, row);
     if (opts.expanded) {
       const body = el('div', { class: 'tab-body' });
-      for (const s of seats) { body.append(seatRow(s, { focused: s.key === opts.focusedKey }), ...subagentRows(s)); for (const t of (s.tasks || [])) { body.append(taskRow(t, s, { onAccept: opts.onAccept })); for (const a of (t.artifacts || [])) body.append(artifactRow(a)); } }
+      for (const s of seats) { body.append(seatRow(s, { focused: s.key === opts.focusedKey }), ...subagentRows(s)); for (const t of (s.tasks || [])) { body.append(taskRow(t, s, { onAccept: opts.onAccept, review: !!(opts.review || opts.onAccept) })); for (const a of (t.artifacts || [])) body.append(artifactRow(a)); } }
       wrap.append(body);
     }
     return wrap;
@@ -1136,18 +1150,19 @@
   // text, the selection band, IME marked text (underlined) and a 2 px accent caret centred on its advance, as tall as the line.
   // The caret is steady unless edit.blink (reference states are snapshots). A selection hides the caret (macOS). Focused and
   // empty: the caret sits at 0, before the dimmed placeholder.
+  // the runs of one edit state over a value (shared by editField and the composer): text, selection band, IME, caret, placeholder
+  function editRuns(v, edit, placeholder) {
+    const run = (cls, t) => el('span', { class: cls }, t), caret = () => el('i', { class: 'ed-caret' });
+    if (edit.select) { const [a, b] = edit.select; return [run('ed-t', v.slice(0, a)), run('ed-sel', v.slice(a, b)), run('ed-t', v.slice(b))]; }
+    const at = Math.max(0, Math.min(v.length, edit.caret != null ? edit.caret : v.length)), pe = edit.preedit, out = [run('ed-t', v.slice(0, at))];
+    if (pe) { const k = pe.caret != null ? pe.caret : pe.text.length; out.push(el('span', { class: 'ed-ime' }, pe.text.slice(0, k), caret(), pe.text.slice(k))); }
+    else out.push(caret());
+    out.push(run('ed-t', v.slice(at)));
+    if (!v && !pe && placeholder) out.push(run('ed-ph', placeholder));
+    return out;
+  }
   function editField(input, edit) {
-    const v = input.value, run = (cls, t) => el('span', { class: cls }, t), caret = () => el('i', { class: 'ed-caret' });
-    const f = el('span', { class: 'edit-field' + (edit.blink ? ' blink' : ''), 'aria-hidden': 'true' });
-    if (edit.select) { const [a, b] = edit.select; f.append(run('ed-t', v.slice(0, a)), run('ed-sel', v.slice(a, b)), run('ed-t', v.slice(b))); }
-    else {
-      const at = Math.max(0, Math.min(v.length, edit.caret != null ? edit.caret : v.length)), pe = edit.preedit;
-      f.append(run('ed-t', v.slice(0, at)));
-      if (pe) { const k = pe.caret != null ? pe.caret : pe.text.length; f.append(el('span', { class: 'ed-ime' }, pe.text.slice(0, k), caret(), pe.text.slice(k))); }
-      else f.append(caret());
-      f.append(run('ed-t', v.slice(at)));
-      if (!v && !pe && input.placeholder) f.append(run('ed-ph', input.placeholder));
-    }
+    const f = el('span', { class: 'edit-field' + (edit.blink ? ' blink' : ''), 'aria-hidden': 'true' }, ...editRuns(input.value, edit, input.placeholder));
     input.tabIndex = -1; input.readOnly = true;
     return el('span', { class: 'ui-edit' }, input, f);
   }
@@ -1256,29 +1271,49 @@
     return el('span', { class: 'ticks ' + state, title: state + ' · ' + e.title }, ...marks);
   }
   // StreamDock composer (messaging.md): one bar at the dock foot. Picked shape: address chips (seat, role, #channel, ↳ subagent)
-  // that typed @ # ↳ tokens turn into, defaulting to the dock's current tab; priority as a pip on the send button (p0 is the
-  // Oracle's); artifacts and tasks attach as cards above the text. Delegate mode is the same bar with a task attached: the verb
+  // that typed @ # ↳ tokens turn into, defaulting to the dock's current tab; SendRequest's numeric priority (0-9) as a pip on the
+  // send button, whose p0 colour is the operator's class (decision #38a: the operator is Oracle class), and its kind as a chip when
+  // not text; the text's caret, selection and IME are the same deterministic edit state as Input (st.edit, UTF-16 offsets).
+  // Artifacts and tasks attach as cards above the text. Delegate mode is the same bar with a task attached: the verb
   // becomes Delegate and the address picker lists seats by role with their load. Nothing is sent without its evidence ladder.
   const ADDR_MARK = { seat: '', role: '', channel: '#', subagent: '↳ ' };
   const addrChip = a => el('span', { class: 'addr ' + a.kind, style: a.color ? '--c:' + a.color : '', title: a.kind + (a.n ? ' · fans out to ' + a.n + ' seats' : '') + (a.parent ? ' · inside ' + a.parent : '') },
     a.kind === 'seat' ? el('i', { class: 'dot' }) : null, a.kind === 'role' ? el('span', { class: 'rm' }, ROLE_MARK[a.role] || '') : null, (ADDR_MARK[a.kind] || '') + (a.parent ? a.parent + ' ▸ ' : '') + a.label, a.n ? el('small', {}, a.n) : null, el('span', { class: 'x' }, '×'));
-  const attachCard = a => el('span', { class: 'att ' + a.kind, title: a.kind + ' · ' + a.title }, el('span', { class: 'ak' }, a.kind === 'task' ? taskMark(a.state) : ART_GLYPH[a.akind] || '▢'), el('span', { class: 'at' }, a.title), a.state ? el('small', {}, a.state) : a.meta ? el('small', {}, a.meta) : null);
+  const attachCard = a => el('span', { class: 'att ' + a.kind, title: a.kind + ' · ' + a.title }, el('span', { class: 'ak' }, a.kind === 'task' ? taskMark(a.status) : ART_GLYPH[a.akind] || '▢'), el('span', { class: 'at' }, a.title), a.status ? el('small', {}, a.status) : a.meta ? el('small', {}, a.meta) : null);
+  // one status line for a request's outcome (composer sends, task rejects): pending spins, sent ✓, held ◷ amber, refused ⊘ red
+  const noticeLine = n => el('div', { class: 'cnote ' + n.kind, role: 'status' }, el('span', { class: 'cnm' }, { pending: el('i', { class: 'spin' }), sent: '✓', held: '◷', refused: '⊘' }[n.kind]), el('span', { class: 'cnt' }, n.text));
+  // [[ attach picker (st.attachPick { query, edit, items, sel }): the swarm's tasks and artifacts, filtered by the typed query on the
+  // title, one row each (mark, title, status or meta, kind), the selection band like the launcher's; ↵ attaches, ↑↓ moves, esc closes
+  function attachPicker(ap) {
+    const q = (ap.query || '').toLowerCase(), rows = (ap.items || []).filter(it => !q || it.title.toLowerCase().includes(q)), sel = Math.min(ap.sel || 0, Math.max(0, rows.length - 1));
+    const head = el('div', { class: 'aphead' }, el('span', { class: 'apq' }, '[['), el('span', { class: 'apin edit-text' }, ...editRuns(ap.query || '', ap.edit || {}, 'a task or artifact')));
+    const list = el('div', { class: 'aplist', role: 'listbox' }, ...(rows.length ? rows.map((it, i) => el('div', { class: 'apopt' + (i === sel ? ' sel' : ''), role: 'option', 'aria-selected': String(i === sel) },
+      el('span', { class: 'ak' }, it.kind === 'task' ? taskMark(it.status) : ART_GLYPH[it.akind] || '▢'), el('span', { class: 'apt' }, it.title), el('span', { class: 'aps' }, it.kind === 'task' ? it.status : it.meta || ''), el('span', { class: 'apk' }, it.kind))) : [el('div', { class: 'apempty' }, 'nothing matches "' + ap.query + '"')]));
+    return el('div', { class: 'apick' }, head, list, el('div', { class: 'apfoot' }, '↵ attach · ↑↓ · esc'));
+  }
   function composer(st, opts) {
     opts = opts || {};
-    const mode = st.mode || 'message', to = st.to || [], att = st.attach || [], prio = st.prio || 'p1';
+    const mode = st.mode || 'message', to = st.to || [], att = st.attach || [], priority = st.priority != null ? st.priority : 0, kind = st.kind || 'text';
     const c = el('div', { class: 'composer ' + mode + (st.focus ? ' focus' : '') });
+    // the last send's outcome, one line (st.notice { kind: pending | sent | held | refused, text }): pending keeps the text, sent and
+    // held clear it, refused keeps it so the operator can fix and resend; held and refused name their reason, sent names the stored id
+    if (st.notice) c.append(noticeLine(st.notice));
+    if (st.attachPick) c.append(attachPicker(st.attachPick));
     if (st.pick) c.append(el('div', { class: 'cpick', role: 'listbox' }, ...st.pick.map(g => el('div', { class: 'cgroup' }, el('div', { class: 'cgh' }, g.title),
       ...g.items.map((it, i) => el('div', { class: 'copt' + (it.sel ? ' sel' : '') }, it.kind === 'seat' ? el('i', { class: 'dot', style: 'background:' + it.color }) : el('span', { class: 'ok' }, it.kind === 'role' ? ROLE_MARK[it.role] : it.kind === 'channel' ? '#' : '↳'),
         el('span', { class: 'ol' }, it.label), it.sub ? el('small', {}, it.sub) : null, it.load != null ? el('span', { class: 'load' + (it.load ? '' : ' free') }, it.load ? it.load + ' running' : 'free') : null))))));
-    c.append(el('div', { class: 'cto' }, el('span', { class: 'cl' }, mode === 'delegate' ? 'Delegate to' : 'To'), ...to.map(addrChip), el('span', { class: 'ctyped' }, st.typed || ''), st.focus && !st.text ? el('span', { class: 'caret' }) : null));
+    c.append(el('div', { class: 'cto' }, el('span', { class: 'cl' }, mode === 'delegate' ? 'Delegate to' : 'To'), ...to.map(addrChip), el('span', { class: 'ctyped' }, st.typed || '')));
     if (att.length) c.append(el('div', { class: 'catt' }, ...att.map(attachCard)));
-    c.append(el('div', { class: 'ctext' + (st.text ? '' : ' empty') }, st.text || (mode === 'delegate' ? 'Brief, or leave empty to send the task as written' : 'Message ' + (to[0] ? (ADDR_MARK[to[0].kind] || '') + to[0].label : 'the swarm')), st.focus && st.text ? el('span', { class: 'caret' }) : null));
+    const ph = mode === 'delegate' ? 'Brief, or leave empty to send the task as written' : 'Message ' + (to[0] ? (ADDR_MARK[to[0].kind] || '') + to[0].label : 'the swarm');
+    c.append(el('div', { class: 'ctext edit-text' + (st.text ? '' : ' empty') }, ...(st.focus ? editRuns(st.text || '', st.edit || {}, ph) : [st.text || ph])));
     c.append(el('div', { class: 'cfoot' }, el('button', { class: 'cbtn', title: 'attach an artifact or task ([[)' }, harnessIcon('archive')), el('span', { class: 'chint' }, '[[ attach · @ # ↳ address'), el('span', { class: 'spacer' }),
-      el('button', { class: 'send ' + prio, title: 'priority ' + prio + ' · ⌘↵' }, el('span', { class: 'pip' }, prio), mode === 'delegate' ? 'Delegate' : 'Send', el('span', { class: 'kbd' }, '⌘↵'))));
+      // the kind is always visible and is the chooser: text is the default and dim; st.kindMenu opens the three sendable kinds above it
+      el('span', { class: 'kpick' }, st.kindMenu ? el('div', { class: 'kmenu', role: 'menu' }, ...['text', 'chunk', 'decision'].map(k => el('div', { class: 'kopt' + (k === kind ? ' on' : ''), role: 'menuitemradio', 'aria-checked': String(k === kind) },
+          el('span', { class: 'kck' }, k === kind ? '✓' : ''), el('span', { class: 'kchip ' + k }, k), el('small', {}, { text: 'a message', chunk: 'progress on the stream', decision: 'a decision on the stream' }[k])))) : null,
+        el('button', { class: 'kchip kind ' + kind + (st.kindMenu ? ' open' : ''), title: 'message kind', 'aria-haspopup': 'menu' }, kind, el('span', { class: 'kdn' }, '▾'))),
+      el('button', { class: 'send p0', title: 'priority ' + priority + ' (0-9) · the operator is Oracle class, p0 · ⌘↵' }, el('span', { class: 'pip' }, String(priority)), mode === 'delegate' ? 'Delegate' : 'Send', el('span', { class: 'kbd' }, '⌘↵'))));
     return c;
   }
-  // report-back card (work-items.md: the Executor's report is a handoff, not proof): what changed, what ran with its exit
-  // status, each acceptance check, gaps; Accept and Re-brief belong to the delegator. Accepting flips the task to done.
   // the desktop notification (attention §3), the lab's picture of the macOS banner. v1 is title + body only, as attention.rs
   // builds them: title 'name · harness', body the first line of the seat's detail, else by wait kind (NOTIFY_BODY)
   const NOTIFY_BODY = { permission: 'Permission requested', auth: 'Authentication requested', question: 'Your answer is needed' };
@@ -1287,37 +1322,58 @@
       el('div', { class: 'nb' }, el('div', { class: 'nt' }, el('b', {}, seat.name + ' · ' + seat.harness), el('span', { class: 'nw' }, 'now')),
         el('div', { class: 'nm' }, line || NOTIFY_BODY[seat.waitKind] || NOTIFY_BODY.question)));
   }
+  // report-back card: a TaskReport (bbt-proto, decision #38) as the Executor sent it: summary, the signed commit, and verify_result
+  // (the command, its exit code, one evidence line per acceptance criterion). A report is a handoff, not proof; Accept and Re-brief
+  // belong to the delegator, and accepting needs verify_result at exit 0 (decision #28). r.task and r.status come from the TaskCard.
   function reportCard(r, opts) {
-    const card = el('div', { class: 'report ' + (r.verdict || 'pending'), 'data-rim-key': r.task }, el('div', { class: 'rh' }, el('span', { class: 'rk' }, taskMark(r.state || 'reported')), el('b', {}, r.task), el('span', { class: 'rs' }, r.verdict === 'accepted' ? 'done' : 'reported')),
-      el('div', { class: 'rsec' }, ...r.files.map(f => el('div', { class: 'rf' }, el('code', {}, f.path), el('span', { class: 'rd' }, el('i', { class: 'add' }, '+' + f.add), ' ', el('i', { class: 'del' }, '−' + f.del))))),
-      el('div', { class: 'rsec' }, ...r.checks.map(k => el('div', { class: 'rc ' + (k.ok ? 'ok' : 'bad') }, el('span', { class: 'ck' }, k.ok ? '✓' : '✕'), el('code', {}, k.cmd), el('span', { class: 'ex' }, k.exit)))),
-      r.gaps ? el('div', { class: 'rgap' }, 'gap · ' + r.gaps) : null, r.commit ? el('div', { class: 'rcommit' }, el('code', {}, r.commit), ' signed') : null);
-    if (r.verdict !== 'accepted' && opts && opts.onAccept) card.append(el('div', { class: 'racts' }, el('button', { class: 'rebrief' }, 'Re-brief'), el('button', { class: 'accept', onclick: () => opts.onAccept(r) }, 'Accept')));
+    const v = r.verify_result, status = r.status || 'reported', ok = v && v.exit_code === 0;
+    const card = el('div', { class: 'report ' + status, 'data-rim-key': r.task }, el('div', { class: 'rh' }, el('span', { class: 'rk' }, taskMark(status)), el('b', {}, r.task), el('span', { class: 'rs' }, status)),
+      el('div', { class: 'rsum' }, r.summary));
+    if (v) card.append(el('div', { class: 'rsec' }, el('div', { class: 'rc ' + (ok ? 'ok' : 'bad') }, el('span', { class: 'ck' }, ok ? '✓' : '✕'), el('code', {}, v.command), el('span', { class: 'ex' }, 'exit ' + v.exit_code)),
+      ...(v.evidence || []).map(e => el('div', { class: 'rev' }, el('span', { class: 'rcrit' }, e.criterion), el('code', {}, e.reference)))));
+    else card.append(el('div', { class: 'rgap' }, 'no verify_result · cannot be accepted'));
+    if (r.commit) card.append(el('div', { class: 'rcommit' }, el('code', {}, r.commit)));   // a reference only: the report carries no signature proof
+    // review: true grants Accept / Re-brief as data, so the capture carries it (callbacks do not survive JSON)
+    // reject needs a real reason (TaskRequest::Reject { reason }): r.reject { reason, edit, notice } opens it inline; Reject stays
+    // disabled until the reason is non-empty; the reason is what the seat receives, so it reads as the re-brief
+    if (status === 'reported' && opts && (opts.review || opts.onAccept) && r.reject) {
+      const rj = r.reject, has = !!(rj.reason || '').trim(), inp = el('input', { value: rj.reason || '', placeholder: 'what to change · sent to the seat', spellcheck: 'false' });
+      card.append(el('div', { class: 'rrej' }, el('div', { class: 'rjl' }, 'Reject · reason ', el('small', {}, 'required')), el('label', { class: 'ui-input rjin' + (rj.edit ? ' st-focus' : '') }, rj.edit ? editField(inp, rj.edit) : inp),
+        rj.notice ? noticeLine(rj.notice) : null,
+        el('div', { class: 'racts' }, el('button', { class: 'rebrief' }, 'Cancel'), el('button', { class: 'reject', ...(has ? {} : { disabled: '', title: 'a reason is required' }) }, 'Reject'))));
+    } else if (status === 'reported' && opts && (opts.review || opts.onAccept)) card.append(el('div', { class: 'racts' }, el('button', { class: 'rebrief' }, 'Reject…'), el('button', { class: 'accept', ...(ok ? {} : { disabled: '', title: 'needs verify_result at exit 0 (decision #28)' }), onclick: () => opts.onAccept && opts.onAccept(r) }, 'Accept')));
     return card;
   }
   function messageRow(m, opts) {
     opts = opts || {};
-    if (m.presence) return el('div', { class: 'msg presence' }, el('span', { class: 'ptext' }, m.text), el('span', { class: 'time' }, m.time || ''));
+    // MessageRow (decision #38): author { kind, id, name }, issuer_kind, kind, priority_class + priority, text, ts, receipts. role is not
+    // in the row: the GUI looks it up from the seat registry by author.id (lab: m.role); an operator author reads OPERATOR.
+    if (m.kind === 'presence') return el('div', { class: 'msg presence' }, el('span', { class: 'ptext' }, m.text), el('span', { class: 'time' }, hhmm(m.ts)));
     // audit line (a projection of the Oracle audit log, swarm-member scope): the Oracle's effects in the open, centred like presence
     // routing discipline (messaging.md): a worker's progress note to the stream is rejected with a hint; only chunk, decision, presence land
-    if (m.rejected) return el('div', { class: 'msg rejected', title: 'rejected: worker-class stream messages must be chunk, decision or presence' }, el('span', { class: 'rj-t' }, el('span', { class: 'rj-x' }, '⊘ '), el('b', {}, m.from), ' tried to post progress to the stream'), el('span', { class: 'rj-hint' }, 'DM your delegator' + (m.delegator ? ' · ' + m.delegator : '')), el('span', { class: 'time' }, m.time || ''));
+    if (m.rejected) return el('div', { class: 'msg rejected', title: 'rejected: worker-class stream messages must be chunk, decision or presence' }, el('span', { class: 'rj-t' }, el('span', { class: 'rj-x' }, '⊘ '), el('b', {}, m.author.name), ' tried to post progress to the stream'), el('span', { class: 'rj-hint' }, 'DM your delegator' + (m.delegator ? ' · ' + m.delegator : '')), el('span', { class: 'time' }, hhmm(m.ts)));
     if (m.audit) { const a = m.audit; return el('div', { class: 'msg presence audit ' + (a.outcome || 'applied'), title: 'audit · op ' + (a.op || '') + ' · ' + (a.outcome || 'applied') + (a.reason ? ' · ' + a.reason : '') },
       el('div', { class: 'aline' }, el('span', { class: 'amark' }, ROLE_MARK.oracle + ' '), el('b', {}, a.actor || 'Oracle'), ' ' + a.verb + ' ', el('b', {}, a.target || '')),
-      el('div', { class: 'ameta' }, a.op ? el('code', { class: 'aop' }, a.op.slice(0, 6)) : null, a.outcome && a.outcome !== 'applied' ? el('span', { class: 'aout' }, a.outcome) : null, el('span', { class: 'time' }, m.time || ''))); }
-    const role = m.role || 'unsigned';
-    const row = el('div', { class: 'msg ' + role + (m.unread ? ' unread' : '') + (m.replyTo ? ' nested' : ''), style: '--role:var(--role-' + role + ')' });
-    const head = el('div', { class: 'head' }, el('span', { class: 'who' }, m.from), el('span', { class: 'role' }, '<' + role.toUpperCase() + '>'));
-    if (role === 'oracle' && !m.foreign) head.append(el('span', { class: 'p0' }, 'p0'));  // a foreign Oracle ranks as a worker here
+      el('div', { class: 'ameta' }, a.op ? el('code', { class: 'aop' }, a.op.slice(0, 6)) : null, a.outcome && a.outcome !== 'applied' ? el('span', { class: 'aout' }, a.outcome) : null, el('span', { class: 'time' }, hhmm(m.ts)))); }
+    // a mark only when something real says it: the operator and observers by author kind, a seat by its registry role; never invented
+    const op = m.author.kind === 'operator', role = op ? 'oracle' : m.role || null, chip = prioChip(m);
+    const mark = op ? 'OPERATOR' : m.author.kind === 'observer' ? 'OBSERVER' : role ? role.toUpperCase() : null;
+    const row = el('div', { class: 'msg ' + (role || 'norole') + (op ? ' operator' : '') + (m.unread ? ' unread' : '') + (m.replyTo ? ' nested' : ''), style: role ? '--role:var(--role-' + role + ')' : null });
+    const head = el('div', { class: 'head' }, el('span', { class: 'who' }, m.author.name), mark ? el('span', { class: 'role' }, '<' + mark + '>') : null);
+    // the chip is the receiver's own (priority_class, priority): a foreign Oracle arrives as worker class here, so it carries none
+    if (chip === 'p0') head.append(el('span', { class: 'p0', title: 'Oracle class' }, 'p0'));
+    else if (chip === 'p1') head.append(el('span', { class: 'prio p1', title: 'worker class · priority ' + m.priority + ' of 9' }, 'p1'));
+    if (m.issuer_kind === 'local-dev') head.append(el('span', { class: 'kchip issuer', title: 'signed under the local-dev issuer, not the GPG root (decision #4)' }, 'local-dev'));
     if (m.ch && opts.showCh !== false) head.append(el('span', { class: 'chchip', title: 'arrived by bboxy450://channels/bboxy450-term/' + m.ch + '/' }, '#' + m.ch));
-    if (m.kind && m.kind !== 'message') head.append(el('span', { class: 'kchip ' + m.kind, title: m.kind + ': allowed on the swarm stream' }, m.kind));
+    if (m.kind && m.kind !== 'text') head.append(el('span', { class: 'kchip ' + m.kind, title: m.kind + ': allowed on the swarm stream' }, m.kind));
     if (m.group) head.append(el('span', { class: 'agchip grp', title: 'to subgroup ' + m.group.name + ': fanned out as DMs to ' + (m.group.n || '') + ' members, one thread' }, '⧉ ' + m.group.name + (m.group.n ? ' · ' + m.group.n : '')));
     // subagent addressing (messaging.md): to main or to a subagent; from a subagent, or relayed via main; held when the agent ended
     if (m.fromAgent) head.append(el('span', { class: 'agchip from', title: 'from subagent ' + m.fromAgent }, '↳ ' + m.fromAgent));
     if (m.via === 'main') head.append(el('span', { class: 'agchip via', title: 'the harness relayed it; the subagent is not addressable directly' }, 'via main'));
     if (m.to) head.append(el('span', { class: 'agchip to' + (m.to === 'main' ? ' main' : ''), title: m.to === 'main' ? 'to the main agent' : 'to subagent ' + m.to }, '→ ' + (m.to === 'main' ? 'main' : '↳ ' + m.to)));
-    if (m.prio && m.prio !== 'p1' && !(m.prio === 'p0' && role === 'oracle')) head.append(el('span', { class: 'prio ' + m.prio, title: m.prio === 'p0' ? 'urgent' : 'low priority' }, m.prio));
-    head.append(el('span', { class: 'time' }, m.time || ''));
+    head.append(el('span', { class: 'time' }, hhmm(m.ts)));
     if (m.held === 'agent_ended') head.append(el('span', { class: 'agchip held', title: 'held: the subagent ended before delivery; never redirected to main on its own' }, 'held · agent ended'));
+    else if (m.receipts) { const r = m.receipts; head.append(el('span', { class: 'rcpt' + (r.held ? ' held' : ''), title: 'receipts on this send: delivered, acked by the harness, held' }, r.delivered + ' delivered · ' + r.acked + ' acked' + (r.held ? ' · ' + r.held + ' held' : ''))); }
     else if (m.evidence) head.append(tickLadder(m.evidence));
     const body = el('div', { class: 'body' }, head);
     if (m.replyTo) body.append(el('div', { class: 'reply' }, '↩ ' + m.replyTo));
@@ -1560,5 +1616,5 @@
     return root;
   }
 
-  window.C = { notification, NOTIFY_BODY, circleMark, taskMark, SEAT_MARK, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { notification, NOTIFY_BODY, circleMark, taskMark, SEAT_MARK, prioChip, atHM, hhmm, editRuns, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

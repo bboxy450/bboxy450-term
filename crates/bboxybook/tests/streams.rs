@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 fn stream_matrix_covers_every_current_state_and_labels_legacy_cases() {
     let current = streams::cases();
     let old = streams::legacy_cases();
-    assert_eq!(current.len(), 200);
+    assert_eq!(current.len(), 416);
     assert_eq!(old.len(), 80);
     assert!(current.iter().all(|c| {
         let p = CasePolicy::for_case(c).unwrap();
@@ -22,8 +22,23 @@ fn stream_matrix_covers_every_current_state_and_labels_legacy_cases() {
             .map(|c| c.relative())
             .collect::<BTreeSet<_>>()
             .len(),
-        280
+        496
     );
+    for (component, state) in [
+        ("stream", "subchannel unread · more"),
+        ("message-row", "priority and issuer"),
+        ("message-row", "receipts"),
+        ("compose", "delegate · reject refused"),
+        ("compose", "attach · typed"),
+    ] {
+        assert_eq!(
+            current
+                .iter()
+                .filter(|case| case.component == component && case.state == state)
+                .count(),
+            8
+        );
+    }
 }
 #[test]
 fn stream_layout_consumes_public_entries_but_never_browser_child_diagnostics() {

@@ -1405,8 +1405,6 @@ body.live .pane.focused .term .cur { animation: curBlink 1s steps(1) infinite; }
 /* delegation in the epic group: Delegate… on an open task; assigned until the seat claims it */
 .epic .eitem .edel { margin-left: auto; font: inherit; font-size: var(--t-small); padding: 0 var(--s3); border-radius: var(--r-round); border: var(--hair-w) solid var(--hair); background: transparent; color: var(--fg); cursor: pointer; white-space: nowrap; }
 .epic .eitem .echip { font-size: var(--t-micro); padding: 0 var(--s2); border-radius: var(--r-round); color: var(--role-executor); border: var(--hair-w) dashed color-mix(in srgb, var(--role-executor) 60%, transparent); white-space: nowrap; }
-.epic .eitem.flip { animation: eflip 1.2s var(--ease, ease-out) 1; }
-@keyframes eflip { 0% { background: color-mix(in srgb, var(--c-ok) 35%, transparent); } 100% { background: transparent; } }
 /* report-back card: the handoff, not proof; the delegator accepts or re-briefs */
 .report { margin-top: var(--s3); border-radius: var(--r-row); background: color-mix(in srgb, var(--fg) 4%, transparent); box-shadow: inset 0 0 0 var(--hair-w) var(--hair); overflow: hidden; }
 .report .rh { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4); border-bottom: var(--hair-w) solid var(--hair); }
@@ -1517,12 +1515,12 @@ details[open] > summary::before { transform: rotate(90deg); }
 .ui-input .edit-field { font-size: var(--t-body); padding: var(--in-pad); }
 .picker .ui-edit > .edit-field { padding: var(--s5) var(--s6); border-bottom: var(--hair-w) solid transparent; }
 .spot-back .picker .ui-edit > .edit-field { font-size: var(--t-input); padding: var(--s9) var(--s10) 18px; border-bottom: 0; font-weight: 400; }
-.edit-field .ed-ph { color: var(--fg-dim); }
+.edit-field .ed-ph, .edit-text .ed-ph { color: var(--fg-dim); }
 .spot-back .picker .edit-field .ed-ph { color: color-mix(in srgb, var(--fg-dim) 80%, transparent); }
-.edit-field .ed-sel { background: color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 2px; }
-.edit-field .ed-ime { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
-.edit-field .ed-caret { position: relative; display: inline-block; width: 0; height: 1.2em; vertical-align: -0.2em; }
-.edit-field .ed-caret::after { content: ''; position: absolute; left: -1px; top: 0; bottom: 0; width: 2px; border-radius: 1px; background: var(--accent); }
+.edit-field .ed-sel, .edit-text .ed-sel { background: color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 2px; }
+.edit-field .ed-ime, .edit-text .ed-ime { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.edit-field .ed-caret, .edit-text .ed-caret { position: relative; display: inline-block; width: 0; height: 1.2em; vertical-align: -0.2em; }
+.edit-field .ed-caret::after, .edit-text .ed-caret::after { content: ''; position: absolute; left: -1px; top: 0; bottom: 0; width: 2px; border-radius: 1px; background: var(--accent); }
 .edit-field.blink .ed-caret::after { animation: caret-blink 1.06s linear infinite; }   /* off in reference states: a frozen blink is a random phase */
 @keyframes caret-blink { 0%, 49.9% { opacity: 1; } 50%, 100% { opacity: 0; } }
 
@@ -1530,8 +1528,8 @@ details[open] > summary::before { transform: rotate(90deg); }
 .mark { display: block; width: 100%; height: 100%; flex: none; }
 .mark svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .glyph > .mark { position: absolute; inset: 0; }
-.tglyph, .att .ak, .report .rk { display: inline-flex; align-items: center; justify-content: center; }
-.tglyph > .mark, .att .ak > .mark, .report .rk > .mark { width: 11px; height: 11px; }
+.tglyph, .att .ak, .report .rk, .apopt .ak { display: inline-flex; align-items: center; justify-content: center; }
+.tglyph > .mark, .att .ak > .mark, .report .rk > .mark, .apopt .ak > .mark { width: 11px; height: 11px; }
 .doc-status > .mark { display: inline-block; width: 10px; height: 10px; vertical-align: -1px; margin-right: 5px; }
 /* the waiting mark keeps its amber halo (text-shadow does not reach SVG): a drop-shadow on the mark */
 .seat-row.waiting .glyph > .mark { filter: drop-shadow(0 0 3px var(--c-waiting)); }
@@ -1555,3 +1553,61 @@ details[open] > summary::before { transform: rotate(90deg); }
 .notif .nt { display: flex; gap: 4px; } .notif .nw { margin-left: auto; font-size: var(--font-small); }
 .notif .nm { font-family: var(--font-mono); font-size: var(--font-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .notifs { position: fixed; top: calc(var(--title-bar-h) + 8px); right: 12px; z-index: 60; display: flex; flex-direction: column; gap: 8px; }
+/* L9 projections (decision #38): receipts on the operator's own sends, the local-dev issuer, TaskCard verify, TaskReport rows */
+.msg .rcpt { font-family: var(--font-mono); font-size: var(--t-tiny); color: var(--fg-dim); white-space: nowrap; }
+.msg .rcpt.held { color: var(--c-waiting); }
+.msg .kchip.issuer { color: var(--c-waiting); background: color-mix(in srgb, var(--c-waiting) 14%, transparent); text-transform: none; letter-spacing: .02em; }
+.msg .prio.p1 { font-size: var(--t-micro); padding: 0 5px; border-radius: var(--r-tag); line-height: 14px; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.msg.norole { --role: var(--fg-dim); }
+.task-row .tverify { font-family: var(--font-mono); font-size: var(--t-tiny); margin-right: var(--s3); }
+.task-row .tverify.ok { color: var(--c-ok); } .task-row .tverify.bad { color: var(--c-errored); }
+.report .rsum { padding: var(--s2) var(--s4); font-size: var(--t-small); color: var(--fg); border-bottom: var(--hair-w) solid var(--hair); line-height: 1.45; }
+.report .rev { display: flex; flex-direction: column; gap: 1px; min-width: 0; font-size: var(--t-small); padding-left: 20px; color: var(--fg-dim); }   /* criterion, then its reference */
+.report .racts .accept[disabled] { opacity: .4; cursor: not-allowed; }
+/* composer send outcome (st.notice): one status line above the address row */
+.composer .cnote { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s5); font-size: var(--t-small); color: var(--fg-dim); border-bottom: var(--hair-w) solid var(--hair); white-space: nowrap; overflow: hidden; }
+.composer .cnote .cnt { overflow: hidden; text-overflow: ellipsis; }
+.composer .cnote .cnm { flex: none; width: 12px; display: inline-flex; justify-content: center; }
+.composer .cnote.sent .cnm { color: var(--c-ok); }
+.composer .cnote.held { color: var(--c-waiting); }
+.composer .cnote.refused { color: var(--c-errored); }
+.composer .cnote .spin { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--fg) 25%, transparent); border-top-color: var(--fg); }
+/* composer kind chooser: the chip is always shown; the menu opens above it */
+.composer .kpick { display: inline-flex; }   /* the menu anchors to the composer, not the chip */
+.composer .kchip.kind { display: inline-flex; align-items: center; gap: 3px; font: inherit; font-size: var(--t-micro); text-transform: uppercase; letter-spacing: .08em; padding: 0 5px; border-radius: var(--r-tag); line-height: 16px; border: 0; cursor: pointer; color: var(--fg-dim); background: color-mix(in srgb, var(--fg-dim) 12%, transparent); }
+.composer .kchip.kind.decision { color: var(--c-invariant); background: color-mix(in srgb, var(--c-invariant) 14%, transparent); }
+.composer .kchip.kind.chunk { color: var(--c-ok); background: color-mix(in srgb, var(--c-ok) 14%, transparent); }
+.composer .kchip.kind .kdn { font-size: var(--t-micro); opacity: .7; }
+.composer .kmenu { position: absolute; right: var(--s4); bottom: calc(100% + 6px); min-width: 210px; max-width: calc(100% - 2 * var(--s4)); padding: var(--s2); border-radius: var(--r-card); background: var(--surface); box-shadow: var(--sh-float), 0 0 0 var(--hair-w) var(--hair); z-index: 3; }
+.composer .kopt { display: grid; grid-template-columns: 12px auto 1fr; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); border-radius: var(--r-row); font-size: var(--t-small); color: var(--fg); white-space: nowrap; }
+.composer .kopt.on { background: var(--sel); }
+.composer .kopt .kck { color: var(--accent); }
+.composer .kopt small { font-size: var(--t-small); color: var(--fg-dim); }
+.composer .kopt .kchip { font-size: var(--t-micro); text-transform: uppercase; letter-spacing: .08em; padding: 0 5px; border-radius: var(--r-tag); line-height: 14px; color: var(--fg-dim); background: color-mix(in srgb, var(--fg-dim) 12%, transparent); justify-self: start; }
+.composer .kopt .kchip.decision { color: var(--c-invariant); background: color-mix(in srgb, var(--c-invariant) 14%, transparent); }
+.composer .kopt .kchip.chunk { color: var(--c-ok); background: color-mix(in srgb, var(--c-ok) 14%, transparent); }
+/* report card reject: a required reason inline, then Cancel / Reject (disabled while empty) */
+.report .rrej { padding: var(--s3) var(--s4) 0; display: grid; gap: var(--s3); border-top: var(--hair-w) solid var(--hair); }
+.report .rjl { font-size: var(--t-small); color: var(--fg); font-weight: 600; }
+.report .rjl small { font-weight: 400; color: var(--c-waiting); font-size: var(--t-small); }
+.report .rjin { min-width: 0; }
+.report .rrej .cnote { padding: var(--s1) 0; border-bottom: 0; font-size: var(--t-small); color: var(--fg-dim); display: flex; gap: var(--s3); align-items: center; }
+.report .rrej .cnote.sent .cnm { color: var(--c-ok); } .report .rrej .cnote.refused { color: var(--c-errored); }
+.report .rrej .racts { padding: 0 0 var(--s3); }
+.report .racts .reject { background: var(--c-errored); color: #fff; }
+.report .racts .reject[disabled] { opacity: .4; cursor: not-allowed; }
+/* [[ attach picker above the composer, the launcher's row look */
+.composer .apick { position: absolute; left: var(--s4); right: var(--s4); bottom: calc(100% + 6px); border-radius: var(--r-card); background: var(--surface); box-shadow: var(--sh-float), 0 0 0 var(--hair-w) var(--hair); z-index: 3; overflow: hidden; }
+.composer .aphead { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s5); border-bottom: var(--hair-w) solid var(--hair); font-size: var(--t-row); }
+.composer .apq { font-family: var(--font-mono); color: var(--accent); }
+.composer .apin { flex: 1; min-width: 0; white-space: pre; overflow: hidden; }
+.composer .aplist { display: grid; padding: var(--s2) 0; max-height: 220px; overflow: hidden; }
+.composer .apopt { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto auto; align-items: center; gap: var(--s4); padding: var(--s3) var(--s5); margin: 0 var(--s2); border-radius: var(--r-row); font-size: var(--t-small); color: var(--fg); white-space: nowrap; }
+.composer .apopt.sel { background: color-mix(in srgb, var(--accent) 28%, var(--surface)); }
+.composer .apopt .ak { color: var(--fg-dim); text-align: center; }
+.composer .apopt .apt { overflow: hidden; text-overflow: ellipsis; }
+.composer .apopt .aps, .composer .apopt .apk { color: var(--fg-dim); font-size: var(--t-small); }
+.composer .apopt .apk { font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .06em; font-size: var(--t-micro); }
+.composer .apempty { padding: var(--s4) var(--s5); color: var(--fg-dim); font-size: var(--t-small); }
+.composer .apfoot { padding: var(--s2) var(--s5); border-top: var(--hair-w) solid var(--hair); font-size: var(--t-small); color: var(--fg-dim); }
+.seat-row .badge.more, .ch-tab b.more { font-style: italic; letter-spacing: .02em; }

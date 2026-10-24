@@ -49,6 +49,103 @@ fn messages(rows: Vec<Message>) -> StreamDock {
     }
 }
 #[test]
+fn task_review_hits_follow_the_painted_clip_and_zero_exit_gate() {
+    use bbt_ui::modules::composer::{Report, Verification};
+    let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+    let mut view = StreamDock {
+        dock: true,
+        framed: false,
+        entries: vec![Entry::Report {
+            id: "actual-task-id".into(),
+            data: Report {
+                task: "Real task".into(),
+                status: "reported".into(),
+                summary: "done".into(),
+                verify_result: Some(Verification {
+                    exit_code: 1,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            review: true,
+        }],
+    };
+    let tree = layout(view.clone(), 300.);
+    let accept = node(&tree, "e0/accept").unwrap().rect;
+    let at = [accept.x + accept.w / 2., accept.y + accept.h / 2.];
+    assert_eq!(Regions::dock(&tree, &view).hit(at), None);
+    let Entry::Report { data, .. } = &mut view.entries[0] else {
+        unreachable!();
+    };
+    data.verify_result.as_mut().unwrap().exit_code = 0;
+    let tree = layout(view.clone(), 300.);
+    assert_eq!(
+        Regions::dock(&tree, &view).hit(at),
+        Some(Action::Accept("actual-task-id".into()))
+    );
+    let scroll = c::Element::ScrollView(c::ScrollView {
+        viewport: [300., 12.],
+        offset: [0.; 2],
+        content_width: Some(300.),
+        content: Box::new(view.element(ctx, &Metrics)),
+    })
+    .layout(Rect::new(0., 0., 300., 12.), ctx, &Metrics)
+    .unwrap();
+    assert_eq!(Regions::dock(&scroll, &view).hit(at), None);
+}
+#[test]
+fn report_rim_surrounds_the_clipped_card_without_changing_its_geometry() {
+    use bbt_ui::modules::composer::Report;
+    let view = messages(vec![Message {
+        text: "a report".into(),
+        report: Some(Report {
+            task: "real task key".into(),
+            summary: "summary inside the clipped report".into(),
+            ..Default::default()
+        }),
+        ..Default::default()
+    }]);
+    for theme in [ui::Theme::Dark, ui::Theme::Light] {
+        let ctx = ui::Context::new(theme, ui::Density::Cozy);
+        let tree = view
+            .element(ctx, &Metrics)
+            .layout(Rect::new(0., 0., 300., 0.), ctx, &Metrics)
+            .unwrap();
+        let card = node(&tree, "e0/body/report").unwrap();
+        assert_eq!(
+            node(&tree, "e0/body/report/wrapper").unwrap().rect,
+            card.rect
+        );
+        let ops = c::paint(&tree, ctx);
+        let (rim_index, state, clips) = ops
+            .iter()
+            .enumerate()
+            .find_map(|(i, op)| match op {
+                c::Paint::Material {
+                    rect,
+                    rim: Some(rim),
+                    clips,
+                    ..
+                } if *rect == card.rect => Some((i, rim, clips)),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(state.activity, ui::GlowActivity::Idle);
+        assert_eq!(state.seed, ui::rim_phase("real task key"));
+        assert_eq!(
+            state.tint,
+            Some(ui::Paint::solid(ui::Color::Accent).resolve(ctx).unwrap())
+        );
+        assert_eq!(state.depth, Some(0.));
+        assert_eq!(
+            state.outer,
+            Some(bbt_ui_model::TOKENS.glow.rim as f32 * 0.5)
+        );
+        assert!(!clips.iter().any(|clip| clip.rect == card.rect));
+        assert!(ops[..rim_index].iter().any(|op| matches!(op, c::Paint::Draw(list) if list.primitives.iter().any(|p| matches!(p, bbt_ui_model::draw::Prim::Text { .. })))));
+    }
+}
+#[test]
 fn chronology_foreign_authority_and_unknown_delivery_remain_independent() {
     let a = Message {
         from: "first worker".into(),
@@ -98,6 +195,7 @@ fn collapsed_epics_and_bounded_newest_first_external_lane_use_model_state() {
             Entry::Epic {
                 data: Epic {
                     title: "closed epic".into(),
+                    delegate: false,
                     open: Some(false),
                     items: vec![WorkItem {
                         title: "hidden child".into(),
@@ -191,4 +289,49 @@ fn unread_marks_stay_round_and_compressed_chips_clip_their_text() {
         let text = node(&tree, "e0/body/head/agchip/text").unwrap();
         assert!(text.rect.right() <= chip.rect.right());
     }
+}
+
+#[test]
+fn incomplete_channel_counts_keep_more_and_explicit_swarm_total() {
+    use bbt_ui::modules::stream_dock::UnreadCount;
+    let view:StreamDock=serde_json::from_value(serde_json::json!({"dock":true,"entries":[{"kind":"tabs","selected":"all","total":12,"channels":[{"name":"render","unread":"more"},{"name":"decisions","unread":3}]}]})).unwrap();
+    let text = labels(&layout(view, 300.));
+    assert!(text.contains("more"));
+    assert!(text.contains("12"));
+    assert!(serde_json::from_value::<UnreadCount>(serde_json::json!("12")).is_err());
+    assert!(serde_json::from_value::<UnreadCount>(serde_json::json!(-1)).is_err());
+    assert_eq!(serde_json::to_value(UnreadCount::More).unwrap(), "more");
+}
+
+#[test]
+fn a_changed_task_keeps_its_reject_draft_visible_without_an_enabled_mutation() {
+    use bbt_ui::modules::composer::{RejectController, Report};
+    let reason = RejectController::new("keep this rebrief".into());
+    let view = StreamDock {
+        dock: true,
+        framed: false,
+        entries: vec![Entry::Report {
+            id: "actual-task".into(),
+            data: Report {
+                task: "Task changed".into(),
+                status: "accepted".into(),
+                reject: Some(reason.view),
+                ..Default::default()
+            },
+            review: false,
+        }],
+    };
+    let tree = layout(view.clone(), 300.);
+    assert!(node(&tree, "e0/reject/input").is_some());
+    assert!(labels(&tree).contains("keep this rebrief"));
+    let submit = node(&tree, "e0/reject/submit").unwrap().rect;
+    assert_eq!(
+        Regions::dock(&tree, &view).hit([submit.x + submit.w / 2., submit.y + submit.h / 2.]),
+        None
+    );
+    let cancel = node(&tree, "e0/reject/cancel").unwrap().rect;
+    assert_eq!(
+        Regions::dock(&tree, &view).hit([cancel.x + cancel.w / 2., cancel.y + cancel.h / 2.]),
+        Some(Action::CancelReject("actual-task".into()))
+    );
 }

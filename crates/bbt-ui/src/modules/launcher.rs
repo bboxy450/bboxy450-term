@@ -1,5 +1,6 @@
 //! Launcher presentation and pure tree/filter projection. The app owns input,
-//! launching, navigation, name generation and cap enforcement.
+//! launching and name generation. Its pure controller owns navigation and editing.
+pub mod controller;
 use super::{seat_row::named, strip::plain};
 use crate::{self as ui, components as c};
 use bbt_ui_model::{STYLE, TOKENS, draw::Color as Rgba, layout::Axis};

@@ -229,6 +229,7 @@ fn rects_lay_out_as_one_slot_and_paint_box_rects_at_the_node_origin() {
             (Rect::new(4., 41., 2., 2.), Paint::solid(Color::Muted)),
         ]
         .into(),
+        repeat: None,
     });
     let layout = element
         .layout(Rect::new(26.25, 53.5, 6., 0.), context(), &Metrics)
@@ -268,11 +269,95 @@ fn rects_lay_out_as_one_slot_and_paint_box_rects_at_the_node_origin() {
     let bad = c::Element::Rects(c::Rects {
         size: [6., 43.],
         rects: vec![(Rect::new(0., 0., -1., 2.), Paint::solid(Color::Accent))].into(),
+        repeat: None,
     });
     assert!(
         bad.layout(Rect::new(0., 0., 6., 0.), context(), &Metrics)
             .is_err()
     );
+}
+
+#[test]
+fn rect_tiles_repeat_in_the_assigned_slot_and_clip_the_partial_last_dash() {
+    for axis in [Axis::Row, Axis::Column] {
+        let (slot, tile) = match axis {
+            Axis::Row => (Rect::new(10., 20., 17., 3.), Rect::new(0., 0., 4., 3.)),
+            Axis::Column => (Rect::new(10., 20., 3., 17.), Rect::new(0., 0., 3., 4.)),
+        };
+        let tile = c::Element::Rects(c::Rects {
+            size: [0.; 2],
+            rects: vec![(tile, Paint::solid(Color::Accent))].into(),
+            repeat: Some((axis, 7.)),
+        });
+        let mut style = Style::new(Preset::Card);
+        style.overrides.height = Some(Length::Px(slot.h));
+        style.overrides.padding = Some([Length::Px(0.); 4]);
+        style.overrides.border = Some(bbt_ui::Border {
+            width: Length::Px(0.),
+            paint: Paint::solid(Color::Transparent),
+            outside: false,
+        });
+        let mut host = c::Box::new(
+            style,
+            vec![c::Item {
+                element: tile,
+                extent: c::Extent::Fill,
+            }],
+        );
+        host.align = c::Alignment::Stretch;
+        host.gap = Length::Px(0.);
+        let root = c::Element::Box(host)
+            .layout(slot, context(), &Metrics)
+            .unwrap();
+        let layout = &root.children[0];
+        assert_eq!(layout.rect, slot);
+        assert!(layout.children.is_empty());
+        let ops = c::paint(layout, context());
+        let [c::Paint::Draw(list)] = ops.as_slice() else {
+            panic!("repeated rects draw")
+        };
+        assert!(
+            matches!(list.primitives.first(), Some(Prim::Clip { rect, radii }) if *rect==slot && *radii==[0.;4])
+        );
+        assert!(matches!(list.primitives.last(), Some(Prim::Unclip)));
+        let rects: Vec<_> = list
+            .primitives
+            .iter()
+            .filter_map(|p| match p {
+                Prim::Rect { rect, .. } => Some(*rect),
+                _ => None,
+            })
+            .collect();
+        let expected: Vec<_> = [0., 7., 14.]
+            .into_iter()
+            .map(|offset| match axis {
+                Axis::Row => Rect::new(slot.x + offset, slot.y, 4., 3.),
+                Axis::Column => Rect::new(slot.x, slot.y + offset, 3., 4.),
+            })
+            .collect();
+        assert_eq!(rects, expected);
+        let last = rects.last().unwrap();
+        let visible = match axis {
+            Axis::Row => last.right().min(slot.right()) - last.x.max(slot.x),
+            Axis::Column => last.bottom().min(slot.bottom()) - last.y.max(slot.y),
+        };
+        assert_eq!(
+            visible, 3.,
+            "only three pixels of the last four-pixel tile fit"
+        );
+    }
+    for period in [0., -1., f32::NAN, f32::INFINITY] {
+        let element = c::Element::Rects(c::Rects {
+            size: [3., 17.],
+            rects: vec![(Rect::new(0., 0., 3., 4.), Paint::solid(Color::Accent))].into(),
+            repeat: Some((Axis::Column, period)),
+        });
+        assert!(
+            element
+                .layout(Rect::new(0., 0., 3., 17.), context(), &Metrics)
+                .is_err()
+        );
+    }
 }
 
 #[test]
@@ -859,5 +944,51 @@ fn inline_middle_uses_the_parent_x_height_without_moving_the_content_box() {
                 &XHeight
             )
             .is_ok()
+    );
+}
+
+#[test]
+fn max_content_text_basis_keeps_left_aligned_glyphs_and_short_inline_width() {
+    let mut text = c::Text::new(
+        "word word word word",
+        bbt_ui::Text {
+            size: Some(12.),
+            ..Default::default()
+        },
+    );
+    let ordinary = c::Element::Text(text.clone());
+    let before = ordinary.natural(70., context(), &Metrics).unwrap();
+    text.max_content_basis = true;
+    assert_eq!(text.align, c::Alignment::Start);
+    let inline = c::Element::Text(text.clone());
+    let after = inline.natural(70., context(), &Metrics).unwrap();
+    assert!(before.0[0] < after.0[0]);
+    assert_eq!(after.0[0], 70.);
+    assert_eq!(before.0[1].to_bits(), after.0[1].to_bits());
+    assert_eq!(before.1.to_bits(), after.1.to_bits());
+    let a = ordinary
+        .layout(Rect::new(10., 20., 70., after.0[1]), context(), &Metrics)
+        .unwrap();
+    let b = inline
+        .layout(Rect::new(10., 20., 70., after.0[1]), context(), &Metrics)
+        .unwrap();
+    let c::LayoutKind::Text { runs: a, .. } = a.kind else {
+        unreachable!();
+    };
+    let c::LayoutKind::Text { runs: b, .. } = b.kind else {
+        unreachable!();
+    };
+    assert_eq!(a.len(), b.len());
+    for (a, b) in a.iter().zip(&b) {
+        assert_eq!(a.text, b.text);
+        assert_eq!(a.rect, b.rect);
+    }
+    text.runs[0].value = "word".into();
+    assert_eq!(
+        c::Element::Text(text)
+            .natural(70., context(), &Metrics)
+            .unwrap()
+            .0[0],
+        24.
     );
 }

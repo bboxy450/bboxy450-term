@@ -54,8 +54,8 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
         ),
         (
             "task_list",
-            "Page authorized tasks in your swarm; worker results contain only their current assignments.",
-            json!({"swarm_id":id,"status":{"type":"string","maxLength":32},"assignee":{"type":"string","maxLength":64},"after":id,"limit":{"type":"integer","minimum":1,"maximum":128}}),
+            "Page authorized tasks; only the account operator may request the read-only open unassigned inventory. Worker results contain only their current assignments.",
+            json!({"unassigned":{"type":"boolean"},"swarm_id":id,"status":{"type":"string","maxLength":32},"assignee":{"type":"string","maxLength":64},"after":id,"limit":{"type":"integer","minimum":1,"maximum":128}}),
             vec![],
         ),
         (
@@ -95,6 +95,8 @@ struct Status {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct List {
+    #[serde(default)]
+    unassigned: bool,
     swarm_id: Option<Ulid>,
     status: Option<String>,
     assignee: Option<String>,
@@ -308,6 +310,23 @@ pub(crate) fn prepare(
         }
         "task_list" => {
             let args: List = tools::parse(&call.args)?;
+            if args.unassigned {
+                if !matches!(actor, Actor::Operator { .. }) {
+                    return Err("unassigned task inventory requires the account operator".into());
+                }
+                if args.swarm_id.is_some()
+                    || args.assignee.is_some()
+                    || args
+                        .status
+                        .as_deref()
+                        .is_some_and(|status| status != "open")
+                {
+                    return Err(
+                        "unassigned inventory is open and account-wide; omit swarm_id and assignee"
+                            .into(),
+                    );
+                }
+            }
             if args
                 .swarm_id
                 .is_some_and(|id| actor.seat().is_some_and(|seat| id != seat.swarm_id))
@@ -327,7 +346,13 @@ pub(crate) fn prepare(
                 .values()
                 .filter(|d| {
                     is_task(d)
-                        && authorize(d, registry, actor).is_ok()
+                        && if args.unassigned {
+                            d.error.is_none()
+                                && d.metadata["status"] == "open"
+                                && matches!(reference(d, "assignee"), Ok(None))
+                        } else {
+                            authorize(d, registry, actor).is_ok()
+                        }
                         && (actor.seat().is_some()
                             || args.swarm_id.is_none_or(|swarm| {
                                 reference(d, "assignee")

@@ -10,7 +10,7 @@ use bbt_ui::{
 };
 use bbt_ui_model::{
     draw::{DrawCtx, DrawList},
-    layout::Rect,
+    layout::{Rect, TextMeasure, TextStyle},
 };
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, path::Path};
@@ -23,6 +23,7 @@ pub const DOCK_STATES: &[&str] = &[
     "messages",
     "audit lines",
     "subchannels",
+    "subchannel unread · more",
     "subchannel muted",
     "subgroup message",
     "rejected progress",
@@ -43,12 +44,41 @@ pub const MESSAGE_STATES: &[&str] = &[
     "reply from a subagent",
     "agent ended (held)",
     "arrival ripple",
+    "priority and issuer",
+    "receipts",
+];
+pub const COMPOSE_STATES: &[&str] = &[
+    "idle",
+    "to a seat",
+    "to a role",
+    "to a channel",
+    "to a subagent",
+    "priority",
+    "attachments",
+    "sent",
+    "kind · chooser",
+    "send · pending",
+    "send · sent",
+    "send · held",
+    "send · refused",
+    "delegate · pick task",
+    "delegate · pick seat",
+    "delegate · claimed",
+    "delegate · report back",
+    "delegate · accepted",
+    "delegate · reject reason",
+    "delegate · reject typed",
+    "delegate · reject refused",
+    "delegate · rejected",
+    "attach · picker",
+    "attach · typed",
 ];
 pub fn cases() -> Vec<Case> {
     let mut all = vec![];
     for (component, page, states) in [
         ("stream", "stream.html", DOCK_STATES),
         ("message-row", "message-row.html", MESSAGE_STATES),
+        ("compose", "compose.html", COMPOSE_STATES),
     ] {
         for state in states {
             for density in gallery::DENSITIES {
@@ -109,9 +139,44 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
         .ok_or("Stream frames missing")?
         .iter()
         .map(|frame| {
-            let view: StreamDock = serde_json::from_value(frame["view"].clone())?;
+            let mut model = frame["view"].clone();
+            let entries = model["entries"]
+                .as_array()
+                .ok_or("Stream entries missing")?
+                .clone();
+            model["entries"] = json!([]);
+            let view: StreamDock = serde_json::from_value(model)?;
+            let width = seat_rows::number(&frame["host"], "w")?;
+            let content_width = if view.dock {
+                width - (bbt_ui_model::STYLE.spacing.s2 + bbt_ui_model::STYLE.spacing.s3) as f32
+            } else {
+                width
+            };
+            let mut items = vec![];
+            for (i, entry) in entries.into_iter().enumerate() {
+                if entry["kind"] == "composer" {
+                    let composer: ui::modules::composer::Composer =
+                        serde_json::from_value(entry["data"].clone())?;
+                    items.push(
+                        composer
+                            .element_named(
+                                &format!("e{i}"),
+                                ctx,
+                                content_width,
+                                &crate::components::Metrics,
+                            )?
+                            .into(),
+                    );
+                } else {
+                    let one = StreamDock {
+                        entries: vec![serde_json::from_value(entry)?],
+                        ..view.clone()
+                    };
+                    items.extend(one.items_at(ctx, i, &crate::components::Metrics));
+                }
+            }
             let host = &frame["host"];
-            view.element(ctx, &crate::components::Metrics)
+            view.frame(ctx, items)
                 .layout(
                     Rect::new(
                         seat_rows::number(host, "x")? + seat_rows::number(crop, "x")?,
@@ -180,14 +245,61 @@ pub fn snapshots(cases: &[Case]) -> Result<Vec<Value>> {
                 .ok_or("Stream diagnostics missing")?
             {
                 let key = p["key"].as_str().ok_or("Stream part key missing")?;
-                let native = names.get(key).map(|n| {
-                    json!([
-                        n.rect.x - offset[0],
-                        n.rect.y - offset[1],
-                        n.rect.w,
-                        n.rect.h
-                    ])
-                });
+                let native = if let Some(prefix) = p["native_prefix"].as_str() {
+                    let mut rects = names
+                        .iter()
+                        .filter(|(k, _)| k.starts_with(prefix))
+                        .map(|(_, n)| n.rect);
+                    rects.next().map(|mut r| {
+                        for other in rects {
+                            let right = r.right().max(other.right());
+                            let bottom = r.bottom().max(other.bottom());
+                            r.x = r.x.min(other.x);
+                            r.y = r.y.min(other.y);
+                            r.w = right - r.x;
+                            r.h = bottom - r.y;
+                        }
+                        json!([r.x - offset[0], r.y - offset[1], r.w, r.h])
+                    })
+                } else if p["native_inline"] == true {
+                    fn text(n: &c::Layout) -> Option<&c::Layout> {
+                        if matches!(n.kind, c::LayoutKind::Text { .. }) {
+                            Some(n)
+                        } else {
+                            n.children.iter().find_map(text)
+                        }
+                    }
+                    names.get(key).and_then(|n| text(n)).and_then(|n| {
+                        let c::LayoutKind::Text { runs, .. } = &n.kind else {
+                            return None;
+                        };
+                        let run = runs.first()?;
+                        let font = TextStyle {
+                            size: run.style.size,
+                            weight: run.style.weight,
+                            mono: run.style.mono,
+                            italic: run.style.italic,
+                            tracking_em: run.style.tracking_em,
+                        };
+                        let [a, d] = c::Measure::font_metrics(&crate::components::Metrics, &font)
+                            .map(f32::round);
+                        Some(json!([
+                            run.rect.x - offset[0],
+                            n.rect.y + n.baseline - a - offset[1],
+                            crate::components::Metrics.width(&run.text, &font),
+                            a + d
+                        ]))
+                    })
+                } else {
+                    names.get(key).map(|n| {
+                        json!([
+                            n.rect.x - offset[0],
+                            n.rect.y - offset[1],
+                            n.rect.w,
+                            n.rect.h
+                        ])
+                    })
+                };
                 let r = &p["rect"];
                 let web = [
                     seat_rows::number(r, "x")?,

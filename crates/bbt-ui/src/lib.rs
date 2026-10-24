@@ -6,6 +6,7 @@ pub mod marks;
 pub mod modules;
 pub mod overlays;
 pub mod style;
+pub mod text_edit;
 pub mod widgets;
 pub use bbt_ui_model::{Density, Theme};
 pub use style::*;

@@ -1,5 +1,6 @@
 //! L6 controls are compositions of retained Box/Text/Stack/ScrollView and icons.
 //! State and viewport offsets are caller-owned; no window, clock or input loop.
+pub mod text_area;
 use crate::{self as ui, components as c};
 use bbt_ui_model::{STYLE, TOKENS, draw::Color as Rgba, layout::Axis};
 
@@ -543,6 +544,10 @@ pub struct Input {
 }
 impl Input {
     pub fn element(&self, _ctx: ui::Context) -> c::Element {
+        self.unresolved()
+    }
+    /// Declarative input; the caller's layout context resolves its tokens.
+    pub fn unresolved(&self) -> c::Element {
         let empty = self.edit.is_none() && self.state == InputState::Empty;
         let label_style = normal(
             ui::TypeStep::Body,

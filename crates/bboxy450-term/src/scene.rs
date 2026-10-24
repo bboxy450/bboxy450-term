@@ -19,7 +19,11 @@ use bbt_ui_model::{
     draw::{Color, DrawList, TextStyle, TypeScale},
     layout::{Axis, Rect, TextMeasure, TextStyle as MeasureStyle, stage_split},
 };
-use std::{cell::RefCell, collections::HashMap, time::Instant};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, HashMap},
+    time::Instant,
+};
 
 /// Settings > Rim size range (rim-glow §3).
 pub const RIM_MIN: f32 = TOKENS.glow.rim_min as f32;
@@ -27,6 +31,20 @@ pub const RIM_MAX: f32 = TOKENS.glow.rim_max as f32;
 
 /// The host retains the very layout it paints; pointer input never reconstructs
 /// browser positions or guesses a row's height.
+pub struct ConversationLayout {
+    pub layout: c::Layout,
+    pub regions: ui::modules::composer::Regions,
+    pub height: f32,
+    pub actions: ui::modules::stream_dock::Regions,
+}
+impl ConversationLayout {
+    pub fn paint(&self) -> Vec<c::Paint> {
+        c::paint(
+            &self.layout,
+            ui::Context::new(ui::Theme::Dark, ui::Density::Cozy),
+        )
+    }
+}
 pub struct LauncherLayout {
     layout: c::Layout,
     pub panel: Rect,
@@ -69,6 +87,7 @@ fn named<'a>(layout: &'a c::Layout, name: &str) -> Option<&'a c::Layout> {
 pub struct Scene {
     hosts: Vec<bbt_proto::GuiHost>,
     pub seats: Vec<SeatRow>,
+    tasks: Vec<(SeatId, String, ui::modules::seat_row::TaskRow, Option<i32>)>,
     tree: Option<SplitNode>,
     seat_index: HashMap<SeatId, usize>,
     focused: Option<SeatId>,
@@ -203,6 +222,7 @@ impl Scene {
         .expect("embedded scene-15 fixture");
         Self {
             seats,
+            tasks: vec![],
             tree: Some(tree(&fixture["tree"])),
             seat_index: (0..15).map(|i| (SeatId::from_u128(i as u128), i)).collect(),
             focused: Some(SeatId::from_u128(0)),
@@ -271,6 +291,7 @@ impl Scene {
     pub fn live() -> Self {
         Self {
             seats: vec![],
+            tasks: vec![],
             tree: None,
             seat_index: HashMap::new(),
             focused: None,
@@ -338,6 +359,45 @@ impl Scene {
     }
     pub fn focused(&self) -> Option<SeatId> {
         self.focused
+    }
+    pub fn set_tasks(
+        &mut self,
+        tasks: Vec<(SeatId, String, ui::modules::seat_row::TaskRow, Option<i32>)>,
+    ) {
+        self.tasks = tasks;
+    }
+    pub fn set_unread(&mut self, unread: &BTreeMap<SeatId, ui::modules::stream_dock::UnreadCount>) {
+        for row in &mut self.seats {
+            row.unread = row
+                .key
+                .parse::<SeatId>()
+                .ok()
+                .and_then(|id| unread.get(&id))
+                .filter(|count| count.any())
+                .map(|count| (count.to_string(), row.role.clone().unwrap_or_default()));
+        }
+    }
+    fn task_children(&self, row: &SeatRow, ctx: ui::Context) -> Vec<c::Element> {
+        self.tasks
+            .iter()
+            .filter(|(seat, ..)| seat.to_string() == row.key)
+            .map(|(_, id, task, exit)| {
+                let key = format!("task/{id}");
+                let mut element = task.element_with_verify(ctx, *exit);
+                c::namespace(&mut element, &format!("{key}/"));
+                ui::modules::seat_row::named(key, element)
+            })
+            .collect()
+    }
+    pub fn task_regions(&self, layouts: &[c::Layout]) -> ui::modules::stream_dock::Regions {
+        let Some(sidebar) = layouts.get(1) else {
+            return Default::default();
+        };
+        let mut regions = ui::modules::stream_dock::Regions::retained(sidebar);
+        for (_, id, task, _) in &self.tasks {
+            regions.task_row(&format!("task/{id}"), id, task.may_accept);
+        }
+        regions
     }
     pub fn backend_lost(&mut self) {
         self.backend_lost = true;
@@ -426,6 +486,23 @@ impl Scene {
         effects: bool,
         now: Instant,
     ) -> Result<Vec<c::Layout>, String> {
+        self.layout_docked_at(size, effects, 0., now)
+    }
+    pub fn layout_with_dock(
+        &self,
+        size: [f32; 2],
+        effects: bool,
+        dock_height: f32,
+    ) -> Result<Vec<c::Layout>, String> {
+        self.layout_docked_at(size, effects, dock_height, Instant::now())
+    }
+    fn layout_docked_at(
+        &self,
+        size: [f32; 2],
+        effects: bool,
+        dock_height: f32,
+        now: Instant,
+    ) -> Result<Vec<c::Layout>, String> {
         let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
         // Rows, tabs and panes carry each seat's swell and attention (rim-glow §7-8).
         let mut seats = self.seats.clone();
@@ -435,7 +512,7 @@ impl Scene {
         let title = STYLE.spacing.title_bar as f32;
         let sidebar_width = 300_f32.min(size[0] * 0.35);
         let footer_height = if self.identity.is_some() { 24. } else { 0. };
-        let sidebar_height = (size[1] - title - footer_height).max(1.);
+        let sidebar_height = (size[1] - title - footer_height - dock_height).max(1.);
         let bounds = Rect::new(
             sidebar_width,
             title,
@@ -473,7 +550,7 @@ impl Scene {
                             .iter()
                             .map(|row| TabSeat {
                                 row: row.clone(),
-                                children: vec![],
+                                children: self.task_children(row, ctx),
                             })
                             .collect(),
                         expanded: true,
@@ -604,6 +681,80 @@ impl Scene {
         }
         ops.extend(self.foreground(size, launcher, overlay));
         ops
+    }
+    pub fn conversation_layout(
+        &self,
+        size: [f32; 2],
+        view: &ui::modules::composer::Conversation,
+    ) -> Result<ConversationLayout, String> {
+        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let width = 300_f32.min(size[0] * 0.35);
+        let footer = if self.identity.is_some() { 24. } else { 0. };
+        let available = (size[1] - STYLE.spacing.title_bar as f32 - footer).max(1.);
+        let height = (available * 0.45).max(200.).min(available);
+        let element = view
+            .element(ctx, [width, height], &self.metrics)
+            .map_err(|e| e.to_string())?;
+        let measured = element
+            .layout(Rect::new(0., 0., width, 0.), ctx, &self.metrics)
+            .map_err(|e| e.to_string())?;
+        let height = measured.rect.h;
+        let layout = element
+            .layout(
+                Rect::new(0., size[1] - footer - height, width, height),
+                ctx,
+                &self.metrics,
+            )
+            .map_err(|e| e.to_string())?;
+        let regions = ui::modules::composer::Regions::new(&layout).map_err(|e| e.to_string())?;
+        let actions = ui::modules::stream_dock::Regions::dock(&layout, &view.stream);
+        Ok(ConversationLayout {
+            layout,
+            regions,
+            height,
+            actions,
+        })
+    }
+    pub fn conversation_position(
+        &self,
+        layout: &ConversationLayout,
+        value: &str,
+        index: usize,
+    ) -> [f32; 2] {
+        layout
+            .regions
+            .position_at(&layout.layout, value, index, &self.metrics)
+    }
+    pub fn conversation_index(
+        &self,
+        layout: &ConversationLayout,
+        value: &str,
+        at: [f32; 2],
+    ) -> usize {
+        layout
+            .regions
+            .index_at(&layout.layout, value, at, &self.metrics)
+    }
+    pub fn conversation_attachment_index(
+        &self,
+        layout: &ConversationLayout,
+        value: &str,
+        at: [f32; 2],
+    ) -> usize {
+        layout
+            .regions
+            .attachment_index_at(&layout.layout, value, at, &self.metrics)
+    }
+    pub fn reject_index(
+        &self,
+        layout: &ConversationLayout,
+        id: &str,
+        value: &str,
+        at: [f32; 2],
+    ) -> Option<usize> {
+        layout
+            .actions
+            .index_at(&layout.layout, id, value, at, &self.metrics)
     }
     pub fn launcher_layout(
         &self,
@@ -752,6 +903,17 @@ impl Scene {
             }
         }
         Ok(ops)
+    }
+    pub fn foreground_with_conversation(
+        &self,
+        size: [f32; 2],
+        launcher: Option<&LauncherLayout>,
+        hud: Option<&PerfHud>,
+        conversation: Option<&ConversationLayout>,
+    ) -> Vec<c::Paint> {
+        let mut ops = conversation.map_or_else(Vec::new, ConversationLayout::paint);
+        ops.extend(self.foreground(size, launcher, hud));
+        ops
     }
     /// The perf HUD (Cmd+Opt+F), top right as the lab's perf.html floats it over the app.
     pub fn overlay(&self, size: [f32; 2], hud: Option<&PerfHud>) -> Vec<c::Paint> {
@@ -1068,6 +1230,59 @@ mod launcher_tests {
         assert_eq!(
             format!("{:?}", &frozen[base_ops.len()..]),
             format!("{foreground:?}")
+        );
+    }
+
+    #[test]
+    fn assigned_task_uses_its_seat_subtree_and_retained_review_hit_without_moving_panes() {
+        let record = bbt_proto::SeatRecord::new(
+            bbt_mux::Ulid::new(),
+            bbt_mux::Ulid::new(),
+            "Assigned",
+            "zsh",
+        );
+        let id = SeatId::from_u128(record.id.0);
+        let model = bboxy450_term::model::build(
+            &[record],
+            &bboxy450_term::grids::Grids::new(),
+            &Default::default(),
+        );
+        let mut scene = Scene::live();
+        scene.set_model(&model, &model.ui.window.stage);
+        let size = [1600., 960.];
+        let before = scene.pane_bounds(&scene.layout(size, false).unwrap());
+        scene.set_tasks(vec![(
+            id,
+            "real-task-id".into(),
+            ui::modules::seat_row::TaskRow {
+                title: "Reported work".into(),
+                state: "reported".into(),
+                bug: false,
+                violates: None,
+                constrains: None,
+                waits: None,
+                may_accept: true,
+            },
+            Some(0),
+        )]);
+        let layouts = scene.layout(size, false).unwrap();
+        assert_eq!(before, scene.pane_bounds(&layouts));
+        fn accept(n: &c::Layout) -> Option<Rect> {
+            if matches!(&n.kind, c::LayoutKind::Named(name) if name.ends_with("task/real-task-id/right/accept"))
+            {
+                Some(n.rect)
+            } else {
+                n.children.iter().find_map(accept)
+            }
+        }
+        let r = accept(&layouts[1]).expect("task under its assignee");
+        assert_eq!(
+            scene
+                .task_regions(&layouts)
+                .hit([r.x + r.w * 0.5, r.y + r.h * 0.5]),
+            Some(ui::modules::stream_dock::Action::Accept(
+                "real-task-id".into()
+            ))
         );
     }
 

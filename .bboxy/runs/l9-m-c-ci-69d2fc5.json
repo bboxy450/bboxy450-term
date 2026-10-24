@@ -1,0 +1,36 @@
+{
+  "source": "69d2fc542eab35bb83f490d75ebb3f6981c49a58",
+  "worktree": "/private/tmp/ci-nyx-l9mc-69d2fc5",
+  "target": "/private/tmp/nyx-l9mc-target-69d2fc5",
+  "parity_out": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/gate-69d2fc5",
+  "command": [
+    "sh",
+    "scripts/ci-local.sh",
+    "--parity"
+  ],
+  "started": "2026-10-24T02:14:42.415977+00:00",
+  "owner_pid": 27478,
+  "initial_status": "clean",
+  "environment": {
+    "CARGO_TARGET_DIR": "/private/tmp/nyx-l9mc-target-69d2fc5",
+    "BBOXY_TEST_CUSTODY": "memory",
+    "PARITY_OUT": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/gate-69d2fc5",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true"
+  },
+  "unset": [
+    "BBOXYBOOK_GALLERY",
+    "BBOXYBOOK_REFERENCE_HEAD"
+  ],
+  "ci_pid": 27493,
+  "exit": 0,
+  "elapsed_seconds": 2011.8985341250082,
+  "ended": "2026-10-24T02:48:14.317421+00:00",
+  "final_status": "",
+  "target_retained_for_approved_replay_and_capture": true
+}

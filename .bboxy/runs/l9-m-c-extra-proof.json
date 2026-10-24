@@ -1,0 +1,90 @@
+{
+  "candidate": "69d2fc542eab35bb83f490d75ebb3f6981c49a58",
+  "baseline": "9c2022a7288286981f0cb3a5b1938691bf8a3bf5",
+  "inputs": "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d",
+  "owner_pid": 75255,
+  "stages": [
+    {
+      "name": "native-compose",
+      "command": [
+        "/private/tmp/nyx-l9mc-target-69d2fc5/debug/bboxy450-term",
+        "--smoke",
+        "--compose",
+        "--capture",
+        "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/native-compose-69d2fc5.png"
+      ],
+      "cwd": "/private/tmp/ci-nyx-l9mc-69d2fc5",
+      "exit": 0,
+      "seconds": 13.63711583300028,
+      "log_sha256": "db98bc6937ca820c54d5a495a9fefcff05c1e2cb1dce0963fae98bc560e9613b"
+    },
+    {
+      "name": "candidate-replay",
+      "command": [
+        "/private/tmp/nyx-l9mc-target-69d2fc5/debug/bboxybook",
+        "replay-images",
+        "--out",
+        "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/default-proof-69d2fc5/candidate/native",
+        "--manifest",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d/cases.json"
+      ],
+      "cwd": "/private/tmp/ci-nyx-l9mc-69d2fc5",
+      "exit": 0,
+      "seconds": 416.40962245798437,
+      "log_sha256": "ca7d500584cb1911991d4acda1c2502f7fa74d1a791081eeb972bc54824f2023"
+    },
+    {
+      "name": "baseline-build",
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "bboxybook",
+        "--locked"
+      ],
+      "cwd": "/private/tmp/base-nyx-l9mc-9c2022a",
+      "exit": 0,
+      "seconds": 17.881062000000384,
+      "log_sha256": "98ea399d64b2c44f18900ab9e03f1ca167b6ccc48a95a35a850c9ffc50f77f09"
+    },
+    {
+      "name": "baseline-replay",
+      "command": [
+        "/private/tmp/nyx-l9mc-target-69d2fc5/debug/bboxybook",
+        "replay-images",
+        "--out",
+        "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/default-proof-69d2fc5/baseline/native",
+        "--manifest",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d/cases.json"
+      ],
+      "cwd": "/private/tmp/base-nyx-l9mc-9c2022a",
+      "exit": 0,
+      "seconds": 405.3856205000193,
+      "log_sha256": "ca7d500584cb1911991d4acda1c2502f7fa74d1a791081eeb972bc54824f2023"
+    },
+    {
+      "name": "byte-identity",
+      "command": [
+        "python3",
+        "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/default_byte_proof.py",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d",
+        "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/default-proof-69d2fc5/baseline/native",
+        "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/default-proof-69d2fc5/candidate/native",
+        "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/default-proof-69d2fc5/byte-identity.json",
+        "69d2fc542eab35bb83f490d75ebb3f6981c49a58",
+        "9c2022a7288286981f0cb3a5b1938691bf8a3bf5"
+      ],
+      "cwd": "/private/tmp/ci-nyx-l9mc-69d2fc5",
+      "exit": 1,
+      "seconds": 1.0584737909957767,
+      "log_sha256": "e07524e07967f0c51e4994d1154156e851f1faaa1384175f7623c23bfe35106e"
+    }
+  ],
+  "started": "2026-10-24T02:48:38.735173+00:00",
+  "candidate_bboxybook_sha256": "1997a175bb2177f21bd7afc383a12ff0edd7a592c2875596f20110985265c3cc",
+  "baseline_bboxybook_sha256": "c1b2885b8c8e8e4e052f7fc960f6b95562ab68b97f93f5693955513ca87c9905",
+  "exit": 1,
+  "ended": "2026-10-24T03:02:53.378290+00:00",
+  "target_allocated_bytes": 3292524544,
+  "target_removed": true
+}

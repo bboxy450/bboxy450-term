@@ -515,6 +515,7 @@ fn gui_operator_dm_replays_once_and_tasks_share_mcp_verification() {
     );
     assert_eq!(document.metadata["authorship"]["kind"], "local-dev");
     let listed = f.gui_task(TaskRequest::List {
+        unassigned: false,
         swarm_id: Some(f.own.swarm),
         status: Some("accepted".into()),
         assignee: None,

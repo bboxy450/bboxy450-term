@@ -107,13 +107,13 @@
   model.spaces[0].provenance = JSON.parse(JSON.stringify(FIX.provenance));
   model.spaces[0].epics.push(
     { id: 'e1', title: 'W3 renderer', open: true, items: [
-      { id: 's1', type: 'spec', title: 'renderer.md', state: 'accepted' },
-      { id: 'w31', type: 'task', title: 'W3.1 renderer harness', state: 'reported', assignee: 'Nyx Copperwing', artifacts: [{ kind: 'pr', ref: 'bboxy450-term#14', digest: 'fcc8eca', produced_by: 'Nyx Copperwing', responsible: 'Nyx Copperwing', responsibleColor: '#FF4FA3' }, { kind: 'image', ref: 'target/render/smoke/jetbrains-mono-16px-2x-dark.png', digest: '9b1c2e4', produced_by: 'CI' }] },
-      { id: 'w32', type: 'task', title: 'W3.2 GUI component library', state: 'blocked', waits: 'W3.1' },
-      { id: 'w33', type: 'task', title: 'W3.3 showcase parity', state: 'open' } ] },
+      { id: 's1', type: 'spec', title: 'renderer.md', status: 'accepted' },
+      { id: 'w31', type: 'task', title: 'W3.1 renderer harness', status: 'reported', assignee: 'Nyx Copperwing', artifacts: [{ kind: 'pr', ref: 'bboxy450-term#14', digest: 'fcc8eca', produced_by: 'Nyx Copperwing', responsible: 'Nyx Copperwing', responsibleColor: '#FF4FA3' }, { kind: 'image', ref: 'target/render/smoke/jetbrains-mono-16px-2x-dark.png', digest: '9b1c2e4', produced_by: 'CI' }] },
+      { id: 'w32', type: 'task', title: 'W3.2 GUI component library', status: 'blocked', waits: 'W3.1' },
+      { id: 'w33', type: 'task', title: 'W3.3 showcase parity', status: 'open' } ] },
     { id: 'e2', title: 'W1 term core', open: false, items: [
-      { id: 'w11', type: 'task', title: 'W1.1 term-core fork', state: 'done', assignee: 'Nyx Copperwing' },
-      { id: 'w12', type: 'task', title: 'W1.2 byte ring', state: 'open' } ] });
+      { id: 'w11', type: 'task', title: 'W1.1 term-core fork', status: 'done', assignee: 'Nyx Copperwing' },
+      { id: 'w12', type: 'task', title: 'W1.2 byte ring', status: 'open' } ] });
   function space() { const hit = tabOf(focused); return hit ? hit.sp : model.spaces[0]; }   // the cohort of the focused seat
   function tabOf(key) { for (const sp of model.spaces) for (const t of sp.tabs) if ((t.seats || []).some(x => x.key === key)) return { sp, t }; return null; }
   function stageOf() { const sp = space(); const hit = tabOf(focused); const t = hit && hit.sp === sp ? hit.t : sp.tabs[0]; return t ? t.tree : null; }
@@ -158,7 +158,7 @@
     // unmute commits its notice first, then releases only eligible held work; blocked items stay with reason and original id
     let rel = '';
     if (!seat.muted && (seat.held || []).length) { const before = seat.held.length; seat.held = seat.held.filter(h => h.blocked); const n = before - seat.held.length; rel = ' · released ' + n + (seat.held.length ? ', ' + seat.held.length + ' still held' : ''); if (n) { seat.unread = (seat.unread || 0) + n; seat.unreadRole = seat.unreadRole || 'executor'; } }
-    sp.stream.push({ presence: true, text: seat.name + (seat.muted ? ' muted · 1:1 with the operator' : ' unmuted · back in the swarm' + rel), time: new Date().toTimeString().slice(0, 5) });
+    sp.stream.push({ kind: 'presence', text: seat.name + (seat.muted ? ' muted · 1:1 with the operator' : ' unmuted · back in the swarm' + rel), ts: Date.now() });
     render();
   }
   addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'm' && !spot) { e.preventDefault(); const f = seats.find(x => x.key === focused); if (f) toggleMute(f); } });
@@ -205,10 +205,10 @@
       const sp = (tabOf(sd.key) || {}).sp || space();
       if (a === 'focus') return setFocus(sd.key, { locate: 'both' });
       if (a !== 'message-agent' && a !== 'message-main') return;
-      const toAgent = a === 'message-agent', msg = { from: 'operator', role: 'oracle', time: new Date().toTimeString().slice(0, 5), text: toAgent ? 'how far along is this?' : 'when you are free, summarise the subagents', to: toAgent ? ag.description : 'main', via: toAgent ? 'main' : null, evidence: 'sender-stored' };
+      const toAgent = a === 'message-agent', msg = { author: { kind: 'operator', id: 'operator:dev', name: 'operator' }, issuer_kind: 'gpg-root', kind: 'text', priority_class: 'oracle', priority: 0, ts: Date.now(), text: toAgent ? 'how far along is this?' : 'when you are free, summarise the subagents', to: toAgent ? ag.description : 'main', via: toAgent ? 'main' : null, evidence: 'sender-stored' };
       sp.stream.push(msg); render();
       ['recipient-stored', 'native-written'].forEach((ev, i) => setTimeout(() => { msg.evidence = ev; render(); }, 500 + i * 700));
-      if (toAgent) setTimeout(() => { sp.stream.push({ from: sd.name, fromKey: sd.key, role: sd.role, time: new Date().toTimeString().slice(0, 5), text: 'for ' + ag.description + ': two thirds done', via: 'main', unread: true }); render(); }, 2600);
+      if (toAgent) setTimeout(() => { sp.stream.push({ author: { kind: 'seat', id: sd.key, name: sd.name }, role: sd.role, issuer_kind: 'gpg-root', kind: 'text', priority_class: sd.role === 'oracle' ? 'oracle' : 'worker', priority: 0, ts: Date.now(), text: 'for ' + ag.description + ': two thirds done', via: 'main', unread: true }); render(); }, 2600);
     } });
     rmenu.style.position = 'fixed'; rmenu.style.left = Math.min(x, innerWidth - 260) + 'px'; rmenu.style.top = Math.min(y, innerHeight - 220) + 'px';
     document.body.append(rmenu); rmenu.focus();
@@ -235,7 +235,7 @@
     const f = seats.find(x => x.key === focused), was = focused;
     const m = C.docModal(doc, { seat: f, onClose: () => { closeSpotlight(); focused = was; render(); }, onPin: () => closeSpotlight(), onFeed: (d, sel) => {
       closeSpotlight(); focused = was; if (!f) return;
-      const sp = (tabOf(f.key) || {}).sp || space(), msg = { from: 'operator', role: 'oracle', time: new Date().toTimeString().slice(0, 5), text: '→ ' + f.name + ': ' + (sel ? 'selection from ' : '') + '[[' + d.path.replace(/^.*\//, '').replace(/\.md$/, '') + ']]', evidence: 'sender-stored' };
+      const sp = (tabOf(f.key) || {}).sp || space(), msg = { author: { kind: 'operator', id: 'operator:dev', name: 'operator' }, issuer_kind: 'gpg-root', kind: 'text', priority_class: 'oracle', priority: 0, ts: Date.now(), text: '→ ' + f.name + ': ' + (sel ? 'selection from ' : '') + '[[' + d.path.replace(/^.*\//, '').replace(/\.md$/, '') + ']]', evidence: 'sender-stored' };
       sp.stream.push(msg); render();
       ['recipient-stored', 'native-written'].forEach((ev, i) => setTimeout(() => { msg.evidence = ev; render(); }, 500 + i * 700));
     } });
@@ -251,7 +251,7 @@
     const p = { op: C.hash32('op' + n).toString(16).slice(0, 8), name: C.rollName(C.rng('spawn' + n)), harness: h, by: 'Vesper Greywind', status: 'accepted' };
     sp.pending = sp.pending || []; sp.pending.push(p); open.add(sp.key); render();
     setTimeout(() => {
-      const audit = (outcome, reason) => sp.stream.push({ audit: { actor: p.by, verb: 'spawned', target: p.name, op: p.op, outcome, reason }, time: new Date().toTimeString().slice(0, 5) });
+      const audit = (outcome, reason) => sp.stream.push({ audit: { actor: p.by, verb: 'spawned', target: p.name, op: p.op, outcome, reason }, ts: Date.now() });
       const c = capOf(sp); if (c && c.used > SWARM_CAP) { p.status = 'rejected'; p.reason = 'spawn cap for this swarm is ' + SWARM_CAP + ' (' + c.counts + ')'; audit('rejected', p.reason); render(); return; }
       if (n % 4 === 0) { p.status = 'rejected'; p.reason = 'spawn cap for this swarm is 8'; audit('rejected', p.reason); render(); return; }
       if (n % 5 === 0) { p.status = 'unknown'; audit('unknown', 'no confirmation from the mux'); render(); return; }
@@ -297,24 +297,24 @@
   // Key T delegates a demo task to the focused seat; T again walks it: assigned → acknowledged → running → reported; accept via the pill.
   const TASK_TITLES = ['gpu research spec', 'relay bench on eu-2', 'review PR 14', 'fix glyphon atlas growth', 'write harness adapter'];
   let taskN = 0;
-  function streamLine(sp, text) { sp.stream.push({ presence: true, text, time: new Date().toTimeString().slice(0, 5) }); }
+  function streamLine(sp, text) { sp.stream.push({ kind: 'presence', text, ts: Date.now() }); }
   function delegateTask(seat) {
     const sp = (tabOf(seat.key) || {}).sp || space();
     seat.tasks = seat.tasks || [];
-    const open_ = seat.tasks.find(t => !['accepted', 'rejected', 'reassigned'].includes(t.state));
+    const open_ = seat.tasks.find(t => !['accepted', 'rejected', 'reassigned'].includes(t.status));
     if (open_) {
-      const next = { open: 'claimed', claimed: 'running', running: 'reported', reported: 'reported' }[open_.state];
-      if (next !== open_.state) {
-        open_.state = next; streamLine(sp, seat.name + ' ' + next + ' · ' + open_.title);
+      const next = { open: 'claimed', claimed: 'running', running: 'reported', reported: 'reported' }[open_.status];
+      if (next !== open_.status) {
+        open_.status = next; streamLine(sp, seat.name + ' ' + next + ' · ' + open_.title);
         if (next === 'reported') { open_.artifacts = open_.artifacts || []; const art = { kind: 'markdown', ref: '.bboxy/runs/' + open_.title.replace(/\s+/g, '-') + '-report.md', digest: C.hash32(open_.title + seat.key).toString(16).padStart(8, '0'), produced_by: seat.name, responsible: seat.name, responsibleColor: seat.color }; open_.artifacts.push(art); seat.touched = (seat.touched || 0) + 1; sp.history.push({ time: now(), seat: seat.name, seatColor: seat.color, event: 'created', kind: art.kind, ref: art.ref, grade: seat.grade === 'inferred' ? 'inferred' : 'reported' }, { time: now(), seat: seat.name, seatColor: seat.color, event: 'claimed', kind: art.kind, ref: art.ref, grade: 'reported' }); streamLine(sp, seat.name + ' claimed · ' + art.ref); }
       }
     } else {
-      const task = { id: 't' + (++taskN), title: TASK_TITLES[taskN % TASK_TITLES.length], state: 'claimed', from: 'Vesper Greywind', assignee: seat.name };
+      const task = { id: 't' + (++taskN), title: TASK_TITLES[taskN % TASK_TITLES.length], status: 'claimed', delegated_by: 'Vesper Greywind', assignee: seat.name };
       seat.tasks.push(task); sp.epics[0].items.push(task); streamLine(sp, 'Oracle delegated · ' + task.title + ' → ' + seat.name);
     }
     render();
   }
-  function acceptTask(task, seat) { task.state = 'accepted'; const sp = (tabOf(seat.key) || {}).sp || space(); streamLine(sp, 'Oracle accepted · ' + task.title + ' from ' + seat.name); render(); }
+  function acceptTask(task, seat) { task.status = 'accepted'; const sp = (tabOf(seat.key) || {}).sp || space(); streamLine(sp, 'Oracle accepted · ' + task.title + ' from ' + seat.name); render(); }
   addEventListener('keydown', e => { if ((e.key === 't' || e.key === 'T') && !e.metaKey && !e.ctrlKey && !spot) { const f = seats.find(x => x.key === focused); if (f && !f.settings && !f.graph) delegateTask(f); } });
   // Graph: who is on what and the work tree, as a tab (⌘G or the Graph launcher row). Generated from the same data as the dock.
   const graphSeat = { key: 'graph', name: 'Graph', harness: 'sidebarfoxopen', role: null, title: 'who is on what', state: 'idle', graph: true };
@@ -645,7 +645,7 @@
     // subchannels as tabs (messaging.md): the bare stream shows unscoped lines and chunks/decisions; a tab shows its subchannel
     const sp = space(); if (!sp.subchannels && sp === model.spaces[0]) sp.subchannels = FIX.subchannels.map(c => ({ ...c }));
     if (sp.subchannels) dock.append(C.streamTabs(sp.subchannels, { sel: streamCh, onSel: x => { streamCh = x; const c = sp.subchannels.find(y => y.name === x); if (c) c.unread = 0; drawStream(); }, onMute: x => { const c = sp.subchannels.find(y => y.name === x); c.muted = !c.muted; drawStream(); } }));
-    const items = stream.filter(m => !streamFilter || m.fromKey === streamFilter).filter(m => streamCh === 'all' ? !m.ch || m.kind : m.ch === streamCh).slice(-4);
+    const items = stream.filter(m => !streamFilter || (m.author && m.author.id) === streamFilter).filter(m => streamCh === 'all' ? !m.ch || (m.kind && m.kind !== 'text') : m.ch === streamCh).slice(-4);
     if (streamFilter) { const ph = space().participants.find(p => p.key === streamFilter); if (!ph) { streamFilter = null; return drawStream(); } dock.append(el('div', { class: 'filter' }, 'from ', el('b', {}, ph.name), el('button', { onclick: () => { streamFilter = null; drawStream(); } }, '× all'))); }
     for (const m of items) dock.append(C.messageRow(m));
     dock.style.display = (stream.length || (space().epics || []).some(e => e.items.length) || (space().external || []).length) ? '' : 'none';
@@ -657,7 +657,7 @@
     const phs = space().participants; if (!phs.length) return;
     const ph = phs[phN % phs.length], text = PHRASES[phN % PHRASES.length]; phN++;
     ph.pulseT = performance.now();                                        // row pulses once
-    space().stream.push({ from: ph.name, fromKey: ph.key, role: ph.role, foreign: true, text, time: new Date().toTimeString().slice(0, 5), unread: true });
+    space().stream.push({ author: { kind: 'seat', id: ph.key, name: ph.name }, role: ph.role, issuer_kind: 'gpg-root', kind: 'text', priority_class: 'worker', priority: 0, foreign: true, text, ts: Date.now(), unread: true });   // a foreign seat arrives as worker class
     drawStream();
   });
 

@@ -9,15 +9,23 @@ const COL = { v: '#FFC53D', n: '#FF4FA3', r: '#34D399', s: '#FF8A3D', w: '#B57BF
 const seat = (k, label, sub, load, sel) => ({ kind: 'seat', label, sub, color: COL[k], load, sel });
 const ch = { kind: 'channel', label: 'bboxy450-term' };
 const nyx = { kind: 'seat', label: 'Nyx Copperwing', color: COL.n };
-const task = (title, state) => ({ kind: 'task', title, state });
+const task = (title, status) => ({ kind: 'task', title, status });
 // the W2 epic with open work to hand out; the delegation states rewrite W2.3
 const epic = w23 => ({ id: 'e2', title: 'W2 mux', open: true, items: [
-  { id: 'w21', kind: 'task', title: 'W2.1 supervisor + PTY + lease', state: 'accepted', assignee: 'Nyx Copperwing' },
-  { id: 'w22', kind: 'task', title: 'W2.2 logic, bus, index', state: 'running', assignee: 'Rook Ashwhisker' },
-  { id: 'w23', kind: 'task', title: 'W2.3 adapters', state: 'open', ...(w23 || {}) },
-  { id: 'w12', kind: 'task', title: 'W1.2 byte ring', state: 'open' }] });
-const REPORT = { task: 'W2.3 adapters', files: [{ path: 'crates/bbt-mux/src/adapter.rs', add: 214, del: 9 }, { path: 'crates/bbt-mux/tests/adapters.rs', add: 88, del: 0 }], checks: [{ cmd: 'cargo test -p bbt-mux', exit: 'exit 0', ok: true }, { cmd: 'scripts/parity.sh', exit: 'exit 0', ok: true }], gaps: 'omp adapter untested, no binary here', commit: 'a41c9e2' };
-const sent = (extra) => ({ from: 'Vesper Greywind', role: 'oracle', time: '14:20', ...extra });
+  { id: 'w21', kind: 'task', title: 'W2.1 supervisor + PTY + lease', status: 'accepted', assignee: 'Nyx Copperwing' },
+  { id: 'w22', kind: 'task', title: 'W2.2 logic, bus, index', status: 'running', assignee: 'Rook Ashwhisker' },
+  { id: 'w23', kind: 'task', title: 'W2.3 adapters', status: 'open', ...(w23 || {}) },
+  { id: 'w12', kind: 'task', title: 'W1.2 byte ring', status: 'open' }] });
+// TaskReport (bbt-proto, decision #38) as the Executor sent it; task and status come from the TaskCard
+const REPORT = { task: 'W2.3 adapters', status: 'reported', summary: 'Two adapters, tests green; the omp adapter is untested (no binary on this machine).', commit: 'a41c9e2',
+  verify_result: { command: 'cargo test -p bbt-mux --locked', exit_code: 0, evidence: [{ criterion: 'claude and codex hook payloads parse', reference: 'crates/bbt-mux/tests/adapters.rs:41' }, { criterion: 'omp adapter', reference: 'untested · no omp binary here' }] } };
+// what [[ can attach in this swarm: its tasks (TaskCard) and artifacts
+const ATTACHABLE = [{ kind: 'task', title: 'W2.3 adapters', status: 'reported' }, { kind: 'task', title: 'W2.2 logic, bus, index', status: 'running' }, { kind: 'task', title: 'W1.2 byte ring', status: 'open' },
+  { kind: 'artifact', akind: 'markdown', title: '.bboxy/runs/w2-3-adapters-report.md', meta: 'report' }, { kind: 'artifact', akind: 'image', title: 'target/bboxybook/launchers/final', meta: '48 PNG' }, { kind: 'artifact', akind: 'pr', title: 'bboxy450-term#14', meta: 'PR' }];
+// the operator's own sends (MessageRow, author kind operator, Oracle class) with their receipts
+const OPA = { kind: 'operator', id: 'operator:dev', name: 'operator' };
+const sent = (extra) => ({ author: OPA, issuer_kind: 'gpg-root', kind: 'text', priority_class: 'oracle', priority: 0, ts: C.atHM('14:20'), receipts: { delivered: 1, acked: 1, held: 0 }, ...extra });
+const sable = (extra) => ({ author: { kind: 'seat', id: 's', name: 'Sable Embertail' }, role: 'executor', issuer_kind: 'gpg-root', kind: 'text', priority_class: 'worker', priority: 0, ts: C.atHM('15:40'), ...extra });
 const STATES = {
   'idle': () => [...FIX.stream.slice(-3).map(m => C.messageRow(m)), C.composer({ to: [ch] })],
   'to a seat': () => [...FIX.stream.slice(-2).map(m => C.messageRow(m)), C.composer({ focus: true, typed: '@ny', pick: [
@@ -26,17 +34,33 @@ const STATES = {
   'to a role': () => [...FIX.stream.slice(-2).map(m => C.messageRow(m)), C.composer({ focus: true, to: [{ kind: 'role', role: 'executor', label: 'executors', n: 3, color: 'var(--role-executor)' }], text: 'Freeze parity captures at 650f548; rerun after the merge.' })],
   'to a channel': () => [...FIX.stream.slice(-2).map(m => C.messageRow(m)), C.composer({ focus: true, to: [{ kind: 'channel', label: 'bboxy450-term/render' }], text: 'decision: glyph atlas stays retained across passes.' })],
   'to a subagent': () => [...FIX.stream.slice(-2).map(m => C.messageRow(m)), C.composer({ focus: true, to: [{ kind: 'subagent', parent: 'Nyx', label: 'parity sweep' }], text: 'skip the compact density; it is already within policy.' })],
-  'priority': () => [C.composer({ to: [nyx], prio: 'p2', text: 'when free: tidy the bboxybook gallery index.' }), C.composer({ to: [nyx], prio: 'p1', text: 'next after 7.9: DocumentModal.' }), C.composer({ focus: true, to: [ch], prio: 'p0', text: 'Stop pushes to main until the merge lands.' })],
+  'priority': () => [C.composer({ to: [nyx], priority: 0, text: 'when free: tidy the bboxybook gallery index.' }), C.composer({ to: [nyx], priority: 5, text: 'next after 7.9: DocumentModal.' }), C.composer({ focus: true, to: [ch], priority: 9, kind: 'decision', text: 'Stop pushes to main until the merge lands.' })],
   'attachments': () => [...FIX.stream.slice(-2).map(m => C.messageRow(m)), C.composer({ focus: true, to: [nyx], attach: [{ kind: 'artifact', akind: 'image', title: 'target/bboxybook/launchers/final', meta: '48 PNG' }, task('7.8 Channels', 'open')], text: 'Reference set for 7.8 attached; same keys as the lab.' })],
   'sent': () => [...FIX.stream.slice(-2).map(m => C.messageRow(m)), C.messageRow(sent({ toLabel: 'Nyx Copperwing', text: 'Reference set for 7.8 attached; same keys as the lab.', attach: [{ kind: 'artifact', akind: 'image', title: 'target/bboxybook/launchers/final', meta: '48 PNG' }, task('7.8 Channels', 'open')], evidence: 'native-written' })), C.composer({ to: [nyx] })],
-  'delegate · pick task': () => [C.epicGroup(epic(), { onDelegate: () => {} }), ...FIX.stream.slice(-1).map(m => C.messageRow(m)), C.composer({ to: [ch] })],
+  // the send's outcome on the bar (st.notice); the edit state is the message body's only (st.edit, UTF-16 offsets into st.text)
+  // the kind chooser: the chip is always there (text dim by default); open lists the three kinds a person sends
+  'kind · chooser': () => [...FIX.stream.slice(-1).map(m => C.messageRow(m)), C.composer({ focus: true, to: [ch], text: 'glyph atlas stays retained across passes.', edit: { caret: 41 }, kindMenu: true })],
+  'send · pending': () => [...FIX.stream.slice(-1).map(m => C.messageRow(m)), C.composer({ focus: true, to: [nyx], text: 'next after 7.9: DocumentModal.', edit: { caret: 30 }, notice: { kind: 'pending', text: 'sending…' } })],
+  'send · sent': () => [...FIX.stream.slice(-1).map(m => C.messageRow(m)), C.messageRow(sent({ toLabel: 'Nyx Copperwing', text: 'next after 7.9: DocumentModal.' })), C.composer({ focus: true, to: [nyx], text: '', edit: { caret: 0 }, notice: { kind: 'sent', text: 'stored · 01M5N9Q3' } })],
+  'send · held': () => [...FIX.stream.slice(-1).map(m => C.messageRow(m)), C.messageRow(sent({ toLabel: 'Nyx Copperwing', text: 'freeze the gallery index', receipts: { delivered: 0, acked: 0, held: 1 } })), C.composer({ focus: true, to: [nyx], text: '', edit: { caret: 0 }, notice: { kind: 'held', text: 'held · Nyx Copperwing is muted; delivers on unmute' } })],
+  'send · refused': () => [...FIX.stream.slice(-1).map(m => C.messageRow(m)), C.composer({ focus: true, to: [{ kind: 'channel', label: 'bboxy450-term/render' }], text: 'decision: glyph atlas stays retained.', edit: { caret: 37 }, notice: { kind: 'refused', text: 'refused · no grant for #bboxy450-term/render in this swarm' } })],
+  'delegate · pick task': () => [C.epicGroup(epic(), { delegate: true, onDelegate: () => {} }), ...FIX.stream.slice(-1).map(m => C.messageRow(m)), C.composer({ to: [ch] })],
   'delegate · pick seat': () => [C.epicGroup(epic()), C.composer({ mode: 'delegate', focus: true, attach: [task('W2.3 adapters', 'open')], pick: [
     { title: 'Executors', items: [seat('s', 'Sable Embertail', 'executor · codex', 0, true), seat('n', 'Nyx Copperwing', 'executor · codex', 1), seat('r', 'Rook Ashwhisker', 'executor · codex', 2)] },
     { title: 'Role', items: [{ kind: 'role', role: 'executor', label: 'any free executor', sub: 'first to claim' }] }] })],
-  'delegate · assigned': () => [C.epicGroup(epic({ assignee: 'Sable Embertail', assigned: true })), C.messageRow(sent({ toLabel: 'Sable Embertail', text: 'ROLE: EXECUTOR · W2.3 is yours. Brief and checks in the task file.', attach: [task('W2.3 adapters', 'open')], evidence: 'native-written' })), C.composer({ to: [{ kind: 'seat', label: 'Sable Embertail', color: COL.s }] })],
-  'delegate · report back': () => [C.epicGroup(epic({ assignee: 'Sable Embertail', state: 'reported' })), C.messageRow({ presence: true, text: 'Sable Embertail claimed W2.3 adapters', time: '14:22' }), C.messageRow({ from: 'Sable Embertail', role: 'executor', time: '15:40', text: 'W2.3 reported. Two adapters, tests green; omp untested.', report: REPORT, evidence: 'recipient-stored', unread: true }, { onAccept: () => { location.search = '?state=delegate-done'; } })],
-  'delegate · done': () => { const g = C.epicGroup(epic({ assignee: 'Sable Embertail', state: 'done' })); g.querySelector('.eitem.done')?.classList.add('flip');
-    return [g, C.messageRow({ from: 'Sable Embertail', role: 'executor', time: '15:40', text: 'W2.3 reported. Two adapters, tests green; omp untested.', report: { ...REPORT, verdict: 'accepted', state: 'done' }, evidence: 'application-acknowledged' }), C.messageRow({ audit: { actor: 'Vesper Greywind', verb: 'accepted', target: 'W2.3 adapters', op: 'b7e2c1d0' }, time: '15:44' })]; },
+  'delegate · claimed': () => [C.epicGroup(epic({ assignee: 'Sable Embertail', status: 'claimed', delegated_by: 'operator' })), C.messageRow(sent({ toLabel: 'Sable Embertail', text: 'ROLE: EXECUTOR · W2.3 is yours. Brief and checks in the task file.', attach: [task('W2.3 adapters', 'claimed')] })), C.composer({ to: [{ kind: 'seat', label: 'Sable Embertail', color: COL.s }] })],
+  'delegate · report back': () => [C.epicGroup(epic({ assignee: 'Sable Embertail', status: 'reported' })), C.messageRow({ kind: 'presence', text: 'Sable Embertail claimed W2.3 adapters', ts: C.atHM('14:22') }), C.messageRow(sable({ text: 'W2.3 reported.', report: REPORT, evidence: 'recipient-stored', unread: true }), { review: true, onAccept: () => { location.search = '?state=delegate-accepted'; } })],
+  // reject needs a reason (TaskRequest::Reject): the field is required and Reject is disabled until it has text; refused keeps it
+  'delegate · reject reason': () => [C.epicGroup(epic({ assignee: 'Sable Embertail', status: 'reported', delegated_by: 'operator' })), C.messageRow(sable({ text: 'W2.3 reported.', report: { ...REPORT, reject: { reason: '', edit: { caret: 0 } } }, evidence: 'recipient-stored' }), { review: true })],
+  'delegate · reject typed': () => [C.epicGroup(epic({ assignee: 'Sable Embertail', status: 'reported', delegated_by: 'operator' })), C.messageRow(sable({ text: 'W2.3 reported.', report: { ...REPORT, reject: { reason: 'add an omp fixture test', edit: { caret: 23 } } }, evidence: 'recipient-stored' }), { review: true })],
+  'delegate · reject refused': () => [C.epicGroup(epic({ assignee: 'Sable Embertail', status: 'reported', delegated_by: 'operator' })), C.messageRow(sable({ text: 'W2.3 reported.', report: { ...REPORT, reject: { reason: 'add an omp fixture test', edit: { caret: 23 }, notice: { kind: 'refused', text: 'refused · W2.3 is no longer reported (Sable reported again)' } } }, evidence: 'recipient-stored' }), { review: true })],
+  'delegate · rejected': () => [C.epicGroup(epic({ assignee: 'Sable Embertail', status: 'rejected', delegated_by: 'operator' })), C.messageRow(sable({ text: 'W2.3 reported.', report: { ...REPORT, status: 'rejected' }, evidence: 'application-acknowledged' })), C.messageRow(sent({ ts: C.atHM('15:46'), toLabel: 'Sable Embertail', text: 'rejected W2.3 adapters: add an omp fixture test' }))],
+  // [[ attach picker: the swarm's tasks and artifacts, typed to filter, one row each, keyboard selection
+  'attach · picker': () => [...FIX.stream.slice(-3).map(m => C.messageRow(m)), C.composer({ focus: true, to: [nyx], text: 'Reference set for 7.8 ', edit: { caret: 22 }, attachPick: { query: '', edit: { caret: 0 }, items: ATTACHABLE, sel: 0 } })],
+  'attach · typed': () => [...FIX.stream.slice(-3).map(m => C.messageRow(m)), C.composer({ focus: true, to: [nyx], text: 'Reference set for 7.8 ', edit: { caret: 22 }, attachPick: { query: 'adap', edit: { caret: 4 }, items: ATTACHABLE, sel: 0 } })],
+  // the steady accepted state: a reference shows the records as they are, no transient flash on a row
+  'delegate · accepted': () => { const g = C.epicGroup(epic({ assignee: 'Sable Embertail', status: 'accepted', delegated_by: 'operator' }));
+    return [g, C.messageRow(sable({ text: 'W2.3 reported.', report: { ...REPORT, status: 'accepted' }, evidence: 'application-acknowledged' })), C.messageRow({ audit: { actor: 'operator', verb: 'accepted', target: 'W2.3 adapters', op: 'b7e2c1d0' }, ts: C.atHM('15:44') })]; },
 };
 // divergence before the pick: each shape as a one-line sketch and why it lost or won
 function shapes() {
@@ -56,11 +80,11 @@ function shapes() {
     cell('1 · drag task to seat', 'drop a task row on a seat. Quick; no brief, no load shown.', '○ W2.3 ──▶ ● Sable'),
     cell('2 · composer delegate mode', 'the composer with a task attached; the verb becomes Delegate.', '[○ W2.3 adapters]\n[Delegate ⌘↵]'),
     cell('3 · Delegate… seat picker', 'from the task row, a picker of executors with their load, free first.', 'Delegate…\n● Sable   free\n● Nyx     1 running'),
-    cell('4 · kanban', 'columns open / assigned / reported / done. Clear; no room in a 300 px dock.', 'open │ assigned │ done'),
+    cell('4 · kanban', 'columns open / claimed / reported / accepted. Clear; no room in a 300 px dock.', 'open │ claimed │ accepted'),
     cell('5 · /delegate', 'a slash command in the composer. Terse; undiscoverable.', '/delegate W2.3 @sable'),
-    cell('Pick · 3 into 2', 'Delegate… on the row opens the composer in delegate mode with the task attached and the picker on executors by load; assigned on send, the report card arrives in the stream, Accept flips it done.', 'Delegate… ▸ [○ W2.3]\nDelegate to ● Sable (free)\n▸ assigned ▸ report ▸ ✓ done', true))];
+    cell('Pick · 3 into 2', 'Delegate… on the row opens the composer in delegate mode with the task attached and the picker on executors by load; claimed on send, the report card arrives in the stream, Accept flips it accepted.', 'Delegate… ▸ [○ W2.3]\nDelegate to ● Sable (free)\n▸ claimed ▸ reported ▸ ● accepted', true))];
 }
-Lab.page({ title: 'compose', note: 'The StreamDock composer and the delegation flow (cockpit epic). One bar at the dock foot: address chips for a seat, a role (fans out), a #channel or a ↳ subagent, typed with @ # ↳ and defaulting to the dock tab; priority as a pip on Send (p0 is the Oracle\'s); artifacts and tasks attach as cards. Delegation: Delegate… on an open task opens the same bar in delegate mode with the task attached and executors listed by load; it shows as assigned until claimed; the report-back card arrives in the stream; Accept flips the task to done. shapes: the divergence before the pick.',
+Lab.page({ title: 'compose', note: 'The StreamDock composer and the delegation flow (cockpit epic). One bar at the dock foot: address chips for a seat, a role (fans out), a #channel or a ↳ subagent, typed with @ # ↳ and defaulting to the dock tab; SendRequest\'s priority 0 to 9 as a pip on Send, p0-coloured because the operator is Oracle class, and its kind as a chip; artifacts and tasks attach as cards. Delegation: Delegate… on an open task opens the same bar in delegate mode with the task attached and executors listed by load; delegating sets the task claimed (work-items task_delegate); the report-back card arrives in the stream; Accept, only with a verify_result at exit 0, flips the task to accepted (decision #28). shapes: the divergence before the pick.',
   states: ['shapes', ...Object.keys(STATES)],
   render(s, body) {
     if (s === 'shapes') { body.append(...shapes()); return; }

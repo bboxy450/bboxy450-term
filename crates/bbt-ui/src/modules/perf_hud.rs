@@ -259,6 +259,7 @@ impl PerfHud {
                 content: c::Element::Rects(c::Rects {
                     size: [SPARK_W, inner],
                     rects: segments.into(),
+                    repeat: None,
                 }),
                 left: 0.,
                 bottom: hair,

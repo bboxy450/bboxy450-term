@@ -6,7 +6,7 @@
 </head><body><script>
 const el = Lab.el;
 Lab.page({ title: 'stream', note: 'Subchannels are tabs over the dock with unread counts; right-click a tab to mute it. The bare stream carries only chunks, decisions and presence; a worker progress note to it is rejected with a DM-your-delegator hint. The swarm stream dock at the foot of the sidebar: epic groups (collapsible, specs and tasks with status), the external lane (github, ci, cloud, cron, webhook), then the newest messages with role rail, priority, delivery ticks and centred presence notices. Clicking a shadow filters the dock to that participant. Same epicGroup(), externalLane(), messageRow() as the showcase.',
-  states: ['swarm stream', 'epic groups', 'epic collapsed', 'external lane', 'messages', 'audit lines', 'subchannels', 'subchannel muted', 'subgroup message', 'rejected progress', 'filtered to one participant', 'empty'],
+  states: ['swarm stream', 'epic groups', 'epic collapsed', 'external lane', 'messages', 'audit lines', 'subchannels', 'subchannel unread · more', 'subchannel muted', 'subgroup message', 'rejected progress', 'filtered to one participant', 'empty'],
   render(s, body) {
     const frame = el('div', { style: 'width:300px;background:var(--sidebar-bg);border-radius:var(--r-pill);border:1px solid var(--hair);overflow:hidden' });
     const dock = el('div', { class: 'stream-dock', style: 'max-height:none' });
@@ -16,17 +16,17 @@ Lab.page({ title: 'stream', note: 'Subchannels are tabs over the dock with unrea
       const all = s === 'swarm stream';
       if (all || s === 'epic groups' || s === 'epic collapsed') for (const ep of epics) dock.append(C.epicGroup(ep, { onToggle: draw }));
       if (all || s === 'external lane') dock.append(C.externalLane(FIX.external, { open: extOpen, onToggle: () => { extOpen = !extOpen; draw(); } }));
-      let msgs = (all || s === 'messages') ? FIX.stream : s === 'filtered to one participant' ? FIX.stream.filter(m => m.fromKey === 'k9') : [];
+      let msgs = (all || s === 'messages') ? FIX.stream : s === 'filtered to one participant' ? FIX.stream.filter(m => m.author && m.author.id === 'k9') : [];
       if (s === 'filtered to one participant') dock.append(el('div', { class: 'filter' }, 'from ', el('b', {}, 'Kestrel Nine'), el('button', {}, '× all')));
       if (s === 'audit lines') msgs = [...FIX.stream.slice(0, 2), ...FIX.audit, FIX.stream[3]];
       if (all) msgs = [...msgs.slice(-3, -1), FIX.audit[0], ...msgs.slice(-1)];
       for (const m of msgs) dock.append(C.messageRow(m));
-      if (['subchannels', 'subchannel muted', 'subgroup message', 'rejected progress'].includes(s)) {
-        const chs = FIX.subchannels.map(c => ({ ...c, muted: s === 'subchannel muted' && c.name === 'decisions' }));
+      if (['subchannels', 'subchannel unread · more', 'subchannel muted', 'subgroup message', 'rejected progress'].includes(s)) {
+        const chs = FIX.subchannels.map((c, i) => ({ ...c, muted: s === 'subchannel muted' && c.name === 'decisions', ...(s === 'subchannel unread · more' && i === 0 ? { unread: 'more' } : {}) }));   // more: a count not proven by the retained pages
         let sel = s === 'subchannels' ? 'render' : 'all';
         const list = el('div');
-        const paint = () => { list.innerHTML = ''; const R = FIX.routed.filter(m => sel === 'all' ? !m.ch || m.kind : m.ch === sel).filter(m => s !== 'rejected progress' ? !m.rejected : true).filter(m => s === 'subgroup message' ? !!m.group : s === 'rejected progress' ? (m.rejected || m.kind === 'chunk') : true); for (const m of R) list.append(C.messageRow(m, { showCh: sel === 'all' })); };
-        const tabs = () => C.streamTabs(chs, { sel, onSel: x => { sel = x; tb.replaceWith(tb = tabs()); paint(); }, onMute: x => { const c = chs.find(y => y.name === x); c.muted = !c.muted; tb.replaceWith(tb = tabs()); } });
+        const paint = () => { list.innerHTML = ''; const R = FIX.routed.filter(m => sel === 'all' ? !m.ch || (m.kind && m.kind !== 'text') : m.ch === sel).filter(m => s !== 'rejected progress' ? !m.rejected : true).filter(m => s === 'subgroup message' ? !!m.group : s === 'rejected progress' ? (m.rejected || m.kind === 'chunk') : true); for (const m of R) list.append(C.messageRow(m, { showCh: sel === 'all' })); };
+        const tabs = () => C.streamTabs(chs, { total: s === 'subchannel unread · more' ? 12 : null, sel, onSel: x => { sel = x; tb.replaceWith(tb = tabs()); paint(); }, onMute: x => { const c = chs.find(y => y.name === x); c.muted = !c.muted; tb.replaceWith(tb = tabs()); } });
         let tb = tabs(); dock.append(tb, list); paint();
       }
       if (s === 'empty') dock.append(el('div', { class: 'lab-note', style: 'padding:10px' }, 'an empty swarm shows no dock at all; the sidebar ends at the footer'));
