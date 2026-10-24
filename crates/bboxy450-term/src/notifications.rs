@@ -96,8 +96,11 @@ fn run(
     let mut withdrawn = BTreeSet::new();
     let mut retry_auth = false;
     let mut last_error = None;
-    loop {
-        let next = if retry_auth && !plan.desired.is_empty() {
+    let mut queued = None;
+    'service: loop {
+        let next = if let Some(next) = queued.take() {
+            Some(next)
+        } else if retry_auth && !plan.desired.is_empty() {
             match receive.recv_timeout(AUTH_RECHECK) {
                 Ok(next) => Some(next),
                 Err(mpsc::RecvTimeoutError::Timeout) => None,
@@ -156,6 +159,14 @@ fn run(
                 for (id, notice) in desired {
                     if posted.get(id) == Some(notice) {
                         continue;
+                    }
+                    // Authorization can outlive a newer mute/focus update.
+                    // Reconcile an admitted replacement before another post,
+                    // rather than draining the whole obsolete snapshot first.
+                    if let Ok(next) = receive.try_recv() {
+                        queued = Some(next);
+                        event(Event::Ready);
+                        continue 'service;
                     }
                     match notifier.post(&notice.notification) {
                         Ok(()) => {
@@ -282,5 +293,51 @@ mod tests {
                 .collect::<Vec<_>>(),
             ["remove:old-seat"]
         );
+    }
+
+    #[test]
+    fn a_mute_admitted_during_authorization_prevents_the_pending_post() {
+        struct DelayedAuthorization {
+            entered: mpsc::Sender<()>,
+            release: Mutex<mpsc::Receiver<()>>,
+            removed: mpsc::Sender<()>,
+        }
+        impl Notifier for DelayedAuthorization {
+            fn authorize(&self) -> Result<Authorization, Error> {
+                self.entered.send(()).unwrap();
+                self.release
+                    .lock()
+                    .unwrap()
+                    .recv_timeout(Duration::from_secs(2))
+                    .unwrap();
+                Ok(Authorization::Granted)
+            }
+            fn post(&self, _: &Notification) -> Result<(), Error> {
+                panic!("muted pending post executed");
+            }
+            fn remove(&self, _: &NotificationId) -> Result<(), Error> {
+                self.removed.send(()).unwrap();
+                Ok(())
+            }
+        }
+        let (entered, started) = mpsc::channel();
+        let (release, wait) = mpsc::channel();
+        let (removed, done) = mpsc::channel();
+        let mut worker = Worker::start(
+            Box::new(DelayedAuthorization {
+                entered,
+                release: Mutex::new(wait),
+                removed,
+            }),
+            Arc::new(|_| {}),
+        )
+        .unwrap();
+        let known: BTreeSet<_> = [NotificationId("seat".into())].into();
+        worker.submit(notice("waiting", 1), known.clone());
+        started.recv_timeout(Duration::from_secs(2)).unwrap();
+        worker.submit(Desired::new(), known);
+        release.send(()).unwrap();
+        done.recv_timeout(Duration::from_secs(2)).unwrap();
+        worker.join().unwrap();
     }
 }
