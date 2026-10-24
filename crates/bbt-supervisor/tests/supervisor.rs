@@ -366,6 +366,36 @@ impl Drop for Runtime {
     }
 }
 
+/// Decision #263, the operator's case: a `mux.sock` left by a run before the ownership lock
+/// existed, with nothing listening, no longer stops a supervisor from starting.
+#[test]
+fn a_dead_socket_without_a_lock_does_not_stop_the_supervisor() {
+    use std::os::unix::fs::DirBuilderExt;
+    let runtime = Runtime::new();
+    fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&runtime.0)
+        .unwrap();
+    drop(std::os::unix::net::UnixListener::bind(runtime.socket()).unwrap());
+    assert!(runtime.socket().exists());
+    assert!(!runtime.0.join("mux.sock.lock").exists());
+    let supervisor = Supervisor::start(Config {
+        socket_path: Some(runtime.socket()),
+        ..Config::default()
+    })
+    .expect("a dead lockless socket is reclaimed");
+    assert!(UnixStream::connect(runtime.socket()).is_ok());
+    // And the live one now refuses a second starter.
+    assert!(
+        Supervisor::start(Config {
+            socket_path: Some(runtime.socket()),
+            ..Config::default()
+        })
+        .is_err()
+    );
+    drop(supervisor);
+}
+
 fn socket_call(
     stream: &mut UnixStream,
     lease: Option<Ulid>,
