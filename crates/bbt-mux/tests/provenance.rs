@@ -477,3 +477,138 @@ fn claim_before_detection_survives_missing_rebuildable_mirror() {
         1
     );
 }
+
+#[test]
+fn unchanged_clipped_git_refs_produce_no_activity_for_ten_seconds() {
+    use std::{
+        io::Write,
+        process::{Command, Stdio},
+    };
+    fn git(repository: &Path, args: &[&str], input: Option<&[u8]>) -> Vec<u8> {
+        let mut child = Command::new("git")
+            .env_clear()
+            .env("PATH", std::env::var_os("PATH").unwrap())
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .args([
+                "--no-optional-locks",
+                "-c",
+                "core.hooksPath=/dev/null",
+                "-C",
+            ])
+            .arg(repository)
+            .args(args)
+            .stdin(if input.is_some() {
+                Stdio::piped()
+            } else {
+                Stdio::null()
+            })
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        if let Some(input) = input {
+            child.stdin.take().unwrap().write_all(input).unwrap();
+        }
+        let output = child.wait_with_output().unwrap();
+        assert!(
+            output.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        output.stdout
+    }
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().to_owned();
+    let repository = root.join("repository");
+    std::fs::create_dir(&repository).unwrap();
+    git(
+        &repository,
+        &["init", "--quiet", "--initial-branch=main"],
+        None,
+    );
+    // Copy public signed objects; the fixture never opens a signing agent.
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let objects: Vec<String> = ["HEAD", "HEAD^"]
+        .iter()
+        .map(|revision| {
+            let commit = git(&source, &["cat-file", "commit", revision], None);
+            String::from_utf8(git(
+                &repository,
+                &["hash-object", "-t", "commit", "-w", "--stdin"],
+                Some(&commit),
+            ))
+            .unwrap()
+            .trim()
+            .into()
+        })
+        .collect();
+    let mut updates = format!("update refs/heads/main {}\n", objects[0]);
+    for number in 0..129 {
+        updates.push_str(&format!(
+            "update refs/heads/ref-{number:03} {}\n",
+            objects[0]
+        ));
+    }
+    git(
+        &repository,
+        &["update-ref", "--stdin"],
+        Some(updates.as_bytes()),
+    );
+    let f = Fixture::at(&root, Some(temp));
+    let gaps = |rows: &[bbt_mux::store::events::Envelope]| {
+        rows.iter()
+            .filter(|row| {
+                row.event.payload["reason"] == "git-ref-scan-bound: retained first128 refs"
+            })
+            .count()
+    };
+    let until = Instant::now() + Duration::from_secs(15);
+    let initial = loop {
+        let rows = f.rows();
+        if gaps(&rows) == 1 {
+            break rows;
+        }
+        assert!(
+            Instant::now() < until,
+            "first clipped-ref warning missing: {rows:?}"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    for row in &initial {
+        row.verify().unwrap();
+    }
+    let cursor = initial.last().unwrap().seq;
+    let started = Instant::now();
+    while started.elapsed() < Duration::from_secs(10) {
+        let added: Vec<_> = f
+            .rows()
+            .into_iter()
+            .filter(|row| row.seq > cursor)
+            .collect();
+        assert!(
+            added.is_empty(),
+            "unchanged refs produced activity: {added:?}"
+        );
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    // A real retained-ref change starts a new incomplete-snapshot state.
+    git(
+        &repository,
+        &["update-ref", "refs/heads/ref-000", &objects[1]],
+        None,
+    );
+    let until = Instant::now() + Duration::from_secs(15);
+    loop {
+        let rows = f.rows();
+        if gaps(&rows) == 2 {
+            break;
+        }
+        assert!(
+            Instant::now() < until,
+            "changed refs did not produce a new warning: {rows:?}"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
