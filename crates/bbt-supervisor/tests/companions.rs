@@ -1,5 +1,6 @@
 #![allow(clippy::disallowed_methods)] // Owned process/socket fixtures, never UI.
 
+use std::os::fd::AsRawFd;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
@@ -20,10 +21,15 @@ fn service_fixture() {
         unsafe { libc::getpgrp() },
         std::process::id() as libc::pid_t
     );
-    assert!(
-        std::fs::File::open("/dev/tty").is_err(),
-        "service inherited a controlling tty"
-    );
+    // SAFETY: read only this service's own tty and standard descriptor state.
+    unsafe {
+        if let Ok(lifetime) = std::fs::File::open("/dev/tty") {
+            assert_eq!(libc::tcgetpgrp(lifetime.as_raw_fd()), libc::getpgrp());
+        }
+        for fd in 0..=2 {
+            assert_eq!(libc::isatty(fd), 0, "service stdio acquired a tty");
+        }
+    }
     let socket = std::env::var_os("BBT_SERVICE_SOCKET").unwrap();
     let pid = std::env::var_os("BBT_SERVICE_PIDFILE").unwrap();
     std::fs::write(pid, std::process::id().to_string()).unwrap();
@@ -201,4 +207,83 @@ fn unready_companion_never_holds_the_serial_client_or_recovery_inventory() {
     exit(&client, info.seat);
     absent(service.pid);
     server.shutdown().unwrap();
+}
+
+#[test]
+#[ignore = "private supervisor subprocess, exercised by the parent test"]
+fn supervisor_process_fixture() {
+    let root = std::env::var_os("BBT_SERVICE_ROOT").unwrap();
+    let root = Path::new(&root);
+    let server = Supervisor::start(Config::default()).unwrap();
+    let client = server.connect().unwrap();
+    let info = client.spawn(plan(root, "ready")).unwrap();
+    std::fs::write(root.join("seat.json"), serde_json::to_vec(&info).unwrap()).unwrap();
+    loop {
+        std::thread::park();
+    }
+}
+
+#[test]
+fn companion_dies_when_its_supervisor_process_is_killed() {
+    let root = tempfile::tempdir().unwrap();
+    let mut owner = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--ignored",
+            "--exact",
+            "supervisor_process_fixture",
+            "--nocapture",
+        ])
+        .env("BBT_SERVICE_ROOT", root.path())
+        .spawn()
+        .unwrap();
+    let deadline = Instant::now() + WATCHDOG;
+    let info: SeatInfo = loop {
+        assert!(
+            owner.try_wait().unwrap().is_none(),
+            "supervisor fixture exited"
+        );
+        if let Ok(bytes) = std::fs::read(root.path().join("seat.json"))
+            && let Ok(info) = serde_json::from_slice(&bytes)
+            && root.path().join("s").exists()
+        {
+            break info;
+        }
+        if Instant::now() >= deadline {
+            owner.kill().unwrap();
+            owner.wait().unwrap();
+            panic!("private service never bound its readiness socket");
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    };
+    let service = info.companion.unwrap();
+    owner.kill().unwrap();
+    let status = owner.wait().unwrap();
+    use std::os::unix::process::ExitStatusExt;
+    assert_eq!(status.signal(), Some(libc::SIGKILL));
+    // No graceful Drop/TERM path can run in the killed supervisor. The kernel
+    // hangup must retire both its existing PTY child and its private service.
+    let mut survivors = Vec::new();
+    for pid in [service.pid, info.pid] {
+        loop {
+            // SAFETY: observe only the exact fixture PID; no signal is sent.
+            if unsafe { libc::kill(pid as libc::pid_t, 0) } == -1 {
+                absent(pid);
+                break;
+            }
+            if Instant::now() >= deadline {
+                // SAFETY: clean up the exact child recorded by our owned
+                // supervisor fixture, which has not exited during observation.
+                unsafe {
+                    libc::kill(pid as libc::pid_t, libc::SIGKILL);
+                }
+                survivors.push(pid);
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    }
+    assert!(
+        survivors.is_empty(),
+        "owned children survived supervisor SIGKILL: {survivors:?}"
+    );
 }

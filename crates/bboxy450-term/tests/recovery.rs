@@ -21,6 +21,17 @@ async fn script(path: &Path, text: String) {
         .await
         .unwrap();
 }
+
+#[test]
+#[ignore = "private Codex service stand-in, exercised by the recovery tests"]
+fn codex_service_fixture() {
+    let socket = std::env::var_os("BBT_RECOVERY_CODEX_SOCKET").unwrap();
+    let listener = std::os::unix::net::UnixListener::bind(socket).unwrap();
+    for stream in listener.incoming() {
+        drop(stream.unwrap());
+    }
+}
+
 async fn start(root: &Path) -> Session {
     tokio::fs::create_dir_all(root.join("repository"))
         .await
@@ -28,10 +39,18 @@ async fn start(root: &Path) -> Session {
     tokio::fs::create_dir_all(root.join("zsh-config"))
         .await
         .unwrap();
-    // Fixture binaries record actual argv, then act as PTY readers. No native
-    // Claude/Codex session, account or approval store is touched.
+    // The private service binds its readiness socket; only the TUI records argv
+    // and reads the PTY. No native session, account or approval store is touched.
     for harness in ["claude", "codex"] {
-        script(&root.join(harness), format!("#!/bin/sh\nwhile [ -e '{}' ]; do sleep 0.01; done\nprintf '%s\\n' \"$@\" >> '{}'\nprintf 'fixture-ready\\n'\nwhile IFS= read -r line; do printf 'fixture: %s\\n' \"$line\"; done\n", root.join(format!("{harness}-hold-argv")).display(), root.join(format!("{harness}-argv")).display())).await;
+        let server = if harness == "codex" {
+            format!(
+                "if [ \"$1\" = app-server ]; then\n  BBT_RECOVERY_CODEX_SOCKET=\"${{3#unix://}}\" exec '{}' --ignored --exact codex_service_fixture --nocapture\nfi\n",
+                std::env::current_exe().unwrap().display()
+            )
+        } else {
+            String::new()
+        };
+        script(&root.join(harness), format!("#!/bin/sh\n{server}while [ -e '{}' ]; do sleep 0.01; done\nprintf '%s\\n' \"$@\" >> '{}'\nprintf 'fixture-ready\\n'\nwhile IFS= read -r line; do printf 'fixture: %s\\n' \"$line\"; done\n", root.join(format!("{harness}-hold-argv")).display(), root.join(format!("{harness}-argv")).display())).await;
     }
     let executable = root.join("test-app");
     script(
