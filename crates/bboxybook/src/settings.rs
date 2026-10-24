@@ -21,6 +21,9 @@ pub const STATES: &[&str] = &[
     "Harnesses",
     "new harness",
     "Appearance",
+    "Notifications",
+    "notifications · off",
+    "notifications · one harness off",
     "Shortcuts",
     "in a tab",
 ];

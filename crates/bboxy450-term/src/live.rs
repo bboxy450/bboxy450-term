@@ -77,6 +77,7 @@ fn spawn_spec(message: &UiMsg, swarm: Ulid, cwd: &Path) -> Option<SpawnSpec> {
 pub struct CommandSender {
     sender: mpsc::Sender<UiMsg>,
     knowledge: Arc<KnowledgeDemand>,
+    context: tokio::sync::watch::Sender<Option<bboxy450_term::settings::ContextUpdate>>,
     // Dropping the UI owner wakes shutdown even when the queue and retained
     // retry slot are full. No polling timer and no UI wait are needed.
     _stop: oneshot::Sender<()>,
@@ -87,6 +88,10 @@ struct KnowledgeDemand {
     notify: tokio::sync::Notify,
 }
 impl CommandSender {
+    pub fn set_context(&self, context: bboxy450_term::settings::ContextUpdate) {
+        self.context.send_replace(Some(context));
+    }
+
     /// A desired observer state, independent of the bounded command queue.
     pub fn observe_knowledge(&self, enabled: bool) {
         if self.knowledge.enabled.swap(enabled, Ordering::AcqRel) != enabled {
@@ -104,21 +109,25 @@ struct Commands {
     messages: mpsc::Receiver<UiMsg>,
     stop: oneshot::Receiver<()>,
     knowledge: Arc<KnowledgeDemand>,
+    context: tokio::sync::watch::Receiver<Option<bboxy450_term::settings::ContextUpdate>>,
 }
 fn command_channel() -> (CommandSender, Commands) {
     let (sender, messages) = mpsc::channel(COMMAND_CAPACITY);
+    let (context, contexts) = tokio::sync::watch::channel(None);
     let (stop, stopped) = oneshot::channel();
     let knowledge = Arc::new(KnowledgeDemand::default());
     (
         CommandSender {
             sender,
             knowledge: knowledge.clone(),
+            context,
             _stop: stop,
         },
         Commands {
             messages,
             stop: stopped,
             knowledge,
+            context: contexts,
         },
     )
 }
@@ -758,6 +767,16 @@ async fn run(
         let writer_ready = session.writer_ready();
         let result:Result<()>=async {
             tokio::select! {
+                changed=commands.context.changed()=> {
+                    if changed.is_ok() {
+                        let context=commands.context.borrow_and_update().clone();
+                        if let Some(context)=context {
+                            let current=Arc::make_mut(&mut model);
+                            current.ui.window.theme=context.theme;current.ui.window.density=context.density;current.settings=Some(context.snapshot);
+                            publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                        }
+                    }
+                },
                 _=commands.knowledge.notify.notified()=> {
                     knowledge_watch.observe(commands.knowledge.enabled.load(Ordering::Acquire));
                 },

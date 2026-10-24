@@ -11,6 +11,7 @@ pub mod messaging;
 pub mod model;
 pub mod notifications;
 pub mod scrollback;
+pub mod settings;
 
 #[cfg(test)]
 #[test]

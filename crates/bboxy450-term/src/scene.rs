@@ -36,19 +36,35 @@ pub struct ConversationLayout {
     pub regions: ui::modules::composer::Regions,
     pub height: f32,
     pub actions: ui::modules::stream_dock::Regions,
+    context: ui::Context,
 }
 pub struct LocalPageLayout {
     pub layout: c::Layout,
     pub viewport: Rect,
     pub close: Rect,
     pub max_scroll: f32,
+    pub settings: Option<ui::modules::settings::controller::Regions>,
+    focus: Option<(Rect, Rect)>,
+    context: ui::Context,
 }
 impl LocalPageLayout {
     pub fn paint(&self) -> Vec<c::Paint> {
-        c::paint(
-            &self.layout,
-            ui::Context::new(ui::Theme::Dark, ui::Density::Cozy),
-        )
+        let mut ops = c::paint(&self.layout, self.context);
+        if let Some((rect, clip)) = self.focus {
+            let mut draw = DrawList::default();
+            draw.clip(clip, [0.; 4]);
+            draw.push(bbt_ui_model::draw::Prim::Rect {
+                rect,
+                radii: [5.; 4],
+                fill: Color::TRANSPARENT,
+                stroke: Some((2., Color::hex(self.context.theme.palette().accent))),
+                inner_highlight: None,
+                shadow: None,
+            });
+            draw.unclip();
+            ops.push(c::Paint::Draw(draw));
+        }
+        ops
     }
     pub fn contains(&self, at: [f32; 2]) -> bool {
         contains(self.viewport, at)
@@ -62,10 +78,7 @@ impl LocalPageLayout {
 }
 impl ConversationLayout {
     pub fn paint(&self) -> Vec<c::Paint> {
-        c::paint(
-            &self.layout,
-            ui::Context::new(ui::Theme::Dark, ui::Density::Cozy),
-        )
+        c::paint(&self.layout, self.context)
     }
 }
 pub struct LauncherLayout {
@@ -75,6 +88,7 @@ pub struct LauncherLayout {
     pub caret: Option<Rect>,
     query_origin: f32,
     query_font: MeasureStyle,
+    context: ui::Context,
     pub rows: Vec<Rect>,
 }
 impl LauncherLayout {
@@ -91,10 +105,7 @@ impl LauncherLayout {
         self.caret.unwrap_or(self.query)
     }
     fn paint(&self) -> Vec<c::Paint> {
-        c::paint(
-            &self.layout,
-            ui::Context::new(ui::Theme::Dark, ui::Density::Cozy),
-        )
+        c::paint(&self.layout, self.context)
     }
 }
 fn contains(r: Rect, at: [f32; 2]) -> bool {
@@ -121,6 +132,9 @@ pub struct Scene {
     /// The rim size R (Settings > Rim size, 2-8 px), centred on each pane's border: the
     /// gutter between panes is R and the stage inset R/2, so changing it relayouts.
     rim: f32,
+    context: ui::Context,
+    glow: bool,
+    subtitle: bool,
     /// When each seat's focus swell started (rim-glow §7); it runs glow.swell_ms.
     swells: HashMap<SeatId, Instant>,
     /// Seats waiting for the operator (attention §2): since when, and whether muted.
@@ -255,6 +269,9 @@ impl Scene {
             hosts: vec![],
             metrics: Metrics::default(),
             rim: TOKENS.glow.rim as f32,
+            context: ui::Context::new(ui::Theme::Dark, ui::Density::Cozy),
+            glow: true,
+            subtitle: false,
             swells: HashMap::new(),
             attention: HashMap::new(),
         }
@@ -271,6 +288,22 @@ impl Scene {
         self
     }
     /// Takes effect at the next layout: the gutter and the stage inset follow it.
+    pub fn ui_context(&self) -> ui::Context {
+        self.context
+    }
+    pub fn set_context(&mut self, context: ui::Context) {
+        self.context = context;
+    }
+    pub fn set_appearance(
+        &mut self,
+        preferences: &bboxy450_term::settings::Preferences,
+        system: ui::Theme,
+    ) {
+        self.set_context(preferences.context(system));
+        self.set_rim(preferences.appearance.rim);
+        self.glow = preferences.appearance.glow;
+        self.subtitle = preferences.appearance.subtitle;
+    }
     pub fn set_rim(&mut self, px: f32) {
         self.rim = px.clamp(RIM_MIN, RIM_MAX);
     }
@@ -289,6 +322,9 @@ impl Scene {
     }
     /// Whether any swell or attention loop still needs frames at `now`.
     pub fn animating(&self, now: Instant) -> bool {
+        if !self.glow {
+            return false;
+        }
         let ms = TOKENS.glow.swell_ms as f32;
         self.attention.values().any(|(_, muted)| !muted)
             || self
@@ -322,6 +358,9 @@ impl Scene {
             hosts: vec![],
             metrics: Metrics::default(),
             rim: TOKENS.glow.rim as f32,
+            context: ui::Context::new(ui::Theme::Dark, ui::Density::Cozy),
+            glow: true,
+            subtitle: false,
             swells: HashMap::new(),
             attention: HashMap::new(),
         }
@@ -371,6 +410,10 @@ impl Scene {
                     .filter(|role| role.name != "shell")
                     .map(|role| role.name.clone());
                 row.title = seat.title.clone();
+                row.subtitle = self
+                    .subtitle
+                    .then(|| model.subtitles.get(id).cloned())
+                    .flatten();
                 row.activity = seat.activity;
                 row.grade = seat.grade;
                 row.muted = seat.muted;
@@ -556,7 +599,7 @@ impl Scene {
         now: Instant,
         panes: bool,
     ) -> Result<Vec<c::Layout>, String> {
-        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let ctx = self.ui_context();
         // Rows, tabs and panes carry each seat's swell and attention (rim-glow §7-8).
         let mut seats = self.seats.clone();
         for (id, index) in &self.seat_index {
@@ -691,7 +734,18 @@ impl Scene {
         body: c::Element,
         scroll: f32,
     ) -> Result<LocalPageLayout, String> {
-        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        self.local_page_frame(size, dock, label, body, scroll, false)
+    }
+    fn local_page_frame(
+        &self,
+        size: [f32; 2],
+        dock: f32,
+        label: &str,
+        body: c::Element,
+        scroll: f32,
+        bounded: bool,
+    ) -> Result<LocalPageLayout, String> {
+        let ctx = self.ui_context();
         let sidebar = 300_f32.min(size[0] * 0.35);
         let rect = Rect::new(
             sidebar,
@@ -701,11 +755,14 @@ impl Scene {
         );
         let header = 44_f32.min(rect.h);
         let viewport = Rect::new(rect.x, rect.y + header, rect.w, (rect.h - header).max(1.));
-        let content_height = body
-            .layout(Rect::new(0., 0., rect.w, 0.), ctx, &self.metrics)
-            .map_err(|e| e.to_string())?
-            .rect
-            .h;
+        let content_height = if bounded {
+            viewport.h
+        } else {
+            body.layout(Rect::new(0., 0., rect.w, 0.), ctx, &self.metrics)
+                .map_err(|e| e.to_string())?
+                .rect
+                .h
+        };
         let max_scroll = (content_height - viewport.h).max(0.);
         let mut close_style = ui::Style::new(ui::Preset::ButtonGhost);
         close_style.overrides.text = Some(ui::Text {
@@ -765,12 +822,16 @@ impl Scene {
         head.gap = ui::Length::Px(0.);
         let content = c::Element::Named {
             name: "local/viewport".into(),
-            content: Box::new(c::Element::ScrollView(c::ScrollView {
-                viewport: [viewport.w, viewport.h],
-                offset: [0., scroll.clamp(0., max_scroll)],
-                content_width: Some(viewport.w),
-                content: Box::new(body),
-            })),
+            content: Box::new(if bounded {
+                body
+            } else {
+                c::Element::ScrollView(c::ScrollView {
+                    viewport: [viewport.w, viewport.h],
+                    offset: [0., scroll.clamp(0., max_scroll)],
+                    content_width: Some(viewport.w),
+                    content: Box::new(body),
+                })
+            }),
         };
         let mut root = c::Box::new(
             style,
@@ -799,7 +860,45 @@ impl Scene {
             viewport,
             close,
             max_scroll,
+            settings: None,
+            focus: None,
+            context: ctx,
         })
+    }
+    pub fn settings_page_layout(
+        &self,
+        size: [f32; 2],
+        dock: f32,
+        view: &ui::modules::settings::Settings,
+        state: &ui::modules::settings::controller::Presentation,
+        status: &str,
+    ) -> Result<LocalPageLayout, String> {
+        let width = (size[0] - 300_f32.min(size[0] * 0.35)).max(1.);
+        let height = (size[1] - STYLE.spacing.title_bar as f32 - dock - 44.).max(1.);
+        let body = view.element_with(self.ui_context(), &self.metrics, width, height, state);
+        let mut page = self.local_page_frame(
+            size,
+            dock,
+            &format!("Settings · {} · {status}", view.section),
+            body,
+            0.,
+            true,
+        )?;
+        let regions = ui::modules::settings::controller::Regions::new(&page.layout, view)
+            .ok_or("Settings hit regions missing")?;
+        page.viewport = regions.viewport;
+        page.max_scroll = regions.max_scroll;
+        let clip = if matches!(
+            state.focus,
+            ui::modules::settings::controller::Focus::Control(_)
+        ) {
+            regions.viewport
+        } else {
+            page.layout.rect
+        };
+        page.focus = regions.focus_rect(&state.focus).map(|rect| (rect, clip));
+        page.settings = Some(regions);
+        Ok(page)
     }
     pub fn graph_page_layout(
         &self,
@@ -808,7 +907,7 @@ impl Scene {
         checklist: &ui::modules::e2e_checklist::Checklist,
         scroll: f32,
     ) -> Result<LocalPageLayout, String> {
-        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let ctx = self.ui_context();
         let width = (size[0] - 300_f32.min(size[0] * 0.35)).max(1.);
         let graph = ui::modules::graph_tab::GraphTab {
             e2e: Some(checklist.clone()),
@@ -830,7 +929,7 @@ impl Scene {
         overlay: Option<&PerfHud>,
         launcher: Option<&LauncherLayout>,
     ) -> Vec<c::Paint> {
-        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let ctx = self.ui_context();
         let mut background = DrawList::default();
         background.rect(
             Rect::new(0., 0., size[0], size[1]),
@@ -845,7 +944,9 @@ impl Scene {
             ops.extend(body);
             rims.extend(rim);
         }
-        ops.extend(rims);
+        if self.glow {
+            ops.extend(rims);
+        }
         if let Some(identity) = &self.identity {
             use bbt_proto::GuiIdentityState;
             let note = match identity.state {
@@ -881,7 +982,7 @@ impl Scene {
         size: [f32; 2],
         view: &ui::modules::composer::Conversation,
     ) -> Result<ConversationLayout, String> {
-        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let ctx = self.ui_context();
         let width = 300_f32.min(size[0] * 0.35);
         let footer = if self.identity.is_some() { 24. } else { 0. };
         let available = (size[1] - STYLE.spacing.title_bar as f32 - footer).max(1.);
@@ -903,6 +1004,7 @@ impl Scene {
         let regions = ui::modules::composer::Regions::new(&layout).map_err(|e| e.to_string())?;
         let actions = ui::modules::stream_dock::Regions::dock(&layout, &view.stream);
         Ok(ConversationLayout {
+            context: ctx,
             layout,
             regions,
             height,
@@ -955,7 +1057,7 @@ impl Scene {
         size: [f32; 2],
         launcher: &Launcher,
     ) -> Result<LauncherLayout, String> {
-        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let ctx = self.ui_context();
         let width = 760_f32.min(size[0] * 0.92);
         let side = (size[0] - width) * 0.5;
         let mut overlay = c::Overlay::new(launcher.element(ctx));
@@ -1006,6 +1108,7 @@ impl Scene {
             })
             .collect::<Result<_, _>>()?;
         Ok(LauncherLayout {
+            context: ctx,
             layout,
             panel,
             query,
@@ -1069,7 +1172,7 @@ impl Scene {
         if !scale.is_finite() || scale <= 0. {
             return Ok(ops);
         }
-        let ctx = ui::Context::new(model.ui.window.theme, ui::Density::Cozy);
+        let ctx = self.ui_context();
         for (seat, body) in bounds {
             let (Some(history), Some(frame)) = (model.history.get(seat), model.frames.get(seat))
             else {
@@ -1112,7 +1215,7 @@ impl Scene {
     /// The perf HUD (Cmd+Opt+F), top right as the lab's perf.html floats it over the app.
     pub fn overlay(&self, size: [f32; 2], hud: Option<&PerfHud>) -> Vec<c::Paint> {
         let Some(hud) = hud else { return vec![] };
-        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let ctx = self.ui_context();
         let width = PerfHud::width(ctx);
         let rect = Rect::new((size[0] - 14. - width).max(0.), 40., width, 0.);
         match hud.element(ctx, "hud").layout(rect, ctx, &self.metrics) {
@@ -1591,5 +1694,53 @@ mod launcher_tests {
         let paints = scene.paint(&layouts, size, None, None);
         println!("L8_PAINT_BEGIN{paints:#?}L8_PAINT_END");
         assert_eq!(scene.focus_bounds(&layouts).len(), 15);
+    }
+    #[test]
+    fn settings_owns_one_inner_scroller_and_uses_the_effective_theme_density_and_rim() {
+        let mut scene = Scene::live();
+        let mut preferences = bboxy450_term::settings::Preferences::default();
+        preferences.appearance.theme = "light".into();
+        preferences.appearance.density = "compact".into();
+        preferences.appearance.rim = 8.;
+        scene.set_appearance(&preferences, ui::Theme::Dark);
+        let view = ui::modules::settings::Settings {
+            section: "Appearance".into(),
+            values: bboxy450_term::settings::records(None, &preferences),
+            defaults: bboxy450_term::settings::records(None, &Default::default()),
+            ..Default::default()
+        };
+        let controller = ui::modules::settings::controller::Controller::new("Appearance");
+        let page = scene
+            .settings_page_layout(
+                [1600., 960.],
+                180.,
+                &view,
+                &controller.presentation(),
+                "saved",
+            )
+            .unwrap();
+        fn count(node: &c::Layout) -> usize {
+            usize::from(matches!(node.kind, c::LayoutKind::ScrollView { .. }))
+                + node.children.iter().map(count).sum::<usize>()
+        }
+        assert_eq!(count(&page.layout), 1);
+        assert_eq!(page.context.theme, ui::Theme::Light);
+        assert_eq!(page.context.density, ui::Density::Compact);
+        assert_eq!(scene.rim, 8.);
+        assert!(page.viewport.bottom() <= 780.);
+        assert!(page.settings.as_ref().unwrap().rim.is_some());
+        let mut text = String::new();
+        fn labels(node: &c::Layout, text: &mut String) {
+            if let c::LayoutKind::Text { runs, .. } = &node.kind {
+                for run in runs {
+                    text.push_str(&run.text);
+                }
+            }
+            for child in &node.children {
+                labels(child, text);
+            }
+        }
+        labels(&page.layout, &mut text);
+        assert!(text.contains("not yet applied to the window"));
     }
 }

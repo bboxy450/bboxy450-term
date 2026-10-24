@@ -1,0 +1,66 @@
+Settings checkpoint 1 CORE — Velvet Vulpine <EXECUTOR>
+2026-10-24T17:12:23.844185+00:00
+Brief b3c56445-9450-40cc-a2c7-0eefe27f193c; own worktree exec6.
+NOT A FINAL HANDOFF: ATTENTION binding awaits its accepted main SHA; exact clean ci-local --parity remains owed in an Oracle slot.
+Base bb30746e; Wren b62f8515 carried as signed c24e7452. Native changes stay in approved Settings/app/fixture paths. No renderer/shader/policy/tolerance edit.
+
+Mechanisms:
+crates/bboxy450-term/src/settings.rs:24 — validated preference snapshot; fresh bounded TOML load and managed-key atomic patches preserve comments, unknown keys and symlinks; a coalesced IO owner publishes revisioned completion
+crates/bboxy450-term/src/settings.rs:76 — one real mute operation; reply/refusal is retained, success waits for authoritative metadata
+crates/bbt-ui/src/modules/settings/controller.rs:12 — pure field validation and controller: section/search/IME/focus, range preview, reset and retained hit regions
+crates/bbt-ui/src/modules/settings.rs:79 — public Notifications settings and eight-section nav; unsupported window controls visibly unavailable in host; other host sections read-only projections
+crates/bbt-ui/src/modules/settings.rs:2636 — Notifications rows retain disabled values; harness labels use inherited inline strut and centred first-item baseline, including changed-row Layers
+crates/bboxy450-term/src/main.rs:1190 — current-swarm LocalTab hosting with original Stage retained; Settings keyboard/pointer/IME/wheel routing and snapshot saves
+crates/bboxy450-term/src/main.rs:1235 — shared IME restore hook for launcher/composer/reject/Settings; Nyx document modal consumes this seam
+crates/bboxy450-term/src/scene.rs:859 — one inner Settings ScrollView excludes dock; retained hit regions and effective Context painting
+crates/bboxy450-term/src/live.rs:91 — coalesced appearance channel applies theme/density before PanePreparer, independently of Graph Knowledge
+crates/bboxy450-term/src/model.rs:516 — Settings snapshot and context survive metadata rebuild; last-output subtitles prepared/cached on IO
+crates/bboxybook/src/settings.rs:16 — three Notification states add 24 canonical cases (96 current; 72 legacy unchanged)
+crates/bboxybook/capture-inputs.js:252 — capture public per-state notifications options
+Cargo.toml/Cargo.lock add only existing-locked toml_edit display and libc dependency edges.
+Tests: app settings tests, UI controller/settings tests, and bboxybook settings matrix tests; no other fixture modified.
+
+Evidence:
+Settings96 fresh capture initially exit1: 96 measured, 24 geometry mismatches in new harness-label boxes; old 72 clean.
+Native saved-input replays: inline strut alone still24, centred-icon baseline leaves16 changed-row misses, Layers traversal fixes all. No tolerance moved.
+settings-layers-compare: exit0; 96/96 measured, 0 unproven, 0 geometry mismatches, 0 advisory pixels; worst rect error 0.02040863037109375 px.
+Report target/settings96-dev/report.json sha256 05c5f1d7d2ad4a1cdf74a9ec63df6acbd5049d0dbf29fe402a96e3c70acdbedd.
+Latest strict workspace/all-target Clippy exit0: target/settings-proof/settings-core-clippy.log.
+Latest preference tests 6/0 include array-entry comments retained on removal; core app tests previously library5 + host3 + provider1 + integration4 passed; controller2/0 and settings UI8/0.
+Native isolated Appearance capture inspected: light/compact/rim6, unavailable opacity/blur/radius, saved header; config sha before/after 7d4eba4f3e67dae02cf63466f24c73cc418017b4ad814ceaba7cc9283928b014.
+The delayed-capture smoke command exited1 (it deliberately added one frame during the idle interval); same binary with initial capture only exited0, 10.002s idle, frames0/callbacks0. This dev binary predates the array-comment-only save helper change; final exact-head proof is still owed.
+No real config, Keychain, desktop-notification authorization, operator desktop input, or tty write used. The native probe used --smoke with an owned explicit config fixture.
+
+Commands (real child statuses; failures retained):
+host-first: ["cargo", "test", "-p", "bboxy450-term", "--locked", "settings", "--", "--nocapture"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/host-first.log
+kit-first: ["cargo", "test", "-p", "bbt-ui", "--lib", "--locked", "settings::controller", "--", "--nocapture"] — exit 101; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/kit-first.log
+preferences-first: ["cargo", "test", "-p", "bboxy450-term", "--lib", "settings::tests", "--", "--nocapture"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/preferences-first.log
+settings-app-build: ["cargo", "build", "-p", "bboxy450-term", "--locked"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-app-build.log
+settings-array-comments: ["cargo", "test", "-p", "bboxy450-term", "--locked", "--lib", "settings::tests", "--", "--nocapture"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-array-comments.log
+settings-clippy: ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-clippy.log
+settings-core-app-tests: ["cargo", "test", "-p", "bboxy450-term", "--locked", "settings", "--", "--nocapture"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-core-app-tests.log
+settings-core-clippy: ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-core-clippy.log
+settings-core-controller-tests: ["cargo", "test", "-p", "bbt-ui", "--locked", "--lib", "settings::controller", "--", "--nocapture"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-core-controller-tests.log
+settings-core-ui-tests: ["cargo", "test", "-p", "bbt-ui", "--locked", "--test", "settings", "--", "--nocapture"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-core-ui-tests.log
+settings-finish-focused: ["cargo", "test", "-p", "bboxy450-term", "-p", "bbt-ui", "-p", "bboxybook", "--locked", "settings", "--", "--nocapture"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-finish-focused.log
+settings-focused: ["cargo", "test", "-p", "bboxy450-term", "-p", "bbt-ui", "--locked", "settings", "--", "--nocapture"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-focused.log
+settings-inline-baseline-build: ["cargo", "build", "-p", "bboxybook", "--locked"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-inline-baseline-build.log
+settings-inline-baseline-compare: ["/Users/feral/mydev/bboxy450-term-exec6/target/settings-dev/debug/bboxybook", "compare", "--strict-geometry", "--out", "/Users/feral/mydev/bboxy450-term-exec6/target/settings96-dev", "--manifest", "/Users/feral/mydev/bboxy450-term-exec6/target/settings96-dev/cases.json"] — exit 1; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-inline-baseline-compare.log
+settings-inline-baseline-render: ["/Users/feral/mydev/bboxy450-term-exec6/target/settings-dev/debug/bboxybook", "render", "--all", "--out", "/Users/feral/mydev/bboxy450-term-exec6/target/settings96-dev/native", "--manifest", "/Users/feral/mydev/bboxy450-term-exec6/target/settings96-dev/cases.json"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-inline-baseline-render.log
+settings-inline-build: ["cargo", "build", "-p", "bboxybook", "--locked"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-inline-build.log
+settings-inline-compare: ["/Users/feral/mydev/bboxy450-term-exec6/target/settings-dev/debug/bboxybook", "compare", "--strict-geometry", "--out", "/Users/feral/mydev/bboxy450-term-exec6/target/settings96-dev", "--manifest", "/Users/feral/mydev/bboxy450-term-exec6/target/settings96-dev/cases.json"] — exit 1; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-inline-compare.log
+settings-inline-render: ["/Users/feral/mydev/bboxy450-term-exec6/target/settings-dev/debug/bboxybook", "render", "--all", "--out", "/Users/feral/mydev/bboxy450-term-exec6/target/settings96-dev/native", "--manifest", "/Users/feral/mydev/bboxy450-term-exec6/target/settings96-dev/cases.json"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-inline-render.log
+settings-layers-build: ["cargo", "build", "-p", "bboxybook", "--locked"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-layers-build.log
+settings-layers-compare: ["/Users/feral/mydev/bboxy450-term-exec6/target/settings-dev/debug/bboxybook", "compare", "--strict-geometry", "--out", "/Users/feral/mydev/bboxy450-term-exec6/target/settings96-dev", "--manifest", "/Users/feral/mydev/bboxy450-term-exec6/target/settings96-dev/cases.json"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-layers-compare.log
+settings-layers-render: ["/Users/feral/mydev/bboxy450-term-exec6/target/settings-dev/debug/bboxybook", "render", "--all", "--out", "/Users/feral/mydev/bboxy450-term-exec6/target/settings96-dev/native", "--manifest", "/Users/feral/mydev/bboxy450-term-exec6/target/settings96-dev/cases.json"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-layers-render.log
+settings-native-initial: ["/Users/feral/mydev/bboxy450-term-exec6/target/settings-dev/debug/bboxy450-term", "--smoke", "--settings", "Appearance", "--settings-config", "/Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/native-settings-config.toml", "--capture", "/Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-native-initial.png"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-native-initial.log
+settings-native: ["/Users/feral/mydev/bboxy450-term-exec6/target/settings-dev/debug/bboxy450-term", "--smoke", "--settings", "Appearance", "--settings-config", "/Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/native-settings-config.toml", "--capture", "/Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-native-appearance.png", "--capture-after", "2"] — exit 1; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-native.log
+settings-ui-all: ["cargo", "test", "-p", "bbt-ui", "--locked", "--test", "settings", "--", "--nocapture"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-ui-all.log
+settings-ui-lint: ["sh", "scripts/ui-lint.sh"] — exit 0; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-ui-lint.log
+settings96: ["sh", "scripts/parity.sh"] — exit 1; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings96.log
+ui-lint-default-target-stopped: ["sh", "scripts/ui-lint.sh"] — exit 143; /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/ui-lint-default-process.json
+sh scripts/layering.sh — exit0 (layering: held).
+git diff --check — exit0.
+Signing config verified: Boxy <bboxy450@gmail.com>, 9B07E849480C68328CA20684844ECC0587DE7AB0, commit.gpgsign=true.
+
+Not checked: final ATTENTION policy binding (dependency pending), exact clean full CI/parity, real bundled notification delivery, hardware IME/manual mouse input, non-macOS. These are not acceptance claims.
