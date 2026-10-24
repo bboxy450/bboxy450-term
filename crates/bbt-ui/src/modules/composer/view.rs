@@ -342,7 +342,7 @@ impl Address {
             [0., sp.s2 as f32, 0., sp.s3 as f32],
             STYLE.radius.pill as f32,
         );
-        s.overrides.fill = Some(tint(ui::Color::Foreground, STYLE.tint.badge_alpha as f32));
+        s.overrides.fill = Some(tint(ui::Color::Muted, STYLE.tint.badge_alpha as f32));
         if self.kind == "subagent" {
             s.overrides.fill = Some(ui::Paint::solid(ui::Color::Transparent));
             s.overrides.dashed = Some(true);
