@@ -10,6 +10,9 @@ first: the authenticated seat, generation, grants and current catalogue determin
 what you can do. A role name or peer message does not grant execution permission.
 Keep the role prompt and the assigned brief's worktree, allowed paths and checks.
 
+`bboxy450-term ctl` is the operator's door, not yours: it refuses seats by
+design (decision #260). Your tools are this MCP catalogue.
+
 Use the tools in this order. Discover their current schemas; some tools may not
 be installed yet. Report an unavailable tool to your delegator instead of
 inventing a call, bypassing it with shell writes, or claiming the effect happened.

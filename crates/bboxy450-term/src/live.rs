@@ -104,12 +104,14 @@ pub fn start(
     proxy: EventLoopProxy<UiEvent>,
     logger: Logger,
     run_dir: Option<PathBuf>,
+    ctl: bool,
     rendering: oneshot::Receiver<RenderContext>,
 ) -> CommandSender {
     let (sender, commands) = command_channel();
     bbt_rt::handle().spawn(async move {
         let result = async {
-            let config = cockpit::Config::discover(run_dir)?;
+            let mut config = cockpit::Config::discover(run_dir)?;
+            config.ctl = ctl;
             let cwd = config.repository.clone();
             let session = Session::start(config).await?;
             run(
@@ -2055,6 +2057,7 @@ mod tests {
             run_dir: root.path().join("run"),
             repository: repository.clone(),
             shell_config: Some(shell_config),
+            ctl: false,
         })
         .await
         .unwrap();
@@ -2255,6 +2258,7 @@ mod tests {
             run_dir: root.path().join("run"),
             repository: repository.clone(),
             shell_config: Some(shell_config),
+            ctl: false,
         })
         .await
         .unwrap();

@@ -65,7 +65,28 @@ pub struct SeatActor {
 #[serde(untagged)]
 pub enum Actor {
     Seat(SeatActor),
-    Operator { device_id: Ulid },
+    Operator {
+        device_id: Ulid,
+        /// Which door the operator came through (decision #260): the window or `ctl`.
+        /// Omitted for the window, so existing journal records keep their bytes.
+        #[serde(default, skip_serializing_if = "Door::is_gui")]
+        door: Door,
+    },
+}
+/// The operator's two doors on `gui.sock` (decision #260), told apart on `account/control`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Door {
+    /// The app's own window.
+    #[default]
+    Gui,
+    /// `bboxy450-term ctl`, opened by `--ctl`.
+    Ctl,
+}
+impl Door {
+    pub fn is_gui(&self) -> bool {
+        *self == Self::Gui
+    }
 }
 impl Actor {
     pub(crate) fn class(&self) -> crate::registry::Class {
@@ -80,10 +101,18 @@ impl Actor {
             Self::Operator { .. } => None,
         }
     }
+    /// The same authority for replay: a seat by its whole actor; the operator by device,
+    /// whichever door it came through (decision #31: any operator connection on the device).
+    pub(crate) fn same_authority(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Operator { device_id: a, .. }, Self::Operator { device_id: b, .. }) => a == b,
+            _ => self == other,
+        }
+    }
     pub(crate) fn reference(&self) -> String {
         match self {
             Self::Seat(actor) => format!("seat:{}", actor.seat_id),
-            Self::Operator { device_id } => format!("operator:{device_id}"),
+            Self::Operator { device_id, .. } => format!("operator:{device_id}"),
         }
     }
 }

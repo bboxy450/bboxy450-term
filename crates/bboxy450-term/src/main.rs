@@ -3505,6 +3505,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         bbt_mux::mcp::run_cli()?;
         return Ok(());
     }
+    if hook_args.first().is_some_and(|arg| arg == "ctl") {
+        // The operator's door from outside the app (e2e-acceptance §3, decision #260):
+        // the run directory comes from BBOXY_RUN_DIR, else the default one.
+        let run_dir = match std::env::var_os("BBOXY_RUN_DIR") {
+            Some(dir) => std::path::PathBuf::from(dir),
+            None => bbt_mux::transport::default_socket_path()?
+                .parent()
+                .map(std::path::Path::to_path_buf)
+                .ok_or("default run directory unavailable")?,
+        };
+        let endpoint = run_dir.join(bbt_mux::ctl_door::ENDPOINT);
+        if let Err(reason) = bboxy450_term::ctl::main(&hook_args[1..], &endpoint) {
+            println!("{}", serde_json::json!({"kind": "error", "reason": reason}));
+            std::process::exit(1);
+        }
+        return Ok(());
+    }
     let verify = Verify::from_args(&hook_args)?;
     let stall_config = stall::Config::parse(&hook_args)?;
     if let Some(config) = stall_config.as_ref().filter(|config| config.headless) {
@@ -3577,6 +3594,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 args.windows(2)
                     .find(|pair| pair[0] == "--run-dir")
                     .map(|pair| std::path::PathBuf::from(&pair[1])),
+                // The operator's ctl door (decision #260): opt-in, closed by default.
+                args.iter().any(|arg| arg == "--ctl"),
                 rendering,
             )),
         )

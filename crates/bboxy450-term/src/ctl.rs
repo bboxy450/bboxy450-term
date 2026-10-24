@@ -1,0 +1,624 @@
+//! `bboxy450-term ctl`: the operator's channel into a running app from outside it
+//! (e2e-acceptance §3). It speaks `gui.sock` exactly as the GUI does, the same `GuiRequest`
+//! frames under the same admission, so logic attaches the same operator principal
+//! (decision #31) and dispatches through the same `GuiAction::Spawn`, `Messaging` and `Task`
+//! paths, journaled as `control/op` (decisions #37, #38). It adds no authority: every command
+//! is something the operator can already do in the window. Output is JSON lines.
+#![allow(
+    clippy::disallowed_methods,
+    reason = "ctl is its own CLI process; it has no UI thread"
+)]
+use bbt_mux::Ulid;
+use bbt_proto::{
+    GuiAction, GuiReply, GuiRequest, GuiSeat, SpawnSpec, SwarmId, Where,
+    messaging::{Request, Response, SendRequest, TaskRequest, TaskResponse},
+};
+use serde_json::{Value, json};
+use std::{
+    io::{BufRead, BufReader, Read, Write},
+    os::unix::net::UnixStream,
+    path::{Path, PathBuf},
+    time::Duration,
+};
+
+/// The GUI socket's frame cap (bbt-mux `seat_socket::read_line`).
+const FRAME_LIMIT: usize = 1 << 20;
+const TIMEOUT: Duration = Duration::from_secs(15);
+const PAGE: usize = 128;
+
+pub const USAGE: &str = "usage: bboxy450-term ctl [--endpoint FILE] <command>
+  spawn <claude|codex|zsh> [--placement new-tab] [--name NAME] [--cwd DIR] [--swarm ID]
+  seats
+  dm <seat> <text>
+  post <destination> <text> [--swarm ID]
+  inbox [--since SEQ]
+  receipts <message-id>
+  delegate <#N|path|id> <seat>
+  reports [--since TIME]
+A <seat> is a seat id or a unique seat name. Output is one JSON object per line.";
+
+/// Where the app's `gui.sock` is and the capability that admits a client.
+#[derive(Debug, Clone)]
+pub struct Endpoint {
+    pub path: PathBuf,
+    pub capability: [u8; 32],
+}
+impl Endpoint {
+    /// `{"path": "...", "capability": "<64 hex digits>"}`.
+    pub fn read(file: &Path) -> Result<Self, String> {
+        let text = std::fs::read_to_string(file)
+            .map_err(|e| format!("endpoint {}: {e}", file.display()))?;
+        let value: Value = serde_json::from_str(&text).map_err(|e| format!("endpoint: {e}"))?;
+        let path = value["path"].as_str().ok_or("endpoint: missing path")?;
+        let hex = value["capability"]
+            .as_str()
+            .ok_or("endpoint: missing capability")?;
+        let mut capability = [0; 32];
+        if hex.len() != 64 {
+            return Err("endpoint: capability must be 64 hex digits".into());
+        }
+        for (i, byte) in capability.iter_mut().enumerate() {
+            *byte = u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16)
+                .map_err(|_| "endpoint: capability must be hex")?;
+        }
+        Ok(Self {
+            path: path.into(),
+            capability,
+        })
+    }
+    /// The file form `read` accepts.
+    pub fn to_json(&self) -> String {
+        let hex: String = self.capability.iter().map(|b| format!("{b:02x}")).collect();
+        json!({ "path": self.path, "capability": hex }).to_string()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Command {
+    Spawn {
+        harness: String,
+        name: Option<String>,
+        cwd: Option<PathBuf>,
+        swarm: Option<Ulid>,
+        /// A fresh tab; without it the backend places the seat as the launcher's default.
+        new_tab: bool,
+    },
+    Seats,
+    Dm {
+        seat: String,
+        text: String,
+    },
+    Post {
+        destination: String,
+        text: String,
+        swarm: Option<Ulid>,
+    },
+    Inbox {
+        since: u64,
+    },
+    Receipts {
+        message: Ulid,
+    },
+    Delegate {
+        task: String,
+        seat: String,
+    },
+    Reports {
+        since: Option<String>,
+    },
+}
+
+/// Parses everything after `ctl`; returns the endpoint file override and the command.
+pub fn parse(args: &[String]) -> Result<(Option<PathBuf>, Command), String> {
+    let mut endpoint = None;
+    let mut flags = std::collections::BTreeMap::new();
+    let mut words = vec![];
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        if let Some(flag) = arg.strip_prefix("--") {
+            let value = it.next().ok_or(format!("--{flag} needs a value"))?;
+            if flag == "endpoint" {
+                endpoint = Some(PathBuf::from(value));
+            } else {
+                flags.insert(flag.to_owned(), value.clone());
+            }
+        } else {
+            words.push(arg.clone());
+        }
+    }
+    let ulid = |v: &String| v.parse::<Ulid>().map_err(|_| format!("not an id: {v}"));
+    let flag = |name: &str| flags.get(name).cloned();
+    let swarm = flag("swarm").as_ref().map(ulid).transpose()?;
+    let command = match words.iter().map(String::as_str).collect::<Vec<_>>()[..] {
+        ["spawn", harness] => Command::Spawn {
+            harness: harness.into(),
+            name: flag("name"),
+            cwd: flag("cwd").map(PathBuf::from),
+            swarm,
+            new_tab: match flag("placement").as_deref() {
+                None => false,
+                Some("new-tab") => true,
+                Some(other) => {
+                    return Err(format!(
+                        "--placement: only new-tab is supported, not {other}"
+                    ));
+                }
+            },
+        },
+        ["seats"] => Command::Seats,
+        ["dm", seat, text] => Command::Dm {
+            seat: seat.into(),
+            text: text.into(),
+        },
+        ["post", destination, text] => Command::Post {
+            destination: destination.into(),
+            text: text.into(),
+            swarm,
+        },
+        ["inbox"] => Command::Inbox {
+            since: flag("since")
+                .map(|v| {
+                    v.parse()
+                        .map_err(|_| format!("--since: not a sequence: {v}"))
+                })
+                .transpose()?
+                .unwrap_or(0),
+        },
+        ["receipts", message] => Command::Receipts {
+            message: ulid(&message.to_owned())?,
+        },
+        ["delegate", task, seat] => Command::Delegate {
+            task: task.into(),
+            seat: seat.into(),
+        },
+        ["reports"] => Command::Reports {
+            since: flag("since"),
+        },
+        _ => return Err(USAGE.into()),
+    };
+    if let Some(unknown) = flags
+        .keys()
+        .find(|k| !["swarm", "name", "cwd", "since", "placement"].contains(&k.as_str()))
+    {
+        return Err(format!("unknown flag --{unknown}\n{USAGE}"));
+    }
+    Ok((endpoint, command))
+}
+
+/// One admitted connection to `gui.sock`.
+pub struct Client {
+    reader: BufReader<UnixStream>,
+    writer: UnixStream,
+    capability: [u8; 32],
+}
+impl Client {
+    pub fn connect(endpoint: &Endpoint) -> Result<Self, String> {
+        let stream = UnixStream::connect(&endpoint.path)
+            .map_err(|e| format!("gui.sock {}: {e}", endpoint.path.display()))?;
+        stream
+            .set_read_timeout(Some(TIMEOUT))
+            .map_err(|e| e.to_string())?;
+        stream
+            .set_write_timeout(Some(TIMEOUT))
+            .map_err(|e| e.to_string())?;
+        Ok(Self {
+            reader: BufReader::new(stream.try_clone().map_err(|e| e.to_string())?),
+            writer: stream,
+            capability: endpoint.capability,
+        })
+    }
+    fn send(&mut self, action: GuiAction) -> Result<(), String> {
+        let mut frame = serde_json::to_vec(&GuiRequest {
+            version: bbt_proto::gui::VERSION,
+            capability: self.capability,
+            action,
+        })
+        .map_err(|e| e.to_string())?;
+        frame.push(b'\n');
+        self.writer
+            .write_all(&frame)
+            .map_err(|e| format!("gui.sock write: {e}"))
+    }
+    fn reply(&mut self) -> Result<GuiReply, String> {
+        let mut line = vec![];
+        let read = Read::by_ref(&mut self.reader)
+            .take(FRAME_LIMIT as u64 + 1)
+            .read_until(b'\n', &mut line)
+            .map_err(|e| format!("gui.sock read: {e}"))?;
+        if read == 0 {
+            return Err("gui.sock closed the connection (version or capability refused)".into());
+        }
+        if line.len() > FRAME_LIMIT {
+            return Err("gui.sock frame over the 1 MiB limit".into());
+        }
+        serde_json::from_slice(&line).map_err(|e| format!("gui.sock reply: {e}"))
+    }
+    /// Sends `action` and returns the first reply `answer` accepts; an `Error` for this op
+    /// is returned as `Err` with logic's reason.
+    fn call(
+        &mut self,
+        op: Option<Ulid>,
+        action: GuiAction,
+        mut answer: impl FnMut(&GuiReply) -> bool,
+    ) -> Result<GuiReply, String> {
+        self.send(action)?;
+        loop {
+            let reply = self.reply()?;
+            if let GuiReply::Error { op: failed, reason } = &reply
+                && (op == Some(*failed) || failed.is_nil())
+            {
+                return Err(reason.clone());
+            }
+            if answer(&reply) {
+                return Ok(reply);
+            }
+        }
+    }
+    pub fn seats(&mut self) -> Result<Vec<GuiSeat>, String> {
+        match self.call(None, GuiAction::ListSeats, |r| {
+            matches!(r, GuiReply::Seats(_))
+        })? {
+            GuiReply::Seats(seats) => Ok(seats),
+            _ => unreachable!(),
+        }
+    }
+    pub fn spawn(&mut self, spec: SpawnSpec) -> Result<Ulid, String> {
+        let id = Ulid::new();
+        match self.call(
+            Some(id),
+            GuiAction::Spawn { id, spec },
+            |r| matches!(r, GuiReply::Spawned { op, .. } if *op == id),
+        )? {
+            GuiReply::Spawned { seat, .. } => Ok(Ulid::from(seat.0.0)),
+            _ => unreachable!(),
+        }
+    }
+    pub fn messaging(&mut self, swarm: Ulid, request: Request) -> Result<Response, String> {
+        let id = match &request {
+            Request::Send { message } => message.id,
+            _ => Ulid::new(),
+        };
+        let action = GuiAction::Messaging {
+            id,
+            swarm_id: SwarmId::from_u128(swarm.0),
+            request,
+        };
+        match self.call(
+            Some(id),
+            action,
+            |r| matches!(r, GuiReply::Messaging { op, .. } if *op == id),
+        )? {
+            GuiReply::Messaging { response, .. } => Ok(response),
+            _ => unreachable!(),
+        }
+    }
+    pub fn task(&mut self, request: TaskRequest) -> Result<TaskResponse, String> {
+        let id = Ulid::new();
+        match self.call(
+            Some(id),
+            GuiAction::Task { id, request },
+            |r| matches!(r, GuiReply::Task { op, .. } if *op == id),
+        )? {
+            GuiReply::Task { response, .. } => Ok(response),
+            _ => unreachable!(),
+        }
+    }
+}
+
+fn seat_line(seat: &GuiSeat) -> Value {
+    let r = &seat.record;
+    // The wire form of the state, so activity and process read as the GUI receives them.
+    let state = serde_json::to_value(&seat.state).unwrap_or(Value::Null);
+    json!({
+        "kind": "seat",
+        "seat": r.id,
+        "name": r.name,
+        "harness": r.harness_kind,
+        "swarm": r.swarm,
+        "role": r.role,
+        "where": r.location,
+        "generation": state["generation"],
+        "process": state["process"],
+        "activity": state["activity"],
+        "title": state["title"],
+        "muted": r.muted,
+    })
+}
+/// A seat by id, or by a name that names exactly one seat.
+fn resolve<'a>(seats: &'a [GuiSeat], seat: &str) -> Result<&'a GuiSeat, String> {
+    if let Ok(id) = seat.parse::<Ulid>()
+        && let Some(found) = seats.iter().find(|s| s.record.id == id)
+    {
+        return Ok(found);
+    }
+    let named: Vec<_> = seats.iter().filter(|s| s.record.name == seat).collect();
+    match named[..] {
+        [one] => Ok(one),
+        [] => Err(format!("no seat {seat}")),
+        _ => Err(format!("seat name {seat} is ambiguous; use its id")),
+    }
+}
+/// The distinct swarms of the live seats, in roster order.
+fn swarms(seats: &[GuiSeat]) -> Vec<Ulid> {
+    let mut out = vec![];
+    for s in seats {
+        if !out.contains(&s.record.swarm) {
+            out.push(s.record.swarm);
+        }
+    }
+    out
+}
+
+/// Runs one command against an admitted client; returns its JSON lines.
+pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> {
+    let to_value = |v: &dyn erased::Serialize| v.to_json();
+    Ok(match command {
+        Command::Spawn {
+            harness,
+            name,
+            cwd,
+            swarm,
+            new_tab,
+        } => {
+            // The launcher's defaults (live.rs `spawn_spec`): the first seat's swarm, else a
+            // new one; the backend validates the spec as it does for the GUI.
+            let swarm = match swarm {
+                Some(swarm) => swarm,
+                None => client
+                    .seats()?
+                    .first()
+                    .map_or_else(Ulid::new, |s| s.record.swarm),
+            };
+            let cwd = match cwd {
+                Some(cwd) => cwd,
+                None => std::env::current_dir().map_err(|e| e.to_string())?,
+            };
+            let seat = client.spawn(SpawnSpec {
+                swarm: SwarmId::from_u128(swarm.0),
+                harness_kind: harness.clone(),
+                name,
+                role: None,
+                cwd: cwd.to_string_lossy().into_owned(),
+                location: Where::Local,
+                resume: None,
+                placement: new_tab.then(|| bbt_proto::seat_state::Placement::NewTab {
+                    tab: bbt_proto::TabId::from_u128(Ulid::new().0),
+                }),
+            })?;
+            vec![json!({ "kind": "spawned", "seat": seat, "harness": harness, "swarm": swarm })]
+        }
+        Command::Seats => client.seats()?.iter().map(seat_line).collect(),
+        Command::Dm { seat, text } => {
+            let seats = client.seats()?;
+            let seat = resolve(&seats, &seat)?;
+            let message = SendRequest::text(format!("seats/{}/inbox", seat.record.id), text);
+            let id = message.id;
+            let response = client.messaging(seat.record.swarm, Request::Send { message })?;
+            vec![
+                json!({ "kind": "sent", "message": id, "seat": seat.record.id, "response": to_value(&response) }),
+            ]
+        }
+        Command::Post {
+            destination,
+            text,
+            swarm,
+        } => {
+            let swarm = match swarm {
+                Some(swarm) => swarm,
+                None => *swarms(&client.seats()?)
+                    .first()
+                    .ok_or("no seats: pass --swarm")?,
+            };
+            let message = SendRequest::text(destination.clone(), text);
+            let id = message.id;
+            let response = client.messaging(swarm, Request::Send { message })?;
+            vec![
+                json!({ "kind": "sent", "message": id, "destination": destination, "response": to_value(&response) }),
+            ]
+        }
+        Command::Inbox { since } => {
+            // The operator's inbox: an operator List with no channel lists what is addressed
+            // to this device's operator sink (decision #38 (e)), one swarm at a time (#38 (f)).
+            let mut out = vec![];
+            for swarm in swarms(&client.seats()?) {
+                let mut after = since;
+                loop {
+                    let request = Request::List {
+                        thread: None,
+                        channel: None,
+                        after,
+                        limit: PAGE,
+                    };
+                    let Response::Messages { page } = client.messaging(swarm, request)? else {
+                        return Err("inbox: unexpected messaging response".into());
+                    };
+                    for message in &page.items {
+                        out.push(json!({ "kind": "message", "swarm": swarm, "message": to_value(message) }));
+                    }
+                    match page.next {
+                        Some(next) if next > after && !page.items.is_empty() => after = next,
+                        _ => break,
+                    }
+                }
+            }
+            out
+        }
+        Command::Receipts { message } => {
+            // A message lives in one swarm (decision #38 (f)); ask each until one answers.
+            let mut last = String::from("no seats, so no swarm to ask");
+            for swarm in swarms(&client.seats()?) {
+                let request = Request::Receipts {
+                    message,
+                    after: 0,
+                    limit: PAGE,
+                };
+                match client.messaging(swarm, request) {
+                    Ok(Response::Receipts { page }) => {
+                        return Ok(page
+                            .items
+                            .iter()
+                            .map(|r| json!({ "kind": "receipt", "message": message, "swarm": swarm, "receipt": to_value(r) }))
+                            .collect());
+                    }
+                    Ok(_) => return Err("receipts: unexpected messaging response".into()),
+                    Err(reason) => last = reason,
+                }
+            }
+            return Err(format!("receipts for {message}: {last}"));
+        }
+        Command::Delegate { task, seat } => {
+            let seats = client.seats()?;
+            let seat = resolve(&seats, &seat)?;
+            let response = client.task(TaskRequest::Delegate {
+                task_path: task.clone(),
+                seat_id: seat.record.id,
+                role: None,
+            })?;
+            vec![
+                json!({ "kind": "delegated", "task": task, "seat": seat.record.id, "response": to_value(&response) }),
+            ]
+        }
+        Command::Reports { since } => {
+            let mut cards = vec![];
+            let mut after = None;
+            loop {
+                let TaskResponse::Items { items, next } = client.task(TaskRequest::List {
+                    unassigned: false,
+                    swarm_id: None,
+                    status: None,
+                    assignee: None,
+                    after,
+                    limit: Some(PAGE),
+                })?
+                else {
+                    return Err("reports: unexpected task response".into());
+                };
+                cards.extend(items);
+                match next {
+                    Some(next) if Some(next) != after => after = Some(next),
+                    _ => break,
+                }
+            }
+            let mut out = vec![];
+            for card in cards {
+                if since
+                    .as_deref()
+                    .is_some_and(|since| card.updated.as_deref().is_none_or(|at| at < since))
+                {
+                    continue;
+                }
+                let TaskResponse::Item { item } = client.task(TaskRequest::Status {
+                    task_path: Some(card.path.clone()),
+                    task_id: None,
+                })?
+                else {
+                    return Err("reports: unexpected task response".into());
+                };
+                let report = &item.metadata["report"];
+                if report.is_null() {
+                    continue;
+                }
+                out.push(json!({
+                    "kind": "report",
+                    "task": card.id,
+                    "path": card.path,
+                    "title": card.title,
+                    "status": card.status,
+                    "assignee": card.assignee,
+                    "updated": card.updated,
+                    "summary": report["summary"],
+                    "commit": report["commit"],
+                    "reported_by": report["reported_by"],
+                    "verify_result": item.metadata["verify_result"],
+                }));
+            }
+            out
+        }
+    })
+}
+
+/// Object-safe serialisation for the reply payloads `run` echoes.
+mod erased {
+    pub trait Serialize {
+        fn to_json(&self) -> serde_json::Value;
+    }
+    impl<T: serde::Serialize> Serialize for T {
+        fn to_json(&self) -> serde_json::Value {
+            serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
+        }
+    }
+}
+
+/// The `ctl` subcommand: parse, connect, run, print one JSON object per line.
+pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
+    let (endpoint, command) = parse(args)?;
+    let endpoint = Endpoint::read(endpoint.as_deref().unwrap_or(default_endpoint))?;
+    let mut client = Client::connect(&endpoint)?;
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+    for line in run(&mut client, command)? {
+        writeln!(out, "{line}").map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn args(s: &str) -> Vec<String> {
+        s.split(' ').map(Into::into).collect()
+    }
+    #[test]
+    fn commands_parse_in_the_spec_s_shapes() {
+        assert_eq!(parse(&args("seats")).unwrap(), (None, Command::Seats));
+        let (endpoint, cmd) = parse(&args("--endpoint /tmp/e spawn claude --name Rook")).unwrap();
+        assert_eq!(endpoint, Some(PathBuf::from("/tmp/e")));
+        assert_eq!(
+            cmd,
+            Command::Spawn {
+                harness: "claude".into(),
+                name: Some("Rook".into()),
+                cwd: None,
+                swarm: None,
+                new_tab: false
+            }
+        );
+        assert_eq!(
+            parse(&args("inbox --since 7")).unwrap().1,
+            Command::Inbox { since: 7 }
+        );
+        assert_eq!(
+            parse(&args("delegate #12 Rook")).unwrap().1,
+            Command::Delegate {
+                task: "#12".into(),
+                seat: "Rook".into()
+            }
+        );
+        assert!(parse(&args("receipts not-an-id")).is_err());
+        assert!(
+            parse(&args("seats --bogus 1"))
+                .unwrap_err()
+                .contains("--bogus")
+        );
+        assert!(
+            parse(&args("frobnicate"))
+                .unwrap_err()
+                .starts_with("usage:")
+        );
+    }
+    #[test]
+    fn the_endpoint_file_round_trips() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("gui.endpoint");
+        let endpoint = Endpoint {
+            path: "/tmp/bbt-501-x/gui.sock".into(),
+            capability: std::array::from_fn(|i| i as u8),
+        };
+        std::fs::write(&file, endpoint.to_json()).unwrap();
+        let back = Endpoint::read(&file).unwrap();
+        assert_eq!(
+            (back.path, back.capability),
+            (endpoint.path, endpoint.capability)
+        );
+    }
+}
