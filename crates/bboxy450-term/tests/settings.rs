@@ -137,3 +137,136 @@ fn settings_mute_refusal_is_visible_and_success_waits_for_authoritative_metadata
     assert!(!mute.pending());
     assert_eq!(mute.notice.as_ref().unwrap().text, "Seat muted");
 }
+
+#[test]
+fn settings_persisted_policy_drives_attention_and_keeps_focus_and_mute_suppression() {
+    use bbt_proto::{Activity, Grade, GuiSeat, ProcessStatus, SeatState, WaitKind};
+    use std::{collections::BTreeSet, time::Instant};
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("config.toml");
+    std::fs::write(
+        &path,
+        "# keep policy comments\n[notifications]\nenabled = true\nonly_when_not_frontmost = true\ndisabled_harnesses = [\"codex\"]\n",
+    )
+    .unwrap();
+    let store = Store::new(path.clone());
+    let load = || {
+        let mut state = State::default();
+        state.accept(&settings::Snapshot {
+            preferences: store.load().unwrap(),
+            loaded: true,
+            ..Default::default()
+        });
+        state
+    };
+    let mut model = Model::default();
+    let mut seats: Vec<_> = [(1, "codex"), (2, "claude")]
+        .into_iter()
+        .map(|(id, harness)| GuiSeat {
+            record: bbt_proto::registry::SeatRecord::new(
+                bbt_mux::Ulid(id),
+                bbt_mux::Ulid(3),
+                "waiting fixture",
+                harness,
+            ),
+            state: SeatState {
+                generation: 1,
+                process: ProcessStatus::Running { pid: 9 },
+                activity: Activity::Waiting(WaitKind::Question),
+                grade: Grade::Shim,
+                title: String::new(),
+                detail: None,
+                turn_open: true,
+                observed_ms: 10,
+                subagents: vec![],
+            },
+        })
+        .collect();
+    for seat in &seats {
+        model.observe_attention(seat, Instant::now());
+    }
+    let codex = bbt_ui_model::SeatId::from_u128(1);
+    let claude = bbt_ui_model::SeatId::from_u128(2);
+    let unloaded = State::default();
+    assert!(
+        model
+            .notifications(&unloaded.notification_policy(), false, None)
+            .is_empty(),
+        "startup must not post before the saved policy is known"
+    );
+    let state = load();
+    let desired = model.notifications(&state.notification_policy(), false, None);
+    assert_eq!(desired.len(), 1);
+    assert!(
+        desired
+            .values()
+            .next()
+            .unwrap()
+            .notification
+            .title
+            .ends_with("claude")
+    );
+    assert!(
+        model
+            .notifications(&state.notification_policy(), true, None)
+            .is_empty()
+    );
+
+    store.save(&[Patch::BackgroundOnly(false)]).unwrap();
+    let state = load();
+    assert_eq!(
+        model
+            .notifications(&state.notification_policy(), true, Some(codex))
+            .len(),
+        1
+    );
+    assert!(
+        model
+            .notifications(&state.notification_policy(), true, Some(claude))
+            .is_empty()
+    );
+
+    store.save(&[Patch::NotificationsEnabled(false)]).unwrap();
+    let state = load();
+    assert_eq!(
+        state.preferences.notifications.disabled_harnesses,
+        BTreeSet::from(["codex".into()])
+    );
+    assert!(
+        model
+            .notifications(&state.notification_policy(), false, None)
+            .is_empty()
+    );
+    store
+        .save(&[
+            Patch::NotificationsEnabled(true),
+            Patch::DisabledHarnesses(BTreeSet::new()),
+        ])
+        .unwrap();
+    let state = load();
+    assert_eq!(
+        model
+            .notifications(&state.notification_policy(), false, None)
+            .len(),
+        2
+    );
+    seats[0].record.muted = true;
+    model.observe_attention(&seats[0], Instant::now());
+    assert_eq!(
+        model
+            .notifications(&state.notification_policy(), false, None)
+            .len(),
+        1
+    );
+    assert!(
+        model
+            .notifications(&state.notification_policy(), true, Some(claude))
+            .is_empty()
+    );
+    assert!(
+        std::fs::read_to_string(path)
+            .unwrap()
+            .contains("# keep policy comments")
+    );
+}

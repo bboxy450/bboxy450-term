@@ -1106,7 +1106,6 @@ struct App {
     scroll_wheel: Option<(SeatId, f64)>,
     focus: FocusState,
     notifications: Option<bboxy450_term::notifications::Worker>,
-    notification_settings: bboxy450_term::attention::Notifications,
     frontmost: bool,
     pending_notification: Option<(SeatId, Instant)>,
     spawn_results_seen: BTreeMap<bbt_mux::Ulid, bboxy450_term::model::SpawnOutcome>,
@@ -1399,6 +1398,7 @@ impl App {
         self.local_page_layout = None;
         self.launcher_layout = None;
         self.conversation_layout = None;
+        self.sync_notifications();
     }
     fn mute_focused(&mut self) {
         if self.mute.pending() {
@@ -2107,6 +2107,7 @@ impl App {
         }
     }
     fn sync_notifications(&mut self) {
+        let policy = self.preferences.notification_policy();
         if let (Some(worker), Some(model)) = (&mut self.notifications, &self.live_state) {
             let focused = self.focus.stage.as_ref().and_then(|stage| stage.focused);
             let known = model
@@ -2115,10 +2116,7 @@ impl App {
                 .keys()
                 .map(|seat| bboxy450_desktop_notifications::NotificationId(seat.0.to_string()))
                 .collect();
-            worker.submit(
-                model.notifications(&self.notification_settings, self.frontmost, focused),
-                known,
-            );
+            worker.submit(model.notifications(&policy, self.frontmost, focused), known);
         }
     }
     fn notification_clicked(&mut self, id: bboxy450_desktop_notifications::NotificationId) {
@@ -4759,7 +4757,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         scroll_wheel: None,
         focus: FocusState::default(),
         notifications,
-        notification_settings: bboxy450_term::attention::Notifications::default(),
         frontmost: false,
         pending_notification: None,
         spawn_results_seen: BTreeMap::new(),

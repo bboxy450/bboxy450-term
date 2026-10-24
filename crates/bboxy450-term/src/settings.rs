@@ -247,6 +247,15 @@ pub struct State {
     pending: BTreeMap<&'static str, (u64, Patch)>,
 }
 impl State {
+    /// Do not post with defaults while the persisted policy is still loading.
+    pub fn notification_policy(&self) -> crate::attention::Notifications {
+        let values = &self.preferences.notifications;
+        crate::attention::Notifications {
+            enabled: self.loaded && values.enabled,
+            only_when_not_frontmost: values.only_when_not_frontmost,
+            disabled_harnesses: values.disabled_harnesses.clone(),
+        }
+    }
     pub fn edit(&mut self, patch: Patch) -> Result<Request, String> {
         if !self.loaded {
             return Err("Settings are not loaded; configuration was not changed".into());
