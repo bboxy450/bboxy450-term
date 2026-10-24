@@ -109,6 +109,11 @@ pub enum UiMsg {
         error: Option<String>,
         frame: bbt_proto::gui::CaptureFrame,
     },
+    /// The GUI owner's public lifecycle answer; never process credentials.
+    AppReply {
+        id: bbt_mux::Ulid,
+        status: bbt_proto::gui::AppStatus,
+    },
 }
 impl UiMsg {
     /// All launches share one admission budget, including legacy callers.
@@ -215,6 +220,12 @@ struct LogicBootstrap {
     supervisor: SupervisorReady,
     #[serde(default)]
     recover_seats: bool,
+    /// The idle smoke has finite local inputs, without timed remote-link faults.
+    #[serde(default = "fixture_hosts_default")]
+    fixture_hosts: bool,
+}
+fn fixture_hosts_default() -> bool {
+    true
 }
 /// The one-line private startup reply. Never log its capability.
 #[derive(Clone, Serialize, Deserialize)]
@@ -222,6 +233,13 @@ pub struct LogicReady {
     pub root: PathBuf,
     pub capability: [u8; 32],
     pub identity: GuiIdentity,
+    #[serde(default)]
+    pub generation: u64,
+    #[serde(default = "unknown_custody")]
+    pub custody_backend: String,
+}
+fn unknown_custody() -> String {
+    "unknown".into()
 }
 
 fn json_frame(value: &impl Serialize) -> Result<Vec<u8>> {
@@ -433,16 +451,18 @@ async fn logic_main() -> Result<()> {
                 .map(|account| account.key_store())
         })
         .transpose()?;
-    let logic = Logic::start_custodied_with_fixture_store(
-        connection,
-        LogicConfig {
-            run_dir: bootstrap.config.run_dir,
-            repository: bootstrap.config.repository,
-            ring: Default::default(),
-        },
-        store,
-        bbt_rt::handle(),
-    )?;
+    let logic_config = LogicConfig {
+        run_dir: bootstrap.config.run_dir,
+        repository: bootstrap.config.repository,
+        ring: Default::default(),
+    };
+    let logic = if bootstrap.fixture_hosts {
+        Logic::start_custodied_with_fixture_store(connection, logic_config, store, bbt_rt::handle())?
+    } else if let Some(store) = store {
+        Logic::start_custodied_with_store(connection, logic_config, store, bbt_rt::handle())?
+    } else {
+        Logic::start_custodied(connection, logic_config, bbt_rt::handle())?
+    };
     if bootstrap.recover_seats {
         logic.client.recover_seats().await?;
     }
@@ -468,6 +488,11 @@ async fn logic_main() -> Result<()> {
                 .into(),
             capability: endpoint.capability,
             identity: logic.client.gui_identity().await?,
+            generation: endpoint.generation,
+            custody_backend: serde_json::to_value(logic.client.identity_status().await?.custody)?
+                .as_str()
+                .unwrap_or("unknown")
+                .into(),
         },
     )
     .await?;
@@ -738,7 +763,9 @@ impl Session {
                 | GuiReply::Gap { .. }
                 | GuiReply::Events { .. }
                 | GuiReply::EventCursor { .. }
-                | GuiReply::EventStatus { .. }) => {
+                | GuiReply::EventStatus { .. }
+                | GuiReply::AppAsk { .. }
+                | GuiReply::AppStopping { .. }) => {
                     bytes += serde_json::to_vec(&reply)?.len();
                     if events.len() == 128 || bytes > 256 * 1024 {
                         return Err(invalid(
@@ -815,12 +842,14 @@ async fn start_logic(
     recover_seats: bool,
 ) -> Result<StartedLogic> {
     let mut child = child(config, "logic")?;
+    let fixture_hosts = !std::env::args().any(|arg| arg == "--smoke");
     write_json(
         child.stdin.as_mut().unwrap(),
         &LogicBootstrap {
             config: config.clone(),
             supervisor: ready.clone(),
             recover_seats,
+            fixture_hosts,
         },
     )
     .await?;

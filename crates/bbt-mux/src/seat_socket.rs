@@ -558,13 +558,25 @@ async fn gui_session(
                         }
                         continue;
                     }
+                    let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
                     let op=match &request.action {
+                        GuiAction::App {id,..}|GuiAction::AppReply {id,..}=>*id,
                         GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
                     let reply:Result<GuiReply>=async {
                         match request.action {
+                            GuiAction::App {id,request}=> {
+                                if door!=crate::mcp::Door::Ctl {return Err(invalid("app lifecycle requests use the ctl operator door"));}
+                                let status=client.captures.app(id,request).await.map_err(invalid)?;
+                                Ok(GuiReply::App {op:id,status})
+                            }
+                            GuiAction::AppReply {id,status}=> {
+                                if capture_asks.is_none() {return Err(invalid("only the GUI client answers app lifecycle requests"));}
+                                client.captures.app_answer(id,status);
+                                Ok(GuiReply::Ok {op:id})
+                            }
                             GuiAction::ListSeats=>Ok(GuiReply::Seats(client.gui_seats().await?)),
                             GuiAction::ListHosts=>Ok(GuiReply::Hosts(client.gui_hosts().await?)),
                             GuiAction::AttachEvents {id}=> {
@@ -723,7 +735,11 @@ async fn gui_session(
                             }
                         }
                     }.await;
-                    send(&mut write,&reply.unwrap_or_else(|e|GuiReply::Error {op,reason:e.to_string()})).await?;
+                    let reply=reply.unwrap_or_else(|e|GuiReply::Error {op,reason:e.to_string()});
+                    let stop=stopping&&matches!(&reply,GuiReply::App {..});
+                    send(&mut write,&reply).await?;
+                    // The ctl response is on the socket before stopping its server.
+                    if stop {client.captures.app_stopping(op);}
                 }
                 Some(completed)=knowledge_reads.join_next(),if !knowledge_reads.is_empty()=> {
                     let (op,response)=completed.map_err(|_|invalid("knowledge reply task interrupted"))?;

@@ -5,6 +5,7 @@ mod capture;
 mod display_link;
 mod e2e_checklist;
 mod gpu;
+mod headless;
 mod live;
 mod log;
 mod scene;
@@ -60,6 +61,10 @@ pub enum UiEvent {
     BackendStopped(Result<(), String>),
     BackendLost(String),
     BackendReady,
+    BackendInfo {
+        generation: u64,
+        custody_backend: String,
+    },
     SmokeDeadline,
     VerifyGridDeadline,
     VerifyScrollTop,
@@ -70,6 +75,7 @@ pub enum UiEvent {
     CaptureFor(live::CaptureAsk),
     /// Focus a seat, asked through an operator door (`ctl seat focus`).
     FocusFor(SeatId),
+    App(live::AppEvent),
     /// No frame was presented for this capture in time (occluded, or the display asleep).
     CaptureDeadline(bbt_mux::Ulid),
     StallPoll,
@@ -147,6 +153,112 @@ impl IdleQuiescence {
             "smoke probe did not finish within 30 seconds".into()
         }
     }
+}
+
+#[allow(
+    clippy::too_many_arguments,
+    reason = "one readiness DTO shared by both GUI owners"
+)]
+fn app_status(
+    mode: &str,
+    unattended: bool,
+    backend_ready: bool,
+    gui_ready: bool,
+    model: &bboxy450_term::model::Model,
+    generation: u64,
+    frame_seq: u64,
+    windows: usize,
+) -> bbt_proto::gui::AppStatus {
+    bbt_proto::gui::AppStatus {
+        running: true,
+        mode: mode.into(),
+        unattended,
+        backend_ready,
+        gui_ready,
+        events_ready: matches!(
+            model.events.state(),
+            bboxy450_term::model::EventLaneState::Active
+        ),
+        // The IO owner stamps the actual store backend into every relay.
+        custody_backend: "unknown".into(),
+        generation,
+        frame_seq,
+        windows,
+    }
+}
+
+fn now_ms() -> u64 {
+    unix_ms(Some(std::time::SystemTime::now())).unwrap_or(0)
+}
+
+/// The startup pipe carries only public readiness; all logs stay on stderr.
+fn write_app_ready(status: bbt_proto::gui::AppStatus) {
+    bbt_rt::handle().spawn(async move {
+        use tokio::io::AsyncWriteExt;
+        if let Ok(mut bytes) = serde_json::to_vec(&status) {
+            bytes.push(b'\n');
+            let _ = tokio::io::stdout().write_all(&bytes).await;
+        }
+    });
+}
+
+#[allow(
+    clippy::too_many_arguments,
+    clippy::type_complexity,
+    reason = "identical visible-pane admission for window and offscreen GUI"
+)]
+fn pane_controls(
+    model: &bboxy450_term::model::Model,
+    bounds: &[(SeatId, Rect)],
+    previous: &[(SeatId, View)],
+    old_sizes: &BTreeMap<SeatId, (u64, u16, u16)>,
+    focused: Option<SeatId>,
+    scale: f32,
+    grid: Option<(u16, u16)>,
+) -> (Vec<(SeatId, View)>, Vec<(SeatId, (u64, u16, u16))>) {
+    let mut watched: Vec<_> = bounds
+        .iter()
+        .filter_map(|(id, _)| {
+            let generation = model.ui.seats.get(id)?.process_generation;
+            let view = previous
+                .iter()
+                .find(|(old, view)| old == id && view.generation == generation)
+                .map(|(_, v)| *v)
+                .unwrap_or(View {
+                    seat: bbt_mux::Ulid::from(id.0.0),
+                    generation,
+                    view_generation: bbt_mux::Ulid::new(),
+                });
+            Some((*id, view))
+        })
+        .collect();
+    watched.sort_by_key(|(id, _)| Some(*id) != focused);
+    let mut sizes = Vec::new();
+    for (id, rect) in bounds {
+        let Some(metadata) = model.ui.seats.get(id) else {
+            continue;
+        };
+        let cell =
+            model
+                .frames
+                .get(id)
+                .zip(model.screens.get(id))
+                .map_or([8., 15.], |(frame, screen)| {
+                    [
+                        frame.width as f32 / screen.cols.max(1) as f32 / scale,
+                        frame.height as f32 / screen.rows.max(1) as f32 / scale,
+                    ]
+                });
+        let (cols, rows) = grid.unwrap_or((
+            (rect.w / cell[0]).floor().clamp(1., 512.) as u16,
+            (rect.h / cell[1]).floor().clamp(1., 256.) as u16,
+        ));
+        let size = (metadata.process_generation, cols, rows);
+        if old_sizes.get(id) != Some(&size) {
+            sizes.push((*id, size));
+        }
+    }
+    (watched, sizes)
 }
 
 #[derive(Default)]
@@ -1159,6 +1271,9 @@ struct App {
     pointer: [f32; 2],
     query_dragging: bool,
     backend_lost: bool,
+    app_generation: u64,
+    app_custody: String,
+    app_ready_sent: bool,
     render_context: Option<tokio::sync::oneshot::Sender<live::RenderContext>>,
     closing: bool,
     smoke_bootstrap: Option<tokio::sync::oneshot::Sender<()>>,
@@ -2330,6 +2445,7 @@ impl App {
                     occluded: self.occluded,
                     presented_at_ms: unix_ms(self.last_presented),
                     frame_seq: self.meter.total_frames(),
+                    ..Default::default()
                 };
                 self.capture_for(ask, scale, frame);
             }
@@ -2362,54 +2478,15 @@ impl App {
         let Some(model) = &self.live_state else {
             return;
         };
-        let mut watched: Vec<_> = bounds
-            .iter()
-            .filter_map(|(id, _)| {
-                let generation = model.ui.seats.get(id)?.process_generation;
-                let view = self
-                    .watched
-                    .iter()
-                    .find(|(old_id, view)| old_id == id && view.generation == generation)
-                    .map(|(_, view)| *view)
-                    .unwrap_or(View {
-                        seat: bbt_mux::Ulid::from(id.0.0),
-                        generation,
-                        view_generation: bbt_mux::Ulid::new(),
-                    });
-                Some((*id, view))
-            })
-            .collect();
-        // IO uses the first visible pane as focus; membership is still a set.
-        watched.sort_by_key(|(id, _)| Some(*id) != self.scene.focused());
-        let mut sizes = Vec::new();
-        for (id, rect) in bounds {
-            let Some(metadata) = model.ui.seats.get(id) else {
-                continue;
-            };
-            let cell = model.frames.get(id).zip(model.screens.get(id)).map_or(
-                [8., 15.],
-                |(frame, screen)| {
-                    [
-                        frame.width as f32 / screen.cols.max(1) as f32 / scale,
-                        frame.height as f32 / screen.rows.max(1) as f32 / scale,
-                    ]
-                },
-            );
-            // While fitting the real window, avoid an intermediate PTY resize
-            // that could race the fixture input. Once ready, use actual bounds.
-            let (cols, rows) = self
-                .verify
-                .grid_size
-                .filter(|_| !self.verify.grid_ready)
-                .unwrap_or((
-                    (rect.w / cell[0]).floor().clamp(1., 512.) as u16,
-                    (rect.h / cell[1]).floor().clamp(1., 256.) as u16,
-                ));
-            let size = (metadata.process_generation, cols, rows);
-            if self.pane_sizes.get(id) != Some(&size) {
-                sizes.push((*id, size));
-            }
-        }
+        let (watched, sizes) = pane_controls(
+            model,
+            bounds,
+            &self.watched,
+            &self.pane_sizes,
+            self.scene.focused(),
+            scale,
+            self.verify.grid_size.filter(|_| !self.verify.grid_ready),
+        );
         if watched != self.watched {
             self.watched = watched.clone();
             self.queue(live::UiMsg::Watched(watched));
@@ -3140,12 +3217,33 @@ impl App {
                 }
             }
             self.last_presented = Some(std::time::SystemTime::now());
+            if !self.app_ready_sent
+                && !self.backend_lost
+                && self.live_state.is_some()
+                && self.app_generation > 0
+                && std::env::args().any(|arg| arg == "--app-ready")
+            {
+                self.app_ready_sent = true;
+                let mut status = app_status(
+                    "window",
+                    std::env::args().any(|a| a == "--unattended" || a == "--test-account"),
+                    true,
+                    true,
+                    self.live_state.as_deref().unwrap(),
+                    self.app_generation,
+                    self.meter.total_frames(),
+                    1,
+                );
+                status.custody_backend = self.app_custody.clone();
+                write_app_ready(status);
+            }
             for ask in std::mem::take(&mut self.ctl_captures) {
                 let frame = bbt_proto::gui::CaptureFrame {
                     stale: false,
                     occluded: false,
                     presented_at_ms: unix_ms(self.last_presented),
                     frame_seq: self.meter.total_frames(),
+                    ..Default::default()
                 };
                 self.capture_for(ask, scale, frame);
             }
@@ -3268,6 +3366,25 @@ impl ApplicationHandler<UiEvent> for App {
                     }
                     step => self.capture_now(ask, step),
                 }
+            }
+            UiEvent::App(live::AppEvent::Ask { id, request: _ }) => {
+                let empty = bboxy450_term::model::Model::default();
+                let status = app_status(
+                    "window",
+                    std::env::args().any(|a| a == "--unattended" || a == "--test-account"),
+                    !self.backend_lost && self.live_state.is_some(),
+                    self.meter.total_frames() > 0,
+                    self.live_state.as_deref().unwrap_or(&empty),
+                    self.app_generation,
+                    self.meter.total_frames(),
+                    usize::from(self.window.is_some()),
+                );
+                self.queue(live::UiMsg::AppReply { id, status });
+            }
+            UiEvent::App(live::AppEvent::Stop { id }) => {
+                self.logger
+                    .write(format!("app stop {id}: orderly Session shutdown"));
+                self.request_close(event_loop);
             }
             UiEvent::CaptureDeadline(id) => {
                 if let Some(at) = self.ctl_captures.iter().position(|ask| ask.id == id) {
@@ -3473,6 +3590,13 @@ impl ApplicationHandler<UiEvent> for App {
                 self.scene.backend_ready();
                 self.flush_commands();
                 self.request_redraw();
+            }
+            UiEvent::BackendInfo {
+                generation,
+                custody_backend,
+            } => {
+                self.app_generation = generation;
+                self.app_custody = custody_backend;
             }
         }
     }
@@ -4422,6 +4546,8 @@ const HELP: &str = "bboxy450-term: GPU terminal for agent swarms.
 
   --meter              open with the perf HUD (Cmd+Opt+F toggles it)
   --run-dir DIR        runtime directory (default: the user's)
+  --headless           run the app and renderer without opening a window
+  --ctl                enable the operator's ctl endpoint
 
 Debug and verification only, never for normal use:
   --launcher           open the launcher at startup (same controller as Cmd+T)
@@ -4838,6 +4964,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     bboxy450_term::cockpit::Config::test_account_from_args(&hook_args)
         .map_err(|error| error as Box<dyn std::error::Error>)?;
     let verify = Verify::from_args(&hook_args)?;
+    if hook_args.iter().any(|arg| arg == "--headless") {
+        return headless::run(&hook_args).map_err(Into::into);
+    }
     let stall_config = stall::Config::parse(&hook_args)?;
     if let Some(config) = stall_config.as_ref().filter(|config| config.headless) {
         return stall::headless(config.clone()).map_err(Into::into);
@@ -5037,6 +5166,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         pointer: [0.; 2],
         query_dragging: false,
         backend_lost: false,
+        app_generation: 0,
+        app_custody: "unknown".into(),
+        app_ready_sent: false,
         render_context: (!fake && !animate).then_some(render_context),
         closing: false,
         smoke_bootstrap: None,
@@ -5523,6 +5655,7 @@ mod input_tests {
                 | live::UiMsg::EventCursor { .. }
                 | live::UiMsg::AttentionFocus { .. }
                 | live::UiMsg::MarkEventsRead { .. }
+                | live::UiMsg::AppReply { .. }
                 | live::UiMsg::Captured { .. } => {
                     panic!("pane admission fixture produced a messaging intent")
                 }

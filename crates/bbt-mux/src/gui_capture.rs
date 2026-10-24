@@ -24,6 +24,13 @@ pub(crate) struct Ask {
 #[derive(Debug, Clone)]
 pub(crate) enum Notice {
     Capture(Ask),
+    App {
+        id: Ulid,
+        request: bbt_proto::gui::AppRequest,
+    },
+    AppStopping {
+        id: Ulid,
+    },
     Spawned {
         op: Ulid,
         seat: bbt_proto::SeatId,
@@ -37,6 +44,8 @@ pub(crate) enum Notice {
 impl Notice {
     pub(crate) fn reply(self) -> bbt_proto::GuiReply {
         match self {
+            Self::App { id, request } => bbt_proto::GuiReply::AppAsk { op: id, request },
+            Self::AppStopping { id } => bbt_proto::GuiReply::AppStopping { op: id },
             Self::Capture(ask) => bbt_proto::GuiReply::CaptureAsk {
                 op: ask.id,
                 path: ask.path,
@@ -53,16 +62,65 @@ impl Notice {
 pub(crate) struct Captures {
     asks: broadcast::Sender<Notice>,
     pending: Mutex<HashMap<Ulid, oneshot::Sender<Result<bbt_proto::gui::CaptureFrame, String>>>>,
+    app: Mutex<HashMap<Ulid, oneshot::Sender<bbt_proto::gui::AppStatus>>>,
 }
 impl Default for Captures {
     fn default() -> Self {
         Self {
             asks: broadcast::channel(8).0,
             pending: Mutex::default(),
+            app: Mutex::default(),
         }
     }
 }
 impl Captures {
+    /// Lifecycle relays use the capture owner's existing admitted GUI session.
+    pub(crate) async fn app(
+        &self,
+        id: Ulid,
+        request: bbt_proto::gui::AppRequest,
+    ) -> Result<bbt_proto::gui::AppStatus, String> {
+        let (done, answer) = oneshot::channel();
+        {
+            let mut pending = self.app.lock().unwrap_or_else(|e| e.into_inner());
+            pending.retain(|_, sender| !sender.is_closed());
+            if pending.len() >= 64 || pending.contains_key(&id) {
+                return Err(
+                    "Busy: app lifecycle relay is full or this operation is pending".into(),
+                );
+            }
+            pending.insert(id, done);
+        }
+        let sent = self.asks.send(Notice::App { id, request });
+        let result = if sent.is_err() {
+            Err("app endpoint unavailable: no GUI client is attached; inspect debug ps".into())
+        } else {
+            match tokio::time::timeout(WAIT, answer).await {
+                Ok(Ok(status)) => Ok(status),
+                _ => Err(
+                    "app endpoint unavailable: GUI client did not answer; inspect debug ps".into(),
+                ),
+            }
+        };
+        self.app
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&id);
+        result
+    }
+    pub(crate) fn app_answer(&self, id: Ulid, status: bbt_proto::gui::AppStatus) {
+        if let Some(sender) = self
+            .app
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&id)
+        {
+            let _ = sender.send(status);
+        }
+    }
+    pub(crate) fn app_stopping(&self, id: Ulid) {
+        let _ = self.asks.send(Notice::AppStopping { id });
+    }
     /// The window's session listens here.
     pub(crate) fn subscribe(&self) -> broadcast::Receiver<Notice> {
         self.asks.subscribe()
@@ -122,6 +180,47 @@ impl Captures {
 mod tests {
     use super::*;
     use std::sync::Arc;
+
+    #[tokio::test]
+    async fn lifecycle_uses_the_gui_owner_and_only_commits_stop_after_the_reply() {
+        let captures = Arc::new(Captures::default());
+        let id = Ulid::new();
+        assert!(
+            captures
+                .app(id, bbt_proto::gui::AppRequest::Status)
+                .await
+                .unwrap_err()
+                .starts_with("app endpoint unavailable:")
+        );
+        let mut owner = captures.subscribe();
+        let task = tokio::spawn({
+            let captures = captures.clone();
+            async move { captures.app(id, bbt_proto::gui::AppRequest::Stop).await }
+        });
+        assert!(
+            matches!(owner.recv().await.unwrap(),Notice::App {id:seen,request:bbt_proto::gui::AppRequest::Stop} if seen==id)
+        );
+        let status = bbt_proto::gui::AppStatus {
+            running: true,
+            mode: "headless".into(),
+            unattended: false,
+            backend_ready: true,
+            gui_ready: true,
+            events_ready: true,
+            custody_backend: "memory".into(),
+            generation: 7,
+            frame_seq: 1,
+            windows: 0,
+        };
+        captures.app_answer(id, status.clone());
+        assert_eq!(task.await.unwrap().unwrap(), status);
+        assert!(matches!(
+            owner.try_recv(),
+            Err(broadcast::error::TryRecvError::Empty)
+        ));
+        captures.app_stopping(id);
+        assert!(matches!(owner.recv().await.unwrap(),Notice::AppStopping {id:seen} if seen==id));
+    }
 
     #[tokio::test]
     async fn an_ask_completes_with_the_windows_answer() {

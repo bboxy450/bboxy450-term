@@ -34,6 +34,13 @@ cargo build --workspace --locked
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 sh scripts/ui-lint.sh
-cargo run -p bboxy450-term --locked -- --smoke
+smoke_run=$(mktemp -d "${TMPDIR:-/tmp}/bboxy-smoke.XXXXXX")
+if BBOXY_TEST_CUSTODY=memory cargo run -p bboxy450-term --locked -- --headless --smoke --run-dir "$smoke_run"; then
+  rm -rf -- "$smoke_run"
+else
+  smoke_status=$?
+  echo "smoke failed; private run retained at $smoke_run" >&2
+  exit "$smoke_status"
+fi
 sh scripts/invariants.sh "$@"
 echo "ci-local: all gates passed"
