@@ -42,7 +42,7 @@ Ours and clean: `MIT OR Apache-2.0`; the developer takes MIT (one paragraph, GPL
 | `bbt-doc` | `bboxy450-doc` | MIT OR Apache-2.0 | ours | none |
 | `bboxybook` | `bboxy450-book` | MIT OR Apache-2.0 | ours; `capture.mjs` drives a local Chrome, nothing vendored | none |
 | `bbt-supervisor` | `bboxy450-harness-host` ([[harness-kits]] §3) | MIT OR Apache-2.0 | ours; `portable-pty` is a dependency, not vendored | none |
-| `bboxy450-harness-wake-up` | itself ([[harness-kits]] §2, extracted from `bbt-mux/src/adapters`) | MIT OR Apache-2.0 | ours; hook event names and socket protocols are facts about other programs, nothing vendored | none |
+| `bboxy450-harness-wake-up` | itself (`crates/bboxy450-harness-wake-up`, [[harness-kits]] §2; extracted from `bbt-mux/src/adapters`) | MIT OR Apache-2.0 | ours; hook event names and socket protocols are facts about other programs, nothing vendored | none |
 | `bbt-plugin` | `bboxy450-plugin` ([[plugins]] §1, the shape and contract schemas, tiers, ceilings, the trust-record type) | MIT OR Apache-2.0 | ours | none |
 | `bbt-proto` | internal until decision [[d8-open-source\|#8]]'s plateau | MIT OR Apache-2.0 | ours | none |
 | `bbt-mux` | internal until decision [[d8-open-source\|#8]]'s plateau | MIT OR Apache-2.0 | ours | none |

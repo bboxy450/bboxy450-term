@@ -230,6 +230,24 @@ name = "bboxy450-desktop-notifications-windows"
 version = "0.0.1"
 
 [[package]]
+name = "bboxy450-harness-wake-up"
+version = "0.0.1"
+dependencies = [
+ "base64",
+ "bbt-core",
+ "bbt-rt",
+ "futures-util",
+ "libc",
+ "mio",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tokio-tungstenite",
+ "ulid",
+]
+
+[[package]]
 name = "bboxy450-term"
 version = "0.0.1"
 dependencies = [
@@ -317,6 +335,7 @@ name = "bbt-mux"
 version = "0.0.1"
 dependencies = [
  "base64",
+ "bboxy450-harness-wake-up",
  "bbt-core",
  "bbt-doc",
  "bbt-plugin",
@@ -329,7 +348,6 @@ dependencies = [
  "getrandom 0.3.4",
  "hkdf",
  "libc",
- "mio",
  "notify",
  "petgraph",
  "pgp",

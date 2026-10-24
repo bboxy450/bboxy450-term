@@ -1,0 +1,50 @@
+HK-0 handoff — Sable Embertail <EXECUTOR>, 2026-10-24
+
+Signed implementation: 98ee69b9df96cbf1da614f053430cf896d3e8074.
+Parent: accepted ctl-remote 39e47829ccec81cb4a8bc91ce48010b66c1a150d.
+Branch/worktree: sable-hk0, /Users/feral/mydev/bboxy450-term-exec3.
+One implementation commit; the successor contains evidence only. Oracle acceptance is pending.
+
+Mechanism / scope
+crates/bboxy450-harness-wake-up/src/lib.rs:54 — neutral kit vocabulary, adapter/session boundary and native_available; core plus optional runtime-assertions dependency only, no proto/supervisor/mux, including dev dependencies.
+crates/bboxy450-harness-wake-up/src/{launch,hook,native,observe,guard}.rs — moved launch/overlay, shim, native delivery, OSC7501 and literal-input mechanisms; original bounded IO/readiness behavior retained.
+crates/bboxy450-harness-wake-up/src/hook.rs:350 — caller-supplied HookSink; the mux implementation owns the authenticated seat-socket wire.
+crates/bbt-mux/src/adapters/{mod,launch,hook,guard,observe}.rs — retain role policy, bboxy skill prose, host launch identity, input journaling and authenticated socket fallback in the app facade.
+crates/bbt-mux/src/adapters/mapping.rs:19 — explicit bidirectional state/waiting/grade/evidence/launch/arbiter/literal mappings; 8 mapping tests. Kit evidence cannot manufacture application acknowledgement.
+crates/bboxy450-harness-wake-up/src/launch.rs:44 and crates/bbt-mux/src/adapters/launch.rs:3 — accepted CODEX_HOOK_EVENTS and generated hook --list remain available at both kit and old facade paths, with identical overlay command strings.
+Cargo.toml:8, scripts/layering.sh:8, .bboxy/specs/licensing.md:45, .bboxy/specs/open-source.md:26 — workspace member, dependency ordering and canonical licence/open-source rows.
+The host manifest is unchanged (SHA256 ea90dd7d2e6fb62475a44859a9f68150f74cbf581cc362092466414fc39b35b4). No renderer, GUI wire, scheduling or durability change.
+
+Exact gate
+Clean detached 98ee69b9: CARGO_TARGET_DIR=<private scratch>/gate/target CARGO_BUILD_JOBS=4 sh scripts/ci-local.sh --parity — EXIT 0, 2701.610 s; literal 'ci-local: all gates passed'.
+Full log .bboxy/runs/hk0-ci.log — SHA256 5fd59b39159f88c97c8693b1ae01b61ced07d2c7a4ff40809180e34cc211d5cf.
+Workspace all-target strict clippy -D warnings — EXIT 0 both standalone on final source and inside the clean gate.
+Reported cargo test-result lines total 1168 passed / 0 failed / 24 ignored across 169 results, including invariant reruns; this is not a count of unique tests.
+Current parity: 2104 cases; 2000 required geometry cases measured, 0 unproven, 0 mismatches; 72 advisory pixel reviews. The separate historical 1664-case/851-review diagnostic is non-gating.
+Default invariants: 19 checks, 0 failures; 8 slow checks skipped as designed. Native smoke: 10.002 s idle, 0 frames, 0 callbacks. UI-never-waits unchanged and green.
+Native/web PNG pairs actually read: documents/with-a-diagram-comfortable-dark (existing engine-body pixel advisory) and pane/hover-path-cozy-dark (within policy). No all-PNG byte-identity claim.
+
+Test ownership / package
+.bboxy/runs/hk0-test-moves.log names the adapter/seat-wiring split. Original 21 tests all remain: kit gets 6 of 16 adapter tests + 1 of 2 seat-wiring tests + 3 native unit tests (10 total); mux keeps 10 adapter tests + 1 real-Logic seat-wiring test (11 total). The native test names are in hk0-verification.log.
+Added kit tests: 4, producing 14 passed plus 1 ignored subprocess helper; that helper is explicitly executed in two detached no-controlling-tty children. Added mapping tests: 8/0.
+Focused mux adapter/messaging/seat-wiring: 28/0; app recovery + real GUI messaging: 6/0. These are also covered by the exact gate.
+Layering, brand and licences checks — EXIT 0. cargo metadata audit — EXIT 0, only core and optional rt internal kit dependencies. cargo package --list --locked from the clean kit — EXIT 0, package-local files only.
+All 12 packaged 7501 capture blobs equal the historical archives. Ten historical Codex blobs are empty and remain explicitly unproven; no fabricated capture evidence.
+
+Acceptance evidence
+L3: moved launch/overlay tests preserve user config; real Claude and final fresh real Codex probes each leave four tracked config paths byte-identical. During the first Codex attempt, native Codex itself persisted exactly the 10 hook trusted_hash entries after the authorized #270 review; that native consent is recorded separately, not called an app config write or hidden behind L3.
+L4 Claude: fresh real client, orient first bboxy tool -> task_status -> task_report; private task actually reported, correlated reply at 45.664 s; no operator prompt/key injection. Proof producer 3c565997; native/observe/guard source hashes match final 98ee69b9, with the remaining kit delta limited to a doc row and accepted Codex hook-list additions.
+L4 Codex: exact gate binary SHA256 3f26aedd954708f09f1c674f2aa85737306a25ca1e54a1f46a2383c9212138a7; orient first -> task_status -> task_report -> message_list/send -> two ACKs/receipts. Private task reported and correlated reply at 51.906 s. Native task_report Allow for this session was authorized by Vesper c349cb92 and logged with the actual screen/choice. One ctl turn-start nudge was required: autonomous Codex wake is not claimed.
+M1: both real clients replied into operator/inbox with matching reply_to; both original task notice and DM ended application-acknowledged in their durable ledgers. Native-written alone was never used as proof of consumption.
+T5: existing app recovery suite 5/0, including actual restart/recovery paths, plus the retained first-Logic fixture; no new 967-seat calibration is claimed.
+All owned native apps exited 0 with no recorded surviving children. Raw native transcripts, private repositories, credentials and config bodies stay outside Git. Metadata, hashes, tool results and approval recipes are in hk0-verification.log.
+
+Failures / limits / deliberately untouched
+All verification commands, real exits and private log hashes are retained in hk0-verification.log, including initial compile/lint failures fixed before source signing, helper cwd/timeout/path mistakes, and the first native probe failure.
+First native Codex attempt: GUI session error Some(DatabaseBusy), then unavailable-custody refusal and orderly logic shutdown; private task remained claimed. Cause unproven. The successful new private probe removed external SQLite polling while the app was alive, and audited it only after shutdown; that change does not establish the earlier cause.
+The #265 auto override still surfaced a task_report prompt. hk0-codex-approval.log records installed parser/schema checks, truthful destructiveHint annotation and a documented explicit approve proposal. No policy/annotation change or new no-prompt claim is included in HK-0.
+HK-1 host extraction/probe allowlist, HK-2 full public-item docs/release preparation and publishing remain outside this brief.
+Main advanced with ATTENTION and records while the gate ran. Per AGENTS.md, this source was not rebased or re-gated afterward; Oracle verifies the merged tree.
+
+Cleanup
+SLOT 1 released by ICQ cf7bab53-3d2f-4590-85d5-38e1e4a1c1e3. Own inactive gate/dev targets and detached gate worktree removed: 9,205,084,160 allocated bytes freed. Exact binary and parity artifacts retained in private scratch for review. No peer target, tty, desktop or shared worktree was changed.

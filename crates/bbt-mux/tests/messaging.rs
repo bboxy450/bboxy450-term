@@ -524,7 +524,7 @@ fn mute_holds_both_directions_reopens_and_releases_only_under_current_grants() {
         && matches!(
             m.envelope.body,
             Body::Presence {
-                state: State::Active,
+                state: bbt_proto::messaging::State::Active,
                 ..
             }
         )));

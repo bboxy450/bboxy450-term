@@ -9,6 +9,7 @@ rust-version.workspace = true
 description = "bboxy450-term: bbt-mux"
 
 [dependencies]
+bboxy450-harness-wake-up = { workspace = true, features = ["runtime-assertions"] }
 bbt-plugin = { path = "../bbt-plugin" }
 bbt-doc = { path = "../bbt-doc" }
 bbt-proto = { path = "../bbt-proto" }
@@ -17,11 +18,9 @@ bbt-rt = { path = "../bbt-rt" }
 bbt-supervisor = { path = "../bbt-supervisor" }
 base64 = "0.22"
 ed25519-dalek = "3.0"
-futures-util = { version = "0.3", features = ["sink"] }
 getrandom = "0.3"
 hkdf = "=0.12.4"
 libc = "0.2"
-mio = { version = "1", features = ["os-poll", "os-ext", "net"] }
 notify = "8.2"
 petgraph = "0.8"
 pgp = { version = "=0.21.0", default-features = false }
@@ -31,7 +30,6 @@ serde_json = "1"
 serde_yaml = "0.9"
 sha2 = "0.10"
 tokio = { version = "1", features = ["rt", "sync", "time", "net", "io-util", "macros"] }
-tokio-tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"] }
 ulid = { version = "1", features = ["serde"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -40,5 +38,7 @@ security-framework = { version = "=3.7.0", default-features = false, features = 
 security-framework-sys = "=2.17.0"
 
 [dev-dependencies]
+futures-util = { version = "0.3", features = ["sink"] }
+tokio-tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"] }
 tempfile = "3"
 tokio = { version = "1", features = ["rt-multi-thread"] }

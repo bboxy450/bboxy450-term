@@ -2178,11 +2178,7 @@ impl Worker {
             } => match self.guarded_input(
                 target.seat,
                 target.generation,
-                crate::adapters::guard::LiteralInput {
-                    id,
-                    text: &text,
-                    submit,
-                },
+                crate::adapters::mapping::literal(id, &text, submit),
             ) {
                 Ok(outcome) => seats::input_result(call, id, outcome),
                 Err(error) => seats::failure(
@@ -4207,11 +4203,7 @@ impl Worker {
         self.guarded_input(
             seat,
             generation,
-            crate::adapters::guard::LiteralInput {
-                id: work.id,
-                text,
-                submit: true,
-            },
+            crate::adapters::mapping::literal(work.id, text, true),
         )
     }
     fn guarded_input(
@@ -4220,7 +4212,7 @@ impl Worker {
         generation: u64,
         input: crate::adapters::guard::LiteralInput<'_>,
     ) -> Result<crate::adapters::WakeOutcome> {
-        use crate::adapters::{ArbiterView, Evidence, WakeOutcome};
+        use crate::adapters::{Evidence, WakeOutcome};
         let pending = |note: &str| WakeOutcome {
             evidence: Evidence::RecipientStored,
             native_id: None,
@@ -4257,33 +4249,27 @@ impl Worker {
             || context.sequence != view.state.sequence
             || view
                 .adapter
-                .proof
-                .as_ref()
-                .is_none_or(|p| p.observed_ms <= context.last_input_ms)
+                .readiness_observed_ms()
+                .is_none_or(|observed_ms| observed_ms <= context.last_input_ms)
             || now.saturating_sub(context.last_input_ms) < 500
         {
-            return Ok(pending(if view.adapter.proof.is_none() {
+            return Ok(pending(if view.adapter.readiness_observed_ms().is_none() {
                 "no positive composer-ready indication"
             } else {
                 "pending for operator: fresh readiness after the last input and a caught-up PTY are required"
             }));
         }
-        let arbiter = ArbiterView {
-            binding: view.adapter.binding.clone(),
-            operator_epoch: context.epoch,
-            foreground_pid: context.foreground_pid,
-            operator_draft: context.draft,
-            active_tool: view.adapter.status.turn_open,
-            sync_pending: view.state.term.sync_pending(),
-            screen_switch_pending: view.last_parsed_at.elapsed() < Duration::from_millis(50),
-            canonical: context.canonical,
-            echo: context.echo,
-            bracketed_paste: view
-                .state
+        let arbiter = crate::adapters::mapping::arbiter(
+            view.adapter.binding.clone(),
+            &context,
+            view.adapter.status.turn_open,
+            view.state.term.sync_pending(),
+            view.last_parsed_at.elapsed() < Duration::from_millis(50),
+            view.state
                 .term
                 .mode()
                 .contains(bbt_core::term::TermMode::BRACKETED_PASTE),
-        };
+        );
         let directory = object_dir(&self.config.run_dir, &format!("seat-{seat}"))?;
         let journal = SqliteStore::open(&directory)?;
         view.adapter
@@ -5529,26 +5515,23 @@ fn gui_activity(
     state: crate::adapters::State,
     waiting: Option<crate::adapters::WaitingKind>,
 ) -> bbt_proto::Activity {
-    use crate::adapters::{State, WaitingKind};
+    use crate::adapters::State;
     use bbt_proto::{Activity, WaitKind};
     match state {
         State::Active => Activity::Active,
         State::Idle => Activity::Idle,
         State::Errored => Activity::Errored,
-        State::Waiting => Activity::Waiting(match waiting {
-            Some(WaitingKind::Permission) => WaitKind::Permission,
-            Some(WaitingKind::Auth) => WaitKind::Auth,
-            _ => WaitKind::Question,
-        }),
+        State::Waiting => Activity::Waiting(
+            waiting
+                .map(crate::adapters::mapping::waiting)
+                .unwrap_or(WaitKind::Question),
+        ),
     }
 }
 fn gui_grade(grade: crate::adapters::Grade) -> bbt_proto::Grade {
-    match grade {
-        crate::adapters::Grade::Reported => bbt_proto::Grade::Reported,
-        crate::adapters::Grade::Shim => bbt_proto::Grade::Shim,
-        crate::adapters::Grade::Inferred => bbt_proto::Grade::Inferred,
-    }
+    crate::adapters::mapping::grade(grade)
 }
+
 fn check_size(cols: usize, rows: usize) -> Result<()> {
     if cols < 2 || rows == 0 || cols > 512 || rows > 256 || cols * rows > 32768 {
         return Err(invalid("viewport dimensions exceed bounded logic model"));

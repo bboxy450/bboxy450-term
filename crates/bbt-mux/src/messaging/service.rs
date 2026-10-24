@@ -1374,7 +1374,7 @@ impl Messaging {
             event: if muted { "mute" } else { "unmute" }.into(),
             name: record.name.clone(),
             harness: record.harness_kind.clone(),
-            state,
+            state: crate::adapters::mapping::state(state),
             muted,
             policy_epoch: epoch,
         };

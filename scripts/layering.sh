@@ -2,6 +2,7 @@
 # Layering invariant (.bboxy/invariants/layering.md): every workspace crate
 # depends only on crates earlier in ORDER, so any prefix is publishable alone.
 # New crate: add it to ORDER in the same commit.
+# HK-0: the wake-up kit follows core; its optional runtime assertion is below core.
 set -eu
 cd "$(dirname "$0")/.."
 ORDER="bboxy450-desktop-notifications-macos bboxy450-desktop-notifications-windows bboxy450-desktop-notifications-linux bboxy450-desktop-notifications bbt-yarn-macros bbt-yarn bbt-rt bbt-core bboxy450-harness-wake-up bbt-mermaid bboxy-firehose bbt-ui-model bbt-render bbt-ui bbt-doc bboxybook bbt-supervisor bbt-plugin bbt-proto bbt-mux bboxy450-term"
