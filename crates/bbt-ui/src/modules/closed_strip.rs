@@ -68,6 +68,9 @@ impl ClosedStrip {
         );
         if let c::Element::Text(t) = &mut undo {
             t.runs[0].style.tracking_em = 0.08;
+            t.wrap = true;
+            t.ellipsis = false;
+            t.align = c::Alignment::Center;
         }
         let right = flow(
             plain(None, [0.; 4], ui::Color::Transparent, 0.),
@@ -85,17 +88,19 @@ impl ClosedStrip {
                     ),
                 )
                 .into(),
-                named(
-                    "undo",
-                    flow(
-                        button_style,
-                        Axis::Row,
-                        0.,
-                        c::Alignment::Center,
-                        vec![undo.into()],
+                c::Item {
+                    element: named(
+                        "undo",
+                        flow(
+                            button_style,
+                            Axis::Row,
+                            0.,
+                            c::Alignment::Center,
+                            vec![undo.into()],
+                        ),
                     ),
-                )
-                .into(),
+                    extent: c::Extent::MinContent,
+                },
             ],
         );
         let rw = right
@@ -128,7 +133,16 @@ impl ClosedStrip {
         };
         let y = intrinsic.1 - measure.x_height(&font) * 0.5;
         let name = c::Element::Layers {
-            base: Box::new(name),
+            base: Box::new(flow(
+                plain(None, [0.; 4], ui::Color::Transparent, 0.),
+                Axis::Row,
+                0.,
+                c::Alignment::Center,
+                vec![c::Item {
+                    element: name,
+                    extent: c::Extent::Fill,
+                }],
+            )),
             overlays: vec![c::Placed {
                 left: 0.,
                 bottom: 0.,
@@ -191,10 +205,29 @@ impl ClosedStrip {
                 },
             },
             c::Item {
-                element: c::Element::Spacer,
-                extent: c::Extent::Fill,
+                element: c::Element::Stack(c::Stack {
+                    direction: Axis::Row,
+                    gap: ui::Length::Px(0.),
+                    align: c::Alignment::Center,
+                    children: vec![
+                        c::Item {
+                            element: c::Element::Spacer,
+                            extent: c::Extent::Fill,
+                        },
+                        c::Item {
+                            element: named("right", right),
+                            extent: c::Extent::MinContent,
+                        },
+                    ],
+                }),
+                extent: c::Extent::Content {
+                    grow: 1.,
+                    shrink: 1.,
+                    min: 0.,
+                    max: None,
+                    max_fraction: None,
+                },
             },
-            named("right", right).into(),
         ];
         let row = flow(root, Axis::Row, gap, c::Alignment::Center, children);
         let fraction = (self.remaining_ms as f64 / self.grace_ms as f64).clamp(0., 1.) as f32;
@@ -224,7 +257,10 @@ impl ClosedStrip {
                 ui::Color::Transparent,
                 STYLE.radius.row as f32,
             ),
-            vec![element.into()],
+            vec![c::Item {
+                element,
+                extent: c::Extent::Fill,
+            }],
         );
         clip.clip = true;
         element = c::Element::Box(clip);

@@ -119,7 +119,7 @@ impl State {
         self.0.iter().any(|(id, e)| {
             records.iter().find(|r| r.id.0 == id.0.0).is_some_and(|r| {
                 r.generation != e.intent.view.undo.process_generation
-                    || (!e.confirmed && r.lifecycle == Lifecycle::ClosedGrace)
+                    || (!e.confirmed && r.lifecycle != Lifecycle::Open)
                     || (e.confirmed && r.lifecycle != Lifecycle::ClosedGrace)
             })
         })
@@ -271,7 +271,7 @@ impl State {
                     }
                     false
                 }
-                Lifecycle::ClosedRetained if entry.confirmed => {
+                Lifecycle::ClosedRetained => {
                     if let Some(swarm) = model
                         .window
                         .sidebar
@@ -556,6 +556,46 @@ mod tests {
         );
         assert!(ui.seats.contains_key(&seat));
         assert!(state.undo(seat, now + GRACE).is_err());
+    }
+
+    #[test]
+    fn t7_a_delayed_close_publication_still_announces_retention_once() {
+        let (ui, tree, seat) = fixture();
+        let now = Instant::now();
+        let intent =
+            Intent::prepare(&ui, ui::TabId::from_u128(5), &tree, seat, 1, Ulid(9), now).unwrap();
+        let mut model = crate::model::Model {
+            ui,
+            metadata_initialized: true,
+            ..Default::default()
+        };
+        model.closes.register(intent.clone()).unwrap();
+        let mut records: Vec<_> = (1..=3)
+            .map(|id| {
+                let mut r = SeatRecord::new(Ulid(id), Ulid(4), "fixture", "zsh");
+                r.generation = 7;
+                r
+            })
+            .collect();
+        records[2].lifecycle = Lifecycle::ClosedRetained;
+        records[2].close = Some(bbt_proto::registry::CloseRecord {
+            operation: intent.operation,
+            revision: 1,
+            deadline_ms: 1,
+            position: intent.position,
+        });
+        let grids = crate::grids::Grids::new();
+        let closed = crate::model::build(&records, &grids, &model);
+        let again = crate::model::build(&records, &grids, &closed);
+        assert!(again.ui.tab_of(seat).is_none());
+        assert!(again.closes.latest(now).is_none());
+        let read = status(&again, now);
+        assert!(read["grace"].as_array().unwrap().is_empty());
+        assert_eq!(read["notices"].as_array().unwrap().len(), 1);
+        assert_eq!(
+            read["notices"][0]["text"],
+            "fixture closed; its history is kept"
+        );
     }
 
     #[test]

@@ -183,6 +183,7 @@ fn layouts(case: &Case) -> Result<Vec<Node>> {
         let msg: Message = serde_json::from_value(f["notice"].clone())?;
         let dock = ui::modules::stream_dock::StreamDock {
             dock: true,
+            framed: false,
             ..Default::default()
         };
         let element = dock.frame(
@@ -199,7 +200,16 @@ fn layouts(case: &Case) -> Result<Vec<Node>> {
         let mh = element.natural(mw, ctx, &m)?.0[1];
         out.push(Node {
             ctx,
-            layout: element.layout(Rect::new(x + hair, y + h - hair - mh, mw, mh), ctx, &m)?,
+            layout: element.layout(
+                Rect::new(
+                    x + hair + TOKENS.sidebar.edge as f32,
+                    y + h - hair - mh,
+                    mw,
+                    mh,
+                ),
+                ctx,
+                &m,
+            )?,
         });
     }
     Ok(out)
@@ -272,7 +282,9 @@ pub fn snapshots(cases: &[Case]) -> Result<Vec<Value>> {
         let mut parts = vec![];
         for p in f["parts"].as_array().ok_or("missing close diagnostics")? {
             let key = p["key"].as_str().ok_or("missing close part")?;
-            let n = if key == "sidebar" {
+            let n = if key == "frame" {
+                Some(&nodes[0].layout)
+            } else if key == "sidebar" {
                 Some(&nodes[1].layout)
             } else {
                 names.get(key).copied().or_else(|| {
