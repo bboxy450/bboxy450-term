@@ -70,6 +70,28 @@ pub struct LaunchSpec {
     /// Explicit overrides only. The inherited environment is never recorded.
     pub env: BTreeMap<String, String>,
     pub size: SeatSize,
+    /// An optional process owned for this seat's lifetime, outside its PTY.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub companion: Option<Box<CompanionSpec>>,
+}
+
+/// A seat-local service started alongside its PTY. The client command handles
+/// its own socket readiness; the host never waits on an external service.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CompanionSpec {
+    pub program: String,
+    pub args: Vec<String>,
+    pub env: BTreeMap<String, String>,
+    pub ready_socket: PathBuf,
+}
+
+/// The actual owned process, retained across client/logic reconnections.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CompanionInfo {
+    pub pid: u32,
+    pub ready_socket: PathBuf,
 }
 
 impl LaunchSpec {
@@ -82,6 +104,7 @@ impl LaunchSpec {
             cwd: cwd.into(),
             env: BTreeMap::new(),
             size: SeatSize::default(),
+            companion: None,
         }
     }
 
@@ -115,6 +138,36 @@ impl LaunchSpec {
                     "invalid environment override",
                 ));
             }
+        }
+        if let Some(companion) = &self.companion {
+            let mut service = Self::new(&companion.program, &self.cwd);
+            service.args = companion.args.clone();
+            service.env = companion.env.clone();
+            service.validate()?;
+            if !companion.ready_socket.is_absolute()
+                || companion.ready_socket.as_os_str().len() >= 104
+                || companion
+                    .ready_socket
+                    .as_os_str()
+                    .as_encoded_bytes()
+                    .contains(&0)
+            {
+                return Err(Failure::new(
+                    FailureCode::Invalid,
+                    "invalid companion socket path",
+                ));
+            }
+            bytes = bytes
+                .saturating_add(companion.program.len())
+                .saturating_add(companion.args.iter().map(String::len).sum::<usize>())
+                .saturating_add(
+                    companion
+                        .env
+                        .iter()
+                        .map(|(k, v)| k.len() + v.len())
+                        .sum::<usize>(),
+                )
+                .saturating_add(companion.ready_socket.as_os_str().len());
         }
         if bytes > MAX_INPUT_BYTES {
             return Err(Failure::new(
@@ -238,6 +291,8 @@ pub struct SeatInfo {
     pub size: SeatSize,
     pub next_sequence: u64,
     pub exited: Option<ExitInfo>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub companion: Option<CompanionInfo>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

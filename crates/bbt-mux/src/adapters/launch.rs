@@ -1,6 +1,6 @@
 use super::HarnessRecord;
 use crate::{LaunchSpec, registry::SeatRecord, store::Result};
-pub use bboxy450_harness_wake_up::launch::CODEX_HOOK_EVENTS;
+pub use bboxy450_harness_wake_up::launch::{CODEX_HOOK_EVENTS, exec_when_ready};
 use std::path::{Path, PathBuf};
 
 pub struct LaunchContext<'a> {
@@ -32,7 +32,13 @@ pub struct LaunchPlan {
 impl LaunchPlan {
     /// The owner calls this only after process exit, never at close-grace start.
     pub fn cleanup(self) -> Result<()> {
-        std::fs::remove_dir_all(self.overlay)?;
+        bboxy450_harness_wake_up::launch::cleanup_overlay(
+            &self.overlay,
+            self.spec
+                .companion
+                .as_ref()
+                .map(|c| c.ready_socket.as_path()),
+        )?;
         Ok(())
     }
 }

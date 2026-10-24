@@ -4930,6 +4930,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(result) = bboxy450_term::cockpit::private_entry(&hook_args) {
         return result.map_err(|error| error as Box<dyn std::error::Error>);
     }
+    if hook_args.first().is_some_and(|arg| arg == "harness-exec") {
+        return bbt_mux::adapters::launch::exec_when_ready(&hook_args[1..])
+            .map_err(|error| error as Box<dyn std::error::Error>);
+    }
     if hook_args.first().is_some_and(|arg| arg == "hook") {
         bbt_mux::adapters::hook::run_cli(&hook_args[1..]);
         return Ok(());

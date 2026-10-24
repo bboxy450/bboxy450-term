@@ -1708,6 +1708,7 @@ mod tests {
                     size: Default::default(),
                     next_sequence: 1,
                     exited: None,
+                    companion: None,
                 },
                 first_available_sequence: 1,
             },

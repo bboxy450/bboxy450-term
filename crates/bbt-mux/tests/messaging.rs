@@ -885,6 +885,7 @@ fn ambiguous_guarded_pty_stays_unknown_through_the_delivery_ledger() {
         process_start: native::process_start(std::process::id()).unwrap(),
         session: "fixture".into(),
         attachment_generation: 1,
+        runtime: None,
     };
     let mut session =
         Session::new(HarnessRecord::builtin("claude").unwrap(), binding.clone()).unwrap();

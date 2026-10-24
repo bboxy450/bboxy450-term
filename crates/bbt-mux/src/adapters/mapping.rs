@@ -103,6 +103,14 @@ pub fn launch_plan(plan: kit::LaunchPlan, seat: Ulid, generation: u64) -> super:
     spec.generation = generation;
     spec.args = plan.args;
     spec.env = plan.env;
+    spec.companion = plan.runtime.map(|r| {
+        Box::new(bbt_supervisor::protocol::CompanionSpec {
+            program: r.program,
+            args: r.args,
+            env: r.env,
+            ready_socket: r.endpoint,
+        })
+    });
     super::LaunchPlan {
         spec,
         overlay: plan.overlay,
@@ -116,6 +124,12 @@ pub fn native_launch_plan(plan: super::LaunchPlan) -> kit::LaunchPlan {
         args: plan.spec.args,
         cwd: plan.spec.cwd,
         env: plan.spec.env,
+        runtime: plan.spec.companion.map(|c| kit::launch::RuntimePlan {
+            program: c.program,
+            args: c.args,
+            env: c.env,
+            endpoint: c.ready_socket,
+        }),
         overlay: plan.overlay,
         harness_session_id: plan.harness_session_id,
         notes: plan.notes,
@@ -262,7 +276,14 @@ mod tests {
             overlay: "/tmp/fixture-overlay".into(),
             harness_session_id: Some("session".into()),
             notes: vec!["same note"],
+            runtime: Some(kit::launch::RuntimePlan {
+                program: "/bin/sleep".into(),
+                args: vec!["600".into()],
+                env: [("RUNTIME_ONLY".into(), "value".into())].into(),
+                endpoint: "/tmp/fixture-overlay/service.sock".into(),
+            }),
         };
+        let expected_runtime = native.runtime.clone();
         let expected = serde_json::json!({"program":native.program,"args":native.args,"cwd":native.cwd,"env":native.env,
             "overlay":native.overlay,"session":native.harness_session_id,"notes":native.notes});
         let host = launch_plan(native, id, 7);
@@ -271,6 +292,7 @@ mod tests {
         assert_eq!(host.spec.size, crate::SeatSize::default());
         host.spec.validate().unwrap();
         let back = native_launch_plan(host);
+        assert_eq!(back.runtime, expected_runtime);
         assert_eq!(
             serde_json::json!({"program":back.program,"args":back.args,"cwd":back.cwd,"env":back.env,
             "overlay":back.overlay,"session":back.harness_session_id,"notes":back.notes}),
@@ -286,6 +308,7 @@ mod tests {
             process_start: "start".into(),
             generation: 3,
             attachment_generation: 9,
+            runtime: None,
         };
         for flag in [false, true] {
             let context = crate::protocol::InputContext {
@@ -309,7 +332,10 @@ mod tests {
     }
     #[test]
     fn literal_input_round_trip_keeps_explicit_enter_and_identity() {
-        assert_eq!(kit::guard::MAX_INPUT_BYTES, crate::protocol::MAX_INPUT_BYTES);
+        assert_eq!(
+            kit::guard::MAX_INPUT_BYTES,
+            crate::protocol::MAX_INPUT_BYTES
+        );
         for submit in [false, true] {
             let id = Ulid::new();
             let text = "literal\ntext";

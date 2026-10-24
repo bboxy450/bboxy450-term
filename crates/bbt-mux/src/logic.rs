@@ -3260,6 +3260,14 @@ impl Worker {
                     .and_then(|r| r.harness_session_id.clone())
                     .unwrap_or_else(|| format!("process-{}", info.pid)),
                 attachment_generation: 1,
+                runtime: info.companion.as_ref().map(|c| {
+                    bboxy450_harness_wake_up::RuntimeBinding {
+                        endpoint: c.ready_socket.clone(),
+                        pid: c.pid,
+                        process_start: crate::adapters::native::process_start(c.pid)
+                            .unwrap_or_else(|_| "exited".into()),
+                    }
+                }),
             },
         )?;
         for (sequence, params) in live_frames {
@@ -3405,9 +3413,16 @@ impl Worker {
             }
             let path = root.join("overlays").join(name);
             if path.exists() {
-                std::fs::remove_dir_all(path)?;
+                let endpoint = store
+                    .get("adapter_runtime_endpoint")?
+                    .filter(|b| !b.is_empty())
+                    .map(|b| serde_json::from_slice::<Option<PathBuf>>(&b))
+                    .transpose()?
+                    .flatten();
+                bboxy450_harness_wake_up::launch::cleanup_overlay(&path, endpoint.as_deref())?;
             }
             store.put("adapter_overlay", b"")?;
+            store.put("adapter_runtime_endpoint", b"")?;
         }
         Ok(())
     }
@@ -3516,6 +3531,10 @@ impl Worker {
         store.put(
             "adapter_overlay",
             plan.overlay.file_name().unwrap().as_encoded_bytes(),
+        )?;
+        store.put(
+            "adapter_runtime_endpoint",
+            &serde_json::to_vec(&plan.spec.companion.as_ref().map(|c| &c.ready_socket))?,
         )?;
         // On an ambiguous spawn keep the overlay; deleting it could break a child
         // that actually started. Reconciliation uses the original durable seat ID.
@@ -4629,28 +4648,24 @@ impl Worker {
                 }
                 if view.adapter.record.kind == "codex"
                     && !view.adapter.binding.session.starts_with("process-")
-                    && view
-                        .native_reader
-                        .as_ref()
-                        .is_none_or(|r| r.session != view.adapter.binding.session)
+                    && view.native_reader.as_ref().is_none_or(|r| {
+                        r.session != view.adapter.binding.session || r.task.is_finished()
+                    })
+                    && let Some(runtime) = &view.adapter.binding.runtime
                 {
-                    let root = std::env::var_os("CODEX_HOME")
-                        .map(PathBuf::from)
-                        .or_else(|| {
-                            std::env::var_os("HOME").map(|p| PathBuf::from(p).join(".codex"))
-                        });
-                    if let Some(root) = root {
-                        let path = root.join("app-server-control/app-server-control.sock");
-                        let session = view.adapter.binding.session.clone();
-                        view.delivery_endpoint = crate::adapters::Endpoint::Codex {
-                            path: path.clone(),
-                            thread: session.clone(),
-                            turn: None,
-                        };
-                        let thread = session.clone();
-                        let generation = view.generation;
-                        let client = self.client.clone();
-                        let task=self.handle.spawn(async move {
+                    let path = runtime.endpoint.clone();
+                    let session = view.adapter.binding.session.clone();
+                    view.delivery_endpoint = crate::adapters::Endpoint::Codex {
+                        path: path.clone(),
+                        thread: session.clone(),
+                        turn: None,
+                    };
+                    let thread = session.clone();
+                    let generation = view.generation;
+                    let client = self.client.clone();
+                    let binding = view.adapter.binding.clone();
+                    let task=self.handle.spawn(async move {
+                            if crate::adapters::native::verify_codex_runtime(&binding,&path).is_err(){return;}
                             loop {
                                 if let Ok(status)=crate::adapters::native::codex_status(&path,&thread).await {
                                     let event=serde_json::json!({"source":"snapshot","method":"thread/status/changed","params":{"threadId":thread,"status":status}});
@@ -4659,8 +4674,7 @@ impl Worker {
                                 tokio::time::sleep(Duration::from_millis(200)).await;
                             }
                         });
-                        view.native_reader = Some(NativeReader { session, task });
-                    }
+                    view.native_reader = Some(NativeReader { session, task });
                 }
                 view.adapter.tick(view.state.sequence, now);
             }

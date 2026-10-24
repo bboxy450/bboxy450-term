@@ -18,6 +18,10 @@ use bbt_mux::{LaunchSpec, Supervisor, Ulid};
 use ed25519_dalek::SigningKey;
 use serde_json::{Value, json};
 
+type NativeRuntimes = std::sync::Arc<
+    std::sync::Mutex<std::collections::BTreeMap<Ulid, bbt_supervisor::protocol::CompanionInfo>>,
+>;
+
 struct Fixture {
     runtime: tokio::runtime::Runtime,
     logic: Option<Logic>,
@@ -31,6 +35,7 @@ struct Fixture {
     foreign_task: Ulid,
     input_attempts: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     history_gap: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    native_runtime: NativeRuntimes,
     _temp: tempfile::TempDir,
 }
 impl Fixture {
@@ -74,12 +79,15 @@ impl Fixture {
         let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
         let input_attempts = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let history_gap = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let native_runtime =
+            std::sync::Arc::new(std::sync::Mutex::new(std::collections::BTreeMap::new()));
         let logic = Logic::start(
             LostInputReceipt {
                 client: supervisor.connect().unwrap(),
                 lose,
                 attempts: input_attempts.clone(),
                 history_gap: history_gap.clone(),
+                native_runtime: native_runtime.clone(),
             },
             config.clone(),
             key(),
@@ -112,6 +120,7 @@ impl Fixture {
             foreign_task,
             input_attempts,
             history_gap,
+            native_runtime,
             _temp: temp,
         }
     }
@@ -177,7 +186,13 @@ impl Fixture {
         self.logic.take().unwrap().shutdown().unwrap();
         self.logic = Some(
             Logic::start(
-                self.supervisor.as_ref().unwrap().connect().unwrap(),
+                LostInputReceipt {
+                    client: self.supervisor.as_ref().unwrap().connect().unwrap(),
+                    lose: false,
+                    attempts: self.input_attempts.clone(),
+                    history_gap: self.history_gap.clone(),
+                    native_runtime: self.native_runtime.clone(),
+                },
                 self.config.clone(),
                 key(),
                 self.runtime.handle(),
@@ -191,11 +206,29 @@ struct LostInputReceipt {
     lose: bool,
     attempts: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     history_gap: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    native_runtime: NativeRuntimes,
 }
 impl bbt_mux::logic::SupervisorConnection for LostInputReceipt {
     fn request(&mut self, action: bbt_mux::Action) -> bbt_mux::store::Result<bbt_mux::Reply> {
         let input = matches!(action, bbt_mux::Action::GuardedInput { .. });
         let mut result = self.client.request(action)?;
+        // This RPC fixture hosts its native server in the test process. Supply
+        // its explicit host facts at the existing fake transport boundary; real
+        // companion subprocess ownership/reaping is checked in supervisor tests.
+        let runtimes = self.native_runtime.lock().unwrap();
+        match &mut result {
+            bbt_mux::Reply::Spawned { info } => {
+                info.companion = runtimes.get(&info.seat).cloned().or(info.companion.take());
+            }
+            bbt_mux::Reply::Seats { seats } => {
+                for info in seats {
+                    info.companion = runtimes.get(&info.seat).cloned().or(info.companion.take());
+                }
+            }
+            _ => (),
+        }
+        drop(runtimes);
+
         if let bbt_mux::Reply::RingHistory { history } = &mut result
             && self
                 .history_gap
@@ -558,8 +591,22 @@ impl Fixture {
         json!({"seat_id":seat,"expected_process_generation":"1"})
     }
     fn spawn_fixture(&self, kind: &str, script: &str) -> SeatRecord {
+        self.spawn_native_fixture(kind, script, None)
+    }
+    fn spawn_native_fixture(
+        &self,
+        kind: &str,
+        script: &str,
+        runtime: Option<bbt_supervisor::protocol::CompanionInfo>,
+    ) -> SeatRecord {
         let mut record = SeatRecord::new(Ulid::new(), self.own.swarm, "Controlled target", kind);
         record.harness_session_id = Some(format!("fixture-{}", record.id));
+        if let Some(runtime) = runtime {
+            self.native_runtime
+                .lock()
+                .unwrap()
+                .insert(record.id, runtime);
+        }
         let mut spec = LaunchSpec::new("/bin/zsh", self._temp.path());
         spec.seat = record.id;
         spec.generation = record.generation;
@@ -3525,11 +3572,15 @@ fn seat_native_fixture() {
     server.abort();
     std::fs::remove_file(path).unwrap();
 
-    let codex = f.spawn_fixture(
+    let path = std::env::temp_dir().join(format!("mcp-codex-{}.sock", Ulid::new()));
+    let codex = f.spawn_native_fixture(
         "codex",
         "printf 'CODEX-READY\\n'; while IFS= read -r line; do :; done",
+        Some(bbt_supervisor::protocol::CompanionInfo {
+            pid: std::process::id(),
+            ready_socket: path.clone(),
+        }),
     );
-    let path = std::env::temp_dir().join(format!("mcp-codex-{}.sock", Ulid::new()));
     let thread = codex.harness_session_id.clone().unwrap();
     let hold = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let flag = hold.clone();

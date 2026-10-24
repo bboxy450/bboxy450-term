@@ -44,6 +44,29 @@ pub fn verify_process(binding: &Binding) -> Result<()> {
     }
     Ok(())
 }
+/// Match the transport to the launch-selected runtime, not a user-global locator.
+pub fn verify_codex_runtime(binding: &Binding, path: &Path) -> Result<()> {
+    if binding.session.starts_with("process-") {
+        return Err(invalid("native thread is not yet bound by SessionStart"));
+    }
+    let runtime = binding
+        .runtime
+        .as_ref()
+        .ok_or_else(|| invalid("native runtime is not bound"))?;
+    if runtime.endpoint != path || process_start(runtime.pid)? != runtime.process_start {
+        return Err(invalid("native runtime endpoint/process changed"));
+    }
+    own_socket(path)
+}
+
+#[derive(Debug)]
+struct UnknownRuntime;
+impl std::fmt::Display for UnknownRuntime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("native thread identity/status unknown; no mutation or automatic retry")
+    }
+}
+impl std::error::Error for UnknownRuntime {}
 fn own_socket(path: &Path) -> Result<()> {
     // Installed Codex publishes an owned symlink locator for its Unix socket.
     let meta = std::fs::metadata(path)?;
@@ -381,7 +404,7 @@ async fn codex_handshake(path: &Path, thread: &str) -> Result<(Socket, Value)> {
             Some("idle" | "active")
         )
     {
-        return Err(invalid("native thread identity/status mismatch"));
+        return Err(Box::new(UnknownRuntime));
     }
     Ok((socket, identity))
 }
@@ -448,6 +471,7 @@ pub async fn wake(
             }
             Endpoint::Codex{path,thread,turn}=> {
                 if thread!=&binding.session {return Err(invalid("native thread binding mismatch"));}
+                verify_codex_runtime(binding,path)?;
                 let mut socket=codex_connect(path,thread).await?;
                 let input=json!([{"type":"text","text":text}]);
                 let request=if priority==Priority::Now {
@@ -472,6 +496,9 @@ pub async fn wake(
     }).await;
     match result {
         Ok(Ok(value)) => value,
+        Ok(Err(error)) if error.downcast_ref::<UnknownRuntime>().is_some() => {
+            WakeOutcome::unknown(error.to_string())
+        }
         Ok(Err(error)) if error.downcast_ref::<Rejected>().is_some() => {
             unavailable("native rejected submission")
         }
@@ -497,6 +524,7 @@ mod registration_tests {
             process_start: process_start(std::process::id()).unwrap(),
             generation: 1,
             attachment_generation: 1,
+            runtime: None,
         }
     }
 

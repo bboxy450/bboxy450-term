@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import shlex
+import socket
 import stat
 import subprocess
 import sys
@@ -23,6 +24,21 @@ def identity():
     }
 
 
+if sys.argv[1] == "harness-exec":
+    endpoint, program = sys.argv[2:4]
+    deadline = time.monotonic() + 5
+    while True:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+            client.setblocking(False)
+            try:
+                client.connect(endpoint)
+                break
+            except OSError:
+                pass
+        assert time.monotonic() < deadline, "private fixture runtime not ready"
+        time.sleep(.005)
+    os.execv(program, sys.argv[3:])
+
 if sys.argv[1] in ("mcp", "hook"):
     # Never echo the inherited capability, including in a failure report.
     print(json.dumps({"argv": sys.argv[1:], "identity": identity()}))
@@ -30,6 +46,21 @@ if sys.argv[1] in ("mcp", "hook"):
 
 kind, output, executable, role_prompt = sys.argv[1:5]
 args = sys.argv[5:]
+if kind == "codex" and args[:2] == ["app-server", "--listen"]:
+    assert args[2].startswith("unix://")
+    endpoint = args[2][len("unix://"):]
+    assert "--remote" not in args and "resume" not in args
+    assert 'mcp_servers.bboxy.default_tools_approval_mode="approve"' in args
+    Path(output).with_suffix(".runtime.json").write_text(json.dumps({
+        "argv": args, "identity": identity(), "pid": os.getpid(), "endpoint": endpoint,
+    }))
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as listener:
+        listener.bind(endpoint)
+        listener.listen()
+        while True:
+            stream, _ = listener.accept()
+            stream.close()
+
 assert not any(x in args for x in ("--strict-mcp-config", "--bare"))
 assert not any(
     "bypass" in x or "trusted_hash" in x

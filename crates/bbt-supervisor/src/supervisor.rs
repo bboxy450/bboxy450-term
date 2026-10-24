@@ -20,6 +20,7 @@ use crate::transport::{BoundSocket, SocketPeer};
 
 #[cfg(target_os = "macos")]
 mod child_events;
+mod companion;
 
 const WAKE: Token = Token(0);
 const LISTENER: Token = Token(1);
@@ -770,7 +771,7 @@ impl Client {
         self.tx
             .send(Control::Request {
                 client: self.id,
-                frame,
+                frame: Box::new(frame),
                 reply,
             })
             .map_err(|_| disconnected())?;
@@ -849,7 +850,7 @@ enum Control {
     },
     Request {
         client: Ulid,
-        frame: Frame<Request>,
+        frame: Box<Frame<Request>>,
         reply: mpsc::SyncSender<Result<Reply, Failure>>,
     },
     Disconnect(Ulid),
@@ -865,6 +866,7 @@ enum Target {
 enum Route {
     Seat(Ulid),
     Child(Ulid),
+    Companion(Ulid),
     Socket(Ulid),
 }
 
@@ -980,7 +982,7 @@ impl Actor {
                         reply,
                     }) => {
                         let request_id = frame.body.request_id;
-                        match self.dispatch(client, frame) {
+                        match self.dispatch(client, *frame) {
                             Dispatch::Ready(result) => {
                                 let _ = reply.try_send(result);
                             }
@@ -1059,6 +1061,16 @@ impl Actor {
                             if let Some(seat) = self.seats.get_mut(&id) {
                                 seat.complete_child_watch();
                                 seat.reap_child()?;
+                            }
+                        }
+                        Some(Route::Companion(id)) => {
+                            self.routes.remove(&token);
+                            if let Some(companion) =
+                                self.seats.get_mut(&id).and_then(|s| s.companion.as_mut())
+                            {
+                                #[cfg(target_os = "macos")]
+                                companion.complete_watch();
+                                companion.poll_exit()?;
                             }
                         }
                         Some(Route::Socket(id)) => self.read_socket(id),
@@ -1557,11 +1569,23 @@ impl Actor {
             self.routes
                 .insert(child_token, Route::Child(seat.spec.seat));
         }
+        #[cfg(target_os = "macos")]
+        if let Some(companion) = &mut seat.companion {
+            let companion_token = self.token();
+            if companion.watch(self.poll.registry(), companion_token)? {
+                self.routes
+                    .insert(companion_token, Route::Companion(seat.spec.seat));
+            }
+        }
         let info = seat.info();
         if let Some(old) = self.seats.insert(info.seat, seat) {
             self.routes.remove(&old.token);
             #[cfg(target_os = "macos")]
             if let Some(watch) = &old.child_watch {
+                self.routes.remove(&watch.token());
+            }
+            #[cfg(target_os = "macos")]
+            if let Some(watch) = old.companion.as_ref().and_then(|c| c.watch.as_ref()) {
                 self.routes.remove(&watch.token());
             }
         }
@@ -1743,6 +1767,7 @@ struct Seat {
     size: SeatSize,
     master: Option<Box<dyn MasterPty + Send>>,
     child: Box<dyn Child + Send + Sync>,
+    companion: Option<companion::Companion>,
     #[cfg(target_os = "macos")]
     child_watch: Option<child_events::Watch>,
     #[cfg(target_os = "macos")]
@@ -1777,6 +1802,7 @@ struct Seat {
 
 impl Seat {
     fn spawn(spec: LaunchSpec, token: Token, registry: &mio::Registry) -> Result<Self, Failure> {
+        let companion = companion::Companion::start(&spec)?;
         let pair = native_pty_system()
             .openpty(pty_size(spec.size))
             .map_err(pty_error)?;
@@ -1805,6 +1831,7 @@ impl Seat {
             spec,
             master: Some(pair.master),
             child,
+            companion,
             #[cfg(target_os = "macos")]
             child_watch: None,
             #[cfg(target_os = "macos")]
@@ -1846,6 +1873,7 @@ impl Seat {
             size: self.size,
             next_sequence: self.next_seq,
             exited: self.exited.clone(),
+            companion: self.companion.as_ref().map(companion::Companion::info),
         }
     }
 
@@ -2155,6 +2183,19 @@ impl Seat {
                 }
             }
         }
+        if let Some(companion) = &mut self.companion {
+            if self.exited.is_some() {
+                companion.stop();
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                companion.notified = true;
+            }
+            if companion.poll_exit()? && self.exited.is_none() && self.terminate_at.is_none() {
+                signal(self.pid, libc::SIGHUP)?;
+                self.terminate_at = Some(Instant::now() + Duration::from_millis(250));
+            }
+        }
         self.write_pending();
         self.publish_pending(actor);
         // A configured ring keeps capturing independently of logic delivery.
@@ -2254,6 +2295,10 @@ impl Seat {
             self.publish_pending(actor);
         }
         if let Some(status) = self.exited.clone()
+            && self
+                .companion
+                .as_ref()
+                .is_none_or(companion::Companion::reaped)
             && !self.read_ready
             && (self.ring.is_some() || self.pending_event.is_none())
             && !self.exit_published
@@ -2294,6 +2339,7 @@ impl Drop for Seat {
     fn drop(&mut self) {
         #[cfg(target_os = "macos")]
         drop(self.child_watch.take());
+        drop(self.companion.take());
         if self.ring.as_ref().is_none_or(CaptureHandle::can_capture) {
             let _ = self.flush_output();
         }

@@ -14,6 +14,7 @@ fn binding() -> Binding {
         process_start: native::process_start(std::process::id()).unwrap(),
         generation: 1,
         attachment_generation: 1,
+        runtime: None,
     }
 }
 fn session(kind: &str) -> Session {
@@ -243,7 +244,28 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
             .filter(|a| !a.starts_with("developer_instructions="))
             .any(|a| a.contains("bypass") || a.contains("trusted_hash"))
     );
+    let service = codex.runtime.as_ref().unwrap();
+    let url = format!("unix://{}", service.endpoint.display());
+    assert!(codex.args.windows(2).any(|p| p == ["--remote", &url]));
+    assert!(
+        service
+            .args
+            .windows(3)
+            .any(|p| p == ["app-server", "--listen", &url])
+    );
+    assert_eq!(service.env, codex.env);
+    assert!(
+        service
+            .args
+            .contains(&"mcp_servers.bboxy.default_tools_approval_mode=\"approve\"".into())
+    );
+    assert!(service.args.contains(&other_approval.into()));
+    let alias = service.endpoint.parent().unwrap().to_owned();
+    let aliased = alias != codex.overlay;
     codex.cleanup().unwrap();
+    if aliased {
+        assert!(alias.symlink_metadata().is_err());
+    }
     let raw = json!({"hook_event_name":"PreToolUse","tool_input":{"description":"x:y\nraw value"},"tool_use_id":"join-me","token":"do-not-export"});
     let event = hook::prepare(raw.clone(), "claude").unwrap();
     assert_eq!(event.raw["tool_input"], raw["tool_input"]);
@@ -315,7 +337,12 @@ fn adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect()
     ] {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("native.sock");
-        let binding = binding();
+        let mut binding = binding();
+        binding.runtime = Some(bboxy450_harness_wake_up::RuntimeBinding {
+            endpoint: path.clone(),
+            pid: binding.pid,
+            process_start: binding.process_start.clone(),
+        });
         let thread = binding.session.clone();
         runtime().block_on(async {
             let listener=tokio::net::UnixListener::bind(&path).unwrap();
@@ -342,6 +369,109 @@ fn adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect()
             let outcome=native::wake(&binding,&endpoint,Ulid::new(),"fixture",priority,true).await;
             assert_eq!(server.await.unwrap()["params"]["input"][0]["text"],"fixture");
             assert_eq!(outcome.evidence,if disconnect||malformed{Evidence::NativeUnknown}else{Evidence::NativeQueued});
+        });
+    }
+}
+
+#[test]
+fn codex_bootstrap_and_unloaded_threads_never_admit_or_retry_a_submission() {
+    use futures_util::{SinkExt, StreamExt};
+    use tokio_tungstenite::tungstenite::Message;
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("boot.sock");
+    let listener = std::os::unix::net::UnixListener::bind(&path).unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let mut bootstrap = binding();
+    bootstrap.session = format!("process-{}", bootstrap.pid);
+    bootstrap.runtime = Some(bboxy450_harness_wake_up::RuntimeBinding {
+        endpoint: path.clone(),
+        pid: bootstrap.pid,
+        process_start: bootstrap.process_start.clone(),
+    });
+    let endpoint = bboxy450_harness_wake_up::Endpoint::Codex {
+        path,
+        thread: bootstrap.session.clone(),
+        turn: None,
+    };
+    let outcome = runtime().block_on(native::wake(
+        &bootstrap,
+        &endpoint,
+        Ulid::new(),
+        "bootstrap",
+        Priority::Next,
+        false,
+    ));
+    assert_eq!(outcome.evidence, Evidence::RecipientStored);
+    assert!(outcome.note.contains("not yet bound"));
+    assert_eq!(
+        listener.accept().unwrap_err().kind(),
+        std::io::ErrorKind::WouldBlock
+    );
+
+    for status in ["notLoaded", "systemError"] {
+        let path = root.path().join(format!("{status}.sock"));
+        let mut bound = binding();
+        bound.runtime = Some(bboxy450_harness_wake_up::RuntimeBinding {
+            endpoint: path.clone(),
+            pid: bound.pid,
+            process_start: bound.process_start.clone(),
+        });
+        let thread = bound.session.clone();
+        runtime().block_on(async {
+            let listener = tokio::net::UnixListener::bind(&path).unwrap();
+            let server = tokio::spawn(async move {
+                let (stream, _) = listener.accept().await.unwrap();
+                let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+                let mut methods = Vec::new();
+                for expected in ["initialize", "initialized", "thread/read"] {
+                    let frame = ws.next().await.unwrap().unwrap();
+                    let value: serde_json::Value =
+                        serde_json::from_str(frame.to_text().unwrap()).unwrap();
+                    assert_eq!(value["method"], expected);
+                    methods.push(expected);
+                    if expected == "initialized" {
+                        continue;
+                    }
+                    let result = if expected == "thread/read" {
+                        json!({"thread":{"id":thread,"status":{"type":status}}})
+                    } else {
+                        json!({})
+                    };
+                    ws.send(Message::Text(
+                        json!({"id":value["id"],"result":result}).to_string().into(),
+                    ))
+                    .await
+                    .unwrap();
+                }
+                let next = tokio::time::timeout(std::time::Duration::from_secs(5), ws.next())
+                    .await
+                    .unwrap();
+                assert!(
+                    !matches!(next, Some(Ok(Message::Text(_)))),
+                    "unknown preflight admitted a mutation"
+                );
+                methods
+            });
+            let endpoint = bboxy450_harness_wake_up::Endpoint::Codex {
+                path,
+                thread: bound.session.clone(),
+                turn: None,
+            };
+            let outcome = native::wake(
+                &bound,
+                &endpoint,
+                Ulid::new(),
+                "do not mutate",
+                Priority::Next,
+                false,
+            )
+            .await;
+            assert_eq!(outcome.evidence, Evidence::NativeUnknown);
+            assert!(outcome.note.contains("no mutation or automatic retry"));
+            assert_eq!(
+                server.await.unwrap(),
+                ["initialize", "initialized", "thread/read"]
+            );
         });
     }
 }
