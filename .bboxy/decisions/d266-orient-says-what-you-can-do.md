@@ -14,7 +14,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: evidence }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-24T08:28:43Z"
-updated: "2026-10-24T08:56:02Z"
+updated: "2026-10-24T09:12:06Z"
 ---
 # Decision 266: orient says what you can do
 
@@ -36,4 +36,4 @@ The first in-app agent feedback under [[e2e-acceptance]], 2026-10-24: a real Cla
 
 Owner: Corvin Duskmantle <ARCHITECT>.
 
-**Addendum to 4, field policy (Kestrel's question, same day; Vesper copied).** Tasks: a worker's write is routed through the Report transition and may change only `report.summary`, `report.commit` and `verify_result` on its own assigned task; everything else and the body must match the current record (`task_field_protected`); Oracle class and the operator create tasks only `open` and edit brief, `verify` and `allowed_paths` only while `open`; lifecycle and assignment stay in `task_*`. Artifacts: `claimed`, `produced_by`, `grade`, `history`, `for`, `derived_from`, and `ref` and `digest` once observed or claimed, move only through `artifact_claim`, `artifact_release` and the detector; a generic create gets `claimed: false`, `produced_by` the writer, `grade: inferred`, empty history (`artifact_field_protected`). Rejected: a second report shape; a generic write that can change status or assignment; a generic write that can mint or steal a claim. Kestrel's proposal, taken as stated, with the field names fixed.
+**Addendum to 4, field policy (Kestrel's question, same day; Vesper copied).** Tasks: a worker's write is routed through the Report transition and may change only `report.summary`, `report.commit` and `verify_result` on its own assigned task; everything else and the body must match the current record (`task_field_protected`); Oracle class and the operator create tasks only `open` and edit brief, `verify` and `allowed_paths` only while `open`; lifecycle and assignment stay in `task_*`. Artifacts: `claimed`, `produced_by`, `grade`, `history`, `for`, `derived_from`, and `ref` and `digest` once observed or claimed, move only through `artifact_claim`, `artifact_release` and the detector; a generic create gets `claimed: false`, `produced_by` the writer, `grade: inferred`, empty history (`artifact_field_protected`). `observed` is detector-owned and immutable to generic writes, and a generic update never changes any record's `type` (`type_immutable`), so neither the once-observed rule nor a lineage can be erased by relabelling. Rejected: a second report shape; a generic write that can change status or assignment; a generic write that can mint or steal a claim. Kestrel's proposal, taken as stated, with the field names fixed and these two closures added at Kestrel's ask.
