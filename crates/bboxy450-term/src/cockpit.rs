@@ -680,6 +680,7 @@ impl Session {
                 | GuiReply::Ok { .. }
                 | GuiReply::CaptureAsk { .. }
                 | GuiReply::OperatorSpawned { .. }
+                | GuiReply::Screen { .. }
                 | GuiReply::Hosts(_)
                 | GuiReply::HostState { .. } => {}
                 _ => return Err(invalid("unexpected GUI startup reply")),

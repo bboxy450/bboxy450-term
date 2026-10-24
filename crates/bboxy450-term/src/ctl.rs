@@ -37,6 +37,12 @@ pub const USAGE: &str = "usage: bboxy450-term ctl [--endpoint FILE] [--as LABEL]
   delegate <#N|path|id> <seat>
   reports [--since TIME]
   capture <file.png> [--seat SEAT]
+  seat screen <seat> [--human]    the seat's visible screen, its cursor and title (#270)
+  seat type <seat> <text>         types the text as written
+  seat key <seat> <key>...        enter esc tab backspace space up down left right home end
+                                  pageup pagedown delete shift-tab ctrl-<letter>; Kitty when on
+  seat paste <seat> <file|->      pastes a file or stdin, bracketed when the program asked
+  seat wait <seat> (--state idle|waiting|exited | --text REGEX) [--timeout MS]  default 30000
   e2e [--group GROUP]
 A <seat> is a seat id or a unique seat name. Output is one JSON object per line.
 --as LABEL (or BBOXY_CTL_ISSUER) names who issues the messages, e.g. 'Vesper (Oracle)';
@@ -117,6 +123,32 @@ pub enum Command {
         path: PathBuf,
         seat: Option<String>,
     },
+    /// `seat screen` (ctl-cli §1, decision #270): what the operator would see in its pane.
+    Screen {
+        seat: String,
+        human: bool,
+    },
+    /// `seat type`, `seat key`, `seat paste` (ctl-cli rev. 2): bytes for the window's one
+    /// input path, from literal text, named keys, or a bracketed paste.
+    Type {
+        seat: String,
+        text: String,
+    },
+    Key {
+        seat: String,
+        keys: Vec<String>,
+    },
+    Paste {
+        seat: String,
+        source: String,
+    },
+    /// `seat wait`: until the seat is in a state or its screen matches, or the timeout.
+    Wait {
+        seat: String,
+        state: Option<String>,
+        text: Option<String>,
+        timeout: Duration,
+    },
     E2e {
         group: Option<String>,
     },
@@ -127,9 +159,14 @@ pub fn parse(args: &[String]) -> Result<(Option<PathBuf>, Command), String> {
     let mut endpoint = None;
     let mut flags = std::collections::BTreeMap::new();
     let mut words = vec![];
+    let mut human_flag = false;
     let mut it = args.iter();
     while let Some(arg) = it.next() {
-        if let Some(flag) = arg.strip_prefix("--") {
+        if arg == "--json" {
+            // The default reply form (ctl-cli §1).
+        } else if arg == "--human" {
+            human_flag = true;
+        } else if let Some(flag) = arg.strip_prefix("--") {
             let value = it.next().ok_or(format!("--{flag} needs a value"))?;
             if flag == "endpoint" {
                 endpoint = Some(PathBuf::from(value));
@@ -192,6 +229,44 @@ pub fn parse(args: &[String]) -> Result<(Option<PathBuf>, Command), String> {
         ["e2e"] => Command::E2e {
             group: flag("group"),
         },
+        ["seat", "screen", seat] => Command::Screen {
+            seat: seat.into(),
+            human: human_flag,
+        },
+        ["seat", "type", seat, text] => Command::Type {
+            seat: seat.into(),
+            text: text.into(),
+        },
+        ["seat", "key", seat, ref keys @ ..] if !keys.is_empty() => Command::Key {
+            seat: seat.into(),
+            keys: keys.iter().map(|k| k.to_string()).collect(),
+        },
+        ["seat", "paste", seat, source] => Command::Paste {
+            seat: seat.into(),
+            source: source.into(),
+        },
+        ["seat", "wait", seat] => {
+            let (state, text) = (flag("state"), flag("text"));
+            if state.is_some() == text.is_some() {
+                return Err(format!("seat wait: one of --state or --text\n{USAGE}"));
+            }
+            Command::Wait {
+                seat: seat.into(),
+                state,
+                text,
+                timeout: Duration::from_millis(
+                    flag("timeout")
+                        .map(|v| {
+                            v.parse::<u64>()
+                                .ok()
+                                .filter(|ms| (1..=3_600_000).contains(ms))
+                                .ok_or(format!("--timeout: 1 to 3600000 ms, not {v}"))
+                        })
+                        .transpose()?
+                        .unwrap_or(30_000),
+                ),
+            }
+        }
         ["capture", path] => Command::Capture {
             path: std::path::absolute(path).map_err(|e| format!("capture {path}: {e}"))?,
             seat: flag("seat"),
@@ -208,6 +283,9 @@ pub fn parse(args: &[String]) -> Result<(Option<PathBuf>, Command), String> {
             "seat",
             "group",
             "role",
+            "timeout",
+            "state",
+            "text",
         ]
         .contains(&k.as_str())
     }) {
@@ -376,6 +454,33 @@ impl Client {
                 .map_err(|e| CommandError::new("invalid_provider_result", e.to_string()))?,
             _ => unreachable!(),
         }
+    }
+    /// The seat's screen, with the op id of the read.
+    pub fn screen(&mut self, seat: Ulid) -> Result<(Ulid, bbt_proto::gui::SeatScreen), String> {
+        let id = Ulid::new();
+        match self.call(
+            Some(id),
+            GuiAction::Screen { id, seat },
+            |r| matches!(r, GuiReply::Screen { op, .. } if *op == id),
+        )? {
+            GuiReply::Screen { screen, .. } => Ok((id, screen)),
+            _ => unreachable!(),
+        }
+    }
+    /// The window's input action, under this connection's door and issuer; returns its op.
+    pub fn input(&mut self, seat: Ulid, generation: u64, bytes: Vec<u8>) -> Result<Ulid, String> {
+        let id = Ulid::new();
+        self.call(
+            Some(id),
+            GuiAction::Input {
+                seat: bbt_proto::SeatId::from_u128(seat.0),
+                generation,
+                id,
+                bytes,
+            },
+            |r| matches!(r, GuiReply::Ok { op } if *op == id),
+        )
+        .map(|_| id)
     }
     pub fn task(&mut self, request: TaskRequest) -> Result<TaskResponse, String> {
         let id = Ulid::new();
@@ -585,6 +690,93 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
             }
             crate::knowledge::e2e_lines(loader.snapshot(), group.as_deref())?
         }
+        Command::Screen { seat, human } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let (op, screen) = client.screen(seat)?;
+            if human {
+                let mut lines: Vec<Value> = screen.rows.into_iter().map(Value::String).collect();
+                lines.push(Value::String(format!(
+                    "-- cursor {},{} · {}",
+                    screen.cursor.0, screen.cursor.1, screen.title
+                )));
+                lines
+            } else {
+                vec![
+                    json!({ "ok": true, "op": op, "noun": "seat", "verb": "screen", "data": screen }),
+                ]
+            }
+        }
+        Command::Type { seat, text } => input(client, &seat, "type", |_| Ok(text.into_bytes()))?,
+        Command::Key { seat, keys } => input(client, &seat, "key", |modes| {
+            let mut bytes = vec![];
+            for key in &keys {
+                bytes.extend(key_bytes(key, modes)?);
+            }
+            Ok(bytes)
+        })?,
+        Command::Paste { seat, source } => {
+            let mut text = vec![];
+            if source == "-" {
+                std::io::stdin().read_to_end(&mut text)
+            } else {
+                std::fs::File::open(&source).and_then(|mut f| f.read_to_end(&mut text))
+            }
+            .map_err(|e| format!("seat paste {source}: {e}"))?;
+            input(client, &seat, "paste", |modes| Ok(bracketed(&text, modes)))?
+        }
+        Command::Wait {
+            seat,
+            state,
+            text,
+            timeout,
+        } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let pattern = text
+                .as_deref()
+                .map(|p| regex::Regex::new(p).map_err(|e| format!("seat wait --text: {e}")))
+                .transpose()?;
+            if let Some(state) = &state
+                && !matches!(state.as_str(), "idle" | "waiting" | "exited")
+            {
+                return Err(format!(
+                    "seat wait --state: idle, waiting or exited, not {state}"
+                ));
+            }
+            let op = Ulid::new();
+            let deadline = std::time::Instant::now() + timeout;
+            loop {
+                let (_, screen) = client.screen(seat)?;
+                let met = match (&pattern, state.as_deref()) {
+                    (Some(pattern), _) => pattern.is_match(&screen.rows.join("\n")),
+                    (None, Some(state)) => {
+                        let seats = client.seats()?;
+                        let line = seat_line(resolve(&seats, &seat.to_string())?);
+                        match state {
+                            "exited" => line["process"]["kind"] == "exited",
+                            kind => line["activity"]["kind"] == kind,
+                        }
+                    }
+                    (None, None) => unreachable!("parse requires one condition"),
+                };
+                if met {
+                    break vec![json!({ "ok": true, "op": op, "done": true,
+                        "data": { "seat": seat, "state": state, "text": text } })];
+                }
+                if std::time::Instant::now() >= deadline {
+                    let tail: Vec<_> = screen.rows.iter().filter(|r| !r.is_empty()).collect();
+                    let tail = &tail[tail.len().saturating_sub(12)..];
+                    return Err(format!(
+                        "{TIMEOUT_PREFIX}{op}\nwaited {} ms; the screen ends:\n{}",
+                        timeout.as_millis(),
+                        tail.iter()
+                            .map(|r| r.as_str())
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    ));
+                }
+                std::thread::sleep(Duration::from_millis(200));
+            }
+        }
         Command::Reports { since } => {
             let mut cards = vec![];
             let mut after = None;
@@ -657,7 +849,26 @@ mod erased {
 }
 
 /// The `ctl` subcommand: parse, connect, run, print one JSON object per line.
+/// A `seat wait` timeout: printed in the ctl-cli §3 error shape with exit 3.
+const TIMEOUT_PREFIX: &str = "timeout: ";
+
 pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
+    match run_main(args, default_endpoint) {
+        Err(reason) if reason.starts_with(TIMEOUT_PREFIX) => {
+            let (op, message) = reason[TIMEOUT_PREFIX.len()..]
+                .split_once('\n')
+                .unwrap_or(("", &reason));
+            println!(
+                "{}",
+                json!({ "ok": false, "op": op, "error": { "kind": "timeout", "message": message,
+                    "hint": "raise --timeout, or wait for another --state or --text" } })
+            );
+            std::process::exit(3);
+        }
+        result => result,
+    }
+}
+fn run_main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         println!("{USAGE}");
         return Ok(());
@@ -681,9 +892,142 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
     let stdout = std::io::stdout();
     let mut out = stdout.lock();
     for line in run(&mut client, command)? {
-        writeln!(out, "{line}").map_err(|e| e.to_string())?;
+        // `ctl screen` without --json prints the screen's own text, not a JSON string.
+        match line {
+            Value::String(text) => writeln!(out, "{text}"),
+            line => writeln!(out, "{line}"),
+        }
+        .map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+/// One input through the window's path: the seat's current generation and modes, the
+/// bytes from `make`, and the ctl-cli reply.
+fn input(
+    client: &mut Client,
+    seat: &str,
+    verb: &str,
+    make: impl FnOnce(u64) -> Result<Vec<u8>, String>,
+) -> Result<Vec<Value>, String> {
+    let seat = resolve(&client.seats()?, seat)?.record.id;
+    let (_, screen) = client.screen(seat)?;
+    let bytes = make(screen.modes)?;
+    if bytes.is_empty() {
+        return Err(format!("seat {verb}: nothing to send"));
+    }
+    let count = bytes.len();
+    let op = client.input(seat, screen.generation, bytes)?;
+    Ok(vec![
+        json!({ "ok": true, "op": op, "noun": "seat", "verb": verb,
+        "data": { "seat": seat, "generation": screen.generation, "bytes": count } }),
+    ])
+}
+
+/// A paste as the window sends one: bracketed when the program enabled bracketed paste,
+/// with any end marker inside the text removed so the paste cannot end itself early.
+pub fn bracketed(text: &[u8], modes: u64) -> Vec<u8> {
+    use bbt_core::term::TermMode;
+    if !TermMode::from_bits_retain(modes as u32).contains(TermMode::BRACKETED_PASTE) {
+        return text.to_vec();
+    }
+    const END: &[u8] = b"\x1b[201~";
+    let mut out = b"\x1b[200~".to_vec();
+    let mut rest = text;
+    while let Some(at) = rest.windows(END.len()).position(|w| w == END) {
+        out.extend(&rest[..at]);
+        rest = &rest[at + END.len()..];
+    }
+    out.extend(rest);
+    out.extend(END);
+    out
+}
+
+/// A named key, encoded by the same encoder as the window's keyboard against the seat's
+/// current modes, so a seat with the Kitty protocol on gets Kitty sequences.
+pub fn key_bytes(name: &str, modes: u64) -> Result<Vec<u8>, String> {
+    use bbt_core::keyboard::{
+        ElementState, Input, Key, KeyCode, KeyLocation, Modifiers, ModifiersState, NamedKey,
+        PhysicalKey,
+    };
+    let unknown = || format!("input --key: unknown key {name}");
+    let (key, physical, mods, text): (Key, PhysicalKey, ModifiersState, Option<String>) =
+        if let Some(letter) = name.strip_prefix("ctrl-") {
+            let c = letter
+                .chars()
+                .next()
+                .filter(|c| letter.len() == 1 && c.is_ascii_lowercase())
+                .ok_or_else(unknown)?;
+            let code = [
+                KeyCode::KeyA,
+                KeyCode::KeyB,
+                KeyCode::KeyC,
+                KeyCode::KeyD,
+                KeyCode::KeyE,
+                KeyCode::KeyF,
+                KeyCode::KeyG,
+                KeyCode::KeyH,
+                KeyCode::KeyI,
+                KeyCode::KeyJ,
+                KeyCode::KeyK,
+                KeyCode::KeyL,
+                KeyCode::KeyM,
+                KeyCode::KeyN,
+                KeyCode::KeyO,
+                KeyCode::KeyP,
+                KeyCode::KeyQ,
+                KeyCode::KeyR,
+                KeyCode::KeyS,
+                KeyCode::KeyT,
+                KeyCode::KeyU,
+                KeyCode::KeyV,
+                KeyCode::KeyW,
+                KeyCode::KeyX,
+                KeyCode::KeyY,
+                KeyCode::KeyZ,
+            ][(c as u8 - b'a') as usize];
+            (
+                Key::Character(c.to_string()),
+                PhysicalKey::Code(code),
+                ModifiersState::CONTROL,
+                None,
+            )
+        } else {
+            let (named, mods) = match name {
+                "enter" | "return" => (NamedKey::Enter, ModifiersState::empty()),
+                "esc" | "escape" => (NamedKey::Escape, ModifiersState::empty()),
+                "tab" => (NamedKey::Tab, ModifiersState::empty()),
+                "shift-tab" => (NamedKey::Tab, ModifiersState::SHIFT),
+                "backspace" => (NamedKey::Backspace, ModifiersState::empty()),
+                "space" => (NamedKey::Space, ModifiersState::empty()),
+                "up" => (NamedKey::ArrowUp, ModifiersState::empty()),
+                "down" => (NamedKey::ArrowDown, ModifiersState::empty()),
+                "left" => (NamedKey::ArrowLeft, ModifiersState::empty()),
+                "right" => (NamedKey::ArrowRight, ModifiersState::empty()),
+                "home" => (NamedKey::Home, ModifiersState::empty()),
+                "end" => (NamedKey::End, ModifiersState::empty()),
+                "pageup" => (NamedKey::PageUp, ModifiersState::empty()),
+                "pagedown" => (NamedKey::PageDown, ModifiersState::empty()),
+                "delete" => (NamedKey::Delete, ModifiersState::empty()),
+                _ => return Err(unknown()),
+            };
+            (Key::Named(named), PhysicalKey::Unidentified, mods, None)
+        };
+    let input = Input {
+        unmodified_key: key.clone(),
+        logical_key: key,
+        physical_key: physical,
+        text: text.as_deref(),
+        text_all_modifiers: None,
+        location: KeyLocation::Standard,
+        state: ElementState::Pressed,
+        repeat: false,
+        modifiers: Modifiers {
+            state: mods,
+            ..Default::default()
+        },
+    };
+    bbt_core::keyboard::encode(&input, modes).ok_or_else(unknown)
 }
 
 #[cfg(test)]
@@ -691,6 +1035,15 @@ mod tests {
     use super::*;
     fn args(s: &str) -> Vec<String> {
         s.split(' ').map(Into::into).collect()
+    }
+    #[test]
+    fn a_paste_is_bracketed_only_when_asked_and_cannot_end_itself() {
+        let on = u64::from(bbt_core::term::TermMode::BRACKETED_PASTE.bits());
+        assert_eq!(bracketed(b"ab", 0), b"ab");
+        assert_eq!(bracketed(b"a\x1b[201~b", on), b"\x1b[200~ab\x1b[201~");
+        assert_eq!(key_bytes("ctrl-c", 0).unwrap(), b"\x03");
+        assert_eq!(key_bytes("up", 0).unwrap(), b"\x1b[A");
+        assert!(key_bytes("hyper-z", 0).is_err());
     }
     /// The door refuses and closes before the request is written (a seat under load):
     /// the write fails, and the refusal already buffered is still what the caller reads.

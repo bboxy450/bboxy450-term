@@ -327,6 +327,25 @@ fn write_deadline(stream: &mut (impl Write + AsRawFd), bytes: &[u8], until: Inst
 /// Returns quietly even for malformed/unavailable hooks. It is called before
 /// UI/runtime setup by the single binary's private `hook` dispatch.
 pub fn run_cli(args: &[String]) {
+    // `hook --list codex`: the hooks a Codex seat's launch overlay installs, one JSON line
+    // each, for the hook-review recipe (#270). A harness never passes --list.
+    if args.first().is_some_and(|a| a == "--list") {
+        if args.get(1).is_some_and(|a| a == "codex")
+            && let Ok(exe) = std::env::current_exe()
+        {
+            let command = format!(
+                "{} hook --agent codex",
+                super::launch::quote(&exe.to_string_lossy())
+            );
+            for event in super::launch::CODEX_HOOK_EVENTS {
+                println!(
+                    "{}",
+                    serde_json::json!({"event": event, "command": command})
+                );
+            }
+        }
+        return;
+    }
     let _ = run(args);
 }
 fn run(args: &[String]) -> Result<()> {
