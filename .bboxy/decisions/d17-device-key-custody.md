@@ -9,7 +9,7 @@ operator: []
 links:
   - { to: "[[2026-10-22-architecture-round-1#17]]", rel: "supersedes-as-index" }
 created: "2026-10-22T21:22:33Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-10-24T19:13:30Z"
 ---
 # Decision 17: Device-key custody has three tiers
 
@@ -27,3 +27,5 @@ still pending, so tier 1 is verifiable locally with a Development-signed
 bundle and distribution waits on that one certificate. Rejected: blocking ID1 on
 packaging (velocity); a plaintext or sqlite secret file (identity.md
 forbids it); requiring a team ID before any identity work.
+
+**Amended by [[d280-keychain-regrant]] (2026-10-24):** the no-dialog default stays; one interactive access is permitted on an explicit operator act (`ctl identity unlock`, Settings › Identity › Unlock); new items carry an ACL keyed to the team-signed designated requirement so rebuilds keep access; legacy items migrate during that one access.

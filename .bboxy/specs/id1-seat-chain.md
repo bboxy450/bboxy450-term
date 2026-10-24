@@ -16,7 +16,7 @@ links:
   - { to: "[[2026-10-22-c-cockpit]]", rel: epic }
   - { to: "[[ux-prototype]]", rel: ui }
 created: 2026-10-22T20:12:48Z
-updated: 2026-10-22T20:12:48Z
+updated: "2026-10-24T19:13:30Z"
 ---
 # ID1 — the GPG seat chain
 
@@ -110,3 +110,7 @@ Second-device enrollment tickets and the offline-primary request flow (cloud pha
 ## 8. Order for briefs (the Oracle's call, one concern each)
 
 ID1a root and device: Assuan client, rPGP certification, Keychain device key, bootstrap, acceptance 1 and 4. ID1b seats: `ChainSeatKeys`, `SeatGrant`, roster, verify with negatives, acceptance 2 and 3. ID1c the identity card states, renewal, the local-dev state, acceptance 5.
+
+## 4a. Re-grant after a refusal ([[d280-keychain-regrant]], 2026-10-24)
+
+A Keychain item that refuses the running build puts the app in the hold "Pending: Keychain interaction required; signing held", which is correct and fails closed; the hold now says how to clear it: `ctl identity unlock` or Settings › Identity › Unlock, one action behind two doors, operator only. The act permits **exactly one** interactive Keychain access: the next access runs with interaction enabled, macOS shows its own dialog, and whether the operator allows or cancels, the no-dialog default is restored; the act and its outcome are journaled on `account/control`. **New items carry an ACL keyed to the team-signed designated requirement** (the approved Apple Development identity, team UQB3368A84, with the app identifier), so every build signed with that identity keeps access without a prompt; a legacy item keyed to one build's signature is migrated during the one interactive access, the secret read, a new item written with the keyed ACL and verified, the old item removed only after the new one answers. Nothing ever prompts without the act; nothing is deleted silently.

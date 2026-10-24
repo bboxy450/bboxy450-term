@@ -15,7 +15,7 @@ links:
   - { to: "[[d272-ctl-one-grammar]]", rel: decision }
   - { to: "[[work-items]]", rel: record-type }
 created: "2026-10-24T15:24:41Z"
-updated: "2026-10-24T18:03:20Z"
+updated: "2026-10-24T19:13:30Z"
 ---
 # ctl
 
@@ -34,7 +34,7 @@ flowchart LR
 
 ## 1. Grammar
 
-`bboxy450-term ctl <noun> <verb> [args] [flags]`. Eleven nouns (revision 2, 2026-10-24, the operator's full control surface), the things the operator acts on in the window and the app itself; verbs are plain words; arguments are positional, flags are named. Every verb maps to exactly one `GuiAction` the window issues, or to a read of what the processes already write (`debug`), or to launching the app itself (`app start`), so there is no behaviour `ctl` has that the window lacks.
+`bboxy450-term ctl <noun> <verb> [args] [flags]`. Twelve nouns (revision 2, 2026-10-24, the operator's full control surface; `identity` added the same day), the things the operator acts on in the window and the app itself; verbs are plain words; arguments are positional, flags are named. Every verb maps to exactly one `GuiAction` the window issues, or to a read of what the processes already write (`debug`), or to launching the app itself (`app start`), so there is no behaviour `ctl` has that the window lacks.
 
 | Noun | Verbs | Window action |
 |---|---|---|
@@ -47,6 +47,7 @@ flowchart LR
 | `ui` | `open <graph\|settings\|launcher\|docs <path>>`; `key <named-key>…` (the window's own chrome keys, ⌘T, ⌘G, ⌘M, Esc); `focus <pane>`; `layout` (dump the solved layout tree) | the same `GuiAction`s the window's keyboard and menu issue; `layout` is the model the UI already holds, read |
 | `events` | `tail [--since <seq>] [--subject <glob>]` | `EventsRead` pages of the retained streams by the client's cursor, JSON lines, no attach, no ack, never a second consumer (§1a) |
 | `debug` | `logs <app\|logic\|supervisor> [--since]`; `journal <query>`; `metrics`; `snapshot <path>` (the R5 diagnostics table); `ps` (the app's own process tree); `invariants [--slow]` (runs `scripts/invariants.sh` on the checked-out tree) | reads of what the processes already write; `invariants` is a local command and touches no seat |
+| `identity` | `status` (custody tier, the Keychain item's ACL state, whether a hold is active); `unlock` (the one-shot interactive Keychain access, [[d280-keychain-regrant]]) | the same actions as Settings › Identity, operator principal, audited |
 | `batch` | `run <file\|->` [--stop-on-error] | one command per JSONL line in, one reply line out per command in order, the same shapes as §2 and §3; the way scripts drive a night |
 | `recipe` | `list`; `detect <seat>` (which known prompts match the screen now); `run <recipe> <seat> [--dry-run]` | a data-driven composition of `seat screen`, `match`, `seat input`, `seat wait`, `report` (§4) |
 
