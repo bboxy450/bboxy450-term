@@ -1,0 +1,26 @@
+MCP READINESS / RECOVERY PUBLICATION — Sable Embertail <EXECUTOR>
+Source: 8c076321c68ab30a496ed4a00aff66bae4e272a3, branch sable-mcp-readiness, exec3.
+Signed predecessors: 00d99d4f (readiness), 6d800cc8 (bounded argv wait), 1647186a (controlled publication), 8c076321 (initial publication precondition); every signature verifies G.
+Base: 96e6ce70b8f6af533e5f313ff97f87bc619dfe74. No rebase under verification. Later main records are left for Oracle merged-tree verification.
+
+Scope / mechanism:
+- crates/bbt-mux/tests/mcp.rs:599 — wait_input_ready observes actual OSC133 Idle, matching adapter/snapshot sequence and the existing 50 ms settled-view requirement, inside a five-second async deadline. Polling is conditional, not an 80 ms scheduling guess.
+- mcp.rs:781 — only the assigned test uses ONE_INPUT_SHELL: one real prompt, completed read stays Active until teardown; draft submit=false waits for explicit operator CR. Both 80 ms sleeps removed. All original assertions, IDs, arguments and replay checks retained; normalized original test body hashes match (96f753b0e2f775584addfdf019c4866b45bd35f10f4d756111c4522ab0da3742). Shared READY_SHELL and the separate lost-receipt test remain unchanged.
+- crates/bboxy450-term/tests/recovery.rs:34 — fixture-only, opt-in per-harness argv hold file.
+- recovery.rs:408 — await initial Codex argv publication before arming its replacement hold.
+- recovery.rs:462 — await expected resume argv pair count within five seconds; print first count, log a changed count, fail with first/last count and argv on deadline, then retain the original exact count==2 assertion. The controlled replacement is reported Running while publication is held; first read1 releases the hold, then observes2. Old exact screen, stale-input ID, generation, byte/order and resize assertions remain.
+
+Verification, actual results:
+1. Focused MCP test before final style-only helper rewrite: EXIT0 /52.030s including compile, 1 passed /0 failed.
+2. Final O0 mcp test binary precompiled: EXIT0 /3.168s. Binary SHA256 7dcba9ca712346c214bc0bb67a5225437910071c88f56a33a7408bec948cb64a; mcp.rs and production sources unchanged through final tip (only recovery.rs changed afterward).
+3. Ten O0 filtered MCP runs under eight bounded O0 CPU workers each: 10/10 EXIT0, each1/0, 31 filtered; loop24.608s, individual cargo2.061-2.837s. Observed load1 roughly6.36-13.60, not a quiet control. All80 workers alive at test exit then reaped; no recorded PID/start survivors.
+4. First full cargo test -p bboxy450-term --locked: EXIT101 /328.184s, 151 passed /1 failed in11 reported suites. UNCHANGED recovery test at old:436 read Codex argv count1 instead of2. Full log retained, SHA256 83bc82103ffb3f3a090d3491f527a60fde89bde534b5f54767ae3ef958a511af. Oracle then explicitly extended scope.
+5. App rerun after simple publication wait, source6d800cc8: EXIT0 /113.628s,154/0/0 across13 results; both first reads2. Ten additional filtered recovery runs under eight O0 CPU workers (test profile O1) also10/10 EXIT0, loop33.995s; all80 workers reaped, all first reads2. These do NOT prove the natural scheduling miss reproduced.
+6. Controlled publication focused test, source1647186a: EXIT0 /5.693s including build,1/0; output proves Codex first1 -> observed2, with all original exactness/generation assertions passing.
+7. FINAL full cargo test -p bboxy450-term --locked -- --nocapture on8c076321: EXIT0 /116.034s,154 passed /0 failed /0 ignored,13 results. Controlled Codex first1 -> observed2 appears in the exact final log. Log .bboxy/runs/mcp-readiness-8c076321-app-suite.log, SHA256 9c58ff86b9cb0926a0632e05ec9eba7282665a40d13eaa856ebb0649f1396beb.
+8. One recovery load-runner SETUP failed EXIT1 before any worker or test started because copyfile did not retain executable mode. Mode corrected; failed setup log retained separately. No product failure hidden.
+9. rustfmt and git diff --check EXIT0. All runtime checks used debug assertions plus explicit BBOXY_TEST_CUSTODY=memory. No real custody, ignored/slow test, desktop driving, app/product config or production source edit.
+10. Full CI/Clippy/parity deliberately not run: Vesper waiver54ce9889 substitutes ten targeted loaded runs + full app suite, with merged-tree check owned by Oracle. No full gate or slot used.
+
+Evidence: raw test outputs, ten-run manifests, worker/runner sources, binary hashes, assertion identity and exact argv/exit/log digests in mcp-readiness-8c076321-evidence.json. Private ICQ transcripts/commands.jsonl are excluded.
+Cleanup: dev target target/mcp-readiness-zkyjpv_0 removed after verification, 1646219264 allocated file bytes; no active target cargo/rustc/app commands at cleanup. Both loaded loops stopped/reaped all160 workers. No new verification remains for this source under the stated waiver. Acceptance remains Oracle's.

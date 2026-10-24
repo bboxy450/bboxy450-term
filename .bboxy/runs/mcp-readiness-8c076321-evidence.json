@@ -1,0 +1,452 @@
+{
+  "source": "8c076321c68ab30a496ed4a00aff66bae4e272a3",
+  "base": "96e6ce70b8f6af533e5f313ff97f87bc619dfe74",
+  "mcp_source": "00d99d4fe0b8e13a320eabe76c94e79bce53bd5f",
+  "mcp_blob_identical_through_final_source": "a8ec9c786c07744026eb788d7a78d56126ea369f",
+  "brief": "abb9ecfa-92c0-45f5-ac81-c57096206ec5",
+  "full_gate_waiver": "54ce9889-795e-4fa2-b0d9-0cf1745325f5",
+  "recovery_scope_extension": "672476dd-1654-4a57-9ee3-acf69a48250b",
+  "commands": [
+    {
+      "id": "d7a995a02a054f319918be3d76dc77df",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=0",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=0",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TERM_COLOR=never",
+        "RUST_BACKTRACE=1",
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "mcp",
+        "--locked",
+        "mcp_seat_input_consumes_readiness_and_enter_is_explicit",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T06:16:31.906153+00:00",
+      "pid": 78247,
+      "exit": 0,
+      "elapsed_seconds": 52.03014020901173,
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/cmd-d7a995a02a054f319918be3d76dc77df.log",
+      "sha256": "6976858c8fba9c31bf195a12c99a13a5660dc358825f26cc615e03bc7d3f6014"
+    },
+    {
+      "id": "de99fbcf614d4d5691a1cb8a011e2a05",
+      "argv": [
+        "cc",
+        "-O0",
+        "-std=c11",
+        "/private/tmp/sable-mcp-ready-yqdlc2t3/cpu-worker.c",
+        "-o",
+        "/private/tmp/sable-mcp-ready-yqdlc2t3/cpu-worker"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T06:23:21.046025+00:00",
+      "pid": 97063,
+      "exit": 0,
+      "elapsed_seconds": 0.13146087498171255,
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/cmd-de99fbcf614d4d5691a1cb8a011e2a05.log",
+      "sha256": "676c4318e3714fc31bccdc61f56ebc0672fa275e091bd26980511eaee7a74541"
+    },
+    {
+      "id": "3d71fdb29d734248bd9a509845ed9709",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=0",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=0",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TERM_COLOR=never",
+        "RUST_BACKTRACE=1",
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "mcp",
+        "--no-run",
+        "--locked"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T06:23:19.809593+00:00",
+      "pid": 97027,
+      "exit": 0,
+      "elapsed_seconds": 3.1678533329977654,
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/cmd-3d71fdb29d734248bd9a509845ed9709.log",
+      "sha256": "02f00a389d365a87896a5a44003a947fdb744e02a21ef3b13c3a7c432fd583f6"
+    },
+    {
+      "id": "a976c768222e40bca3e251c33f133479",
+      "argv": [
+        "python3",
+        "/private/tmp/sable-mcp-ready-yqdlc2t3/sweep.py"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T06:24:07.315173+00:00",
+      "pid": 97698,
+      "exit": 0,
+      "elapsed_seconds": 24.607578499999363,
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/cmd-a976c768222e40bca3e251c33f133479.log",
+      "sha256": "d303d7f84a12cc733f7078d9087c354f4462644e1cbfff78870208340d2a0e9f"
+    },
+    {
+      "id": "8f47ca6ea7fb4bc8a413be1c8ca4e47b",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TERM_COLOR=never",
+        "RUST_BACKTRACE=1",
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T06:26:06.321360+00:00",
+      "pid": 1045,
+      "exit": 101,
+      "elapsed_seconds": 328.18396824999945,
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/cmd-8f47ca6ea7fb4bc8a413be1c8ca4e47b.log",
+      "sha256": "83bc82103ffb3f3a090d3491f527a60fde89bde534b5f54767ae3ef958a511af"
+    },
+    {
+      "id": "b36b4650dc5244ff8b51dac21becdd47",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TERM_COLOR=never",
+        "RUST_BACKTRACE=1",
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--",
+        "--nocapture"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T06:34:25.003650+00:00",
+      "pid": 14486,
+      "exit": 0,
+      "elapsed_seconds": 113.62815279100323,
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/cmd-b36b4650dc5244ff8b51dac21becdd47.log",
+      "sha256": "06ab609e79bb8438d5d588bc6152b12208c234f07121979aa0e73970f9e9d02e"
+    },
+    {
+      "id": "71bb39717f6e4b29b6c3a68c16fc0113",
+      "argv": [
+        "python3",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/sweep.py"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T06:37:54.532574+00:00",
+      "pid": 16949,
+      "exit": 1,
+      "elapsed_seconds": 0.13565333402948454,
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/cmd-71bb39717f6e4b29b6c3a68c16fc0113.log",
+      "sha256": "c948e00af1fd2d864e7c74ccbc384fae61b965d62561d503a49ee18b370aa4e7"
+    },
+    {
+      "id": "cb4c1a787b03454b985ff07a1a6dfe6a",
+      "argv": [
+        "python3",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-recovery-publish-i7acs1jy/sweep.py"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T06:38:06.012064+00:00",
+      "pid": 17055,
+      "exit": 0,
+      "elapsed_seconds": 33.99493674997939,
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/cmd-cb4c1a787b03454b985ff07a1a6dfe6a.log",
+      "sha256": "26c03e966b427793c9d272426292a66c2b895b11694c2d24226b84d33cb0dfd8"
+    },
+    {
+      "id": "d5ee5ae88c0c431fbb29f5211ee277ca",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TERM_COLOR=never",
+        "RUST_BACKTRACE=1",
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--test",
+        "recovery",
+        "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T06:40:08.755373+00:00",
+      "pid": 18931,
+      "exit": 0,
+      "elapsed_seconds": 5.692694291006774,
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/cmd-d5ee5ae88c0c431fbb29f5211ee277ca.log",
+      "sha256": "3d9d5e9f8483655d795c80fb2f7d7fff4d052709fe8f26fec1ab286241a371b9"
+    },
+    {
+      "id": "6be489f0cb334fddaafe284731e9f366",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TERM_COLOR=never",
+        "RUST_BACKTRACE=1",
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--",
+        "--nocapture"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T06:41:31.591723+00:00",
+      "pid": 22150,
+      "exit": 0,
+      "elapsed_seconds": 116.03401316597592,
+      "log": "/private/tmp/sable-mcp-ready-yqdlc2t3/cmd-6be489f0cb334fddaafe284731e9f366.log",
+      "sha256": "9c58ff86b9cb0926a0632e05ec9eba7282665a40d13eaa856ebb0649f1396beb"
+    }
+  ],
+  "cleanup": {
+    "target": "/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0",
+    "active_target_commands": [],
+    "allocated_bytes_removed": 1646219264
+  },
+  "artifacts": [
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-app-suite.log",
+      "bytes": 55081,
+      "sha256": "83bc82103ffb3f3a090d3491f527a60fde89bde534b5f54767ae3ef958a511af"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-assertion-identity.json",
+      "bytes": 543,
+      "sha256": "c17d918235eac163de0019b89d51cfd6901b07f0903d1a8b2de991ff06f6ce9f"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-cpu-worker.log",
+      "bytes": 930,
+      "sha256": "49697cf90d5e78e2087941a7716b19be8314a0cab4c1f6cb9479b6b6ad575591"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-focused.log",
+      "bytes": 9211,
+      "sha256": "6976858c8fba9c31bf195a12c99a13a5660dc358825f26cc615e03bc7d3f6014"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-loaded-manifest.json",
+      "bytes": 31971,
+      "sha256": "0d3485ec14ef346b66654ca3dbe018c602d7bdb06ab1bf9eab732ce36486dbe6"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-loaded.log",
+      "bytes": 11648,
+      "sha256": "d303d7f84a12cc733f7078d9087c354f4462644e1cbfff78870208340d2a0e9f"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-precompile.log",
+      "bytes": 802,
+      "sha256": "02f00a389d365a87896a5a44003a947fdb744e02a21ef3b13c3a7c432fd583f6"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-run-01.log",
+      "bytes": 680,
+      "sha256": "b004f51e3b0cc09319dcfe756c078d0eb26702a503f5a813608639173dc06972"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-run-02.log",
+      "bytes": 680,
+      "sha256": "5482a3d6d03b4f7030ecab02b0423b3a50fc5da8f745051bcb96c7dc95f39796"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-run-03.log",
+      "bytes": 680,
+      "sha256": "8a574ca7badeb7fae4d144f91fce037a43593deabe7a238da03225d5fd2e07b6"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-run-04.log",
+      "bytes": 680,
+      "sha256": "531f15d5c5d8c056640957d6ac97bd3417fd48b30e82fccc7dcafba380ea83c4"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-run-05.log",
+      "bytes": 680,
+      "sha256": "ee6414367f09e946a1b49a88e2073cc6457fb5ccf9eed8e253d33fa97288246a"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-run-06.log",
+      "bytes": 680,
+      "sha256": "50fbe0a8043fe8185c98c3d2e16430106cab018ab0c396ae26eb3726c7563bf9"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-run-07.log",
+      "bytes": 680,
+      "sha256": "55f72df1939910318e3470af1b5d13822f9d272262f4284f9858da74c5daa944"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-run-08.log",
+      "bytes": 680,
+      "sha256": "d9ffa5b330d4965c3b37efd21dcaeea0a39ad5a169c1f997b23350f27c4970af"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-run-09.log",
+      "bytes": 680,
+      "sha256": "9e7d2186327b4491ce22fcab4365868bd774609503898897295349a87c548db3"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-run-10.log",
+      "bytes": 680,
+      "sha256": "1726c18195af16647b9238dc07e79dfedd7f0fdaf868114ca29cd148d3485a2d"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-00d99d4f-runner.log",
+      "bytes": 10639,
+      "sha256": "474de1a069412cc6fde7089a74309616c1557898541cb5c9b9fcb937217f69d7"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-1647186a-recovery-barrier.log",
+      "bytes": 1978,
+      "sha256": "3d9d5e9f8483655d795c80fb2f7d7fff4d052709fe8f26fec1ab286241a371b9"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-6d800cc8-app-suite.log",
+      "bytes": 1114425,
+      "sha256": "06ab609e79bb8438d5d588bc6152b12208c234f07121979aa0e73970f9e9d02e"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-6d800cc8-recovery-loaded-manifest.json",
+      "bytes": 35986,
+      "sha256": "7e99114a119391392e1ca8b3b3035ade1b5d625bb221a30137d7fba5e0ef8e9f"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-6d800cc8-recovery-loaded.log",
+      "bytes": 11696,
+      "sha256": "26c03e966b427793c9d272426292a66c2b895b11694c2d24226b84d33cb0dfd8"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-6d800cc8-recovery-run-01.log",
+      "bytes": 1520,
+      "sha256": "c34d1091efde111728d46a49eba4a9bfaaf74f1a677554b74769614bc38d5418"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-6d800cc8-recovery-run-02.log",
+      "bytes": 1520,
+      "sha256": "0cf4e8eb370c5e6ea99d8b1cfa82b52a379d4be2c6995db287094d0fb8348bda"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-6d800cc8-recovery-run-03.log",
+      "bytes": 1520,
+      "sha256": "61dd4cf3861aea44be6586863dc7703be07195c6b415137ece60039b05090af6"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-6d800cc8-recovery-run-04.log",
+      "bytes": 1520,
+      "sha256": "f30739f216dd080b5585d15722038c9f990d61d5fe274dde0e338408b45940fe"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-6d800cc8-recovery-run-05.log",
+      "bytes": 1520,
+      "sha256": "650bdc1ed11146e3bac02ee0518b8d53ca8b3da5bd41d7ffb3f6a95ade20db4e"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-6d800cc8-recovery-run-06.log",
+      "bytes": 1520,
+      "sha256": "135d3fc6837289e01c1ccaf965d0b1e6b2fb1104e93be0cb031311ea19045be9"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-6d800cc8-recovery-run-07.log",
+      "bytes": 1520,
+      "sha256": "bc29f091f3556c97f6197949a59f663a2c2307c54077d4456856484d3dda915c"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-6d800cc8-recovery-run-08.log",
+      "bytes": 1520,
+      "sha256": "85d5ad1aea219ac603606a5faf39d6caf05cfe12be47cdb33459de75963ff7c3"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-6d800cc8-recovery-run-09.log",
+      "bytes": 1520,
+      "sha256": "72a450c66355d30f4abe09998d65dba3c6d2b8b4b32e2ed0a9928d7ab57e00ab"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-6d800cc8-recovery-run-10.log",
+      "bytes": 1520,
+      "sha256": "7d5f3d0b0f494a4b7ef7f0e0b1e93758e5931884a2647b517733a8cf4d3b7ada"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-6d800cc8-recovery-runner.log",
+      "bytes": 10714,
+      "sha256": "e19b62665155f44627f0c10dd28594e4f72a724a8f1f5c307b2cd0279eeb7dfa"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-8c076321-app-suite.log",
+      "bytes": 1114268,
+      "sha256": "9c58ff86b9cb0926a0632e05ec9eba7282665a40d13eaa856ebb0649f1396beb"
+    },
+    {
+      "path": ".bboxy/runs/mcp-readiness-recovery-load-setup-failure.log",
+      "bytes": 1476,
+      "sha256": "c948e00af1fd2d864e7c74ccbc384fae61b965d62561d503a49ee18b370aa4e7"
+    }
+  ],
+  "gaps": [
+    "The original natural recovery argv miss was not reproduced in the ten ungated loaded reruns; the final fixture controls the publication ordering and explicitly proves 1 -> 2.",
+    "The eight-worker load is bounded and recorded, not a host-wide quiet control or a throughput comparison.",
+    "Full workspace CI, strict Clippy and parity were not run: Oracle explicitly substituted ten targeted loaded runs and the full app package suite.",
+    "No production, keychain, GUI desktop input, real Claude/Codex execution or third-party approval policy changes."
+  ]
+}

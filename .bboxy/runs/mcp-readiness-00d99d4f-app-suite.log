@@ -1,0 +1,1025 @@
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0 CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true BBOXY_TEST_CUSTODY=memory CARGO_TERM_COLOR=never RUST_BACKTRACE=1 cargo test -p bboxy450-term --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T06:26:06.321360+00:00
+OWNED_COMMAND_PID 1045
+   Compiling cfg-if v1.0.5
+   Compiling typenum v1.20.1
+   Compiling subtle v2.6.1
+   Compiling libc v0.2.191
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling const-oid v0.9.6
+   Compiling generic-array v0.14.7
+   Compiling zeroize v1.9.1
+   Compiling log v0.4.34
+   Compiling zerocopy v0.8.63
+   Compiling zerocopy-derive v0.8.63
+   Compiling libm v0.2.16
+   Compiling objc2-encode v4.1.0
+   Compiling num-traits v0.2.19
+   Compiling smallvec v1.16.3
+   Compiling base64ct v1.8.3
+   Compiling memchr v2.8.3
+   Compiling cfg_aliases v0.2.2
+   Compiling itoa v1.0.18
+   Compiling objc2 v0.6.5
+   Compiling crc32fast v1.5.3
+   Compiling pem-rfc7468 v0.7.0
+   Compiling foldhash v0.2.0
+   Compiling radium v0.7.0
+   Compiling zmij v1.0.23
+   Compiling hashbrown v0.17.1
+   Compiling tap v1.0.1
+   Compiling wyz v0.5.1
+   Compiling der v0.7.10
+   Compiling serde_json v1.0.154
+   Compiling thiserror v2.0.21
+   Compiling bytemuck_derive v1.12.1
+   Compiling base16ct v0.2.0
+   Compiling funty v2.0.0
+   Compiling equivalent v1.0.3
+   Compiling indexmap v2.14.2
+   Compiling getrandom v0.2.17
+   Compiling block-buffer v0.10.4
+   Compiling cpufeatures v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling inout v0.1.4
+   Compiling block2 v0.6.2
+   Compiling bytemuck v1.25.2
+   Compiling bytes v1.12.1
+   Compiling crypto-common v0.1.7
+   Compiling spki v0.7.3
+   Compiling bitflags v2.13.2
+   Compiling digest v0.10.7
+   Compiling cipher v0.4.4
+   Compiling pkcs8 v0.10.2
+   Compiling bitvec v1.1.1
+   Compiling unicode-width v0.2.2
+   Compiling parking_lot_core v0.9.12
+   Compiling hmac v0.12.1
+   Compiling signature v2.2.0
+   Compiling dispatch2 v0.3.1
+   Compiling sha2-asm v0.6.4
+   Compiling scopeguard v1.2.0
+   Compiling once_cell v1.21.4
+   Compiling hkdf v0.12.4
+   Compiling arrayvec v0.7.8
+   Compiling serdect v0.2.0
+   Compiling lock_api v0.4.14
+   Compiling crypto-bigint v0.5.5
+   Compiling hybrid-array v0.4.15
+   Compiling sec1 v0.7.3
+   Compiling simd-adler32 v0.3.10
+   Compiling sha2 v0.10.9
+   Compiling objc2-core-foundation v0.3.2
+   Compiling parking_lot v0.12.5
+   Compiling rustc-hash v1.1.0
+   Compiling adler2 v2.0.1
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling naga-types v30.0.1
+   Compiling getrandom v0.3.4
+   Compiling rfc6979 v0.4.0
+   Compiling errno v0.3.14
+   Compiling naga v30.0.1
+   Compiling core-foundation-sys v0.8.7
+   Compiling bit-vec v0.9.1
+   Compiling const-oid v0.10.2
+   Compiling pin-project-lite v0.2.17
+   Compiling raw-window-handle v0.6.2
+   Compiling bit-set v0.10.0
+   Compiling miniz_oxide v0.9.1
+   Compiling codespan-reporting v0.13.1
+   Compiling float-cmp v0.9.0
+   Compiling ff v0.13.1
+   Compiling unicode-ident v1.0.27
+   Compiling objc-sys v0.3.5
+   Compiling rand_core v0.10.1
+   Compiling static_assertions v1.1.0
+   Compiling zlib-rs v0.6.8
+   Compiling strict-num v0.1.1
+   Compiling group v0.13.0
+   Compiling getrandom v0.4.3
+   Compiling wgpu-types v30.0.1
+   Compiling rand_core v0.9.5
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling elliptic-curve v0.13.8
+   Compiling ppv-lite86 v0.2.21
+   Compiling half v2.7.1
+   Compiling polycool v0.4.0
+   Compiling digest v0.11.3
+   Compiling rand_chacha v0.3.1
+   Compiling num-integer v0.1.47
+   Compiling cpufeatures v0.3.1
+   Compiling wgpu-hal v30.0.1
+   Compiling arrayref v0.3.9
+   Compiling ecdsa v0.16.9
+   Compiling spin v0.9.9
+   Compiling crossbeam-utils v0.8.23
+   Compiling kurbo v0.13.1
+   Compiling tiny-skia-path v0.12.0
+   Compiling lazy_static v1.5.1
+   Compiling objc2-foundation v0.3.2
+   Compiling flate2 v1.1.10
+   Compiling primeorder v0.13.6
+   Compiling thiserror v1.0.69
+   Compiling num-bigint-dig v0.8.6
+   Compiling num-iter v0.1.46
+   Compiling curve25519-dalek v4.1.3
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling rand_chacha v0.9.0
+   Compiling miniz_oxide v0.8.9
+   Compiling signal-hook-registry v1.4.8
+   Compiling fdeflate v0.3.7
+   Compiling rand v0.8.8
+   Compiling aead v0.5.2
+   Compiling ctr v0.9.2
+   Compiling universal-hash v0.5.1
+   Compiling socket2 v0.6.5
+   Compiling mio v1.2.4
+   Compiling libloading v0.8.9
+   Compiling profiling v1.0.18
+   Compiling siphasher v1.0.4
+   Compiling cursor-icon v1.2.0
+   Compiling base64 v0.22.1
+   Compiling opaque-debug v0.3.1
+   Compiling zstd-safe v8.2.0
+   Compiling svgtypes v0.16.1
+   Compiling anyhow v1.0.104
+   Compiling polyval v0.6.2
+   Compiling png v0.18.1
+   Compiling httparse v1.10.1
+   Compiling tokio v1.54.1
+   Compiling rand v0.9.5
+   Compiling objc2-metal v0.3.2
+   Compiling objc2 v0.5.3
+   Compiling nix v0.28.0
+   Compiling simplecss v0.2.2
+   Compiling chacha20 v0.10.2
+   Compiling serde-big-array v0.5.1
+   Compiling aes v0.8.4
+   Compiling keccak v0.1.6
+   Compiling euclid v0.22.14
+   Compiling dbl v0.3.2
+   Compiling aho-corasick v1.1.5
+   Compiling roxmltree v0.21.1
+   Compiling wgpu-core v30.0.1
+   Compiling regex-syntax v0.8.11
+   Compiling objc2-core-graphics v0.3.2
+   Compiling data-url v0.3.2
+   Compiling byteorder v1.5.0
+   Compiling pico-args v0.5.0
+   Compiling imagesize v0.15.0
+   Compiling litrs v1.0.1
+   Compiling lyon_geom v1.0.20
+   Compiling cmac v0.7.2
+   Compiling crc24 v0.1.6
+   Compiling sha3 v0.10.9
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling usvg v0.48.1
+   Compiling document-features v0.2.12
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling crossbeam-queue v0.3.14
+   Compiling rand v0.10.3
+   Compiling curve25519-dalek v5.0.0
+   Compiling block2 v0.5.1
+   Compiling ulid v1.2.1
+   Compiling objc2-quartz-core v0.3.2
+   Compiling regex-automata v0.4.18
+   Compiling tiny-skia v0.12.0
+   Compiling filedescriptor v0.8.3
+   Compiling ghash v0.5.1
+   Compiling libsqlite3-sys v0.38.2
+   Compiling sha1 v0.11.0
+   Compiling rgb v0.8.53
+   Compiling core-foundation v0.9.4
+   Compiling raw-window-metal v1.1.0
+   Compiling http v1.5.0
+   Compiling serdect v0.3.0
+   Compiling ed25519 v2.2.3
+   Compiling pkcs1 v0.7.5
+   Compiling blake2 v0.10.6
+   Compiling sha1 v0.10.7
+   Compiling password-hash v0.5.0
+   Compiling serial2 v0.2.38
+   Compiling wgpu v30.0.1
+   Compiling foreign-types-macros v0.2.4
+   Compiling foldhash v0.1.5
+   Compiling dispatch v0.2.0
+   Compiling shell-words v1.1.1
+   Compiling slab v0.4.12
+   Compiling data-encoding v2.11.1
+   Compiling futures-core v0.3.34
+   Compiling same-file v1.0.6
+   Compiling foreign-types-shared v0.3.1
+   Compiling futures-sink v0.3.34
+   Compiling signature v3.0.0
+   Compiling bitflags v1.3.2
+   Compiling downcast-rs v1.2.1
+   Compiling futures-task v0.3.34
+   Compiling foreign-types v0.5.0
+   Compiling walkdir v2.5.0
+   Compiling ed25519 v3.0.0
+   Compiling core-graphics-types v0.1.3
+   Compiling portable-pty v0.9.0
+   Compiling objc2-foundation v0.2.2
+   Compiling futures-util v0.3.34
+   Compiling rsa v0.9.10
+   Compiling hashbrown v0.15.5
+   Compiling argon2 v0.5.3
+   Compiling num_enum v0.7.6
+   Compiling regex v1.13.1
+   Compiling tungstenite v0.30.0
+   Compiling sha1-checked v0.10.0
+   Compiling ed25519-dalek v2.2.0
+   Compiling cx448 v0.1.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling resvg v0.48.1
+   Compiling aes-gcm v0.10.3
+   Compiling bitfields v1.0.3
+   Compiling zstd v0.14.3
+   Compiling derive_builder v0.20.2
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling lyon_path v1.0.19
+   Compiling eax v0.5.0
+   Compiling blowfish v0.9.1
+   Compiling camellia v0.1.0
+   Compiling snafu v0.9.2
+   Compiling derive_more v2.1.1
+   Compiling aes-kw v0.2.1
+   Compiling dsa v0.6.3
+   Compiling x25519-dalek v2.0.1
+   Compiling ocb3 v0.1.0
+   Compiling p384 v0.13.1
+   Compiling p521 v0.13.3
+   Compiling p256 v0.13.2
+   Compiling k256 v0.13.4
+   Compiling sha2 v0.11.1
+   Compiling core-foundation v0.10.1
+   Compiling security-framework-sys v2.17.0
+   Compiling notify-types v2.1.0
+   Compiling md-5 v0.10.6
+   Compiling ripemd v0.1.3
+   Compiling idea v0.5.1
+   Compiling cast5 v0.11.1
+   Compiling twofish v0.7.1
+   Compiling des v0.8.1
+   Compiling cfb-mode v0.8.2
+   Compiling block-padding v0.3.3
+   Compiling fsevent-sys v4.1.0
+   Compiling hashlink v0.12.2
+   Compiling buffer-redux v1.1.0
+   Compiling nom v8.0.0
+   Compiling winit v0.30.13
+   Compiling replace_with v0.1.8
+   Compiling ryu v1.0.23
+   Compiling fallible-iterator v0.3.0
+   Compiling tracing-core v0.1.36
+   Compiling float_next_after v1.0.0
+   Compiling unsafe-libyaml v0.2.11
+   Compiling hex v0.4.3
+   Compiling fixedbitset v0.5.7
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling notify v8.2.0
+   Compiling lyon_tessellation v1.0.22
+   Compiling ed25519-dalek v3.0.0
+   Compiling pgp v0.21.0
+   Compiling tracing v0.1.44
+   Compiling petgraph v0.8.3
+   Compiling rusqlite v0.40.2
+   Compiling security-framework v3.7.0
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling objc2-app-kit v0.2.2
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling core-graphics v0.23.2
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling objc2-core-text v0.3.2
+   Compiling smol_str v0.2.2
+   Compiling dpi v0.1.2
+   Compiling pollster v0.4.0
+   Compiling rustix v1.1.5
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling objc2-app-kit v0.3.2
+   Compiling fastrand v2.5.0
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling tempfile v3.27.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 3m 37s
+     Running unittests src/lib.rs (target/mcp-readiness-zkyjpv_0/debug/deps/bboxy450_term-f553cbbb57b5c3bb)
+
+running 24 tests
+test model::event_lane_tests::empty_pages_and_refusals_have_distinct_monotonic_completion_revisions ... ok
+test model::event_lane_tests::metadata_rebuild_and_reconnect_preserve_the_published_window ... ok
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test keyboard_adapter_uses_neutral_core_and_live_modes ... ok
+test cockpit::gui_io_tests::writer_task_death_is_disconnected_even_while_the_reader_stays_connected ... ok
+test model::event_lane_tests::rows_dedupe_by_canonical_identity_and_keep_per_stream_order ... ok
+test model::event_lane_tests::sparse_history_pages_keep_next_without_acknowledging_or_marking_read ... ok
+test model::event_lane_tests::stale_transport_snapshots_cannot_roll_back_operator_read_state ... ok
+test cockpit::gui_io_tests::startup_write_deadline_is_two_seconds_of_controlled_time ... ok
+test model::event_lane_tests::a_large_newest_live_record_takes_precedence_over_read_page_bytes ... ok
+test model::tests::a_second_spawn_and_refresh_preserve_the_first_explicit_split ... ok
+test model::tests::custody_held_spawns_release_in_admission_order_with_the_same_captured_requests ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test model::tests::pending_spawns_are_bounded_and_a_reused_id_never_requeues_an_effect ... ok
+test model::tests::removed_or_replaced_anchor_keeps_the_new_seat_and_names_the_partial_outcome ... ok
+test model::tests::reversed_spawn_replies_use_their_captured_anchors_and_duplicates_are_inert ... ok
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test model::tests::unknown_spawn_and_unrelated_metadata_never_place_or_lose_the_request ... ok
+test cockpit::gui_io_tests::oversized_request_is_rejected_before_enqueue_without_stopping_the_writer ... ok
+test model::event_lane_tests::window_eviction_is_visible_and_old_replays_do_not_repopulate_it ... ok
+test model::event_lane_tests::byte_budget_is_independent_of_row_count ... ok
+test model::event_lane_tests::requested_old_page_survives_a_full_live_window_until_replaced ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running unittests src/main.rs (target/mcp-readiness-zkyjpv_0/debug/deps/bboxy450_term-c428fec1b589e6c0)
+
+running 74 tests
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test composer_host_tests::composer_submit_is_focus_local_and_newline_tab_navigation_remain_local ... ok
+test budget::tests::hud_gpu_mean_counts_spans_without_a_cpu_row ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test composer_host_tests::operation_admission_is_bounded_without_consuming_terminal_input_capacity ... ok
+test composer_host_tests::consumed_composer_press_never_leaks_a_kitty_release_after_focus_changes ... ok
+test gpu::backdrop_key_tests::a_frosted_op_after_host_drawing_is_never_keyed ... ok
+test default_spawn_tests::default_picks_are_keyed_by_id_and_leave_placement_and_navigation_deferred ... ok
+test gpu::backdrop_key_tests::keys_follow_prior_content_and_only_timed_content_follows_time ... ok
+test input_tests::operator_keys_use_pty_bytes_and_keep_command_shortcuts_out_of_the_shell ... ok
+test input_tests::pane_controls_coalesce_to_the_latest_visible_set_and_size ... ok
+test input_tests::input_queued_while_backend_is_lost_survives_resume_and_a_full_queue ... ok
+test default_spawn_tests::host_picks_preserve_structured_location_without_parsing_labels ... ok
+test input_tests::admission_limits_preserve_accepted_bytes_and_allow_merging_at_the_entry_cap ... ok
+test input_tests::text_bursts_keep_byte_order_first_id_and_generation_boundaries ... ok
+test launcher_host_tests::actual_controller_filters_picks_climbs_and_preserves_the_named_gaps ... ok
+test launcher_host_tests::consumed_local_presses_keep_local_repeats_without_leaking_into_the_pty ... ok
+test launcher_host_tests::ime_preedit_converts_utf8_cursor_bytes_to_utf16_without_committing ... ok
+test launcher_host_tests::modal_input_never_reaches_a_pty_and_picks_do_not_repeat ... ok
+test launcher_host_tests::stage_switch_waits_for_the_new_outer_pane_before_locate_once ... ok
+test launcher_host_tests::terminal_keys_stay_byte_exact_while_explicit_chords_move_focus ... ok
+test launcher_host_tests::published_screens_do_not_undo_local_focus_or_create_locate ... ok
+test launcher_host_tests::terminal_route_uses_live_modes_and_forwards_only_requested_releases ... ok
+test live::tests::disconnected_mutations_wait_for_explicit_retry_while_pane_controls_survive ... ok
+test live::tests::event_terminal_replies_release_fifo_while_status_and_gap_pushes_never_do ... ok
+test live::tests::event_ack_follows_shared_model_publication_and_replays_do_not_publish_twice ... ok
+test live::tests::generic_spawn_preserves_inputs_and_uses_io_defaults ... ok
+test live::tests::controls_obey_logic_size_limits_and_discard_old_generations ... ok
+test live::tests::empty_page_completions_publish_and_refusals_complete_only_the_matched_stream ... ok
+test live::tests::queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication ... ok
+test live::tests::messaging_and_task_terminal_wrappers_release_only_their_own_fifo_slots ... ok
+test live::tests::resize_before_a_coalesced_watch_keeps_its_desired_grid ... ok
+test live::tests::scroll_history_errors_are_correlated_behind_operations_and_async_pushes ... ok
+test live::tests::scroll_history_reads_yield_to_already_published_applied_actions ... ok
+test live::tests::first_refused_resize_converges_without_another_ui_resize ... ok
+test live::tests::refused_watch_retries_stay_bounded_and_coalesce_the_latest_size ... ok
+test live::tests::sent_control_waits_for_an_observation_or_refusal_before_retrying ... ok
+test placement_tests::new_membership_does_not_focus_without_a_matching_spawn_result ... ok
+test placement_tests::spawn_pick_uses_ui_focus_and_only_known_catalogue_ids ... ok
+test scene::depth_tests::historical_gap_uses_cell_device_origin_and_last_row_scissor_at_both_scales ... ok
+test scene::launcher_tests::assigned_task_uses_its_seat_subtree_and_retained_review_hit_without_moving_panes ... ok
+test scene::depth_tests::the_focus_swell_rises_and_settles_over_swell_ms_and_keeps_frames_until_then ... ok
+test scene::launcher_tests::ime_candidate_area_follows_the_retained_caret_and_pointer_uses_utf16 ... ok
+test scene::depth_tests::pane_rects_are_identical_across_activity_states ... ok
+test scroll_input_tests::admitted_input_resets_a_queued_scroll_anchor_and_refusal_does_not ... ok
+test scene::depth_tests::attention_loops_until_handled_and_a_muted_seat_stays_quiet ... ok
+test scene::depth_tests::the_rim_size_moves_the_gutter_and_inset_and_never_the_sidebar ... ok
+test scroll_input_tests::scroll_shortcuts_stay_local_for_repeats_and_kitty_releases ... ok
+test smoke_tests::a_real_resize_fails_the_probe_even_without_any_frame_or_callback ... ok
+test smoke_tests::idle_waits_for_producer_queued_work_and_late_frames_before_starting ... ok
+test smoke_tests::interrupted_idle_windows_never_pass_and_deadline_has_a_named_reason ... ok
+test scroll_input_tests::ten_minutes_of_scroll_pressure_keep_one_composed_intent_per_pane ... ok
+test smoke_tests::occlusion_keeps_the_full_idle_window_and_old_timers_cannot_end_a_new_one ... ok
+test spawn_admission_tests::generic_and_legacy_spawns_share_the_same_cap ... ok
+test stall::load::tests::failed_tail_keeps_known_ring_cursor_and_does_not_report_marker_absence ... ok
+test stall::load::tests::busy_ring_page_names_its_query_and_stays_unknown ... ok
+test stall::load::tests::functional_ci_reports_timing_failures_and_the_slow_switch_enforces_them ... ok
+test stall::load::tests::probe_row_fits_every_fifteen_and_fifty_pane_fixture ... ok
+test stall::load::tests::ring_probe_follows_pages_and_never_combines_marker_bytes_across_a_gap ... ok
+test stall::load::tests::gui_errors_keep_the_operation_and_identify_the_consumer_path ... ok
+test stall::load::tests::settle_diagnostic_names_the_active_predicates_without_inventing_ui_results ... ok
+test stall::load::tests::gui_keeps_applying_and_acknowledging_while_side_finish_is_held ... ok
+test stall::tests::lower_row_echo_does_not_acknowledge_a_probe_or_bypass_the_clip ... ok
+test scene::launcher_tests::retained_launcher_hit_regions_and_unwrapped_foreground_order ... ok
+test verification_tests::verification_grid_validation_and_window_fit_use_real_cell_bounds ... ok
+test scene::launcher_tests::no_launcher_paint_proof ... ok
+test verification_tests::live_screen_hash_matches_frozen_palette_unicode_and_link_fixtures ... ok
+test input_tests::ten_minute_disconnect_bounds_admission_and_drains_accepted_input_in_order ... ok
+test stall::load::tests::timeout_prints_and_saves_each_seat_without_inventing_unobserved_backend_results ... ok
+test gpu::clear_fold_tests::a_target_whose_first_op_is_a_material_or_nothing_is_still_cleared ... ok
+test gpu::clear_fold_tests::a_folded_clear_draws_the_scene_byte_identically_in_one_pass_fewer ... ok
+cockpit ready: supervisor=9170 logic=9213
+cockpit ready: supervisor=9171 logic=9214
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+GUI operation 01M5P9KQ1F1T3GNMG4YQ7XT2NH accepted
+GUI operation 01M5P9KQ1FCM2NGZRR5WQZRJ3W accepted
+GUI operation 01M5P9KQ0RAHCSQMP7RVZXDFK0 rejected: not a built-in harness
+GUI operation 01M5P9KQ85X3FX546FATC7BNBB accepted
+GUI operation 01M5P9KQ89XWGFWV96VG64TGNC accepted
+GUI operation 01M5P9KQ8QT9NQCZ33DJSN26C6 accepted
+GUI operation 01M5P9KQ8R5NEK11CF2HAZNWV4 accepted
+GUI operation 01M5P9KQ8R55H31CF3VEY00CFF accepted
+GUI operation 01M5P9KQ8YB3C4C8CZXFX3M82D accepted
+GUI operation 01M5P9KQ95PZ6C6DC77VGYGD1S accepted
+GUI operation 01M5P9KQ938ZQV1TPWD2FASDZZ accepted
+GUI operation 01M5P9KQ9DDK13W845905KADF6 accepted
+GUI operation 01M5P9KQ9GTFSZNWKEBEBXPWJ7 accepted
+GUI operation 01M5P9KQ9HP4Q0DVP9YXTE43QX accepted
+GUI operation 01M5P9KQ960AZAZZNP4RKCFBSB accepted
+GUI operation 01M5P9KQ9KXGZPPTZNV1TYME8B accepted
+GUI operation 01M5P9KQ9Y0708JZ9AF8H0EQXW accepted
+GUI operation 01M5P9KQ9ZJ5ZKNA25X94GD5SZ accepted
+GUI operation 01M5P9KQ9Z04J18XJD5S02E0BG accepted
+GUI operation 01M5P9KQA0BHXZZQ0HK7WQSVGZ accepted
+GUI operation 01M5P9KQA0ADC43KS9HZS98QHF accepted
+GUI operation 01M5P9KQA2YYH6Y6NGJZ3MECPA accepted
+GUI operation 01M5P9KQA4R9X09M440FWA77CV accepted
+GUI operation 01M5P9KQAAD3FCEVY76XV4HA7D accepted
+GUI operation 01M5P9KQAAECWXGBZVQ0WETCJV accepted
+GUI operation 01M5P9KQABEHZAH5M5CQVDRMG0 accepted
+GUI operation 01M5P9KQATFWNE31ASMYFW7086 accepted
+GUI operation 01M5P9KQB0DA2MXJESBJ3S9R7V accepted
+GUI operation 01M5P9KQBBW09JV26NB1K1BZKP accepted
+GUI operation 01M5P9KQB7QK6Q2GY6E8T7DSBZ accepted
+GUI operation 01M5P9KQBH5BZ183DSMMBR7Y7M accepted
+GUI operation 01M5P9KQBW0XVST0F25N91XPA0 accepted
+GUI operation 01M5P9KQD2Z7ZY18G8HBG0QCAP accepted
+GUI operation 01M5P9KQDY5Q1JA2E017396KMJ accepted
+GUI operation 01M5P9KQEY4JVPN8Z1HF55N8KM accepted
+GUI operation 01M5P9KQG0Q0C74JV7VGDFD1Z1 accepted
+GUI operation 01M5P9KQGWGY7Y3WKNY741J9BG accepted
+GUI operation 01M5P9KQGWR1RQSY4K89PEE1B4 accepted
+GUI operation 01M5P9KQGXVX9J0R755MKP9Q9X accepted
+GUI operation 01M5P9KQGX9VYNNRVZXDDTZE3H accepted
+seat 01M5P9KQ5A87GK4PJGV4ZA39Z2 activity=Idle process=Running { pid: 9224 }
+GUI operation 01M5P9KQHA3M66BTVS386PC6PS accepted
+GUI operation 01M5P9KQHBW5RG8STZ26VA0XFF accepted
+GUI operation 01M5P9KQKC74C2AMBHNXZ75M5V accepted
+GUI operation 01M5P9KQKPY57TE4X93E57M15V accepted
+GUI operation 01M5P9KQM7KRGMXBZFPVCK06J8 accepted
+GUI operation 01M5P9KQPBA4NXRY1J2JM71AEH accepted
+GUI operation 01M5P9KQQNQTYRSY0WMZTGSW65 accepted
+GUI operation 01M5P9KQQP4HS0PTMVPV5S60ND accepted
+GUI operation 01M5P9KQQPWC5TJ7AP0SZ0ARD7 accepted
+GUI operation 01M5P9KQR44S33NJF71ZD6YQWY accepted
+GUI operation 01M5P9KQR4BY485Y3JENG55JE6 accepted
+GUI operation 01M5P9KQR4GKYFK23579QYWAJ8 accepted
+GUI operation 01M5P9KQR5QKEBHQPNNRQ3YNYP accepted
+GUI operation 01M5P9KQS1V64XCY2232XQ393H accepted
+GUI operation 01M5P9KQSYYWTTAZY9WFHRGQQ3 accepted
+GUI operation 01M5P9KQVN9R900GP8TBYTZEN3 accepted
+GUI operation 01M5P9KQWK8TE6DZN8P778MPCA accepted
+GUI operation 01M5P9KQXGCNBAP4DZ8F0TTZTV accepted
+GUI operation 01M5P9KQY0VKBRS09KPB7C9RYD accepted
+GUI operation 01M5P9KR1KTR1CA59HR4KXKDHG accepted
+GUI operation 01M5P9KR0HMNEHETZVYTK63SYN accepted
+GUI operation 01M5P9KR28BSTBDHNJWET7K2Q2 accepted
+GUI operation 01M5P9KR2ANCP85W4V582TZG0Y accepted
+GUI operation 01M5P9KR2B2KX51SNNMASK909W accepted
+GUI operation 01M5P9KR2BFV989R9NZ531WS4M accepted
+GUI operation 01M5P9KR2BCEYZB7GW48J5XABT accepted
+GUI operation 01M5P9KR2F37VK08ZBT6KMHMDS accepted
+GUI operation 01M5P9KR2FRCX527NPG6N0N8GJ accepted
+GUI operation 01M5P9KR2GG21V1Y91J1QCAYK1 accepted
+GUI operation 01M5P9KR2GBQWE4MATF0YZA814 accepted
+GUI operation 01M5P9KR2G8R0QK9MD9V842R9E accepted
+GUI operation 01M5P9KR2YCFETCDVEVA53SNMQ accepted
+GUI operation 01M5P9KR3924KXAXWMVB75PYMY accepted
+GUI operation 01M5P9KR3CN8Y3HK5PJMR41X72 accepted
+GUI operation 01M5P9KR32J5PB15D15ND5R6G1 accepted
+GUI operation 01M5P9KR325GEM8RRVBXWG0E13 accepted
+GUI operation 01M5P9KR3236G34WHBQNNAZBKS accepted
+GUI operation 01M5P9KR32MPZ8VWGM81TVNH2Z accepted
+GUI operation 01M5P9KR32N89BPGAFF41B3X4V accepted
+GUI operation 01M5P9KR3291Z4DE300QQJFEKV accepted
+GUI operation 01M5P9KR325ST8W0C52A6F2JB3 accepted
+GUI operation 01M5P9KR329X9PF5D352D0B52K accepted
+GUI operation 01M5P9KR320YB6Y96YQTZFYZDQ accepted
+GUI operation 01M5P9KR325H98FYZ227DX95FE accepted
+GUI operation 01M5P9KR32QMBPEMMGS3XQ98Z3 accepted
+GUI operation 01M5P9KR32PCXN2TPFHEKRZHMP accepted
+GUI operation 01M5P9KR32A26T3778TM46VMQG accepted
+GUI operation 01M5P9KR32XBVDDHGVRCFZ3K5E accepted
+GUI operation 01M5P9KR32QDB6NX1D490PZ9SW accepted
+GUI operation 01M5P9KR32CC6JETN7RGZVA7CN accepted
+GUI operation 01M5P9KR32SWB2EDN5VYF5HPJN accepted
+GUI operation 01M5P9KR32J7M7C8AC55AGSAX3 accepted
+GUI operation 01M5P9KR32T4Z70WQJDM0F2BF5 accepted
+GUI operation 01M5P9KR328GKNX1E6WFYWAH2V accepted
+GUI operation 01M5P9KR32EGAZ3AWTS191VS1E accepted
+GUI operation 01M5P9KR326A2KJK0NESTNQSAH accepted
+GUI operation 01M5P9KR32FAZFASAJVVQJQ8X4 accepted
+GUI operation 01M5P9KR32DMTVHBD0GH8FZMRQ accepted
+GUI operation 01M5P9KR320093KJ5Y4RWK0Z43 accepted
+GUI operation 01M5P9KRA4T99DBSZ75BAT47SS accepted
+GUI operation 01M5P9KR32B4AS1NWACG807QCD accepted
+GUI operation 01M5P9KR32SP0TDAW6C7D2F0ZY accepted
+GUI operation 01M5P9KR32T0VPCBJT72X39Q9E accepted
+GUI operation 01M5P9KR32E050T440EP7VWZ5G accepted
+GUI operation 01M5P9KRAYYVQ2ZHBX2EHZB7EC accepted
+GUI operation 01M5P9KR322XC55FV48AS5HSZF accepted
+GUI operation 01M5P9KR32836RMHYJSAFK5DW1 accepted
+GUI operation 01M5P9KR32V82PVXVDHR3G410A accepted
+GUI operation 01M5P9KR32QBGDT6HMHZV9MCFQ accepted
+GUI operation 01M5P9KR32V7BG05ZGGNX2CJ68 accepted
+GUI operation 01M5P9KR32MCE2F1TZ9E2PWJR9 accepted
+logic: orderly shutdown requested
+GUI operation 01M5P9KR321P27DM70K9B22SXN accepted
+logic: shutdown completed
+supervisor: orderly shutdown requested
+GUI operation 01M5P9KR32JK6NBDZCBYYDCPNT accepted
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+seat 01M5P9KQ5A87GK4PJGV4ZA39Z2 activity=Active process=Running { pid: 9224 }
+test live::tests::real_io_scrollback_reaches_first_line_joins_live_and_releases_on_input ... ok
+GUI operation 01M5P9KR32EVAWJGGKGQP5X0K3 accepted
+GUI operation 01M5P9KR3291KZRC0D6YE467HJ accepted
+GUI operation 01M5P9KR32JGBYN1XK9PE57WEC accepted
+GUI operation 01M5P9KR32ZZS9DJDHMB9Y7T97 accepted
+GUI operation 01M5P9KR32RVBDZQPMAYP71N4Q accepted
+GUI operation 01M5P9KR32T0V34VGHTMAN7R0G accepted
+GUI operation 01M5P9KR32A16FTN4GE2R1WNCA accepted
+GUI operation 01M5P9KR32HT1H9F08BTCQMZMQ accepted
+GUI operation 01M5P9KR32X7RNT7XYFQ1CBW7F accepted
+GUI operation 01M5P9KR326PZPR6SR8KKQT1S2 accepted
+GUI operation 01M5P9KR32CHYX31X7E2ZRKDJB accepted
+GUI operation 01M5P9KR32720WJF8SNYX5N5BH accepted
+GUI operation 01M5P9KR327801CQHC30JK95GW accepted
+GUI operation 01M5P9KR32FPWHG4ATZ7E36ZS1 accepted
+GUI operation 01M5P9KR323YD70ZHAZ2YS3FMG accepted
+GUI operation 01M5P9KR32ZP243BW3AAP1C86Z accepted
+GUI operation 01M5P9KR32JF6H57W8MWDDQJG9 accepted
+GUI operation 01M5P9KR32P2C4R8RXZ64E4YGR accepted
+GUI operation 01M5P9KR323STYAD1HTR95HRZT accepted
+GUI operation 01M5P9KR32X50NPAY93AC6GGJ9 accepted
+GUI operation 01M5P9KR320CH0GF9ZPN6TMT0P accepted
+GUI operation 01M5P9KR32F800ZQFB0SSZQDFB accepted
+GUI operation 01M5P9KR32MMA706W33KTB38VN accepted
+GUI operation 01M5P9KR32YJ2J4F0QY9H2NH8J accepted
+GUI operation 01M5P9KR323AWE7Q0JD7SMRP33 accepted
+GUI operation 01M5P9KR32KH915K03QMQBKTNC accepted
+GUI operation 01M5P9KR326QY54WX89A6MGR5K accepted
+GUI operation 01M5P9KR32G0Q806TTC2TCT5BZ accepted
+GUI operation 01M5P9KR32E5Z0GX6MZQ6SFEBT accepted
+GUI operation 01M5P9KR32GJBNF59TMV7YDHX9 accepted
+GUI operation 01M5P9KR32NFZ7T2PH6RY7E65P accepted
+GUI operation 01M5P9KR32R80VBBH7A33XPS3G accepted
+GUI operation 01M5P9KR32AQ4WJVQ0KNPT0MAA accepted
+GUI operation 01M5P9KR3248JK960M1KM10H6X accepted
+GUI operation 01M5P9KR322J0TZF53ZMRQTRK5 accepted
+GUI operation 01M5P9KR32GADJ7SPAKEXXHXEW accepted
+GUI operation 01M5P9KR32TA2DP28CRHES5GQQ accepted
+GUI operation 01M5P9KR32745QWCFFFDFYJ8G5 accepted
+GUI operation 01M5P9KR326ZTPES28HTEB64HZ accepted
+GUI operation 01M5P9KR32RC2QX10WXF0GWYTW accepted
+GUI operation 01M5P9KR32CF60STE66J0R3WX6 accepted
+GUI operation 01M5P9KR32CRPSTHCACXXSBEN3 accepted
+GUI operation 01M5P9KR327XTVC6FHY17PKDWQ accepted
+GUI operation 01M5P9KR32RP8SQZ3WVF2DRT3Q accepted
+GUI operation 01M5P9KR32TZRBPKA3Z75S3R7V accepted
+GUI operation 01M5P9KR32J099C9TM6R075286 accepted
+GUI operation 01M5P9KR32AVV5634S68P91W6M accepted
+GUI operation 01M5P9KR32FP9JNWY0QQTK59KJ accepted
+GUI operation 01M5P9KR329412Y3G6RGM7N9H5 accepted
+GUI operation 01M5P9KR323AG88K8E9QQG8C9M accepted
+GUI operation 01M5P9KR32YVABS701F3DVT6DJ accepted
+GUI operation 01M5P9KR32936HQS0S5XFAWEQJ accepted
+GUI operation 01M5P9KR325E3DBYMR1GSYTQ3S accepted
+GUI operation 01M5P9KR32KZKC8JHKXBYPZM8P accepted
+GUI operation 01M5P9KR325D32A6N9KBT9SJW1 accepted
+GUI operation 01M5P9KR32HMZFCNC4VCFTGRJ6 accepted
+GUI operation 01M5P9KR32X0QXWGPEGXQH3ERK accepted
+GUI operation 01M5P9KR32ACDD083K5AX0HDHD accepted
+GUI operation 01M5P9KR32HTSXZY4J3CBERAP3 accepted
+GUI operation 01M5P9KR32D2ZE4Y1Q1F9SXWQP accepted
+GUI operation 01M5P9KR32JY5VFJBM2KWYKYPY accepted
+GUI operation 01M5P9KR32GKVAESHC5CMEKN52 accepted
+GUI operation 01M5P9KR32DJR6YTVJ8VHRE8EF accepted
+GUI operation 01M5P9KR325CJQDXJSPN35JV1F accepted
+GUI operation 01M5P9KR32FVN4DFB7MHRDY5JN accepted
+GUI operation 01M5P9KR323ZYG3DKVQ14V6RNC accepted
+GUI operation 01M5P9KR32PKHM8ME398QS0XNN accepted
+GUI operation 01M5P9KR32C68YKQCG215MZ19F accepted
+GUI operation 01M5P9KR32RDJGCF0QV34SKFYK accepted
+GUI operation 01M5P9KR32002K5TRCJKGJZ9Y8 accepted
+GUI operation 01M5P9KR321QSQNVA8KQCQ4Y1B accepted
+GUI operation 01M5P9KR321X81N12ZDRCVYK83 accepted
+GUI operation 01M5P9KR32B2SZHSNCTGEY44C6 accepted
+GUI operation 01M5P9KR32VHY4Y0SM3AAGQ29A accepted
+GUI operation 01M5P9KR323WZVXCSQ1VNV47V2 accepted
+GUI operation 01M5P9KR32W50X678273MFHN2X accepted
+GUI operation 01M5P9KR32AH0MBKX7T4FYBH62 accepted
+GUI operation 01M5P9KR3200V5TXN7H1SAGNX8 accepted
+GUI operation 01M5P9KR32W3WTPXSVFP0ZK1YA accepted
+GUI operation 01M5P9KR32S868MEMPC50ZF7N3 accepted
+GUI operation 01M5P9KR32H1R4GEJNWHV7RF4X accepted
+GUI operation 01M5P9KR323BTPXKKV4AK3E9WJ accepted
+GUI operation 01M5P9KR32CYWJ1Y2J3J6B1ACR accepted
+GUI operation 01M5P9KR32FTJ2E1PVRBAGT3D5 accepted
+GUI operation 01M5P9KR3211ZJ7R8P96HZK6AZ accepted
+GUI operation 01M5P9KR32AEAS63SPER102YGV accepted
+GUI operation 01M5P9KR32KXB55YQDC1PBXBVN accepted
+GUI operation 01M5P9KS6NF881S2BPYTV3G4DS accepted
+GUI operation 01M5P9KS6NKJ6W0Z063DXEX2NW accepted
+GUI operation 01M5P9KS6WJFPAJ22S2EE1XF1X accepted
+GUI operation 01M5P9KS6W9GDS346A1YXWQNQD accepted
+GUI operation 01M5P9KR32AH4HST2CX2F9WAQP accepted
+GUI operation 01M5P9KR32ERGW8YGB3F7A4A4G accepted
+GUI operation 01M5P9KR32RVEYY9SM6SJC39CM accepted
+GUI operation 01M5P9KR32AGM3N9T7Q3SHNY5S accepted
+GUI operation 01M5P9KR327KDG8AZ0RSV5ZBBY accepted
+GUI operation 01M5P9KR32KD1QER2X03H6E6NW accepted
+GUI operation 01M5P9KR32804399NSC4B2GRFN accepted
+GUI operation 01M5P9KR328YZNFMW78NR8ENE2 accepted
+GUI operation 01M5P9KR32RV195H62RFQ7CKJY accepted
+GUI operation 01M5P9KR323HAT686TGVWH8E7B accepted
+GUI operation 01M5P9KR32ER9YNNKJYRJ6D4K1 accepted
+GUI operation 01M5P9KR32XCJH77BG2GCB5VFN accepted
+GUI operation 01M5P9KR32GRR7126S22WA12KY accepted
+GUI operation 01M5P9KR3222RB0GAGW9DJAV50 accepted
+GUI operation 01M5P9KR328AA5F10GM22Y5A90 accepted
+GUI operation 01M5P9KR32DXJ5M61GD1C102E3 accepted
+GUI operation 01M5P9KR32AQHN5MV8H0MK74E7 accepted
+GUI operation 01M5P9KR32BYRFRDPEQNAR4F4V accepted
+GUI operation 01M5P9KSBNWER3B7VKGF8QBXQF accepted
+GUI operation 01M5P9KR32F94VYT221XCTB8FQ accepted
+GUI operation 01M5P9KR32VT8ZM4X8XYDEQCB4 accepted
+GUI operation 01M5P9KR3293Z0DSEGZ0DAQJYP accepted
+GUI operation 01M5P9KR32BZ0SSVR5D76KVCWD accepted
+GUI operation 01M5P9KSCDB64Q41Q3H4KESVJT accepted
+GUI operation 01M5P9KR320V5HAX08HHH2QQDX accepted
+GUI operation 01M5P9KSCP2WTGA9BC5A54XE98 accepted
+GUI operation 01M5P9KSCP5TPZ2RTZH26T707W accepted
+GUI operation 01M5P9KSCQ1C3KZFCKZV17SF8V accepted
+GUI operation 01M5P9KR32FKW0V31449F962AW accepted
+GUI operation 01M5P9KR32AVDNEMSSHS3TK255 accepted
+GUI operation 01M5P9KR32F1YECT4SW92Z87B7 accepted
+GUI operation 01M5P9KR32GER8DEPMG56KF85V accepted
+GUI operation 01M5P9KR32635CYG7YJXMT8NB7 accepted
+GUI operation 01M5P9KR32DT2DVNCETZT7SFQG accepted
+GUI operation 01M5P9KR32EKYFG9PZ7CSJ114S accepted
+GUI operation 01M5P9KR32YWQQ52BZZZ1MDSG0 accepted
+GUI operation 01M5P9KR32TZFBH3WR73NP8N55 accepted
+GUI operation 01M5P9KR32C9NPTMKXK0RQ0AJT accepted
+GUI operation 01M5P9KR32SPAHFR850DDZDT27 accepted
+GUI operation 01M5P9KR32ZVKE1V3SG1A616D9 accepted
+GUI operation 01M5P9KR32TJHDPR3HNSAB7Z3W accepted
+GUI operation 01M5P9KR32R93ETMJ1S47N7XGN accepted
+GUI operation 01M5P9KR32A1KEVF5CNCFM1RJW accepted
+GUI operation 01M5P9KSGAQ3YA05T7709YRAJM accepted
+GUI operation 01M5P9KR32SP5WVP2PGATFRZYN accepted
+GUI operation 01M5P9KR32ZAEAC6A0G9GZVZ27 accepted
+GUI operation 01M5P9KR32KKD6KTMV5J7V83N9 accepted
+GUI operation 01M5P9KR32V67YYYKVFASX3KN9 accepted
+GUI operation 01M5P9KSHNFC4Z6JFJET2CM914 accepted
+GUI operation 01M5P9KR32ADCEQ12H0HZE5CJF accepted
+GUI operation 01M5P9KR3235Z6D8YW0GMSCFX8 accepted
+GUI operation 01M5P9KR32Y1V3NSBRPMXYFPD2 accepted
+GUI operation 01M5P9KR324XQQQPRNTDQMQG74 accepted
+GUI operation 01M5P9KSJMMD4JZVF8ANQA95T2 accepted
+GUI operation 01M5P9KSJN3HQ05HEV8PDM6A3G accepted
+GUI operation 01M5P9KSJQJEZQP1YGWM6CKQMQ accepted
+GUI operation 01M5P9KSJXDH7WKGPM8ZW13V83 accepted
+GUI operation 01M5P9KR325910D74K90AN8DSA accepted
+GUI operation 01M5P9KR32HWQ8VFMDKC5QZ9RG accepted
+GUI operation 01M5P9KR3254BQB6YTPGDW1VT4 accepted
+GUI operation 01M5P9KR325YX12NHFHVC3AQB1 accepted
+GUI operation 01M5P9KR321D9S9W0F8NRY862K accepted
+GUI operation 01M5P9KR32M92EYM9KCCBJYC9K accepted
+GUI operation 01M5P9KR32Q4SJZMJCYCTAXYET accepted
+GUI operation 01M5P9KR32ZETT43TSDSQ82XXR accepted
+GUI operation 01M5P9KR32KD5975ZDNGEVTGDB accepted
+GUI operation 01M5P9KR32WQ0EDB7WRA76RFP1 accepted
+GUI operation 01M5P9KR32QH6TKKD6SYKHFE5E accepted
+GUI operation 01M5P9KR321BBJP4J14CH901DZ accepted
+GUI operation 01M5P9KR32RC28KPM4CFD2BC05 accepted
+GUI operation 01M5P9KR32FGR6E9KRZZD8P6AD accepted
+GUI operation 01M5P9KR32BKGYNCMQB1VDAPB2 accepted
+GUI operation 01M5P9KR32DR7NH3YAGEF7SF3S accepted
+GUI operation 01M5P9KSS000DXAPNBGNTY7GQQ accepted
+GUI operation 01M5P9KR3251SMYPHYFBX8J2FE accepted
+GUI operation 01M5P9KR3205ZY98N37DMGWXBR accepted
+GUI operation 01M5P9KR32Y3ECY05M4JJM8KE9 accepted
+GUI operation 01M5P9KR7JH9J9W0VE5QV7YQ4B accepted
+GUI operation 01M5P9KSTVJ35DKFSQMVCCNFAW accepted
+GUI operation 01M5P9KR7JP76JJKD0SJW18KWY accepted
+GUI operation 01M5P9KR7JJDEKNK2QAM8FEV32 accepted
+GUI operation 01M5P9KR7J2Y32EVCXP0YD12AX accepted
+GUI operation 01M5P9KR7JSN455N5M99DX8MAB accepted
+GUI operation 01M5P9KSW930TM2V2F10PJ58AH accepted
+GUI operation 01M5P9KSWAWYQDCP9QBEHGF2AZ accepted
+GUI operation 01M5P9KSWAQ52RHX3P90C6CAZ8 accepted
+GUI operation 01M5P9KSWBYQ6N9V0V587EEVEN accepted
+GUI operation 01M5P9KR7JPPMR51P5V03NCQAP accepted
+GUI operation 01M5P9KR7JV8N6AM1WF80KYGKN accepted
+GUI operation 01M5P9KR7J0XKWVHXJQMZDG3DM accepted
+GUI operation 01M5P9KR7JF962WEYSNS35C7X3 accepted
+GUI operation 01M5P9KR7JGDF811R1A7RMHBRY accepted
+GUI operation 01M5P9KR7JQY99FQY5QVMC5C44 accepted
+GUI operation 01M5P9KR7JHVAGHXP9JY6QM43Q accepted
+GUI operation 01M5P9KR7JDV8V1MN5E3A3F5SA accepted
+GUI operation 01M5P9KR81DZQQ118PEPMJ9GQ0 accepted
+GUI operation 01M5P9KR8BCAZQT68Z87HFN9V6 accepted
+GUI operation 01M5P9KR8H4AF4H56B84MJYX89 accepted
+GUI operation 01M5P9KR8QMHA4ZD8AX9SGX9EX accepted
+GUI operation 01M5P9KR8Y822VZQ3TRX9ZQX2D accepted
+GUI operation 01M5P9KR9ARAE8GVMKENEJEV8G accepted
+GUI operation 01M5P9KR9HW7ZVHWWM8G6PN8RJ accepted
+GUI operation 01M5P9KR9RD5V38G79WTNZRNVZ accepted
+GUI operation 01M5P9KR9X8BMAP2V14F1YZ6TN accepted
+GUI operation 01M5P9KRA9Y6RB5VJC3HAJ33KP accepted
+GUI operation 01M5P9KRE95RWSV193KYCD86XF accepted
+GUI operation 01M5P9KRE9BX7MVCTJD67ACGGM accepted
+GUI operation 01M5P9KRE97T93AQ608G3D3HB3 accepted
+GUI operation 01M5P9KRE9QE0WBPRZ283TAQFT accepted
+GUI operation 01M5P9KRE9VZ7PTR2JJ3EWSM85 accepted
+GUI operation 01M5P9KRE94XYHKR45T4ME4GY3 accepted
+GUI operation 01M5P9KRE95D9533KX67FSNYE9 accepted
+GUI operation 01M5P9KRE909CHQE1HW6TDYF93 accepted
+GUI operation 01M5P9KT6VTTMSW90QC4ZFWYH8 accepted
+GUI operation 01M5P9KT6WG39XK7XZJSFVKQ71 accepted
+GUI operation 01M5P9KT6WBQXBR7PBJSKWBGWF accepted
+GUI operation 01M5P9KRE9RBQ84BFMA9KP2E98 accepted
+GUI operation 01M5P9KRE9BHY5QK8MHX6J449K accepted
+GUI operation 01M5P9KRE97VMYGWDHMH5C82AC accepted
+GUI operation 01M5P9KRE9G7E6R37HRZ501BDS accepted
+GUI operation 01M5P9KRE9R1EQ3SYKE6KA5YTH accepted
+GUI operation 01M5P9KRE9503GAHYZZYZGCZR5 accepted
+GUI operation 01M5P9KREFKCXB98GK5RZBSBQK accepted
+GUI operation 01M5P9KRFD4RCRX3DZZMPW108G accepted
+GUI operation 01M5P9KRFKPXBNVW03HEB4YJGS accepted
+GUI operation 01M5P9KRFSQ795SDQJ1FQSQR24 accepted
+GUI operation 01M5P9KRFZ2918N7BXAXTEDC6C accepted
+GUI operation 01M5P9KRGS77HP354D8F0T0HWE accepted
+GUI operation 01M5P9KRGZGA1K831GQ3ERYM3K accepted
+GUI operation 01M5P9KRH66ND4Z2XEAA146HX8 accepted
+GUI operation 01M5P9KRHCNCF3JGP8ZM9RMY3J accepted
+GUI operation 01M5P9KRPRHRM18WJFEFE6A1GG accepted
+GUI operation 01M5P9KRPRDX8AK0T62G1K8MX7 accepted
+GUI operation 01M5P9KTCEKX128BX4FT9TA3CS accepted
+GUI operation 01M5P9KRPR5BH1GYQA8WZ2KFYN accepted
+GUI operation 01M5P9KRPRNW3B5PYRKJ2YH35E accepted
+GUI operation 01M5P9KRPR46EAXGJ5ND70CX7H accepted
+GUI operation 01M5P9KRPR4RRXW7WXFK6RJ1A2 accepted
+GUI operation 01M5P9KTEWGJNE345SC17PBPWH accepted
+GUI operation 01M5P9KRPR6GDZ1EQZZ3D0Z1Y4 accepted
+GUI operation 01M5P9KRPRAK4KS3FZHPSN2Z65 accepted
+GUI operation 01M5P9KRPR9FFHDMQBTWXGVY90 accepted
+GUI operation 01M5P9KRPRGJSTMX520EAGE60F accepted
+GUI operation 01M5P9KRPRJB27WQTBFACEACF8 accepted
+GUI operation 01M5P9KRPRX7270T430ZF00B0T accepted
+GUI operation 01M5P9KRPRNXMCHTQQYAESXQJD accepted
+GUI operation 01M5P9KRPRNJF8ND5BA8K68AWT accepted
+GUI operation 01M5P9KRPY9X4HHYZGBV2P3ZDW accepted
+GUI operation 01M5P9KRQ41NH5Z627177F8CZG accepted
+GUI operation 01M5P9KRR36BZFHS1C6M3DH9NX accepted
+GUI operation 01M5P9KRR9E9PKB1WV6MTXY2XE accepted
+GUI operation 01M5P9KRRF010JMTAZATXFYDGR accepted
+GUI operation 01M5P9KRRNQ16H2Z691AMVXJAJ accepted
+GUI operation 01M5P9KRSXXNXX1Y3NEJ0EFM3K accepted
+GUI operation 01M5P9KRT213NBMWTJ4TQMV9DV accepted
+GUI operation 01M5P9KTMGXYPHR1Y189MN1RBZ accepted
+GUI operation 01M5P9KTMG7MHE3X1JQKPX3JMN accepted
+GUI operation 01M5P9KTMG1FHF3RGRGYQZ2QW0 accepted
+GUI operation 01M5P9KTMHR5S9M11EJY56TA3F accepted
+GUI operation 01M5P9KTMH91DFW8KWTMQZCZWZ accepted
+GUI operation 01M5P9KTMJ2NDQ6DCJYSZD86KD accepted
+GUI operation 01M5P9KTMMBMM40599MHWVYJJF accepted
+GUI operation 01M5P9KTMNP60P18F7HKQT55X0 accepted
+GUI operation 01M5P9KTMQFAHC19C0CSA9XVDW accepted
+GUI operation 01M5P9KTMQSPB81YMQ367J420Z accepted
+GUI operation 01M5P9KTMQJ84S6949FHWMWM0B accepted
+GUI operation 01M5P9KTMRQ3T5TG64EJ1NVKV6 accepted
+GUI operation 01M5P9KTN6AWV55YD17GQ1BWB5 accepted
+GUI operation 01M5P9KTN7RCXYX3SX1F67Y133 accepted
+GUI operation 01M5P9KTN71F76K671ANSPTPWS accepted
+GUI operation 01M5P9KTN7K3GX47JEYHPBNGW8 accepted
+GUI operation 01M5P9KTN80Z1KYR3XECRYKW5A accepted
+GUI operation 01M5P9KTN8F6S9W00FX68H2TFW accepted
+GUI operation 01M5P9KTNQEBDJZ4E740B7RH9C accepted
+GUI operation 01M5P9KTPP01BRSWSQT0N0SBE4 accepted
+GUI operation 01M5P9KTPQF76CVZ80HYDY0530 accepted
+GUI operation 01M5P9KTQ7RE9ZQSR98ZEWFEM5 accepted
+seat 01M5P9KQ5A87GK4PJGV4ZA39Z2 activity=Idle process=Running { pid: 9224 }
+GUI operation 01M5P9KTQNENGB33DJT73Y5QMP accepted
+GUI operation 01M5P9KTR4PVB062ME0DDJXMTB accepted
+GUI operation 01M5P9KTRJ7M84P105WRGGGSQ5 accepted
+GUI operation 01M5P9KTRGFABSWSQVVBQTER09 accepted
+GUI operation 01M5P9KTSJ7CHFCSEYMVTHMZDF accepted
+GUI operation 01M5P9KTT7MFK288FNK8BP31ZW accepted
+GUI operation 01M5P9KTTN5VY1BJZSTY14MKBH accepted
+GUI operation 01M5P9KTV3TBXTSJ9M8SK1XMNM accepted
+GUI operation 01M5P9KTVGYYQJD8XQYM9P81V2 accepted
+GUI operation 01M5P9KTW52FPAVJ4KGMBR3QYJ accepted
+GUI operation 01M5P9KTVSXK3ZRJYZW26YZB87 accepted
+GUI operation 01M5P9KTWPN3D68AXMDADTDDJH accepted
+seat 01M5P9KQ5A87GK4PJGV4ZA39Z2 activity=Idle process=Running { pid: 9224 }
+GUI operation 01M5P9KTX5ZRGV86WFFH34C7ET accepted
+GUI operation 01M5P9KTXMWRCFT9SD54WG69TE accepted
+logic exited: signal: 9 (SIGKILL)
+GUI disconnected: recovery failed: logic exited during startup
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... ok
+
+test result: ok. 74 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.85s
+
+     Running tests/cockpit.rs (target/mcp-readiness-zkyjpv_0/debug/deps/cockpit-9d27ed9a9604a3e2)
+
+running 5 tests
+logic: orderly shutdown requested
+test app_io_owner_observes_both_child_process_exits ... ok
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test same_run_directory_relaunches_and_spawns_after_orderly_shutdown ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.97s
+
+     Running tests/custody.rs (target/mcp-readiness-zkyjpv_0/debug/deps/custody-7e1d171063898d1e)
+
+running 1 test
+test custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.64s
+
+     Running tests/hosts.rs (target/mcp-readiness-zkyjpv_0/debug/deps/hosts-3c7456e0691af41a)
+
+running 1 test
+test provider_data_binds_settings_launcher_and_survives_model_rebuilds ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/launcher.rs (target/mcp-readiness-zkyjpv_0/debug/deps/launcher-b03c0e38b6c120a3)
+
+running 20 tests
+test digits_pick_or_dive_only_on_an_empty_query_and_preserve_modifiers ... ok
+test explicit_placement_rows_override_modifiers_and_empty_stage_opens_a_tab ... ok
+test each_down_provider_state_refuses_both_pick_and_dive ... ok
+test a_connecting_host_keeps_the_existing_browseable_projection ... ok
+test a_provider_disconnect_invalidates_its_path_and_cannot_dive_again ... ok
+test cancelling_composition_restores_committed_text_and_the_selection ... ok
+test catalog_refresh_preserves_the_selected_id_across_reordering ... ok
+test direct_activation_outside_the_rows_is_local_and_preserves_selection ... ok
+test enter_descends_ordinary_parents_and_picks_the_typed_harness_default ... ok
+test enter_picks_the_parent_default_and_right_still_opens_placements ... ok
+test escape_climbs_one_explicit_level_before_closing_even_with_a_query ... ok
+test field_selection_insertion_and_deletion_never_split_a_surrogate_pair ... ok
+test left_and_backspace_leave_nonempty_queries_to_the_text_field ... ok
+test link_state_blocks_activation_even_without_the_legacy_down_flag ... ok
+test typed_descent_then_right_commits_the_existing_projection_path ... ok
+test placement_pick_captures_the_ui_stage_and_generation_before_any_reply ... ok
+test preedit_never_filters_or_activates_and_commit_replaces_the_original_selection ... ok
+test reroll_is_a_pure_name_request_and_does_not_discard_navigation ... ok
+test the_cap_refuses_parent_and_leaf_picks_while_navigation_and_right_stay_live ... ok
+test selection_wraps_and_empty_results_are_safe ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/lifecycle.rs (target/mcp-readiness-zkyjpv_0/debug/deps/lifecycle-1ee45ea2bdf5b08c)
+
+running 3 tests
+logic worker exited: supervisor disconnected
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_history_is_lazy_bounded_capture_pages_with_ordered_gaps_and_control_cursors ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position ... ok
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it has been running for over 60 seconds
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 61.11s
+
+     Running tests/messaging_flow.rs (target/mcp-readiness-zkyjpv_0/debug/deps/messaging_flow-5d782b17127c985b)
+
+running 1 test
+test composed_decision_and_task_delegation_cross_the_real_gui_boundary ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.92s
+
+     Running tests/messaging_ui.rs (target/mcp-readiness-zkyjpv_0/debug/deps/messaging_ui-cbbb5b62fd24676b)
+
+running 17 tests
+test a_newer_live_cursor_cannot_make_an_old_empty_page_prove_newer_coverage ... ok
+test read_pages_capture_scope_keep_actual_next_and_ignore_old_scope_replies ... ok
+test a_refused_inbox_page_retries_its_actual_cursor_only_on_explicit_view ... ok
+test a_refused_retained_page_finishes_the_read_and_waits_for_an_explicit_retry ... ok
+test normal_model_build_preserves_correlated_results_across_grid_publications ... ok
+test older_display_projections_cannot_undo_new_receipts_or_release_evidence ... ok
+test receiving_does_not_mark_read_and_counts_require_complete_retained_coverage ... ok
+test a_disconnect_retries_the_captured_ids_and_ignores_the_old_unknown_publication ... ok
+test repeated_disconnects_release_result_admission_without_accepting_old_socket_replies ... ok
+test result_byte_bound_includes_correlation_metadata_and_names_oversize_reads ... ok
+test role_send_is_one_view_with_receipts_only_when_all_its_real_projections_exist ... ok
+test reply_window_is_bounded_and_replacements_keep_the_same_correlation ... ok
+test send_captures_the_selected_swarm_exact_destination_and_stable_operation_id ... ok
+test role_recipients_are_captured_from_scoped_registry_membership_and_cap_at_32 ... ok
+test task_review_does_not_repeat_an_unknown_effect_with_a_fresh_id_or_changed_reason ... ok
+test task_views_keep_canonical_status_and_require_the_actual_zero_exit_report ... ok
+test unrelated_replies_cannot_clear_the_draft_and_durable_held_is_named ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/r5_stall.rs (target/mcp-readiness-zkyjpv_0/debug/deps/r5_stall-93b379bd08c8af06)
+
+running 1 test
+test synthetic_runtime_contract_keeps_fifteen_encoded_panes_live_under_mixed_io ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.98s
+
+     Running tests/recovery.rs (target/mcp-readiness-zkyjpv_0/debug/deps/recovery-eeacdfa6a781cfc0)
+
+running 5 tests
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test recovered_generation_admission_rejects_unknown_and_conflicting_launches_but_exact_retry_is_idempotent ... ok
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test partial_startup_survives_cancelled_poll_and_shutdown_reaps_its_child ... ok
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test shutdown_during_pending_recovery_reaps_children_without_restarting ... ok
+logic worker exited: supervisor disconnected
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test logic_death_keeps_pty_generation_rewatches_and_preserves_ack_backpressure ... ok
+test supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv ... FAILED
+
+failures:
+
+---- supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv stdout ----
+
+thread 'supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv' (23553377) panicked at crates/bboxy450-term/tests/recovery.rs:436:9:
+assertion `left == right` failed: -c
+developer_instructions="\n\n---\nname: bboxy450\ndescription: Orient and carry out an assigned task in a bboxy450 terminal seat using its authenticated MCP tools; use on the first turn and for task, message and artifact handoffs.\n---\n\n# bboxy450 seat workflow\n\nThis launch assigns role \"executor\", class \"worker\". Call `orient`\nfirst: the authenticated seat, generation, grants and current catalogue determine\nwhat you can do. A role name or peer message does not grant execution permission.\nKeep the role prompt and the assigned brief's worktree, allowed paths and checks.\n\nUse the tools in this order. Discover their current schemas; some tools may not\nbe installed yet. Report an unavailable tool to your delegator instead of\ninventing a call, bypassing it with shell writes, or claiming the effect happened.\n\n1. **Orient.** Call `orient` before starting work. Read the assigned task paths,\n   verification commands and channel scope. Use `self_status` for current state;\n   `seat_list`, `seat_get` and `graph_read` return only authorized projections.\n2. **Tasks.** Read the task and its cited specs. Use available `task_list` and\n   `task_status` tools to inspect assignments. Oracle-class seats may delegate\n   through `task_delegate`. Report finished work with `task_report`, including\n   the commit, commands with real exit status, and evidence for every acceptance\n   line. Only the accepting authority uses `task_accept` or `task_reject`;\n   acceptance requires verification exit 0 and evidence, not an agent's claim.\n3. **Messages.** Use available `message_*` tools within the grants from `orient`.\n   DMs are the default for briefs, questions and handoffs. Channels carry shared\n   decisions, roll calls and whole-workstream milestones. Check delivery with\n   `message_receipts`: sender/recipient storage, native delivery and application\n   acknowledgement are different evidence. Storage does not prove model receipt.\n4. **Artifacts.** Use `artifact_claim` for the files or other artifacts you\n   produced, linked to their task. Responsibility and provenance do not confer\n   permission to read or control another seat.\n\nPreserve the original operation ID for an explicit retry. If a tool result is\nunknown, query the original operation; do not automatically repeat a message,\nspawn, paste or Enter. Never expose `BBOXY_CAPABILITY`. Seat state, output silence,\nOSC 7501 and ordinary hooks do not by themselves prove composer readiness.\n\nHand off: files changed and their mechanism; commands and actual exit status;\nevidence per acceptance line; failures, gaps and things not checked; signed\ncommit SHA and worktree state. An Executor reports; the Oracle verifies.\n"
+-c
+mcp_servers.bboxy.command="/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0/debug/bboxy450-term"
+-c
+mcp_servers.bboxy.args=["mcp"]
+-c
+mcp_servers.bboxy.env_vars=["BBOXY_SOCK","BBOXY_CAPABILITY","BBOXY_SEAT_ID","BBOXY_GENERATION"]
+-c
+notify=["/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0/debug/bboxy450-term","hook","--agent","codex-notify"]
+-c
+hooks={SessionStart=[{hooks=[{type="command",command="'/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0/debug/bboxy450-term' hook --agent codex"}]}],SessionEnd=[{hooks=[{type="command",command="'/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0/debug/bboxy450-term' hook --agent codex"}]}],UserPromptSubmit=[{hooks=[{type="command",command="'/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0/debug/bboxy450-term' hook --agent codex"}]}],PreToolUse=[{hooks=[{type="command",command="'/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0/debug/bboxy450-term' hook --agent codex"}]}],PostToolUse=[{hooks=[{type="command",command="'/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0/debug/bboxy450-term' hook --agent codex"}]}],Stop=[{hooks=[{type="command",command="'/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0/debug/bboxy450-term' hook --agent codex"}]}],SubagentStart=[{hooks=[{type="command",command="'/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0/debug/bboxy450-term' hook --agent codex"}]}],SubagentStop=[{hooks=[{type="command",command="'/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0/debug/bboxy450-term' hook --agent codex"}]}],PreCompact=[{hooks=[{type="command",command="'/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0/debug/bboxy450-term' hook --agent codex"}]}],PostCompact=[{hooks=[{type="command",command="'/Users/feral/mydev/bboxy450-term-exec3/target/mcp-readiness-zkyjpv_0/debug/bboxy450-term' hook --agent codex"}]}]}
+resume
+fixture-codex-thread
+
+  left: 1
+ right: 2
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<usize, usize>
+   4: recovery::supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv::{closure#0}
+   5: <tokio::runtime::park::CachedParkThread>::block_on::<core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>
+   6: tokio::runtime::context::runtime::enter_runtime::<<tokio::runtime::scheduler::multi_thread::MultiThread>::block_on<core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>::{closure#0}, ()>
+   7: <tokio::runtime::runtime::Runtime>::block_on::<core::pin::Pin<&mut dyn core::future::future::Future<Output = ()>>>
+   8: <recovery::supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+
+failures:
+    supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv
+
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.70s
+
+error: test failed, to rerun pass `-p bboxy450-term --test recovery`
+EXIT 101 elapsed_seconds=328.184 PID=1045

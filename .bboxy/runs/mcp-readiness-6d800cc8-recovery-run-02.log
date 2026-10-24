@@ -1,0 +1,24 @@
+SOURCE 6d800cc80df38d985ec74f3d24a846dc6c852280
+COMMAND ['cargo', 'test', '-p', 'bboxy450-term', '--test', 'recovery', '--locked', 'supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv', '--', '--exact', '--nocapture']
+START 2026-10-24T06:38:09.855232+00:00
+WORKERS [17130, 17131, 17132, 17134, 17135, 17136, 17137, 17138]
+    Finished `test` profile [optimized] target(s) in 0.42s
+     Running tests/recovery.rs (target/mcp-readiness-zkyjpv_0/debug/deps/recovery-eeacdfa6a781cfc0)
+
+running 1 test
+logic worker exited: supervisor disconnected
+claude resume argv first read: 2, expected 2
+codex resume argv first read: 2, expected 2
+StaleGeneration: GUI request for seat 01M5PA355DMW2Q8PDKVMMY0TYR rejected: displayed generation 1, current 2; dropped=1
+StaleGeneration: GUI request for seat 01M5PA355DMW2Q8PDKVMMY0TYR rejected: displayed generation 1, current 2; dropped=2
+supervisor recovery: 3 stable seat IDs, gen1->2, zsh/Claude/Codex new PIDs; 100x30, retained screen, explicit gap, actual resume argv, post-restart echo; stale Input ID preserved, drops1/2 counted, stale input file absent, stale resize rejected at PTY30x100
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 2.57s
+
+
+EXIT 0 elapsed_seconds=3.085370
