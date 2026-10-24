@@ -1,0 +1,215 @@
+[
+  {
+    "method": "resolve",
+    "request": {
+      "locator": "#7"
+    },
+    "result": {
+      "id": "00000000000000000000000007",
+      "number": 7,
+      "slug": "brief",
+      "path": "tasks/brief.md",
+      "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  },
+  {
+    "method": "fetch",
+    "request": {
+      "ref": {
+        "id": "00000000000000000000000007",
+        "number": 7,
+        "slug": "brief",
+        "path": "tasks/brief.md",
+        "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "result": {
+      "id": "00000000000000000000000007",
+      "number": 7,
+      "slug": "brief",
+      "path": "tasks/brief.md",
+      "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "frontmatter": {
+        "id": "00000000000000000000000007",
+        "type": "task",
+        "number": 7,
+        "title": "Fixture brief",
+        "unknown_metadata": {
+          "kept": true
+        }
+      },
+      "body": "# Fixture\n\n![[images/pixel.png]]\n",
+      "etag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "resources": [
+        {
+          "uri": "file:///fixture/images/pixel.png",
+          "name": "pixel.png",
+          "mime_type": "image/png",
+          "size": 67
+        }
+      ]
+    }
+  },
+  {
+    "method": "search",
+    "request": {
+      "query": "fixture type:task",
+      "limit": 1
+    },
+    "result": {
+      "items": [
+        {
+          "ref": {
+            "id": "00000000000000000000000007",
+            "number": 7,
+            "slug": "brief",
+            "path": "tasks/brief.md",
+            "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "title": "Fixture brief",
+          "type": "task",
+          "number": 7,
+          "snippet": "# Fixture",
+          "score": 20.0
+        }
+      ],
+      "next": "opaque-search-next"
+    }
+  },
+  {
+    "method": "list",
+    "request": {
+      "filter": {
+        "type": "task"
+      },
+      "limit": 1
+    },
+    "result": {
+      "items": [
+        {
+          "id": "00000000000000000000000007",
+          "number": 7,
+          "slug": "brief",
+          "path": "tasks/brief.md",
+          "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "next": null
+    }
+  },
+  {
+    "method": "links",
+    "request": {
+      "ref": {
+        "id": "00000000000000000000000007",
+        "number": 7,
+        "slug": "brief",
+        "path": "tasks/brief.md",
+        "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "result": {
+      "outgoing": [
+        {
+          "from": "00000000000000000000000007",
+          "to": "00000000000000000000000008",
+          "rel": "depends",
+          "weight": 2.0
+        }
+      ],
+      "incoming": []
+    }
+  },
+  {
+    "method": "graph",
+    "request": {
+      "scope": {
+        "kind": "all",
+        "graph": "task"
+      },
+      "limit": 1
+    },
+    "result": {
+      "nodes": [
+        {
+          "id": "00000000000000000000000007",
+          "ref": {
+            "id": "00000000000000000000000007",
+            "number": 7,
+            "slug": "brief",
+            "path": "tasks/brief.md",
+            "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "title": "Fixture brief",
+          "type": "task"
+        }
+      ],
+      "edges": [],
+      "next": "opaque-graph-next",
+      "edges_truncated": false
+    }
+  },
+  {
+    "method": "write",
+    "request": {
+      "path": "tasks/brief.md",
+      "frontmatter": {
+        "id": "00000000000000000000000007",
+        "type": "task",
+        "number": 7,
+        "title": "Fixture brief",
+        "unknown_metadata": {
+          "kept": true
+        }
+      },
+      "body": "# Fixture\n\n![[images/pixel.png]]\n"
+    },
+    "result": {
+      "record": {
+        "id": "00000000000000000000000007",
+        "number": 7,
+        "slug": "brief",
+        "path": "tasks/brief.md",
+        "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "frontmatter": {
+          "id": "00000000000000000000000007",
+          "type": "task",
+          "number": 7,
+          "title": "Fixture brief",
+          "unknown_metadata": {
+            "kept": true
+          }
+        },
+        "body": "# Fixture\n\n![[images/pixel.png]]\n",
+        "etag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "resources": [
+          {
+            "uri": "file:///fixture/images/pixel.png",
+            "name": "pixel.png",
+            "mime_type": "image/png",
+            "size": 67
+          }
+        ]
+      },
+      "lossy": false
+    }
+  },
+  {
+    "method": "changes_since",
+    "request": {
+      "cursor": "opaque-change-cursor"
+    },
+    "result": {
+      "changed": [
+        {
+          "id": "00000000000000000000000007",
+          "number": 7,
+          "slug": "brief",
+          "path": "tasks/brief.md",
+          "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "next": "opaque-change-next"
+    }
+  }
+]
