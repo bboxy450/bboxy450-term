@@ -31,7 +31,7 @@ async fn start(root: &Path) -> Session {
     // Fixture binaries record actual argv, then act as PTY readers. No native
     // Claude/Codex session, account or approval store is touched.
     for harness in ["claude", "codex"] {
-        script(&root.join(harness), format!("#!/bin/sh\nprintf '%s\\n' \"$@\" >> '{}'\nprintf 'fixture-ready\\n'\nwhile IFS= read -r line; do printf 'fixture: %s\\n' \"$line\"; done\n", root.join(format!("{harness}-argv")).display())).await;
+        script(&root.join(harness), format!("#!/bin/sh\nwhile [ -e '{}' ]; do sleep 0.01; done\nprintf '%s\\n' \"$@\" >> '{}'\nprintf 'fixture-ready\\n'\nwhile IFS= read -r line; do printf 'fixture: %s\\n' \"$line\"; done\n", root.join(format!("{harness}-hold-argv")).display(), root.join(format!("{harness}-argv")).display())).await;
     }
     let executable = root.join("test-app");
     script(
@@ -403,6 +403,10 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
         cols: 77,
         rows: 7,
     };
+    // A spawned process can be reported before its fixture has published argv.
+    // Hold that child-side publication to exercise the observation race exactly.
+    let argv_hold = root.path().join("codex-hold-argv");
+    tokio::fs::write(&argv_hold, b"").await.unwrap();
     session.supervisor.start_kill().unwrap();
     let seats = restarted(&mut session).await;
     assert_eq!(seats.len(), 3);
@@ -444,6 +448,10 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
                 if first_count.is_none() {
                     first_count = Some(observed_count);
                     println!("{harness} resume argv first read: {observed_count}, expected 2");
+                    if harness == "codex" {
+                        assert_eq!(observed_count, 1, "fixture argv publication gate");
+                        tokio::fs::remove_file(&argv_hold).await.unwrap();
+                    }
                 }
                 if observed_count >= 2 {
                     return;
