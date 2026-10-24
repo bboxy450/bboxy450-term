@@ -112,6 +112,13 @@ enum Command {
         crate::mcp::Origin,
         oneshot::Sender<Result<()>>,
     ),
+    CtlRestart(
+        Ulid,
+        u64,
+        Ulid,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<()>>,
+    ),
     CtlRecord(
         Ulid,
         String,
@@ -670,6 +677,22 @@ impl LogicClient {
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await
             .map_err(|_| self.unavailable("rename outcome unknown"))?
+    }
+    /// Restart a seat through the ctl door: stop its process, relaunch the next generation.
+    pub async fn ctl_restart(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        op: Ulid,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::CtlRestart(seat, generation, op, origin, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await
+            .map_err(|_| self.unavailable("restart outcome unknown"))?
     }
     /// Journals a ctl operation whose effect happens in the window (a relay), so it is
     /// recorded and audited like every other ctl op.
@@ -1487,6 +1510,8 @@ struct Worker {
     knowledge_fixture: Option<Arc<dyn DataSource + Send + Sync>>,
     checkpoint_policy: CheckpointPolicy,
     checkpoint_saves: Saves,
+    /// Seats `ctl seat restart` stopped, by the generation that is exiting.
+    restarts: BTreeMap<Ulid, u64>,
     checkpoint_images: BTreeMap<Ulid, CheckpointImage>,
     checkpoint_completion: Option<std::sync::mpsc::Receiver<CheckpointCompletion>>,
     checkpoint_cursor: Option<Ulid>,
@@ -1578,6 +1603,7 @@ impl Worker {
             knowledge_fixture: None,
             checkpoint_policy,
             checkpoint_saves: Saves::new(checkpoint_policy),
+            restarts: BTreeMap::new(),
             checkpoint_images: BTreeMap::new(),
             checkpoint_completion: None,
             checkpoint_cursor: None,
@@ -3420,40 +3446,66 @@ impl Worker {
         self.spawn(record, plan.spec)
     }
     fn recover_seats(&mut self) -> Result<()> {
-        for mut record in self.registry.list()? {
+        for record in self.registry.list()? {
             if record.location != crate::registry::Location::Local
                 || record.lifecycle != Lifecycle::Open
                 || self.views.contains_key(&record.id)
             {
                 continue;
             }
+            let store = SqliteStore::open(&object_dir(
+                &self.config.run_dir,
+                &format!("seat-{}", record.id),
+            )?)?;
+            if store.get("process_running")?.as_deref() != Some(b"1")
+                || store.get("recovery_launch")?.is_none()
+            {
+                continue;
+            }
+            self.relaunch(record)?;
+        }
+        Ok(())
+    }
+    /// The next process generation of a seat whose process is gone (#11): its committed
+    /// ring replayed as the restored screen with the gap named, a harness seat resumed by
+    /// its session id, any other seat a fresh zsh.
+    fn relaunch(&mut self, mut record: SeatRecord) -> Result<()> {
+        {
             let root = object_dir(&self.config.run_dir, &format!("seat-{}", record.id))?;
             let store = SqliteStore::open(&root)?;
-            if store.get("process_running")?.as_deref() != Some(b"1") {
-                continue;
-            }
-            let Some(bytes) = store.get("recovery_launch")? else {
-                continue;
-            };
+            let bytes = store.get("recovery_launch")?.ok_or_else(|| {
+                invalid(format!(
+                    "RecoveryUnavailable: seat {} has no launch context",
+                    record.id
+                ))
+            })?;
             let context: RecoveryLaunch = serde_json::from_slice(&bytes)?;
             let previous = record.generation;
-            let ring_root = root.join(format!("ring-{previous}"));
-            // The old supervisor is already reaped. Reopening its ring rejects
-            // torn/uncommitted suffixes and replays only durable capture.
-            if !ring_root.join("committed").is_file() && !ring_root.join("previous").is_file() {
-                return Err(invalid(format!(
-                    "RecoveryUnavailable: seat {} has no committed predecessor generation {previous}",
-                    record.id
-                )));
-            }
-            let mut state = crate::ring::Ring::open(
-                &ring_root,
-                record.id,
-                previous,
-                0,
-                self.config.ring.clone(),
-            )?
-            .replay()?;
+            let mut state = if let Some(view) = self.views.get(&record.id) {
+                // A restart under a live supervisor: it still holds this generation's ring,
+                // so logic's own playback of it is the restored screen, never a second
+                // writer on that ring.
+                crate::ring::Playback::restore(view.state.saved())
+            } else {
+                let ring_root = root.join(format!("ring-{previous}"));
+                // The old supervisor is already reaped. Reopening its ring rejects
+                // torn/uncommitted suffixes and replays only durable capture.
+                if !ring_root.join("committed").is_file() && !ring_root.join("previous").is_file()
+                {
+                    return Err(invalid(format!(
+                        "RecoveryUnavailable: seat {} has no committed predecessor generation {previous}",
+                        record.id
+                    )));
+                }
+                crate::ring::Ring::open(
+                    &ring_root,
+                    record.id,
+                    previous,
+                    0,
+                    self.config.ring.clone(),
+                )?
+                .replay()?
+            };
             let retained = format!(
                 "generation {previous}, committed through capture sequence {} ({} bytes)",
                 state.sequence, state.byte_end
@@ -3514,6 +3566,48 @@ impl Worker {
             )?;
         }
         Ok(())
+    }
+    /// `ctl seat restart` (Oracle ruling, 2026-10-24): a live seat's process is stopped
+    /// (SIGHUP, SIGKILL after 250 ms) and relaunched when its exit lands; an exited seat
+    /// relaunches at once. Journaled once per op id; `generation` is the one the caller saw.
+    fn ctl_restart(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        op: Ulid,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        let args = serde_json::json!({"seat":id,"generation":generation});
+        self.ctl_journaled(op, "seat_restart", args, origin, |this| {
+            let record = this.registry.get(id)?;
+            if record.generation != generation {
+                return Err(invalid(format!(
+                    "StaleGeneration: seat {id} is at generation {}",
+                    record.generation
+                )));
+            }
+            if record.location != crate::registry::Location::Local
+                || record.lifecycle != Lifecycle::Open
+            {
+                return Err(invalid("only an open local seat restarts"));
+            }
+            let store =
+                SqliteStore::open(&object_dir(&this.config.run_dir, &format!("seat-{id}"))?)?;
+            if store.get("process_running")?.as_deref() != Some(b"1") {
+                return this.relaunch(record);
+            }
+            let attachment = this
+                .attachments
+                .get(&id)
+                .ok_or_else(|| invalid("seat not attached"))?
+                .clone();
+            this.restarts.insert(id, generation);
+            let stopped = this.request_for_seat(id, Action::Kill { attachment });
+            if stopped.is_err() {
+                this.restarts.remove(&id);
+            }
+            stopped.map(|_| ())
+        })
     }
     fn spawn(&mut self, record: SeatRecord, spec: LaunchSpec) -> Result<SeatInfo> {
         crate::adapters::validate_role(&record.harness_kind, &record.role)?;
@@ -4194,6 +4288,16 @@ impl Worker {
             self.views.get_mut(&id).unwrap().native_reader = None;
             self.views.get_mut(&id).unwrap().replies.clear();
             self.cleanup_overlay(id)?;
+            if self.restarts.get(&id) == Some(&generation) {
+                self.restarts.remove(&id);
+                if let Err(error) = self
+                    .registry
+                    .get(id)
+                    .and_then(|record| self.relaunch(record))
+                {
+                    eprintln!("seat {id} restart failed after its exit: {error}");
+                }
+            }
         }
         if !self.checkpoint_saves.active() {
             self.flush_protocol_replies(id)?;
@@ -5581,6 +5685,10 @@ impl Worker {
                     }
                     Command::CtlRename(id, name, op, origin, reply) => {
                         let result = self.ctl_rename(id, name, op, origin);
+                        let _ = reply.send(result);
+                    }
+                    Command::CtlRestart(id, generation, op, origin, reply) => {
+                        let result = self.ctl_restart(id, generation, op, origin);
                         let _ = reply.send(result);
                     }
                     Command::CtlRecord(op, tool, args, origin, reply) => {

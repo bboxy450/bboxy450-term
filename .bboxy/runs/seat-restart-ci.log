@@ -1,0 +1,18 @@
+# seat-restart checks, 2026-10-24T22:02:56Z
+## workspace (cargo test --workspace --no-fail-fast)
+passed=1215 failed=0 exit 0
+## clippy, ctl tests, invariants (RUSTC_WRAPPER= for the sccache stall)
+clippy=0
+ctl=0
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.90s
+inv=0
+invariants: 22 checks, 0 failures, 9 slow checks skipped
+
+[exited with code 0]
+## restart test x6 in parallel
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 2.74s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 2.79s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 2.78s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 2.79s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 2.78s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 2.71s

@@ -40,6 +40,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   seat screen <seat> --cells | --scrollback FROM..TO   styled runs, or history rows
   seat resize <seat> <cols>x<rows>
   seat rename <seat> <name>
+  seat restart <seat>                     stop the seat's process and start its next generation
   seat focus <seat>                       the window focuses it
   seat watch <seat> [--timeout MS]        state and screen changes as event lines, then done
   message send (<seat|destination> | --reply-to ID) <text> [--swarm ID]
@@ -159,6 +160,10 @@ pub enum Command {
         seat: String,
         name: String,
     },
+    /// `seat restart <seat>`: the seat's next process generation.
+    Restart {
+        seat: String,
+    },
     /// `seat focus <seat>`: the window focuses it.
     Focus {
         seat: String,
@@ -242,6 +247,7 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("seat", "watch", "EventsRead"),
     ("seat", "rename", "RenameSeat"),
     ("seat", "focus", "FocusSeat"),
+    ("seat", "restart", "RestartSeat"),
     ("seat", "capture", "Capture"),
     ("message", "send", "Messaging"),
     ("message", "post", "Messaging"),
@@ -412,6 +418,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             name: name.into(),
         },
         ["seat", "focus", seat] => Command::Focus { seat: seat.into() },
+        ["seat", "restart", seat] => Command::Restart { seat: seat.into() },
         ["seat", "watch", seat] => Command::Watch {
             seat: seat.into(),
             timeout: Duration::from_millis(
@@ -1240,6 +1247,7 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
         }
         Command::Watch { .. }
         | Command::Rename { .. }
+        | Command::Restart { .. }
         | Command::Focus { .. }
         | Command::Send { .. }
         | Command::Ack { .. }
@@ -1546,6 +1554,20 @@ fn run_verb(
                 |r| matches!(r, GuiReply::Ok { op: o } if *o == op),
             )?;
             json!({ "seat": seat, "name": name })
+        }
+        Command::Restart { seat } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.clone();
+            let op = client.mint();
+            client.call(
+                Some(op),
+                GuiAction::RestartSeat {
+                    id: op,
+                    seat: seat.id,
+                    generation: seat.generation,
+                },
+                |r| matches!(r, GuiReply::Ok { op: o } if *o == op),
+            )?;
+            json!({ "seat": seat.id, "from_generation": seat.generation })
         }
         Command::Focus { seat } => {
             let seat = resolve(&client.seats()?, &seat)?.record.id;
@@ -2023,6 +2045,11 @@ mod tests {
                 id,
                 args: json!({}),
             },
+            GuiAction::RestartSeat {
+                id,
+                seat: id,
+                generation: 1,
+            },
         ];
         let kinds: Vec<String> = samples
             .iter()
@@ -2064,6 +2091,7 @@ mod tests {
             "seat watch s",
             "seat rename s n",
             "seat focus s",
+            "seat restart s",
             "seat resize s 80x24",
         ] {
             let parsed = parse_full(&args(line)).unwrap_or_else(|e| panic!("{line}: {e}"));
@@ -2072,7 +2100,7 @@ mod tests {
                 .unwrap_or_else(|| panic!("{line}: not a table verb"));
             assert!(line.starts_with(&format!("{noun} {verb}")));
         }
-        assert_eq!(VERBS.len(), 24, "a new verb needs a parse line above");
+        assert_eq!(VERBS.len(), 25, "a new verb needs a parse line above");
     }
     #[test]
     fn errors_name_a_kind_a_hint_and_an_exit() {

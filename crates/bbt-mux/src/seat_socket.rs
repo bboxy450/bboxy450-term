@@ -559,7 +559,7 @@ async fn gui_session(
                         continue;
                     }
                     let op=match &request.action {
-                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}=>*id,
+                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
@@ -655,6 +655,10 @@ async fn gui_session(
                             }
                             GuiAction::RenameSeat {id,seat,name}=> {
                                 client.ctl_rename(seat,name,id,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
+                                Ok(GuiReply::Ok {op:id})
+                            }
+                            GuiAction::RestartSeat {id,seat,generation}=> {
+                                client.ctl_restart(seat,generation,id,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
                                 Ok(GuiReply::Ok {op:id})
                             }
                             GuiAction::FocusSeat {id,seat}=> {

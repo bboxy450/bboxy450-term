@@ -1599,3 +1599,91 @@ async fn ctl_task_create_opens_an_unassigned_operator_task() {
     assert_eq!(code, Some(2));
     session.shutdown().await.unwrap();
 }
+
+/// `seat restart`: a live zsh seat's process stops and its next generation starts, the
+/// committed screen restored (or its gap marked) and a fresh shell answering.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ctl_seat_restart_starts_the_next_generation() {
+    let root = tempfile::tempdir().unwrap();
+    let root = root.path().canonicalize().unwrap();
+    let (session, run, seat) = noun_verb_fixture(&root).await;
+    let json =
+        |text: &str| -> Value { serde_json::from_str(text.lines().next().unwrap()).unwrap() };
+    let screen = |human: bool| {
+        let args: &[&str] = if human {
+            &["seat", "screen", &seat, "--human"]
+        } else {
+            &["seat", "screen", &seat]
+        };
+        ctl_raw(&run, &root, args).1
+    };
+    let marker = |text: &str, tag: &str| {
+        text.lines()
+            .filter_map(|l| l.strip_prefix(&format!("{tag}-")))
+            .rfind(|pid| pid.chars().all(|c| c.is_ascii_digit()) && !pid.is_empty())
+            .map(str::to_owned)
+    };
+    for line in [
+        vec!["seat", "type", &seat, "echo before-$$"],
+        vec!["seat", "key", &seat, "enter"],
+    ] {
+        assert_eq!(ctl_raw(&run, &root, &line).0, Some(0));
+    }
+    let (code, out, _) = ctl_raw(
+        &run,
+        &root,
+        &[
+            "seat",
+            "wait",
+            &seat,
+            "--text",
+            "(?m)^before-[0-9]+$",
+            "--timeout",
+            "20000",
+        ],
+    );
+    assert_eq!(code, Some(0), "{out}");
+    let before = marker(&screen(true), "before").unwrap();
+    let generation = json(&screen(false))["data"]["generation"].as_u64().unwrap();
+
+    let (code, out, _) = ctl_raw(&run, &root, &["seat", "restart", &seat]);
+    assert_eq!(code, Some(0), "{out}");
+    assert_eq!(json(&out)["data"]["from_generation"], generation);
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while json(&screen(false))["data"]["generation"].as_u64() != Some(generation + 1) {
+        assert!(
+            Instant::now() < deadline,
+            "no generation {}",
+            generation + 1
+        );
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+    let restored = screen(true);
+    assert!(
+        restored.contains(&format!("before-{before}")) || restored.contains("[gap "),
+        "{restored}"
+    );
+    for line in [
+        vec!["seat", "type", &seat, "echo after-$$"],
+        vec!["seat", "key", &seat, "enter"],
+    ] {
+        assert_eq!(ctl_raw(&run, &root, &line).0, Some(0));
+    }
+    let (code, out, _) = ctl_raw(
+        &run,
+        &root,
+        &[
+            "seat",
+            "wait",
+            &seat,
+            "--text",
+            "(?m)^after-[0-9]+$",
+            "--timeout",
+            "20000",
+        ],
+    );
+    assert_eq!(code, Some(0), "{out}");
+    let after = marker(&screen(true), "after").unwrap();
+    assert_ne!(after, before, "a fresh shell answers");
+    session.shutdown().await.unwrap();
+}

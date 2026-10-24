@@ -160,6 +160,13 @@ pub enum GuiAction {
         seat: Ulid,
         name: String,
     },
+    /// Restart a seat (ctl `seat restart`): stop the process of `generation` and relaunch
+    /// the next one, as recovery does; harness seats resume by session id.
+    RestartSeat {
+        id: Ulid,
+        seat: Ulid,
+        generation: u64,
+    },
     /// Focus a seat in the window (ctl-cli §1a): relayed to the window, which focuses it as
     /// its own row click does.
     FocusSeat {
