@@ -1,0 +1,68 @@
+1:  c7967a69 ! 1:  a9891668 Checkpoint knowledge search and per-class signed write policy
+    @@ crates/bbt-mux/tests/mcp.rs: fn mcp_knowledge_refuses_outside_paths_forged_autho
+              )["error"]["code"],
+              -32602
+          );
+    -@@ crates/bbt-mux/tests/mcp.rs: fn mcp_knowledge_post_commit_failure_is_unknown_and_never_recreates_a_deleted_fi
+    -         1
+    +@@ crates/bbt-mux/tests/mcp.rs: fn d264_a_refused_send_is_stored_nowhere() {
+    +             .any(|text| text.contains("refused payload"))
+          );
+      }
+    -+
+     +fn knowledge_record_args(path: &str, kind: &str, body: &str) -> Value {
+     +    json!({"path":path,"frontmatter":{"type":kind,"title":format!("{kind} knowledge fixture"),"custom":{"preserved":true}},"body":body})
+     +}
+2:  6a0ad847 = 2:  de80947e Mint MCP operation IDs and name conflicting retries (#266)
+3:  04efbeaf = 3:  1084714e Explain MCP list scope and inbox count basis (#266)
+4:  996ee429 = 4:  276e5ce8 Align accepted knowledge bridge with minted MCP IDs (#266)
+5:  9224922a = 5:  6e37d434 Derive decision names under allocation lock and scope knowledge search
+
+{
+  "from": "9224922a",
+  "to": "6e37d434",
+  "comparisons": [
+    {
+      "path": "crates/bbt-mux/src/index.rs",
+      "scope": "whole file",
+      "equal": true,
+      "sha256": "5e1a1674850dc72a79b7a571e2d6d198981a6d1c779f487fcfaa6d13f6f12c86"
+    },
+    {
+      "path": "crates/bbt-mux/src/knowledge/bboxy.rs",
+      "scope": "whole file",
+      "equal": true,
+      "sha256": "77ffe6554087bf2374b3ffe061a1c65a83d399549ce854479436c7b69f4f15e7"
+    },
+    {
+      "path": "crates/bbt-mux/src/mcp/knowledge.rs",
+      "scope": "whole file",
+      "equal": true,
+      "sha256": "bbd7c7d46f11214c482a33248f5ef7067483e2afa98eb7176e98f7c954aaaad2"
+    },
+    {
+      "path": "crates/bbt-mux/src/mcp/work_items.rs",
+      "scope": "whole file",
+      "equal": true,
+      "sha256": "635471a7ba5ea725843781f78f3c5bc2f609cee086e8a035a587f77073d8d440"
+    },
+    {
+      "path": "crates/bbt-mux/tests/knowledge.rs",
+      "scope": "whole file",
+      "equal": true,
+      "sha256": "62e2618add815001f2d88b5f52afd669b290e8e9b44c3d0a34af941293da0789"
+    },
+    {
+      "path": "crates/bbt-mux/src/logic.rs",
+      "scope": "    fn knowledge_call( until     fn control_work_item(",
+      "equal": true,
+      "sha256": "ace30d26ccfce1720bebff40836fde034a5f9658987ba216d81f755e4ff3913b"
+    },
+    {
+      "path": "crates/bbt-mux/tests/mcp.rs",
+      "scope": "fn mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check() until \n#[test]",
+      "equal": true,
+      "sha256": "0785dfd47ebf60f63d65cf26242a5365e82687eba34148a353f94d8ce823a458"
+    }
+  ]
+}
