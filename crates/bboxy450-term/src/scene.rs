@@ -157,6 +157,9 @@ fn named<'a>(layout: &'a c::Layout, name: &str) -> Option<&'a c::Layout> {
 
 pub struct Scene {
     hosts: Vec<bbt_proto::GuiHost>,
+    closed: Vec<(SeatId, Instant, String, String)>,
+    layout_revision: u64,
+    swarms: Vec<bbt_ui_model::Swarm>,
     pub seats: Vec<SeatRow>,
     tasks: Vec<(SeatId, String, ui::modules::seat_row::TaskRow, Option<i32>)>,
     tree: Option<SplitNode>,
@@ -297,6 +300,9 @@ impl Scene {
         Self {
             seats,
             tasks: vec![],
+            closed: vec![],
+            layout_revision: 0,
+            swarms: vec![],
             tree: Some(tree(&fixture["tree"])),
             seat_index: (0..15).map(|i| (SeatId::from_u128(i as u128), i)).collect(),
             focused: Some(SeatId::from_u128(0)),
@@ -359,6 +365,9 @@ impl Scene {
     }
     /// Whether any swell or attention loop still needs frames at `now`.
     pub fn animating(&self, now: Instant) -> bool {
+        if self.closed.iter().any(|(_, until, _, _)| now < *until) {
+            return true;
+        }
         if !self.glow {
             return false;
         }
@@ -386,6 +395,9 @@ impl Scene {
         Self {
             seats: vec![],
             tasks: vec![],
+            closed: vec![],
+            layout_revision: 0,
+            swarms: vec![],
             tree: None,
             seat_index: HashMap::new(),
             focused: None,
@@ -406,6 +418,7 @@ impl Scene {
     pub fn set_model(&mut self, model: &bboxy450_term::model::Model, stage: &Stage) {
         self.identity = model.identity.clone();
         self.hosts = model.hosts.clone();
+        self.swarms = model.ui.window.sidebar.swarms.clone();
         self.attention.clear();
         for (seat, state) in &model.attention {
             self.set_attention(*seat, Some((state.since, state.muted)));
@@ -425,20 +438,38 @@ impl Scene {
             .iter()
             .flat_map(|swarm| &swarm.tabs)
             .find(|tab| Some(tab.id) == stage.tab);
-        self.tree = tab.map(|tab| tab.tree.clone());
+        let tree = tab.map(|tab| tab.tree.clone());
+        if self.tree != tree {
+            self.layout_revision = self.layout_revision.saturating_add(1);
+        }
+        self.tree = tree;
+        self.closed = model
+            .ui
+            .window
+            .sidebar
+            .swarms
+            .iter()
+            .flat_map(|s| &s.closed)
+            .filter_map(|c| {
+                let seat = model.ui.seats.get(&c.seat)?;
+                Some((c.seat, c.until, seat.name.clone(), seat.harness.0.clone()))
+            })
+            .collect();
         // Stage is owned by the UI input adapter. Scene only projects it.
         self.focused = stage.focused;
         self.seat_index = model
             .ui
             .seats
-            .keys()
+            .iter()
+            .filter(|(_, s)| s.lifecycle == bbt_ui_model::Lifecycle::Open)
             .enumerate()
-            .map(|(i, id)| (*id, i))
+            .map(|(i, (id, _))| (*id, i))
             .collect();
         self.seats = model
             .ui
             .seats
             .iter()
+            .filter(|(_, s)| s.lifecycle == bbt_ui_model::Lifecycle::Open)
             .map(|(id, seat)| {
                 let mut row = SeatRow::new(id.to_string(), &seat.name, &seat.harness.0);
                 row.role = seat
@@ -472,6 +503,64 @@ impl Scene {
                 row
             })
             .collect();
+    }
+    pub fn close_intent(
+        &self,
+        model: &bboxy450_term::model::Model,
+        seat: SeatId,
+        operation: bbt_mux::Ulid,
+        now: Instant,
+    ) -> Result<bboxy450_term::close::Intent, bbt_ui_model::EditError> {
+        let (si, ti) = model
+            .ui
+            .tab_of(seat)
+            .ok_or(bbt_ui_model::EditError::MissingTab)?;
+        let tab = &model.ui.window.sidebar.swarms[si].tabs[ti];
+        let tree = self
+            .tree
+            .as_ref()
+            .filter(|tree| tree.leaves().contains(&seat))
+            .unwrap_or(&tab.tree);
+        bboxy450_term::close::Intent::prepare(
+            &model.ui,
+            tab.id,
+            tree,
+            seat,
+            self.layout_revision,
+            operation,
+            now,
+        )
+    }
+    /// Retained hit boxes: never a guessed strip/pane coordinate.
+    pub fn close_regions(&self, layouts: &[c::Layout]) -> Vec<(SeatId, Rect, bool)> {
+        let mut out = vec![];
+        for (id, layout) in self
+            .tree
+            .as_ref()
+            .map(SplitNode::leaves)
+            .unwrap_or_default()
+            .into_iter()
+            .zip(layouts.iter().skip(2))
+        {
+            if let Some(rect) = named(layout, "pane/strip/close").map(|layout| layout.rect) {
+                out.push((id, rect, false));
+            }
+        }
+        fn undo(layout: &c::Layout, id: SeatId) -> Option<Rect> {
+            if matches!(&layout.kind,c::LayoutKind::Named(name) if name.ends_with(&format!("closed/{id}/undo")))
+            {
+                return Some(layout.rect);
+            }
+            layout.children.iter().find_map(|child| undo(child, id))
+        }
+        if let Some(sidebar) = layouts.get(1) {
+            for (id, _, _, _) in &self.closed {
+                if let Some(rect) = undo(sidebar, *id) {
+                    out.push((*id, rect, true));
+                }
+            }
+        }
+        out
     }
     pub fn focused(&self) -> Option<SeatId> {
         self.focused
@@ -652,6 +741,41 @@ impl Scene {
             (size[0] - sidebar_width).max(1.),
             (size[1] - title).max(1.),
         );
+        let card_style = ui::Style::new(ui::Preset::SwarmCard)
+            .resolve(ctx)
+            .map_err(|e| e.to_string())?;
+        let row_style = ui::Style::new(ui::Preset::CardRow)
+            .resolve(ctx)
+            .map_err(|e| e.to_string())?;
+        let strip_width = (sidebar_width
+            - 2. * STYLE.spacing.s3 as f32
+            - STYLE.material.hairline_px as f32
+            - TOKENS.sidebar.edge as f32
+            - card_style.padding[1]
+            - card_style.padding[3]
+            - row_style.margin[1]
+            - row_style.margin[3])
+            .max(1.);
+        let mut extra: Vec<_> = if self.tree.is_none() {
+            seats.iter().map(|s| s.element_in_swarm(ctx)).collect()
+        } else {
+            vec![]
+        };
+        extra.extend(
+            self.closed
+                .iter()
+                .filter(|(_, until, _, _)| now < *until)
+                .map(|(id, until, name, harness)| {
+                    ui::modules::closed_strip::ClosedStrip {
+                        key: id.to_string(),
+                        name: name.clone(),
+                        harness: harness.clone(),
+                        remaining_ms: until.saturating_duration_since(now).as_millis() as u64,
+                        grace_ms: bboxy450_term::close::GRACE.as_millis() as u64,
+                    }
+                    .element(ctx, &self.metrics, strip_width)
+                }),
+        );
         let card = SwarmCard {
             key: "swarm".into(),
             name: "swarm".into(),
@@ -662,14 +786,7 @@ impl Scene {
             unfocused: false,
             body: true,
             new_seat: true,
-            extra: if self.tree.is_none() {
-                seats
-                    .iter()
-                    .map(|seat| seat.element_in_swarm(ctx))
-                    .collect()
-            } else {
-                vec![]
-            },
+            extra,
             shadows: vec![],
             tabs: self
                 .tree
@@ -695,7 +812,64 @@ impl Scene {
                 })
                 .unwrap_or_default(),
         };
-        let mut cards = vec![card];
+        let mut cards = if !self.live || self.swarms.is_empty() {
+            vec![card]
+        } else {
+            self.swarms
+                .iter()
+                .map(|swarm| {
+                    let mut view = card.clone();
+                    view.key = swarm.id.to_string();
+                    view.name = swarm.name.clone();
+                    view.seats = swarm
+                        .tabs
+                        .iter()
+                        .flat_map(|tab| &tab.seats)
+                        .filter_map(|id| self.seat_index.get(id).map(|i| seats[*i].clone()))
+                        .collect();
+                    view.tabs = swarm
+                        .tabs
+                        .iter()
+                        .map(|tab| TabRow {
+                            name: tab.name.clone(),
+                            shortcut: tab.shortcut.map(|n| format!("⌘{n}")),
+                            tree: self.mini(&tab.tree),
+                            seats: tab
+                                .seats
+                                .iter()
+                                .filter_map(|id| {
+                                    self.seat_index.get(id).map(|i| TabSeat {
+                                        row: seats[*i].clone(),
+                                        children: self.task_children(&seats[*i], ctx),
+                                    })
+                                })
+                                .collect(),
+                            expanded: tab.expanded,
+                            focused_key: self.focused.map(|id| id.to_string()),
+                        })
+                        .collect();
+                    view.extra = self
+                        .closed
+                        .iter()
+                        .filter(|(id, until, _, _)| {
+                            now < *until && swarm.closed.iter().any(|c| c.seat == *id)
+                        })
+                        .map(|(id, until, name, harness)| {
+                            ui::modules::closed_strip::ClosedStrip {
+                                key: id.to_string(),
+                                name: name.clone(),
+                                harness: harness.clone(),
+                                remaining_ms: until.saturating_duration_since(now).as_millis()
+                                    as u64,
+                                grace_ms: bboxy450_term::close::GRACE.as_millis() as u64,
+                            }
+                            .element(ctx, &self.metrics, strip_width)
+                        })
+                        .collect();
+                    view
+                })
+                .collect()
+        };
         cards.extend(bboxy450_term::hosts::sidebar_cards(&self.hosts));
         let sidebar = Sidebar {
             cards,
@@ -1896,6 +2070,42 @@ mod launcher_tests {
         }
         labels(&page.layout, &mut text);
         assert!(text.contains("not yet applied to the window"));
+    }
+    #[test]
+    fn t7_close_and_undo_hits_are_the_actual_retained_buttons() {
+        let mut records: Vec<_> = (1..=3)
+            .map(|id| {
+                bbt_proto::SeatRecord::new(bbt_mux::Ulid(id), bbt_mux::Ulid(4), "fixture", "zsh")
+            })
+            .collect();
+        let grids = bboxy450_term::grids::Grids::new();
+        let mut model = bboxy450_term::model::build(&records, &grids, &Default::default());
+        let victim = SeatId::from_u128(3);
+        let mut scene = Scene::live();
+        scene.set_model(&model, &model.ui.window.stage);
+        let layouts = scene.layout([1000., 640.], false).unwrap();
+        let hits = scene.close_regions(&layouts);
+        assert_eq!(hits.iter().filter(|(_, _, undo)| !*undo).count(), 3);
+        assert!(hits.iter().all(|(_, r, _)| r.w > 0. && r.h > 0.));
+        let intent = scene
+            .close_intent(&model, victim, bbt_mux::Ulid(9), Instant::now())
+            .unwrap();
+        records[2].lifecycle = bbt_proto::registry::Lifecycle::ClosedGrace;
+        records[2].close = Some(bbt_proto::registry::CloseRecord {
+            operation: intent.operation,
+            revision: 1,
+            deadline_ms: bbt_mux::store::now_ms() + 60_000,
+            position: intent.position.clone(),
+        });
+        model.closes.register(intent).unwrap();
+        let model = bboxy450_term::model::build(&records, &grids, &model);
+        scene.set_model(&model, &model.ui.window.stage);
+        let layouts = scene.layout([1000., 640.], false).unwrap();
+        let hits = scene.close_regions(&layouts);
+        assert_eq!(hits.iter().filter(|(_, _, undo)| !*undo).count(), 2);
+        let undos: Vec<_> = hits.iter().filter(|(_, _, undo)| *undo).collect();
+        assert_eq!(undos.len(), 1);
+        assert_eq!(undos[0].0, victim);
     }
 }
 

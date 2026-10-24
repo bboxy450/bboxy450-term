@@ -561,7 +561,7 @@ async fn gui_session(
                     let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
                     let op=match &request.action {
                         GuiAction::App {id,..}|GuiAction::AppReply {id,..}=>*id,
-                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}=>*id,
+                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
@@ -671,6 +671,14 @@ async fn gui_session(
                             }
                             GuiAction::RestartSeat {id,seat,generation}=> {
                                 client.ctl_restart(seat,generation,id,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
+                                Ok(GuiReply::Ok {op:id})
+                            }
+                            action @ (GuiAction::CloseSeat {..}|GuiAction::UndoCloseSeat {..})=> {
+                                let (id,seat,undo)=match action { GuiAction::CloseSeat {id,seat}=>(id,seat,false),GuiAction::UndoCloseSeat {id,seat}=>(id,seat,true),_=>unreachable!() };
+                                client.record(seat).await?;
+                                if !client.captures.attached() {return Err(invalid("no window is attached to close or undo"));}
+                                client.ctl_record(id,if undo {"seat_undo_close"} else {"seat_close"},serde_json::json!({"seat":seat}),crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
+                                client.captures.close(id,bbt_proto::SeatId::from_u128(seat.0),undo).map_err(invalid)?;
                                 Ok(GuiReply::Ok {op:id})
                             }
                             GuiAction::FocusSeat {id,seat}=> {

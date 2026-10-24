@@ -36,6 +36,14 @@ pub(crate) enum Notice {
         seat: bbt_proto::SeatId,
         spec: bbt_proto::SpawnSpec,
     },
+    Close {
+        op: Ulid,
+        seat: bbt_proto::SeatId,
+    },
+    UndoClose {
+        op: Ulid,
+        seat: bbt_proto::SeatId,
+    },
     Focus {
         op: Ulid,
         seat: bbt_proto::SeatId,
@@ -54,6 +62,8 @@ impl Notice {
             Self::Spawned { op, seat, spec } => {
                 bbt_proto::GuiReply::OperatorSpawned { op, seat, spec }
             }
+            Self::Close { op, seat } => bbt_proto::GuiReply::OperatorClose { op, seat },
+            Self::UndoClose { op, seat } => bbt_proto::GuiReply::OperatorUndoClose { op, seat },
             Self::Focus { op, seat } => bbt_proto::GuiReply::OperatorFocus { op, seat },
         }
     }
@@ -159,6 +169,22 @@ impl Captures {
             .send(Notice::Focus { op, seat })
             .map(drop)
             .map_err(|_| "no window is attached to focus".into())
+    }
+    /// The window derives Position and uses its ordinary close/undo controller.
+    pub(crate) fn close(
+        &self,
+        op: Ulid,
+        seat: bbt_proto::SeatId,
+        undo: bool,
+    ) -> Result<(), String> {
+        self.asks
+            .send(if undo {
+                Notice::UndoClose { op, seat }
+            } else {
+                Notice::Close { op, seat }
+            })
+            .map(drop)
+            .map_err(|_| "no window is attached to close or undo".into())
     }
     /// The window's answer; an id nobody waits for is ignored.
     pub(crate) fn answer(&self, id: Ulid, answer: Result<bbt_proto::gui::CaptureFrame, String>) {

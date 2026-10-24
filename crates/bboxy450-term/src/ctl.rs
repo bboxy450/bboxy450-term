@@ -43,6 +43,8 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   seat rename <seat> <name>
   seat restart <seat>                     stop the seat's process and start its next generation
   seat focus <seat>                       the window focuses it
+  seat close <seat>                       close in the window, with 60 s undo
+  seat undo-close <seat>                  restore the same PTY in its saved position
   seat watch <seat> [--timeout MS]        state and screen changes as event lines, then done
   message send (<seat|destination> | --reply-to ID) <text> [--swarm ID]
   message post <destination> <text> [--swarm ID]
@@ -234,6 +236,12 @@ pub enum Command {
         task: String,
     },
     /// `app endpoint`: the run directory, socket path and generation; never the capability.
+    Close {
+        seat: String,
+    },
+    UndoClose {
+        seat: String,
+    },
     AppEndpoint,
     /// Start the same app binary and wait for its GUI render-readiness line.
     AppStart {
@@ -263,6 +271,8 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("seat", "rename", "RenameSeat"),
     ("seat", "focus", "FocusSeat"),
     ("seat", "restart", "RestartSeat"),
+    ("seat", "close", "CloseSeat"),
+    ("seat", "undo-close", "UndoCloseSeat"),
     ("seat", "capture", "Capture"),
     ("message", "send", "Messaging"),
     ("message", "post", "Messaging"),
@@ -444,6 +454,8 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
         },
         ["seat", "focus", seat] => Command::Focus { seat: seat.into() },
         ["seat", "restart", seat] => Command::Restart { seat: seat.into() },
+        ["seat", "close", seat] => Command::Close { seat: seat.into() },
+        ["seat", "undo-close", seat] => Command::UndoClose { seat: seat.into() },
         ["seat", "watch", seat] => Command::Watch {
             seat: seat.into(),
             timeout: Duration::from_millis(
@@ -1305,6 +1317,8 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
         Command::Watch { .. }
         | Command::Rename { .. }
         | Command::Restart { .. }
+        | Command::Close { .. }
+        | Command::UndoClose { .. }
         | Command::Focus { .. }
         | Command::Send { .. }
         | Command::Ack { .. }
@@ -1661,6 +1675,25 @@ fn run_verb(
                 |r| matches!(r, GuiReply::Ok { op: o } if *o == op),
             )?;
             json!({ "seat": seat.id, "from_generation": seat.generation })
+        }
+        command @ (Command::Close { .. } | Command::UndoClose { .. }) => {
+            let (seat, undo) = match command {
+                Command::Close { seat } => (seat, false),
+                Command::UndoClose { seat } => (seat, true),
+                _ => unreachable!(),
+            };
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let op = client.mint();
+            client.call(
+                Some(op),
+                if undo {
+                    GuiAction::UndoCloseSeat { id: op, seat }
+                } else {
+                    GuiAction::CloseSeat { id: op, seat }
+                },
+                |r| matches!(r,GuiReply::Ok {op:o} if *o==op),
+            )?;
+            json!({"seat":seat,"relayed":true,"action":if undo {"undo-close"} else {"close"}})
         }
         Command::Focus { seat } => {
             let seat = resolve(&client.seats()?, &seat)?.record.id;
@@ -2104,6 +2137,8 @@ mod tests {
                 seat: id,
                 name: "n".into(),
             },
+            GuiAction::CloseSeat { id, seat: id },
+            GuiAction::UndoCloseSeat { id, seat: id },
             GuiAction::FocusSeat { id, seat: id },
             GuiAction::Input {
                 seat,
@@ -2187,6 +2222,8 @@ mod tests {
             "app endpoint",
             "seat watch s",
             "seat rename s n",
+            "seat close s",
+            "seat undo-close s",
             "seat focus s",
             "seat restart s",
             "seat resize s 80x24",

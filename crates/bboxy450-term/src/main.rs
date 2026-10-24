@@ -76,6 +76,11 @@ pub enum UiEvent {
     /// Focus a seat, asked through an operator door (`ctl seat focus`).
     FocusFor(SeatId),
     App(live::AppEvent),
+    CloseFor {
+        id: bbt_mux::Ulid,
+        seat: SeatId,
+        undo: bool,
+    },
     /// No frame was presented for this capture in time (occluded, or the display asleep).
     CaptureDeadline(bbt_mux::Ulid),
     StallPoll,
@@ -393,6 +398,7 @@ enum RoutedKey {
     OpenGraph,
     OpenSettings,
     MuteFocused,
+    UndoClose,
     SettingsKey(SettingsKey),
     LocalPage(PageCommand),
     ToggleHud,
@@ -570,6 +576,13 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
                 RoutedKey::Local
             } else {
                 RoutedKey::OpenSettings
+            };
+        }
+        if query.is_none() && physical == PhysicalKey::Code(KeyCode::KeyZ) {
+            return if repeat {
+                RoutedKey::Local
+            } else {
+                RoutedKey::UndoClose
             };
         }
         if physical == PhysicalKey::Code(KeyCode::KeyM) {
@@ -1260,6 +1273,7 @@ struct App {
     message_history: messaging::History,
     events_seen: Option<Arc<bboxy450_term::model::EventLane>>,
     task_regions: bbt_ui::modules::stream_dock::Regions,
+    close_regions: Vec<(SeatId, Rect, bool)>,
     reject: Option<(bbt_mux::Ulid, composer::RejectController)>,
     reject_report: Option<composer::Report>,
     reject_focus: bool,
@@ -1787,6 +1801,32 @@ impl App {
             self.composer_client.groups(),
             self.task_records.nodes(),
         );
+        if let Some(swarm) = self.live_state.as_ref().and_then(|m| {
+            m.ui.window
+                .sidebar
+                .swarms
+                .iter()
+                .find(|s| Some(s.id) == self.composer_scope)
+        }) {
+            self.conversation
+                .entries
+                .extend(swarm.stream.iter().filter_map(|item| {
+                    if let bbt_ui_model::StreamItem::Presence { text, time, .. } = item {
+                        Some(bbt_ui::modules::stream_dock::Entry::Message {
+                            data: Box::new(bbt_ui::modules::stream_dock::Message {
+                                text: text.clone(),
+                                time: time.clone(),
+                                presence: true,
+                                kind: Some("presence".into()),
+                                ..Default::default()
+                            }),
+                            show_channel: None,
+                        })
+                    } else {
+                        None
+                    }
+                }));
+        }
         self.conversation.entries.extend(
             self.task_records
                 .entries(model, self.reject.as_ref().map(|(id, r)| (*id, &r.view))),
@@ -2368,6 +2408,33 @@ impl App {
                 .write(format!("notification focused seat {seat}"));
         }
     }
+    fn close_seat(&mut self, seat: SeatId, id: bbt_mux::Ulid, undo: bool) {
+        let Some(model) = &self.live_state else {
+            return;
+        };
+        if undo {
+            match model.closes.undo_in(&model.ui, seat, Instant::now()) {
+                Ok(_) => self.queue(live::UiMsg::UndoClose { seat }),
+                Err(reason) => self
+                    .logger
+                    .write(format!("undo close {seat} refused: {reason}")),
+            }
+        } else {
+            match self.scene.close_intent(model, seat, id, Instant::now()) {
+                Ok(intent) => self.queue(live::UiMsg::Close(intent)),
+                Err(reason) => self.logger.write(format!("close {seat} refused: {reason}")),
+            }
+        }
+    }
+    fn undo_latest_close(&mut self) {
+        if let Some(seat) = self
+            .live_state
+            .as_ref()
+            .and_then(|m| m.closes.latest(Instant::now()))
+        {
+            self.close_seat(seat, bbt_mux::Ulid::new(), true);
+        }
+    }
     fn queue(&mut self, message: live::UiMsg) {
         if self.closing || self.live_commands.is_none() {
             return;
@@ -2768,6 +2835,19 @@ impl App {
                     .then_some((op, request.outcome.clone()))
                 })
                 .collect();
+            let restored = state.ui.window.stage.focused.filter(|id| {
+                self.live_state.as_ref().is_some_and(|old| {
+                    old.ui
+                        .seats
+                        .get(id)
+                        .zip(state.ui.seats.get(id))
+                        .is_some_and(|(a, b)| {
+                            matches!(a.lifecycle, bbt_ui_model::Lifecycle::ClosedGrace { .. })
+                                && b.lifecycle == bbt_ui_model::Lifecycle::Open
+                                && a.process_generation == b.process_generation
+                        })
+                })
+            });
             self.focus
                 .reconcile(self.live_state.as_ref().map(|old| &old.ui), &state.ui);
             if self.document.open && self.document_return.is_none() {
@@ -2797,6 +2877,9 @@ impl App {
             self.operation_backlog.extend(follow_up);
             self.composer_notice();
             self.live_state = Some(state);
+            if let Some(seat) = restored {
+                self.focus_action(FocusAction::Activate(seat, FocusOrigin::Keyboard));
+            }
             let records_changed = self
                 .task_records
                 .replies(&self.live_state.as_ref().unwrap().operation_results);
@@ -3021,6 +3104,7 @@ impl App {
         }
         let bounds = self.scene.pane_bounds(&layouts);
         self.task_regions = self.scene.task_regions(&layouts);
+        self.close_regions = self.scene.close_regions(&layouts);
         self.focus_bounds = self.scene.focus_bounds(&layouts);
         if let Some(model) = &self.live_state
             && self.local_tab.is_none()
@@ -3371,6 +3455,10 @@ impl ApplicationHandler<UiEvent> for App {
             UiEvent::DemoFinished => self.demo_finished = true,
             UiEvent::Capture => {
                 self.capture_pending = true;
+                self.request_redraw();
+            }
+            UiEvent::CloseFor { id, seat, undo } => {
+                self.close_seat(seat, id, undo);
                 self.request_redraw();
             }
             UiEvent::FocusFor(seat) => {
@@ -4102,6 +4190,17 @@ impl ApplicationHandler<UiEvent> for App {
                     self.conversation_reads(true);
                     return;
                 }
+                if let Some((seat, _, undo)) =
+                    self.close_regions.iter().copied().find(|(_, rect, _)| {
+                        self.pointer[0] >= rect.x
+                            && self.pointer[0] < rect.right()
+                            && self.pointer[1] >= rect.y
+                            && self.pointer[1] < rect.bottom()
+                    })
+                {
+                    self.close_seat(seat, bbt_mux::Ulid::new(), undo);
+                    return;
+                }
                 if let Some((id, _)) = self.focus_bounds.iter().find(|(_, rect)| {
                     self.pointer[0] >= rect.x
                         && self.pointer[0] < rect.right()
@@ -4269,6 +4368,7 @@ impl ApplicationHandler<UiEvent> for App {
                     RoutedKey::OpenSettings => self.open_settings("Account"),
                     RoutedKey::SettingsKey(key) => self.settings_key(key),
                     RoutedKey::MuteFocused => self.mute_focused(),
+                    RoutedKey::UndoClose => self.undo_latest_close(),
                     RoutedKey::LocalPage(command) => {
                         if self.document.open {
                             self.document_command(command);
@@ -4347,7 +4447,10 @@ const PENDING_OPERATIONS: usize = 32;
 fn is_operation(message: &live::UiMsg) -> bool {
     matches!(
         message,
-        live::UiMsg::Messaging { .. } | live::UiMsg::Task { .. }
+        live::UiMsg::Messaging { .. }
+            | live::UiMsg::Task { .. }
+            | live::UiMsg::Close(_)
+            | live::UiMsg::UndoClose { .. }
     )
 }
 
@@ -5210,6 +5313,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         message_history: messaging::History::default(),
         events_seen: None,
         task_regions: Default::default(),
+        close_regions: vec![],
         reject: None,
         reject_report: None,
         reject_focus: false,
@@ -5709,7 +5813,9 @@ mod input_tests {
                 | live::UiMsg::Scroll { .. }
                 | live::UiMsg::DocumentRead { .. }
                 | live::UiMsg::ConsumeDocument { .. } => {}
-                live::UiMsg::Messaging { .. }
+                live::UiMsg::Close(_)
+                | live::UiMsg::UndoClose { .. }
+                | live::UiMsg::Messaging { .. }
                 | live::UiMsg::Task { .. }
                 | live::UiMsg::EventPage { .. }
                 | live::UiMsg::EventCursor { .. }
@@ -7113,5 +7219,47 @@ mod composer_host_tests {
                 ..
             })
         ));
+    }
+    #[test]
+    fn t7_command_z_is_local_once_and_control_z_remains_terminal_input() {
+        let logical = Key::Character("z".into());
+        let press = test_key(
+            &logical,
+            PhysicalKey::Code(KeyCode::KeyZ),
+            Some("z"),
+            ModifiersState::SUPER,
+            false,
+        );
+        let mut keyboard = keyboard::State::default();
+        assert_eq!(
+            route_input(&mut keyboard, &press, 3 << 18, None),
+            RoutedKey::UndoClose
+        );
+        let mut repeat = press.clone();
+        repeat.repeat = true;
+        assert_eq!(
+            route_input(&mut keyboard, &repeat, 3 << 18, None),
+            RoutedKey::Local
+        );
+        let mut release = press.clone();
+        release.state = ElementState::Released;
+        assert_eq!(
+            route_input(&mut keyboard, &release, 3 << 18, None),
+            RoutedKey::Local
+        );
+        let control = test_key(
+            &logical,
+            PhysicalKey::Code(KeyCode::KeyZ),
+            Some("z"),
+            ModifiersState::CONTROL,
+            false,
+        );
+        assert_eq!(route_key(&control, 0, None), RoutedKey::Terminal(vec![26]));
+        assert_ne!(
+            route_composer(&press, 0, ComposeField::Body),
+            RoutedKey::UndoClose
+        );
+        assert_ne!(route_settings(&press, 0, true), RoutedKey::UndoClose);
+        assert_ne!(route_key(&press, 0, Some("")), RoutedKey::UndoClose);
     }
 }

@@ -43,6 +43,10 @@ pub enum UiMsg {
     },
     /// Compatibility for the existing verification and default-shell callers.
     SpawnZsh,
+    Close(crate::close::Intent),
+    UndoClose {
+        seat: bbt_proto::SeatId,
+    },
     /// UI consumed this retained result; no additional GUI socket RPC.
     ConsumeSpawn {
         id: bbt_mux::Ulid,
@@ -784,6 +788,8 @@ impl Session {
                 | GuiReply::OperatorSpawned { .. }
                 | GuiReply::Screen { .. }
                 | GuiReply::EventsRead { .. }
+                | GuiReply::OperatorClose { .. }
+                | GuiReply::OperatorUndoClose { .. }
                 | GuiReply::OperatorFocus { .. }
                 | GuiReply::Hosts(_)
                 | GuiReply::HostState { .. } => {}

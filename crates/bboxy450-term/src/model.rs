@@ -521,6 +521,7 @@ pub struct Model {
     pub attention_episodes: crate::attention::Episodes,
     pub settings: Option<Arc<crate::settings::Snapshot>>,
     pub document_reply: Option<Arc<crate::documents::Reply>>,
+    pub closes: crate::close::State,
 }
 impl Default for Model {
     fn default() -> Self {
@@ -543,6 +544,7 @@ impl Default for Model {
             attention_episodes: crate::attention::Episodes::default(),
             settings: None,
             document_reply: None,
+            closes: crate::close::State::default(),
         }
     }
 }
@@ -862,6 +864,11 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
         .collect();
     let now = Instant::now();
     let now_ms = bbt_mux::store::now_ms();
+    let mut layout_source = std::borrow::Cow::Borrowed(&previous.ui);
+    let mut closes = previous.closes.clone();
+    if closes.needs_reconcile(seats) {
+        closes.reconcile(seats, layout_source.to_mut(), now, now_ms);
+    }
     let metadata: BTreeMap<_, _> = seats
         .iter()
         .map(|record| {
@@ -917,6 +924,11 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
         })
         .collect();
     let mut groups: BTreeMap<ui::SwarmId, Vec<SeatId>> = BTreeMap::new();
+    for swarm in &layout_source.window.sidebar.swarms {
+        if !swarm.closed.is_empty() || !swarm.stream.is_empty() {
+            groups.entry(swarm.id).or_default();
+        }
+    }
     for seat in metadata
         .values()
         .filter(|s| matches!(s.lifecycle, ui::Lifecycle::Open))
@@ -926,8 +938,7 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
     let swarms = groups
         .into_iter()
         .map(|(id, ids)| {
-            if let Some(old) = previous
-                .ui
+            if let Some(old) = layout_source
                 .window
                 .sidebar
                 .swarms
@@ -984,15 +995,14 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
         .expect("unique records and valid seat trees");
     let fallback_stage = model.window.stage.clone();
     let next_swarms = std::mem::take(&mut model.window.sidebar.swarms);
-    model.window = previous.ui.window.clone();
+    model.window = layout_source.window.clone();
     model
         .window
         .sidebar
         .open
         .retain(|id| next_swarms.iter().any(|s| s.id == *id));
     for swarm in &next_swarms {
-        if !previous
-            .ui
+        if !layout_source
             .window
             .sidebar
             .swarms
@@ -1004,7 +1014,7 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
     }
     model.window.sidebar.swarms = next_swarms;
     model.window.stage = fallback_stage;
-    let stage = &previous.ui.window.stage;
+    let stage = &layout_source.window.stage;
     if model
         .window
         .sidebar
@@ -1029,7 +1039,7 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
                 .and_then(|t| t.seats.first().copied());
         }
     }
-    model.window.overlay = previous.ui.window.overlay.clone();
+    model.window.overlay = layout_source.window.overlay.clone();
     let frames = previous
         .frames
         .iter()
@@ -1109,6 +1119,7 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
         attention_episodes: previous.attention_episodes.clone(),
         settings: previous.settings.clone(),
         document_reply: previous.document_reply.clone(),
+        closes,
     };
     next.attention_episodes.retain(
         next.ui

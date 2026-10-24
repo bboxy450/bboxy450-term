@@ -1,0 +1,84 @@
+# T7: close and undo use the window's actual layout; never a second lifecycle door.
+# The runner owns the throwaway account/app. This script needs no desktop input.
+. "$(dirname "$0")/lib.sh"
+seat=$(spawn_zsh 'T7 retained fixture') || fail 'spawn refused'
+run_line "$seat" 't7_cookie=73189; echo T7_READY-$$'
+wait_text "$seat" '(?m)^T7_READY-[0-9]+$'
+shell=$(seat_field "$seat" state.process.pid)
+generation=$(seat_field "$seat" record.generation)
+[ -n "$shell" ] && kill -0 "$shell" 2>/dev/null || fail 'fixture PTY is not running'
+# A presented pane, not just a live backend record, is required before close.
+ctl seat capture "$seat" "$E2E_WORK/t7-before.png" > "$E2E_WORK/t7-before.json" || fail 'the running pane has no capture'
+wait_lifecycle() {
+    tries=0
+    until [ "$(seat_field "$seat" record.lifecycle)" = "$1" ]; do
+        tries=$((tries+1)); [ "$tries" -le "$2" ] || fail "seat never became $1"
+        sleep 0.2
+    done
+}
+close() {
+    ctl seat close "$seat" > "$E2E_WORK/t7-close.json" || fail 'window close refused'
+    wait_lifecycle closed_grace 100
+    seat_field "$seat" record.close.position > "$E2E_WORK/t7-position-$1.json"
+    [ "$(seat_field "$seat" record.generation)" = "$generation" ] || fail 'close replaced the generation'
+    kill -0 "$shell" 2>/dev/null || fail 'close terminated the PTY inside grace'
+    # The registry says grace; require the window to remove the pane too.
+    tries=0
+    while ctl seat capture "$seat" "$E2E_WORK/t7-hidden.png" > "$E2E_WORK/t7-hidden.json" 2>&1; do
+        tries=$((tries+1)); [ "$tries" -le 50 ] || fail 'closed pane is still visible in the window'
+        sleep 0.2
+    done
+}
+close first
+ctl seat undo-close "$seat" > "$E2E_WORK/t7-undo.json" || fail 'window undo refused'
+wait_lifecycle open 100
+[ "$(seat_field "$seat" state.process.pid)" = "$shell" ] || fail 'undo spawned another PTY'
+[ "$(seat_field "$seat" record.generation)" = "$generation" ] || fail 'undo replaced the generation'
+run_line "$seat" 'echo T7_PERSIST-$t7_cookie-$$'
+wait_text "$seat" "(?m)^T7_PERSIST-73189-$shell\$"
+tries=0
+until ctl seat capture "$seat" "$E2E_WORK/t7-restored.png" > "$E2E_WORK/t7-restored.json"; do
+    tries=$((tries+1)); [ "$tries" -le 50 ] || fail 'restored pane is not visible'
+    sleep 0.2
+ done
+python3 -I - "$E2E_WORK/t7-before.png" "$E2E_WORK/t7-restored.png" <<'PY'
+import struct,sys
+from pathlib import Path
+def size(path):
+    b=Path(path).read_bytes()
+    assert b[:8]==b'\x89PNG\r\n\x1a\n', 'capture is not PNG'
+    return struct.unpack('>II',b[16:24])
+assert size(sys.argv[1])==size(sys.argv[2]), 'undo moved the pane extent'
+PY
+[ "$?" -eq 0 ] || fail 'restored capture changed extent'
+# Closing it again reads the restored solved layout, proving tab/path/ratios,
+# including a split when the runner has placed this seat beside a neighbour.
+close second
+python3 -I - "$E2E_WORK/t7-position-first.json" "$E2E_WORK/t7-position-second.json" <<'PY'
+import json,sys
+positions=[json.load(open(p)) for p in sys.argv[1:]]
+for p in positions:
+    assert p['swarm'] and p['tab'], 'position lacks its owner'
+    assert len(p['split_path'])==len(p['ratios']), 'split path/ratio mismatch'
+    assert all(n in (0,1) for n in p['split_path'])
+    assert all(0 < r < 1 for r in p['ratios'])
+    p.pop('layout_revision') # successful close/undo intentionally advances it
+assert positions[0]==positions[1], 'undo changed the solved split position'
+PY
+[ "$?" -eq 0 ] || fail 'restored position differs'
+deadline=$(seat_field "$seat" record.close.deadline_ms)
+# Real sixty-second grace, not a shorter test-only lifecycle or a synthetic clock.
+wait_lifecycle closed_retained 375
+python3 -I - "$deadline" <<'PY'
+import sys,time
+assert int(time.time()*1000) >= int(sys.argv[1]), 'grace ended early'
+PY
+[ "$?" -eq 0 ] || fail 'grace deadline was not held'
+[ "$(seat_field "$seat" record.generation)" = "$generation" ] || fail 'expiry invented a new generation'
+# The record and ring remain readable; no purge is part of close.
+ctl seat screen "$seat" --scrollback 0..1 > "$E2E_WORK/t7-retained-history.json" || fail 'retained history is inaccessible'
+ctl seat undo-close "$seat" > "$E2E_WORK/t7-expired-undo.json" 2>&1 || :
+sleep 0.3
+[ "$(seat_field "$seat" record.lifecycle)" = closed_retained ] || fail 'expired undo reopened the seat'
+if ctl seat capture "$seat" "$E2E_WORK/t7-gone.png" > "$E2E_WORK/t7-gone.json" 2>&1; then fail 'retained seat still owns a pane'; fi
+note 'T7 same PID/generation, retained history, position, presented extent, and real grace/expiry held'

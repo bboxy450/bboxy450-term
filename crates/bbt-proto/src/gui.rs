@@ -202,8 +202,17 @@ pub enum GuiAction {
         seat: Ulid,
         generation: u64,
     },
-    /// Focus a seat in the window (ctl-cli §1a): relayed to the window, which focuses it as
-    /// its own row click does.
+    /// Close through the window, which captures its solved layout before scheduling grace.
+    CloseSeat {
+        id: Ulid,
+        seat: Ulid,
+    },
+    /// Restore a window close during grace, through its retained restoration handle.
+    UndoCloseSeat {
+        id: Ulid,
+        seat: Ulid,
+    },
+    /// Focus in the window, as its own row click does.
     FocusSeat {
         id: Ulid,
         seat: Ulid,
@@ -413,7 +422,19 @@ pub enum GuiReply {
         seat: SeatId,
         spec: SpawnSpec,
     },
-    /// Sent to the window: focus this seat, asked through another operator door.
+    /// Sent to the window: close this seat using its solved Position.
+    OperatorClose {
+        op: Ulid,
+        #[serde(with = "text_id")]
+        seat: SeatId,
+    },
+    /// Sent to the window: undo this seat's close during grace.
+    OperatorUndoClose {
+        op: Ulid,
+        #[serde(with = "text_id")]
+        seat: SeatId,
+    },
+    /// Sent to the window: focus this seat, as its own row click does.
     OperatorFocus {
         op: Ulid,
         #[serde(with = "text_id")]

@@ -195,6 +195,9 @@ pub fn start_with_sink(
                         events(match ask {
                             OperatorAsk::Capture(ask) => UiEvent::CaptureFor(ask),
                             OperatorAsk::Focus(seat) => UiEvent::FocusFor(seat),
+                            OperatorAsk::Close { id, seat, undo } => {
+                                UiEvent::CloseFor { id, seat, undo }
+                            }
                         });
                     }
                 },
@@ -220,6 +223,11 @@ pub enum OperatorAsk {
     Capture(CaptureAsk),
     /// Focus this seat, as the window's own row click does (`ctl seat focus`).
     Focus(SeatId),
+    Close {
+        id: Ulid,
+        seat: SeatId,
+        undo: bool,
+    },
 }
 /// A capture logic relays from an operator door: the window writes the next presented
 /// frame (cropped to `seat`'s pane when named) to `path` and answers with
@@ -902,6 +910,18 @@ async fn run_with_control(
                             Err(reason)=>logger.write(format!("spawn {id} refused: {reason}")),
                         }
                     },
+                    UiMsg::Close(intent)=> {
+                        match Arc::make_mut(&mut model).closes.register(intent.clone()) {
+                            Ok(true)=>queue_action(&mut outgoing,GuiAction::ScheduleClose {seat:intent.seat,id:intent.operation,position:intent.position.clone()}),
+                            Ok(false)=>(),Err(reason)=>logger.write(format!("close {} refused: {reason}",intent.seat)),
+                        }
+                    },
+                    UiMsg::UndoClose {seat}=> {
+                        match model.closes.undo_in(&model.ui,*seat,Instant::now()) {
+                            Ok((close_id,layout_revision))=>queue_action(&mut outgoing,GuiAction::UndoClose {seat:*seat,close_id,layout_revision}),
+                            Err(reason)=>logger.write(format!("undo close {seat} refused: {reason}")),
+                        }
+                    },
                     UiMsg::SpawnZsh=>unreachable!("normalized at IO admission"),
                     UiMsg::ConsumeSpawn {id}=> {
                         Arc::make_mut(&mut model).consume_spawn(*id);
@@ -1121,6 +1141,7 @@ async fn run_with_control(
                             logger.write(format!("GUI operation {op} accepted"));
                         },
                         GuiReply::Error {op,reason}=> {
+                            Arc::make_mut(&mut model).closes.refused(op);
                             if terminal_reply == Some(ActionReply::Knowledge(op)) {
                                 let result=Err(bbt_mux::knowledge::data_source::CommandError::new("transport",reason.clone()));
                                 if let Some(work)=document_reader.response(op,result.clone()) {
@@ -1164,6 +1185,8 @@ async fn run_with_control(
                         GuiReply::App {..}=>{},
                         GuiReply::CaptureAsk {op,path,seat}=>capture(OperatorAsk::Capture(CaptureAsk {id:op,path:PathBuf::from(path),seat:seat.map(|seat| SeatId::from_u128(seat.0))})),
                         GuiReply::OperatorFocus {seat,..}=>capture(OperatorAsk::Focus(seat)),
+                        GuiReply::OperatorClose {op,seat}=>capture(OperatorAsk::Close {id:op,seat,undo:false}),
+                        GuiReply::OperatorUndoClose {op,seat}=>capture(OperatorAsk::Close {id:op,seat,undo:true}),
                         GuiReply::Captured {op,path,..}=>logger.write(format!("capture {op} written: {path}")),
                         // The window never asks for a screen as text; ctl does.
                         GuiReply::Screen {op,..}|GuiReply::EventsRead {op,..}=>logger.write(format!("ctl reply {op} unused by the window")),
@@ -3268,6 +3291,102 @@ mod tests {
             "PASS document Knowledge resolve/fetch and concurrent Input/Resize through one IO owner"
         );
 
+        // T7 exercises the production command pump, registry and real PTY.
+        // A queued close does not invent a lifecycle; the metadata lane confirms it.
+        for index in 0..2 {
+            sender
+                .send(UiMsg::Spawn {
+                    id: Ulid::new(),
+                    swarm: None,
+                    placement: None,
+                    harness_kind: "zsh".into(),
+                    name: Some(format!("T7 neighbour {index}")),
+                    role: None,
+                    location: Where::Local,
+                })
+                .await
+                .unwrap();
+        }
+        until(&updates, &mut current, |model| {
+            model.ui.seats.len() == 3
+                && model.ui.tab_of(seat).is_some_and(|(si, ti)| {
+                    model.ui.window.sidebar.swarms[si].tabs[ti]
+                        .tree
+                        .leaves()
+                        .len()
+                        == 3
+                })
+        })
+        .await;
+        let original_tab = current.ui.tab_of(seat).unwrap();
+        let tab = current.ui.window.sidebar.swarms[original_tab.0].tabs[original_tab.1].clone();
+        assert_eq!(tab.tree.leaves().len(), 3);
+        let process = current.states[&seat].process.clone();
+        let ProcessStatus::Running { pid } = process else {
+            panic!("real fixture PTY must be running")
+        };
+        let close = bboxy450_term::close::Intent::prepare(
+            &current.ui,
+            tab.id,
+            &tab.tree,
+            seat,
+            1,
+            Ulid::new(),
+            Instant::now(),
+        )
+        .unwrap();
+        sender.send(UiMsg::Close(close)).await.unwrap();
+        until(&updates, &mut current, |model| {
+            matches!(
+                model.ui.seats[&seat].lifecycle,
+                bbt_ui_model::Lifecycle::ClosedGrace { .. }
+            ) && model.ui.tab_of(seat).is_none()
+        })
+        .await;
+        assert!(matches!(
+            current.states[&seat].process,
+            ProcessStatus::ClosedGrace { .. }
+        ));
+        assert!(
+            std::process::Command::new("/bin/kill")
+                .args(["-0", &pid.to_string()])
+                .status()
+                .unwrap()
+                .success(),
+            "same owned PTY is alive during grace"
+        );
+        assert_eq!(current.ui.seats[&seat].process_generation, view.generation);
+        sender.send(UiMsg::Watched(vec![])).await.unwrap();
+        until(&updates, &mut current, |m| !m.screens.contains_key(&seat)).await;
+        sender.send(UiMsg::UndoClose { seat }).await.unwrap();
+        until(&updates, &mut current, |model| {
+            model.ui.seats[&seat].lifecycle == bbt_ui_model::Lifecycle::Open
+                && model.ui.tab_of(seat).is_some()
+        })
+        .await;
+        let (si, ti) = current.ui.tab_of(seat).unwrap();
+        assert_eq!(current.ui.window.sidebar.swarms[si].tabs[ti], tab);
+        assert_eq!(
+            current.states[&seat].process, process,
+            "undo must not spawn a replacement process"
+        );
+        assert_eq!(current.ui.seats[&seat].process_generation, view.generation);
+        sender
+            .send(UiMsg::Watched(vec![(seat, view)]))
+            .await
+            .unwrap();
+        until(&updates, &mut current, |m| {
+            m.screens.contains_key(&seat) && m.frames.contains_key(&seat)
+        })
+        .await;
+        assert!(
+            lines(&current.screens[&seat])
+                .iter()
+                .any(|line| line.trim() == "hi")
+        );
+        eprintln!(
+            "PASS T7 real IO: same PID/generation, tab/split and terminal screen after close/undo"
+        );
         messaging_through_the_one_io_owner(
             &sender,
             &updates,
