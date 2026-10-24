@@ -12,6 +12,15 @@ trap 'rm -rf "$target"' EXIT
 CARGO_TARGET_DIR="$target" CARGO_INCREMENTAL=0 cargo test -p bbt-doc --locked --test corpus -q
 CARGO_TARGET_DIR="$target" CARGO_INCREMENTAL=0 cargo test -p bbt-mermaid --locked -q
 sh scripts/layering.sh
+# The e2e checklist page is generated from e2e-acceptance.md section 1 and a bbt-ui test asserts equality;
+# run it whenever either side is in the push (Oracle, 2026-10-24: a records-only edit broke main once).
+for p in "$@"; do
+    case "$p" in
+        .bboxy/specs/e2e-acceptance.md|lab/web/e2e.js)
+            CARGO_TARGET_DIR="$target" CARGO_INCREMENTAL=0 cargo test -p bbt-ui --locked --test e2e_checklist -q
+            break ;;
+    esac
+done
 # Every fast invariant that reads records runs here too (Oracle, 2026-10-24: a
 # records-only push once broke licenses.sh, which reads licensing.md).
 sh scripts/licenses.sh

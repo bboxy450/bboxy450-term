@@ -33,7 +33,7 @@ window.E2E_PROMISES = [
  {
   "id": "T7",
   "group": "terminal",
-  "text": "closing a pane shows the grace strip for 60 s, ⌘Z brings it back with the PTY and its position; after grace it is gone and says so"
+  "text": "closing a pane shows the grace strip for 60 s, ⌘Z brings it back with the PTY and its position; after grace it is gone and says so: the pane and its sidebar row leave, one stream line reads \"<name> closed; its history is kept\" (nothing is deleted, the ring and the records stay reachable from the seat's record and the Graph tab, [[mantras]] 22), and ⌘Z is no longer offered for it (ruling 2026-10-24; not implemented in the window as of this date, Velvet builds it with Wren's reference)"
  },
  {
   "id": "T8",

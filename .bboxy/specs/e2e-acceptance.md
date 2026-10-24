@@ -16,7 +16,7 @@ links:
   - { to: "[[rim-glow]]", rel: promises }
   - { to: "[[attention]]", rel: promises }
 created: "2026-10-24T05:17:08Z"
-updated: "2026-10-24T17:59:06Z"
+updated: "2026-10-24T18:11:18Z"
 ---
 # E2E acceptance
 
@@ -36,6 +36,8 @@ flowchart LR
 ## 1. The acceptance checklist
 
 Every promised user-facing function, one line of expectation each, from [[vision]], the specs and the decisions as of today. **"All promised functionality is there, is intuitive, works" is the acceptance criterion**, and each line below is one promise. 54 promises. A promise with no e2e record is a gap the checklist shows; a promise whose record fails is red until it passes.
+
+**This section is generated from, and checked against (rule, 2026-10-24).** `lab/web/e2e.js` is generated from this section by `lab/web/gen-e2e.py`, and `crates/bbt-ui/tests/e2e_checklist.rs` asserts that the generated file and this section agree. **Any edit to §1 regenerates `e2e.js` in the same commit**, and `scripts/records-push.sh` runs that test whenever this file or `e2e.js` is in the push, fail closed; a records-only edit that forgets the regeneration cannot land (it did once, at c13b0ba5, and main was red until Wren regenerated).
 
 ### terminal
 
