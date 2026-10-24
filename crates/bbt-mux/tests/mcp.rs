@@ -2452,7 +2452,15 @@ fn mcp_counts_have_a_basis_and_ack_ids_without_equating_acknowledgement_with_rea
 #[test]
 fn mcp_destinations_explain_rights_and_write_only_reads_without_expanding_grants() {
     let f = Fixture::new();
-    for seat in [f.own.id, f.oracle.id] {
+    f.prepare_operator();
+    operator_dm(&f, f.peer.id, "operator fixture asks");
+    data(f.mutate(
+        f.peer.id,
+        Ulid::new(),
+        "message_send",
+        json!({"destination":"operator/inbox","text":"operator-only fixture"}),
+    ));
+    for seat in [f.oracle.id, f.own.id] {
         let mut bridge = f.bridge(seat);
         initialize(&mut bridge);
         let orient = rpc(&mut bridge, 2, "tools/call", json!({"name":"orient"}));
@@ -2473,23 +2481,33 @@ fn mcp_destinations_explain_rights_and_write_only_reads_without_expanding_grants
                 .unwrap()
                 .contains(&f.outside.id.to_string())
         }));
-        for path in ["operator", "operator/inbox"] {
-            let denied = rpc(
-                &mut bridge,
-                3,
-                "tools/call",
-                json!({"name":"ch_ls","arguments":{"path":path}}),
-            );
-            assert_eq!(denied["result"]["isError"], true);
-            assert!(
-                denied["result"]["structuredContent"]["error"]["message"]
-                    .as_str()
-                    .unwrap()
-                    .contains("write-only; it is in your destinations"),
-                "{denied}"
-            );
+        for path in ["operator/inbox", "operator"] {
+            for (tool, args) in [
+                ("ch_ls", json!({"path":path})),
+                ("message_list", json!({"channel":path})),
+            ] {
+                let denied = rpc(
+                    &mut bridge,
+                    3,
+                    "tools/call",
+                    json!({"name":tool,"arguments":args}),
+                );
+                assert_eq!(denied["result"]["isError"], true, "{tool}: {denied}");
+                assert!(
+                    denied["result"]["structuredContent"]["error"]["message"]
+                        .as_str()
+                        .unwrap()
+                        .contains("write-only; it is in your destinations"),
+                    "{denied}"
+                );
+            }
         }
     }
+    assert!(
+        operator_inbox(&f)
+            .iter()
+            .any(|text| text.contains("operator-only fixture"))
+    );
     let mut worker = f.bridge(f.own.id);
     initialize(&mut worker);
     let peer = format!("seats/{}/inbox", f.peer.id);

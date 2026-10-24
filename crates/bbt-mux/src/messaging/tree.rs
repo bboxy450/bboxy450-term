@@ -172,7 +172,7 @@ impl Tree {
             .keys()
             .filter(|path| !path.is_empty())
             .filter_map(|path| {
-                let read = self.readable(actor, path).is_ok();
+                let read = self.check(actor, path, Right::Read).is_ok();
                 let post = self.check(actor, path, Right::Write).is_ok();
                 (read || post).then(|| Destination {
                     path: path.clone(),
@@ -182,10 +182,11 @@ impl Tree {
             })
             .collect()
     }
-    fn readable(&self, actor: Actor, path: &str) -> Result<()> {
+    pub fn check(&self, actor: Actor, path: &str, right: Right) -> Result<()> {
         // The operator's private inbox is write-only for every seat, including
         // Oracle-class seats. The trusted operator retains its own read access.
-        if matches!(actor, Actor::Seat { .. })
+        if right == Right::Read
+            && matches!(actor, Actor::Seat { .. })
             && (path == "operator" || path.starts_with("operator/"))
         {
             return Err(invalid(if self.check(actor, path, Right::Write).is_ok() {
@@ -194,15 +195,6 @@ impl Tree {
                 "operator inbox is private; no posting grant"
             }));
         }
-        self.check(actor, path, Right::Read).map_err(|error| {
-            if self.check(actor, path, Right::Write).is_ok() {
-                invalid("write-only; it is in your destinations")
-            } else {
-                error
-            }
-        })
-    }
-    pub fn check(&self, actor: Actor, path: &str, right: Right) -> Result<()> {
         if actor.controls() {
             return Ok(());
         }
@@ -224,6 +216,9 @@ impl Tree {
             }
             current = parent(current);
         }
+        if right == Right::Read && self.check(actor, path, Right::Write).is_ok() {
+            return Err(invalid("write-only; it is in your destinations"));
+        }
         Err(invalid(format!(
             "folder {} missing {} right",
             if path.is_empty() { "bboxy450://" } else { path },
@@ -235,7 +230,7 @@ impl Tree {
     }
     pub fn ls(&self, actor: Actor, path: &str) -> Result<Vec<Node>> {
         let path = normalize(path, false)?;
-        self.readable(actor, &path)?;
+        self.check(actor, &path, Right::Read)?;
         let node = self
             .nodes
             .get(&path)
