@@ -59,8 +59,9 @@ mod tests {
     fn a_new_local_graph_has_no_invented_results_or_run_metadata() {
         let graph = Graph::new(vec![], vec![]).unwrap();
         let out = graph.checklist.project();
-        assert_eq!(out.rows.len(), 54);
-        assert_eq!(out.summary.untested, 54);
+        let promises = bboxy450_term::knowledge::promises().unwrap().len();
+        assert_eq!(out.rows.len(), promises);
+        assert_eq!(out.summary.untested, promises);
         assert_eq!(out.summary.tone, Tone::Red);
         assert!(out.rows.iter().all(|row| row.record.is_none()));
     }

@@ -1,0 +1,19 @@
+# T9 seat restart checks, 2026-10-24T23:41:15Z, on bd29abc3
+clippy=0
+ws=0
+passed=1263 failed=0
+inv=0
+invariants: 22 checks, 0 failures, 10 slow checks skipped
+
+(rustfmt applied to knowledge_e2e.rs after; its diff is only this change's lines)
+## terminal night, real runner (debug, memory custody)
+T1 fail FAIL: the seat is named 'zsh', not from the furry pool (no name pool in the app)
+T2 pass 
+T3 pass 
+T4 pass 
+T5 fail FAIL: typing into 01M5R2EMZGR2HYA9DCQ0F2J5WR was refused: {"error":{"hint":"the message is the app's own reason; correct
+T6 fail FAIL: typing into 01M5R2EPA4DXNKEZ1PAXGNSG9T was refused: {"error":{"hint":"the message is the app's own reason; correct
+T7 untested no script at scripts/e2e/T7.sh
+T8 fail FAIL: OSC 7501 state=working did not show: {"kind": "idle"}, grade reported
+T9 pass note: seat 01M5R2F1XNWBR34M9SMQQVGEWN restarted: generation 1 -> 2, shell 8808 -> 8879
+summary red 
