@@ -223,7 +223,7 @@ Only `.bboxy/specs/identity.md` is written by I2. No operator primary was signed
 
 | Actual command/read | Result and limit |
 |---|---|
-| `date`, `git status --short`, task I, I2 board/ICQ addenda, [[vision]], [[specs/README|README]], current identity/messaging specs | Read on 2026-10-21; worktree clean before this rewrite. Current signed class/ULID/where decisions applied here only. |
+| `date`, `git status --short`, task I, I2 board/ICQ addenda, [[vision]], [[specs/README\|README]], current identity/messaging specs | Read on 2026-10-21; worktree clean before this rewrite. Current signed class/ULID/where decisions applied here only. |
 | `gpg --version`; `gpg-connect-agent 'GETINFO version' 'HELP SIGKEY' 'HELP SETHASH' 'HELP PKSIGN' /bye` | Exit 0: GnuPG/agent **2.5.24**, libgcrypt **1.12.4**; native help documents to-be-signed data for PureEdDSA via `SETHASH --inquire`. Public metadata only. |
 | `gpg --with-colons --fingerprint --list-keys 9B07E849480C68328CA20684844ECC0587DE7AB0` | Exit 0: full fingerprint/selected UID and algorithm 22 confirmed; no secret export or signing. |
 | In-memory downloads of official `pgp-0.21.0.crate`, `sequoia-openpgp-2.4.2.crate` and `sequoia-gpg-agent-0.6.2.crate`; source/manifest reads | Exit 0; exact versions, feature defaults, licenses and package source lines above checked. No dependency installed or added. |

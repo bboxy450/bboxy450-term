@@ -1,6 +1,6 @@
 #!/bin/sh
 # Fail-closed push of .bboxy records (Architect, Creativity): record checks in a
-# private target, commit the named paths, rebase, push, then report the hash
+# private target, every fast record-reading invariant, commit the named paths, rebase, push, then report the hash
 # that is actually on origin/main. Any non-zero step stops everything after it.
 # Usage: sh scripts/records-push.sh "<commit message>" <path>...
 set -eu
@@ -12,6 +12,12 @@ trap 'rm -rf "$target"' EXIT
 CARGO_TARGET_DIR="$target" CARGO_INCREMENTAL=0 cargo test -p bbt-doc --locked --test corpus -q
 CARGO_TARGET_DIR="$target" CARGO_INCREMENTAL=0 cargo test -p bbt-mermaid --locked -q
 sh scripts/layering.sh
+# Every fast invariant that reads records runs here too (Oracle, 2026-10-24: a
+# records-only push once broke licenses.sh, which reads licensing.md).
+sh scripts/licenses.sh
+sh scripts/brand.sh
+sh scripts/images.sh
+sh scripts/cross-os.sh
 git add -- "$@"
 git diff --cached --quiet && { echo "records-push: nothing staged" >&2; exit 3; }
 git -c commit.gpgsign=true commit -q -m "$message"

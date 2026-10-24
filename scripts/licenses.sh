@@ -25,7 +25,7 @@ policy = {}
 in_map = False
 # Read directory keys and SPDX terms from the authoritative map table.
 for line in (root / ".bboxy/specs/licensing.md").read_text(encoding="utf-8").splitlines():
-    cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+    cells = [cell.strip() for cell in re.split(r"(?<!\\)\|", line.strip().strip("|"))]  # split on unescaped pipes only; \| inside a wikilink alias stays in its cell
     if cells[:3] == ["Crate", "Publishes as", "License"]:
         in_map = True
         continue

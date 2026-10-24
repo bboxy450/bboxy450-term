@@ -154,7 +154,7 @@ Lens: async loops on the bbt-io runtime. Assumes tokio sources behind the sealed
 |---|---|---|
 | Y2 | the app IO task, `crates/bboxy450-term/src/live.rs:412` | `#[shutdown]` first; `UiMsg::Input` and `Resize` as quiescent protected sources above the `gui.sock` reply stream; the reply stream `may_remain_ready` with `#[drain(max = N)]` and `#[yields_to(input, when = buffered)]`, so operator keystrokes can never starve behind a flood of deltas ([[c1-live-seats]] §2 "producers never block, input is never dropped" becomes a compiler check) |
 | Y3 | seat socket session and accept loops, `crates/bbt-mux/src/seat_socket.rs:109, 141, 344, 603` | shutdown, incoming lines, the 20 ms tick; drains bounded |
-| Y4 | app child supervision, `crates/bboxy450-term/src/cockpit.rs:197, 523, 856` | child exit above everything; restart policy as declared order (decision [[d11-supervisor-death-survivable|#11]]) |
+| Y4 | app child supervision, `crates/bboxy450-term/src/cockpit.rs:197, 523, 856` | child exit above everything; restart policy as declared order (decision [[d11-supervisor-death-survivable\|#11]]) |
 | later | logic's Worker loop and `pump_messages` (`crates/bbt-mux/src/logic.rs:3153`, `:2649`), after W1.2d and W2.6 settle | the supervisor event firehose yields to GUI and MCP commands when they are buffered; the pump is `#[drain(max = 32)]`; the biggest win and the busiest file, so last |
 | never | the supervisor's mio loop; `bbt-rt::spawn_command` | not async arbitration, or a single bounded select that gains nothing |
 

@@ -10,7 +10,7 @@ import json, re, sys
 rows = {}
 for line in open(".bboxy/specs/licensing.md"):
     if not line.startswith("| `"): continue
-    cols = [c.strip() for c in line.strip().strip("|").split("|")]
+    cols = [c.strip() for c in re.split(r"(?<!\\)\|", line.strip().strip("|"))]
     if len(cols) < 2: continue
     for crate in re.findall(r"`([^`]+)`", cols[0]):
         rows[crate] = cols[1]
