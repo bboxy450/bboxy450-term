@@ -1,6 +1,135 @@
 {
-  "state": "pending records-only validation; production source already passed clean full CI",
-  "source": "69d2fc542eab35bb83f490d75ebb3f6981c49a58",
-  "markdown_note_id": "01M5NY2BD67BNB8993E7Q625HH",
-  "number": 252
+  "validated_record_commit": "a3b08fa1ce440374d6809b5c8b94db76f9d61a72",
+  "production_source": "69d2fc542eab35bb83f490d75ebb3f6981c49a58",
+  "worktree": "/private/tmp/records-nyx-l9mc-a3b08fa",
+  "target": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c-dev",
+  "initial_status": "clean",
+  "owner_pid": 96464,
+  "started": "2026-10-24T03:10:26.053771+00:00",
+  "markdown_sha256": "9a2854f15aacd8eda476e1d56163071349bf85bb2cb334f728494c9d5e2aa7d9",
+  "commands": [
+    {
+      "name": "doc-corpus",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-doc",
+        "--locked",
+        "--test",
+        "corpus"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 14.873779416957404,
+      "log_sha256": "f4876d8220c9d1ebfe022bcca15a9b4c6ac9352144c0db9ced8cc1b8555fe9ef",
+      "log": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/record-doc-corpus.log",
+      "bundle": "l9-m-c-record-checks.log",
+      "bundle_byte_offset": 29,
+      "bundle_byte_length": 1245
+    },
+    {
+      "name": "mermaid",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mermaid",
+        "--locked"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 2.272391083999537,
+      "log_sha256": "be4ac6dc5a877e12b4de3e25bf124333980cd49ebea5ed0c908bda03ab850291",
+      "log": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/record-mermaid.log",
+      "bundle": "l9-m-c-record-checks.log",
+      "bundle_byte_offset": 1300,
+      "bundle_byte_length": 1964
+    },
+    {
+      "name": "layering",
+      "command": [
+        "sh",
+        "scripts/layering.sh"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 0.09217191697098315,
+      "log_sha256": "4da785f35b44bcf32e335b45c4b4d6b78c88b6c77886f065463850edb831d114",
+      "log": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/record-layering.log",
+      "bundle": "l9-m-c-record-checks.log",
+      "bundle_byte_offset": 3291,
+      "bundle_byte_length": 15
+    },
+    {
+      "name": "licenses",
+      "command": [
+        "sh",
+        "scripts/licenses.sh"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 0.10451500001363456,
+      "log_sha256": "317828f6698baf0ea148cc67986510d38b9de0c4349764f3c7bbc2eae93d9e2e",
+      "log": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/record-licenses.log",
+      "bundle": "l9-m-c-record-checks.log",
+      "bundle_byte_offset": 3333,
+      "bundle_byte_length": 78
+    },
+    {
+      "name": "brand",
+      "command": [
+        "sh",
+        "scripts/brand.sh"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 0.048377791012171656,
+      "log_sha256": "8a55532f449ff29968969191a4ae0250456dd47367984919136366dfe3b92440",
+      "log": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/record-brand.log",
+      "bundle": "l9-m-c-record-checks.log",
+      "bundle_byte_offset": 3435,
+      "bundle_byte_length": 12
+    },
+    {
+      "name": "images",
+      "command": [
+        "sh",
+        "scripts/images.sh"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 0.04782916698604822,
+      "log_sha256": "a3fa4af395cdcef5b2ab27408440eb63d25019f4dc56721f7347361fbcda12a5",
+      "log": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/record-images.log",
+      "bundle": "l9-m-c-record-checks.log",
+      "bundle_byte_offset": 3472,
+      "bundle_byte_length": 13
+    },
+    {
+      "name": "cross-os",
+      "command": [
+        "sh",
+        "scripts/cross-os.sh"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 0.05121883295942098,
+      "log_sha256": "1c9ae152305cb6479282d50394da2525726e4732067a2bf0be3dabaaaf2fe602",
+      "log": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/record-cross-os.log",
+      "bundle": "l9-m-c-record-checks.log",
+      "bundle_byte_offset": 3512,
+      "bundle_byte_length": 15
+    }
+  ],
+  "exit": 0,
+  "ended": "2026-10-24T03:10:43.548219+00:00",
+  "final_status": "",
+  "state": "complete",
+  "environment": {
+    "BBOXY_TEST_CUSTODY": "memory",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true"
+  },
+  "target_removed": true,
+  "worktree_removed": true,
+  "final_successor_scope": "validation results, raw logs, cleanup and evidence metadata only; production source and the validated Markdown bytes unchanged"
 }

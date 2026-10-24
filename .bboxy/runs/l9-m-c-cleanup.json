@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-24T03:12:26.280611+00:00",
+  "removed": [
+    {
+      "path": "/private/tmp/ci-nyx-l9mc-69d2fc5",
+      "source": "69d2fc542eab35bb83f490d75ebb3f6981c49a58",
+      "allocated_bytes_freed": 95510528
+    },
+    {
+      "path": "/private/tmp/base-nyx-l9mc-9c2022a",
+      "source": "9c2022a7288286981f0cb3a5b1938691bf8a3bf5",
+      "allocated_bytes_freed": 92991488
+    },
+    {
+      "path": "/private/tmp/records-nyx-l9mc-a3b08fa",
+      "source": "a3b08fa1ce440374d6809b5c8b94db76f9d61a72",
+      "allocated_bytes_freed": 99102720
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c-dev",
+      "allocated_bytes_freed": 4573655040,
+      "reason": "only own inactive development target, after all recorded commands exited"
+    }
+  ],
+  "private_gate_target_already_removed_bytes": 3292524544,
+  "earlier_superseded_owned_baselines_bytes": 184655872,
+  "total_allocated_bytes_freed": 8338440192,
+  "kept": "in-flight galleries, native capture, report/manifests/logs and peer frozen inputs; own writing worktree",
+  "peer_directories_or_processes_touched": false
+}
