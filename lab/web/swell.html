@@ -47,9 +47,12 @@ Lab.page({ title: 'swell', wide: true, note: 'The alive border and the ' + G.swe
         cap('A collapsed tab is a block too: its rim takes the colour and state of its worst seat, and it swells when focus lands on one of its seats.'));
     }
     if (s === 'cards') {
-      const rep = (i, task, files, ok) => ({ task, files: files.map(([path, add, del]) => ({ path, add, del })), checks: [{ cmd: 'sh scripts/ci-local.sh', ok, exit: ok ? 'exit 0' : 'exit 1' }], commit: ok ? 'a3dcbc1' : null, verdict: null });
+      // TaskReport (decision #38): task, status, summary, verify_result { command, exit_code, evidence }, commit
+      const rep = (task, summary, ok, crit, ref, commit) => ({ task, status: 'reported', summary, commit, verify_result: { command: 'sh scripts/ci-local.sh', exit_code: ok ? 0 : 1, evidence: [{ criterion: crit, reference: ref }] } });
       const card = (i, r, o) => { const c = C.reportCard(r); c.style.marginTop = '0'; return block(c, seat(i, 'active'), o); };
-      body.append(el('div', { class: 'sw-cards' }, card(1, rep(1, 'W2.4 local messaging', [['crates/bbt-logic/src/bus.rs', 84, 12]], true)), card(4, rep(4, 'MK1 centred marks', [['lab/web/components.js', 41, 18], ['crates/bbt-ui/src/marks.rs', 96, 0]], true), { swell: true }), card(2, rep(2, 'R2c perf HUD', [['crates/bbt-app/src/hud.rs', 12, 3]], false))),
+      body.append(el('div', { class: 'sw-cards' }, card(1, rep('W2.4 local messaging', 'Durable seat messaging; delivery evidence recorded.', true, 'messages survive a logic restart', 'crates/bbt-logic/src/bus.rs:84', 'cb75c36')),
+        card(4, rep('MK1 centred marks', 'Seat and task marks drawn as geometry, centred at any size.', true, 'all 12 marks centred at 96 px', 'crates/bbt-ui/src/marks.rs:96', '6dca379'), { swell: true }),
+        card(2, rep('R2c perf HUD', 'The HUD card and sparkline; one hitch case still overruns.', false, 'hitch flashes the overrunning phase', 'crates/bbt-app/src/hud.rs:12', null))),
         cap('Cards keep a ' + G.rim + ' px stack gap here, so their outer half fits; their bloom stays inside their padding. Focus on a card swells it the same way.'));
     }
     if (s === 'attention beside focus') body.append(stage(pane(seat(2, 'waiting'), { attn: true }), pane(seat(1, 'active'), { swell: true })),
