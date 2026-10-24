@@ -1,0 +1,95 @@
+P-0 rebased pre-gate evidence
+Source b211b32cf1c202982fd55d5ea0e92d4b61438f04
+Base 10f01fd4ebb0dae3a02f87ff4b0ba6e3d34b7824
+Signed commit verification EXIT 0.
+Rebase initially stopped on Cargo.toml: main moved native-wake websocket dependencies to dev; retained that move and added only tempfile plus Tokio process.
+Rebase continuation EXIT 0. Own-patch range-diff follows; product code unchanged apart from that dependency-context union.
+1:  ff0aeb5b ! 1:  b211b32c Implement plugin P-0 contracts and headless conformance checker
+    @@ Cargo.lock: dependencies = [
+       "hkdf",
+     + "jsonschema",
+       "libc",
+    -  "mio",
+       "notify",
+    +  "petgraph",
+     @@ Cargo.lock: name = "bbt-proto"
+      version = "0.0.1"
+      dependencies = [
+    @@ crates/bboxy450-term/tests/plugins.rs (new)
+     +}
+
+      ## crates/bbt-mux/Cargo.toml ##
+    -@@ crates/bbt-mux/Cargo.toml: ed25519-dalek = "3.0"
+    - futures-util = { version = "0.3", features = ["sink"] }
+    +@@ crates/bbt-mux/Cargo.toml: base64 = "0.22"
+    + ed25519-dalek = "3.0"
+      getrandom = "0.3"
+      hkdf = "=0.12.4"
+     +jsonschema = { version = "=0.60.1", default-features = false }
+      libc = "0.2"
+    - mio = { version = "1", features = ["os-poll", "os-ext", "net"] }
+      notify = "8.2"
+    + petgraph = "0.8"
+     @@ crates/bbt-mux/Cargo.toml: serde = { version = "1", features = ["derive"] }
+      serde_json = "1"
+      serde_yaml = "0.9"
+    @@ crates/bbt-mux/Cargo.toml: serde = { version = "1", features = ["derive"] }
+     -tokio = { version = "1", features = ["rt", "sync", "time", "net", "io-util", "macros"] }
+     +tempfile = "3"
+     +tokio = { version = "1", features = ["rt", "sync", "time", "net", "io-util", "macros", "process"] }
+    - tokio-tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"] }
+      ulid = { version = "1", features = ["serde"] }
+
+    + [target.'cfg(target_os = "macos")'.dependencies]
+
+      ## crates/bbt-mux/src/lib.rs ##
+     @@ crates/bbt-mux/src/lib.rs: pub mod adapters;
+
+clippy-rebased.log; EXIT 0
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-harness-wake-up)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Checking toml_writer v1.1.3+spec-1.1.0
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+    Checking toml_edit v0.25.17+spec-1.1.0
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn-macros)
+    Checking toml v1.1.8+spec-1.1.0
+    Checking trybuild v1.0.120
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn)
+    Checking proc-macro-crate v3.5.0
+    Checking bboxy450-desktop-notifications-linux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-linux)
+    Checking bboxy450-desktop-notifications-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-windows)
+    Finished `dev` profile [unoptimized] target(s) in 25.85s
+
+build-rebased.log; EXIT 0
+   Compiling tokio v1.54.1
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-harness-wake-up)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling toml_edit v0.25.17+spec-1.1.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 22.89s
+
+Wrapper whitespace normalized for git diff --check; original command logs remain in the task scratch directory.
