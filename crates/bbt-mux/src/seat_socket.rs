@@ -483,6 +483,9 @@ async fn gui_session(
                     // Spawn without an id gets the named version refusal.
                     let admission:GuiAdmission=serde_json::from_slice(&line)?;
                     if admission.capability!=capability {
+                        // Say why before closing, as the version check does: a caller reads
+                        // the reason, not a closed socket.
+                        send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:"GUI socket admission rejected".into()}).await?;
                         return Err(invalid("GUI socket admission rejected"));
                     }
                     if admission.version!=bbt_proto::gui::VERSION {
