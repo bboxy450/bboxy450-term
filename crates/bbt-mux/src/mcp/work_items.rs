@@ -62,7 +62,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
         ),
         (
             "artifact_claim",
-            "Record your reported responsibility for an artifact, optionally linking an authorized task. This does not verify external content.",
+            "Claim artifact responsibility only, optionally linking an authorized task; this is not a document reader or editor. Use knowledge_fetch, knowledge_search and knowledge_write for document content. A claim does not verify external content.",
             json!({"kind":{"enum":["markdown","pr","binary","file","image","release","other"]},"ref":{"type":"string","minLength":1,"maxLength":4096},"digest":{"type":"string","maxLength":71},"task":path}),
             vec!["kind", "ref"],
         ),
@@ -590,7 +590,8 @@ pub(crate) fn delegator(doc: &Document) -> Checked<Option<Recipient>> {
         _ => Err("task delegated_by must name a seat or operator".into()),
     }
 }
-fn authorize(doc: &Document, registry: &Registry, actor: &Actor) -> Checked<()> {
+/// Reuse canonical task ownership and swarm checks for trusted host writes.
+pub(crate) fn authorize(doc: &Document, registry: &Registry, actor: &Actor) -> Checked<()> {
     // Every present registry reference, never the directory, establishes scope.
     if doc.error.is_some() || !is_task(doc) {
         return Err("task frontmatter is invalid".into());
