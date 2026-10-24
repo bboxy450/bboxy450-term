@@ -2218,7 +2218,7 @@ mod tests {
         tokio::fs::create_dir_all(repository.join(".bboxy/tasks"))
             .await
             .unwrap();
-        tokio::fs::write(repository.join(&task_path), format!("---\nid: {task_id}\ntype: task\ntitle: Production GUI pump fixture\nstatus: open\nverify: 'true'\n---\nTask delegation through the same event lane.\n")).await.unwrap();
+        tokio::fs::write(repository.join(&task_path), format!("---\nid: {task_id}\ntype: task\nnumber: 1\ntitle: Production GUI pump fixture\nstatus: open\nverify: 'true'\n---\nTask delegation through the same event lane.\n")).await.unwrap();
         tokio::fs::create_dir(&shell_config).await.unwrap();
         tokio::fs::write(shell_config.join(".zshrc"), "PROMPT='> '\nRPROMPT=''\n")
             .await
