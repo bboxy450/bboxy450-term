@@ -18,7 +18,7 @@ function fixture(c) {
     case 'seat-row':{
       node=el('div',{style:'display:flex;flex-direction:column;gap:4px;width:500px'});
       node.append(C.seatRow(b,{shortcut:'⌘2'}));
-      if(c.state==='task-states')for(const state of ['open','claimed','running','reported','accepted','done','rejected','blocked'])node.append(C.taskRow({id:'task-'+state,title:'Native SeatRow '+state,state,waits:state==='blocked'?'renderer':null},b,{onAccept:()=>{}}));
+      if(c.state==='task-states')for(const status of ['open','claimed','running','reported','accepted','done','rejected','blocked'])node.append(C.taskRow({id:'task-'+status,title:'Native SeatRow '+status,status,waits:status==='blocked'?'renderer':null},b,{onAccept:()=>{}}));
       else for(const kind of ['markdown','pr','binary','file','image','release'])node.append(C.artifactRow({...art,kind,ref:'target/'+kind+'-artifact',...(kind==='file'?{responsible:null,digest:null}:{})}));
       break;
     }
