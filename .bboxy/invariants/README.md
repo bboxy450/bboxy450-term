@@ -44,6 +44,7 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[e2e-runs-unattended]] the e2e night runs unattended: no operator input, no login-Keychain access, no window, no build or signature | `BBOXY_UNATTENDED=1 sh scripts/e2e-night.sh` | pending U-3 (slow, gated) |
 | [[never-block-swarm]] never block the swarm: no open task is parked on a person, and no test needs the operator | `sh scripts/never-block.sh` | held at the adding commit |
 | [[messaging-never-held]] a custody hold never holds local delivery | `cargo test -p bbt-mux --locked --test messaging_flow custody_hold_never_holds_local_delivery -- --exact` | pending NG1 (slow, gated) |
+| [[no-chokepoints]] no bottlenecks and no chokepoints, in the swarm and in the product | `sh scripts/never-block.sh && sh scripts/cross-os.sh` | held at the adding commit; product instances gated by #268 and #276 |
 
 A violation halts the work that broke it: the task goes `blocked` with
 `[[invariant|violates]]`, and the halt names the invariant, the evidence and
