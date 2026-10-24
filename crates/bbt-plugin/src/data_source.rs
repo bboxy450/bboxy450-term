@@ -15,6 +15,8 @@ pub const TIER: &str = "export";
 pub const DEFAULT_PAGE: usize = 32;
 /// Maximum number of records admitted in one page.
 pub const MAX_PAGE: usize = 128;
+/// Serialized page bound, independent of a GUI transport's own frame bound.
+pub const MAX_PAGE_BYTES: usize = 256 * 1024;
 /// A resource is read only through the host's confined, bounded IO path.
 pub const MAX_RESOURCE_BYTES: u64 = 64 * 1024 * 1024;
 /// One schema asset, with request/result definitions for all eight methods.
@@ -37,10 +39,21 @@ pub struct RecordRef {
 /// its root; URI validation and reading remain host IO, never UI work.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResourceLink {
+    #[serde(rename = "type", default)]
+    pub kind: ResourceKind,
     pub uri: String,
     pub name: String,
+    #[serde(rename = "mimeType")]
     pub mime_type: String,
     pub size: u64,
+}
+
+/// MCP resource-link discriminator; it is not an embedded resource or a tool.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResourceKind {
+    #[default]
+    ResourceLink,
 }
 
 /// Lossless document model: JSON frontmatter plus unrendered Markdown.
@@ -53,6 +66,9 @@ pub struct Record {
     pub etag: String,
     #[serde(default)]
     pub resources: Vec<ResourceLink>,
+    /// Broken source remains addressable and visible, never silently omitted.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parse_error: Option<String>,
 }
 
 /// Named command error; transport/protocol errors are not command results.
@@ -210,8 +226,16 @@ pub struct Node {
     pub title: Option<String>,
     #[serde(rename = "type")]
     pub record_type: Option<String>,
+    /// Indexed frontmatter lets the host retain its existing read policy
+    /// without reading every Markdown body just to classify graph nodes.
+    #[serde(default = "empty_frontmatter")]
+    pub frontmatter: Value,
 }
-/// Edges are confined to the selected nodes; truncation is explicit.
+fn empty_frontmatter() -> Value {
+    serde_json::json!({})
+}
+/// Outgoing edges travel with their source node, including edges whose target
+/// appears on another page. Any edge truncation is explicit.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GraphPage {
     pub nodes: Vec<Node>,

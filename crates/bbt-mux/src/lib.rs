@@ -15,6 +15,7 @@ pub mod bus;
 pub mod identity;
 mod gui_events;
 pub mod index;
+pub mod knowledge;
 pub mod logic;
 pub mod mcp;
 pub mod messaging;

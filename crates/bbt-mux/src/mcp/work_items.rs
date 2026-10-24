@@ -568,14 +568,16 @@ fn seat_reference(value: &str) -> Checked<Option<Ulid>> {
         .map(Some)
         .ok_or_else(|| "task seat reference is ambiguous".into())
 }
-fn reference(doc: &Document, field: &str) -> Checked<Option<Ulid>> {
+/// Shared interpretation of a present seat reference; never infer from a path.
+pub(crate) fn reference(doc: &Document, field: &str) -> Checked<Option<Ulid>> {
     match doc.metadata.get(field) {
         None | Some(Value::Null) => Ok(None),
         Some(Value::String(value)) => seat_reference(value),
         _ => Err(format!("task {field} must name a seat")),
     }
 }
-fn delegator(doc: &Document) -> Checked<Option<Recipient>> {
+/// Keep operator and seat delegation references distinct for host read scopes.
+pub(crate) fn delegator(doc: &Document) -> Checked<Option<Recipient>> {
     match doc.metadata.get("delegated_by") {
         None | Some(Value::Null) => Ok(None),
         Some(Value::String(value)) if value == "none" => Ok(None),

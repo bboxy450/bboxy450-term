@@ -237,6 +237,11 @@ pub(crate) struct Update {
 }
 
 impl Index {
+    /// The bundled knowledge provider's data directory is this existing root.
+    pub(crate) fn knowledge_root(&self) -> &Path {
+        &self.root
+    }
+
     pub fn open(root: &Path, store: SqliteStore) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         std::fs::create_dir_all(root)?;

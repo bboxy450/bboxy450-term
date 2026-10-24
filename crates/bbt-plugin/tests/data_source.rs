@@ -84,6 +84,10 @@ fn malformed_pages_references_and_create_without_destination_fail_the_schema() {
             json!({"frontmatter":{"type":"note"},"body":"new file without a path"}),
         ),
         ("changes_since", json!({"cursor":""})),
+        (
+            "write",
+            json!({"ref":{"id":"record","number":7,"path":"a.md","slug":"a","digest":"a".repeat(64)},"path":"a.md","frontmatter":{},"body":"an update cannot supply a destination"}),
+        ),
     ] {
         let validator =
             jsonschema::validator_for(&d::method_schema(method, false).unwrap()).unwrap();
@@ -102,5 +106,6 @@ fn document_unknown_metadata_and_markdown_are_preserved() {
     let encoded = serde_json::to_value(&record).unwrap();
     assert_eq!(encoded["id"], record.reference.id);
     assert_eq!(encoded["number"], 7);
-    assert_eq!(encoded["resources"][0]["mime_type"], "image/png");
+    assert_eq!(encoded["resources"][0]["mimeType"], "image/png");
+    assert_eq!(encoded["resources"][0]["type"], "resource_link");
 }

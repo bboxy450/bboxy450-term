@@ -20,6 +20,7 @@ use bbt_supervisor::supervisor::capture_diagnostics::{Outcome, Phase, Recorder};
 
 use crate::bus::{Broker, BusHandle};
 use crate::index::{FileWatch, Index};
+use crate::knowledge::BboxySource;
 use crate::provider::{Connections, HostId, LocalProvider, Provider};
 use crate::registry::{Lifecycle, Position, Registry, SeatRecord};
 use crate::store::{
@@ -1229,7 +1230,8 @@ impl Worker {
                     Err(reason) => crate::mcp::error(call.op_id, "rejected", &reason),
                 };
                 journal.checked_authorized(&actor, &call, value, |old| {
-                    crate::mcp::tools::retained_documents(&self.index, &actor, &record, &call, old)
+                    let source = BboxySource::new(&self.index).with_registry(&self.registry);
+                    crate::mcp::tools::retained_documents(&source, &actor, &record, &call, old)
                 })
             }
         }
@@ -2052,6 +2054,7 @@ impl Worker {
         use crate::mcp::tools;
         use crate::registry::Class;
         use serde_json::json;
+        let source = BboxySource::new(&self.index).with_registry(&self.registry);
         match call.tool.as_str() {
             "orient" => {
                 let _: tools::Empty = tools::parse(&call.args)?;
@@ -2071,8 +2074,8 @@ impl Worker {
                     )
                     .map_err(|e| e.to_string())?;
                 Ok(
-                    json!({"actor":actor,"seat":self.control_seat(record),"tasks":tools::orient_documents(&self.index,record),
-                    "execution":tools::graph(&self.index,actor,record,&tools::GraphRead{graph:"execution".into(),after:None,limit:Some(32)},true)?,
+                    json!({"actor":actor,"seat":self.control_seat(record),"tasks":tools::orient_documents(&source,record)?,
+                    "execution":tools::graph(&self.index,&source,actor,record,&tools::GraphRead{graph:"execution".into(),after:None,limit:Some(32)},true)?,
                     "channels":channels,"unread_count":null,"unread_unavailable":"no read cursor exists; delivery and application acknowledgment are separate evidence",
                     "pending_application_ack":self.messaging.pending_application_ack(record.id,record.generation).map_err(|e|e.to_string())?}),
                 )
@@ -2122,7 +2125,7 @@ impl Worker {
             }
             "graph_read" => {
                 let args: tools::GraphRead = tools::parse(&call.args)?;
-                tools::graph(&self.index, actor, record, &args, false)
+                tools::graph(&self.index, &source, actor, record, &args, false)
             }
             _ => Err("tool is unavailable for this actor and catalogue".into()),
         }

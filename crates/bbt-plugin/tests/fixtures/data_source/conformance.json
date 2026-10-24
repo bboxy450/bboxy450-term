@@ -42,10 +42,11 @@
       "etag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "resources": [
         {
+          "type": "resource_link",
           "uri": "file:///fixture/images/pixel.png",
           "name": "pixel.png",
-          "mime_type": "image/png",
-          "size": 67
+          "mimeType": "image/png",
+          "size": 68
         }
       ]
     }
@@ -141,10 +142,26 @@
             "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
           },
           "title": "Fixture brief",
-          "type": "task"
+          "type": "task",
+          "frontmatter": {
+            "id": "00000000000000000000000007",
+            "type": "task",
+            "number": 7,
+            "title": "Fixture brief",
+            "unknown_metadata": {
+              "kept": true
+            }
+          }
         }
       ],
-      "edges": [],
+      "edges": [
+        {
+          "from": "00000000000000000000000007",
+          "to": "00000000000000000000000008",
+          "rel": "depends",
+          "weight": 2.0
+        }
+      ],
       "next": "opaque-graph-next",
       "edges_truncated": false
     }
@@ -184,10 +201,11 @@
         "etag": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "resources": [
           {
+            "type": "resource_link",
             "uri": "file:///fixture/images/pixel.png",
             "name": "pixel.png",
-            "mime_type": "image/png",
-            "size": 67
+            "mimeType": "image/png",
+            "size": 68
           }
         ]
       },

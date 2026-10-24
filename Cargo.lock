@@ -290,6 +290,8 @@ version = "0.0.1"
 dependencies = [
  "base64",
  "bbt-core",
+ "bbt-doc",
+ "bbt-plugin",
  "bbt-proto",
  "bbt-rt",
  "bbt-supervisor",
