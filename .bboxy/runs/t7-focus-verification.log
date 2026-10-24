@@ -1,0 +1,40 @@
+T7 applied-frame focus checkpoint
+source: 59c5ada01ee792dc982376f2fcebf207e05762a9 (signed)
+Oracle scope: 07a49d34-c85f-4c58-8408-8309d50d7db9 and c1ef73bd-45eb-4076-8434-7031f74a3651
+
+Counterexample: target/t7-proof/t7-ci-4589ba45427d.log:1694 — the exact clean gate failed EXIT 101 after explicit ctl focus, when an earlier accepted placement overwrote the requested headless pane. Five other headless tests passed. Parity was unreached; this was never a green gate.
+
+crates/bboxy450-term/src/focus_ack.rs:74 — one bounded pending intent waits for prior accepted placements and then a completed frame with the requested seat and process generation; supersession and deadline return correlated errors.
+crates/bboxy450-term/src/main.rs:2453 — native owner applies common focus and acknowledges from its completed-frame path; manual activation supersedes pending ctl focus.
+crates/bboxy450-term/src/headless.rs:316 — headless owner consumes the latest model before applying focus and waits for GPU completion.
+crates/bbt-proto/src/gui.rs:74 — FocusFrame carries seat, generation and frame_seq.
+crates/bbt-mux/src/gui_capture.rs:169 — bounded asynchronous focus reply map; a relay receipt never completes focus.
+crates/bbt-mux/src/seat_socket.rs:684 — existing admitted/journaled focus request awaits the independent GUI owner; the logic worker does not wait.
+crates/bboxy450-term/src/ctl.rs:1631 — focus prints applied:true only after matching Focused reply; off-screen images return kind not_on_screen with hint ctl seat focus <seat>. Text reads remain available.
+
+Actual repeated integration checks, memory custody, private fixture roots, zero OS windows, compiler wrappers cleared:
+t7-headless-five-1.log — EXIT 0, 6 passed / 0 failed; elapsed 76.170 s.
+t7-headless-five-2.log — EXIT 0, 6 passed / 0 failed; elapsed 15.732 s.
+t7-headless-five-3.log — EXIT 0, 6 passed / 0 failed; elapsed 14.239 s.
+t7-headless-five-4.log — EXIT 0, 6 passed / 0 failed; elapsed 14.484 s.
+t7-headless-five-5.log — EXIT 0, 6 passed / 0 failed; elapsed 14.236 s.
+The idle-rejection test intentionally logs idle FAILED for one injected external lifecycle wake, then passes its rejection assertion. The clean idle fixture separately passes.
+target/t7-proof/t7-focus-unit.log — EXIT 0; 4 controller regressions passed.
+
+Remaining at this checkpoint: relay/ctl focused checks, consume-spawn dependency union, latest-main rebase, strict workspace Clippy, fresh exact full ci-local --parity and final real 60 s T7 script. No full CI or final parity success claimed.
+
+Transport checks completed after the original five suites:
+target/t7-proof/t7-focus-relay.log — EXIT 0, 1 passed / 0 failed; 353.305 s.
+target/t7-proof/t7-focus-ctl.log — EXIT 0, 1 passed / 0 failed; 6.524 s.
+
+Signed integration source c3c7dfc3c7584245aef4eedf75cd07bdcd224cfd rebased onto accepted main 909957f48ed077772222022499102b248bf22537. Aster consumption sources 48d76b97 + fbe3043c replayed as 9d2f7575 + c3c7dfc3; headless.rs adds only their 16-line result-consumption block and the 49-line ten-launch regression relative to the reviewed focus source. Focus/proto/relay/native-owner source is byte-identical to 59c5ada0.
+Aster read-only review c5322934-f790-4ab2-aeca-3d7cae406477 found no blocking source seam; it is a source review, not another execution proof.
+
+Combined-source checks completed:
+t7-headless-union-five-1.log — EXIT 0, 7 passed / 0 failed; 134.352 s; source c3c7dfc3c7584245aef4eedf75cd07bdcd224cfd.
+t7-headless-union-five-2.log — EXIT 0, 7 passed / 0 failed; 14.361 s; source c3c7dfc3c7584245aef4eedf75cd07bdcd224cfd.
+t7-headless-union-five-3.log — EXIT 0, 7 passed / 0 failed; 15.290 s; source c3c7dfc3c7584245aef4eedf75cd07bdcd224cfd.
+t7-headless-union-five-4.log — EXIT 0, 7 passed / 0 failed; 14.774 s; source c3c7dfc3c7584245aef4eedf75cd07bdcd224cfd.
+t7-headless-union-five-5.log — EXIT 0, 7 passed / 0 failed; 14.752 s; source c3c7dfc3c7584245aef4eedf75cd07bdcd224cfd.
+t7-clippy-c3c7dfc3.log — cargo clippy --workspace --all-targets --locked -- -D warnings, EXIT 0, 99.856 s.
+The five combined suites prove 35 passing tests, including 50 real PTY markers and images, in addition to the five original six-test focus suites. No sleep or retry was added to the focus/capture regression. Full final clean CI/parity remains outstanding at this record.
