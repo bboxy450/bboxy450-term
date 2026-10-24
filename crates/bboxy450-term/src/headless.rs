@@ -64,7 +64,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let sink: Arc<dyn Fn(UiEvent) + Send + Sync> = {
         let thread = thread.clone();
         let overflow = overflow.clone();
+        let callbacks = callbacks.clone();
         Arc::new(move |event| {
+            callbacks.fetch_add(1, Ordering::Relaxed);
             if sender.try_send(event).is_err() {
                 overflow.store(true, Ordering::Release);
             }
@@ -342,13 +344,17 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     }
                     submitted += 1;
                     let wake = thread.clone();
+                    let callbacks = callbacks.clone();
                     gpu.draw_notifying(
                         scene.paint(&layouts, SIZE, None, None),
                         &model,
                         &bounds,
                         submitted,
                         completed.clone(),
-                        move || wake.unpark(),
+                        move || {
+                            callbacks.fetch_add(1, Ordering::Relaxed);
+                            wake.unpark();
+                        },
                     )?;
                     dirty = false;
                 }
@@ -403,7 +409,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     let counts = (submitted, callbacks.load(Ordering::Relaxed));
                     if let Some(epoch) = idle_epoch.take() {
                         let (start, frames, wakes) = idle.finish(epoch).expect("own idle epoch");
-                        let passed = counts == (frames, wakes);
+                        let passed = backend && counts == (frames, wakes);
                         logger.write(format!(
                             "idle {}: frames={} callbacks={} seconds={:.3} windows=0 mode=headless",
                             if passed { "passed" } else { "FAILED" },

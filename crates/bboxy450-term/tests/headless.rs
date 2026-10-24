@@ -217,6 +217,58 @@ fn headless_smoke_uses_the_idle_probe_with_no_window_or_operator() {
 }
 
 #[test]
+fn idle_probe_rejects_an_external_lifecycle_wake() {
+    use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
+    let mut f = Fixture::new();
+    std::fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&f.run)
+        .unwrap();
+    let log = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(f.run.join("app.log"))
+        .unwrap();
+    let mut child = Command::new(BIN)
+        .args(["--headless", "--smoke", "--ctl", "--run-dir"])
+        .arg(&f.run)
+        .current_dir(f.root.path())
+        .env("BBOXY_TEST_CUSTODY", "memory")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(log)
+        .spawn()
+        .unwrap();
+    f.pid = Some(child.id());
+    await_value(&f, || {
+        f.log()
+            .contains("idle probe begins:")
+            .then_some(Value::Bool(true))
+    });
+    f.ok(&["app", "status"]);
+    let status = await_value(&f, || {
+        child
+            .try_wait()
+            .unwrap()
+            .map(|status| Value::Bool(status.success()))
+    });
+    assert_eq!(status, false, "{}", f.log());
+    let log = f.log();
+    let measured = log
+        .lines()
+        .find(|line| line.starts_with("idle FAILED:"))
+        .unwrap();
+    assert!(!measured.contains("callbacks=0 "), "{log}");
+    eprintln!("expected active-probe rejection: {measured}");
+    assert!(
+        log.contains("cockpit children reaped after orderly shutdown"),
+        "{log}"
+    );
+    f.pid = None;
+}
+
+#[test]
 fn stopping_an_unavailable_endpoint_is_named_and_never_uses_a_pid() {
     let f = Fixture::new();
     let (code, rows) = f.ctl(&["app", "stop"]);
