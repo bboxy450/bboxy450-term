@@ -135,7 +135,12 @@ mod tests {
     use super::Crop;
     #[test]
     fn a_crop_stays_inside_the_frame() {
-        let crop = |x, y, width, height| Crop { x, y, width, height };
+        let crop = |x, y, width, height| Crop {
+            x,
+            y,
+            width,
+            height,
+        };
         assert_eq!(crop(10, 20, 30, 40).within(100, 100), crop(10, 20, 30, 40));
         assert_eq!(crop(90, 95, 30, 40).within(100, 100), crop(90, 95, 10, 5));
         assert_eq!(crop(500, 500, 0, 0).within(100, 100), crop(99, 99, 1, 1));

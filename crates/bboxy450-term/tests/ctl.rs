@@ -9,7 +9,8 @@
 //!
 //! The "claude" here is a stand-in first on PATH: it answers through the real seat MCP
 //! bridge (`bboxy450-term mcp`) like a harness would, so no model and no network run.
-use bboxy450_term::cockpit::{Config, Session};
+use bboxy450_term::cockpit::{Config, Event, Session};
+use bbt_proto::{GuiAction, GuiReply};
 use serde_json::Value;
 use std::{
     os::unix::fs::PermissionsExt,
@@ -301,4 +302,125 @@ async fn without_ctl_the_app_writes_no_endpoint() {
         .unwrap();
     assert!(!refused.status.success(), "ctl has no door to knock on");
     session.shutdown().await.unwrap();
+}
+
+/// `ctl capture` is relayed by logic to the window's own session and answered by it; this
+/// test process is the window (logic's parent, so the window's door). A real window writes
+/// the presented frame; here the test writes the file and answers, which is the protocol.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ctl_capture_is_answered_by_the_window() {
+    let root = tempfile::tempdir().unwrap();
+    let root = root.path().canonicalize().unwrap();
+    let run = root.join("run");
+    let repository = root.join("repository");
+    std::fs::create_dir_all(&repository).unwrap();
+    std::fs::create_dir_all(root.join("zsh-config")).unwrap();
+    let app = root.join("test-app");
+    executable(
+        &app,
+        &format!(
+            "#!/bin/sh\nBBOXY_TEST_CUSTODY=memory exec {} \"$@\"\n",
+            quote(&PathBuf::from(env!("CARGO_BIN_EXE_bboxy450-term")))
+        ),
+    );
+    let mut session = Session::start(Config {
+        executable: app,
+        socket: run.join("mux.sock"),
+        run_dir: run.clone(),
+        repository,
+        shell_config: Some(root.join("zsh-config")),
+        ctl: true,
+    })
+    .await
+    .unwrap();
+    let endpoint = run.join("gui.endpoint");
+    until("gui.endpoint", &root.join("none"), || {
+        endpoint.exists().then_some(())
+    });
+    // The window's session is admitted by its first request, as the real window's is.
+    session.list().await.unwrap();
+
+    // Answers the next CaptureAsk as the window does: written, or why not.
+    async fn answer(session: &mut Session, error: Option<&str>) -> (String, Option<String>) {
+        loop {
+            let event = tokio::time::timeout(Duration::from_secs(20), session.event())
+                .await
+                .expect("the window is asked to capture")
+                .unwrap();
+            if let Event::Reply(reply) = event
+                && let GuiReply::CaptureAsk { op, path, seat } = *reply
+            {
+                if error.is_none() {
+                    std::fs::write(&path, b"\x89PNG stand-in").unwrap();
+                }
+                session
+                    .send(GuiAction::Captured {
+                        id: op,
+                        error: error.map(Into::into),
+                    })
+                    .await
+                    .unwrap();
+                return (path, seat.map(|seat| seat.to_string()));
+            }
+        }
+    }
+
+    // A relative path is made absolute by ctl, written by the window, and printed.
+    let out = root.join("window.png");
+    let asked = tokio::task::spawn_blocking({
+        let (run, root) = (run.clone(), root.clone());
+        move || ctl_in(&run, &root, &["capture", "window.png"])
+    });
+    let (path, seat) = answer(&mut session, None).await;
+    assert_eq!((path.as_str(), seat), (out.to_str().unwrap(), None));
+    let (ok, lines) = asked.await.unwrap();
+    assert!(ok, "{lines:?}");
+    assert_eq!(lines[0]["kind"], "captured", "{lines:?}");
+    assert_eq!(lines[0]["path"], out.to_str().unwrap());
+    assert!(std::fs::read(&out).unwrap().starts_with(b"\x89PNG"));
+
+    // The window's refusal reaches ctl as its error and exit 1.
+    let asked = tokio::task::spawn_blocking({
+        let (run, root) = (run.clone(), root.clone());
+        move || ctl_in(&run, &root, &["capture", "/nonexistent/x.png"])
+    });
+    answer(&mut session, Some("the window is not presenting")).await;
+    let (ok, lines) = asked.await.unwrap();
+    assert!(!ok);
+    assert_eq!(lines[0]["kind"], "error", "{lines:?}");
+    assert_eq!(lines[0]["reason"], "the window is not presenting");
+
+    // An unknown seat is refused by ctl before anything is asked of the window.
+    let (ok, lines) = ctl_in(&run, &root, &["capture", "x.png", "--seat", "nobody"]);
+    assert!(!ok && lines[0]["kind"] == "error", "{lines:?}");
+
+    session.shutdown().await.unwrap();
+}
+
+/// Runs `bboxy450-term ctl ARGS` from `cwd`; returns success and its JSON lines.
+fn ctl_in(run: &Path, cwd: &Path, args: &[&str]) -> (bool, Vec<Value>) {
+    let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+        .arg("ctl")
+        .args(args)
+        .env("BBOXY_RUN_DIR", run)
+        .current_dir(cwd)
+        .output()
+        .unwrap();
+    let lines = String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(|line| serde_json::from_str(line).expect("ctl prints JSON lines"))
+        .collect();
+    (output.status.success(), lines)
+}
+
+#[test]
+fn ctl_help_prints_its_own_usage() {
+    let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+        .args(["ctl", "--help"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let text = String::from_utf8_lossy(&output.stdout);
+    assert!(text.starts_with("usage: bboxy450-term ctl"), "{text}");
+    assert!(text.contains("capture <file.png>"), "{text}");
 }

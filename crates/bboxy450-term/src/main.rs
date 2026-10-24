@@ -4141,7 +4141,8 @@ mod input_tests {
                 | live::UiMsg::Task { .. }
                 | live::UiMsg::EventPage { .. }
                 | live::UiMsg::EventCursor { .. }
-                | live::UiMsg::MarkEventsRead { .. } => {
+                | live::UiMsg::MarkEventsRead { .. }
+                | live::UiMsg::Captured { .. } => {
                     panic!("pane admission fixture produced a messaging intent")
                 }
             }

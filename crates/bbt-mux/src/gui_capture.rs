@@ -76,13 +76,23 @@ mod tests {
     async fn an_ask_completes_with_the_windows_answer() {
         let captures = Arc::new(Captures::default());
         let path = "/tmp/never-written.png".to_string();
-        let ask = Ask { id: Ulid::new(), path: path.clone(), seat: None };
+        let ask = Ask {
+            id: Ulid::new(),
+            path: path.clone(),
+            seat: None,
+        };
         assert_eq!(
             captures.ask(ask.clone()).await,
             Err("no window is attached to capture".into())
         );
-        let relative = Ask { path: "x.png".into(), ..ask.clone() };
-        assert_eq!(captures.ask(relative).await, Err("capture path must be absolute".into()));
+        let relative = Ask {
+            path: "x.png".into(),
+            ..ask.clone()
+        };
+        assert_eq!(
+            captures.ask(relative).await,
+            Err("capture path must be absolute".into())
+        );
         let mut window = captures.subscribe();
         let asker = tokio::spawn({
             let captures = captures.clone();

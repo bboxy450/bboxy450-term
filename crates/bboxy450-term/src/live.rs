@@ -558,6 +558,7 @@ fn operations_disconnected(model: &mut Arc<Model>, updates: &Latest<Arc<Model>>,
     }
 }
 
+#[allow(clippy::too_many_arguments)] // The session, its channels and its two UI callbacks.
 async fn run(
     updates: Arc<Latest<Arc<Model>>>,
     mut commands: Commands,
