@@ -1,5 +1,6 @@
 ---
 id: 01M5N5S760T02M4V8TAM6V8DS3
+number: 167
 type: comment
 title: "isolation covers crashes, not privilege"
 status: resolved
@@ -15,7 +16,7 @@ updated: 2026-10-23T20:13:06Z
 ---
 # isolation covers crashes, not privilege
 
-Red-team review of `.bboxy/specs/plugins.md` at 16b4c98 (decision #41, the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
+Red-team review of `.bboxy/specs/plugins.md` at 16b4c98 (decision [[d41-plugins|#41]], the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
 
 §1 Isolation promises a plugin's "crash is its own" and nothing about what it may read or do. A subprocess runs with the operator's full privileges ([[plugins-sota]] :117: "OS process with the user's privileges"): it can read the ICQ identity keys, the machine signing key, `~/.agents`, other seats' sockets and environment. "The app never reads the plugin's files, config or credentials" (§1 Protocol) is the one direction that does not matter for safety.
 

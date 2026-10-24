@@ -9,6 +9,7 @@ gate: pending-rs1
 check: cargo test -p bboxy450-term --locked --test recovery restart_keeps_working_state -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: a restart that loses state makes every rebuild a loss, and fast iteration dies with it; state the operator cannot see cannot be trusted or repaired
 links:
+  - { to: "[[d11-supervisor-death-survivable]]", rel: decision }
   - { to: "[[c1-live-seats]]", rel: constrains }
   - { to: "[[work-items]]", rel: constrains }
   - { to: "[[l9-messaging-tasks]]", rel: constrains }
@@ -23,7 +24,7 @@ history, a focused pane, unread marks and in-flight tasks: after resume every
 seat is attached to the same PTY, the layout and focus are identical, scroll
 positions and read marks hold, and every task shows the same status, because
 **no working state exists only in process memory**: seats live in the
-supervisor (decision #11), layout and history in the account journal and the
+supervisor (decision [[d11-supervisor-death-survivable|#11]]), layout and history in the account journal and the
 ring ([[c1-live-seats]] §3), read marks in the account object
 ([[l9-messaging-tasks]] §3), tasks and every record in frontmatter the operator
 can open ([[work-items]]). Operator, 2026-10-23: "fast reload without losing

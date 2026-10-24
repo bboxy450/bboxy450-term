@@ -1,3 +1,13 @@
+---
+id: "7GC9MD2N0P0ZDQ7NPD6D4KZJEM"
+type: "spec"
+number: 118
+title: "Document viewer — native Markdown and Mermaid"
+created: "2026-10-22T00:22:14Z"
+updated: "2026-10-24T00:10:38Z"
+links:
+  - { to: "[[d52-brand-and-face]]", rel: decision }
+---
 # Document viewer — native Markdown and Mermaid
 
 Owner: Vesper Greywind <ORACLE>. 2026-10-21. DECIDED by the operator: "native markdown viewer in our Rust app, with nice mermaid rendering, built ourselves; a harness gives me a markdown path, I ⌘-click, I see a nice document." Back to [[vision]] · [[renderer]] · [[gui-components]] · [[work-items]] · [[ux-prototype]] (documents.html is the design).

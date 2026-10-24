@@ -1,3 +1,11 @@
+---
+id: "1Q3W1615JQCSDGS5P57E4VTS61"
+type: "research"
+number: 67
+title: "Usage limits — how `tachyon` reads Claude and Codex account limits"
+created: "2026-10-21T18:54:36Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Usage limits — how `tachyon` reads Claude and Codex account limits
 
 Back to [[roadmap]] · [[vision]].

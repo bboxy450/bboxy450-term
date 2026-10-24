@@ -1,5 +1,6 @@
 ---
 id: 01M5JQE3ZY2WM2FSH80ZCQ59QD
+number: 141
 type: invariant
 title: the UI thread never waits on IO
 status: active

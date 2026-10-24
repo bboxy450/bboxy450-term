@@ -1,9 +1,15 @@
 ---
 id: 01M5MT43P3AHWH7F9G3EAP85DR
+number: 154
 type: spec
 title: "rim glow — the pane glow is an alive rim centred on the pane border, half out, half in"
 status: decided
 links:
+  - { to: "[[d35-alive-rim]]", rel: decision }
+  - { to: "[[d39-suite-is-the-product]]", rel: decision }
+  - { to: "[[d42-focus-swell]]", rel: decision }
+  - { to: "[[d43-kit-alive-borders]]", rel: decision }
+  - { to: "[[d44-waiting-attention]]", rel: decision }
   - { to: "[[ux-prototype]]", rel: changes }
   - { to: "[[renderer]]", rel: changes }
   - { to: "[[gui-components]]", rel: changes }
@@ -15,7 +21,7 @@ updated: 2026-10-23T23:04:45Z
 ---
 # Rim glow
 
-Owner: Corvin Duskmantle <ARCHITECT>. Decided 2026-10-23 (decision #35). Operator, verbatim and in order, on the lab's glow-inside variants: **"I ACTUALLY LOVE RIM EFFECT"**, "lets go everywhere with rim effect, more alive gradient rim border, that is alive and moving color and pulsating", "8px alive rim is the thing we want", "go with it". The approved look is `lab/web/glow-inside.html?state=alive-rim` (Wren, 2026-10-23), which supersedes the plain 2 px variant this spec first recorded. The seat glow is an **alive rim** just inside the pane border with a bloom reaching up to 8 px in; the outside lane is retired; panes pack tighter.
+Owner: Corvin Duskmantle <ARCHITECT>. Decided 2026-10-23 (decision [[d35-alive-rim|#35]]). Operator, verbatim and in order, on the lab's glow-inside variants: **"I ACTUALLY LOVE RIM EFFECT"**, "lets go everywhere with rim effect, more alive gradient rim border, that is alive and moving color and pulsating", "8px alive rim is the thing we want", "go with it". The approved look is `lab/web/glow-inside.html?state=alive-rim` (Wren, 2026-10-23), which supersedes the plain 2 px variant this spec first recorded. The seat glow is an **alive rim** just inside the pane border with a bloom reaching up to 8 px in; the outside lane is retired; panes pack tighter.
 
 Lens: the pane is the unit; its border is where identity and activity read. Assumes the lab variant's equation and table as measured on 2026-10-23. Breaks when a pane's content padding is smaller than the rim plus a text inset; the invariant below forbids that.
 
@@ -57,7 +63,7 @@ G0 Wren: promote `alive-rim` into the design system (pane, strip, style), tokens
 4. `sh scripts/ci-local.sh --parity` exit 0 in a clean worktree of the handed-off commit.
 5. Rim size 2, 4 and 8 give gutter 2, 4, 8 and inset 1, 2, 4 in native and lab alike, 0 geometry mismatches; [[rim-size-is-layout]] passes and joins the default set in G3's commit.
 
-## 7. Focus swell (operator, 2026-10-23, decision #42)
+## 7. Focus swell (operator, 2026-10-23, decision [[d42-focus-swell|#42]])
 
 Verbatim, from Wren's "focus swell" demo at 10/20/30/40 px: "can we change focus circle effert to just using silk border glow, and pulsing it to say 40pxs and then back, you know? without changing spacing between blocks, as an indication of me focusing it", then "40px swell is fucking perfect!".
 
@@ -66,15 +72,15 @@ Verbatim, from Wren's "focus swell" demo at 10/20/30/40 px: "can we change focus
 - **Legibility.** The focused block's own text is never covered (the swell lies outside its rim). A neighbour's text under the swell stays readable. **Acceptance from Wren's reference (df6d58e, 2026-10-23):** over a neighbour's nearest text cell (12 px away at rim size 4) the weight is at most **0.48** (mean 0.36, trough 0.13) for at most 0.9 s; the curve is `weight = env · (.6·e^(−2.8u)·(.45 + .55·crest) + .18·e^(−((u − c0)/.22)²))` with `u = (d − R/2)/reach`, `reach = 40·sin(πt/900 ms)`, `env = sin(πt/900 ms)`, the weight fixed and not scaled by activity; the native pass matches it under strict parity.
 - **Tokens.** `glow.swell = 40` (px past the rim), `glow.swell_ms = 900`; both read by the shader as uniforms.
 
-## 8. Alive borders are a kit capability (operator, 2026-10-23, decision #43)
+## 8. Alive borders are a kit capability (operator, 2026-10-23, decision [[d43-kit-alive-borders|#43]])
 
 Verbatim: "and same swell and same border effect as on terminal blocks should be on the left, each block in our UI GPUGUI system should have ability to define this type of dynamic border and border swell and such! thats important, our blocks should be sexy out of the box!"
 
-- **Where it lives.** The rim and the swell are a **style property of any `bbt-ui` block**, not pane code: `border.rim { size, source }` and `border.swell { reach, ms }` on the block's style, with the same `materials.wgsl` rim pass run over the block's rect; the "alive" inputs (activity, seat colour, focus, pulse phase) arrive per block through the R12-2 arenas as uniforms. Shader in `bbt-render`, style types in `bbt-ui-model` (shared with the lab), defaults in `bbt-ui`; nothing in the app ([[layering]], decision #39). **What it replaces:** today `Pane` sets the rim as a style override, `style.overrides.glow = Some(ui::Glow { … })` (`crates/bbt-ui/src/modules/pane.rs:398`), and only panes have one; that override becomes `Style.border: Border { rim: Option<Rim>, swell: Option<Swell> }` on every block, filled per block kind from the tokens, so `Pane` stops writing it and the rim pass reads `border` off every block rect. `ui::Glow` as a pane-only override is retired in G5.
+- **Where it lives.** The rim and the swell are a **style property of any `bbt-ui` block**, not pane code: `border.rim { size, source }` and `border.swell { reach, ms }` on the block's style, with the same `materials.wgsl` rim pass run over the block's rect; the "alive" inputs (activity, seat colour, focus, pulse phase) arrive per block through the R12-2 arenas as uniforms. Shader in `bbt-render`, style types in `bbt-ui-model` (shared with the lab), defaults in `bbt-ui`; nothing in the app ([[layering]], decision [[d39-suite-is-the-product|#39]]). **What it replaces:** today `Pane` sets the rim as a style override, `style.overrides.glow = Some(ui::Glow { … })` (`crates/bbt-ui/src/modules/pane.rs:398`), and only panes have one; that override becomes `Style.border: Border { rim: Option<Rim>, swell: Option<Swell> }` on every block, filled per block kind from the tokens, so `Pane` stops writing it and the rim pass reads `border` off every block rect. `ui::Glow` as a pane-only override is retired in G5.
 - **Defaults.** Panes and their strips, sidebar seat rows, tabs and cards carry the rim and the swell out of the box; a block opts out by style, never by code.
 - **Layout rule for blocks that are not panes.** Only the pane gutter and the stage inset follow the rim size ([[rim-size-is-layout]]). Every other block draws its outer half into the spacing it already has (the lab's `--rim-space`, 0 for edge-to-edge rows) and is clipped there; its inner half and bloom stay inside its own padding, so a block with less padding than the bloom shows a shallower bloom, never glow over its content. Idle seat rows carry no rim at rest (`glow.row_idle`) and still take the swell; cards keep their gap and fit the outer half (Wren's reference df6d58e).
 - **Order.** Lands after G3 as **G5**: the capability, the defaults on rows, tabs and cards, Wren's references for each, one paired commit under strict geometry.
 
 ## 9. Attention
 
-A seat waiting for the operator (question, permission, auth) auto-swells and pulses strongly until handled, and fires a desktop notification whose click focuses it: [[attention]] (decision #44).
+A seat waiting for the operator (question, permission, auth) auto-swells and pulses strongly until handled, and fires a desktop notification whose click focuses it: [[attention]] (decision [[d44-waiting-attention|#44]]).

@@ -1,5 +1,6 @@
 ---
 id: 01M5N6AKZXFCYCPZ9ETPVSC1HY
+number: 193
 type: comment
 title: "reply: sota-unsourced-judgements"
 status: resolved

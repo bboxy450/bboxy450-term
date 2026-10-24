@@ -1,3 +1,11 @@
+---
+id: "5Q6E00XYC02G4T1GRJNN0ZHADD"
+type: "task"
+number: 76
+title: "Task T: text rendering — how ghostty does it, what we take"
+created: "2026-10-21T19:10:11Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Task T: text rendering — how ghostty does it, what we take
 
 Date: 2026-10-21. Owner: Vesper Greywind <ORACLE>. Assignee: Oracle subagent (writes `research/text-rendering.md`). Status: RUNNING. Redundant Executor pass welcome: write `research/text-rendering-exec.md`.

@@ -1,5 +1,6 @@
 ---
 id: 01M5N6AKZQ36FYQ9RVGCKK6T3F
+number: 185
 type: comment
 title: "reply: mcp-names"
 status: resolved

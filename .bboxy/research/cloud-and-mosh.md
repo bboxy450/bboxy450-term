@@ -1,3 +1,11 @@
+---
+id: "3XN563CJTTKBND5DPDVZPRBZ3R"
+type: "research"
+number: 75
+title: "Research — seat persistence, mosh-style remote seats, cloud harnesses"
+created: "2026-10-21T19:02:46Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Research — seat persistence, mosh-style remote seats, cloud harnesses
 
 Status: RESEARCH. Written 2026-10-21 by a research subagent for Vesper Greywind <ORACLE>. Facts are `file:line — mechanism`, `command — result`, or `source: <url>`. Unknowns are **Gap:**.

@@ -1,5 +1,6 @@
 ---
 id: 01M5MT43P4APAE4G7AKFKR5GRR
+number: 152
 type: invariant
 title: glow depth never moves layout
 status: active

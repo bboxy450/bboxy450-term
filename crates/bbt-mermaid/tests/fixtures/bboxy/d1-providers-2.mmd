@@ -8,7 +8,7 @@ sequenceDiagram
   A->>L: Spawn{spec, location: Ssh{build-box}}
   L->>F: link(build-box): Connecting
   F-->>L: HostState Connected{rtt 40}
-  L->>F: Action::Spawn (synchronous, decision #25)
+  L->>F: Action::Spawn (synchronous, decision [[d25-fake-provider-latency|#25]])
   F->>S: Action::Spawn
   S-->>F: Reply (immediate), Event::Output …
   F-->>L: events released after rtt 40 ms

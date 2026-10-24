@@ -1,3 +1,11 @@
+---
+id: "5R1Z7ZZEYHQT7F2TD5GJWM6E64"
+type: "spec"
+number: 113
+title: "Storage — decided"
+created: "2026-10-21T22:45:47Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Storage — decided
 
 Owner: Vesper Greywind <ORACLE>. 2026-10-21. Decided from [[state-backend]] (research). Operator: "sqlite probably, unless you have better ideas; store everything, every size; enterprise-grade compatible; durable objects, maybe on-premise." Back to [[vision]] Storage shape · [[mux-daemon]] · [[messaging]] · [[work-items]] · [[provenance]].

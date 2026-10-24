@@ -1,3 +1,11 @@
+---
+id: "273KA7ZZR8A8EJV23N5V35M741"
+type: "research"
+number: 110
+title: "Provenance systems and plain-file document systems — research and proposal"
+created: "2026-10-21T22:41:36Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Provenance systems and plain-file document systems — research and proposal
 
 2026-10-21 · research subagent for Vesper Greywind <ORACLE> · for [[work-items]] §Provenance. Facts carry `source:` or `file:line`; the Proposal section is proposal, not fact.

@@ -1,3 +1,11 @@
+---
+id: "1VCB1Q6T5JZWQDH2MQTBZ27GPR"
+type: "research"
+number: 69
+title: "Embedded agent messaging — source evidence"
+created: "2026-10-21T18:56:26Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Embedded agent messaging — source evidence
 
 2026-10-21 · Nyx Copperwing <EXECUTOR> · assignment B.

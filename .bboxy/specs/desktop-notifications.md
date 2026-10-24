@@ -1,9 +1,15 @@
 ---
 id: 01M5NG4WXQ0B9JZS4FEP5JE5VA
+number: 207
 type: spec
 title: "desktop notifications — an OS-agnostic facade over one crate per OS; macOS real, the rest dummies that say so"
 status: decided
 links:
+  - { to: "[[d24-defer-code-signing]]", rel: decision }
+  - { to: "[[d39-suite-is-the-product]]", rel: decision }
+  - { to: "[[d44-waiting-attention]]", rel: decision }
+  - { to: "[[d45-desktop-notifications]]", rel: decision }
+  - { to: "[[d46-cross-os-facades]]", rel: decision }
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
   - { to: "[[attention]]", rel: consumer }
   - { to: "[[cross-os-facade]]", rel: invariant }
@@ -15,13 +21,13 @@ updated: 2026-10-23T23:16:21Z
 ---
 # Desktop notifications
 
-Owner: Corvin Duskmantle <ARCHITECT>. Decided 2026-10-23 (decisions #45 and #46). Operator, via the Oracle (verbatim gist): desktop notifications get their own crate family, an OS-agnostic facade `bboxy450-desktop-notifications` with per-OS sub-crates; macOS first and real; Windows and Linux are dummy crates for now with an explicit "DO RESEARCH BEFORE IMPLEMENTING" marker; as a general rule everything cross-OS is done this way, with an eye on wasm, iPad and Android ("we are a pure GPU rendering library"), unless an existing crate already does it well enough to use.
+Owner: Corvin Duskmantle <ARCHITECT>. Decided 2026-10-23 (decisions [[d45-desktop-notifications|#45]] and [[d46-cross-os-facades|#46]]). Operator, via the Oracle (verbatim gist): desktop notifications get their own crate family, an OS-agnostic facade `bboxy450-desktop-notifications` with per-OS sub-crates; macOS first and real; Windows and Linux are dummy crates for now with an explicit "DO RESEARCH BEFORE IMPLEMENTING" marker; as a general rule everything cross-OS is done this way, with an eye on wasm, iPad and Android ("we are a pure GPU rendering library"), unless an existing crate already does it well enough to use.
 
-Lens: the app is a suite of kits (decision #39); the OS is a dependency to be fenced, not a home. Assumes `UNUserNotificationCenter` needs a bundle identifier and a delegate set at launch. Breaks when a target has no per-OS crate: then the facade refuses to compile, by design.
+Lens: the app is a suite of kits (decision [[d39-suite-is-the-product|#39]]); the OS is a dependency to be fenced, not a home. Assumes `UNUserNotificationCenter` needs a bundle identifier and a delegate set at launch. Breaks when a target has no per-OS crate: then the facade refuses to compile, by design.
 
 ```mermaid
 flowchart LR
-  APP["app<br/>attention, decision #44"] -- "post, replace by id, remove" --> F["bboxy450-desktop-notifications<br/>facade: Notifier, Notification, Response"]
+  APP["app<br/>attention, decision [[d44-waiting-attention|#44]]"] -- "post, replace by id, remove" --> F["bboxy450-desktop-notifications<br/>facade: Notifier, Notification, Response"]
   F -- "cfg target_os = macos" --> M["bboxy450-desktop-notifications-macos<br/>UNUserNotificationCenter and its delegate"]
   F -- "cfg target_os = windows" --> W["bboxy450-desktop-notifications-windows<br/>dummy: Unsupported, research first"]
   F -- "cfg target_os = linux" --> L["bboxy450-desktop-notifications-linux<br/>dummy: Unsupported, research first"]
@@ -62,8 +68,8 @@ pub fn open(on_response: Box<dyn Fn(Response) + Send + Sync + 'static>) -> Resul
 
 - `UNUserNotificationCenter.currentNotificationCenter()` with the process as its own `UNUserNotificationCenterDelegate`; `requestAuthorization(options: [.alert, .sound])` on `authorize`; `UNMutableNotificationContent` + `UNNotificationRequest(identifier: id.0)` on `post`, so the identifier carries the replace semantics; `removeDeliveredNotifications(withIdentifiers:)` and `removePendingNotificationRequests(withIdentifiers:)` on `remove`.
 - `didReceive response`: `UNNotificationDefaultActionIdentifier` → `Response::Clicked(id)`, `UNNotificationDismissActionIdentifier` → `Dismissed(id)`, the id read from `response.notification.request.identifier`; the completion handler is called after the callback returns.
-- **Bundle check first.** `open` reads `NSBundle.mainBundle.bundleIdentifier`; `None` returns `Error::NoBundle` **before** touching the notification centre, which throws without one. The build produces `bboxy450-term.app` with an `Info.plist` for every run, ad-hoc signed; Developer ID stays deferred (decision #24; ad-hoc is not identity signing).
-- **Use versus build: build** (decision #45, from [[desktop-notifications-research]]). The macOS crate sits directly on `objc2-user-notifications` 0.3 with `objc2` and `block2`, the family `winit` already links: a `define_class!` delegate implementing `UNUserNotificationCenterDelegate`, `setDelegate` with the delegate kept alive for the process (the property is weak) **before `EventLoop::run`**, since Apple requires the delegate before the app finishes launching for cold-launch delivery. No existing crate met the four requirements with the app owning the click: notify-rust's UN path is a preview feature with blocking handles and a delegate owned by `mac-usernotifications`; `user-notify` is LGPL-3.0, generates UUID identifiers so nothing replaces, and drags tokio onto every target; `mac-notification-sys` is the deprecated `NSUserNotification` behind a bundle-identifier swizzle; `usernotifications-rs` was a day old on bespoke FFI. About 300 lines; the research names a working reference file to read for the mechanism, not to copy.
+- **Bundle check first.** `open` reads `NSBundle.mainBundle.bundleIdentifier`; `None` returns `Error::NoBundle` **before** touching the notification centre, which throws without one. The build produces `bboxy450-term.app` with an `Info.plist` for every run, ad-hoc signed; Developer ID stays deferred (decision [[d24-defer-code-signing|#24]]; ad-hoc is not identity signing).
+- **Use versus build: build** (decision [[d45-desktop-notifications|#45]], from [[desktop-notifications-research]]). The macOS crate sits directly on `objc2-user-notifications` 0.3 with `objc2` and `block2`, the family `winit` already links: a `define_class!` delegate implementing `UNUserNotificationCenterDelegate`, `setDelegate` with the delegate kept alive for the process (the property is weak) **before `EventLoop::run`**, since Apple requires the delegate before the app finishes launching for cold-launch delivery. No existing crate met the four requirements with the app owning the click: notify-rust's UN path is a preview feature with blocking handles and a delegate owned by `mac-usernotifications`; `user-notify` is LGPL-3.0, generates UUID identifiers so nothing replaces, and drags tokio onto every target; `mac-notification-sys` is the deprecated `NSUserNotification` behind a bundle-identifier swizzle; `usernotifications-rs` was a day old on bespoke FFI. About 300 lines; the research names a working reference file to read for the mechanism, not to copy.
 
 ## 4. The dummies
 

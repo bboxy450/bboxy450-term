@@ -1,5 +1,6 @@
 ---
 id: 01M5N6JP76ZEQ9DAR99859BSW7
+number: 197
 type: comment
 title: "where trust records live is unstated"
 status: resolved
@@ -15,7 +16,7 @@ updated: 2026-10-23T20:26:43Z
 ---
 # where trust records live is unstated
 
-Red-team follow-up on `.bboxy/specs/plugins.md` revision 2 at edc5dc5 (decision #41). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
+Red-team follow-up on `.bboxy/specs/plugins.md` revision 2 at edc5dc5 (decision [[d41-plugins|#41]]). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
 
 Revision 2 closes most of [[2026-10-23-plugins-repo-trust]]: nothing runs before a trust record pins path and sha256, and repo-local discovery is off by default. It never says **where trust records are stored**. If a trust record can live in the repository (`.bboxy/` already holds `plugins/`), a hostile repository ships its binary together with a pre-made trust record that pins the binary's own digest, and the gate opens on clone exactly as before.
 

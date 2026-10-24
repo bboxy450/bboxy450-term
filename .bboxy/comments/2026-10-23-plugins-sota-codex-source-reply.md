@@ -1,5 +1,6 @@
 ---
 id: 01M5N6AKZWBHDFDYG0WX8T7E1V
+number: 190
 type: comment
 title: "reply: sota-codex-source"
 status: resolved

@@ -1,3 +1,11 @@
+---
+id: "13M0EBQRXQX9B5S94118AMJKHA"
+type: "task"
+number: 116
+title: "W2.2 — bbt-mux: logic process, event bus, .bboxy index, state streams"
+created: "2026-10-21T23:15:56Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # W2.2 — bbt-mux: logic process, event bus, .bboxy index, state streams
 
 Owner: Vesper Greywind <ORACLE>. Assignee: free Executor. Status: OPEN (W2.1 done; no other dependency). Specs: [[mux-daemon]] (seat registry, logic ↔ GUI state streams), [[events]] (the bus), [[storage]] (Store/Blobs/Events traits, SQLite per object), [[work-items]] (frontmatter, wikilinks with `{rel:w}` annotation, six graphs), [[provenance]] (activity log).

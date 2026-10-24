@@ -17,7 +17,7 @@ updated: 2026-10-23T23:56:02Z
 ---
 # Decision 50: when MIT, when Apache
 
-Decided by the operator's two lines, 2026-10-23; amends #34 ([[licensing]]) with the rule behind the map.
+Decided by the operator's two lines, 2026-10-23; amends [[d34-licensing|#34]] ([[licensing]]) with the rule behind the map.
 
 **Alternatives.** (a) MIT alone everywhere. (b) Apache-2.0 alone everywhere. (c) Dual MIT OR Apache-2.0 for every crate we own, Apache-2.0 alone where an Apache-only upstream lives inside the crate, no copyleft or source-available licence anywhere, no CLA. (d) A copyleft or source-available licence for the app to keep forks honest.
 

@@ -1,3 +1,11 @@
+---
+id: "00P7BS3HJJPZB02A8WP5ANTBZE"
+type: "spec"
+number: 96
+title: "Specification ownership and consistency"
+created: "2026-10-21T20:47:34Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Specification ownership and consistency
 
 2026-10-21 · Nyx Copperwing <EXECUTOR> · assignment S and the “seats are sockets” addendum · Oracle review required for the Gap lines below.

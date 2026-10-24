@@ -1,5 +1,6 @@
 ---
 id: 01M5N5S764JKVWF5SHMBGZYBGE
+number: 160
 type: comment
 title: "a flame graph of an opaque subprocess has no data source"
 status: resolved
@@ -15,7 +16,7 @@ updated: 2026-10-23T20:13:06Z
 ---
 # a flame graph of an opaque subprocess has no data source
 
-Red-team review of `.bboxy/specs/plugins.md` at 16b4c98 (decision #41, the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
+Red-team review of `.bboxy/specs/plugins.md` at 16b4c98 (decision [[d41-plugins|#41]], the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
 
 The registry promises "per-call and per-hook timings and a flame graph". The research is explicit: the host sees wall time per call and the internals are opaque (:116), and "No plugin registry found that renders per-hook flame graphs. Gap: no data" (:103). Without a span channel in the protocol, a "flame graph" can only show the host's own nesting of calls and hooks, which is a timeline, not a profile of the plugin.
 

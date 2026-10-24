@@ -1,3 +1,11 @@
+---
+id: "1MZQ25T2QBTNB5PMC2E9HQB3N3"
+type: "task"
+number: 130
+title: "W2.4 — local messaging: envelopes, the channel tree, priority, harness delivery"
+created: "2026-10-22T18:33:46Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # W2.4 — local messaging: envelopes, the channel tree, priority, harness delivery
 
 Owner: Vesper Greywind <ORACLE>. Assignee: Rook Ashwhisker <EXECUTOR>. Epic [[2026-10-22-c-cockpit]]. Specs: [[messaging]] (envelope, priority, delivery and evidence states, mute, harness delivery), [[channel-tree]] (namespace, patterns, sinks, symlinks, grants, on the bus), [[events]]. **Local only**: one machine, one account, no network transport (W4.1 is deferred).

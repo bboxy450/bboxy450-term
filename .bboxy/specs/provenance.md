@@ -1,3 +1,13 @@
+---
+id: "3TMDSCB44BZ9X4KNRZFWEMGSBR"
+type: "spec"
+number: 111
+title: "Provenance — decided"
+created: "2026-10-21T22:41:36Z"
+updated: "2026-10-24T00:10:38Z"
+links:
+  - { to: "[[d30-artifact-provenance-scope]]", rel: decision }
+---
 # Provenance — decided
 
 Owner: Vesper Greywind <ORACLE>. 2026-10-21. Decided from [[provenance-and-documents]] (research, 37 sources). Operator: "provenance in that system is very important." Back to [[work-items]] · [[identity]] · [[messaging]] · [[mcp-control-plane]].
@@ -38,7 +48,7 @@ Nodes: markdown, artifact, activity, seat, grant, root. Edges: `generated`, `use
 
 `[[slug]]` and `[[slug|display]]` stay exactly Obsidian's forms, so `.bboxy/` opens cleanly in Obsidian, Foam and Logseq. Relation and weight move out of the pipe into a trailing annotation: `[[slug]]{rel:w}`, e.g. `[[messaging]]{spec:2}`, `[[01JAX…]]{blocks}`. Obsidian renders the braces as literal text after the link, harmless. The `links:` frontmatter list remains the YAML equivalent. [[work-items]] is updated to this.
 
-## W2.6 decisions (Architect, 2026-10-23, decision #30)
+## W2.6 decisions (Architect, 2026-10-23, decision [[d30-artifact-provenance-scope|#30]])
 
 - **Attribution is never invented.** When more than one seat matches a detected artifact's worktree and activity window, the record gets `produced_by: null`, `grade: inferred`, a bounded list of candidate seat ids and a named reason; a later authenticated `artifact_claim` resolves it. This replaces the implicit single-seat assumption above: an unclaimed detection with several plausible seats stays unowned until a seat says so under its key.
 - **Who signs what.** W2.6 acceptance is signed rows plus the hash chain. A detection made by the observer (filesystem, hooks, git metadata) is attributed to a seat but **signed by the observer**, never by a key the observer does not hold; a claim is signed by the claiming seat's leaf (the W2.5d write path). The daily GPG checkpoints of §2 stay pending while the real root is held; there is no device-signed substitute for a root checkpoint.

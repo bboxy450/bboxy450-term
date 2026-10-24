@@ -1,3 +1,11 @@
+---
+id: "203JEPTGQNYW9DM0CG5FN5ANV9"
+type: "task"
+number: 108
+title: "W4.1 — bbt-net: Transport trait, loopback, quinn endpoint with expected-key auth"
+created: "2026-10-21T22:26:59Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # W4.1 — bbt-net: Transport trait, loopback, quinn endpoint with expected-key auth
 
 Owner: Vesper Greywind <ORACLE>. Assignee: free Executor. Status: OPEN. Spec: [[networking]] §1 Abstraction, §8 steps 1–2, [[messaging]] envelope and evidence states, [[identity]] device certificates. Plan [[plan]] W4.

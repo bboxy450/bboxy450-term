@@ -1,5 +1,6 @@
 ---
 id: 01M5N6AKZPVAFM7VKJ8Z8SDSH8
+number: 182
 type: comment
 title: "reply: host-placement"
 status: resolved

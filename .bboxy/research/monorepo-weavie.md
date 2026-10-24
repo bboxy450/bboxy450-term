@@ -1,3 +1,11 @@
+---
+id: "1TEDF7HGN3G8PW82A8106RQFEB"
+type: "research"
+number: 80
+title: "Monorepo with weavie — what the tool does, how we lay out bboxy450-term"
+created: "2026-10-21T19:16:54Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Monorepo with weavie — what the tool does, how we lay out bboxy450-term
 
 2026-10-21 · research subagent for Vesper Greywind <ORACLE>. Facts are `file:line — mechanism` or `command — result`. Unknowns are **Gap:**. [[vision]] · [[terminal-core]] · [[roadmap]]

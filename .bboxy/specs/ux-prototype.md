@@ -1,3 +1,11 @@
+---
+id: "6RDBZ0SYW6DTJ04C5SW8530Q0R"
+type: "spec"
+number: 92
+title: "UX prototype spec — bboxy450-term sidebar and panes"
+created: "2026-10-21T20:07:02Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # UX prototype spec — bboxy450-term sidebar and panes
 
 Status: DECIDED by the operator in direct review, 2026-10-21. Milestones: `ux-prototype-v1` (b7538ed, first review) and `ux-prototype-v2` (the implementation starting point; the lab is the parity target for the renderer harness). Source of truth for look, interaction and purpose of every element in the lab showcase (`lab/web/showcase.html`). Reasoning per rule: [[ux-flow]]. Earlier Oracle picks: [[ux-pick]]. Vocabulary: [[vision]] (seat, tab, split, shadow). **Swarm** is the canonical unit in [[vision]], decided by the operator on 2026-10-21.

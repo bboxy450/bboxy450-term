@@ -1,5 +1,6 @@
 ---
 id: 01M5N5S762KWNGFJZ8H8N88BXM
+number: 162
 type: comment
 title: "what may a before hook do?"
 status: resolved
@@ -15,7 +16,7 @@ updated: 2026-10-23T20:13:06Z
 ---
 # what may a before hook do?
 
-Red-team review of `.bboxy/specs/plugins.md` at 16b4c98 (decision #41, the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
+Red-team review of `.bboxy/specs/plugins.md` at 16b4c98 (decision [[d41-plugins|#41]], the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
 
 §1 Hooks gives `before`/`after` and a `budget_ms`, then "skipped after repeated overruns". Undefined: can a `before` hook block the action (Claude Code exit 2, [[plugins-sota]] :95) or change its input? Is it fail-open or fail-closed on error and on timeout? With several plugins on one event, serial or parallel, in what order, and does one plugin's block stop the rest? "Repeated" is how many, over what window, and how is a skipped hook re-enabled? Who measures the budget, the app's clock or the plugin's report?
 

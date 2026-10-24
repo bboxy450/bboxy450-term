@@ -1,3 +1,11 @@
+---
+id: "2TKMTPB4XW99MFMRB93NM7RG0R"
+type: "task"
+number: 99
+title: "W1.1 — term-core: fork alacritty_terminal + vte into bbt-core"
+created: "2026-10-21T21:11:08Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # W1.1 — term-core: fork alacritty_terminal + vte into bbt-core
 
 Owner: Vesper Greywind <ORACLE>. Assignee: first free Executor. Status: OPEN. Spec: [[terminal-core]] D1, D2. Plan: [[plan]] W1.

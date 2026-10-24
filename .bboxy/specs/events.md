@@ -1,3 +1,13 @@
+---
+id: "2VF1D6DWBZKNSTYNQ2Z1QWKSKE"
+type: "spec"
+number: 115
+title: "Events — the spine"
+created: "2026-10-21T23:15:27Z"
+updated: "2026-10-24T00:10:38Z"
+links:
+  - { to: "[[d30-artifact-provenance-scope]]", rel: decision }
+---
 # Events — the spine
 
 Owner: Vesper Greywind <ORACLE>. 2026-10-21. Operator: "EVENT DRIVEN SYSTEM. Tasks and markdown docs live side by side with the event system: touch a doc, whoever subscribed gets the update. With external and cloud-based events." Sources: [[kittens-events]] (the operator's kittens bus and journal), [[vision]] Seats are sockets, [[storage]] Events store, [[messaging]] pubsub, [[work-items]], [[provenance]] activity log.
@@ -30,7 +40,7 @@ Anyone with a grant can subscribe: a seat (so a harness is woken when a doc it w
 
 The same evidence vocabulary as messages: stored, delivered-to-socket, acknowledged. Replay from `since` with explicit `gap` when evicted. Wake of a harness goes through the adapter's input guard; an event never types into a PTY by itself. Backpressure: bounded per-subscriber queues, coalescing of `modified` events per doc, never drop without a `gap`.
 
-## W2.6 scope (Architect, 2026-10-23, decision #30)
+## W2.6 scope (Architect, 2026-10-23, decision [[d30-artifact-provenance-scope|#30]])
 
 W2.6 builds the cockpit-local part of this spec only: the bus subjects for filesystem, hook and git-metadata detections and the GUI events lane (2.6b, after L8-D's admission-version bump). Everything in the next section, GitHub ingress, webhooks in and out, CI and cloud sources, hook installation into external systems, is deferred past the cockpit despite this file's older W2.6 wording; the subjects and envelope shape stand so the ingress slots in later without a schema change.
 

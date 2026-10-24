@@ -1,5 +1,6 @@
 ---
 id: 01M5JRD321TD30WH1MB71TSGVD
+number: 142
 type: invariant
 title: web and native geometry agree for every parity case
 status: active
@@ -8,6 +9,7 @@ gate: parity
 check: sh scripts/parity.sh
 cost: a geometry miss is a layout bug shipped as a pixel difference; the library drifts from the lab it is matched against
 links:
+  - { to: "[[d16-task-invariants]]", rel: decision }
   - { to: "[[renderer]]", rel: constrains }
   - { to: "[[runbook-web-to-native]]", rel: spec }
   - { to: "[[gui-components]]", rel: constrains }
@@ -23,7 +25,7 @@ atom cases are vectors; `crates/bboxybook/src/parity.rs` thresholds):
 zero mismatches **and zero unproven cases** (a case whose geometry could not be
 measured fails, `parity.rs:242, 669-670`). Any visual change gates on it. Geometry is deterministic, so it is a hard gate. The pixel review
 residue stays judgement: a harness reads the images and advises; it never blocks
-(P1, decision #16: hard gates and judgement are separate instruments).
+(P1, decision [[d16-task-invariants|#16]]: hard gates and judgement are separate instruments).
 
 **Check.** `sh scripts/parity.sh` — runs `bboxybook compare --strict-geometry`
 (`scripts/parity.sh:14`) — exit 0 held, non-zero on any geometry failure or a

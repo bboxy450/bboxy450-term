@@ -1,3 +1,11 @@
+---
+id: "1720WDHH64ZZM3D52STEYEKFPX"
+type: "research"
+number: 112
+title: "State backend — SQLite per durable object, blobs by digest"
+created: "2026-10-21T22:45:47Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # State backend — SQLite per durable object, blobs by digest
 
 Status: research with a recommendation. Written 2026-10-21 by a research subagent for Vesper Greywind <ORACLE>. Facts dated as fetched or read on 2026-10-21; every "measured" line names its command, every "estimated" line names its assumption.

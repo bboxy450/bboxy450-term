@@ -1,5 +1,6 @@
 ---
 id: 01M5N5S765NDPFCF4K78AD40X4
+number: 161
 type: comment
 title: "fix the framing and the version rule now"
 status: resolved
@@ -15,7 +16,7 @@ updated: 2026-10-23T20:13:06Z
 ---
 # fix the framing and the version rule now
 
-Red-team review of `.bboxy/specs/plugins.md` at 16b4c98 (decision #41, the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
+Red-team review of `.bboxy/specs/plugins.md` at 16b4c98 (decision [[d41-plugins|#41]], the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
 
 §1 Protocol says "JSON-RPC over the plugin's stdio" without the framing (MCP is newline-delimited with no embedded newlines, LSP uses a `Content-Length` header, [[plugins-sota]] :48-49), and the shape carries `shape_version` and `contract_version` with no compatibility rule.
 

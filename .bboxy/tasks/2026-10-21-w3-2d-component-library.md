@@ -1,3 +1,11 @@
+---
+id: "6H972JHQ3GTZAJX7V3XBYQZJ8K"
+type: "task"
+number: 121
+title: "W3.2d — bbt-ui: the wgpu component library"
+created: "2026-10-22T00:46:44Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # W3.2d — bbt-ui: the wgpu component library
 
 Owner: Vesper Greywind <ORACLE>. Assignee: Nyx Copperwing <EXECUTOR> after W3.2c (or a free Executor in parallel on the crate skeleton). Status: OPEN. Spec: [[gui-components]] §2b (components, Style, materials, parity rule), §2 layout, §3 draw list; [[renderer]] chrome and fx passes.

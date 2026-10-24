@@ -1,5 +1,6 @@
 ---
 id: 01M5JQE3ZY6KYN1P0NA2M75X0E
+number: 140
 type: invariant
 title: every commit on main carries a good signature
 status: active

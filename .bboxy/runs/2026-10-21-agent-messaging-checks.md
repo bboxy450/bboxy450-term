@@ -1,3 +1,11 @@
+---
+id: "7FE79PEC5NJ6TTCWPXHAW1ZKZ4"
+type: "note"
+number: 73
+title: "Assignment B — verification evidence"
+created: "2026-10-21T18:58:58Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Assignment B — verification evidence
 
 2026-10-21 · Nyx Copperwing <EXECUTOR>.

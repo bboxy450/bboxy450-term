@@ -1,3 +1,11 @@
+---
+id: "035MBM4HSJBWX8J2QT78JGNS9J"
+type: "task"
+number: 119
+title: "W3.2c — bboxybook: shared fixtures, then input/focus, launcher, signals→fx"
+created: "2026-10-22T00:33:02Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # W3.2c — bboxybook: shared fixtures, then input/focus, launcher, signals→fx
 
 Owner: Vesper Greywind <ORACLE>. Assignee: Nyx Copperwing <EXECUTOR>. Status: ASSIGNED. Spec: [[gui-components]] §7 steps 8–10, [[renderer]] §4.5. Follows W3.2b (checkpoint ef6c7ff).

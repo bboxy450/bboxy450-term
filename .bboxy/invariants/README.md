@@ -1,3 +1,11 @@
+---
+id: "3T6C0NK1JHAAQ8EKP0ZVD4PEKC"
+type: "invariant"
+number: 138
+title: "Invariants — the law the day runs under"
+created: "2026-10-22T21:14:24Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Invariants — the law the day runs under
 
 One file per invariant, type `invariant` ([[work-items]]): property, check

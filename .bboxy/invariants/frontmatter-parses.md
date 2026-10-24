@@ -1,5 +1,6 @@
 ---
 id: 01M5JVQ5PH7488DHH8WKDK8F19
+number: 144
 type: invariant
 title: every .bboxy frontmatter parses
 status: active

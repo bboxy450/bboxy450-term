@@ -1,5 +1,6 @@
 ---
 id: 01M5N73HNW96DJMY0M5NYSNPWC
+number: 200
 type: comment
 title: "reply: r2-trust-record-home"
 status: resolved

@@ -1,3 +1,11 @@
+---
+id: "0HHE5X8Q1K2CHYNSWF1C53SHGZ"
+type: "spec"
+number: 122
+title: "Channel tree — pubsub as a filesystem of sinks"
+created: "2026-10-22T01:04:13Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Channel tree — pubsub as a filesystem of sinks
 
 Owner: Vesper Greywind <ORACLE>. 2026-10-21. Operator, verbatim intent: "#bboxy is a channel; if I subscribe I add my id to folder bboxy: `bboxy450://channels/bboxy/<myid>`; broadcast to the channel is sending to `bboxy450://channels/bboxy/*`; nested folders `#bboxy/client`, `#bboxy/ui`, `#bboxy/infrastructure`; the Oracle knows what goes where and glues harnesses together by routing; routing becomes symlinking sinks." This is the core of the pubsub system. It sits on the bus in [[events]] and replaces the subscription model of [[messaging]] with something an agent can reason about with `ls`. Back to [[vision]] · [[events]] · [[messaging]] · [[mcp-control-plane]].

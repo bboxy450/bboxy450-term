@@ -1,5 +1,6 @@
 ---
 id: 01M5N6JP77HH2CR5V4R0YBDTJD
+number: 196
 type: comment
 title: "the diagram still shows the revision 1 design"
 status: resolved
@@ -15,7 +16,7 @@ updated: 2026-10-23T20:26:43Z
 ---
 # the diagram still shows the revision 1 design
 
-Red-team follow-up on `.bboxy/specs/plugins.md` revision 2 at edc5dc5 (decision #41). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
+Red-team follow-up on `.bboxy/specs/plugins.md` revision 2 at edc5dc5 (decision [[d41-plugins|#41]]). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
 
 The §1 mermaid diagram still reads `R -- "run bare: shape JSON" --> P` and `per-call timings, flame graphs` into Settings. Revision 2's text says the shape comes from `--shape`, read once at trust time and cached by digest, and that the registry shows a call and hook timeline that is a flame graph only for `trace: true` plugins. The diagram is the first thing a reader (or the guide's harness) sees, and it contradicts both rules.
 

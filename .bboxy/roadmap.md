@@ -1,3 +1,11 @@
+---
+id: "2HNFMPQH4KGNZXZEJSKHNQ1RX6"
+type: "note"
+number: 58
+title: "Roadmap"
+created: "2026-10-21T18:53:32Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Roadmap
 
 Back to [[vision]].

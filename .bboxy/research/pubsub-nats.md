@@ -1,3 +1,11 @@
+---
+id: "0CWJQECATW56G66D4P4C6T9GK8"
+type: "research"
+number: 117
+title: "Pubsub — NATS and the state of the art, and the minimal bus under it"
+created: "2026-10-22T00:05:57Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Pubsub — NATS and the state of the art, and the minimal bus under it
 
 2026-10-21 (`date` → Wed Oct 21 16:51 PDT 2026) · research subagent for Vesper Greywind <ORACLE> · for Oracle review.

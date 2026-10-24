@@ -1,5 +1,6 @@
 ---
 id: 01M5K9FA801MWBMNY19TCPRW6E
+number: 147
 type: invariant
 title: the workspace compiles with zero clippy warnings on every target
 status: active

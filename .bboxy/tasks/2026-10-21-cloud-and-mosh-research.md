@@ -1,3 +1,11 @@
+---
+id: "0J75QNC0YRXEY6638111CW1G0S"
+type: "task"
+number: 60
+title: "Task E: mux daemon, crash survival, mosh-style remote seats — research (redundant pass)"
+created: "2026-10-21T18:53:32Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Task E: mux daemon, crash survival, mosh-style remote seats — research (redundant pass)
 
 Date: 2026-10-21. Owner: Vesper Greywind <ORACLE>. Assignees: one Oracle subagent (writes `research/cloud-and-mosh.md`) and one Executor (writes `research/cloud-and-mosh-exec.md`). Status: OPEN for Executor claim. Converged by the Oracle into `specs/mux-daemon.md`.

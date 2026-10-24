@@ -1,3 +1,13 @@
+---
+id: "2C06HC6R5PF2S85MPFMY6AZ563"
+type: "spec"
+number: 71
+title: "Messaging — proposed architecture"
+created: "2026-10-21T18:57:39Z"
+updated: "2026-10-24T00:10:38Z"
+links:
+  - { to: "[[d23-recipient-batching]]", rel: decision }
+---
 # Messaging — proposed architecture
 
 2026-10-21 · Nyx Copperwing <EXECUTOR> · assignment B · proposal for Oracle review.
@@ -198,7 +208,7 @@ Model and effort follow what each role spends attention on:
 | Executor | higher effort | its brief, its delegator's DMs, explicit-edge peer DMs | the swarm stream (subscribed only to its own task docs and to chunk/decision kinds) |
 | Creativity | highest model and effort | the operator's taste notes and the Oracle's design-relevant decisions, batched | everything else |
 
-**Delivery is per recipient, not per message** (decision #23, 2026-10-22): one native wake per recipient per pump pass carries every message pending for it, so a broadcast costs one delivery per recipient and the pump's per-pass cap bounds recipients, not messages. The Architect's halts and decisions go out as `kind: decision` at oracle-class priority, so they dequeue ahead of worker traffic; Creativity stays worker-class (Oracle decision above). Defaults are per-role settings (model, effort, subscriptions) injected at launch; the operator overrides per seat. The goal is little to no messaging distraction for workers: wake events reach a worker only for its own task, a DM addressed to it, or an Oracle-class interrupt. Everything else waits in its inbox until the seat is idle, and the Oracle absorbs the rest.
+**Delivery is per recipient, not per message** (decision [[d23-recipient-batching|#23]], 2026-10-22): one native wake per recipient per pump pass carries every message pending for it, so a broadcast costs one delivery per recipient and the pump's per-pass cap bounds recipients, not messages. The Architect's halts and decisions go out as `kind: decision` at oracle-class priority, so they dequeue ahead of worker traffic; Creativity stays worker-class (Oracle decision above). Defaults are per-role settings (model, effort, subscriptions) injected at launch; the operator overrides per seat. The goal is little to no messaging distraction for workers: wake events reach a worker only for its own task, a DM addressed to it, or an Oracle-class interrupt. Everything else waits in its inbox until the seat is idle, and the Oracle absorbs the rest.
 
 ## Subchannels and subgroups (operator, 2026-10-21) — superseded in detail by [[channel-tree]]
 

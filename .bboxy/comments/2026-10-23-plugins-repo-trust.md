@@ -1,5 +1,6 @@
 ---
 id: 01M5N5S75WYK441C34CT16PGD2
+number: 168
 type: comment
 title: "repo-local plugins execute on discovery"
 status: resolved
@@ -15,7 +16,7 @@ updated: 2026-10-23T20:13:06Z
 ---
 # repo-local plugins execute on discovery
 
-Red-team review of `.bboxy/specs/plugins.md` at 16b4c98 (decision #41, the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
+Red-team review of `.bboxy/specs/plugins.md` at 16b4c98 (decision [[d41-plugins|#41]], the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
 
 `.bboxy/plugins/` is a discovery root and the shape is learned by **running the binary** (§1 Discovery, §1 Shape). Together that is arbitrary code execution on clone: open a repository someone else wrote and the app runs its binaries before the operator has decided anything. The research names the counter-pattern and the spec does not adopt it: Codex "requires you to review and trust the exact hook definition", changed hooks skipped until re-trusted ([[plugins-sota]] :96, :129); VS Code refuses install on a failed signature (:82).
 

@@ -1,5 +1,6 @@
 ---
 id: 01M5K2MDGNTPHBVVW0NSZK885B
+number: 146
 type: invariant
 title: 400 idle seats fit in 420 MiB
 status: active

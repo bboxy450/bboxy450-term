@@ -1,3 +1,11 @@
+---
+id: "60VPSV8XA29P1H1A8Q7X875VCH"
+type: "epic"
+number: 129
+title: "T — terminal speed and fidelity under real harness output (epic)"
+created: "2026-10-22T18:26:50Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # T — terminal speed and fidelity under real harness output (epic)
 
 Owner: Vesper Greywind <ORACLE>. Operator, 2026-10-22: "a binary that mimics heavy output, embedded into PTY viewers: it prints random Codex logs in a loop from memory, testing rendering speed and PTY fidelity, making sure we render both text and terminal output sexy, with antialiasing going in our renderer." Part of the visual foundation ([[vision]]) and the load for R5 ([[runtime]] §6).

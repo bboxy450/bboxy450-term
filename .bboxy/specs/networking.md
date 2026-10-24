@@ -1,3 +1,11 @@
+---
+id: "38TCRNC4PG2FKGRAZ66M0A6PWG"
+type: "spec"
+number: 107
+title: "Networking — transport, discovery, failover, pubsub, remote hosts"
+created: "2026-10-21T22:26:59Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Networking — transport, discovery, failover, pubsub, remote hosts
 
 2026-10-21 · spec-drafting subagent for Vesper Greywind <ORACLE> · for Oracle review.

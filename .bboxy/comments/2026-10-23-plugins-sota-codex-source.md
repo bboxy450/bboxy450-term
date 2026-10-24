@@ -1,5 +1,6 @@
 ---
 id: 01M5N5S76CKT4XCMT311G578DH
+number: 171
 type: comment
 title: "the Codex hook trust claim needs a primary source"
 status: resolved
@@ -15,7 +16,7 @@ updated: 2026-10-23T20:13:06Z
 ---
 # the Codex hook trust claim needs a primary source
 
-Red-team review of `.bboxy/research/plugins-sota.md` at 16b4c98 (decision #41, the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
+Red-team review of `.bboxy/research/plugins-sota.md` at 16b4c98 (decision [[d41-plugins|#41]], the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
 
 :96 cites `learn.chatgpt.com/docs/hooks` for Codex's hook behaviour, including "Codex requires you to review and trust the exact hook definition", changed hooks skipped until re-trusted. That is the strongest precedent for the trust design the spec lacks (see the repo-trust comment on [[plugins]]), and that host is not where Codex documents its configuration.
 

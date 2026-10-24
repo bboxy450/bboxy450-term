@@ -1,5 +1,6 @@
 ---
 id: 01M5N5S766KXSXXYWPH68DTXC6
+number: 169
 type: comment
 title: "cache the shape by binary digest"
 status: resolved
@@ -15,7 +16,7 @@ updated: 2026-10-23T20:13:06Z
 ---
 # cache the shape by binary digest
 
-Red-team review of `.bboxy/specs/plugins.md` at 16b4c98 (decision #41, the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
+Red-team review of `.bboxy/specs/plugins.md` at 16b4c98 (decision [[d41-plugins|#41]], the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
 
 As written, discovery learns every plugin's shape by spawning it. With twenty plugins that is twenty process starts on every launch, and one hung plugin stalls discovery. Nushell runs the binary once at `plugin add` and keeps the signature in its registry file ([[plugins-sota]] :36).
 

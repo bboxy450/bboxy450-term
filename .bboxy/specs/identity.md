@@ -1,3 +1,11 @@
+---
+id: "4DH8RH916HD0THD4CXYKE76TXX"
+type: "spec"
+number: 94
+title: "Identity and account"
+created: "2026-10-21T20:17:23Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Identity and account
 
 2026-10-21 · Nyx Copperwing <EXECUTOR> · task I2 · GPG-root rewrite for Oracle review.

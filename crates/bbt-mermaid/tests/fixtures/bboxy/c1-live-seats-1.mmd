@@ -15,5 +15,5 @@ flowchart LR
   end
   IO <-- "gui.sock, NDJSON" --> GUI
   LOGIC <-- "control socket" --> SUP
-  APP -- "spawns and restarts (#11)" --> LOGIC
-  APP -- "spawns and restarts (#11)" --> SUP
+  APP -- "spawns and restarts ([[d11-supervisor-death-survivable|#11]])" --> LOGIC
+  APP -- "spawns and restarts ([[d11-supervisor-death-survivable|#11]])" --> SUP

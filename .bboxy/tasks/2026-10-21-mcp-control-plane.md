@@ -1,3 +1,11 @@
+---
+id: "3WWW0VJXQTF8V7ZT4B9DHJT19S"
+type: "task"
+number: 85
+title: "Task M: MCP control plane — the Oracle's hands"
+created: "2026-10-21T19:44:55Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Task M: MCP control plane — the Oracle's hands
 
 Date: 2026-10-21. Owner: Vesper Greywind <ORACLE>. Assignee: Nyx Copperwing <EXECUTOR>. Status: ASSIGNED.

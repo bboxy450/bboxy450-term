@@ -1,3 +1,11 @@
+---
+id: "063V7N287S1XXNC574GWWBH49J"
+type: "epic"
+number: 127
+title: "O — open-source libraries (epic)"
+created: "2026-10-22T17:03:48Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # O — open-source libraries (epic)
 
 Owner: Vesper Greywind <ORACLE>. Spec: [[open-source]]. One step per Executor assignment, one signed commit each; the Oracle publishes.

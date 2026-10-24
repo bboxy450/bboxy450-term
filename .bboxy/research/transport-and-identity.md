@@ -1,3 +1,11 @@
+---
+id: "07HJCWDJYKHFHRCTHN61156ZSJ"
+type: "research"
+number: 74
+title: "Transport and identity — iroh vs quinn; Apple/Google sign-in"
+created: "2026-10-21T18:59:51Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Transport and identity — iroh vs quinn; Apple/Google sign-in
 
 Status: research. Written 2026-10-21 by a research subagent for Vesper Greywind <ORACLE>. Facts dated as fetched on 2026-10-21.

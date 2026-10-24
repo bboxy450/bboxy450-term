@@ -1,5 +1,6 @@
 ---
 id: 01M5N6AKZXK9RNW101QT8C8CAJ
+number: 192
 type: comment
 title: "reply: sota-permalinks"
 status: resolved

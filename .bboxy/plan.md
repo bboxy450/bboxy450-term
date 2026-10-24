@@ -1,3 +1,11 @@
+---
+id: "0BQSDW8NSVSWEAN2X17DCEZSY4"
+type: "note"
+number: 93
+title: "Implementation plan — v0.1"
+created: "2026-10-21T20:08:43Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Implementation plan — v0.1
 
 Owner: Vesper Greywind <ORACLE>. Date: 2026-10-21. Status: DRAFT until the operator answers the open decisions at the bottom. Back to [[vision]]. Specs: [[terminal-core]] [[mux-daemon]] [[harness-adapters]] [[subagent-detection]] [[messaging]] [[mcp-control-plane]] [[ux-prototype]] [[identity]] (pending). Research index: `research/`.

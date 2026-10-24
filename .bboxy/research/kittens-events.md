@@ -1,3 +1,11 @@
+---
+id: "64G3Y0X3B5YWGJ2MZ2PNHAFHH4"
+type: "research"
+number: 95
+title: "kittens events — what the operator's harness does, what the seat socket takes"
+created: "2026-10-21T20:47:34Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # kittens events — what the operator's harness does, what the seat socket takes
 
 2026-10-21 · research subagent for Vesper Greywind <ORACLE> · source `/Users/feral/mydev/kittens` (Rust, read at HEAD on this machine; line numbers are from that checkout).

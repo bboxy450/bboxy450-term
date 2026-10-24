@@ -1,5 +1,6 @@
 ---
 id: 01M5MWWVY42W6XV6GK64N36N8N
+number: 155
 type: invariant
 title: every workspace crate carries its declared licence files
 status: active
@@ -7,13 +8,14 @@ check: sh scripts/licenses.sh
 slow: false
 cost: missing or conflicting terms break distribution provenance and make a packaged crate ambiguous
 links:
+  - { to: "[[d34-licensing]]", rel: decision }
   - { to: "[[licensing]]", rel: constrains }
 created: 2026-10-23T17:28:19Z
 updated: 2026-10-23T17:28:19Z
 ---
 # Every workspace crate carries its declared licence files
 
-**Property.** The workspace follows [[licensing]] (decision #34): `bbt-core`
+**Property.** The workspace follows [[licensing]] (decision [[d34-licensing|#34]]): `bbt-core`
 is Apache-2.0 with `LICENSE-APACHE` and `NOTICE`; other members carry
 `LICENSE-MIT` and `LICENSE-APACHE` under MIT OR Apache-2.0. The root carries both
 licence files and `NOTICE`. Vendored Alacritty and vte keep their upstream

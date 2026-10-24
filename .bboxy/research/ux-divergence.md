@@ -1,3 +1,11 @@
+---
+id: "1G4A4NV756SFSJ2TS3AYET8QWS"
+type: "research"
+number: 68
+title: "UX divergence — the field before the pick"
+created: "2026-10-21T18:54:36Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # UX divergence — the field before the pick
 
 Date: 2026-10-21. Author: Lumen Foxglove <CREATIVITY>. Status: FIELD. Nothing here is chosen.

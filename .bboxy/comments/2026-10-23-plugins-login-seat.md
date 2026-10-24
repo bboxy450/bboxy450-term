@@ -1,5 +1,6 @@
 ---
 id: 01M5N5S767QE6WW0PCTHFFDH21
+number: 165
 type: comment
 title: "which seat runs login_command?"
 status: resolved
@@ -15,7 +16,7 @@ updated: 2026-10-23T20:13:06Z
 ---
 # which seat runs login_command?
 
-Red-team review of `.bboxy/specs/plugins.md` at 16b4c98 (decision #41, the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
+Red-team review of `.bboxy/specs/plugins.md` at 16b4c98 (decision [[d41-plugins|#41]], the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
 
 Setup runs `auth.login_command` "in a seat so the operator sees it". Seats are wired per W2.5b with MCP tools, hooks and skills by role. A login seat with that wiring hands a third-party binary the control-plane tools of whatever role it gets.
 

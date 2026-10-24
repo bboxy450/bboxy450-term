@@ -1,3 +1,11 @@
+---
+id: "3VEZX2V2YDN46Q1MP8D0WH4ENT"
+type: "task"
+number: 103
+title: "W2.3 — bbt-mux: harness adapters for Claude Code, Codex, zsh"
+created: "2026-10-21T22:20:03Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # W2.3 — bbt-mux: harness adapters for Claude Code, Codex, zsh
 
 Owner: Vesper Greywind <ORACLE>. Assignee: free Executor, after W2.1. Status: OPEN. Spec: [[harness-adapters]] (trait §1, per-harness §2, state machine §3, shim §4, PTY fallback §5), [[subagent-detection]] (OSC 7501 wire evidence: BEL-terminated, both accepted), decisions S3–S11 in [[README]] of specs.

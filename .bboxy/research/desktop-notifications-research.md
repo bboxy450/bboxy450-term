@@ -1,5 +1,6 @@
 ---
 id: 01M5NGT4J3EE56R4HVV7SEB90M
+number: 208
 type: research
 title: "desktop notifications for a bare Rust GPU app: use versus build, macOS first (2026-10-23)"
 links:
@@ -11,7 +12,7 @@ updated: 2026-10-23T23:16:21Z
 ---
 # Desktop notifications: use versus build
 
-Researched 2026-10-23 by a read-only research subagent under the Architect's brief, nothing built. Format: `source — fact`; `unverified` marks claims not confirmed from a primary source; `@main` is an unpinned branch read that day. The design this evaluates is [[desktop-notifications]]; the decision is #45. The final section is judgement, not evidence, and one of its lines is annotated where it conflicts with standing law.
+Researched 2026-10-23 by a read-only research subagent under the Architect's brief, nothing built. Format: `source — fact`; `unverified` marks claims not confirmed from a primary source; `@main` is an unpinned branch read that day. The design this evaluates is [[desktop-notifications]]; the decision is [[d45-desktop-notifications|#45]]. The final section is judgement, not evidence, and one of its lines is annotated where it conflicts with standing law.
 
 Retrieved 2026-10-23. Each line: `source — fact (URL)`. `unverified` = not confirmed from a primary source. Permalinks at tags/commits where they exist; `@main` = unpinned branch read today.
 Requirements under test: post title+body, replace by stable id, remove by id, receive click → focus window/pane; macOS real first, Windows/Linux dummies, later iPadOS/Android/wasm.
@@ -135,7 +136,7 @@ Requirements under test: post title+body, replace by stable id, remove by id, re
 
 ## Judgement (not evidence)
 - No existing crate meets all four requirements on macOS with the app owning click routing. notify-rust's `preview-macos-un` path is the only one with stable-id replace + close + default-click; it is a preview feature, blocking-handle API, and the delegate belongs to mac-usernotifications, so winit's AppKit lifecycle cannot hook it. user-notify has the right shape (delegate, remove-by-id, permission) but generates UUID identifiers (no replace), is LGPL-3.0, drags tokio onto every target, and its Windows click path is protocol activation only. usernotifications-rs is a day-old 0.4.2 on bespoke FFI, two stars.
-- Build. Facade + `-macos` over objc2-user-notifications 0.3 directly: `define_class!` delegate (par-term's file is a 1:1 template), `setDelegate` + leak before the winit event loop runs, `requestAuthorization(Alert|Sound)`, `UNNotificationRequest` identifier = our stable id, `removeDeliveredNotificationsWithIdentifiers`, osascript fallback when `mainBundle.bundleIdentifier` is nil [Architect: rejected, `AGENTS.md` bans desktop scripting; an unbundled run posts nothing, decision #44]. Roughly 300 lines, one Objective-C-free dependency chain, same objc2 family winit already links.
+- Build. Facade + `-macos` over objc2-user-notifications 0.3 directly: `define_class!` delegate (par-term's file is a 1:1 template), `setDelegate` + leak before the winit event loop runs, `requestAuthorization(Alert|Sound)`, `UNNotificationRequest` identifier = our stable id, `removeDeliveredNotificationsWithIdentifiers`, osascript fallback when `mainBundle.bundleIdentifier` is nil [Architect: rejected, `AGENTS.md` bans desktop scripting; an unbundled run posts nothing, decision [[d44-waiting-attention|#44]]]. Roughly 300 lines, one Objective-C-free dependency chain, same objc2 family winit already links.
 - Verify two Apple behaviours on this machine before trusting them, since neither is in Apple docs: (a) ad-hoc-signed `.app` with Info.plist is enough for `currentNotificationCenter()` and delivery; (b) re-adding a request with a delivered notification's identifier replaces it in Notification Center rather than only the pending one.
 - Cold-launch click delivery depends on the delegate being set "before your app finishes launching"; with winit that is before `EventLoop::run` — write the test, don't assume.
 - Windows dummy now. When real: in-process clicks via tauri-winrt-notification 0.8 cost nothing but show as PowerShell until an AUMID shortcut exists; launch-on-click needs the shortcut + `ToastActivatorCLSID` + `LocalServer32` COM server (archived docs) or the Windows App SDK runtime (not Rust-native). Decide then, not now.

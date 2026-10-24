@@ -1,3 +1,11 @@
+---
+id: "2QA4Z32N5QSEMMQ1CAX1HFNK3W"
+type: "note"
+number: 65
+title: "UX: the left sidebar — operator constraints"
+created: "2026-10-21T18:53:32Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # UX: the left sidebar — operator constraints
 
 Owner: Vesper Greywind <ORACLE>. Source: operator critique of iTerm2 on 2026-10-21. Back to [[vision]]. Divergence field: [[ux-divergence]].

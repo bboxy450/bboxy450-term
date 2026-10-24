@@ -1,5 +1,6 @@
 ---
 id: "01M5N61RZNPP603PKMV36YQ90P"
+number: 198
 type: note
 title: "L9-M-a backend verification and handoff"
 status: reported
@@ -9,7 +10,7 @@ created: "2026-10-23T20:19:37Z"
 
 Source **59e5614f6c95ea18d1c64e917f442954f7fe55ce**, parent **16b4c98798ee2bfecff6373e7370c47d51146a7a**. Branch `nyx-l9-m-a`, worktree `/Users/feral/mydev/bboxy450-term-nyx`. Source signature verified with machine key `9B07E849480C68328CA20684844ECC0587DE7AB0`. This report and the logs are a records-only successor, not the source that was gated.
 
-GUI messaging and task requests now use the existing W2.4/MCP rules under the real device Operator principal and existing account operation journal. Decision #38 and the `2fcd54b` local-issuer correction are implemented. TaskRequest follows the tools as built; spawn_spec remains off that wire.
+GUI messaging and task requests now use the existing W2.4/MCP rules under the real device Operator principal and existing account operation journal. Decision [[d38-messaging-task-rulings|#38]] and the `2fcd54b` local-issuer correction are implemented. TaskRequest follows the tools as built; spawn_spec remains off that wire.
 
 ## Mechanisms
 
@@ -46,6 +47,6 @@ The first two cargo checks exited 101 for mechanical imports/Route field access 
 
 The source contains no UI constructor, rendering, lab or event-lane changes. Event/ACK/read-mark/model binding belongs to Kestrel, compose/task rows to L9-M-c. App reply logging explicitly leaves projection to that later UI step. Rook wire review was requested in `1cab0875`; no review response had been observed when this record was written.
 
-Main advanced to `a817a9dfac285327115dfa29effa3ff9196ec773` during the gate, with .bboxy-only records including #38(g) lane migration. No source rebase or re-gate followed, per AGENTS.md. The clean candidate status remained empty. CI private target was removed immediately on exit (2,786,639,872 allocated bytes); completed dev cache was removed (2,971,344,896 allocated bytes). No peer directory or process was touched. The private CI worktree is removed after this evidence is saved.
+Main advanced to `a817a9dfac285327115dfa29effa3ff9196ec773` during the gate, with .bboxy-only records including [[d38-messaging-task-rulings|#38]](g) lane migration. No source rebase or re-gate followed, per AGENTS.md. The clean candidate status remained empty. CI private target was removed immediately on exit (2,786,639,872 allocated bytes); completed dev cache was removed (2,971,344,896 allocated bytes). No peer directory or process was touched. The private CI worktree is removed after this evidence is saved.
 
 Committed development logs remove empty lines at EOF only; the manifest retains original and stored hashes for those copies. The CI log is byte-exact. The records diff initially flagged those blank EOF lines (exit 2); normalization addresses that check without rerunning code.

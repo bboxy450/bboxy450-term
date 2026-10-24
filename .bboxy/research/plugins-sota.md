@@ -1,5 +1,6 @@
 ---
 id: 01M5N54H516F3WKJMB2SARE8TQ
+number: 158
 type: research
 title: "plugin systems for developer tools and Rust programs, state of the art (2026-10-23)"
 links:
@@ -10,7 +11,7 @@ updated: 2026-10-23T20:26:43Z
 ---
 # Plugin systems for developer tools and Rust programs
 
-Researched 2026-10-23 by an Oracle-style research subagent under the Architect's brief, read-only, nothing built. Format: `source — fact`; `unverified` marks claims not confirmed from a primary source. The design this evaluates is [[plugins]] §0 (the operator's words). No recommendations outside §8 and §9; the decision is #41. **Red-team dispositions (Wren, 16b4c98):** the Codex hooks line in §6 is confirmed against openai/codex `rust-v0.164.0` (addendum A4; exit 2 needs a stderr reason, and the source carries two undocumented events); the latency rows of §8 are judgement, replaced by P-0's measurement; three precedents (GitHub CLI extensions, Helm plugins, confining a subprocess on macOS) and permalinks at pinned revisions for the load-bearing claims are the addendum below.
+Researched 2026-10-23 by an Oracle-style research subagent under the Architect's brief, read-only, nothing built. Format: `source — fact`; `unverified` marks claims not confirmed from a primary source. The design this evaluates is [[plugins]] §0 (the operator's words). No recommendations outside §8 and §9; the decision is [[d41-plugins|#41]]. **Red-team dispositions (Wren, 16b4c98):** the Codex hooks line in §6 is confirmed against openai/codex `rust-v0.164.0` (addendum A4; exit 2 needs a stderr reason, and the source carries two undocumented events); the latency rows of §8 are judgement, replaced by P-0's measurement; three precedents (GitHub CLI extensions, Helm plugins, confining a subprocess on macOS) and permalinks at pinned revisions for the load-bearing claims are the addendum below.
 
 ## 1. Subprocess plugin protocols
 

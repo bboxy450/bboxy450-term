@@ -1,5 +1,6 @@
 ---
 id: 01M5N6AKZT73CRQDGCP5J5VBZ8
+number: 187
 type: comment
 title: "reply: repo-trust"
 status: resolved

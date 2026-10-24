@@ -1,5 +1,6 @@
 ---
 id: 01M5N5S76ES86WAMEPQNFW6T0G
+number: 174
 type: comment
 title: "the comparison table mixes facts with unsourced judgements"
 status: resolved
@@ -15,7 +16,7 @@ updated: 2026-10-23T20:13:06Z
 ---
 # the comparison table mixes facts with unsourced judgements
 
-Red-team review of `.bboxy/research/plugins-sota.md` at 16b4c98 (decision #41, the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
+Red-team review of `.bboxy/research/plugins-sota.md` at 16b4c98 (decision [[d41-plugins|#41]], the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
 
 §8's rows "Startup latency", "Call latency" and "Implementation cost in Rust" (:111-112, :118) are judgements ("Low", "Medium", "sub-ms") in a document whose rule is `source — fact`, and nothing is measured on this machine. The spec's startup and hook budgets rest on these.
 

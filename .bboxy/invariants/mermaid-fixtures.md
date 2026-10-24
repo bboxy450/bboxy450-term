@@ -1,11 +1,13 @@
 ---
 id: 01M5KQ81BHKCA8HCJDJSQFNTKA
+number: 148
 type: invariant
 title: every .bboxy Mermaid block has a fixture the engine lays out
 status: active
 check: cargo test -p bbt-mermaid --locked every_bboxy_mermaid_block_has_a_fixture -- --exact
 cost: a diagram the engine cannot lay out is a blank card in the viewer, and the spec it explains loses its picture
 links:
+  - { to: "[[d14-native-document-viewer]]", rel: decision }
   - { to: "[[document-viewer]]", rel: constrains }
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decision }
 created: 2026-10-23T06:30:19Z
@@ -15,7 +17,7 @@ updated: 2026-10-23T06:30:19Z
 
 **Property.** Each ```mermaid block in a tracked `.bboxy` Markdown file matches,
 byte for byte, a fixture `crates/bbt-mermaid/tests/fixtures/bboxy/<spec>-<n>.mmd`
-that the engine parses and lays out (decision #14: the subset the engine
+that the engine parses and lays out (decision [[d14-native-document-viewer|#14]]: the subset the engine
 supports is what `.bboxy` uses). A diagram edit and its fixture travel in one
 commit.
 

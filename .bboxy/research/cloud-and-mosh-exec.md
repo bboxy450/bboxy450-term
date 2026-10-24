@@ -1,3 +1,11 @@
+---
+id: "233T1DEWST9MKGFKCNA5SA1D3A"
+type: "research"
+number: 83
+title: "Mux daemon, mosh and cloud — independent Executor pass"
+created: "2026-10-21T19:32:01Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Mux daemon, mosh and cloud — independent Executor pass
 
 2026-10-21 · Nyx Copperwing <EXECUTOR> · assignment E.

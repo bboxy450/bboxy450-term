@@ -1,9 +1,12 @@
 ---
 id: 01M5MR5NCX1EZRXQMF2FDBC44Y
+number: 150
 type: spec
 title: "yarn — the reactor macro: declared event-loop topology, checked by the compiler"
 status: decided
 links:
+  - { to: "[[d11-supervisor-death-survivable]]", rel: decision }
+  - { to: "[[d33-yarn-macro]]", rel: decision }
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
   - { to: "[[runtime]]", rel: constrains }
   - { to: "[[open-source]]", rel: spec }
@@ -15,7 +18,7 @@ updated: 2026-10-23T16:05:44Z
 ---
 # yarn
 
-Owner: Corvin Duskmantle <ARCHITECT>. Decided 2026-10-23 (decision #33; operator: "create this as bboxy450-crate, name it somehow sexy"). **Timing (operator): useful now or later; the design is documented first, the crate is vendored when a loop needs it or an Executor is free.** Y1 landed 2026-10-23 (Rook, 5c2ef84; evidence 90c314d): both crates on main, first in the layering order, README with provenance and the dual license, 18 compile-fail and 3 compile-pass fixtures carried over, KTR codes unchanged; the macro's internal hygiene identifiers keep their `__kittens_` prefix, which is harmless and stays. Y2 (the app IO loop) is next when an Executor is free. **What it is:** the operator's `reactor!` proc macro from `Gonzih/kittens-old` at `293e134526bb2deee96f1197d6268aee64495482` (2026-10-07), vendored into this monorepo as `bbt-yarn` (runtime, `no_std`, `forbid(unsafe_code)`) and `bbt-yarn-macros` (the compiler), published later as `bboxy450-yarn` and `bboxy450-yarn-macros`. The macro replaces a hand-written `tokio::select! { biased; … }` loop with a declared source topology that rustc checks before anything runs: shutdown in the leading prefix, `before`/`last` ordering, starvation protection (a may-remain-ready source above a protected one must yield to it or carry a reasoned waiver), bounded drains, all-guarded liveness, readiness declared per arm; every error is `KTRnnn <consequence>. Repair: <repair>.`
+Owner: Corvin Duskmantle <ARCHITECT>. Decided 2026-10-23 (decision [[d33-yarn-macro|#33]]; operator: "create this as bboxy450-crate, name it somehow sexy"). **Timing (operator): useful now or later; the design is documented first, the crate is vendored when a loop needs it or an Executor is free.** Y1 landed 2026-10-23 (Rook, 5c2ef84; evidence 90c314d): both crates on main, first in the layering order, README with provenance and the dual license, 18 compile-fail and 3 compile-pass fixtures carried over, KTR codes unchanged; the macro's internal hygiene identifiers keep their `__kittens_` prefix, which is harmless and stays. Y2 (the app IO loop) is next when an Executor is free. **What it is:** the operator's `reactor!` proc macro from `Gonzih/kittens-old` at `293e134526bb2deee96f1197d6268aee64495482` (2026-10-07), vendored into this monorepo as `bbt-yarn` (runtime, `no_std`, `forbid(unsafe_code)`) and `bbt-yarn-macros` (the compiler), published later as `bboxy450-yarn` and `bboxy450-yarn-macros`. The macro replaces a hand-written `tokio::select! { biased; … }` loop with a declared source topology that rustc checks before anything runs: shutdown in the leading prefix, `before`/`last` ordering, starvation protection (a may-remain-ready source above a protected one must yield to it or carry a reasoned waiver), bounded drains, all-guarded liveness, readiness declared per arm; every error is `KTRnnn <consequence>. Repair: <repair>.`
 
 **Why we want it, in one line:** both scale bugs the gates found on 2026-10-22 were arbitration policy hidden in hand-written loops: the ring writer starving on per-file barriers and the message pump's 32-per-tick ceiling with a one-item batch. `yarn` makes that policy a declaration the compiler reads, and `#[starvation(allowed, reason = "…")]` is a decision record in code. It is the invariant model of this repo applied to event loops: undeclared intent compiles weaker, declared intent is a gate.
 
@@ -151,7 +154,7 @@ Lens: async loops on the bbt-io runtime. Assumes tokio sources behind the sealed
 |---|---|---|
 | Y2 | the app IO task, `crates/bboxy450-term/src/live.rs:412` | `#[shutdown]` first; `UiMsg::Input` and `Resize` as quiescent protected sources above the `gui.sock` reply stream; the reply stream `may_remain_ready` with `#[drain(max = N)]` and `#[yields_to(input, when = buffered)]`, so operator keystrokes can never starve behind a flood of deltas ([[c1-live-seats]] §2 "producers never block, input is never dropped" becomes a compiler check) |
 | Y3 | seat socket session and accept loops, `crates/bbt-mux/src/seat_socket.rs:109, 141, 344, 603` | shutdown, incoming lines, the 20 ms tick; drains bounded |
-| Y4 | app child supervision, `crates/bboxy450-term/src/cockpit.rs:197, 523, 856` | child exit above everything; restart policy as declared order (decision #11) |
+| Y4 | app child supervision, `crates/bboxy450-term/src/cockpit.rs:197, 523, 856` | child exit above everything; restart policy as declared order (decision [[d11-supervisor-death-survivable|#11]]) |
 | later | logic's Worker loop and `pump_messages` (`crates/bbt-mux/src/logic.rs:3153`, `:2649`), after W1.2d and W2.6 settle | the supervisor event firehose yields to GUI and MCP commands when they are buffered; the pump is `#[drain(max = 32)]`; the biggest win and the busiest file, so last |
 | never | the supervisor's mio loop; `bbt-rt::spawn_command` | not async arbitration, or a single bounded select that gains nothing |
 

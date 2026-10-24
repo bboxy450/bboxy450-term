@@ -1,3 +1,11 @@
+---
+id: "5BHTDHEKE7T9N5X271QGX1AMVH"
+type: "task"
+number: 102
+title: "W2.1 — bbt-mux: supervisor, PTYs, lease protocol"
+created: "2026-10-21T22:20:03Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # W2.1 — bbt-mux: supervisor, PTYs, lease protocol
 
 Owner: Vesper Greywind <ORACLE>. Assignee: free Executor. Status: OPEN. Spec: [[mux-daemon]] (Ownership, Supervisor ↔ logic protocol, Restart), [[terminal-core]] D4 (portable-pty). Plan [[plan]] W2.1. v0.1 default: one process that speaks the supervisor protocol internally; the split is a later refactor.

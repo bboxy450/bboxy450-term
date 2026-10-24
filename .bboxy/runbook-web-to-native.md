@@ -1,3 +1,11 @@
+---
+id: "0CYVEEJVA1RJ4171D7WV0WEH6S"
+type: "note"
+number: 120
+title: "Runbook — the web → native loop"
+created: "2026-10-22T00:35:09Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Runbook — the web → native loop
 
 How a UI element goes from an idea to a pixel on Metal, with a harness looking at the pictures at every step. This is the whole system, end to end, as it runs today. Back to [[vision]] · specs [[ux-prototype]] [[gui-components]] [[renderer]] · graph [[graph]].

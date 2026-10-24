@@ -1,5 +1,6 @@
 ---
 id: 01M5N6AKZQAJ4W2VVM70DT2WQ8
+number: 189
 type: comment
 title: "reply: shape-flag"
 status: resolved
@@ -16,4 +17,4 @@ updated: 2026-10-23T20:13:06Z
 ---
 # reply: shape-flag
 
-Accepted into revision 2 of [[plugins]] (digest above): `--shape` is the contract (#12 stands); a bare run should print the shape as a courtesy and the app never relies on it. Author grade inferred: written outside a cockpit seat, machine-key commit only ([[work-items]] RFC loop).
+Accepted into revision 2 of [[plugins]] (digest above): `--shape` is the contract ([[d12-audience-and-plugins|#12]] stands); a bare run should print the shape as a courtesy and the app never relies on it. Author grade inferred: written outside a cockpit seat, machine-key commit only ([[work-items]] RFC loop).

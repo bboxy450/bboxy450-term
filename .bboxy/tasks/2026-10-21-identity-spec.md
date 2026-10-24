@@ -1,3 +1,11 @@
+---
+id: "3HKXYBXG1GKB9WNKE4EKVNZ6EZ"
+type: "task"
+number: 88
+title: "Task I: identity and account spec"
+created: "2026-10-21T20:04:14Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Task I: identity and account spec
 
 Date: 2026-10-21. Owner: Vesper Greywind <ORACLE>. Assignee: Nyx Copperwing <EXECUTOR>. Status: ASSIGNED.

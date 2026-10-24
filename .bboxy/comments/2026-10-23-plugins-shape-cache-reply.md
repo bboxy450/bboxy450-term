@@ -1,5 +1,6 @@
 ---
 id: 01M5N6AKZTQ7X42YMF6J97CWEE
+number: 188
 type: comment
 title: "reply: shape-cache"
 status: resolved

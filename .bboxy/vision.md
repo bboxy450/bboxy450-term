@@ -1,3 +1,11 @@
+---
+id: "5VKS102BDYZWBTZ67C2BQ2AH4Z"
+type: "note"
+number: 66
+title: "bboxy450-term — vision"
+created: "2026-10-21T18:53:32Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # bboxy450-term — vision
 
 Status: DECIDED where marked, ASSUMED where marked, **Gap:** where open. Updated 2026-10-21 by Vesper Greywind <ORACLE> from the operator's answers.
@@ -76,7 +84,7 @@ Inject deep: PTY, hooks, MCP, skills. All of them. Active/idle detection: OSC 75
 - **Process survival (DECIDED 2026-10-21 from [[cloud-and-mosh-exec]]):** killing the sole PTY master owner delivers SIGHUP to the harness within a millisecond, so a monolithic daemon crash would kill every seat. The mux therefore splits in two: a **tiny supervisor** per machine that holds the PTY masters and the byte rings and almost never changes, and the **mux logic process** (VTE, messaging, MCP, scheduling) that may crash and restart freely and re-attaches to the supervisor. If the supervisor itself dies, seats are resumed as new processes by harness session id (`claude --resume`, `codex resume`) with the ring replayed for scrollback; that path is the fallback, not the design.
 - **Byte ring guarantees:** a raw tail replay loses SGR and mode state, so the ring carries periodic parser-state checkpoints with semantic row indexes and evicts only on checkpoint boundaries; on disk it is a length/sequence/checksum record log with a committed-boundary marker so a torn suffix is rejected on restart.
 - **Memory model at 1000 seats**: an `alacritty_terminal` grid with 10k scrollback measured 15–20 MB per seat, so 1000 seats would be 15–20 GB. Not viable. The daemon keeps a viewport-sized grid per seat plus a bounded raw-byte scrollback ring with a monotonic cursor; scrollback lines are re-parsed lazily on demand. Hidden seats send the GUI only a state bit for the sidebar.
-- Target scale: swarms of **1000 agents**. Some local, some remote over ssh, some in the user's chosen cloud. Per Mac the kernel caps pseudo-terminals (`kern.tty.ptmx_max`, 511 default, 999 at most; decision #19, 2026-10-22), so 1000 is a per-swarm number across hosts and the product says so at the limit instead of failing quietly. The sidebar, the mux and the messaging layer must be designed for that count from the start.
+- Target scale: swarms of **1000 agents**. Some local, some remote over ssh, some in the user's chosen cloud. Per Mac the kernel caps pseudo-terminals (`kern.tty.ptmx_max`, 511 default, 999 at most; decision [[d19-pty-ceiling|#19]], 2026-10-22), so 1000 is a per-swarm number across hosts and the product says so at the limit instead of failing quietly. The sidebar, the mux and the messaging layer must be designed for that count from the start.
 
 ## The composability test (operator, 2026-10-21)
 
@@ -96,7 +104,7 @@ If a loop like this needs a feature we do not have, the primitives are wrong, no
 
 ## The suite is the product; the terminal is its first app (operator, 2026-10-23)
 
-"All those libraries are reusable parts, all those crates are reusable part of #bboxy450-* suite, term is just a way we glue them together, later on we will build more apps using our GUI kit that all connects together!" The app crate is glue; anything in it that a second app could use moves down a layer; apps connect through `bbt-proto`, the bus and messaging under one identity chain. Decision #39, enforced by [[layering]].
+"All those libraries are reusable parts, all those crates are reusable part of #bboxy450-* suite, term is just a way we glue them together, later on we will build more apps using our GUI kit that all connects together!" The app crate is glue; anything in it that a second app could use moves down a layer; apps connect through `bbt-proto`, the bus and messaging under one identity chain. Decision [[d39-suite-is-the-product|#39]], enforced by [[layering]].
 
 ## The visual foundation outranks everything (operator, 2026-10-22)
 

@@ -1,3 +1,11 @@
+---
+id: "1ST6RH8CYDHHBARXT2372ETDBR"
+type: "research"
+number: 81
+title: "Harness touch points — inject and observe through an owned PTY"
+created: "2026-10-21T19:25:45Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Harness touch points — inject and observe through an owned PTY
 
 Status: research, 2026-10-21. Written by a research subagent for Vesper Greywind <ORACLE>. Local binaries: Claude Code 2.1.304, Codex CLI 0.163.0, pi 1.0.0 (`@earendil-works/pi-coding-agent`), omp 18.4.12 (`@oh-my-pi/pi-coding-agent`), icq 0.20.2. Source paths below are absolute on this machine. Everything marked **(memory)** is from training knowledge and was not verified locally.

@@ -1,3 +1,11 @@
+---
+id: "7CGBHGAGE74J62JJ08JPTJK7G3"
+type: "task"
+number: 61
+title: "Task: GPU terminal emulators in Rust — research"
+created: "2026-10-21T18:53:32Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Task: GPU terminal emulators in Rust — research
 
 Date: 2026-10-21. Owner: Oracle. Assignee: Executor (Codex). Status: ASSIGNED.

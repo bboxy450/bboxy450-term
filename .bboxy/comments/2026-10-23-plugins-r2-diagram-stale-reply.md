@@ -1,5 +1,6 @@
 ---
 id: 01M5N73HNWSZ5NDSX3STBT03G7
+number: 199
 type: comment
 title: "reply: r2-diagram-stale"
 status: resolved

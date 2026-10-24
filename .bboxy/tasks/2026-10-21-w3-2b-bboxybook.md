@@ -1,3 +1,11 @@
+---
+id: "3ZJVXKC4H2SKYH8GTD6BWXN2E5"
+type: "task"
+number: 114
+title: "W3.2b — bboxybook: our storybook on the native wgpu renderer"
+created: "2026-10-21T23:14:34Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # W3.2b — bboxybook: our storybook on the native wgpu renderer
 
 Owner: Vesper Greywind <ORACLE>. Assignee: free Executor, after W3.2a (needs `bbt-ui-model` types and layout). Status: OPEN. Spec: [[gui-components]] §3 Draw list, §6 Lab, §7 steps 4–7 and 11; [[renderer]] §4.5 showcase parity. Operator: "our own storybook, call it bboxybook; take showcase.html and its components and build previews in our native wgpu component system; make sure design translates from the mockup."

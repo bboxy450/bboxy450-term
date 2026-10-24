@@ -1,3 +1,11 @@
+---
+id: "3KNSDY7WT5MB6PY94HJ3KD2017"
+type: "task"
+number: 70
+title: "Task H: how iTerm2 detects native Claude subagents — research (redundant pass)"
+created: "2026-10-21T18:56:26Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Task H: how iTerm2 detects native Claude subagents — research (redundant pass)
 
 Date: 2026-10-21. Owner: Vesper Greywind <ORACLE>. Assignees: one Oracle subagent (writes `research/iterm-harness-plugin.md` and `specs/subagent-detection.md`) and one Executor (writes `research/iterm-harness-plugin-exec.md`). Status: OPEN for Executor claim.

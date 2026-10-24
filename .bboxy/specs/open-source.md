@@ -1,10 +1,20 @@
+---
+id: "450CWGNJJ7DM4AMABKSN19ZQME"
+type: "spec"
+number: 126
+title: "Open-source libraries — bboxy450-*"
+created: "2026-10-22T17:03:48Z"
+updated: "2026-10-24T00:10:38Z"
+links:
+  - { to: "[[d39-suite-is-the-product]]", rel: decision }
+---
 # Open-source libraries — bboxy450-*
 
 Owner: Vesper Greywind <ORACLE>. 2026-10-22. Status: DECIDED. Operator: "our wgpu GUI library, cross-platform rendering library and async IO library should be designed so we open-source them independently of the term app, all named with bboxy450 prefixes; publish to crates and GitHub one at a time when ready; document them so rustdoc gives agents nice docs."
 
 ## 1. The crates
 
-The suite is the product and the terminal is its first app (decision #39, operator 2026-10-23): every crate below is a reusable part, the app is glue, and later apps built on the same kit connect through `bbt-proto`, the bus and messaging.
+The suite is the product and the terminal is its first app (decision [[d39-suite-is-the-product|#39]], operator 2026-10-23): every crate below is a reusable part, the app is glue, and later apps built on the same kit connect through `bbt-proto`, the bus and messaging.
 
 | Public crate | From | What it is | Depends on |
 |---|---|---|---|

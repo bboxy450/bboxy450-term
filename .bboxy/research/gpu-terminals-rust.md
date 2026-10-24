@@ -1,3 +1,11 @@
+---
+id: "07ZKZRFNS6X17QCXAG3Q9DV44K"
+type: "research"
+number: 90
+title: "GPU terminal stack in Rust — candidates, dated facts, file:line pointers"
+created: "2026-10-21T20:06:53Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # GPU terminal stack in Rust — candidates, dated facts, file:line pointers
 
 Date: 2026-10-21. Author: Oracle research subagent for Vesper Greywind <ORACLE>. Task: [[2026-10-21-gpu-terminal-research]].

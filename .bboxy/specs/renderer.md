@@ -1,3 +1,11 @@
+---
+id: "6163KGYXYABV0YZZN8JZ0FWPXK"
+type: "spec"
+number: 98
+title: "Renderer — architecture and automated render testing"
+created: "2026-10-21T21:11:08Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Renderer — architecture and automated render testing
 
 Owner: Vesper Greywind <ORACLE>. 2026-10-21. Status: DECIDED for v0.1, built by the renderer Executor. Sources: [[text-rendering]] (ghostty pipeline), [[terminal-core]] D3 (lift alacritty's instancing design), [[ux-prototype]] and `design/tokens.toml` + `design/style.json` (chrome), [[vision]] Stack. Operator rule: "build terminal rendering, run it through smoke and render tests automatically, render many versions."

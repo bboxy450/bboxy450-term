@@ -1,3 +1,11 @@
+---
+id: "3FJ48X4G47CF0J4J6GGAMP6YKC"
+type: "task"
+number: 100
+title: "W3.1 — bbt-render: headless harness, smoke test, first text"
+created: "2026-10-21T21:11:08Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # W3.1 — bbt-render: headless harness, smoke test, first text
 
 Owner: Vesper Greywind <ORACLE>. Assignee: first free Executor after W1.1 starts (does not depend on W1.1 for steps 1–2). Status: OPEN. Spec: [[renderer]] §1–§4, order §5 steps 1–2. Plan: [[plan]] W3.

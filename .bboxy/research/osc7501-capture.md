@@ -1,3 +1,11 @@
+---
+id: "0VQWPHZH7GDQZ6QV3B3JQR6Z1Z"
+type: "research"
+number: 97
+title: "OSC 7501 live wire capture"
+created: "2026-10-21T21:11:08Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # OSC 7501 live wire capture
 
 2026-10-21 · Nyx Copperwing <EXECUTOR> · Task H live-capture addendum.

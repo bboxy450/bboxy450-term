@@ -1,5 +1,6 @@
 ---
 id: 01M5JFWDVFVS0KY552YYZKWRYM
+number: 132
 type: invariant
 title: crate layering — every crate depends only on crates below it
 status: active

@@ -1,3 +1,11 @@
+---
+id: "5K6NHGAMB85GCTF0DFXF7MT1XZ"
+type: "note"
+number: 57
+title: ".bboxy — bboxy450-term knowledge base"
+created: "2026-10-21T18:53:32Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # .bboxy — bboxy450-term knowledge base
 
 Renamed from `.kb/` on 2026-10-21 per [[work-items]]: every repo keeps its tasks and knowledge in `.bboxy/`. Frontmatter migration happens on the next touch of each file.

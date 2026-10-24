@@ -1,3 +1,11 @@
+---
+id: "57DBCYK2R8HW3DEKTS202Y4KK9"
+type: "research"
+number: 77
+title: "iTerm2 3.7.6 harness plugin — how the Session Status panel is fed"
+created: "2026-10-21T19:11:41Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # iTerm2 3.7.6 harness plugin — how the Session Status panel is fed
 
 2026-10-21 · Oracle subagent for Vesper Greywind <ORACLE> · task `tasks/2026-10-21-subagent-detection-research.md`.

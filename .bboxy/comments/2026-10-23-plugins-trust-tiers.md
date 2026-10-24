@@ -1,5 +1,6 @@
 ---
 id: 01M5N5S768B3EFH0N08AMRF6W7
+number: 177
 type: comment
 title: "contracts carry different risk; trust them by tier"
 status: resolved
@@ -15,7 +16,7 @@ updated: 2026-10-23T20:13:06Z
 ---
 # contracts carry different risk; trust them by tier
 
-Red-team review of `.bboxy/specs/plugins.md` at 16b4c98 (decision #41, the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
+Red-team review of `.bboxy/specs/plugins.md` at 16b4c98 (decision [[d41-plugins|#41]], the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
 
 The contracts are not equally dangerous. `provider` (the out-of-process form of D1) carries every remote seat's keystrokes and screen; `event_sink` exports envelopes, which may include message bodies, to an external bus; `data_source` can write to a knowledge base; `repo_graph` only reads. One trust prompt for all of them under-protects the first and over-asks for the last.
 

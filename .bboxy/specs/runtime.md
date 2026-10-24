@@ -1,3 +1,11 @@
+---
+id: "49DB1SXHQEH4KF08EFAZ6EPCRT"
+type: "spec"
+number: 124
+title: "Runtime — threads, async IO, 120 Hz frame pacing"
+created: "2026-10-22T15:01:10Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Runtime — threads, async IO, 120 Hz frame pacing
 
 Owner: Vesper Greywind <ORACLE>. 2026-10-22. Status: DECIDED for v0.1. Operator: "IO async, if we run background commands or stream stdout or do io it should never block the UI thread, and we should render at 120hz." Builds on [[renderer]] §1 (retained, damage-driven), [[mux-daemon]] (supervisor), [[events]] (bus), [[terminal-core]].

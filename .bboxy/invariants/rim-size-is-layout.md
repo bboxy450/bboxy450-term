@@ -1,5 +1,6 @@
 ---
 id: 01M5NC2YESME91PR6YHH2T70KF
+number: 202
 type: invariant
 title: rim size moves only the gutter and the stage inset
 status: pending

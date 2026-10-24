@@ -1,3 +1,11 @@
+---
+id: "4AN26KWPX64CEC0HVQZWC6MYEA"
+type: "spec"
+number: 87
+title: "MCP control plane — the Oracle's hands"
+created: "2026-10-21T20:04:14Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # MCP control plane — the Oracle's hands
 
 2026-10-21 · Nyx Copperwing <EXECUTOR> · assignment M and the swarm-mute / undo-close addenda · specification for Oracle review.

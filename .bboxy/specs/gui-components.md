@@ -1,3 +1,14 @@
+---
+id: "2CY8SN0WBEND8GFYPBN14DVF1F"
+type: "spec"
+number: 106
+title: "GUI components — model, layout, draw list, input, signals, lab"
+created: "2026-10-21T22:26:59Z"
+updated: "2026-10-24T00:10:38Z"
+links:
+  - { to: "[[d26-terminal-key-ownership]]", rel: decision }
+  - { to: "[[d43-kit-alive-borders]]", rel: decision }
+---
 # GUI components — model, layout, draw list, input, signals, lab
 
 Owner: Vesper Greywind <ORACLE>. 2026-10-21. Status: DECIDED for W3.2 unless marked ASSUMED or **Gap**. Drafted from the lab at tag `ux-prototype-v2` (`lab/web/showcase.html`, `showcase.js`, `components.js`, `lab.css`), `design/bboxy-design-system.json` v10, `design/style.json`, `design/tokens.toml`, [[vision]] (Stack, Rendering and prototyping, Working rules), [[renderer]], [[ux-prototype]].
@@ -257,7 +268,7 @@ Every element implements `fn draw(&self, rect: Rect, ctx: &DrawCtx, out: &mut Dr
 
 ---
 
-### 3.5 Alive borders are a block property (operator, 2026-10-23, decision #43)
+### 3.5 Alive borders are a block property (operator, 2026-10-23, decision [[d43-kit-alive-borders|#43]])
 
 The alive rim and the focus swell are style properties of any block (`border.rim`, `border.swell`), drawn by one rim pass over the block rect with per-block alive uniforms; panes, strips, seat rows, tabs and cards carry them by default. The rules, tokens and order are [[rim-glow]] §7 and §8; a waiting seat's attention loop is [[attention]].
 
@@ -278,7 +289,7 @@ Hit testing walks the last solved layout in reverse paint order: overlay first (
 
 Two focuses, never blurred:
 
-- **Keyboard focus** = `Stage::focused`. Set by click on a row or pane, by launch, by undo, and by the pane-navigation keys **⌘⌥ arrows** (spatial) and **⌘⌥ Tab / ⌘⌥⇧ Tab** (tree order). **Decision #26 (2026-10-23):** with a terminal pane focused, every plain key including Tab and arrows goes to the PTY; plain Tab, Shift+Tab and arrows navigate only in the launcher, overlays, text fields and app chrome. A terminal must never lose a keystroke to the chrome. Shown as focus brightness (selection tint on the row, full contrast on the pane, glow ×1.6). If the seat lives in another tab or swarm the stage switches; no swarm opens or shuts because of it (showcase.js:362-381, :93).
+- **Keyboard focus** = `Stage::focused`. Set by click on a row or pane, by launch, by undo, and by the pane-navigation keys **⌘⌥ arrows** (spatial) and **⌘⌥ Tab / ⌘⌥⇧ Tab** (tree order). **Decision [[d26-terminal-key-ownership|#26]] (2026-10-23):** with a terminal pane focused, every plain key including Tab and arrows goes to the PTY; plain Tab, Shift+Tab and arrows navigate only in the launcher, overlays, text fields and app chrome. A terminal must never lose a keystroke to the chrome. Shown as focus brightness (selection tint on the row, full contrast on the pane, glow ×1.6). If the seat lives in another tab or swarm the stage switches; no swarm opens or shuts because of it (showcase.js:362-381, :93).
 - **Dwell focus** on panes only: `Move` into a pane arms a 150 ms timer; `Tick` past it moves keyboard focus **without** `Locate` if the last key press is more than 1 s old (showcase.js:406-410). Rows never focus on hover; they only tint (:311).
 - **Text focus**: at most one `TextField` (swarm rename, launcher query, settings search, purge name) holds `Input::Text`. While a field holds focus, plain arrows go to the field and pane navigation needs ⌘⌥ arrows (showcase.js:399-400); Enter commits, Escape cancels (components.js:225).
 

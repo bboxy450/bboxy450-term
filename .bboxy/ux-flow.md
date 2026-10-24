@@ -1,3 +1,11 @@
+---
+id: "52EKBTEDC2XEKNA76RNA307MDG"
+type: "note"
+number: 89
+title: "UX flow — rules and thinking, recorded as we go"
+created: "2026-10-21T20:04:14Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # UX flow — rules and thinking, recorded as we go
 
 Owner: operator, written down by Lumen Foxglove <CREATIVITY> during direct review in the lab. Each entry: the rule, why, where it lives. Newest at the bottom. Oracle folds decisions into [[ux-pick]]; this file keeps the reasoning. Lab: `lab/web/showcase.html`. Tokens: `design/tokens.toml`.

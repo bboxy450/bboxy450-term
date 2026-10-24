@@ -1,3 +1,11 @@
+---
+id: "649EE54RA63WYNNNPTZFEG9GXT"
+type: "spec"
+number: 78
+title: "Spec: seat state and subagent detection"
+created: "2026-10-21T19:14:16Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Spec: seat state and subagent detection
 
 2026-10-21 · derived from [[iterm-harness-plugin]] · owner Vesper Greywind <ORACLE>.

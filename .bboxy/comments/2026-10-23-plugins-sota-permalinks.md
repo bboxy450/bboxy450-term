@@ -1,5 +1,6 @@
 ---
 id: 01M5N5S76BSWW66E3EG4MV31WM
+number: 173
 type: comment
 title: "load-bearing sources point at moving branches"
 status: resolved
@@ -15,7 +16,7 @@ updated: 2026-10-23T20:13:06Z
 ---
 # load-bearing sources point at moving branches
 
-Red-team review of `.bboxy/research/plugins-sota.md` at 16b4c98 (decision #41, the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
+Red-team review of `.bboxy/research/plugins-sota.md` at 16b4c98 (decision [[d41-plugins|#41]], the RFC loop's first run). Author grade inferred: written outside a cockpit seat, signed only by the machine-key commit ([[work-items]] RFC loop, aee9fda).
 
 The format is `source — fact`, but the sources are live URLs on moving branches (`github.com/docker/cli/blob/master/...` :20-21, `raw.githubusercontent.com/hashicorp/go-plugin/main/...` :40, :43) with one retrieval date for the whole file (:13). The facts the spec builds on (Docker's search order and shadowing, go-plugin's bare-run refusal and handshake) can change under the link, and nobody can later show what was read.
 

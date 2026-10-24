@@ -1,9 +1,15 @@
 ---
 id: 01M5JKR5VPT43QHHDS2Z6EP56E
+number: 135
 type: spec
 title: W2.5 MCP server and W2.5b seat wiring kit
 status: decided
 links:
+  - { to: "[[d3-mcp-server]]", rel: decision }
+  - { to: "[[d4-seat-identity]]", rel: decision }
+  - { to: "[[d13-document-types]]", rel: decision }
+  - { to: "[[d28-structured-task-verification]]", rel: decision }
+  - { to: "[[d31-device-bound-operator-journal]]", rel: decision }
   - { to: "[[2026-10-22-c-cockpit]]", rel: epic }
   - { to: "[[mcp-control-plane]]", rel: spec }
   - { to: "[[messaging]]", rel: spec }
@@ -17,7 +23,7 @@ updated: 2026-10-22T20:09:59Z
 ---
 # W2.5 MCP server and W2.5b seat wiring kit
 
-Owner: Corvin Duskmantle <ARCHITECT>. Decided 2026-10-22. Binds decision #3 of [[2026-10-22-architecture-round-1]] (MCP inside logic, a per-seat stdio bridge with a capability token) and #13 (tasks are Markdown). The operator's sentence: "terminal with MCP, tasks, hooks, skills all should be there." **Done means** a seat launched by the app can, on its first turn, call `orient`, take its task, message within its grants, report, and claim an artifact, with no user configuration touched. [[mcp-control-plane]] stays the full catalogue and semantics; this spec is the first cut that gets built, in the shape the code already has.
+Owner: Corvin Duskmantle <ARCHITECT>. Decided 2026-10-22. Binds decision [[d3-mcp-server|#3]] of [[2026-10-22-architecture-round-1]] (MCP inside logic, a per-seat stdio bridge with a capability token) and [[d13-document-types|#13]] (tasks are Markdown). The operator's sentence: "terminal with MCP, tasks, hooks, skills all should be there." **Done means** a seat launched by the app can, on its first turn, call `orient`, take its task, message within its grants, report, and claim an artifact, with no user configuration touched. [[mcp-control-plane]] stays the full catalogue and semantics; this spec is the first cut that gets built, in the shape the code already has.
 
 Lens: one machine; logic is the only authority; the bridge is dumb. Assumes the installed clients as verified on 2026-10-22: Claude Code 2.1.304 (`--mcp-config`, `--plugin-dir`, `--append-system-prompt`, `--settings`) and Codex 0.163 (`-c mcp_servers.<name>.…`). Breaks when a harness has no per-launch MCP flag: it gets the PTY path only. LESS IS MORE: three MCP methods, one new socket action pair, one overlay directory.
 
@@ -35,7 +41,7 @@ flowchart LR
 
 - **The bridge** is a private entry point of the one binary, `bboxy450-term mcp`, like `hook` (specs/README S5). It reads `BBOXY_SOCK`, `BBOXY_CAPABILITY`, `BBOXY_SEAT_ID`, `BBOXY_GENERATION` from the environment the launch overlay already exports (`M/adapters/launch.rs:87-94`). It implements MCP over stdio with exactly `initialize`, `ping`, `tools/list`, `tools/call`; no resources, prompts or sampling in W2.5. `tools/list` forwards to `Action::Catalogue`; `tools/call` forwards to `Action::Call{op_id, tool, args}` and returns logic's JSON result verbatim as the tool result. Stdout carries only MCP frames; stderr is bounded diagnostics; the capability is never printed. Hand-written JSON-RPC, three methods; the `rmcp` SDK only if acceptance test 1 fails on protocol negotiation.
 - **Logic owns the catalogue**: names, schemas, role filter, dispatch. Actor per call: the seat socket's admission (`M/seat_socket.rs:213`: version, capability, seat, generation, then the supervisor-confirmed generation) → the seat record's role and grant epoch → `Actor` (`M/messaging/tree.rs:15`). Oracle-class and worker-class filter both `tools/list` and `tools/call`; a hidden name called directly is refused the same way. As built at 983386a (W2.5c): discovery adds `ch_link`, `ch_pause`, `ch_grant` only when `actor.role.class == Oracle` (`M/mcp/messaging.rs:93`; `catalogue(actor)` reads the class, `M/mcp/tools.rs:14-15`), and dispatch enforces it independently (`M/mcp/messaging.rs:245-249`, "tool requires oracle-class authority"). Every call writes one audit event `seat/{id}/control` to the seat stream: `{op_id, tool, actor, outcome, args_digest}`, never payloads.
-- **Idempotency.** `op_id` is a caller ULID. Logic journals `control/op/{op_id}` → result in the principal's object kv: the seat object for seat actors, the **account object for the operator principal** (the GUI acting on this device; decision #31); a repeated `op_id` returns the stored result and audits a replay on `seat/{id}/control` or `account/control` respectively.
+- **Idempotency.** `op_id` is a caller ULID. Logic journals `control/op/{op_id}` → result in the principal's object kv: the seat object for seat actors, the **account object for the operator principal** (the GUI acting on this device; decision [[d31-device-bound-operator-journal|#31]]); a repeated `op_id` returns the stored result and audits a replay on `seat/{id}/control` or `account/control` respectively.
 
 ## 2. Catalogue, first cut
 
@@ -50,7 +56,7 @@ flowchart LR
 | `message_send`, `message_list`, `message_receipts`, `message_ack` | `messaging::api::Request::{Send, List, Receipts, Acknowledge}` | O E C within grants |
 | `ch_ls`, `ch_subscribe`, `ch_unsubscribe`, `ch_link`, `ch_pause`, `ch_grant` | `Request::{Ls, Subscribe, Unsubscribe, Link, Pause, Grant}` | O; E C for ls, subscribe, unsubscribe |
 | `seat_mute`, `seat_unmute` | `Request::Mute`; **deferred from W2.5c to W2.5e by Oracle ruling (2026-10-23), operator-side controls** | O |
-| `task_delegate`, `task_reassign`, `task_accept`, `task_reject` | frontmatter rewrite in the task file, then a `Body::Task{event}` message to the seat (`M/messaging/wire.rs:46`) so W2.4 delivery evidence applies. `task_accept` is refused unless the recorded `verify_result = {command, exit_code, evidence}` has `command` equal to the task's `verify`, `exit_code` 0, and one evidence entry per listed acceptance criterion; swarm scope: every present seat reference among `assignee` and `delegated_by` resolves to the caller's registry swarm; one anchors, two must match, none refuses; never from a path (decision #28) | O |
+| `task_delegate`, `task_reassign`, `task_accept`, `task_reject` | frontmatter rewrite in the task file, then a `Body::Task{event}` message to the seat (`M/messaging/wire.rs:46`) so W2.4 delivery evidence applies. `task_accept` is refused unless the recorded `verify_result = {command, exit_code, evidence}` has `command` equal to the task's `verify`, `exit_code` 0, and one evidence entry per listed acceptance criterion; swarm scope: every present seat reference among `assignee` and `delegated_by` resolves to the caller's registry swarm; one anchors, two must match, none refuses; never from a path (decision [[d28-structured-task-verification|#28]]) | O |
 | `task_status`, `task_list` | index | O; E C own tasks |
 | `task_report` | frontmatter `status: reported`, `verify_result {command, exit_code, evidence: [{criterion, reference}]}` recorded, `Body::Task{event: report}` to `delegated_by` | E C own task; O |
 | `artifact_claim` | write `.bboxy/artifacts/<ulid>.md`, link from the task | O E C |
@@ -70,7 +76,7 @@ Everything lives in the per-launch overlay directory (`launch-{ulid}`, mode 0700
 
 The skill is one `SKILL.md` generated from a template in the binary (`include_str!`), parameterised by role: the tool order `orient → task_* → message_* → artifact_claim`, DM by default and what the channel is for ([[messaging]]), and the report shape (files changed and mechanism, commands and exit status, evidence per criterion, gaps, worktree state). The role prompt stays what settings say.
 
-**Trust, stated plainly.** The capability sits in the environment of the whole harness process tree ([[architecture]] §6); accepted for v0.1. The bridge binds to (seat, generation): a resumed seat has a new generation and a new overlay, and the old bridge is refused. Decision #4 changes who signs envelopes, not this admission.
+**Trust, stated plainly.** The capability sits in the environment of the whole harness process tree ([[architecture]] §6); accepted for v0.1. The bridge binds to (seat, generation): a resumed seat has a new generation and a new overlay, and the old bridge is refused. Decision [[d4-seat-identity|#4]] changes who signs envelopes, not this admission.
 
 ## 4. A task, end to end
 

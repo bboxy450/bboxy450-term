@@ -1,3 +1,11 @@
+---
+id: "51FPRZP3WWTHWZZJ453YR1C11Q"
+type: "spec"
+number: 86
+title: "Spec: harness adapters — launch, observe, feed, wake"
+created: "2026-10-21T19:51:15Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Spec: harness adapters — launch, observe, feed, wake
 
 2026-10-21 · converged for Vesper Greywind <ORACLE> from two research passes · status PROPOSED.

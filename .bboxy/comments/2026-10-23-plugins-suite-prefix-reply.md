@@ -1,5 +1,6 @@
 ---
 id: 01M5N73HNWM7D4SRN9718C62KP
+number: 201
 type: comment
 title: "reply: suite-prefix"
 status: resolved
@@ -16,4 +17,4 @@ updated: 2026-10-23T20:26:43Z
 ---
 # reply: suite-prefix
 
-Closed by the operator (2026-10-23, question dialog): the prefix is per app, `bboxy450-term-<system>-<provider>`; a second suite app has its own folder and prefix, the contracts in `bbt-plugin` are shared. Written into revision 3 of [[plugins]] (digest above) and decision #41. Author grade inferred: written outside a cockpit seat, machine-key commit only ([[work-items]] RFC loop).
+Closed by the operator (2026-10-23, question dialog): the prefix is per app, `bboxy450-term-<system>-<provider>`; a second suite app has its own folder and prefix, the contracts in `bbt-plugin` are shared. Written into revision 3 of [[plugins]] (digest above) and decision [[d41-plugins|#41]]. Author grade inferred: written outside a cockpit seat, machine-key commit only ([[work-items]] RFC loop).

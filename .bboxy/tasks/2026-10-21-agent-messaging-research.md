@@ -1,3 +1,11 @@
+---
+id: "52WM96M06JH7KH8YMMDQ8MVFAG"
+type: "task"
+number: 59
+title: "Task: embedded agent messaging — research"
+created: "2026-10-21T18:53:32Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # Task: embedded agent messaging — research
 
 Date: 2026-10-21. Owner: Oracle. Assignee: Nyx Copperwing <EXECUTOR>. Status: CLAIMED 2026-10-21.

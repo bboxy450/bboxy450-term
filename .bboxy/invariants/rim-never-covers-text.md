@@ -1,5 +1,6 @@
 ---
 id: 01M5MT43P4RP34NK00SFTBNBEH
+number: 153
 type: invariant
 title: the glow rim never covers a text cell
 status: active

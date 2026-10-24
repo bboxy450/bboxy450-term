@@ -1,3 +1,11 @@
+---
+id: "3P7QG8C1WGAW0GZ4TN9KC48QTW"
+type: "note"
+number: 72
+title: "UX pick — Oracle selection from the divergence field"
+created: "2026-10-21T18:57:39Z"
+updated: "2026-10-24T00:10:38Z"
+---
 # UX pick — Oracle selection from the divergence field
 
 > **Operator direct-review batch, 2026-10-21 (with Lumen, ICQ muted). Full rules and reasoning in [[ux-flow]], newest at the bottom; that file is the running log, this table is the current state.** Headlines: the sidebar block is **the cohort**, drawn as the car (rounded body, gloss band set in the top, bumper at the bottom, band and bumper in the cohort colour, colour random from key and changeable via a swatch); a cohort is a world with its own seats, shadows, stream and panes; cohorts read as tabs, open ones show seats; open/shut and focus are separate actions; **"participants" renamed "shadows"**; sidebar glow has its own quiet budget; sidebar header dots gone, the title bar owns window controls; macOS-style red close dot on every pane strip kills the seat (into the undo grace); footer = archive + plus; "+ new seat ⌘T" lives inside the open cohort; big "+ new cohort" button under the blocks; logo = the identity PNG, SVG parked; cohort_gap token 8 px; hover never focuses on the left, dwell focus stays on panes; sidebar and every split gutter resize by drag; locate is directional (row click rings the pane centre, pane click bounces the row border, keyboard both).
