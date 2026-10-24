@@ -2,7 +2,11 @@
 pub mod fake;
 mod gui;
 pub mod shared;
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex, TryLockError},
+    time::Duration,
+};
 
 use bbt_supervisor::SupervisorConnection;
 use serde::{Deserialize, Serialize};
@@ -119,8 +123,11 @@ impl Provider for LocalProvider {
 /// One link per host, owned and polled by the existing logic worker.
 pub struct Connections {
     providers: Vec<Box<dyn Provider>>,
-    links: HashMap<HostId, Box<dyn SupervisorConnection>>,
+    links: HashMap<HostId, SharedLink>,
 }
+/// The existing admitted connection has one IO owner at a time, including
+/// checkpoint side work. Cloning this handle never acquires another lease.
+pub(crate) type SharedLink = Arc<Mutex<Box<dyn SupervisorConnection>>>;
 impl Connections {
     pub fn open(mut providers: Vec<Box<dyn Provider>>) -> Result<Self> {
         let mut links = HashMap::new();
@@ -135,7 +142,7 @@ impl Connections {
                     return Err(invalid("duplicate host or wrong provider owner"));
                 }
                 let link = provider.link(host.id.clone())?;
-                links.insert(host.id, link);
+                links.insert(host.id, Arc::new(Mutex::new(link)));
             }
         }
         if !links.contains_key(&HostId::Local) {
@@ -144,10 +151,16 @@ impl Connections {
         Ok(Self { providers, links })
     }
     pub fn request(&mut self, host: &HostId, action: Action) -> Result<Reply> {
-        self.links
-            .get_mut(host)
-            .ok_or_else(|| invalid("unknown supervisor host"))?
+        self.link(host)?
+            .lock()
+            .map_err(|_| invalid("supervisor link owner stopped"))?
             .request(action)
+    }
+    pub(crate) fn link(&self, host: &HostId) -> Result<SharedLink> {
+        self.links
+            .get(host)
+            .cloned()
+            .ok_or_else(|| invalid("unknown supervisor host"))
     }
     pub fn host_ids(&self) -> Vec<HostId> {
         let mut hosts: Vec<_> = self
@@ -190,17 +203,19 @@ impl Connections {
         } else {
             Duration::ZERO
         };
-        self.links
-            .get_mut(host)
-            .ok_or_else(|| invalid("unknown supervisor host"))?
-            .receive(wait)
+        self.receive_link(host, wait)
     }
     /// Poll notifications while replay work is already ready to run.
     pub fn receive_ready_from(&mut self, host: &HostId) -> Result<Option<Event>> {
-        self.links
-            .get_mut(host)
-            .ok_or_else(|| invalid("unknown supervisor host"))?
-            .receive(Duration::ZERO)
+        self.receive_link(host, Duration::ZERO)
+    }
+    fn receive_link(&self, host: &HostId, timeout: Duration) -> Result<Option<Event>> {
+        let link = self.link(host)?;
+        match link.try_lock() {
+            Ok(mut connection) => connection.receive(timeout),
+            Err(TryLockError::WouldBlock) => Ok(None),
+            Err(TryLockError::Poisoned(_)) => Err(invalid("supervisor link owner stopped")),
+        }
     }
     pub fn poll(&mut self) -> Vec<ProviderEvent> {
         self.providers

@@ -3,9 +3,7 @@ id: 01M5P27M8GWEFR5YP5665P8CP3
 type: invariant
 number: 254
 title: "crash recovery work per seat stays under the checkpoint bound"
-status: pending
-slow: true
-gate: pending-r5g
+status: active
 check: R5G_SEATS=4 cargo test -p bbt-mux --locked --test recovery checkpoint_bounded_recovery -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: a seat that replays an hour of ring after a crash is a seat the operator cannot use for a minute; unbounded checkpoint work is the stall window 4 measured, 72 percent of logic wall time
 links:
@@ -50,5 +48,7 @@ parsed debt within 2R (signed source 34cc1356; evidence commit 7cf403e1,
 hashes); budget 71 666 ms = median + 25 %. Still `pending` until Rook's commit
 lands the test and, in the same commit, removes `slow` and `gate` and sets
 `status: active`: the switch lands with the load, never before it.
+
+**Test evidence.** Signed candidate commit `36032d38d532156428cb3beb6d050dae2c00e769` adds `crates/bbt-mux/tests/recovery.rs::checkpoint_bounded_recovery`; `90d6c62db75549b4c2462b0ffa330efa745d3293` adds its calibrated `R5G_BUDGET_MS` assertion and default activation.
 
 Owner: Corvin Duskmantle <ARCHITECT>.

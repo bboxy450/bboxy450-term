@@ -14,6 +14,46 @@ fn output(seat: Ulid, generation: u64, seq: u64, byte: u8) -> Event {
 }
 
 #[test]
+fn diagnostic_queue_observation_keeps_the_same_event_order() {
+    let (stream, _peer) = std::os::unix::net::UnixStream::pair().unwrap();
+    let first = Ulid::new();
+    let second = Ulid::new();
+    let mut client = SocketSupervisor {
+        stream,
+        decoder: Default::default(),
+        events: Default::default(),
+        replies: Default::default(),
+        lease: None,
+        pending_request: None,
+        broken: false,
+        diagnostics: ClientDiagnostics::default(),
+    };
+    client.events.confirm_ring(first, 1, 1).unwrap();
+    client.events.push(output(first, 1, 3, b'a')).unwrap();
+    client.events.push(output(second, 1, 1, b'b')).unwrap();
+    for _ in 0..2 {
+        let observed = client.diagnostics(first, 1);
+        assert_eq!(observed.queued_events, 2);
+        assert_eq!(observed.queued_raw_events, 1);
+        assert_eq!(observed.queued_output_sequence, Some(3));
+        assert_eq!(client.diagnostics(first, 2).queued_output_sequence, None);
+    }
+    assert_eq!(
+        client.receive(Duration::ZERO).unwrap(),
+        Some(output(first, 1, 3, b'a'))
+    );
+    let observed = client.diagnostics(first, 1);
+    assert_eq!(observed.queued_events, 1);
+    assert_eq!(observed.queued_output_sequence, None);
+    assert_eq!(observed.receive_calls, 1);
+    assert_eq!(observed.returned_events, 1);
+    assert_eq!(
+        client.receive(Duration::ZERO).unwrap(),
+        Some(output(second, 1, 1, b'b'))
+    );
+}
+
+#[test]
 fn a_peer_closed_after_its_final_reply_does_not_hide_buffered_bytes_behind_timeout_setup() {
     let (stream, mut peer) = std::os::unix::net::UnixStream::pair().unwrap();
     let request_id = Ulid::new();
@@ -34,6 +74,7 @@ fn a_peer_closed_after_its_final_reply_does_not_hide_buffered_bytes_behind_timeo
         lease: None,
         pending_request: None,
         broken: false,
+        diagnostics: ClientDiagnostics::default(),
     };
     let native = client
         .stream

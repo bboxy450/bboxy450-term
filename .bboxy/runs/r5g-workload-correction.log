@@ -1,0 +1,649 @@
+R5g declared workload correction — one/two swarms
+Authorization: Oracle d6aff179-23f0-4239-b4c2-6bc664179707.
+Parent signed diagnostic source: 0a3d612e6b4969a70e7f1425dedd833608158d63.
+The only executable source delta is tests/recovery.rs: use one swarm for the first50 seats, a second for the rest, matching stall/load.rs967/50.
+The earlier source created a distinct swarm per seat. The source comment cites the preserved diagnostic finding.
+Every existing assertion/deadline, process-liveness/reap check, workload byte count, SIGKILL boundary, debt bound and recovery timing start remains unchanged. No messaging/store performance fix or watched-priority change.
+
+Before (distinct swarms, independently sampled higher ambient loads):
+{
+  "runs": [
+    {
+      "seats": 4,
+      "exit": 0,
+      "wrapper_s": 55.77228604198899,
+      "every_seat_live_ms": 427.862,
+      "log_sha256": "9f9b1fdc12c1660a37f45dac553b6b0493e94fd037a8832e0a56664b6977588d",
+      "source_diff_sha256": "ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286",
+      "start_load": "not separately sampled",
+      "delivery": {
+        "burst_held": 1327,
+        "burst_returned": 10,
+        "burst_seen": 1336,
+        "client": {
+          "decoded_event_frames": 1413,
+          "empty_receives": 9297,
+          "queued_events": 0,
+          "queued_output_sequence": null,
+          "queued_raw_events": 0,
+          "read_bytes": 130383642,
+          "read_calls": 17820,
+          "receive_calls": 10695,
+          "returned_events": 1398
+        },
+        "held_released": 1,
+        "held_sequence": null,
+        "inner_empty": 9297,
+        "inner_receive_calls": 10695,
+        "last_burst_returned_sequence": 1440,
+        "last_burst_seen_sequence": 1440,
+        "other_returned": 62,
+        "receive_calls": 9369,
+        "release_requested": true
+      },
+      "phases": {
+        "maintenance": {
+          "calls": 9400,
+          "inclusive_s": 0.133932831,
+          "mean_ms": 0.014248173510638298,
+          "max_ms": 34.098167
+        },
+        "maintenance_messages": {
+          "calls": 52,
+          "inclusive_s": 0.067637748,
+          "mean_ms": 1.300725923076923,
+          "max_ms": 29.14475
+        },
+        "maintenance_provenance": {
+          "calls": 52,
+          "inclusive_s": 0.044700165,
+          "mean_ms": 0.8596185576923078,
+          "max_ms": 13.296333
+        },
+        "maintenance_adapters": {
+          "calls": 27,
+          "inclusive_s": 0.003497458,
+          "mean_ms": 0.12953548148148147,
+          "max_ms": 1.460041
+        },
+        "checkpoint_rpc": {
+          "calls": 8,
+          "inclusive_s": 0.050213833,
+          "mean_ms": 6.276729125,
+          "max_ms": 8.402834
+        },
+        "checkpoint_service": {
+          "calls": 18800,
+          "inclusive_s": 0.014394215,
+          "mean_ms": 0.0007656497340425532,
+          "max_ms": 0.43875
+        },
+        "logic_turn": {
+          "calls": 9399,
+          "inclusive_s": 5.580782382,
+          "mean_ms": 0.5937634197255027,
+          "max_ms": 141.660666
+        }
+      },
+      "supervisor_notification": {
+        "seat": "01M5PQQG5H29V5P0R655EDG0RK",
+        "generation": 1,
+        "observed_ns": 2964912917,
+        "notified_sequence": 0,
+        "target_sequence": 0,
+        "ring_observed_ns": 0,
+        "captured_sequence": 0,
+        "committed_sequence": 0,
+        "applied_observed_ns": 0,
+        "applied_sequence": 0,
+        "last_progress_ns": 0,
+        "pages": 0,
+        "parsed_events": 0,
+        "parsed_bytes": 0,
+        "checkpoint_sequence": 0,
+        "checkpoint_byte_end": 0,
+        "parsed_byte_end": 0,
+        "checkpoint_pauses": 0,
+        "checkpoint_paused": false,
+        "idle_checkpoints": 0,
+        "forced_checkpoints": 0,
+        "notification_attempts": 3772,
+        "notification_accepted": 1351,
+        "notification_last_attempt": 1440,
+        "notification_last_accepted": 1440
+      }
+    },
+    {
+      "seats": 64,
+      "exit": 0,
+      "wrapper_s": 29.865447749965824,
+      "every_seat_live_ms": 2777.891,
+      "log_sha256": "29d674387497bcd97d056d94443ecaec585e5e8b4bef160143d066b5e2baaddd",
+      "source_diff_sha256": "ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286",
+      "start_load": {
+        "at": "2026-10-24T03:37:53.742564-07:00",
+        "load": [
+          13.38134765625,
+          19.72216796875,
+          13.52294921875
+        ],
+        "free": 50900803584
+      },
+      "delivery": {
+        "burst_held": 90,
+        "burst_returned": 4,
+        "burst_seen": 93,
+        "client": {
+          "decoded_event_frames": 1528,
+          "empty_receives": 1426,
+          "queued_events": 0,
+          "queued_output_sequence": null,
+          "queued_raw_events": 0,
+          "read_bytes": 104321376,
+          "read_calls": 15322,
+          "receive_calls": 1795,
+          "returned_events": 369
+        },
+        "held_released": 1,
+        "held_sequence": null,
+        "inner_empty": 1426,
+        "inner_receive_calls": 1795,
+        "last_burst_returned_sequence": 2079,
+        "last_burst_seen_sequence": 2079,
+        "other_returned": 276,
+        "receive_calls": 1706,
+        "release_requested": true
+      },
+      "phases": {
+        "maintenance": {
+          "calls": 2361,
+          "inclusive_s": 12.816511032,
+          "mean_ms": 5.428424833545108,
+          "max_ms": 511.003583
+        },
+        "maintenance_messages": {
+          "calls": 117,
+          "inclusive_s": 11.215001455,
+          "mean_ms": 95.85471329059828,
+          "max_ms": 493.359208
+        },
+        "maintenance_provenance": {
+          "calls": 117,
+          "inclusive_s": 0.555499328,
+          "mean_ms": 4.747857504273504,
+          "max_ms": 43.851
+        },
+        "maintenance_adapters": {
+          "calls": 92,
+          "inclusive_s": 1.012945794,
+          "mean_ms": 11.010280369565217,
+          "max_ms": 95.122291
+        },
+        "checkpoint_rpc": {
+          "calls": 128,
+          "inclusive_s": 0.90434958,
+          "mean_ms": 7.06523109375,
+          "max_ms": 31.36
+        },
+        "checkpoint_service": {
+          "calls": 4722,
+          "inclusive_s": 0.047363752,
+          "mean_ms": 0.0100304430326133,
+          "max_ms": 2.824375
+        },
+        "logic_turn": {
+          "calls": 2360,
+          "inclusive_s": 25.210737216,
+          "mean_ms": 10.682515769491525,
+          "max_ms": 537.993
+        }
+      },
+      "supervisor_notification": {
+        "seat": "01M5PQT3PHHBAP2B4HVFY0GJR7",
+        "generation": 1,
+        "observed_ns": 13058844625,
+        "notified_sequence": 0,
+        "target_sequence": 0,
+        "ring_observed_ns": 0,
+        "captured_sequence": 0,
+        "committed_sequence": 0,
+        "applied_observed_ns": 0,
+        "applied_sequence": 0,
+        "last_progress_ns": 0,
+        "pages": 0,
+        "parsed_events": 0,
+        "parsed_bytes": 0,
+        "checkpoint_sequence": 0,
+        "checkpoint_byte_end": 0,
+        "parsed_byte_end": 0,
+        "checkpoint_pauses": 0,
+        "checkpoint_paused": false,
+        "idle_checkpoints": 0,
+        "forced_checkpoints": 0,
+        "notification_attempts": 20377,
+        "notification_accepted": 638,
+        "notification_last_attempt": 2079,
+        "notification_last_accepted": 2079
+      }
+    },
+    {
+      "seats": 65,
+      "exit": 0,
+      "wrapper_s": 34.15251433302183,
+      "every_seat_live_ms": 3395.25,
+      "log_sha256": "60b0dc0bef27a5b9efb415d7ef561f1455bdf4980bd62d19a8747bb177b81a96",
+      "source_diff_sha256": "ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286",
+      "start_load": {
+        "at": "2026-10-24T03:38:45.699780-07:00",
+        "load": [
+          16.8486328125,
+          19.39697265625,
+          13.7744140625
+        ],
+        "free": 49984339968
+      },
+      "delivery": {
+        "burst_held": 226,
+        "burst_returned": 1,
+        "burst_seen": 226,
+        "client": {
+          "decoded_event_frames": 1127,
+          "empty_receives": 1517,
+          "queued_events": 0,
+          "queued_output_sequence": null,
+          "queued_raw_events": 0,
+          "read_bytes": 115173493,
+          "read_calls": 16372,
+          "receive_calls": 1904,
+          "returned_events": 387
+        },
+        "held_released": 1,
+        "held_sequence": null,
+        "inner_empty": 1517,
+        "inner_receive_calls": 1904,
+        "last_burst_returned_sequence": 1741,
+        "last_burst_seen_sequence": 1741,
+        "other_returned": 161,
+        "receive_calls": 1679,
+        "release_requested": true
+      },
+      "phases": {
+        "maintenance": {
+          "calls": 2361,
+          "inclusive_s": 14.924645648,
+          "mean_ms": 6.321323866158407,
+          "max_ms": 1113.543084
+        },
+        "maintenance_messages": {
+          "calls": 104,
+          "inclusive_s": 13.827439713,
+          "mean_ms": 132.95615108653845,
+          "max_ms": 1087.434375
+        },
+        "maintenance_provenance": {
+          "calls": 104,
+          "inclusive_s": 0.659763712,
+          "mean_ms": 6.343881846153846,
+          "max_ms": 36.05175
+        },
+        "maintenance_adapters": {
+          "calls": 97,
+          "inclusive_s": 0.410460209,
+          "mean_ms": 4.231548546391752,
+          "max_ms": 53.17625
+        },
+        "checkpoint_rpc": {
+          "calls": 130,
+          "inclusive_s": 0.904253667,
+          "mean_ms": 6.955797438461539,
+          "max_ms": 22.574958
+        },
+        "checkpoint_service": {
+          "calls": 4722,
+          "inclusive_s": 0.050865259,
+          "mean_ms": 0.01077197352816603,
+          "max_ms": 9.404291
+        },
+        "logic_turn": {
+          "calls": 2360,
+          "inclusive_s": 28.231115581,
+          "mean_ms": 11.96233711059322,
+          "max_ms": 1174.173666
+        }
+      },
+      "supervisor_notification": {
+        "seat": "01M5PQVQES46KJ2PZC5RWYAAFK",
+        "generation": 1,
+        "observed_ns": 19238835375,
+        "notified_sequence": 0,
+        "target_sequence": 0,
+        "ring_observed_ns": 0,
+        "captured_sequence": 0,
+        "committed_sequence": 0,
+        "applied_observed_ns": 0,
+        "applied_sequence": 0,
+        "last_progress_ns": 0,
+        "pages": 0,
+        "parsed_events": 0,
+        "parsed_bytes": 0,
+        "checkpoint_sequence": 0,
+        "checkpoint_byte_end": 0,
+        "parsed_byte_end": 0,
+        "checkpoint_pauses": 0,
+        "checkpoint_paused": false,
+        "idle_checkpoints": 0,
+        "forced_checkpoints": 0,
+        "notification_attempts": 12269,
+        "notification_accepted": 781,
+        "notification_last_attempt": 1741,
+        "notification_last_accepted": 1741
+      }
+    }
+  ],
+  "recorded_pids_checked": 136,
+  "remaining": [],
+  "interpretation": "All three pass; this does not reproduce a discontinuity at65. Ambient loads differ. Phase durations overlap; these are completion-accounted pre-kill totals, not a full-count overhead gate."
+}
+
+After (declared1-2 swarm shape; ambient loads differ):
+{
+  "runs": [
+    {
+      "seats": 4,
+      "swarms_by_source": 1,
+      "exit": 0,
+      "every_seat_live_ms": 206.69,
+      "runtime_s": 4.65,
+      "maintenance_messages_mean_ms": 0.3685033157894737,
+      "maintenance_messages_s": 0.014003126,
+      "maintenance_messages_calls": 38,
+      "log_sha256": "391fcb796a0941eed2e7367e3b67a435967ef674f310f5af06a66ea292b39b13",
+      "start_load": "not separately sampled",
+      "delivery": {
+        "burst_held": 1286,
+        "burst_returned": 1,
+        "burst_seen": 1286,
+        "client": {
+          "decoded_event_frames": 1337,
+          "empty_receives": 10238,
+          "queued_events": 0,
+          "queued_output_sequence": null,
+          "queued_raw_events": 0,
+          "read_bytes": 135919344,
+          "read_calls": 18539,
+          "receive_calls": 11575,
+          "returned_events": 1337
+        },
+        "held_released": 1,
+        "held_sequence": null,
+        "inner_empty": 10238,
+        "inner_receive_calls": 11575,
+        "last_burst_returned_sequence": 1289,
+        "last_burst_seen_sequence": 1289,
+        "other_returned": 51,
+        "receive_calls": 10290,
+        "release_requested": true
+      }
+    },
+    {
+      "seats": 64,
+      "swarms_by_source": 2,
+      "exit": 0,
+      "every_seat_live_ms": 1668.888,
+      "runtime_s": 12.37,
+      "maintenance_messages_mean_ms": 1.9981159880952382,
+      "maintenance_messages_s": 0.167841743,
+      "maintenance_messages_calls": 84,
+      "log_sha256": "f8fa85e75aaabdc0040a7d96ca9ff3ed9ea3fb31fa2c12ecd31ed89e7991cd2b",
+      "start_load": {
+        "at": "2026-10-24T03:49:28.540882-07:00",
+        "load": [
+          7.478515625,
+          13.74365234375,
+          14.505859375
+        ],
+        "free": 48973611008
+      },
+      "delivery": {
+        "burst_held": 1110,
+        "burst_returned": 1,
+        "burst_seen": 1110,
+        "client": {
+          "decoded_event_frames": 2229,
+          "empty_receives": 9506,
+          "queued_events": 0,
+          "queued_output_sequence": null,
+          "queued_raw_events": 0,
+          "read_bytes": 139529802,
+          "read_calls": 19680,
+          "receive_calls": 11694,
+          "returned_events": 2188
+        },
+        "held_released": 1,
+        "held_sequence": null,
+        "inner_empty": 9506,
+        "inner_receive_calls": 11694,
+        "last_burst_returned_sequence": 1450,
+        "last_burst_seen_sequence": 1450,
+        "other_returned": 1078,
+        "receive_calls": 10585,
+        "release_requested": true
+      }
+    },
+    {
+      "seats": 65,
+      "swarms_by_source": 2,
+      "exit": 0,
+      "every_seat_live_ms": 1729.199,
+      "runtime_s": 11.97,
+      "maintenance_messages_mean_ms": 2.0578798470588238,
+      "maintenance_messages_s": 0.174919787,
+      "maintenance_messages_calls": 85,
+      "log_sha256": "a4a1af508d9907743772de7d6d688b6829f14dceb2f0d2940bd097424f6b12c8",
+      "start_load": {
+        "at": "2026-10-24T03:51:01.780402-07:00",
+        "load": [
+          6.20361328125,
+          11.52685546875,
+          13.5595703125
+        ],
+        "free": 48992608256
+      },
+      "delivery": {
+        "burst_held": 510,
+        "burst_returned": 1,
+        "burst_seen": 510,
+        "client": {
+          "decoded_event_frames": 2258,
+          "empty_receives": 3976,
+          "queued_events": 0,
+          "queued_output_sequence": null,
+          "queued_raw_events": 0,
+          "read_bytes": 140077111,
+          "read_calls": 19431,
+          "receive_calls": 5388,
+          "returned_events": 1412
+        },
+        "held_released": 1,
+        "held_sequence": null,
+        "inner_empty": 3976,
+        "inner_receive_calls": 5388,
+        "last_burst_returned_sequence": 1639,
+        "last_burst_seen_sequence": 1639,
+        "other_returned": 902,
+        "receive_calls": 4879,
+        "release_requested": true
+      }
+    }
+  ],
+  "recorded_pids_checked": 136,
+  "remaining": [],
+  "source_parent": "0a3d612e6b4969a70e7f1425dedd833608158d63",
+  "source_diff_sha256": "ebdc482edd413377b2995e75d551382b16fa93886ad1babea805c46a4b8e8584",
+  "caveats": "Declared workload correction plus different ambient loads; no controlled performance ratio, full-count budget, or967/50 acceptance claim."
+}
+
+These are observations with a declared workload change, not a controlled throughput ratio. No967 recovery budget or967/50 overhead acceptance result is available. Invariant254 remains pending.
+
+shape-4 status:
+{
+  "argv": [
+    "env",
+    "R5G_SEATS=4",
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--test",
+    "recovery",
+    "checkpoint_bounded_recovery",
+    "--",
+    "--exact",
+    "--nocapture"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "at": "2026-10-24T03:48:09.544987-07:00",
+  "finished": true,
+  "source_diff_sha256": "ebdc482edd413377b2995e75d551382b16fa93886ad1babea805c46a4b8e8584",
+  "pid": 13170,
+  "exit": 0,
+  "elapsed_s": 6.986448375042528,
+  "source_diff_sha256_after": "ebdc482edd413377b2995e75d551382b16fa93886ad1babea805c46a4b8e8584"
+}
+Raw output SHA256: 391fcb796a0941eed2e7367e3b67a435967ef674f310f5af06a66ea292b39b13
+Raw output JSON-escaped:
+"   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)\n    Finished `test` profile [optimized] target(s) in 2.04s\n     Running tests/recovery.rs (target/r5g/debug/deps/recovery-7d0788ad483062a2)\n\nrunning 1 test\ncheckpoint_recovery delivery={\"burst_held\":1286,\"burst_returned\":1,\"burst_seen\":1286,\"client\":{\"decoded_event_frames\":1337,\"empty_receives\":10238,\"queued_events\":0,\"queued_output_sequence\":null,\"queued_raw_events\":0,\"read_bytes\":135919344,\"read_calls\":18539,\"receive_calls\":11575,\"returned_events\":1337},\"held_released\":1,\"held_sequence\":null,\"inner_empty\":10238,\"inner_receive_calls\":11575,\"last_burst_returned_sequence\":1289,\"last_burst_seen_sequence\":1289,\"other_returned\":51,\"receive_calls\":10290,\"release_requested\":true}\ncheckpoint_recovery capture_phase_totals=[[\"logic_turn\",{\"busy\":0,\"bytes\":0,\"calls\":10302,\"elapsed_ns\":4014207187,\"errors\":0,\"max_ns\":59677958,\"pending_peak\":1,\"work\":774}],[\"commands\",{\"busy\":0,\"bytes\":0,\"calls\":10303,\"elapsed_ns\":141876047,\"errors\":0,\"max_ns\":42929000,\"pending_peak\":0,\"work\":10}],[\"receive\",{\"busy\":0,\"bytes\":0,\"calls\":10303,\"elapsed_ns\":3113358579,\"errors\":0,\"max_ns\":11264375,\"pending_peak\":0,\"work\":0}],[\"event\",{\"busy\":0,\"bytes\":0,\"calls\":843,\"elapsed_ns\":674947826,\"errors\":0,\"max_ns\":5019875,\"pending_peak\":0,\"work\":0}],[\"replay_page\",{\"busy\":0,\"bytes\":12592128,\"calls\":775,\"elapsed_ns\":624816161,\"errors\":0,\"max_ns\":4937125,\"pending_peak\":0,\"work\":775}],[\"capture_request\",{\"busy\":0,\"bytes\":0,\"calls\":9,\"elapsed_ns\":40540124,\"errors\":0,\"max_ns\":5667417,\"pending_peak\":0,\"work\":0}],[\"read_ring_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":776,\"elapsed_ns\":514129090,\"errors\":0,\"max_ns\":4815584,\"pending_peak\":0,\"work\":0}],[\"recovery_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":4,\"elapsed_ns\":17298208,\"errors\":0,\"max_ns\":5273125,\"pending_peak\":0,\"work\":0}],[\"checkpoint_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":8,\"elapsed_ns\":39652417,\"errors\":0,\"max_ns\":7227833,\"pending_peak\":0,\"work\":0}],[\"parse\",{\"busy\":0,\"bytes\":12788778,\"calls\":826,\"elapsed_ns\":115137712,\"errors\":0,\"max_ns\":1781084,\"pending_peak\":0,\"work\":826}],[\"checkpoint\",{\"busy\":0,\"bytes\":0,\"calls\":4,\"elapsed_ns\":27068208,\"errors\":0,\"max_ns\":10857917,\"pending_peak\":0,\"work\":0}],[\"maintenance\",{\"busy\":0,\"bytes\":0,\"calls\":10303,\"elapsed_ns\":55053322,\"errors\":0,\"max_ns\":17929375,\"pending_peak\":0,\"work\":0}],[\"supervisor_turn\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_dispatch\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_query\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_sweep\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_providers\",{\"busy\":0,\"bytes\":0,\"calls\":19,\"elapsed_ns\":34043,\"errors\":0,\"max_ns\":4167,\"pending_peak\":0,\"work\":0}],[\"maintenance_adapters\",{\"busy\":0,\"bytes\":0,\"calls\":19,\"elapsed_ns\":5864206,\"errors\":0,\"max_ns\":4818709,\"pending_peak\":0,\"work\":0}],[\"maintenance_identity\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_messages\",{\"busy\":0,\"bytes\":0,\"calls\":38,\"elapsed_ns\":14003126,\"errors\":0,\"max_ns\":5519125,\"pending_peak\":0,\"work\":0}],[\"maintenance_provenance\",{\"busy\":0,\"bytes\":0,\"calls\":38,\"elapsed_ns\":27285210,\"errors\":0,\"max_ns\":12405708,\"pending_peak\":0,\"work\":105}],[\"checkpoint_service\",{\"busy\":0,\"bytes\":0,\"calls\":20606,\"elapsed_ns\":7195130,\"errors\":0,\"max_ns\":203834,\"pending_peak\":0,\"work\":0}]]\ncheckpoint_recovery supervisor_notification={\"seat\":\"01M5PRCYHD0ZDKW1XB088MEH7G\",\"generation\":1,\"observed_ns\":1206531875,\"notified_sequence\":0,\"target_sequence\":0,\"ring_observed_ns\":0,\"captured_sequence\":0,\"committed_sequence\":0,\"applied_observed_ns\":0,\"applied_sequence\":0,\"last_progress_ns\":0,\"pages\":0,\"parsed_events\":0,\"parsed_bytes\":0,\"checkpoint_sequence\":0,\"checkpoint_byte_end\":0,\"parsed_byte_end\":0,\"checkpoint_pauses\":0,\"checkpoint_paused\":false,\"idle_checkpoints\":0,\"forced_checkpoints\":0,\"notification_attempts\":3563,\"notification_accepted\":1286,\"notification_last_attempt\":1289,\"notification_last_accepted\":1289}\ncheckpoint_recovery seat=01M5PRCYHD0ZDKW1XB088MEH7G parsed_debt=4217856 backlog=8379406 parsed=12592128 confirmed=8374272 tail=20971534\ncheckpoint_recovery seat=01M5PRCYHDFAS2VRYEBMR3DNTC parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRCYHDVXSFS4PD8A8BSDHC parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRCYHDGVZDJ1FB0CJN728B parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery reaped_owned_pids=[13232, 13234, 13238, 13236]\ncheckpoint_recovery seats=4 every_seat_live_ms=206.690\ntest checkpoint_bounded_recovery ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 4.65s\n\n"
+
+shape-64 status:
+{
+  "argv": [
+    "env",
+    "R5G_SEATS=64",
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--test",
+    "recovery",
+    "checkpoint_bounded_recovery",
+    "--",
+    "--exact",
+    "--nocapture"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "at": "2026-10-24T03:49:28.644571-07:00",
+  "finished": true,
+  "source_diff_sha256": "ebdc482edd413377b2995e75d551382b16fa93886ad1babea805c46a4b8e8584",
+  "pid": 15081,
+  "exit": 0,
+  "elapsed_s": 12.969561959034763,
+  "source_diff_sha256_after": "ebdc482edd413377b2995e75d551382b16fa93886ad1babea805c46a4b8e8584"
+}
+Raw output SHA256: f8fa85e75aaabdc0040a7d96ca9ff3ed9ea3fb31fa2c12ecd31ed89e7991cd2b
+Raw output JSON-escaped:
+"    Finished `test` profile [optimized] target(s) in 0.53s\n     Running tests/recovery.rs (target/r5g/debug/deps/recovery-7d0788ad483062a2)\n\nrunning 1 test\ncheckpoint_recovery delivery={\"burst_held\":1110,\"burst_returned\":1,\"burst_seen\":1110,\"client\":{\"decoded_event_frames\":2229,\"empty_receives\":9506,\"queued_events\":0,\"queued_output_sequence\":null,\"queued_raw_events\":0,\"read_bytes\":139529802,\"read_calls\":19680,\"receive_calls\":11694,\"returned_events\":2188},\"held_released\":1,\"held_sequence\":null,\"inner_empty\":9506,\"inner_receive_calls\":11694,\"last_burst_returned_sequence\":1450,\"last_burst_seen_sequence\":1450,\"other_returned\":1078,\"receive_calls\":10585,\"release_requested\":true}\ncheckpoint_recovery capture_phase_totals=[[\"logic_turn\",{\"busy\":0,\"bytes\":0,\"calls\":10960,\"elapsed_ns\":9377391109,\"errors\":0,\"max_ns\":66707500,\"pending_peak\":1,\"work\":854}],[\"commands\",{\"busy\":0,\"bytes\":0,\"calls\":10961,\"elapsed_ns\":2220440469,\"errors\":0,\"max_ns\":50232833,\"pending_peak\":0,\"work\":130}],[\"receive\",{\"busy\":0,\"bytes\":0,\"calls\":10961,\"elapsed_ns\":4271353170,\"errors\":0,\"max_ns\":13429084,\"pending_peak\":0,\"work\":0}],[\"event\",{\"busy\":0,\"bytes\":0,\"calls\":2203,\"elapsed_ns\":1856220688,\"errors\":0,\"max_ns\":7743875,\"pending_peak\":0,\"work\":0}],[\"replay_page\",{\"busy\":0,\"bytes\":12662784,\"calls\":854,\"elapsed_ns\":1070629841,\"errors\":0,\"max_ns\":7703042,\"pending_peak\":0,\"work\":923}],[\"capture_request\",{\"busy\":0,\"bytes\":0,\"calls\":129,\"elapsed_ns\":567129205,\"errors\":0,\"max_ns\":7570958,\"pending_peak\":0,\"work\":0}],[\"read_ring_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":855,\"elapsed_ns\":957021612,\"errors\":0,\"max_ns\":7475458,\"pending_peak\":0,\"work\":0}],[\"recovery_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":64,\"elapsed_ns\":246515625,\"errors\":0,\"max_ns\":5354792,\"pending_peak\":0,\"work\":0}],[\"checkpoint_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":128,\"elapsed_ns\":647222294,\"errors\":0,\"max_ns\":11967500,\"pending_peak\":0,\"work\":0}],[\"parse\",{\"busy\":0,\"bytes\":16721778,\"calls\":1932,\"elapsed_ns\":157037813,\"errors\":0,\"max_ns\":810167,\"pending_peak\":0,\"work\":2001}],[\"checkpoint\",{\"busy\":0,\"bytes\":0,\"calls\":131,\"elapsed_ns\":673040545,\"errors\":0,\"max_ns\":26398416,\"pending_peak\":0,\"work\":0}],[\"maintenance\",{\"busy\":0,\"bytes\":0,\"calls\":10961,\"elapsed_ns\":468955004,\"errors\":0,\"max_ns\":37014000,\"pending_peak\":0,\"work\":0}],[\"supervisor_turn\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_dispatch\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_query\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_sweep\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_providers\",{\"busy\":0,\"bytes\":0,\"calls\":44,\"elapsed_ns\":70540,\"errors\":0,\"max_ns\":6625,\"pending_peak\":0,\"work\":0}],[\"maintenance_adapters\",{\"busy\":0,\"bytes\":0,\"calls\":43,\"elapsed_ns\":68680417,\"errors\":0,\"max_ns\":33807875,\"pending_peak\":0,\"work\":0}],[\"maintenance_identity\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_messages\",{\"busy\":0,\"bytes\":0,\"calls\":84,\"elapsed_ns\":167841743,\"errors\":0,\"max_ns\":7664625,\"pending_peak\":0,\"work\":0}],[\"maintenance_provenance\",{\"busy\":0,\"bytes\":0,\"calls\":84,\"elapsed_ns\":185090581,\"errors\":0,\"max_ns\":12623250,\"pending_peak\":0,\"work\":2520}],[\"checkpoint_service\",{\"busy\":0,\"bytes\":0,\"calls\":21922,\"elapsed_ns\":67943022,\"errors\":0,\"max_ns\":236750,\"pending_peak\":0,\"work\":0}]]\ncheckpoint_recovery supervisor_notification={\"seat\":\"01M5PRFAKSQHEWJEPBNM4ACZ9E\",\"generation\":1,\"observed_ns\":6273372958,\"notified_sequence\":0,\"target_sequence\":0,\"ring_observed_ns\":0,\"captured_sequence\":0,\"committed_sequence\":0,\"applied_observed_ns\":0,\"applied_sequence\":0,\"last_progress_ns\":0,\"pages\":0,\"parsed_events\":0,\"parsed_bytes\":0,\"checkpoint_sequence\":0,\"checkpoint_byte_end\":0,\"parsed_byte_end\":0,\"checkpoint_pauses\":0,\"checkpoint_paused\":false,\"idle_checkpoints\":0,\"forced_checkpoints\":0,\"notification_attempts\":5827,\"notification_accepted\":1147,\"notification_last_attempt\":1450,\"notification_last_accepted\":1450}\ncheckpoint_recovery seat=01M5PRFAKSQHEWJEPBNM4ACZ9E parsed_debt=4203520 backlog=8379406 parsed=12592128 confirmed=8388608 tail=20971534\ncheckpoint_recovery seat=01M5PRFAKSF3565XQZ94XKA1K4 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS4XVWVYMA1HV3AH1W parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSF71CW30DYD53GQN1 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSZV8KWZEDGAAFEN2W parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSPX4QWMSQT983W6BV parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSAAMY02GHJ21QW2XB parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSKYW7FT5A3C3GHF5R parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSD65Y8FFF88VWHAGP parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS8G7DCQ9AKPRWF8E6 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSQ2X8CZET4241WY4A parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSD7T4ZG7F4ZXKN77Z parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSEX9SD7HBEXMBXYY4 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSS0XE94535G39TND9 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS91ZPNTAXVN73DJ59 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSDBBE8GK861EXMQF8 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSEJP28MZBYKQ3WYTD parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS1CEXFDFV5MV0GHH0 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSEMJ3ADYM06AP1TVT parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSFX3V8R0TDN8WWM5K parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSCE5N7BBA7HCGZETH parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS3NJTDH6B3YNKHHTX parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS4N7T5ZEBQQT5MBZC parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSWRMQKR5J8TRH903Q parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSXH0J6Y7S4Q1QHV78 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSM3HB22CF7D3FHNTB parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS91Y6SMN393D4EYXD parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSE4EQD5SV115PXYHY parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSZ7319KCA12NDY0FN parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSWT5AK3246GJN1YMJ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS5SBGV13VGDXBSPB1 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSBC38WTNGYSTB5ZQV parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSBET4A6TKWN7B3P1J parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSXR0ZQ9KFV9FBKCBE parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSRXYC6Y39QRNGXXZY parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSEVMPC9ASYYY5KAFV parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS2AYYS1AM3RGNBRR3 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSRB30GYN1KCWYFJFX parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSMM7GZTG1PCWMAGKN parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSHFV68R6VX96NXHB7 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSW8YV80232Y4MXGRV parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSNMSR1RSRA84JZWSB parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS1NQVS1TDK4B6RBZ5 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSWBRMAWWM0EJJX6QJ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSCTA9DYZ9VQD8C01F parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS53J8X5PB64GBT3M3 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS2Q7R2BXQ9SC8P35M parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSGQC24R442SHCQDEY parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSYR14MN8CNTRSFJ8G parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS6Q9CJQKQB7V4ADP7 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSFDBJCX4T6DRHV8B7 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSPEEH0AKTFF1QBHC4 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSKXJHXM3NXV1VTS5K parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSC917XAAAY71V5PF1 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS1BNRDVF1KVFW4DNV parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSEC04DY6X288JJCEH parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS209HZNHW89WTYPVR parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSDFDVBY6X84N76162 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSNYETT5NC5EG5MB0X parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSSK4D718E9FRDMSYB parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS5EQ873PRQ6FDBKW4 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKSQB5G7M1Q4PTV5A54 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS9C5RW67GNXV45XBP parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRFAKS0RAR3ZW0AFN6NTGR parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery reaped_owned_pids=[15301, 15275, 15173, 15243, 15280, 15229, 15253, 15186, 15188, 15135, 15251, 15295, 15212, 15263, 15151, 15203, 15163, 15299, 15144, 15214, 15220, 15272, 15184, 15249, 15149, 15156, 15165, 15286, 15206, 15277, 15171, 15175, 15227, 15159, 15133, 15137, 15265, 15179, 15255, 15236, 15269, 15146, 15201, 15233, 15240, 15290, 15267, 15141, 15154, 15297, 15131, 15231, 15224, 15161, 15293, 15238, 15245, 15195, 15210, 15199, 15222, 15257, 15208, 15139]\ncheckpoint_recovery seats=64 every_seat_live_ms=1668.888\ntest checkpoint_bounded_recovery ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 12.37s\n\n"
+
+shape-65 status:
+{
+  "argv": [
+    "env",
+    "R5G_SEATS=65",
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--test",
+    "recovery",
+    "checkpoint_bounded_recovery",
+    "--",
+    "--exact",
+    "--nocapture"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "at": "2026-10-24T03:51:01.868007-07:00",
+  "finished": true,
+  "source_diff_sha256": "ebdc482edd413377b2995e75d551382b16fa93886ad1babea805c46a4b8e8584",
+  "pid": 16978,
+  "exit": 0,
+  "elapsed_s": 12.377772375009954,
+  "source_diff_sha256_after": "ebdc482edd413377b2995e75d551382b16fa93886ad1babea805c46a4b8e8584"
+}
+Raw output SHA256: a4a1af508d9907743772de7d6d688b6829f14dceb2f0d2940bd097424f6b12c8
+Raw output JSON-escaped:
+"    Finished `test` profile [optimized] target(s) in 0.35s\n     Running tests/recovery.rs (target/r5g/debug/deps/recovery-7d0788ad483062a2)\n\nrunning 1 test\ncheckpoint_recovery delivery={\"burst_held\":510,\"burst_returned\":1,\"burst_seen\":510,\"client\":{\"decoded_event_frames\":2258,\"empty_receives\":3976,\"queued_events\":0,\"queued_output_sequence\":null,\"queued_raw_events\":0,\"read_bytes\":140077111,\"read_calls\":19431,\"receive_calls\":5388,\"returned_events\":1412},\"held_released\":1,\"held_sequence\":null,\"inner_empty\":3976,\"inner_receive_calls\":5388,\"last_burst_returned_sequence\":1639,\"last_burst_seen_sequence\":1639,\"other_returned\":902,\"receive_calls\":4879,\"release_requested\":true}\ncheckpoint_recovery capture_phase_totals=[[\"logic_turn\",{\"busy\":0,\"bytes\":0,\"calls\":5587,\"elapsed_ns\":9415137966,\"errors\":0,\"max_ns\":61492625,\"pending_peak\":1,\"work\":1150}],[\"commands\",{\"busy\":0,\"bytes\":0,\"calls\":5588,\"elapsed_ns\":2203719186,\"errors\":0,\"max_ns\":41103583,\"pending_peak\":0,\"work\":132}],[\"receive\",{\"busy\":0,\"bytes\":0,\"calls\":5588,\"elapsed_ns\":3113950581,\"errors\":0,\"max_ns\":11177333,\"pending_peak\":0,\"work\":0}],[\"event\",{\"busy\":0,\"bytes\":0,\"calls\":1778,\"elapsed_ns\":2525290232,\"errors\":0,\"max_ns\":44183625,\"pending_peak\":0,\"work\":0}],[\"replay_page\",{\"busy\":0,\"bytes\":13945856,\"calls\":1151,\"elapsed_ns\":1818773484,\"errors\":0,\"max_ns\":43029708,\"pending_peak\":0,\"work\":1512}],[\"capture_request\",{\"busy\":0,\"bytes\":0,\"calls\":131,\"elapsed_ns\":575803669,\"errors\":0,\"max_ns\":6249667,\"pending_peak\":0,\"work\":0}],[\"read_ring_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":1152,\"elapsed_ns\":1681786665,\"errors\":0,\"max_ns\":42986208,\"pending_peak\":0,\"work\":0}],[\"recovery_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":65,\"elapsed_ns\":261317878,\"errors\":0,\"max_ns\":6249000,\"pending_peak\":0,\"work\":0}],[\"checkpoint_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":130,\"elapsed_ns\":751357039,\"errors\":0,\"max_ns\":44865416,\"pending_peak\":0,\"work\":0}],[\"parse\",{\"busy\":0,\"bytes\":16792448,\"calls\":2053,\"elapsed_ns\":176602313,\"errors\":0,\"max_ns\":1770708,\"pending_peak\":0,\"work\":2414}],[\"checkpoint\",{\"busy\":0,\"bytes\":0,\"calls\":220,\"elapsed_ns\":1230729427,\"errors\":0,\"max_ns\":47828167,\"pending_peak\":0,\"work\":0}],[\"maintenance\",{\"busy\":0,\"bytes\":0,\"calls\":5588,\"elapsed_ns\":511584801,\"errors\":0,\"max_ns\":33943083,\"pending_peak\":0,\"work\":0}],[\"supervisor_turn\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_dispatch\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_query\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_sweep\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_providers\",{\"busy\":0,\"bytes\":0,\"calls\":45,\"elapsed_ns\":74171,\"errors\":0,\"max_ns\":3375,\"pending_peak\":0,\"work\":0}],[\"maintenance_adapters\",{\"busy\":0,\"bytes\":0,\"calls\":44,\"elapsed_ns\":77817586,\"errors\":0,\"max_ns\":33935959,\"pending_peak\":0,\"work\":0}],[\"maintenance_identity\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_messages\",{\"busy\":0,\"bytes\":0,\"calls\":85,\"elapsed_ns\":174919787,\"errors\":0,\"max_ns\":8594417,\"pending_peak\":0,\"work\":0}],[\"maintenance_provenance\",{\"busy\":0,\"bytes\":0,\"calls\":85,\"elapsed_ns\":209751335,\"errors\":0,\"max_ns\":14216833,\"pending_peak\":0,\"work\":2590}],[\"checkpoint_service\",{\"busy\":0,\"bytes\":0,\"calls\":11176,\"elapsed_ns\":71388442,\"errors\":0,\"max_ns\":545000,\"pending_peak\":0,\"work\":0}]]\ncheckpoint_recovery supervisor_notification={\"seat\":\"01M5PRJ4XWTJ8BT2WVRPGN7C2N\",\"generation\":1,\"observed_ns\":7125358833,\"notified_sequence\":0,\"target_sequence\":0,\"ring_observed_ns\":0,\"captured_sequence\":0,\"committed_sequence\":0,\"applied_observed_ns\":0,\"applied_sequence\":0,\"last_progress_ns\":0,\"pages\":0,\"parsed_events\":0,\"parsed_bytes\":0,\"checkpoint_sequence\":0,\"checkpoint_byte_end\":0,\"parsed_byte_end\":0,\"checkpoint_pauses\":0,\"checkpoint_paused\":false,\"idle_checkpoints\":0,\"forced_checkpoints\":0,\"notification_attempts\":6652,\"notification_accepted\":1142,\"notification_last_attempt\":1639,\"notification_last_accepted\":1639}\ncheckpoint_recovery seat=01M5PRJ4XWTJ8BT2WVRPGN7C2N parsed_debt=4220928 backlog=8374286 parsed=12597248 confirmed=8376320 tail=20971534\ncheckpoint_recovery seat=01M5PRJ4XW5H88KKX4SSD24F5F parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWJTBATXSJ0P43VJZS parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWYX89Q8GY1F2GK85H parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWYRCD4BJ461R6HPXN parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW3CSW89N94R9RRM8F parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWNXRBKKXJ4Y3MW212 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWXT3R3HC3EGXTBSA7 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWDFGVH9MB0786N29H parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWF8R19BJYS1HJCTQF parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWDPVR7PD8ZC6C5Q5V parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWW6BK63M8V629NVZR parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW8D62EPDEHQ0GSTYR parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWQ8CX7TA6P9V1PG5C parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWQRZAKWM41D7VS98Q parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWR3EDA3ATS1RTKX4T parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWZM1GARNGEZHG96Z2 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWP9RENJH9F2HHM479 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWPW8BGAZJGM20VVJA parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWGA8Y1TAWJK0TM1H5 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW7M3GNRRC28YT0B7Y parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWYQWF5116SA3ZDEZ6 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWB47GJRYEAYY4FSWE parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWV8CGP3P9B5CFA724 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWD1YDWF7AYPS6EE9F parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWZ8RDY6TENH0793MP parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWMDK3MG1GZX2VSJ2G parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWTH2H7NPKS43XTBS3 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWDY7417BZSBHK0C75 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW099WXBF6Z5TXDYVS parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWDNB0JPB0M1YPD24N parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWBS1A2PA3N64D29SA parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWZR2Q5T06GBX2XSPF parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW6W05S0CRB3FB3FYR parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWTARYK4ZJHN8PPWMF parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWQY4H7CF6EHKDCWSP parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW9KCA15XDBMVZBSH1 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW23GR8GCZ4JZDCSF9 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWS58DRZDBE4BH8HYG parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW7MF499N9WVNW2CWZ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW7BHEX9RYM17YN623 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWSNCJP1V2Z1GAF2G4 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW4C4P50XGDT9PZQTG parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWAJ4N38MDR4AJGEME parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW5JF0VYAP9FP7FDGW parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW8DNBYSAPYPHJK28D parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWZ5YSH4FC06XZJMNT parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWH1T6AV176RD5XRVN parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW0XKCYBC0ZRKW2FP4 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWKX8G4TDMDB3MXXGW parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWBS4FHGQ3M6JFMBRQ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWY6C4NENBEMYE8M7A parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW40M2NP7F9CE7FZKF parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW8RXMQRQRPM0WCY1C parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWB709CT53YARX10PQ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW6YMPKWHHP0Z1DZ4P parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWSXRD64WCSYX4CTQE parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW50MHVBRP683QBHAV parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XW1H1H6YBQRAEDYEC8 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWYQKV94W8J66QMVG5 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWQMV1RKBPBX141AJD parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWZHPBEDF3E9Y508F6 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWNMG0YWHY59EPWYPA parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWACP9N404D9AVN78S parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PRJ4XWR0E4PGG65VMHGW2M parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery reaped_owned_pids=[17115, 17192, 17230, 17149, 17015, 17206, 17164, 17224, 17003, 17178, 17131, 17220, 17156, 17062, 17154, 17038, 17180, 17212, 17142, 17246, 17173, 17079, 17218, 17119, 17201, 17088, 17024, 17117, 17033, 17113, 17031, 17060, 17188, 17005, 17197, 17095, 17244, 17018, 17053, 17056, 17041, 17240, 17043, 17138, 17249, 17046, 17152, 17158, 17222, 17135, 17108, 17000, 17083, 17035, 17020, 17203, 17235, 17076, 17012, 17010, 17184, 17092, 17242, 17050, 17126]\ncheckpoint_recovery seats=65 every_seat_live_ms=1729.199\ntest checkpoint_bounded_recovery ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 11.97s\n\n"
+
+shape-clippy status:
+{
+  "argv": [
+    "cargo",
+    "clippy",
+    "--workspace",
+    "--all-targets",
+    "--locked",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "at": "2026-10-24T03:52:44.706576-07:00",
+  "finished": true,
+  "source_diff_sha256": "ebdc482edd413377b2995e75d551382b16fa93886ad1babea805c46a4b8e8584",
+  "pid": 18946,
+  "exit": 0,
+  "elapsed_s": 1.5357728750095703,
+  "source_diff_sha256_after": "ebdc482edd413377b2995e75d551382b16fa93886ad1babea805c46a4b8e8584"
+}
+Raw output SHA256: 1ce908bb7ede5988a9b97d469aad1127cb60dfe60c66fad7148d3f8dbf0eac65
+Raw output JSON-escaped:
+"    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)\n    Finished `dev` profile [optimized] target(s) in 1.37s\n"

@@ -1,0 +1,81 @@
+Decision253 rule2 follow-up: check debt/age after every catch_up return, including Busy/held-stream/no-progress returns, rather than only successful parsing and the global scan.
+16-line private wrapper; side-work/confirmed-cursor/durability rules unchanged.
+
+checkpoint-every-yield
+{
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--lib",
+    "--test",
+    "capture_busy",
+    "--test",
+    "checkpoint_scheduling",
+    "--test",
+    "recovery",
+    "--",
+    "--nocapture"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "at": "2026-10-23T23:42:26.931744-07:00",
+  "finished": true,
+  "source_diff_sha256": "fe884e663efe4c3fc6fa95882bdc57eaae4c54d929f4e302593dd99e676f6f30",
+  "pid": 23333,
+  "exit": 0,
+  "elapsed_s": 72.88509762502508,
+  "source_diff_sha256_after": "fe884e663efe4c3fc6fa95882bdc57eaae4c54d929f4e302593dd99e676f6f30"
+}
+RAW OUTPUT JSON
+"   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)\n    Finished `test` profile [optimized] target(s) in 1m 01s\n     Running unittests src/lib.rs (target/r5g/debug/deps/bbt_mux-5270645b97a77e6c)\n\nrunning 62 tests\ntest checkpoint::tests::a_generation_has_only_one_immutable_submitted_cursor ... ok\ntest checkpoint::tests::an_explicit_earlier_checkpoint_hint_does_not_shrink_the_record_debt_budget ... ok\ntest checkpoint::tests::four_occupied_slots_keep_the_next_save_queued_until_completion ... ok\ntest checkpoint::tests::late_old_generation_ack_does_not_commit_or_release_a_new_save ... ok\ntest checkpoint::tests::policy_is_data_with_the_decided_budgets ... ok\ntest checkpoint::tests::replay_pages_do_not_reset_the_sixty_second_oldest_byte_clock ... ok\ntest checkpoint::tests::unknown_or_mismatching_completion_never_acknowledges_a_cursor ... ok\ntest gui_events::tests::metadata_preserves_the_original_proof_and_rejects_tampering ... ok\ntest gui_events::tests::public_activity_fields_exclude_arbitrary_bodies_and_unsafe_refs ... ok\ntest identity::agent::tests::agent_cancellation_and_bad_framing_fail_closed ... ok\ntest bus::gui_tests::gui_deduplicated_publish_wakes_a_retained_append_not_yet_routed ... ok\ntest bus::gui_tests::gui_oversized_rows_have_a_visible_gap_and_retained_original ... ok\ntest identity::agent::tests::malformed_agent_data_is_rejected ... ok\ntest bus::gui_tests::gui_starts_new_but_replays_unpublished_pending_after_logic_restart ... ok\ntest identity::io::debug_tests::debug_without_override_selects_keychain ... ok\ntest identity::io::debug_tests::labels_describe_the_actual_store_and_survive_the_io_wrapper ... ok\ntest identity::io::debug_tests::unset_process_fixture ... ignored, spawned-process fixture, invoked by debug_without_override_selects_keychain\ntest identity::keychain::tests::denied_or_interactive_keychain_answers_have_a_named_hold ... ok\ntest bus::gui_tests::gui_transport_ack_is_not_operator_read_and_read_marks_survive_restart ... ok\ntest bus::gui_tests::gui_delivery_limit_is_audited_without_discarding_the_original_row ... ok\ntest bus::gui_tests::gui_one_attachment_detaches_without_deleting_and_filter_change_versions ... ok\ntest identity::io::debug_tests::fixture_never_overwrites_a_key_or_accepts_a_relative_directory ... ok\ntest bus::gui_tests::gui_defers_a_row_that_fits_a_fresh_quantum_without_emitting_a_gap ... ok\ntest logic::pending_tests::down_host_work_is_parked_until_a_provider_up_transition ... ok\ntest logic::pending_tests::pending_notifications_stay_bounded_and_preserve_resize_and_exit_order ... ok\ntest logic::pending_tests::pending_seats_rotate_without_changing_an_unfinished_target ... ok\ntest logic::pending_tests::replacement_generation_discards_only_the_old_generation_work ... ok\nIndexDocumentTooLarge: skipped /private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/.tmpxgtIC4/.bboxy/large.md (2097153 bytes, limit 2097152)\ntest bus::gui_tests::gui_filter_migration_resumes_after_a_crash_between_streams ... ok\ntest mcp::journal::tests::admitted_operator_without_a_result_stays_unknown_after_reopen ... ok\ntest identity::io::debug_tests::fixture_generates_private_keys_once_and_reopens_without_a_known_key ... ok\ntest bus::gui_tests::gui_filter_migration_keeps_pending_and_tail_but_new_subjects_start_at_head ... ok\nIndexDocumentTooLarge: skipped /private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/.tmpxgtIC4/.bboxy/large.md (2097153 bytes, limit 2097152)\ntest mcp::journal::tests::audit_outbox_preserves_call_order_instead_of_random_ulid_order ... ok\ntest mcp::journal::tests::control_result_and_audit_commit_atomically_and_reopen_without_redispatch ... ok\n\nthread 'mcp::journal::tests::crashed_admitted_mutation_reopens_unknown_without_redispatch' (23614684) panicked at crates/bbt-mux/src/mcp/journal.rs:497:21:\nfixture crash after effect, before outcome\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\ntest index::tests::oversized_documents_are_skipped_without_blocking_valid_edits ... ok\ntest index::tests::checked_creation_has_one_winner_and_does_not_overwrite_it ... ok\ntest mcp::journal::tests::crashed_admitted_mutation_reopens_unknown_without_redispatch ... ok\ntest index::tests::unchanged_documents_are_not_reread_and_same_length_edits_are_indexed ... ok\ntest messaging::keys::tests::local_operator_grant_requires_a_key_field_and_canonical_positive_epoch ... ok\ntest mcp::journal::tests::legacy_seat_actor_entries_replay_without_migration_or_dispatch ... ok\ntest provenance::artifacts::tests::inline_history_is_bounded_and_older_rows_stay_out_of_the_document ... ok\ntest provenance::author::tests::device_id_is_data_and_does_not_certify_local_or_pending_signers ... ok\ntest index::tests::checked_writer_keeps_editor_changes_and_refuses_symlink_escapes ... ok\ntest mcp::journal::tests::outcome_audit_failure_keeps_the_original_unknown_intent ... ok\ntest mcp::journal::tests::mutation_requires_audit_admission_and_releases_the_transaction_before_dispatch ... ok\ntest provenance::detector::tests::root_fd_refuses_symlink_parents_and_preserves_full_digest_semantics ... ok\ntest mcp::journal::tests::operator_reconnect_replays_the_account_result_and_rejects_another_device ... ok\ntest provenance::projection::tests::projection_refuses_symlink_destinations ... ok\ntest mcp::seats::tests::native_attempt_rechecks_canonical_caller_policy_and_target_binding ... ok\ntest seat_socket::gui_tests::duplicate_baseline_ack_preserves_the_newer_in_flight_update ... ok\ntest mcp::journal::tests::concurrent_operation_retries_return_one_committed_result ... ok\ntest identity::agent::tests::agent_deadline_is_bounded ... ok\ntest seat_socket::gui_tests::repeated_ticks_keep_one_check_per_seat_and_hot_seats_stay_at_the_back ... ok\ntest seat_socket::gui_tests::unwatch_removes_pending_work_and_rewatch_schedules_only_once ... ok\ntest provenance::artifacts::tests::ambiguous_detection_then_claim_keeps_one_lineage_and_rewrites_task_link ... ok\ntest provenance::projection::tests::jsonl_recovers_partial_and_duplicate_rows_without_resigning_history ... ok\ntest seat_socket::gui_tests::fallback_never_requests_a_snapshot_while_an_update_is_in_flight ... ok\ntest provenance::detector::tests::hint_overflow_is_bounded_and_reported_hint_survives_coalescing ... ok\ntest provenance::detector::rescan_tests::saturated_rescan_reports_incomplete_without_refilling_overflow ... ok\ntest provenance::git::tests::bounded_git_snapshot_observes_refs_without_signing_or_running_hooks ... ok\ntest provenance::tests::index_and_bus_share_one_order_and_keep_each_actual_signer ... ok\ntest seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... ok\ntest index::tests::sibling_build_writes_do_not_dirty_watch_or_trigger_reconciliation ... ok\n\ntest result: ok. 61 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.65s\n\n     Running tests/capture_busy.rs (target/r5g/debug/deps/capture_busy-6905b92dc94ed58d)\n\nrunning 2 tests\ncontrol answered during paged replay: 109.054375ms; pages=1; final sequence=257\ntest large_capture_catchup_yields_to_control_between_history_pages ... ok\ntest capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.51s\n\n     Running tests/checkpoint_scheduling.rs (target/r5g/debug/deps/checkpoint_scheduling-465a109dfc599c9c)\n\nrunning 3 tests\ntest caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog ... ok\ntest a_held_checkpoint_does_not_hold_snapshot_or_status_service ... ok\n100MiB: checkpoints=14 confirmed_bytes=104857608 parsed_end=104857608\ntest hundred_mib_partial_replay_forces_r_spaced_checkpoints_and_never_exceeds_two_r_debt ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.55s\n\n     Running tests/recovery.rs (target/r5g/debug/deps/recovery-7d0788ad483062a2)\n\nrunning 2 tests\ntest checkpoint_recovery_child ... ignored, owned subprocess of checkpoint_bounded_recovery\ncheckpoint_recovery seat=01M5PAD1X3H99SSZEB0MGWAX08 parsed_debt=4215808 backlog=8382478 parsed=12589056 confirmed=8373248 tail=20971534\ncheckpoint_recovery seat=01M5PAD1X38DC5C4J10ABKC1Q5 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PAD1X3D0D44HZ6T535XNMR parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PAD1X3VGG844FFKX4DEVNJ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery reaped_owned_pids=[24532, 24534, 24530, 24536]\ncheckpoint_recovery seats=4 every_seat_live_ms=184.086\ntest checkpoint_bounded_recovery ... ok\n\ntest result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 4.57s\n\n"
+
+checkpoint-every-yield-clippy
+{
+  "argv": [
+    "cargo",
+    "clippy",
+    "-p",
+    "bbt-mux",
+    "--all-targets",
+    "--locked",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "at": "2026-10-23T23:44:57.735117-07:00",
+  "finished": true,
+  "source_diff_sha256": "fe884e663efe4c3fc6fa95882bdc57eaae4c54d929f4e302593dd99e676f6f30",
+  "pid": 29732,
+  "exit": 0,
+  "elapsed_s": 16.691453457984608,
+  "source_diff_sha256_after": "fe884e663efe4c3fc6fa95882bdc57eaae4c54d929f4e302593dd99e676f6f30"
+}
+RAW OUTPUT JSON
+"    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)\n    Finished `dev` profile [optimized] target(s) in 16.55s\n"

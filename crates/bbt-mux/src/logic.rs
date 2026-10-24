@@ -23,6 +23,7 @@ use ulid::Ulid;
 use bbt_supervisor::supervisor::capture_diagnostics::{Outcome, Phase, Recorder};
 
 use crate::bus::{Broker, BusHandle};
+use crate::checkpoint::{Age, Cursor as CheckpointCursor, Policy as CheckpointPolicy, Saves};
 use crate::index::{FileWatch, Index};
 use crate::knowledge::{BboxySource, DataSource};
 use crate::provider::{Connections, HostId, LocalProvider, Provider};
@@ -143,11 +144,36 @@ enum Command {
         u64,
         oneshot::Sender<Result<crate::ring::History>>,
     ),
-    Close(Ulid, u64, Ulid, Position, u64, oneshot::Sender<Result<()>>),
+    Close(
+        Ulid,
+        u64,
+        Ulid,
+        Position,
+        u64,
+        Option<u64>,
+        oneshot::Sender<Result<()>>,
+    ),
     Undo(Ulid, u64, u64, u64, oneshot::Sender<Result<Position>>),
     Record(Ulid, oneshot::Sender<Result<SeatRecord>>),
     Endpoint(Ulid, oneshot::Sender<Result<EndpointInfo>>),
     IdentityStatus(oneshot::Sender<Result<crate::identity::IdentityStatus>>),
+}
+impl Command {
+    fn local_while_checkpoint_pending(&self) -> bool {
+        matches!(
+            self,
+            Self::GuiHosts(_)
+                | Self::GuiEndpoint(_)
+                | Self::GuiSeats(_)
+                | Self::GuiSeat(..)
+                | Self::GuiIdentity(_)
+                | Self::IdentityStatus(_)
+                | Self::Snapshot(..)
+                | Self::Record(..)
+                | Self::Endpoint(..)
+                | Self::Status(..)
+        )
+    }
 }
 
 fn operator_response<T: serde::de::DeserializeOwned>(result: serde_json::Value) -> Result<T> {
@@ -195,6 +221,13 @@ impl LogicClient {
     /// Disabled by default; never changes replay, admission or retry policy.
     pub fn enable_capture_diagnostics(&self) {
         self.capture_diagnostics.enable();
+    }
+
+    /// Lossless audit for recovery-fixture preparation, before its controlled kill.
+    /// The ordinary product recorder remains nonblocking by default.
+    #[doc(hidden)]
+    pub fn enable_fixture_capture_diagnostics(&self) {
+        self.capture_diagnostics.enable_fixture_lossless();
     }
 
     /// Snapshot last-observed cursors and inclusive phase spans without an RPC.
@@ -576,7 +609,7 @@ impl LogicClient {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::Close(
-                seat, generation, operation, position, grace_ms, tx,
+                seat, generation, operation, position, grace_ms, None, tx,
             ))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
@@ -897,8 +930,30 @@ struct ViewState {
     view_generation: Ulid,
     checkpoint_bytes: u64,
     checkpoint_sequence: u64,
-    changed_at: Instant,
+    changed_at: Age,
+    last_parsed_at: Instant,
+    last_arrival_at: Instant,
+    captured_sequence: u64,
+    checkpoint_pending: Option<CheckpointCursor>,
+    checkpoint_requested: bool,
+    checkpoint_paused: bool,
+    checkpoint_pauses: u64,
+    idle_checkpoints: u64,
+    forced_checkpoints: u64,
+    checkpoint_retry_at: Instant,
 }
+
+struct CheckpointImage {
+    cursor: CheckpointCursor,
+    saved: RingSaved,
+    attachment: Attachment,
+    idle: bool,
+}
+enum CheckpointResult {
+    Committed(u64),
+    NotIdle(u64),
+}
+type CheckpointCompletion = (Ulid, CheckpointCursor, bool, Result<CheckpointResult>);
 
 // A replay target belongs to a seat, not its entire supervisor host. Keep the
 // active target fixed until it finishes; subsequent captured notifications use
@@ -1059,6 +1114,12 @@ struct Worker {
     stale_gui_requests: u64,
     #[cfg(test)]
     knowledge_fixture: Option<Arc<dyn DataSource + Send + Sync>>,
+    checkpoint_policy: CheckpointPolicy,
+    checkpoint_saves: Saves,
+    checkpoint_images: BTreeMap<Ulid, CheckpointImage>,
+    checkpoint_completion: Option<std::sync::mpsc::Receiver<CheckpointCompletion>>,
+    checkpoint_cursor: Option<Ulid>,
+    checkpoint_progress: u64,
 }
 impl Worker {
     fn open(
@@ -1113,6 +1174,7 @@ impl Worker {
             client.clone(),
             capability,
         )?;
+        let checkpoint_policy = CheckpointPolicy::for_ring(&config.ring);
         let mut worker = Self {
             connections,
             config,
@@ -1141,6 +1203,12 @@ impl Worker {
             stale_gui_requests: 0,
             #[cfg(test)]
             knowledge_fixture: None,
+            checkpoint_policy,
+            checkpoint_saves: Saves::new(checkpoint_policy),
+            checkpoint_images: BTreeMap::new(),
+            checkpoint_completion: None,
+            checkpoint_cursor: None,
+            checkpoint_progress: 0,
         };
         for (host, info) in worker.connections.owned_seats()? {
             // Several fixture links can wrap one local supervisor. Recover a
@@ -2634,8 +2702,9 @@ impl Worker {
             )?;
             state
         };
-        let checkpoint_bytes = state.byte_end;
-        let checkpoint_sequence = state.sequence;
+        let mut checkpoint_bytes = state.byte_end;
+        let mut checkpoint_sequence = state.sequence;
+        let mut changed_at = Age::default();
         let tap = OscTap::install(&mut state.term);
         let mut live_frames = Vec::new();
         while state.sequence < status.captured_sequence {
@@ -2654,7 +2723,33 @@ impl Worker {
                 return Err(invalid("ring recovery continuity gap"));
             }
             for record in history.records {
+                let next_bytes = match &record.event {
+                    Event::Output { bytes, .. } => bytes.len() as u64,
+                    _ => 0,
+                };
+                if state.byte_end > checkpoint_bytes
+                    && (state.byte_end - checkpoint_bytes + next_bytes
+                        > self.checkpoint_policy.force_bytes
+                        || changed_at.expired(Instant::now(), self.checkpoint_policy))
+                {
+                    // Rule 4's explicit bootstrap/recovery exception: the
+                    // forced #11 boundary commits before attachment readiness.
+                    // Incremental ingestion below never waits for these saves.
+                    self.capture_request(
+                        info.seat,
+                        Action::PublishCheckpoint {
+                            attachment: attachment.clone(),
+                            checkpoint: state.saved().encode()?,
+                        },
+                    )?;
+                    checkpoint_bytes = state.byte_end;
+                    checkpoint_sequence = state.sequence;
+                    changed_at.completed(true, false);
+                }
                 state.apply(&record.event)?;
+                if next_bytes > 0 {
+                    changed_at.arrived(Instant::now());
+                }
                 if let Ok(frames) = tap.drain()
                     && live_start
                 {
@@ -2761,9 +2856,21 @@ impl Worker {
                 view_generation: Ulid::new(),
                 checkpoint_bytes,
                 checkpoint_sequence,
-                changed_at: Instant::now(),
+                changed_at,
+                last_parsed_at: Instant::now(),
+                last_arrival_at: Instant::now(),
+                captured_sequence: status.captured_sequence,
+                checkpoint_pending: None,
+                checkpoint_requested: false,
+                checkpoint_paused: false,
+                checkpoint_pauses: 0,
+                idle_checkpoints: 0,
+                forced_checkpoints: 0,
+                checkpoint_retry_at: Instant::now(),
             },
         );
+        self.checkpoint_saves.retire(info.seat);
+        self.checkpoint_saves.generation(info.seat, info.generation);
         SqliteStore::open(&directory)?.put(
             "process_running",
             if info.exited.is_some() { b"0" } else { b"1" },
@@ -3122,6 +3229,7 @@ impl Worker {
         if state.generation != generation {
             return Err(invalid("stale process generation"));
         }
+        self.record_checkpoint_state(id);
         Ok(Snapshot {
             view: View {
                 seat: id,
@@ -3168,46 +3276,280 @@ impl Worker {
                 row.captured_sequence = history.status.captured_sequence;
                 row.committed_sequence = history.status.committed_sequence;
             });
+        if let Some(view) = self
+            .views
+            .get_mut(&id)
+            .filter(|v| v.generation == generation)
+        {
+            view.captured_sequence = history.status.captured_sequence;
+        }
         Ok(*history)
     }
     fn save(&mut self, id: Ulid) -> Result<()> {
-        let span = self.client.capture_diagnostics.start(
-            Phase::Checkpoint,
-            id,
-            self.views[&id].generation,
-            0,
-            self.views[&id].sequence,
-        );
-        let result = self.save_inner(id);
-        span.finish(capture_outcome(&result), 0, 0);
-        result
+        self.views.get_mut(&id).unwrap().checkpoint_requested = true;
+        self.prepare_checkpoint(id, false)
     }
-    fn save_inner(&mut self, id: Ulid) -> Result<()> {
+    fn prepare_checkpoint(&mut self, id: Ulid, idle: bool) -> Result<()> {
         let view = &self.views[&id];
-        let sequence = view.sequence;
-        if sequence == view.checkpoint_sequence {
+        if view.sequence == view.checkpoint_sequence {
+            self.views.get_mut(&id).unwrap().checkpoint_requested = false;
             return Ok(());
         }
-        let result = self.capture_request(
-            id,
-            Action::PublishCheckpoint {
+        if view.checkpoint_retry_at > Instant::now() {
+            return Ok(());
+        }
+        if self.checkpoint_saves.contains(id, view.generation) {
+            return Ok(());
+        }
+        let cursor = CheckpointCursor {
+            seat: id,
+            generation: view.generation,
+            sequence: view.sequence,
+            byte_end: view.byte_end,
+        };
+        let Some(token) = self.checkpoint_saves.start(cursor) else {
+            return Ok(());
+        };
+        self.checkpoint_images.insert(
+            token,
+            CheckpointImage {
+                cursor,
+                saved: view.saved(),
                 attachment: self.attachments[&id].clone(),
-                checkpoint: view.saved().encode()?,
+                idle,
             },
         );
-        if result.as_ref().is_err_and(|error| {
-            is_capture_busy(error) || crate::provider::fake::is_link_down(error)
-        }) {
-            // Keep the previous checkpoint cursor and retry on the next idle
-            // pass. The supervisor still owns the raw records; Busy or a down
-            // host is not an acknowledged checkpoint and must not stop logic.
+        let view = self.views.get_mut(&id).unwrap();
+        view.checkpoint_pending = Some(cursor);
+        view.changed_at.submitted();
+        view.checkpoint_requested = false;
+        Ok(())
+    }
+
+    fn poll_checkpoint(&mut self) -> Result<()> {
+        let Some(receiver) = &self.checkpoint_completion else {
+            return Ok(());
+        };
+        let (token, cursor, idle, result) = match receiver.try_recv() {
+            Ok(done) => done,
+            Err(std::sync::mpsc::TryRecvError::Empty) => return Ok(()),
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                return Err(invalid(
+                    "checkpoint side task stopped; publication outcome unknown",
+                ));
+            }
+        };
+        self.checkpoint_completion = None;
+        let confirmed = match &result {
+            Ok(CheckpointResult::Committed(sequence)) => Some(*sequence),
+            _ => None,
+        };
+        let committed = self.checkpoint_saves.complete(token, confirmed);
+        let Some(view) = self
+            .views
+            .get_mut(&cursor.seat)
+            .filter(|v| v.generation == cursor.generation && v.checkpoint_pending == Some(cursor))
+        else {
+            return Ok(());
+        };
+        view.checkpoint_pending = None;
+        let was_paused = view.checkpoint_paused;
+        match result {
+            Ok(CheckpointResult::Committed(_)) => {
+                let committed =
+                    committed.ok_or_else(|| invalid("checkpoint reply cursor mismatch"))?;
+                view.checkpoint_sequence = committed.sequence;
+                view.checkpoint_bytes = committed.byte_end;
+                view.idle_checkpoints += u64::from(idle);
+                view.forced_checkpoints += u64::from(!idle);
+                self.checkpoint_progress += 1;
+            }
+            Ok(CheckpointResult::NotIdle(tail)) => {
+                view.captured_sequence = view.captured_sequence.max(tail);
+                view.last_arrival_at = Instant::now();
+            }
+            Err(error)
+                if is_capture_busy(&error) || crate::provider::fake::is_link_down(&error) =>
+            {
+                view.checkpoint_requested = true;
+                view.checkpoint_retry_at = Instant::now() + Duration::from_millis(200);
+            }
+            Err(error) => return Err(error),
+        }
+        view.changed_at.completed(
+            committed.is_some(),
+            view.byte_end > view.checkpoint_bytes
+                || view.captured_sequence > view.checkpoint_sequence,
+        );
+        if view.byte_end.saturating_sub(view.checkpoint_bytes)
+            < self.checkpoint_policy.recovery_bytes * 2
+            && !view.checkpoint_requested
+        {
+            view.checkpoint_paused = false;
+        }
+        let changed_pause = was_paused != view.checkpoint_paused;
+        self.record_checkpoint_state(cursor.seat);
+        if changed_pause {
+            self.publish_adapter(cursor.seat, self.views[&cursor.seat].adapter.status.clone())?;
+        }
+        Ok(())
+    }
+
+    fn service_checkpoints(&mut self, dispatch: bool) -> Result<()> {
+        self.poll_checkpoint()?;
+        // A fixed scan quantum, not a full synchronous checkpoint sweep.
+        let ids: Vec<_> = self.views.keys().copied().collect();
+        let start = self
+            .checkpoint_cursor
+            .and_then(|old| ids.iter().position(|id| *id > old))
+            .unwrap_or(0);
+        for id in ids
+            .iter()
+            .cycle()
+            .skip(start)
+            .take(ids.len().min(32))
+            .copied()
+        {
+            self.checkpoint_cursor = Some(id);
+            let view = &self.views[&id];
+            let dirty = view.sequence != view.checkpoint_sequence;
+            let force = view.checkpoint_requested
+                || (view.checkpoint_pending.is_none()
+                    && dirty
+                    && (view.byte_end.saturating_sub(view.checkpoint_bytes)
+                        >= self.checkpoint_policy.force_bytes
+                        || view
+                            .changed_at
+                            .expired(Instant::now(), self.checkpoint_policy)));
+            let idle = dirty
+                && view.sequence == view.captured_sequence
+                && view.last_arrival_at.elapsed() >= self.checkpoint_policy.idle;
+            if force || idle {
+                self.prepare_checkpoint(id, !force)?;
+            }
+        }
+        if !dispatch || self.checkpoint_saves.active() {
             return Ok(());
         }
-        result?;
-        let view = self.views.get_mut(&id).unwrap();
-        view.checkpoint_bytes = view.byte_end;
-        view.checkpoint_sequence = sequence;
+        let Some((token, cursor)) = self.checkpoint_saves.dispatch() else {
+            return Ok(());
+        };
+        let image = self.checkpoint_images.remove(&token).unwrap();
+        debug_assert_eq!(image.cursor, cursor);
+        let link = self.connections.link(&self.host_for_seat(cursor.seat)?)?;
+        let recorder = self.client.capture_diagnostics.clone();
+        let (tx, rx) = std::sync::mpsc::sync_channel(1);
+        self.checkpoint_completion = Some(rx);
+        let owner = std::thread::current();
+        let _task = self.handle.spawn_blocking(move || {
+            let span = recorder.start(
+                Phase::Checkpoint,
+                cursor.seat,
+                cursor.generation,
+                0,
+                cursor.sequence,
+            );
+            let result = (|| {
+                let bytes = image.saved.encode()?;
+                if image.idle {
+                    let recovery = link
+                        .lock()
+                        .map_err(|_| invalid("supervisor link owner stopped"))?
+                        .request(Action::RingRecovery {
+                            attachment: image.attachment.clone(),
+                        })?;
+                    let Reply::RingRecovery { status, .. } = recovery else {
+                        return Err(invalid("idle checkpoint recovery reply mismatch"));
+                    };
+                    if status.captured_sequence != cursor.sequence {
+                        return Ok(CheckpointResult::NotIdle(status.captured_sequence));
+                    }
+                }
+                let reply = retry_capture(|| {
+                    let rpc = recorder.start(
+                        Phase::CheckpointRpc,
+                        cursor.seat,
+                        cursor.generation,
+                        0,
+                        cursor.sequence,
+                    );
+                    let result = link
+                        .lock()
+                        .map_err(|_| invalid("supervisor link owner stopped"))?
+                        .request(Action::PublishCheckpoint {
+                            attachment: image.attachment.clone(),
+                            checkpoint: bytes.clone(),
+                        });
+                    rpc.finish(capture_outcome(&result), 0, 0);
+                    result
+                })?;
+                match reply {
+                    Reply::CheckpointCommitted { sequence } => {
+                        Ok(CheckpointResult::Committed(sequence))
+                    }
+                    _ => Err(invalid("checkpoint publication reply mismatch")),
+                }
+            })();
+            span.finish(capture_outcome(&result), 0, 0);
+            let _ = tx.send((token, cursor, image.idle, result));
+            owner.unpark();
+        });
         Ok(())
+    }
+
+    fn record_checkpoint_state(&self, id: Ulid) {
+        let view = &self.views[&id];
+        self.client
+            .capture_diagnostics
+            .seat(id, view.generation, |row, now| {
+                row.progress(view.sequence, now);
+                row.checkpoint_sequence = view.checkpoint_sequence;
+                row.checkpoint_byte_end = view.checkpoint_bytes;
+                row.parsed_byte_end = view.byte_end;
+                row.checkpoint_pauses = view.checkpoint_pauses;
+                row.checkpoint_paused = view.checkpoint_paused;
+                row.idle_checkpoints = view.idle_checkpoints;
+                row.forced_checkpoints = view.forced_checkpoints;
+            });
+    }
+
+    fn allow_record(&mut self, id: Ulid, event: &Event) -> Result<bool> {
+        let bytes = match event {
+            Event::Output { bytes, .. } => bytes.len() as u64,
+            _ => 0,
+        };
+        let view = &self.views[&id];
+        let debt = view.byte_end.saturating_sub(view.checkpoint_bytes);
+        let prepared = view
+            .checkpoint_pending
+            .map_or(view.checkpoint_bytes, |c| c.byte_end);
+        let interval = view.byte_end.saturating_sub(prepared);
+        let pause = debt >= self.checkpoint_policy.recovery_bytes * 2
+            || debt.saturating_add(bytes) > self.checkpoint_policy.recovery_bytes * 2
+            || (interval > 0
+                && interval.saturating_add(bytes) > self.checkpoint_policy.recovery_bytes)
+            || view.checkpoint_requested;
+        if pause {
+            self.save(id)?;
+        }
+        let view = self.views.get_mut(&id).unwrap();
+        if view.checkpoint_paused != pause {
+            view.checkpoint_paused = pause;
+            view.checkpoint_pauses += u64::from(pause);
+            self.record_checkpoint_state(id);
+            self.publish_adapter(id, self.views[&id].adapter.status.clone())?;
+        }
+        Ok(!pause)
+    }
+
+    fn parsed_bytes(&mut self, id: Ulid, previous_end: u64) {
+        let view = self.views.get_mut(&id).unwrap();
+        // Input-context recency is separate from the oldest dirty-byte age.
+        view.last_parsed_at = Instant::now();
+        if view.byte_end > previous_end {
+            let now = Instant::now();
+            view.changed_at.arrived(now);
+        }
     }
     // false retains this event while replay yields to the command queue.
     fn event(&mut self, event: Event) -> Result<bool> {
@@ -3244,7 +3586,11 @@ impl Worker {
         if seq > view.sequence + 1 && !self.catch_up(id, seq - 1)? {
             return Ok(false);
         }
+        if !self.allow_record(id, &event)? {
+            return Ok(false);
+        }
         let view = self.views.get_mut(&id).unwrap();
+        let previous_end = view.byte_end;
         let before = view.adapter.status.clone();
         let span = self
             .client
@@ -3285,11 +3631,11 @@ impl Worker {
                 view.replies.push_back((Ulid::new(), bytes));
             }
         }
-        view.changed_at = Instant::now();
         if let Event::Resized { size, .. } = &event {
             check_size(size.cols as usize, size.rows as usize)?;
             view.view_generation = Ulid::new();
         }
+        self.parsed_bytes(id, previous_end);
         self.persist_native_session(id)?;
         if matches!(event, Event::Exited { .. }) && self.registry.get(id).is_ok() {
             SqliteStore::open(&object_dir(&self.config.run_dir, &format!("seat-{id}"))?)?
@@ -3306,10 +3652,13 @@ impl Worker {
             self.views.get_mut(&id).unwrap().replies.clear();
             self.cleanup_overlay(id)?;
         }
-        self.flush_protocol_replies(id)?;
+        if !self.checkpoint_saves.active() {
+            self.flush_protocol_replies(id)?;
+        }
         let view = &self.views[&id];
-        if view.byte_end.saturating_sub(view.checkpoint_bytes) >= self.config.ring.checkpoint_bytes
-            || view.sequence.saturating_sub(view.checkpoint_sequence) >= 256
+        if (view.checkpoint_pending.is_none()
+            && view.byte_end.saturating_sub(view.checkpoint_bytes)
+                >= self.checkpoint_policy.force_bytes)
             || !matches!(event, Event::Output { .. })
         {
             self.save(id)?;
@@ -3334,24 +3683,92 @@ impl Worker {
         Ok(true)
     }
     fn catch_up(&mut self, id: Ulid, through: u64) -> Result<bool> {
+        let result = self.catch_up_page(id, through);
+        // Check every return, including Busy, a held stream, and a page that
+        // made no progress. Parsing is not required for an old byte to age.
+        let view = &self.views[&id];
+        if view.checkpoint_pending.is_none()
+            && view.sequence != view.checkpoint_sequence
+            && (view.byte_end.saturating_sub(view.checkpoint_bytes)
+                >= self.checkpoint_policy.force_bytes
+                || view
+                    .changed_at
+                    .expired(Instant::now(), self.checkpoint_policy))
+        {
+            self.save(id)?;
+        }
+        result
+    }
+    fn catch_up_page(&mut self, id: Ulid, through: u64) -> Result<bool> {
         let current = &self.views[&id];
         if current.sequence >= through {
-            self.save(id)?;
             return Ok(true);
         }
         let generation = current.generation;
-        let page = self.client.capture_diagnostics.start(
-            Phase::ReplayPage,
+        let from = current.sequence + 1;
+        if current.checkpoint_paused
+            && current.checkpoint_requested
+            && current.checkpoint_pending.is_none()
+        {
+            return Ok(false);
+        }
+        let link = self.connections.link(&self.host_for_seat(id)?)?;
+        // The checkpoint side task may own this leased stream. Never wait for
+        // it in ingest, or park unrelated seats: retain this target and rotate.
+        let mut connection = match link.try_lock() {
+            Ok(connection) => connection,
+            Err(std::sync::TryLockError::WouldBlock) => return Ok(false),
+            Err(std::sync::TryLockError::Poisoned(_)) => {
+                return Err(invalid("supervisor link owner stopped"));
+            }
+        };
+        let page =
+            self.client
+                .capture_diagnostics
+                .start(Phase::ReplayPage, id, generation, from, through);
+        let rpc = self.client.capture_diagnostics.start(
+            Phase::ReadRingRpc,
             id,
             generation,
-            current.sequence + 1,
+            from,
             through,
         );
-        let history = self.history(id, current.generation, current.sequence + 1, through)?;
+        let reply = connection.request(Action::ReadRing {
+            attachment: self.attachments[&id].clone(),
+            from,
+            to: through,
+        });
+        drop(connection);
+        rpc.finish(capture_outcome(&reply), 0, 0);
+        let reply = match reply {
+            Err(error) if is_capture_busy(&error) => {
+                page.finish(Outcome::Busy, 0, 0);
+                return Ok(false);
+            }
+            result => result?,
+        };
+        let Reply::RingHistory { history } = reply else {
+            return Err(invalid("replay history reply mismatch"));
+        };
+        let view = self.views.get_mut(&id).unwrap();
+        if history.status.captured_sequence > view.captured_sequence
+            && history.status.byte_end > view.byte_end
+        {
+            view.last_arrival_at = Instant::now();
+            view.changed_at.arrived(view.last_arrival_at);
+        }
+        view.captured_sequence = view.captured_sequence.max(history.status.captured_sequence);
+        self.client
+            .capture_diagnostics
+            .seat(id, generation, |row, now| {
+                row.ring_observed_ns = now;
+                row.captured_sequence = history.status.captured_sequence;
+                row.committed_sequence = history.status.committed_sequence;
+            });
         if history.gap.is_some() || history.records.is_empty() {
             return Err(invalid("capture recovery gap"));
         }
-        let events = history.records.len() as u64;
+        let mut events = 0;
         let mut bytes = 0;
         let parse = self.client.capture_diagnostics.start(
             Phase::Parse,
@@ -3360,8 +3777,12 @@ impl Worker {
             self.views[&id].sequence + 1,
             through,
         );
-        let view = self.views.get_mut(&id).unwrap();
         for record in history.records {
+            if !self.allow_record(id, &record.event)? {
+                break;
+            }
+            let view = self.views.get_mut(&id).unwrap();
+            let previous_end = view.byte_end;
             if matches!(record.event, Event::Resized { .. }) {
                 view.view_generation = Ulid::new();
             }
@@ -3371,8 +3792,26 @@ impl Worker {
             }
             // Recovery must not replay probe responses or hook/native effects.
             let _ = view.tap.drain();
+            events += 1;
+            let boundary = !matches!(record.event, Event::Output { .. });
+            self.parsed_bytes(id, previous_end);
+            let view = &self.views[&id];
+            if boundary
+                || (view.checkpoint_pending.is_none()
+                    && (view.byte_end.saturating_sub(view.checkpoint_bytes)
+                        >= self.checkpoint_policy.force_bytes
+                        || view
+                            .changed_at
+                            .expired(Instant::now(), self.checkpoint_policy)))
+            {
+                self.save(id)?;
+            }
+            if boundary {
+                break;
+            }
         }
         parse.finish(Outcome::Ok, events, bytes);
+        let view = &self.views[&id];
         self.client
             .capture_diagnostics
             .seat(id, generation, |row, now| {
@@ -3382,9 +3821,12 @@ impl Worker {
                 row.parsed_events += events;
                 row.parsed_bytes += bytes;
             });
-        view.changed_at = Instant::now();
+        self.record_checkpoint_state(id);
+        let view = &self.views[&id];
         if view.sequence >= through {
-            self.save(id)?;
+            // An output notification's target is not a forced checkpoint
+            // boundary. R/age above and caught-up idle service own that policy;
+            // lifecycle records and #11 readiness still force their images.
             page.finish(Outcome::Ok, events, bytes);
             Ok(true)
         } else {
@@ -3716,7 +4158,7 @@ impl Worker {
             operator_draft: context.draft,
             active_tool: view.adapter.status.turn_open,
             sync_pending: view.state.term.sync_pending(),
-            screen_switch_pending: view.changed_at.elapsed() < Duration::from_millis(50),
+            screen_switch_pending: view.last_parsed_at.elapsed() < Duration::from_millis(50),
             canonical: context.canonical,
             echo: context.echo,
             bracketed_paste: view
@@ -3847,7 +4289,7 @@ impl Worker {
                 None => ProcessStatus::Running { pid: view.info.pid },
             },
         };
-        let title = if !view.title.is_empty() {
+        let mut title = if !view.title.is_empty() {
             view.title.clone()
         } else {
             status
@@ -3855,6 +4297,9 @@ impl Worker {
                 .clone()
                 .unwrap_or_else(|| view.adapter.record.name.clone())
         };
+        if view.checkpoint_paused {
+            title.push_str(" · Replay paused for checkpoint");
+        }
         let subagents = status
             .subagents
             .iter()
@@ -4262,11 +4707,21 @@ impl Worker {
         let mut pending_events = PendingSeats::default();
         let mut provider_recoveries = BTreeSet::new();
         let mut made_progress = false;
+        let mut deferred_commands = VecDeque::new();
         while !stop.load(Ordering::Acquire) {
             let mut turn =
                 self.client
                     .capture_diagnostics
                     .start(Phase::LogicTurn, Ulid::nil(), 0, 0, 0);
+            let checkpoint_service = self.client.capture_diagnostics.start(
+                Phase::CheckpointService,
+                Ulid::nil(),
+                0,
+                0,
+                0,
+            );
+            self.service_checkpoints(false)?;
+            checkpoint_service.finish(Outcome::Ok, 0, 0);
             let poll_ready = made_progress && pending_events.has_ready();
             made_progress = false;
             let command_span =
@@ -4275,9 +4730,23 @@ impl Worker {
                     .start(Phase::Commands, Ulid::nil(), 0, 0, 0);
             let mut command_count = 0;
             for _ in 0..32 {
-                let Ok(command) = commands.try_recv() else {
-                    break;
+                // Pending RPC-dependent commands retain their admission order;
+                // local snapshots/status still run while a save owns the link.
+                let command = if !self.checkpoint_saves.active() && !deferred_commands.is_empty() {
+                    deferred_commands.pop_front().unwrap()
+                } else {
+                    if deferred_commands.len() >= 256 {
+                        break;
+                    }
+                    let Ok(command) = commands.try_recv() else {
+                        break;
+                    };
+                    command
                 };
+                if self.checkpoint_saves.active() && !command.local_while_checkpoint_pending() {
+                    deferred_commands.push_back(command);
+                    continue;
+                }
                 command_count += 1;
                 match command {
                     Command::GuiHosts(reply) => {
@@ -4571,7 +5040,33 @@ impl Worker {
                                 .ok_or_else(|| invalid("seat endpoint unavailable")),
                         );
                     }
-                    Command::Close(id, generation, operation, position, grace, reply) => {
+                    Command::Close(id, generation, operation, position, grace, target, reply) => {
+                        let Some(view) = self.views.get(&id).filter(|v| v.generation == generation)
+                        else {
+                            let _ = reply.send(Err(invalid("stale close generation")));
+                            continue;
+                        };
+                        let target = target.unwrap_or(view.sequence);
+                        if view.checkpoint_sequence < target {
+                            if let Err(error) = self.save(id) {
+                                let _ = reply.send(Err(error));
+                            } else {
+                                // Keep the original cursor and RPC-command order
+                                // until its strong publication completes. The
+                                // Worker returns to ingestion instead of waiting.
+                                deferred_commands.push_front(Command::Close(
+                                    id,
+                                    generation,
+                                    operation,
+                                    position,
+                                    grace,
+                                    Some(target),
+                                    reply,
+                                ));
+                                break;
+                            }
+                            continue;
+                        }
                         let result = (|| {
                             let close = self.registry.close(
                                 id,
@@ -4677,6 +5172,15 @@ impl Worker {
                         && generation == view.generation
                         && event.sequence().unwrap() > view.sequence
                     {
+                        let seat = event.seat();
+                        let view = self.views.get_mut(&seat).unwrap();
+                        view.captured_sequence =
+                            view.captured_sequence.max(event.sequence().unwrap());
+                        if matches!(&event, Event::Output { bytes, .. } if !bytes.is_empty()) {
+                            let now = Instant::now();
+                            view.last_arrival_at = now;
+                            view.changed_at.arrived(now);
+                        }
                         self.client.capture_diagnostics.seat(
                             event.seat(),
                             generation,
@@ -4721,69 +5225,127 @@ impl Worker {
                 self.client
                     .capture_diagnostics
                     .start(Phase::Maintenance, Ulid::nil(), 0, 0, 0);
-            if providers_at.elapsed() >= Duration::from_millis(200) {
-                self.refresh_providers(&mut provider_recoveries, &mut pending_events)?;
-                providers_at = Instant::now();
-            }
-            if adapters_at.elapsed() >= Duration::from_millis(200) {
-                self.refresh_adapters()?;
-                adapters_at = Instant::now();
-            }
-            if identity_at.elapsed() >= Duration::from_secs(30) {
-                self.refresh_identity()?;
-                identity_at = Instant::now();
-            }
-            if messages_at.elapsed() >= Duration::from_millis(100) {
-                self.pump_messages()?;
-                self.publish_control_audits()?;
-                messages_at = Instant::now();
-            }
-            let idle: Vec<_> = self
-                .views
-                .iter()
-                .filter(|(_, v)| {
-                    v.sequence > v.checkpoint_sequence
-                        && v.changed_at.elapsed() >= Duration::from_millis(self.config.ring.idle_ms)
-                })
-                .map(|(id, _)| *id)
-                .collect();
-            for id in idle {
-                self.save(id)?;
-            }
-            if scan_at.elapsed() >= Duration::from_millis(100) {
-                if self.watch.failed() {
-                    return Err(invalid(
-                        "filesystem watch failed; index reconciliation required",
-                    ));
+            if !self.checkpoint_saves.active() {
+                if providers_at.elapsed() >= Duration::from_millis(200) {
+                    let phase = self.client.capture_diagnostics.start(
+                        Phase::MaintenanceProviders,
+                        Ulid::nil(),
+                        0,
+                        0,
+                        0,
+                    );
+                    self.refresh_providers(&mut provider_recoveries, &mut pending_events)?;
+                    phase.finish(Outcome::Ok, 0, 0);
+                    providers_at = Instant::now();
                 }
-                let active: Vec<_> = self
+                if adapters_at.elapsed() >= Duration::from_millis(200) {
+                    let phase = self.client.capture_diagnostics.start(
+                        Phase::MaintenanceAdapters,
+                        Ulid::nil(),
+                        0,
+                        0,
+                        0,
+                    );
+                    self.refresh_adapters()?;
+                    phase.finish(Outcome::Ok, 0, 0);
+                    adapters_at = Instant::now();
+                }
+                if identity_at.elapsed() >= Duration::from_secs(30) {
+                    let phase = self.client.capture_diagnostics.start(
+                        Phase::MaintenanceIdentity,
+                        Ulid::nil(),
+                        0,
+                        0,
+                        0,
+                    );
+                    self.refresh_identity()?;
+                    phase.finish(Outcome::Ok, 0, 0);
+                    identity_at = Instant::now();
+                }
+                if messages_at.elapsed() >= Duration::from_millis(100) {
+                    let phase = self.client.capture_diagnostics.start(
+                        Phase::MaintenanceMessages,
+                        Ulid::nil(),
+                        0,
+                        0,
+                        0,
+                    );
+                    self.pump_messages()?;
+                    self.publish_control_audits()?;
+                    phase.finish(Outcome::Ok, 0, 0);
+                    messages_at = Instant::now();
+                }
+                let replies: Vec<_> = self
                     .views
                     .iter()
-                    .filter(|(_, view)| {
-                        view.info.exited.is_none()
-                            && view.adapter.status.state == crate::adapters::State::Active
-                    })
-                    .map(|(seat, view)| (*seat, view.generation, view.adapter.status.observed_ms))
+                    .filter(|(_, v)| !v.replies.is_empty())
+                    .map(|(id, _)| *id)
+                    .take(32)
                     .collect();
-                let changed = match self.provenance.step(
-                    Arc::make_mut(&mut self.index),
-                    &self.bus,
-                    &self.handle,
-                    &self.identity,
-                    &active,
-                ) {
-                    Ok(changed) => changed,
-                    Err(error) => {
-                        eprintln!("ProvenancePending: {error}");
-                        false
-                    }
-                };
-                if self.watch.changed() || changed {
-                    self.scan()?;
+                for id in replies {
+                    self.flush_protocol_replies(id)?;
                 }
-                scan_at = Instant::now();
+                if scan_at.elapsed() >= Duration::from_millis(100) {
+                    let phase = self.client.capture_diagnostics.start(
+                        Phase::MaintenanceProvenance,
+                        Ulid::nil(),
+                        0,
+                        0,
+                        0,
+                    );
+                    if self.watch.failed() {
+                        return Err(invalid(
+                            "filesystem watch failed; index reconciliation required",
+                        ));
+                    }
+                    let active: Vec<_> = self
+                        .views
+                        .iter()
+                        .filter(|(_, view)| {
+                            view.info.exited.is_none()
+                                && view.adapter.status.state == crate::adapters::State::Active
+                        })
+                        .map(|(seat, view)| {
+                            (*seat, view.generation, view.adapter.status.observed_ms)
+                        })
+                        .collect();
+                    let changed = match self.provenance.step(
+                        Arc::make_mut(&mut self.index),
+                        &self.bus,
+                        &self.handle,
+                        &self.identity,
+                        &active,
+                    ) {
+                        Ok(changed) => changed,
+                        Err(error) => {
+                            eprintln!("ProvenancePending: {error}");
+                            false
+                        }
+                    };
+                    if self.watch.changed() || changed {
+                        self.scan()?;
+                    }
+                    phase.finish(Outcome::Ok, active.len() as u64, 0);
+                    scan_at = Instant::now();
+                }
             }
+            // Each completed save gets an ordinary ingest/command turn before
+            // the next is dispatched, interleaving the single leased stream.
+            let checkpoint_service = self.client.capture_diagnostics.start(
+                Phase::CheckpointService,
+                Ulid::nil(),
+                0,
+                0,
+                0,
+            );
+            self.service_checkpoints(true)?;
+            checkpoint_service.finish(Outcome::Ok, 0, 0);
             maintenance.finish(Outcome::Ok, 0, 0);
+            if self.checkpoint_saves.active() && !made_progress {
+                // The side-task completion unparks this thread. Contended
+                // nonblocking receive must not create a no-progress spin.
+                std::thread::park_timeout(Duration::from_millis(1));
+            }
             turn.pending(
                 pending_events.seats.len(),
                 pending_events.ready.len(),
@@ -4793,6 +5355,33 @@ impl Worker {
         }
         for id in self.views.keys().copied().collect::<Vec<_>>() {
             self.save(id)?;
+        }
+        // Shutdown is outside ingestion: all forced publications must finish
+        // before handing over the lease, with a named bounded failure if not.
+        let mut progress = self.checkpoint_progress;
+        let mut progressed_at = Instant::now();
+        loop {
+            self.service_checkpoints(true)?;
+            if self.checkpoint_saves.in_flight() == 0
+                && self
+                    .views
+                    .values()
+                    .all(|v| v.checkpoint_sequence == v.sequence)
+            {
+                break;
+            }
+            if self.checkpoint_progress != progress {
+                progress = self.checkpoint_progress;
+                progressed_at = Instant::now();
+            }
+            // Per-request deadlines still bound IO. Do not impose a total
+            // throughput deadline on a shutdown draining many healthy seats.
+            if progressed_at.elapsed() >= Duration::from_secs(20) {
+                return Err(invalid(
+                    "checkpoint shutdown drain unavailable; publication outcome unknown",
+                ));
+            }
+            std::thread::park_timeout(Duration::from_millis(1));
         }
         Ok(())
     }

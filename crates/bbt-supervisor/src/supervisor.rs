@@ -37,7 +37,7 @@ pub mod capture_diagnostics {
     use std::collections::{HashMap, VecDeque};
     use std::sync::{
         Arc, Mutex, OnceLock, TryLockError,
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
     };
     use std::time::Instant;
 
@@ -69,8 +69,14 @@ pub mod capture_diagnostics {
         SupervisorDispatch,
         SupervisorQuery,
         SupervisorSweep,
+        MaintenanceProviders,
+        MaintenanceAdapters,
+        MaintenanceIdentity,
+        MaintenanceMessages,
+        MaintenanceProvenance,
+        CheckpointService,
     }
-    const PHASES: [Phase; 16] = [
+    const PHASES: [Phase; 22] = [
         Phase::LogicTurn,
         Phase::Commands,
         Phase::Receive,
@@ -87,6 +93,12 @@ pub mod capture_diagnostics {
         Phase::SupervisorDispatch,
         Phase::SupervisorQuery,
         Phase::SupervisorSweep,
+        Phase::MaintenanceProviders,
+        Phase::MaintenanceAdapters,
+        Phase::MaintenanceIdentity,
+        Phase::MaintenanceMessages,
+        Phase::MaintenanceProvenance,
+        Phase::CheckpointService,
     ];
 
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
@@ -163,6 +175,18 @@ pub mod capture_diagnostics {
         pub pages: u64,
         pub parsed_events: u64,
         pub parsed_bytes: u64,
+        pub checkpoint_sequence: u64,
+        pub checkpoint_byte_end: u64,
+        pub parsed_byte_end: u64,
+        pub checkpoint_pauses: u64,
+        pub checkpoint_paused: bool,
+        pub idle_checkpoints: u64,
+        pub forced_checkpoints: u64,
+        /// Admission to the actor's notification queue, not receipt by logic.
+        pub notification_attempts: u64,
+        pub notification_accepted: u64,
+        pub notification_last_attempt: u64,
+        pub notification_last_accepted: u64,
     }
     impl Seat {
         pub fn progress(&mut self, sequence: u64, now: u64) {
@@ -177,6 +201,8 @@ pub mod capture_diagnostics {
     #[derive(Clone, Debug, Serialize)]
     pub struct Snapshot {
         pub enabled: bool,
+        /// Opt-in recovery-fixture audit; live traces leave this false.
+        pub fixture_lossless: bool,
         /// All timestamps use one process-relative monotonic clock. Compare
         /// logic and supervisor directly only when their process_id matches.
         pub process_id: u32,
@@ -208,6 +234,7 @@ pub mod capture_diagnostics {
     #[derive(Default)]
     pub struct Recorder {
         buffer: OnceLock<Mutex<Buffer>>,
+        fixture_lossless: AtomicBool,
         turn: AtomicU64,
         pages: AtomicU64,
         missed: AtomicU64,
@@ -228,6 +255,13 @@ pub mod capture_diagnostics {
                     spans: VecDeque::with_capacity(SPANS),
                 })
             });
+        }
+
+        /// Recovery-fixture audit only, enabled before the controlled kill.
+        /// Updates serialize in the bounded buffer; ordinary traces keep try_lock.
+        pub fn enable_fixture_lossless(&self) {
+            self.fixture_lossless.store(true, Ordering::Relaxed);
+            self.enable();
         }
 
         pub fn start(
@@ -273,10 +307,19 @@ pub mod capture_diagnostics {
             )))
         }
 
+        #[allow(
+            clippy::disallowed_methods,
+            reason = "explicit recovery-fixture audit serializes bounded diagnostic updates"
+        )]
         fn update(&self, f: impl FnOnce(&mut Buffer)) {
             let Some(buffer) = self.buffer.get() else {
                 return;
             };
+            if self.fixture_lossless.load(Ordering::Relaxed) {
+                let mut buffer = buffer.lock().unwrap_or_else(|error| error.into_inner());
+                f(&mut buffer);
+                return;
+            }
             match buffer.try_lock() {
                 Ok(mut buffer) => f(&mut buffer),
                 Err(TryLockError::Poisoned(error)) => f(&mut error.into_inner()),
@@ -314,6 +357,7 @@ pub mod capture_diagnostics {
             bbt_rt::assert_not_ui_thread();
             let mut snapshot = Snapshot {
                 enabled: self.buffer.get().is_some(),
+                fixture_lossless: self.fixture_lossless.load(Ordering::Relaxed),
                 process_id: std::process::id(),
                 sampled_ns: now_ns(),
                 started_ns: 0,
@@ -435,6 +479,7 @@ pub mod capture_diagnostics {
             assert!(!recorder.snapshot().enabled);
             assert!(recorder.snapshot().spans.is_empty());
             recorder.enable();
+            assert!(!recorder.snapshot().fixture_lossless);
             for _ in 0..SPANS + 3 {
                 recorder
                     .start(Phase::ReadRingRpc, Ulid::nil(), 1, 2, 3)
@@ -457,6 +502,40 @@ pub mod capture_diagnostics {
                 1,
                 "recording waited for a reader"
             );
+        }
+
+        #[test]
+        fn fixture_lossless_counts_every_concurrent_writer_update() {
+            let recorder = Arc::new(Recorder::default());
+            recorder.enable_fixture_lossless();
+            let start = Arc::new(std::sync::Barrier::new(5));
+            let writers: Vec<_> = (0..4)
+                .map(|_| {
+                    let recorder = recorder.clone();
+                    let start = start.clone();
+                    std::thread::spawn(move || {
+                        start.wait();
+                        for _ in 0..4096 {
+                            recorder.start(Phase::Parse, Ulid::nil(), 0, 0, 0).finish(
+                                Outcome::Ok,
+                                1,
+                                1,
+                            );
+                        }
+                    })
+                })
+                .collect();
+            start.wait();
+            for writer in writers {
+                writer.join().unwrap();
+            }
+            let snapshot = recorder.snapshot();
+            assert!(snapshot.fixture_lossless);
+            assert_eq!(snapshot.missed, 0);
+            assert_eq!(snapshot.totals[Phase::Parse as usize].1.calls, 4 * 4096);
+            assert_eq!(snapshot.totals[Phase::Parse as usize].1.work, 4 * 4096);
+            assert_eq!(snapshot.spans.len(), SPANS);
+            assert_eq!(snapshot.overwritten_spans, 4 * 4096 - SPANS as u64);
         }
 
         #[test]
@@ -1463,7 +1542,7 @@ impl Actor {
     }
 
     fn notify(&mut self, client: Ulid, event: &Event) -> bool {
-        match self.clients.get_mut(&client) {
+        let accepted = match self.clients.get_mut(&client) {
             Some(Target::Local(tx)) => match tx.try_send(event.clone()) {
                 Ok(()) => true,
                 Err(mpsc::TrySendError::Full(_)) => false,
@@ -1478,7 +1557,22 @@ impl Actor {
                 })
                 .unwrap_or(false),
             None => false,
-        }
+        };
+        let generation = match event {
+            Event::Output { generation, .. }
+            | Event::Resized { generation, .. }
+            | Event::Exited { generation, .. } => *generation,
+        };
+        self.capture_diagnostics
+            .seat(event.seat(), generation, |row, _| {
+                row.notification_attempts = row.notification_attempts.saturating_add(1);
+                row.notification_last_attempt = event.sequence().unwrap();
+                if accepted {
+                    row.notification_accepted = row.notification_accepted.saturating_add(1);
+                    row.notification_last_accepted = event.sequence().unwrap();
+                }
+            });
+        accepted
     }
 
     fn disconnect(&mut self, id: Ulid) {

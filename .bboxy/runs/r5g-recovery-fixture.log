@@ -1,0 +1,558 @@
+R5g corrected recovery fixture development check, FOUR PTYs only. Not one of the three967-count calibration results.
+Finite stdout then park; producer completion files replace967 pre-kill history probes; ring byte count/CRC/gap/Screens and PID continuity/reaping checked. Product source unchanged.
+{
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--test",
+    "recovery",
+    "checkpoint_bounded_recovery",
+    "--",
+    "--exact",
+    "--nocapture"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "at": "2026-10-23T23:19:22.230777-07:00",
+  "finished": true,
+  "source_diff_sha256": "52cff5d9ecde105a71575f4265749249a329f6bc22841299014828d89d224bfe",
+  "pid": 87071,
+  "exit": 0,
+  "elapsed_s": 38.89991291699698,
+  "source_diff_sha256_after": "52cff5d9ecde105a71575f4265749249a329f6bc22841299014828d89d224bfe"
+}
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling libc v0.2.191
+   Compiling syn v2.0.119
+   Compiling cfg-if v1.0.5
+   Compiling typenum v1.20.1
+   Compiling zeroize_derive v1.5.0
+   Compiling version_check v0.9.5
+   Compiling generic-array v0.14.7
+   Compiling zeroize v1.9.1
+   Compiling getrandom v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling subtle v2.6.1
+   Compiling syn v3.0.9
+   Compiling crypto-common v0.1.7
+   Compiling const-oid v0.9.6
+   Compiling serde_core v1.0.229
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling jobserver v0.1.35
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.15
+   Compiling cc v1.9.0
+   Compiling zmij v1.0.23
+   Compiling cpufeatures v0.2.17
+   Compiling base64ct v1.8.3
+   Compiling pem-rfc7468 v0.7.0
+   Compiling inout v0.1.4
+   Compiling itoa v1.0.18
+   Compiling cipher v0.4.4
+   Compiling der v0.7.10
+   Compiling memchr v2.8.3
+   Compiling spki v0.7.3
+   Compiling zerocopy v0.8.63
+   Compiling radium v0.7.0
+   Compiling pkcs8 v0.10.2
+   Compiling tap v1.0.1
+   Compiling serde_json v1.0.154
+   Compiling wyz v0.5.1
+   Compiling hmac v0.12.1
+   Compiling base16ct v0.2.0
+   Compiling funty v2.0.0
+   Compiling bitvec v1.1.1
+   Compiling ppv-lite86 v0.2.21
+   Compiling sha2-asm v0.6.4
+   Compiling bitflags v2.13.2
+   Compiling signature v2.2.0
+   Compiling semver v1.0.28
+   Compiling pkg-config v0.3.34
+   Compiling bytes v1.12.1
+   Compiling log v0.4.34
+   Compiling rustc_version v0.4.1
+   Compiling ff v0.13.1
+   Compiling serdect v0.2.0
+   Compiling smallvec v1.16.3
+   Compiling sec1 v0.7.3
+   Compiling group v0.13.0
+   Compiling hkdf v0.12.4
+   Compiling crypto-bigint v0.5.5
+   Compiling hybrid-array v0.4.15
+   Compiling libm v0.2.16
+   Compiling autocfg v1.5.1
+   Compiling thiserror v2.0.21
+   Compiling num-traits v0.2.19
+   Compiling elliptic-curve v0.13.8
+   Compiling sha2 v0.10.9
+   Compiling getrandom v0.3.4
+   Compiling block-buffer v0.12.1
+   Compiling crypto-common v0.2.2
+   Compiling rfc6979 v0.4.0
+   Compiling thiserror-impl v2.0.21
+   Compiling errno v0.3.14
+   Compiling const-oid v0.10.2
+   Compiling ident_case v1.0.1
+   Compiling strsim v0.11.1
+   Compiling fnv v1.0.7
+   Compiling darling_core v0.20.11
+   Compiling digest v0.11.3
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling rand_core v0.10.1
+   Compiling getrandom v0.4.3
+   Compiling winnow v1.0.4
+   Compiling parking_lot_core v0.9.12
+   Compiling foldhash v0.2.0
+   Compiling hashbrown v0.17.1
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling num-integer v0.1.47
+   Compiling rand_core v0.9.5
+   Compiling darling_macro v0.20.11
+   Compiling ecdsa v0.16.9
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling curve25519-dalek v4.1.3
+   Compiling rand_chacha v0.3.1
+   Compiling cpufeatures v0.3.1
+   Compiling winnow v0.7.15
+   Compiling thiserror v1.0.69
+   Compiling spin v0.9.9
+   Compiling crossbeam-utils v0.8.23
+   Compiling num-bigint-dig v0.8.6
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling pin-project-lite v0.2.17
+   Compiling scopeguard v1.2.0
+   Compiling cfg_aliases v0.1.1
+   Compiling nix v0.28.0
+   Compiling lock_api v0.4.14
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling lazy_static v1.5.1
+   Compiling rand v0.8.8
+   Compiling darling v0.20.11
+   Compiling rand_chacha v0.9.0
+   Compiling num-iter v0.1.46
+   Compiling signal-hook-registry v1.4.8
+   Compiling primeorder v0.13.6
+   Compiling mio v1.2.4
+   Compiling aead v0.5.2
+   Compiling ctr v0.9.2
+   Compiling universal-hash v0.5.1
+   Compiling tokio-macros v2.7.2
+   Compiling thiserror-impl v1.0.69
+   Compiling socket2 v0.6.5
+   Compiling base64 v0.22.1
+   Compiling anyhow v1.0.104
+   Compiling unicode-segmentation v1.13.3
+   Compiling vcpkg v0.2.15
+   Compiling zstd-safe v8.2.0
+   Compiling opaque-debug v0.3.1
+   Compiling httparse v1.10.1
+   Compiling rustversion v1.0.23
+   Compiling polyval v0.6.2
+   Compiling libsqlite3-sys v0.38.2
+   Compiling convert_case v0.10.0
+   Compiling tokio v1.54.1
+   Compiling parking_lot v0.12.5
+   Compiling derive_builder_core v0.20.2
+   Compiling rand v0.9.5
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)
+   Compiling chacha20 v0.10.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling aes v0.8.4
+   Compiling keccak v0.1.6
+   Compiling dbl v0.3.2
+   Compiling byteorder v1.5.0
+   Compiling crc24 v0.1.6
+   Compiling unicode-width v0.2.2
+   Compiling equivalent v1.0.3
+   Compiling heck v0.5.0
+   Compiling unicode-xid v0.2.6
+   Compiling cursor-icon v1.2.0
+   Compiling once_cell v1.21.4
+   Compiling core-foundation-sys v0.8.7
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+   Compiling derive_more-impl v2.1.1
+   Compiling snafu-derive v0.9.2
+   Compiling indexmap v2.14.2
+   Compiling cmac v0.7.2
+   Compiling sha3 v0.10.9
+   Compiling rand v0.10.3
+   Compiling crossbeam-queue v0.3.14
+   Compiling ulid v1.2.1
+   Compiling derive_builder_macro v0.20.2
+   Compiling bitfields-impl v1.0.3
+   Compiling filedescriptor v0.8.3
+   Compiling ghash v0.5.1
+   Compiling sha1 v0.11.0
+   Compiling http v1.5.0
+   Compiling ed25519 v2.2.3
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling password-hash v0.5.0
+   Compiling sha1 v0.10.7
+   Compiling blake2 v0.10.6
+   Compiling futures-macro v0.3.34
+   Compiling serial2 v0.2.38
+   Compiling num_enum_derive v0.7.6
+   Compiling signature v3.0.0
+   Compiling shell-words v1.1.1
+   Compiling rustix v1.1.5
+   Compiling slab v0.4.12
+   Compiling downcast-rs v1.2.1
+   Compiling data-encoding v2.11.1
+   Compiling futures-task v0.3.34
+   Compiling foldhash v0.1.5
+   Compiling futures-core v0.3.34
+   Compiling zlib-rs v0.6.8
+   Compiling same-file v1.0.6
+   Compiling futures-sink v0.3.34
+   Compiling walkdir v2.5.0
+   Compiling futures-util v0.3.34
+   Compiling flate2 v1.1.10
+   Compiling hashbrown v0.15.5
+   Compiling tungstenite v0.30.0
+   Compiling portable-pty v0.9.0
+   Compiling ed25519 v3.0.0
+   Compiling num_enum v0.7.6
+   Compiling argon2 v0.5.3
+   Compiling sha1-checked v0.10.0
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling ed25519-dalek v2.2.0
+   Compiling aes-gcm v0.10.3
+   Compiling bitfields v1.0.3
+   Compiling derive_builder v0.20.2
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+   Compiling zstd v0.14.3
+   Compiling snafu v0.9.2
+   Compiling eax v0.5.0
+   Compiling derive_more v2.1.1
+   Compiling core-foundation v0.10.1
+   Compiling security-framework-sys v2.17.0
+   Compiling k256 v0.13.4
+   Compiling camellia v0.1.0
+   Compiling blowfish v0.9.1
+   Compiling aes-kw v0.2.1
+   Compiling x25519-dalek v2.0.1
+   Compiling dsa v0.6.3
+   Compiling ocb3 v0.1.0
+   Compiling p521 v0.13.3
+   Compiling p384 v0.13.1
+   Compiling p256 v0.13.2
+   Compiling sha2 v0.11.1
+   Compiling hashlink v0.12.2
+   Compiling notify-types v2.1.0
+   Compiling buffer-redux v1.1.0
+   Compiling nom v8.0.0
+   Compiling twofish v0.7.1
+   Compiling des v0.8.1
+   Compiling cfb-mode v0.8.2
+   Compiling cast5 v0.11.1
+   Compiling idea v0.5.1
+   Compiling md-5 v0.10.6
+   Compiling ripemd v0.1.3
+   Compiling block-padding v0.3.3
+   Compiling fsevent-sys v4.1.0
+   Compiling replace_with v0.1.8
+   Compiling unsafe-libyaml v0.2.11
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling hex v0.4.3
+   Compiling ryu v1.0.23
+   Compiling fallible-iterator v0.3.0
+   Compiling fixedbitset v0.5.7
+   Compiling rusqlite v0.40.2
+   Compiling petgraph v0.8.3
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling pgp v0.21.0
+   Compiling notify v8.2.0
+   Compiling ed25519-dalek v3.0.0
+   Compiling security-framework v3.7.0
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling fastrand v2.5.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+   Compiling tempfile v3.27.0
+    Finished `test` profile [optimized] target(s) in 32.89s
+     Running tests/recovery.rs (target/r5g/debug/deps/recovery-7d0788ad483062a2)
+
+running 1 test
+checkpoint_recovery seat=01M5P91QDNQYEMJE1FH9WJJKRS parsed_debt=4216832 backlog=8374286 parsed=12597248 confirmed=8380416 tail=20971534
+checkpoint_recovery seat=01M5P91QDN9W63Z004GK0WP4W0 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550
+checkpoint_recovery seat=01M5P91QDN13N0GSSZKH3QG57B parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550
+checkpoint_recovery seat=01M5P91QDN9RF2THG1XSZP53MV parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550
+checkpoint_recovery reaped_owned_pids=[90078, 90084, 90076, 90074]
+checkpoint_recovery seats=4 every_seat_live_ms=215.920
+test checkpoint_bounded_recovery ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 5.70s
+
+STRICT MUX ALL-TARGET CLIPPY
+{
+  "argv": [
+    "cargo",
+    "clippy",
+    "-p",
+    "bbt-mux",
+    "--all-targets",
+    "--locked",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "at": "2026-10-23T23:21:46.019818-07:00",
+  "finished": true,
+  "source_diff_sha256": "52cff5d9ecde105a71575f4265749249a329f6bc22841299014828d89d224bfe",
+  "pid": 93989,
+  "exit": 0,
+  "elapsed_s": 44.74098933301866,
+  "source_diff_sha256_after": "52cff5d9ecde105a71575f4265749249a329f6bc22841299014828d89d224bfe"
+}
+    Checking libc v0.2.191
+    Checking cfg-if v1.0.5
+    Checking typenum v1.20.1
+    Checking zeroize v1.9.1
+    Checking getrandom v0.2.17
+    Checking rand_core v0.6.4
+    Checking generic-array v0.14.7
+    Checking subtle v2.6.1
+    Checking crypto-common v0.1.7
+    Checking const-oid v0.9.6
+    Checking serde_core v1.0.229
+    Checking block-buffer v0.10.4
+    Checking digest v0.10.7
+    Checking serde v1.0.229
+    Checking cpufeatures v0.2.17
+    Checking base64ct v1.8.3
+    Checking inout v0.1.4
+    Checking pem-rfc7468 v0.7.0
+    Checking itoa v1.0.18
+    Checking der v0.7.10
+    Checking cipher v0.4.4
+    Checking memchr v2.8.3
+    Checking spki v0.7.3
+    Checking pkcs8 v0.10.2
+    Checking tap v1.0.1
+    Checking wyz v0.5.1
+    Checking zmij v1.0.23
+    Checking radium v0.7.0
+    Checking zerocopy v0.8.63
+    Checking hmac v0.12.1
+    Checking base16ct v0.2.0
+    Checking funty v2.0.0
+    Checking bitvec v1.1.1
+    Checking serde_json v1.0.154
+    Checking signature v2.2.0
+    Checking bitflags v2.13.2
+    Checking bytes v1.12.1
+    Checking log v0.4.34
+    Checking ff v0.13.1
+    Checking serdect v0.2.0
+    Checking smallvec v1.16.3
+    Checking sec1 v0.7.3
+    Checking group v0.13.0
+    Checking sha2-asm v0.6.4
+    Checking hkdf v0.12.4
+    Checking crypto-bigint v0.5.5
+    Checking hybrid-array v0.4.15
+    Checking elliptic-curve v0.13.8
+    Checking ppv-lite86 v0.2.21
+    Checking sha2 v0.10.9
+    Checking libm v0.2.16
+    Checking block-buffer v0.12.1
+    Checking crypto-common v0.2.2
+    Checking rfc6979 v0.4.0
+    Checking errno v0.3.14
+    Checking const-oid v0.10.2
+    Checking num-traits v0.2.19
+    Checking digest v0.11.3
+    Checking getrandom v0.3.4
+    Checking rand_core v0.10.1
+    Checking foldhash v0.2.0
+    Checking rand_core v0.9.5
+    Checking hashbrown v0.17.1
+    Checking num-integer v0.1.47
+    Checking ecdsa v0.16.9
+    Checking rand_chacha v0.3.1
+    Checking cpufeatures v0.3.1
+    Checking spin v0.9.9
+    Checking scopeguard v1.2.0
+    Checking pin-project-lite v0.2.17
+    Checking lock_api v0.4.14
+    Checking lazy_static v1.5.1
+    Checking rand v0.8.8
+    Checking num-iter v0.1.46
+    Checking rand_chacha v0.9.0
+    Checking getrandom v0.4.3
+    Checking parking_lot_core v0.9.12
+    Checking signal-hook-registry v1.4.8
+    Checking primeorder v0.13.6
+    Checking mio v1.2.4
+    Checking aead v0.5.2
+    Checking ctr v0.9.2
+    Checking universal-hash v0.5.1
+    Checking socket2 v0.6.5
+    Checking opaque-debug v0.3.1
+    Checking base64 v0.22.1
+    Checking tokio v1.54.1
+    Checking polyval v0.6.2
+    Checking thiserror v1.0.69
+    Checking parking_lot v0.12.5
+    Checking num-bigint-dig v0.8.6
+    Checking rand v0.9.5
+    Checking curve25519-dalek v4.1.3
+    Checking crossbeam-utils v0.8.23
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)
+    Checking zstd-sys v2.1.2+zstd.1.5.7
+    Checking chacha20 v0.10.2
+    Checking aes v0.8.4
+    Checking keccak v0.1.6
+    Checking arrayvec v0.7.8
+    Checking serde-big-array v0.5.1
+    Checking dbl v0.3.2
+    Checking core-foundation-sys v0.8.7
+    Checking byteorder v1.5.0
+    Checking equivalent v1.0.3
+    Checking cursor-icon v1.2.0
+    Checking unicode-width v0.2.2
+    Checking once_cell v1.21.4
+    Checking indexmap v2.14.2
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+    Checking cmac v0.7.2
+    Checking sha3 v0.10.9
+    Checking rand v0.10.3
+    Checking thiserror v2.0.21
+    Checking zstd-safe v8.2.0
+    Checking nix v0.28.0
+    Checking crossbeam-queue v0.3.14
+    Checking ulid v1.2.1
+    Checking filedescriptor v0.8.3
+    Checking anyhow v1.0.104
+    Checking ghash v0.5.1
+    Checking httparse v1.10.1
+    Checking sha1 v0.11.0
+    Checking http v1.5.0
+    Checking ed25519 v2.2.3
+    Checking serdect v0.3.0
+    Checking pkcs1 v0.7.5
+    Checking password-hash v0.5.0
+    Checking sha1 v0.10.7
+    Checking blake2 v0.10.6
+    Checking serial2 v0.2.38
+    Checking zlib-rs v0.6.8
+    Checking signature v3.0.0
+    Checking shell-words v1.1.1
+    Checking slab v0.4.12
+    Checking downcast-rs v1.2.1
+    Checking data-encoding v2.11.1
+    Checking futures-task v0.3.34
+    Checking futures-core v0.3.34
+    Checking foldhash v0.1.5
+    Checking same-file v1.0.6
+    Checking futures-sink v0.3.34
+    Checking walkdir v2.5.0
+    Checking hashbrown v0.15.5
+    Checking futures-util v0.3.34
+    Checking flate2 v1.1.10
+    Checking tungstenite v0.30.0
+    Checking portable-pty v0.9.0
+    Checking ed25519 v3.0.0
+    Checking num_enum v0.7.6
+    Checking argon2 v0.5.3
+    Checking sha1-checked v0.10.0
+    Checking rsa v0.9.10
+    Checking cx448 v0.1.1
+    Checking ed25519-dalek v2.2.0
+    Checking aes-gcm v0.10.3
+    Checking libsqlite3-sys v0.38.2
+    Checking bitfields v1.0.3
+    Checking derive_builder v0.20.2
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+    Checking zstd v0.14.3
+    Checking curve25519-dalek v5.0.0
+    Checking eax v0.5.0
+    Checking crc24 v0.1.6
+    Checking snafu v0.9.2
+    Checking derive_more v2.1.1
+    Checking k256 v0.13.4
+    Checking camellia v0.1.0
+    Checking blowfish v0.9.1
+    Checking security-framework-sys v2.17.0
+    Checking core-foundation v0.10.1
+    Checking aes-kw v0.2.1
+    Checking x25519-dalek v2.0.1
+    Checking dsa v0.6.3
+    Checking ocb3 v0.1.0
+    Checking p521 v0.13.3
+    Checking p384 v0.13.1
+    Checking p256 v0.13.2
+    Checking sha2 v0.11.1
+    Checking hashlink v0.12.2
+    Checking notify-types v2.1.0
+    Checking nom v8.0.0
+    Checking buffer-redux v1.1.0
+    Checking cast5 v0.11.1
+    Checking idea v0.5.1
+    Checking twofish v0.7.1
+    Checking des v0.8.1
+    Checking cfb-mode v0.8.2
+    Checking md-5 v0.10.6
+    Checking ripemd v0.1.3
+    Checking block-padding v0.3.3
+    Checking fsevent-sys v4.1.0
+    Checking fixedbitset v0.5.7
+    Checking replace_with v0.1.8
+    Checking unsafe-libyaml v0.2.11
+    Checking fallible-streaming-iterator v0.1.9
+    Checking hex v0.4.3
+    Checking ryu v1.0.23
+    Checking fallible-iterator v0.3.0
+    Checking serde_yaml v0.9.34+deprecated
+    Checking rusqlite v0.40.2
+    Checking pgp v0.21.0
+    Checking petgraph v0.8.3
+    Checking notify v8.2.0
+    Checking ed25519-dalek v3.0.0
+    Checking security-framework v3.7.0
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Checking tokio-tungstenite v0.30.0
+    Checking rustix v1.1.5
+    Checking fastrand v2.5.0
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Checking tempfile v3.27.0
+    Finished `dev` profile [optimized] target(s) in 44.64s

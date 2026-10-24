@@ -1,0 +1,422 @@
+R5g calibration-v3-1 — missed diagnostic samples after controlled SIGKILL
+Source: fa6dbd0db82cc1ac67bd5904f19a9520358cbb19; exact clean detached tree.
+Authorization:8728e0de quiet window, confirmed04f723f9; start PIDs delivered1f779403.
+Outcome: EXIT101, no settled recovery timing. v3-2/v3-3 held; no assertion or deadline change.
+
+Actual wrapper status:
+{
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--test",
+    "recovery",
+    "checkpoint_bounded_recovery",
+    "--",
+    "--exact",
+    "--nocapture"
+  ],
+  "cwd": "/tmp/rook-r5g-ci2-d3gp48ux/tree",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory",
+    "R5G_SEATS": "967"
+  },
+  "source": "fa6dbd0db82cc1ac67bd5904f19a9520358cbb19",
+  "at": "2026-10-24T05:30:50.801925-07:00",
+  "load_before": [
+    3.6435546875,
+    3.3603515625,
+    4.208984375
+  ],
+  "free_bytes_before": 50171514880,
+  "finished": true,
+  "git_status_before": "",
+  "pid": 72643,
+  "exit": 101,
+  "elapsed_s": 126.06701383402105,
+  "load_after": [
+    4.0244140625,
+    3.77294921875,
+    4.2724609375
+  ],
+  "free_bytes_after": 50166665216,
+  "git_status_after": "",
+  "log_sha256": "3d97779fa8e354e6dd149a640f2914384a01ae77232d8d2fd311c1abfda5a35b"
+}
+
+Decoded output:
+{
+  "delivery": {
+    "burst_held": 570,
+    "burst_returned": 81,
+    "burst_seen": 650,
+    "client": {
+      "decoded_event_frames": 4417,
+      "empty_receives": 7542,
+      "queued_events": 0,
+      "queued_output_sequence": null,
+      "queued_raw_events": 0,
+      "read_bytes": 387915724,
+      "read_calls": 61666,
+      "receive_calls": 9513,
+      "returned_events": 1971
+    },
+    "held_released": 1,
+    "held_sequence": null,
+    "inner_empty": 7542,
+    "inner_receive_calls": 9513,
+    "last_burst_returned_sequence": 3804,
+    "last_burst_seen_sequence": 3804,
+    "other_returned": 1321,
+    "receive_calls": 8944,
+    "release_requested": true
+  },
+  "capture_phase_totals": [
+    [
+      "logic_turn",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 15574,
+        "elapsed_ns": 118027746999,
+        "errors": 0,
+        "max_ns": 156603334,
+        "pending_peak": 919,
+        "work": 5782
+      }
+    ],
+    [
+      "commands",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 15575,
+        "elapsed_ns": 34458225222,
+        "errors": 0,
+        "max_ns": 104641708,
+        "pending_peak": 0,
+        "work": 1936
+      }
+    ],
+    [
+      "receive",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 15576,
+        "elapsed_ns": 35941411785,
+        "errors": 0,
+        "max_ns": 12668041,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ],
+    [
+      "event",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 11454,
+        "elapsed_ns": 29486999670,
+        "errors": 0,
+        "max_ns": 33826542,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ],
+    [
+      "replay_page",
+      {
+        "busy": 0,
+        "bytes": 75079680,
+        "calls": 5782,
+        "elapsed_ns": 27601008908,
+        "errors": 0,
+        "max_ns": 33792083,
+        "pending_peak": 0,
+        "work": 57846
+      }
+    ],
+    [
+      "capture_request",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 1935,
+        "elapsed_ns": 8551050730,
+        "errors": 0,
+        "max_ns": 14373458,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ],
+    [
+      "read_ring_rpc",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 5783,
+        "elapsed_ns": 26963387537,
+        "errors": 0,
+        "max_ns": 33661250,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ],
+    [
+      "recovery_rpc",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 967,
+        "elapsed_ns": 3733943350,
+        "errors": 0,
+        "max_ns": 9726958,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ],
+    [
+      "checkpoint_rpc",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 1934,
+        "elapsed_ns": 9690439859,
+        "errors": 0,
+        "max_ns": 36518125,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ],
+    [
+      "parse",
+      {
+        "busy": 0,
+        "bytes": 75911380,
+        "calls": 7100,
+        "elapsed_ns": 640308514,
+        "errors": 0,
+        "max_ns": 2053542,
+        "pending_peak": 0,
+        "work": 59164
+      }
+    ],
+    [
+      "checkpoint",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 1185,
+        "elapsed_ns": 11454703822,
+        "errors": 0,
+        "max_ns": 70701500,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ],
+    [
+      "maintenance",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 15575,
+        "elapsed_ns": 9394555866,
+        "errors": 0,
+        "max_ns": 95438625,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ],
+    [
+      "supervisor_turn",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 0,
+        "elapsed_ns": 0,
+        "errors": 0,
+        "max_ns": 0,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ],
+    [
+      "supervisor_dispatch",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 0,
+        "elapsed_ns": 0,
+        "errors": 0,
+        "max_ns": 0,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ],
+    [
+      "supervisor_query",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 0,
+        "elapsed_ns": 0,
+        "errors": 0,
+        "max_ns": 0,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ],
+    [
+      "supervisor_sweep",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 0,
+        "elapsed_ns": 0,
+        "errors": 0,
+        "max_ns": 0,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ],
+    [
+      "maintenance_providers",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 546,
+        "elapsed_ns": 974495,
+        "errors": 0,
+        "max_ns": 14000,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ],
+    [
+      "maintenance_adapters",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 536,
+        "elapsed_ns": 1838858506,
+        "errors": 0,
+        "max_ns": 81590291,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ],
+    [
+      "maintenance_identity",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 3,
+        "elapsed_ns": 6707833,
+        "errors": 0,
+        "max_ns": 4600084,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ],
+    [
+      "maintenance_messages",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 995,
+        "elapsed_ns": 4041390875,
+        "errors": 0,
+        "max_ns": 23201458,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ],
+    [
+      "maintenance_provenance",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 995,
+        "elapsed_ns": 3175486211,
+        "errors": 0,
+        "max_ns": 27579625,
+        "pending_peak": 0,
+        "work": 22879
+      }
+    ],
+    [
+      "checkpoint_service",
+      {
+        "busy": 0,
+        "bytes": 0,
+        "calls": 31149,
+        "elapsed_ns": 375421423,
+        "errors": 0,
+        "max_ns": 524542,
+        "pending_peak": 0,
+        "work": 0
+      }
+    ]
+  ],
+  "supervisor_notification": {
+    "seat": "01M5PY90DG1PMN66RQMAC0GHY0",
+    "generation": 1,
+    "observed_ns": 76233679167,
+    "notified_sequence": 0,
+    "target_sequence": 0,
+    "ring_observed_ns": 0,
+    "captured_sequence": 0,
+    "committed_sequence": 0,
+    "applied_observed_ns": 0,
+    "applied_sequence": 0,
+    "last_progress_ns": 0,
+    "pages": 0,
+    "parsed_events": 0,
+    "parsed_bytes": 0,
+    "checkpoint_sequence": 0,
+    "checkpoint_byte_end": 0,
+    "parsed_byte_end": 0,
+    "checkpoint_pauses": 0,
+    "checkpoint_paused": false,
+    "idle_checkpoints": 0,
+    "forced_checkpoints": 0,
+    "notification_attempts": 13494,
+    "notification_accepted": 2830,
+    "notification_last_attempt": 3804,
+    "notification_last_accepted": 3804
+  },
+  "log_sha256": "3d97779fa8e354e6dd149a640f2914384a01ae77232d8d2fd311c1abfda5a35b",
+  "failure": "missed=2, asserted0 at recovery.rs516, after controlled SIGKILL; no recovery timing"
+}
+
+Cause and limits:
+The fixture reached frozen.json and the parent executed child.kill()/wait (actual SIGKILL) before printing delivery/totals, then failed at recovery.rs516: frozen[missed] was2, required0.
+Recorder::update uses try_lock; its sole WouldBlock branch increments an aggregate missed counter. It does not say whether a dropped sample was a span or a seat cursor. Both ingest and checkpoint-side trace writers share that recorder.
+The burst was delivered and parsed, unlike v2-1: burst_returned81, last_returned_sequence3804, held_released1.
+No restart/live-time or post-kill debt/CRC assertions were reached. No pass or budget claim.
+Evidence gap: complete frozen seat rows were not in stdout, and tempfile cleanup removed frozen.json before the periodic outside copy. Only delivery, phase totals and focused supervisor row survive. This gap was reported and an archive-before-assert correction proposed.
+Oracle proposal c3686986: opt-in fixture-only lossless recorder before SIGKILL, default live recorder stays nonblocking; retain missed==0 and all other assertions/deadlines. This is a requested ruling, not an applied change.
+
+Cleanup:
+{
+  "at": "2026-10-24T05:34:33.609688-07:00",
+  "recorded_count": 970,
+  "remaining": [],
+  "run_dir_exists": false,
+  "free_bytes": 50176413696
+}
+
+Complete command output, JSON-escaped:
+"    Finished `test` profile [optimized] target(s) in 1.14s\n     Running tests/recovery.rs (/Users/feral/mydev/bboxy450-term-rook/target/r5g/debug/deps/recovery-7d0788ad483062a2)\n\nrunning 1 test\ntest checkpoint_bounded_recovery has been running for over 60 seconds\ncheckpoint_recovery delivery={\"burst_held\":570,\"burst_returned\":81,\"burst_seen\":650,\"client\":{\"decoded_event_frames\":4417,\"empty_receives\":7542,\"queued_events\":0,\"queued_output_sequence\":null,\"queued_raw_events\":0,\"read_bytes\":387915724,\"read_calls\":61666,\"receive_calls\":9513,\"returned_events\":1971},\"held_released\":1,\"held_sequence\":null,\"inner_empty\":7542,\"inner_receive_calls\":9513,\"last_burst_returned_sequence\":3804,\"last_burst_seen_sequence\":3804,\"other_returned\":1321,\"receive_calls\":8944,\"release_requested\":true}\ncheckpoint_recovery capture_phase_totals=[[\"logic_turn\",{\"busy\":0,\"bytes\":0,\"calls\":15574,\"elapsed_ns\":118027746999,\"errors\":0,\"max_ns\":156603334,\"pending_peak\":919,\"work\":5782}],[\"commands\",{\"busy\":0,\"bytes\":0,\"calls\":15575,\"elapsed_ns\":34458225222,\"errors\":0,\"max_ns\":104641708,\"pending_peak\":0,\"work\":1936}],[\"receive\",{\"busy\":0,\"bytes\":0,\"calls\":15576,\"elapsed_ns\":35941411785,\"errors\":0,\"max_ns\":12668041,\"pending_peak\":0,\"work\":0}],[\"event\",{\"busy\":0,\"bytes\":0,\"calls\":11454,\"elapsed_ns\":29486999670,\"errors\":0,\"max_ns\":33826542,\"pending_peak\":0,\"work\":0}],[\"replay_page\",{\"busy\":0,\"bytes\":75079680,\"calls\":5782,\"elapsed_ns\":27601008908,\"errors\":0,\"max_ns\":33792083,\"pending_peak\":0,\"work\":57846}],[\"capture_request\",{\"busy\":0,\"bytes\":0,\"calls\":1935,\"elapsed_ns\":8551050730,\"errors\":0,\"max_ns\":14373458,\"pending_peak\":0,\"work\":0}],[\"read_ring_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":5783,\"elapsed_ns\":26963387537,\"errors\":0,\"max_ns\":33661250,\"pending_peak\":0,\"work\":0}],[\"recovery_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":967,\"elapsed_ns\":3733943350,\"errors\":0,\"max_ns\":9726958,\"pending_peak\":0,\"work\":0}],[\"checkpoint_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":1934,\"elapsed_ns\":9690439859,\"errors\":0,\"max_ns\":36518125,\"pending_peak\":0,\"work\":0}],[\"parse\",{\"busy\":0,\"bytes\":75911380,\"calls\":7100,\"elapsed_ns\":640308514,\"errors\":0,\"max_ns\":2053542,\"pending_peak\":0,\"work\":59164}],[\"checkpoint\",{\"busy\":0,\"bytes\":0,\"calls\":1185,\"elapsed_ns\":11454703822,\"errors\":0,\"max_ns\":70701500,\"pending_peak\":0,\"work\":0}],[\"maintenance\",{\"busy\":0,\"bytes\":0,\"calls\":15575,\"elapsed_ns\":9394555866,\"errors\":0,\"max_ns\":95438625,\"pending_peak\":0,\"work\":0}],[\"supervisor_turn\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_dispatch\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_query\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_sweep\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_providers\",{\"busy\":0,\"bytes\":0,\"calls\":546,\"elapsed_ns\":974495,\"errors\":0,\"max_ns\":14000,\"pending_peak\":0,\"work\":0}],[\"maintenance_adapters\",{\"busy\":0,\"bytes\":0,\"calls\":536,\"elapsed_ns\":1838858506,\"errors\":0,\"max_ns\":81590291,\"pending_peak\":0,\"work\":0}],[\"maintenance_identity\",{\"busy\":0,\"bytes\":0,\"calls\":3,\"elapsed_ns\":6707833,\"errors\":0,\"max_ns\":4600084,\"pending_peak\":0,\"work\":0}],[\"maintenance_messages\",{\"busy\":0,\"bytes\":0,\"calls\":995,\"elapsed_ns\":4041390875,\"errors\":0,\"max_ns\":23201458,\"pending_peak\":0,\"work\":0}],[\"maintenance_provenance\",{\"busy\":0,\"bytes\":0,\"calls\":995,\"elapsed_ns\":3175486211,\"errors\":0,\"max_ns\":27579625,\"pending_peak\":0,\"work\":22879}],[\"checkpoint_service\",{\"busy\":0,\"bytes\":0,\"calls\":31149,\"elapsed_ns\":375421423,\"errors\":0,\"max_ns\":524542,\"pending_peak\":0,\"work\":0}]]\ncheckpoint_recovery supervisor_notification={\"seat\":\"01M5PY90DG1PMN66RQMAC0GHY0\",\"generation\":1,\"observed_ns\":76233679167,\"notified_sequence\":0,\"target_sequence\":0,\"ring_observed_ns\":0,\"captured_sequence\":0,\"committed_sequence\":0,\"applied_observed_ns\":0,\"applied_sequence\":0,\"last_progress_ns\":0,\"pages\":0,\"parsed_events\":0,\"parsed_bytes\":0,\"checkpoint_sequence\":0,\"checkpoint_byte_end\":0,\"parsed_byte_end\":0,\"checkpoint_pauses\":0,\"checkpoint_paused\":false,\"idle_checkpoints\":0,\"forced_checkpoints\":0,\"notification_attempts\":13494,\"notification_accepted\":2830,\"notification_last_attempt\":3804,\"notification_last_accepted\":3804}\n\nthread 'checkpoint_bounded_recovery' (25857420) panicked at crates/bbt-mux/tests/recovery.rs:516:5:\nassertion `left == right` failed\n  left: Number(2)\n right: 0\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\ntest checkpoint_bounded_recovery ... FAILED\n\nfailures:\n\nfailures:\n    checkpoint_bounded_recovery\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 124.27s\n\nerror: test failed, to rerun pass `-p bbt-mux --test recovery`\n"

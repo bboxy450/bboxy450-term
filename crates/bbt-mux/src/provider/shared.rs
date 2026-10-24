@@ -1,7 +1,7 @@
 //! Logical hosts sharing one admitted local supervisor and its journal.
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, TryLockError},
     time::Duration,
 };
 
@@ -70,11 +70,17 @@ fn action_seat(action: &Action) -> Option<Ulid> {
 impl SupervisorConnection for LogicalLink {
     fn request(&mut self, action: Action) -> Result<Reply> {
         bbt_rt::assert_not_ui_thread();
-        let mut shared = self
-            .shared
-            .0
-            .lock()
-            .map_err(|_| invalid("host router stopped"))?;
+        let mut shared = match self.shared.0.try_lock() {
+            Ok(shared) => shared,
+            Err(TryLockError::WouldBlock) => {
+                return Err(crate::Failure {
+                    code: crate::FailureCode::Busy,
+                    message: "shared supervisor stream occupied; request not sent".into(),
+                }
+                .into());
+            }
+            Err(TryLockError::Poisoned(_)) => return Err(invalid("host router stopped")),
+        };
         if matches!(action, Action::AcquireLogic { .. }) {
             return Err(invalid("logical host links are already admitted"));
         }
@@ -126,11 +132,11 @@ impl SupervisorConnection for LogicalLink {
     }
     fn receive(&mut self, timeout: Duration) -> Result<Option<Event>> {
         bbt_rt::assert_not_ui_thread();
-        let mut shared = self
-            .shared
-            .0
-            .lock()
-            .map_err(|_| invalid("host router stopped"))?;
+        let mut shared = match self.shared.0.try_lock() {
+            Ok(shared) => shared,
+            Err(TryLockError::WouldBlock) => return Ok(None),
+            Err(TryLockError::Poisoned(_)) => return Err(invalid("host router stopped")),
+        };
         if let Some(event) = shared
             .queues
             .entry(self.host.clone())
