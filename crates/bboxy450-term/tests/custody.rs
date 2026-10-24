@@ -326,7 +326,7 @@ async fn custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry() {
     };
     let spawned = logic.client.gui_seat(Ulid(spawned.0.0)).await.unwrap();
     assert_eq!(spawned.record.role.class, bbt_mux::registry::Class::Worker);
-    assert_eq!(spawned.record.role.name, "executor");
+    assert_eq!(spawned.record.role.name, "shell");
     let Response::Messages { page } = logic
         .client
         .messaging(
