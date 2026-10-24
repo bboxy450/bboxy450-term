@@ -291,9 +291,16 @@ impl Reader<'_> {
                     ..
                 }) => {
                     let content = self.inlines(Some(TagEnd::Link));
-                    if matches!(link_type, LinkType::WikiLink { .. }) {
+                    if let LinkType::WikiLink { has_pothole } = link_type {
+                        // pulldown retains the table escape in the destination
+                        // immediately before an alias delimiter.
+                        let target = if has_pothole {
+                            dest_url.strip_suffix('\\').unwrap_or(&dest_url)
+                        } else {
+                            &dest_url
+                        };
                         Inline::WikiLink {
-                            target: dest_url.into_string(),
+                            target: target.into(),
                             display: Inline::plain_text(&content),
                             relation: None,
                             weight: None,

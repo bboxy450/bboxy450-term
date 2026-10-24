@@ -53,6 +53,8 @@ pub struct Neighbour {
 pub struct Document {
     #[serde(rename = "type")]
     pub kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub number: Option<u64>,
     pub id: String,
     pub path: String,
     pub title: String,
@@ -365,11 +367,13 @@ impl Build<'_> {
             let mut tf = font(10., 700, false, h);
             tf.tracking_em = 0.14;
             tf.uppercase = true;
+            let kind = d.kind.as_deref().unwrap_or("");
+            let numbered = d.number.map(|number| format!("{kind} #{number}"));
             entries.push(natural(row(
                 "type",
                 surface(h, 0.16, STYLE.radius.tag as f32, [2., 7., 2., 7.]),
                 0.,
-                vec![nowrap("type/text", d.kind.as_deref().unwrap_or(""), tf).into()],
+                vec![nowrap("type/text", numbered.as_deref().unwrap_or(kind), tf).into()],
             )));
             let st = d.status.as_deref().unwrap_or("current");
             let co = match st {

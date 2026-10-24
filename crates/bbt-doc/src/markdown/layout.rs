@@ -183,6 +183,7 @@ impl Markdown {
             .unwrap_or_else(|| path.rsplit('/').next().unwrap_or(path).into());
         Document {
             kind: f.string("type"),
+            number: f.number(),
             id: f.string("id").unwrap_or_default(),
             path: path.into(),
             title,

@@ -1,0 +1,263 @@
+D47/D48 exact-head CI evidence — Velvet Vulpine <EXECUTOR>
+This is an evidence-only successor to the signed code source, not a source rewrite or a second gate.
+Recorded UTC: 2026-10-24T02:01:36.614386+00:00
+Source: 18b144204c939d81f09318f603b1906f879c79af (G); accepted parent: 56cd6e400d2432958fee1368bec10bf4b6021d4d
+Slot 2 authorization: a3000cab-1332-4935-bde2-51356cb954e6. Source rebased/up-to-date at launch, clean detached worktree. Both clean status and unchanged source HEAD were rechecked after the run.
+Command: BBOXY_TEST_CUSTODY=memory sh scripts/ci-local.sh --parity — actual exit 0; elapsed 1586.953 seconds. Own CARGO_TARGET_DIR deleted immediately at exit. CARGO_BUILD_JOBS=2, incremental=0, dev/test debug info=0, O1, debug assertions=true. BBOXY_DOC_CORPUS_ROOT, scoped gallery and Cargo runner overrides removed.
+Evidence: target/records-sweep/ci-18b14420.log:3328 — 1664 required/1664 measured, 0 unproven, 0 mismatches; :3329 — pass with 172 advisory pixel reviews; :3340 — 17 invariant checks, 0 failures, 5 named slow skips; :3341 — all gates passed; :3343 — actual exit 0; :3344 — private target deleted.
+New corpus checks in that exact clean run: :1781 real frontmatter, :1783 actual links/legacy ledger/#47, :1784 licences fixture, all pass. Full workspace build, strict all-target Clippy, tests, UI-thread lint, native smoke, lab-check (38 pages x4 densities, 0 findings) and requested invariants pass. Raw log and status bind source/command/PIDs and their SHA256 hashes below.
+Current report: 1768 cases; 1664 required and measured; geometry 0 unproven, 0 mismatches. Pixel reviews: documents44, graph16, harness-icon48, materials8, message-row24, settings24, stream8; total172. Against the accepted 172-key set from the halo report: 0 new and 0 removed keys. This is a review-key comparison, not PNG identity attribution. Legacy report is separate: 1664 cases, 867 advisory pixels, non-gating and no geometry claimed.
+Main moved during the frozen gate to 6668272d02480a4c8d53b6dd273cec66551e97e8 (G5 merge). The d2d5a97 ux-flow citation fix is included there; a3055725 was superseded. There is no path overlap between the intervening main and the 16 code/preflight paths in this source. The exact gated SHA is not rebased; the Oracle verifies the merged tree under AGENTS.md.
+Record data was already published through records-push.sh: data46466c00 and evidence63355d3; README qualifications67e6f7f and49b9545. Architect data read9f0e89c2 and code conformance read3096c669, with separate-reader clarification604afa98, are recorded. Existing records1-208 and the Architect209-212 remain numbered; max212/next213 at this source. Source mechanisms and prechecks/failures are in records-code.log.
+Named gaps per Oracle52c5d274: task-tool number allocation and #N lookup (mcp/work_items.rs and new-artifact allocation), and app document-viewer hosting/wiring. #47 is proven against the real d47 source and projected Document at library level; no native GUI click claimed. No runtime/state/protocol, renderer or shader edit; no new storage backend and no code push.
+Skipped slow invariant dispatch: clippy-clean (the same strict workspace command already passed explicitly in CI), restart-keeps-state, seats-1000-bus, seats-400-memory-idle, seats-967-frame. No --slow scale run or ignored Keychain test was requested or run. One complete gate attempt, exit0; prior precheck failures and the abandoned duplicate licence fix5227e6ee remain documented in records-code.log and raw status files.
+Cleanup: own inactive dev target retired before the gate, 1056882688 allocated bytes freed (target/records-sweep/dev-cleanup-18b14420.json); private gate build target deleted at exit. Parity evidence gallery/report and the clean source checkout remain for Oracle review.
+
+STATUS JSON
+{
+  "source_sha": "18b144204c939d81f09318f603b1906f879c79af",
+  "slot_message": "a3000cab-1332-4935-bde2-51356cb954e6",
+  "started_utc": "2026-10-24T01:32:02.877661+00:00",
+  "phase": "finished",
+  "wrapper_pid": 63280,
+  "worktree": "/tmp/velvet-records-ci-18b14420",
+  "target": "/Users/feral/mydev/bboxy450-term-exec6/target/records-ci-build-18b14420",
+  "parity": "/Users/feral/mydev/bboxy450-term-exec6/target/records-parity-18b14420",
+  "disk_available_bytes_at_start": 78555271168,
+  "command": [
+    "sh",
+    "scripts/ci-local.sh",
+    "--parity"
+  ],
+  "command_pid": 63362,
+  "exit": 0,
+  "elapsed_seconds": 1586.953,
+  "target_deleted": true,
+  "report_sha256": "028b6924fa59c28bf3e709fc11fd5e6772980d393eda13fa80e6dc7133cf7e77",
+  "origin_main_at_exit": "6668272d02480a4c8d53b6dd273cec66551e97e8",
+  "log_sha256": "5472b186462ec76146dddaa296053010f4354d8ecffc669447b7164574bfae26"
+}
+
+PARITY SUMMARY JSON
+{
+  "source_sha": "18b144204c939d81f09318f603b1906f879c79af",
+  "cases": 1768,
+  "required": 1664,
+  "measured": 1664,
+  "unproven": 0,
+  "mismatches": 0,
+  "pixel_reviews": 172,
+  "status_counts": {
+    "review pixels": 172,
+    "within policy": 1596
+  },
+  "pixel_reviews_by_module": {
+    "documents": 44,
+    "graph": 16,
+    "harness-icon": 48,
+    "materials": 8,
+    "message-row": 24,
+    "settings": 24,
+    "stream": 8
+  },
+  "new_review_keys": [],
+  "removed_review_keys": [],
+  "baseline_report": "target/seat-wait-parity-4c7e10d/report.json",
+  "baseline_report_sha256": "aaf9c291eb7a96f47684ff88e50c1731f0b7dbe40698dc992473a7540cc1d8a7",
+  "report": "/Users/feral/mydev/bboxy450-term-exec6/target/records-parity-18b14420/report.json",
+  "report_sha256": "028b6924fa59c28bf3e709fc11fd5e6772980d393eda13fa80e6dc7133cf7e77",
+  "modules": {
+    "components": {
+      "cases": 128,
+      "required": 128,
+      "measured": 128,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    },
+    "documents": {
+      "cases": 136,
+      "required": 136,
+      "measured": 136,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 44
+    },
+    "documents-surface": {
+      "cases": 8,
+      "required": 0,
+      "measured": 0,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    },
+    "glyph": {
+      "cases": 56,
+      "required": 56,
+      "measured": 56,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    },
+    "graph": {
+      "cases": 64,
+      "required": 64,
+      "measured": 64,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 16
+    },
+    "harness-icon": {
+      "cases": 56,
+      "required": 0,
+      "measured": 0,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 48
+    },
+    "launcher": {
+      "cases": 144,
+      "required": 144,
+      "measured": 144,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    },
+    "launcher-surface": {
+      "cases": 8,
+      "required": 0,
+      "measured": 0,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    },
+    "materials": {
+      "cases": 32,
+      "required": 0,
+      "measured": 0,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 8
+    },
+    "message-row": {
+      "cases": 104,
+      "required": 104,
+      "measured": 104,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 24
+    },
+    "mini-grid": {
+      "cases": 64,
+      "required": 64,
+      "measured": 64,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    },
+    "pane": {
+      "cases": 48,
+      "required": 48,
+      "measured": 48,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    },
+    "paths": {
+      "cases": 48,
+      "required": 48,
+      "measured": 48,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    },
+    "perf": {
+      "cases": 48,
+      "required": 48,
+      "measured": 48,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    },
+    "picker": {
+      "cases": 64,
+      "required": 64,
+      "measured": 64,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    },
+    "seat-row": {
+      "cases": 232,
+      "required": 232,
+      "measured": 232,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    },
+    "settings": {
+      "cases": 72,
+      "required": 72,
+      "measured": 72,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 24
+    },
+    "sidebar": {
+      "cases": 40,
+      "required": 40,
+      "measured": 40,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    },
+    "space-header": {
+      "cases": 32,
+      "required": 32,
+      "measured": 32,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    },
+    "stream": {
+      "cases": 96,
+      "required": 96,
+      "measured": 96,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 8
+    },
+    "style": {
+      "cases": 120,
+      "required": 120,
+      "measured": 120,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    },
+    "tab-row": {
+      "cases": 40,
+      "required": 40,
+      "measured": 40,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    },
+    "title-strip": {
+      "cases": 88,
+      "required": 88,
+      "measured": 88,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    },
+    "titlebar": {
+      "cases": 40,
+      "required": 40,
+      "measured": 40,
+      "unproven": 0,
+      "mismatches": 0,
+      "pixel_reviews": 0
+    }
+  }
+}
