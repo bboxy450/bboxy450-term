@@ -116,11 +116,11 @@ impl SeatEndpoint {
                             None=>crate::mcp::Door::Gui,
                             Some(policy)=>match crate::ctl_door::classify(stream.peer_cred().ok().and_then(|c|c.pid()),policy) {
                                 crate::ctl_door::Admit::Door(door)=>door,
-                                crate::ctl_door::Admit::Refused=> {
+                                crate::ctl_door::Admit::Refused(reason)=> {
                                     peers.spawn(async move {
                                         let _permit=permit;
                                         let (_read,mut write)=stream.into_split();
-                                        let _=send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:crate::ctl_door::REFUSAL.into()}).await;
+                                        let _=send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:reason.into()}).await;
                                     });
                                     continue;
                                 }
@@ -468,6 +468,8 @@ async fn gui_session(
     let mut prefer_view = true;
     let mut tick = tokio::time::interval(Duration::from_millis(20));
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    // Only the window captures: its session relays the operator's asks.
+    let mut capture_asks=(door==crate::mcp::Door::Gui).then(||client.captures.subscribe());
     let result:Result<()>=async {
         loop {
             tokio::select! {
@@ -493,7 +495,7 @@ async fn gui_session(
                         send(&mut write,&GuiReply::Identity(client.gui_identity().await?)).await?;
                     }
                     let op=match &request.action {
-                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}=>*id,
+                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
@@ -586,6 +588,15 @@ async fn gui_session(
                                 client.undo(seat,record.generation,close.revision,layout_revision).await?;
                                 Ok(GuiReply::Seat(client.gui_seat(seat).await?))
                             }
+                            GuiAction::Capture {id,path,seat}=> {
+                                client.captures.ask(crate::gui_capture::Ask {id,path:path.clone(),seat}).await.map_err(invalid)?;
+                                Ok(GuiReply::Captured {op:id,path})
+                            }
+                            GuiAction::Captured {id,error}=> {
+                                if capture_asks.is_none() {return Err(invalid("only the window answers a capture"));}
+                                client.captures.answer(id,error);
+                                Ok(GuiReply::Ok {op:id})
+                            }
                             GuiAction::GetHistory {seat,from,to}=> {
                                 let id=Ulid::from(seat.0.0);
                                 let record=client.record(id).await?;
@@ -595,6 +606,13 @@ async fn gui_session(
                         }
                     }.await;
                     send(&mut write,&reply.unwrap_or_else(|e|GuiReply::Error {op,reason:e.to_string()})).await?;
+                }
+                ask=async {capture_asks.as_mut().unwrap().recv().await},if admitted&&capture_asks.is_some()=> {
+                    match ask {
+                        Ok(ask)=>send(&mut write,&GuiReply::CaptureAsk {op:ask.id,path:ask.path,seat:ask.seat}).await?,
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(_))=>{}
+                        Err(tokio::sync::broadcast::error::RecvError::Closed)=>capture_asks=None,
+                    }
                 }
                 _=tick.tick(),if admitted=> {
                     if filters_at.elapsed()>=Duration::from_secs(1) && let Some(active)=&mut lane {

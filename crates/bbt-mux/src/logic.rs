@@ -170,6 +170,8 @@ pub struct LogicClient {
     /// Set while `ctl` is open (decision #260): who may come through `gui.sock` and by which
     /// door. None: the window is the only client, as before.
     gui_peers: Arc<std::sync::RwLock<Option<crate::ctl_door::Peers>>>,
+    /// Captures asked of the window on the operator's behalf.
+    pub(crate) captures: Arc<crate::gui_capture::Captures>,
 }
 impl LogicClient {
     pub(crate) fn gui_peers(&self) -> Option<crate::ctl_door::Peers> {
@@ -747,6 +749,7 @@ impl Logic {
             exit_cause: Arc::new(OnceLock::new()),
             capture_diagnostics: Arc::new(Recorder::default()),
             gui_peers: Arc::default(),
+            captures: Arc::default(),
         };
         let stop = Arc::new(AtomicBool::new(false));
         let stopping = stop.clone();

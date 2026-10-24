@@ -14,6 +14,7 @@ pub mod adapters;
 pub mod bus;
 pub mod ctl_door;
 pub mod identity;
+mod gui_capture;
 mod gui_events;
 pub mod index;
 pub mod knowledge;

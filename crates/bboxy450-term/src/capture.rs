@@ -8,9 +8,20 @@ pub fn save(
     queue: &wgpu::Queue,
     texture: &wgpu::Texture,
     path: PathBuf,
+    crop: Option<Crop>,
     logger: Logger,
+    written: impl FnOnce(Result<(), String>) + Send + 'static,
 ) {
     let size = texture.size();
+    let crop = crop.map_or(
+        Crop {
+            x: 0,
+            y: 0,
+            width: size.width,
+            height: size.height,
+        },
+        |crop| crop.within(size.width, size.height),
+    );
     let stride = (size.width * 4).div_ceil(256) * 256;
     let buffer = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("verification capture"),
@@ -63,15 +74,20 @@ pub fn save(
                         .slice(..)
                         .get_mapped_range()
                         .map_err(|e| e.to_string())?;
-                    let mut rgba = Vec::with_capacity((size.width * size.height * 4) as usize);
-                    for row in mapped.chunks_exact(stride as usize) {
-                        rgba.extend_from_slice(&row[..(size.width * 4) as usize]);
+                    let mut rgba = Vec::with_capacity((crop.width * crop.height * 4) as usize);
+                    let (from, to) = ((crop.x * 4) as usize, ((crop.x + crop.width) * 4) as usize);
+                    for row in mapped
+                        .chunks_exact(stride as usize)
+                        .skip(crop.y as usize)
+                        .take(crop.height as usize)
+                    {
+                        rgba.extend_from_slice(&row[from..to]);
                     }
                     drop(mapped);
                     buffer.unmap();
                     let mut bytes = Vec::new();
                     {
-                        let mut encoder = png::Encoder::new(&mut bytes, size.width, size.height);
+                        let mut encoder = png::Encoder::new(&mut bytes, crop.width, crop.height);
                         encoder.set_color(png::ColorType::Rgba);
                         encoder.set_depth(png::BitDepth::Eight);
                         let mut writer = encoder.write_header().map_err(|e| e.to_string())?;
@@ -88,5 +104,45 @@ pub fn save(
         }
         .await;
         logger.write(format!("capture {}: {result:?}", path.display()));
+        written(result);
     });
+}
+
+/// A pixel rectangle of the captured frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Crop {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+impl Crop {
+    /// Clamped to a `width`×`height` frame, at least one pixel.
+    fn within(self, width: u32, height: u32) -> Self {
+        let x = self.x.min(width.saturating_sub(1));
+        let y = self.y.min(height.saturating_sub(1));
+        Self {
+            x,
+            y,
+            width: self.width.clamp(1, width - x),
+            height: self.height.clamp(1, height - y),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Crop;
+    #[test]
+    fn a_crop_stays_inside_the_frame() {
+        let crop = |x, y, width, height| Crop {
+            x,
+            y,
+            width,
+            height,
+        };
+        assert_eq!(crop(10, 20, 30, 40).within(100, 100), crop(10, 20, 30, 40));
+        assert_eq!(crop(90, 95, 30, 40).within(100, 100), crop(90, 95, 10, 5));
+        assert_eq!(crop(500, 500, 0, 0).within(100, 100), crop(99, 99, 1, 1));
+    }
 }

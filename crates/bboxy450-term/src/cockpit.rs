@@ -88,6 +88,11 @@ pub enum UiMsg {
         sequence: u64,
     },
     Watched(Vec<(SeatId, View)>),
+    /// The window's answer to a capture asked on the operator's behalf.
+    Captured {
+        id: bbt_mux::Ulid,
+        error: Option<String>,
+    },
 }
 impl UiMsg {
     /// All launches share one admission budget, including legacy callers.
@@ -662,6 +667,7 @@ impl Session {
                 | GuiReply::Spawned { .. }
                 | GuiReply::Update { .. }
                 | GuiReply::Ok { .. }
+                | GuiReply::CaptureAsk { .. }
                 | GuiReply::Hosts(_)
                 | GuiReply::HostState { .. } => {}
                 _ => return Err(invalid("unexpected GUI startup reply")),
