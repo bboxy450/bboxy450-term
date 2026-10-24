@@ -41,6 +41,7 @@ pub(super) struct Placed {
 pub(super) struct Shape {
     pub width: u32,
     pub height: u32,
+    pub baseline: f32,
     pub advance: f32,
     pub glyphs: Vec<Placed>,
 }
@@ -108,6 +109,7 @@ pub(super) fn shape(
     Ok(Shape {
         width: line.width,
         height: line.height,
+        baseline: line.baseline,
         advance: line.advance,
         glyphs,
     })

@@ -47,6 +47,7 @@ impl AtomCtx<'_> {
         if let Some(shadow) = shadow {
             out.push(Prim::TextShadow {
                 origin,
+                baseline: None,
                 text: text.clone(),
                 style,
                 max_width: None,
@@ -55,6 +56,7 @@ impl AtomCtx<'_> {
         }
         out.push(Prim::Text {
             origin,
+            baseline: None,
             text,
             style,
             max_width: None,

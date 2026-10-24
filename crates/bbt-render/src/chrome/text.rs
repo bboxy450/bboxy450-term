@@ -256,6 +256,8 @@ pub(super) struct GlyphRun {
 pub(super) struct ShapedLine {
     pub width: u32,
     pub height: u32,
+    /// Device-pixel distance from the bitmap top to its CoreText baseline.
+    pub baseline: f32,
     pub advance: f32,
     pub ascent: f32,
     pub descent: f32,
@@ -402,6 +404,7 @@ pub(super) fn shape_at(
     Ok(ShapedLine {
         width,
         height,
+        baseline: height as f32 - (baseline * device_scale) as f32,
         advance,
         ascent: ascent as f32,
         descent: descent as f32,
