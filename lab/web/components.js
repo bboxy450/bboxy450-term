@@ -361,11 +361,11 @@
   }
   const E2E_MARK = { pass: checkMark, fail: crossMark, blocked: slashMark, untested: () => circleMark(0), manual: () => circleMark(.5) };
   // e2eChecklist({ promises, records, tasks }): the summary band reads from across the room (state word, the owed count, one cell per
-  // promise in group order); the groups below carry each promise's status, last run (UTC) and the seat that ran it
+  // promise in group order; manual rows are listed in the headline, never folded into a pass, §4); the groups below carry each promise's status, last run (UTC) and the seat that ran it
   function e2eChecklist(opts) {
     const S = e2eSummary(opts.promises, opts.records, opts.tasks), c = S.counts, n = S.rows.length;
     const plural = (k, w) => k + ' ' + w + (k === 1 ? '' : 's');
-    const say = S.state === 'green' ? ['all ' + n + ' pass'] : S.state === 'amber' ? [plural(c.fail + c.blocked, 'failure') + ' tracked']
+    const say = S.state === 'green' ? (c.manual ? [c.pass + ' pass', c.manual + ' manual'] : ['all ' + n + ' pass']) : S.state === 'amber' ? [plural(c.fail + c.blocked, 'failure') + ' tracked', c.manual ? c.manual + ' manual' : null].filter(Boolean)
       : [c.untested - S.missing.length - S.doubled.length ? (c.untested - S.missing.length - S.doubled.length) + ' untested' : null, S.untracked.length ? plural(S.untracked.length, 'fail') + ' untracked' : null,
         S.missing.length ? S.missing.length + ' missing' : null, S.doubled.length ? S.doubled.length + ' doubled' : null].filter(Boolean);
     const runs = opts.records.filter(r => r.last_run), last = runs.length ? Math.max(...runs.map(r => Date.parse(r.last_run))) : null, seats = new Set(runs.map(r => r.run_by)).size;
