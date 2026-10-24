@@ -4,7 +4,7 @@ type: "spec"
 number: 87
 title: "MCP control plane — the Oracle's hands"
 created: "2026-10-21T20:04:14Z"
-updated: "2026-10-24T07:53:44Z"
+updated: "2026-10-24T08:28:43Z"
 ---
 # MCP control plane — the Oracle's hands
 
@@ -287,3 +287,12 @@ Catalogue total: 43 tools. `how` and `find` share the index; `code_search` reads
 ## Reply routing ([[d264-reply-routes-to-sender]], 2026-10-24)
 
 `message_send { reply_to }` with no `destination` routes to the sender of the referenced message: that seat's inbox, or `operator/inbox` when the message was authored by the operator principal (decision #31). A refusal for a dangling or unknown destination names the valid one when it can be inferred from the message being replied to, and otherwise lists the sinks the caller may address; a refused send is a tool error to the caller and is stored nowhere. `orient` says how to reach the operator in one line.
+
+## Orient says what you can do ([[d266-orient-says-what-you-can-do]], 2026-10-24, from the first in-app agent feedback)
+
+- **Ids.** Every tool mints `op_id` when the caller omits it and returns it; a supplied `op_id` is an idempotent retry: same arguments return the first result, different arguments are refused as `op_id_reused`.
+- **Empties say why.** Every list and graph result carries `scope: { seat, role, class }` and, when empty, `empty_reason: nothing_assigned | not_visible_to_role | no_grant | no_swarm | nothing_yet` with one line of text.
+- **Destinations.** `orient` lists every sink and channel the seat may address, each `read`, `post` or `write-only`; `operator/inbox` is `write-only` for every seat; a read on a write-only destination refuses with "write-only; it is in your destinations".
+- **Knowledge tools.** `knowledge_fetch`, `knowledge_search`, `knowledge_write` surface the [[knowledge-base]] contract to seats; `artifact_claim` stays claim-only. Write authority by class: worker-class seats create and update `e2e`, `comment`, `research`, `note`, `artifact`, and the `result` fields of their own `task`; `spec`, `decision`, `invariant`, `proposal` status and `task` creation are Oracle class and operator only; the Index signs with the caller's seat key and refuses outside the table by name.
+- **Counts are never null.** `unread: { count, basis: cursor | no_cursor_yet }`; `pending_ack: { count, ids, action }`.
+- **The shape of `orient`.** Who I am; what I can do now (tools open to my class, one line each); destinations with rights; my tasks or the empty reason; pending acks and unread with basis; how to reach the operator ([[d264-reply-routes-to-sender]]); "ids are minted for you unless you retry". One call, enough to act on cold.
