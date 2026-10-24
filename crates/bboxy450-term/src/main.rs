@@ -1263,6 +1263,7 @@ impl App {
             PageCommand::Close => 0.,
         };
         if self.document.scroll.scroll([0., y], layout.regions.extent) {
+            self.document_layout = None;
             self.request_redraw();
         }
     }
@@ -2973,19 +2974,25 @@ impl App {
                 winit::dpi::LogicalSize::new(caret.w, caret.h),
             );
         }
-        self.document_layout = if self.document.open {
+        if self.document.open {
             let context = self.live_state.as_ref().map_or_else(
                 || bbt_ui::Context::new(Theme::Dark, bbt_ui::Density::Cozy),
                 |model| bbt_ui::Context::new(model.ui.window.theme, model.ui.window.density),
             );
-            let layout = self
-                .scene
-                .document_layout(logical, &self.document, context)?;
-            self.document.scroll.scroll([0.; 2], layout.regions.extent);
-            Some(layout)
+            if self
+                .document_layout
+                .as_ref()
+                .is_none_or(|layout| !layout.matches(logical, context))
+            {
+                let layout = self
+                    .scene
+                    .document_layout(logical, &self.document, context)?;
+                self.document.scroll.scroll([0.; 2], layout.regions.extent);
+                self.document_layout = Some(layout);
+            }
         } else {
-            None
-        };
+            self.document_layout = None;
+        }
         phases.layout = start.elapsed();
         let overlay = self.overlay.then(|| {
             perf_hud(
@@ -3626,6 +3633,7 @@ impl ApplicationHandler<UiEvent> for App {
                 if let Some(layout) = &self.document_layout
                     && self.document.scroll.scroll([0., dy], layout.regions.extent)
                 {
+                    self.document_layout = None;
                     self.request_redraw();
                 }
             }
@@ -3731,6 +3739,7 @@ impl ApplicationHandler<UiEvent> for App {
                         Some(Action::Close) => self.close_document(),
                         Some(Action::Unavailable(name)) => {
                             self.document.notice = Some(format!("{name} is not available yet"));
+                            self.document_layout = None;
                             self.request_redraw();
                         }
                         None => {}

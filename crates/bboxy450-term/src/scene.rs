@@ -42,8 +42,18 @@ pub struct DocumentLayout {
     pub layout: c::Layout,
     pub regions: ui::modules::document_modal::controller::Regions,
     context: ui::Context,
+    viewport_size: [f32; 2],
 }
 impl DocumentLayout {
+    pub fn matches(&self, size: [f32; 2], ctx: ui::Context) -> bool {
+        self.viewport_size == size
+            && self.context.theme == ctx.theme
+            && self.context.density == ctx.density
+            && self.context.seat == ctx.seat
+            && self.context.swarm == ctx.swarm
+            && self.context.focused == ctx.focused
+            && self.context.selected == ctx.selected
+    }
     pub fn paint(&self) -> Vec<c::Paint> {
         c::paint(&self.layout, self.context)
     }
@@ -1258,6 +1268,7 @@ impl Scene {
             layout,
             regions,
             context: ctx,
+            viewport_size: size,
         })
     }
     pub fn foreground_with_document(
