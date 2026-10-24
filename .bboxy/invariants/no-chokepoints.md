@@ -15,7 +15,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: decision }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-24T19:32:03Z"
-updated: "2026-10-24T21:17:17Z"
+updated: "2026-10-24T21:38:02Z"
 ---
 # No bottlenecks and no chokepoints
 
@@ -36,7 +36,10 @@ instances, each with its own gate: the message pump that scanned every swarm
 replay that starved watched seats ([[d253-checkpoint-policy]] R5h, gate
 [[watched-replay-priority]]); the GUI knowledge read held on logic (fixed, the
 held-read responsiveness check); the Oracle as the slot-grant chokepoint
-(fixed, self-service slots).
+(fixed, self-service slots); the supervisor's retained-notification retry
+sweep that restarted from the first seat every pass and starved the tail
+(Rook's 967/50 analysis: three watched seats, zero admissions in 12,409
+attempts; fair rotation approved, gate [[no-seat-starves]]).
 
 **Wire grammar of the self-service protocol (2026-10-24).** Self-service only
 works when every detector parses the channel the same way, so the slot and
