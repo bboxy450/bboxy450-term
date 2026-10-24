@@ -4,7 +4,7 @@ type: "spec"
 number: 106
 title: "GUI components — model, layout, draw list, input, signals, lab"
 created: "2026-10-21T22:26:59Z"
-updated: "2026-10-24T00:10:38Z"
+updated: 2026-10-24T00:24:57Z
 links:
   - { to: "[[d26-terminal-key-ownership]]", rel: decision }
   - { to: "[[d43-kit-alive-borders]]", rel: decision }
@@ -270,7 +270,7 @@ Every element implements `fn draw(&self, rect: Rect, ctx: &DrawCtx, out: &mut Dr
 
 ### 3.5 Alive borders are a block property (operator, 2026-10-23, decision [[d43-kit-alive-borders|#43]])
 
-The alive rim and the focus swell are style properties of any block (`border.rim`, `border.swell`), drawn by one rim pass over the block rect with per-block alive uniforms; panes, strips, seat rows, tabs and cards carry them by default. The rules, tokens and order are [[rim-glow]] §7 and §8; a waiting seat's attention loop is [[attention]].
+The alive rim and the focus swell are one style property of any block, `Style.rim { size, outer, rim_alpha, swell, attention }` beside the existing hairline `Style.border`, drawn by one rim pass over the block rect with per-block alive uniforms; panes, strips, seat rows, tabs and cards carry them by default. The rules, tokens and order are [[rim-glow]] §7 and §8; a waiting seat's attention loop is [[attention]].
 
 ## 4. Input
 

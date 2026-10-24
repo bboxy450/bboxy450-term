@@ -33,6 +33,9 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[bboxy450-prefix]] everything we publish is branded bboxy450- | `sh scripts/brand.sh` | held at the adding commit |
 | [[images-resolve]] the face is the identity file and every image wikilink resolves | `sh scripts/images.sh` | held at the adding commit |
 | [[restart-keeps-state]] a restart of the app loses no working state | `cargo test -p bboxy450-term --locked --test recovery restart_keeps_working_state -- --exact` | pending RS1 (slow, gated) |
+| [[local-first]] the mux depends on no remote transport until the cloud phase opens | `sh scripts/local-first.sh` | held at the adding commit |
+| [[no-copyleft-deps]] every dependency offers a permissive licence | `sh scripts/deps-licences.sh` | held at the adding commit, 483 deps |
+| [[seats-967-frame]] the sidebar and 50 watched panes hold frame time at 967 seats | `GATE_SEATS=967 GATE_WATCHED=50 GATE_SECONDS=10 GATE_BUDGET=8.33 sh scripts/gates.sh frame` | pending a settled run (slow, gated) |
 
 A violation halts the work that broke it: the task goes `blocked` with
 `[[invariant|violates]]`, and the halt names the invariant, the evidence and
