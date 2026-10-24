@@ -163,6 +163,13 @@ pub mod capture_diagnostics {
         pub pages: u64,
         pub parsed_events: u64,
         pub parsed_bytes: u64,
+        pub checkpoint_sequence: u64,
+        pub checkpoint_byte_end: u64,
+        pub parsed_byte_end: u64,
+        pub checkpoint_pauses: u64,
+        pub checkpoint_paused: bool,
+        pub idle_checkpoints: u64,
+        pub forced_checkpoints: u64,
     }
     impl Seat {
         pub fn progress(&mut self, sequence: u64, now: u64) {
