@@ -12,7 +12,7 @@ links:
   - { to: "[[d257-knowledge-base-first-plugin]]", rel: builds-on }
   - { to: "[[knowledge-base]]", rel: builds-on }
 created: "2026-10-24T18:25:15Z"
-updated: "2026-10-24T18:25:15Z"
+updated: "2026-10-24T18:33:08Z"
 ---
 # Decision 278: P-0 pre-code rulings
 
@@ -25,3 +25,5 @@ Ruled by the Architect on 2026-10-24 from Kestrel's plan-first read of [[plugins
 **Wire names.** On the plugin's MCP server a tool is `<contract>_<method>`; the host catalogue name stays `plugin_<system>_<provider>_<method>`. `Envelope` and `TaskVerification` stay the app's strict, opaque shapes; additive-field tolerance is tested at the plugin boundary only.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
+
+**Addendum (same day).** The four remaining method tables are pinned in [[plugins]] §1 as Kestrel proposed, with two precisions: `event_sink.deliver` echoes the envelope id as the dedupe key and carries a `reason` when not accepted, and `decision_model.choose` must answer with one of the criteria names it was given or fail as a command error. `event_sink` is host-driven and not a seat tool; `decision_model` is Oracle class and operator only; `session` and `provider` `describe` are read class and have no effects.
