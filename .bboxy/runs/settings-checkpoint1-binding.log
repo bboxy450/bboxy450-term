@@ -1,0 +1,27 @@
+Settings checkpoint 1: final ATTENTION policy binding
+Accepted ATTENTION base: 0e00439beb3a5921cf5ffb60b94e8764599d1402.
+Original Settings source f289edb8 was rebased onto that base; signed union core 5bc7f787 and native-evidence successor 13ac6d23 preserve both features.
+Rebase initially exited 1 with conflicts in main.rs and model.rs. Resolved as a union: attention/focus_swell/episodes plus Settings snapshot in Model/default/build; both UiEvent families; one Focused(bool) arm retaining frontmost projection and Settings blur/drag cancellation. rebase --continue exited 0.
+
+Mechanisms:
+- crates/bboxy450-term/src/settings.rs:251 State::notification_policy projects the sole persisted Settings values into ATTENTION's supplied policy; enabled is false until initial config loading succeeds.
+- crates/bboxy450-term/src/main.rs:1398 apply_preferences resubmits desired notifications after load/edit/reload; sync_notifications at :2108 reads that policy. Independent App.notification_settings/default removed.
+- crates/bboxy450-term/tests/settings.rs:142 persisted-policy regression uses typed waiting GuiSeat data and Model's actual ATTENTION projection. It proves initial suppression, restart, background-only, per-harness suppression, master-off preserving subordinate settings, always-suppressed focused+frontmost seat, authoritative record.muted, and comment preservation. No notifier/OS center/production custody.
+- ATTENTION episode/filter/worker/backend source is unchanged; no new protocol, timer, shader or render pass.
+
+Verification (one development target target/settings-dev; incremental/debug info off, O1, BBOXY_TEST_CUSTODY=memory):
+{"command": ["rustfmt", "--edition", "2024", "crates/bboxy450-term/src/settings.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/tests/settings.rs"], "exit": 0, "elapsed_s": 0.319, "log": "target/settings-proof/settings-attention-format.log", "sha256": "2389a3e467dab08320155251f1d99a76dacb7ac565e82f29af1dee5e7472de43"}
+{"command": ["cargo", "test", "-p", "bboxy450-term", "--locked", "settings"], "exit": 0, "elapsed_s": 70.985, "log": "target/settings-proof/settings-attention-tests.log", "sha256": "87968060e051c3126cd3ab711ddd1fa5d09250b0bc2e62370d4c319c2cf70208"}
+{"command": ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "exit": 0, "elapsed_s": 21.162, "log": "target/settings-proof/settings-attention-clippy.log", "sha256": "e9ed26bfb53d4e4d98b8bf909238080af487dd53e3fe75f798d413dfaa042fee"}
+git diff --check: exit 0.
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.03s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 90 filtered out; finished in 0.02s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+Current-main review baseline reused read-only from Kestrel's accepted ATTENTION gate:
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-followup-n24qzjws/parity/report.json
+SHA256 56f17276f7198592606afba54cf0349cda1d5e2d938ecb655208daa5c9d6934c; 2104 rows, 72 advisory pixel reviews. capture revision 568aa522fdcee8e65eb2d1d7e304efd1a57c2e2a.
+git diff --name-only 568aa522 origin/main -- lab/web crates/{bbt-ui,bbt-ui-model,bbt-render,bboxybook}: exit 0, no changed paths. Source/fixtures therefore match the accepted base before our declared Settings changes. Local raw report/manifests retained in target/settings-proof/attention-main-* for the final delta.
+
+Pending, not claimed here: exact clean full ci-local --parity in an Oracle-granted slot; no-new-review-key delta and fresh Settings96 within that run. The final gallery is Nyx's named document-hosting baseline and must survive build-target deletion. Native OS notification delivery is Kestrel's accepted evidence, not repeated by this Settings fixture.

@@ -36,6 +36,7 @@ pub enum Section {
     Roles,
     Harnesses,
     Appearance,
+    Notifications,
     Shortcuts,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]

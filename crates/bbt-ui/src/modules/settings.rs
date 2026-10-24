@@ -1,5 +1,6 @@
 //! Read-mostly Settings composition. Host-owned records and section selection;
 //! this view never reads config files, unlocks keys, or issues grants.
+pub mod controller;
 use super::link::{Cloud, MachineState};
 use super::{
     seat_row::{named, role_color},
@@ -58,7 +59,7 @@ pub struct Harness {
     pub state_from: String,
     pub custom: bool,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Appearance {
     pub theme: String,
@@ -73,6 +74,22 @@ pub struct Appearance {
     #[serde(rename = "blurRadius")]
     pub blur_radius: f32,
 }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Notifications {
+    pub enabled: bool,
+    pub only_when_not_frontmost: bool,
+    pub disabled_harnesses: std::collections::BTreeSet<String>,
+}
+impl Default for Notifications {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            only_when_not_frontmost: false,
+            disabled_harnesses: Default::default(),
+        }
+    }
+}
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Records {
@@ -82,6 +99,7 @@ pub struct Records {
     pub roles: Vec<(String, Role)>,
     pub harness: Vec<(String, Harness)>,
     pub appearance: Appearance,
+    pub notifications: Notifications,
     pub shortcuts: Vec<(String, String)>,
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -114,13 +132,14 @@ pub struct Settings {
     pub draft_harness: Option<DraftHarness>,
     pub launch: Vec<Launch>,
 }
-const SECTIONS: [(&str, &str); 7] = [
+pub const SECTIONS: [(&str, &str); 8] = [
     ("Account", "key"),
     ("Cloud", "cloud"),
     ("Machines", "ssh"),
     ("Roles", "roles"),
     ("Harnesses", "gear"),
     ("Appearance", "sun"),
+    ("Notifications", "bell"),
     ("Shortcuts", "keys"),
 ];
 fn paint(color: ui::Color, alpha: f32) -> ui::Paint {
@@ -1105,6 +1124,16 @@ impl Settings {
         width: f32,
         height: f32,
     ) -> c::Element {
+        self.element_with(ctx, m, width, height, &controller::Presentation::default())
+    }
+    pub fn element_with(
+        &self,
+        ctx: ui::Context,
+        m: &dyn c::Measure,
+        width: f32,
+        height: f32,
+        state: &controller::Presentation,
+    ) -> c::Element {
         let b = Build {
             ctx,
             m,
@@ -1116,7 +1145,7 @@ impl Settings {
             ctx.theme.palette().bg,
             STYLE.material.panel_alpha as f32,
         );
-        let q = row(
+        let mut q = row(
             "search",
             border(
                 surface(
@@ -1132,9 +1161,27 @@ impl Settings {
             6.,
             vec![
                 icon("", "search", 13., ui::Color::Muted).into(),
-                b.text("", "Search settings", 12.5, 400, false, true).into(),
+                if state.query.is_empty() && state.edit.is_none() {
+                    b.text("", "Search settings", 12.5, 400, false, true)
+                } else {
+                    c::Element::EditingText(c::EditingText {
+                        value: state.query.clone(),
+                        placeholder: "Search settings".into(),
+                        style: font(12.5, 400, false, ui::Color::Foreground),
+                        placeholder_paint: ui::Paint::solid(ui::Color::Muted),
+                        edit: state.edit.clone().unwrap_or_default(),
+                        name: "settings/query".into(),
+                    })
+                }
+                .into(),
             ],
         );
+        if state.read_only
+            && let c::Element::Named { content, .. } = &mut q
+            && let c::Element::Box(box_) = content.as_mut()
+        {
+            box_.clip = true;
+        }
         let nav = SECTIONS
             .iter()
             .enumerate()
@@ -1221,12 +1268,43 @@ impl Settings {
             ],
         );
         let content_width = (width - 200. - 36.).max(1.);
-        let kids = self.section_elements(&b, content_width);
+        let query = state.query.trim().to_lowercase();
+        let kids = if query.is_empty() {
+            self.presented_section(&b, content_width, state)
+        } else {
+            let mut matches = vec![];
+            for (name, _) in SECTIONS {
+                let mut view = self.clone();
+                view.section = name.into();
+                let cards = view.presented_section(&b, content_width, state);
+                let cards: Vec<_> = cards
+                    .into_iter()
+                    .filter(|item| {
+                        name.to_lowercase().contains(&query) || contains_text(&item.element, &query)
+                    })
+                    .collect();
+                if !cards.is_empty() {
+                    matches.push(
+                        col(
+                            &format!("results/{name}"),
+                            plain(None, [0.; 4], 0.),
+                            12.,
+                            cards,
+                        )
+                        .into(),
+                    );
+                }
+            }
+            if matches.is_empty() {
+                matches.push(b.note("empty", "nothing matches the search", false).into());
+            }
+            matches
+        };
         let main = named(
             "main",
             c::Element::ScrollView(c::ScrollView {
                 viewport: [(width - 200.).max(1.), height],
-                offset: [0.; 2],
+                offset: [0., state.scroll.max(0.)],
                 content_width: None,
                 content: Box::new(col("", plain(None, [14., 18., 32., 18.], 0.), 12., kids)),
             }),
@@ -1238,7 +1316,127 @@ impl Settings {
             vec![fixed(side, 200.), fill(main)],
         )
     }
-    fn section_elements(&self, b: &Build, width: f32) -> Vec<c::Item> {
+    fn presented_section(
+        &self,
+        b: &Build,
+        width: f32,
+        state: &controller::Presentation,
+    ) -> Vec<c::Item> {
+        if !state.read_only || matches!(self.section.as_str(), "Appearance" | "Notifications") {
+            return self.section_elements_state(b, width, state.window_controls_available);
+        }
+        let unavailable = "Not exposed by the runtime";
+        let pairs: Vec<(String, String)> = match self.section.as_str() {
+            "Account" => vec![
+                ("Identity".into(), self.values.account.key_state.clone()),
+                ("Reason".into(), self.values.account.name.clone()),
+                (
+                    "Fingerprint, devices and signing policy".into(),
+                    unavailable.into(),
+                ),
+            ],
+            "Cloud" => self
+                .values
+                .cloud
+                .iter()
+                .map(|Cloud(name, region, on, _, link)| {
+                    (
+                        name.clone(),
+                        format!(
+                            "{} · {}",
+                            region,
+                            link.as_ref().map_or(
+                                if *on {
+                                    "connected".into()
+                                } else {
+                                    "not connected".into()
+                                },
+                                |v| v.label()
+                            )
+                        ),
+                    )
+                })
+                .collect(),
+            "Machines" => self
+                .values
+                .machines
+                .iter()
+                .map(|(name, address, _, _, state)| {
+                    (
+                        name.clone(),
+                        format!(
+                            "{address} · {}",
+                            match state {
+                                MachineState::Link(v) => v.label(),
+                                MachineState::Legacy(on) =>
+                                    if *on { "connected" } else { "not connected" }.into(),
+                            }
+                        ),
+                    )
+                })
+                .collect(),
+            "Roles" => self
+                .values
+                .roles
+                .iter()
+                .map(|(name, role)| {
+                    (
+                        name.clone(),
+                        format!("{} · prompt and grants {unavailable}", role.cls),
+                    )
+                })
+                .collect(),
+            "Harnesses" => self
+                .values
+                .harness
+                .iter()
+                .map(|(name, h)| {
+                    (
+                        name.clone(),
+                        format!(
+                            "{} · role {} · wake {} · hooks {} · {}",
+                            h.command, h.role, h.wake, h.hooks, h.state_from
+                        ),
+                    )
+                })
+                .collect(),
+            "Shortcuts" => self.values.shortcuts.clone(),
+            _ => vec![],
+        };
+        let mut rows: Vec<c::Item> = pairs
+            .iter()
+            .enumerate()
+            .map(|(i, (label, value))| {
+                b.setting_row(
+                    &format!("readonly/r{i}"),
+                    label,
+                    None,
+                    b.text("", value, 12., 400, false, true),
+                    false,
+                    false,
+                    i + 1 == pairs.len(),
+                )
+                .into()
+            })
+            .collect();
+        if rows.is_empty() {
+            rows.push(
+                b.note("empty", "No records in the current provider snapshot", true)
+                    .into(),
+            );
+        }
+        rows.push(b.note("readonly/reason","Read-only runtime projection. Editing account, providers, roles and harness authority is unavailable in this checkpoint.",true).into());
+        vec![
+            b.card("readonly", &self.section, rows, [4., 14., 10., 14.])
+                .into(),
+        ]
+    }
+    fn section_elements_state(
+        &self,
+        b: &Build,
+        width: f32,
+        window_controls_available: bool,
+    ) -> Vec<c::Item> {
         match self.section.as_str() {
             "Roles" => {
                 let mut items: Vec<_> = self
@@ -1338,7 +1536,8 @@ impl Settings {
             "Cloud" => vec![self.cloud(b, width).into()],
             "Machines" => vec![self.machines(b).into()],
             "Shortcuts" => vec![self.shortcuts(b, width).into()],
-            "Appearance" => vec![self.appearance(b).into()],
+            "Appearance" => vec![self.appearance(b, window_controls_available).into()],
+            "Notifications" => vec![self.notifications(b).into()],
             _ => self.account(b, width),
         }
     }
@@ -2217,7 +2416,7 @@ impl Settings {
         b.card(k, "", children, [10., 12., 8., 12.])
     }
 
-    fn appearance(&self, b: &Build) -> c::Element {
+    fn appearance(&self, b: &Build, window_controls_available: bool) -> c::Element {
         let v = &self.values.appearance;
         let d = &self.defaults.appearance;
         let mut rows = vec![];
@@ -2327,8 +2526,16 @@ impl Settings {
             b.setting_row(
                 "card0/r3",
                 "Window opacity",
-                Some("panes only; chrome and text stay opaque"),
-                opacity,
+                Some(if window_controls_available {
+                    "panes only; chrome and text stay opaque"
+                } else {
+                    "not yet applied to the window"
+                }),
+                if window_controls_available {
+                    opacity
+                } else {
+                    faded(opacity, 0.4)
+                },
                 v.opacity != d.opacity,
                 false,
                 false,
@@ -2339,25 +2546,57 @@ impl Settings {
             b.setting_row(
                 "card0/r4",
                 "Blur behind",
-                Some("what is behind the window, like iTerm2"),
-                b.toggle("", v.blur),
+                Some(if window_controls_available {
+                    "what is behind the window, like iTerm2"
+                } else {
+                    "not yet applied to the window"
+                }),
+                if window_controls_available {
+                    b.toggle("", v.blur)
+                } else {
+                    faded(b.toggle("", v.blur), 0.4)
+                },
                 v.blur != d.blur,
                 false,
                 false,
             )
             .into(),
         );
+        if !window_controls_available && !v.blur {
+            rows.push(
+                b.setting_row(
+                    "unavailable/blur-radius",
+                    "Blur radius",
+                    Some("not yet applied to the window"),
+                    faded(
+                        b.segment(
+                            "",
+                            &["10 px", "20 px", "40 px"],
+                            &format!("{} px", v.blur_radius),
+                        ),
+                        0.4,
+                    ),
+                    false,
+                    false,
+                    false,
+                )
+                .into(),
+            );
+        }
         let mut i = 5;
         if v.blur {
             rows.push(
                 b.setting_row(
                     "card0/r5",
                     "Blur radius",
-                    None,
-                    b.segment(
-                        "",
-                        &["10 px", "20 px", "40 px"],
-                        &format!("{} px", v.blur_radius),
+                    (!window_controls_available).then_some("not yet applied to the window"),
+                    faded(
+                        b.segment(
+                            "",
+                            &["10 px", "20 px", "40 px"],
+                            &format!("{} px", v.blur_radius),
+                        ),
+                        if window_controls_available { 1. } else { 0.4 },
                     ),
                     false,
                     false,
@@ -2393,6 +2632,119 @@ impl Settings {
             .into(),
         );
         b.card("card0", "Appearance", rows, [4., 14., 10., 14.])
+    }
+    fn notifications(&self, b: &Build) -> c::Element {
+        let v = &self.values.notifications;
+        let d = &self.defaults.notifications;
+        let mut rows = vec![
+            b.setting_row(
+                "card0/r0",
+                "Desktop notifications",
+                Some("a seat that needs your answer posts one; clicking it focuses the seat"),
+                b.toggle("", v.enabled),
+                v.enabled != d.enabled,
+                false,
+                false,
+            )
+            .into(),
+            b.setting_row(
+                "card0/r1",
+                "Only in the background",
+                Some("none while this window is frontmost"),
+                faded(
+                    b.toggle("", v.only_when_not_frontmost),
+                    if v.enabled { 1. } else { 0.4 },
+                ),
+                v.only_when_not_frontmost != d.only_when_not_frontmost,
+                false,
+                false,
+            )
+            .into(),
+        ];
+        let mut group = c::Box::new(
+            plain(None, [12., 0., 6., 0.], 0.),
+            vec![
+                b.text("", "Per harness", 12., 500, false, true).into(),
+                b.text(
+                    "",
+                    "off silences every seat of that harness",
+                    11.,
+                    400,
+                    false,
+                    true,
+                )
+                .into(),
+            ],
+        );
+        group.gap = ui::Length::Px(10.);
+        group.align = c::Alignment::Baseline;
+        rows.push(named("group", c::Element::Box(group)).into());
+        for (i, (name, harness)) in self.values.harness.iter().enumerate() {
+            let key = format!("card0/r{}", i + 2);
+            let on = !v.disabled_harnesses.contains(name);
+            let mut item = b.setting_row(
+                &key,
+                name,
+                None,
+                faded(b.toggle("", on), if v.enabled { 1. } else { 0.4 }),
+                on != !d.disabled_harnesses.contains(name),
+                false,
+                false,
+            );
+            let label = row(
+                "",
+                plain(None, [0.; 4], 0.),
+                6.,
+                vec![
+                    icon(
+                        "",
+                        if harness.icon.is_empty() {
+                            "zsh"
+                        } else {
+                            &harness.icon
+                        },
+                        16.,
+                        ui::Color::Foreground,
+                    )
+                    .into(),
+                    txt(
+                        &format!("{key}/label/text"),
+                        name,
+                        font(13., 500, false, ui::Color::Foreground),
+                    )
+                    .into(),
+                ],
+            );
+            // .lbl is an inline formatting context around the .nh inline-flex.
+            // Include its inherited font strut, just as for the launcher kind label.
+            let mut label_style = plain(None, [0.; 4], 0.);
+            label_style.overrides.text = Some(font(13., 500, false, ui::Color::Foreground));
+            // CSS exposes the first flex child's baseline after align-items:center.
+            // The icon's baseline is its bottom edge, shifted by the cross-axis centring.
+            let height = label
+                .natural(b.width, b.ctx, b.m)
+                .expect("Notifications label Style")
+                .0[1];
+            let label = c::Element::Baseline {
+                content: Box::new(label),
+                offset: (height - 16.) * 0.5,
+            };
+            let mut inline = c::Box::new(label_style, vec![label.into()]);
+            inline.inline = true;
+            inline.align = c::Alignment::Baseline;
+            inline.gap = ui::Length::Px(0.);
+            replace_named(&mut item, &format!("{key}/label"), &c::Element::Box(inline));
+            rows.push(item.into());
+        }
+        rows.push(
+            b.note(
+                "note",
+                "A muted seat (⌘M) never notifies and keeps the ordinary waiting rim.",
+                true,
+            )
+            .into(),
+        );
+        b.card("card0", "Notifications", rows, [4., 14., 10., 14.])
     }
     fn theme_thumb(&self, b: &Build, t: &str, selected: bool) -> c::Element {
         let p = if t == "light" {
@@ -2738,6 +3090,58 @@ fn hsl(h: f32, s: f32, l: f32) -> [f32; 4] {
         l - a * (k - 3.).min(9. - k).clamp(-1., 1.)
     };
     [f(0.), f(8.), f(4.), 1.]
+}
+fn faded(element: c::Element, alpha: f32) -> c::Element {
+    if alpha == 1. {
+        return element;
+    }
+    let mut style = plain(None, [0.; 4], 0.);
+    style.overrides.opacity = Some(alpha);
+    let mut b = c::Box::new(style, vec![element.into()]);
+    b.gap = ui::Length::Px(0.);
+    b.group = true;
+    c::Element::Box(b)
+}
+fn replace_named(element: &mut c::Element, key: &str, replacement: &c::Element) -> bool {
+    match element {
+        c::Element::Named { name, content } if name == key => {
+            **content = replacement.clone();
+            true
+        }
+        c::Element::Named { content, .. } => replace_named(content, key, replacement),
+        c::Element::Box(b) => b
+            .children
+            .iter_mut()
+            .any(|item| replace_named(&mut item.element, key, replacement)),
+        c::Element::Layers { base, overlays } => {
+            replace_named(base, key, replacement)
+                || overlays
+                    .iter_mut()
+                    .any(|placed| replace_named(&mut placed.content, key, replacement))
+        }
+        _ => false,
+    }
+}
+fn contains_text(element: &c::Element, query: &str) -> bool {
+    match element {
+        c::Element::Text(t) => t
+            .runs
+            .iter()
+            .any(|r| r.value.to_lowercase().contains(query)),
+        c::Element::EditingText(t) => t.value.to_lowercase().contains(query),
+        c::Element::Named { content, .. } | c::Element::Baseline { content, .. } => {
+            contains_text(content, query)
+        }
+        c::Element::Box(b) => b
+            .children
+            .iter()
+            .any(|item| contains_text(&item.element, query)),
+        c::Element::ScrollView(s) => contains_text(&s.content, query),
+        c::Element::Layers { base, overlays } => {
+            contains_text(base, query) || overlays.iter().any(|p| contains_text(&p.content, query))
+        }
+        _ => false,
+    }
 }
 
 fn set_height(e: &mut c::Element, h: f32) {

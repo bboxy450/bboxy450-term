@@ -51,6 +51,7 @@ use winit::{
 #[derive(Debug)]
 pub enum UiEvent {
     Wake,
+    Settings(Arc<preferences::Snapshot>),
     DemoFinished,
     BeginIdle,
     EndIdle(u64),
@@ -79,6 +80,16 @@ impl bbt_rt::Waker for Wake {
     fn wake(&self) {
         let _ = self.0.send_event(UiEvent::Wake);
     }
+}
+use bboxy450_term::settings as preferences;
+use bbt_ui::modules::settings::{Settings, controller as settings_controller};
+#[derive(Debug, PartialEq, Eq)]
+enum SettingsKey {
+    Edit(EditCommand),
+    Next(bool),
+    Nudge(i32),
+    Activate,
+    Reload,
 }
 type Prepared = Result<(gpu::Gpu, scene::Scene), String>;
 
@@ -262,6 +273,9 @@ enum RoutedKey {
     Quit,
     OpenLauncher,
     OpenGraph,
+    OpenSettings,
+    MuteFocused,
+    SettingsKey(SettingsKey),
     LocalPage(PageCommand),
     ToggleHud,
     Launcher(LauncherCommand),
@@ -432,6 +446,22 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
             RoutedKey::OpenGraph
         };
     }
+    if command && !mods.alt_key() && !mods.shift_key() && !mods.control_key() {
+        if physical == PhysicalKey::Code(KeyCode::Comma) {
+            return if repeat {
+                RoutedKey::Local
+            } else {
+                RoutedKey::OpenSettings
+            };
+        }
+        if physical == PhysicalKey::Code(KeyCode::KeyM) {
+            return if repeat {
+                RoutedKey::Local
+            } else {
+                RoutedKey::MuteFocused
+            };
+        }
+    }
     if query.is_none() && mods.shift_key() && !command && !mods.alt_key() && !mods.control_key() {
         let motion = match key {
             Key::Named(NamedKey::PageUp) => Some(ScrollKey::PageUp),
@@ -576,6 +606,8 @@ fn route_local_page(input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
         RoutedKey::Quit
             | RoutedKey::OpenLauncher
             | RoutedKey::OpenGraph
+            | RoutedKey::OpenSettings
+            | RoutedKey::MuteFocused
             | RoutedKey::ToggleHud
             | RoutedKey::Pane(_)
     ) {
@@ -614,6 +646,59 @@ fn route_local_page(input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
     };
     RoutedKey::LocalPage(command)
 }
+fn route_settings(input: &keyboard::Input<'_>, modes: u64, editing: bool) -> RoutedKey {
+    let global = route_local_page(input, modes);
+    if input.state == ElementState::Released
+        || matches!(
+            global,
+            RoutedKey::Quit
+                | RoutedKey::OpenLauncher
+                | RoutedKey::OpenGraph
+                | RoutedKey::OpenSettings
+                | RoutedKey::MuteFocused
+                | RoutedKey::ToggleHud
+                | RoutedKey::Pane(_)
+                | RoutedKey::LocalPage(PageCommand::Close)
+        )
+    {
+        return global;
+    }
+    if input.logical_key == Key::Named(NamedKey::Tab) && !input.modifiers.state.super_key() {
+        return RoutedKey::SettingsKey(SettingsKey::Next(input.modifiers.state.shift_key()));
+    }
+    if input.modifiers.state.super_key()
+        && input.physical_key == PhysicalKey::Code(KeyCode::KeyR)
+        && !input.repeat
+    {
+        return RoutedKey::SettingsKey(SettingsKey::Reload);
+    }
+    if editing {
+        return match route_composer(input, modes, ComposeField::Address) {
+            RoutedKey::Composer(ComposeCommand::Edit(edit)) => {
+                RoutedKey::SettingsKey(SettingsKey::Edit(edit))
+            }
+            _ => RoutedKey::Local,
+        };
+    }
+    if input.modifiers.state.super_key()
+        || input.modifiers.state.control_key()
+        || input.modifiers.state.alt_key()
+    {
+        return RoutedKey::Local;
+    }
+    match input.logical_key {
+        Key::Named(NamedKey::ArrowLeft | NamedKey::ArrowUp) => {
+            RoutedKey::SettingsKey(SettingsKey::Nudge(-1))
+        }
+        Key::Named(NamedKey::ArrowRight | NamedKey::ArrowDown) => {
+            RoutedKey::SettingsKey(SettingsKey::Nudge(1))
+        }
+        Key::Named(NamedKey::Enter | NamedKey::Space) if !input.repeat => {
+            RoutedKey::SettingsKey(SettingsKey::Activate)
+        }
+        _ => global,
+    }
+}
 fn route_composer(input: &keyboard::Input<'_>, modes: u64, field: ComposeField) -> RoutedKey {
     if input.state == ElementState::Released {
         return RoutedKey::Local;
@@ -621,7 +706,12 @@ fn route_composer(input: &keyboard::Input<'_>, modes: u64, field: ComposeField) 
     let global = route_key(input, modes, Some(""));
     if matches!(
         global,
-        RoutedKey::Quit | RoutedKey::OpenLauncher | RoutedKey::OpenGraph | RoutedKey::ToggleHud
+        RoutedKey::Quit
+            | RoutedKey::OpenLauncher
+            | RoutedKey::OpenGraph
+            | RoutedKey::OpenSettings
+            | RoutedKey::MuteFocused
+            | RoutedKey::ToggleHud
     ) {
         return global;
     }
@@ -917,6 +1007,7 @@ fn launcher_items_for(
                 "Roles",
                 "Harnesses",
                 "Appearance",
+                "Notifications",
                 "Shortcuts",
             ]
             .into_iter()
@@ -935,6 +1026,30 @@ fn launcher_items_for(
     items
 }
 
+fn mute_command(
+    model: Option<&bboxy450_term::model::Model>,
+    stage: Option<&Stage>,
+    panes: &[(SeatId, Rect)],
+    visible: bool,
+) -> Option<live::UiMsg> {
+    if !visible {
+        return None;
+    }
+    let model = model?;
+    let id = stage?.focused?;
+    let seat = model.ui.seats.get(&id)?;
+    if !panes.iter().any(|(pane, _)| *pane == id) {
+        return None;
+    }
+    Some(live::UiMsg::Messaging {
+        id: bbt_mux::Ulid::new(),
+        swarm_id: bbt_proto::SwarmId::from_u128(seat.swarm.0.0),
+        request: bbt_proto::messaging::Request::Mute {
+            seat: bbt_mux::Ulid(id.0.0),
+            muted: !seat.muted,
+        },
+    })
+}
 fn new_launcher(model: Option<&bboxy450_term::model::Model>, used: usize) -> LauncherController {
     new_launcher_for(model, used, None)
 }
@@ -991,13 +1106,17 @@ struct App {
     scroll_wheel: Option<(SeatId, f64)>,
     focus: FocusState,
     notifications: Option<bboxy450_term::notifications::Worker>,
-    notification_settings: bboxy450_term::attention::Notifications,
     frontmost: bool,
     pending_notification: Option<(SeatId, Instant)>,
     spawn_results_seen: BTreeMap<bbt_mux::Ulid, bboxy450_term::model::SpawnOutcome>,
     launcher: Option<LauncherController>,
     launcher_layout: Option<scene::LauncherLayout>,
     launcher_parent: Option<TextFocus>,
+    preferences: preferences::State,
+    preferences_io: Option<preferences::Io>,
+    rim_preview: Option<f32>,
+    mute: preferences::Mute,
+    system_theme: Theme,
     local_tab: Option<LocalTab>,
     local_page_layout: Option<scene::LocalPageLayout>,
     composer: ComposeController,
@@ -1061,6 +1180,9 @@ struct App {
 }
 impl App {
     fn open_local_tab(&mut self, tab: LocalTab) {
+        if self.rim_preview.take().is_some() {
+            self.apply_preferences();
+        }
         self.close_launcher();
         self.blur_reject();
         self.composer.handle(ComposeCommand::Blur);
@@ -1068,17 +1190,23 @@ impl App {
         self.launcher_parent = None;
         self.local_tab = Some(tab);
         if let Some(commands) = &self.live_commands {
-            commands.observe_knowledge(true);
+            commands.observe_knowledge(matches!(self.local_tab, Some(LocalTab::Graph(_))));
         }
         self.local_page_layout = None;
         if let Some(window) = &self.window {
             window.set_ime_allowed(false);
         }
-        self.logger.write("local tab opened: Graph");
+        self.logger.write(
+            if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
+                "local tab opened: Settings"
+            } else {
+                "local tab opened: Graph"
+            },
+        );
         self.request_redraw();
     }
     fn open_graph(&mut self) {
-        if self.local_tab.is_none() {
+        if !matches!(self.local_tab, Some(LocalTab::Graph(_))) {
             match e2e_checklist::Graph::new(vec![], vec![]) {
                 Ok(graph) => self.open_local_tab(LocalTab::Graph(graph)),
                 Err(error) => self.logger.write(format!("Graph refused: {error}")),
@@ -1094,11 +1222,213 @@ impl App {
             self.request_redraw();
         }
     }
+    fn open_settings(&mut self, section: &str) {
+        let section = bbt_ui::modules::settings::SECTIONS
+            .iter()
+            .find(|(name, _)| name.eq_ignore_ascii_case(section))
+            .map_or("Account", |(name, _)| *name);
+        if let Some(LocalTab::Settings { controller, .. }) = &mut self.local_tab {
+            controller.handle(
+                settings_controller::Action::Section(section.into()),
+                &mut Default::default(),
+                &Default::default(),
+            );
+            self.close_launcher();
+            if let Some(window) = &self.window {
+                window.set_ime_allowed(false);
+            }
+            self.request_redraw();
+            return;
+        }
+        let swarm = self.focus.stage.as_ref().and_then(|s| s.swarm);
+        self.open_local_tab(LocalTab::Settings {
+            swarm,
+            controller: settings_controller::Controller::new(section),
+        });
+    }
+    fn effective_preferences(&self) -> preferences::Preferences {
+        let mut values = self.preferences.preferences.clone();
+        if let Some(rim) = self.rim_preview {
+            values.appearance.rim = rim;
+        }
+        values
+    }
+    fn settings_view(&self, section: &str) -> Settings {
+        Settings {
+            section: section.into(),
+            values: preferences::records(self.live_state.as_deref(), &self.preferences.preferences),
+            defaults: preferences::records(
+                self.live_state.as_deref(),
+                &preferences::Preferences::default(),
+            ),
+            ..Default::default()
+        }
+    }
+    fn settings_ime(&self) -> bool {
+        matches!(&self.local_tab,Some(LocalTab::Settings {controller,..}) if controller.editing())
+    }
+    fn sync_text_ime(&self) {
+        if let Some(window) = &self.window {
+            window.set_ime_allowed(
+                self.launcher.is_some()
+                    || self.composer.view.focus
+                    || self.reject_focus
+                    || self.settings_ime(),
+            );
+        }
+    }
+    fn settings_action(&mut self, action: settings_controller::Action) {
+        let pointer_drag = matches!(action, settings_controller::Action::Drag(_));
+        let commit_drag = matches!(action, settings_controller::Action::EndDrag)
+            .then(|| self.rim_preview.take())
+            .flatten();
+        let Some(LocalTab::Settings { controller, .. }) = &self.local_tab else {
+            return;
+        };
+        let mut view = self.settings_view(&controller.section);
+        let Some(LocalTab::Settings { controller, .. }) = &mut self.local_tab else {
+            return;
+        };
+        let patch = controller
+            .handle(action, &mut view.values, &view.defaults)
+            .or_else(|| commit_drag.map(settings_controller::Patch::Rim));
+        if pointer_drag {
+            if let Some(settings_controller::Patch::Rim(rim)) = patch {
+                self.rim_preview = Some(rim);
+                let retained = self.local_page_layout.take();
+                self.apply_preferences();
+                self.local_page_layout = retained;
+            }
+            self.request_redraw();
+            return;
+        }
+        if let Some(patch) = patch {
+            match self.preferences.edit(patch) {
+                Ok(request) => match &self.preferences_io {
+                    Some(io) => {
+                        if let Err(reason) = io.submit(request) {
+                            self.preferences.refused(reason);
+                        }
+                    }
+                    None => self
+                        .preferences
+                        .refused("Settings persistence is unavailable"),
+                },
+                Err(reason) => self.preferences.refused(reason),
+            }
+            self.apply_preferences();
+        }
+        self.sync_text_ime();
+        if !pointer_drag {
+            self.local_page_layout = None;
+        }
+        self.request_redraw();
+    }
+    fn settings_key(&mut self, key: SettingsKey) {
+        use settings_controller::{Action, Focus};
+        let action = match key {
+            SettingsKey::Reload => {
+                let request = self.preferences.reload();
+                if let Some(io) = &self.preferences_io
+                    && let Err(reason) = io.submit(request)
+                {
+                    self.preferences.refused(reason);
+                }
+                self.request_redraw();
+                return;
+            }
+            SettingsKey::Edit(edit) => Action::Search(edit),
+            SettingsKey::Next(back) => {
+                if let (Some(LocalTab::Settings { controller, .. }), Some(regions)) = (
+                    &self.local_tab,
+                    self.local_page_layout
+                        .as_ref()
+                        .and_then(|p| p.settings.as_ref()),
+                ) {
+                    let mut order = vec![Focus::Search, Focus::Navigation];
+                    order.extend(regions.fields().into_iter().map(Focus::Control));
+                    let at = order
+                        .iter()
+                        .position(|f| *f == controller.focus)
+                        .unwrap_or(if back { 0 } else { order.len() - 1 });
+                    Action::Focus(
+                        order[(at + if back { order.len() - 1 } else { 1 }) % order.len()].clone(),
+                    )
+                } else {
+                    Action::NextFocus(back)
+                }
+            }
+            SettingsKey::Nudge(n) => {
+                if matches!(&self.local_tab,Some(LocalTab::Settings {controller,..}) if controller.focus==Focus::None)
+                {
+                    self.local_scroll(n as f32 * 28.);
+                    return;
+                }
+                Action::Nudge(n)
+            }
+            SettingsKey::Activate => {
+                let Some(LocalTab::Settings { controller, .. }) = &self.local_tab else {
+                    return;
+                };
+                let Focus::Control(field) = &controller.focus else {
+                    return;
+                };
+                Action::Toggle(field.clone())
+            }
+        };
+        self.settings_action(action);
+    }
+    fn apply_preferences(&mut self) {
+        let system = self.verify.theme.unwrap_or(self.system_theme);
+        self.scene
+            .set_appearance(&self.effective_preferences(), system);
+        if let Some(model) = &self.live_state
+            && let Some(stage) = &self.focus.stage
+        {
+            self.scene.set_model(model, stage);
+        }
+        if let Some(commands) = &self.live_commands {
+            let ctx = self.scene.ui_context();
+            commands.set_context(preferences::ContextUpdate {
+                theme: ctx.theme,
+                density: ctx.density,
+                snapshot: self.preferences.snapshot(),
+            });
+        }
+        self.local_page_layout = None;
+        self.launcher_layout = None;
+        self.conversation_layout = None;
+        self.sync_notifications();
+    }
+    fn mute_focused(&mut self) {
+        if self.mute.pending() {
+            return;
+        }
+        let visible = self.local_tab.is_none()
+            && self.launcher.is_none()
+            && !self.composer.view.focus
+            && !self.reject_focus;
+        if let Some(message) = mute_command(
+            self.live_state.as_deref(),
+            self.focus.stage.as_ref(),
+            &self.pane_bounds,
+            visible,
+        ) {
+            self.mute.requested(&message);
+            self.composer_notice();
+            self.queue(message);
+            self.request_redraw();
+        }
+    }
     fn close_local_tab(&mut self) {
+        if self.rim_preview.take().is_some() {
+            self.apply_preferences();
+        }
         if let Some(commands) = &self.live_commands {
             commands.observe_knowledge(false);
         }
         self.local_tab = None;
+        self.sync_text_ime();
         self.local_page_layout = None;
         self.logger.write("local tab closed: returning to panes");
         self.request_redraw();
@@ -1108,9 +1438,12 @@ impl App {
             .local_page_layout
             .as_ref()
             .map_or(0., |page| page.max_scroll);
-        if let Some(LocalTab::Graph(graph)) = &mut self.local_tab
-            && graph.scroll_by(delta, max)
-        {
+        let changed = match &mut self.local_tab {
+            Some(LocalTab::Graph(graph)) => graph.scroll_by(delta, max),
+            Some(LocalTab::Settings { controller, .. }) => controller.scroll_by(delta, max),
+            None => false,
+        };
+        if changed {
             self.request_redraw();
         }
     }
@@ -1411,8 +1744,12 @@ impl App {
         }
     }
     fn composer_notice(&mut self) {
+        if let Some(notice) = &self.mute.notice {
+            self.composer.view.notice = Some(notice.clone());
+            return;
+        }
         self.composer.view.notice = match &self.composer_client.status {
-            messaging::Status::Idle => None,
+            messaging::Status::Idle => self.mute.notice.clone(),
             messaging::Status::Pending => Some(composer::Notice {
                 kind: "pending".into(),
                 text: "sending".into(),
@@ -1444,6 +1781,10 @@ impl App {
         };
     }
     fn composer_command(&mut self, command: ComposeCommand) {
+        if !self.mute.pending() {
+            self.mute.notice = None;
+        }
+
         if self.reject_focus {
             if let Some((_, reason)) = &mut self.reject {
                 match command {
@@ -1647,7 +1988,9 @@ impl App {
             None => {}
         }
         if let Some(window) = &self.window {
-            window.set_ime_allowed(self.composer.view.focus || self.reject_focus);
+            window.set_ime_allowed(
+                self.composer.view.focus || self.reject_focus || self.settings_ime(),
+            );
         }
         self.request_redraw();
     }
@@ -1671,6 +2014,10 @@ impl App {
             LauncherOutcome::Pick { id, modifiers } => {
                 if id == "graph" {
                     self.open_graph();
+                    return;
+                }
+                if id == "settings" || id.starts_with("settings:") {
+                    self.open_settings(id.strip_prefix("settings:").unwrap_or("Account"));
                     return;
                 }
                 if let Some(message) = spawn_pick(
@@ -1760,6 +2107,7 @@ impl App {
         }
     }
     fn sync_notifications(&mut self) {
+        let policy = self.preferences.notification_policy();
         if let (Some(worker), Some(model)) = (&mut self.notifications, &self.live_state) {
             let focused = self.focus.stage.as_ref().and_then(|stage| stage.focused);
             let known = model
@@ -1768,10 +2116,7 @@ impl App {
                 .keys()
                 .map(|seat| bboxy450_desktop_notifications::NotificationId(seat.0.to_string()))
                 .collect();
-            worker.submit(
-                model.notifications(&self.notification_settings, self.frontmost, focused),
-                known,
-            );
+            worker.submit(model.notifications(&policy, self.frontmost, focused), known);
         }
     }
     fn notification_clicked(&mut self, id: bboxy450_desktop_notifications::NotificationId) {
@@ -2077,7 +2422,16 @@ impl App {
         }
         let prepared = self.prepared.clone();
         let scale = window.scale_factor() as f32;
-        let theme = self.verify.theme.unwrap_or(Theme::Dark);
+        self.system_theme = if window.theme() == Some(winit::window::Theme::Light) {
+            Theme::Light
+        } else {
+            Theme::Dark
+        };
+        let theme = self
+            .preferences
+            .preferences
+            .context(self.verify.theme.unwrap_or(self.system_theme))
+            .theme;
         let effects = self.animate;
         let fixture = self.fake || self.animate;
         let render_context = self.render_context.take();
@@ -2127,6 +2481,7 @@ impl App {
         if let Some(result) = self.prepared.take() {
             let (mut gpu, scene) = result?;
             self.scene = scene;
+            self.apply_preferences();
             if let Some(state) = &self.live_state {
                 self.scene.set_model(
                     state,
@@ -2194,6 +2549,8 @@ impl App {
             self.last_update = sequence;
         }
         if let Some(state) = self.live_updates.take() {
+            self.mute.observe(&state);
+            self.composer_notice();
             if let Some(snapshot) = &state.e2e
                 && !self
                     .live_state
@@ -2410,12 +2767,44 @@ impl App {
                     self.scene
                         .graph_page_layout(logical, dock, &graph.checklist, graph.scroll)
                 }
+                LocalTab::Settings { controller, swarm } => {
+                    let view = self.settings_view(&controller.section);
+                    let issue = self
+                        .preferences
+                        .error
+                        .as_deref()
+                        .or(controller.error.as_deref());
+                    let status = issue.unwrap_or(if self.preferences.saved() {
+                        "saved"
+                    } else if !self.preferences.loaded {
+                        "loading"
+                    } else {
+                        "saving"
+                    });
+                    let status = if self.focus.stage.as_ref().and_then(|s| s.swarm) != *swarm {
+                        format!("{status} · local to original swarm")
+                    } else {
+                        status.into()
+                    };
+                    self.scene.settings_page_layout(
+                        logical,
+                        dock,
+                        &view,
+                        &controller.presentation(),
+                        &status,
+                    )
+                }
             })
             .transpose()?;
         if let (Some(LocalTab::Graph(graph)), Some(layout)) =
             (&mut self.local_tab, &self.local_page_layout)
         {
             graph.scroll = graph.scroll.min(layout.max_scroll);
+        }
+        if let (Some(LocalTab::Settings { controller, .. }), Some(layout)) =
+            (&mut self.local_tab, &self.local_page_layout)
+        {
+            controller.scroll = controller.scroll.min(layout.max_scroll);
         }
         let bounds = self.scene.pane_bounds(&layouts);
         self.task_regions = self.scene.task_regions(&layouts);
@@ -2456,6 +2845,19 @@ impl App {
             } else {
                 layout.regions.candidate_area()
             };
+            self.window.as_ref().unwrap().set_ime_cursor_area(
+                winit::dpi::LogicalPosition::new(caret.x, caret.y),
+                winit::dpi::LogicalSize::new(caret.w, caret.h),
+            );
+        }
+        if self.launcher.is_none()
+            && self.settings_ime()
+            && let Some(regions) = self
+                .local_page_layout
+                .as_ref()
+                .and_then(|page| page.settings.as_ref())
+        {
+            let caret = regions.caret.unwrap_or(regions.search);
             self.window.as_ref().unwrap().set_ime_cursor_area(
                 winit::dpi::LogicalPosition::new(caret.x, caret.y),
                 winit::dpi::LogicalSize::new(caret.w, caret.h),
@@ -2661,6 +3063,12 @@ impl ApplicationHandler<UiEvent> for App {
                 }
             }
             UiEvent::NotificationError(reason) => self.logger.write(reason),
+            UiEvent::Settings(snapshot) => {
+                if self.preferences.accept(&snapshot) {
+                    self.apply_preferences();
+                    self.request_redraw();
+                }
+            }
             UiEvent::StallPoll => {
                 let stall = &mut self.stall;
                 if let Some(gpu) = &self.gpu {
@@ -2948,7 +3356,24 @@ impl ApplicationHandler<UiEvent> for App {
         match event {
             WindowEvent::Focused(focused) => {
                 self.frontmost = focused;
+                if !focused {
+                    if self.rim_preview.take().is_some() {
+                        self.apply_preferences();
+                    }
+                    if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
+                        self.settings_action(settings_controller::Action::Blur);
+                    }
+                }
                 self.sync_notifications();
+            }
+            WindowEvent::ThemeChanged(theme) => {
+                self.system_theme = if theme == winit::window::Theme::Light {
+                    Theme::Light
+                } else {
+                    Theme::Dark
+                };
+                self.apply_preferences();
+                self.request_redraw();
             }
             WindowEvent::CloseRequested => {
                 self.request_close(event_loop);
@@ -2991,6 +3416,18 @@ impl ApplicationHandler<UiEvent> for App {
                     .as_ref()
                     .map_or(1., |window| window.scale_factor()) as f32;
                 self.pointer = [position.x as f32 / scale, position.y as f32 / scale];
+                if matches!(&self.local_tab,Some(LocalTab::Settings {controller,..}) if controller.dragging())
+                {
+                    if let Some(fraction) = self
+                        .local_page_layout
+                        .as_ref()
+                        .and_then(|p| p.settings.as_ref())
+                        .and_then(|r| r.rim_fraction(self.pointer[0]))
+                    {
+                        self.settings_action(settings_controller::Action::Drag(fraction));
+                    }
+                    return;
+                }
                 if self.composer_dragging && self.launcher.is_none() {
                     if self.reject_focus {
                         if let Some((id, reason)) = &self.reject
@@ -3062,6 +3499,12 @@ impl ApplicationHandler<UiEvent> for App {
                 };
                 self.local_scroll(delta);
             }
+            WindowEvent::MouseWheel { .. }
+                if self.launcher.is_none()
+                    && self
+                        .local_page_layout
+                        .as_ref()
+                        .is_some_and(|p| p.focuses(self.pointer)) => {}
             WindowEvent::MouseWheel { delta, .. }
                 if self.launcher.is_none()
                     && self.conversation_layout.as_ref().is_some_and(|layout| {
@@ -3225,6 +3668,28 @@ impl ApplicationHandler<UiEvent> for App {
                     self.close_local_tab();
                     return;
                 }
+                if let Some(regions) = self
+                    .local_page_layout
+                    .as_ref()
+                    .and_then(|p| p.settings.as_ref())
+                    && regions.hit(self.pointer).is_some()
+                {
+                    use settings_controller::{Action, Focus, Hit};
+                    let action = match regions.hit(self.pointer).unwrap() {
+                        Hit::Search => Action::Focus(Focus::Search),
+                        Hit::Section(name) => Action::Section(name),
+                        Hit::Set(patch) => Action::Set(patch),
+                        Hit::Toggle(field) => Action::Toggle(field),
+                        Hit::Reset(field) => Action::Reset(field),
+                        Hit::Rim => {
+                            Action::Drag(regions.rim_fraction(self.pointer[0]).unwrap_or(0.))
+                        }
+                    };
+                    self.blur_reject();
+                    self.composer.handle(ComposeCommand::Blur);
+                    self.settings_action(action);
+                    return;
+                }
                 if self
                     .local_page_layout
                     .as_ref()
@@ -3233,6 +3698,9 @@ impl ApplicationHandler<UiEvent> for App {
                     self.blur_reject();
                     self.composer.handle(ComposeCommand::Blur);
                     self.composer_dragging = false;
+                    if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
+                        self.settings_action(settings_controller::Action::Blur);
+                    }
                     if let Some(window) = &self.window {
                         window.set_ime_allowed(false);
                     }
@@ -3270,10 +3738,21 @@ impl ApplicationHandler<UiEvent> for App {
             } => {
                 self.query_dragging = false;
                 self.composer_dragging = false;
+                if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
+                    self.settings_action(settings_controller::Action::EndDrag);
+                }
             }
             WindowEvent::Ime(Ime::Preedit(text, cursor)) => {
                 if self.launcher.is_some() {
                     self.launcher_command(preedit_command(text, cursor));
+                } else if self.settings_ime() {
+                    let LauncherCommand::Preedit { text, caret } = preedit_command(text, cursor)
+                    else {
+                        unreachable!()
+                    };
+                    self.settings_action(settings_controller::Action::Search(
+                        EditCommand::Preedit { text, caret },
+                    ));
                 } else if self.composer.view.focus || self.reject_focus {
                     let LauncherCommand::Preedit { text, caret } = preedit_command(text, cursor)
                     else {
@@ -3286,6 +3765,11 @@ impl ApplicationHandler<UiEvent> for App {
                 }
             }
             WindowEvent::Ime(Ime::Disabled) => {
+                if self.settings_ime() {
+                    self.settings_action(settings_controller::Action::Search(
+                        EditCommand::CancelPreedit,
+                    ));
+                }
                 self.launcher_command(LauncherCommand::Preedit {
                     text: String::new(),
                     caret: None,
@@ -3297,6 +3781,10 @@ impl ApplicationHandler<UiEvent> for App {
             WindowEvent::Ime(Ime::Commit(text)) => {
                 if self.launcher.is_some() {
                     self.launcher_command(LauncherCommand::Commit(text));
+                } else if self.settings_ime() {
+                    self.settings_action(settings_controller::Action::Search(EditCommand::Commit(
+                        text,
+                    )));
                 } else if self.composer.view.focus || self.reject_focus {
                     self.composer_command(ComposeCommand::Edit(EditCommand::Commit(text)));
                 }
@@ -3358,7 +3846,11 @@ impl ApplicationHandler<UiEvent> for App {
                     && !self.composer.view.focus
                     && !self.reject_focus
                 {
-                    let routed = route_local_page(&input, modes.unwrap_or_default());
+                    let routed = if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
+                        route_settings(&input, modes.unwrap_or_default(), self.settings_ime())
+                    } else {
+                        route_local_page(&input, modes.unwrap_or_default())
+                    };
                     finish_route(&mut self.keyboard, &input, routed)
                 } else if self.launcher.is_none() && (self.composer.view.focus || self.reject_focus)
                 {
@@ -3390,6 +3882,9 @@ impl ApplicationHandler<UiEvent> for App {
                     RoutedKey::Quit => self.request_close(event_loop),
                     RoutedKey::OpenLauncher => self.open_launcher(),
                     RoutedKey::OpenGraph => self.open_graph(),
+                    RoutedKey::OpenSettings => self.open_settings("Account"),
+                    RoutedKey::SettingsKey(key) => self.settings_key(key),
+                    RoutedKey::MuteFocused => self.mute_focused(),
                     RoutedKey::LocalPage(command) => self.local_page_command(command),
                     RoutedKey::ToggleHud => {
                         self.overlay = !self.overlay;
@@ -3722,6 +4217,8 @@ const HELP: &str = "bboxy450-term: GPU terminal for agent swarms.
 Debug and verification only, never for normal use:
   --launcher           open the launcher at startup (same controller as Cmd+T)
   --compose            focus the inline composer at startup
+  --settings SECTION   open the local Settings tab
+  --settings-config P  use this preferences TOML path (for isolated probes)
   --capture PNG        write the first presented frame to PNG; Cmd+Shift+S re-captures
   --capture-after SECS re-capture once, SECS after the cockpit's first model
   --spawn-zsh N        open N zsh seats once the cockpit is ready (default zsh picks)
@@ -4220,6 +4717,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             )),
         )
     };
+    let settings_path = args
+        .windows(2)
+        .find(|v| v[0] == "--settings-config")
+        .map(|v| std::path::PathBuf::from(&v[1]));
+    let settings_path = if settings_path.is_some() || (!fake && !animate) {
+        Some(settings_path.map_or_else(preferences::default_path, Ok)?)
+    } else {
+        None
+    };
+    let preferences_io = settings_path.map(|path| {
+        let proxy = proxy.clone();
+        preferences::Io::start(path, bbt_rt::handle(), move |snapshot| {
+            let _ = proxy.send_event(UiEvent::Settings(snapshot));
+        })
+    });
+    let mut preference_state = preferences::State::default();
+    if preferences_io.is_none() {
+        preference_state.accept(&preferences::Snapshot {
+            loaded: true,
+            ..Default::default()
+        });
+    }
     let mut app = App {
         proxy,
         inbox,
@@ -4238,7 +4757,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         scroll_wheel: None,
         focus: FocusState::default(),
         notifications,
-        notification_settings: bboxy450_term::attention::Notifications::default(),
         frontmost: false,
         pending_notification: None,
         spawn_results_seen: BTreeMap::new(),
@@ -4248,6 +4766,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .then(|| new_launcher(None, 0)),
         launcher_layout: None,
         launcher_parent: None,
+        preferences: preference_state,
+        preferences_io,
+        rim_preview: None,
+        mute: preferences::Mute::default(),
+        system_theme: Theme::Dark,
         local_tab: None,
         local_page_layout: None,
         composer: ComposeController::new(composer::Composer {
@@ -4318,6 +4841,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         verify,
         stall,
     };
+    if let Some(pair) = args.windows(2).find(|pair| pair[0] == "--settings") {
+        app.open_settings(&pair[1]);
+    }
     event_loop.run_app(&mut app)?;
     if let Some(error) = app.error {
         return Err(error.into());
@@ -5999,5 +6525,83 @@ mod composer_host_tests {
         )
         .unwrap();
         assert_eq!(pending.len(), PENDING_OPERATIONS + 1);
+    }
+    #[test]
+    fn settings_keyboard_routes_edits_and_balances_only_the_prior_pty_release() {
+        let comma = test_key(
+            &Key::Character(",".into()),
+            PhysicalKey::Code(KeyCode::Comma),
+            Some(","),
+            ModifiersState::SUPER,
+            false,
+        );
+        assert_eq!(route_key(&comma, 0, None), RoutedKey::OpenSettings);
+        let mut repeat = comma.clone();
+        repeat.repeat = true;
+        assert_eq!(route_key(&repeat, 0, None), RoutedKey::Local);
+        let letter = test_key(
+            &Key::Character("x".into()),
+            PhysicalKey::Code(KeyCode::KeyX),
+            Some("x"),
+            ModifiersState::empty(),
+            false,
+        );
+        let mut state = keyboard::State::default();
+        let routed = route_settings(&letter, 3 << 18, true);
+        assert!(
+            matches!(&routed,RoutedKey::SettingsKey(SettingsKey::Edit(EditCommand::Insert(s))) if s=="x")
+        );
+        finish_route(&mut state, &letter, routed);
+        let mut release = letter.clone();
+        release.state = ElementState::Released;
+        let routed = route_settings(&release, 3 << 18, true);
+        assert_eq!(finish_route(&mut state, &release, routed), RoutedKey::Local);
+        let mut state = keyboard::State::default();
+        let routed = route_settings(&release, 3 << 18, false);
+        assert!(matches!(
+            finish_route(&mut state, &release, routed),
+            RoutedKey::Terminal(_)
+        ));
+        let mute = test_key(
+            &Key::Character("m".into()),
+            PhysicalKey::Code(KeyCode::KeyM),
+            Some("m"),
+            ModifiersState::SUPER,
+            false,
+        );
+        assert_eq!(route_key(&mute, 0, None), RoutedKey::MuteFocused);
+        let mut repeat = mute.clone();
+        repeat.repeat = true;
+        assert_eq!(route_key(&repeat, 0, None), RoutedKey::Local);
+    }
+    #[test]
+    fn settings_mute_requires_a_visible_real_focused_seat_and_awaits_metadata() {
+        let id = SeatId::from_u128(1);
+        let swarm = bbt_ui_model::SwarmId::from_u128(2);
+        let mut model = bboxy450_term::model::Model::default();
+        model.ui.seats.insert(
+            id,
+            bbt_ui_model::Seat::new(id, swarm, [0; 32], "real", "codex"),
+        );
+        let stage = Stage {
+            swarm: Some(swarm),
+            tab: None,
+            focused: Some(id),
+        };
+        let panes = vec![(id, Rect::new(0., 0., 100., 100.))];
+        assert!(mute_command(Some(&model), Some(&stage), &panes, false).is_none());
+        assert!(mute_command(Some(&model), Some(&stage), &[], true).is_none());
+        assert!(
+            matches!(mute_command(Some(&model),Some(&stage),&panes,true),Some(live::UiMsg::Messaging {request:bbt_proto::messaging::Request::Mute {seat,muted:true},..}) if seat.0==id.0.0)
+        );
+        assert!(!model.ui.seats[&id].muted);
+        model.ui.seats.get_mut(&id).unwrap().muted = true;
+        assert!(matches!(
+            mute_command(Some(&model), Some(&stage), &panes, true),
+            Some(live::UiMsg::Messaging {
+                request: bbt_proto::messaging::Request::Mute { muted: false, .. },
+                ..
+            })
+        ));
     }
 }

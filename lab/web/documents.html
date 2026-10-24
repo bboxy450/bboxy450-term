@@ -34,7 +34,18 @@ D['with a diagram'] = { ...D.spec, path: '.bboxy/specs/mux-daemon.md', title: 'M
 // a real .bboxy doc opens with an H1 equal to its title: the header shows it once; a different first heading stays
 D['title in body'] = { ...D.spec, path: '.bboxy/vision.md', title: 'bboxy450-term — vision', body: '# bboxy450-term - vision\n\n## Cockpit first\nReal and local seats, harnesses, messaging, tasks.' };
 D['different first heading'] = { ...D.spec, path: '.bboxy/vision.md', title: 'bboxy450-term — vision', body: '# Why a cockpit\n\n## Cockpit first\nReal and local seats, harnesses, messaging, tasks.' };
-const STATES = [...Object.keys(D), 'signed', 'unsigned', 'superseded', 'broken frontmatter', 'as modal', 'modal · plain markdown'];
+// numbered records (decisions #47, #48): the index a host loads; [[#N]] and [[slug|#N]] resolve against it or read as missing
+const RECS = [[42, 'decision', 'The focus swell replaces the locate ripple', '.bboxy/decisions/d42-focus-swell.md', 'd42-focus-swell'],
+  [43, 'decision', 'Alive borders are a kit capability', '.bboxy/decisions/d43-kit-alive-borders.md', 'd43-kit-alive-borders'],
+  [44, 'decision', 'Attention: a waiting seat swells, pulses and notifies', '.bboxy/decisions/d44-waiting-attention.md', 'd44-waiting-attention'],
+  [45, 'decision', 'Desktop notifications are a facade over per-OS crates', '.bboxy/decisions/d45-desktop-notifications.md', 'd45-desktop-notifications'],
+  [212, 'spec', 'Attention: a seat that needs the operator swells and notifies', '.bboxy/specs/attention.md', 'attention'],
+  [250, 'comment', 'Resource-link reads are scoped', '.bboxy/comments/2026-10-23-plugins-r4-resource-link.md', 'plugins-r4-resource-link'],
+  [418, 'task', 'Live native Settings and persistence', '.bboxy/tasks/2026-10-24-settings-live.md', 'settings-live']];
+for (const [n, type, title, path, slug] of RECS) C.RECORDS.set(n, { n, type, title, path, slug });
+const LINKED = { ...D.spec, id: '#212', path: '.bboxy/specs/attention.md', title: 'Attention: a seat that needs the operator swells and notifies', status: 'decided',
+  body: '## Trigger\nA seat waiting on the operator, per [[#44]] and [[d42-focus-swell|#42]].\n## The desktop notification\n- title and body only, as [[#45]] decided\n- settings live in [[#418]]' };
+const STATES = [...Object.keys(D), 'signed', 'unsigned', 'superseded', 'broken frontmatter', 'as modal', 'modal · plain markdown', 'link · resolved', 'link · missing', 'record lookup', 'record lookup · typed'];
 Lab.page({ title: 'documents', wide: true, note: 'The work-item system from work-items.md: one Markdown file with frontmatter per item. Header: type chip, status, path, title. Frontmatter as a grid (id, assignee, role, parent, children, depends_on, links as annotated wikilink chips, allowed_paths, verify, created, updated). Body below. Provenance strip: created and updated by, derived from, the signed digest. Right rail: the item in the markdown graph, weights as stroke, backlinks dashed.',
   states: STATES,
   render(s, body) {
@@ -43,6 +54,23 @@ Lab.page({ title: 'documents', wide: true, note: 'The work-item system from work
     if (s === 'unsigned') d = { ...D.task, prov: { ...base.prov, signed: null, updated_by: 'Rook Ashwhisker', updatedColor: ROOK } };
     if (s === 'superseded') d = { ...D.spec, status: 'superseded', title: 'Messaging on iroh (first draft)', superseded_by: '[[messaging]]{spec}' };
     if (s === 'broken frontmatter') d = { ...D.note, broken: 'line 4: expected a list for depends_on', status: null };
+    // a resolved #N chip opens its record in the modal stack (doclink); the reference shows the view with #44's modal opened over it
+    if (s === 'link · resolved') {
+      const stage = el('div', { style: 'position:relative;background:var(--navy);padding:28px;border-radius:var(--r-pill);height:720px;overflow:hidden' });
+      const open = rec => { stage.querySelector('.dm-host')?.remove(); stage.append(el('div', { class: 'dm-host', style: 'position:absolute;inset:60px 28px 28px;display:flex;justify-content:center' }, C.docModal({ prov: base.prov, type: rec.type, id: '#' + rec.n, path: rec.path, title: rec.title, status: 'decided', body: '## Decision\n' + rec.title + '.' }, { onClose: () => stage.querySelector('.dm-host')?.remove() }))); };
+      stage.addEventListener('doclink', e => { if (e.detail && e.detail.n) open(e.detail); });
+      stage.append(C.docView({ prov: base.prov, ...LINKED })); open(C.RECORDS.get(44));
+      body.append(stage, el('div', { class: 'lab-note', style: 'padding-top:8px' }, 'A numbered link resolves against the record index: the chip reads #N and opens that record as a document (click; ⌘-click in a pane). Shown: #44 opened from the view beneath.')); return;
+    }
+    if (s === 'link · missing') {
+      body.append(C.docView({ prov: base.prov, ...LINKED, body: '## Trigger\nA seat waiting on the operator, per [[#44]].\n## History\n- the ripple it replaced was [[#999]]\n- an old slug link: [[d17-locate-ripple|#17]]' }),
+        el('div', { class: 'lab-note', style: 'padding-top:8px' }, 'A number with no record reads "#N · no record", dim and inert: never a guess, never a dead click. #44 beside it resolves.')); return;
+    }
+    if (s.startsWith('record lookup')) {
+      const stage = el('div', { style: 'background:var(--navy);padding:28px;border-radius:var(--r-pill);display:flex;justify-content:center;align-items:flex-start;height:420px' });
+      stage.append(C.recordLookup(s === 'record lookup' ? { query: '', edit: { caret: 0 }, sel: 0 } : { query: '4', edit: { caret: 1 }, sel: 2 }));
+      body.append(stage, el('div', { class: 'lab-note', style: 'padding-top:8px' }, 'Record lookup: # then a number (a prefix of the record number) or words from the title; ↵ opens the record as a document. Not ⌘F, which searches inside the open document.')); return;
+    }
     if (s === 'as modal' || s === 'modal · plain markdown') {
       const stage = el('div', { style: 'background:var(--navy);padding:28px;border-radius:var(--r-pill);display:flex;justify-content:center;height:720px' });
       const doc = s === 'as modal' ? { prov: base.prov, ...D['with a diagram'] } : { path: 'README.md', title: 'bboxy450-term', body: 'A GPU terminal emulator in Rust built as a cockpit for swarms of coding agents.\n## Start\n```\ncargo run -p bboxy450-term\n```\n- knowledge base in [[README|.bboxy]]\n- vision in [[vision]]' };

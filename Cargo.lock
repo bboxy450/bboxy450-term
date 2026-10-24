@@ -261,6 +261,7 @@ dependencies = [
  "bbt-ui-model",
  "block2 0.6.2",
  "ed25519-dalek 3.0.0",
+ "libc",
  "objc2 0.6.5",
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
@@ -273,6 +274,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
+ "toml_edit",
  "wgpu",
  "winit",
 ]
@@ -4388,6 +4390,7 @@ dependencies = [
  "indexmap",
  "toml_datetime 1.1.2+spec-1.1.0",
  "toml_parser",
+ "toml_writer",
  "winnow 1.0.4",
 ]
 

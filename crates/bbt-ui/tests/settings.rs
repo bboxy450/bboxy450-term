@@ -179,3 +179,124 @@ fn role_prompt_grows_to_its_content_then_retains_a_bounded_scroll_view() {
     }
     assert!(scroll(control));
 }
+
+#[test]
+fn hosted_settings_search_keeps_retained_control_regions_and_unavailable_fields_honest() {
+    use controller::{Action, Controller, Field, Focus, Hit, Patch};
+    let ctx = ui::Context::new(ui::Theme::Light, ui::Density::Cozy);
+    let mut controller = Controller::new("Account");
+    let mut values = Records::default();
+    let defaults = Records::default();
+    controller.handle(Action::Focus(Focus::Search), &mut values, &defaults);
+    controller.handle(
+        Action::Search(ui::text_edit::Command::Insert("Appearance".into())),
+        &mut values,
+        &defaults,
+    );
+    let view = Settings {
+        section: controller.section.clone(),
+        values: values.clone(),
+        defaults: defaults.clone(),
+        ..Default::default()
+    };
+    let state = controller.presentation();
+    let tree = view
+        .element_with(ctx, &Metrics, 1216., 638., &state)
+        .layout(Rect::new(0., 0., 1216., 638.), ctx, &Metrics)
+        .unwrap();
+    let regions = controller::Regions::new(&tree, &view).unwrap();
+    assert!(regions.fields().contains(&Field::Theme));
+    assert!(regions.fields().contains(&Field::Rim));
+    assert!(labels(&tree).contains("not yet applied to the window"));
+    assert!(
+        controller
+            .handle(
+                Action::Set(Patch::Theme("light".into())),
+                &mut values,
+                &defaults
+            )
+            .is_some()
+    );
+    assert_eq!(values.appearance.theme, "light");
+    if let Some(rim) = regions.rim {
+        assert!(matches!(
+            regions.hit([rim.x + rim.w / 2., rim.y + rim.h / 2.]),
+            Some(Hit::Rim)
+        ));
+        assert!(
+            regions
+                .hit([rim.x, regions.viewport.bottom() + 1.])
+                .is_none()
+        );
+    }
+    controller.handle(Action::Section("Account".into()), &mut values, &defaults);
+    let view = Settings {
+        section: "Account".into(),
+        ..Default::default()
+    };
+    let tree = view
+        .element_with(ctx, &Metrics, 1216., 638., &controller.presentation())
+        .layout(Rect::new(0., 0., 1216., 638.), ctx, &Metrics)
+        .unwrap();
+    let text = labels(&tree);
+    assert!(text.contains("Not exposed by the runtime"));
+    assert!(!text.contains("signed in"));
+}
+
+#[test]
+fn hosted_notification_master_off_retains_values_and_visible_resets_still_work() {
+    use controller::{Action, Controller, Field};
+    let mut values = Records::default();
+    values.notifications.enabled = false;
+    values.notifications.only_when_not_frontmost = true;
+    let mut controller = Controller::new("Notifications");
+    let defaults = Records::default();
+    assert!(
+        controller
+            .handle(Action::Toggle(Field::Background), &mut values, &defaults)
+            .is_none()
+    );
+    assert!(
+        controller
+            .handle(Action::Reset(Field::Background), &mut values, &defaults)
+            .is_some()
+    );
+    assert!(!values.notifications.only_when_not_frontmost);
+    assert!(!values.notifications.enabled);
+}
+
+#[test]
+fn changed_notification_harness_rows_keep_the_icon_and_inline_label_inside_diff_layers() {
+    let mut records = Records::default();
+    records.harness.push((
+        "codex".into(),
+        Harness {
+            icon: "codex".into(),
+            ..Default::default()
+        },
+    ));
+    records
+        .notifications
+        .disabled_harnesses
+        .insert("codex".into());
+    let view = Settings {
+        section: "Notifications".into(),
+        values: records,
+        ..Default::default()
+    };
+    let tree = layout(&view);
+    fn find<'a>(node: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
+        if matches!(&node.kind,c::LayoutKind::Named(name) if name==key) {
+            Some(node)
+        } else {
+            node.children.iter().find_map(|n| find(n, key))
+        }
+    }
+    fn has_icon(node: &c::Layout) -> bool {
+        matches!(&node.kind,c::LayoutKind::Icon {name,..} if name=="codex")
+            || node.children.iter().any(has_icon)
+    }
+    let label = find(&tree, "card0/r2/label").unwrap();
+    assert!(has_icon(label));
+    assert!(find(&tree, "card0/r2/diff").is_some());
+}

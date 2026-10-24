@@ -499,6 +499,7 @@ pub struct Model {
     pub hosts: Vec<bbt_proto::GuiHost>,
     pub ui: ui::Model,
     pub screens: BTreeMap<SeatId, Arc<Screen>>,
+    pub subtitles: BTreeMap<SeatId, String>,
     /// Historical display only. Live modes, replicas and acknowledgements keep
     /// using screens; the UI never owns a history parser or a fetched page.
     pub history: BTreeMap<SeatId, Arc<crate::scrollback::Historical>>,
@@ -518,12 +519,14 @@ pub struct Model {
     /// IO bookkeeping; episode internals are private to the attention module.
     #[doc(hidden)]
     pub attention_episodes: crate::attention::Episodes,
+    pub settings: Option<Arc<crate::settings::Snapshot>>,
 }
 impl Default for Model {
     fn default() -> Self {
         Self {
             ui: ui::Model::new(vec![], vec![]).expect("empty model"),
             screens: BTreeMap::new(),
+            subtitles: BTreeMap::new(),
             history: BTreeMap::new(),
             frames: BTreeMap::new(),
             states: BTreeMap::new(),
@@ -537,6 +540,7 @@ impl Default for Model {
             attention: BTreeMap::new(),
             focus_swell: None,
             attention_episodes: crate::attention::Episodes::default(),
+            settings: None,
         }
     }
 }
@@ -1056,10 +1060,39 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
             })
             .map(|(id, screen)| (*id, screen.clone()))
             .collect();
+    model.window.theme = previous.ui.window.theme;
+    model.window.density = previous.ui.window.density;
+    let subtitles = screens
+        .iter()
+        .filter_map(|(id, screen)| {
+            let text = if previous
+                .screens
+                .get(id)
+                .is_some_and(|old| Arc::ptr_eq(old, screen))
+            {
+                previous.subtitles.get(id).cloned()
+            } else {
+                screen.cells.iter().rev().find_map(|row| {
+                    let value: String = row
+                        .iter()
+                        .filter(|c| {
+                            !c.flags
+                                .contains(bbt_core::term::cell::Flags::WIDE_CHAR_SPACER)
+                        })
+                        .map(|c| c.c)
+                        .collect();
+                    let value = value.trim();
+                    (!value.is_empty()).then(|| value.chars().take(160).collect::<String>())
+                })
+            };
+            text.map(|text| (*id, text))
+        })
+        .collect();
     let mut next = Model {
         hosts: previous.hosts.clone(),
         ui: model,
         screens,
+        subtitles,
         history,
         frames,
         states,
@@ -1072,6 +1105,7 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
         attention: previous.attention.clone(),
         focus_swell: previous.focus_swell,
         attention_episodes: previous.attention_episodes.clone(),
+        settings: previous.settings.clone(),
     };
     next.attention_episodes.retain(
         next.ui
