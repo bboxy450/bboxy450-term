@@ -67,6 +67,8 @@ pub enum UiEvent {
     Capture,
     /// A capture asked through an operator door (`ctl capture`); answered when written.
     CaptureFor(live::CaptureAsk),
+    /// No frame was presented for this capture in time (occluded, or the display asleep).
+    CaptureDeadline(bbt_mux::Ulid),
     StallPoll,
 }
 struct Wake(EventLoopProxy<UiEvent>);
@@ -1011,6 +1013,8 @@ struct App {
     capture_pending: bool,
     /// Operator captures waiting for the next presented frame.
     ctl_captures: Vec<live::CaptureAsk>,
+    /// When the last frame was presented; a capture of it names this time.
+    last_presented: Option<std::time::SystemTime>,
     pending_resize: Option<LogicalSize<f64>>,
     animate: bool,
     cadence_test: bool,
@@ -1713,7 +1717,7 @@ impl App {
         });
     }
     /// Writes the presented frame for an operator capture, cropped to the seat's pane.
-    fn capture_for(&self, ask: live::CaptureAsk, scale: f32) {
+    fn capture_for(&self, ask: live::CaptureAsk, scale: f32, frame: bbt_proto::gui::CaptureFrame) {
         let crop = match ask.seat {
             None => None,
             Some(seat) => match self.pane_bounds.iter().find(|(id, _)| *id == seat) {
@@ -1742,16 +1746,39 @@ impl App {
                         .send(live::UiMsg::Captured {
                             id,
                             error: result.err(),
+                            frame,
                         })
                         .await;
                 });
             });
+    }
+    /// Answers a capture that cannot wait for a presented frame: the last composed frame
+    /// stays in the render target, so it is encoded as `--capture` would; with none, the
+    /// reason is the answer.
+    fn capture_now(&self, ask: live::CaptureAsk, step: CaptureStep) {
+        match step {
+            CaptureStep::Refuse(reason) => self.answer_capture(ask.id, Err(reason.into())),
+            _ => {
+                let scale = self.window.as_ref().map_or(1., |w| w.scale_factor() as f32);
+                self.logger.write(format!(
+                    "capture {}: no frame presented in time (occluded={}); encoding the last one",
+                    ask.id, self.occluded
+                ));
+                let frame = bbt_proto::gui::CaptureFrame {
+                    stale: true,
+                    occluded: self.occluded,
+                    presented_at_ms: unix_ms(self.last_presented),
+                };
+                self.capture_for(ask, scale, frame);
+            }
+        }
     }
     fn answer_capture(&self, id: bbt_mux::Ulid, result: Result<(), String>) {
         if let Some(sender) = &self.live_commands {
             let _ = sender.try_send(live::UiMsg::Captured {
                 id,
                 error: result.err(),
+                frame: Default::default(),
             });
         }
     }
@@ -2448,8 +2475,14 @@ impl App {
                     self.dump_grid_hash(path.clone(), scale);
                 }
             }
+            self.last_presented = Some(std::time::SystemTime::now());
             for ask in std::mem::take(&mut self.ctl_captures) {
-                self.capture_for(ask, scale);
+                let frame = bbt_proto::gui::CaptureFrame {
+                    stale: false,
+                    occluded: false,
+                    presented_at_ms: unix_ms(self.last_presented),
+                };
+                self.capture_for(ask, scale, frame);
             }
             if self.fake && self.last_update == 20 && !self.idle_scheduled {
                 self.idle_scheduled = true;
@@ -2528,9 +2561,26 @@ impl ApplicationHandler<UiEvent> for App {
             UiEvent::CaptureFor(ask) => {
                 if self.gpu.is_none() {
                     self.answer_capture(ask.id, Err("the window is not presenting".into()));
-                } else {
-                    self.ctl_captures.push(ask);
-                    self.request_redraw();
+                    return;
+                }
+                match capture_step(false, self.occluded, self.meter.total_frames()) {
+                    CaptureStep::Wait => {
+                        let (proxy, id) = (self.proxy.clone(), ask.id);
+                        bbt_rt::handle().spawn(async move {
+                            tokio::time::sleep(CAPTURE_WAIT).await;
+                            let _ = proxy.send_event(UiEvent::CaptureDeadline(id));
+                        });
+                        self.ctl_captures.push(ask);
+                        self.request_redraw();
+                    }
+                    step => self.capture_now(ask, step),
+                }
+            }
+            UiEvent::CaptureDeadline(id) => {
+                if let Some(at) = self.ctl_captures.iter().position(|ask| ask.id == id) {
+                    let ask = self.ctl_captures.remove(at);
+                    let step = capture_step(true, self.occluded, self.meter.total_frames());
+                    self.capture_now(ask, step);
                 }
             }
             UiEvent::VerifyScrollTop => {
@@ -4052,6 +4102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         capture,
         capture_pending: true,
         ctl_captures: Vec::new(),
+        last_presented: None,
         pending_resize: None,
         animate,
         cadence_test,
@@ -4065,6 +4116,53 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err(error.into());
     }
     Ok(())
+}
+
+fn unix_ms(at: Option<std::time::SystemTime>) -> Option<u64> {
+    at?.duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .map(|since| since.as_millis() as u64)
+}
+
+/// How long an operator capture waits for a presented frame before encoding the last one.
+const CAPTURE_WAIT: Duration = Duration::from_secs(1);
+
+#[derive(Debug, PartialEq, Eq)]
+enum CaptureStep {
+    /// Capture the next presented frame.
+    Wait,
+    /// No frame will come soon (occluded, or none came in time): encode the last one.
+    LastFrame,
+    Refuse(&'static str),
+}
+/// What an operator capture does now: `waited` once `CAPTURE_WAIT` has passed.
+fn capture_step(waited: bool, occluded: bool, frames: u64) -> CaptureStep {
+    match (waited || occluded, frames) {
+        (false, _) => CaptureStep::Wait,
+        (true, 0) => CaptureStep::Refuse("window occluded, no frame presented"),
+        (true, _) => CaptureStep::LastFrame,
+    }
+}
+
+#[cfg(test)]
+mod capture_step_tests {
+    use super::{CaptureStep, capture_step};
+    #[test]
+    fn an_occluded_window_answers_from_its_last_frame_or_says_why_not() {
+        // Visible and presenting: the next frame.
+        assert_eq!(capture_step(false, false, 9), CaptureStep::Wait);
+        // Occluded: the last composed frame, now; never a timeout.
+        assert_eq!(capture_step(false, true, 9), CaptureStep::LastFrame);
+        // Visible, but no frame came in time (display asleep): the last frame.
+        assert_eq!(capture_step(true, false, 9), CaptureStep::LastFrame);
+        // Nothing ever presented: the reason, not a timeout.
+        for (waited, occluded) in [(false, true), (true, false), (true, true)] {
+            assert_eq!(
+                capture_step(waited, occluded, 0),
+                CaptureStep::Refuse("window occluded, no frame presented")
+            );
+        }
+    }
 }
 
 #[cfg(test)]

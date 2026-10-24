@@ -93,6 +93,7 @@ pub enum UiMsg {
     Captured {
         id: bbt_mux::Ulid,
         error: Option<String>,
+        frame: bbt_proto::gui::CaptureFrame,
     },
 }
 impl UiMsg {

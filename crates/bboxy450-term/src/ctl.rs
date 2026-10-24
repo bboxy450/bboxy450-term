@@ -324,7 +324,11 @@ impl Client {
         }
     }
     /// Asks the window for a PNG of itself, or of one seat's pane; returns the written path.
-    pub fn capture(&mut self, path: &Path, seat: Option<Ulid>) -> Result<String, String> {
+    pub fn capture(
+        &mut self,
+        path: &Path,
+        seat: Option<Ulid>,
+    ) -> Result<(String, bbt_proto::gui::CaptureFrame), String> {
         let id = Ulid::new();
         let path = path.to_str().ok_or("capture path is not UTF-8")?.to_owned();
         match self.call(
@@ -332,7 +336,7 @@ impl Client {
             GuiAction::Capture { id, path, seat },
             |r| matches!(r, GuiReply::Captured { op, .. } if *op == id),
         )? {
-            GuiReply::Captured { path, .. } => Ok(path),
+            GuiReply::Captured { path, frame, .. } => Ok((path, frame)),
             _ => unreachable!(),
         }
     }
@@ -550,8 +554,11 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
                 Some(seat) => Some(resolve(&client.seats()?, &seat)?.record.id),
                 None => None,
             };
-            let path = client.capture(&path, seat)?;
-            vec![json!({ "kind": "captured", "path": path, "seat": seat })]
+            // A stale frame says so, so a judge never takes it for the current one.
+            let (path, frame) = client.capture(&path, seat)?;
+            vec![json!({ "kind": "captured", "path": path, "seat": seat,
+                "stale": frame.stale, "occluded": frame.occluded,
+                "frame_presented_at": frame.presented_at_ms })]
         }
         Command::E2e { group } => {
             let mut loader = crate::knowledge::E2eLoader::new(crate::knowledge::promises()?);
