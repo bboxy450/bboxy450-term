@@ -2128,6 +2128,9 @@ impl App {
         }
     }
     fn focus_action(&mut self, action: FocusAction) {
+        if self.document.open {
+            self.close_document();
+        }
         if self.local_tab.is_some() {
             self.close_local_tab();
         }
