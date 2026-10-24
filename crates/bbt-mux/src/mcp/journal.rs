@@ -181,7 +181,8 @@ impl Journal {
         let fresh = retained.is_none();
         let (result, replay) = if let Some(bytes) = retained {
             let old: Entry = serde_json::from_slice(&bytes)?;
-            if old.actor != *actor || old.tool != call.tool || old.args_digest != hash {
+            if !old.actor.same_authority(actor) || old.tool != call.tool || old.args_digest != hash
+            {
                 (
                     error(
                         call.op_id,
@@ -279,7 +280,13 @@ fn audit(
 ) -> Draft {
     let (subject, kind) = match actor {
         Principal::Seat(actor) => (format!("seat/{}/control", actor.seat_id), "mcp"),
-        Principal::Operator { .. } => ("account/control".into(), "gui"),
+        Principal::Operator { door, .. } => (
+            "account/control".into(),
+            match door {
+                super::Door::Gui => "gui",
+                super::Door::Ctl => "ctl",
+            },
+        ),
     };
     let mut event = Draft::new(
         subject,
@@ -358,6 +365,7 @@ mod tests {
         let store = SqliteStore::open(&directory).unwrap();
         let operator = Principal::Operator {
             device_id: Ulid::new(),
+            door: super::super::Door::Gui,
         };
         call.tool = "gui_spawn".into();
         call.args = json!({"swarm":Ulid::new(),"harness":"zsh"});
@@ -380,6 +388,7 @@ mod tests {
         );
         let other = Principal::Operator {
             device_id: Ulid::new(),
+            door: super::super::Door::Gui,
         };
         let denied = journal
             .effect(&other, &call, || panic!("different device dispatched"))
@@ -402,6 +411,7 @@ mod tests {
         let (temp, store, _, mut call) = effect_fixture();
         let operator = Principal::Operator {
             device_id: Ulid::new(),
+            door: super::super::Door::Gui,
         };
         call.tool = "gui_spawn".into();
         let journal = Journal::new(store);

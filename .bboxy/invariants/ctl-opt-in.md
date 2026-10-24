@@ -4,8 +4,6 @@ type: invariant
 number: 261
 title: "no gui.endpoint exists unless ctl is enabled, and the app's own seats are refused at the door"
 status: pending
-slow: true
-gate: pending-a1
 check: cargo test -p bbt-mux --locked --test gui_endpoint ctl_endpoint_opt_in_and_ancestry_refusal -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: an endpoint file that exists when nobody asked is operator authority lying on disk for every same-user process; a seat admitted at the operator's door is a seat holding the operator's hand
 links:

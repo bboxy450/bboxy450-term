@@ -51,17 +51,20 @@ enum Command {
     GuiSpawn(
         Ulid,
         bbt_proto::SpawnSpec,
+        crate::mcp::Door,
         oneshot::Sender<Result<bbt_proto::SeatId>>,
     ),
     GuiMessaging(
         Ulid,
         Ulid,
         crate::messaging::api::Request,
+        crate::mcp::Door,
         oneshot::Sender<Result<crate::messaging::api::Response>>,
     ),
     GuiTask(
         Ulid,
         bbt_proto::messaging::TaskRequest,
+        crate::mcp::Door,
         oneshot::Sender<Result<bbt_proto::messaging::TaskResponse>>,
     ),
     GuiMessageRow(
@@ -163,8 +166,17 @@ pub struct LogicClient {
     pub bus: BusHandle,
     exit_cause: Arc<OnceLock<String>>,
     capture_diagnostics: Arc<Recorder>,
+    /// Set while `ctl` is open (decision #260): who may come through `gui.sock` and by which
+    /// door. None: the window is the only client, as before.
+    gui_peers: Arc<std::sync::RwLock<Option<crate::ctl_door::Peers>>>,
 }
 impl LogicClient {
+    pub(crate) fn gui_peers(&self) -> Option<crate::ctl_door::Peers> {
+        *self.gui_peers.read().unwrap_or_else(|e| e.into_inner())
+    }
+    pub(crate) fn set_gui_peers(&self, peers: Option<crate::ctl_door::Peers>) {
+        *self.gui_peers.write().unwrap_or_else(|e| e.into_inner()) = peers;
+    }
     /// Enable fixed-capacity, numeric capture diagnostics on IO before a run.
     /// Disabled by default; never changes replay, admission or retry policy.
     pub fn enable_capture_diagnostics(&self) {
@@ -269,10 +281,11 @@ impl LogicClient {
         &self,
         id: Ulid,
         spec: bbt_proto::SpawnSpec,
+        door: crate::mcp::Door,
     ) -> Result<bbt_proto::SeatId> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::GuiSpawn(id, spec, tx))
+            .send(Command::GuiSpawn(id, spec, door, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await
@@ -283,10 +296,11 @@ impl LogicClient {
         id: Ulid,
         swarm: Ulid,
         request: crate::messaging::api::Request,
+        door: crate::mcp::Door,
     ) -> Result<crate::messaging::api::Response> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::GuiMessaging(id, swarm, request, tx))
+            .send(Command::GuiMessaging(id, swarm, request, door, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| {
@@ -297,10 +311,11 @@ impl LogicClient {
         &self,
         id: Ulid,
         request: bbt_proto::messaging::TaskRequest,
+        door: crate::mcp::Door,
     ) -> Result<bbt_proto::messaging::TaskResponse> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::GuiTask(id, request, tx))
+            .send(Command::GuiTask(id, request, door, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| {
@@ -730,6 +745,7 @@ impl Logic {
             bus: bus.clone(),
             exit_cause: Arc::new(OnceLock::new()),
             capture_diagnostics: Arc::new(Recorder::default()),
+            gui_peers: Arc::default(),
         };
         let stop = Arc::new(AtomicBool::new(false));
         let stopping = stop.clone();
@@ -1317,7 +1333,8 @@ impl Worker {
         }
         let operator = match actor {
             crate::mcp::Actor::Seat(_) => None,
-            crate::mcp::Actor::Operator { device_id } => match self.identity.operator_signing() {
+            crate::mcp::Actor::Operator { device_id, .. } => match self.identity.operator_signing()
+            {
                 Ok(authority) if authority.device_id == *device_id => Some(authority),
                 Ok(_) => return crate::mcp::error(call.op_id, "held", "operator device changed"),
                 Err(error) => return crate::mcp::error(call.op_id, "held", &error.to_string()),
@@ -1347,7 +1364,7 @@ impl Worker {
                 Some(actor.process_generation),
                 &key,
             ),
-            crate::mcp::Actor::Operator { device_id } => match &operator {
+            crate::mcp::Actor::Operator { device_id, .. } => match &operator {
                 Some(authority) => crate::provenance::author::Author::operator(
                     *device_id,
                     authority.issuer.kind,
@@ -3424,13 +3441,14 @@ impl Worker {
         id: Ulid,
         swarm: Ulid,
         request: crate::messaging::api::Request,
+        door: crate::mcp::Door,
     ) -> Result<crate::messaging::api::Response> {
         let device_id = self
             .identity
             .status()?
             .device_id
             .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
-        let actor = crate::mcp::Actor::Operator { device_id };
+        let actor = crate::mcp::Actor::Operator { device_id, door };
         let call = crate::mcp::Call {
             op_id: id,
             tool: "gui_messaging".into(),
@@ -3496,13 +3514,14 @@ impl Worker {
         &mut self,
         id: Ulid,
         request: bbt_proto::messaging::TaskRequest,
+        door: crate::mcp::Door,
     ) -> Result<bbt_proto::messaging::TaskResponse> {
         let device_id = self
             .identity
             .status()?
             .device_id
             .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
-        let actor = crate::mcp::Actor::Operator { device_id };
+        let actor = crate::mcp::Actor::Operator { device_id, door };
         let call = crate::mcp::work_items::call(id, request).map_err(invalid)?;
         call.validate()?;
         if crate::mcp::work_items::mutation(&call.tool) {
@@ -3512,7 +3531,12 @@ impl Worker {
         let result = self.work_item_call(&actor, &call, &journal)?;
         crate::mcp::work_items::response(&call.tool, result).map_err(invalid)
     }
-    fn gui_spawn(&mut self, id: Ulid, spec: bbt_proto::SpawnSpec) -> Result<bbt_proto::SeatId> {
+    fn gui_spawn(
+        &mut self,
+        id: Ulid,
+        spec: bbt_proto::SpawnSpec,
+        door: crate::mcp::Door,
+    ) -> Result<bbt_proto::SeatId> {
         let call = crate::mcp::Call {
             op_id: id,
             tool: "gui_spawn".into(),
@@ -3524,7 +3548,7 @@ impl Worker {
             .status()?
             .device_id
             .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
-        let principal = crate::mcp::Principal::Operator { device_id };
+        let principal = crate::mcp::Principal::Operator { device_id, door };
         let (retained, fresh) = self.operator_journal.admit(&principal, &call)?;
         let result = if fresh {
             let result = match self.prepare_gui_spawn(spec) {
@@ -3797,16 +3821,16 @@ impl Worker {
                         let result = self.recover_seats();
                         let _ = reply.send(result);
                     }
-                    Command::GuiSpawn(id, spec, reply) => {
-                        let result = self.gui_spawn(id, spec);
+                    Command::GuiSpawn(id, spec, door, reply) => {
+                        let result = self.gui_spawn(id, spec, door);
                         let _ = reply.send(result);
                     }
-                    Command::GuiMessaging(id, swarm, request, reply) => {
-                        let result = self.gui_messaging(id, swarm, request);
+                    Command::GuiMessaging(id, swarm, request, door, reply) => {
+                        let result = self.gui_messaging(id, swarm, request, door);
                         let _ = reply.send(result);
                     }
-                    Command::GuiTask(id, request, reply) => {
-                        let result = self.gui_task(id, request);
+                    Command::GuiTask(id, request, door, reply) => {
+                        let result = self.gui_task(id, request, door);
                         let _ = reply.send(result);
                     }
                     Command::GuiMessageRow(swarm, message, reply) => {

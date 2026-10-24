@@ -105,6 +105,9 @@ pub struct Config {
     pub repository: PathBuf,
     /// Optional inherited ZDOTDIR; tests use an empty directory.
     pub shell_config: Option<PathBuf>,
+    /// Open the operator's `ctl` door (decision #260): off unless asked for with `--ctl`.
+    #[serde(default)]
+    pub ctl: bool,
 }
 impl Config {
     /// Resolve the executable, repository and local control endpoint on IO.
@@ -124,6 +127,7 @@ impl Config {
             run_dir,
             repository: std::env::current_dir()?,
             shell_config: std::env::var_os("ZDOTDIR").map(PathBuf::from),
+            ctl: false,
         })
     }
 }
@@ -132,6 +136,9 @@ impl Config {
 struct SupervisorReady {
     socket: PathBuf,
     capability: [u8; 32],
+    /// Every seat descends from this process; `ctl` refuses its descendants (decision #260).
+    #[serde(default)]
+    pid: u32,
 }
 #[derive(Serialize, Deserialize)]
 struct LogicBootstrap {
@@ -325,6 +332,7 @@ async fn supervisor_main() -> Result<()> {
         &SupervisorReady {
             socket: config.socket,
             capability: supervisor.socket_capability(),
+            pid: std::process::id(),
         },
     )
     .await?;
@@ -345,6 +353,7 @@ async fn logic_main() -> Result<()> {
         &bootstrap.supervisor.socket,
         bootstrap.supervisor.capability,
     )?;
+    let run_dir = bootstrap.config.run_dir.clone();
     let logic = Logic::start_custodied_with_fixtures(
         connection,
         LogicConfig {
@@ -357,6 +366,17 @@ async fn logic_main() -> Result<()> {
     if bootstrap.recover_seats {
         logic.client.recover_seats().await?;
     }
+    // The operator's ctl door, only when asked for (decision #260, invariant #261): the
+    // window is logic's parent, and the supervisor names whose descendants are seats.
+    let door = if bootstrap.config.ctl {
+        let peers = bbt_mux::ctl_door::Peers {
+            supervisor: bootstrap.supervisor.pid,
+            gui: std::os::unix::process::parent_id(),
+        };
+        Some(bbt_mux::ctl_door::open(&logic.client, &run_dir, peers).await?)
+    } else {
+        None
+    };
     let endpoint = logic.client.gui_endpoint().await?;
     write_json(
         &mut tokio::io::stdout(),
@@ -373,6 +393,7 @@ async fn logic_main() -> Result<()> {
     .await?;
     wait_for_stop(&mut input).await?;
     eprintln!("logic: orderly shutdown requested");
+    drop(door);
     logic.shutdown()?;
     eprintln!("logic: shutdown completed");
     Ok(())

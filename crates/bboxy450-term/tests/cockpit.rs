@@ -36,6 +36,7 @@ async fn start(root: &Path) -> Session {
         run_dir: root.join("run"),
         repository,
         shell_config: Some(shell_config),
+        ctl: false,
     })
     .await
     .unwrap()

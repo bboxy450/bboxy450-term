@@ -110,10 +110,26 @@ impl SeatEndpoint {
                     accepted=listener.accept()=> {
                         let Ok((stream,_))=accepted else {break;};
                         let Ok(permit)=slots.clone().try_acquire_owned() else {continue;};
+                        // With ctl closed the window is the only client; with it open the
+                        // door is chosen by the peer's process ancestry (decision #260).
+                        let door=match client.gui_peers() {
+                            None=>crate::mcp::Door::Gui,
+                            Some(policy)=>match crate::ctl_door::classify(stream.peer_cred().ok().and_then(|c|c.pid()),policy) {
+                                crate::ctl_door::Admit::Door(door)=>door,
+                                crate::ctl_door::Admit::Refused=> {
+                                    peers.spawn(async move {
+                                        let _permit=permit;
+                                        let (_read,mut write)=stream.into_split();
+                                        let _=send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:crate::ctl_door::REFUSAL.into()}).await;
+                                    });
+                                    continue;
+                                }
+                            },
+                        };
                         let client=client.clone();
                         peers.spawn(async move {
                             let _permit=permit;
-                            let _=gui_session(stream,client,capability).await;
+                            let _=gui_session(stream,client,capability,door).await;
                         });
                     }
                     _=peers.join_next(),if !peers.is_empty()=>{}
@@ -413,6 +429,7 @@ async fn gui_session(
     stream: tokio::net::UnixStream,
     client: LogicClient,
     capability: [u8; 32],
+    door: crate::mcp::Door,
 ) -> Result<()> {
     let (read, mut write) = stream.into_split();
     // Absorb simultaneous ACKs, but a waiting pane gets a work turn after
@@ -522,9 +539,9 @@ async fn gui_session(
                                 let active=lane.as_ref().ok_or_else(||invalid("GuiEventsHeld: events lane is not attached"))?;
                                 gui_events_page(client.bus.gui_page(&active.lease,&stream,after,limit,crate::gui_events::PAGE_BYTES).await?)
                             }
-                            GuiAction::Spawn {id,spec}=>Ok(GuiReply::Spawned {op:id,seat:client.gui_spawn(id,spec).await?}),
-                            GuiAction::Messaging {id,swarm_id,request}=>Ok(GuiReply::Messaging {op:id,response:client.gui_messaging(id,Ulid::from(swarm_id.0.0),request).await?}),
-                            GuiAction::Task {id,request}=>Ok(GuiReply::Task {op:id,response:client.gui_task(id,request).await?}),
+                            GuiAction::Spawn {id,spec}=>Ok(GuiReply::Spawned {op:id,seat:client.gui_spawn(id,spec,door).await?}),
+                            GuiAction::Messaging {id,swarm_id,request}=>Ok(GuiReply::Messaging {op:id,response:client.gui_messaging(id,Ulid::from(swarm_id.0.0),request,door).await?}),
+                            GuiAction::Task {id,request}=>Ok(GuiReply::Task {op:id,response:client.gui_task(id,request,door).await?}),
                             GuiAction::Watch {seat,view}=> {
                                 if view.seat!=Ulid::from(seat.0.0) {return Err(invalid("watch seat and view disagree"));}
                                 if views.len()>=1024&&!views.contains_key(&seat) {return Err(invalid("watch limit reached"));}

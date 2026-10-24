@@ -168,7 +168,9 @@ impl Bridge {
                 Ok(
                     json!({"protocolVersion":if VERSIONS.contains(&version){version}else{VERSIONS[0]},
                     "capabilities":{"tools":{"listChanged":false}},
-                    "serverInfo":{"name":"bboxy450","version":env!("CARGO_PKG_VERSION")}}),
+                    "serverInfo":{"name":"bboxy450","version":env!("CARGO_PKG_VERSION")},
+                    // Decision #260: a curious agent finding the binary in PATH is the common case.
+                    "instructions":"These tools are your interface to bboxy450-term. `bboxy450-term ctl` is the operator's door, not yours: it refuses seats."}),
                 )
             }
             "ping" => Ok(json!({})),
