@@ -20,7 +20,7 @@ use bbt_supervisor::supervisor::capture_diagnostics::{Outcome, Phase, Recorder};
 
 use crate::bus::{Broker, BusHandle};
 use crate::index::{FileWatch, Index};
-use crate::knowledge::BboxySource;
+use crate::knowledge::{BboxySource, DataSource};
 use crate::provider::{Connections, HostId, LocalProvider, Provider};
 use crate::registry::{Lifecycle, Position, Registry, SeatRecord};
 use crate::store::{
@@ -1224,6 +1224,9 @@ impl Worker {
         if crate::mcp::work_items::handles(&call.tool) {
             return self.work_item_call(&authority, &call, &journal);
         }
+        if crate::mcp::knowledge::handles(&call.tool) {
+            return self.knowledge_call(&actor, &call, &journal);
+        }
         if matches!(call.tool.as_str(), "orient" | "graph_read") {
             self.scan()?;
         }
@@ -1254,6 +1257,58 @@ impl Worker {
                     crate::mcp::tools::retained_documents(&source, &actor, &record, &call, old)
                 })
             }
+        }
+    }
+    fn knowledge_call(
+        &mut self,
+        actor: &crate::mcp::SeatActor,
+        call: &crate::mcp::Call,
+        journal: &crate::mcp::journal::Journal,
+    ) -> Result<serde_json::Value> {
+        use crate::mcp::{self, knowledge as tool};
+        self.scan()?;
+        match tool::prepare(call) {
+            Ok(tool::Request::Fetch(locator)) => {
+                let source = BboxySource::new(&self.index);
+                let value = match tool::fetch(&source, locator) {
+                    Ok(record) => tool::bounded(call.op_id, mcp::success(call.op_id,serde_json::to_value(record)?),false),
+                    Err(reason) => mcp::error(call.op_id,"rejected",&reason),
+                };
+                journal.checked(actor,call,value)
+            }
+            Ok(tool::Request::Write(request)) => journal.effect(actor,call,|| {
+                let keys = self.identity.keys();
+                if let Some(reason) = keys.signing_hold() {
+                    return mcp::error(call.op_id,"held",&format!("knowledge signing held: {reason}"));
+                }
+                let key = match keys.leaf(actor.seat_id,actor.process_generation) {
+                    Ok(key) if keys.ready_issuer().is_some() => key,
+                    _ => return mcp::error(call.op_id,"held","knowledge signing held: identity pending"),
+                };
+                let context = crate::knowledge::WriteContext::seat(actor.seat_id,Some(actor.process_generation),&key);
+                let source = BboxySource::new(&self.index);
+                if request.reference.is_none() {
+                    match source.resolve(crate::knowledge::data_source::ResolveRequest { locator:call.op_id.to_string() }) {
+                        Err(error) if error.code == "not_found" => (),
+                        _ => return mcp::error(call.op_id,"rejected","knowledge create id already exists or cannot be resolved uniquely"),
+                    }
+                }
+                let result = source.write(*request,&context);
+                match result {
+                    Ok(result) => {
+                        if self.scan().is_err() {
+                            return mcp::error(call.op_id,"unknown","knowledge write applied; activity publication pending, inspect original operation");
+                        }
+                        match serde_json::to_value(result) {
+                            Ok(value) => tool::bounded(call.op_id,mcp::success(call.op_id,value),true),
+                            Err(_) => mcp::error(call.op_id,"unknown","knowledge write applied; result serialization unavailable"),
+                        }
+                    }
+                    Err(error) if matches!(error.code.as_str(),"write_not_confirmed"|"write_applied_result_unavailable") => mcp::error(call.op_id,"unknown","knowledge write outcome is not confirmed; inspect original operation, never redispatch it"),
+                    Err(error) => mcp::error(call.op_id,&error.code,"knowledge write refused before application"),
+                }
+            }),
+            Err(reason) => journal.checked(actor,call,mcp::error(call.op_id,"rejected",&reason)),
         }
     }
     fn work_item_call(
