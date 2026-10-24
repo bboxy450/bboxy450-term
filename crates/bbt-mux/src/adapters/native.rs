@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::io::Read;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
@@ -55,6 +55,57 @@ fn own_socket(path: &Path) -> Result<()> {
         return Err(invalid("native endpoint must be an owned Unix socket"));
     }
     Ok(())
+}
+/// Non-secret hook discovery, retained only for this native process/session.
+#[derive(Serialize, Deserialize)]
+pub(crate) struct ClaudeRegistration {
+    pub binding: Binding,
+    pub path: PathBuf,
+}
+impl ClaudeRegistration {
+    pub fn matches(&self, binding: &Binding) -> bool {
+        // A logic restart creates fresh in-memory attachment handles, while
+        // the supervisor can keep the same native process and session alive.
+        self.binding.seat == binding.seat
+            && self.binding.pid == binding.pid
+            && self.binding.process_start == binding.process_start
+            && self.binding.generation == binding.generation
+            && self.binding.session == binding.session
+    }
+    pub fn validate(&self, binding: &Binding) -> Result<()> {
+        if !self.matches(binding) {
+            return Err(invalid("Claude socket registration identity mismatch"));
+        }
+        if !self.path.is_absolute() {
+            return Err(invalid("Claude socket path must be absolute"));
+        }
+        own_socket(&self.path)
+    }
+}
+/// Called only on the admitted Hook RPC, never on terminal OSC observations.
+pub(crate) fn claude_registration(
+    session: &Session,
+    event: &super::hook::ShimEvent,
+) -> Result<Option<ClaudeRegistration>> {
+    let Some(path) = event.raw.get("bboxy_native_socket") else {
+        return Ok(None);
+    };
+    if session.record.kind != "claude"
+        || event.raw["harness"] != "claude"
+        || event.raw["session_id"] != session.binding.session
+        || !matches!(event.event.as_str(), "SessionStart" | "Stop")
+    {
+        return Err(invalid("Claude socket hook identity mismatch"));
+    }
+    let registration = ClaudeRegistration {
+        binding: session.binding.clone(),
+        path: PathBuf::from(
+            path.as_str()
+                .ok_or_else(|| invalid("Claude socket hook path must be text"))?,
+        ),
+    };
+    registration.validate(&session.binding)?;
+    Ok(Some(registration))
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClaudeSessionFile {
@@ -358,13 +409,18 @@ pub async fn wake(
     let unavailable = |note: &str| WakeOutcome {
         evidence: Evidence::RecipientStored,
         native_id: None,
-        note: note.into(),
+        note: super::observe::short(note, 512),
     };
     if priority == Priority::Now && !allow_interrupt {
         return unavailable("caller lacks interrupt authority");
     }
-    if text.len() > 48 * 1024 || verify_process(binding).is_err() {
-        return unavailable("native identity unavailable or message too large");
+    if text.len() > 48 * 1024 {
+        return unavailable("native message exceeds 48 KiB; no mutation attempted");
+    }
+    if let Err(error) = verify_process(binding) {
+        return unavailable(&format!(
+            "native identity unavailable: {error}; no mutation attempted"
+        ));
     }
     let mut attempted = false;
     let result=tokio::time::timeout(DEADLINE,async {
@@ -410,6 +466,123 @@ pub async fn wake(
         _ if attempted => {
             WakeOutcome::unknown("native write/reply ambiguous; no PTY fallback or automatic retry")
         }
-        _ => unavailable("native attachment unavailable; no mutation attempted"),
+        Ok(Err(error)) => unavailable(&format!(
+            "native preflight failed: {error}; no mutation attempted"
+        )),
+        Err(_) => unavailable("native preflight timed out; no mutation attempted"),
+    }
+}
+
+#[cfg(test)]
+mod registration_tests {
+    use super::*;
+
+    fn binding() -> Binding {
+        Binding {
+            seat: Ulid::new(),
+            session: "native-fixture-session".into(),
+            pid: std::process::id(),
+            process_start: process_start(std::process::id()).unwrap(),
+            generation: 1,
+            attachment_generation: 1,
+        }
+    }
+
+    #[test]
+    fn retained_socket_requires_the_same_process_generation_and_session() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("native.sock");
+        let _listener = std::os::unix::net::UnixListener::bind(&path).unwrap();
+        let current = binding();
+        let registration = ClaudeRegistration {
+            binding: current.clone(),
+            path,
+        };
+        let bytes = serde_json::to_vec(&registration).unwrap();
+        let restored: ClaudeRegistration = serde_json::from_slice(&bytes).unwrap();
+        restored.validate(&current).unwrap();
+        let mut fresh_handle = current.clone();
+        fresh_handle.attachment_generation += 1;
+        restored.validate(&fresh_handle).unwrap();
+        for field in 0..5 {
+            let mut stale = current.clone();
+            match field {
+                0 => stale.seat = Ulid::new(),
+                1 => stale.pid += 1,
+                2 => stale.process_start.push_str(" replaced"),
+                3 => stale.generation += 1,
+                _ => stale.session.push_str(" replaced"),
+            }
+            assert!(restored.validate(&stale).is_err(), "identity field {field}");
+        }
+    }
+
+    #[test]
+    fn hook_socket_metadata_requires_the_admitted_native_session_and_owned_socket() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("native.sock");
+        let _listener = std::os::unix::net::UnixListener::bind(&path).unwrap();
+        let session = Session::new(
+            super::super::HarnessRecord::builtin("claude").unwrap(),
+            binding(),
+        )
+        .unwrap();
+        let mut event = super::super::hook::ShimEvent {
+            event: "SessionStart".into(),
+            raw: json!({"hook_event_name":"SessionStart", "harness":"claude", "session_id":session.binding.session, "bboxy_native_socket":path}),
+        };
+        assert!(claude_registration(&session, &event).unwrap().is_some());
+        let prepared = super::super::hook::prepare(event.raw.clone(), "claude").unwrap();
+        // stdin cannot supply trusted endpoint metadata; the shim adds the
+        // documented environment export only after its input allowlist.
+        assert!(prepared.raw.get("bboxy_native_socket").is_none());
+        event.raw["session_id"] = "another-session".into();
+        assert!(claude_registration(&session, &event).is_err());
+        event.raw["session_id"] = session.binding.session.clone().into();
+        event.raw["bboxy_native_socket"] = root.path().to_string_lossy().into_owned().into();
+        assert!(claude_registration(&session, &event).is_err());
+    }
+
+    #[test]
+    fn pre_write_failures_preserve_the_specific_cause() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("missing.sock");
+        let binding = binding();
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let missing = runtime.block_on(wake(
+            &binding,
+            &Endpoint::Claude { path },
+            Ulid::new(),
+            "fixture",
+            Priority::Next,
+            false,
+        ));
+        assert_eq!(missing.evidence, Evidence::RecipientStored);
+        assert!(
+            missing.note.contains("native preflight failed"),
+            "{missing:?}"
+        );
+        assert!(
+            missing
+                .note
+                .contains(&std::io::Error::from_raw_os_error(libc::ENOENT).to_string()),
+            "{missing:?}"
+        );
+        assert!(missing.note.contains("no mutation attempted"));
+        let mut replaced = binding;
+        replaced.process_start.push_str(" replaced");
+        let replaced = runtime.block_on(wake(
+            &replaced,
+            &Endpoint::None,
+            Ulid::new(),
+            "fixture",
+            Priority::Next,
+            false,
+        ));
+        assert_eq!(replaced.evidence, Evidence::RecipientStored);
+        assert!(
+            replaced.note.contains("harness process was replaced"),
+            "{replaced:?}"
+        );
     }
 }

@@ -863,6 +863,7 @@ struct ViewState {
     info: SeatInfo,
     adapter: Session,
     delivery_endpoint: crate::adapters::Endpoint,
+    delivery_failure: Option<String>,
     tap: OscTap,
     replies: VecDeque<(Ulid, Vec<u8>)>,
     native_reader: Option<NativeReader>,
@@ -2342,12 +2343,42 @@ impl Worker {
             .into_iter()
             .map(|bytes| (Ulid::new(), bytes))
             .collect();
+        let (delivery_endpoint, delivery_failure) = if kind == "claude" {
+            match SqliteStore::open(&directory)?.get("claude_socket_registration")? {
+                Some(bytes) => match serde_json::from_slice::<
+                    crate::adapters::native::ClaudeRegistration,
+                >(&bytes)
+                .map_err(|error| error.to_string())
+                .and_then(|registration| {
+                    registration
+                        .validate(&adapter.binding)
+                        .map_err(|error| error.to_string())?;
+                    Ok(registration.path)
+                }) {
+                    Ok(path) => (crate::adapters::Endpoint::Claude { path }, None),
+                    Err(reason) => (
+                        crate::adapters::Endpoint::None,
+                        Some(crate::adapters::observe::short(
+                            &format!("stored Claude socket registration: {reason}"),
+                            512,
+                        )),
+                    ),
+                },
+                None => (
+                    crate::adapters::Endpoint::None,
+                    Some("Claude messaging socket has not been registered by a hook".into()),
+                ),
+            }
+        } else {
+            (crate::adapters::Endpoint::None, None)
+        };
         self.views.insert(
             info.seat,
             ViewState {
                 info: info.clone(),
                 adapter,
-                delivery_endpoint: crate::adapters::Endpoint::None,
+                delivery_endpoint,
+                delivery_failure,
                 tap,
                 replies,
                 native_reader: None,
@@ -2453,6 +2484,39 @@ impl Worker {
                 })?;
             }
         }
+        Ok(())
+    }
+    fn register_claude_socket(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        event: &crate::adapters::hook::ShimEvent,
+    ) -> Result<()> {
+        let view = self
+            .views
+            .get(&id)
+            .filter(|view| view.generation == generation)
+            .ok_or_else(|| invalid("stale Claude socket registration generation"))?;
+        let Some(registration) =
+            crate::adapters::native::claude_registration(&view.adapter, event)?
+        else {
+            return Ok(());
+        };
+        if event.event != "SessionStart"
+            && matches!(&view.delivery_endpoint, crate::adapters::Endpoint::Claude {path} if path == &registration.path)
+        {
+            return Ok(());
+        }
+        let directory = object_dir(&self.config.run_dir, &format!("seat-{id}"))?;
+        SqliteStore::open(&directory)?.put(
+            "claude_socket_registration",
+            &serde_json::to_vec(&registration)?,
+        )?;
+        let view = self.views.get_mut(&id).unwrap();
+        view.delivery_endpoint = crate::adapters::Endpoint::Claude {
+            path: registration.path,
+        };
+        view.delivery_failure = None;
         Ok(())
     }
     fn launch(
@@ -2998,6 +3062,7 @@ impl Worker {
                                 if let Some(path) = &file.messaging_socket_path {
                                     view.delivery_endpoint =
                                         crate::adapters::Endpoint::Claude { path: path.clone() };
+                                    view.delivery_failure = None;
                                 }
                                 let _ = view.adapter.observe_claude_session(
                                     &file,
@@ -3005,7 +3070,16 @@ impl Worker {
                                     now,
                                 );
                             }
-                            Err(_) => view.adapter.invalidate(),
+                            Err(error) => {
+                                view.adapter.invalidate();
+                                if matches!(view.delivery_endpoint, crate::adapters::Endpoint::None)
+                                {
+                                    view.delivery_failure = Some(crate::adapters::observe::short(
+                                        &format!("Claude session-file discovery failed: {error}"),
+                                        512,
+                                    ));
+                                }
+                            }
                         }
                     }
                 }
@@ -3128,6 +3202,7 @@ impl Worker {
                 WakeMethod::ClaudeSocket | WakeMethod::CodexRpc => {
                     let binding = view.adapter.binding.clone();
                     let endpoint = view.delivery_endpoint.clone();
+                    let delivery_failure = view.delivery_failure.clone();
                     let priority = if work.messages.iter().all(|m| m.envelope.priority > 0) {
                         Priority::Later
                     } else {
@@ -3135,10 +3210,19 @@ impl Worker {
                     };
                     self.deliveries.spawn_on(
                         async move {
-                            let outcome = crate::adapters::native::wake(
+                            let mut outcome = crate::adapters::native::wake(
                                 &binding, &endpoint, work.id, &text, priority, false,
                             )
                             .await;
+                            if matches!(endpoint, crate::adapters::Endpoint::None)
+                                && outcome.evidence == Evidence::RecipientStored
+                                && let Some(reason) = delivery_failure
+                            {
+                                outcome.note = crate::adapters::observe::short(
+                                    &format!("native attachment unavailable: {reason}; no mutation attempted"),
+                                    640,
+                                );
+                            }
                             Delivery {
                                 swarm,
                                 work,
@@ -3999,6 +4083,10 @@ impl Worker {
                                 }
                                 Ok(view.adapter.status.clone())
                             });
+                        let result = result.and_then(|status| {
+                            self.register_claude_socket(id, generation, &event)?;
+                            Ok(status)
+                        });
                         if let (Some(before), Ok(status)) = (&before, &result)
                             && !status.same_value(before)
                         {

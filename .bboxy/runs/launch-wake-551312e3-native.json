@@ -1,0 +1,501 @@
+{
+  "fixed5": {
+    "app": {
+      "argv": [
+        "/Users/feral/mydev/bboxy450-term-exec3/target/launch-wake-09bvv16q/debug/bboxy450-term",
+        "--ctl",
+        "--run-dir",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/fixed5-run",
+        "--capture",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/fixed5.png",
+        "--capture-after",
+        "12",
+        "--quit-after",
+        "50"
+      ],
+      "cwd": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/fixed5-repository",
+      "pid": 46475,
+      "binary_sha256": "dd46837f4318180ffbcc0c11a0fb0ec158fe405f9523ad8c5dd889742eaa061b",
+      "started_utc": "2026-10-24T07:40:40.289533+00:00"
+    },
+    "app_result": {
+      "exit": 0,
+      "elapsed_seconds": 51.95979112497298
+    },
+    "seat": "01M5PDNKNKJMD0HGJDCC4GCQCQ",
+    "challenge": "01M5PDNKXJAMN7VRC4J8GQCV7M",
+    "ctl_argv": [
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/launch-wake-09bvv16q/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/fixed5-run/gui.endpoint",
+          "spawn",
+          "claude",
+          "--name",
+          "Sable Fresh Contact",
+          "--cwd",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/fixed5-repository",
+          "--placement",
+          "new-tab"
+        ],
+        "exit": 0,
+        "at": "2026-10-24T07:40:41.689443+00:00"
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/launch-wake-09bvv16q/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/fixed5-run/gui.endpoint",
+          "dm",
+          "01M5PDNKNKJMD0HGJDCC4GCQCQ",
+          "Wake verification: read this DM with the bboxy inbox tools and reply to the operator with token SABLE-FIRST-CONTACT-03. No file edits or shell commands."
+        ],
+        "exit": 0,
+        "at": "2026-10-24T07:40:41.858268+00:00"
+      }
+    ],
+    "registration": null,
+    "interpretation": "Untrusted fresh CWD: actual published Screen is the native workspace-trust dialog before hook registration. No trust choice or operator input was submitted; no real wake/reply claim for this case."
+  },
+  "trusted6": {
+    "app": {
+      "argv": [
+        "/Users/feral/mydev/bboxy450-term-exec3/target/launch-wake-09bvv16q/debug/bboxy450-term",
+        "--ctl",
+        "--run-dir",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted6-run",
+        "--capture",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted6.png",
+        "--capture-after",
+        "12",
+        "--quit-after",
+        "50"
+      ],
+      "cwd": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted6-repository",
+      "pid": 50558,
+      "binary_sha256": "dd46837f4318180ffbcc0c11a0fb0ec158fe405f9523ad8c5dd889742eaa061b",
+      "started_utc": "2026-10-24T07:44:38.409429+00:00"
+    },
+    "app_result": {
+      "exit": 0,
+      "elapsed_seconds": 50.66606287501054
+    },
+    "seat": "01M5PDWV885DKS8R301SRQPSGZ",
+    "challenge": "01M5PDWVDPC8B4DQK9QM1C8MHQ",
+    "ctl_argv": [
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/launch-wake-09bvv16q/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted6-run/gui.endpoint",
+          "spawn",
+          "claude",
+          "--name",
+          "Sable Fresh Contact",
+          "--cwd",
+          "/Users/feral/mydev/bboxy450-term",
+          "--placement",
+          "new-tab"
+        ],
+        "exit": 0,
+        "at": "2026-10-24T07:44:38.787639+00:00"
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/launch-wake-09bvv16q/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted6-run/gui.endpoint",
+          "dm",
+          "01M5PDWV885DKS8R301SRQPSGZ",
+          "Wake verification: read this DM with the bboxy inbox tools and reply to the operator with token SABLE-FIRST-CONTACT-04. No file edits or shell commands."
+        ],
+        "exit": 0,
+        "at": "2026-10-24T07:44:38.862623+00:00"
+      }
+    ],
+    "tool_evidence": {
+      "transcript_metadata": {
+        "path": "/Users/feral/.claude/projects/-Users-feral-mydev-bboxy450-term/01a16cde-6d1c-4409-859e-1dc5786c1341.jsonl",
+        "sha256": "2892d7d6d0017118c237344b9ad742fa8e765b5b42e13e85c65820e923d3df94",
+        "bytes": 915244,
+        "records": 137
+      },
+      "tools": [
+        {
+          "event": "tool_call",
+          "timestamp": "2026-10-24T07:44:46.995Z",
+          "name": "ToolSearch",
+          "arguments": {}
+        },
+        {
+          "event": "tool_call",
+          "timestamp": "2026-10-24T07:44:54.069Z",
+          "name": "mcp__bboxy__message_list",
+          "arguments": {
+            "limit": 10
+          }
+        },
+        {
+          "event": "tool_call",
+          "timestamp": "2026-10-24T07:44:54.506Z",
+          "name": "ToolSearch",
+          "arguments": {}
+        },
+        {
+          "event": "tool_call",
+          "timestamp": "2026-10-24T07:45:02.497Z",
+          "name": "mcp__bboxy__message_send",
+          "arguments": {
+            "destination": "seats/00000000000000000000000000/inbox",
+            "reply_to": "01M5PDWVDPC8B4DQK9QM1C8MHQ",
+            "thread_id": "01M5PDWVDPC8B4DQK9QM1C8MHQ"
+          }
+        },
+        {
+          "event": "tool_call",
+          "timestamp": "2026-10-24T07:45:05.623Z",
+          "name": "mcp__bboxy__ch_ls",
+          "arguments": {}
+        },
+        {
+          "event": "tool_call",
+          "timestamp": "2026-10-24T07:45:08.085Z",
+          "name": "ToolSearch",
+          "arguments": {}
+        },
+        {
+          "event": "tool_call",
+          "timestamp": "2026-10-24T07:45:11.684Z",
+          "name": "mcp__bboxy__orient",
+          "arguments": {}
+        },
+        {
+          "event": "tool_call",
+          "timestamp": "2026-10-24T07:45:16.281Z",
+          "name": "ToolSearch",
+          "arguments": {}
+        },
+        {
+          "event": "tool_call",
+          "timestamp": "2026-10-24T07:45:19.612Z",
+          "name": "mcp__bboxy__message_ack",
+          "arguments": {
+            "message": "01M5PDWVDPC8B4DQK9QM1C8MHQ"
+          }
+        },
+        {
+          "event": "tool_call",
+          "timestamp": "2026-10-24T07:45:21.899Z",
+          "name": "mcp__bboxy__message_send",
+          "arguments": {
+            "destination": "seats/01M5PDWV885DKS8R301SRQPSGZ/inbox",
+            "reply_to": "01M5PDWVDPC8B4DQK9QM1C8MHQ",
+            "thread_id": "01M5PDWVDPC8B4DQK9QM1C8MHQ"
+          }
+        },
+        {
+          "event": "tool_result",
+          "timestamp": "2026-10-24T07:44:55.932Z",
+          "name": "mcp__bboxy__message_list",
+          "is_error": false,
+          "kind": "messages",
+          "status": null,
+          "message_ids": [
+            "01M5PDWVDPC8B4DQK9QM1C8MHQ"
+          ]
+        },
+        {
+          "event": "tool_result",
+          "timestamp": "2026-10-24T07:45:03.217Z",
+          "name": "mcp__bboxy__message_send",
+          "is_error": true,
+          "kind": null,
+          "status": "rejected",
+          "error": {
+            "code": "rejected",
+            "message": "dangling tree path seats/00000000000000000000000000/inbox"
+          }
+        },
+        {
+          "event": "tool_result",
+          "timestamp": "2026-10-24T07:45:22.924Z",
+          "name": "mcp__bboxy__message_ack",
+          "is_error": false,
+          "kind": "applied",
+          "status": "applied"
+        },
+        {
+          "event": "tool_result",
+          "timestamp": "2026-10-24T07:45:23.868Z",
+          "name": "mcp__bboxy__message_send",
+          "is_error": false,
+          "kind": "stored",
+          "status": "accepted",
+          "message": {
+            "id": "01M5PDXCQ0000000000000000C",
+            "context": "seats/01M5PDWV885DKS8R301SRQPSGZ/inbox",
+            "reply_to": "01M5PDWVDPC8B4DQK9QM1C8MHQ",
+            "thread_id": "01M5PDWVDPC8B4DQK9QM1C8MHQ"
+          }
+        }
+      ]
+    },
+    "registration": {
+      "binding": {
+        "seat": "01M5PDWV885DKS8R301SRQPSGZ",
+        "session": "01a16cde-6d1c-4409-859e-1dc5786c1341",
+        "pid": 50577,
+        "process_start": "Sat Oct 24 00:44:38 2026",
+        "generation": 1,
+        "attachment_generation": 1
+      },
+      "path": "/tmp/cc-socks/50577.sock"
+    },
+    "interpretation": "No destination was suggested in the DM. Actual Claude read and application-acked the challenge, tried seats/000.../inbox (rejected dangling path), then stored a token reply in its own inbox. This fails intuitive operator reply and is retained, not hidden by the named-destination probe."
+  },
+  "trusted7": {
+    "app": {
+      "argv": [
+        "/Users/feral/mydev/bboxy450-term-exec3/target/launch-wake-09bvv16q/debug/bboxy450-term",
+        "--ctl",
+        "--run-dir",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted7-run",
+        "--capture",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted7.png",
+        "--capture-after",
+        "12",
+        "--quit-after",
+        "180"
+      ],
+      "cwd": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted7-repository",
+      "pid": 61158,
+      "binary_sha256": "dd46837f4318180ffbcc0c11a0fb0ec158fe405f9523ad8c5dd889742eaa061b",
+      "started_utc": "2026-10-24T07:50:39.592092+00:00"
+    },
+    "app_result": {
+      "exit": 0,
+      "elapsed_seconds": 180.36070362501778
+    },
+    "seat": "01M5PE7VX81B1HZZA5W6AGQ4XZ",
+    "challenge": "01M5PE7W1XAPHED9H8RPE92Q5C",
+    "ctl_argv": [
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/launch-wake-09bvv16q/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted7-run/gui.endpoint",
+          "spawn",
+          "claude",
+          "--name",
+          "Sable Fresh Contact",
+          "--cwd",
+          "/Users/feral/mydev/bboxy450-term",
+          "--placement",
+          "new-tab"
+        ],
+        "exit": 0,
+        "at": "2026-10-24T07:50:39.882097+00:00"
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/launch-wake-09bvv16q/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted7-run/gui.endpoint",
+          "dm",
+          "01M5PE7VX81B1HZZA5W6AGQ4XZ",
+          "Wake verification: read this DM with the bboxy inbox tools. Send a bboxy message_send reply to destination operator/inbox with token SABLE-FIRST-CONTACT-05 and reply_to this message id. The operator inbox is exactly operator/inbox, never a seats/000... path. No file edits or shell commands."
+        ],
+        "exit": 0,
+        "at": "2026-10-24T07:50:39.958284+00:00"
+      }
+    ],
+    "tool_evidence": {
+      "transcript_metadata": {
+        "path": "/Users/feral/.claude/projects/-Users-feral-mydev-bboxy450-term/01a16ce3-efb7-47a5-b097-51a75736c14f.jsonl",
+        "sha256": "9a57b2739eec7bd0db4e9be5ac705d85025b9540f398d95d3a76b27f181e8b7e",
+        "bytes": 594007,
+        "records": 77
+      },
+      "tools": [
+        {
+          "event": "tool_call",
+          "timestamp": "2026-10-24T07:50:44.770Z",
+          "name": "ToolSearch",
+          "arguments": {}
+        },
+        {
+          "event": "tool_call",
+          "timestamp": "2026-10-24T07:50:51.568Z",
+          "name": "mcp__bboxy__message_list",
+          "arguments": {
+            "limit": 5
+          }
+        },
+        {
+          "event": "tool_call",
+          "timestamp": "2026-10-24T07:50:57.198Z",
+          "name": "mcp__bboxy__message_send",
+          "arguments": {
+            "destination": "operator/inbox",
+            "reply_to": "01M5PE7W1XAPHED9H8RPE92Q5C",
+            "thread_id": "01M5PE7W1XAPHED9H8RPE92Q5C"
+          }
+        },
+        {
+          "event": "tool_result",
+          "timestamp": "2026-10-24T07:50:53.505Z",
+          "name": "mcp__bboxy__message_list",
+          "is_error": false,
+          "kind": "messages",
+          "status": null,
+          "message_ids": [
+            "01M5PE7W1XAPHED9H8RPE92Q5C"
+          ]
+        },
+        {
+          "event": "tool_result",
+          "timestamp": "2026-10-24T07:50:58.099Z",
+          "name": "mcp__bboxy__message_send",
+          "is_error": false,
+          "kind": "stored",
+          "status": "accepted",
+          "message": {
+            "id": "01M5PE9A7KQ3RZ8TXW4N2HB6CD",
+            "context": "operator/inbox",
+            "reply_to": "01M5PE7W1XAPHED9H8RPE92Q5C",
+            "thread_id": "01M5PE7W1XAPHED9H8RPE92Q5C"
+          }
+        }
+      ]
+    },
+    "registration": {
+      "binding": {
+        "seat": "01M5PE7VX81B1HZZA5W6AGQ4XZ",
+        "session": "01a16ce3-efb7-47a5-b097-51a75736c14f",
+        "pid": 61162,
+        "process_start": "Sat Oct 24 00:50:39 2026",
+        "generation": 1,
+        "attachment_generation": 1
+      },
+      "path": "/tmp/cc-socks/61162.sock"
+    },
+    "operator_reply": {
+      "challenge": "01M5PE7W1XAPHED9H8RPE92Q5C",
+      "reply": [
+        {
+          "kind": "message",
+          "message": {
+            "bus": {
+              "seq": "40",
+              "stream": "swarm-01M5PE7VWA9YPQXPT99ZW7G6VD"
+            },
+            "envelope": {
+              "account": "949642b1bc25902d0fcccc5bc5af293be3b77a6bd09402333fe704c5f3368404",
+              "attachments": [],
+              "author": "054726a91d8b65ace8557dda1f056b90d32f953973c48d58e87073ac7fb8ac33",
+              "body": {
+                "text": "SABLE-FIRST-CONTACT-05",
+                "type": "text"
+              },
+              "context": "operator/inbox",
+              "device": "949642b1bc25902d0fcccc5bc5af293be3b77a6bd09402333fe704c5f3368404",
+              "id": "01M5PE9A7KQ3RZ8TXW4N2HB6CD",
+              "issuer": "949642b1bc25902d0fcccc5bc5af293be3b77a6bd09402333fe704c5f3368404",
+              "issuer_kind": "local-dev",
+              "kind": "text",
+              "priority": 0,
+              "priority_class": "worker",
+              "process_generation": "1",
+              "reply_to": "01M5PE7W1XAPHED9H8RPE92Q5C",
+              "role": {
+                "class": "worker",
+                "name": "executor"
+              },
+              "role_epoch": "1",
+              "role_grant_id": "6e991806f2816fdaa3416319235c58d20db1bd1143cc41b30e50a25bc29a16f8",
+              "seat": "01M5PE7VX81B1HZZA5W6AGQ4XZ",
+              "sender_sequence": "1",
+              "signature": "6_DxNmS18_20CZ_5yM3d5khMEOfIJDtFjfVmfq0FMnT_92Kl-irp1Y7mQBxfbm_8pe1lOmlGVd8936oAHrjfCQ",
+              "swarm_id": "01M5PE7VWA9YPQXPT99ZW7G6VD",
+              "thread_id": "01M5PE7W1XAPHED9H8RPE92Q5C",
+              "timestamp": 1792828257,
+              "version": 1
+            },
+            "held_out": null,
+            "sequence": 2
+          },
+          "swarm": "01M5PE7VWA9YPQXPT99ZW7G6VD"
+        }
+      ],
+      "observed_utc": "2026-10-24T07:50:58.615864+00:00",
+      "elapsed_from_app_start": 19.09201004198985
+    },
+    "recorded_pid_reap_check": {
+      "observed_utc": "2026-10-24T07:55:39.778018+00:00",
+      "recorded_processes": [
+        {
+          "pid": 61158,
+          "ps_exit": 1,
+          "current": ""
+        },
+        {
+          "pid": 61159,
+          "ps_exit": 1,
+          "current": ""
+        },
+        {
+          "pid": 61160,
+          "ps_exit": 1,
+          "current": ""
+        },
+        {
+          "pid": 61162,
+          "ps_exit": 1,
+          "current": ""
+        },
+        {
+          "pid": 61219,
+          "ps_exit": 1,
+          "current": ""
+        },
+        {
+          "pid": 61220,
+          "ps_exit": 1,
+          "current": ""
+        },
+        {
+          "pid": 61221,
+          "ps_exit": 1,
+          "current": ""
+        },
+        {
+          "pid": 61253,
+          "ps_exit": 1,
+          "current": ""
+        },
+        {
+          "pid": 61341,
+          "ps_exit": 1,
+          "current": ""
+        }
+      ]
+    },
+    "ack_evidence": "At the reply-observation instant the original receipt was native-written; no application-acknowledged claim for this probe. Actual model read and correlated reply are independently observed."
+  },
+  "trusted_cwd_witness": {
+    "directory": "/Users/feral/mydev/bboxy450-term",
+    "state_file": "/Users/feral/.claude.json",
+    "selected_field": "projects[directory].hasTrustDialogAccepted",
+    "value": true,
+    "read_command": "77a9f8deda2040ac9f26dda87d61f00f",
+    "read_log_sha256": "2f72e6d16f97b64a579497756ab03fd28d1fd4fa6cb5f063e856f6034212abbe",
+    "native_tools_note": "The tool-call lists contain no edit or shell tool. The driver supplied no terminal input and changed no user trust setting."
+  }
+}

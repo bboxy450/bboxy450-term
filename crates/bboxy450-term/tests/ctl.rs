@@ -19,7 +19,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-const AGENT: &str = r#"import json, os, re, subprocess, time
+const AGENT: &str = r#"import base64, json, os, re, socket, subprocess, sys, time
 BIN = os.environ["BBT_BIN"]
 ME = os.environ.get("BBOXY_SEAT_ID", "")
 LOG = os.environ.get("BBT_AGENT_LOG", "/dev/null")
@@ -54,7 +54,44 @@ def text_of(env):
             if isinstance(value, dict) and isinstance(value.get("text"), str):
                 return value["text"]
     return ""
+native = os.environ.get("BBT_NATIVE_SOCKET")
+listener = None
+if native:
+    listener = socket.socket(socket.AF_UNIX)
+    listener.bind(native)
+    os.chmod(native, 0o600)
+    listener.listen(8)
+    listener.settimeout(45)
+    session = sys.argv[sys.argv.index("--session-id") + 1]
+    raw = {"hook_event_name": "SessionStart", "session_id": session,
+           "harness": "claude", "bboxy_native_socket": native}
+    payload = base64.b64encode(json.dumps({"raw": raw}).encode()).decode()
+    print("\033]7502;v=1:seat=" + ME + ":ev=SessionStart:d=" + payload + "\033\\", flush=True)
+    with open(LOG, "a") as f:
+        f.write(json.dumps({"native": "osc-only", "session": session}) + "\n")
+    while not os.path.exists(os.environ["BBT_RELEASE_HOOK"]):
+        time.sleep(0.01)
+    env = dict(os.environ, CLAUDE_CODE_MESSAGING_SOCKET=native,
+               CLAUDE_CODE_MESSAGING_TOKEN="fixture-token-never-forward")
+    hook = subprocess.run([BIN, "hook", "--agent", "claude"],
+                          input=json.dumps(raw), env=env, text=True, capture_output=True, timeout=10)
+    assert hook.returncode == 0 and not hook.stdout, (hook.returncode, hook.stdout, hook.stderr)
+    with open(LOG, "a") as f:
+        f.write(json.dumps({"native": "hook-written"}) + "\n")
 while True:
+    if listener:
+        connection, _ = listener.accept()
+        with connection, connection.makefile("rb") as stream:
+            line = stream.readline(65537)
+        if not line:
+            continue
+        assert len(line) <= 65536
+        frame = json.loads(line)
+        with open(LOG, "a") as f:
+            f.write(json.dumps({"native": "received", "id": frame["msg_id"],
+                                "text": frame["message"]["content"]}) + "\n")
+        if "RESTORE-ONLY" in frame["message"]["content"]:
+            continue
     try:
         (listed,) = mcp([("message_list", {"limit": 32})])
         sc = (listed.get("result") or {}).get("structuredContent") or {}
@@ -83,7 +120,8 @@ while True:
     except Exception as error:
         with open(LOG, "a") as f:
             f.write(json.dumps({"error": repr(error)}) + "\n")
-    time.sleep(0.3)
+    if not listener:
+        time.sleep(0.3)
 "#;
 
 fn quote(path: &Path) -> String {
@@ -262,6 +300,182 @@ async fn ctl_drives_a_claude_seat_from_outside_the_app() {
         !endpoint.exists(),
         "gui.endpoint is removed when the app stops"
     );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn first_contact_uses_the_authenticated_hook_socket_and_restores_it_after_logic_restart() {
+    use bboxy450_term::cockpit::Event;
+    use bbt_mux::store::{Events, Store, events::EventLog, sqlite::SqliteStore};
+    use bbt_proto::GuiReply;
+
+    let root = tempfile::tempdir().unwrap();
+    let root = root.path().canonicalize().unwrap();
+    let run = root.join("run");
+    let repository = root.join("repository");
+    let bin = root.join("bin");
+    let log = root.join("agent.log");
+    let socket = root.join("native.sock");
+    let release = root.join("release-hook");
+    let client_config = root.join("client-config");
+    for dir in [
+        repository.join(".bboxy"),
+        bin.clone(),
+        root.join("zsh-config"),
+        client_config.clone(),
+    ] {
+        std::fs::create_dir_all(dir).unwrap();
+    }
+    let binary = PathBuf::from(env!("CARGO_BIN_EXE_bboxy450-term"));
+    std::fs::write(bin.join("agent.py"), AGENT).unwrap();
+    executable(
+        &bin.join("claude"),
+        &format!(
+            "#!/bin/sh\nBBT_BIN={} BBT_AGENT_LOG={} BBT_NATIVE_SOCKET={} BBT_RELEASE_HOOK={} exec python3 -I {} \"$@\"\n",
+            quote(&binary),
+            quote(&log),
+            quote(&socket),
+            quote(&release),
+            quote(&bin.join("agent.py"))
+        ),
+    );
+    let app = root.join("test-app");
+    executable(
+        &app,
+        &format!(
+            "#!/bin/sh\nBBOXY_TEST_CUSTODY={} CLAUDE_CONFIG_DIR={} PATH={}:\"$PATH\" exec {} \"$@\"\n",
+            quote(&PathBuf::from(format!(
+                "fixture:{}",
+                root.join("custody").display()
+            ))),
+            quote(&client_config),
+            quote(&bin),
+            quote(&binary)
+        ),
+    );
+    let mut session = Session::start(Config {
+        executable: app,
+        socket: run.join("mux.sock"),
+        run_dir: run.clone(),
+        repository: repository.clone(),
+        shell_config: Some(root.join("zsh-config")),
+        ctl: true,
+    })
+    .await
+    .unwrap();
+    let spawned = ctl(
+        &run,
+        &["spawn", "claude", "--cwd", repository.to_str().unwrap()],
+    );
+    let seat = spawned[0]["seat"].as_str().unwrap().to_owned();
+    let object = run.join(format!("seat-{seat}"));
+    until("the forged OSC being observed", &log, || {
+        EventLog::open(&object)
+            .unwrap()
+            .after(0, 128)
+            .unwrap()
+            .iter()
+            .any(|event| {
+                event.event.subject == format!("seat/{seat}/state")
+                    && event.event.payload["source"] == "7502"
+            })
+            .then_some(())
+    });
+    let store = SqliteStore::open(&object).unwrap();
+    assert!(
+        store.get("claude_socket_registration").unwrap().is_none(),
+        "OSC must not bind a native endpoint"
+    );
+    let sent = ctl(&run, &["dm", &seat, "first-contact"]);
+    let message = sent[0]["message"].as_str().unwrap().to_owned();
+    let stored = until("the missing session-file discovery cause", &log, || {
+        ctl(&run, &["receipts", &message]).into_iter().find(|r| {
+            r["receipt"]["note"].as_str().is_some_and(|s| {
+                s.contains("session-file discovery failed") && s.contains("no mutation attempted")
+            })
+        })
+    });
+    assert_eq!(
+        stored["receipt"]["evidence"], "recipient-stored",
+        "{stored}"
+    );
+    assert!(
+        stored["receipt"]["note"]
+            .as_str()
+            .unwrap()
+            .contains("discovery failed"),
+        "{stored}"
+    );
+    assert!(
+        !std::fs::read_to_string(&log)
+            .unwrap()
+            .contains("\"message\":"),
+        "the idle stand-in must not poll MCP"
+    );
+    std::fs::write(&release, b"").unwrap();
+    let reply = until("an automatic native-woken MCP reply", &log, || {
+        ctl(&run, &["inbox"])
+            .into_iter()
+            .find(|m| m["message"]["envelope"]["reply_to"] == message)
+    });
+    assert_eq!(
+        reply["message"]["envelope"]["body"]["text"],
+        "pong: first-contact"
+    );
+    until("application acknowledgement", &log, || {
+        ctl(&run, &["receipts", &message])
+            .into_iter()
+            .any(|r| r["receipt"]["evidence"] == "application-acknowledged")
+            .then_some(())
+    });
+    let registration = store.get("claude_socket_registration").unwrap().unwrap();
+    let raw = std::str::from_utf8(&registration).unwrap();
+    assert!(!raw.contains("fixture-token-never-forward"));
+    let registration: Value = serde_json::from_slice(&registration).unwrap();
+    assert_eq!(registration["binding"]["seat"], seat);
+    assert_eq!(registration["binding"]["generation"], 1);
+    assert_eq!(registration["path"], socket.to_str().unwrap());
+    assert!(
+        !client_config.join("sessions").exists(),
+        "no PID session file is supplied"
+    );
+
+    let previous_logic = session.logic.id();
+    session.logic.start_kill().unwrap();
+    tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            if let Event::Reply(reply) = session.event().await.unwrap()
+                && let GuiReply::Seats(seats) = *reply
+                && seats.iter().any(|s| s.record.id.to_string() == seat)
+                && session.logic.id() != previous_logic
+            {
+                break;
+            }
+        }
+    })
+    .await
+    .unwrap();
+    let restored = ctl(&run, &["dm", &seat, "RESTORE-ONLY"]);
+    let restored = restored[0]["message"].as_str().unwrap();
+    until("the restored native transport", &log, || {
+        ctl(&run, &["receipts", restored])
+            .into_iter()
+            .any(|r| r["receipt"]["evidence"] == "native-written")
+            .then_some(())
+    });
+    until(
+        "the retained stand-in receiving the restored wake",
+        &log,
+        || {
+            std::fs::read_to_string(&log)
+                .ok()
+                .filter(|s| s.contains("RESTORE-ONLY"))
+                .map(|_| ())
+        },
+    );
+    println!(
+        "first-contact: OSC ignored for native binding; authenticated hook wakes an idle stand-in; real MCP list/ack/reply; no PID file or operator input; native binding restored after logic death (transport only)"
+    );
+    session.shutdown().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

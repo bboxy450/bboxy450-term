@@ -373,9 +373,28 @@ fn run(args: &[String]) -> Result<()> {
         }
         serde_json::from_slice(&bytes)?
     };
-    let event = prepare(raw, agent)?;
+    let mut event = prepare(raw, agent)?;
+    // Claude documents this export before SessionStart, unlike a PID file:
+    // https://code.claude.com/docs/en/cross-session-messaging#the-sessions-inbox-socket
+    // No messaging token is read or forwarded. Registration uses the admitted
+    // socket lane; an OSC label must never select a native delivery endpoint.
+    let native_socket =
+        if agent == "claude" && matches!(event.event.as_str(), "SessionStart" | "Stop") {
+            std::env::var("CLAUDE_CODE_MESSAGING_SOCKET").ok()
+        } else {
+            None
+        };
+    if let Some(path) = &native_socket {
+        if !std::path::Path::new(path).is_absolute() || path.len() > 1024 {
+            return Err(invalid("invalid Claude messaging socket path"));
+        }
+        event.raw["bboxy_native_socket"] = path.clone().into();
+        if serde_json::to_vec(&event)?.len() > MAX_RAW {
+            return Err(invalid("hook payload exceeds 64 KiB"));
+        }
+    }
     let seat = std::env::var("BBOXY_SEAT_ID")?.parse::<Ulid>()?;
-    if let Some(frame)=osc(seat,&event)?
+    if native_socket.is_none() && let Some(frame)=osc(seat,&event)?
         && let Ok(mut tty)=std::fs::OpenOptions::new().write(true).custom_flags(libc::O_NONBLOCK).open("/dev/tty")
         // SAFETY: the open file owns this fd. isatty changes no state.
         && unsafe{libc::isatty(tty.as_raw_fd())}==1
