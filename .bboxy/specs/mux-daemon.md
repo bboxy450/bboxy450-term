@@ -4,7 +4,7 @@ type: "spec"
 number: 84
 title: "Mux daemon — process survival and state delivery"
 created: "2026-10-21T19:43:20Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-10-24T04:20:48Z"
 links:
   - { to: "[[d21-ring-durability]]", rel: decision }
   - { to: "[[d22-tick-journal]]", rel: decision }
@@ -86,6 +86,8 @@ The close lifecycle below constrains this recovery rule: a deliberately closed s
 For a plain shell or a harness without a usable resume mapping, create the configured new session only under its declared restart policy and expose the recovery limitation. Do not claim restoration of shell variables, a foreground command or a conversation whose session ID was never persisted.
 
 Shadows from [[ux-prototype]] are published remote participants, not owned remote seats. They have no PTY, pane, screen/scrollback permission or resume mapping. Their owner's signed presence/roster supplies the allowed identity/state metadata through [[messaging]]. Showing a shadow must never grant remote control or trigger remote bootstrap.
+
+**Checkpoints ([[d253-checkpoint-policy]], 2026-10-24).** A parser checkpoint bounds recovery work, never durability: idle means caught up with the ring tail and 200 ms silent, so a backlogged seat never gets a maintenance checkpoint; a checkpoint is forced at R = 8 MiB of un-checkpointed bytes or 60 s of age; at most K = 4 saves in flight per logic process on a side task, the ingest loop never awaits one; a seat at 2R pauses its own replay until its save lands; close, seal, resize, shutdown and handover checkpoints stay forced; gate: checkpoint RPC at most 10 % of logic wall time at 967 seats, crash recovery at most 2R per seat ([[checkpoint-bounded]]).
 
 ## Reversible close lifecycle
 

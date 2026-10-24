@@ -36,6 +36,7 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[local-first]] the mux depends on no remote transport until the cloud phase opens | `sh scripts/local-first.sh` | held at the adding commit |
 | [[no-copyleft-deps]] every dependency offers a permissive licence | `sh scripts/deps-licences.sh` | held at the adding commit, 483 deps |
 | [[seats-967-frame]] the sidebar and 50 watched panes hold frame time at 967 seats | `GATE_SEATS=967 GATE_WATCHED=50 GATE_SECONDS=10 GATE_BUDGET=8.33 sh scripts/gates.sh frame` | pending a settled run (slow, gated) |
+| [[checkpoint-bounded]] crash recovery work per seat stays under the checkpoint bound | `cargo test -p bbt-mux --locked --test recovery checkpoint_bounded_recovery -- --exact` | pending R5g (slow, gated) |
 
 A violation halts the work that broke it: the task goes `blocked` with
 `[[invariant|violates]]`, and the halt names the invariant, the evidence and
