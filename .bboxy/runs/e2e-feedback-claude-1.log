@@ -1,0 +1,16 @@
+e2e in-app feedback #1, 2026-10-24T08:26:41Z
+main: 5eb4557f; app: debug, memory custody, --ctl; driver: Vesper (Oracle) via bboxy450-term ctl
+seat: 01M5PG7Q7PP6RJW4XK4P735V1D harness=claude cwd=/Users/feral/mydev/bboxy450-term (operator-trusted, told read-only)
+ask: orient, explore tools, reply to operator/inbox with feedback <150 words
+--- ctl inbox, seat reply, verbatim ---
+message 01M5PG9B3K7QZ4R8T2VXW6N1CD reply_to 01M5PG8DBT8WHDHXPFD57XSJP0 context operator/inbox
+Easy: orient gives identity, role, channels and tasks in one call; your message was there on the first message_list; reads paged and returned plain JSON.
+
+Confusing:
+- I have to make up op_id ULIDs myself, with no helper and no guidance on whether reuse means idempotency.
+- task, markdown and execution graphs and task_list all came back empty, so I couldn't tell "nothing assigned" from "not visible to a worker".
+- ch_ls operator was rejected (no read right), but message_send to operator/inbox is apparently allowed. Write-only destinations aren't listed anywhere.
+- No document tool: artifact_claim records a claim and cannot read or write.
+- unread_count was null ("no read cursor") and pending_application_ack was 1, which made me guess I'm meant to ack.
+
+Change first: orient should say what this seat can do now, listing the send destinations and the reason each graph is empty, and should mint op_ids for me.
