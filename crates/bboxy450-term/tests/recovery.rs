@@ -403,6 +403,28 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
         cols: 77,
         rows: 7,
     };
+    // Confirm the first fixture has executed before holding only its replacement.
+    let mut initial_argv = String::new();
+    let initial_published = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            initial_argv = tokio::fs::read_to_string(root.path().join("codex-argv"))
+                .await
+                .unwrap_or_default();
+            let args: Vec<_> = initial_argv.lines().collect();
+            if args
+                .windows(2)
+                .any(|pair| pair == ["resume", "fixture-codex-thread"])
+            {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await;
+    assert!(
+        initial_published.is_ok(),
+        "initial Codex argv publication timed out: {initial_argv}"
+    );
     // A spawned process can be reported before its fixture has published argv.
     // Hold that child-side publication to exercise the observation race exactly.
     let argv_hold = root.path().join("codex-hold-argv");
