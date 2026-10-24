@@ -78,7 +78,7 @@ Before every handoff, run `sh scripts/ci-local.sh` (add `--parity` when lab, des
 - in a **clean detached worktree of the exact commit** you hand off (`git worktree add --detach /tmp/ci-<name> <sha>`);
 - with **its own `CARGO_TARGET_DIR`**;
 - then **delete that target**, because disk is tight.
-- and only in a **gate slot**: at most two full gates run at once (three hit the 10 GiB disk floor). DM the Oracle for a slot before starting and report the exit. Keep one dev target per worktree and delete it at handoff.
+- and only in a **gate slot**: at most two full gates run at once (three hit the 10 GiB disk floor). Slots are self-service: if fewer than two `ci-local` gates are running (`pgrep -fl ci-local.sh`), take one, post `SLOT <n> TAKEN` with your SHA in #bboxy450-term, and post `SLOT RELEASED` with the exit when done. Never wait for a grant. Keep one dev target per worktree and delete it at handoff.
 
 Report the real exit code. A shared-tree run proves nothing: other agents' in-flight files leak into it.
 
