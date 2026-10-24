@@ -1517,3 +1517,13 @@ details[open] > summary::before { transform: rotate(90deg); }
 .edit-field .ed-caret::after { content: ''; position: absolute; left: -1px; top: 0; bottom: 0; width: 2px; border-radius: 1px; background: var(--accent); }
 .edit-field.blink .ed-caret::after { animation: caret-blink 1.06s linear infinite; }   /* off in reference states: a frozen blink is a random phase */
 @keyframes caret-blink { 0%, 49.9% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+/* state marks (components.js circleMark / taskMark): SVG geometry filling its box, so it is centred at any size */
+.mark { display: block; width: 100%; height: 100%; flex: none; }
+.mark svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.glyph > .mark { position: absolute; inset: 0; }
+.tglyph, .att .ak, .report .rk { display: inline-flex; align-items: center; justify-content: center; }
+.tglyph > .mark, .att .ak > .mark, .report .rk > .mark { width: 11px; height: 11px; }
+.doc-status > .mark { display: inline-block; width: 10px; height: 10px; vertical-align: -1px; margin-right: 5px; }
+/* the waiting mark keeps its amber halo (text-shadow does not reach SVG): a drop-shadow on the mark */
+.seat-row.waiting .glyph > .mark { filter: drop-shadow(0 0 3px var(--c-waiting)); }

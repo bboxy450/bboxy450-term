@@ -387,23 +387,8 @@ impl Build<'_> {
             } else {
                 ui::Color::Line
             };
-            let prefix = if d.kind.as_deref() == Some("task") {
-                match st {
-                    "running" => "◑ ",
-                    "reported" => "◕ ",
-                    "accepted" => "● ",
-                    "done" => "✓ ",
-                    "claimed" => "◔ ",
-                    "blocked" => "⊘ ",
-                    "rejected" => "✕ ",
-                    _ => "○ ",
-                }
-            } else {
-                ""
-            };
-            let value = format!("{prefix}{st}");
             let status_font = font(11., 400, false, co);
-            let mut status = nowrap("status/text", &value, status_font);
+            let mut status = nowrap("status/text", st, status_font);
             if matches!(st, "superseded" | "retired" | "wontfix" | "duplicate") {
                 let [w, h] = size(&status, f32::INFINITY, self.ctx, self.m);
                 let baseline = status.natural(w, self.ctx, self.m).unwrap().1;
@@ -430,6 +415,24 @@ impl Build<'_> {
                         ),
                     }],
                 };
+            }
+            if d.kind.as_deref() == Some("task") {
+                let mut inline = c::Flow::new(vec![
+                    c::Element::Baseline {
+                        content: Box::new(named(
+                            "status/mark",
+                            ui::marks::Mark::task(st).element(10., ui::Paint::solid(co)),
+                        )),
+                        offset: -1.,
+                    }
+                    .into(),
+                    status.into(),
+                ]);
+                inline.wrap = false;
+                inline.align = c::Alignment::Baseline;
+                inline.column_gap = ui::Length::Px(5.);
+                inline.row_gap = ui::Length::Px(0.);
+                status = c::Element::Flow(inline);
             }
             entries.push(natural(row(
                 "status",

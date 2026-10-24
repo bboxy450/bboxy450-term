@@ -49,32 +49,64 @@ fn glyph_shadow_inherits_kind_grade_and_ancestor_opacity_once() {
     let shadows: Vec<_> = primitives
         .iter()
         .enumerate()
-        .filter_map(|(i, (p, alpha))| match p {
-            Prim::TextShadow {
-                text,
-                origin,
-                style,
-                shadow,
-                ..
-            } => {
-                assert!((shadow.color.0[3] * alpha - 0.18).abs() < 0.00001);
-                assert_eq!((shadow.blur_radius, shadow.offset), (6., [2., -1.]));
-                Some((i, text, origin, style))
-            }
-            _ => None,
+        .filter_map(|(i, (p, alpha))| {
+            let shadow = match p {
+                Prim::TextShadow { shadow, .. } | Prim::PathShadow { shadow, .. } => shadow,
+                _ => return None,
+            };
+            assert!((shadow.color.0[3] * alpha - 0.18).abs() < 0.00001);
+            assert_eq!((shadow.blur_radius, shadow.offset), (6., [2., -1.]));
+            Some((i, *p))
         })
         .collect();
-    assert_eq!(shadows.len(), 2, "symbol and inherited kind marker");
-    for (shadow_index, value, shadow_origin, shadow_style) in shadows {
-        let (text_index, _) = primitives
+    assert_eq!(shadows.len(), 2, "vector symbol and inherited kind text");
+    for (shadow_index, shadow) in shadows {
+        let (foreground_index, _) = primitives
             .iter()
             .enumerate()
-            .find(|(_, (p, _))| {
-                matches!(p, Prim::Text { text, origin, style, .. }
-                if text == value && origin == shadow_origin && style == shadow_style)
+            .find(|(_, (p, _))| match (shadow, *p) {
+                (
+                    Prim::TextShadow {
+                        text,
+                        origin,
+                        style,
+                        ..
+                    },
+                    Prim::Text {
+                        text: t,
+                        origin: o,
+                        style: s,
+                        ..
+                    },
+                ) => text == t && origin == o && style == s,
+                (
+                    Prim::PathShadow {
+                        origin,
+                        scale,
+                        points,
+                        stroke,
+                        filled,
+                        ..
+                    },
+                    Prim::Path {
+                        origin: o,
+                        scale: s,
+                        points: p,
+                        stroke: st,
+                        fill,
+                        ..
+                    },
+                ) => {
+                    origin == o
+                        && scale == s
+                        && points == p
+                        && stroke == st
+                        && *filled == fill.is_some()
+                }
+                _ => false,
             })
             .unwrap();
-        assert!(shadow_index < text_index);
+        assert!(shadow_index < foreground_index);
     }
 }
 
@@ -164,19 +196,22 @@ fn glyph_state_grade_and_wait_kind_are_independent_and_identity_is_not_recoloure
                 .paint(Rect::new(20., 20., 12., 12.), &ctx, &mut list);
                 list.validate().unwrap();
                 variants.insert(format!("{:?}", list.primitives));
-                let (text, color) = list
+                let color = list
                     .primitives
                     .iter()
-                    .find_map(|p| {
-                        if let Prim::Text { text, color, .. } = p {
-                            Some((text, color))
-                        } else {
-                            None
-                        }
+                    .find_map(|p| match p {
+                        Prim::Path { color, .. } => Some(color),
+                        _ => None,
                     })
                     .unwrap();
+                assert!(
+                    !list
+                        .primitives
+                        .iter()
+                        .any(|p| matches!(p, Prim::Text {text,..}
+                    if ["●","○","◐","✕"].contains(&text.as_ref())))
+                );
                 if activity == Activity::Active {
-                    assert_eq!(text.as_ref(), "●");
                     assert_eq!(&color.0[..3], &Color::hex("#19A573").0[..3]);
                 }
                 assert_eq!(color.0[3], if grade == Grade::Inferred { 0.72 } else { 1. });

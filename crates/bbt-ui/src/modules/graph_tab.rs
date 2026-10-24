@@ -278,18 +278,6 @@ fn upper(mut s: ui::Text, tracking: f32) -> ui::Text {
     s.tracking_em = tracking;
     s
 }
-fn task_mark(state: &str) -> &'static str {
-    match state {
-        "claimed" => "◔",
-        "running" => "◑",
-        "reported" => "◕",
-        "accepted" => "●",
-        "done" => "✓",
-        "rejected" => "✕",
-        "blocked" => "⊘",
-        _ => "○",
-    }
-}
 fn task_color(state: &str) -> ui::Color {
     color(
         Some(match state {
@@ -395,7 +383,7 @@ fn icon(key: &str, name: &str, size: f32, col: ui::Color) -> c::Element {
 }
 
 impl GraphTab {
-    fn agents(&self, ctx: ui::Context) -> c::Element {
+    fn agents(&self, ctx: ui::Context, m: &dyn c::Measure) -> c::Element {
         let key = "agents";
         let mut children = vec![];
         children.push(
@@ -513,19 +501,37 @@ impl GraphTab {
                 .iter()
                 .find(|t| ["claimed", "running", "reported"].contains(&t.state.as_str()));
             let now = if let Some(t) = live {
-                let mut tx = c::Text::new("", font(12.5, 400, false, ui::Color::Foreground));
-                tx.wrap = false;
-                tx.runs = vec![
-                    c::TextRun {
-                        value: task_mark(&t.state).into(),
-                        style: font(12.5, 400, true, task_color(&t.state)),
+                let mut inline = c::Flow::new(vec![
+                    named(
+                        format!("{k}/now/mark"),
+                        ui::marks::Mark::task(&t.state)
+                            .element(11., ui::Paint::solid(task_color(&t.state))),
+                    )
+                    .into(),
+                    text(
+                        format!("{k}/now/title"),
+                        &t.title,
+                        12.5,
+                        400,
+                        false,
+                        ui::Color::Foreground,
+                    )
+                    .into(),
+                ]);
+                inline.wrap = false;
+                inline.align = c::Alignment::Baseline;
+                inline.column_gap = ui::Length::Px(m.width(
+                    " ",
+                    &bbt_ui_model::layout::TextStyle {
+                        size: 12.5,
+                        weight: 400,
+                        mono: false,
+                        italic: false,
+                        tracking_em: 0.,
                     },
-                    c::TextRun {
-                        value: format!(" {}", t.title),
-                        style: font(12.5, 400, false, ui::Color::Foreground),
-                    },
-                ];
-                named(format!("{k}/now"), c::Element::Text(tx))
+                ));
+                inline.row_gap = ui::Length::Px(0.);
+                named(format!("{k}/now"), c::Element::Flow(inline))
             } else {
                 text(
                     format!("{k}/now"),
@@ -647,19 +653,13 @@ impl GraphTab {
                     task_color(&it.state)
                 };
                 let mark = if kind == "bug" {
-                    inline_icon(&format!("{k}/mark"), "bug", 11., 12., col)
+                    icon(&format!("{k}/mark"), "bug", 11., col)
+                } else if kind == "invariant" {
+                    text(format!("{k}/mark"), "◆", 12., 400, true, col)
                 } else {
-                    text(
+                    named(
                         format!("{k}/mark"),
-                        if kind == "invariant" {
-                            "◆"
-                        } else {
-                            task_mark(&it.state)
-                        },
-                        12.,
-                        400,
-                        true,
-                        col,
+                        ui::marks::Mark::task(&it.state).element(11., ui::Paint::solid(col)),
                     )
                 };
                 let mut cells = vec![
@@ -1271,7 +1271,7 @@ impl GraphTab {
         let want = |k: &str| self.only.as_ref().is_none_or(|v| v.iter().any(|s| s == k));
         let mut children = vec![];
         if want("agents") {
-            children.push(self.agents(ctx).into())
+            children.push(self.agents(ctx, m).into())
         }
         if want("work") {
             children.push(self.work(ctx).into())

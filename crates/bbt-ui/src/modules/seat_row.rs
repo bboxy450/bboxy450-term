@@ -816,22 +816,7 @@ impl TaskRow {
         let glyph = if self.bug {
             named("tglyph/hicon", icon("bug", 11., glyph_color))
         } else {
-            label(
-                match self.state.as_str() {
-                    "claimed" => "◔",
-                    "running" => "◑",
-                    "reported" => "◕",
-                    "accepted" => "●",
-                    "done" => "✓",
-                    "rejected" => "✕",
-                    "blocked" => "⊘",
-                    _ => "○",
-                },
-                d.font_small as f32,
-                400,
-                true,
-                glyph_color,
-            )
+            ui::marks::Mark::task(&self.state).element(11., ui::Paint::solid(glyph_color))
         };
         let glyph = if self.bug {
             c::Element::Baseline {
@@ -841,11 +826,7 @@ impl TaskRow {
         } else {
             glyph
         };
-        let mut gs = plain(
-            Some((d.font_small as f32 * 1.4 * 64.).floor() / 64.),
-            [0.; 4],
-            0.,
-        );
+        let mut gs = plain(Some(11.), [0.; 4], 0.);
         gs.overrides.width = Some(ui::Length::Px(12.));
         gs.overrides.text = Some(ui::Text {
             size: Some(d.font_small as f32),
@@ -862,8 +843,8 @@ impl TaskRow {
             ],
         );
         glyph_box.gap = ui::Length::Px(0.);
-        glyph_box.align = c::Alignment::Start;
-        glyph_box.inline = true;
+        glyph_box.align = c::Alignment::Center;
+        glyph_box.inline = false;
         let mut children = vec![
             named("tglyph", c::Element::Box(glyph_box)).into(),
             shrink(

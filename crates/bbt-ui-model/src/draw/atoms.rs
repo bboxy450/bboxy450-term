@@ -1,5 +1,5 @@
 use super::*;
-use crate::{Activity, Grade, Role, STYLE, TOKENS, WaitKind, Where, layout::Rect};
+use crate::{Role, STYLE, TOKENS, Where, layout::Rect};
 
 pub trait Draw {
     fn draw(&self, rect: Rect, ctx: &DrawCtx, out: &mut DrawList);
@@ -55,88 +55,6 @@ impl Draw for Badge<'_> {
             },
             ctx.muted(),
         );
-    }
-}
-pub struct StateGlyph {
-    pub activity: Activity,
-    pub grade: Grade,
-    pub color: Color,
-}
-impl Draw for StateGlyph {
-    fn draw(&self, r: Rect, ctx: &DrawCtx, out: &mut DrawList) {
-        let color = match self.activity {
-            Activity::Idle => Color::hex(TOKENS.color.state.idle),
-            Activity::Waiting(_) => Color::hex(TOKENS.color.state.waiting),
-            Activity::Errored => Color::hex(TOKENS.color.state.errored),
-            Activity::Active => self.color,
-        };
-        let color = ctx.color(color).alpha(if self.grade == Grade::Inferred {
-            0.72
-        } else {
-            1.0
-        });
-        let label = match self.activity {
-            Activity::Active => "●",
-            Activity::Idle => "○",
-            Activity::Waiting(_) => "◐",
-            Activity::Errored => "✕",
-        };
-        out.text(
-            Rect::new(r.x + r.w * 0.19, r.y - r.h * 0.2, r.w, r.h),
-            label,
-            TextStyle {
-                scale: TypeScale::Custom(r.h),
-                mono: true,
-                ..Default::default()
-            },
-            color,
-        );
-        if self.grade == Grade::Shim {
-            out.push(Prim::Rect {
-                rect: r,
-                radii: [r.h; 4],
-                fill: Color::TRANSPARENT,
-                stroke: Some((1.0, color.alpha(0.55))),
-                inner_highlight: None,
-                shadow: None,
-            });
-        }
-        if self.grade == Grade::Inferred {
-            for i in 0..8 {
-                let a = i as f32 * std::f32::consts::TAU / 8.0;
-                let b = a + 0.42;
-                let rad = r.h * 0.55;
-                out.line(
-                    [
-                        r.x + r.w * 0.5 + a.cos() * rad,
-                        r.y + r.h * 0.5 + a.sin() * rad,
-                    ],
-                    [
-                        r.x + r.w * 0.5 + b.cos() * rad,
-                        r.y + r.h * 0.5 + b.sin() * rad,
-                    ],
-                    1.0,
-                    color,
-                );
-            }
-        }
-        if let Activity::Waiting(kind) = self.activity {
-            let label = match kind {
-                WaitKind::Permission => "⚿",
-                WaitKind::Question => "?",
-                WaitKind::Auth => "⚷",
-            };
-            out.text(
-                Rect::new(r.right() - 2.0, r.y - 5.0, 10.0, 9.0),
-                label,
-                TextStyle {
-                    scale: TypeScale::Custom(7.0),
-                    weight: 700,
-                    ..Default::default()
-                },
-                color,
-            );
-        }
     }
 }
 pub struct RoleMark<'a>(pub &'a Role);
@@ -252,34 +170,5 @@ mod tests {
             assert_eq!(ctx.identity(color), color);
             assert_ne!(ctx.ground(color), color);
         }
-    }
-    #[test]
-    fn glyphs_encode_grade_and_wait_kind_and_clips_balance() {
-        let ctx = DrawCtx::new(crate::Theme::Dark, crate::Density::Cozy);
-        let mut list = DrawList::default();
-        StateGlyph {
-            activity: Activity::Waiting(WaitKind::Auth),
-            grade: Grade::Inferred,
-            color: Color::WHITE,
-        }
-        .draw(Rect::new(0.0, 0.0, 12.0, 12.0), &ctx, &mut list);
-        assert!(
-            list.primitives
-                .iter()
-                .filter(|p| matches!(p, Prim::Hairline { .. }))
-                .count()
-                >= 8
-        );
-        assert!(
-            list.primitives
-                .iter()
-                .any(|p| matches!(p,Prim::Text{text,..} if text.as_ref()=="⚷"))
-        );
-        list.clip(Rect::new(0.0, 0.0, 5.0, 5.0), [0.0; 4]);
-        assert!(list.validate().is_err());
-        list.unclip();
-        assert!(list.validate().is_ok());
-        list.unclip();
-        assert!(list.validate().is_err());
     }
 }

@@ -1,0 +1,94 @@
+{
+  "source": "6dca379471e09ef5df416e6727555d10b0674b78",
+  "gate": {
+    "source": "6dca379471e09ef5df416e6727555d10b0674b78",
+    "worktree": "/private/tmp/ci-sable-mk1-l3xje6gr",
+    "target": "/private/tmp/ci-sable-mk1-l3xje6gr/target/gate",
+    "parity_out": "/Users/feral/mydev/bboxy450-term-exec3/target/mk1-parity-6dca379",
+    "slot": "RELEASED slot2, exit0",
+    "log": "/private/tmp/sable-mk1-0Dr65M/ci-local-parity.log",
+    "base": "0c7b26d",
+    "pid": 2191,
+    "session_id": 44522,
+    "command_id": "3cd1741cc934426b91ec0d1257c049e4",
+    "custody": "BBOXY_TEST_CUSTODY=memory, debug guards true by ci-local",
+    "exit": 0,
+    "elapsed_seconds": 1792.4590773329837,
+    "log_sha256": "646c7ad7dbe6f939953ff7c3376e807e89aa4249b4117a1a7b26f1db596134ff",
+    "committed_log": "/Users/feral/mydev/bboxy450-term-exec3/.bboxy/runs/mk1-ci-6dca379.log",
+    "private_target_removed": true,
+    "dev_target_removed": true
+  },
+  "workspace_tests": {
+    "source": "6dca379471e09ef5df416e6727555d10b0674b78",
+    "stages": 141,
+    "passed": 960,
+    "failed": 0,
+    "ignored": 21
+  },
+  "current_case_statuses": {
+    "review pixels": 172,
+    "within policy": 1596
+  },
+  "baseline_report_sha256": "aaf9c291eb7a96f47684ff88e50c1731f0b7dbe40698dc992473a7540cc1d8a7",
+  "current_report_sha256": "e732ca38dbabfed174c5ad4f129318639359d6a97464474b18ac7073f48d7769",
+  "current_layouts_sha256": "680ccda84732e4036772fc8db74749ab483d0eb8a30919058682d47e92ae9cf5",
+  "proof_files": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/mk1-native-6dca379/centering.json",
+      "sha256": "ef224e63a5786108b7e5fe8da9876ae04ab12d6a71fbaaaf4297e20285687137"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/mk1-native-6dca379/native-atom-1x.png",
+      "sha256": "f05fe89683d0c93bc4311065b8fd9dd9b83d4b128de57ddcd554966017550162"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/mk1-native-6dca379/native-atom-2x.png",
+      "sha256": "5d8146f6462d4345751f3e6c5e21b47af811858bfa0090088782e6a4b468b238"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/mk1-native-6dca379/native-retained-1x.png",
+      "sha256": "628d319fb37387c2da896e986e0e2c0941a2cbc2745bf90ec207ffb0bdc14b37"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/mk1-native-6dca379/native-retained-2x.png",
+      "sha256": "c8d2c03ae6e1deaf51025343f92228258db97eb4a593e26c3466ccc5dab5764a"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/mk1-native-6dca379/review-crops/page-1.png",
+      "sha256": "635bbccc0626345cc62e60c657e38012b8c95ba827ec67bdee49abef3262e564"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/mk1-native-6dca379/review-crops/page-2.png",
+      "sha256": "dc7f37bada700ee7a8b35cd61d44ca49505d486c0a3c9af9b2884b91e2a269d9"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/mk1-native-6dca379/review-crops/page-3.png",
+      "sha256": "3ccd11b9a1cfeeeab057a59cd40c29b7897f9ecee903a07d54f1118ed4764c1c"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/mk1-native-6dca379/review-crops/page-4.png",
+      "sha256": "23590f8f0c9205ba136a11f4aaaba6d669419f414bb9582fd0349ab095994583"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/mk1-native-6dca379/web/measure.json",
+      "sha256": "9be3b6b6533974a0b9258a6082c79025e390d32198986787e11c6c1e4b3c8161"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/mk1-native-6dca379/web/seat.json",
+      "sha256": "f76b39f43e1c113584ae984e2e9b826821c05580039db1abcf658c82c9308df3"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/mk1-native-6dca379/web/seat.png",
+      "sha256": "45a91bb69942cefc72efb12b3aac94723303db1e569b5607dc95ebfe67e5f7f7"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/mk1-native-6dca379/web/task.json",
+      "sha256": "1c9973f0723ba35bd1d7e3ec9e35f745b5716f15c79cb4b268f277187f90af46"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/mk1-native-6dca379/web/task.png",
+      "sha256": "a009d7713128ee0660a0180102194f736b0342707393e026dfa8fb406e413eba"
+    }
+  ]
+}

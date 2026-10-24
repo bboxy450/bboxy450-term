@@ -1,5 +1,6 @@
 //! Component composition only. Input, mutable forms and FX remain separate briefs.
 use crate::Result;
+use bbt_ui::marks::StateGlyph;
 use bbt_ui_model::{
     draw::*,
     layout::{Rect, stage_split},

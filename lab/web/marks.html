@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>state marks · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script>
+<style>
+  .mk-grid { display: flex; flex-wrap: wrap; gap: 24px; }
+  .mk-cell { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: var(--t-caption); color: var(--fg-dim); }
+  .mk-box { display: block; width: 96px; height: 96px; outline: 1px dashed var(--hair); color: var(--fg); }
+</style>
+</head><body><script>
+// State marks drawn as geometry (components.js circleMark / taskMark / SEAT_MARK), shown at 96 px so centring is visible:
+// each mark fills its box, and its ink is centred on the box centre (the SVG origin of its 16-unit viewBox).
+const el = Lab.el;
+const SEATS = ['idle', 'active', 'waiting', 'errored'], TASKS = ['open', 'claimed', 'running', 'reported', 'accepted', 'done', 'rejected', 'blocked'];
+const cell = (name, mark) => el('div', { class: 'mk-cell', 'data-mark': name }, el('span', { class: 'mk-box' }, mark), el('span', {}, name));
+Lab.page({ title: 'state marks', note: 'Seat glyphs and task marks as SVG geometry, centred by construction: a ring of radius 6 in a 16-unit box centred on the origin, a pie wedge from 12 o’clock clockwise, cross, check and slash on the same stroke. Shown at 96 px in their boxes; the ink centre is the box centre.',
+  states: ['seat marks', 'task marks'],
+  render(s, body) {
+    const g = el('div', { class: 'mk-grid' });
+    if (s === 'seat marks') SEATS.forEach(n => g.append(cell('seat ' + n, C.SEAT_MARK[n]())));
+    if (s === 'task marks') TASKS.forEach(n => g.append(cell('task ' + n, C.taskMark(n))));
+    body.append(g);
+  } });
+</script></body></html>

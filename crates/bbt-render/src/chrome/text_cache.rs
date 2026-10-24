@@ -1,7 +1,10 @@
 //! Bounded coverage cache: glyphs and minimal overlapping components, never line
 //! bitmaps. Shaped lines (glyph keys and origins, no pixels) are cached separately,
 //! so an unchanged string never reaches CoreText again.
-use super::text_glyphs::{self as glyphs, Key, Mask, Shape};
+use super::{
+    path_masks,
+    text_glyphs::{self as glyphs, Key, Mask, Shape},
+};
 use crate::{
     Result,
     atlas::{AtlasRect, GlyphAtlas},
@@ -64,6 +67,35 @@ struct ShapeKey {
     epoch: u64,
 }
 const SHAPE_BUDGET: usize = 512;
+#[derive(Clone, PartialEq, Eq, Hash)]
+enum MaskKey {
+    Glyph(Key),
+    Path(path_masks::Key),
+}
+impl From<Key> for MaskKey {
+    fn from(key: Key) -> Self {
+        Self::Glyph(key)
+    }
+}
+impl From<path_masks::Key> for MaskKey {
+    fn from(key: path_masks::Key) -> Self {
+        Self::Path(key)
+    }
+}
+impl MaskKey {
+    fn blur_sigma(&self) -> u32 {
+        match self {
+            Self::Glyph(k) => k.blur_sigma,
+            Self::Path(k) => k.blur_sigma,
+        }
+    }
+    fn set_blur_sigma(&mut self, sigma: u32) {
+        match self {
+            Self::Glyph(k) => k.blur_sigma = sigma,
+            Self::Path(k) => k.blur_sigma = sigma,
+        }
+    }
+}
 struct Entry {
     id: u64,
     mask: Arc<Mask>,
@@ -73,8 +105,8 @@ struct Entry {
 pub(super) struct Cache {
     atlas: GlyphAtlas,
     dirty: Vec<AtlasRect>,
-    entries: HashMap<Key, Entry>,
-    ids: HashMap<u64, Key>,
+    entries: HashMap<MaskKey, Entry>,
+    ids: HashMap<u64, MaskKey>,
     bytes: usize,
     byte_budget: usize,
     entry_budget: usize,
@@ -118,7 +150,8 @@ impl Cache {
             epoch: 0,
         })
     }
-    fn get(&mut self, key: Key) -> Result<(u64, Arc<Mask>)> {
+    fn get(&mut self, key: impl Into<MaskKey>) -> Result<(u64, Arc<Mask>)> {
+        let key = key.into();
         self.clock += 1;
         if let Some(entry) = self.entries.get_mut(&key) {
             self.totals.hits += 1;
@@ -126,14 +159,17 @@ impl Cache {
             return Ok((entry.id, entry.mask.clone()));
         }
         self.totals.misses += 1;
-        let mask = if key.blur_sigma == 0 {
-            Arc::new(glyphs::rasterize(&key)?)
+        let mask = if key.blur_sigma() == 0 {
+            Arc::new(match &key {
+                MaskKey::Glyph(key) => glyphs::rasterize(key)?,
+                MaskKey::Path(key) => path_masks::rasterize(key)?,
+            })
         } else {
             let mut plain = key.clone();
-            plain.blur_sigma = 0;
+            plain.set_blur_sigma(0);
             let (_, mask) = self.get(plain)?;
             self.totals.shadow_blurs += 1;
-            Arc::new(glyphs::blur(&mask, f32::from_bits(key.blur_sigma))?)
+            Arc::new(glyphs::blur(&mask, f32::from_bits(key.blur_sigma()))?)
         };
         self.next_id += 1;
         let id = self.next_id;
@@ -227,7 +263,7 @@ impl Cache {
         for part in &mut line.parts {
             let mut key = self.ids[&part.id].clone();
             let original = self.entries[&key].mask.bounds;
-            key.blur_sigma = sigma.to_bits();
+            key.set_blur_sigma(sigma.to_bits());
             let (id, mask) = self.get(key)?;
             part.id = id;
             part.offset[0] += mask.bounds[0] - original[0];
@@ -235,6 +271,16 @@ impl Cache {
             part.size = [mask.width(), mask.height()];
         }
         Ok(line)
+    }
+
+    pub fn shadow_path(&mut self, key: path_masks::Key) -> Result<Option<Part>> {
+        self.totals.shadow_requests += 1;
+        let (id, mask) = self.get(key)?;
+        Ok((!mask.empty()).then(|| Part {
+            id,
+            offset: [mask.bounds[0], -mask.bounds[3]],
+            size: [mask.width(), mask.height()],
+        }))
     }
 
     pub fn record_shadow_quad(&mut self) {
@@ -405,13 +451,15 @@ impl Cache {
         stats.atlas_size = self.atlas.size();
         stats.cached_mask_bytes = self.bytes;
         for (key, entry) in &self.entries {
-            if key.blur_sigma != 0 {
+            if key.blur_sigma() != 0 {
                 stats.shadow_mask_bytes += entry.mask.pixels.len();
             }
-            if key.glyphs.len() == 1 {
-                stats.glyph_entries += 1;
-            } else {
-                stats.overlap_entries += 1;
+            if let MaskKey::Glyph(key) = key {
+                if key.glyphs.len() == 1 {
+                    stats.glyph_entries += 1;
+                } else {
+                    stats.overlap_entries += 1;
+                }
             }
             if let Some(rect) = entry.rect {
                 stats.atlas_entries += 1;
@@ -425,6 +473,55 @@ impl Cache {
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    #[test]
+    fn path_and_text_masks_share_pins_eviction_and_repacked_uvs() {
+        use bbt_ui_model::draw::{PathCommand, PathStroke};
+        let mut cache = Cache::with_limits(32, 128, 4096, 16).unwrap();
+        let key = path_masks::Key::new(
+            &[PathCommand::Move([-4., -4.]), PathCommand::Line([4., 4.])],
+            &PathStroke {
+                width: 1.5,
+                ..Default::default()
+            },
+            false,
+            1.,
+            1.,
+            [0.25, 0.5],
+            1.,
+        )
+        .unwrap();
+        let path = cache.shadow_path(key.clone()).unwrap().unwrap();
+        let misses = cache.stats().misses;
+        assert_eq!(cache.shadow_path(key).unwrap().unwrap().id, path.id);
+        assert_eq!(cache.stats().misses, misses);
+        for value in [
+            "ABC", "DEF", "GHI", "JKL", "MNO", "PQR", "STU", "VWX", "YZ1", "234", "567", "890",
+        ] {
+            let line = cache
+                .line(value, TextStyle::default(), None, 1., 0.)
+                .unwrap();
+            let mut pins: Vec<_> = line.parts.iter().map(|p| p.id).collect();
+            pins.push(path.id);
+            cache.finish(&pins).unwrap();
+            for id in pins {
+                let rect = cache.rect(id).unwrap();
+                let mask = &cache.entries[&cache.ids[&id]].mask;
+                for row in 0..usize::from(rect.height) {
+                    let at = (usize::from(rect.y) + row) * cache.atlas.size() as usize
+                        + usize::from(rect.x);
+                    assert_eq!(
+                        &cache.atlas.pixels()[at..at + usize::from(rect.width)],
+                        &mask.pixels
+                            [row * usize::from(rect.width)..(row + 1) * usize::from(rect.width)]
+                    );
+                }
+            }
+        }
+        assert!(cache.stats().evictions > 0);
+        assert!(cache.stats().rebuilds > 0);
+        assert!(cache.stats().cached_mask_bytes <= 4096);
+        assert!(cache.entries.len() <= 16);
+    }
     fn same(a: &Line, b: &Line) -> bool {
         (a.width, a.height, a.advance.to_bits(), a.parts.len())
             == (b.width, b.height, b.advance.to_bits(), b.parts.len())

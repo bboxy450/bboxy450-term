@@ -317,8 +317,8 @@ pub fn render_case(renderer: &mut ChromeRenderer, case: &Case) -> Result<Vec<u8>
     Ok(cropped)
 }
 
-/// Atom slots are caller-owned fixture bounds. Child text positions, advances
-/// and baselines come from the same emitted primitives and fonts as paint.
+/// Atom slots are caller-owned fixture bounds. Vector viewports come from the
+/// emitted path transform; kind text still uses native font positions and baselines.
 pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<serde_json::Value>> {
     use bbt_ui_model::draw::Prim;
     use serde_json::{Value, json};
@@ -350,7 +350,6 @@ pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<serde_json::Value>> {
             let mut list = DrawList::default();
             paint_atom(atom, rect, draw, &mut list)?;
             let mut parts = vec![];
-            let mut text_index = 0;
             for prim in &list.primitives {
                 match prim {
                     Prim::Text {
@@ -360,12 +359,8 @@ pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<serde_json::Value>> {
                         max_width,
                         ..
                     } => {
-                        let diagnostic = &atom[if text_index == 0 { "text" } else { "kind_text" }];
-                        let key = if text_index == 0 {
-                            "symbol"
-                        } else {
-                            "waiting-kind-text"
-                        };
+                        let diagnostic = &atom["kind_text"];
+                        let key = "waiting-kind-text";
                         let mask =
                             bbt_render::chrome::text::rasterize(text, *style, *max_width, 1.)?;
                         let metrics = bbt_render::chrome::text::rasterize("Hg", *style, None, 1.)?;
@@ -381,7 +376,11 @@ pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<serde_json::Value>> {
                             "web":web_rect(&diagnostic["rect"])?,
                             "baseline":{"native":y+baseline,"web":number(&diagnostic["rect"],"y")?
                                 + number(&diagnostic["font_diagnostics"],"baseline")?},"children":[]}));
-                        text_index += 1;
+                    }
+                    Prim::Path { origin, scale, .. } => {
+                        parts.push(json!({"key":"symbol","kind":"box",
+                            "native":[origin[0]-8.*scale,origin[1]-8.*scale,16.*scale,16.*scale],
+                            "web":web_rect(&atom["mark_rect"])?,"children":[]}));
                     }
                     Prim::Rect {
                         rect, stroke: None, ..
@@ -419,15 +418,16 @@ mod geometry_tests {
         let diagnostic =
             json!({"rect":{"x":999,"y":998,"w":1,"h":1},"font_diagnostics":{"baseline":99}});
         case.fixture = Some(
-            json!({"layer":"atoms","atoms":[{"kind":"glyph","activity":"waiting","grade":"reported","wait_kind":"question","color":[1,0.5,0,1],"rect":{"x":10,"y":20,"w":12,"h":12},"text":diagnostic,"kind_text":diagnostic,"kind_rect":{"x":900,"y":901,"w":1,"h":1}}]}),
+            json!({"layer":"atoms","atoms":[{"kind":"glyph","activity":"waiting","grade":"reported","wait_kind":"question","color":[1,0.5,0,1],"rect":{"x":10,"y":20,"w":12,"h":12},"mark_rect":diagnostic["rect"],"kind_text":diagnostic,"kind_rect":{"x":900,"y":901,"w":1,"h":1}}]}),
         );
         let first = snapshots(&[case.clone()])?;
         let parts = &first[0]["tree"]["children"][0]["children"];
         assert!(parts[0]["native"][0].as_f64().unwrap() < 30.);
         assert!(parts[0]["native"][2].as_f64().unwrap() > 5.);
-        assert!(parts[0]["baseline"]["native"].as_f64().unwrap() < 50.);
+        assert_eq!(parts[0]["kind"], "box");
+        assert_eq!(parts[0]["native"], json!([10., 20., 12., 12.]));
         assert_eq!(parts[0]["web"][0], 999.);
-        case.fixture.as_mut().unwrap()["atoms"][0]["text"]["rect"]["x"] = json!(-500);
+        case.fixture.as_mut().unwrap()["atoms"][0]["mark_rect"]["x"] = json!(-500);
         let changed = snapshots(&[case.clone()])?;
         assert_eq!(
             parts[0]["native"],
@@ -436,8 +436,9 @@ mod geometry_tests {
         case.fixture.as_mut().unwrap()["atoms"][0]["rect"]["h"] = json!(16);
         let resized = snapshots(&[case])?;
         assert_eq!(
-            resized[0]["tree"]["children"][0]["children"][0]["native"][3],
-            16.
+            resized[0]["tree"]["children"][0]["children"][0]["native"],
+            json!([10., 22., 12., 12.]),
+            "the circular mark fits and stays centred in a rectangular caller slot"
         );
         Ok(())
     }

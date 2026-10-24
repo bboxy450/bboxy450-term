@@ -1,0 +1,1528 @@
+MK1 actual verification/build command journal; failures retained.
+Exact final clean gate is copied separately in mk1-ci-6dca379.log.
+Information-only reads and ICQ transcripts are omitted from this committed journal.
+
+COMMAND c9a68a692e3d48299ee133a11e8a6190
+node --check crates/bboxybook/capture-inputs.js
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=0.384002250 raw_sha256=03c01a7d71a3ed1c75af44a105ff1f7d4ef8fbd037c0fd439ca5aaa19ea9790a
+$ node --check crates/bboxybook/capture-inputs.js
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T22:38:43.696831+00:00
+OWNED_COMMAND_PID 90746
+EXIT 0 elapsed_seconds=0.384 PID=90746
+
+COMMAND 32ff90db2e904d719d7d598c7db7931a
+node --check crates/bboxybook/capture-inputs.js
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=0.117793916 raw_sha256=21c139f813b45839916a4fa9e4aef9469d48e755fc921c9e832e0f8a8d9e952c
+$ node --check crates/bboxybook/capture-inputs.js
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T22:48:04.941579+00:00
+OWNED_COMMAND_PID 6154
+EXIT 0 elapsed_seconds=0.118 PID=6154
+
+COMMAND 46bb5bef6c924c1ea0779c5b7aa9a5c3
+env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxybook --test marks --locked -- --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=47.814371583 raw_sha256=2061d8cec35aebf0c1301ad5471fa89521bcb499a3d4e8e2d5f383ec2835f75c
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxybook --test marks --locked -- --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T22:48:05.131733+00:00
+OWNED_COMMAND_PID 6160
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling bitflags v2.13.2
+   Compiling cfg-if v1.0.5
+   Compiling objc2-encode v4.1.0
+   Compiling libc v0.2.191
+   Compiling cfg_aliases v0.2.2
+   Compiling log v0.4.34
+   Compiling arrayvec v0.7.8
+   Compiling objc2 v0.6.5
+   Compiling autocfg v1.5.1
+   Compiling libm v0.2.16
+   Compiling memchr v2.8.3
+   Compiling foldhash v0.2.0
+   Compiling simd-adler32 v0.3.10
+   Compiling float-cmp v0.9.0
+   Compiling adler2 v2.0.1
+   Compiling num-traits v0.2.19
+   Compiling crc32fast v1.5.3
+   Compiling hashbrown v0.17.1
+   Compiling serde_core v1.0.229
+   Compiling equivalent v1.0.3
+   Compiling strict-num v0.1.1
+   Compiling thiserror v2.0.21
+   Compiling arrayref v0.3.9
+   Compiling smallvec v1.16.3
+   Compiling miniz_oxide v0.9.1
+   Compiling zerocopy v0.8.63
+   Compiling zmij v1.0.23
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling rustc-hash v1.1.0
+   Compiling serde_json v1.0.154
+   Compiling indexmap v2.14.2
+   Compiling siphasher v1.0.4
+   Compiling syn v3.0.9
+   Compiling syn v2.0.119
+   Compiling flate2 v1.1.10
+   Compiling itoa v1.0.18
+   Compiling naga v30.0.1
+   Compiling winnow v1.0.4
+   Compiling raw-window-handle v0.6.2
+   Compiling unicode-width v0.2.2
+   Compiling bit-vec v0.9.1
+   Compiling parking_lot_core v0.9.12
+   Compiling dispatch2 v0.3.1
+   Compiling block2 v0.6.2
+   Compiling codespan-reporting v0.13.1
+   Compiling bit-set v0.10.0
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling simplecss v0.2.2
+   Compiling winnow v0.7.15
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling pico-args v0.5.0
+   Compiling scopeguard v1.2.0
+   Compiling objc2-core-foundation v0.3.2
+   Compiling once_cell v1.21.4
+   Compiling bytemuck v1.25.2
+   Compiling objc-sys v0.3.5
+   Compiling static_assertions v1.1.0
+   Compiling imagesize v0.15.0
+   Compiling data-url v0.3.2
+   Compiling lock_api v0.4.14
+   Compiling polycool v0.4.0
+   Compiling wgpu-hal v30.0.1
+   Compiling parking_lot v0.12.5
+   Compiling tiny-skia-path v0.12.0
+   Compiling kurbo v0.13.1
+   Compiling libloading v0.8.9
+   Compiling profiling v1.0.18
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling serde v1.0.229
+   Compiling png v0.18.1
+   Compiling objc2 v0.5.3
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling svgtypes v0.16.1
+   Compiling bytemuck_derive v1.12.1
+   Compiling thiserror-impl v2.0.21
+   Compiling zerocopy-derive v0.8.63
+   Compiling serde_derive v1.0.229
+   Compiling euclid v0.22.14
+   Compiling aho-corasick v1.1.5
+   Compiling roxmltree v0.21.1
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling wgpu-core v30.0.1
+   Compiling litrs v1.0.1
+   Compiling naga-types v30.0.1
+   Compiling regex-syntax v0.8.11
+   Compiling wgpu-types v30.0.1
+   Compiling core-foundation-sys v0.8.7
+   Compiling objc2-foundation v0.3.2
+   Compiling core-foundation v0.9.4
+   Compiling lyon_geom v1.0.20
+   Compiling document-features v0.2.12
+   Compiling usvg v0.48.1
+   Compiling block2 v0.5.1
+   Compiling tiny-skia v0.12.0
+   Compiling foreign-types-macros v0.2.4
+   Compiling rgb v0.8.53
+   Compiling wgpu v30.0.1
+   Compiling dispatch v0.2.0
+   Compiling foreign-types-shared v0.3.1
+   Compiling bitflags v1.3.2
+   Compiling pulldown-cmark v0.13.4
+   Compiling core-graphics-types v0.1.3
+   Compiling foreign-types v0.5.0
+   Compiling objc2-foundation v0.2.2
+   Compiling lyon_path v1.0.19
+   Compiling regex-automata v0.4.18
+   Compiling winit v0.30.13
+   Compiling pin-project-lite v0.2.17
+   Compiling resvg v0.48.1
+   Compiling unsafe-libyaml v0.2.11
+   Compiling tracing-core v0.1.36
+   Compiling float_next_after v1.0.0
+   Compiling ryu v1.0.23
+   Compiling unicase v2.10.0
+   Compiling lyon_tessellation v1.0.22
+   Compiling tracing v0.1.44
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling core-graphics v0.23.2
+   Compiling objc2-metal v0.3.2
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling cursor-icon v1.2.0
+   Compiling unicode-segmentation v1.13.3
+   Compiling pollster v0.4.0
+   Compiling smol_str v0.2.2
+   Compiling dpi v0.1.2
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mermaid)
+   Compiling regex v1.13.1
+   Compiling half v2.7.1
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+   Compiling objc2-app-kit v0.2.2
+   Compiling objc2-core-graphics v0.3.2
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-doc)
+   Compiling objc2-quartz-core v0.3.2
+   Compiling objc2-core-text v0.3.2
+   Compiling raw-window-metal v1.1.0
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `test` profile [unoptimized] target(s) in 46.39s
+     Running tests/marks.rs (target/mk1-dev/debug/deps/marks-1f67e7dd80e1a385)
+
+running 1 test
+12 semantic marks x 2 painters x 2 scales: centred; /Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev/mk1-proof
+test seat_and_task_marks_are_pixel_centred_at_96px_in_both_painters ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.00s
+
+EXIT 0 elapsed_seconds=47.814 PID=6160
+
+COMMAND 9652fc6c61f7472cbdf30e4a84a031f3
+env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-ui --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 101 elapsed_seconds=28.048360709 raw_sha256=17e7964051ced47fda1183e8dea398a0807797946df6c1a8ac7bc414646fe65a
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-ui --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T22:52:14.075917+00:00
+OWNED_COMMAND_PID 14668
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling serde_json v1.0.154
+   Compiling syn v3.0.9
+   Compiling serde_derive v1.0.229
+   Compiling serde v1.0.229
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Finished `test` profile [unoptimized] target(s) in 24.01s
+     Running unittests src/lib.rs (target/mk1-dev/debug/deps/bbt_ui-db19cecb1613b39f)
+
+running 6 tests
+test marks::tests::glyphs_encode_grade_and_wait_kind_and_clips_balance ... ok
+test modules::pane::tests::constant_pane_border_keeps_activity_from_changing_height ... ok
+test modules::perf_hud::tests::lab_records_round_trip_and_idle_frames_stay_stubs ... ok
+test modules::pane::tests::gap_marker_fits_one_row_and_centers_its_hairlines_without_a_spacer ... ok
+test rim_never_covers_text ... ok
+test glow_never_moves_layout ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/atoms.rs (target/mk1-dev/debug/deps/atoms-4c380753e51a216c)
+
+running 7 tests
+test a_waiting_kind_background_and_text_receive_dimming_once ... ok
+test glyph_shadow_inherits_kind_grade_and_ancestor_opacity_once ... ok
+test hairline_is_one_physical_pixel_and_spinner_phase_is_explicit ... ok
+test icons_keep_the_requested_logical_name_bounds_and_tint ... ok
+test kind_colours_do_not_recolour_state_or_apply_grade_and_dim_twice ... ok
+test text_shadow_color_is_independent_of_foreground_alpha_and_flow ... ok
+test glyph_state_grade_and_wait_kind_are_independent_and_identity_is_not_recoloured ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/components.rs (target/mk1-dev/debug/deps/components-3e05261facce78ab)
+
+running 19 tests
+test a_retained_box_keeps_its_own_glow_state_until_after_its_content ... ok
+test floating_shadow_paints_over_outside_hair_without_a_foreground_duplicate ... ok
+test field_marks_use_utf16_boundaries_and_keep_preedit_out_of_intrinsic_size ... ok
+test column_snapshot_and_flex_spacer_are_solved_by_the_shared_engine ... ok
+test intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero ... ok
+test mixed_text_runs_align_baselines_and_keep_selection_metadata ... ok
+test image_has_square_intrinsics_a_baseline_and_validated_asset_geometry ... ok
+test box_opacity_dim_and_forced_isolation_preserve_unfiltered_children_and_layout ... ok
+test a_shrunk_row_remeasures_wrapped_text_before_choosing_its_height ... ok
+test inline_middle_uses_the_parent_x_height_without_moving_the_content_box ... ok
+test mixed_type_rows_share_a_baseline ... ok
+test modal_highlight_stays_on_the_fill_inside_its_outside_border ... ok
+test natural_text_width_survives_float_subtraction_but_a_css_unit_still_wraps ... ok
+test nested_filters_retain_boundaries_and_ancestor_clips_without_recoloring_the_atoms ... ok
+test path_fill_survives_retained_layout_and_theme_resolution ... ok
+test path_uses_declared_viewport_and_keeps_its_retained_stroke ... ok
+test rects_lay_out_as_one_slot_and_paint_box_rects_at_the_node_origin ... ok
+test wrapping_and_ellipsis_use_the_allocated_width ... ok
+test scroll_offset_clamps_and_every_child_draw_is_clipped ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/documents.rs (target/mk1-dev/debug/deps/documents-92a81a7f9a9b3061)
+
+running 5 tests
+test unsupported_diagram_preserves_source_instead_of_a_partial_drawing ... ok
+test diagram_state_is_serializable_and_drawing_never_scales_to_the_document ... ok
+test short_code_cells_center_within_the_keys_padded_grid_row ... ok
+test modal_retains_explicit_scroll_and_leaves_actions_as_visual_data ... ok
+test document_metadata_and_unsigned_or_broken_evidence_remain_visible ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/flow.rs (target/mk1-dev/debug/deps/flow-efc15698d27d0034)
+
+running 4 tests
+test text_centers_or_ends_each_wrapped_line_and_ignores_collapsible_trailing_spaces ... ok
+test flow_wraps_in_source_order_with_independent_gaps_and_shared_row_baselines ... ok
+test default_text_and_fitting_flow_keep_the_stack_geometry ... ok
+test nowrap_space_between_and_exact_fit_do_not_create_extra_rows ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/graphs.rs (target/mk1-dev/debug/deps/graphs-b9b73c10da4278bd)
+
+running 6 tests
+test annotated_links_preserve_source_identity_display_and_weight ... ok
+test graph_projects_live_and_blocked_tasks_without_inferring_authority ... ok
+test work_tree_counts_terminal_items_and_keeps_artifacts_and_invariants_as_leaves ... ok
+test channels_compose_published_edges_at_true_size_and_scroll_in_the_viewport ... ok
+test subscriptions_wrap_at_available_width_without_changing_patterns ... ok
+test provenance_and_history_respect_signed_flags_and_bounded_reverse_order ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/italic.rs (target/mk1-dev/debug/deps/italic-5f8cab235f70efe8)
+
+running 1 test
+test italic_is_backward_compatible_and_reaches_measurement_and_draw_records ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/launchers.rs (target/mk1-dev/debug/deps/launchers-82abf581ee5942f3)
+
+running 6 tests
+test enter_picks_is_a_defaulted_public_constructor_input ... ok
+test legacy_launcher_delegates_without_hand_painting ... ok
+test typed_virtual_descent_and_explicit_paths_select_the_same_placement_level ... ok
+test lexical_tiers_are_stable_and_every_word_must_match ... ok
+test cap_keeps_navigation_available_and_dims_completed_launch_row_groups ... ok
+test compact_selection_is_twenty_eight_percent_accent_over_surface ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/links.rs (target/mk1-dev/debug/deps/links-69a4de0e6957af68)
+
+running 1 test
+test all_link_states_render_and_unavailable_launcher_rows_cannot_activate ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/masks.rs (target/mk1-dev/debug/deps/masks-b51ca4bcb80c7d2c)
+
+running 1 test
+test mask_keeps_layout_and_translates_local_coordinates_only_when_painted ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/measurement_cache.rs (target/mk1-dev/debug/deps/measurement_cache-d9f2c9ec6ef07619)
+
+running 3 tests
+test independent_passes_observe_changed_measurements_and_nodes ... ok
+test flow_keeps_distinct_node_sizes_while_reusing_min_content_queries ... ok
+test nesting_does_not_repeat_leaf_measurement_at_the_same_constraint ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/overlays.rs (target/mk1-dev/debug/deps/overlays-7e37f50814ca7bd3)
+
+running 2 tests
+test blur_parameters_round_trip_and_keep_the_backdrop_separate_from_foreground_fill ... ok
+test overlay_centres_the_panel_and_narrow_bounds_reflow_its_content ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/panes.rs (target/mk1-dev/debug/deps/panes-a5770a0dc1ca09e7)
+
+running 2 tests
+test pane_height_is_content_or_minimum_and_an_unavailable_gap_never_invents_a_range ... ok
+test pane_preserves_history_content_and_capability_actions_while_disconnected ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/provider_settings.rs (target/mk1-dev/debug/deps/provider_settings-ce3a70d94896e710)
+
+running 2 tests
+test settings_accepts_live_link_records_and_legacy_four_field_cloud_records ... ok
+test every_link_state_roundtrips_and_renders_in_both_settings_records ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/scroll_windowing.rs (target/mk1-dev/debug/deps/scroll_windowing-7eeac145ec81d5bb)
+
+running 8 tests
+test anchor_survives_insert_remove_and_width_density_changes_by_stable_identity ... ok
+test invalid_style_or_gap_keeps_the_fallback_layout_error_instead_of_panicking ... ok
+test undeclared_content_uses_the_original_full_layout_without_measurement_shortcuts ... ok
+test nested_ancestors_keep_full_material_group_and_clip_rectangles ... ok
+test fractional_prefix_keeps_solver_addition_order_even_when_extent_sum_rounds_differently ... ok
+test real_sidebar_falls_back_for_a_variable_extra_and_anchors_survive_rebuilds ... ok
+test measurement_is_bounded_by_the_window_with_exact_extent_and_geometry ... ok
+test real_thousand_open_sidebar_matches_full_visible_geometry_and_extent_to_the_bit ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.47s
+
+     Running tests/seat_rows.rs (target/mk1-dev/debug/deps/seat_rows-3d0b1410dd0df97b)
+
+running 7 tests
+test naturally_sized_text_is_not_truncated_by_float_subtraction ... ok
+test flex_max_violation_freezes_before_redistributing_remaining_space ... ok
+test subagents_filter_finished_work_and_overflow_after_seven ... ok
+test compact_artifact_row_preserves_natural_chip_height_outside_its_flow_slot ... ok
+test seat_identity_authority_and_activity_stay_independent_when_name_shrinks ... FAILED
+test waiting_halo_does_not_move_the_row_or_its_glyph_at_any_density ... ok
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+failures:
+
+---- seat_identity_authority_and_activity_stay_independent_when_name_shrinks stdout ----
+
+thread 'seat_identity_authority_and_activity_stay_independent_when_name_shrinks' (20306927) panicked at crates/bbt-ui/tests/seat_rows.rs:174:5:
+assertion failed: painted.iter().any(|op|
+        matches!(op,c::Paint::Draw(d) if
+            d.primitives.iter().any(|p|matches!(p,Prim::Text{text,..} if
+            text.as_ref()=="●"))))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    seat_identity_authority_and_activity_stay_independent_when_name_shrinks
+
+test result: FAILED. 6 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p bbt-ui --test seat_rows`
+EXIT 101 elapsed_seconds=28.048 PID=14668
+
+COMMAND c48d22eae6ba4bb6987cb41165199d93
+env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxybook --test marks --locked -- --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=10.680448666 raw_sha256=9b413a6b4f71935b89499353be18227fd7b01d9d6688c919cc5f67b16f2c7d1d
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxybook --test marks --locked -- --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T22:52:59.428140+00:00
+OWNED_COMMAND_PID 16428
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+    Finished `test` profile [unoptimized] target(s) in 8.27s
+     Running tests/marks.rs (target/mk1-dev/debug/deps/marks-1f67e7dd80e1a385)
+
+running 2 tests
+mark scene passes: shadow=Counts { flat: 1, clear: 1, path: 1, group: 0, blur: 0, material: 0, cells: 0, copy: 0 }; plain=Counts { flat: 1, clear: 1, path: 1, group: 0, blur: 0, material: 0, cells: 0, copy: 0 }
+test vector_shadow_reuses_tint_translation_and_bounds_alpha_before_blur ... ok
+12 semantic marks x 2 painters x 2 scales: centred; /Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev/mk1-proof
+test seat_and_task_marks_are_pixel_centred_at_96px_in_both_painters ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.98s
+
+EXIT 0 elapsed_seconds=10.680 PID=16428
+
+COMMAND e4ff73ef81d441479d3e09613b6def4c
+env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-ui --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=4.717761875 raw_sha256=4019f9f838eb89a279f66d657e94ed7a143d4651c58557f057d500212561b6bb
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-ui --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T22:53:54.980998+00:00
+OWNED_COMMAND_PID 17872
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Finished `test` profile [unoptimized] target(s) in 1.30s
+     Running unittests src/lib.rs (target/mk1-dev/debug/deps/bbt_ui-db19cecb1613b39f)
+
+running 6 tests
+test marks::tests::glyphs_encode_grade_and_wait_kind_and_clips_balance ... ok
+test modules::pane::tests::constant_pane_border_keeps_activity_from_changing_height ... ok
+test modules::pane::tests::gap_marker_fits_one_row_and_centers_its_hairlines_without_a_spacer ... ok
+test modules::perf_hud::tests::lab_records_round_trip_and_idle_frames_stay_stubs ... ok
+test rim_never_covers_text ... ok
+test glow_never_moves_layout ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/atoms.rs (target/mk1-dev/debug/deps/atoms-4c380753e51a216c)
+
+running 7 tests
+test icons_keep_the_requested_logical_name_bounds_and_tint ... ok
+test hairline_is_one_physical_pixel_and_spinner_phase_is_explicit ... ok
+test a_waiting_kind_background_and_text_receive_dimming_once ... ok
+test kind_colours_do_not_recolour_state_or_apply_grade_and_dim_twice ... ok
+test glyph_shadow_inherits_kind_grade_and_ancestor_opacity_once ... ok
+test text_shadow_color_is_independent_of_foreground_alpha_and_flow ... ok
+test glyph_state_grade_and_wait_kind_are_independent_and_identity_is_not_recoloured ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/components.rs (target/mk1-dev/debug/deps/components-3e05261facce78ab)
+
+running 19 tests
+test mixed_text_runs_align_baselines_and_keep_selection_metadata ... ok
+test inline_middle_uses_the_parent_x_height_without_moving_the_content_box ... ok
+test box_opacity_dim_and_forced_isolation_preserve_unfiltered_children_and_layout ... ok
+test a_retained_box_keeps_its_own_glow_state_until_after_its_content ... ok
+test floating_shadow_paints_over_outside_hair_without_a_foreground_duplicate ... ok
+test intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero ... ok
+test image_has_square_intrinsics_a_baseline_and_validated_asset_geometry ... ok
+test field_marks_use_utf16_boundaries_and_keep_preedit_out_of_intrinsic_size ... ok
+test mixed_type_rows_share_a_baseline ... ok
+test column_snapshot_and_flex_spacer_are_solved_by_the_shared_engine ... ok
+test a_shrunk_row_remeasures_wrapped_text_before_choosing_its_height ... ok
+test modal_highlight_stays_on_the_fill_inside_its_outside_border ... ok
+test natural_text_width_survives_float_subtraction_but_a_css_unit_still_wraps ... ok
+test rects_lay_out_as_one_slot_and_paint_box_rects_at_the_node_origin ... ok
+test path_fill_survives_retained_layout_and_theme_resolution ... ok
+test nested_filters_retain_boundaries_and_ancestor_clips_without_recoloring_the_atoms ... ok
+test path_uses_declared_viewport_and_keeps_its_retained_stroke ... ok
+test scroll_offset_clamps_and_every_child_draw_is_clipped ... ok
+test wrapping_and_ellipsis_use_the_allocated_width ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/documents.rs (target/mk1-dev/debug/deps/documents-92a81a7f9a9b3061)
+
+running 5 tests
+test unsupported_diagram_preserves_source_instead_of_a_partial_drawing ... ok
+test diagram_state_is_serializable_and_drawing_never_scales_to_the_document ... ok
+test short_code_cells_center_within_the_keys_padded_grid_row ... ok
+test modal_retains_explicit_scroll_and_leaves_actions_as_visual_data ... ok
+test document_metadata_and_unsigned_or_broken_evidence_remain_visible ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/flow.rs (target/mk1-dev/debug/deps/flow-efc15698d27d0034)
+
+running 4 tests
+test flow_wraps_in_source_order_with_independent_gaps_and_shared_row_baselines ... ok
+test default_text_and_fitting_flow_keep_the_stack_geometry ... ok
+test text_centers_or_ends_each_wrapped_line_and_ignores_collapsible_trailing_spaces ... ok
+test nowrap_space_between_and_exact_fit_do_not_create_extra_rows ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/graphs.rs (target/mk1-dev/debug/deps/graphs-b9b73c10da4278bd)
+
+running 6 tests
+test annotated_links_preserve_source_identity_display_and_weight ... ok
+test graph_projects_live_and_blocked_tasks_without_inferring_authority ... ok
+test work_tree_counts_terminal_items_and_keeps_artifacts_and_invariants_as_leaves ... ok
+test channels_compose_published_edges_at_true_size_and_scroll_in_the_viewport ... ok
+test subscriptions_wrap_at_available_width_without_changing_patterns ... ok
+test provenance_and_history_respect_signed_flags_and_bounded_reverse_order ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/italic.rs (target/mk1-dev/debug/deps/italic-5f8cab235f70efe8)
+
+running 1 test
+test italic_is_backward_compatible_and_reaches_measurement_and_draw_records ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/launchers.rs (target/mk1-dev/debug/deps/launchers-82abf581ee5942f3)
+
+running 6 tests
+test enter_picks_is_a_defaulted_public_constructor_input ... ok
+test legacy_launcher_delegates_without_hand_painting ... ok
+test typed_virtual_descent_and_explicit_paths_select_the_same_placement_level ... ok
+test lexical_tiers_are_stable_and_every_word_must_match ... ok
+test cap_keeps_navigation_available_and_dims_completed_launch_row_groups ... ok
+test compact_selection_is_twenty_eight_percent_accent_over_surface ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/links.rs (target/mk1-dev/debug/deps/links-69a4de0e6957af68)
+
+running 1 test
+test all_link_states_render_and_unavailable_launcher_rows_cannot_activate ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/masks.rs (target/mk1-dev/debug/deps/masks-b51ca4bcb80c7d2c)
+
+running 1 test
+test mask_keeps_layout_and_translates_local_coordinates_only_when_painted ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/measurement_cache.rs (target/mk1-dev/debug/deps/measurement_cache-d9f2c9ec6ef07619)
+
+running 3 tests
+test independent_passes_observe_changed_measurements_and_nodes ... ok
+test flow_keeps_distinct_node_sizes_while_reusing_min_content_queries ... ok
+test nesting_does_not_repeat_leaf_measurement_at_the_same_constraint ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/overlays.rs (target/mk1-dev/debug/deps/overlays-7e37f50814ca7bd3)
+
+running 2 tests
+test overlay_centres_the_panel_and_narrow_bounds_reflow_its_content ... ok
+test blur_parameters_round_trip_and_keep_the_backdrop_separate_from_foreground_fill ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/panes.rs (target/mk1-dev/debug/deps/panes-a5770a0dc1ca09e7)
+
+running 2 tests
+test pane_height_is_content_or_minimum_and_an_unavailable_gap_never_invents_a_range ... ok
+test pane_preserves_history_content_and_capability_actions_while_disconnected ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/provider_settings.rs (target/mk1-dev/debug/deps/provider_settings-ce3a70d94896e710)
+
+running 2 tests
+test settings_accepts_live_link_records_and_legacy_four_field_cloud_records ... ok
+test every_link_state_roundtrips_and_renders_in_both_settings_records ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/scroll_windowing.rs (target/mk1-dev/debug/deps/scroll_windowing-7eeac145ec81d5bb)
+
+running 8 tests
+test anchor_survives_insert_remove_and_width_density_changes_by_stable_identity ... ok
+test invalid_style_or_gap_keeps_the_fallback_layout_error_instead_of_panicking ... ok
+test undeclared_content_uses_the_original_full_layout_without_measurement_shortcuts ... ok
+test nested_ancestors_keep_full_material_group_and_clip_rectangles ... ok
+test fractional_prefix_keeps_solver_addition_order_even_when_extent_sum_rounds_differently ... ok
+test real_sidebar_falls_back_for_a_variable_extra_and_anchors_survive_rebuilds ... ok
+test measurement_is_bounded_by_the_window_with_exact_extent_and_geometry ... ok
+test real_thousand_open_sidebar_matches_full_visible_geometry_and_extent_to_the_bit ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.96s
+
+     Running tests/seat_rows.rs (target/mk1-dev/debug/deps/seat_rows-3d0b1410dd0df97b)
+
+running 7 tests
+test naturally_sized_text_is_not_truncated_by_float_subtraction ... ok
+test seat_identity_authority_and_activity_stay_independent_when_name_shrinks ... ok
+test flex_max_violation_freezes_before_redistributing_remaining_space ... ok
+test subagents_filter_finished_work_and_overflow_after_seven ... ok
+test compact_artifact_row_preserves_natural_chip_height_outside_its_flow_slot ... ok
+test waiting_halo_does_not_move_the_row_or_its_glyph_at_any_density ... ok
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/settings.rs (target/mk1-dev/debug/deps/settings-3dc2e8b59d359121)
+
+running 5 tests
+test records_roundtrip_with_ordered_custom_harnesses_and_roles ... ok
+test account_projects_the_pinned_identity_and_recovery_limits_without_actions ... ok
+test role_prompt_grows_to_its_content_then_retains_a_bounded_scroll_view ... ok
+test custom_role_order_and_defaults_drive_the_changed_marker ... ok
+test draft_harness_never_claims_an_inferred_ready_state_can_submit ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/streams.rs (target/mk1-dev/debug/deps/streams-29799639c0030656)
+
+running 6 tests
+test ended_subagent_holds_the_target_and_hides_the_delivery_ladder ... ok
+test routed_chips_keep_the_oracle_tint_visible_and_unknown_is_a_dashed_hollow_mark ... ok
+test collapsed_epics_and_bounded_newest_first_external_lane_use_model_state ... ok
+test message_body_reflows_with_width_without_changing_the_model ... ok
+test chronology_foreign_authority_and_unknown_delivery_remain_independent ... ok
+test unread_marks_stay_round_and_compressed_chips_clip_their_text ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/style.rs (target/mk1-dev/debug/deps/style-59bc9565d7415ae7)
+
+running 5 tests
+test malformed_override_data_fails_instead_of_silently_changing_the_style ... ok
+test glow_state_round_trips_and_rejects_invalid_shader_inputs ... ok
+test positioned_shadow_round_trips_validates_and_preserves_custom_defaults ... ok
+test token_references_and_nontrivial_overrides_round_trip_and_resolve_late ... ok
+test presets_resolve_across_the_matrix_and_keep_effect_separate_from_fill_border ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/swarms.rs (target/mk1-dev/debug/deps/swarms-a9734a6f49c6e60b)
+
+running 6 tests
+test css_filter_uses_luminance_saturation_and_preserves_layout ... ok
+test a_literal_hyphen_is_a_wrap_opportunity_and_min_content_survives_flex_shrink ... ok
+test unfocused_card_dims_only_its_contents_and_keeps_the_identity_bumper ... ok
+test caption_line_limit_preserves_two_lines_and_marks_truncated_content ... ok
+test collapsed_thousand_seat_card_keeps_a_bounded_composition_and_clips_its_material ... ok
+test sidebar_scroll_and_phone_handle_use_the_supplied_viewport_without_reordering_cards ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/tabs.rs (target/mk1-dev/debug/deps/tabs-d1c1e7c6b03de250)
+
+running 6 tests
+test state_color_wins_over_focus_and_a_single_cell_keeps_the_grid_wrapper ... ok
+test single_seat_reduces_to_the_accepted_row_and_keeps_its_children ... ok
+test grid_preserves_ratio_nested_axis_and_big_root_gap ... ok
+test collapsed_rollup_is_stable_worst_first_and_capped ... ok
+test deeply_nested_grids_shrink_to_zero_but_their_cells_keep_the_two_pixel_minimum ... ok
+test expanded_tab_has_indented_seats_and_only_a_parent_shortcut ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/title_bars.rs (target/mk1-dev/debug/deps/title_bars-f1ba9fa1954187af)
+
+running 3 tests
+test old_titlebar_is_a_component_delegate ... ok
+test blur_filters_only_identity_and_dots_while_sidebar_state_changes_its_toggle ... ok
+test narrow_bar_wraps_title_and_ellipsizes_crumb_without_shrinking_controls ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/widgets.rs (target/mk1-dev/debug/deps/widgets-f480799b6d6d23da)
+
+running 4 tests
+test empty_input_keeps_its_control_height_and_invalid_input_keeps_its_error_caption ... ok
+test side_border_consumes_only_its_edge_and_outline_rings_do_not_consume_layout ... ok
+test pressed_button_scales_visually_without_changing_its_flow_slot ... ok
+test list_and_table_allocate_only_visible_rows_and_keep_full_scroll_extent ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_ui
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT 0 elapsed_seconds=4.718 PID=17872
+
+COMMAND d900fa55a3c74709bbf7328017565a90
+target/mk1-dev/debug/bboxybook render --manifest /private/tmp/sable-mk1-0Dr65M/parity-precheck/cases.json --out /private/tmp/sable-mk1-0Dr65M/parity-precheck/native
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=13.030137583 raw_sha256=2fd47b15991ffa88a1306776624a89d2f090597f00993861ec2ff581b80514f0
+$ target/mk1-dev/debug/bboxybook render --manifest /private/tmp/sable-mk1-0Dr65M/parity-precheck/cases.json --out /private/tmp/sable-mk1-0Dr65M/parity-precheck/native
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T22:54:26.679129+00:00
+OWNED_COMMAND_PID 18726
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: /private/tmp/sable-mk1-0Dr65M/parity-precheck/native/layouts.json
+rendered 7 PNGs to /private/tmp/sable-mk1-0Dr65M/parity-precheck/native
+EXIT 0 elapsed_seconds=13.030 PID=18726
+
+COMMAND 9f7376b6383a47819701a59d8c9e8b59
+target/mk1-dev/debug/bboxybook compare --manifest /private/tmp/sable-mk1-0Dr65M/parity-precheck/cases.json --out /private/tmp/sable-mk1-0Dr65M/parity-precheck --web-root web --native-root native --strict-geometry
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 1 elapsed_seconds=10.241960750 raw_sha256=276191f23a3024dcc6d529eabc14177255df9c118b11729450f290dcbd05574e
+$ target/mk1-dev/debug/bboxybook compare --manifest /private/tmp/sable-mk1-0Dr65M/parity-precheck/cases.json --out /private/tmp/sable-mk1-0Dr65M/parity-precheck --web-root web --native-root native --strict-geometry
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T22:54:45.182507+00:00
+OWNED_COMMAND_PID 19078
+parity: 7 cases, 2 review; /private/tmp/sable-mk1-0Dr65M/parity-precheck/index.html
+geometry: 7 required; 7 measured; 0 unproven; 1 mismatches
+bboxybook: parity gate: 1 geometry failures (fail)
+EXIT 1 elapsed_seconds=10.242 PID=19078
+
+COMMAND ac1023a0fe4849c2a988cf0cfe7db39a
+env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-render --lib --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=96.533101000 raw_sha256=b4a99fef994820539e2a4ecab87581bfee43f2ffbcce932e8a0baa34bf798767
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-render --lib --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T22:54:25.590418+00:00
+OWNED_COMMAND_PID 18657
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling syn v3.0.9
+   Compiling indexmap v2.14.2
+   Compiling base64 v0.22.1
+   Compiling bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy-firehose)
+   Compiling serde_derive v1.0.229
+   Compiling bytemuck_derive v1.12.1
+   Compiling thiserror-impl v2.0.21
+   Compiling bytemuck v1.25.2
+   Compiling thiserror v2.0.21
+   Compiling naga-types v30.0.1
+   Compiling tiny-skia-path v0.12.0
+   Compiling rgb v0.8.53
+   Compiling bitflags v2.13.2
+   Compiling serde_json v1.0.154
+   Compiling dispatch2 v0.3.1
+   Compiling wgpu-types v30.0.1
+   Compiling png v0.18.1
+   Compiling objc2-core-foundation v0.3.2
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling naga v30.0.1
+   Compiling polycool v0.4.0
+   Compiling lyon_geom v1.0.20
+   Compiling tiny-skia v0.12.0
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling kurbo v0.13.1
+   Compiling lyon_path v1.0.19
+   Compiling lyon_tessellation v1.0.22
+   Compiling svgtypes v0.16.1
+   Compiling objc2-foundation v0.3.2
+   Compiling usvg v0.48.1
+   Compiling resvg v0.48.1
+   Compiling objc2-metal v0.3.2
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling objc2-core-graphics v0.3.2
+   Compiling objc2-quartz-core v0.3.2
+   Compiling objc2-core-text v0.3.2
+   Compiling raw-window-metal v1.1.0
+   Compiling wgpu-hal v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling wgpu v30.0.1
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `test` profile [unoptimized] target(s) in 1m 23s
+     Running unittests src/lib.rs (target/mk1-dev/debug/deps/bbt_render-fbe5ac4e9075d5fc)
+
+running 67 tests
+test chrome::diff::tests::tolerance_is_not_an_exact_byte_comparison ... ok
+test atlas::tests::growth_keeps_uploaded_glyph_coordinates_and_masks ... ok
+test atlas::tests::color_atlas_growth_preserves_all_four_premultiplied_channels ... ok
+test cells::terminal::gpu::tests::emoji_joining_preserves_parser_positions_and_style_boundaries ... ok
+test cells::terminal::gpu::tests::immutable_fonts_move_to_worker_with_identical_rasterization ... ok
+test chrome::group::clearing_tests::a_clearing_composite_equals_compositing_onto_transparent ... ok
+test cells::terminal::gpu::tests::prepared_frame_encodes_pane_offsets_clips_and_survives_atlas_growth ... ok
+test chrome::materials::tests::backdrop_copy_covers_fractional_support_and_clips_offscreen_edges ... ok
+test chrome::group::tests::mask_bridge_preserves_destination_alpha_and_the_old_api ... ok
+test chrome::icons::tests::size_and_scale_cache_preserves_prior_rasters_and_rejects_unbounded_inputs ... ok
+test chrome::materials::tests::nonfinite_and_negative_material_parameters_are_rejected ... ok
+test chrome::materials::tests::zero_blur_still_samples_the_backdrop_and_fractional_edge_texels ... ok
+test chrome::path_masks::tests::phase_and_stroke_change_coverage_without_colour_or_translation_inputs ... ok
+test chrome::paths::tests::cubic_dash_geometry_is_finite_and_invalid_input_is_rejected ... ok
+test chrome::group::tests::css_saturation_unpremultiplies_before_filter_and_preserves_destination_alpha ... ok
+test chrome::group::tests::empty_and_identity_groups_are_transparent_and_use_the_same_device_at_scale ... ok
+test chrome::paths::tests::sub_ulp_dash_remainder_advances_instead_of_repeating_a_vertex ... ok
+test chrome::paths::tests::unrepresentable_pattern_cannot_cycle_through_zero_length_phases ... ok
+test chrome::group::tests::outer_and_child_clips_survive_group_splits_and_do_not_leak_to_following_paint ... ok
+test chrome::group::tests::isolated_text_carries_a_premultiplied_mask_and_matches_opaque_compositing ... ok
+test chrome::group::tests::linear_mask_filters_the_completed_layer_once_at_1x_and_2x ... ok
+test chrome::group::tests::overlapping_children_dim_once_and_nested_groups_keep_painter_order ... ok
+test chrome::tests::a_flushed_frame_rewinds_cleanly ... ok
+test chrome::tests::an_unflushed_frame_fails_at_the_next_begin_frame - should panic ... ok
+test chrome::tests::an_unflushed_frame_fails_when_its_owner_drops - should panic ... ok
+test chrome::materials::tests::blur_reuse_is_pixel_identical_and_only_on_equal_keys ... ok
+test chrome::tests::empty_clipped_pass_retains_a_pending_gpu_reset_after_eviction ... ok
+test chrome::paths::tests::zero_length_round_dashes_render_dots_and_crossings_composite_once ... ok
+test chrome::paths::tests::filled_and_hollow_triangles_and_translucent_polygon_use_real_fill_geometry ... ok
+test chrome::paths::tests::gpu_path_preserves_order_clip_alpha_and_retained_geometry ... ok
+test chrome::tests::glyph_dirty_writes_and_growth_keep_earlier_texture_coordinates_correct ... ok
+test chrome::tests::inner_highlight_stays_inside_light_and_dark_borders ... ok
+test chrome::tests::colored_text_uses_css_source_over_with_opaque_and_transparent_backdrops ... ok
+test chrome::tests::sdf_rounding_stroke_and_clip_survive_gpu_readback ... ok
+test chrome::tests::growth_in_a_later_group_preserves_the_earlier_encoded_texture ... ok
+test chrome::tests::immutable_icons_and_warm_glyphs_are_shared_across_isolated_passes ... ok
+test chrome::text::tests::coretext_shapes_unicode_and_ellipsizes_at_the_given_width ... ok
+test chrome::tests::svg_device_rasters_upload_once_and_survive_isolated_passes_and_scale_changes ... ok
+test chrome::text::tests::measurement_does_not_require_a_raster_canvas ... ok
+test chrome::text::tests::native_fonts_are_reused_per_thread_and_keyed_by_every_input ... ok
+test chrome::text::tests::numeric_ui_weights_select_medium_and_semibold_between_regular_and_bold ... ok
+test chrome::text::tests::italic_uses_real_family_faces_and_keeps_exact_ui_weight ... ok
+test chrome::text::tests::quarter_pixel_phases_change_coverage_without_changing_logical_metrics ... ok
+test chrome::text::tests::ui_weights_use_css_axis_values_and_menlo_medium_uses_regular_face ... ok
+test chrome::text::tests::zero_tracking_keeps_font_kerning_and_nonzero_tracking_is_applied ... ok
+test chrome::text_cache::tests::lru_evicts_unpinned_masks_and_repack_keeps_the_current_working_set ... ok
+test chrome::tests::translucent_border_composites_over_fill_at_fractional_coverage ... ok
+test chrome::text_cache::tests::path_and_text_masks_share_pins_eviction_and_repacked_uvs ... ok
+test chrome::text_cache::tests::reordered_text_reuses_cached_glyph_phases ... ok
+test chrome::text_cache::tests::native_font_cache_moves_from_initializing_worker_to_renderer_thread ... ok
+test chrome::text::tests::optical_size_and_logical_shaping_do_not_change_with_backing_scale ... ok
+test chrome::text_glyphs::shadow_tests::gaussian_shadow_keeps_a_zero_atlas_border_and_rejects_unbounded_inputs ... ok
+test chrome::text_cache::tests::unchanged_lines_reuse_their_shape_and_every_input_is_in_the_key ... ok
+test chrome::text_cache::tests::shapes_evict_least_recent_and_clear_on_scale_or_font_change ... ok
+test chrome::text_glyphs::tests::fallback_font_variations_and_phases_bind_cache_keys ... ok
+test passes::tests::counts_accumulate_per_kind_and_take_resets ... ok
+test text::terminal::platform::tests::color_emoji_ink_fits_its_cell_box_at_each_density ... ok
+test text::terminal::platform::tests::fullwidth_forms_use_cjk_fallback_and_ascii_keeps_primary_face ... ok
+test chrome::tests::svg_origins_follow_measured_css_half_up_ties_at_both_device_scales ... ok
+test chrome::text_glyphs::tests::compact_state_symbols_keep_exact_coverage_at_each_origin ... ok
+test chrome::tests::lru_repack_in_later_groups_preserves_prior_gpu_generations ... ok
+test chrome::tests::text_shadow_uses_cached_glyph_coverage_beneath_translucent_text ... ok
+test chrome::materials::tests::headless_renders_reuse_one_pass_and_match_fresh_renderers ... ok
+test cells::terminal::sprites::tests::double_rules_join_without_stubs_or_filled_crossings ... ok
+test chrome::text_glyphs::tests::cropped_glyph_components_reproduce_native_line_masks ... ok
+test chrome::tests::arena_slices_match_per_draw_buffers_across_many_draws_and_mid_frame_growth ... ok
+test chrome::text::tests::measurement_matches_painted_metrics_bit_for_bit ... ok
+
+test result: ok. 67 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.71s
+
+EXIT 0 elapsed_seconds=96.533 PID=18657
+
+COMMAND 69bd265d91eb4e84b4c5852cd1b61c61
+node --check crates/bboxybook/capture-inputs.js
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=0.140021292 raw_sha256=47f0f097f28b5d364bf64b00e620117e21a890d994dae14685b48082036068df
+$ node --check crates/bboxybook/capture-inputs.js
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T22:57:15.436278+00:00
+OWNED_COMMAND_PID 21940
+EXIT 0 elapsed_seconds=0.140 PID=21940
+
+COMMAND c88d7e331fca46bba5e7c2b24ba52800
+node crates/bboxybook/capture.mjs /private/tmp/sable-mk1-0Dr65M/graph-precheck /private/tmp/sable-mk1-0Dr65M/graph-requested.json
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=8.554360000 raw_sha256=d20954bb28cfa49d317a8d875a3f315af45e4dea08ced2e87bb31e45082b7c39
+$ node crates/bboxybook/capture.mjs /private/tmp/sable-mk1-0Dr65M/graph-precheck /private/tmp/sable-mk1-0Dr65M/graph-requested.json
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T22:57:16.837645+00:00
+OWNED_COMMAND_PID 21972
+web: 1/1 captured; 0 failures
+EXIT 0 elapsed_seconds=8.554 PID=21972
+
+COMMAND c2e653cf391f431296f506aeeaceee46
+env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo build -p bboxybook --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=12.550569125 raw_sha256=6682178f85f9d42adbb7e7c52720cf64ee0aa00cbcf69aae2cb7a144cfb00851
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo build -p bboxybook --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T22:57:15.643817+00:00
+OWNED_COMMAND_PID 21942
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-doc)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+    Finished `dev` profile [unoptimized] target(s) in 12.48s
+EXIT 0 elapsed_seconds=12.551 PID=21942
+
+COMMAND 780ef87bb7e64eed96a5cc36f911e2a5
+target/mk1-dev/debug/bboxybook render --manifest /private/tmp/sable-mk1-0Dr65M/graph-precheck/cases.json --out /private/tmp/sable-mk1-0Dr65M/graph-precheck/native
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=4.149012667 raw_sha256=332fe31205ac1dd3179f0eb761726f832014a70d0607b38f157ed08582d539e7
+$ target/mk1-dev/debug/bboxybook render --manifest /private/tmp/sable-mk1-0Dr65M/graph-precheck/cases.json --out /private/tmp/sable-mk1-0Dr65M/graph-precheck/native
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T22:57:39.765241+00:00
+OWNED_COMMAND_PID 22488
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: /private/tmp/sable-mk1-0Dr65M/graph-precheck/native/layouts.json
+rendered 1 PNGs to /private/tmp/sable-mk1-0Dr65M/graph-precheck/native
+EXIT 0 elapsed_seconds=4.149 PID=22488
+
+COMMAND bbff1a53d13740acadd1ee66ef2283b7
+target/mk1-dev/debug/bboxybook compare --manifest /private/tmp/sable-mk1-0Dr65M/graph-precheck/cases.json --out /private/tmp/sable-mk1-0Dr65M/graph-precheck --web-root web --native-root native --strict-geometry
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=3.131022667 raw_sha256=11aecf2d8479d6ddb19c6b0b42aba66810720375d6609b80dfe6d7c982fe2064
+$ target/mk1-dev/debug/bboxybook compare --manifest /private/tmp/sable-mk1-0Dr65M/graph-precheck/cases.json --out /private/tmp/sable-mk1-0Dr65M/graph-precheck --web-root web --native-root native --strict-geometry
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T22:58:01.930976+00:00
+OWNED_COMMAND_PID 23120
+parity: 1 cases, 0 review; /private/tmp/sable-mk1-0Dr65M/graph-precheck/index.html
+geometry: 1 required; 1 measured; 0 unproven; 0 mismatches
+parity gate: pass (0 pixel reviews advisory)
+EXIT 0 elapsed_seconds=3.131 PID=23120
+
+COMMAND 5fd01a0e243e4c818890d785c7ac1d1c
+env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --no-deps --locked -- -D warnings
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=65.499086167 raw_sha256=949ef813af2da518224182568c17508d8ecf3afe88daa096ff0d89e1651e4ae8
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --no-deps --locked -- -D warnings
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T22:57:56.003372+00:00
+OWNED_COMMAND_PID 22594
+   Compiling libc v0.2.191
+   Compiling serde_core v1.0.229
+    Checking cfg-if v1.0.5
+   Compiling serde v1.0.229
+    Checking memchr v2.8.3
+    Checking itoa v1.0.18
+   Compiling serde_json v1.0.154
+    Checking zmij v1.0.23
+   Compiling winnow v1.0.4
+   Compiling syn v2.0.119
+    Checking log v0.4.34
+    Checking smallvec v1.16.3
+    Checking typenum v1.20.1
+    Checking equivalent v1.0.3
+    Checking unicode-width v0.2.2
+    Checking scopeguard v1.2.0
+   Compiling version_check v0.9.5
+    Checking foldhash v0.2.0
+    Checking lock_api v0.4.14
+    Checking hashbrown v0.17.1
+   Compiling num-traits v0.2.19
+    Checking libm v0.2.16
+   Compiling generic-array v0.14.7
+    Checking cursor-icon v1.2.0
+    Checking pin-project-lite v0.2.17
+   Compiling thiserror v2.0.21
+    Checking once_cell v1.21.4
+    Checking subtle v2.6.1
+    Checking simd-adler32 v0.3.10
+    Checking adler2 v2.0.1
+    Checking crc32fast v1.5.3
+    Checking miniz_oxide v0.9.1
+    Checking indexmap v2.14.2
+    Checking zlib-rs v0.6.8
+    Checking const-oid v0.9.6
+    Checking unsafe-libyaml v0.2.11
+    Checking core-foundation-sys v0.8.7
+    Checking ryu v1.0.23
+    Checking objc2-encode v4.1.0
+    Checking unicode-ident v1.0.27
+   Compiling toml_parser v1.1.5+spec-1.1.0
+    Checking bytes v1.12.1
+    Checking bytemuck v1.25.2
+    Checking objc2 v0.6.5
+   Compiling jobserver v0.1.35
+   Compiling find-msvc-tools v0.1.15
+    Checking parking_lot_core v0.9.12
+    Checking getrandom v0.2.17
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling shlex v2.0.1
+    Checking base64 v0.22.1
+    Checking parking_lot v0.12.5
+    Checking rand_core v0.6.4
+   Compiling cc v1.9.0
+    Checking errno v0.3.14
+    Checking rustc-hash v1.1.0
+    Checking cpufeatures v0.2.17
+    Checking bit-vec v0.9.1
+    Checking raw-window-handle v0.6.2
+    Checking naga-types v30.0.1
+    Checking codespan-reporting v0.13.1
+    Checking static_assertions v1.1.0
+    Checking signal-hook-registry v1.4.8
+    Checking flate2 v1.1.10
+    Checking bit-set v0.10.0
+    Checking socket2 v0.6.5
+    Checking mio v1.2.4
+   Compiling tokio-macros v2.7.2
+    Checking float-cmp v0.9.0
+    Checking libloading v0.8.9
+    Checking profiling v1.0.18
+    Checking strict-num v0.1.1
+    Checking bitflags v2.13.2
+    Checking arrayref v0.3.9
+    Checking euclid v0.22.14
+    Checking tiny-skia-path v0.12.0
+    Checking wgpu-types v30.0.1
+    Checking tokio v1.54.1
+    Checking block2 v0.6.2
+    Checking dispatch2 v0.3.1
+    Checking arrayvec v0.7.8
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+    Checking serde_yaml v0.9.34+deprecated
+    Checking serde-big-array v0.5.1
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+    Checking polycool v0.4.0
+    Checking fdeflate v0.3.7
+    Checking objc2-core-foundation v0.3.2
+    Checking kurbo v0.13.1
+    Checking miniz_oxide v0.8.9
+    Checking siphasher v1.0.4
+    Checking base64ct v1.8.3
+    Checking png v0.18.1
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+    Checking lyon_geom v1.0.20
+    Checking roxmltree v0.21.1
+    Checking simplecss v0.2.2
+    Checking svgtypes v0.16.1
+    Checking imagesize v0.15.0
+    Checking pico-args v0.5.0
+    Checking data-url v0.3.2
+    Checking lyon_path v1.0.19
+    Checking tiny-skia v0.12.0
+    Checking rgb v0.8.53
+    Checking usvg v0.48.1
+   Compiling zeroize_derive v1.5.0
+   Compiling zerocopy-derive v0.8.63
+    Checking float_next_after v1.0.0
+    Checking lyon_tessellation v1.0.22
+    Checking zeroize v1.9.1
+    Checking pem-rfc7468 v0.7.0
+    Checking pollster v0.4.0
+    Checking der v0.7.10
+   Compiling sha2-asm v0.6.4
+   Compiling pkg-config v0.3.34
+    Checking objc-sys v0.3.5
+    Checking resvg v0.48.1
+   Compiling getrandom v0.3.4
+   Compiling radium v0.7.0
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking inout v0.1.4
+    Checking objc2 v0.5.3
+    Checking tap v1.0.1
+    Checking cipher v0.4.4
+    Checking digest v0.10.7
+    Checking zerocopy v0.8.63
+    Checking wyz v0.5.1
+    Checking sha2 v0.10.9
+    Checking hmac v0.12.1
+    Checking core-foundation v0.9.4
+   Compiling futures-macro v0.3.34
+    Checking slab v0.4.12
+    Checking objc2-foundation v0.3.2
+    Checking dispatch v0.2.0
+    Checking futures-core v0.3.34
+    Checking funty v2.0.0
+    Checking bitflags v1.3.2
+    Checking futures-sink v0.3.34
+    Checking spki v0.7.3
+    Checking futures-task v0.3.34
+   Compiling crossbeam-utils v0.8.23
+    Checking pkcs8 v0.10.2
+    Checking foreign-types-shared v0.3.1
+    Checking base16ct v0.2.0
+    Checking futures-util v0.3.34
+    Checking foreign-types v0.5.0
+    Checking core-graphics-types v0.1.3
+    Checking rand_core v0.9.5
+    Checking signature v2.2.0
+    Checking tracing-core v0.1.36
+   Compiling semver v1.0.28
+    Checking core-graphics v0.23.2
+    Checking bitvec v1.1.1
+    Checking block2 v0.5.1
+   Compiling rustc_version v0.4.1
+    Checking tracing v0.1.44
+    Checking serdect v0.2.0
+    Checking objc2-foundation v0.2.2
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+    Checking rand_core v0.10.1
+    Checking smol_str v0.2.2
+   Compiling getrandom v0.4.3
+    Checking dpi v0.1.2
+    Checking sec1 v0.7.3
+    Checking crossbeam-queue v0.3.14
+    Checking hkdf v0.12.4
+    Checking crypto-bigint v0.5.5
+    Checking hybrid-array v0.4.15
+   Compiling thiserror v1.0.69
+   Compiling cfg_aliases v0.1.1
+   Compiling nix v0.28.0
+   Compiling thiserror-impl v1.0.69
+   Compiling zstd-safe v8.2.0
+   Compiling anyhow v1.0.104
+    Checking crypto-common v0.2.2
+    Checking block-buffer v0.12.1
+    Checking ff v0.13.1
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking rfc6979 v0.4.0
+    Checking group v0.13.0
+   Compiling strsim v0.11.1
+   Compiling ident_case v1.0.1
+    Checking elliptic-curve v0.13.8
+   Compiling fnv v1.0.7
+    Checking const-oid v0.10.2
+    Checking filedescriptor v0.8.3
+   Compiling darling_core v0.20.11
+    Checking objc2-metal v0.3.2
+    Checking digest v0.11.3
+    Checking serial2 v0.2.38
+    Checking shell-words v1.1.1
+    Checking downcast-rs v1.2.1
+   Compiling curve25519-dalek v4.1.3
+    Checking num-integer v0.1.47
+    Checking cpufeatures v0.3.1
+    Checking spin v0.9.9
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mermaid)
+    Checking ecdsa v0.16.9
+   Compiling num-bigint-dig v0.8.6
+    Checking num-iter v0.1.46
+    Checking lazy_static v1.5.1
+    Checking primeorder v0.13.6
+    Checking ctr v0.9.2
+    Checking aead v0.5.2
+    Checking universal-hash v0.5.1
+   Compiling rustix v1.1.5
+   Compiling httparse v1.10.1
+   Compiling rustversion v1.0.23
+    Checking opaque-debug v0.3.1
+    Checking unicase v2.10.0
+   Compiling vcpkg v0.2.15
+   Compiling convert_case v0.10.0
+    Checking pulldown-cmark v0.13.4
+    Checking polyval v0.6.2
+    Checking chacha20 v0.10.2
+    Checking portable-pty v0.9.0
+   Compiling libsqlite3-sys v0.38.2
+   Compiling curve25519-dalek v5.0.0
+    Checking aes v0.8.4
+    Checking dbl v0.3.2
+    Checking keccak v0.1.6
+    Checking byteorder v1.5.0
+   Compiling unicode-xid v0.2.6
+   Compiling heck v0.5.0
+    Checking unicode-segmentation v1.13.3
+   Compiling crc24 v0.1.6
+   Compiling snafu-derive v0.9.2
+   Compiling derive_more-impl v2.1.1
+   Compiling bitfields-impl v1.0.3
+    Checking sha3 v0.10.9
+    Checking cmac v0.7.2
+    Checking half v2.7.1
+    Checking ppv-lite86 v0.2.21
+   Compiling darling_macro v0.20.11
+    Checking rand_chacha v0.9.0
+    Checking rand_chacha v0.3.1
+    Checking naga v30.0.1
+    Checking rand v0.9.5
+    Checking rand v0.8.8
+    Checking objc2-app-kit v0.2.2
+   Compiling darling v0.20.11
+   Compiling derive_builder_core v0.20.2
+    Checking ulid v1.2.1
+    Checking rand v0.10.3
+    Checking ghash v0.5.1
+    Checking sha1 v0.11.0
+    Checking ed25519 v2.2.3
+   Compiling derive_builder_macro v0.20.2
+    Checking serdect v0.3.0
+    Checking pkcs1 v0.7.5
+    Checking sha1 v0.10.7
+    Checking blake2 v0.10.6
+   Compiling num_enum_derive v0.7.6
+    Checking password-hash v0.5.0
+    Checking http v1.5.0
+    Checking fastrand v2.5.0
+    Checking same-file v1.0.6
+    Checking signature v3.0.0
+    Checking foldhash v0.1.5
+    Checking data-encoding v2.11.1
+    Checking hashbrown v0.15.5
+    Checking num_enum v0.7.6
+    Checking ed25519 v3.0.0
+    Checking walkdir v2.5.0
+    Checking tempfile v3.27.0
+    Checking argon2 v0.5.3
+    Checking dsa v0.6.3
+    Checking rsa v0.9.10
+    Checking sha1-checked v0.10.0
+    Checking tungstenite v0.30.0
+    Checking cx448 v0.1.1
+    Checking derive_builder v0.20.2
+    Checking ed25519-dalek v2.2.0
+    Checking aes-gcm v0.10.3
+    Checking snafu v0.9.2
+    Checking derive_more v2.1.1
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+    Checking bitfields v1.0.3
+    Checking eax v0.5.0
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-doc)
+    Checking x25519-dalek v2.0.1
+    Checking objc2-core-graphics v0.3.2
+    Checking camellia v0.1.0
+    Checking blowfish v0.9.1
+    Checking aes-kw v0.2.1
+    Checking ocb3 v0.1.0
+    Checking p256 v0.13.2
+    Checking p384 v0.13.1
+    Checking p521 v0.13.3
+    Checking k256 v0.13.4
+    Checking sha2 v0.11.1
+    Checking md-5 v0.10.6
+    Checking ripemd v0.1.3
+    Checking idea v0.5.1
+    Checking cfb-mode v0.8.2
+    Checking twofish v0.7.1
+    Checking cast5 v0.11.1
+    Checking des v0.8.1
+    Checking block-padding v0.3.3
+    Checking notify-types v2.1.0
+    Checking security-framework-sys v2.17.0
+    Checking core-foundation v0.10.1
+    Checking fsevent-sys v4.1.0
+    Checking hashlink v0.12.2
+    Checking buffer-redux v1.1.0
+    Checking nom v8.0.0
+    Checking replace_with v0.1.8
+    Checking fixedbitset v0.5.7
+    Checking fallible-iterator v0.3.0
+    Checking hex v0.4.3
+    Checking fallible-streaming-iterator v0.1.9
+    Checking petgraph v0.8.3
+    Checking objc2-quartz-core v0.3.2
+    Checking objc2-core-text v0.3.2
+    Checking winit v0.30.13
+    Checking rusqlite v0.40.2
+    Checking security-framework v3.7.0
+    Checking zstd v0.14.3
+    Checking raw-window-metal v1.1.0
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking notify v8.2.0
+    Checking ed25519-dalek v3.0.0
+    Checking tokio-tungstenite v0.30.0
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+    Checking toml_datetime v1.1.2+spec-1.1.0
+    Checking objc2-app-kit v0.3.2
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy-firehose)
+   Compiling target-triple v1.0.1
+    Checking serde_spanned v1.1.2
+    Checking toml_writer v1.1.3+spec-1.1.0
+    Checking tokio-util v0.7.19
+    Checking termcolor v1.4.1
+    Checking glob v0.3.4
+    Checking aho-corasick v1.1.5
+    Checking regex-syntax v0.8.11
+    Checking proc-macro2 v1.0.107
+    Checking quote v1.0.47
+    Checking toml v1.1.8+spec-1.1.0
+   Compiling toml_edit v0.25.17+spec-1.1.0
+    Checking pgp v0.21.0
+    Checking wgpu-naga-bridge v30.0.1
+    Checking wgpu-hal v30.0.1
+    Checking proc-macro-crate v3.5.0
+    Checking trybuild v1.0.120
+    Checking regex-automata v0.4.18
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-yarn-macros)
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-yarn)
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking wgpu-core v30.0.1
+    Checking regex v1.13.1
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Checking wgpu v30.0.1
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+    Finished `dev` profile [unoptimized] target(s) in 1m 05s
+EXIT 0 elapsed_seconds=65.499 PID=22594
+
+COMMAND 4353a34efdaa4e2d93461c7aab84a949
+env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxybook --lib --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=8.825132084 raw_sha256=bf34c166e33d401f3f1fbd0c505d39b755ab071f8d740cf528958fb98ce13b18
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxybook --lib --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T23:00:14.570888+00:00
+OWNED_COMMAND_PID 27870
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+    Finished `test` profile [unoptimized] target(s) in 7.10s
+     Running unittests src/lib.rs (target/mk1-dev/debug/deps/bboxybook-894c336f81b1874d)
+
+running 15 tests
+test documents::diagram_policy_tests::engine_body_height_is_excluded_but_chrome_padding_and_following_gaps_stay_gated ... ok
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test parity::tests::text_policy_requires_rects_and_baselines_even_when_pixels_pass ... ok
+test swarms::diagnostic_filter_keeps_every_partly_visible_part_and_every_non_descendant ... ok
+test parity::tests::vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets ... ok
+test gallery::tests::current_parity_matrix_has_unique_paths_and_geometry_routing ... ok
+test parity::tests::legacy_pixels_do_not_claim_geometry_or_weaken_the_current_gate ... ok
+test parity::tests::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry ... ok
+test parity::tests::historical_diffs_stay_visible_without_gating_the_current_design ... ok
+test atoms::geometry_tests::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics ... ok
+test styles::geometry_tests::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+test documents::repository::tests::flat_document_composition_preserves_pixels_including_clips_and_alpha ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.25s
+
+EXIT 0 elapsed_seconds=8.825 PID=27870
+
+COMMAND 8a7b2f82d2a448259b5b64b6a7f3e626
+env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --no-deps --locked -- -D warnings
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=10.727631917 raw_sha256=145dc29eca866c484fa0524cd4d94344aa0fa73bd3b8ffe88029da2803424303
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --no-deps --locked -- -D warnings
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T23:01:33.480925+00:00
+OWNED_COMMAND_PID 30084
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+    Finished `dev` profile [unoptimized] target(s) in 10.40s
+EXIT 0 elapsed_seconds=10.728 PID=30084
+
+COMMAND 7bb4dc7c7e85454b9aa9d911412060aa
+sed -n 1,160p scripts/ci-local.sh
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=0.014587500 raw_sha256=2f198493a7dd9c0aec7f3c43011c48a7c930a156296fd5ee73c791949fb86934
+$ sed -n 1,160p scripts/ci-local.sh
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T23:02:59.468069+00:00
+OWNED_COMMAND_PID 32581
+#!/bin/sh
+# Local CI: the same gates as .github/workflows/ci.yml, run before every handoff and acceptance.
+# Run it in a clean worktree of the commit being handed off, never in the shared tree:
+#   git worktree add --detach /tmp/ci-<name> <sha>; cd there; CARGO_TARGET_DIR=<own dir> sh scripts/ci-local.sh
+# Usage: sh scripts/ci-local.sh [--parity] [--slow]
+# --parity runs visual parity; --slow also runs the scale gates.
+set -eu
+# Disk is tight: gates need no incremental cache and no debug info (about half the target size).
+export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}" CARGO_PROFILE_DEV_DEBUG="${CARGO_PROFILE_DEV_DEBUG:-0}" CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
+# Bulk replay/render checks need O1 inside the startup budget; keep debug guards on.
+export CARGO_PROFILE_DEV_OPT_LEVEL="${CARGO_PROFILE_DEV_OPT_LEVEL:-1}" CARGO_PROFILE_TEST_OPT_LEVEL="${CARGO_PROFILE_TEST_OPT_LEVEL:-1}" CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true
+sh scripts/layering.sh
+cargo build --workspace --locked
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --locked
+sh scripts/ui-lint.sh
+cargo run -p bboxy450-term --locked -- --smoke
+sh scripts/invariants.sh "$@"
+echo "ci-local: all gates passed"
+EXIT 0 elapsed_seconds=0.015 PID=32581
+
+COMMAND f54c97c646014aa9baaebbc2b497df21
+node crates/bboxybook/capture.mjs /private/tmp/sable-mk1-0Dr65M/vector-precheck /private/tmp/sable-mk1-0Dr65M/vector-requested.json
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=10.527830917 raw_sha256=fb64231df6f51a9b9ae804d70584ea21cb75faa87023a52625ac758c24e04a6c
+$ node crates/bboxybook/capture.mjs /private/tmp/sable-mk1-0Dr65M/vector-precheck /private/tmp/sable-mk1-0Dr65M/vector-requested.json
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T23:11:33.033695+00:00
+OWNED_COMMAND_PID 44746
+web: 3/3 captured; 0 failures
+EXIT 0 elapsed_seconds=10.528 PID=44746
+
+COMMAND 3dd4f4798b7d46c0b9cab73a6b187554
+target/mk1-dev/debug/bboxybook render --manifest /private/tmp/sable-mk1-0Dr65M/vector-precheck/cases.json --out /private/tmp/sable-mk1-0Dr65M/vector-precheck/native
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=0.518474875 raw_sha256=ac73600ec66c2147ddcbb5814fe6f8357c501ed648b2d7bcc7760ff3a8c2d79b
+$ target/mk1-dev/debug/bboxybook render --manifest /private/tmp/sable-mk1-0Dr65M/vector-precheck/cases.json --out /private/tmp/sable-mk1-0Dr65M/vector-precheck/native
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T23:12:30.133599+00:00
+OWNED_COMMAND_PID 45579
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: /private/tmp/sable-mk1-0Dr65M/vector-precheck/native/layouts.json
+rendered 3 PNGs to /private/tmp/sable-mk1-0Dr65M/vector-precheck/native
+EXIT 0 elapsed_seconds=0.518 PID=45579
+
+COMMAND 451ff3362d704a09ab6179019dd11e6c
+target/mk1-dev/debug/bboxybook compare --manifest /private/tmp/sable-mk1-0Dr65M/vector-precheck/cases.json --out /private/tmp/sable-mk1-0Dr65M/vector-precheck --web-root web --native-root native --strict-geometry
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 1 elapsed_seconds=0.175544875 raw_sha256=c3be976fbee1baf63fa7a1495aa6e3fa3569a8d60fc77aaceb77655ab29ed0c5
+$ target/mk1-dev/debug/bboxybook compare --manifest /private/tmp/sable-mk1-0Dr65M/vector-precheck/cases.json --out /private/tmp/sable-mk1-0Dr65M/vector-precheck --web-root web --native-root native --strict-geometry
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T23:12:36.555152+00:00
+OWNED_COMMAND_PID 45626
+parity: 3 cases, 3 review; /private/tmp/sable-mk1-0Dr65M/vector-precheck/index.html
+geometry: 3 required; 0 measured; 3 unproven; 0 mismatches
+bboxybook: parity gate: 3 geometry failures (fail)
+EXIT 1 elapsed_seconds=0.176 PID=45626
+
+COMMAND c3ee5ac280f44d858e47f069a26ca6a5
+env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxybook --test marks --locked vector_shadow_reuses_tint_translation_and_bounds_alpha_before_blur -- --exact --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=13.387121250 raw_sha256=381bdc92b560747e70c2c83ab0a0a5ebc52011e78b271038e742562128dd657d
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxybook --test marks --locked vector_shadow_reuses_tint_translation_and_bounds_alpha_before_blur -- --exact --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T23:14:43.957458+00:00
+OWNED_COMMAND_PID 48684
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+    Finished `test` profile [unoptimized] target(s) in 12.66s
+     Running tests/marks.rs (target/mk1-dev/debug/deps/marks-1f67e7dd80e1a385)
+
+running 1 test
+background+mark passes: shadow=Counts { flat: 1, clear: 1, path: 1, group: 0, blur: 0, material: 0, cells: 0, copy: 0 }; plain=Counts { flat: 1, clear: 1, path: 1, group: 0, blur: 0, material: 0, cells: 0, copy: 0 }
+mark-only passes: shadow=Counts { flat: 1, clear: 1, path: 1, group: 0, blur: 0, material: 0, cells: 0, copy: 0 }; plain=Counts { flat: 0, clear: 1, path: 1, group: 0, blur: 0, material: 0, cells: 0, copy: 0 }
+test vector_shadow_reuses_tint_translation_and_bounds_alpha_before_blur ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.25s
+
+EXIT 0 elapsed_seconds=13.387 PID=48684
+
+COMMAND 9edda636f7144cf99fe144bea80255d8
+env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxybook --lib --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 101 elapsed_seconds=4.582052250 raw_sha256=fb7e9b013b2e62ba94480ed45b62a2d23007974a61cb90da98477c28d9729896
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxybook --lib --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T23:17:43.308604+00:00
+OWNED_COMMAND_PID 56753
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+    Finished `test` profile [unoptimized] target(s) in 3.43s
+     Running unittests src/lib.rs (target/mk1-dev/debug/deps/bboxybook-894c336f81b1874d)
+
+running 16 tests
+test documents::diagram_policy_tests::engine_body_height_is_excluded_but_chrome_padding_and_following_gaps_stay_gated ... ok
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test parity::tests::legacy_pixels_do_not_claim_geometry_or_weaken_the_current_gate ... ok
+test parity::tests::glyph_only_vectors_require_exact_geometry_and_waiting_kind_keeps_its_baseline ... FAILED
+test parity::tests::text_policy_requires_rects_and_baselines_even_when_pixels_pass ... ok
+test parity::tests::vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets ... ok
+test swarms::diagnostic_filter_keeps_every_partly_visible_part_and_every_non_descendant ... ok
+test gallery::tests::current_parity_matrix_has_unique_paths_and_geometry_routing ... ok
+test parity::tests::historical_diffs_stay_visible_without_gating_the_current_design ... ok
+test parity::tests::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry ... ok
+test styles::geometry_tests::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds ... ok
+test atoms::geometry_tests::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+test documents::repository::tests::flat_document_composition_preserves_pixels_including_clips_and_alpha ... ok
+
+failures:
+
+---- parity::tests::glyph_only_vectors_require_exact_geometry_and_waiting_kind_keeps_its_baseline stdout ----
+
+thread 'parity::tests::glyph_only_vectors_require_exact_geometry_and_waiting_kind_keeps_its_baseline' (20492620) panicked at crates/bboxybook/src/parity.rs:857:9:
+assertion `left == right` failed
+  left: "unproven geometry"
+ right: "within policy"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    parity::tests::glyph_only_vectors_require_exact_geometry_and_waiting_kind_keeps_its_baseline
+
+test result: FAILED. 15 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.73s
+
+error: test failed, to rerun pass `-p bboxybook --lib`
+EXIT 101 elapsed_seconds=4.582 PID=56753
+
+COMMAND ddf75a22399c45978343ca09c9f563ad
+env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo build -p bboxybook --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=12.111255125 raw_sha256=6d7136f42a6ddb2099517d8e456ac2d0a8b6b01d34aeb480c077915579163994
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo build -p bboxybook --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T23:19:24.697585+00:00
+OWNED_COMMAND_PID 62336
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+    Finished `dev` profile [unoptimized] target(s) in 12.07s
+EXIT 0 elapsed_seconds=12.111 PID=62336
+
+COMMAND 90e8041ae49946ed9c342ccea20024e9
+target/mk1-dev/debug/bboxybook compare --manifest /private/tmp/sable-mk1-0Dr65M/vector-precheck/cases.json --out /private/tmp/sable-mk1-0Dr65M/vector-fixed --web-root ../vector-precheck/web --native-root ../vector-precheck/native --strict-geometry
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=0.788044084 raw_sha256=e55172ac82c24e50a2e940cc440f878840b87abd633441c7d6a3f05e42cb6745
+$ target/mk1-dev/debug/bboxybook compare --manifest /private/tmp/sable-mk1-0Dr65M/vector-precheck/cases.json --out /private/tmp/sable-mk1-0Dr65M/vector-fixed --web-root ../vector-precheck/web --native-root ../vector-precheck/native --strict-geometry
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T23:19:45.375878+00:00
+OWNED_COMMAND_PID 62836
+parity: 3 cases, 0 review; /private/tmp/sable-mk1-0Dr65M/vector-fixed/index.html
+geometry: 3 required; 3 measured; 0 unproven; 0 mismatches
+parity gate: pass (0 pixel reviews advisory)
+EXIT 0 elapsed_seconds=0.788 PID=62836
+
+COMMAND 9b4b7c9ffed840ac8033ed4edb117601
+env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxybook --lib --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=6.284900666 raw_sha256=57fd8ba837323fc69e4e8e8c20cebfb1e45f59ff1d16df8a3484463900b6372f
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxybook --lib --locked
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T23:19:44.282989+00:00
+OWNED_COMMAND_PID 62787
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+    Finished `test` profile [unoptimized] target(s) in 4.33s
+     Running unittests src/lib.rs (target/mk1-dev/debug/deps/bboxybook-894c336f81b1874d)
+
+running 16 tests
+test documents::diagram_policy_tests::engine_body_height_is_excluded_but_chrome_padding_and_following_gaps_stay_gated ... ok
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test parity::tests::glyph_only_vectors_require_exact_geometry_and_waiting_kind_keeps_its_baseline ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test parity::tests::text_policy_requires_rects_and_baselines_even_when_pixels_pass ... ok
+test parity::tests::vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets ... ok
+test swarms::diagnostic_filter_keeps_every_partly_visible_part_and_every_non_descendant ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test parity::tests::legacy_pixels_do_not_claim_geometry_or_weaken_the_current_gate ... ok
+test parity::tests::historical_diffs_stay_visible_without_gating_the_current_design ... ok
+test parity::tests::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry ... ok
+test gallery::tests::current_parity_matrix_has_unique_paths_and_geometry_routing ... ok
+test atoms::geometry_tests::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics ... ok
+test styles::geometry_tests::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+test documents::repository::tests::flat_document_composition_preserves_pixels_including_clips_and_alpha ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.46s
+
+EXIT 0 elapsed_seconds=6.285 PID=62787
+
+COMMAND 7251df940c214244a99d6e1308bf5b6a
+env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --no-deps --locked -- -D warnings
+CWD /Users/feral/mydev/bboxy450-term-exec3
+EXIT 0 elapsed_seconds=11.612140750 raw_sha256=5633dcb7635fba8e140aa5f5e505d93aceb02b5d3b0af748d7f3ad655ddf8318
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-dev CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --no-deps --locked -- -D warnings
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-23T23:21:57.735923+00:00
+OWNED_COMMAND_PID 67580
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxybook)
+    Finished `dev` profile [unoptimized] target(s) in 11.33s
+EXIT 0 elapsed_seconds=11.612 PID=67580
+
+COMMAND 3cd1741cc934426b91ec0d1257c049e4
+env CARGO_TARGET_DIR=/private/tmp/ci-sable-mk1-l3xje6gr/target/gate PARITY_OUT=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-parity-6dca379 BBOXY_TEST_CUSTODY=memory sh scripts/ci-local.sh --parity
+CWD /private/tmp/ci-sable-mk1-l3xje6gr
+EXIT 0 elapsed_seconds=1792.459077333 raw_sha256=646c7ad7dbe6f939953ff7c3376e807e89aa4249b4117a1a7b26f1db596134ff
