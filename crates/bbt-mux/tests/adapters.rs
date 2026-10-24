@@ -493,6 +493,11 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
     std::fs::create_dir(&user).unwrap();
     let settings = user.join("settings.json");
     std::fs::write(&settings, b"operator-config").unwrap();
+    let codex_home = user.join(".codex");
+    std::fs::create_dir(&codex_home).unwrap();
+    let config = codex_home.join("config.toml");
+    let original = b"[mcp_servers.other]\ndefault_tools_approval_mode = \"prompt\"\n";
+    std::fs::write(&config, original).unwrap();
     let record = SeatRecord::new(Ulid::new(), Ulid::new(), "fixture", "claude");
     let context = LaunchContext {
         seat: &record,
@@ -526,9 +531,27 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
     assert!(plan.spec.args.contains(&"--append-system-prompt".into()));
     assert!(!plan.spec.args.iter().any(|s| s.contains("bypass")));
     assert_eq!(std::fs::read(settings).unwrap(), b"operator-config");
-    let codex =
-        bbt_mux::adapters::launch::plan(&HarnessRecord::builtin("codex").unwrap(), &context)
-            .unwrap();
+    let mut codex_record = HarnessRecord::builtin("codex").unwrap();
+    let other_approval = "mcp_servers.other.default_tools_approval_mode=\"prompt\"";
+    codex_record
+        .command
+        .extend(["-c".into(), other_approval.into()]);
+    let codex = bbt_mux::adapters::launch::plan(&codex_record, &context).unwrap();
+    let approval_overrides = codex
+        .spec
+        .args
+        .windows(2)
+        .filter(|pair| pair[0] == "-c" && pair[1].contains("approval"))
+        .map(|pair| pair[1].as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        approval_overrides,
+        [
+            other_approval,
+            "mcp_servers.bboxy.default_tools_approval_mode=\"auto\""
+        ]
+    );
+    assert_eq!(std::fs::read(config).unwrap(), original);
     let hooks = codex
         .spec
         .args
