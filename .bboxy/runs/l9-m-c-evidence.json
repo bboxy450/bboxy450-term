@@ -1,0 +1,1623 @@
+{
+  "source": "69d2fc542eab35bb83f490d75ebb3f6981c49a58",
+  "parent": "9c2022a7288286981f0cb3a5b1938691bf8a3bf5",
+  "created": "2026-10-24T03:08:01.629861Z",
+  "record": {
+    "id": "01M5NY2BD67BNB8993E7Q625HH",
+    "number": 252
+  },
+  "worktree": "/Users/feral/mydev/bboxy450-term-nyx",
+  "branch": "nyx-l9-m-c",
+  "signing_key": "9B07E849480C68328CA20684844ECC0587DE7AB0",
+  "signed_source_commits": [
+    "69d2fc542eab35bb83f490d75ebb3f6981c49a58 G",
+    "80e0bc55726956712e68e62378175de1621d1e9f G",
+    "a5e1c2fe6aa7cb61a0fb1edf0ed82a2fdbfed402 G",
+    "1fae41998c70d269098655a595225a13d1b4accc G",
+    "bee32bd0e593133f57c180cb2c0d90c844495710 G",
+    "85faec31530b7a60366ef3799da00c8c110bff79 G",
+    "f839103910e46eceb883be25aa4dddf5ce86e0b6 G",
+    "4a544079abb7dd13274285d069523d52816e6573 G",
+    "1167a1e33b707a4d8120cde14d6ce33260d6d890 G",
+    "f3e9be58ea5003dd6da9996d6f4158a18534e034 G",
+    "1b594af12902efa85ba8324deb7cc6d9f126be0e G",
+    "37acf4716445f2070221bd4f590f327f9e668d36 G",
+    "147ec48e97dc313bae33507e97978202fa3580b3 G",
+    "74b3961df77923e1576dee0274da21d093ece993 G",
+    "7e4fcf145375e1b71600a96d766c6027d41dd4db G",
+    "421f928a0d8896f18d4754f5130c362d004c20a4 G",
+    "a7cded141170f2bb9d3ad2ca6f482c59435a8c03 G",
+    "2b14c68f81feb90e12a9eaa945f74a47bc13fabd G",
+    "318dbf3707afb58e75c6f2e34186e8070b0d1b29 G",
+    "cbb68e3d3acf635a591ef6b8940eb34344db0deb G"
+  ],
+  "ci": {
+    "source": "69d2fc542eab35bb83f490d75ebb3f6981c49a58",
+    "worktree": "/private/tmp/ci-nyx-l9mc-69d2fc5",
+    "target": "/private/tmp/nyx-l9mc-target-69d2fc5",
+    "parity_out": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/gate-69d2fc5",
+    "command": [
+      "sh",
+      "scripts/ci-local.sh",
+      "--parity"
+    ],
+    "started": "2026-10-24T02:14:42.415977+00:00",
+    "owner_pid": 27478,
+    "initial_status": "clean",
+    "environment": {
+      "CARGO_TARGET_DIR": "/private/tmp/nyx-l9mc-target-69d2fc5",
+      "BBOXY_TEST_CUSTODY": "memory",
+      "PARITY_OUT": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/gate-69d2fc5",
+      "CARGO_INCREMENTAL": "0",
+      "CARGO_PROFILE_DEV_DEBUG": "0",
+      "CARGO_PROFILE_TEST_DEBUG": "0",
+      "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+      "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+      "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+      "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true"
+    },
+    "unset": [
+      "BBOXYBOOK_GALLERY",
+      "BBOXYBOOK_REFERENCE_HEAD"
+    ],
+    "ci_pid": 27493,
+    "exit": 0,
+    "elapsed_seconds": 2011.8985341250082,
+    "ended": "2026-10-24T02:48:14.317421+00:00",
+    "final_status": "",
+    "target_retained_for_approved_replay_and_capture": true
+  },
+  "parity_summary": {
+    "cases": 2024,
+    "statuses": {
+      "review pixels": 148,
+      "within policy": 1876
+    },
+    "measured": 1920,
+    "required_geometry_failures": [],
+    "max_rect_error": 0.5,
+    "max_baseline_error": 0.046875,
+    "advisory_review_count": 148,
+    "baseline_advisory_count": 172,
+    "new_advisory_keys": [],
+    "cleared_advisory_keys": [
+      "message-row/reply-from-a-subagent-comfortable-dark.png",
+      "message-row/reply-from-a-subagent-comfortable-light.png",
+      "message-row/reply-from-a-subagent-compact-dark.png",
+      "message-row/reply-from-a-subagent-compact-light.png",
+      "message-row/reply-from-a-subagent-cozy-dark.png",
+      "message-row/reply-from-a-subagent-cozy-light.png",
+      "message-row/reply-from-a-subagent-touch-dark.png",
+      "message-row/reply-from-a-subagent-touch-light.png",
+      "message-row/to-a-subagent-comfortable-dark.png",
+      "message-row/to-a-subagent-comfortable-light.png",
+      "message-row/to-a-subagent-compact-dark.png",
+      "message-row/to-a-subagent-compact-light.png",
+      "message-row/to-a-subagent-cozy-dark.png",
+      "message-row/to-a-subagent-cozy-light.png",
+      "message-row/to-a-subagent-touch-dark.png",
+      "message-row/to-a-subagent-touch-light.png",
+      "message-row/unsigned-comfortable-dark.png",
+      "message-row/unsigned-comfortable-light.png",
+      "message-row/unsigned-compact-dark.png",
+      "message-row/unsigned-compact-light.png",
+      "message-row/unsigned-cozy-dark.png",
+      "message-row/unsigned-cozy-light.png",
+      "message-row/unsigned-touch-dark.png",
+      "message-row/unsigned-touch-light.png"
+    ],
+    "advisory_by_component": {
+      "harness-icon": 48,
+      "documents": 44,
+      "stream": 8,
+      "graph": 16,
+      "settings": 24,
+      "materials": 8
+    },
+    "capture": {
+      "status": "captured",
+      "baseline": "cf0227793e495025af5192a666aa9d72fb5b84f7",
+      "supplementalReference": "Layer fixtures, @component entries and settings_tab/new harness use frozen committed HEAD lab components",
+      "revision": "69d2fc542eab35bb83f490d75ebb3f6981c49a58",
+      "browser": "Chrome/156.0.8078.48",
+      "profile": "isolated ephemeral profile",
+      "deviceScaleFactor": 1,
+      "floatingSurfaceScope": "Container surfaces only: module children hidden, full context retained in context/, external content slot height recorded",
+      "freeze": "CSS animation playback paused; floating surfaces fixed at final animation state; module content hidden only for explicitly marked surface pairs; L2/L3 canvas rAF clock fixed at 450ms with seeded counter-hash Math.random; L5 glyph CSS pulse and L7 pane CSS/canvas pose fixed at 0ms; no transcript normalization; original web content retained",
+      "supplementalWebHashes": {
+        "components.js": "9b89bcbf3a7de11955724a5a927604a3510c90832f8fa390dd06d866cae2e3e6",
+        "lab.css": "9aa9d70a509e771a45749f96c9dd2def991b559c87cf58d81537587936d366cf",
+        "lab.js": "82349b9ef711cefc6a47cc03e250535f1d8bcf7b1fdce58b92b5fa9ebd059c63",
+        "tokens.js": "4c773de52578235c0f8a4440bda9bac9d35af94ffbac11868be41c2eb1e5e77e",
+        "showcase.js": "751ed333964bac6aa6a2940001de5debd1d558521da2fb89b0655686d54ae84d",
+        "showcase.html": "6747e59bc7f7ab610d339a0eccb7a31e4252fa922015cfd505fcd6821cfb4bc5",
+        "fixtures.js": "c676c85b49ebc220d74a614001d6c81c2cb935b3e6f5c3b848b140eecd404588",
+        "ui.js": "51b96d77594d80dfae2821c2905eadea043412a3065c26660a2219ad6de631a3",
+        "materials.html": "2f54fadc1c4816b53110deb4acc969b212341539715a5694b67f96a3e3ed3152",
+        "style.html": "dffd4ae66eb9aedd05f9b768c0b240a92669a6f311c41aad13b4462317906ac1",
+        "components.html": "8ff08c3b5f412e324ab0553cbea2847dbc33244f04d9e97f361f7b66d011c553",
+        "launcher.html": "b5bdb34b1be1f6eb6b73aad201ccee3266691b8df952548c1b4e4effe78f7c0a",
+        "documents.html": "bad49bd5e0d585f8bfdfaddb3a24115dcd3fc2cbb8a2107baafa3cc018b77374",
+        "mini-grid.html": "18e28bb0dbb07ad5b2b7d59a973feddbe22d752cb9c661d28074f7786efc1054",
+        "tab-row.html": "85476360ad6bc166b6913c64250821d7647920c266bdf94de9cba869db478013",
+        "sidebar.html": "f0e80096083b1755199a551c8de2efa4313afa4139944ea8cd2b61e5c39a189a",
+        "space-header.html": "1c2bf93a890b2f8efea20fc2464d932c1948951f23356dfff35aa5055cfcee36",
+        "pane.html": "76a70692f26c28f44ee2136fe1646b8a11b3cb11cc4e7b3a9880e933e2193ea6",
+        "title-strip.html": "65286bf6c00cb73df953024f9fd38a68fbbea9eb72ae665f9660a4164bb7177d",
+        "glow.js": "9eb125954274ed015775fe926ac3f8f3c54b6469c3991a31fdb0c8738e2385bb",
+        "stream.html": "ab04a7e3874ae826877464458f0312f7c6621c38cc43846fc36b321171d0a5b1",
+        "message-row.html": "5b7bd179adc0b5f38fc399890738ca5219b0c76af826f0df3effd39fa0869130",
+        "graph.html": "9e28f3ab21be03174532f8dc128f87c41690defd546e54c5cdece3241b83b6a2",
+        "paths.html": "23bd0b05e36831e59def7d938c9d070a1d50578d12eb466d69e518b8b402ca98",
+        "settings.html": "86822857e9ac093973634759aa3eca27c0294fc11e475be266b3e5c3c18a087c",
+        "compose.html": "f7928f1c4dbb636b6e9a95851fe47971df1c85e493390b93e8ee3223e08227e4"
+      },
+      "cases": 2024,
+      "failures": []
+    },
+    "report_sha256": "94d9bd6d44d626365658fe7a2e72df100ef69b43c571b94c235c2bc8ca15e808",
+    "baseline_report": "/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/9e665e4d-e6fd-4ba5-b5da-cd5e4d759748/scratchpad/g3-parity2/report.json",
+    "baseline_report_sha256": "7efa9f56e2b38174bbe430836edadf02e12bd4c26b81df203d8000bad613a45a"
+  },
+  "development": {
+    "source": "69d2fc542eab35bb83f490d75ebb3f6981c49a58",
+    "parent": "9c2022a7288286981f0cb3a5b1938691bf8a3bf5",
+    "created": "2026-10-24T00:02:13.712877+00:00",
+    "development_checks": [
+      {
+        "path": "target/l9-m-c/clippy-41.log",
+        "exit": 0,
+        "mechanism": "strict workspace/all-target Clippy on rebased5595163",
+        "sha256": "7861aef572832709363ceea630bf611038e639b429775ef805bd1fb5503ecef9",
+        "bytes": 751,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 101,
+        "bundle_byte_length": 751,
+        "bundle_start_line": 3,
+        "stored_sha256": "7861aef572832709363ceea630bf611038e639b429775ef805bd1fb5503ecef9",
+        "stored_bytes": 751
+      },
+      {
+        "path": "target/l9-m-c/app-tests-37.log",
+        "exit": 0,
+        "mechanism": "71 app tests, includes production IO decision/read-mark/task row",
+        "sha256": "0d31c8dcae4afde5075616578b5ce79f8776149868b49a8811a6aab74897cdb6",
+        "bytes": 927331,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 968,
+        "bundle_byte_length": 927331,
+        "bundle_start_line": 14,
+        "stored_sha256": "0d31c8dcae4afde5075616578b5ce79f8776149868b49a8811a6aab74897cdb6",
+        "stored_bytes": 927331
+      },
+      {
+        "path": "target/l9-m-c/lane-tests-37.log",
+        "exit": 0,
+        "mechanism": "library and messaging fixtures",
+        "sha256": "46e10ae3fc0ecade9ee958fdb348afa4d96ceed04fb81bd599c823ee52aebec3",
+        "bytes": 4503,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 928382,
+        "bundle_byte_length": 4503,
+        "bundle_start_line": 32699,
+        "stored_sha256": "46e10ae3fc0ecade9ee958fdb348afa4d96ceed04fb81bd599c823ee52aebec3",
+        "stored_bytes": 4503
+      },
+      {
+        "path": "target/l9-m-c/review-tests-40.log",
+        "exit": 0,
+        "mechanism": "17 UI-state tests and actual GUI/MCP delegation/report/accept fixture",
+        "sha256": "6291d9a7ee94eb7d64a24fdd738663c3ea762a067ad8fe620a1f36361e59f973",
+        "bytes": 2112,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 933009,
+        "bundle_byte_length": 2112,
+        "bundle_start_line": 32761,
+        "stored_sha256": "6291d9a7ee94eb7d64a24fdd738663c3ea762a067ad8fe620a1f36361e59f973",
+        "stored_bytes": 2112
+      },
+      {
+        "path": "target/l9-m-c/clippy-40.log",
+        "exit": 0,
+        "mechanism": "strict all-target workspace lint before final rebase",
+        "sha256": "430e28606c4163445b54926c7bf3b5d866935912719cb543bce327cc9e36037d",
+        "bytes": 154,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 935222,
+        "bundle_byte_length": 154,
+        "bundle_start_line": 32795,
+        "stored_sha256": "430e28606c4163445b54926c7bf3b5d866935912719cb543bce327cc9e36037d",
+        "stored_bytes": 154
+      },
+      {
+        "path": "target/l9-m-c/page-tests-34.log",
+        "exit": 0,
+        "mechanism": "9 EventLane tests: full window/read page, empty/rejected completions, byte budget",
+        "sha256": "b6cc85b30575c2c1857319a53935dae89aeb905f04db1ef237cd2e217e24268c",
+        "bytes": 1681,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 935510,
+        "bundle_byte_length": 1681,
+        "bundle_start_line": 32799,
+        "stored_sha256": "b6cc85b30575c2c1857319a53935dae89aeb905f04db1ef237cd2e217e24268c",
+        "stored_bytes": 1681
+      },
+      {
+        "path": "target/l9-m-c/check-35.log",
+        "exit": 101,
+        "mechanism": "missing scene BTreeMap import and extra SwarmId wrapping, fixed",
+        "sha256": "ac4aaa37e31d73ad0a07c52ec12e4266b2c6302d16ba5a5093dedf5bbed6c422",
+        "bytes": 2228,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 937304,
+        "bundle_byte_length": 2228,
+        "bundle_start_line": 32823,
+        "stored_sha256": "ac4aaa37e31d73ad0a07c52ec12e4266b2c6302d16ba5a5093dedf5bbed6c422",
+        "stored_bytes": 2228
+      },
+      {
+        "path": "target/l9-m-c/page-io-tests-36.log",
+        "exit": 101,
+        "mechanism": "UnreadCount versus SeatRow tuple adapter, fixed",
+        "sha256": "0aa02d3b4b63f328ae00b1141da287917580f4e26ccd5c70861b1c2fe3c397c1",
+        "bytes": 973,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 939637,
+        "bundle_byte_length": 973,
+        "bundle_start_line": 32867,
+        "stored_sha256": "0aa02d3b4b63f328ae00b1141da287917580f4e26ccd5c70861b1c2fe3c397c1",
+        "stored_bytes": 973
+      },
+      {
+        "path": "target/l9-m-c/review-tests-39.log",
+        "exit": 101,
+        "mechanism": "Report.verify test typo, corrected to verify_result",
+        "sha256": "b83e9197df0747fa054957defc563a96e53139f9f42a0ff0bfb3db67e5499c8e",
+        "bytes": 623,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 940718,
+        "bundle_byte_length": 623,
+        "bundle_start_line": 32890,
+        "stored_sha256": "b83e9197df0747fa054957defc563a96e53139f9f42a0ff0bfb3db67e5499c8e",
+        "stored_bytes": 623
+      },
+      {
+        "path": "target/l9-m-c/probe-04/compare.log",
+        "exit": 1,
+        "mechanism": "four rejected-report notice flex widths; named max_content_basis support fixed",
+        "sha256": "15a2fb4b99b5d40448e7fe11e0393db5e8cc4cbec1f7d7c065fd99b266ae653c",
+        "bytes": 178,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 941475,
+        "bundle_byte_length": 178,
+        "bundle_start_line": 32904,
+        "stored_sha256": "15a2fb4b99b5d40448e7fe11e0393db5e8cc4cbec1f7d7c065fd99b266ae653c",
+        "stored_bytes": 178
+      },
+      {
+        "path": "target/l9-m-c/probe-05/compare.log",
+        "exit": 1,
+        "mechanism": "shrink diagnostic did not change width; superseded",
+        "sha256": "c24aa16222e4977b7f3ee71563736777529d6c3e03d8568b27762c290b568d6d",
+        "bytes": 171,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 941759,
+        "bundle_byte_length": 171,
+        "bundle_start_line": 32909,
+        "stored_sha256": "c24aa16222e4977b7f3ee71563736777529d6c3e03d8568b27762c290b568d6d",
+        "stored_bytes": 171
+      },
+      {
+        "path": "target/l9-m-c/probe-06/render.log",
+        "exit": 1,
+        "mechanism": "Stretch is not a supported text alignment; diagnostic reverted",
+        "sha256": "1c188a36a3630b4f9d21409fc39db84f15905b11d017db701e996a6a871b6caf",
+        "bytes": 316,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 942047,
+        "bundle_byte_length": 316,
+        "bundle_start_line": 32914,
+        "stored_sha256": "1c188a36a3630b4f9d21409fc39db84f15905b11d017db701e996a6a871b6caf",
+        "stored_bytes": 316
+      },
+      {
+        "path": "target/l9-m-c/probe-07/compare.log",
+        "exit": 0,
+        "mechanism": "four rejected-report cases, all geometry and pixels pass",
+        "sha256": "2c4f56b89c68ea585313ac02bcbbca3bff59c042cff84a12a06691fa4f191434",
+        "bytes": 165,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 942475,
+        "bundle_byte_length": 165,
+        "bundle_start_line": 32918,
+        "stored_sha256": "2c4f56b89c68ea585313ac02bcbbca3bff59c042cff84a12a06691fa4f191434",
+        "stored_bytes": 165
+      },
+      {
+        "path": "target/l9-m-c/probe-08/compare.log",
+        "exit": 1,
+        "mechanism": "eight stream badge CSS-class identities lacked native records; fixed semantic key",
+        "sha256": "d977514f676e6b83122bd1847e1721e40b2d8fe8472634bdd6e3b0c09e287a2a",
+        "bytes": 173,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 942777,
+        "bundle_byte_length": 173,
+        "bundle_start_line": 32923,
+        "stored_sha256": "d977514f676e6b83122bd1847e1721e40b2d8fe8472634bdd6e3b0c09e287a2a",
+        "stored_bytes": 173
+      },
+      {
+        "path": "target/l9-m-c/probe-09/compare.log",
+        "exit": 0,
+        "mechanism": "eight stream-more cases, all geometry and pixels pass",
+        "sha256": "177e3e1dcb3a54caa550d05f006a5c9b8afa0ec3e56ba43f328065ec33ec997e",
+        "bytes": 165,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 943059,
+        "bundle_byte_length": 165,
+        "bundle_start_line": 32928,
+        "stored_sha256": "177e3e1dcb3a54caa550d05f006a5c9b8afa0ec3e56ba43f328065ec33ec997e",
+        "stored_bytes": 165
+      },
+      {
+        "path": "target/l9-m-c/clippy-42.log",
+        "exit": 0,
+        "mechanism": "strict workspace/all-target Clippy after accepted G3 rebase",
+        "sha256": "c5d46ea91db04b67db802e07bed5c92ccd54ffff4107e03740b5768703554c65",
+        "bytes": 834,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 943332,
+        "bundle_byte_length": 834,
+        "bundle_start_line": 32933,
+        "stored_sha256": "c5d46ea91db04b67db802e07bed5c92ccd54ffff4107e03740b5768703554c65",
+        "stored_bytes": 834
+      },
+      {
+        "path": "target/l9-m-c/book-tests-43.log",
+        "exit": 0,
+        "mechanism": "complete bboxybook suite 83/0 after explicit catalog assertions updated",
+        "bytes": 12606,
+        "sha256": "5e9091b458ec301889d6e4579df76171c73f363a76b20c4150085103641a40f6",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 944290,
+        "bundle_byte_length": 12606,
+        "bundle_start_line": 32945,
+        "stored_sha256": "5e9091b458ec301889d6e4579df76171c73f363a76b20c4150085103641a40f6",
+        "stored_bytes": 12606
+      },
+      {
+        "path": "target/l9-m-c/clippy-45.log",
+        "exit": 0,
+        "mechanism": "strict workspace/all-target lint on d103e80",
+        "bytes": 146,
+        "sha256": "fda33b06d76064b17f0a58a432c28a56f439c8161d6faa5cb5c64d1d3c7e1112",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 956988,
+        "bundle_byte_length": 146,
+        "bundle_start_line": 33204,
+        "stored_sha256": "fda33b06d76064b17f0a58a432c28a56f439c8161d6faa5cb5c64d1d3c7e1112",
+        "stored_bytes": 146
+      },
+      {
+        "path": "target/l9-m-c/ci-9cfad21.log",
+        "exit": 101,
+        "mechanism": "first exact clean gate stopped at stale seat-row matrix count; 232 expected vs 240 new cases; private target deleted",
+        "bytes": 75067,
+        "sha256": "ce343835660f643018ebdec518af1ccb901c828f082033486520b2b4a54fbf6a",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 957302,
+        "bundle_byte_length": 75067,
+        "bundle_start_line": 33208,
+        "stored_sha256": "ce343835660f643018ebdec518af1ccb901c828f082033486520b2b4a54fbf6a",
+        "stored_bytes": 75067
+      },
+      {
+        "path": "target/l9-m-c/marks-tests-46.log",
+        "exit": 0,
+        "mechanism": "17 composer/stream regressions after MK1 API adoption",
+        "bytes": 1968,
+        "sha256": "ab9c561fac4f2db49c8f50b973ef140df247ea7e13d731d103a2ddd27531b7e9",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1032476,
+        "bundle_byte_length": 1968,
+        "bundle_start_line": 34848,
+        "stored_sha256": "ab9c561fac4f2db49c8f50b973ef140df247ea7e13d731d103a2ddd27531b7e9",
+        "stored_bytes": 1968
+      },
+      {
+        "path": "target/l9-m-c/clippy-49.log",
+        "exit": 0,
+        "mechanism": "strict workspace/all-target lint on rebased92c5091",
+        "bytes": 654,
+        "sha256": "05ac497339336186e85d749f226b3eefcdf16154ae57fe11b997e94c3d7fcb1a",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1034543,
+        "bundle_byte_length": 654,
+        "bundle_start_line": 34882,
+        "stored_sha256": "05ac497339336186e85d749f226b3eefcdf16154ae57fe11b997e94c3d7fcb1a",
+        "stored_bytes": 654
+      },
+      {
+        "path": "target/l9-m-c/probe-47/compare.log",
+        "exit": 1,
+        "mechanism": "16 artifact text baseline diagnostics were cross-centred inline-flex markers; 16 report cases passed",
+        "bytes": 177,
+        "sha256": "1d6965b80bfef0950b21c00a4bf8a2f3d0b1cc706b006769c6bd12ab0308c2be",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1035353,
+        "bundle_byte_length": 177,
+        "bundle_start_line": 34892,
+        "stored_sha256": "1d6965b80bfef0950b21c00a4bf8a2f3d0b1cc706b006769c6bd12ab0308c2be",
+        "stored_bytes": 177
+      },
+      {
+        "path": "target/l9-m-c/probe-48/compare.log",
+        "exit": 0,
+        "mechanism": "actual text-range baseline diagnostic: all16 affected attachment cases geometry/pixels pass",
+        "bytes": 168,
+        "sha256": "cec066c74dc90db8ef9f39a95fd8c2b193c042c323f5a158e57cb10080d00304",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1035677,
+        "bundle_byte_length": 168,
+        "bundle_start_line": 34897,
+        "stored_sha256": "cec066c74dc90db8ef9f39a95fd8c2b193c042c323f5a158e57cb10080d00304",
+        "stored_bytes": 168
+      },
+      {
+        "path": "target/l9-m-c/ci-92c5091.log",
+        "exit": 1,
+        "mechanism": "clean full CI: all Rust tests/clippy/smoke green; pre-existing licensing alias pipe and 24 legacy fixture capture failures",
+        "sha256": "d7eeaf6f73ea6682a99d17f8d2854115d062147447a2dc9972420adf122a75f0",
+        "bytes": 182481,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1036017,
+        "bundle_byte_length": 182481,
+        "bundle_start_line": 34902,
+        "stored_sha256": "d7eeaf6f73ea6682a99d17f8d2854115d062147447a2dc9972420adf122a75f0",
+        "stored_bytes": 182481
+      },
+      {
+        "path": "target/l9-m-c/legacy-fix-probe/capture.log",
+        "exit": 0,
+        "mechanism": "24 current @component stream previews capture after canonical input migration",
+        "sha256": "4c124d2d39b58905efb62b6fae73a4ff3946bfa7fc2c5662ec1169ff056d580f",
+        "bytes": 32,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1218639,
+        "bundle_byte_length": 32,
+        "bundle_start_line": 38365,
+        "stored_sha256": "4c124d2d39b58905efb62b6fae73a4ff3946bfa7fc2c5662ec1169ff056d580f",
+        "stored_bytes": 32
+      },
+      {
+        "path": "target/l9-m-c/legacy-both-probe/capture.log",
+        "exit": 0,
+        "mechanism": "48 current and pinned v2 previews capture after preserving the declared old constructor inputs",
+        "sha256": "c04370ca5230f1379592f3c8d7183408fe792d6bf1b0f15c5d2816df7e1d4b69",
+        "bytes": 32,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1218830,
+        "bundle_byte_length": 32,
+        "bundle_start_line": 38368,
+        "stored_sha256": "c04370ca5230f1379592f3c8d7183408fe792d6bf1b0f15c5d2816df7e1d4b69",
+        "stored_bytes": 32
+      },
+      {
+        "path": "target/l9-m-c/clippy-50.log",
+        "exit": 0,
+        "mechanism": "strict workspace/all-target lint after rebasing onto main56cd6e40, source1c5fcb7",
+        "sha256": "511fbafe2750bb71aeee4bedb1cab3a6b75d6a0750fdf493651c980f84e8ac3a",
+        "bytes": 10823,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1218991,
+        "bundle_byte_length": 10823,
+        "bundle_start_line": 38371,
+        "stored_sha256": "511fbafe2750bb71aeee4bedb1cab3a6b75d6a0750fdf493651c980f84e8ac3a",
+        "stored_bytes": 10823
+      },
+      {
+        "path": "target/l9-m-c/ci-1c5fcb7.log",
+        "exit": 1,
+        "mechanism": "full CI: Rust/smoke/licenses green; current1992 captured,1888/1888 measured,16 schema-leftover geometry failures; private target/worktree removed",
+        "bytes": 179198,
+        "sha256": "3fd6e32aefe62d34a81d0d276b8575d389e94d4d5939687ef9e95fa73790bd55",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1230009,
+        "bundle_byte_length": 179198,
+        "bundle_start_line": 38697,
+        "stored_sha256": "3fd6e32aefe62d34a81d0d276b8575d389e94d4d5939687ef9e95fa73790bd55",
+        "stored_bytes": 179198
+      },
+      {
+        "path": "target/l9-m-c/canonical-fix-51/capture.log",
+        "exit": 0,
+        "mechanism": "recapture16 task-status/rejected-timestamp cases on paired sourceb000025b",
+        "bytes": 32,
+        "sha256": "927e305a6da41eaf3e58202949a2b13c229cc0a0658bf333a3845360bf786d70",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1409344,
+        "bundle_byte_length": 32,
+        "bundle_start_line": 42138,
+        "stored_sha256": "927e305a6da41eaf3e58202949a2b13c229cc0a0658bf333a3845360bf786d70",
+        "stored_bytes": 32
+      },
+      {
+        "path": "target/l9-m-c/canonical-fix-51/render.log",
+        "exit": 0,
+        "mechanism": "native16 semantic cases",
+        "bytes": 399,
+        "sha256": "874a597188837052e1efe2b5829b3610f88aed333f4cca462ea7d4c5c0f5211d",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1409462,
+        "bundle_byte_length": 399,
+        "bundle_start_line": 42141,
+        "stored_sha256": "874a597188837052e1efe2b5829b3610f88aed333f4cca462ea7d4c5c0f5211d",
+        "stored_bytes": 399
+      },
+      {
+        "path": "target/l9-m-c/canonical-fix-51/compare.log",
+        "exit": 0,
+        "mechanism": "all16 geometry clean;8 pre-existing rejected-row pixel reviews",
+        "bytes": 176,
+        "sha256": "aa934d5cb23246ecd7da8b5b1a80d76fa1b09a2406b49a680883048af81c9c24",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1409987,
+        "bundle_byte_length": 176,
+        "bundle_start_line": 42146,
+        "stored_sha256": "aa934d5cb23246ecd7da8b5b1a80d76fa1b09a2406b49a680883048af81c9c24",
+        "stored_bytes": 176
+      },
+      {
+        "path": "target/l9-m-c/rail-tests-54.log",
+        "exit": 101,
+        "mechanism": "new repeat test incorrectly supplied height only in root bounds; root uses natural height; corrected test to use a fixed-height stretching host",
+        "bytes": 2652,
+        "sha256": "870234fdff1eb8db2924e1caf1104e20b9022decf014d9cea0d5d1393fe18f5c",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1410361,
+        "bundle_byte_length": 2652,
+        "bundle_start_line": 42151,
+        "stored_sha256": "870234fdff1eb8db2924e1caf1104e20b9022decf014d9cea0d5d1393fe18f5c",
+        "stored_bytes": 2652
+      },
+      {
+        "path": "target/l9-m-c/rail-tests-55.log",
+        "exit": 0,
+        "mechanism": "components21 and streams9:30 pass including repeat clipping and unchanged ordinary Rects",
+        "bytes": 2852,
+        "sha256": "f1e0e71e220b502bd18fa7381984a3ae14f5c60dc9e1d37b5836dc05353dd9fc",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1413154,
+        "bundle_byte_length": 2852,
+        "bundle_start_line": 42200,
+        "stored_sha256": "f1e0e71e220b502bd18fa7381984a3ae14f5c60dc9e1d37b5836dc05353dd9fc",
+        "stored_bytes": 2852
+      },
+      {
+        "path": "target/l9-m-c/address-color-53/compare.log",
+        "exit": 0,
+        "mechanism": "192 Compose cases geometry0; muted badge token clears56/64 new pixel reviews",
+        "bytes": 179,
+        "sha256": "714b48f8df71cfc1f6f0d517bd94ef71a50c8fb3255ab03f495f011cf0ea9292",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1416146,
+        "bundle_byte_length": 179,
+        "bundle_start_line": 42246,
+        "stored_sha256": "714b48f8df71cfc1f6f0d517bd94ef71a50c8fb3255ab03f495f011cf0ea9292",
+        "stored_bytes": 179
+      },
+      {
+        "path": "target/l9-m-c/rail-pixel-56/compare.log",
+        "exit": 0,
+        "mechanism": "256 geometry clean; Creativity rail pixels pass;56 HUD outputs exact; only accepted flash8 reviews",
+        "bytes": 176,
+        "sha256": "7cee7d7c080d9d4c722c2e4861ecdbc5174eefaaa0108e9dcc704221089ce24f",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1416484,
+        "bundle_byte_length": 176,
+        "bundle_start_line": 42251,
+        "stored_sha256": "7cee7d7c080d9d4c722c2e4861ecdbc5174eefaaa0108e9dcc704221089ce24f",
+        "stored_bytes": 176
+      },
+      {
+        "path": "target/l9-m-c/clippy-57.log",
+        "exit": 0,
+        "mechanism": "strict workspace/all-target lint after repeat support; subsequent change is paired lab only",
+        "bytes": 400,
+        "sha256": "ab941be83afaaab5f16aa0c84664b00e1c1a2608f2f223e2eb3f20ae9da55078",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1416800,
+        "bundle_byte_length": 400,
+        "bundle_start_line": 42256,
+        "stored_sha256": "ab941be83afaaab5f16aa0c84664b00e1c1a2608f2f223e2eb3f20ae9da55078",
+        "stored_bytes": 400
+      },
+      {
+        "path": "target/l9-m-c/accepted-steady-58/capture.log",
+        "exit": 0,
+        "mechanism": "paired steady accepted reference8/8 captures",
+        "bytes": 30,
+        "sha256": "827930238e9e026f54c1850d2177fefd3a42d481d88b42bc1b368281bb812602",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1417310,
+        "bundle_byte_length": 30,
+        "bundle_start_line": 42263,
+        "stored_sha256": "827930238e9e026f54c1850d2177fefd3a42d481d88b42bc1b368281bb812602",
+        "stored_bytes": 30
+      },
+      {
+        "path": "target/l9-m-c/accepted-steady-58/render.log",
+        "exit": 0,
+        "mechanism": "native steady accepted8",
+        "bytes": 402,
+        "sha256": "68ddf2b394323141c04eda2f93d16b34bf312345c7ae051af18c3d8d8d24d761",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1417428,
+        "bundle_byte_length": 402,
+        "bundle_start_line": 42266,
+        "stored_sha256": "68ddf2b394323141c04eda2f93d16b34bf312345c7ae051af18c3d8d8d24d761",
+        "stored_bytes": 402
+      },
+      {
+        "path": "target/l9-m-c/accepted-steady-58/compare.log",
+        "exit": 0,
+        "mechanism": "last8 geometry and pixels pass",
+        "bytes": 175,
+        "sha256": "a44fcfa3df2a8447d5fb1e3534029ef116546917a09ddffd55f0e9c1961a60af",
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1417926,
+        "bundle_byte_length": 175,
+        "bundle_start_line": 42271,
+        "stored_sha256": "a44fcfa3df2a8447d5fb1e3534029ef116546917a09ddffd55f0e9c1961a60af",
+        "stored_bytes": 175
+      },
+      {
+        "path": "target/l9-m-c/clippy-60.log",
+        "exit": 0,
+        "mechanism": "strict workspace all-target Clippy after the G5 union",
+        "sha256": "8ff36e160793584f0a5dcd611dfb9a2e4e527e8843ec02d07fb994c71441ad2e",
+        "bytes": 832,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1418203,
+        "bundle_byte_length": 832,
+        "bundle_start_line": 42276,
+        "stored_sha256": "8ff36e160793584f0a5dcd611dfb9a2e4e527e8843ec02d07fb994c71441ad2e",
+        "stored_bytes": 832
+      },
+      {
+        "path": "target/l9-m-c/book-tests-61.log",
+        "exit": 0,
+        "mechanism": "86 bboxybook tests after G5",
+        "sha256": "af794fb5bf604e0c90b3e7cbd4184fb530a1bc829cf8b2e4d450587a6d4ca0d8",
+        "bytes": 13058,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1419115,
+        "bundle_byte_length": 13058,
+        "bundle_start_line": 42288,
+        "stored_sha256": "af794fb5bf604e0c90b3e7cbd4184fb530a1bc829cf8b2e4d450587a6d4ca0d8",
+        "stored_bytes": 13058
+      },
+      {
+        "path": "target/l9-m-c/build-62.log",
+        "exit": 0,
+        "mechanism": "bboxybook development build on G5",
+        "sha256": "2223aee4679db13f79f4098721294c29f93747502d5f8b0449230cf061aba2a5",
+        "bytes": 58,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1432254,
+        "bundle_byte_length": 58,
+        "bundle_start_line": 42556,
+        "stored_sha256": "2223aee4679db13f79f4098721294c29f93747502d5f8b0449230cf061aba2a5",
+        "stored_bytes": 58
+      },
+      {
+        "path": "target/l9-m-c/g5-preflight-62/compare.log",
+        "exit": 1,
+        "mechanism": "224-case G5 preflight: 176 measured, 48 unproven report wrapper paths, zero mismatches; fixed in 69d2fc54",
+        "sha256": "a76d2cc13769eb1006ada10f58069b6dc3ddaaf5b85e7a4077d4211e24332f72",
+        "bytes": 187,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1432480,
+        "bundle_byte_length": 187,
+        "bundle_start_line": 42559,
+        "stored_sha256": "a76d2cc13769eb1006ada10f58069b6dc3ddaaf5b85e7a4077d4211e24332f72",
+        "stored_bytes": 187
+      },
+      {
+        "path": "target/l9-m-c/report-rim-tests-64.log",
+        "exit": 0,
+        "mechanism": "18 focused composer/stream tests including report rim and clip geometry",
+        "sha256": "6ec93f91f6e506f703e935b08f6248100b577d9531a7de7fa40055841884a1b1",
+        "bytes": 1956,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1432797,
+        "bundle_byte_length": 1956,
+        "bundle_start_line": 42564,
+        "stored_sha256": "6ec93f91f6e506f703e935b08f6248100b577d9531a7de7fa40055841884a1b1",
+        "stored_bytes": 1956
+      },
+      {
+        "path": "target/l9-m-c/clippy-65.log",
+        "exit": 0,
+        "mechanism": "strict workspace all-target Clippy after report rim support",
+        "sha256": "7910da9be000bfa1a0cc8a9db2bcaf10af87202455ff4a076835f60a835427d0",
+        "bytes": 653,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1434861,
+        "bundle_byte_length": 653,
+        "bundle_start_line": 42598,
+        "stored_sha256": "7910da9be000bfa1a0cc8a9db2bcaf10af87202455ff4a076835f60a835427d0",
+        "stored_bytes": 653
+      },
+      {
+        "path": "target/l9-m-c/build-66.log",
+        "exit": 0,
+        "mechanism": "bboxybook build with report rim and wrapper capture",
+        "sha256": "384290fdaaf574dfcfb2ea0d1069ab56be45d52f98833294281483f5631928fa",
+        "bytes": 307,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1435613,
+        "bundle_byte_length": 307,
+        "bundle_start_line": 42608,
+        "stored_sha256": "384290fdaaf574dfcfb2ea0d1069ab56be45d52f98833294281483f5631928fa",
+        "stored_bytes": 307
+      },
+      {
+        "path": "target/l9-m-c/g5-report-66/compare.log",
+        "exit": 0,
+        "mechanism": "48 report cases, all measured, zero geometry mismatches or pixel reviews",
+        "sha256": "2ca86bc6197a9ce5c1457f6fa010255f25ea631874ab785ba16ad3008e26db2f",
+        "bytes": 172,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1436052,
+        "bundle_byte_length": 172,
+        "bundle_start_line": 42614,
+        "stored_sha256": "2ca86bc6197a9ce5c1457f6fa010255f25ea631874ab785ba16ad3008e26db2f",
+        "stored_bytes": 172
+      },
+      {
+        "path": "target/l9-m-c/format-63.log",
+        "exit": 1,
+        "mechanism": "whole-workspace formatting scan: own new report hunks subsequently formatted; baseline formatting debt outside scope",
+        "sha256": "257f24f632d90d88a04b392795b1bdfd1d6ca7eafeb7a328fed5bae3ea53818f",
+        "bytes": 38066,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1436389,
+        "bundle_byte_length": 38046,
+        "bundle_start_line": 42619,
+        "normalization": "trailing spaces/tabs at EOL removed from stored rustfmt diagnostic; original hash and byte count retained",
+        "stored_sha256": "3250dd79cdbda4ebd37994a985c9ff326fbfadf03a8aa7cd6a61a39cae06ff33",
+        "stored_bytes": 38046
+      },
+      {
+        "path": "target/l9-m-c/format-68.log",
+        "exit": 1,
+        "mechanism": "final whole-workspace formatting scan: diffs in 20 unchanged baseline files, zero changed-file intersections",
+        "sha256": "39646973bc7c836e15faff8162c07588fb45acc893eb94b16296809f9ec927f3",
+        "bytes": 33502,
+        "bundle": "l9-m-c-development.log",
+        "bundle_byte_offset": 1474592,
+        "bundle_byte_length": 33482,
+        "bundle_start_line": 43431,
+        "normalization": "trailing spaces/tabs at EOL removed from stored rustfmt diagnostic; original hash and byte count retained",
+        "stored_sha256": "4145685a243fdad54f689c21168deca708188ae703d71f44ca6d454d28fe2ddd",
+        "stored_bytes": 33482
+      }
+    ],
+    "source_files": [
+      {
+        "path": "crates/bboxy450-term/src/launcher.rs",
+        "sha256": "6ee922d6eb130ceb4f5863a9296dd939d4ec7dc2f42cde99f740cd9486c67d1f",
+        "bytes": 2077
+      },
+      {
+        "path": "crates/bboxy450-term/src/lib.rs",
+        "sha256": "7546a0da7b937211e8689c29e93a7ce2fbff6e3ff47de31f6510e679441ef2a8",
+        "bytes": 331
+      },
+      {
+        "path": "crates/bboxy450-term/src/live.rs",
+        "sha256": "559f498e4b4c725c36cd4112218f27d25d16985ee995de0b71c2952e5bb9c45e",
+        "bytes": 99844
+      },
+      {
+        "path": "crates/bboxy450-term/src/main.rs",
+        "sha256": "4b2fc24984103d58857ed98af2aa1b42bc7c420d60412bb79134fcc15f9a9f27",
+        "bytes": 195875
+      },
+      {
+        "path": "crates/bboxy450-term/src/messaging.rs",
+        "sha256": "8766c33a7b08478139d72c372b94c3f71adf82cff67eb8438c7cc8569c55bac4",
+        "bytes": 46386
+      },
+      {
+        "path": "crates/bboxy450-term/src/messaging/history.rs",
+        "sha256": "5ac4fbd533bbf145dbd0aae0d51b8868a4e92810fa7ec20dbbdac6d07b391904",
+        "bytes": 21388
+      },
+      {
+        "path": "crates/bboxy450-term/src/model.rs",
+        "sha256": "41b9e9caf9cf6847aa180521eee434f463cf6001cc1ca413f09ef3de02807273",
+        "bytes": 69487
+      },
+      {
+        "path": "crates/bboxy450-term/src/scene.rs",
+        "sha256": "07ae2038cc6730299eac3eaeadc7c4516af499cb2f56dfa00d437c3af2559eaf",
+        "bytes": 48182
+      },
+      {
+        "path": "crates/bboxy450-term/tests/messaging_flow.rs",
+        "sha256": "da767a61f1f7ec4523d719620f43d361add2d39c97f6a62ab875b0e89baae56d",
+        "bytes": 15607
+      },
+      {
+        "path": "crates/bboxy450-term/tests/messaging_ui.rs",
+        "sha256": "a596f16c42a628eb152883bc48415f2db5eb6d7403a604beb95365c00fd77990",
+        "bytes": 20477
+      },
+      {
+        "path": "crates/bboxybook/capture-inputs.js",
+        "sha256": "d270b42d5062f1e25fec35a9925ee41ade6117636a99664fa33590f49681a7ab",
+        "bytes": 66051
+      },
+      {
+        "path": "crates/bboxybook/capture.mjs",
+        "sha256": "2acc278e8b754f0f991b0e8486093fb15f3420ce6c0a46d1093ff22147819156",
+        "bytes": 18742
+      },
+      {
+        "path": "crates/bboxybook/src/seat_rows.rs",
+        "sha256": "1d8772d187bcb478f324587a12eb27023a3d97ebe410b78c4655f9d760ff4e8b",
+        "bytes": 17196
+      },
+      {
+        "path": "crates/bboxybook/src/streams.rs",
+        "sha256": "4b09609812a3693c48986ccaaa4b09ec43cc86b4332d0a806ae2347f15594106",
+        "bytes": 13280
+      },
+      {
+        "path": "crates/bboxybook/tests/seat_rows.rs",
+        "sha256": "f550508fced191229fc8180fec67b939059a0d8ff9bb3291a18f7f1b4bee98ae",
+        "bytes": 2416
+      },
+      {
+        "path": "crates/bboxybook/tests/streams.rs",
+        "sha256": "947d3f970bbbede7d078185b33efef2b09df15cb195f18bbeae26553d07f563b",
+        "bytes": 2700
+      },
+      {
+        "path": "crates/bboxybook/web-fixtures.js",
+        "sha256": "f1c07cbba212b1614dcdf91f17c6fb942d501194804fc8e5e6975c3afc49102b",
+        "bytes": 9169
+      },
+      {
+        "path": "crates/bbt-mux/src/mcp/work_items.rs",
+        "sha256": "779fe5025c6eb28e89a807a3ebdae0e1494fea4c0c79e810bc47a06ca52f7b74",
+        "bytes": 34428
+      },
+      {
+        "path": "crates/bbt-mux/tests/mcp.rs",
+        "sha256": "f1f38fa0799046b11a70c856bfc92087f4f948803728c098bdd8b06aef1bb7a9",
+        "bytes": 111761
+      },
+      {
+        "path": "crates/bbt-proto/src/messaging.rs",
+        "sha256": "d2efab1f1f44435630a27630cc65c35c77c8f08a5f2e672b242a3c54385cdfda",
+        "bytes": 14071
+      },
+      {
+        "path": "crates/bbt-proto/tests/messaging.rs",
+        "sha256": "b4f9dd48fe6e2f046dee41471670cad980e656b5cfa22207f4ad2c3fb95a3335",
+        "bytes": 7579
+      },
+      {
+        "path": "crates/bbt-ui/src/components.rs",
+        "sha256": "afce13b686c2ae68cdcb2809052f067a988b412258abb80a09128a7735c477fe",
+        "bytes": 96923
+      },
+      {
+        "path": "crates/bbt-ui/src/lib.rs",
+        "sha256": "63df35910d5a54f499f3ea9898064bae0d96e9254723574da357071735831edc",
+        "bytes": 820
+      },
+      {
+        "path": "crates/bbt-ui/src/modules/composer.rs",
+        "sha256": "cc94e6d8e2d4220e21dea747fb9851f4b2e8b317ba41020a47b181149389b7a8",
+        "bytes": 16758
+      },
+      {
+        "path": "crates/bbt-ui/src/modules/composer/attachments.rs",
+        "sha256": "b4bbbb67d261bc9dbd6ee608039c900163c28be8a5d7a48045c40fa1b420c453",
+        "bytes": 12324
+      },
+      {
+        "path": "crates/bbt-ui/src/modules/composer/conversation.rs",
+        "sha256": "748b237a487db59a13ae39fe44f1f979e880431de94e3877f9663b387633fa91",
+        "bytes": 2337
+      },
+      {
+        "path": "crates/bbt-ui/src/modules/composer/hit.rs",
+        "sha256": "2ff3193eda7112ed194f6310982dc9bcc6be2702a4f672fcd2d7683617c48cd5",
+        "bytes": 6645
+      },
+      {
+        "path": "crates/bbt-ui/src/modules/composer/report.rs",
+        "sha256": "1e81b33a09b3b3174cf5ef5a4c78e1b6d600ad608b35b482a20739bb5d89ae69",
+        "bytes": 18549
+      },
+      {
+        "path": "crates/bbt-ui/src/modules/composer/view.rs",
+        "sha256": "69d567dd16fc3be6ebe0d930e850590fdfee985417a99f9720fa68974447b1c6",
+        "bytes": 34414
+      },
+      {
+        "path": "crates/bbt-ui/src/modules/graph_tab.rs",
+        "sha256": "6942b370b1279333d296d2ee5506b1a1c041f8b7754966448154d0fd0ae41abf",
+        "bytes": 69969
+      },
+      {
+        "path": "crates/bbt-ui/src/modules/launcher.rs",
+        "sha256": "b9c99f292341fa868e4bb8c86156916455b2bf9df4bf0fbed9dce87a31cfb0e5",
+        "bytes": 36034
+      },
+      {
+        "path": "crates/bbt-ui/src/modules/launcher/controller.rs",
+        "sha256": "18a4beb8680a5ea451363821a1095ef4700374fe75d6bd4a22dfcc9e279d8536",
+        "bytes": 10311
+      },
+      {
+        "path": "crates/bbt-ui/src/modules/mod.rs",
+        "sha256": "c82c342af107d4a912e17340b1a31f915eb2a4051b628766981bc291f3c90035",
+        "bytes": 392
+      },
+      {
+        "path": "crates/bbt-ui/src/modules/perf_hud.rs",
+        "sha256": "b52c8745765d837be6172ad4a3b0eb75b04607b9e8394ccb439221ac217b773b",
+        "bytes": 15635
+      },
+      {
+        "path": "crates/bbt-ui/src/modules/seat_row.rs",
+        "sha256": "1b3f6c1c44aa922cefa2721ba7c5a701611f775272ddf94ccafb349a278d469b",
+        "bytes": 40773
+      },
+      {
+        "path": "crates/bbt-ui/src/modules/stream_dock.rs",
+        "sha256": "cb80b21decc009dd1ae9783bccc0f45cad57506de261dedac9426f2808705f6a",
+        "bytes": 59444
+      },
+      {
+        "path": "crates/bbt-ui/src/modules/stream_dock/actions.rs",
+        "sha256": "5100f6f81396a78bbb9840d6182c1a952450a14d326fb43267730571830f6888",
+        "bytes": 7524
+      },
+      {
+        "path": "crates/bbt-ui/src/text_edit.rs",
+        "sha256": "826dd9002ae51d361114a5b1ac27a5969ce5e4b8ef04fa397a182b9f226541cd",
+        "bytes": 5978
+      },
+      {
+        "path": "crates/bbt-ui/src/widgets.rs",
+        "sha256": "dd8ac2a9f2c6a25f95a3a20d05f6ca5f5622b34933ceb097184a8604f99df070",
+        "bytes": 22257
+      },
+      {
+        "path": "crates/bbt-ui/src/widgets/text_area.rs",
+        "sha256": "ca5ba1f34015aea5176e5321a0ee30b51db363e7b0f91afa899f3478519f800f",
+        "bytes": 11469
+      },
+      {
+        "path": "crates/bbt-ui/tests/components.rs",
+        "sha256": "0834937a9a456db865f3edaa6cc858e136e1ce83132201d0d0c901eea615b3c5",
+        "bytes": 32080
+      },
+      {
+        "path": "crates/bbt-ui/tests/composer.rs",
+        "sha256": "70fdd161c0ffd29552476686ec58fc44d5aff51bc161d0c81a25c8aca2d0ea49",
+        "bytes": 6537
+      },
+      {
+        "path": "crates/bbt-ui/tests/streams.rs",
+        "sha256": "9cfa91aa4228aefca55bc8fe14a5874e99ea12b6384d1e4556ceb334bef512bc",
+        "bytes": 12184
+      },
+      {
+        "path": "crates/bbt-ui/tests/text_area.rs",
+        "sha256": "a90e06d5996bd57b843ade951175da48a4f320d457498f004ed39fb2f87ef550",
+        "bytes": 2674
+      },
+      {
+        "path": "crates/bbt-ui/tests/text_edit.rs",
+        "sha256": "5b6430fb50426c927a79698d3c5b488feb2b48586d80502ffdb24db52c6a8219",
+        "bytes": 2581
+      },
+      {
+        "path": "lab/web/components.js",
+        "sha256": "9b89bcbf3a7de11955724a5a927604a3510c90832f8fa390dd06d866cae2e3e6",
+        "bytes": 176628
+      },
+      {
+        "path": "lab/web/compose.html",
+        "sha256": "f7928f1c4dbb636b6e9a95851fe47971df1c85e493390b93e8ee3223e08227e4",
+        "bytes": 16006
+      },
+      {
+        "path": "lab/web/fixtures.js",
+        "sha256": "c676c85b49ebc220d74a614001d6c81c2cb935b3e6f5c3b848b140eecd404588",
+        "bytes": 14737
+      },
+      {
+        "path": "lab/web/lab.css",
+        "sha256": "9aa9d70a509e771a45749f96c9dd2def991b559c87cf58d81537587936d366cf",
+        "bytes": 165555
+      },
+      {
+        "path": "lab/web/message-row.html",
+        "sha256": "5b7bd179adc0b5f38fc399890738ca5219b0c76af826f0df3effd39fa0869130",
+        "bytes": 7168
+      },
+      {
+        "path": "lab/web/seat-row.html",
+        "sha256": "2b64ffcf9501cd7526bc5f774f1b0824997b80c17b85f7209e1aa3a437ae7482",
+        "bytes": 10452
+      },
+      {
+        "path": "lab/web/showcase.js",
+        "sha256": "751ed333964bac6aa6a2940001de5debd1d558521da2fb89b0655686d54ae84d",
+        "bytes": 74801
+      },
+      {
+        "path": "lab/web/stream.html",
+        "sha256": "ab04a7e3874ae826877464458f0312f7c6621c38cc43846fc36b321171d0a5b1",
+        "bytes": 4090
+      },
+      {
+        "path": "lab/web/swell.html",
+        "sha256": "6a841b82939b48863a46df72d3b4fe5913bb387741db7d2fdf8011e8a02031cc",
+        "bytes": 10278
+      }
+    ],
+    "lab_pair": [
+      {
+        "original": "7d03c2e",
+        "mechanism": "canonical L9 projections merged with accepted MK1 taskMark(status); Wren reviewed 7091064 in ICQ82c19be1; rebase commits differ because of the named conflict union"
+      },
+      {
+        "original": "ac22aca",
+        "mechanism": "explicit authoritative swarm total retained"
+      }
+    ],
+    "license_fix": {
+      "accepted_main": "56cd6e400d2432958fee1368bec10bf4b6021d4d",
+      "command": "sh scripts/licenses.sh",
+      "exit": 0,
+      "result": "15 workspace crates, SPDX map and required files present",
+      "prior_accepted_parent": "db97b8e14f34e9c8d20945001250228d69c07bcb",
+      "prior_command_exit": 1,
+      "scope": "external records/parser change, not part of own patch"
+    },
+    "paired_followups": [
+      {
+        "original": "d7e091ed02bc1976efdfd02fc681ef8ae589759d",
+        "mechanism": "canonical rejected timestamp",
+        "source_signature": "good"
+      },
+      {
+        "original": "36f3fc9a142e3e461b3c4c329eebfc8fa81bddba",
+        "mechanism": "steady accepted fixture removes hidden wrong-row flip",
+        "source_signature": "good"
+      }
+    ],
+    "previous_source": "7660ffb0957f3e834d8992720584e786edb61285",
+    "updated": "2026-10-24T02:14:13.662361+00:00",
+    "g5_union_review": {
+      "message": "4c6d790e-5c5d-4af9-b59c-83e719c9aa92",
+      "reviewed_source": "738d6440354d3fe2a33703e04b0c7a2f900054ac",
+      "task_report_sample_source": "33b62633c1cb3965e44bfffbc09ec41978adc376",
+      "good_signature": true
+    },
+    "formatting": {
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit": 1,
+      "unmodified_baseline_files": [
+        "crates/bboxybook/examples/chrome-text-probe.rs",
+        "crates/bboxybook/src/fixtures.rs",
+        "crates/bboxybook/src/gallery.rs",
+        "crates/bboxybook/src/lib.rs",
+        "crates/bboxybook/src/parity.rs",
+        "crates/bboxybook/src/paths.rs",
+        "crates/bboxybook/tests/clipping.rs",
+        "crates/bboxybook/tests/materials.rs",
+        "crates/bboxybook/tests/parity_gate.rs",
+        "crates/bboxybook/tests/render.rs",
+        "crates/bbt-core/tests/checkpoint.rs",
+        "crates/bbt-mermaid/examples/dump_svg.rs",
+        "crates/bbt-mermaid/tests/fixtures.rs",
+        "crates/bbt-mux/src/lib.rs",
+        "crates/bbt-mux/src/provenance/mod.rs",
+        "crates/bbt-render/src/headless.rs",
+        "crates/bbt-render/tests/smoke.rs",
+        "crates/bbt-render/tests/variants.rs",
+        "crates/bbt-ui-model/build.rs",
+        "crates/bbt-ui-model/tests/showcase_overrides.rs"
+      ],
+      "changed_file_intersections": []
+    }
+  },
+  "previous_ci_attempts": [
+    {
+      "source": "9cfad21d8e2a7ee468fbfe7a551261f042002c7f",
+      "exit": 101,
+      "elapsed_seconds": 347.0416006669984,
+      "cause": "stale SeatRow catalog count; later corrected with state-presence assertions",
+      "metadata": {
+        "source": "9cfad21d8e2a7ee468fbfe7a551261f042002c7f",
+        "worktree": "/private/tmp/ci-nyx-l9mc-9cfad21",
+        "target": "/private/tmp/nyx-l9mc-target-9cfad21",
+        "parity_out": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/gate-9cfad21",
+        "command": [
+          "sh",
+          "scripts/ci-local.sh",
+          "--parity"
+        ],
+        "started": "2026-10-24T00:05:50.594656+00:00",
+        "owner_pid": 72873,
+        "environment": {
+          "CARGO_TARGET_DIR": "/private/tmp/nyx-l9mc-target-9cfad21",
+          "BBOXY_TEST_CUSTODY": "memory",
+          "PARITY_OUT": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/gate-9cfad21",
+          "CARGO_INCREMENTAL": "0",
+          "CARGO_PROFILE_DEV_DEBUG": "0",
+          "CARGO_PROFILE_TEST_DEBUG": "0"
+        },
+        "ci_pid": 72916,
+        "exit": 101,
+        "elapsed_seconds": 347.0416006669984,
+        "ended": "2026-10-24T00:11:37.636172+00:00",
+        "target_removed": true
+      },
+      "original_log_sha256": "ce343835660f643018ebdec518af1ccb901c828f082033486520b2b4a54fbf6a",
+      "original_log_bytes": 75067,
+      "bundle": "l9-m-c-ci-attempts.log",
+      "bundle_byte_offset": 150,
+      "bundle_start_line": 3
+    },
+    {
+      "source": "92c5091422f3a1bb80e7dbd9a0b0f5cd3590a461",
+      "exit": 1,
+      "elapsed_seconds": 935.1935375840403,
+      "cause": "baseline license-table parser plus 24 legacy StreamDock constructor failures; fixed in main and the approved adapter",
+      "metadata": {
+        "source": "92c5091422f3a1bb80e7dbd9a0b0f5cd3590a461",
+        "worktree": "/private/tmp/ci-nyx-l9mc-92c5091",
+        "target": "/private/tmp/nyx-l9mc-target-92c5091",
+        "parity_out": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/gate-92c5091",
+        "command": [
+          "sh",
+          "scripts/ci-local.sh",
+          "--parity"
+        ],
+        "started": "2026-10-24T00:31:24.494347+00:00",
+        "owner_pid": 44882,
+        "initial_status": "clean",
+        "environment": {
+          "CARGO_TARGET_DIR": "/private/tmp/nyx-l9mc-target-92c5091",
+          "BBOXY_TEST_CUSTODY": "memory",
+          "PARITY_OUT": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/gate-92c5091",
+          "CARGO_INCREMENTAL": "0",
+          "CARGO_PROFILE_DEV_DEBUG": "0",
+          "CARGO_PROFILE_TEST_DEBUG": "0",
+          "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+          "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+          "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+          "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true"
+        },
+        "unset": [
+          "BBOXYBOOK_GALLERY",
+          "BBOXYBOOK_REFERENCE_HEAD"
+        ],
+        "ci_pid": 44897,
+        "exit": 1,
+        "elapsed_seconds": 935.1935375840403,
+        "ended": "2026-10-24T00:46:59.686216+00:00",
+        "final_status": "",
+        "target_allocated_bytes": 3300347904,
+        "target_removed": true
+      },
+      "original_log_sha256": "d7eeaf6f73ea6682a99d17f8d2854115d062147447a2dc9972420adf122a75f0",
+      "original_log_bytes": 182481,
+      "bundle": "l9-m-c-ci-attempts.log",
+      "bundle_byte_offset": 75406,
+      "bundle_start_line": 1643
+    },
+    {
+      "source": "1c5fcb751a28d6bc6a90c0dc1e08657a1bb0213a",
+      "exit": 1,
+      "elapsed_seconds": 1578.0810620830161,
+      "cause": "8 rejected-message timestamp and 8 task-status fixture mismatches; paired lab/fixture fixes pass focused 16-case rerun",
+      "metadata": {
+        "source": "1c5fcb751a28d6bc6a90c0dc1e08657a1bb0213a",
+        "worktree": "/private/tmp/ci-nyx-l9mc-1c5fcb7",
+        "target": "/private/tmp/nyx-l9mc-target-1c5fcb7",
+        "parity_out": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/gate-1c5fcb7",
+        "command": [
+          "sh",
+          "scripts/ci-local.sh",
+          "--parity"
+        ],
+        "started": "2026-10-24T00:53:36.303986+00:00",
+        "owner_pid": 99611,
+        "initial_status": "clean",
+        "environment": {
+          "CARGO_TARGET_DIR": "/private/tmp/nyx-l9mc-target-1c5fcb7",
+          "BBOXY_TEST_CUSTODY": "memory",
+          "PARITY_OUT": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/gate-1c5fcb7",
+          "CARGO_INCREMENTAL": "0",
+          "CARGO_PROFILE_DEV_DEBUG": "0",
+          "CARGO_PROFILE_TEST_DEBUG": "0",
+          "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+          "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+          "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+          "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true"
+        },
+        "unset": [
+          "BBOXYBOOK_GALLERY",
+          "BBOXYBOOK_REFERENCE_HEAD"
+        ],
+        "ci_pid": 99675,
+        "exit": 1,
+        "elapsed_seconds": 1578.0810620830161,
+        "ended": "2026-10-24T01:19:54.384719+00:00",
+        "final_status": "",
+        "target_allocated_bytes": 3299831808,
+        "target_removed": true
+      },
+      "original_log_sha256": "3fd6e32aefe62d34a81d0d276b8575d389e94d4d5939687ef9e95fa73790bd55",
+      "original_log_bytes": 179198,
+      "bundle": "l9-m-c-ci-attempts.log",
+      "bundle_byte_offset": 258078,
+      "bundle_start_line": 5106
+    }
+  ],
+  "extra_proof_stages": [
+    {
+      "name": "native-compose",
+      "command": [
+        "/private/tmp/nyx-l9mc-target-69d2fc5/debug/bboxy450-term",
+        "--smoke",
+        "--compose",
+        "--capture",
+        "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/native-compose-69d2fc5.png"
+      ],
+      "cwd": "/private/tmp/ci-nyx-l9mc-69d2fc5",
+      "exit": 0,
+      "seconds": 13.63711583300028,
+      "log_sha256": "db98bc6937ca820c54d5a495a9fefcff05c1e2cb1dce0963fae98bc560e9613b",
+      "bundle": "l9-m-c-extra-proof.log",
+      "bundle_byte_offset": 33,
+      "bundle_byte_length": 865,
+      "sha256": "db98bc6937ca820c54d5a495a9fefcff05c1e2cb1dce0963fae98bc560e9613b"
+    },
+    {
+      "name": "candidate-replay",
+      "command": [
+        "/private/tmp/nyx-l9mc-target-69d2fc5/debug/bboxybook",
+        "replay-images",
+        "--out",
+        "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/default-proof-69d2fc5/candidate/native",
+        "--manifest",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d/cases.json"
+      ],
+      "cwd": "/private/tmp/ci-nyx-l9mc-69d2fc5",
+      "exit": 0,
+      "seconds": 416.40962245798437,
+      "log_sha256": "ca7d500584cb1911991d4acda1c2502f7fa74d1a791081eeb972bc54824f2023",
+      "bundle": "l9-m-c-extra-proof.log",
+      "bundle_byte_offset": 933,
+      "bundle_byte_length": 620,
+      "sha256": "ca7d500584cb1911991d4acda1c2502f7fa74d1a791081eeb972bc54824f2023"
+    },
+    {
+      "name": "baseline-build",
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "bboxybook",
+        "--locked"
+      ],
+      "cwd": "/private/tmp/base-nyx-l9mc-9c2022a",
+      "exit": 0,
+      "seconds": 17.881062000000384,
+      "log_sha256": "98ea399d64b2c44f18900ab9e03f1ca167b6ccc48a95a35a850c9ffc50f77f09",
+      "bundle": "l9-m-c-extra-proof.log",
+      "bundle_byte_offset": 1586,
+      "bundle_byte_length": 477,
+      "sha256": "98ea399d64b2c44f18900ab9e03f1ca167b6ccc48a95a35a850c9ffc50f77f09"
+    },
+    {
+      "name": "baseline-replay",
+      "command": [
+        "/private/tmp/nyx-l9mc-target-69d2fc5/debug/bboxybook",
+        "replay-images",
+        "--out",
+        "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/default-proof-69d2fc5/baseline/native",
+        "--manifest",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d/cases.json"
+      ],
+      "cwd": "/private/tmp/base-nyx-l9mc-9c2022a",
+      "exit": 0,
+      "seconds": 405.3856205000193,
+      "log_sha256": "ca7d500584cb1911991d4acda1c2502f7fa74d1a791081eeb972bc54824f2023",
+      "bundle": "l9-m-c-extra-proof.log",
+      "bundle_byte_offset": 2097,
+      "bundle_byte_length": 620,
+      "sha256": "ca7d500584cb1911991d4acda1c2502f7fa74d1a791081eeb972bc54824f2023"
+    },
+    {
+      "name": "byte-identity",
+      "command": [
+        "python3",
+        "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/default_byte_proof.py",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d",
+        "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/default-proof-69d2fc5/baseline/native",
+        "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/default-proof-69d2fc5/candidate/native",
+        "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/default-proof-69d2fc5/byte-identity.json",
+        "69d2fc542eab35bb83f490d75ebb3f6981c49a58",
+        "9c2022a7288286981f0cb3a5b1938691bf8a3bf5"
+      ],
+      "cwd": "/private/tmp/ci-nyx-l9mc-69d2fc5",
+      "exit": 1,
+      "seconds": 1.0584737909957767,
+      "log_sha256": "e07524e07967f0c51e4994d1154156e851f1faaa1384175f7623c23bfe35106e",
+      "bundle": "l9-m-c-extra-proof.log",
+      "bundle_byte_offset": 2749,
+      "bundle_byte_length": 2125,
+      "sha256": "e07524e07967f0c51e4994d1154156e851f1faaa1384175f7623c23bfe35106e"
+    },
+    {
+      "name": "rail-deltas",
+      "exit": 0,
+      "command": [
+        "python3",
+        "target/l9-m-c/verify-rail-deltas.py",
+        "target/l9-m-c/default-proof-69d2fc5",
+        "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d/cases.json",
+        "target/l9-m-c/default-proof-69d2fc5/rail-deltas.json"
+      ],
+      "bundle": "l9-m-c-extra-proof.log",
+      "bundle_byte_offset": 4904,
+      "bundle_byte_length": 537,
+      "sha256": "8adf11e7ed1c300d21366e7b2bc739c9584bdf2255320144c64379f9ce7da985"
+    }
+  ],
+  "default_byte_result": {
+    "input_capture_source": "4c7e10d2225c9f538f1d843dc51ffbb633c22280",
+    "input_cases_sha256": "8afc92e2d69fba0a0821ce8ef26600d46efb92a828f29a647aa4c5b4e9f2b575",
+    "input_capture_sha256": "e9edbe2a95e8ac8dfb13ec0ef6365c4af20481599e4f7f824c449fdf5775a71e",
+    "before_source": "9c2022a7288286981f0cb3a5b1938691bf8a3bf5",
+    "after_source": "69d2fc542eab35bb83f490d75ebb3f6981c49a58",
+    "method": "accepted parent (including G3 and MK1) and candidate rendered identical preserved inputs",
+    "cases": 1768,
+    "identical": 1728,
+    "different": [
+      "stream/swarm-stream-touch-dark.png",
+      "stream/swarm-stream-touch-light.png",
+      "stream/swarm-stream-comfortable-dark.png",
+      "stream/swarm-stream-comfortable-light.png",
+      "stream/swarm-stream-cozy-dark.png",
+      "stream/swarm-stream-cozy-light.png",
+      "stream/swarm-stream-compact-dark.png",
+      "stream/swarm-stream-compact-light.png",
+      "stream/messages-touch-dark.png",
+      "stream/messages-touch-light.png",
+      "stream/messages-comfortable-dark.png",
+      "stream/messages-comfortable-light.png",
+      "stream/messages-cozy-dark.png",
+      "stream/messages-cozy-light.png",
+      "stream/messages-compact-dark.png",
+      "stream/messages-compact-light.png",
+      "message-row/creativity-touch-dark.png",
+      "message-row/creativity-touch-light.png",
+      "message-row/creativity-comfortable-dark.png",
+      "message-row/creativity-comfortable-light.png",
+      "message-row/creativity-cozy-dark.png",
+      "message-row/creativity-cozy-light.png",
+      "message-row/creativity-compact-dark.png",
+      "message-row/creativity-compact-light.png",
+      "message-row/stream-touch-dark.png",
+      "message-row/stream-touch-light.png",
+      "message-row/stream-comfortable-dark.png",
+      "message-row/stream-comfortable-light.png",
+      "message-row/stream-cozy-dark.png",
+      "message-row/stream-cozy-light.png",
+      "message-row/stream-compact-dark.png",
+      "message-row/stream-compact-light.png",
+      "message-row/evidence-touch-dark.png",
+      "message-row/evidence-touch-light.png",
+      "message-row/evidence-comfortable-dark.png",
+      "message-row/evidence-comfortable-light.png",
+      "message-row/evidence-cozy-dark.png",
+      "message-row/evidence-cozy-light.png",
+      "message-row/evidence-compact-dark.png",
+      "message-row/evidence-compact-light.png"
+    ]
+  },
+  "rail_scope_result": {
+    "before_source": "9c2022a7288286981f0cb3a5b1938691bf8a3bf5",
+    "after_source": "69d2fc542eab35bb83f490d75ebb3f6981c49a58",
+    "input_cases_sha256": "8afc92e2d69fba0a0821ce8ef26600d46efb92a828f29a647aa4c5b4e9f2b575",
+    "cases": 1768,
+    "byte_identical": 1728,
+    "changed": 40,
+    "method": "Every RGBA difference must be inside the preserved input capture Creativity rail rectangles; no pixel allowance elsewhere.",
+    "approval_message": "93dbb857-8ba6-44b0-92a6-a388f6906e3b",
+    "source_rail_commit": "1fae4199",
+    "all_changed_pixels_within_rails": true
+  },
+  "native_capture": {
+    "source": "69d2fc542eab35bb83f490d75ebb3f6981c49a58",
+    "path": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/native-compose-69d2fc5.png",
+    "sha256": "fef77815bab8cf87726998a30b06837e8431a73d7f9f09c2787a3d84a2468d52",
+    "bytes": 249218,
+    "width": 1600,
+    "height": 960,
+    "reviewed": true,
+    "scope": "native --smoke --compose --capture; 15-pane deterministic smoke fixture; empty history; no manual OS input claim",
+    "log_sha256": "db98bc6937ca820c54d5a495a9fefcff05c1e2cb1dce0963fae98bc560e9613b"
+  },
+  "main_seen_after_gate": "49a1f8c2a3e8041d6bbe9651db9cfb67aceb2f16",
+  "main_movement": "plugin records and Mermaid fixture; Wren 49a1f8c notification title/body, NOTIFY_BODY export, CSS and showcase. Preserve that at Oracle merge alongside canonical reportCard and M-c helpers. No source rebase after gate.",
+  "artifacts": [
+    {
+      "path": ".bboxy/runs/l9-m-c-ci-69d2fc5.log",
+      "sha256": "ec19c48a743b680dc384fca6c497646262eac6e698bd3b8a6cbcb1146e67710b",
+      "bytes": 181371,
+      "source_path": "target/l9-m-c/ci-69d2fc5.log",
+      "byte_exact_copy": true
+    },
+    {
+      "path": ".bboxy/runs/l9-m-c-ci-69d2fc5.json",
+      "sha256": "4dfcccd5cdebaaa0604269f190a91721359c3ea0c6dff4da2c9d0de75f7b5858",
+      "bytes": 1184,
+      "source_path": "target/l9-m-c/ci-69d2fc5.json",
+      "byte_exact_copy": true
+    },
+    {
+      "path": ".bboxy/runs/l9-m-c-development.log",
+      "sha256": "f533067d63e1cff878aa7274f33654d32531f04346afdb83118003c5e83544a3",
+      "bytes": 1508074,
+      "source_path": "target/l9-m-c/development-bundle.log",
+      "byte_exact_copy": false,
+      "normalization": "only rustfmt diagnostic trailing spaces/tabs; segment original and stored hashes in development_checks"
+    },
+    {
+      "path": ".bboxy/runs/l9-m-c-ci-attempts.log",
+      "sha256": "f5e1f1aff4b3a446356b969eaf2212e1b99d499438d7a8651f97d13c6704238f",
+      "bytes": 437276,
+      "source_path": "target/l9-m-c/ci-attempts-bundle.log",
+      "byte_exact_copy": true
+    },
+    {
+      "path": ".bboxy/runs/l9-m-c-parity-report.json",
+      "sha256": "94d9bd6d44d626365658fe7a2e72df100ef69b43c571b94c235c2bc8ca15e808",
+      "bytes": 1303182,
+      "source_path": "target/l9-m-c/gate-69d2fc5/report.json",
+      "byte_exact_copy": true
+    },
+    {
+      "path": ".bboxy/runs/l9-m-c-parity-summary.json",
+      "sha256": "94823ad9c2a678da2b43de17d7a8006f5ab1dd8835cd9fb560b1cd37809142e1",
+      "bytes": 5380,
+      "source_path": "target/l9-m-c/gate-69d2fc5-summary.json",
+      "byte_exact_copy": true
+    },
+    {
+      "path": ".bboxy/runs/l9-m-c-parity-files.json",
+      "sha256": "56cd7779620ec4daad3141ea18173d296634528a23c3bf6c59fff387b7cb1510",
+      "bytes": 1051856,
+      "source_path": "target/l9-m-c/parity-files-69d2fc5.json",
+      "byte_exact_copy": true
+    },
+    {
+      "path": ".bboxy/runs/l9-m-c-parity-requested.json",
+      "sha256": "81983d1d597fc10ea658f015e2e693a956df19be06b5009b98499241dc2419fb",
+      "bytes": 623029,
+      "source_path": "target/l9-m-c/gate-69d2fc5/requested.json",
+      "byte_exact_copy": true
+    },
+    {
+      "path": ".bboxy/runs/l9-m-c-default-bytes.json",
+      "sha256": "bdfc0617efbc95a05c6be6ea5ab0a75c1b910c5b3900883354d2b32cc4284c7e",
+      "bytes": 458368,
+      "source_path": "target/l9-m-c/default-proof-69d2fc5/byte-identity.json",
+      "byte_exact_copy": true
+    },
+    {
+      "path": ".bboxy/runs/l9-m-c-rail-deltas.json",
+      "sha256": "1ae9088a63db57d6dbe2218ced38abfabdfb6d0b68321f36b521d224dfecebd0",
+      "bytes": 16609,
+      "source_path": "target/l9-m-c/default-proof-69d2fc5/rail-deltas.json",
+      "byte_exact_copy": true
+    },
+    {
+      "path": ".bboxy/runs/l9-m-c-extra-proof.json",
+      "sha256": "a634943ee41c3f33a24b7337efaea9a470e9bbacfe4bd2b86b83ecaf85f8b5c4",
+      "bytes": 3477,
+      "source_path": "target/l9-m-c/default-proof-69d2fc5/status.json",
+      "byte_exact_copy": true
+    },
+    {
+      "path": ".bboxy/runs/l9-m-c-native-capture.json",
+      "sha256": "f91e9f59ebb60232c9d059f53a4269709f412caeb2f0a0bc402822eff5cccd3c",
+      "bytes": 514,
+      "source_path": "target/l9-m-c/native-compose-69d2fc5.json",
+      "byte_exact_copy": true
+    },
+    {
+      "path": ".bboxy/runs/l9-m-c-native-compose.log",
+      "sha256": "db98bc6937ca820c54d5a495a9fefcff05c1e2cb1dce0963fae98bc560e9613b",
+      "bytes": 865,
+      "source_path": "target/l9-m-c/default-proof-69d2fc5/native-compose.log",
+      "byte_exact_copy": true
+    },
+    {
+      "path": ".bboxy/runs/l9-m-c-verify-rail-deltas.py",
+      "sha256": "0fb65af11688ba789f5a0f6185eeff600e328828eeb41824c5c7210b19054678",
+      "bytes": 2824,
+      "source_path": "target/l9-m-c/verify-rail-deltas.py",
+      "byte_exact_copy": true
+    },
+    {
+      "path": ".bboxy/runs/l9-m-c-extra-proof.log",
+      "sha256": "e3261f702059928fe701ec3fbd220ad48fc6f7dd78cefc0519df728a40f64d47",
+      "bytes": 5441
+    }
+  ],
+  "cleanup": {
+    "private_gate_target_removed": true,
+    "private_gate_target_allocated_bytes": 3292524544,
+    "superseded_baselines": {
+      "removed": [
+        {
+          "path": "/private/tmp/base-nyx-l9mc-db97b8e",
+          "source": "db97b8e14f34e9c8d20945001250228d69c07bcb",
+          "allocated_bytes_freed": 91992064,
+          "reason": "own superseded clean baseline worktree; final baseline is 9c2022a"
+        },
+        {
+          "path": "/private/tmp/base-nyx-l9mc-56cd6e4",
+          "source": "56cd6e400d2432958fee1368bec10bf4b6021d4d",
+          "allocated_bytes_freed": 92663808,
+          "reason": "own superseded clean baseline worktree; final baseline is 9c2022a"
+        }
+      ],
+      "total_allocated_bytes_freed": 184655872,
+      "at": "2026-10-24T02:15:16.006657+00:00"
+    },
+    "dev_target": "retained only for records-only validation, removed at handoff"
+  },
+  "gaps": [
+    "No manual operator-desktop keyboard/IME exercise; editor and route state tests plus native capture only.",
+    "Attachment-picker query clipping is present in the original lab page card; Wren owns the page-only follow-up.",
+    "Whole-workspace rustfmt check exits 1 on 20 unchanged baseline files; zero formatter diffs in task-changed files.",
+    "No --slow scale gate claimed."
+  ],
+  "records_staging": [
+    {
+      "command": "git diff --cached --check",
+      "exit": 2,
+      "cause": "raw rustfmt diagnostic context lines contain trailing spaces; normalize those two stored diagnostics only, retaining original hashes"
+    },
+    {
+      "command": "git diff --cached --check",
+      "exit": 0,
+      "after": "rustfmt diagnostic copy normalization; full CI log untouched"
+    }
+  ]
+}

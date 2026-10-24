@@ -1,0 +1,11 @@
+{
+  "source": "69d2fc542eab35bb83f490d75ebb3f6981c49a58",
+  "path": "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/native-compose-69d2fc5.png",
+  "sha256": "fef77815bab8cf87726998a30b06837e8431a73d7f9f09c2787a3d84a2468d52",
+  "bytes": 249218,
+  "width": 1600,
+  "height": 960,
+  "reviewed": true,
+  "scope": "native --smoke --compose --capture; 15-pane deterministic smoke fixture; empty history; no manual OS input claim",
+  "log_sha256": "db98bc6937ca820c54d5a495a9fefcff05c1e2cb1dce0963fae98bc560e9613b"
+}
