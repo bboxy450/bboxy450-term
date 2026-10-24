@@ -245,10 +245,11 @@
   // O: the Oracle spawns a seat over MCP. A dashed pending row with a spinner until applied, then the seat takes a tab of its own.
   // Demo cycle: every fourth spawn is rejected (reason shown), every fifth ends unknown (spelled, not retried).
   let spawnN = 0;
+  const namesIn = sp => sp.tabs.flatMap(t => t.seats || C.leaves(t.tree)).map(x => x.name);   // a swarm's seat names, for the pool allocator
   addEventListener('keydown', e => {
     if ((e.key !== 'o' && e.key !== 'O') || e.metaKey || e.ctrlKey || e.altKey || spot) return;
     const sp = space(), n = ++spawnN, h = ['codex', 'claude', 'pi', 'codex'][n % 4];
-    const p = { op: C.hash32('op' + n).toString(16).slice(0, 8), name: C.rollName(C.rng('spawn' + n)), harness: h, by: 'Vesper Greywind', status: 'accepted' };
+    const p = { op: C.hash32('op' + n).toString(16).slice(0, 8), name: C.poolName([...namesIn(sp), ...(sp.pending || []).map(x => x.name)]), harness: h, by: 'Vesper Greywind', status: 'accepted' };
     sp.pending = sp.pending || []; sp.pending.push(p); open.add(sp.key); render();
     setTimeout(() => {
       const audit = (outcome, reason) => sp.stream.push({ audit: { actor: p.by, verb: 'spawned', target: p.name, op: p.op, outcome, reason }, ts: Date.now() });
@@ -369,7 +370,7 @@
       strip.append(el('span', { class: 'tcell ghost' }, '+ new seat'));
       back.append(el('div', { class: 'spot-banner' }, strip, el('div', { class: 'txt' }, el('div', { class: 'big' }, 'New tab'), el('div', { class: 'of' }, 'in ', el('b', { style: 'color:' + sp.color }, sp.name), ' · the new seat gets a tab of its own · type goto <name> to go somewhere'))));
     }
-    const pk = C.picker({ placeholder: ph, actions: acts, items, cap: capOf(sp), onClose: closeSpotlight, onPick: (it, name, mods, path) => {
+    const pk = C.picker({ placeholder: ph, actions: acts, items, cap: capOf(sp), usedNames: namesIn(sp), onClose: closeSpotlight, onPick: (it, name, mods, path) => {
       if (it.graphOpen) { closeSpotlight(); openGraph(); return; }
       if (it.settingsOpen) { closeSpotlight(); openSettings(it.section); return; }
       if (it.seat) { closeSpotlight(); const t = tabOf(it.seat.key); if (t) open.add(t.sp.key); setFocus(it.seat.key, { locate: 'both' }); return; }

@@ -311,3 +311,4 @@ window.STYLE = {
   },
   "version": 1
 };
+window.SEAT_NAMES = ["Vesper Greywind", "Nyx Copperwing", "Lumen Foxglove", "Rook Ashwhisker", "Sable Quill", "Pip Hollow", "Marrow Finch", "Tamsin Voss", "Corvin Ember", "Ilka Thistle", "Dax Riven", "Wren Starling", "Halcyon Moss", "Juniper Vale"];
