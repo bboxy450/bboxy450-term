@@ -1,0 +1,1652 @@
+P-0 development evidence, 2026-10-24. Worktree exec5-plugins-p0.
+Scope: plugins.md section 3, decisions 249 and 278 (including final signed_record pin).
+All commands used the one owned target target/p0-dev, jobs=2, DEV_DEBUG=0,
+and BBOXY_TEST_CUSTODY=memory. Initial new dependency-edge resolution used
+cargo test --offline; all following checks used --locked.
+Final focused results: plugin kit12/0, proto contract2/0, mux integration7/0,
+mux plugin unit5/0, real app CLI1/0; strict workspace/all-target Clippy0.
+The test-only disallowed-IO allowance is limited to owned headless fixture files.
+No UI/protocol version, production task transition, credential or production trust write.
+
+Failures retained below: Python sees macOS-injected __CF_USER_TEXT_ENCODING;
+pre-exec allowlist stayed unchanged and is asserted independently. A /var versus
+/private/var alias affected only a fixture path comparison. Both new integration
+crates needed the existing test/fixture-IO lint boundary. The final signed_record
+pin required migrating a proto test input. The envelope fixture needed the native
+64-hex role-grant reference. No product validation was weakened for these fixes.
+Two apply_patch context attempts also failed before mutation; each was corrected
+from the current file. Source fetch of the former Codex module returned 404;
+the pinned actual module and compatibility are in p0-name-compatibility.log.
+
+
+COMMAND LOG kit-first.log; EXIT 0
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling autocfg v1.5.1
+   Compiling num-traits v0.2.19
+   Compiling serde_core v1.0.229
+   Compiling syn v3.0.9
+   Compiling libc v0.2.191
+   Compiling serde v1.0.229
+   Compiling memchr v2.8.3
+   Compiling serde_derive v1.0.229
+   Compiling num-integer v0.1.47
+   Compiling zmij v1.0.23
+   Compiling cfg-if v1.0.5
+   Compiling zerocopy v0.8.63
+   Compiling getrandom v0.3.4
+   Compiling serde_json v1.0.154
+   Compiling version_check v0.9.5
+   Compiling ahash v0.8.12
+   Compiling num-bigint v0.4.8
+   Compiling regex-syntax v0.8.11
+   Compiling ref-cast v1.0.27
+   Compiling parking_lot_core v0.9.12
+   Compiling itoa v1.0.18
+   Compiling num-rational v0.4.2
+   Compiling num-iter v0.1.46
+   Compiling aho-corasick v1.1.5
+   Compiling ref-cast-impl v1.0.27
+   Compiling num-complex v0.4.6
+   Compiling smallvec v1.16.3
+   Compiling scopeguard v1.2.0
+   Compiling once_cell v1.21.4
+   Compiling lock_api v0.4.14
+   Compiling num v0.4.3
+   Compiling regex-automata v0.4.18
+   Compiling syn v2.0.119
+   Compiling heck v0.5.0
+   Compiling equivalent v1.0.3
+   Compiling allocator-api2 v0.2.21
+   Compiling borrow-or-share v0.2.4
+   Compiling foldhash v0.2.0
+   Compiling jsonschema-value v0.60.1
+   Compiling bit-vec v0.8.0
+   Compiling unicode-general-category v1.1.0
+   Compiling bit-set v0.8.0
+   Compiling hashbrown v0.17.1
+   Compiling fluent-uri v0.4.1
+   Compiling strum_macros v0.28.0
+   Compiling fraction v0.17.0
+   Compiling parking_lot v0.12.5
+   Compiling percent-encoding v2.3.2
+   Compiling micromap v0.3.0
+   Compiling num-cmp v0.1.0
+   Compiling vsimd v0.8.0
+   Compiling outref v0.5.2
+   Compiling bytecount v0.6.9
+   Compiling uuid-simd v0.8.0
+   Compiling referencing v0.60.1
+   Compiling strum v0.28.0
+   Compiling fancy-regex v0.19.2
+   Compiling regex v1.13.1
+   Compiling jsonschema-regex v0.60.1
+   Compiling email_address v0.2.9
+   Compiling data-encoding v2.11.1
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+   Compiling jsonschema v0.60.1
+    Finished `test` profile [unoptimized] target(s) in 40.35s
+     Running unittests src/lib.rs (target/p0-dev/debug/deps/bbt_plugin-20a0ee47518b5621)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/data_source.rs (target/p0-dev/debug/deps/data_source-4b903c8e4d338e44)
+
+running 3 tests
+test document_unknown_metadata_and_markdown_are_preserved ... ok
+test malformed_pages_references_and_create_without_destination_fail_the_schema ... ok
+test independent_eight_method_fixtures_match_schema_and_portable_types ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/policy.rs (target/p0-dev/debug/deps/policy-9e6cf056668db647)
+
+running 2 tests
+test contract_authority_is_fixed_and_hooks_raise_exposure ... ok
+test credential_names_lose_even_inside_the_environment_allowlist ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/shape.rs (target/p0-dev/debug/deps/shape-8e5b81ade01b5004)
+
+running 3 tests
+test app_prefix_provider_hyphens_and_exact_name_boundary ... ok
+test versions_are_major_minor_and_unknown_fields_are_additive ... ok
+test unknown_contract_major_missing_method_and_budget_are_named_refusals ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+   Doc-tests bbt_plugin
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+COMMAND LOG development-first.log; EXIT 0
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling getrandom v0.3.4
+   Compiling winnow v1.0.4
+   Compiling serde_json v1.0.154
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling winnow v0.7.15
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling memchr v2.8.3
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling rand_core v0.9.5
+   Compiling ppv-lite86 v0.2.21
+   Compiling ahash v0.8.12
+   Compiling rand_chacha v0.9.0
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling fluent-uri v0.4.1
+   Compiling rand v0.9.5
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling bitflags v2.13.2
+   Compiling unicode-width v0.2.2
+   Compiling log v0.4.34
+   Compiling cursor-icon v1.2.0
+   Compiling base64 v0.22.1
+   Compiling jsonschema-value v0.60.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling referencing v0.60.1
+   Compiling ulid v1.2.1
+   Compiling email_address v0.2.9
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling jsonschema v0.60.1
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+    Finished `test` profile [unoptimized] target(s) in 40.72s
+     Running tests/plugin_contracts.rs (target/p0-dev/debug/deps/plugin_contracts-dfe772a263c6e90f)
+
+running 2 tests
+test task_verification_uses_the_existing_wire_shape_and_signed_payload_stays_opaque ... ok
+test current_envelope_serializes_into_event_sink_without_relaxing_the_native_parser ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+
+COMMAND LOG mux-first.log; EXIT 101
+   Compiling libc v0.2.191
+   Compiling syn v2.0.119
+   Compiling typenum v1.20.1
+   Compiling generic-array v0.14.7
+   Compiling getrandom v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling zeroize_derive v1.5.0
+   Compiling syn v3.0.9
+   Compiling zeroize v1.9.1
+   Compiling crypto-common v0.1.7
+   Compiling subtle v2.6.1
+   Compiling const-oid v0.9.6
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling jobserver v0.1.35
+   Compiling serde_derive v1.0.229
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.15
+   Compiling cc v1.9.0
+   Compiling serde v1.0.229
+   Compiling cpufeatures v0.2.17
+   Compiling base64ct v1.8.3
+   Compiling serde_json v1.0.154
+   Compiling pem-rfc7468 v0.7.0
+   Compiling inout v0.1.4
+   Compiling libm v0.2.16
+   Compiling cipher v0.4.4
+   Compiling num-traits v0.2.19
+   Compiling der v0.7.10
+   Compiling spki v0.7.3
+   Compiling radium v0.7.0
+   Compiling pkcs8 v0.10.2
+   Compiling bitflags v2.13.2
+   Compiling tap v1.0.1
+   Compiling wyz v0.5.1
+   Compiling hmac v0.12.1
+   Compiling base16ct v0.2.0
+   Compiling smallvec v1.16.3
+   Compiling funty v2.0.0
+   Compiling num-integer v0.1.47
+   Compiling bitvec v1.1.1
+   Compiling sha2-asm v0.6.4
+   Compiling signature v2.2.0
+   Compiling semver v1.0.28
+   Compiling pkg-config v0.3.34
+   Compiling bytes v1.12.1
+   Compiling rustc_version v0.4.1
+   Compiling getrandom v0.3.4
+   Compiling ff v0.13.1
+   Compiling serdect v0.2.0
+   Compiling group v0.13.0
+   Compiling sec1 v0.7.3
+   Compiling hkdf v0.12.4
+   Compiling crypto-bigint v0.5.5
+   Compiling hybrid-array v0.4.15
+   Compiling sha2 v0.10.9
+   Compiling num-iter v0.1.46
+   Compiling block-buffer v0.12.1
+   Compiling crypto-common v0.2.2
+   Compiling elliptic-curve v0.13.8
+   Compiling rfc6979 v0.4.0
+   Compiling errno v0.3.14
+   Compiling const-oid v0.10.2
+   Compiling strsim v0.11.1
+   Compiling fnv v1.0.7
+   Compiling ident_case v1.0.1
+   Compiling once_cell v1.21.4
+   Compiling thiserror v2.0.21
+   Compiling darling_core v0.20.11
+   Compiling digest v0.11.3
+   Compiling parking_lot_core v0.9.12
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling thiserror-impl v2.0.21
+   Compiling getrandom v0.4.3
+   Compiling rand_core v0.10.1
+   Compiling darling_macro v0.20.11
+   Compiling parking_lot v0.12.5
+   Compiling ecdsa v0.16.9
+   Compiling rand_core v0.9.5
+   Compiling curve25519-dalek v4.1.3
+   Compiling rand_chacha v0.3.1
+   Compiling num-bigint v0.4.8
+   Compiling cpufeatures v0.3.1
+   Compiling thiserror v1.0.69
+   Compiling crossbeam-utils v0.8.23
+   Compiling spin v0.9.9
+   Compiling num-bigint-dig v0.8.6
+   Compiling cfg_aliases v0.1.1
+   Compiling pin-project-lite v0.2.17
+   Compiling unicode-segmentation v1.13.3
+   Compiling nix v0.28.0
+   Compiling lazy_static v1.5.1
+   Compiling num-rational v0.4.2
+   Compiling rand v0.8.8
+   Compiling rand_chacha v0.9.0
+   Compiling darling v0.20.11
+   Compiling signal-hook-registry v1.4.8
+   Compiling primeorder v0.13.6
+   Compiling mio v1.2.4
+   Compiling aead v0.5.2
+   Compiling num-complex v0.4.6
+   Compiling ctr v0.9.2
+   Compiling ref-cast-impl v1.0.27
+   Compiling tokio-macros v2.7.2
+   Compiling universal-hash v0.5.1
+   Compiling thiserror-impl v1.0.69
+   Compiling socket2 v0.6.5
+   Compiling httparse v1.10.1
+   Compiling anyhow v1.0.104
+   Compiling opaque-debug v0.3.1
+   Compiling rustversion v1.0.23
+   Compiling vcpkg v0.2.15
+   Compiling zstd-safe v8.2.0
+   Compiling polyval v0.6.2
+   Compiling libsqlite3-sys v0.38.2
+   Compiling tokio v1.54.1
+   Compiling ref-cast v1.0.27
+   Compiling num v0.4.3
+   Compiling derive_builder_core v0.20.2
+   Compiling rand v0.9.5
+   Compiling ahash v0.8.12
+   Compiling convert_case v0.10.0
+   Compiling chacha20 v0.10.2
+   Compiling indexmap v2.14.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling aes v0.8.4
+   Compiling serde-big-array v0.5.1
+   Compiling arrayvec v0.7.8
+   Compiling keccak v0.1.6
+   Compiling dbl v0.3.2
+   Compiling core-foundation-sys v0.8.7
+   Compiling byteorder v1.5.0
+   Compiling pulldown-cmark v0.13.4
+   Compiling crc24 v0.1.6
+   Compiling rustix v1.1.5
+   Compiling unicode-xid v0.2.6
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling derive_more-impl v2.1.1
+   Compiling fluent-uri v0.4.1
+   Compiling cmac v0.7.2
+   Compiling sha3 v0.10.9
+   Compiling rand v0.10.3
+   Compiling crossbeam-queue v0.3.14
+   Compiling ulid v1.2.1
+   Compiling derive_builder_macro v0.20.2
+   Compiling fraction v0.17.0
+   Compiling filedescriptor v0.8.3
+   Compiling ghash v0.5.1
+   Compiling sha1 v0.11.0
+   Compiling bitfields-impl v1.0.3
+   Compiling snafu-derive v0.9.2
+   Compiling strum_macros v0.28.0
+   Compiling http v1.5.0
+   Compiling ed25519 v2.2.3
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling password-hash v0.5.0
+   Compiling sha1 v0.10.7
+   Compiling futures-macro v0.3.34
+   Compiling blake2 v0.10.6
+   Compiling num_enum_derive v0.7.6
+   Compiling serial2 v0.2.38
+   Compiling signature v3.0.0
+   Compiling shell-words v1.1.1
+   Compiling zlib-rs v0.6.8
+   Compiling slab v0.4.12
+   Compiling unsafe-libyaml v0.2.11
+   Compiling unicase v2.10.0
+   Compiling downcast-rs v1.2.1
+   Compiling foldhash v0.1.5
+   Compiling futures-task v0.3.34
+   Compiling same-file v1.0.6
+   Compiling futures-core v0.3.34
+   Compiling ryu v1.0.23
+   Compiling futures-sink v0.3.34
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling futures-util v0.3.34
+   Compiling referencing v0.60.1
+   Compiling flate2 v1.1.10
+   Compiling walkdir v2.5.0
+   Compiling hashbrown v0.15.5
+   Compiling portable-pty v0.9.0
+   Compiling jsonschema-value v0.60.1
+   Compiling ed25519 v3.0.0
+   Compiling num_enum v0.7.6
+   Compiling argon2 v0.5.3
+   Compiling sha1-checked v0.10.0
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling ed25519-dalek v2.2.0
+   Compiling tungstenite v0.30.0
+   Compiling strum v0.28.0
+   Compiling snafu v0.9.2
+   Compiling bitfields v1.0.3
+   Compiling aes-gcm v0.10.3
+   Compiling zstd v0.14.3
+   Compiling derive_builder v0.20.2
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling eax v0.5.0
+   Compiling derive_more v2.1.1
+   Compiling camellia v0.1.0
+   Compiling blowfish v0.9.1
+   Compiling security-framework-sys v2.17.0
+   Compiling core-foundation v0.10.1
+   Compiling aes-kw v0.2.1
+   Compiling dsa v0.6.3
+   Compiling x25519-dalek v2.0.1
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling ocb3 v0.1.0
+   Compiling p521 v0.13.3
+   Compiling p384 v0.13.1
+   Compiling p256 v0.13.2
+   Compiling sha2 v0.11.1
+   Compiling k256 v0.13.4
+   Compiling hashlink v0.12.2
+   Compiling notify-types v2.1.0
+   Compiling cast5 v0.11.1
+   Compiling twofish v0.7.1
+   Compiling idea v0.5.1
+   Compiling cfb-mode v0.8.2
+   Compiling des v0.8.1
+   Compiling email_address v0.2.9
+   Compiling buffer-redux v1.1.0
+   Compiling nom v8.0.0
+   Compiling md-5 v0.10.6
+   Compiling ripemd v0.1.3
+   Compiling block-padding v0.3.3
+   Compiling fsevent-sys v4.1.0
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling fastrand v2.5.0
+   Compiling fallible-iterator v0.3.0
+   Compiling replace_with v0.1.8
+   Compiling hex v0.4.3
+   Compiling fixedbitset v0.5.7
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+   Compiling petgraph v0.8.3
+   Compiling pgp v0.21.0
+   Compiling rusqlite v0.40.2
+   Compiling tempfile v3.27.0
+   Compiling notify v8.2.0
+   Compiling jsonschema v0.60.1
+   Compiling ed25519-dalek v3.0.0
+   Compiling security-framework v3.7.0
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 5m 07s
+     Running tests/plugins.rs (target/p0-dev/debug/deps/plugins-dee5373a8e9238ca)
+
+running 5 tests
+test directories_symlinks_and_production_copies_do_not_bootstrap_trust ... ok
+test reference_uses_one_shape_and_all_eight_methods_then_reaps_its_children ... FAILED
+test stderr_is_drained_with_a_bound_and_eof_escalation_reaps_a_term_ignoring_child ... FAILED
+test protocol_errors_command_errors_eof_bad_results_and_fixed_deadlines_stay_distinct ... FAILED
+test six_required_refusals_are_named_and_never_leave_a_child ... FAILED
+
+failures:
+
+---- reference_uses_one_shape_and_all_eight_methods_then_reaps_its_children stdout ----
+
+thread 'reference_uses_one_shape_and_all_eight_methods_then_reaps_its_children' (28832218) panicked at crates/bbt-mux/tests/plugins.rs:37:5:
+CheckReport { ok: false, scope: "isolated-conformance-fixture", sha256: Some("66ed863c1b6d4b37d3230c84b12aef78e912067e06a2ed5cfc94a84535554100"), checks: ["shape, versions, method names, fixed authority, hook ceilings and tool-name bounds"], refusal: Some(Refusal { code: "command_error", message: "health returned isError" }), owned_pids: [82523, 82533], shape_runs: 1, stderr_truncated: false }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- stderr_is_drained_with_a_bound_and_eof_escalation_reaps_a_term_ignoring_child stdout ----
+
+thread 'stderr_is_drained_with_a_bound_and_eof_escalation_reaps_a_term_ignoring_child' (28832220) panicked at crates/bbt-mux/tests/plugins.rs:99:9:
+CheckReport { ok: false, scope: "isolated-conformance-fixture", sha256: Some("0f17b59729d09a2a06bb56a342ebc6a09689a4f7c891f6f5b4a1a478d38c303b"), checks: ["shape, versions, method names, fixed authority, hook ceilings and tool-name bounds"], refusal: Some(Refusal { code: "command_error", message: "health returned isError" }), owned_pids: [82526, 82539], shape_runs: 1, stderr_truncated: true }
+
+---- protocol_errors_command_errors_eof_bad_results_and_fixed_deadlines_stay_distinct stdout ----
+
+thread 'protocol_errors_command_errors_eof_bad_results_and_fixed_deadlines_stay_distinct' (28832217) panicked at crates/bbt-mux/tests/plugins.rs:89:9:
+assertion `left == right` failed: CheckReport { ok: false, scope: "isolated-conformance-fixture", sha256: Some("4830bb58f729e72ca33f34b3511d4bc931103acd2bb3a05f9e7fdb688649a1eb"), checks: ["shape, versions, method names, fixed authority, hook ceilings and tool-name bounds"], refusal: Some(Refusal { code: "command_error", message: "health returned isError" }), owned_pids: [82546, 82569], shape_runs: 1, stderr_truncated: false }
+  left: "command_error"
+ right: "jsonrpc_error"
+
+---- six_required_refusals_are_named_and_never_leave_a_child stdout ----
+
+thread 'six_required_refusals_are_named_and_never_leave_a_child' (28832219) panicked at crates/bbt-mux/tests/plugins.rs:71:9:
+assertion `left == right` failed: CheckReport { ok: false, scope: "isolated-conformance-fixture", sha256: Some("3aa3fbc35a41186bc212618c766abc4b9b5966ea47597cf83b9cab74743decd6"), checks: ["shape, versions, method names, fixed authority, hook ceilings and tool-name bounds"], refusal: Some(Refusal { code: "command_error", message: "health returned isError" }), owned_pids: [82567, 82596], shape_runs: 1, stderr_truncated: false }
+  left: "command_error"
+ right: "non_protocol_stdout"
+
+
+failures:
+    protocol_errors_command_errors_eof_bad_results_and_fixed_deadlines_stay_distinct
+    reference_uses_one_shape_and_all_eight_methods_then_reaps_its_children
+    six_required_refusals_are_named_and_never_leave_a_child
+    stderr_is_drained_with_a_bound_and_eof_escalation_reaps_a_term_ignoring_child
+
+test result: FAILED. 1 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.18s
+
+error: test failed, to rerun pass `-p bbt-mux --test plugins`
+
+COMMAND LOG mux-env-diagnosis.log; EXIT 101
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 20.15s
+     Running tests/plugins.rs (target/p0-dev/debug/deps/plugins-dee5373a8e9238ca)
+
+running 1 test
+
+thread 'reference_uses_one_shape_and_all_eight_methods_then_reaps_its_children' (28852466) panicked at crates/bbt-mux/tests/plugins.rs:37:5:
+CheckReport { ok: false, scope: "isolated-conformance-fixture", sha256: Some("56134e581318e46ff3560f800e13e598b5e1becbbe1369b3c975814e48dcbc60"), checks: ["shape, versions, method names, fixed authority, hook ceilings and tool-name bounds"], refusal: Some(Refusal { code: "command_error", message: "health returned isError (fixture_environment:__CF_USER_TEXT_ENCODING)" }), owned_pids: [87217, 87230], shape_runs: 1, stderr_truncated: false }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test reference_uses_one_shape_and_all_eight_methods_then_reaps_its_children ... FAILED
+
+failures:
+
+failures:
+    reference_uses_one_shape_and_all_eight_methods_then_reaps_its_children
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.30s
+
+error: test failed, to rerun pass `-p bbt-mux --test plugins`
+
+COMMAND LOG mux-second.log; EXIT 0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 11.55s
+     Running tests/plugins.rs (target/p0-dev/debug/deps/plugins-dee5373a8e9238ca)
+
+running 5 tests
+test directories_symlinks_and_production_copies_do_not_bootstrap_trust ... ok
+test reference_uses_one_shape_and_all_eight_methods_then_reaps_its_children ... ok
+test stderr_is_drained_with_a_bound_and_eof_escalation_reaps_a_term_ignoring_child ... ok
+test six_required_refusals_are_named_and_never_leave_a_child ... ok
+test protocol_errors_command_errors_eof_bad_results_and_fixed_deadlines_stay_distinct ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.29s
+
+
+COMMAND LOG mux-unit-first.log; EXIT 101
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 11.73s
+     Running unittests src/lib.rs (target/p0-dev/debug/deps/bbt_mux-a3148eecb4606c1d)
+
+running 4 tests
+test plugins::check::tests::task_contract_properties_derive_from_the_current_native_tool_catalogue ... ok
+test plugins::trust::tests::one_readonly_copy_and_account_record_are_required_before_execution ... ok
+test plugins::client::tests::real_stdio_keeps_opaque_signed_bytes_and_only_allowed_environment_names ... FAILED
+test plugins::check::tests::cached_descriptor_survives_a_host_reload_and_a_new_digest_has_no_cache ... ok
+
+failures:
+
+---- plugins::client::tests::real_stdio_keeps_opaque_signed_bytes_and_only_allowed_environment_names stdout ----
+
+thread 'plugins::client::tests::real_stdio_keeps_opaque_signed_bytes_and_only_allowed_environment_names' (28864672) panicked at crates/bbt-mux/src/plugins/client.rs:403:9:
+assertion `left == right` failed
+  left: String("/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxy-plugin-check-kCNeMk/plugins/data/13a88d0389019e32770006ffeca2f44d13658eaead9fec2110f37e9a022fbc93")
+ right: "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxy-plugin-check-kCNeMk/plugins/data/13a88d0389019e32770006ffeca2f44d13658eaead9fec2110f37e9a022fbc93"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    plugins::client::tests::real_stdio_keeps_opaque_signed_bytes_and_only_allowed_environment_names
+
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 71 filtered out; finished in 0.33s
+
+error: test failed, to rerun pass `-p bbt-mux --lib`
+
+COMMAND LOG mux-unit-second.log; EXIT 0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 10.21s
+     Running unittests src/lib.rs (target/p0-dev/debug/deps/bbt_mux-a3148eecb4606c1d)
+
+running 4 tests
+test plugins::check::tests::task_contract_properties_derive_from_the_current_native_tool_catalogue ... ok
+test plugins::trust::tests::one_readonly_copy_and_account_record_are_required_before_execution ... ok
+test plugins::client::tests::real_stdio_keeps_opaque_signed_bytes_and_only_allowed_environment_names ... ok
+test plugins::check::tests::cached_descriptor_survives_a_host_reload_and_a_new_digest_has_no_cache ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 71 filtered out; finished in 0.31s
+
+
+COMMAND LOG kit-second.log; EXIT 0
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+    Finished `test` profile [unoptimized] target(s) in 1.54s
+     Running unittests src/lib.rs (target/p0-dev/debug/deps/bbt_plugin-20a0ee47518b5621)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/contracts.rs (target/p0-dev/debug/deps/contracts-7fcac1832bdaa40e)
+
+running 3 tests
+test the_four_pinned_tables_are_concrete_and_additive ... ok
+test task_methods_keep_native_arguments_and_require_an_etag_on_every_write ... ok
+test every_versioned_method_has_two_valid_schemas_and_no_unbriefed_operations ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/data_source.rs (target/p0-dev/debug/deps/data_source-4b903c8e4d338e44)
+
+running 3 tests
+test document_unknown_metadata_and_markdown_are_preserved ... ok
+test malformed_pages_references_and_create_without_destination_fail_the_schema ... ok
+test independent_eight_method_fixtures_match_schema_and_portable_types ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/policy.rs (target/p0-dev/debug/deps/policy-9e6cf056668db647)
+
+running 2 tests
+test credential_names_lose_even_inside_the_environment_allowlist ... ok
+test contract_authority_is_fixed_and_hooks_raise_exposure ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/shape.rs (target/p0-dev/debug/deps/shape-8e5b81ade01b5004)
+
+running 3 tests
+test app_prefix_provider_hyphens_and_exact_name_boundary ... ok
+test versions_are_major_minor_and_unknown_fields_are_additive ... ok
+test unknown_contract_major_missing_method_and_budget_are_named_refusals ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+   Doc-tests bbt_plugin
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+COMMAND LOG proto-second.log; EXIT 0
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Finished `test` profile [unoptimized] target(s) in 1.11s
+     Running tests/plugin_contracts.rs (target/p0-dev/debug/deps/plugin_contracts-dfe772a263c6e90f)
+
+running 2 tests
+test current_envelope_serializes_into_event_sink_without_relaxing_the_native_parser ... ok
+test task_verification_uses_the_existing_wire_shape_and_rejects_authority_fields ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+COMMAND LOG app-first.log; EXIT 0
+   Compiling log v0.4.34
+   Compiling zerocopy v0.8.63
+   Compiling zerocopy-derive v0.8.63
+   Compiling objc2-encode v4.1.0
+   Compiling smallvec v1.16.3
+   Compiling objc2 v0.6.5
+   Compiling cfg_aliases v0.2.2
+   Compiling block2 v0.6.2
+   Compiling dispatch2 v0.3.1
+   Compiling simd-adler32 v0.3.10
+   Compiling objc2-core-foundation v0.3.2
+   Compiling crc32fast v1.5.3
+   Compiling adler2 v2.0.1
+   Compiling miniz_oxide v0.9.1
+   Compiling bytemuck_derive v1.12.1
+   Compiling objc2-foundation v0.3.2
+   Compiling bytemuck v1.25.2
+   Compiling parking_lot_core v0.9.12
+   Compiling ppv-lite86 v0.2.21
+   Compiling float-cmp v0.9.0
+   Compiling strict-num v0.1.1
+   Compiling parking_lot v0.12.5
+   Compiling arrayref v0.3.9
+   Compiling miniz_oxide v0.8.9
+   Compiling objc2-metal v0.3.2
+   Compiling fdeflate v0.3.7
+   Compiling rustc-hash v1.1.0
+   Compiling siphasher v1.0.4
+   Compiling naga-types v30.0.1
+   Compiling naga v30.0.1
+   Compiling raw-window-handle v0.6.2
+   Compiling arrayvec v0.7.8
+   Compiling bit-vec v0.9.1
+   Compiling bit-set v0.10.0
+   Compiling codespan-reporting v0.13.1
+   Compiling half v2.7.1
+   Compiling simplecss v0.2.2
+   Compiling objc2-core-graphics v0.3.2
+   Compiling pico-args v0.5.0
+   Compiling objc-sys v0.3.5
+   Compiling imagesize v0.15.0
+   Compiling static_assertions v1.1.0
+   Compiling data-url v0.3.2
+   Compiling zlib-rs v0.6.8
+   Compiling objc2-quartz-core v0.3.2
+   Compiling wgpu-types v30.0.1
+   Compiling flate2 v1.1.10
+   Compiling polycool v0.4.0
+   Compiling rand_chacha v0.3.1
+   Compiling wgpu-hal v30.0.1
+   Compiling kurbo v0.13.1
+   Compiling rand v0.8.8
+   Compiling rand_chacha v0.9.0
+   Compiling raw-window-metal v1.1.0
+   Compiling tiny-skia-path v0.12.0
+   Compiling mio v1.2.4
+   Compiling libloading v0.8.9
+   Compiling bitflags v2.13.2
+   Compiling profiling v1.0.18
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling png v0.18.1
+   Compiling tokio v1.54.1
+   Compiling objc2 v0.5.3
+   Compiling rand v0.9.5
+   Compiling num-bigint-dig v0.8.6
+   Compiling ahash v0.8.12
+   Compiling svgtypes v0.16.1
+   Compiling roxmltree v0.21.1
+   Compiling aho-corasick v1.1.5
+   Compiling wgpu-core v30.0.1
+   Compiling euclid v0.22.14
+   Compiling litrs v1.0.1
+   Compiling lyon_geom v1.0.20
+   Compiling document-features v0.2.12
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling regex-automata v0.4.18
+   Compiling usvg v0.48.1
+   Compiling ulid v1.2.1
+   Compiling block2 v0.5.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling tiny-skia v0.12.0
+   Compiling rgb v0.8.53
+   Compiling core-foundation v0.9.4
+   Compiling wgpu v30.0.1
+   Compiling foreign-types-macros v0.2.4
+   Compiling dispatch v0.2.0
+   Compiling bitflags v1.3.2
+   Compiling foreign-types-shared v0.3.1
+   Compiling portable-pty v0.9.0
+   Compiling foreign-types v0.5.0
+   Compiling referencing v0.60.1
+   Compiling core-graphics-types v0.1.3
+   Compiling jsonschema-value v0.60.1
+   Compiling objc2-foundation v0.2.2
+   Compiling rsa v0.9.10
+   Compiling tungstenite v0.30.0
+   Compiling resvg v0.48.1
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling regex v1.13.1
+   Compiling lyon_path v1.0.19
+   Compiling dsa v0.6.3
+   Compiling objc2-user-notifications v0.3.2
+   Compiling winit v0.30.13
+   Compiling float_next_after v1.0.0
+   Compiling tracing-core v0.1.36
+   Compiling rusqlite v0.40.2
+   Compiling tracing v0.1.44
+   Compiling pgp v0.21.0
+   Compiling lyon_tessellation v1.0.22
+   Compiling notify v8.2.0
+   Compiling jsonschema v0.60.1
+   Compiling bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling objc2-app-kit v0.2.2
+   Compiling tokio-tungstenite v0.30.0
+   Compiling core-graphics v0.23.2
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling objc2-core-text v0.3.2
+   Compiling dpi v0.1.2
+   Compiling smol_str v0.2.2
+   Compiling pollster v0.4.0
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+   Compiling objc2-app-kit v0.3.2
+    Finished `test` profile [unoptimized] target(s) in 1m 43s
+     Running tests/plugins.rs (target/p0-dev/debug/deps/plugins-7af76802709576a6)
+
+running 1 test
+test real_binary_runs_headless_against_a_fixture_without_opening_the_production_root ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.99s
+
+
+COMMAND LOG clippy-first.log; EXIT 101
+    Checking libc v0.2.191
+    Checking serde_core v1.0.229
+    Checking cfg-if v1.0.5
+    Checking memchr v2.8.3
+    Checking itoa v1.0.18
+    Checking zmij v1.0.23
+    Checking serde v1.0.229
+    Checking serde_json v1.0.154
+   Compiling winnow v1.0.4
+    Checking bitflags v2.13.2
+    Checking log v0.4.34
+    Checking smallvec v1.16.3
+   Compiling toml_parser v1.1.5+spec-1.1.0
+    Checking equivalent v1.0.3
+    Checking zerocopy v0.8.63
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking arrayvec v0.7.8
+    Checking allocator-api2 v0.2.21
+    Checking foldhash v0.2.0
+    Checking hashbrown v0.17.1
+    Checking libm v0.2.16
+    Checking scopeguard v1.2.0
+    Checking lock_api v0.4.14
+    Checking parking_lot_core v0.9.12
+    Checking num-traits v0.2.19
+    Checking typenum v1.20.1
+    Checking parking_lot v0.12.5
+    Checking zeroize v1.9.1
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking unicode-width v0.2.2
+    Checking once_cell v1.21.4
+    Checking getrandom v0.2.17
+    Checking rand_core v0.6.4
+    Checking generic-array v0.14.7
+    Checking indexmap v2.14.2
+    Checking cursor-icon v1.2.0
+    Checking pin-project-lite v0.2.17
+    Checking crypto-common v0.1.7
+    Checking thiserror v2.0.21
+    Checking subtle v2.6.1
+    Checking simd-adler32 v0.3.10
+    Checking adler2 v2.0.1
+    Checking miniz_oxide v0.9.1
+    Checking crc32fast v1.5.3
+    Checking zlib-rs v0.6.8
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Checking ryu v1.0.23
+    Checking flate2 v1.1.10
+    Checking const-oid v0.9.6
+    Checking unsafe-libyaml v0.2.11
+    Checking unicase v2.10.0
+    Checking pulldown-cmark v0.13.4
+    Checking serde_yaml v0.9.34+deprecated
+    Checking unicode-segmentation v1.13.3
+    Checking core-foundation-sys v0.8.7
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Checking block-buffer v0.10.4
+    Checking digest v0.10.7
+    Checking objc2-encode v4.1.0
+    Checking bytes v1.12.1
+    Checking objc2 v0.6.5
+    Checking base64 v0.22.1
+    Checking serde-big-array v0.5.1
+    Checking errno v0.3.14
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking block2 v0.6.2
+    Checking dispatch2 v0.3.1
+    Checking objc2-core-foundation v0.3.2
+    Checking cpufeatures v0.2.17
+    Checking getrandom v0.3.4
+    Checking signal-hook-registry v1.4.8
+    Checking mio v1.2.4
+    Checking socket2 v0.6.5
+    Checking unicode-ident v1.0.27
+    Checking tokio v1.54.1
+    Checking objc2-foundation v0.3.2
+    Checking bytemuck v1.25.2
+    Checking num-integer v0.1.47
+    Checking base64ct v1.8.3
+    Checking ppv-lite86 v0.2.21
+    Checking regex-syntax v0.8.11
+    Checking aho-corasick v1.1.5
+    Checking pem-rfc7468 v0.7.0
+    Checking num-iter v0.1.46
+    Checking objc2-metal v0.3.2
+    Checking regex-automata v0.4.18
+    Checking inout v0.1.4
+    Checking rustc-hash v1.1.0
+    Checking naga-types v30.0.1
+    Checking cipher v0.4.4
+    Checking der v0.7.10
+    Checking objc2-core-graphics v0.3.2
+    Checking bit-vec v0.9.1
+    Checking raw-window-handle v0.6.2
+    Checking bit-set v0.10.0
+    Checking spki v0.7.3
+    Checking regex v1.13.1
+    Checking codespan-reporting v0.13.1
+    Checking half v2.7.1
+    Checking static_assertions v1.1.0
+    Checking naga v30.0.1
+    Checking wgpu-types v30.0.1
+    Checking objc2-quartz-core v0.3.2
+    Checking pkcs8 v0.10.2
+    Checking sha2-asm v0.6.4
+    Checking num-bigint v0.4.8
+    Checking float-cmp v0.9.0
+    Checking tap v1.0.1
+    Checking num-rational v0.4.2
+    Checking wyz v0.5.1
+    Checking strict-num v0.1.1
+    Checking wgpu-naga-bridge v30.0.1
+    Checking sha2 v0.10.9
+    Checking raw-window-metal v1.1.0
+    Checking radium v0.7.0
+    Checking rand_core v0.9.5
+    Checking hmac v0.12.1
+    Checking num-complex v0.4.6
+    Checking polycool v0.4.0
+    Checking libloading v0.8.9
+    Checking slab v0.4.12
+    Checking futures-core v0.3.34
+    Checking futures-sink v0.3.34
+    Checking base16ct v0.2.0
+    Checking profiling v1.0.18
+    Checking futures-task v0.3.34
+    Checking funty v2.0.0
+    Checking arrayref v0.3.9
+    Checking tiny-skia-path v0.12.0
+    Checking bitvec v1.1.1
+    Checking futures-util v0.3.34
+    Checking wgpu-hal v30.0.1
+    Checking ref-cast v1.0.27
+    Checking kurbo v0.13.1
+    Checking num v0.4.3
+    Checking rand_chacha v0.9.0
+    Checking ahash v0.8.12
+    Checking signature v2.2.0
+    Checking miniz_oxide v0.8.9
+    Checking fdeflate v0.3.7
+    Checking euclid v0.22.14
+    Checking siphasher v1.0.4
+    Checking bit-vec v0.8.0
+    Checking borrow-or-share v0.2.4
+    Checking data-encoding v2.11.1
+    Checking fluent-uri v0.4.1
+    Checking lyon_geom v1.0.20
+    Checking bit-set v0.8.0
+    Checking svgtypes v0.16.1
+    Checking png v0.18.1
+    Checking rand v0.9.5
+    Checking fraction v0.17.0
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking crossbeam-utils v0.8.23
+    Checking ff v0.13.1
+    Checking serdect v0.2.0
+    Checking simplecss v0.2.2
+    Checking roxmltree v0.21.1
+    Checking outref v0.5.2
+    Checking imagesize v0.15.0
+    Checking percent-encoding v2.3.2
+    Checking vsimd v0.8.0
+    Checking rand_core v0.10.1
+    Checking bytecount v0.6.9
+    Checking num-cmp v0.1.0
+    Checking pico-args v0.5.0
+    Checking micromap v0.3.0
+    Checking data-url v0.3.2
+    Checking usvg v0.48.1
+    Checking referencing v0.60.1
+    Checking jsonschema-value v0.60.1
+    Checking uuid-simd v0.8.0
+    Checking sec1 v0.7.3
+    Checking strum v0.28.0
+    Checking group v0.13.0
+    Checking crossbeam-queue v0.3.14
+    Checking wgpu-core v30.0.1
+    Checking ulid v1.2.1
+    Checking tiny-skia v0.12.0
+    Checking unicode-general-category v1.1.0
+    Checking fancy-regex v0.19.2
+    Checking lyon_path v1.0.19
+    Checking hkdf v0.12.4
+    Checking jsonschema-regex v0.60.1
+    Checking rgb v0.8.53
+    Checking crypto-bigint v0.5.5
+    Checking hybrid-array v0.4.15
+    Checking email_address v0.2.9
+    Checking float_next_after v1.0.0
+    Checking jsonschema v0.60.1
+    Checking lyon_tessellation v1.0.22
+    Checking elliptic-curve v0.13.8
+    Checking resvg v0.48.1
+    Checking wgpu v30.0.1
+    Checking getrandom v0.4.3
+    Checking objc2-core-text v0.3.2
+    Checking pollster v0.4.0
+    Checking thiserror v1.0.69
+    Checking crypto-common v0.2.2
+    Checking block-buffer v0.12.1
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking zstd-sys v2.1.2+zstd.1.5.7
+    Checking rfc6979 v0.4.0
+    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+    Checking const-oid v0.10.2
+    Checking digest v0.11.3
+    Checking zstd-safe v8.2.0
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking nix v0.28.0
+    Checking filedescriptor v0.8.3
+    Checking objc-sys v0.3.5
+    Checking anyhow v1.0.104
+    Checking serial2 v0.2.38
+    Checking shell-words v1.1.1
+    Checking downcast-rs v1.2.1
+    Checking objc2 v0.5.3
+    Checking portable-pty v0.9.0
+    Checking zstd v0.14.3
+    Checking rustix v1.1.5
+    Checking ecdsa v0.16.9
+    Checking rand_chacha v0.3.1
+    Checking cpufeatures v0.3.1
+    Checking spin v0.9.9
+    Checking fastrand v2.5.0
+    Checking lazy_static v1.5.1
+    Checking tempfile v3.27.0
+    Checking rand v0.8.8
+    Checking block2 v0.5.1
+    Checking primeorder v0.13.6
+    Checking ctr v0.9.2
+    Checking aead v0.5.2
+    Checking core-foundation v0.9.4
+    Checking universal-hash v0.5.1
+    Checking foreign-types-shared v0.3.1
+    Checking opaque-debug v0.3.1
+    Checking dispatch v0.2.0
+    Checking bitflags v1.3.2
+    Checking core-graphics-types v0.1.3
+    Checking objc2-foundation v0.2.2
+    Checking polyval v0.6.2
+    Checking foreign-types v0.5.0
+    Checking num-bigint-dig v0.8.6
+    Checking curve25519-dalek v4.1.3
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking chacha20 v0.10.2
+    Checking aes v0.8.4
+    Checking keccak v0.1.6
+    Checking dbl v0.3.2
+    Checking tracing-core v0.1.36
+    Checking byteorder v1.5.0
+    Checking cmac v0.7.2
+    Checking tracing v0.1.44
+    Checking sha3 v0.10.9
+    Checking rand v0.10.3
+    Checking objc2-app-kit v0.2.2
+    Checking core-graphics v0.23.2
+    Checking httparse v1.10.1
+    Checking ghash v0.5.1
+    Checking sha1 v0.11.0
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking ed25519 v2.2.3
+    Checking serdect v0.3.0
+    Checking pkcs1 v0.7.5
+    Checking password-hash v0.5.0
+    Checking sha1 v0.10.7
+    Checking http v1.5.0
+    Checking blake2 v0.10.6
+    Checking smol_str v0.2.2
+    Checking same-file v1.0.6
+    Checking signature v3.0.0
+    Checking dpi v0.1.2
+    Checking foldhash v0.1.5
+    Checking winit v0.30.13
+    Checking hashbrown v0.15.5
+    Checking ed25519 v3.0.0
+    Checking walkdir v2.5.0
+    Checking tungstenite v0.30.0
+    Checking num_enum v0.7.6
+    Checking argon2 v0.5.3
+    Checking sha1-checked v0.10.0
+    Checking rsa v0.9.10
+    Checking snafu v0.9.2
+    Checking cx448 v0.1.1
+    Checking ed25519-dalek v2.2.0
+    Checking aes-gcm v0.10.3
+    Checking libsqlite3-sys v0.38.2
+    Checking derive_builder v0.20.2
+    Checking curve25519-dalek v5.0.0
+    Checking bitfields v1.0.3
+    Checking derive_more v2.1.1
+    Checking eax v0.5.0
+    Checking crc24 v0.1.6
+    Checking blowfish v0.9.1
+    Checking camellia v0.1.0
+    Checking aes-kw v0.2.1
+    Checking x25519-dalek v2.0.1
+    Checking dsa v0.6.3
+    Checking ocb3 v0.1.0
+    Checking p256 v0.13.2
+    Checking p384 v0.13.1
+    Checking p521 v0.13.3
+    Checking sha2 v0.11.1
+    Checking k256 v0.13.4
+    Checking cast5 v0.11.1
+    Checking idea v0.5.1
+    Checking twofish v0.7.1
+    Checking des v0.8.1
+    Checking cfb-mode v0.8.2
+    Checking md-5 v0.10.6
+    Checking ripemd v0.1.3
+    Checking core-foundation v0.10.1
+    Checking security-framework-sys v2.17.0
+    Checking block-padding v0.3.3
+    Checking hashlink v0.12.2
+    Checking notify-types v2.1.0
+    Checking nom v8.0.0
+    Checking buffer-redux v1.1.0
+    Checking fsevent-sys v4.1.0
+    Checking hex v0.4.3
+    Checking replace_with v0.1.8
+    Checking fixedbitset v0.5.7
+    Checking fallible-iterator v0.3.0
+    Checking fallible-streaming-iterator v0.1.9
+    Checking rusqlite v0.40.2
+    Checking pgp v0.21.0
+    Checking petgraph v0.8.3
+    Checking notify v8.2.0
+    Checking security-framework v3.7.0
+    Checking ed25519-dalek v3.0.0
+    Checking tokio-tungstenite v0.30.0
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking objc2-user-notifications v0.3.2
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Checking objc2-app-kit v0.3.2
+    Checking toml_datetime v1.1.2+spec-1.1.0
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+   Compiling toml_edit v0.25.17+spec-1.1.0
+   Compiling target-triple v1.0.1
+    Checking serde_spanned v1.1.2
+   Compiling proc-macro-crate v3.5.0
+    Checking toml_writer v1.1.3+spec-1.1.0
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn-macros)
+    Checking toml v1.1.8+spec-1.1.0
+    Checking tokio-util v0.7.19
+    Checking glob v0.3.4
+    Checking termcolor v1.4.1
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn)
+    Checking trybuild v1.0.120
+    Checking proc-macro2 v1.0.107
+    Checking quote v1.0.47
+    Checking syn v2.0.119
+error: use of a disallowed method `std::fs::write`
+ --> crates/bboxy450-term/tests/plugins.rs:9:5
+  |
+9 |     fs::write(
+  |     ^^^^^^^^^
+  |
+  = note: UI must use bbt-rt for IO
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+  = note: `-D clippy::disallowed-methods` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(clippy::disallowed_methods)]`
+
+error: use of a disallowed method `std::fs::set_permissions`
+  --> crates/bboxy450-term/tests/plugins.rs:14:5
+   |
+14 |     fs::set_permissions(&binary, fs::Permissions::from_mode(0o700)).unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: UI must use bbt-rt for IO
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `std::fs::create_dir`
+  --> crates/bboxy450-term/tests/plugins.rs:16:5
+   |
+16 |     fs::create_dir(&protected).unwrap();
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: UI must use bbt-rt for IO
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `std::fs::write`
+  --> crates/bboxy450-term/tests/plugins.rs:17:5
+   |
+17 |     fs::write(
+   |     ^^^^^^^^^
+   |
+   = note: UI must use bbt-rt for IO
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `std::process::Command::output`
+  --> crates/bboxy450-term/tests/plugins.rs:29:10
+   |
+29 |         .output()
+   |          ^^^^^^
+   |
+   = note: use bbt_rt::spawn_command
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `std::fs::read_dir`
+  --> crates/bboxy450-term/tests/plugins.rs:41:16
+   |
+41 |     assert_eq!(fs::read_dir(&protected).unwrap().count(), 1);
+   |                ^^^^^^^^^^^^
+   |
+   = note: UI must use bbt-rt for IO
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `std::fs::read`
+  --> crates/bboxy450-term/tests/plugins.rs:43:9
+   |
+43 |         fs::read(protected.join("sentinel")).unwrap(),
+   |         ^^^^^^^^
+   |
+   = note: UI must use bbt-rt for IO
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `std::process::Command::output`
+  --> crates/bboxy450-term/tests/plugins.rs:48:10
+   |
+48 |         .output()
+   |          ^^^^^^
+   |
+   = note: use bbt_rt::spawn_command
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: could not compile `bboxy450-term` (test "plugins") due to 8 previous errors
+warning: build failed, waiting for other jobs to finish...
+
+COMMAND LOG mux-third.log; EXIT 0
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 43.67s
+     Running tests/plugins.rs (target/p0-dev/debug/deps/plugins-dee5373a8e9238ca)
+
+running 6 tests
+test directories_symlinks_and_production_copies_do_not_bootstrap_trust ... ok
+test reference_uses_one_shape_and_all_eight_methods_then_reaps_its_children ... ok
+test six_required_refusals_are_named_and_never_leave_a_child ... ok
+test task_provider_must_return_every_app_signed_write_byte_for_byte ... ok
+test stderr_is_drained_with_a_bound_and_eof_escalation_reaps_a_term_ignoring_child ... ok
+test protocol_errors_command_errors_eof_bad_results_and_fixed_deadlines_stay_distinct ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.22s
+
+
+COMMAND LOG mux-unit-third.log; EXIT 0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 58.00s
+     Running unittests src/lib.rs (target/p0-dev/debug/deps/bbt_mux-a3148eecb4606c1d)
+
+running 5 tests
+test plugins::check::tests::task_contract_properties_derive_from_the_current_native_tool_catalogue ... ok
+test plugins::trust::tests::one_readonly_copy_and_account_record_are_required_before_execution ... ok
+test plugins::client::tests::real_stdio_keeps_opaque_signed_bytes_and_only_allowed_environment_names ... ok
+test plugins::check::tests::cached_descriptor_survives_a_host_reload_and_a_new_digest_has_no_cache ... ok
+test plugins::client::tests::progress_cannot_extend_a_deadline_and_cancellation_does_not_replay ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 71 filtered out; finished in 0.60s
+
+
+COMMAND LOG kit-third.log; EXIT 0
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+    Finished `test` profile [unoptimized] target(s) in 7.15s
+     Running unittests src/lib.rs (target/p0-dev/debug/deps/bbt_plugin-20a0ee47518b5621)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/contracts.rs (target/p0-dev/debug/deps/contracts-7fcac1832bdaa40e)
+
+running 3 tests
+test the_four_pinned_tables_are_concrete_and_additive ... ok
+test task_methods_keep_native_arguments_and_require_an_etag_on_every_write ... ok
+test every_versioned_method_has_two_valid_schemas_and_no_unbriefed_operations ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+     Running tests/data_source.rs (target/p0-dev/debug/deps/data_source-4b903c8e4d338e44)
+
+running 3 tests
+test document_unknown_metadata_and_markdown_are_preserved ... ok
+test malformed_pages_references_and_create_without_destination_fail_the_schema ... ok
+test independent_eight_method_fixtures_match_schema_and_portable_types ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/policy.rs (target/p0-dev/debug/deps/policy-9e6cf056668db647)
+
+running 2 tests
+test contract_authority_is_fixed_and_hooks_raise_exposure ... ok
+test credential_names_lose_even_inside_the_environment_allowlist ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/shape.rs (target/p0-dev/debug/deps/shape-8e5b81ade01b5004)
+
+running 4 tests
+test app_prefix_provider_hyphens_and_exact_name_boundary ... ok
+test descriptor_claims_cannot_reduce_tier_and_payload_hooks_need_a_separate_grant ... ok
+test versions_are_major_minor_and_unknown_fields_are_additive ... ok
+test unknown_contract_major_missing_method_and_budget_are_named_refusals ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+   Doc-tests bbt_plugin
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+COMMAND LOG app-second.log; EXIT 0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 1m 54s
+     Running tests/plugins.rs (target/p0-dev/debug/deps/plugins-7af76802709576a6)
+
+running 1 test
+test real_binary_runs_headless_against_a_fixture_without_opening_the_production_root ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.54s
+
+
+COMMAND LOG clippy-second.log; EXIT 101
+    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+error: use of a disallowed method `std::fs::write`
+  --> crates/bbt-mux/tests/plugins.rs:16:5
+   |
+16 |     fs::write(&path, source).unwrap();
+   |     ^^^^^^^^^
+   |
+   = note: UI must use bbt-rt for IO
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+   = note: `-D clippy::disallowed-methods` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_methods)]`
+
+error: use of a disallowed method `std::fs::set_permissions`
+  --> crates/bbt-mux/tests/plugins.rs:17:5
+   |
+17 |     fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: UI must use bbt-rt for IO
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `tokio::runtime::Runtime::block_on`
+  --> crates/bbt-mux/tests/plugins.rs:47:31
+   |
+47 |     reaped(&report.owned_pids);
+   |                               ^
+   |
+   = note: UI must spawn onto bbt-rt
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `tokio::runtime::Runtime::block_on`
+  --> crates/bbt-mux/tests/plugins.rs:67:7
+   |
+67 |       ] {
+   |  _______^
+68 | |         let (_root, path) = fixture(fault, provider);
+69 | |         let report = bbt_mux::plugins::check(&path).await;
+70 | |         assert!(!report.ok, "{report:?}");
+71 | |         assert_eq!(report.refusal.as_ref().unwrap().code, reason, "{report:?}");
+72 | |         reaped(&report.owned_pids);
+73 | |     }
+   | |_____^
+   |
+   = note: UI must spawn onto bbt-rt
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `tokio::runtime::Runtime::block_on`
+  --> crates/bbt-mux/tests/plugins.rs:86:7
+   |
+86 |       ] {
+   |  _______^
+87 | |         let (_root, path) = fixture(Some(fault), fault.replace('_', "-").as_str());
+88 | |         let report = bbt_mux::plugins::check(&path).await;
+89 | |         assert_eq!(report.refusal.as_ref().unwrap().code, reason, "{report:?}");
+90 | |         reaped(&report.owned_pids);
+91 | |     }
+   | |_____^
+   |
+   = note: UI must spawn onto bbt-rt
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `tokio::runtime::Runtime::block_on`
+   --> crates/bbt-mux/tests/plugins.rs:96:54
+    |
+ 96 |       for fault in ["stderr_flood", "ignore_shutdown"] {
+    |  ______________________________________________________^
+ 97 | |         let (_root, path) = fixture(Some(fault), fault.replace('_', "-").as_str());
+ 98 | |         let report = bbt_mux::plugins::check(&path).await;
+ 99 | |         assert!(report.ok, "{report:?}");
+...   |
+103 | |         reaped(&report.owned_pids);
+104 | |     }
+    | |_____^
+    |
+    = note: UI must spawn onto bbt-rt
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `std::fs::create_dir_all`
+   --> crates/bbt-mux/tests/plugins.rs:123:5
+    |
+123 |     fs::create_dir_all(&production).unwrap();
+    |     ^^^^^^^^^^^^^^^^^^
+    |
+    = note: UI must use bbt-rt for IO
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `std::fs::copy`
+   --> crates/bbt-mux/tests/plugins.rs:125:5
+    |
+125 |     fs::copy(&path, &copy).unwrap();
+    |     ^^^^^^^^
+    |
+    = note: UI must use bbt-rt for IO
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `tokio::runtime::Runtime::block_on`
+   --> crates/bbt-mux/tests/plugins.rs:130:51
+    |
+130 |     assert!(!root.path().join("account").exists());
+    |                                                   ^
+    |
+    = note: UI must spawn onto bbt-rt
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `std::fs::write`
+   --> crates/bbt-mux/tests/plugins.rs:151:9
+    |
+151 |         fs::write(&path, source).unwrap();
+    |         ^^^^^^^^^
+    |
+    = note: UI must use bbt-rt for IO
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `std::fs::set_permissions`
+   --> crates/bbt-mux/tests/plugins.rs:152:9
+    |
+152 |         fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^
+    |
+    = note: UI must use bbt-rt for IO
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: use of a disallowed method `tokio::runtime::Runtime::block_on`
+   --> crates/bbt-mux/tests/plugins.rs:139:7
+    |
+139 |       ] {
+    |  _______^
+140 | |         let root = tempfile::tempdir().unwrap();
+141 | |         let path = root.path().join("bboxy450-term-task_system-reference");
+142 | |         let source = include_str!("fixtures/plugins/bboxy450-term-data_source-reference").replacen(
+...   |
+167 | |         reaped(&report.owned_pids);
+168 | |     }
+    | |_____^
+    |
+    = note: UI must spawn onto bbt-rt
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+
+error: could not compile `bbt-mux` (test "plugins") due to 12 previous errors
+warning: build failed, waiting for other jobs to finish...
+
+COMMAND LOG clippy-third.log; EXIT 0
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking bboxy450-desktop-notifications-linux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-linux)
+    Checking bboxy450-desktop-notifications-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-windows)
+    Finished `dev` profile [unoptimized] target(s) in 21.48s
+
+COMMAND LOG layering.log; EXIT 0
+layering: held
+
+COMMAND LOG licenses.log; EXIT 0
+licenses: 20 workspace crates, SPDX map and required root/crate files present
+
+COMMAND LOG mux-fourth.log; EXIT 0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 10.97s
+     Running tests/plugins.rs (target/p0-dev/debug/deps/plugins-dee5373a8e9238ca)
+
+running 6 tests
+test directories_symlinks_and_production_copies_do_not_bootstrap_trust ... ok
+test reference_uses_one_shape_and_all_eight_methods_then_reaps_its_children ... ok
+test task_provider_must_return_every_app_signed_write_byte_for_byte ... ok
+test stderr_is_drained_with_a_bound_and_eof_escalation_reaps_a_term_ignoring_child ... ok
+test six_required_refusals_are_named_and_never_leave_a_child ... ok
+test protocol_errors_command_errors_eof_bad_results_and_fixed_deadlines_stay_distinct ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.34s
+
+
+COMMAND LOG mux-unit-fourth.log; EXIT 0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 10.28s
+     Running unittests src/lib.rs (target/p0-dev/debug/deps/bbt_mux-a3148eecb4606c1d)
+
+running 5 tests
+test plugins::check::tests::task_contract_properties_derive_from_the_current_native_tool_catalogue ... ok
+test plugins::trust::tests::one_readonly_copy_and_account_record_are_required_before_execution ... ok
+test plugins::client::tests::real_stdio_keeps_opaque_signed_bytes_and_only_allowed_environment_names ... ok
+test plugins::check::tests::cached_descriptor_survives_a_host_reload_and_a_new_digest_has_no_cache ... ok
+test plugins::client::tests::progress_cannot_extend_a_deadline_and_cancellation_does_not_replay ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 71 filtered out; finished in 0.56s
+
+
+COMMAND LOG proto-third.log; EXIT 101
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Finished `test` profile [unoptimized] target(s) in 1.54s
+     Running tests/plugin_contracts.rs (target/p0-dev/debug/deps/plugin_contracts-dfe772a263c6e90f)
+
+running 2 tests
+test current_envelope_serializes_into_event_sink_without_relaxing_the_native_parser ... ok
+test task_verification_uses_the_existing_wire_shape_and_rejects_authority_fields ... FAILED
+
+failures:
+
+---- task_verification_uses_the_existing_wire_shape_and_rejects_authority_fields stdout ----
+
+thread 'task_verification_uses_the_existing_wire_shape_and_rejects_authority_fields' (29091181) panicked at crates/bbt-proto/tests/plugin_contracts.rs:51:10:
+called `Result::unwrap()` on an `Err` value: ValidationError { repr: ValidationErrorRepr { instance: Object {"etag": String("old"), "future_minor_field": Bool(true), "summary": String("reported"), "task_path": String("tasks/fixture.md"), "verify_result": Object {"command": String("cargo test --locked"), "evidence": Array [Object {"criterion": String("exit zero"), "reference": String("fixture.log:1")}], "exit_code": Number(0)}}, kind: Required { property: String("signed_record") }, instance_path: Location(""), schema_path: Location("/$defs/ReportRequest/required"), absolute_keyword_location: None, .. } }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    task_verification_uses_the_existing_wire_shape_and_rejects_authority_fields
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p bbt-proto --test plugin_contracts`
+
+COMMAND LOG mux-final-dev.log; EXIT 101
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 14.43s
+     Running tests/plugins.rs (target/p0-dev/debug/deps/plugins-dee5373a8e9238ca)
+
+running 7 tests
+test directories_symlinks_and_production_copies_do_not_bootstrap_trust ... ok
+test reference_uses_one_shape_and_all_eight_methods_then_reaps_its_children ... ok
+test the_other_five_contracts_are_probed_and_cross_field_results_are_checked ... FAILED
+test task_provider_must_return_every_app_signed_write_byte_for_byte ... ok
+test six_required_refusals_are_named_and_never_leave_a_child ... ok
+test stderr_is_drained_with_a_bound_and_eof_escalation_reaps_a_term_ignoring_child ... ok
+test protocol_errors_command_errors_eof_bad_results_and_fixed_deadlines_stay_distinct ... ok
+
+failures:
+
+---- the_other_five_contracts_are_probed_and_cross_field_results_are_checked stdout ----
+
+thread 'the_other_five_contracts_are_probed_and_cross_field_results_are_checked' (29118578) panicked at crates/bbt-mux/tests/plugins.rs:226:9:
+assertion `left == right` failed: event_sink: CheckReport { ok: false, scope: "isolated-conformance-fixture", sha256: Some("481209cc46bcffd44241dd18d976a407feb11a812ae4370fe579dcbc6f8a694f"), checks: ["shape, versions, method names, fixed authority, hook ceilings and tool-name bounds", "MCP negotiation, bounded catalogue and health"], refusal: Some(Refusal { code: "fixture_record_unavailable", message: "invalid role grant reference" }), owned_pids: [51174, 51177], shape_runs: 1, stderr_truncated: false }
+  left: Some("fixture_record_unavailable")
+ right: None
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    the_other_five_contracts_are_probed_and_cross_field_results_are_checked
+
+test result: FAILED. 6 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.87s
+
+error: test failed, to rerun pass `-p bbt-mux --test plugins`
+
+COMMAND LOG mux-final-dev2.log; EXIT 0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 48.50s
+     Running tests/plugins.rs (target/p0-dev/debug/deps/plugins-dee5373a8e9238ca)
+
+running 7 tests
+test directories_symlinks_and_production_copies_do_not_bootstrap_trust ... ok
+test reference_uses_one_shape_and_all_eight_methods_then_reaps_its_children ... ok
+test six_required_refusals_are_named_and_never_leave_a_child ... ok
+test the_other_five_contracts_are_probed_and_cross_field_results_are_checked ... ok
+test task_provider_must_return_every_app_signed_write_byte_for_byte ... ok
+test stderr_is_drained_with_a_bound_and_eof_escalation_reaps_a_term_ignoring_child ... ok
+test protocol_errors_command_errors_eof_bad_results_and_fixed_deadlines_stay_distinct ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.46s
+
+
+COMMAND LOG mux-unit-final-dev.log; EXIT 0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 32.41s
+     Running unittests src/lib.rs (target/p0-dev/debug/deps/bbt_mux-a3148eecb4606c1d)
+
+running 5 tests
+test plugins::check::tests::task_contract_properties_derive_from_the_current_native_tool_catalogue ... ok
+test plugins::trust::tests::one_readonly_copy_and_account_record_are_required_before_execution ... ok
+test plugins::client::tests::real_stdio_keeps_opaque_signed_bytes_and_only_allowed_environment_names ... ok
+test plugins::client::tests::progress_cannot_extend_a_deadline_and_cancellation_does_not_replay ... ok
+test plugins::check::tests::cached_descriptor_survives_a_host_reload_and_a_new_digest_has_no_cache ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 71 filtered out; finished in 0.63s
+
+
+COMMAND LOG kit-final-dev.log; EXIT 0
+    Finished `test` profile [unoptimized] target(s) in 0.39s
+     Running unittests src/lib.rs (target/p0-dev/debug/deps/bbt_plugin-20a0ee47518b5621)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/contracts.rs (target/p0-dev/debug/deps/contracts-7fcac1832bdaa40e)
+
+running 3 tests
+test the_four_pinned_tables_are_concrete_and_additive ... ok
+test task_methods_keep_native_arguments_and_require_an_etag_on_every_write ... ok
+test every_versioned_method_has_two_valid_schemas_and_no_unbriefed_operations ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests/data_source.rs (target/p0-dev/debug/deps/data_source-4b903c8e4d338e44)
+
+running 3 tests
+test document_unknown_metadata_and_markdown_are_preserved ... ok
+test malformed_pages_references_and_create_without_destination_fail_the_schema ... ok
+test independent_eight_method_fixtures_match_schema_and_portable_types ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/policy.rs (target/p0-dev/debug/deps/policy-9e6cf056668db647)
+
+running 2 tests
+test credential_names_lose_even_inside_the_environment_allowlist ... ok
+test contract_authority_is_fixed_and_hooks_raise_exposure ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/shape.rs (target/p0-dev/debug/deps/shape-8e5b81ade01b5004)
+
+running 4 tests
+test app_prefix_provider_hyphens_and_exact_name_boundary ... ok
+test descriptor_claims_cannot_reduce_tier_and_payload_hooks_need_a_separate_grant ... ok
+test versions_are_major_minor_and_unknown_fields_are_additive ... ok
+test unknown_contract_major_missing_method_and_budget_are_named_refusals ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+   Doc-tests bbt_plugin
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+COMMAND LOG proto-final-dev.log; EXIT 0
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Finished `test` profile [unoptimized] target(s) in 1.06s
+     Running tests/plugin_contracts.rs (target/p0-dev/debug/deps/plugin_contracts-dfe772a263c6e90f)
+
+running 2 tests
+test current_envelope_serializes_into_event_sink_without_relaxing_the_native_parser ... ok
+test task_verification_uses_the_existing_wire_shape_and_rejects_authority_fields ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+COMMAND LOG app-final-dev.log; EXIT 0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 57.78s
+     Running tests/plugins.rs (target/p0-dev/debug/deps/plugins-7af76802709576a6)
+
+running 1 test
+test real_binary_runs_headless_against_a_fixture_without_opening_the_production_root ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.05s
+
+
+COMMAND LOG clippy-final-dev.log; EXIT 0
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Finished `dev` profile [unoptimized] target(s) in 22.94s

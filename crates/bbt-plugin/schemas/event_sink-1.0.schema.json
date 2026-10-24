@@ -1,0 +1,358 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:bboxy450:event_sink:1.0",
+  "title": "bboxy450 event_sink 1.0",
+  "description": "App-owned contract. Outer fields are additive; signed payloads stay opaque and strict.",
+  "$defs": {
+    "CommandError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retry_after_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "additionalProperties": true
+    },
+    "ChangesRequest": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        }
+      },
+      "required": [
+        "cursor"
+      ],
+      "additionalProperties": true
+    },
+    "Envelope": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+        },
+        "issuer_kind": {
+          "enum": [
+            "local-dev",
+            "gpg-root"
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "account": {
+          "type": "string",
+          "minLength": 1
+        },
+        "device": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seat": {
+          "type": "string",
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "swarm_id": {
+          "type": "string",
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+        },
+        "process_generation": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,19})$"
+        },
+        "context": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "class": {
+              "enum": [
+                "worker",
+                "oracle"
+              ]
+            }
+          },
+          "required": [
+            "name",
+            "class"
+          ],
+          "additionalProperties": true
+        },
+        "role_grant_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role_epoch": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,19})$"
+        },
+        "priority_class": {
+          "enum": [
+            "worker",
+            "oracle"
+          ]
+        },
+        "sender_sequence": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,19})$"
+        },
+        "thread_id": {
+          "type": "string",
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+        },
+        "reply_to": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "timestamp": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "kind": {
+          "enum": [
+            "text",
+            "chunk",
+            "decision",
+            "presence",
+            "task"
+          ]
+        },
+        "body": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "text"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "text"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "presence"
+                },
+                "event": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "harness": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "state": {
+                  "enum": [
+                    "active",
+                    "idle",
+                    "waiting",
+                    "errored"
+                  ]
+                },
+                "muted": {
+                  "type": "boolean"
+                },
+                "policy_epoch": {
+                  "type": "string",
+                  "pattern": "^(0|[1-9][0-9]{0,19})$"
+                }
+              },
+              "required": [
+                "type",
+                "event",
+                "name",
+                "harness",
+                "state",
+                "muted",
+                "policy_epoch"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "task"
+                },
+                "task_id": {
+                  "type": "string",
+                  "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                },
+                "event": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                "summary": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "task_id",
+                "event",
+                "path",
+                "summary"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "door": {
+          "enum": [
+            "gui",
+            "ctl"
+          ]
+        },
+        "issued_by": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "signature": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "version",
+        "id",
+        "issuer_kind",
+        "issuer",
+        "account",
+        "device",
+        "seat",
+        "author",
+        "swarm_id",
+        "process_generation",
+        "context",
+        "role",
+        "role_grant_id",
+        "role_epoch",
+        "priority_class",
+        "sender_sequence",
+        "thread_id",
+        "reply_to",
+        "timestamp",
+        "priority",
+        "kind",
+        "body",
+        "attachments",
+        "signature"
+      ],
+      "additionalProperties": false
+    },
+    "DeliverRequest": {
+      "type": "object",
+      "properties": {
+        "subject": {
+          "type": "string",
+          "minLength": 1
+        },
+        "envelope": {
+          "$ref": "#/$defs/Envelope"
+        }
+      },
+      "required": [
+        "subject",
+        "envelope"
+      ],
+      "additionalProperties": true
+    },
+    "DeliverResult": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+        },
+        "accepted": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "accepted"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "x-methods": {
+    "deliver": {
+      "request": "#/$defs/DeliverRequest",
+      "result": "#/$defs/DeliverResult"
+    }
+  }
+}

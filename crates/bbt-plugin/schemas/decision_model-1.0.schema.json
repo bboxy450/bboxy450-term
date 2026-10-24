@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:bboxy450:decision_model:1.0",
+  "title": "bboxy450 decision_model 1.0",
+  "description": "App-owned contract. Outer fields are additive; signed payloads stay opaque and strict.",
+  "$defs": {
+    "CommandError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retry_after_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "additionalProperties": true
+    },
+    "ChangesRequest": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        }
+      },
+      "required": [
+        "cursor"
+      ],
+      "additionalProperties": true
+    },
+    "ChooseRequest": {
+      "type": "object",
+      "properties": {
+        "state": {},
+        "instructions": {
+          "type": "string",
+          "minLength": 1
+        },
+        "criteria": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "state",
+        "instructions",
+        "criteria"
+      ],
+      "additionalProperties": true
+    },
+    "ChooseResult": {
+      "type": "object",
+      "properties": {
+        "choice": {
+          "type": "string",
+          "minLength": 1
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "probabilities": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "choice",
+        "confidence",
+        "probabilities",
+        "model"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "x-methods": {
+    "choose": {
+      "request": "#/$defs/ChooseRequest",
+      "result": "#/$defs/ChooseResult"
+    }
+  }
+}

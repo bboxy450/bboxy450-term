@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:bboxy450:provider:0.1",
+  "title": "bboxy450 provider 0.1",
+  "description": "App-owned contract. Outer fields are additive; signed payloads stay opaque and strict.",
+  "$defs": {
+    "CommandError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retry_after_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "additionalProperties": true
+    },
+    "ChangesRequest": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        }
+      },
+      "required": [
+        "cursor"
+      ],
+      "additionalProperties": true
+    },
+    "DescribeRequest": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": true
+    },
+    "Host": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "ssh",
+            "cloud"
+          ]
+        },
+        "address": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "address"
+      ],
+      "additionalProperties": true
+    },
+    "DescribeResult": {
+      "type": "object",
+      "properties": {
+        "hosts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Host"
+          }
+        }
+      },
+      "required": [
+        "hosts"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "x-methods": {
+    "describe": {
+      "request": "#/$defs/DescribeRequest",
+      "result": "#/$defs/DescribeResult"
+    }
+  }
+}

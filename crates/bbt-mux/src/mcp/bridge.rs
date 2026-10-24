@@ -12,7 +12,8 @@ use super::Call;
 use crate::seat_socket::{Action, Request};
 
 pub const MAX_FRAME: usize = 1024 * 1024;
-const VERSIONS: &[&str] = &["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
+/// Supported MCP wire revisions, newest first, shared by seat and plugin peers.
+pub const VERSIONS: &[&str] = &["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 
 /// Intentionally not Debug: the admission capability is process-tree authority.
 pub struct Config {
