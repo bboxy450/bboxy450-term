@@ -227,6 +227,52 @@ fn registry_keeps_session_mapping_mute_and_exact_close_revision_across_restart()
 }
 
 #[test]
+fn numbered_links_bind_graph_edges_only_when_the_number_is_unique() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join(".bboxy");
+    std::fs::create_dir(&root).unwrap();
+    let id = Ulid::new();
+    std::fs::write(
+        root.join("decision.md"),
+        format!("---\nid: {id}\ntype: decision\nnumber: 47\n---\nDecision\n"),
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("source.md"),
+        "---\ntype: note\n---\n[[#47\\|decision]]{evidence:2}\n",
+    )
+    .unwrap();
+    let mut index = Index::open(
+        &root,
+        SqliteStore::open(&temp.path().join("state")).unwrap(),
+    )
+    .unwrap();
+    index.scan().unwrap();
+    for kind in [GraphKind::Markdown, GraphKind::Provenance] {
+        let graph = &index.graphs[&kind];
+        let edge = graph.edge_indices().next().unwrap();
+        assert_eq!(graph[graph.edge_endpoints(edge).unwrap().1], id.to_string());
+        assert!(!graph.node_weights().any(|node| node == "#47"));
+    }
+    std::fs::write(
+        root.join("duplicate.md"),
+        format!(
+            "---\nid: {}\ntype: note\nnumber: 47\n---\nDuplicate\n",
+            Ulid::new()
+        ),
+    )
+    .unwrap();
+    index.scan().unwrap();
+    let graph = &index.graphs[&GraphKind::Markdown];
+    let edge = graph.edge_indices().next().unwrap();
+    assert_eq!(
+        graph[graph.edge_endpoints(edge).unwrap().1],
+        "#47",
+        "an ambiguous number stays unresolved"
+    );
+}
+
+#[test]
 fn index_resolves_annotated_links_retains_broken_frontmatter_and_rebuilds_from_sqlite() {
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().join(".bboxy");
@@ -265,6 +311,10 @@ fn index_resolves_annotated_links_retains_broken_frontmatter_and_rebuilds_from_s
     let links = wikilinks("[[spec|not-a-relation]] [[spec]]{evidence:2}");
     assert_eq!(links[0].relation, "ref");
     assert_eq!(links[1].weight, 2.);
+    let escaped = wikilinks(r"[[spec\|Display]]{evidence:2} [[#47\|decision]]");
+    assert_eq!(escaped[0].to, "spec");
+    assert_eq!(escaped[0].weight, 2.);
+    assert_eq!(escaped[1].to, "#47");
     let invalid = Document::parse("bad.md", "---\nid: not-a-ulid\n---\nx");
     assert!(invalid.error.is_some());
 }

@@ -15,6 +15,16 @@ pub struct Frontmatter {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error_line: Option<usize>,
 }
+impl Frontmatter {
+    /// The global record handle is a positive YAML integer, never a string or
+    /// a display hint inferred from the filename.
+    pub fn number(&self) -> Option<u64> {
+        self.fields
+            .get("number")
+            .and_then(serde_yaml::Value::as_u64)
+            .filter(|number| *number > 0)
+    }
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Markdown {

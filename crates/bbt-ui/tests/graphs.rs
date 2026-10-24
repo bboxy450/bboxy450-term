@@ -163,6 +163,12 @@ fn annotated_links_preserve_source_identity_display_and_weight() {
     assert_eq!(links[0].weight.as_deref(), Some("0.6"));
     assert_eq!(links[1].relation.as_deref(), Some("violates"));
     assert!(parse_links("an incomplete [[link").is_empty());
+    let escaped = parse_links(r"[[source\|#47]]{derives:0.6} [[#47\|decision]]");
+    assert_eq!(escaped[0].slug, "source");
+    assert_eq!(escaped[0].display, "#47");
+    assert_eq!(escaped[0].weight.as_deref(), Some("0.6"));
+    assert_eq!(escaped[1].slug, "#47");
+    assert_eq!(escaped[1].display, "decision");
 }
 
 #[test]

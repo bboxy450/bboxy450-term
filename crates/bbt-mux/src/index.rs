@@ -50,7 +50,13 @@ pub fn wikilinks(text: &str) -> Vec<Link> {
     while let Some(start) = rest.find("[[") {
         rest = &rest[start + 2..];
         let Some(end) = rest.find("]]") else { break };
-        let target = rest[..end].split('|').next().unwrap_or_default().trim();
+        let label = &rest[..end];
+        let target = label
+            .split_once('|')
+            .map_or(label, |(target, _)| {
+                target.strip_suffix('\\').unwrap_or(target)
+            })
+            .trim();
         rest = &rest[end + 2..];
         if target.is_empty() {
             continue;
@@ -400,6 +406,14 @@ impl Index {
                     .to_string(),
             ] {
                 aliases.entry(alias).or_default().push(doc.id.clone());
+            }
+            if let Some(number) = doc.metadata.get("number").and_then(Value::as_u64)
+                && number > 0
+            {
+                aliases
+                    .entry(format!("#{number}"))
+                    .or_default()
+                    .push(doc.id.clone());
             }
         }
         let mut nodes: BTreeMap<GraphKind, BTreeMap<String, NodeIndex>> = BTreeMap::new();

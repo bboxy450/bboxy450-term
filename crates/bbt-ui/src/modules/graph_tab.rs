@@ -1881,7 +1881,11 @@ pub fn parse_links(value: &str) -> Vec<Link> {
         rest = &rest[start + 2..];
         let Some(end) = rest.find("]]") else { break };
         let label = &rest[..end];
-        let (slug, display) = label.split_once('|').unwrap_or((label, label));
+        let (slug, display) = label
+            .split_once('|')
+            .map_or((label, label), |(slug, display)| {
+                (slug.strip_suffix('\\').unwrap_or(slug), display)
+            });
         rest = &rest[end + 2..];
         let mut relation = None;
         let mut weight = None;

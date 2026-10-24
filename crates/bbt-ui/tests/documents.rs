@@ -45,6 +45,28 @@ fn labels(l: &c::Layout) -> String {
     out
 }
 #[test]
+fn record_number_shares_the_type_chip_and_absent_numbers_keep_the_old_label() {
+    let mut view = DocumentModal {
+        document: Document {
+            kind: Some("decision".into()),
+            title: "A numbered record".into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let tree = layout(&view, 1218.);
+    assert_eq!(
+        labels(find(&tree, "type/text").unwrap()).to_lowercase(),
+        "decision"
+    );
+    view.document.number = Some(47);
+    let tree = layout(&view, 1218.);
+    assert_eq!(
+        labels(find(&tree, "type/text").unwrap()).to_lowercase(),
+        "decision #47"
+    );
+}
+#[test]
 fn document_metadata_and_unsigned_or_broken_evidence_remain_visible() {
     let mut view = DocumentModal {
         document: Document {
@@ -187,8 +209,16 @@ fn unsupported_diagram_preserves_source_instead_of_a_partial_drawing() {
 }
 #[test]
 fn short_code_cells_center_within_the_keys_padded_grid_row() {
-    let view=DocumentModal{document:Document{kind:Some("note".into()),id:"a public id".into(),..Default::default()},..Default::default()};
-    let tree=layout(&view,1218.);
-    let key=find(&tree,"fm0/key").unwrap();let value=find(&tree,"fm0/value0").unwrap();
-    assert!((value.rect.y-key.rect.y-1.).abs()<0.001);
+    let view = DocumentModal {
+        document: Document {
+            kind: Some("note".into()),
+            id: "a public id".into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let tree = layout(&view, 1218.);
+    let key = find(&tree, "fm0/key").unwrap();
+    let value = find(&tree, "fm0/value0").unwrap();
+    assert!((value.rect.y - key.rect.y - 1.).abs() < 0.001);
 }
