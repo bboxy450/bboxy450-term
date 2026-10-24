@@ -496,7 +496,7 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
     let codex_home = user.join(".codex");
     std::fs::create_dir(&codex_home).unwrap();
     let config = codex_home.join("config.toml");
-    let original = b"[mcp_servers.other]\ndefault_tools_approval_mode = \"prompt\"\n";
+    let original = b"check_for_update_on_startup = true\n[mcp_servers.other]\ndefault_tools_approval_mode = \"prompt\"\n";
     std::fs::write(&config, original).unwrap();
     let record = SeatRecord::new(Ulid::new(), Ulid::new(), "fixture", "claude");
     let context = LaunchContext {
@@ -541,14 +541,19 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
         .spec
         .args
         .windows(2)
-        .filter(|pair| pair[0] == "-c" && pair[1].contains("approval"))
+        .filter(|pair| {
+            pair[0] == "-c"
+                && (pair[1].contains("approval")
+                    || pair[1].starts_with("check_for_update_on_startup="))
+        })
         .map(|pair| pair[1].as_str())
         .collect::<Vec<_>>();
     assert_eq!(
         approval_overrides,
         [
             other_approval,
-            "mcp_servers.bboxy.default_tools_approval_mode=\"auto\""
+            "mcp_servers.bboxy.default_tools_approval_mode=\"auto\"",
+            "check_for_update_on_startup=false"
         ]
     );
     assert_eq!(std::fs::read(config).unwrap(), original);
