@@ -1,0 +1,52 @@
+Signed Settings core native proof — Velvet Vulpine <EXECUTOR>
+2026-10-24T17:19:01.152744+00:00
+Source ce9913132b129eef1a9ee9e6f6116d766505b0a4; signature verified via git verify-commit (exit0).
+Supplement to settings-checkpoint1-core.log: the native probe is now repeated on the signed source including the array-comment preservation change.
+This is still not a final handoff: accepted ATTENTION dependency, its binding, and the exact clean full ci-local --parity remain pending.
+
+{
+  "head": "ce9913132b129eef1a9ee9e6f6116d766505b0a4",
+  "cmd": [
+    "/Users/feral/mydev/bboxy450-term-exec6/target/settings-dev/debug/bboxy450-term",
+    "--smoke",
+    "--settings",
+    "Appearance",
+    "--settings-config",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/native-settings-config.toml",
+    "--capture",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-signed-core-native.png"
+  ],
+  "binary_sha256": "2d0f913ec2d9878b4cd54d98c9a0eebd9fb26029ab7a02cfef1e8504aeb3cba2",
+  "config_sha256_before": "7d4eba4f3e67dae02cf63466f24c73cc418017b4ad814ceaba7cc9283928b014",
+  "started": 1792862142.026701,
+  "pid": 64398,
+  "exit": 0,
+  "config_sha256_after": "7d4eba4f3e67dae02cf63466f24c73cc418017b4ad814ceaba7cc9283928b014",
+  "elapsed_seconds": 14.050413131713867
+}
+
+RAW /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-signed-core-build.log SHA256 5bd5d494ad4ba10597c2001f517e504ff07d28784711b79c6cea7ba0f4ab8f51
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 15.75s
+
+EXIT 0
+
+RAW /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-signed-core-native.log SHA256 99075f5e90d169829ef90d2fcbd26b2a40f592f684ea30fbb0bb95d3baddb1e7
+local tab opened: Settings
+panel: Some("Monitor #53534"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75
+verification window resize: 1600x960 physical pixels
+idle probe ignores native occlusion: occluded=false
+smoke bootstrap: early producer handled before GPU ready
+renderer ready: Apple M4, Fifo, frame latency 2, scene seats=15
+Metal maximumDrawableCount=Some(3), configured latency=2
+pacing: CAMetalDisplayLink, requested range=75/75/75 Hz; initially paused
+first frame: native scene presented, seats=15
+capture /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-signed-core-native.png: Ok(())
+idle probe settling: producer_done=true queued=false redraw_pending=false occluded=false frames=21 callbacks=21
+idle probe begins: frames=21 last_update=20
+idle probe PASS: idle 10.001s frames=0 callbacks=0 updates=20 CPU p50=4.283ms p99=16.710ms samples=21 warm_encode_p50=2.652ms warm_encode_p99=3.561ms
+
+EXIT 0
+
+Image /Users/feral/mydev/bboxy450-term-exec6/target/settings-proof/settings-signed-core-native.png SHA256 c4ab5623420fbe86fee0c26ad98813c85163bc99a520199b78b339d054f81cd5
+The isolated config is owned by this probe; no real user preferences were edited. Smoke fake-source starts no production-custody child or native notification authorization.
