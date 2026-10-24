@@ -1,0 +1,163 @@
+{
+  "request": "Vesper c349cb92-cee0-4a0c-ab83-9d77cbf334b0: explain #265 approval prompt; report documented fix, no guessing or product edit",
+  "observed_client": "codex-cli0.163.0",
+  "binary": "/opt/homebrew/Caskroom/codex/0.163.0/bin/codex",
+  "binary_sha256": "8813367285524ac798dd96d1b071aea30d58708c7226fd236cd275cf1cfdee31",
+  "configured_field": "mcp_servers.bboxy.default_tools_approval_mode=\"auto\"",
+  "extraction_source": "crates/bboxy450-harness-wake-up/src/launch.rs:246",
+  "accepted_parent_source": "crates/bbt-mux/src/adapters/launch.rs:251 at39e47829",
+  "observations": [
+    "The field and server placement are recognized by the installed parser. Both auto and approve values parse; an invalid sentinel fails with the exact field path and supported enum values.",
+    "No user-level bboxy MCP server table or seat-CWD .codex/config.toml supplied a per-tool override.",
+    "task_report is a mutation in mcp/work_items.rs:23; catalogue construction at:87 emits readOnlyHint=false and destructiveHint=true.",
+    "Under auto the real client displayed the native task_report consent prompt.",
+    "The native session approval completed task_report; the private task became reported and a correlated reply/ACKs followed."
+  ],
+  "documentation": [
+    {
+      "url": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "supports": "server default and per-tool approval keys, allowed values; enabled_tools is a tool allowlist"
+    },
+    {
+      "url": "https://learn.chatgpt.com/docs/extend/mcp",
+      "supports": "server and per-tool settings, concrete approval_mode=\"approve\" example"
+    },
+    {
+      "url": "https://learn.chatgpt.com/docs/agent-approvals-security",
+      "supports": "destructive tool annotations can require approval independently of shell changes"
+    }
+  ],
+  "proposal": {
+    "narrow_per_invocation": "-c mcp_servers.bboxy.tools.task_report.approval_mode=\"approve\"",
+    "server_wide_if_intended": "-c mcp_servers.bboxy.default_tools_approval_mode=\"approve\"",
+    "preserve": "native hook review, truthful destructive/readOnly annotations, other servers and user config",
+    "enabled_tools_change_needed": false,
+    "runtime_no_prompt_proof": "not run; proposed config is documented and parser-accepted, not yet a new live behavior claim"
+  },
+  "parser_probes": {
+    "strict_flag_unsupported": [
+      {
+        "argv": [
+          "/opt/homebrew/bin/codex",
+          "--strict-config",
+          "-c",
+          "mcp_servers.hk0_config_probe.command=\"/usr/bin/true\"",
+          "-c",
+          "mcp_servers.hk0_config_probe.default_tools_approval_mode=\"auto\"",
+          "mcp",
+          "get",
+          "hk0_config_probe",
+          "--json"
+        ],
+        "exit": 1,
+        "stdout": "",
+        "stderr": "Error: `--strict-config` is not supported for `codex mcp`\n"
+      },
+      {
+        "argv": [
+          "/opt/homebrew/bin/codex",
+          "--strict-config",
+          "-c",
+          "mcp_servers.hk0_config_probe.command=\"/usr/bin/true\"",
+          "-c",
+          "mcp_servers.hk0_config_probe.default_tools_approval_mode=\"approve\"",
+          "mcp",
+          "get",
+          "hk0_config_probe",
+          "--json"
+        ],
+        "exit": 1,
+        "stdout": "",
+        "stderr": "Error: `--strict-config` is not supported for `codex mcp`\n"
+      },
+      {
+        "argv": [
+          "/opt/homebrew/bin/codex",
+          "--strict-config",
+          "-c",
+          "mcp_servers.hk0_config_probe.command=\"/usr/bin/true\"",
+          "-c",
+          "mcp_servers.hk0_config_probe.default_tools_approval_mode=\"invalid-hk0\"",
+          "mcp",
+          "get",
+          "hk0_config_probe",
+          "--json"
+        ],
+        "exit": 1,
+        "stdout": "",
+        "stderr": "Error: `--strict-config` is not supported for `codex mcp`\n"
+      }
+    ],
+    "without_strict": [
+      {
+        "argv": [
+          "/opt/homebrew/bin/codex",
+          "-c",
+          "mcp_servers.hk0_config_probe.command=\"/usr/bin/true\"",
+          "-c",
+          "mcp_servers.hk0_config_probe.default_tools_approval_mode=\"auto\"",
+          "mcp",
+          "get",
+          "hk0_config_probe",
+          "--json"
+        ],
+        "exit": 0,
+        "stdout": "{\n  \"name\": \"hk0_config_probe\",\n  \"enabled\": true,\n  \"disabled_reason\": null,\n  \"transport\": {\n    \"type\": \"stdio\",\n    \"command\": \"/usr/bin/true\",\n    \"args\": [],\n    \"env\": null,\n    \"env_vars\": [],\n    \"cwd\": null\n  },\n  \"enabled_tools\": null,\n  \"disabled_tools\": null,\n  \"startup_timeout_sec\": null,\n  \"tool_timeout_sec\": null\n}\n",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "/opt/homebrew/bin/codex",
+          "-c",
+          "mcp_servers.hk0_config_probe.command=\"/usr/bin/true\"",
+          "-c",
+          "mcp_servers.hk0_config_probe.default_tools_approval_mode=\"approve\"",
+          "mcp",
+          "get",
+          "hk0_config_probe",
+          "--json"
+        ],
+        "exit": 0,
+        "stdout": "{\n  \"name\": \"hk0_config_probe\",\n  \"enabled\": true,\n  \"disabled_reason\": null,\n  \"transport\": {\n    \"type\": \"stdio\",\n    \"command\": \"/usr/bin/true\",\n    \"args\": [],\n    \"env\": null,\n    \"env_vars\": [],\n    \"cwd\": null\n  },\n  \"enabled_tools\": null,\n  \"disabled_tools\": null,\n  \"startup_timeout_sec\": null,\n  \"tool_timeout_sec\": null\n}\n",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "/opt/homebrew/bin/codex",
+          "-c",
+          "mcp_servers.hk0_config_probe.command=\"/usr/bin/true\"",
+          "-c",
+          "mcp_servers.hk0_config_probe.default_tools_approval_mode=\"invalid-hk0\"",
+          "mcp",
+          "get",
+          "hk0_config_probe",
+          "--json"
+        ],
+        "exit": 1,
+        "stdout": "",
+        "stderr": "Error: failed to load bootstrap configuration\n\nCaused by:\n    unknown variant `invalid-hk0`, expected one of `auto`, `prompt`, `writes`, `approve`\n    in `mcp_servers.hk0_config_probe.default_tools_approval_mode`\n    \n"
+      }
+    ],
+    "per_tool": {
+      "argv": [
+        "/opt/homebrew/bin/codex",
+        "-c",
+        "mcp_servers.hk0_config_probe.command=\"/usr/bin/true\"",
+        "-c",
+        "mcp_servers.hk0_config_probe.tools.task_report.approval_mode=\"approve\"",
+        "mcp",
+        "get",
+        "hk0_config_probe"
+      ],
+      "exit": 0,
+      "stdout": "hk0_config_probe\n  enabled: true\n  transport: stdio\n  command: /usr/bin/true\n  args: -\n  cwd: -\n  env: -\n  remove: codex mcp remove hk0_config_probe\n",
+      "stderr": ""
+    }
+  },
+  "schema": {
+    "url": "https://learn.chatgpt.com/docs/config-schema.json",
+    "sha256": "ea611ee3f12a6df314b3e49585015ec6e2ebc7c3f072ccbf63c21306a4cdb5dc"
+  },
+  "binary_evidence_limit": "REA identified arm64 Mach-O and digest; search_strings returned provider_unavailable (no configured disassembler). Target closed. Ordinary read-only byte search found RawMcpServerConfig/AppToolApproval field names; no disassembled approval branch or string-only control-flow claim.",
+  "scope": "No source or user config change; HK-0 remains a pure extraction."
+}
