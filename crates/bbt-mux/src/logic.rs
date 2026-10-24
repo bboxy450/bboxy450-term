@@ -3730,6 +3730,7 @@ impl Worker {
             modes: snapshot.screen.modes,
             cols: snapshot.screen.cols,
             sequence: snapshot.sequence,
+            cursor_style: snapshot.screen.cursor_style.clone(),
             cells: cells.then(|| {
                 snapshot
                     .screen
