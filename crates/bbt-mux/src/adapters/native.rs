@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::io::Read;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
@@ -55,6 +55,57 @@ fn own_socket(path: &Path) -> Result<()> {
         return Err(invalid("native endpoint must be an owned Unix socket"));
     }
     Ok(())
+}
+/// Non-secret hook discovery, retained only for this native process/session.
+#[derive(Serialize, Deserialize)]
+pub(crate) struct ClaudeRegistration {
+    pub binding: Binding,
+    pub path: PathBuf,
+}
+impl ClaudeRegistration {
+    pub fn matches(&self, binding: &Binding) -> bool {
+        // A logic restart creates fresh in-memory attachment handles, while
+        // the supervisor can keep the same native process and session alive.
+        self.binding.seat == binding.seat
+            && self.binding.pid == binding.pid
+            && self.binding.process_start == binding.process_start
+            && self.binding.generation == binding.generation
+            && self.binding.session == binding.session
+    }
+    pub fn validate(&self, binding: &Binding) -> Result<()> {
+        if !self.matches(binding) {
+            return Err(invalid("Claude socket registration identity mismatch"));
+        }
+        if !self.path.is_absolute() {
+            return Err(invalid("Claude socket path must be absolute"));
+        }
+        own_socket(&self.path)
+    }
+}
+/// Called only on the admitted Hook RPC, never on terminal OSC observations.
+pub(crate) fn claude_registration(
+    session: &Session,
+    event: &super::hook::ShimEvent,
+) -> Result<Option<ClaudeRegistration>> {
+    let Some(path) = event.raw.get("bboxy_native_socket") else {
+        return Ok(None);
+    };
+    if session.record.kind != "claude"
+        || event.raw["harness"] != "claude"
+        || event.raw["session_id"] != session.binding.session
+        || !matches!(event.event.as_str(), "SessionStart" | "Stop")
+    {
+        return Err(invalid("Claude socket hook identity mismatch"));
+    }
+    let registration = ClaudeRegistration {
+        binding: session.binding.clone(),
+        path: PathBuf::from(
+            path.as_str()
+                .ok_or_else(|| invalid("Claude socket hook path must be text"))?,
+        ),
+    };
+    registration.validate(&session.binding)?;
+    Ok(Some(registration))
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClaudeSessionFile {
@@ -363,8 +414,13 @@ pub async fn wake(
     if priority == Priority::Now && !allow_interrupt {
         return unavailable("caller lacks interrupt authority");
     }
-    if text.len() > 48 * 1024 || verify_process(binding).is_err() {
-        return unavailable("native identity unavailable or message too large");
+    if text.len() > 48 * 1024 {
+        return unavailable("native message exceeds 48 KiB; no mutation attempted");
+    }
+    if let Err(error) = verify_process(binding) {
+        return unavailable(&format!(
+            "native identity unavailable: {error}; no mutation attempted"
+        ));
     }
     let mut attempted = false;
     let result=tokio::time::timeout(DEADLINE,async {
@@ -410,6 +466,9 @@ pub async fn wake(
         _ if attempted => {
             WakeOutcome::unknown("native write/reply ambiguous; no PTY fallback or automatic retry")
         }
-        _ => unavailable("native attachment unavailable; no mutation attempted"),
+        Ok(Err(error)) => unavailable(&format!(
+            "native preflight failed: {error}; no mutation attempted"
+        )),
+        Err(_) => unavailable("native preflight timed out; no mutation attempted"),
     }
 }
