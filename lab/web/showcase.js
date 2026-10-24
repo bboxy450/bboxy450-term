@@ -800,7 +800,7 @@
       rectBuf.set([R.x * dpr, R.y * dpr, R.w * dpr, R.h * dpr], n * 4);
       const pulse = s.pulseT ? Math.max(0, 1 - (now - s.pulseT) / 700) : 0;  // phantom message: one pulse, 700 ms, through the brightness channel
       colBuf.set([rgb[0], rgb[1], rgb[2], s.key === focused ? 1 : pulse], n * 4);
-      parBuf.set([STATE_IDX[s.state], R.pane ? 0 : R.r * dpr, C.hash32(s.key) % 10000, 0], n * 4);   // the rim's phase ms (glow.js)
+      parBuf.set([STATE_IDX[s.state], R.r * dpr, C.hash32(s.key) % 10000, 0], n * 4);   // the block's own corner radius, panes included   // the rim's phase ms (glow.js)
       // the swell: once on locate, or looping while the seat needs the operator (attention: |sin|, in step across its blocks)
       const attn = !s.phantom && needs(s), t0 = swellT0[s.key + (R.pane ? '|pane' : '|row')], st = t0 == null ? -1 : now - t0;
       const env = attn ? Math.abs(Math.sin(Math.PI * now / G.swell_ms)) : st >= 0 && st < G.swell_ms ? Math.sin(Math.PI * st / G.swell_ms) : 0;

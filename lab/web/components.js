@@ -1173,7 +1173,14 @@
   // opts.leaf(seat) draws a leaf (default: pane); opts.onDivider(div, node, box, A, B) attaches resize behaviour (the showcase's drag).
   function splitView(t, opts) {
     opts = opts || {};
-    if (t.key) return opts.leaf ? opts.leaf(t) : pane(t, opts.paneOpts ? opts.paneOpts(t) : {});
+    // a leaf is a borderless box around its pane, so a leaf and a subtree share the extent by ratio alone, as the native split solver
+    // does (ui-model layout/split.rs); the box carries the pane's alive rim (the showcase draws its own and passes opts.leaf)
+    if (t.key) {
+      if (opts.leaf) return opts.leaf(t);
+      const po = opts.paneOpts ? opts.paneOpts(t) : {}, w = el('div', { class: 'split-leaf pane-wrap' }, pane(t, po));
+      if (window.Glow && !document.body.classList.contains('live')) requestAnimationFrame(() => window.Glow.attach(w, t, po));
+      return w;
+    }
     const A = splitView(t.a, opts), B = splitView(t.b, opts);
     A.style.flex = t.ratio || 0.5; B.style.flex = 1 - (t.ratio || 0.5);
     const box = el('div', { class: 'split ' + t.dir }), div = el('div', { class: 'divider' + (t.active ? ' active' : '') });
