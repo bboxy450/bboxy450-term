@@ -1,0 +1,50 @@
+{
+  "head": "423fe5d434ca38077c22e0de56493f5f25b7b7e2",
+  "base": "e7331c37c2f3b3168c69ce34d56a086a6189fa9e",
+  "command": [
+    "sh",
+    "scripts/ci-local.sh",
+    "--parity"
+  ],
+  "exit": 0,
+  "seconds": 3724.183,
+  "log_sha256": "711715a44961eb230e08e845ecf4c5dc2347c18ab58e354e90786990bf5e0481",
+  "workspace": {
+    "reported_passed": 1281,
+    "reported_failed": 0,
+    "reported_ignored": 24,
+    "harnesses": 193
+  },
+  "native_smoke": {
+    "idle_seconds": 10.002,
+    "frames": 0,
+    "callbacks": 0
+  },
+  "parity": {
+    "cases": 2144,
+    "geometry_required": 2040,
+    "geometry_measured": 2040,
+    "unproven": 0,
+    "mismatches": 0,
+    "pixel_reviews_advisory": 72,
+    "report_sha256": "79ab34bebe55b4d791d4b612a19f198493ee8de4d4e1667b6b45e565c9c6668d"
+  },
+  "invariants": {
+    "checks": 23,
+    "failures": 0,
+    "slow_skipped": 9
+  },
+  "gate_target_deleted": true,
+  "dev_target_deleted": true,
+  "slot_released": true,
+  "latest_observed_main": "bd29abc353af6b069c8169bd24009ebbad5184e3",
+  "main_changes_during_gate": [
+    "bd29abc3 Merge ctl record write, task create and seat restart (Seraph)",
+    "4d77b0ff seat-restart: full ci-local --parity gate logs for f4abb831 and bf5d020a (all gates passed)",
+    "909957f4 #315: identity status and unlock are admitted under a custody hold on the door capability plus the journal-validated device ID, audited first with signature pending; nothing else is",
+    "40dafd1b Gate slots: a third slot while at least 25 GiB is free",
+    "bf5d020a ctl seat restart: a seat's next process generation on demand",
+    "8b7377ac record-write: carry the e2e-night 88b9e588 gate log (all gates passed), sha256 c399776986f4cabb2f7ba41acc9b44d3fab51abea8215b342a33fbea658e06ad",
+    "82797852 ctl record write and task create: the night writes its e2e records and opens fix tasks"
+  ]
+}

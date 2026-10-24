@@ -1,0 +1,21 @@
+{
+  "command": [
+    "sh",
+    "scripts/ci-local.sh",
+    "--parity"
+  ],
+  "cwd": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-identity-file-q2_og6ql/gate-tree",
+  "head": "423fe5d434ca38077c22e0de56493f5f25b7b7e2",
+  "base": "e7331c37c2f3b3168c69ce34d56a086a6189fa9e",
+  "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-identity-file-q2_og6ql/gate-target",
+  "environment": {
+    "RUSTC_WRAPPER": "",
+    "RUSTC_WORKSPACE_WRAPPER": "",
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_INCREMENTAL": "0",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "other_gate_pids": [
+    "9504"
+  ]
+}

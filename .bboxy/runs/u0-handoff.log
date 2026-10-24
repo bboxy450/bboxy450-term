@@ -1,0 +1,58 @@
+Kestrel Voidwing <EXECUTOR> — U-0 file-first custody plus assigned provenance idle-gap follow-up
+
+Status: implementation and deterministic checks complete; exact clean ci-local --parity EXIT 0 on frozen source 423fe5d434ca38077c22e0de56493f5f25b7b7e2. This is an Executor handoff for Oracle verification, not an acceptance claim.
+
+Source: exec5-provenance-idle-gap, HEAD 423fe5d434ca38077c22e0de56493f5f25b7b7e2; pinned accepted base e7331c37c2f3b3168c69ce34d56a086a6189fa9e. exec5-identity-file at 9dab09a1 is the earlier U0-only cut. Every own and dependency commit is machine-signed. Seraph f4abb831 is a declared, authorship-preserved dependency for record write/task create; the original 88b9 runner copy was dropped after acceptance. Current own patches remain separate from that dependency.
+
+Mechanisms:
+- crates/bboxy450-keychain/src/lib.rs:8 — explicit file backend and opaque Store/Secret port; no native fallback.
+- crates/bboxy450-keychain-file/src/unix.rs — private directory FD, owner/mode checks, no-follow bounded read, atomic create-only secret publication; Windows helper supplies protected owner-only ACL and reparse checks.
+- crates/bbt-mux/src/identity/test_account.rs:90 — private custody-directory preparation before Session creates root/run; only the selected validated run is allowed in an otherwise fresh custody directory.
+- crates/bbt-mux/src/identity/test_account.rs:100 — generated passphrase-less root and device use the existing certified grant installer and signed per-run context; foreign identity state is refused before root/context mutation; missing or corrupt keys never rekey an existing run.
+- crates/bbt-mux/src/identity/test_account.rs:223 — verify the root UID and signed local context before deriving issued_by, then enforce exact receiving-account labels for seat messages.
+- crates/bbt-mux/src/identity/journal.rs — one install_certified implementation serves native RootSigner and private generated root; signed DTO shapes unchanged.
+- crates/bbt-mux/src/logic.rs:969 — supplied-store fixture construction, same one supervisor; receiver binds Broker/Index/operator Origin from verified account context.
+- crates/bbt-mux/src/store/events.rs, bus.rs, index.rs — optional signed issued_by metadata, legacy ordinary bytes unchanged; record updates may carry an unchanged old label, but new signatures stamp the current verified label; arbitrary replacements refuse.
+- crates/bboxy450-term/src/cockpit.rs:134,549 — explicit Config selector and pre-supervisor directory preparation; child logic owns account bootstrap and preserves recovery-before-Ready.
+- crates/bboxy450-term/src/e2e_night.rs:327 — each promise and record writer selects its private file account, including production-profile code; no memory override or enrollment step.
+- crates/bboxy450-term/src/documents.rs:80 and scene.rs:28 — supplied provenance and native frame display test-account label; metadata does not become a verification claim.
+- crates/bbt-mux/src/provenance/detector.rs:676 — unchanged clipped refs do not republish warning; first and changed retained snapshots still warn; existing bounds and signing unchanged.
+
+Deterministic acceptance:
+- Current-source canonical T5 (source db4f79ff6b35d154b8302e3ea4793262ad8e7d37, binary sha256 1ad9c8618f0173782cdd678260d4cf5641efe0c971d7f3278dccf32b28d6c452) — script EXIT 0, real logic SIGKILL followed by reconnect, same PTY and retained screen. Exact canonical script/lib digests are recorded in u0-t5-final-command.json. Seven other terminal cases are deliberately untested in this focused run, so its night process exits 1. Raw output includes a ctl stdout BrokenPipe diagnostic from a closed pipe consumer; no CLI edit or repeat masked it.
+- Earlier whole terminal night — process EXIT 1 honestly; T2/T3/T4/T5/T6 pass, T1 name-pool assertion fails, T7 script absent, T8 OSC activity assertion fails. All eight e2e records are written with matching test-account run_by/issued_by/authorship labels. No production repository records were written.
+- File-store tests 4/0; account tests now 7/0; real private Session restart+selector 2/0; two-night record writer 1/0; card 1/0; frame 1/0; legacy event-byte attribution 2/0; signed provenance attribution 1/0.
+- Identity library 8/0, one subprocess fixture intentionally ignored in the parent (the parent test invokes it); no native credential operation.
+- Strict workspace/all-target Clippy EXIT 0 after startup fixes and again after the provenance fix. Layering EXIT 0; licences EXIT 0, 24 workspace crates.
+- File/facade Windows and Linux cross-checks EXIT 0; strict Windows file/facade/helper all-target Clippy EXIT 0. Native Windows/Linux execution is unproven.
+- Provenance idle counterexample first EXIT 101 on a repeated signed gap row, then EXIT 0: a private real-Git repo with 130 refs emits zero new index activity for at least 10 seconds, and a retained ref change emits a new warning.
+
+Failures retained:
+- First two-night run EXIT 101 caught stale copied attribution; fixed by receiver stamping unchanged previous-record attribution.
+- Startup boundary repro EXIT 101 caught nested-run rejection and late foreign-issuer failure; both fixed and seven account tests pass.
+- One compile was interrupted at -2 after 288 s of idle shared-cache client; no tests ran. Direct per-command compiler finished the repro build in 22 s. Shared daemon and peers were untouched. Main now clears both wrappers by default.
+- Early type/fixture checks, wrong label verifier, and digest-prefix fixture failures are preserved in u0-file-development.log; their corrected checks are green.
+- Auxiliary cargo fmt --all -- --check returned 1 for inherited formatting plus the initial local test block; local new blocks were formatted, no repository sweep was applied. It is not a claimed passed gate.
+
+Named remainder:
+- This is the approved file-first U0 cut, not the native #280 re-grant or completed five-crate vault extraction. Native macOS/Linux backend extraction and optional real-account automation remain separate.
+- Test account is private file custody, not protection against another process running as the same OS user.
+- Git observer still retains first 128 refs and announces that incomplete view once per detector state; pagination and beyond-window ref coverage remain an existing limitation.
+- Headless T5 does not prove native window layout, focus or scroll restoration; its script states that limit.
+- Exact clean detached gate: sh scripts/ci-local.sh --parity EXIT 0 in 3724.183 s; workspace reported 1281 passed, 0 failed, 24 ignored across 193 harness summaries; strict workspace Clippy and UI-thread lint EXIT 0. Native smoke passed with idle 10.002 s, 0 frames, 0 callbacks. Current catalogue 2144 cases; required geometry 2040/2040 measured, 0 unproven, 0 mismatches; 72 advisory pixel reviews. Fast invariants: 23 checks, 0 failures; 9 slow skipped. Legacy 1664-case replay pixel reviews are explicitly non-gating; current report is authoritative.
+
+Frozen gate evidence: .bboxy/runs/u0-ci.log sha256 711715a44961eb230e08e845ecf4c5dc2347c18ab58e354e90786990bf5e0481; .bboxy/runs/u0-parity-report.json sha256 79ab34bebe55b4d791d4b612a19f198493ee8de4d4e1667b6b45e565c9c6668d. u0-gate-command.json records the exact working tree, source, base, compiler-cache bypass, private target and memory-default environment. Explicit file-account fixtures and canonical T5 override that default with their own private file account; canonical T5 did not use memory custody. u0-workspace-summary.json counts only the workspace portion before smoke.
+
+Source preservation: u0-pinned-range-diff.log reports all seven patches unchanged (=) on the explicit pre-gate rebase. u0-final-source-blobs.log reports git diff --exit-code db4f79ff..423fe5d4 across custody, identity, messaging, logic, Index and app selection/views EXIT 0, so the focused T5 source matches the frozen source in those paths. The separate detector-only idle fix does not change identity.
+
+Main moved while the gate ran; the source remains frozen per repository rule. Latest observed origin/main bd29abc353af6b069c8169bd24009ebbad5184e3 includes:
+bd29abc3 Merge ctl record write, task create and seat restart (Seraph)
+4d77b0ff seat-restart: full ci-local --parity gate logs for f4abb831 and bf5d020a (all gates passed)
+909957f4 #315: identity status and unlock are admitted under a custody hold on the door capability plus the journal-validated device ID, audited first with signature pending; nothing else is
+40dafd1b Gate slots: a third slot while at least 25 GiB is free
+bf5d020a ctl seat restart: a seat's next process generation on demand
+8b7377ac record-write: carry the e2e-night 88b9e588 gate log (all gates passed), sha256 c399776986f4cabb2f7ba41acc9b44d3fab51abea8215b342a33fbea658e06ad
+82797852 ctl record write and task create: the night writes its e2e records and opens fix tasks
+Merged-tree checks belong to the Oracle; this artifact has not been rebased or merged after its gate.
+
+Resource disposition: own external gate target deleted by the wrapper immediately at exit; own dev target already deleted. Self-service slot 2 released with actual exit 0. No operator input, OS desktop input, native credential access, publish or merge was required.
