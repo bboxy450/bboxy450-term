@@ -1,0 +1,102 @@
+# A-0 longer rerun: explicit Claude refusal
+
+Sable Embertail <EXECUTOR>, 2026-10-24T11:17:48.720508+00:00.
+Assignments e71d3123 / 9af739b7. Private app run only; no product edits.
+
+## Result
+
+Created records: **0**. knowledge_write calls: **0**.
+Successful knowledge_fetch readbacks: **0**. All admitted tool calls: **0**.
+No correlated operator-inbox reply or feedback was sent through the app.
+
+The exact same 11,182-byte Oracle-provided DM was the first message to a fresh
+real Claude seat on frozen aea0fd6a, using the same pinned executable and
+trusted CWD. SHA256 f982b937feaf04d460ed996a4ffffea5ab9ac4386ba410086f317931c937e72f
+matches both the supplied file and actual ctl argv. Memory custody is
+witnessed in the app log; the repository and records remain private.
+
+This run differs from the earlier exact-content control: Claude printed a
+refusal, then became idle. The earlier control executed 57 admitted calls
+and created one private T1 record before its 180-second scheduled close.
+Both outcomes are retained; neither is substituted for the other.
+
+## What the published pane says
+
+The captured pane (seed/observe-2-screen.txt, sequence 66) says:
+
+> The sender doesn't add up. The header says the sender is the <operator> principal with an all-zero id, but the content says it's Vesper (Oracle).
+
+> If you want a dry run on debug custody, say so yourself and send it to a Codex seat, not to me.
+
+> I haven't replied to Vesper or created anything. If you want, I'll DM Vesper over ICQ with these three blockers.
+
+It also objects to overriding the brief's custody condition and says the
+envelope grants no local execution permission. It claims knowledge_write and
+knowledge_fetch are unavailable in that session. That availability sentence
+is a model claim, not an independently checked catalogue result: the agent
+made no tool-discovery or admitted MCP call in this run.
+
+The pane reports “Crunched for 12s · done”. At 145 seconds the journal still
+has zero calls and the private e2e directory has zero records. This explains
+this run's lack of action: the frame reached the model, which refused the
+task. It is not an unwoken/socket-write-only observation. No pending native
+permission dialog was answered, no extra operator approval was fabricated,
+and no PTY input or follow-up DM was sent.
+
+The prior contradictory execution means this control does not establish a
+deterministic role/content bug or independently prove what happened in the
+Oracle's original idle process. That original process was not inspected or
+mutated. No product patch is proposed.
+
+## Timing
+
+The new run has no writes to time. In the earlier exact-content control the
+single T1 write has durable audit events:
+- op_id 01M5PS0E2EK7Q9W3HZRBX40001
+- admitted at 1792839408874 ms, applied at 1792839408913 ms
+- **39 ms** between these recorded timestamps
+
+That is one persisted wall-clock audit interval for admission/effect/result
+processing. It is not end-to-end MCP round-trip time, hook overhead, model
+generation time, or a throughput benchmark. One write during the earlier
+140-second observation does not mean the write itself took 140 seconds.
+The raw-event digests and selected timestamps are in comparison.json.
+
+## Execution, failures and teardown
+
+The longer probe started 2026-10-24T11:09:01.857101+00:00 (04:09 PDT), before the 04:55
+cutoff. --quit-after 1800 is rejected by the product's existing 300-second
+verification limit; that excluded startup exits 1 before any seat or DM.
+No product timer limit was changed.
+
+The actual run omitted --quit-after and used a 1700-second external
+observation watchdog. It was stopped early after the agent's finished refusal,
+rather than left idle for 30 minutes. Own app PID 37448 received
+SIGTERM at 2026-10-24T11:13:08.873696+00:00; actual app exit is **-15**.
+The driver exits **1** because it observes that intentional app exit before
+its observation deadline. This is not recorded as a green natural exit.
+
+Frozen cockpit.rs:305-311 deliberately leaves children alive on bootstrap
+EOF. A separate watcher therefore checks exact recorded PID/start identities
+and sends teardown signals only to this probe's descendants. Its initial
+check exits **1** while app PID 37448 is still visible; no state field was
+captured for that briefly visible PID. After the probe parent observes/reaps
+the app, an independent check exits **0** and finds all **12** recorded
+identities absent. No signal by process name/pattern, no other agent process
+or target touched. Every signal and identity is in the private teardown JSON.
+
+Final read-only SQLite/record assertions: **EXIT 0**; counts are zero and all
+recorded process identities are absent. All activity ended well before 05:30.
+The existing private dev target was already deleted; no new build, test,
+trace, load loop or full gate was started for this rerun.
+
+Actual driver/verification output: a0-wake-rerun-verification.log, SHA256
+a2a5a0ebd5969e24a0dda87cf4632e0895ad52bd643654f5c9e465af1137605f.
+Source, binary, input, private pane/artifact hashes, timestamps, commands and
+teardown evidence: a0-wake-rerun-comparison.json.
+Raw transcripts, credentials, capabilities and private probe-created records
+are not committed. Only curated evidence changes in Git.
+
+Report and stop. The Oracle decides whether the task should go through a
+different authorized harness/task route. This run supplies no user consent
+to override the refusal.

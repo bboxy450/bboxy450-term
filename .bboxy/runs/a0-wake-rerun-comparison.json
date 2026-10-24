@@ -1,0 +1,531 @@
+{
+  "assignments": [
+    "e71d3123-84ad-4f74-9f41-f03aa11cc0e7",
+    "9af739b7-95a6-48b5-94c0-165f89d66f86"
+  ],
+  "facts": {
+    "run": "seed",
+    "source": "aea0fd6a78c7582912b025766b0d6e8ecf07f283",
+    "binary_sha256": "a051e0e792e6f6f6185cb694eef98f5d33ce627625bfd5a1e690a39a0d85e61f",
+    "body_bytes": 11182,
+    "body_sha256": "f982b937feaf04d460ed996a4ffffea5ab9ac4386ba410086f317931c937e72f",
+    "actual_ctl_dm_byte_equal_to_oracle_file": true,
+    "started_utc": "2026-10-24T11:09:01.857101+00:00",
+    "ended_utc": "2026-10-24T11:13:10.569453+00:00",
+    "app_elapsed_seconds": 248.71482429100433,
+    "app_pid": 37448,
+    "app_exit": -15,
+    "driver_status": "probe_error",
+    "driver_error": "AssertionError(('app exited before observation end', -15))",
+    "created_records": 0,
+    "knowledge_fetch_calls": 0,
+    "successful_knowledge_fetch_readbacks": 0,
+    "knowledge_write_calls": 0,
+    "all_admitted_tool_calls": 0,
+    "operator_inbox_reply": null,
+    "agent_feedback_via_app": null,
+    "receipt": {
+      "agent": null,
+      "arrivals": [
+        {
+          "batch_ms": 0,
+          "coalesce": false,
+          "links": [],
+          "path": "seats/01M5PSK3982GV7RWCT65WAS04V/inbox",
+          "paused": false
+        }
+      ],
+      "attempt": "01M5PSK4F7CEH4JKRCZ0J3G092",
+      "batch_key": "seats/01M5PSK3982GV7RWCT65WAS04V/inbox",
+      "class": "oracle",
+      "eligible_ms": 1792840143240,
+      "evidence": "native-written",
+      "held": null,
+      "message": "01M5PSK3FCES8P0FW65S9M467F",
+      "message_sequence": 1,
+      "native_id": null,
+      "note": "frame written; receiver/model acceptance unverified",
+      "received_ms": 1792840142335,
+      "recipient": "01M5PSK3982GV7RWCT65WAS04V",
+      "relayed_via_main": false,
+      "sender": "00000000000000000000000000"
+    },
+    "stop": {
+      "reason": "agent finished with explicit refusal; zero MCP calls/records; no operator approval supplied",
+      "recorded_app_pid": 37448,
+      "verified_command": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/bin/bboxy450-term --ctl --run-dir /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/run",
+      "signal": "SIGTERM",
+      "at_utc": "2026-10-24T11:13:08.873696+00:00"
+    },
+    "teardown": {
+      "app_pid": 37448,
+      "app_identity": [
+        "Sat",
+        "Oct",
+        "24",
+        "04:09:01",
+        "2026",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/bin/bboxy450-term"
+      ],
+      "owned_identities": [
+        {
+          "pid": 37568,
+          "ppid": 37477,
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:09:03",
+            "2026",
+            "node"
+          ]
+        },
+        {
+          "pid": 37569,
+          "ppid": 37477,
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:09:03",
+            "2026",
+            "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/bin/bboxy450-term"
+          ]
+        },
+        {
+          "pid": 37477,
+          "ppid": 37449,
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:09:02",
+            "2026",
+            "claude"
+          ]
+        },
+        {
+          "pid": 37448,
+          "ppid": 37447,
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:09:01",
+            "2026",
+            "<defunct>"
+          ]
+        },
+        {
+          "pid": 37449,
+          "ppid": 1,
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:09:01",
+            "2026",
+            "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/bin/bboxy450-term"
+          ]
+        },
+        {
+          "pid": 37450,
+          "ppid": 1,
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:09:01",
+            "2026",
+            "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/bin/bboxy450-term"
+          ]
+        },
+        {
+          "pid": 37567,
+          "ppid": 37477,
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:09:03",
+            "2026",
+            "/Users/feral/.cargo/bin/paperhands"
+          ]
+        },
+        {
+          "pid": 41637,
+          "ppid": 37450,
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:11:43",
+            "2026",
+            "(git-no-claude-co)"
+          ]
+        },
+        {
+          "pid": 41664,
+          "ppid": 41662,
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:11:45",
+            "2026",
+            "(git)"
+          ]
+        },
+        {
+          "pid": 41662,
+          "ppid": 37450,
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:11:45",
+            "2026",
+            "(git-no-claude-co)"
+          ]
+        },
+        {
+          "pid": 41687,
+          "ppid": 37450,
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:11:47",
+            "2026",
+            "(git)"
+          ]
+        },
+        {
+          "pid": 41734,
+          "ppid": 37450,
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:11:49",
+            "2026",
+            "(git)"
+          ]
+        }
+      ],
+      "signals": [
+        {
+          "pid": 37569,
+          "signal": "SIGTERM",
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:09:03",
+            "2026",
+            "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/bin/bboxy450-term"
+          ],
+          "at_utc": "2026-10-24T11:13:09.279044+00:00"
+        },
+        {
+          "pid": 37568,
+          "signal": "SIGTERM",
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:09:03",
+            "2026",
+            "node"
+          ],
+          "at_utc": "2026-10-24T11:13:09.318770+00:00"
+        },
+        {
+          "pid": 37567,
+          "signal": "SIGTERM",
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:09:03",
+            "2026",
+            "/Users/feral/.cargo/bin/paperhands"
+          ],
+          "at_utc": "2026-10-24T11:13:09.360336+00:00"
+        },
+        {
+          "pid": 37477,
+          "signal": "SIGTERM",
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:09:02",
+            "2026",
+            "claude"
+          ],
+          "at_utc": "2026-10-24T11:13:09.395961+00:00"
+        },
+        {
+          "pid": 37450,
+          "signal": "SIGTERM",
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:09:01",
+            "2026",
+            "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/bin/bboxy450-term"
+          ],
+          "at_utc": "2026-10-24T11:13:09.434768+00:00"
+        },
+        {
+          "pid": 37449,
+          "signal": "SIGTERM",
+          "identity": [
+            "Sat",
+            "Oct",
+            "24",
+            "04:09:01",
+            "2026",
+            "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/bin/bboxy450-term"
+          ],
+          "at_utc": "2026-10-24T11:13:09.489698+00:00"
+        }
+      ],
+      "remaining_matching_identities": [
+        37448
+      ],
+      "ended_utc": "2026-10-24T11:13:10.548814+00:00"
+    },
+    "post_reap_check": {
+      "at_utc": "2026-10-24T11:14:36.059519+00:00",
+      "matching_identities_remaining": [],
+      "recorded_identity_count": 12,
+      "initial_teardown_observer_exit": 1,
+      "initial_teardown_remaining": [
+        37448
+      ],
+      "resolution": "after the probe parent observed/reaped its app, a fresh identity check finds all absent; no state field was captured for the briefly visible app PID"
+    },
+    "prior_T1_write_timing": {
+      "events": [
+        {
+          "seq": 17,
+          "ts_ms": 1792839408874,
+          "op_id": "01M5PS0E2EK7Q9W3HZRBX40001",
+          "outcome": "admitted",
+          "event_blob_sha256": "190b140cd8ee4c9e87dedc1ae7baf8ec94cf48fcd714bdcf7933375494b850fa"
+        },
+        {
+          "seq": 18,
+          "ts_ms": 1792839408913,
+          "op_id": "01M5PS0E2EK7Q9W3HZRBX40001",
+          "outcome": "applied",
+          "event_blob_sha256": "d29390fa88abadc9065c48d603f26aecfab59ef48c567f81577d19e0208420eb"
+        }
+      ],
+      "admission_to_applied_ms": 39,
+      "scope": "persisted wall-clock millisecond audit gap; not end-to-end MCP latency or model generation time; one sample from the earlier interrupted run"
+    }
+  },
+  "commands": [
+    {
+      "id": "13a0c13a02c34ccd8eec7135e4ca3efb",
+      "argv": [
+        "python3",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-a0-30min.py",
+        "a0",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/original-dm.txt"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T11:07:08.190779+00:00",
+      "pid": 33652,
+      "exit": 1,
+      "elapsed_seconds": 0.27351883304072544,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/cmd-13a0c13a02c34ccd8eec7135e4ca3efb.log",
+      "sha256": "1dc00927380423846802fe95aa9c0fc021fab0c67efe344c1ec2318a702ef1d4"
+    },
+    {
+      "id": "ead1a71b5d6e4e758cac99920ba16c72",
+      "argv": [
+        "python3",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-a0-watchdog.py",
+        "seed",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/original-dm.txt"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T11:09:01.684480+00:00",
+      "pid": 37447,
+      "exit": 1,
+      "elapsed_seconds": 248.92508416599594,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/cmd-ead1a71b5d6e4e758cac99920ba16c72.log",
+      "sha256": "42daa6ad356c82bd1da450abd0e3fb9f9788fba3be7c8a7e2f4acbcd80d02709"
+    },
+    {
+      "id": "33a2c4e3a7c74350985aea50e03f0e43",
+      "argv": [
+        "python3",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/verify-a0.py"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T11:16:15.379405+00:00",
+      "pid": 48741,
+      "exit": 0,
+      "elapsed_seconds": 0.04007149999961257,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/cmd-33a2c4e3a7c74350985aea50e03f0e43.log",
+      "sha256": "77fd6bff6164e5f86fce7f2fd534d3129f0e36828c6330c855712dab95085147"
+    }
+  ],
+  "teardown_command": {
+    "argv": [
+      "python3",
+      "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/teardown-seed.py"
+    ],
+    "tool_observed_exit": 1,
+    "reason": "initial post-signal check still observed the app PID; the parent subsequently reaped it and a fresh check verifies all 12 identities absent",
+    "facts": {
+      "at_utc": "2026-10-24T11:14:36.059519+00:00",
+      "matching_identities_remaining": [],
+      "recorded_identity_count": 12,
+      "initial_teardown_observer_exit": 1,
+      "initial_teardown_remaining": [
+        37448
+      ],
+      "resolution": "after the probe parent observed/reaped its app, a fresh identity check finds all absent; no state field was captured for the briefly visible app PID"
+    }
+  },
+  "private_artifacts": [
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/a0/result.json",
+      "bytes": 12433,
+      "sha256": "0fce80b3bc39597eeb08d53873c20f216910b740007b87b066af8e2c8d00836a"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/a0/owned-processes.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/a0/app.log",
+      "bytes": 55,
+      "sha256": "430b20e515088a9edd00a19b33f59283ac1730c8c05a2760de9541eb1e8958e6"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/post-reap-check.json",
+      "bytes": 379,
+      "sha256": "d03bc24f26c9e714a0d26e0ca3f48c760bfcae77f589b2bceed8c7cee4395d73"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/decision-stop.json",
+      "bytes": 430,
+      "sha256": "16bc71e66371e09e6dc276a486a8ddf0984402ba6c8f24386de9a8b16c4fc232"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/observe-2-seat.json",
+      "bytes": 426,
+      "sha256": "5134260bb19e1e58ff84a60e29d563c382f67a8fcda9ee1addc4c324e82f4c37"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/result.json",
+      "bytes": 26653,
+      "sha256": "18bc99af4df8d3c5e9a4f5656e71f3c5dfd217ca40a055c9ec580d8fce22b8a2"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/final-facts.json",
+      "bytes": 8229,
+      "sha256": "ae2747c11e4429027f06ec43119258d31d10af23bca8fbbf45bd421142f767f3"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/observe-2-screen-summary.json",
+      "bytes": 300,
+      "sha256": "b707e8b016a838e9e4e7a5b756fe9a5f4293bf98b1f6e70229947a8f78f82c68"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/observe-2-screen.txt",
+      "bytes": 2233,
+      "sha256": "32dda48c58db0b2e647ef75351912f34bccf546d87d52ab4c48ccd13f97b3d6b"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/owned-processes.json",
+      "bytes": 2728,
+      "sha256": "dcf9a3e314783ac7e05b289f3a4e85e8a209562eba75bbe58c01eecf29a3d96e"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/observe-1-screen-summary.json",
+      "bytes": 300,
+      "sha256": "30a5dad9b4b5ec6f6b22833ae6e9afec7fc9bb6d5fd837367fed943f6a8e464b"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/ctl.json",
+      "bytes": 725732,
+      "sha256": "f86cde81256e433d9632bdc356cb4b6b9c289aa06b4b2dd2229c77c2c131be58"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/observe-2-screen.json",
+      "bytes": 198573,
+      "sha256": "a2085c4ae63f16b64bd512490718797ccfd8d296631b69e95e324ca6d2ca5741"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/observe-1-screen.txt",
+      "bytes": 2246,
+      "sha256": "21c8e175087a69a49a3a61fc15028c49d960d3d06c9d7850c601f1679f8d3a46"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/observe-2-registration.json",
+      "bytes": 277,
+      "sha256": "6b6ffdb1148b76ed2f14d4367eab05e8067d7cc8701c30554387299324a9603d"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/observe-1-registration.json",
+      "bytes": 277,
+      "sha256": "6b6ffdb1148b76ed2f14d4367eab05e8067d7cc8701c30554387299324a9603d"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/app.log",
+      "bytes": 37780,
+      "sha256": "380980e4816b8b0480f5c8d31186fd655158ca3a9c365976b2b8790ed85d21d7"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/observe-1-seat.json",
+      "bytes": 428,
+      "sha256": "9895a539745ca8ee7f7dcb571549b097f722b5aa8fb47be4bb0bc01f388c1d22"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/observe-1-screen.json",
+      "bytes": 198611,
+      "sha256": "f0a8903d2d70269305245bda63c0dba6e7e1d8f8acd5570a9790d9a224eb3f8d"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/seed/teardown.json",
+      "bytes": 4518,
+      "sha256": "754f8924c664cade22c18be386ca6a0d7411bad3c8e5a38dee643d4339c27977"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-a0-30min.py",
+      "bytes": 9709,
+      "sha256": "faf29e36aebdb7528af7bc85287be2f343e7245d8eb208dc0aff5b3a0d44e313"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-a0-watchdog.py",
+      "bytes": 10235,
+      "sha256": "a915cfd26a0cada19b7a14cd424f3cc2496c8d397f6732bcc1f1829d935082cb"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/teardown-seed.py",
+      "bytes": 2735,
+      "sha256": "5f438d729539634137a33c660b1697581532e96b20856fb084d2dc5f3a6c15a2"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/verify-a0.py",
+      "bytes": 2757,
+      "sha256": "738b2ce731a05798183245ed1c691620886e09f37e19463e2e9f64e64b6b52ec"
+    }
+  ],
+  "verification_sha256": "a2a5a0ebd5969e24a0dda87cf4632e0895ad52bd643654f5c9e465af1137605f",
+  "recorded_utc": "2026-10-24T11:17:48.720508+00:00",
+  "preceding_control_commits": [
+    "e73bd85b722ff168ee95a17f1d6ab13d3b148ae6",
+    "51709755"
+  ]
+}
