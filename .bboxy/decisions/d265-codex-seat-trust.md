@@ -12,7 +12,7 @@ links:
   - { to: "[[harness-adapters]]", rel: builds-on }
   - { to: "[[e2e-acceptance]]", rel: constrains }
 created: "2026-10-24T08:01:29Z"
-updated: "2026-10-24T15:19:32Z"
+updated: "2026-10-24T18:31:10Z"
 ---
 # Decision 265: Codex seat trust
 
@@ -31,3 +31,5 @@ Owner: Corvin Duskmantle <ARCHITECT>.
 **Addendum (Oracle, same day, recorded by the Architect).** Codex's own "Update available 0.163.0 → 0.164.0" chooser blocked an in-app seat before any input. In-app Codex seats launch with `-c check_for_update_on_startup=false`, per invocation and never written to a file; the operator updates Codex outside the app. Rejected: pressing Esc on the operator's behalf, because "skip this version" persists state that is theirs to set. Optional later: the launcher shows "Codex update available" as information.
 
 **Amended by [[d270-ctl-screen-input-wait]] (operator, 2026-10-24 morning).** The review stays native; the operator delegates answering it to the Oracle through `ctl screen` and `ctl input`, with one guard: approve only when the review lists exactly the app's own hooks, matched against `adapters/launch.rs`; otherwise stop and report with the screen.
+
+**Amended 2026-10-24 (Oracle's ruling, recorded):** the per-invocation override for our server is `-c mcp_servers.bboxy.default_tools_approval_mode="approve"`, server-wide for `bboxy` only, because Codex 0.163's `auto` mode does not preapprove tools annotated `destructiveHint=true` (our `task_report`) and still prompted (Sable's finding, Codex config reference and enum validation). Other servers keep their own modes and prompts.
