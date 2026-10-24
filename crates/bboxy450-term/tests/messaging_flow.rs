@@ -75,7 +75,7 @@ impl Fixture {
         let own = SeatRecord::new(Ulid::new(), Ulid::new(), "Actual executor", "zsh");
         let task = Ulid::new();
         let task_path = format!(".bboxy/tasks/{task}.md");
-        std::fs::write(repository.join(&task_path), format!("---\nid: {task}\ntype: task\ntitle: Owned UI fixture\nstatus: open\nverify: 'true'\n---\nDo the fixture work.\n")).unwrap();
+        std::fs::write(repository.join(&task_path), format!("---\nid: {task}\ntype: task\nnumber: 1\ntitle: Owned UI fixture\nstatus: open\nverify: 'true'\n---\nDo the fixture work.\n")).unwrap();
         let supervisor = Supervisor::start(bbt_mux::Config {
             journal_directory: Some(root.path().join("supervisor-journal")),
             ..Default::default()

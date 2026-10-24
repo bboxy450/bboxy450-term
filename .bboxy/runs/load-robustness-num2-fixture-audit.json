@@ -1,0 +1,108 @@
+{
+  "authorization": "95995fc4-c7aa-4150-8b6e-645f88dc0a3c",
+  "parent_source": "1ffbc35af5aeead782defc5399fcb4fce928239f",
+  "method": [
+    "rg type: across all Rust files in crates, then classify tests/cfg(test) contexts",
+    "rg JSON type metadata/serde_yaml/raw .md writers to distinguish allocation from direct writes",
+    "rg typed Markdown frontmatter in crates/*.md found no external raw record fixture matches",
+    "read each unnumbered match and intentional-invalid/allocator context"
+  ],
+  "changes": {
+    "crates/bboxy450-term/tests/messaging_flow.rs": [
+      {
+        "line": 78,
+        "fixture": "fresh app task record",
+        "number": 1,
+        "root": "Fixture::new TempDir; sole record"
+      }
+    ],
+    "crates/bbt-mux/tests/logic.rs": [
+      {
+        "line": 201,
+        "fixture": "watched .bboxy/task.md",
+        "number": 1,
+        "root": "fresh test repository; sole record"
+      }
+    ],
+    "crates/bbt-mux/tests/storage_bus_index.rs": [
+      {
+        "line": 242,
+        "fixture": "numbered-links source.md",
+        "number": 48,
+        "root": "initial positive phase has decision47; later duplicate47 is intentional"
+      },
+      {
+        "line": 285,
+        "fixture": "annotated-link spec.md",
+        "number": 1,
+        "root": "separate TempDir; task.md uses2"
+      },
+      {
+        "line": 288,
+        "fixture": "annotated-link task.md",
+        "number": 2,
+        "root": "separate TempDir; spec.md uses1"
+      }
+    ]
+  },
+  "source_sha256": {
+    "crates/bboxy450-term/tests/messaging_flow.rs": "001a87225dca4bb04e65212a148eee00bb31ceb4d2960796d23662348e0be757",
+    "crates/bbt-mux/tests/logic.rs": "fab8046a679e967ec2958416b0ef22024aaf93dbe7c6e93ad06c297647f7ef50",
+    "crates/bbt-mux/tests/storage_bus_index.rs": "289ce112192fa8c6172b4445068cbe5a50fdc1671b582f86c4dac5db024d18a3"
+  },
+  "already_repaired": {
+    "file": "crates/bboxy450-term/src/live.rs",
+    "line": 2221,
+    "number": 1
+  },
+  "retained_cases": [
+    {
+      "paths": [
+        "crates/bbt-mux/tests/mcp.rs:62",
+        "crates/bbt-mux/tests/mcp.rs:2170",
+        "crates/bbt-mux/tests/mcp.rs:3218",
+        "crates/bbt-mux/tests/storage_bus_index.rs:444",
+        "crates/bbt-mux/tests/storage_bus_index.rs:666"
+      ],
+      "reason": "raw positive fixtures already numbered"
+    },
+    {
+      "paths": [
+        "crates/bbt-mux/tests/storage_bus_index.rs:260",
+        "crates/bbt-mux/tests/storage_bus_index.rs:511",
+        "crates/bbt-mux/tests/storage_bus_index.rs:563",
+        "crates/bbt-mux/tests/mcp.rs:3265",
+        "crates/bbt-doc/tests/corpus.rs:209",
+        "crates/bbt-doc/tests/markdown.rs:116"
+      ],
+      "reason": "intentional duplicate/missing/malformed metadata and diagnostic-location coverage"
+    },
+    {
+      "paths": [
+        "crates/bbt-mux/src/index.rs:924",
+        "crates/bbt-mux/src/index.rs:1000",
+        "crates/bbt-mux/src/provenance/artifacts.rs:356",
+        "crates/bbt-mux/tests/storage_bus_index.rs:335"
+      ],
+      "reason": "Index apply/write allocates numbers; not raw writers; omission exercises allocation"
+    },
+    {
+      "paths": [
+        "crates/bbt-doc/tests/layout.rs:156",
+        "crates/bbt-doc/tests/layout.rs:196",
+        "crates/bbt-doc/tests/layout.rs:218",
+        "crates/bboxybook/src/documents/repository.rs:410"
+      ],
+      "reason": "generic bbt_doc::parse/layout inputs, not Index record writers; optional absence of number remains supported and explicitly tested in markdown.rs"
+    },
+    {
+      "paths": [
+        "crates/bbt-mux/src/index.rs:1048",
+        "crates/bbt-mux/src/index.rs:1098",
+        "crates/bbt-mux/src/index.rs:1156"
+      ],
+      "reason": "arbitrary plain-byte watcher/IO fixtures, no typed record frontmatter; preserve byte/length assertions"
+    }
+  ],
+  "validation_pending": "Full workspace cargo test --no-fail-fast, then normal CI slot after green. No product, assertion or deadline changes."
+}

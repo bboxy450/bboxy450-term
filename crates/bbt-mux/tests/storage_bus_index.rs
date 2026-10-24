@@ -239,7 +239,7 @@ fn numbered_links_bind_graph_edges_only_when_the_number_is_unique() {
     .unwrap();
     std::fs::write(
         root.join("source.md"),
-        "---\ntype: note\n---\n[[#47\\|decision]]{evidence:2}\n",
+        "---\ntype: note\nnumber: 48\n---\n[[#47\\|decision]]{evidence:2}\n",
     )
     .unwrap();
     let mut index = Index::open(
@@ -282,10 +282,10 @@ fn index_resolves_annotated_links_retains_broken_frontmatter_and_rebuilds_from_s
     let id = Ulid::new();
     std::fs::write(
         root.join("spec.md"),
-        format!("---\nid: {id}\ntype: spec\n---\nA spec"),
+        format!("---\nid: {id}\ntype: spec\nnumber: 1\n---\nA spec"),
     )
     .unwrap();
-    std::fs::write(root.join("task.md"),"---\ntype: task\nlinks:\n  - {to: '[[spec]]', rel: depends}\n---\n[[spec|Display name]]{evidence:2} [[spec]]").unwrap();
+    std::fs::write(root.join("task.md"),"---\ntype: task\nnumber: 2\nlinks:\n  - {to: '[[spec]]', rel: depends}\n---\n[[spec|Display name]]{evidence:2} [[spec]]").unwrap();
     std::fs::write(root.join("broken.md"), "---\nx: [\n---\nbroken").unwrap();
     let events = index.scan().unwrap();
     assert_eq!(events.len(), 6);
