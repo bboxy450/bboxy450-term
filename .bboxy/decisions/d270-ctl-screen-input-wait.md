@@ -14,7 +14,7 @@ links:
   - { to: "[[d269-ctl-door-and-issuer]]", rel: builds-on }
   - { to: "[[c1-live-seats]]", rel: builds-on }
 created: "2026-10-24T15:19:32Z"
-updated: "2026-10-24T15:19:32Z"
+updated: "2026-10-24T15:22:15Z"
 ---
 # Decision 270: ctl inspects and drives seats
 
@@ -24,7 +24,7 @@ Decided by the operator on the morning of 2026-10-24, when the Codex trust promp
 
 **No new authority.** The operator can already read every pane and type into every pane in the window; `ctl` reaches the same two things through the same actions. **The no-desktop-driving rule is unchanged**: this is our own PTY inside our own app, never the operator's desktop, never another application, never `osascript`.
 
-**#265 amended: delegated approval with one guard.** Codex's native hook review stays, and the operator now delegates answering it to the Oracle through `ctl screen` and `ctl input`. The guard: the Oracle approves only when the review on screen lists **exactly the app's own hooks**, matched against what the launch overlay wrote (`adapters/launch.rs`), and otherwise stops and reports with the screen. The same shape applies to any native prompt a harness raises on launch: read it, match it against what we installed, answer only an exact match, report everything else.
+**#265 amended: delegated approval with one guard.** Codex's native hook review stays, and the operator now delegates answering it to the Oracle through `ctl screen` and `ctl input`. The guard: the Oracle approves only when the review on screen lists **exactly the app's own hooks**, matched against what the launch overlay wrote (`adapters/launch.rs`), and otherwise stops and reports with the screen; the approved list is written to the run log and the approval is journaled like every `ctl input` (Seraph's addition, same day). The same shape applies to any native prompt a harness raises on launch: read it, match it against what we installed, answer only an exact match, report everything else.
 
 **The e2e consequence.** In-app testers can be driven and inspected end to end from `ctl`: spawned, delegated to, watched by screen, typed at when a harness prompt stands in the way, and waited on. The unattended night needs no human at the keyboard and no desktop automation.
 
