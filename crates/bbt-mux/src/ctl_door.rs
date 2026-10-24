@@ -31,14 +31,24 @@ pub struct Peers {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Admit {
     Door(Door),
-    Refused,
+    /// Refused, with the reason the peer reads.
+    Refused(&'static str),
 }
 
-/// Classifies a connecting peer by its pid. An unknown pid is refused: with the door open,
-/// a peer we cannot place does not get the operator's hand.
+/// The refusal for a peer whose ancestry cannot be placed: no pid, or a parent chain that
+/// does not reach the root within the walk.
+pub const UNPLACED: &str = "ctl refused: this process's ancestry could not be placed";
+
+/// Classifies a connecting peer by its pid. A peer we cannot place (no pid, or a chain that
+/// does not reach the root within [`MAX_DEPTH`]) is refused: with the door open, an
+/// unplaced peer does not get the operator's hand.
 pub(crate) fn classify(peer: Option<i32>, peers: Peers) -> Admit {
+    classify_with(peer, peers, parent)
+}
+
+fn classify_with(peer: Option<i32>, peers: Peers, parent: impl Fn(u32) -> Option<u32>) -> Admit {
     let Some(pid) = peer.and_then(|pid| u32::try_from(pid).ok()) else {
-        return Admit::Refused;
+        return Admit::Refused(UNPLACED);
     };
     if pid == peers.gui {
         return Admit::Door(Door::Gui);
@@ -46,14 +56,14 @@ pub(crate) fn classify(peer: Option<i32>, peers: Peers) -> Admit {
     let mut at = pid;
     for _ in 0..MAX_DEPTH {
         if at == peers.supervisor {
-            return Admit::Refused;
+            return Admit::Refused(REFUSAL);
         }
         match parent(at) {
             Some(up) if up != at && up != 0 => at = up,
-            _ => break,
+            _ => return Admit::Door(Door::Ctl),
         }
     }
-    Admit::Door(Door::Ctl)
+    Admit::Refused(UNPLACED)
 }
 
 /// The parent of `pid`, if the system will say.
@@ -177,7 +187,7 @@ mod tests {
                     gui: 0
                 }
             ),
-            Admit::Refused
+            Admit::Refused(REFUSAL)
         );
         // An unrelated chain comes through as ctl; an unknown pid is refused.
         assert_eq!(
@@ -198,7 +208,33 @@ mod tests {
                     gui: 0
                 }
             ),
-            Admit::Refused
+            Admit::Refused(UNPLACED)
+        );
+    }
+
+    #[test]
+    fn a_chain_that_never_reaches_the_root_is_refused() {
+        let peers = Peers {
+            supervisor: u32::MAX,
+            gui: 0,
+        };
+        // An endless chain (each pid's parent is the next) exhausts the walk.
+        assert_eq!(
+            classify_with(Some(2), peers, |pid| Some(pid + 1)),
+            Admit::Refused(UNPLACED)
+        );
+        // The same chain, ending at the root just inside the walk, comes through as ctl.
+        let last = 2 + MAX_DEPTH as u32 - 1;
+        let to_root = |pid: u32| Some(if pid == last { 0 } else { pid + 1 });
+        assert_eq!(
+            classify_with(Some(2), peers, to_root),
+            Admit::Door(Door::Ctl)
+        );
+        // And one link longer is refused.
+        let to_root = |pid: u32| Some(if pid == last + 1 { 0 } else { pid + 1 });
+        assert_eq!(
+            classify_with(Some(2), peers, to_root),
+            Admit::Refused(UNPLACED)
         );
     }
 }

@@ -116,11 +116,11 @@ impl SeatEndpoint {
                             None=>crate::mcp::Door::Gui,
                             Some(policy)=>match crate::ctl_door::classify(stream.peer_cred().ok().and_then(|c|c.pid()),policy) {
                                 crate::ctl_door::Admit::Door(door)=>door,
-                                crate::ctl_door::Admit::Refused=> {
+                                crate::ctl_door::Admit::Refused(reason)=> {
                                     peers.spawn(async move {
                                         let _permit=permit;
                                         let (_read,mut write)=stream.into_split();
-                                        let _=send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:crate::ctl_door::REFUSAL.into()}).await;
+                                        let _=send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:reason.into()}).await;
                                     });
                                     continue;
                                 }
