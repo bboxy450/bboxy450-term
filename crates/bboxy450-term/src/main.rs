@@ -1208,9 +1208,7 @@ impl App {
         self.document_layout = None;
         self.composer_dragging = false;
         self.query_dragging = false;
-        if let Some(window) = &self.window {
-            window.set_ime_allowed(false);
-        }
+        self.sync_text_ime();
         self.drive_document();
         self.request_redraw();
     }
@@ -1225,11 +1223,7 @@ impl App {
             }
         }
         self.document_layout = None;
-        if let Some(window) = &self.window {
-            window.set_ime_allowed(
-                self.launcher.is_some() || self.composer.view.focus || self.reject_focus,
-            );
-        }
+        self.sync_text_ime();
         self.request_redraw();
     }
     fn drive_document(&mut self) {
@@ -1364,10 +1358,11 @@ impl App {
     fn sync_text_ime(&self) {
         if let Some(window) = &self.window {
             window.set_ime_allowed(
-                self.launcher.is_some()
-                    || self.composer.view.focus
-                    || self.reject_focus
-                    || self.settings_ime(),
+                !self.document.open
+                    && (self.launcher.is_some()
+                        || self.composer.view.focus
+                        || self.reject_focus
+                        || self.settings_ime()),
             );
         }
     }
@@ -2484,7 +2479,9 @@ impl App {
                 )
                 .map_err(|e| e.to_string())?,
         );
-        if self.launcher.is_some() || self.composer.view.focus {
+        if !self.document.open
+            && (self.launcher.is_some() || self.composer.view.focus || self.settings_ime())
+        {
             window.set_ime_allowed(true);
             self.logger.write("debug text field open");
         }
@@ -2981,18 +2978,13 @@ impl App {
             );
         }
         if self.document.open {
-            let context = self.live_state.as_ref().map_or_else(
-                || bbt_ui::Context::new(Theme::Dark, bbt_ui::Density::Cozy),
-                |model| bbt_ui::Context::new(model.ui.window.theme, model.ui.window.density),
-            );
+            let context = self.scene.ui_context();
             if self
                 .document_layout
                 .as_ref()
                 .is_none_or(|layout| !layout.matches(logical, context))
             {
-                let layout = self
-                    .scene
-                    .document_layout(logical, &self.document, context)?;
+                let layout = self.scene.document_layout(logical, &self.document)?;
                 self.document.scroll.scroll([0.; 2], layout.regions.extent);
                 self.document_layout = Some(layout);
             }

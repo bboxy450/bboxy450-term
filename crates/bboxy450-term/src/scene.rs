@@ -1227,8 +1227,8 @@ impl Scene {
         &self,
         size: [f32; 2],
         host: &bboxy450_term::documents::Host,
-        ctx: ui::Context,
     ) -> Result<DocumentLayout, String> {
+        let ctx = self.ui_context();
         let document = host.view();
         let shell = ui::modules::document_modal::DocumentModal {
             document,
@@ -1765,6 +1765,43 @@ mod launcher_tests {
             Some(ui::modules::stream_dock::Action::Accept(
                 "real-task-id".into()
             ))
+        );
+    }
+
+    #[test]
+    fn document_uses_effective_context_without_moving_panes_and_keeps_hud_last() {
+        let mut scene = Scene::new();
+        let mut preferences = bboxy450_term::settings::Preferences::default();
+        preferences.appearance.theme = "light".into();
+        preferences.appearance.density = "compact".into();
+        scene.set_appearance(&preferences, ui::Theme::Dark);
+        let size = [1600., 960.];
+        let panes = scene.pane_bounds(&scene.layout(size, false).unwrap());
+        let mut host = bboxy450_term::documents::Host::default();
+        host.show("#44".into());
+        let document = scene.document_layout(size, &host).unwrap();
+        assert_eq!(document.context.theme, ui::Theme::Light);
+        assert_eq!(document.context.density, ui::Density::Compact);
+        assert!(document.matches(size, scene.ui_context()));
+        let hud = crate::perf_hud(
+            bbt_rt::HitchMeter::new(120.).perf_record(std::time::Instant::now(), 0.),
+        );
+        let document_ops = document.paint();
+        let hud_ops = scene.overlay(size, Some(&hud));
+        let foreground =
+            scene.foreground_with_document(size, None, Some(&hud), None, Some(&document));
+        assert_eq!(foreground.len(), document_ops.len() + hud_ops.len());
+        assert_eq!(
+            format!("{:?}", &foreground[..document_ops.len()]),
+            format!("{document_ops:?}")
+        );
+        assert_eq!(
+            format!("{:?}", &foreground[document_ops.len()..]),
+            format!("{hud_ops:?}")
+        );
+        assert_eq!(
+            panes,
+            scene.pane_bounds(&scene.layout(size, false).unwrap())
         );
     }
 
