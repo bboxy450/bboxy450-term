@@ -1651,3 +1651,4 @@ details[open] > summary::before { transform: rotate(90deg); }
 .e2r .e2task.closed { color: var(--fg-dim); text-decoration: line-through; box-shadow: none; }
 .e2r .e2untr { color: var(--c-errored); font-size: var(--t-small); }
 .e2r .e2why { color: var(--fg-dim); }
+.e2e-err { padding: var(--s8) var(--s10); border-radius: var(--r-card); background: color-mix(in srgb, var(--c-errored) 13%, var(--surface)); box-shadow: inset 5px 0 0 var(--c-errored); font-size: var(--t-row); color: var(--fg); }   /* a refused catalogue, never an empty green */

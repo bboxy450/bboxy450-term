@@ -20,6 +20,7 @@ const RECORDS = {
       S2: ['untested'], S3: ['manual', { reason: 'the meter is judged by eye' }], R5: ['fail', { links: [T(342)] }], R6: ['blocked', { reason: BUNDLE }] }[p.id];
     if (p.id === 'S4') return [];                                                    // no record: missing
     if (p.id === 'K3') return [rec(p, i, 'pass'), rec(p, i, 'pass', { number: 400 + i })];          // two records: doubled
+    if (p.id === 'K2') return [rec(p, i, 'passed')];                                                 // not one of the five: invalid
     if (o) return [rec(p, i, o[0], o[1])];
     return [rec(p, i, ['messaging and tasks', 'live feed', 'settings', 'documents', 'records', 'identity', 'performance'].includes(p.group) ? 'untested' : 'pass')];
   }),
@@ -31,6 +32,6 @@ const RECORDS = {
   'all pass': P.map((p, i) => ({ P1: rec(p, i, 'manual', { reason: 'the hitch meter is judged by eye' }), I1: rec(p, i, 'manual', { reason: 'the Keychain prompt needs the operator' }) })[p.id] || rec(p, i, 'pass')),
 };
 Lab.page({ title: 'e2e checklist', wide: true, note: 'The Graph tab\'s acceptance view (spec #258): the 54 promises of §1, parsed, joined to their e2e records. The band says the night at a glance: red when anything is missing, doubled, untested or a fail is untracked; amber when the only fails are tracked by open tasks; green when every promise passes (manual rows are judged by the Oracle and listed). Blocked counts as a fail. Outlined cells are what keeps it red.',
-  states: Object.keys(RECORDS),
-  render(s, body) { body.append(C.e2eChecklist({ promises: P, records: RECORDS[s], tasks: s === 'failures tracked' ? TASKS_AMBER : TASKS })); } });
+  states: [...Object.keys(RECORDS), 'empty catalogue'],
+  render(s, body) { body.append(C.e2eChecklist({ promises: s === 'empty catalogue' ? [] : P, records: RECORDS[s] || [], tasks: s === 'failures tracked' ? TASKS_AMBER : TASKS })); } });
 </script></body></html>
