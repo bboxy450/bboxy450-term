@@ -129,11 +129,58 @@ pub struct Config {
     /// Open the operator's `ctl` door (decision #260): off unless asked for with `--ctl`.
     #[serde(default)]
     pub ctl: bool,
+    /// Explicit throwaway root/device custody, persisted across logic restarts.
+    #[serde(default)]
+    pub test_account: Option<PathBuf>,
 }
 impl Config {
+    /// Parse the selector before any backend opens. Invalid input never falls
+    /// through to the real account's native custody.
+    pub fn test_account_from_args(args: &[String]) -> Result<Option<PathBuf>> {
+        let mut selected = None;
+        for (index, arg) in args.iter().enumerate() {
+            let path = if arg == "--test-account" {
+                args.get(index + 1)
+                    .map(String::as_str)
+                    .ok_or_else(|| invalid("--test-account needs an absolute private directory"))?
+            } else if let Some(path) = arg.strip_prefix("--test-account=") {
+                path
+            } else {
+                if arg.starts_with("--test-account")
+                    || (arg.starts_with("--unattended") && arg != "--unattended")
+                {
+                    return Err(invalid(
+                        "invalid custody selector; use --test-account <absolute private directory>",
+                    ));
+                }
+                continue;
+            };
+            let path = PathBuf::from(path);
+            if selected.is_some()
+                || !path.is_absolute()
+                || path
+                    .components()
+                    .any(|part| matches!(part, std::path::Component::ParentDir))
+            {
+                return Err(invalid(
+                    "--test-account needs one absolute private directory",
+                ));
+            }
+            selected = Some(path);
+        }
+        if args.iter().any(|arg| arg == "--unattended") && selected.is_none() {
+            return Err(invalid(
+                "unattended requires --test-account; no production automation identity is provisioned",
+            ));
+        }
+        Ok(selected)
+    }
     /// Resolve the executable, repository and local control endpoint on IO.
     pub fn discover(run_dir: Option<PathBuf>) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
+        let test_account =
+            Self::test_account_from_args(&std::env::args().skip(1).collect::<Vec<_>>())?;
+        let run_dir = run_dir.or_else(|| test_account.as_ref().map(|root| root.join("run")));
         let socket = match run_dir.as_ref() {
             Some(root) => root.join("mux.sock"),
             None => bbt_mux::transport::default_socket_path()?,
@@ -149,6 +196,7 @@ impl Config {
             repository: std::env::current_dir()?,
             shell_config: std::env::var_os("ZDOTDIR").map(PathBuf::from),
             ctl: false,
+            test_account,
         })
     }
 }
@@ -376,13 +424,23 @@ async fn logic_main() -> Result<()> {
         bootstrap.supervisor.capability,
     )?;
     let run_dir = bootstrap.config.run_dir.clone();
-    let logic = Logic::start_custodied_with_fixtures(
+    let store = bootstrap
+        .config
+        .test_account
+        .as_ref()
+        .map(|directory| {
+            bbt_mux::identity::TestAccount::open(directory, &bootstrap.config.run_dir)
+                .map(|account| account.key_store())
+        })
+        .transpose()?;
+    let logic = Logic::start_custodied_with_fixture_store(
         connection,
         LogicConfig {
             run_dir: bootstrap.config.run_dir,
             repository: bootstrap.config.repository,
             ring: Default::default(),
         },
+        store,
         bbt_rt::handle(),
     )?;
     if bootstrap.recover_seats {
@@ -487,6 +545,9 @@ impl Session {
     /// Spawn both private processes and connect their admitted GUI endpoint.
     pub async fn start(config: Config) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
+        if let Some(directory) = &config.test_account {
+            bbt_mux::identity::TestAccount::prepare_directory(directory)?;
+        }
         let supervisor = start_supervisor(&config).await?;
         let logic = start_logic(&config, &supervisor.ready, false).await?;
         Ok(Self {

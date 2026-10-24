@@ -1,0 +1,14 @@
+{
+  "head": "423fe5d434ca38077c22e0de56493f5f25b7b7e2",
+  "workspace": {
+    "reported_passed": 1281,
+    "reported_failed": 0,
+    "reported_ignored": 24,
+    "harnesses": 193
+  },
+  "native_smoke": {
+    "idle_seconds": 10.002,
+    "frames": 0,
+    "callbacks": 0
+  }
+}

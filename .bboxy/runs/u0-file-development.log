@@ -1,0 +1,1127 @@
+U-0 file-first development evidence; Kestrel Voidwing <EXECUTOR>, 2026-10-24.
+Approved file-first plan: 57ebf9ad-5a58-402c-9f6e-fae03ffa4b5e.
+Base 12d14f568e6df9e7eefe8ca029fdb2a482d341fe; decision #313 label derives from verified root UID and signed run context.
+Real private-process restart preserves the PTY/generation/root/device and later operator spawn.
+File slots4/0; generated account/messages5/0; original event bytes and test labels2/0; signed document/activity1/0; native footer1/0; app selector+restart2/0.
+Strict workspace/all-target Clippy0. Windows kit check+strict Clippy0; Linux kit check0. These are cross-compilation, not native Windows/Linux runtime proof.
+Layering0; licences24 crates0. No full ci-local/parity claimed by this checkpoint; canonical T5 night-runner integration still owed.
+File-first slice: file backend/facade + Windows owner-only permission port. Existing application native Keychain path unchanged; macOS extraction, Linux native dummy and #280 unlock remain later work.
+No operator input, native custody, real root/account or service credentials used by these fixtures. No production automation enrollment.
+Corrected development failures are retained below, not waived: two app fixture API guesses, Windows Result type annotation, the ledger's context-free signature recheck (now receives verified provider context), and the document fixture's normalized sha256: prefix.
+Failed apply_patch context attempts were rejected before mutation; reads of nonexistent guessed paths had no effects.
+All raw component logs below are copied byte-for-byte. Keys and raw peer transcripts are excluded.
+
+RAW COMPONENT account-labels-second.log SHA256 507a111e973748dff840d3c97f1f6768e6d9a70b763815e551897afcc464433c
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 11.26s
+     Running tests/test_account.rs (target/identity-file-dev/debug/deps/test_account-721754a780236359)
+
+running 5 tests
+test a_foreign_nonempty_directory_never_becomes_a_test_identity ... ok
+test a_missing_or_corrupt_root_refuses_without_generating_a_new_identity ... ok
+test generated_root_device_and_verified_grants_survive_reopening ... ok
+test fresh_runs_are_distinct_and_cannot_rebind_an_existing_account ... ok
+test seat_messages_require_the_label_derived_by_the_receiving_account ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+
+
+END RAW COMPONENT account-labels-second.log
+
+RAW COMPONENT account-labels.log SHA256 bf422628f4411e781d12820b3b134cd88659160ca92296d3d0accf51ef28ee82
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 11.96s
+     Running tests/test_account.rs (target/identity-file-dev/debug/deps/test_account-721754a780236359)
+
+running 5 tests
+test a_foreign_nonempty_directory_never_becomes_a_test_identity ... ok
+test a_missing_or_corrupt_root_refuses_without_generating_a_new_identity ... ok
+test generated_root_device_and_verified_grants_survive_reopening ... ok
+test fresh_runs_are_distinct_and_cannot_rebind_an_existing_account ... ok
+test seat_messages_require_the_label_derived_by_the_receiving_account ... FAILED
+
+failures:
+
+---- seat_messages_require_the_label_derived_by_the_receiving_account stdout ----
+
+thread 'seat_messages_require_the_label_derived_by_the_receiving_account' (29910674) panicked at crates/bbt-mux/tests/test_account.rs:157:10:
+called `Result::unwrap()` on an `Err` value: Custom { kind: InvalidData, error: "invalid signed envelope fields" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    seat_messages_require_the_label_derived_by_the_receiving_account
+
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+error: test failed, to rerun pass `-p bbt-mux --test test_account`
+
+END RAW COMPONENT account-labels.log
+
+RAW COMPONENT account-second.log SHA256 4d8c0d2dabf80b4b4a6a86d9c1d03a8ddd662b4d4737d2142ffafb14dc03dbc3
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 38.35s
+     Running tests/test_account.rs (target/identity-file-dev/debug/deps/test_account-721754a780236359)
+
+running 3 tests
+test a_missing_or_corrupt_root_refuses_without_generating_a_new_identity ... ok
+test fresh_runs_are_distinct_and_cannot_rebind_an_existing_account ... ok
+test generated_root_device_and_verified_grants_survive_reopening ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+
+END RAW COMPONENT account-second.log
+
+RAW COMPONENT app-account-first.log SHA256 31e4feb5b53cc40b9281667d41c34ba6a84eada4d324a32bb65e76628eaa0a3f
+   Compiling log v0.4.34
+   Compiling objc2-encode v4.1.0
+   Compiling zerocopy v0.8.63
+   Compiling zerocopy-derive v0.8.63
+   Compiling smallvec v1.16.3
+   Compiling objc2 v0.6.5
+   Compiling cfg_aliases v0.2.2
+   Compiling hashbrown v0.17.1
+   Compiling dispatch2 v0.3.1
+   Compiling block2 v0.6.2
+   Compiling simd-adler32 v0.3.10
+   Compiling objc2-core-foundation v0.3.2
+   Compiling adler2 v2.0.1
+   Compiling crc32fast v1.5.3
+   Compiling indexmap v2.14.2
+   Compiling objc2-foundation v0.3.2
+   Compiling miniz_oxide v0.9.1
+   Compiling ppv-lite86 v0.2.21
+   Compiling bytemuck_derive v1.12.1
+   Compiling bytemuck v1.25.2
+   Compiling float-cmp v0.9.0
+   Compiling strict-num v0.1.1
+   Compiling parking_lot_core v0.9.12
+   Compiling arrayref v0.3.9
+   Compiling parking_lot v0.12.5
+   Compiling objc2-metal v0.3.2
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling siphasher v1.0.4
+   Compiling rustc-hash v1.1.0
+   Compiling naga-types v30.0.1
+   Compiling naga v30.0.1
+   Compiling arrayvec v0.7.8
+   Compiling raw-window-handle v0.6.2
+   Compiling bit-vec v0.9.1
+   Compiling bit-set v0.10.0
+   Compiling codespan-reporting v0.13.1
+   Compiling half v2.7.1
+   Compiling simplecss v0.2.2
+   Compiling imagesize v0.15.0
+   Compiling data-url v0.3.2
+   Compiling objc-sys v0.3.5
+   Compiling zlib-rs v0.6.8
+   Compiling objc2-core-graphics v0.3.2
+   Compiling pico-args v0.5.0
+   Compiling static_assertions v1.1.0
+   Compiling wgpu-types v30.0.1
+   Compiling flate2 v1.1.10
+   Compiling objc2-quartz-core v0.3.2
+   Compiling rand_chacha v0.9.0
+   Compiling polycool v0.4.0
+   Compiling rand_chacha v0.3.1
+   Compiling wgpu-hal v30.0.1
+   Compiling mio v1.2.4
+   Compiling regex-syntax v0.8.11
+   Compiling kurbo v0.13.1
+   Compiling tokio v1.54.1
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling rand v0.8.8
+   Compiling rand v0.9.5
+   Compiling raw-window-metal v1.1.0
+   Compiling tiny-skia-path v0.12.0
+   Compiling libloading v0.8.9
+   Compiling profiling v1.0.18
+   Compiling bitflags v2.13.2
+   Compiling png v0.18.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling objc2 v0.5.3
+   Compiling ulid v1.2.1
+   Compiling num-bigint-dig v0.8.6
+   Compiling svgtypes v0.16.1
+   Compiling aho-corasick v1.1.5
+   Compiling roxmltree v0.21.1
+   Compiling wgpu-core v30.0.1
+   Compiling euclid v0.22.14
+   Compiling litrs v1.0.1
+   Compiling document-features v0.2.12
+   Compiling lyon_geom v1.0.20
+   Compiling tungstenite v0.30.0
+   Compiling regex-automata v0.4.18
+   Compiling usvg v0.48.1
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling block2 v0.5.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling tiny-skia v0.12.0
+   Compiling rgb v0.8.53
+   Compiling core-foundation v0.9.4
+   Compiling wgpu v30.0.1
+   Compiling foreign-types-macros v0.2.4
+   Compiling dispatch v0.2.0
+   Compiling bitflags v1.3.2
+   Compiling foreign-types-shared v0.3.1
+   Compiling foreign-types v0.5.0
+   Compiling portable-pty v0.9.0
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling core-graphics-types v0.1.3
+   Compiling objc2-foundation v0.2.2
+   Compiling rsa v0.9.10
+   Compiling resvg v0.48.1
+   Compiling regex v1.13.1
+   Compiling tokio-tungstenite v0.30.0
+   Compiling lyon_path v1.0.19
+   Compiling dsa v0.6.3
+   Compiling objc2-user-notifications v0.3.2
+   Compiling hashlink v0.12.2
+   Compiling winit v0.30.13
+   Compiling winnow v1.0.4
+   Compiling float_next_after v1.0.0
+   Compiling tracing-core v0.1.36
+   Compiling rusqlite v0.40.2
+   Compiling tracing v0.1.44
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+   Compiling pgp v0.21.0
+   Compiling lyon_tessellation v1.0.22
+   Compiling petgraph v0.8.3
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling notify v8.2.0
+   Compiling bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-harness-wake-up)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling objc2-app-kit v0.2.2
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+   Compiling core-graphics v0.23.2
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling objc2-core-text v0.3.2
+   Compiling dpi v0.1.2
+   Compiling toml_datetime v1.1.2+spec-1.1.0
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling smol_str v0.2.2
+   Compiling pollster v0.4.0
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling toml_edit v0.25.17+spec-1.1.0
+   Compiling bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+   Compiling objc2-app-kit v0.3.2
+error[E0599]: no method named `as_u128` found for struct `SeatId` in the current scope
+  --> crates/bboxy450-term/tests/test_account.rs:49:63
+   |
+49 |                         .find(|item| item.record.id.0 == seat.as_u128())
+   |                                                               ^^^^^^^ method not found in `SeatId`
+
+error[E0609]: no field `label` on type `GuiIdentity`
+  --> crates/bboxy450-term/tests/test_account.rs:86:39
+   |
+86 |     assert!(session.endpoint.identity.label.contains("test-account:"));
+   |                                       ^^^^^ unknown field
+   |
+   = note: available fields are: `state`, `reason`
+
+Some errors have detailed explanations: E0599, E0609.
+For more information about an error, try `rustc --explain E0599`.
+error: could not compile `bboxy450-term` (test "test_account") due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+
+END RAW COMPONENT app-account-first.log
+
+RAW COMPONENT app-account-second.log SHA256 078f2e361f567d6f0f51a49032b16c47a2bfef41d16c2f98d927417aa45fcfb0
+   Compiling bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+   Compiling bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 1m 07s
+     Running tests/test_account.rs (target/identity-file-dev/debug/deps/test_account-6aa45be90cef99d2)
+
+running 2 tests
+test test_account_selector_is_explicit_and_rejects_bad_flags_before_custody ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authority ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.59s
+
+
+END RAW COMPONENT app-account-second.log
+
+RAW COMPONENT app-account-third.log SHA256 dc1033baefc9a82ffd966d276c76e8d136f2b579c19b1e9080fd420dbeb1686f
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 7.89s
+     Running tests/test_account.rs (target/identity-file-dev/debug/deps/test_account-6aa45be90cef99d2)
+
+running 2 tests
+test test_account_selector_is_explicit_and_rejects_bad_flags_before_custody ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authority ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.12s
+
+
+END RAW COMPONENT app-account-third.log
+
+RAW COMPONENT attribution-first.log SHA256 6740f044efed6f45cdd55a9be62701984e2d5daaa30d00ec3eb78c6570e6eb23
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 37.09s
+     Running unittests src/lib.rs (target/identity-file-dev/debug/deps/bbt_mux-669c1a58241b6205)
+
+running 2 tests
+test store::events::attribution_tests::real_account_rows_keep_the_original_serialization_and_signing_bytes ... ok
+test store::events::attribution_tests::test_account_rows_sign_the_host_derived_label_without_changing_payloads ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 82 filtered out; finished in 0.01s
+
+
+END RAW COMPONENT attribution-first.log
+
+RAW COMPONENT clippy-checkpoint.log SHA256 f1d2f6961c12faa68ade150041caf65f8510c60721fef6b4e17da16e77965515
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 14.55s
+
+END RAW COMPONENT clippy-checkpoint.log
+
+RAW COMPONENT clippy-first.log SHA256 4b9fcca64ffde4c475bc4ba5dd19689861d30092ab51cd37cafad3c0bbfd6b53
+    Checking libc v0.2.191
+    Checking serde_core v1.0.229
+    Checking cfg-if v1.0.5
+    Checking memchr v2.8.3
+    Checking serde v1.0.229
+    Checking itoa v1.0.18
+   Compiling serde_json v1.0.154
+    Checking zmij v1.0.23
+    Checking bitflags v2.13.2
+    Checking log v0.4.34
+   Compiling toml v0.9.12+spec-1.1.0
+    Checking smallvec v1.16.3
+    Checking arrayvec v0.7.8
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking zerocopy v0.8.63
+    Checking typenum v1.20.1
+    Checking zeroize v1.9.1
+    Checking equivalent v1.0.3
+    Checking scopeguard v1.2.0
+    Checking lock_api v0.4.14
+    Checking parking_lot_core v0.9.12
+    Checking parking_lot v0.12.5
+    Checking unicode-width v0.2.2
+    Checking allocator-api2 v0.2.21
+    Checking foldhash v0.2.0
+    Checking libm v0.2.16
+    Checking hashbrown v0.17.1
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking num-traits v0.2.19
+    Checking once_cell v1.21.4
+    Checking cursor-icon v1.2.0
+    Checking getrandom v0.2.17
+    Checking pin-project-lite v0.2.17
+    Checking rand_core v0.6.4
+    Checking generic-array v0.14.7
+    Checking indexmap v2.14.2
+    Checking thiserror v2.0.21
+    Checking crypto-common v0.1.7
+    Checking simd-adler32 v0.3.10
+    Checking subtle v2.6.1
+    Checking adler2 v2.0.1
+    Checking miniz_oxide v0.9.1
+    Checking crc32fast v1.5.3
+    Checking zlib-rs v0.6.8
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Checking unsafe-libyaml v0.2.11
+    Checking const-oid v0.9.6
+    Checking flate2 v1.1.10
+    Checking unicase v2.10.0
+    Checking ryu v1.0.23
+    Checking pulldown-cmark v0.13.4
+    Checking serde_yaml v0.9.34+deprecated
+    Checking core-foundation-sys v0.8.7
+    Checking unicode-segmentation v1.13.3
+    Checking block-buffer v0.10.4
+    Checking digest v0.10.7
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Checking objc2-encode v4.1.0
+    Checking bytes v1.12.1
+    Checking errno v0.3.14
+    Checking base64 v0.22.1
+    Checking serde-big-array v0.5.1
+    Checking getrandom v0.3.4
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking objc2 v0.6.5
+    Checking signal-hook-registry v1.4.8
+    Checking mio v1.2.4
+    Checking socket2 v0.6.5
+    Checking block2 v0.6.2
+    Checking tokio v1.54.1
+    Checking dispatch2 v0.3.1
+    Checking objc2-core-foundation v0.3.2
+    Checking objc2-foundation v0.3.2
+    Checking cpufeatures v0.2.17
+    Checking ppv-lite86 v0.2.21
+    Checking unicode-ident v1.0.27
+    Checking bytemuck v1.25.2
+    Checking base64ct v1.8.3
+    Checking futures-task v0.3.34
+    Checking rand_core v0.10.1
+    Checking slab v0.4.12
+    Checking futures-core v0.3.34
+    Checking futures-sink v0.3.34
+    Checking futures-util v0.3.34
+    Checking objc2-metal v0.3.2
+    Checking pem-rfc7468 v0.7.0
+    Checking rand_core v0.9.5
+    Checking inout v0.1.4
+    Checking rustc-hash v1.1.0
+    Checking naga-types v30.0.1
+    Checking cipher v0.4.4
+    Checking rand_chacha v0.9.0
+    Checking der v0.7.10
+    Checking crossbeam-utils v0.8.23
+    Checking getrandom v0.4.3
+    Checking raw-window-handle v0.6.2
+    Checking bit-vec v0.9.1
+    Checking bit-set v0.10.0
+    Checking objc2-core-graphics v0.3.2
+    Checking crossbeam-queue v0.3.14
+    Checking spki v0.7.3
+    Checking rand v0.9.5
+    Checking half v2.7.1
+    Checking codespan-reporting v0.13.1
+    Checking hybrid-array v0.4.15
+    Checking static_assertions v1.1.0
+    Checking wgpu-types v30.0.1
+    Checking naga v30.0.1
+    Checking ulid v1.2.1
+    Checking objc2-quartz-core v0.3.2
+    Checking pkcs8 v0.10.2
+    Checking sha2-asm v0.6.4
+    Checking num-integer v0.1.47
+    Checking tap v1.0.1
+    Checking float-cmp v0.9.0
+    Checking strict-num v0.1.1
+    Checking wyz v0.5.1
+    Checking sha2 v0.10.9
+    Checking raw-window-metal v1.1.0
+    Checking block-buffer v0.12.1
+    Checking crypto-common v0.2.2
+    Checking radium v0.7.0
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking hmac v0.12.1
+    Checking polycool v0.4.0
+    Checking libloading v0.8.9
+    Checking wgpu-naga-bridge v30.0.1
+    Checking funty v2.0.0
+    Checking const-oid v0.10.2
+    Checking base16ct v0.2.0
+    Checking arrayref v0.3.9
+    Checking profiling v1.0.18
+    Checking bitvec v1.1.1
+    Checking wgpu-hal v30.0.1
+    Checking tiny-skia-path v0.12.0
+    Checking digest v0.11.3
+    Checking kurbo v0.13.1
+    Checking signature v2.2.0
+    Checking miniz_oxide v0.8.9
+    Checking fdeflate v0.3.7
+    Checking euclid v0.22.14
+    Checking siphasher v1.0.4
+    Checking svgtypes v0.16.1
+    Checking lyon_geom v1.0.20
+    Checking png v0.18.1
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking ff v0.13.1
+    Checking serdect v0.2.0
+    Checking num-iter v0.1.46
+    Checking simplecss v0.2.2
+    Checking roxmltree v0.21.1
+    Checking cpufeatures v0.3.1
+    Checking data-encoding v2.11.1
+    Checking data-url v0.3.2
+    Checking imagesize v0.15.0
+    Checking pico-args v0.5.0
+    Checking tiny-skia v0.12.0
+    Checking usvg v0.48.1
+    Checking sec1 v0.7.3
+    Checking group v0.13.0
+    Checking wgpu-core v30.0.1
+    Checking lyon_path v1.0.19
+    Checking hkdf v0.12.4
+    Checking rgb v0.8.53
+    Checking crypto-bigint v0.5.5
+    Checking float_next_after v1.0.0
+    Checking lyon_tessellation v1.0.22
+    Checking elliptic-curve v0.13.8
+    Checking resvg v0.48.1
+    Checking rustix v1.1.5
+    Checking objc2-core-text v0.3.2
+    Checking wgpu v30.0.1
+    Checking chacha20 v0.10.2
+    Checking pollster v0.4.0
+    Checking fastrand v2.5.0
+    Checking tempfile v3.27.0
+    Checking thiserror v1.0.69
+    Checking rand v0.10.3
+    Checking httparse v1.10.1
+    Checking zstd-sys v2.1.2+zstd.1.5.7
+    Checking sha1 v0.11.0
+    Checking rfc6979 v0.4.0
+    Checking http v1.5.0
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking tungstenite v0.30.0
+    Checking zstd-safe v8.2.0
+    Checking nix v0.28.0
+    Checking filedescriptor v0.8.3
+    Checking anyhow v1.0.104
+    Checking objc-sys v0.3.5
+    Checking serial2 v0.2.38
+    Checking shell-words v1.1.1
+    Checking downcast-rs v1.2.1
+    Checking objc2 v0.5.3
+    Checking portable-pty v0.9.0
+    Checking zstd v0.14.3
+    Checking tokio-tungstenite v0.30.0
+    Checking ecdsa v0.16.9
+    Checking rand_chacha v0.3.1
+    Checking spin v0.9.9
+    Checking lazy_static v1.5.1
+    Checking rand v0.8.8
+    Checking block2 v0.5.1
+    Checking primeorder v0.13.6
+    Checking ctr v0.9.2
+    Checking aead v0.5.2
+    Checking core-foundation v0.9.4
+    Checking universal-hash v0.5.1
+    Checking opaque-debug v0.3.1
+    Checking dispatch v0.2.0
+    Checking bitflags v1.3.2
+    Checking foreign-types-shared v0.3.1
+    Checking objc2-foundation v0.2.2
+    Checking foreign-types v0.5.0
+    Checking core-graphics-types v0.1.3
+    Checking polyval v0.6.2
+    Checking num-bigint-dig v0.8.6
+    Checking curve25519-dalek v4.1.3
+    Checking bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-harness-wake-up)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking aes v0.8.4
+    Checking keccak v0.1.6
+    Checking bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+    Checking dbl v0.3.2
+    Checking byteorder v1.5.0
+    Checking tracing-core v0.1.36
+    Checking tracing v0.1.44
+    Checking cmac v0.7.2
+    Checking sha3 v0.10.9
+    Checking objc2-app-kit v0.2.2
+    Checking ghash v0.5.1
+    Checking core-graphics v0.23.2
+    Checking ed25519 v2.2.3
+    Checking serdect v0.3.0
+    Checking pkcs1 v0.7.5
+    Checking password-hash v0.5.0
+    Checking sha1 v0.10.7
+    Checking blake2 v0.10.6
+    Checking foldhash v0.1.5
+    Checking smol_str v0.2.2
+    Checking same-file v1.0.6
+    Checking signature v3.0.0
+    Checking dpi v0.1.2
+    Checking ed25519 v3.0.0
+    Checking walkdir v2.5.0
+    Checking hashbrown v0.15.5
+    Checking num_enum v0.7.6
+    Checking argon2 v0.5.3
+    Checking sha1-checked v0.10.0
+    Checking rsa v0.9.10
+    Checking cx448 v0.1.1
+    Checking winit v0.30.13
+    Checking ed25519-dalek v2.2.0
+    Checking snafu v0.9.2
+    Checking libsqlite3-sys v0.38.2
+    Checking aes-gcm v0.10.3
+    Checking derive_builder v0.20.2
+    Checking curve25519-dalek v5.0.0
+    Checking eax v0.5.0
+    Checking bitfields v1.0.3
+    Checking derive_more v2.1.1
+    Checking crc24 v0.1.6
+    Checking camellia v0.1.0
+    Checking blowfish v0.9.1
+    Checking aes-kw v0.2.1
+    Checking x25519-dalek v2.0.1
+    Checking dsa v0.6.3
+    Checking ocb3 v0.1.0
+    Checking p384 v0.13.1
+    Checking p521 v0.13.3
+    Checking p256 v0.13.2
+    Checking k256 v0.13.4
+    Checking sha2 v0.11.1
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking twofish v0.7.1
+    Checking cfb-mode v0.8.2
+    Checking idea v0.5.1
+    Checking cast5 v0.11.1
+    Checking des v0.8.1
+    Checking md-5 v0.10.6
+    Checking ripemd v0.1.3
+    Checking core-foundation v0.10.1
+    Checking security-framework-sys v2.17.0
+    Checking block-padding v0.3.3
+    Checking hashlink v0.12.2
+    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+    Checking notify-types v2.1.0
+    Checking nom v8.0.0
+    Checking buffer-redux v1.1.0
+    Checking fsevent-sys v4.1.0
+    Checking hex v0.4.3
+    Checking replace_with v0.1.8
+    Checking fallible-iterator v0.3.0
+    Checking fallible-streaming-iterator v0.1.9
+    Checking fixedbitset v0.5.7
+    Checking rusqlite v0.40.2
+    Checking petgraph v0.8.3
+    Checking pgp v0.21.0
+    Checking notify v8.2.0
+    Checking security-framework v3.7.0
+    Checking ed25519-dalek v3.0.0
+    Checking bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain)
+    Checking winnow v1.0.4
+    Checking toml_parser v1.1.5+spec-1.1.0
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking toml_datetime v1.1.2+spec-1.1.0
+    Checking toml_writer v1.1.3+spec-1.1.0
+    Checking regex-syntax v0.8.11
+    Checking aho-corasick v1.1.5
+    Checking regex-automata v0.4.18
+    Checking regex v1.13.1
+    Checking objc2-user-notifications v0.3.2
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+    Checking toml_edit v0.25.17+spec-1.1.0
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Checking objc2-app-kit v0.3.2
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+   Compiling target-triple v1.0.1
+    Checking serde_spanned v1.1.2
+    Checking toml v1.1.8+spec-1.1.0
+   Compiling proc-macro-crate v3.5.0
+    Checking tokio-util v0.7.19
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn-macros)
+    Checking glob v0.3.4
+    Checking termcolor v1.4.1
+    Checking trybuild v1.0.120
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn)
+    Checking num-bigint v0.4.8
+   Compiling ahash v0.8.12
+   Compiling ref-cast v1.0.27
+    Checking proc-macro2 v1.0.107
+    Checking num-rational v0.4.2
+    Checking num-complex v0.4.6
+   Compiling ref-cast-impl v1.0.27
+    Checking num v0.4.3
+    Checking quote v1.0.47
+   Compiling unicode-general-category v1.1.0
+   Compiling jsonschema-value v0.60.1
+    Checking bit-vec v0.8.0
+    Checking borrow-or-share v0.2.4
+    Checking fluent-uri v0.4.1
+    Checking bit-set v0.8.0
+    Checking fraction v0.17.0
+   Compiling strum_macros v0.28.0
+    Checking outref v0.5.2
+    Checking vsimd v0.8.0
+    Checking percent-encoding v2.3.2
+    Checking bytecount v0.6.9
+    Checking num-cmp v0.1.0
+    Checking micromap v0.3.0
+    Checking referencing v0.60.1
+    Checking strum v0.28.0
+    Checking uuid-simd v0.8.0
+    Checking fancy-regex v0.19.2
+    Checking jsonschema-regex v0.60.1
+    Checking email_address v0.2.9
+    Checking jsonschema v0.60.1
+    Checking syn v2.0.119
+    Checking bboxy450-desktop-notifications-linux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-linux)
+    Checking bboxy450-keychain-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-windows)
+    Checking bboxy450-desktop-notifications-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-windows)
+    Finished `dev` profile [unoptimized] target(s) in 4m 07s
+
+END RAW COMPONENT clippy-first.log
+
+RAW COMPONENT clippy-second.log SHA256 3d9c422d786f808aeb852502f5a0ffcd9db19d8418b561c720291025c7fb8f9e
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 20.65s
+
+END RAW COMPONENT clippy-second.log
+
+RAW COMPONENT file-first.log SHA256 faf3100d1a967fc9b19b1bc68af453d6438da1ffa020e3c8145dfce358f28046
+   Compiling libc v0.2.191
+   Compiling cfg-if v1.0.5
+   Compiling getrandom v0.3.4
+   Compiling zeroize v1.9.1
+   Compiling rustix v1.1.5
+   Compiling getrandom v0.4.3
+   Compiling bitflags v2.13.2
+   Compiling fastrand v2.5.0
+   Compiling once_cell v1.21.4
+   Compiling errno v0.3.14
+   Compiling bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+   Compiling bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain)
+   Compiling tempfile v3.27.0
+    Finished `test` profile [unoptimized] target(s) in 11.83s
+     Running unittests src/lib.rs (target/identity-file-dev/debug/deps/bboxy450_keychain-466664be568ce3b7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/identity-file-dev/debug/deps/bboxy450_keychain_file-559671bf6071921b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/custody.rs (target/identity-file-dev/debug/deps/custody-b088939bc6db672d)
+
+running 4 tests
+test relative_paths_symlinks_non_regular_files_and_broad_modes_are_refused ... ok
+test writes_and_reads_have_the_same_fixed_size_bound ... ok
+test independent_store_handles_never_replace_a_concurrent_winner ... ok
+test private_slots_reopen_and_only_explicit_removal_changes_them ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+   Doc-tests bboxy450_keychain
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxy450_keychain_file
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+END RAW COMPONENT file-first.log
+
+RAW COMPONENT frame-label.log SHA256 031e8e771d43a23878c0b05865badfc7f99a9852e34e0bdd05129e33d9e2acd4
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 26.10s
+     Running unittests src/main.rs (target/identity-file-dev/debug/deps/bboxy450_term-22106fb603960c66)
+
+running 1 test
+test scene::identity_note_tests::the_frame_labels_test_accounts_without_changing_real_identity_notes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.00s
+
+
+END RAW COMPONENT frame-label.log
+
+RAW COMPONENT licenses.log SHA256 0cd772faa023b1f34ec4cbfe7e52e29af486555d9cf8f574f57e99efe933bad7
+licenses: 24 workspace crates, SPDX map and required root/crate files present
+
+END RAW COMPONENT licenses.log
+
+RAW COMPONENT linux-check.log SHA256 5350779bdd581c66b864ce4621617ceb4a3020eaced59ccbf932f53b1566f297
+   Compiling libc v0.2.191
+   Compiling getrandom v0.3.4
+    Checking cfg-if v1.0.5
+    Checking zeroize v1.9.1
+    Checking bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+    Checking bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain)
+    Finished `dev` profile [unoptimized] target(s) in 1.84s
+
+END RAW COMPONENT linux-check.log
+
+RAW COMPONENT provenance-label-second.log SHA256 db41de5c3222a2dc48f9c3550f2e026f93c32f64cc08886634a2075953b0fe40
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 23.91s
+     Running unittests src/lib.rs (target/identity-file-dev/debug/deps/bbt_mux-669c1a58241b6205)
+
+running 1 test
+test index::test_account_attribution::verified_test_context_is_covered_by_document_and_activity_signatures ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 84 filtered out; finished in 0.09s
+
+
+END RAW COMPONENT provenance-label-second.log
+
+RAW COMPONENT provenance-label.log SHA256 26582c38059103c8be724df259d9fdbf45e3232ae7d51576250d9dad2a64bad2
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 35.98s
+     Running unittests src/lib.rs (target/identity-file-dev/debug/deps/bbt_mux-669c1a58241b6205)
+
+running 1 test
+test index::test_account_attribution::verified_test_context_is_covered_by_document_and_activity_signatures ... FAILED
+
+failures:
+
+---- index::test_account_attribution::verified_test_context_is_covered_by_document_and_activity_signatures stdout ----
+
+thread 'index::test_account_attribution::verified_test_context_is_covered_by_document_and_activity_signatures' (30086541) panicked at crates/bbt-mux/src/index.rs:1327:9:
+assertion `left == right` failed
+  left: "ea271bbf7a6bcf174606ce741cc879ba2a4fa053c1638d1775cd09b714a075ab"
+ right: "sha256:ea271bbf7a6bcf174606ce741cc879ba2a4fa053c1638d1775cd09b714a075ab"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    index::test_account_attribution::verified_test_context_is_covered_by_document_and_activity_signatures
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 84 filtered out; finished in 0.09s
+
+error: test failed, to rerun pass `-p bbt-mux --lib`
+
+END RAW COMPONENT provenance-label.log
+
+RAW COMPONENT source-invariants.log SHA256 4da785f35b44bcf32e335b45c4b4d6b78c88b6c77886f065463850edb831d114
+layering: held
+
+END RAW COMPONENT source-invariants.log
+
+RAW COMPONENT test-account-first.log SHA256 d6128ed2971801310557ad21cb032a76f13f21fdd45224562aa859314ba5c2d6
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling libc v0.2.191
+   Compiling syn v2.0.119
+   Compiling typenum v1.20.1
+   Compiling version_check v0.9.5
+   Compiling generic-array v0.14.7
+   Compiling getrandom v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling subtle v2.6.1
+   Compiling serde_core v1.0.229
+   Compiling syn v3.0.9
+   Compiling zeroize_derive v1.5.0
+   Compiling zeroize v1.9.1
+   Compiling crypto-common v0.1.7
+   Compiling const-oid v0.9.6
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling itoa v1.0.18
+   Compiling jobserver v0.1.35
+   Compiling find-msvc-tools v0.1.15
+   Compiling shlex v2.0.1
+   Compiling cc v1.9.0
+   Compiling zmij v1.0.23
+   Compiling cpufeatures v0.2.17
+   Compiling memchr v2.8.3
+   Compiling base64ct v1.8.3
+   Compiling pem-rfc7468 v0.7.0
+   Compiling inout v0.1.4
+   Compiling cipher v0.4.4
+   Compiling der v0.7.10
+   Compiling zerocopy v0.8.63
+   Compiling serde_json v1.0.154
+   Compiling bitflags v2.13.2
+   Compiling radium v0.7.0
+   Compiling spki v0.7.3
+   Compiling pkcs8 v0.10.2
+   Compiling tap v1.0.1
+   Compiling wyz v0.5.1
+   Compiling hmac v0.12.1
+   Compiling funty v2.0.0
+   Compiling base16ct v0.2.0
+   Compiling log v0.4.34
+   Compiling bytes v1.12.1
+   Compiling ppv-lite86 v0.2.21
+   Compiling bitvec v1.1.1
+   Compiling sha2-asm v0.6.4
+   Compiling signature v2.2.0
+   Compiling getrandom v0.3.4
+   Compiling semver v1.0.28
+   Compiling smallvec v1.16.3
+   Compiling pkg-config v0.3.34
+   Compiling ff v0.13.1
+   Compiling rustc_version v0.4.1
+   Compiling serdect v0.2.0
+   Compiling hybrid-array v0.4.15
+   Compiling sec1 v0.7.3
+   Compiling group v0.13.0
+   Compiling hkdf v0.12.4
+   Compiling crypto-bigint v0.5.5
+   Compiling libm v0.2.16
+   Compiling autocfg v1.5.1
+   Compiling num-traits v0.2.19
+   Compiling sha2 v0.10.9
+   Compiling elliptic-curve v0.13.8
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling errno v0.3.14
+   Compiling winnow v1.0.4
+   Compiling thiserror v2.0.21
+   Compiling const-oid v0.10.2
+   Compiling digest v0.11.3
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling rfc6979 v0.4.0
+   Compiling thiserror-impl v2.0.21
+   Compiling foldhash v0.2.0
+   Compiling parking_lot_core v0.9.12
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling strsim v0.11.1
+   Compiling fnv v1.0.7
+   Compiling rand_core v0.10.1
+   Compiling winnow v0.7.15
+   Compiling getrandom v0.4.3
+   Compiling ident_case v1.0.1
+   Compiling darling_core v0.20.11
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling hashbrown v0.17.1
+   Compiling rand_core v0.9.5
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling cpufeatures v0.3.1
+   Compiling scopeguard v1.2.0
+   Compiling pin-project-lite v0.2.17
+   Compiling crossbeam-utils v0.8.23
+   Compiling lock_api v0.4.14
+   Compiling num-integer v0.1.47
+   Compiling rand_chacha v0.9.0
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling darling_macro v0.20.11
+   Compiling ecdsa v0.16.9
+   Compiling signal-hook-registry v1.4.8
+   Compiling curve25519-dalek v4.1.3
+   Compiling rand_chacha v0.3.1
+   Compiling mio v1.2.4
+   Compiling tokio-macros v2.7.2
+   Compiling socket2 v0.6.5
+   Compiling httparse v1.10.1
+   Compiling unicode-segmentation v1.13.3
+   Compiling base64 v0.22.1
+   Compiling thiserror v1.0.69
+   Compiling spin v0.9.9
+   Compiling cfg_aliases v0.1.1
+   Compiling num-bigint-dig v0.8.6
+   Compiling nix v0.28.0
+   Compiling lazy_static v1.5.1
+   Compiling tokio v1.54.1
+   Compiling rand v0.8.8
+   Compiling darling v0.20.11
+   Compiling parking_lot v0.12.5
+   Compiling rand v0.9.5
+   Compiling num-iter v0.1.46
+   Compiling chacha20 v0.10.2
+   Compiling primeorder v0.13.6
+   Compiling aead v0.5.2
+   Compiling ctr v0.9.2
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling universal-hash v0.5.1
+   Compiling thiserror-impl v1.0.69
+   Compiling anyhow v1.0.104
+   Compiling zstd-safe v8.2.0
+   Compiling vcpkg v0.2.15
+   Compiling equivalent v1.0.3
+   Compiling opaque-debug v0.3.1
+   Compiling unicode-width v0.2.2
+   Compiling rustversion v1.0.23
+   Compiling cursor-icon v1.2.0
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling libsqlite3-sys v0.38.2
+   Compiling polyval v0.6.2
+   Compiling indexmap v2.14.2
+   Compiling rand v0.10.3
+   Compiling crossbeam-queue v0.3.14
+   Compiling ulid v1.2.1
+   Compiling derive_builder_core v0.20.2
+   Compiling convert_case v0.10.0
+   Compiling sha1 v0.11.0
+   Compiling curve25519-dalek v5.0.0
+   Compiling http v1.5.0
+   Compiling aes v0.8.4
+   Compiling keccak v0.1.6
+   Compiling futures-macro v0.3.34
+   Compiling dbl v0.3.2
+   Compiling futures-task v0.3.34
+   Compiling heck v0.5.0
+   Compiling futures-core v0.3.34
+   Compiling unicode-xid v0.2.6
+   Compiling futures-sink v0.3.34
+   Compiling pulldown-cmark v0.13.4
+   Compiling core-foundation-sys v0.8.7
+   Compiling byteorder v1.5.0
+   Compiling crc24 v0.1.6
+   Compiling slab v0.4.12
+   Compiling data-encoding v2.11.1
+   Compiling futures-util v0.3.34
+   Compiling tungstenite v0.30.0
+   Compiling derive_more-impl v2.1.1
+   Compiling snafu-derive v0.9.2
+   Compiling cmac v0.7.2
+   Compiling sha3 v0.10.9
+   Compiling derive_builder_macro v0.20.2
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling filedescriptor v0.8.3
+   Compiling ghash v0.5.1
+   Compiling bitfields-impl v1.0.3
+   Compiling ed25519 v2.2.3
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling password-hash v0.5.0
+   Compiling sha1 v0.10.7
+   Compiling blake2 v0.10.6
+   Compiling num_enum_derive v0.7.6
+   Compiling serial2 v0.2.38
+   Compiling ryu v1.0.23
+   Compiling downcast-rs v1.2.1
+   Compiling shell-words v1.1.1
+   Compiling foldhash v0.1.5
+   Compiling zlib-rs v0.6.8
+   Compiling same-file v1.0.6
+   Compiling signature v3.0.0
+   Compiling unicase v2.10.0
+   Compiling unsafe-libyaml v0.2.11
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling flate2 v1.1.10
+   Compiling ed25519 v3.0.0
+   Compiling walkdir v2.5.0
+   Compiling hashbrown v0.15.5
+   Compiling portable-pty v0.9.0
+   Compiling num_enum v0.7.6
+   Compiling argon2 v0.5.3
+   Compiling sha1-checked v0.10.0
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling bitfields v1.0.3
+   Compiling ed25519-dalek v2.2.0
+   Compiling aes-gcm v0.10.3
+   Compiling derive_builder v0.20.2
+   Compiling zstd v0.14.3
+   Compiling snafu v0.9.2
+   Compiling eax v0.5.0
+   Compiling derive_more v2.1.1
+   Compiling tokio-tungstenite v0.30.0
+   Compiling blowfish v0.9.1
+   Compiling camellia v0.1.0
+   Compiling k256 v0.13.4
+   Compiling core-foundation v0.10.1
+   Compiling security-framework-sys v2.17.0
+   Compiling aes-kw v0.2.1
+   Compiling x25519-dalek v2.0.1
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling dsa v0.6.3
+   Compiling ocb3 v0.1.0
+   Compiling p521 v0.13.3
+   Compiling p384 v0.13.1
+   Compiling p256 v0.13.2
+   Compiling sha2 v0.11.1
+   Compiling hashlink v0.12.2
+   Compiling bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+   Compiling notify-types v2.1.0
+   Compiling twofish v0.7.1
+   Compiling des v0.8.1
+   Compiling cfb-mode v0.8.2
+   Compiling cast5 v0.11.1
+   Compiling idea v0.5.1
+   Compiling nom v8.0.0
+   Compiling buffer-redux v1.1.0
+   Compiling md-5 v0.10.6
+   Compiling ripemd v0.1.3
+   Compiling block-padding v0.3.3
+   Compiling fsevent-sys v4.1.0
+   Compiling hex v0.4.3
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+   Compiling fallible-iterator v0.3.0
+   Compiling fixedbitset v0.5.7
+   Compiling replace_with v0.1.8
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling pgp v0.21.0
+   Compiling rusqlite v0.40.2
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+   Compiling petgraph v0.8.3
+   Compiling notify v8.2.0
+   Compiling bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain)
+   Compiling ed25519-dalek v3.0.0
+   Compiling security-framework v3.7.0
+   Compiling bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-harness-wake-up)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling rustix v1.1.5
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+   Compiling tempfile v3.27.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 2m 23s
+     Running tests/test_account.rs (target/identity-file-dev/debug/deps/test_account-721754a780236359)
+
+running 3 tests
+test generated_root_device_and_verified_grants_survive_reopening ... ok
+test a_missing_or_corrupt_root_refuses_without_generating_a_new_identity ... ok
+test fresh_runs_are_distinct_and_cannot_rebind_an_existing_account ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+
+
+END RAW COMPONENT test-account-first.log
+
+RAW COMPONENT windows-clippy-final.log SHA256 f7626ba4e850f0f1be0d2dd1e4f0a682f1ca3f690c2fc0aef7a3d410765e761d
+    Checking bboxy450-keychain-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-windows)
+    Checking bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+    Checking bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain)
+    Finished `dev` profile [unoptimized] target(s) in 0.86s
+
+END RAW COMPONENT windows-clippy-final.log
+
+RAW COMPONENT windows-clippy.log SHA256 af6af8ab957b6e7ed23371ee555cf5a86f83e9d006451394814565ad1fc6ca0c
+    Checking bboxy450-keychain-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-windows)
+   Compiling getrandom v0.4.3
+    Checking bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+    Checking once_cell v1.21.4
+    Checking fastrand v2.5.0
+    Checking bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain)
+    Checking tempfile v3.27.0
+    Finished `dev` profile [unoptimized] target(s) in 1.91s
+
+END RAW COMPONENT windows-clippy.log
+
+RAW COMPONENT windows-first.log SHA256 df35e4701389e03485e9e60927339e17935d240227900e6861adf951870bade0
+    Checking windows-link v0.2.1
+   Compiling getrandom v0.3.4
+    Checking cfg-if v1.0.5
+    Checking windows-sys v0.61.2
+    Checking zeroize v1.9.1
+    Checking bboxy450-keychain-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-windows)
+    Checking bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+error[E0282]: type annotations needed for `Result<(), _>`
+  --> crates/bboxy450-keychain-file/src/windows.rs:77:13
+   |
+77 |         let result = (|| {
+   |             ^^^^^^
+...
+88 |             Ok(())
+   |             ------ type must be known at this point
+   |
+help: consider giving `result` an explicit type, where the type for type parameter `E` is specified
+   |
+77 |         let result: Result<_, E> = (|| {
+   |                   ++++++++++++++
+
+For more information about this error, try `rustc --explain E0282`.
+error: could not compile `bboxy450-keychain-file` (lib) due to 1 previous error
+
+END RAW COMPONENT windows-first.log
+
+RAW COMPONENT windows-second.log SHA256 42af4523dcb92feab6c1de86c67c6efa931271e75e02b90ce5c2377ad6bafc2f
+    Checking bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+    Checking bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain)
+    Finished `dev` profile [unoptimized] target(s) in 2.63s
+
+END RAW COMPONENT windows-second.log

@@ -51,6 +51,7 @@ async fn start(root: &Path) -> Session {
         repository: root.join("repository"),
         shell_config: Some(root.join("zsh-config")),
         ctl: false,
+        test_account: None,
     })
     .await
     .unwrap();
@@ -675,6 +676,7 @@ async fn raw_supervisor(root: &Path) -> (tokio::process::Child, bbt_mux::logic::
         repository: root.into(),
         shell_config: None,
         ctl: false,
+        test_account: None,
     };
     let mut bytes = serde_json::to_vec(&config).unwrap();
     bytes.push(b'\n');

@@ -37,6 +37,7 @@ async fn start(root: &Path) -> Session {
         repository,
         shell_config: Some(shell_config),
         ctl: false,
+        test_account: None,
     })
     .await
     .unwrap()

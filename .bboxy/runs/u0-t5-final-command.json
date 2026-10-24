@@ -1,0 +1,20 @@
+{
+  "head": "db4f79ff6b35d154b8302e3ea4793262ad8e7d37",
+  "argv": [
+    "/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/bboxy450-term",
+    "e2e",
+    "night",
+    "--group",
+    "terminal",
+    "--scripts",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-identity-file-q2_og6ql/t5-final-scripts",
+    "--records",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-identity-file-q2_og6ql/t5-final-records"
+  ],
+  "canonical_scripts": {
+    "T5.sh": "aa7ba6a63e38a688eaacaebe835e8d27144a9b8334bbdf37fce3f055c0dfea11",
+    "lib.sh": "a54a974a09e3a59ea88592ef32dbd6fd438c57421a18c6bdf73e31b7d7943f08"
+  },
+  "binary_sha256": "1ad9c8618f0173782cdd678260d4cf5641efe0c971d7f3278dccf32b28d6c452",
+  "memory_override": false
+}

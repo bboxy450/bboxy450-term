@@ -673,7 +673,11 @@ impl Detector {
                 Ok((_, Finished::Git(root, result, at))) => match result {
                     Ok(Some(snapshot)) => {
                         self.git_failed.remove(&root);
-                        if snapshot.clipped {
+                        if snapshot.clipped
+                            && self.git_state.get(&root).is_none_or(|old| {
+                                !old.clipped || old.refs != snapshot.refs
+                            })
+                        {
                             bounded_gap(
                                 &mut self.gaps,
                                 "git-ref-scan-bound: retained first128 refs".into(),

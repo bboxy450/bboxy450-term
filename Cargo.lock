@@ -248,6 +248,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "bboxy450-keychain"
+version = "0.0.1"
+dependencies = [
+ "bboxy450-keychain-file",
+]
+
+[[package]]
+name = "bboxy450-keychain-file"
+version = "0.0.1"
+dependencies = [
+ "bboxy450-keychain-windows",
+ "getrandom 0.3.4",
+ "libc",
+ "tempfile",
+ "zeroize",
+]
+
+[[package]]
+name = "bboxy450-keychain-windows"
+version = "0.0.1"
+dependencies = [
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "bboxy450-term"
 version = "0.0.1"
 dependencies = [
@@ -339,6 +364,7 @@ version = "0.0.1"
 dependencies = [
  "base64",
  "bboxy450-harness-wake-up",
+ "bboxy450-keychain",
  "bbt-core",
  "bbt-doc",
  "bbt-plugin",
@@ -366,6 +392,7 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "ulid",
+ "zeroize",
 ]
 
 [[package]]

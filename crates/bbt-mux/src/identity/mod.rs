@@ -15,6 +15,7 @@ mod keychain;
 mod local;
 mod seats;
 mod status;
+mod test_account;
 mod transition;
 
 pub use chain::{ChainSeatKeys, seat_keys};
@@ -25,6 +26,7 @@ pub use keychain::{Custody, DeviceKeyStore, KeychainDeviceKeys};
 pub use local::{LocalIssuerOutcome, local_dev_issuer, local_dev_issuer_with_store};
 pub use seats::{KeyStatus, RosterEntry, SeatGrant, SeatProof, SeatRoster};
 pub use status::{IdentityRuntime, IdentityState, IdentityStatus};
+pub use test_account::TestAccount;
 pub use transition::{IssuerState, reset_identity};
 
 use std::fmt;
@@ -52,6 +54,8 @@ pub enum PendingReason {
     SeatRenewalUnavailable,
     LocalIssuerMissing,
     LocalIssuerMismatch,
+    FileCustodyUnavailable,
+    TestAccountMismatch,
 }
 impl PendingReason {
     pub fn label(self) -> &'static str {
@@ -77,6 +81,10 @@ impl PendingReason {
             }
             Self::LocalIssuerMismatch => {
                 "local-dev issuer differs from pinned history; explicit identity reset required"
+            }
+            Self::FileCustodyUnavailable => "selected file custody unavailable; no native fallback",
+            Self::TestAccountMismatch => {
+                "test account root, run context or private directory mismatch"
             }
         }
     }

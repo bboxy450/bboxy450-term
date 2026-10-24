@@ -1,0 +1,71 @@
+{
+  "head": "dc48e7454daef64563903c54a1a663c473470424",
+  "T5": {
+    "evidence": "note: layout, focus and scroll positions need a window; this run is headless",
+    "exit": 0,
+    "function": "T5",
+    "group": "terminal",
+    "kind": "e2e",
+    "verdict": "pass"
+  },
+  "records": [
+    {
+      "path": "T1.md",
+      "issued_by": "test-account:01M5QXCETAS7AYKXPGRXW6PFP5",
+      "sha256": "a3b9b7943a8c6295b715a78573e10b5279aa8167cf976b5528eb2bd9005d06b1"
+    },
+    {
+      "path": "T2.md",
+      "issued_by": "test-account:01M5QXCETAS7AYKXPGRXW6PFP5",
+      "sha256": "5d56fda91a3dca8a0581f6a364f896feebae34df06375236deca74780f7a124f"
+    },
+    {
+      "path": "T3.md",
+      "issued_by": "test-account:01M5QXCETAS7AYKXPGRXW6PFP5",
+      "sha256": "394b65788fbba7c9b1ed926d5caa612f4cacfa4c672a0bb78238033c292cb738"
+    },
+    {
+      "path": "T4.md",
+      "issued_by": "test-account:01M5QXCETAS7AYKXPGRXW6PFP5",
+      "sha256": "24fe4dc698c2fd2f775ce00e9a1c2872684a5cc39f28397ede141bb3633f9f83"
+    },
+    {
+      "path": "T5.md",
+      "issued_by": "test-account:01M5QXCETAS7AYKXPGRXW6PFP5",
+      "sha256": "2ecf02fc568d8e5364e22ac7978c391abddeb09da9a18dd965815c54473b37ca"
+    },
+    {
+      "path": "T6.md",
+      "issued_by": "test-account:01M5QXCETAS7AYKXPGRXW6PFP5",
+      "sha256": "ec0a41f3fb1118a00496b7e92c5d740357c609c5acfeb9e3b2eaa80a8c876c96"
+    },
+    {
+      "path": "T7.md",
+      "issued_by": "test-account:01M5QXCETAS7AYKXPGRXW6PFP5",
+      "sha256": "f8d70154d04db4ae8a2cc9eaee76b54af7c49b53228d336fa15c74d7dc6abe1d"
+    },
+    {
+      "path": "T8.md",
+      "issued_by": "test-account:01M5QXCETAS7AYKXPGRXW6PFP5",
+      "sha256": "f5fbc5e7f6d83861747fa863f53319ac30d62ab2791bc63199e571b97cfa95a4"
+    }
+  ],
+  "night_exit": 1,
+  "summary": {
+    "group": "terminal",
+    "kind": "summary",
+    "passed": 5,
+    "red": [
+      "T1",
+      "T7",
+      "T8"
+    ],
+    "state": "red",
+    "total": 8,
+    "tracked": [
+      "T1",
+      "T8"
+    ],
+    "unwritten": []
+  }
+}

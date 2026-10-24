@@ -262,6 +262,7 @@ pub struct Index {
     store: SqliteStore,
     activity: crate::store::events::EventLog,
     activity_sink: Option<(crate::bus::BusHandle, tokio::runtime::Handle)>,
+    issued_by: Option<String>,
     pub documents: BTreeMap<String, Document>,
     pub graphs: BTreeMap<GraphKind, DiGraph<String, Link>>,
     // A reopened index cold-reconciles its root. Persisted documents alone do
@@ -280,6 +281,10 @@ pub(crate) struct Update {
 }
 
 impl Index {
+    /// Called only with attribution derived by the admitted identity provider.
+    pub(crate) fn set_issued_by(&mut self, issued_by: Option<String>) {
+        self.issued_by = issued_by;
+    }
     /// The bundled knowledge provider's data directory is this existing root.
     pub(crate) fn knowledge_root(&self) -> &Path {
         &self.root
@@ -297,6 +302,7 @@ impl Index {
                     .ok_or_else(|| invalid("index store has no object directory"))?,
             )?,
             activity_sink: None,
+            issued_by: None,
             store,
             documents: BTreeMap::new(),
             graphs: BTreeMap::new(),
@@ -566,10 +572,14 @@ impl Index {
     }
     pub(crate) fn append_activity(
         &self,
-        event: Draft,
+        mut event: Draft,
         key: &SigningKey,
     ) -> Result<crate::store::events::Envelope> {
         use crate::store::Events;
+        if event.issued_by.is_some() && event.issued_by != self.issued_by {
+            return Err(invalid("test_account_label_mismatch: activity attribution"));
+        }
+        event.issued_by = self.issued_by.clone();
         if let Some((bus, handle)) = &self.activity_sink {
             handle.block_on(bus.publish_activity(event, key.clone()))
         } else {
@@ -786,7 +796,24 @@ impl Index {
         map.remove("provenance");
         map.entry("created_by").or_insert(json!(author.id));
         map.insert("updated_by".into(), json!(author.id));
-        map.insert("authorship".into(), author.public.clone());
+        let mut authorship = author.public.clone();
+        if let Some(label) = &self.issued_by {
+            if map
+                .get("issued_by")
+                .is_some_and(|value| {
+                    value.as_str() != Some(label)
+                        && current.as_ref().and_then(|doc| doc.metadata.get("issued_by"))
+                            != Some(value)
+                })
+            {
+                return Err(invalid("test_account_label_mismatch: record attribution"));
+            }
+            // A fetched record may retain its previous run's label. Its new
+            // signature always uses this receiver's verified account context.
+            map.insert("issued_by".into(), json!(label));
+            authorship["issued_by"] = json!(label);
+        }
+        map.insert("authorship".into(), authorship);
         let front = serde_yaml::to_string(&metadata)?;
         let body_digest = digest(body.as_bytes());
         let front_digest = digest(front.as_bytes());
@@ -1256,5 +1283,119 @@ mod tests {
         assert_eq!(scan_and_ack(&mut index).len(), 2);
         assert_eq!(index.documents["note.md"].body, "edited inside .bboxy");
         assert_eq!(index.document_reads, reads + 1);
+    }
+}
+
+#[cfg(test)]
+mod test_account_attribution {
+    use super::*;
+    use crate::{
+        identity::{AccountHead, Signed, TestAccount},
+        store::Events,
+    };
+    #[test]
+    fn verified_test_context_is_covered_by_document_and_activity_signatures() {
+        let root = tempfile::tempdir().unwrap();
+        let run = root.path().join("run");
+        let generated = TestAccount::open(&root.path().join("keys"), &run).unwrap();
+        let account =
+            SqliteStore::open(&crate::store::object_dir(&run, "account").unwrap()).unwrap();
+        let head: Signed<AccountHead> =
+            serde_json::from_slice(&account.get("identity/head").unwrap().unwrap()).unwrap();
+        let device = head.payload.active_devices[0].device_id;
+        let key = generated.key_store().load(device).unwrap().unwrap();
+        let mut index = Index::open(
+            &root.path().join(".bboxy"),
+            SqliteStore::open(&root.path().join("index")).unwrap(),
+        )
+        .unwrap();
+        index.set_issued_by(Some(generated.issued_by().into()));
+        let author = crate::provenance::author::Author::operator(
+            device,
+            crate::messaging::wire::IssuerKind::GpgRoot,
+            &key,
+        );
+        index.apply_author(Update {
+            path: "notes/fixture.md".into(),
+            metadata: json!({"id":Ulid::new().to_string(),"type":"note","title":"Test context",
+                "created":"2026-10-24T00:00:00Z","updated":"2026-10-24T00:00:00Z"}),
+            body: "private generated fixture\n".into(), expected: None,
+        }, &author).unwrap();
+        let record = index.current("notes/fixture.md").unwrap().unwrap();
+        assert_eq!(record.metadata["issued_by"], generated.issued_by());
+        assert_eq!(
+            record.metadata["authorship"]["issued_by"],
+            generated.issued_by()
+        );
+        let mut front = record.metadata.clone();
+        let signature = front.as_object_mut().unwrap().remove("provenance").unwrap();
+        let signed_digest = signature["frontmatter_digest"].as_str().unwrap();
+        let signed_digest = signed_digest
+            .strip_prefix("sha256:")
+            .unwrap_or(signed_digest);
+        assert_eq!(
+            digest(serde_yaml::to_string(&front).unwrap().as_bytes()),
+            signed_digest
+        );
+        front["issued_by"] = json!("test-account:another-run");
+        assert_ne!(
+            digest(serde_yaml::to_string(&front).unwrap().as_bytes()),
+            signed_digest
+        );
+        let refused = index
+            .apply_author(
+                Update {
+                    path: record.path.clone(),
+                    metadata: front,
+                    body: record.body.clone(),
+                    expected: Some(record.digest.clone()),
+                },
+                &author,
+            )
+            .unwrap_err();
+        assert!(refused.to_string().contains("test_account_label_mismatch"));
+        assert_eq!(
+            index.current(&record.path).unwrap().unwrap().digest,
+            record.digest
+        );
+        let activity = index.activity.after(0, 16).unwrap();
+        assert!(!activity.is_empty());
+        for row in activity {
+            assert_eq!(row.event.issued_by.as_deref(), Some(generated.issued_by()));
+            row.verify().unwrap();
+        }
+        let next_run = root.path().join("next-run");
+        let next = TestAccount::open(&root.path().join("next-keys"), &next_run).unwrap();
+        let account =
+            SqliteStore::open(&crate::store::object_dir(&next_run, "account").unwrap()).unwrap();
+        let head: Signed<AccountHead> =
+            serde_json::from_slice(&account.get("identity/head").unwrap().unwrap()).unwrap();
+        let next_device = head.payload.active_devices[0].device_id;
+        let next_key = next.key_store().load(next_device).unwrap().unwrap();
+        let next_author = crate::provenance::author::Author::operator(
+            next_device,
+            crate::messaging::wire::IssuerKind::GpgRoot,
+            &next_key,
+        );
+        index.set_issued_by(Some(next.issued_by().into()));
+        index
+            .apply_author(
+                Update {
+                    path: record.path.clone(),
+                    metadata: record.metadata,
+                    body: record.body,
+                    expected: Some(record.digest),
+                },
+                &next_author,
+            )
+            .unwrap();
+        let updated = index.current(&record.path).unwrap().unwrap();
+        assert_eq!(updated.metadata["issued_by"], next.issued_by());
+        assert_eq!(
+            updated.metadata["authorship"]["issued_by"],
+            next.issued_by()
+        );
+        assert_eq!(updated.metadata["created_by"], author.id);
+        assert_eq!(updated.metadata["updated_by"], next_author.id);
     }
 }

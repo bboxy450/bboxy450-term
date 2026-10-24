@@ -31,6 +31,29 @@ pub(crate) enum Input<'a> {
     Sha256(&'a [u8]),
 }
 
+/// The existing root signing contract; a test root is held in its own file store.
+pub(crate) trait RootSigner {
+    fn sign_root(&self, input: Input<'_>) -> Result<[u8; 64]>;
+}
+impl RootSigner for Agent {
+    fn sign_root(&self, input: Input<'_>) -> Result<[u8; 64]> {
+        self.sign(input)
+    }
+}
+impl RootSigner for ed25519_dalek::SigningKey {
+    fn sign_root(&self, input: Input<'_>) -> Result<[u8; 64]> {
+        use ed25519_dalek::Signer;
+        if matches!(&input, Input::Sha256(bytes) if bytes.len() != 32) {
+            return Err(E::InvalidProof);
+        }
+        let (Input::Raw(bytes) | Input::Sha256(bytes)) = input;
+        if bytes.is_empty() || bytes.len() > 64 * 1024 {
+            return Err(E::InvalidProof);
+        }
+        Ok(self.sign(bytes).to_bytes())
+    }
+}
+
 impl Agent {
     pub fn new(
         socket: PathBuf,

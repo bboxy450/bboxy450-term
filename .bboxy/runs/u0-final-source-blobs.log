@@ -1,0 +1,2 @@
+COMMAND ["git", "diff", "--exit-code", "db4f79ff", "423fe5d434ca38077c22e0de56493f5f25b7b7e2", "--", "crates/bboxy450-keychain*", "crates/bbt-mux/src/identity", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/bus.rs", "crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/messaging", "crates/bbt-mux/src/store/events.rs", "crates/bboxy450-term/src/cockpit.rs", "crates/bboxy450-term/src/e2e_night.rs", "crates/bboxy450-term/src/documents.rs", "crates/bboxy450-term/src/scene.rs"]
+EXIT 0

@@ -473,7 +473,8 @@ impl Messaging {
                 id,
                 Swarm {
                     tree,
-                    ledger: Ledger::open(store, id)?,
+                    ledger: Ledger::open(store, id)?
+                        .with_test_context(self.keys.test_account_label().map(str::to_owned)),
                     seen: HashMap::new(),
                     resolved: HashMap::new(),
                     muted: HashMap::new(),
@@ -1827,7 +1828,7 @@ fn mint(
         "INSERT OR IGNORE INTO msg_grants VALUES(?1,?2)",
         params![envelope.role_grant_id, raw_grant],
     )?;
-    envelope.sign(&leaf)?;
+    keys.sign_envelope(&mut envelope, &leaf)?;
     tx.execute("INSERT INTO msg_counters VALUES(?1,?2,?3) ON CONFLICT(seat,generation) DO UPDATE SET sequence=excluded.sequence",params![record.id.to_string(),sqlint(record.generation)?,sqlint(sequence)?])?;
     Ok(envelope)
 }

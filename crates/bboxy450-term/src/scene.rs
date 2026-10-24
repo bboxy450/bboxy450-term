@@ -25,6 +25,23 @@ use std::{
     time::Instant,
 };
 
+fn identity_note(identity: &bbt_proto::GuiIdentity) -> String {
+    use bbt_proto::GuiIdentityState;
+    match identity.state {
+        GuiIdentityState::LocalDev => "unsigned, local only".into(),
+        GuiIdentityState::Certified => identity
+            .reason
+            .as_deref()
+            .filter(|reason| reason.starts_with("test-account:"))
+            .unwrap_or("identity certified")
+            .into(),
+        GuiIdentityState::Pending | GuiIdentityState::Held => format!(
+            "signing held: {}",
+            identity.reason.as_deref().unwrap_or("identity pending")
+        ),
+    }
+}
+
 /// Settings > Rim size range (rim-glow §3).
 pub const RIM_MIN: f32 = TOKENS.glow.rim_min as f32;
 pub const RIM_MAX: f32 = TOKENS.glow.rim_max as f32;
@@ -968,15 +985,7 @@ impl Scene {
             ops.extend(rims);
         }
         if let Some(identity) = &self.identity {
-            use bbt_proto::GuiIdentityState;
-            let note = match identity.state {
-                GuiIdentityState::LocalDev => "unsigned, local only".into(),
-                GuiIdentityState::Certified => "identity certified".into(),
-                GuiIdentityState::Pending | GuiIdentityState::Held => format!(
-                    "signing held: {}",
-                    identity.reason.as_deref().unwrap_or("identity pending")
-                ),
-            };
+            let note = identity_note(identity);
             let mut footer = DrawList::default();
             footer.text(
                 Rect::new(
@@ -1887,5 +1896,44 @@ mod launcher_tests {
         }
         labels(&page.layout, &mut text);
         assert!(text.contains("not yet applied to the window"));
+    }
+}
+
+#[cfg(test)]
+mod identity_note_tests {
+    use super::*;
+    #[test]
+    fn the_frame_labels_test_accounts_without_changing_real_identity_notes() {
+        use bbt_proto::{GuiIdentity, GuiIdentityState::*};
+        assert_eq!(
+            identity_note(&GuiIdentity {
+                state: Certified,
+                reason: None
+            }),
+            "identity certified"
+        );
+        assert_eq!(
+            identity_note(&GuiIdentity {
+                state: LocalDev,
+                reason: None
+            }),
+            "unsigned, local only"
+        );
+        let label = "test-account:01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        assert_eq!(
+            identity_note(&GuiIdentity {
+                state: Certified,
+                reason: Some(label.into())
+            }),
+            label
+        );
+        let reason = format!("{label} · key unavailable");
+        assert_eq!(
+            identity_note(&GuiIdentity {
+                state: Held,
+                reason: Some(reason.clone())
+            }),
+            format!("signing held: {reason}")
+        );
     }
 }

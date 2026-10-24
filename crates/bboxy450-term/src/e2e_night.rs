@@ -41,13 +41,6 @@ pub fn main(args: &[String]) -> Result<bool, String> {
         return Err(USAGE.into());
     }
     let flag = |name: &str| args.windows(2).find(|w| w[0] == name).map(|w| w[1].clone());
-    // A release build would sign with the login Keychain; the throwaway automation account
-    // in file custody (#281) is what lets it run unattended, and it is not built yet.
-    if !cfg!(debug_assertions) {
-        return Err(
-            "e2e night runs the debug build until the automation identity (#281) lands".into(),
-        );
-    }
     let group = flag("--group").unwrap_or_else(|| "terminal".into());
     let dir = flag("--scripts")
         .map(PathBuf::from)
@@ -82,9 +75,6 @@ async fn night(
         .tempdir_in(std::env::var_os("TMPDIR").map_or_else(std::env::temp_dir, PathBuf::from))
         .map_err(|e| e.to_string())?;
     let root = root.path().canonicalize().map_err(|e| e.to_string())?;
-    // The throwaway account: memory custody in this debug build, nothing persisted.
-    // SAFETY: set before the runner starts any thread that reads the environment.
-    unsafe { std::env::set_var("BBOXY_TEST_CUSTODY", "memory") };
     let executable = std::env::current_exe().map_err(|e| e.to_string())?;
     let mut red = Vec::new();
     let mut total = 0;
@@ -157,6 +147,7 @@ async fn write_records(
         }
     };
     let run = app.run.clone();
+    let issued_by = app.issued_by.clone();
     let group = group.to_owned();
     let written = tokio::task::spawn_blocking(move || {
         let endpoint = crate::ctl::Endpoint::read(&run.join(bbt_mux::ctl_door::ENDPOINT))?;
@@ -165,7 +156,7 @@ async fn write_records(
         let mut unwritten = Vec::new();
         let mut tracked = Vec::new();
         for (id, verdict, tail) in verdicts {
-            let row = match upsert(&mut client, &group, &id, verdict, &tail, &now) {
+            let row = match upsert(&mut client, &group, &id, verdict, &tail, &now, &issued_by) {
                 Ok((record, task)) => {
                     if task.is_some() {
                         tracked.push(id.clone());
@@ -217,6 +208,7 @@ fn upsert(
     verdict: &str,
     tail: &str,
     now: &str,
+    issued_by: &str,
 ) -> Result<(Value, Option<String>), String> {
     let path = format!("e2e/{id}.md");
     let last = tail.lines().last().unwrap_or_default();
@@ -243,7 +235,7 @@ fn upsert(
     for (key, value) in [
         ("status", json!(verdict)),
         ("last_run", json!(now)),
-        ("run_by", json!("automation, e2e night")),
+        ("run_by", json!(issued_by)),
         ("result", json!(result)),
     ] {
         frontmatter[key] = value;
@@ -294,7 +286,15 @@ async fn promise(
     executable: &Path,
 ) -> Result<(Option<i32>, String), String> {
     let app = App::start(root, &root.join("repository")).await?;
-    let result = run_script(script, executable, &app.run, &root.join("work"), &app.pids).await;
+    let result = run_script(
+        script,
+        executable,
+        &app.run,
+        &root.join("work"),
+        &app.pids,
+        &app.issued_by,
+    )
+    .await;
     let (exit, mut tail) = result;
     if let Err(error) = app.stop().await {
         tail.push_str(&format!("\napp shutdown: {error}"));
@@ -306,6 +306,7 @@ async fn promise(
 struct App {
     run: PathBuf,
     pids: PathBuf,
+    issued_by: String,
     stop: tokio::sync::oneshot::Sender<()>,
     pump: tokio::task::JoinHandle<Result<(), String>>,
 }
@@ -323,15 +324,22 @@ impl App {
             repository: repository.to_path_buf(),
             shell_config: Some(root.join("zsh-config")),
             ctl: true,
+            test_account: Some(root.join("account")),
         })
         .await
         .map_err(|e| format!("the app did not start: {e}"))?;
+        let issued_by = session.endpoint.identity.reason.clone().unwrap_or_default();
+        if !issued_by.starts_with("test-account:") {
+            let _ = session.shutdown().await;
+            return Err("the night app has no verified test-account label".into());
+        }
         let pids = root.join("pids.json");
         let (stop, stopped) = tokio::sync::oneshot::channel::<()>();
         let app = Self {
             pump: tokio::spawn(pump(session, pids.clone(), stopped)),
             run,
             pids,
+            issued_by,
             stop,
         };
         let deadline = Instant::now() + Duration::from_secs(30);
@@ -390,6 +398,7 @@ async fn run_script(
     run: &Path,
     work: &Path,
     pids: &Path,
+    issued_by: &str,
 ) -> (Option<i32>, String) {
     let log = work.join("output.log");
     let Ok(file) = std::fs::File::create(&log) else {
@@ -404,7 +413,7 @@ async fn run_script(
         .env("BBOXY_RUN_DIR", run)
         .env("E2E_WORK", work)
         .env("E2E_PIDS", pids)
-        .env("BBOXY_CTL_ISSUER", "automation, e2e night")
+        .env("BBOXY_CTL_ISSUER", issued_by)
         .stdin(Stdio::null())
         .stdout(file)
         .stderr(err)

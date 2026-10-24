@@ -1,0 +1,7 @@
+1:  00d794a4 = 1:  10f9ed4b Implement persistent file custody for throwaway test accounts
+2:  657cfa06 = 2:  79c5103e ctl record write and task create: the night writes its e2e records and opens fix tasks
+3:  3f76b7ef = 3:  8a33ad35 Run unattended nights with persistent per-run test accounts
+4:  1e3476f3 = 4:  d0980834 Display test-account attribution and record unattended T5 proof
+5:  46a2c91a = 5:  cd56f7f7 Prepare nested test-account runs and refuse foreign issuer state early
+6:  31287511 = 6:  92d79231 Record final-source canonical T5 verdict and exact script digests
+7:  03c55bc4 = 7:  423fe5d4 Publish clipped Git-ref diagnostics only when the retained state changes

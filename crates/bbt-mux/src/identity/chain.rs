@@ -47,8 +47,12 @@ pub struct ChainSeatKeys {
     clock: Clock,
     memory: Mutex<Memory>,
     renewal_hold: Mutex<Option<String>>,
+    test_label: Option<String>,
 }
 impl ChainSeatKeys {
+    pub(super) fn test_label(&self) -> Option<&str> {
+        self.test_label.as_deref()
+    }
     pub fn open(
         account: SqliteStore,
         custody: Arc<dyn DeviceKeyStore + Send + Sync>,
@@ -91,6 +95,7 @@ impl ChainSeatKeys {
         if state.kind == IssuerKind::GpgRoot && state.key != identity.grant.payload.root_pubkey {
             return Err(invalid("foreign root issuer journal"));
         }
+        let test_label = super::test_account::verified_label(&account, &identity, &head, pinned)?;
         let provider = Self {
             account,
             identity,
@@ -105,6 +110,7 @@ impl ChainSeatKeys {
             clock,
             memory: Mutex::new(Memory::default()),
             renewal_hold: Mutex::new(None),
+            test_label,
         };
         Ok(provider)
     }
@@ -179,6 +185,9 @@ impl ChainSeatKeys {
             && let Some(reason) = self.signing_hold(now)
         {
             status.hold(reason);
+        }
+        if let Some(label) = &self.test_label {
+            status.label = format!("{label} · {}", status.label);
         }
         Ok(status)
     }
@@ -497,7 +506,7 @@ impl ChainSeatKeys {
             )?;
             memory.verified.insert(cache);
         }
-        env.verify_signature()
+        env.verify_signature_in_account(self.test_label.as_deref())
     }
     pub fn revoke_seat(&self, seat: Ulid) -> Result<u64> {
         self.device_current((self.clock)())?;
@@ -775,6 +784,12 @@ impl ChainSeatKeys {
     }
 }
 impl SeatKeys for ChainSeatKeys {
+    fn test_account_label(&self) -> Option<&str> {
+        self.test_label.as_deref()
+    }
+    fn sign_envelope(&self, envelope: &mut Envelope, key: &SigningKey) -> Result<()> {
+        envelope.sign_in_account(key, self.test_label.as_deref())
+    }
     fn issuer(&self) -> Issuer {
         self.issuer.clone()
     }
@@ -826,7 +841,7 @@ impl SeatKeys for ChainSeatKeys {
             {
                 return Err(invalid("operator envelope does not match DeviceGrant"));
             }
-            return env.verify_signature();
+            return env.verify_signature_in_account(self.test_label.as_deref());
         }
         if env.issuer_kind == IssuerKind::LocalDev {
             return self.verify_local(env);
@@ -844,6 +859,7 @@ impl SeatKeys for ChainSeatKeys {
         record: &SeatRecord,
         tx: &Transaction<'_>,
     ) -> Result<()> {
+        env.issued_by = self.test_label.clone();
         let state = transition::get(tx)?.ok_or_else(|| invalid("missing issuer journal"))?;
         if transition::legacy(&state, env.seat, env.process_generation) {
             let issuer = self.local.issuer();
@@ -1013,6 +1029,12 @@ impl Drop for MaintainedKeys {
     }
 }
 impl SeatKeys for MaintainedKeys {
+    fn test_account_label(&self) -> Option<&str> {
+        self.chain.test_account_label()
+    }
+    fn sign_envelope(&self, envelope: &mut Envelope, key: &SigningKey) -> Result<()> {
+        self.chain.sign_envelope(envelope, key)
+    }
     fn issuer(&self) -> Issuer {
         self.chain.issuer()
     }

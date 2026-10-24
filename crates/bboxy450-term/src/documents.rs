@@ -77,6 +77,16 @@ fn decode(read: &Read, value: d::Result<Value>) -> Response {
                 markdown.frontmatter.error = record.parse_error;
                 let mut document = markdown.document(&record.reference.path);
                 document.prov.digest = record.reference.digest.clone();
+                if let Some(label) = record.frontmatter["authorship"]["issued_by"]
+                    .as_str()
+                    .filter(|value| value.starts_with("test-account:"))
+                {
+                    let updater = document.prov.updated_by.get_or_insert_with(String::new);
+                    if !updater.is_empty() {
+                        updater.push_str(" · ");
+                    }
+                    updater.push_str(label);
+                }
                 // Metadata alone never proves cryptographic verification.
                 document.prov.signed = None;
                 let targets = markdown.link_targets();

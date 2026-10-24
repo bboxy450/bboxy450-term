@@ -796,6 +796,7 @@ pub struct Broker {
     key: SigningKey,
     hold: Option<HoldSigning>,
     custody_signers: bool,
+    issued_by: Option<String>,
     catalog: SqliteStore,
     streams: BTreeMap<String, Stream>,
     consumers: BTreeMap<String, Consumer>,
@@ -803,6 +804,10 @@ pub struct Broker {
 }
 
 impl Broker {
+    /// Startup supplies a label derived from its verified account root/context.
+    pub(crate) fn set_issued_by(&mut self, issued_by: Option<String>) {
+        self.issued_by = issued_by;
+    }
     pub fn open(root: &Path, key: SigningKey) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         std::fs::create_dir_all(root)?;
@@ -812,6 +817,7 @@ impl Broker {
             key,
             hold: None,
             custody_signers: false,
+            issued_by: None,
             catalog,
             streams: BTreeMap::new(),
             consumers: BTreeMap::new(),
@@ -901,6 +907,10 @@ impl Broker {
         mut event: Draft,
         signer: Option<SigningKey>,
     ) -> Result<Envelope> {
+        if event.issued_by.is_some() && event.issued_by != self.issued_by {
+            return Err(invalid("test_account_label_mismatch: event attribution"));
+        }
+        event.issued_by = self.issued_by.clone();
         let supplied = signer.is_some();
         let key = signer.unwrap_or_else(|| self.key.clone());
         validate_subject(&event.subject, false)?;

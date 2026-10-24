@@ -71,14 +71,18 @@ fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
         std::fs::read_to_string(records.path().join(format!(".bboxy/e2e/{id}.md"))).unwrap()
     };
     let first = record("T2");
-    for field in [
-        "type: e2e",
-        "function: T2",
-        "status: fail",
-        "run_by: automation, e2e night",
-    ] {
+    for field in ["type: e2e", "function: T2", "status: fail"] {
         assert!(first.contains(field), "{field}: {first}");
     }
+    let label = first
+        .lines()
+        .find_map(|line| line.strip_prefix("run_by: "))
+        .unwrap();
+    assert!(label.starts_with("test-account:"), "{first}");
+    assert!(
+        first.matches(&format!("issued_by: {label}")).count() >= 2,
+        "{first}"
+    );
     assert!(
         first.contains("authorship:") && first.contains("sig:"),
         "signed: {first}"

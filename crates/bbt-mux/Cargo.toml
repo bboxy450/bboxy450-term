@@ -9,6 +9,7 @@ rust-version.workspace = true
 description = "bboxy450-term: bbt-mux"
 
 [dependencies]
+bboxy450-keychain = { path = "../bboxy450-keychain" }
 bboxy450-harness-wake-up = { workspace = true, features = ["runtime-assertions"] }
 bbt-plugin = { path = "../bbt-plugin" }
 bbt-doc = { path = "../bbt-doc" }
@@ -33,6 +34,7 @@ sha2 = "0.10"
 tempfile = "3"
 tokio = { version = "1", features = ["rt", "sync", "time", "net", "io-util", "macros", "process"] }
 ulid = { version = "1", features = ["serde"] }
+zeroize = "1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "=0.10.1"

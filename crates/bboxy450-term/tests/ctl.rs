@@ -217,6 +217,7 @@ async fn ctl_drives_a_claude_seat_from_outside_the_app() {
         repository: repository.clone(),
         shell_config: Some(root.join("zsh-config")),
         ctl: true,
+        test_account: None,
     })
     .await
     .unwrap();
@@ -457,6 +458,7 @@ async fn first_contact_uses_the_authenticated_hook_socket_and_restores_it_after_
         repository: repository.clone(),
         shell_config: Some(root.join("zsh-config")),
         ctl: true,
+        test_account: None,
     })
     .await
     .unwrap();
@@ -599,6 +601,7 @@ async fn without_ctl_the_app_writes_no_endpoint() {
         repository,
         shell_config: Some(root.join("zsh-config")),
         ctl: false,
+        test_account: None,
     })
     .await
     .unwrap();
@@ -642,6 +645,7 @@ async fn ctl_capture_is_answered_by_the_window() {
         repository,
         shell_config: Some(root.join("zsh-config")),
         ctl: true,
+        test_account: None,
     })
     .await
     .unwrap();
@@ -887,6 +891,7 @@ async fn a_wrong_capability_is_refused_with_its_reason() {
         repository,
         shell_config: Some(root.join("zsh-config")),
         ctl: true,
+        test_account: None,
     })
     .await
     .unwrap();
@@ -951,6 +956,7 @@ async fn ctl_screen_input_and_wait_drive_a_seat() {
         repository,
         shell_config: Some(root.join("zsh-config")),
         ctl: true,
+        test_account: None,
     })
     .await
     .unwrap();
@@ -1242,6 +1248,7 @@ async fn noun_verb_fixture(root: &Path) -> (Session, PathBuf, String) {
         repository,
         shell_config: Some(root.join("zsh-config")),
         ctl: true,
+        test_account: None,
     })
     .await
     .unwrap();

@@ -1,0 +1,58 @@
+RAW git-idle-before.log sha256=424942edb9d41f30604a06db0755754e4a2de7dfd4f1f9127a7a90e4691ddd60
+COMMAND ["cargo", "test", "-p", "bbt-mux", "--locked", "--test", "provenance", "unchanged_clipped_git_refs_produce_no_activity_for_ten_seconds", "--", "--nocapture"]
+Private Git fixture, copied public commit objects; direct compiler
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+   Compiling bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain)
+   Compiling bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-harness-wake-up)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 1m 07s
+     Running tests/provenance.rs (target/identity-file-dev/debug/deps/provenance-103578e7bd176a97)
+
+running 1 test
+
+thread 'unchanged_clipped_git_refs_produce_no_activity_for_ten_seconds' (30564592) panicked at crates/bbt-mux/tests/provenance.rs:536:9:
+unchanged refs produced activity: [Envelope { seq: 4, event: Draft { id: Ulid(2167458267772445383263964872534660964), ts: 1792879457619, subject: "activity/provenance/gap", source: "provenance", seat: None, generation: None, reply_to: None, issued_by: None, payload: Object {"complete": Bool(false), "reason": String("git-ref-scan-bound: retained first128 refs")} }, prev: "0fd3f436fbc8c4fe9a56ba5c0a2546729fa14d4eec5f52ff6bc18e7049a5fb59", provenance: Provenance { signer: [192, 80, 197, 99, 122, 68, 250, 134, 41, 255, 243, 204, 204, 226, 48, 12, 179, 98, 166, 61, 153, 217, 95, 197, 65, 69, 38, 111, 67, 50, 68, 90], sig: [198, 183, 81, 1, 187, 143, 222, 160, 247, 101, 97, 238, 151, 73, 157, 205, 85, 78, 118, 227, 63, 192, 250, 211, 165, 188, 157, 193, 188, 216, 80, 12, 84, 120, 168, 50, 69, 12, 128, 223, 212, 115, 7, 49, 250, 67, 148, 165, 85, 12, 8, 96, 133, 142, 15, 134, 77, 212, 12, 69, 180, 210, 23, 4] } }]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test unchanged_clipped_git_refs_produce_no_activity_for_ten_seconds ... FAILED
+
+failures:
+
+failures:
+    unchanged_clipped_git_refs_produce_no_activity_for_ten_seconds
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 5 filtered out; finished in 2.87s
+
+error: test failed, to rerun pass `-p bbt-mux --test provenance`
+
+END RAW
+RAW git-idle-after.log sha256=5da9930a1367fca1bc52557590b4070e5c26c98281c574a7f1a126a44f2f9a7b
+COMMAND ["cargo", "test", "-p", "bbt-mux", "--locked", "--test", "provenance", "unchanged_clipped_git_refs_produce_no_activity_for_ten_seconds", "--", "--nocapture"]
+Private fixture account; direct compiler
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 19.35s
+     Running tests/provenance.rs (target/identity-file-dev/debug/deps/provenance-103578e7bd176a97)
+
+running 1 test
+test unchanged_clipped_git_refs_produce_no_activity_for_ten_seconds ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 12.61s
+
+
+END RAW
+RAW clippy-idle-after.log sha256=b3daeba05154e9254b1d8335e0e220f3198df530cbb6bb7647cbf3e82c5e357c
+COMMAND ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"]
+Private fixture account; direct compiler
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 18.79s
+
+END RAW

@@ -48,6 +48,37 @@ fn resolve_fetch_and_numbered_links_use_the_provider_record_without_a_signature_
     assert!(host.settled());
 }
 #[test]
+fn the_provenance_card_displays_test_account_attribution_without_certifying_metadata() {
+    for label in [Some("test-account:01M5QXCFMCR0Z4ZFYZM5JY8QBZ"), None] {
+        let mut reader = Reader::default();
+        let id = Ulid::new();
+        reader.admit(id, Read::Fetch(reference(1)));
+        let record = d::Record {
+            reference: reference(1),
+            frontmatter: json!({"type":"note","created_by":"original author",
+                "updated_by":"device:fixture","authorship":{"issued_by":label}}),
+            body: "Public attribution from the provider.\n".into(),
+            etag: "etag".into(),
+            resources: vec![],
+            parse_error: None,
+        };
+        let reply = result(&mut reader, id, json!(record));
+        let Response::Fetched(prepared) = &reply.response else {
+            panic!("record was not projected: {reply:?}");
+        };
+        let expected = label.map_or_else(
+            || "device:fixture".to_owned(),
+            |label| format!("device:fixture · {label}"),
+        );
+        assert_eq!(
+            prepared.document.prov.updated_by.as_deref(),
+            Some(expected.as_str())
+        );
+        assert_eq!(prepared.document.prov.created_by, "original author");
+        assert_eq!(prepared.document.prov.signed, None);
+    }
+}
+#[test]
 fn reopening_while_pending_drains_the_old_reply_without_replacing_the_new_target() {
     let mut host = Host::default();
     host.show("#1".into());

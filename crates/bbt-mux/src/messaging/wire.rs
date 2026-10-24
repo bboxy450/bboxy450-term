@@ -43,6 +43,11 @@ pub trait EnvelopeExt {
     fn signing_bytes(&self) -> Result<Vec<u8>>;
     fn sign(&mut self, key: &SigningKey) -> Result<()>;
     fn verify_signature(&self) -> Result<()>;
+    /// Signature/shape checking with a label derived from a verified account root.
+    /// This check alone never admits a sender or grants delivery authority.
+    fn verify_signature_in_account(&self, test_label: Option<&str>) -> Result<()>;
+    /// The identity provider supplies the verified test context, never tool input.
+    fn sign_in_account(&mut self, key: &SigningKey, test_label: Option<&str>) -> Result<()>;
 }
 impl EnvelopeExt for Envelope {
     fn signing_bytes(&self) -> Result<Vec<u8>> {
@@ -89,13 +94,27 @@ impl EnvelopeExt for Envelope {
         Ok(bytes)
     }
     fn sign(&mut self, key: &SigningKey) -> Result<()> {
+        self.sign_in_account(key, None)
+    }
+    fn sign_in_account(&mut self, key: &SigningKey, test_label: Option<&str>) -> Result<()> {
         if self.author != public(&key.verifying_key().to_bytes()) {
             return Err(invalid("seat signing key mismatch"));
         }
         self.signature = URL_SAFE_NO_PAD.encode(key.sign(&self.signing_bytes()?).to_bytes());
-        self.verify_signature()
+        self.verify_signature_in_account(test_label)
     }
     fn verify_signature(&self) -> Result<()> {
+        self.verify_signature_in_account(None)
+    }
+    fn verify_signature_in_account(&self, test_label: Option<&str>) -> Result<()> {
+        if let Some(expected) = test_label
+            && (!expected.starts_with("test-account:")
+                || self.issued_by.as_deref() != Some(expected))
+        {
+            return Err(invalid(
+                "test_account_label_mismatch: expected the verified run label",
+            ));
+        }
         SendRequest {
             id: self.id,
             destination: self.context.clone(),
@@ -122,7 +141,8 @@ impl EnvelopeExt for Envelope {
             || self.role.name.len() > 128
             || self.role.name.chars().any(char::is_control)
             || self.priority_class != self.role.class
-            || (!operator && (self.door.is_some() || self.issued_by.is_some()))
+            || (!operator && self.door.is_some())
+            || (!operator && test_label.is_none() && self.issued_by.is_some())
             || self.issued_by.as_ref().is_some_and(|label| {
                 label.trim().is_empty()
                     || label.len() > bbt_proto::messaging::MAX_ISSUER

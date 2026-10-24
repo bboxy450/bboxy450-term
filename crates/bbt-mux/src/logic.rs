@@ -986,6 +986,15 @@ impl Logic {
         config: LogicConfig,
         handle: &tokio::runtime::Handle,
     ) -> Result<Self> {
+        Self::start_custodied_with_fixture_store(connection, config, None, handle)
+    }
+    /// The same fixture-host ownership path with an explicit persistent store.
+    pub fn start_custodied_with_fixture_store(
+        connection: impl SupervisorConnection + 'static,
+        config: LogicConfig,
+        store: Option<Arc<dyn crate::identity::DeviceKeyStore + Send + Sync>>,
+        handle: &tokio::runtime::Handle,
+    ) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         let registry = Registry::new(SqliteStore::open(&object_dir(&config.run_dir, "account")?)?);
         let owners = registry
@@ -1005,7 +1014,7 @@ impl Logic {
             providers,
             config,
             bus_key,
-            IdentityMode::Custodied(None),
+            IdentityMode::Custodied(store),
             handle,
         )
     }
@@ -1103,6 +1112,7 @@ impl Logic {
         };
         let key = ready.unwrap_or(key);
         let mut broker = Broker::open(&config.run_dir, key.clone())?;
+        broker.set_issued_by(identity.issued_by().map(str::to_owned));
         if let Some(run) = bus_window {
             broker.identity_signer(key, Some(run));
         } else if custodied {
@@ -1536,6 +1546,7 @@ impl Worker {
             &config.repository.join(".bboxy"),
             SqliteStore::open(&object_dir(&config.run_dir, "index")?)?,
         )?;
+        index.set_issued_by(identity.issued_by().map(str::to_owned));
         index.route_activity(bus.clone(), handle.clone());
         // Markdown is authority even if a crash preceded the mirror update.
         // scan retains its durable outbox; the normal startup scan publishes it.
@@ -3732,6 +3743,7 @@ impl Worker {
         origin: crate::mcp::Origin,
         effect: impl FnOnce(&mut Self) -> Result<()>,
     ) -> Result<()> {
+        let origin = self.identity.bind_origin(origin);
         let device_id = self
             .identity
             .status()?
@@ -4887,7 +4899,11 @@ impl Worker {
                 IdentityState::Certified => GuiIdentityState::Certified,
                 IdentityState::Held => GuiIdentityState::Held,
             },
-            reason: status.reason_label,
+            reason: match (self.identity.issued_by(), status.reason_label) {
+                (Some(label), Some(reason)) => Some(format!("{label} · {reason}")),
+                (Some(label), None) => Some(label.into()),
+                (None, reason) => reason,
+            },
         })
     }
     fn gui_device(&self) -> Result<Ulid> {
@@ -4993,6 +5009,7 @@ impl Worker {
         request: crate::messaging::api::Request,
         origin: crate::mcp::Origin,
     ) -> Result<crate::messaging::api::Response> {
+        let origin = self.identity.bind_origin(origin);
         let device_id = self
             .identity
             .status()?
@@ -5071,6 +5088,7 @@ impl Worker {
         request: bbt_proto::messaging::TaskRequest,
         origin: crate::mcp::Origin,
     ) -> Result<bbt_proto::messaging::TaskResponse> {
+        let origin = self.identity.bind_origin(origin);
         let device_id = self
             .identity
             .status()?
@@ -5104,6 +5122,7 @@ impl Worker {
             knowledge::data_source as d,
             mcp::{self, knowledge as tool},
         };
+        let origin = self.identity.bind_origin(origin);
         let device_id = self
             .identity
             .status()
@@ -5266,7 +5285,7 @@ impl Worker {
         let principal = crate::mcp::Principal::Operator {
             device_id,
             door,
-            issued_by: None,
+            issued_by: self.identity.issued_by().map(str::to_owned),
         };
         let (retained, fresh) = self.operator_journal.admit(&principal, &call)?;
         let result = if fresh {

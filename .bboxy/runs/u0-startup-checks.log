@@ -1,0 +1,156 @@
+RAW identity-library.log sha256=65b3287a3e893958d7bda4feaa80b55a14213b0570bc94417827df6ccb8c1379
+COMMAND ["cargo", "test", "-p", "bbt-mux", "--locked", "--lib", "identity::", "--", "--nocapture"]
+Explicit memory default; file-test accounts select their supplied store
+   Compiling num-bigint-dig v0.8.6
+   Compiling ahash v0.8.12
+   Compiling referencing v0.60.1
+   Compiling jsonschema-value v0.60.1
+   Compiling rsa v0.9.10
+   Compiling dsa v0.6.3
+   Compiling bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+   Compiling rusqlite v0.40.2
+   Compiling pgp v0.21.0
+   Compiling jsonschema v0.60.1
+   Compiling bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain)
+   Compiling bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-harness-wake-up)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 1m 02s
+     Running unittests src/lib.rs (target/identity-file-dev/debug/deps/bbt_mux-296c039c6cb4dfe3)
+
+running 9 tests
+test identity::io::debug_tests::unset_process_fixture ... ignored, spawned-process fixture, invoked by debug_without_override_selects_keychain
+test identity::keychain::tests::denied_or_interactive_keychain_answers_have_a_named_hold ... ok
+test identity::io::debug_tests::labels_describe_the_actual_store_and_survive_the_io_wrapper ... ok
+test identity::agent::tests::malformed_agent_data_is_rejected ... ok
+test identity::agent::tests::agent_cancellation_and_bad_framing_fail_closed ... ok
+test identity::io::debug_tests::debug_without_override_selects_keychain ... ok
+test identity::io::debug_tests::fixture_never_overwrites_a_key_or_accepts_a_relative_directory ... ok
+test identity::io::debug_tests::fixture_generates_private_keys_once_and_reopens_without_a_known_key ... ok
+test identity::agent::tests::agent_deadline_is_bounded ... ok
+
+test result: ok. 8 passed; 0 failed; 1 ignored; 0 measured; 81 filtered out; finished in 0.17s
+
+
+END RAW
+RAW clippy-final-base.log sha256=dd159391fdfcd0e9f18741eea6da2573825c5a429950350e862bcae13540ffde
+HEAD 49339de1b74d8e1321d5556ec5bca996d9ba2c2d
+COMMAND ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"]
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-harness-wake-up)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Checking bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn-macros)
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bboxy450-desktop-notifications-linux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-linux)
+    Checking bboxy450-keychain-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-windows)
+    Checking bboxy450-desktop-notifications-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-windows)
+    Finished `dev` profile [unoptimized] target(s) in 1m 25s
+
+END RAW
+RAW startup-boundaries-before.log sha256=0a8bb2fdea399c2a11712e3fda77241bf4ab97b47afb6884b51e5cf1f7b0c730
+COMMAND ["cargo", "test", "-p", "bbt-mux", "--locked", "--test", "test_account", "startup_", "--", "--nocapture"]
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+
+END RAW
+RAW startup-boundaries-repro.log sha256=35d0499a349006c074af4f1d3dfc43f0bad21ac2d7e8766d00cf6870cbb02ada
+COMMAND ["cargo", "test", "-p", "bbt-mux", "--locked", "--test", "test_account", "startup_", "--", "--nocapture"]
+RUSTC_WRAPPER empty, direct per-worktree compiler; memory custody override absent
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 22.38s
+     Running tests/test_account.rs (target/identity-file-dev/debug/deps/test_account-afa049309b925d21)
+
+running 2 tests
+
+thread 'startup_allows_the_selected_private_run_inside_the_account_directory' (30456999) panicked at crates/bbt-mux/tests/test_account.rs:214:48:
+called `Result::unwrap()` on an `Err` value: Custom { kind: InvalidData, error: "test_account_directory_not_empty: use a fresh private directory" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test startup_allows_the_selected_private_run_inside_the_account_directory ... FAILED
+
+thread 'startup_refuses_a_foreign_issuer_before_creating_test_keys_or_context' (30457000) panicked at crates/bbt-mux/tests/test_account.rs:233:5:
+identity pending: JournalConflict
+test startup_refuses_a_foreign_issuer_before_creating_test_keys_or_context ... FAILED
+
+failures:
+
+failures:
+    startup_allows_the_selected_private_run_inside_the_account_directory
+    startup_refuses_a_foreign_issuer_before_creating_test_keys_or_context
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.04s
+
+error: test failed, to rerun pass `-p bbt-mux --test test_account`
+
+END RAW
+RAW startup-boundaries-after.log sha256=fb92804c2c5b1ee8e0150402afdff24bdb4b72576637cb6b275e3b7716813347
+COMMAND ["cargo", "test", "-p", "bbt-mux", "--locked", "--test", "test_account", "--", "--nocapture"]
+RUSTC_WRAPPER empty, explicit file test accounts, no memory override
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 21.53s
+     Running tests/test_account.rs (target/identity-file-dev/debug/deps/test_account-afa049309b925d21)
+
+running 7 tests
+test a_foreign_nonempty_directory_never_becomes_a_test_identity ... ok
+test startup_refuses_a_foreign_issuer_before_creating_test_keys_or_context ... ok
+test a_missing_or_corrupt_root_refuses_without_generating_a_new_identity ... ok
+test startup_allows_the_selected_private_run_inside_the_account_directory ... ok
+test generated_root_device_and_verified_grants_survive_reopening ... ok
+test fresh_runs_are_distinct_and_cannot_rebind_an_existing_account ... ok
+test seat_messages_require_the_label_derived_by_the_receiving_account ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+
+END RAW
+RAW app-nested-after.log sha256=5a00003af3accbdffbf369a6ae69a8a7e461617033f12a754e6c1b1b3349e308
+COMMAND ["cargo", "test", "-p", "bboxy450-term", "--locked", "--test", "test_account", "--test", "e2e_night", "--", "--nocapture"]
+RUSTC_WRAPPER empty, explicit file test accounts, no memory override
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 41.21s
+     Running tests/e2e_night.rs (target/identity-file-dev/debug/deps/e2e_night-b6bfca76be8f0718)
+
+running 1 test
+test the_runner_turns_script_exit_codes_into_verdicts_and_a_summary ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.13s
+
+     Running tests/test_account.rs (target/identity-file-dev/debug/deps/test_account-f9c0dbdf26a84ef4)
+
+running 2 tests
+test test_account_selector_is_explicit_and_rejects_bad_flags_before_custody ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authority ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.02s
+
+
+END RAW
+RAW clippy-startup-after.log sha256=8b2dbb88e6f64021f7e666e605765b4dc9e2a9b218bb004539a485bf0c3853b6
+COMMAND ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"]
+RUSTC_WRAPPER empty, explicit file test accounts, no memory override
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 31.83s
+
+END RAW
