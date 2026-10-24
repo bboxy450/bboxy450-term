@@ -33,10 +33,11 @@
   function rollName(r) { return pick(r, FIRST) + ' ' + pick(r, LAST); }
 
   const HARNESSES = ['claude', 'codex', 'pi', 'omp', 'zsh'];
-  // What the app launches: every harness starts as an executor, least privilege until Settings › Roles says otherwise.
-  const DEFAULT_ROLE = { claude: 'executor', codex: 'executor', pi: 'executor', omp: 'executor', zsh: null };
+  // What the app launches (decision #262, AGENTS.md): Claude supervises, so oracle; Codex implements, so executor and never an oracle
+  // class; a shell has no harness to prompt, so shell (worker class, no chip). A launcher preset or the row's role chip overrides.
+  const DEFAULT_ROLE = { claude: 'oracle', codex: 'executor', pi: 'executor', omp: 'executor', zsh: 'shell' };
   // Demo cohorts only: a swarm with its oracle, so the lab shows every role mark.
-  const DEMO_ROLE = { claude: 'oracle', codex: 'executor', pi: 'executor', omp: 'executor', zsh: null };
+  const DEMO_ROLE = { claude: 'oracle', codex: 'executor', pi: 'executor', omp: 'executor', zsh: 'shell' };   // decision #262: a shell's role is shell
   const STATES = ['active', 'idle', 'waiting', 'errored'];
   const GLYPH = { active: '●', idle: '○', waiting: '◐', errored: '✕' };
   const ROLE_MARK = { oracle: '♔', architect: '♖', executor: '♟', creativity: '♝', unsigned: '·' };
@@ -144,7 +145,7 @@
     const tileCol = (LAUNCH.find(l => l.harness === seat.harness) || {}).tile || 'var(--surface-2)';
     if (seat.where && seat.where !== 'local') row.append(el('span', { class: 'where ' + seat.where + (seat.link ? ' ' + linkOf(seat.link).kind : ''), title: (seat.where === 'cloud' ? 'runs in the cloud' : 'over ssh') + (seat.host ? ' · ' + seat.host : '') + (seat.link ? ' · ' + linkSay(seat.link) : '') }, harnessIcon(seat.where)));
     row.append(el('span', { class: 'tile', style: 'background:' + tileCol }, harnessIcon(seat.harness)), el('span', { class: 'name', style: 'color:' + seatColor(seat) }, seat.name));
-    if (seat.role) row.append(roleMark(seat.role));
+    if (seat.role && seat.role !== 'shell') row.append(roleMark(seat.role));   // a shell carries no role chip (decision #262)
     if (seat.authority) row.append(authMark(seat));
     if (seat.muted) { row.classList.add('muted'); row.append(el('span', { class: 'mutemark', title: 'muted: 1:1 with the operator' }, harnessIcon('muted'))); }
     row.append(el('span', { class: 'title' }, seat.title || ''));
@@ -349,7 +350,7 @@
       const live = (s.tasks || []).find(t => ['claimed', 'running', 'reported'].includes(t.status));
       const blocked = (s.tasks || []).find(t => t.status === 'blocked');
       const tileCol = (LAUNCH.find(l => l.harness === s.harness) || {}).tile || 'var(--surface-2)';
-      agents.append(el('div', { class: 'g-row', 'data-key': s.key }, el('span', { class: 'g-seat' }, el('span', { class: 'tile', style: 'background:' + tileCol }, harnessIcon(s.harness)), el('b', { style: 'color:' + seatColor(s) }, s.name), glyph(s.state, s)), el('span', {}, s.role ? roleMark(s.role) : '', ' ', s.role || 'shell'), el('span', { class: 'g-now' }, live ? [el('span', { class: 'tglyph ' + live.status }, taskMark(live.status)), ' ', live.title] : (s.state === 'waiting' ? 'waiting · ' + (s.waitKind || 'answer') : s.state)), el('span', { class: 'g-block' }, blocked ? 'waits on ' + blocked.waits : (s.state === 'waiting' ? 'the operator' : '—'))));
+      agents.append(el('div', { class: 'g-row', 'data-key': s.key }, el('span', { class: 'g-seat' }, el('span', { class: 'tile', style: 'background:' + tileCol }, harnessIcon(s.harness)), el('b', { style: 'color:' + seatColor(s) }, s.name), glyph(s.state, s)), el('span', {}, s.role && s.role !== 'shell' ? roleMark(s.role) : '', ' ', s.role || 'shell'), el('span', { class: 'g-now' }, live ? [el('span', { class: 'tglyph ' + live.status }, taskMark(live.status)), ' ', live.title] : (s.state === 'waiting' ? 'waiting · ' + (s.waitKind || 'answer') : s.state)), el('span', { class: 'g-block' }, blocked ? 'waits on ' + blocked.waits : (s.state === 'waiting' ? 'the operator' : '—'))));
     }
     const tree = el('div', { class: 's-card' }, el('div', { class: 's-card-h' }, el('span', {}, 'Graph · epics → work')));
     const pre = el('div', { class: 'g-tree' });
@@ -1002,7 +1003,7 @@
     const s = el('div', { class: 'strip', style: 'background:' + seatColor(seat) }, el('span', { class: 'close', title: 'close seat', onclick: e => { e.stopPropagation(); if (opts.onClose) opts.onClose(seat); } }));
     if (seat.where && seat.where !== 'local') s.append(el('span', { class: 'where', title: seat.where + (seat.host ? ' · ' + seat.host : '') }, harnessIcon(seat.where)));
     s.append(harnessIcon(seat.harness), el('span', { class: 'name' }, seat.name));
-    if (seat.role) s.append(roleMark(seat.role));
+    if (seat.role && seat.role !== 'shell') s.append(roleMark(seat.role));
     if (seat.authority) s.append(authMark(seat), el('span', { class: 'authsay' }, AUTH_SAY[seat.authority]));
     s.append(el('span', { class: 'title' }, (seat.title || '') + (seat.state === 'waiting' ? ' · waiting for ' + (seat.waitKind || 'an answer') : '')));
     if (opts.shortcut) s.append(kbd(opts.shortcut));
@@ -1082,11 +1083,12 @@
   // ⌘T picker: vertical, keyboard-first, typed prefix, name reveal with reroll
   // Launchables: harnesses and zsh today; browser tab, vnc and ssh later. Rows are data, the picker does not care.
   const LAUNCH = [
-    { id: 'claude', label: 'Claude', sub: 'executor by default', harness: 'claude', kind: 'Harness', tile: '#D97757', section: 'Suggestions' },
-    { id: 'codex', label: 'Codex', sub: 'executor by default', harness: 'codex', kind: 'Harness', tile: '#1F2937', section: 'Suggestions' },
-    { id: 'pi', label: 'pi', sub: 'executor by default', harness: 'pi', kind: 'Harness', tile: '#7C3AED', section: 'Harnesses' },
-    { id: 'omp', label: 'omp', sub: 'executor by default', harness: 'omp', kind: 'Harness', tile: '#0EA5E9', section: 'Harnesses' },
-    { id: 'zsh', label: 'zsh', sub: '~', harness: 'zsh', kind: 'Shell', tile: '#111827', section: 'Shells' },
+    // role: the default label (decision #262, AGENTS.md): Claude oracle, Codex executor and stays one, a shell is shell (no prompt, no chip)
+    { id: 'claude', label: 'Claude', sub: 'oracle by default', harness: 'claude', role: 'oracle', kind: 'Harness', tile: '#D97757', section: 'Suggestions' },
+    { id: 'codex', label: 'Codex', sub: 'executor · never an oracle', harness: 'codex', role: 'executor', kind: 'Harness', tile: '#1F2937', section: 'Suggestions' },
+    { id: 'pi', label: 'pi', sub: 'executor by default', harness: 'pi', role: 'executor', kind: 'Harness', tile: '#7C3AED', section: 'Harnesses' },
+    { id: 'omp', label: 'omp', sub: 'executor by default', harness: 'omp', role: 'executor', kind: 'Harness', tile: '#0EA5E9', section: 'Harnesses' },
+    { id: 'zsh', label: 'zsh', sub: '~ · shell, no role', harness: 'zsh', role: 'shell', kind: 'Shell', tile: '#111827', section: 'Shells' },
   ];
   // App title bar (design system › elements.title_bar): window dots · sidebar toggle (the fox ear) · the identity PNG · app name ·
   // crumb (swarm · seat) · spacer · theme icon. Height from style.json spacing.title_bar.
@@ -1117,12 +1119,19 @@
     const tileOf = h => (LAUNCH.find(l => l.harness === h) || {}).tile || '#374151';
     const goSeats = () => seats.filter(x => !x.settings && !x.graph).map(x => { const t = tabOf(x.key); return { id: 'seat:' + x.key, label: x.name, sub: (t ? t.sp.name + ' · ' : '') + (x.title || '') + (x.where && x.where !== 'local' ? ' · ' + x.where + (x.host ? ' ' + x.host : '') : ''), harness: x.harness, kind: 'Seat', tile: tileOf(x.harness), section: 'Seats', seat: x, tags: [x.harness, x.where || 'local', x.host || '', x.role || '', x.state, x.grade || '', x.state === 'waiting' ? (x.waitKind || 'question') : '', t ? t.sp.name : '', x.muted ? 'muted' : '', ...((x.tasks || []).map(t => t.title))].filter(Boolean) }; });
     const goSwarms = () => spaces.map(x => ({ id: 'swarm:' + x.key, label: x.name, sub: x.tabs.reduce((n, t) => n + t.seats.length, 0) + ' seats', harness: 'sidebarfoxopen', kind: 'Swarm', tile: x.color, section: 'Swarms', swarm: x, tags: ['swarm'] }));
-    const placements = l => [
-      { id: l.id + ':tab', label: 'New tab', sub: 'in ' + sp.name, harness: l.harness, tile: l.tile, kind: 'Placement', place: 'tab', launch: l },
-      ...(anchorSeat ? [{ id: l.id + ':right', label: 'Split right', sub: 'of ' + anchorSeat.name, harness: l.harness, tile: l.tile, kind: 'Placement', place: 'right', launch: l },
-                        { id: l.id + ':bottom', label: 'Split down', sub: 'of ' + anchorSeat.name, harness: l.harness, tile: l.tile, kind: 'Placement', place: 'bottom', launch: l }] : []),
-    ];
-    const launchRows = LAUNCH.map(l => ({ ...l, enterPicks: true, children: () => placements(l), aliases: [l.harness] }));
+    const placements = (l, role) => { role = role || l.role; const pre = role === l.role ? l.id : l.id + ':as:' + role; return [
+      { id: pre + ':tab', label: 'New tab', sub: 'in ' + sp.name, harness: l.harness, tile: l.tile, kind: 'Placement', place: 'tab', launch: l, role },
+      ...(anchorSeat ? [{ id: pre + ':right', label: 'Split right', sub: 'of ' + anchorSeat.name, harness: l.harness, tile: l.tile, kind: 'Placement', place: 'right', launch: l, role },
+                        { id: pre + ':bottom', label: 'Split down', sub: 'of ' + anchorSeat.name, harness: l.harness, tile: l.tile, kind: 'Placement', place: 'bottom', launch: l, role }] : []),
+    ]; };
+    // role presets (decision #262): a Claude seat chooses its role at spawn (oracle by default, architect, creativity, executor by #18);
+    // Codex and shells have none (Codex implements; a shell has no harness to prompt), so → goes straight to placements. When the
+    // swarm already has an Oracle the default stays oracle and the launcher says so, information rather than a block
+    const oracle = seats.find(x => x.role === 'oracle' && x.harness === 'claude' && (tabOf(x.key) || {}).sp === sp);
+    const NOTE = oracle ? 'this swarm already has an Oracle: ' + oracle.name : null;
+    const PRESETS = [['oracle', 'Oracle', 'supervises, briefs, verifies'], ['architect', 'Architect', 'specs, invariants, decisions'], ['creativity', 'Creativity', 'diverges before the pick'], ['executor', 'Executor', 'implements a scoped brief']];
+    const presets = l => PRESETS.map(([role, label, say]) => ({ id: l.id + ':as:' + role, label, sub: role === l.role ? 'default · ' + (NOTE || say) : say, harness: l.harness, tile: l.tile, kind: 'Role', role, roleMark: role, launch: l, enterPicks: true, aliases: [role], children: () => placements(l, role) }));
+    const launchRows = LAUNCH.map(l => ({ ...l, ...(l.harness === 'claude' && NOTE ? { sub: l.sub + ' · ' + NOTE } : {}), enterPicks: true, children: () => l.harness === 'claude' ? presets(l) : placements(l), aliases: [l.harness] }));
     // remote: SSH ▸ harness ▸ placement, Cloud ▸ harness ▸ placement. 'ssh codex' and 'cloud claude' type straight through.
     // SSH ▸ machine ▸ harness ▸ placement; Cloud ▸ region ▸ harness ▸ placement. Machines come from ~/.ssh/config in the
     // real app; here a demo list. 'ssh rig codex' types straight through all three levels.

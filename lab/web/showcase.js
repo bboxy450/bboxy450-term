@@ -377,7 +377,7 @@
       if (it.resume) { closeSpotlight(); resumeSeat(sp, it.resume); return; }
       const l = it.launch || it;
       const where = it.where || (path.find(x => x.where) || {}).where || 'local', host = it.host || (path.find(x => x.host) || {}).host;
-      const seat = { key: 'n' + Date.now().toString(36), name: l.harness === 'zsh' ? 'zsh' : name, harness: l.harness, role: C.DEFAULT_ROLE[l.harness], title: l.harness === 'zsh' ? '~' : '', state: 'active', pal: (seats.length + 3) % 15, where, host };
+      const seat = { key: 'n' + Date.now().toString(36), name: l.harness === 'zsh' ? 'zsh' : name, harness: l.harness, role: it.role || C.DEFAULT_ROLE[l.harness], title: l.harness === 'zsh' ? '~' : '', state: 'active', pal: (seats.length + 3) % 15, where, host };
       dressSeat(seat);
       seats.push(seat); startReplay(seat, seats.length - 1);
       closeSpotlight();
