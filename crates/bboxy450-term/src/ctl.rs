@@ -1437,6 +1437,23 @@ pub fn classify(reason: &str) -> Fail {
             exit: 2,
         };
     }
+    if reason.starts_with("not_on_screen:") {
+        return fail("not_on_screen", "ctl seat focus <seat>", 1);
+    }
+    if reason.starts_with("focus_timeout:") {
+        return fail(
+            "focus_timeout",
+            "inspect ctl app status and the run's app.log",
+            1,
+        );
+    }
+    if reason.starts_with("focus_superseded:") {
+        return fail(
+            "focus_superseded",
+            "a newer UI action replaced this focus; inspect ctl app status",
+            1,
+        );
+    }
     if reason == bbt_mux::ctl_door::REFUSAL {
         return fail(
             "ancestry_refused",
@@ -1698,12 +1715,18 @@ fn run_verb(
         Command::Focus { seat } => {
             let seat = resolve(&client.seats()?, &seat)?.record.id;
             let op = client.mint();
-            client.call(
+            let reply = client.call(
                 Some(op),
                 GuiAction::FocusSeat { id: op, seat },
-                |r| matches!(r, GuiReply::Ok { op: o } if *o == op),
+                |r| matches!(r, GuiReply::Focused { op: o, .. } if *o == op),
             )?;
-            json!({ "seat": seat })
+            let GuiReply::Focused { frame, .. } = reply else {
+                unreachable!()
+            };
+            if frame.seat.0.0 != seat.0 {
+                return Err("focus_superseded: GUI acknowledged a different seat".into());
+            }
+            json!({"seat":seat,"applied":true,"generation":frame.generation,"frame_seq":frame.frame_seq})
         }
         Command::Watch { seat, timeout } => {
             // State: the seat's retained stream paged by our own cursor, never the window's
@@ -2246,6 +2269,13 @@ mod tests {
     }
     #[test]
     fn errors_name_a_kind_a_hint_and_an_exit() {
+        let hidden = classify("not_on_screen: seat fixture has no pane on screen");
+        assert_eq!(hidden.kind, "not_on_screen");
+        assert_eq!(hidden.hint, "ctl seat focus <seat>");
+        assert_eq!(
+            classify("focus_timeout: no frame completed").kind,
+            "focus_timeout"
+        );
         let usage = classify(&parse_full(&args("seat fly s")).unwrap_err());
         assert_eq!((usage.kind, usage.exit), ("usage", 2));
         assert!(usage.message.contains("ls"), "{usage:?}");

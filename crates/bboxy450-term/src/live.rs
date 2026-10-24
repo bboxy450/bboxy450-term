@@ -194,7 +194,7 @@ pub fn start_with_sink(
                     move |ask| {
                         events(match ask {
                             OperatorAsk::Capture(ask) => UiEvent::CaptureFor(ask),
-                            OperatorAsk::Focus(seat) => UiEvent::FocusFor(seat),
+                            OperatorAsk::Focus(ask) => UiEvent::FocusFor(ask),
                             OperatorAsk::Close { id, seat, undo } => {
                                 UiEvent::CloseFor { id, seat, undo }
                             }
@@ -222,7 +222,7 @@ pub fn start_with_sink(
 pub enum OperatorAsk {
     Capture(CaptureAsk),
     /// Focus this seat, as the window's own row click does (`ctl seat focus`).
-    Focus(SeatId),
+    Focus(bboxy450_term::focus_ack::Ask),
     Close {
         id: Ulid,
         seat: SeatId,
@@ -938,6 +938,7 @@ async fn run_with_control(
                     UiMsg::EventPage {stream,after,limit}=>queue_action(&mut outgoing,GuiAction::GetEvents {stream:stream.clone(),after:*after,limit:*limit}),
                     UiMsg::EventCursor {stream}=>queue_action(&mut outgoing,GuiAction::GetEventCursor {stream:stream.clone()}),
                     UiMsg::Captured {id,error,frame}=>queue_action(&mut outgoing,GuiAction::Captured {id:*id,error:error.clone(),frame:*frame}),
+                    UiMsg::Focused {id,result}=>queue_action(&mut outgoing,GuiAction::Focused {id:*id,result:result.clone()}),
                     UiMsg::AppReply {id,status}=> {
                         let mut status=status.clone();
                         status.generation=session.endpoint.generation;
@@ -1184,12 +1185,12 @@ async fn run_with_control(
                         GuiReply::AppStopping {op}=>app(AppEvent::Stop {id:op}),
                         GuiReply::App {..}=>{},
                         GuiReply::CaptureAsk {op,path,seat}=>capture(OperatorAsk::Capture(CaptureAsk {id:op,path:PathBuf::from(path),seat:seat.map(|seat| SeatId::from_u128(seat.0))})),
-                        GuiReply::OperatorFocus {seat,..}=>capture(OperatorAsk::Focus(seat)),
+                        GuiReply::OperatorFocus {op,seat}=>capture(OperatorAsk::Focus(bboxy450_term::focus_ack::Ask {id:op,seat,prior_spawns:model.spawns.keys().copied().collect()})),
                         GuiReply::OperatorClose {op,seat}=>capture(OperatorAsk::Close {id:op,seat,undo:false}),
                         GuiReply::OperatorUndoClose {op,seat}=>capture(OperatorAsk::Close {id:op,seat,undo:true}),
                         GuiReply::Captured {op,path,..}=>logger.write(format!("capture {op} written: {path}")),
                         // The window never asks for a screen as text; ctl does.
-                        GuiReply::Screen {op,..}|GuiReply::EventsRead {op,..}=>logger.write(format!("ctl reply {op} unused by the window")),
+                        GuiReply::Focused {op,..}|GuiReply::Screen {op,..}|GuiReply::EventsRead {op,..}=>logger.write(format!("ctl reply {op} unused by the window")),
                         GuiReply::OperatorSpawned {op,seat,spec}=> {
                             // Placed and focused as the launcher's own pick is.
                             let placed=Arc::make_mut(&mut model);

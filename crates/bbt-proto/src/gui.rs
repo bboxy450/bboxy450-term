@@ -69,6 +69,14 @@ pub struct AppStatus {
     #[serde(default)]
     pub close: serde_json::Value,
 }
+/// The completed frame which acknowledged a focus command.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FocusFrame {
+    #[serde(with = "text_id")]
+    pub seat: SeatId,
+    pub generation: u64,
+    pub frame_seq: u64,
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body")]
 pub enum GuiAction {
@@ -219,6 +227,11 @@ pub enum GuiAction {
     FocusSeat {
         id: Ulid,
         seat: Ulid,
+    },
+    /// Only the GUI owner may acknowledge an applied focus.
+    Focused {
+        id: Ulid,
+        result: Result<FocusFrame, String>,
     },
     /// Page a retained stream by the caller's cursor (ctl-cli §1a, #272): read-only, no
     /// attachment, no ack, never a second consumer of the operator's lane; filtered to the
@@ -442,6 +455,10 @@ pub enum GuiReply {
         op: Ulid,
         #[serde(with = "text_id")]
         seat: SeatId,
+    },
+    Focused {
+        op: Ulid,
+        frame: FocusFrame,
     },
     /// A page of retained events, oldest first; `next` is the cursor to continue from.
     EventsRead {

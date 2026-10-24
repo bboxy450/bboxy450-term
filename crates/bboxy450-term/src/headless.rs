@@ -114,6 +114,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let mut bounds = Vec::<(SeatId, Rect)>::new();
     let mut pending = VecDeque::new();
     let mut captures = VecDeque::new();
+    let mut focus_ack = bboxy450_term::focus_ack::Pending::default();
     let mut submitted = 0;
     let mut rendered = 0;
     let mut rendered_at = None;
@@ -167,20 +168,35 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             closing = true;
                         }
                     }
-                    UiEvent::FocusFor(seat) => {
-                        match focus.apply(
-                            &model.ui,
-                            crate::FocusAction::Activate(seat, crate::FocusOrigin::Row),
-                            &bounds,
-                            Instant::now(),
-                        ) {
-                            Ok(_) => {
-                                scene.set_model(&model, focus.stage.as_ref().expect("focus stage"));
-                                dirty = true;
-                            }
-                            Err(reason) => {
-                                logger.write(format!("operator focus refused: {reason}"))
-                            }
+                    UiEvent::FocusFor(ask) => {
+                        let id = ask.id;
+                        if let Some(answer) = focus_ack.set(ask) {
+                            crate::queue_pending(
+                                &mut pending,
+                                live::UiMsg::Focused {
+                                    id: answer.id,
+                                    result: answer.result,
+                                },
+                            )
+                            .map_err(|_| "headless focus admission full")?;
+                        }
+                        let wake = sink.clone();
+                        let timer = bbt_rt::handle().spawn(async move {
+                            tokio::time::sleep(bboxy450_term::focus_ack::DEADLINE).await;
+                            wake(UiEvent::FocusDeadline(id));
+                        });
+                        focus_ack.arm(timer.abort_handle());
+                    }
+                    UiEvent::FocusDeadline(id) => {
+                        if let Some(answer) = focus_ack.expire(id) {
+                            crate::queue_pending(
+                                &mut pending,
+                                live::UiMsg::Focused {
+                                    id: answer.id,
+                                    result: answer.result,
+                                },
+                            )
+                            .map_err(|_| "headless focus admission full")?;
                         }
                     }
                     UiEvent::CloseFor { id, seat, undo } => {
@@ -313,6 +329,55 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 dirty = true;
             }
             if !closing {
+                match focus_ack.poll(
+                    &model,
+                    scene.focused(),
+                    |seat| bounds.iter().any(|(id, _)| *id == seat),
+                    rendered,
+                ) {
+                    Some(bboxy450_term::focus_ack::Effect::Apply(seat)) => {
+                        match focus.apply(
+                            &model.ui,
+                            crate::FocusAction::Activate(seat, crate::FocusOrigin::Row),
+                            &bounds,
+                            Instant::now(),
+                        ) {
+                            Ok(_) => {
+                                scene.set_model(&model, focus.stage.as_ref().expect("focus stage"));
+                                focus_ack.applied(
+                                    submitted + 1,
+                                    model.ui.seats[&seat].process_generation,
+                                );
+                                dirty = true;
+                            }
+                            Err(error) => {
+                                if let Some(answer) =
+                                    focus_ack.fail(&format!("not_on_screen: {error}"))
+                                {
+                                    crate::queue_pending(
+                                        &mut pending,
+                                        live::UiMsg::Focused {
+                                            id: answer.id,
+                                            result: answer.result,
+                                        },
+                                    )
+                                    .map_err(|_| "headless focus admission full")?;
+                                }
+                            }
+                        }
+                    }
+                    Some(bboxy450_term::focus_ack::Effect::Answer(answer)) => {
+                        crate::queue_pending(
+                            &mut pending,
+                            live::UiMsg::Focused {
+                                id: answer.id,
+                                result: answer.result,
+                            },
+                        )
+                        .map_err(|_| "headless focus admission full")?;
+                    }
+                    None => (),
+                }
                 // A copy is submitted before any later draw, so its metadata names
                 // the exact completed texture being read back, even under a flood.
                 if submitted == rendered && rendered > 0 {
@@ -334,7 +399,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
                                         height: r.h.max(1.) as u32,
                                     })
                                 })
-                                .ok_or_else(|| format!("seat {seat} has no pane on screen")),
+                                .ok_or_else(|| {
+                                    format!("not_on_screen: seat {seat} has no pane on screen")
+                                }),
                         };
                         let send = commands.as_ref().unwrap().sender_clone();
                         let frame = bbt_proto::gui::CaptureFrame {

@@ -74,7 +74,8 @@ pub enum UiEvent {
     /// A capture asked through an operator door (`ctl capture`); answered when written.
     CaptureFor(live::CaptureAsk),
     /// Focus a seat, asked through an operator door (`ctl seat focus`).
-    FocusFor(SeatId),
+    FocusFor(bboxy450_term::focus_ack::Ask),
+    FocusDeadline(bbt_mux::Ulid),
     App(live::AppEvent),
     CloseFor {
         id: bbt_mux::Ulid,
@@ -1345,6 +1346,7 @@ struct App {
     capture_pending: bool,
     /// Operator captures waiting for the next presented frame.
     ctl_captures: Vec<live::CaptureAsk>,
+    ctl_focus: bboxy450_term::focus_ack::Pending,
     /// When the last frame was presented; a capture of it names this time.
     last_presented: Option<std::time::SystemTime>,
     pending_resize: Option<LogicalSize<f64>>,
@@ -2310,6 +2312,15 @@ impl App {
         }
     }
     fn focus_action(&mut self, action: FocusAction) {
+        if let Some(answer) = self
+            .ctl_focus
+            .fail("focus_superseded: a newer UI focus action replaced this request")
+        {
+            self.answer_focus(answer);
+        }
+        self.focus_action_applied(action);
+    }
+    fn focus_action_applied(&mut self, action: FocusAction) {
         if self.document.open {
             self.close_document();
         }
@@ -2434,6 +2445,41 @@ impl App {
                 .write(format!("notification focused seat {seat}"));
         }
     }
+    fn answer_focus(&mut self, answer: bboxy450_term::focus_ack::Answer) {
+        self.queue(live::UiMsg::Focused {
+            id: answer.id,
+            result: answer.result,
+        });
+    }
+    fn poll_focus(&mut self) {
+        let Some(model) = self.live_state.as_deref() else {
+            return;
+        };
+        let effect = self.ctl_focus.poll(
+            model,
+            self.scene.focused(),
+            |seat| self.pane_bounds.iter().any(|(id, _)| *id == seat),
+            self.meter.total_frames(),
+        );
+        match effect {
+            Some(bboxy450_term::focus_ack::Effect::Apply(seat)) => {
+                let generation = model.ui.seats[&seat].process_generation;
+                self.focus_action_applied(FocusAction::Activate(seat, FocusOrigin::Row));
+                if self.scene.focused() == Some(seat) {
+                    self.ctl_focus
+                        .applied(self.meter.total_frames() + 1, generation);
+                    self.request_redraw();
+                } else if let Some(answer) = self
+                    .ctl_focus
+                    .fail("not_on_screen: focus could not activate the requested pane")
+                {
+                    self.answer_focus(answer);
+                }
+            }
+            Some(bboxy450_term::focus_ack::Effect::Answer(answer)) => self.answer_focus(answer),
+            None => (),
+        }
+    }
     fn close_seat(&mut self, seat: SeatId, id: bbt_mux::Ulid, undo: bool) {
         let Some(model) = &self.live_state else {
             return;
@@ -2492,7 +2538,10 @@ impl App {
                     height: (rect.h * scale).round() as u32,
                 }),
                 None => {
-                    self.answer_capture(ask.id, Err(format!("seat {seat} has no pane on screen")));
+                    self.answer_capture(
+                        ask.id,
+                        Err(format!("not_on_screen: seat {seat} has no pane on screen")),
+                    );
                     return;
                 }
             },
@@ -2929,7 +2978,10 @@ impl App {
             for (op, outcome) in results {
                 if let bboxy450_term::model::SpawnOutcome::Placed(seat) = &outcome {
                     if !self.document.open {
-                        self.focus_action(FocusAction::Activate(*seat, FocusOrigin::Keyboard));
+                        self.focus_action_applied(FocusAction::Activate(
+                            *seat,
+                            FocusOrigin::Keyboard,
+                        ));
                     } else {
                         self.logger
                             .write(format!("spawn {op} placed; document return focus retained"));
@@ -2946,6 +2998,7 @@ impl App {
             self.verify();
         }
         self.drive_document();
+        self.poll_focus();
         self.flush_commands();
         sources
     }
@@ -3365,6 +3418,7 @@ impl App {
                 status.custody_backend = self.app_custody.clone();
                 write_app_ready(status);
             }
+            self.poll_focus();
             for ask in std::mem::take(&mut self.ctl_captures) {
                 let frame = bbt_proto::gui::CaptureFrame {
                     stale: false,
@@ -3481,10 +3535,24 @@ impl ApplicationHandler<UiEvent> for App {
                 self.close_seat(seat, id, undo);
                 self.request_redraw();
             }
-            UiEvent::FocusFor(seat) => {
-                // The same activation a sidebar row click makes.
-                self.focus_action(FocusAction::Activate(seat, FocusOrigin::Row));
+            UiEvent::FocusFor(ask) => {
+                let id = ask.id;
+                if let Some(answer) = self.ctl_focus.set(ask) {
+                    self.answer_focus(answer);
+                }
+                let proxy = self.proxy.clone();
+                let timer = bbt_rt::handle().spawn(async move {
+                    tokio::time::sleep(bboxy450_term::focus_ack::DEADLINE).await;
+                    let _ = proxy.send_event(UiEvent::FocusDeadline(id));
+                });
+                self.ctl_focus.arm(timer.abort_handle());
+                self.drain();
                 self.request_redraw();
+            }
+            UiEvent::FocusDeadline(id) => {
+                if let Some(answer) = self.ctl_focus.expire(id) {
+                    self.answer_focus(answer);
+                }
             }
             UiEvent::CaptureFor(ask) => {
                 if self.gpu.is_none() {
@@ -5386,6 +5454,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         capture,
         capture_pending: true,
         ctl_captures: Vec::new(),
+        ctl_focus: Default::default(),
         last_presented: None,
         pending_resize: None,
         animate,
@@ -5841,6 +5910,7 @@ mod input_tests {
                 | live::UiMsg::EventCursor { .. }
                 | live::UiMsg::AttentionFocus { .. }
                 | live::UiMsg::MarkEventsRead { .. }
+                | live::UiMsg::Focused { .. }
                 | live::UiMsg::AppReply { .. }
                 | live::UiMsg::Captured { .. } => {
                     panic!("pane admission fixture produced a messaging intent")

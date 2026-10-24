@@ -560,7 +560,7 @@ async fn gui_session(
                     }
                     let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
                     let op=match &request.action {
-                        GuiAction::App {id,..}|GuiAction::AppReply {id,..}=>*id,
+                        GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
                         GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
@@ -575,6 +575,11 @@ async fn gui_session(
                             GuiAction::AppReply {id,status}=> {
                                 if capture_asks.is_none() {return Err(invalid("only the GUI client answers app lifecycle requests"));}
                                 client.captures.app_answer(id,status);
+                                Ok(GuiReply::Ok {op:id})
+                            }
+                            GuiAction::Focused {id,result}=> {
+                                if capture_asks.is_none() {return Err(invalid("only the GUI client acknowledges focus"));}
+                                client.captures.focused(id,result);
                                 Ok(GuiReply::Ok {op:id})
                             }
                             GuiAction::ListSeats=>Ok(GuiReply::Seats(client.gui_seats().await?)),
@@ -685,8 +690,8 @@ async fn gui_session(
                                 client.record(seat).await?;
                                 if !client.captures.attached() {return Err(invalid("no window is attached to focus"));}
                                 client.ctl_record(id,"seat_focus",serde_json::json!({"seat":seat}),crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
-                                client.captures.focus(id,bbt_proto::SeatId::from_u128(seat.0)).map_err(invalid)?;
-                                Ok(GuiReply::Ok {op:id})
+                                let frame=client.captures.focus(id,bbt_proto::SeatId::from_u128(seat.0)).await.map_err(invalid)?;
+                                Ok(GuiReply::Focused {op:id,frame})
                             }
                             GuiAction::EventsRead {id,stream,after,limit}=> {
                                 let filter=crate::gui_events::filters(client.gui_messaging_subjects().await?);

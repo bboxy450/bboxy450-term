@@ -804,9 +804,24 @@ async fn ctl_capture_is_answered_by_the_window() {
             .expect("the window is asked to focus")
             .unwrap();
         if let Event::Reply(reply) = event
-            && let GuiReply::OperatorFocus { seat, .. } = *reply
+            && let GuiReply::OperatorFocus { op, seat } = *reply
         {
             assert_eq!(seat.to_string(), spawned);
+            assert!(
+                !focus.is_finished(),
+                "focus must wait for the window's frame acknowledgment"
+            );
+            session
+                .send(GuiAction::Focused {
+                    id: op,
+                    result: Ok(bbt_proto::gui::FocusFrame {
+                        seat,
+                        generation: 1,
+                        frame_seq: 7,
+                    }),
+                })
+                .await
+                .unwrap();
             break;
         }
     }

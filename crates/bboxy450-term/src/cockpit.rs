@@ -113,6 +113,10 @@ pub enum UiMsg {
         error: Option<String>,
         frame: bbt_proto::gui::CaptureFrame,
     },
+    Focused {
+        id: bbt_mux::Ulid,
+        result: std::result::Result<bbt_proto::gui::FocusFrame, String>,
+    },
     /// The GUI owner's public lifecycle answer; never process credentials.
     AppReply {
         id: bbt_mux::Ulid,
@@ -791,6 +795,7 @@ impl Session {
                 | GuiReply::OperatorClose { .. }
                 | GuiReply::OperatorUndoClose { .. }
                 | GuiReply::OperatorFocus { .. }
+                | GuiReply::Focused { .. }
                 | GuiReply::Hosts(_)
                 | GuiReply::HostState { .. } => {}
                 _ => return Err(invalid("unexpected GUI startup reply")),

@@ -152,7 +152,7 @@ fn headless_cli_starts_real_gui_types_captures_and_stops_without_a_window() {
             .iter()
             .any(|r| r == "HEADLESS-CTL-42")
     );
-    f.ok(&[
+    let other = f.ok(&[
         "seat",
         "spawn",
         "zsh",
@@ -161,7 +161,21 @@ fn headless_cli_starts_real_gui_types_captures_and_stops_without_a_window() {
         "--place",
         "tab",
     ]);
-    f.ok(&["seat", "focus", seat]);
+    let other = other["data"]["seat"].as_str().unwrap();
+    let focused = f.ok(&["seat", "focus", other]);
+    assert_eq!(focused["data"]["applied"], true);
+    assert!(focused["data"]["frame_seq"].as_u64().unwrap() > 0);
+    // Text is readable while off screen. Images refuse instead of capturing
+    // whichever pane happens to occupy the old rectangle.
+    f.ok(&["seat", "screen", seat]);
+    let hidden = f.root.path().join("off-screen.png");
+    let (code, rows) = f.ctl(&["seat", "capture", seat, hidden.to_str().unwrap()]);
+    assert_eq!(code, 1);
+    assert_eq!(rows[0]["error"]["kind"], "not_on_screen");
+    assert_eq!(rows[0]["error"]["hint"], "ctl seat focus <seat>");
+    let focused = f.ok(&["seat", "focus", seat]);
+    assert_eq!(focused["data"]["seat"], seat);
+    assert!(focused["data"]["generation"].as_u64().unwrap() > 0);
     let png = f.root.path().join("pane.png");
     let before_capture = f.ok(&["app", "status"]);
     let capture = f.ok(&["seat", "capture", seat, png.to_str().unwrap()]);
