@@ -1,0 +1,111 @@
+# Wake bisect: length and supplied-original-content controls
+
+Sable Embertail <EXECUTOR>, 2026-10-24T11:04:04.080446+00:00.
+App-only investigation; no gate, no product edit, no proposed fix.
+Short controls are signed e73bd85b; this is their evidence-only successor.
+
+## Result
+
+The reported idle stall is NOT reproduced. All three new controls use the
+same exact aea0fd6a binary, Claude 2.1.304, trusted seat CWD and fresh memory
+custody/runtime. One first ctl DM per case, no PTY input or operator prompt.
+
+| Body | Bytes | Wake/model evidence | Correlated operator reply |
+| --- | --- | --- | --- |
+| Inert SABLE-LONG size control | 7,168 | Real Claude reply via MCP | 16.558 s |
+| Oracle-supplied original task | 11,182 | orient 1, self_status 1, knowledge_fetch 54, knowledge_write 1 | None observed by 140.130 s |
+| Inert SABLE-LONG size control at actual length | 11,182 | Real Claude reply via MCP | 20.201 s |
+
+The original body is the Oracle-provided reconstruction at
+/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/3544d975-706b-4ce4-ba8c-d9734c0db856/scratchpad/dry-run-dm.txt.
+We verified 11,182 bytes and SHA256
+f982b937feaf04d460ed996a4ffffea5ab9ac4386ba410086f317931c937e72f,
+copied it unchanged, and verified the actual ctl argv text byte-equals that
+file. No prefix, suffix, reply-only instruction or sanitization was added.
+The task-log body from line 7 is 10,643 bytes, not approximately 7 KB.
+The supplied preamble accounts for the rest. The earlier 7 KiB control alone
+could not clear the original actual length.
+
+## What Claude printed and did
+
+The first published Screen includes the final P2 checklist line and
+--- end peer content ---, followed by Claude's standard peer-message caution.
+The next shows “Calling bboxy…” with active processing. At the 140-second
+observation boundary the pane says:
+
+> T1 was created as record #1. I'll check the other 53 paths before creating anything.
+>
+> None of the other 53 paths exist yet. I'll create all 53 now.
+
+It then shows “Calling bboxy 25 times…” and ongoing processing. No permission
+question appears in the captured snapshots. The admitted seat journal
+independently records the tool counts above, one successful seat-signed T1
+write, and one private file at orig/repository/.bboxy/e2e/t1.md.
+No probe-created record enters Git or the shared product repository.
+
+The driver field no_correlated_reply_within_watchdog describes ONLY the
+140-second operator-inbox observation. It does not mean Claude stayed idle.
+The app's unchanged --quit-after 180 closes it while the seeding workload is
+still progressing. Full 54-record seeding, its final manifest and its final
+operator reply are UNPROVEN. This is a wake/acceptance control, not an e2e
+acceptance of record seeding.
+
+Thus neither the short role comparison, the tested body sizes, nor the
+supplied original content reproduced the reported stall. The content-based
+peer-caution hypothesis is not confirmed by this control. The cause of the
+Oracle's original idle run remains UNPROVEN. This checkpoint precedes the Oracle-requested longer A-0 rerun, which is recorded separately.
+
+## Frame path and documentation
+
+At frozen aea0fd6a:
+- crates/bbt-mux/src/messaging/ledger.rs:34 — Work::text includes the full body
+  inside the authenticated peer-message wrapper; no body truncation here.
+- crates/bbt-mux/src/logic.rs:3252 — the prepared Work text goes to native::wake.
+- crates/bbt-mux/src/adapters/native.rs:417 — UTF-8 text over 48 KiB is refused
+  before mutation, returning recipient-stored with a specific size note.
+- native.rs:25 and :433 — serialized JSON plus newline over 64 KiB is refused
+  before attempted=true, so no frame is written.
+- native.rs:434 — write_all followed by shutdown; there is no read for a
+  receiver admission acknowledgement. A successful write is NativeWritten;
+  it cannot establish receiver/model acceptance. An ambiguous attempted write
+  is not retried automatically.
+
+Source reconstruction from the persisted Work gives full text / native-frame
+bytes of 7,490 / 7,726 for the 7 KiB padding, 11,504 / 11,828 for the original,
+and 11,504 / 11,783 for the same-length padding. These are reconstructed
+encoded sizes, not captured socket bytes. Each case has two pre-write
+attachment-discovery failures followed by ONE native-written attempt; no
+ambiguous/post-write retry occurs. Correlated replies, or the admitted tool
+calls for the original, supply the separate model-acceptance evidence.
+
+Current [Claude messaging docs](https://code.claude.com/docs/en/cross-session-messaging#limitations)
+describe a same-machine ceiling around one million serialized characters.
+Their [size-error reference](https://code.claude.com/docs/en/errors#message-too-large-for-cross-session-delivery)
+gives 1,048,576 characters and describes sender refusal. These are current
+documented sender limits, not a measurement of the installed raw socket's
+receiver. Our lower 48/64 KiB guards refuse before that documented ceiling.
+No over-limit native mutation was attempted.
+
+## Verification, failures and cleanup
+
+- All three counted app probes: driver EXIT 0, app EXIT 0, all recorded
+  process identities absent after close (counts in comparison.json).
+- Every ctl command exits 0, one spawn and one DM per counted case.
+- An excluded first 7 KiB startup attempt exits 1 before any seat or DM:
+  “path must be shorter than SUN_LEN”. Its private case name pushed the Unix
+  socket path over its limit. A shorter scratch label admits the actual run.
+  The failed log and driver result are retained; no product change was made.
+- The earlier short-control ps lookup race and resumed observer remain
+  explicitly recorded in e73bd85b, not hidden as a green driver.
+- Actual follow-up command output: wake-bisect-original-verification.log,
+  SHA256 e52bf7d55064026ad5d862a9d6e978185885bfd04503bef0ae0ca9c6d048ddb0.
+- Source/binary/client hashes, replies, tool-result digests, original-body
+  digest, frame reconstruction, input provenance and private raw artifact
+  paths/digests: wake-bisect-original-comparison.json.
+- No Rust build, test or full gate was needed for these follow-ups: the same
+  pinned standalone binary from the short comparison was reused.
+- The sole private dev target is absent; 2,331,406,336 unique allocated file
+  bytes were freed after the short builds. Small raw proof files and the final
+  standalone binary remain private for Oracle inspection.
+- Raw native pane text, capability files, credentials and probe-created e2e
+  records are not committed. Only these evidence records change in Git.
