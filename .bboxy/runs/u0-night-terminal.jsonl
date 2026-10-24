@@ -1,0 +1,17 @@
+{"evidence":"FAIL: the seat is named 'zsh', not from the furry pool (no name pool in the app)","exit":1,"function":"T1","group":"terminal","kind":"e2e","verdict":"fail"}
+{"evidence":"","exit":0,"function":"T2","group":"terminal","kind":"e2e","verdict":"pass"}
+{"evidence":"","exit":0,"function":"T3","group":"terminal","kind":"e2e","verdict":"pass"}
+{"evidence":"","exit":0,"function":"T4","group":"terminal","kind":"e2e","verdict":"pass"}
+{"evidence":"note: layout, focus and scroll positions need a window; this run is headless","exit":0,"function":"T5","group":"terminal","kind":"e2e","verdict":"pass"}
+{"evidence":"note: seat 01M5QXC4GQB9QEGC81S5G6V48X respawned: generation 1 -> 2, shell 40512 -> 40555","exit":0,"function":"T6","group":"terminal","kind":"e2e","verdict":"pass"}
+{"evidence":"no script at scripts/e2e/T7.sh","exit":null,"function":"T7","group":"terminal","kind":"e2e","verdict":"untested"}
+{"evidence":"FAIL: OSC 7501 state=working did not show: {\"kind\": \"idle\"}, grade reported","exit":1,"function":"T8","group":"terminal","kind":"e2e","verdict":"fail"}
+{"function":"T1","kind":"record","number":2,"path":"e2e/T1.md","tracked_by":"01M5QXCEYD7KZREQBHRECJQCW4"}
+{"function":"T2","kind":"record","number":3,"path":"e2e/T2.md","tracked_by":null}
+{"function":"T3","kind":"record","number":4,"path":"e2e/T3.md","tracked_by":null}
+{"function":"T4","kind":"record","number":5,"path":"e2e/T4.md","tracked_by":null}
+{"function":"T5","kind":"record","number":7,"path":"e2e/T5.md","tracked_by":null}
+{"function":"T6","kind":"record","number":8,"path":"e2e/T6.md","tracked_by":null}
+{"function":"T7","kind":"record","number":10,"path":"e2e/T7.md","tracked_by":null}
+{"function":"T8","kind":"record","number":12,"path":"e2e/T8.md","tracked_by":"01M5QXCFMCR0Z4ZFYZM5JY8QBZ"}
+{"group":"terminal","kind":"summary","passed":5,"red":["T1","T7","T8"],"state":"red","total":8,"tracked":["T1","T8"],"unwritten":[]}

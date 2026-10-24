@@ -1,0 +1,74 @@
+COMMAND ["cargo", "build", "-p", "bboxy450-term", "--locked"]
+   Compiling allocator-api2 v0.2.21
+   Compiling serde_json v1.0.154
+   Compiling hashbrown v0.17.1
+   Compiling indexmap v2.14.2
+   Compiling elliptic-curve v0.13.8
+   Compiling num-iter v0.1.46
+   Compiling naga-types v30.0.1
+   Compiling ecdsa v0.16.9
+   Compiling wgpu-types v30.0.1
+   Compiling naga v30.0.1
+   Compiling num-bigint v0.4.8
+   Compiling tokio v1.54.1
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling num-rational v0.4.2
+   Compiling primeorder v0.13.6
+   Compiling num-complex v0.4.6
+   Compiling wgpu-hal v30.0.1
+   Compiling num v0.4.3
+   Compiling ref-cast v1.0.27
+   Compiling regex-automata v0.4.18
+   Compiling num-bigint-dig v0.8.6
+   Compiling ahash v0.8.12
+   Compiling borrow-or-share v0.2.4
+   Compiling bit-vec v0.8.0
+   Compiling fluent-uri v0.4.1
+   Compiling bit-set v0.8.0
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling fraction v0.17.0
+   Compiling percent-encoding v2.3.2
+   Compiling vsimd v0.8.0
+   Compiling num-cmp v0.1.0
+   Compiling micromap v0.3.0
+   Compiling outref v0.5.2
+   Compiling bytecount v0.6.9
+   Compiling referencing v0.60.1
+   Compiling jsonschema-value v0.60.1
+   Compiling uuid-simd v0.8.0
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling strum v0.28.0
+   Compiling wgpu-core v30.0.1
+   Compiling tokio-tungstenite v0.30.0
+   Compiling fancy-regex v0.19.2
+   Compiling unicode-general-category v1.1.0
+   Compiling regex v1.13.1
+   Compiling dsa v0.6.3
+   Compiling p384 v0.13.1
+   Compiling p521 v0.13.3
+   Compiling p256 v0.13.2
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling k256 v0.13.4
+   Compiling jsonschema-regex v0.60.1
+   Compiling bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+   Compiling hashlink v0.12.2
+   Compiling email_address v0.2.9
+   Compiling pgp v0.21.0
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+   Compiling rusqlite v0.40.2
+   Compiling petgraph v0.8.3
+   Compiling jsonschema v0.60.1
+   Compiling bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain)
+   Compiling wgpu v30.0.1
+   Compiling bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-harness-wake-up)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling toml_edit v0.25.17+spec-1.1.0
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [unoptimized] target(s) in 53.14s
