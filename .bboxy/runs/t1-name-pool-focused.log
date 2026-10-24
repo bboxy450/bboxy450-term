@@ -1,0 +1,206 @@
+
+SOURCE /Users/feral/mydev/bboxy450-term-nyx/target/t1-name/focused-direct-results.json
+{
+  "source": "f4295d8b879a9a1a8784009fe3b20a15d5fa1aab",
+  "start": "2026-10-24T21:50:45.820949+00:00",
+  "wrapper_disabled": true,
+  "results": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-proto",
+        "--locked",
+        "--lib",
+        "seat_names"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--locked",
+        "--lib",
+        "seat_name_tests"
+      ],
+      "exit": 0
+    }
+  ],
+  "end": "2026-10-24T22:00:27.720361+00:00"
+}
+
+SOURCE /Users/feral/mydev/bboxy450-term-nyx/target/t1-name/spawn-regressions-results.json
+{
+  "source": "e0909c5d566eba673daff3669eb0e55f20ac689b",
+  "start": "2026-10-24T22:02:50.806729+00:00",
+  "results": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--locked",
+        "--test",
+        "provider_gui",
+        "operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch",
+        "--",
+        "--exact"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--locked",
+        "--test",
+        "mcp",
+        "mcp_seat_spawn_runs_once_with_isolated_home_and_existing_wiring",
+        "--",
+        "--exact"
+      ],
+      "exit": 0
+    }
+  ],
+  "end": "2026-10-24T22:05:09.723003+00:00"
+}
+
+SOURCE /Users/feral/mydev/bboxy450-term-nyx/target/t1-name/final-dev-results.json
+{
+  "source": "30fd31f5d5a2ae6410de50c3deeafaa35efbe689",
+  "start": "2026-10-24T22:09:13.107949+00:00",
+  "results": [
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 101
+    }
+  ]
+}
+
+SOURCE /Users/feral/mydev/bboxy450-term-nyx/target/t1-name/final-dev-v2-results.json
+{
+  "source": "51bd44517582f5c92acdcf6e1e2d1eb9344dfd42",
+  "start": "2026-10-24T22:14:38.484160+00:00",
+  "results": [
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-ui-model",
+        "--lib",
+        "--locked",
+        "every_exported_web_token_matches_generated_fields"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxybook",
+        "--lib",
+        "--locked"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "cargo",
+        "build",
+        "-p",
+        "bboxy450-term",
+        "--locked"
+      ],
+      "exit": 0
+    }
+  ],
+  "end": "2026-10-24T22:21:05.502084+00:00"
+}
+
+SOURCE /Users/feral/mydev/bboxy450-term-nyx/target/t1-name/lab-check.log
+lab-check: self-test ok (10 checks fire on checks/bad.html)
+lab-check: 40 pages × 4 densities · 0 findings
+
+SOURCE /Users/feral/mydev/bboxy450-term-nyx/target/t1-name/lab-pool-probes.json
+{
+  "source": "30fd31f5d5a2ae6410de50c3deeafaa35efbe689",
+  "exit": 0,
+  "canonical_names": 14,
+  "used_names": 1680,
+  "first": "Vesper Greywind",
+  "next_tier": "Vesper Greywind 2",
+  "after_120_tiers": "Vesper Greywind 121",
+  "reroll": "Pip Hollow 121",
+  "generated_export_equal": true
+}
+
+SOURCE /Users/feral/mydev/bboxy450-term-nyx/target/t1-name/structure-results.json
+[
+  {
+    "argv": [
+      "sh",
+      "scripts/layering.sh"
+    ],
+    "exit": 0
+  },
+  {
+    "argv": [
+      "rustfmt",
+      "--edition",
+      "2024",
+      "--check",
+      "crates/bboxybook/src/modules.rs",
+      "crates/bbt-proto/src/seat_names.rs"
+    ],
+    "exit": 0
+  }
+]
+
+SOURCE /Users/feral/mydev/bboxy450-term-nyx/target/t1-name/night-union-source.json
+{
+  "source": "4d0d5994fcecff5323fc4a1972296d53ff72ed43",
+  "t1_delivery_source": "51bd4451",
+  "u0_pending_source": "9dab09a1",
+  "purpose": "Oracle-approved isolated night evidence only; not delivery or accepted U0 claim",
+  "argv": [
+    "cargo",
+    "build",
+    "-p",
+    "bboxy450-term",
+    "--locked"
+  ],
+  "start": "2026-10-24T22:21:54.758125+00:00",
+  "exit": 0,
+  "end": "2026-10-24T22:23:53.009502+00:00"
+}

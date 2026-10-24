@@ -1,0 +1,141 @@
+{
+  "source": "4d0d5994fcecff5323fc4a1972296d53ff72ed43",
+  "argv": [
+    "/Users/feral/mydev/bboxy450-term-nyx/target/t1-name-dev-direct/debug/bboxy450-term",
+    "e2e",
+    "night",
+    "--group",
+    "terminal",
+    "--scripts",
+    "/Users/feral/mydev/bboxy450-term-nyx/target/t1-name/night-scripts",
+    "--records",
+    "/Users/feral/mydev/bboxy450-term-nyx/target/t1-name/night-records"
+  ],
+  "binary_sha256": "05aca26bf9630209b8555bfe043747b4fa437206159e842b9bcba6ca7b99956e",
+  "start": "2026-10-24T22:24:01.641069+00:00",
+  "custody": "U0 Config.test_account Some(root/account), generated per-run file custody; memory override absent",
+  "selection": "T1 only; other terminal promises explicitly untested",
+  "runner_exit": 1,
+  "end": "2026-10-24T22:24:04.398037+00:00",
+  "t1": [
+    {
+      "evidence": "",
+      "exit": 0,
+      "function": "T1",
+      "group": "terminal",
+      "kind": "e2e",
+      "verdict": "pass"
+    }
+  ],
+  "summaries": [
+    {
+      "group": "terminal",
+      "kind": "summary",
+      "passed": 1,
+      "red": [
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "T6",
+        "T7",
+        "T8"
+      ],
+      "state": "red",
+      "total": 8,
+      "tracked": [],
+      "unwritten": []
+    }
+  ],
+  "unrelated_rows": [
+    {
+      "function": "T2",
+      "verdict": "untested"
+    },
+    {
+      "function": "T3",
+      "verdict": "untested"
+    },
+    {
+      "function": "T4",
+      "verdict": "untested"
+    },
+    {
+      "function": "T5",
+      "verdict": "untested"
+    },
+    {
+      "function": "T6",
+      "verdict": "untested"
+    },
+    {
+      "function": "T7",
+      "verdict": "untested"
+    },
+    {
+      "function": "T8",
+      "verdict": "untested"
+    }
+  ],
+  "t1_pass": true,
+  "other_promises_not_claimed": true,
+  "record_writes": [
+    {
+      "function": "T1",
+      "kind": "record",
+      "number": 1,
+      "path": "e2e/T1.md",
+      "tracked_by": null
+    },
+    {
+      "function": "T2",
+      "kind": "record",
+      "number": 2,
+      "path": "e2e/T2.md",
+      "tracked_by": null
+    },
+    {
+      "function": "T3",
+      "kind": "record",
+      "number": 3,
+      "path": "e2e/T3.md",
+      "tracked_by": null
+    },
+    {
+      "function": "T4",
+      "kind": "record",
+      "number": 4,
+      "path": "e2e/T4.md",
+      "tracked_by": null
+    },
+    {
+      "function": "T5",
+      "kind": "record",
+      "number": 5,
+      "path": "e2e/T5.md",
+      "tracked_by": null
+    },
+    {
+      "function": "T6",
+      "kind": "record",
+      "number": 7,
+      "path": "e2e/T6.md",
+      "tracked_by": null
+    },
+    {
+      "function": "T7",
+      "kind": "record",
+      "number": 8,
+      "path": "e2e/T7.md",
+      "tracked_by": null
+    },
+    {
+      "function": "T8",
+      "kind": "record",
+      "number": 10,
+      "path": "e2e/T8.md",
+      "tracked_by": null
+    }
+  ],
+  "proof_exit": 0
+}

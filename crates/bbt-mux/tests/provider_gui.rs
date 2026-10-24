@@ -372,7 +372,7 @@ fn operator_spawn_replays_across_connections_logic_and_supervisor_restart_withou
     let spec = bbt_proto::SpawnSpec {
         swarm: bbt_proto::SwarmId::from_u128(77),
         harness_kind: "zsh".into(),
-        name: Some("operator replay".into()),
+        name: None,
         role: None,
         cwd: temp.path().to_string_lossy().into_owned(),
         location: bbt_proto::Where::Local,
@@ -385,6 +385,7 @@ fn operator_spawn_replays_across_connections_logic_and_supervisor_restart_withou
     let mut gui = rt.block_on(Gui::open(&logic));
     let seat = rt.block_on(gui.spawn(op, spec.clone())).unwrap();
     let first = rt.block_on(logic.client.gui_seat(Ulid(seat.0.0))).unwrap();
+    assert_eq!(first.record.name, bbt_proto::seat_names::POOL[0]);
     let ProcessStatus::Running { pid: first_pid } = first.state.process else {
         panic!("first process is not running")
     };
@@ -426,6 +427,7 @@ fn operator_spawn_replays_across_connections_logic_and_supervisor_restart_withou
     let mut gui = rt.block_on(Gui::open(&logic));
     assert_eq!(rt.block_on(gui.spawn(op, spec.clone())).unwrap(), seat);
     let recovered = rt.block_on(logic.client.gui_seat(Ulid(seat.0.0))).unwrap();
+    assert_eq!(recovered.record.name, first.record.name);
     assert_eq!(
         recovered.state.process,
         ProcessStatus::Running { pid: first_pid }
@@ -438,6 +440,7 @@ fn operator_spawn_replays_across_connections_logic_and_supervisor_restart_withou
     let logic = start(&server);
     rt.block_on(logic.client.recover_seats()).unwrap();
     let recovered = rt.block_on(logic.client.gui_seat(Ulid(seat.0.0))).unwrap();
+    assert_eq!(recovered.record.name, first.record.name);
     assert_eq!(recovered.state.generation, first.state.generation + 1);
     let ProcessStatus::Running { pid: second_pid } = recovered.state.process else {
         panic!("recovered process is not running")

@@ -30,7 +30,17 @@
   // ---------- name pools (fantasy, sci-fi, furry) ----------
   const FIRST = ['Vesper', 'Lumen', 'Nyx', 'Thorn', 'Sable', 'Rook', 'Pip', 'Marrow', 'Ash', 'Bramble', 'Juniper', 'Kestrel', 'Orrin', 'Tamsin', 'Wren', 'Cassia', 'Fenn', 'Ilka', 'Dax', 'Zephyr', 'Ione', 'Corvin', 'Halcyon', 'Mireille', 'Sorrel', 'Tobin', 'Ember', 'Quill', 'Vale', 'Lark'];
   const LAST = ['Greywind', 'Foxglove', 'Copperwing', 'Ashvale', 'Quill', 'Ember', 'Hollow', 'Finch', 'Vex', 'Nightshade', 'Starling', 'Ironpaw', 'Moss', 'Halloran', 'Voss', 'Brightmane', 'Thistle', 'Oakhart', 'Silvertail', 'Dusk', 'Riven', 'Calloway', 'Fernsby', 'Lockridge', 'Bellweather'];
-  function rollName(r) { return pick(r, FIRST) + ' ' + pick(r, LAST); }
+  function rollName(r) { return pick(r, FIRST) + ' ' + pick(r, LAST); }   // demo fixtures only; a new seat takes poolName
+  // the product's seat-name pool (crates/bbt-proto/src/seat_names.json, generated into window.SEAT_NAMES; T1): a new seat takes the
+  // first pool name not used in its swarm, then '<name> 2', '<name> 3', ... as the backend allocates; k is the k-th such name (reroll)
+  function poolName(used, k) {
+    const P = window.SEAT_NAMES || [], u = new Set(used || []), want = k || 0;
+    if (!P.length) throw new Error('the seat-name pool is empty');
+    // at most u.size names are taken, so ceil((u.size + want + 1) / |P|) tiers, plus one, always hold the want-th free name
+    const tiers = Math.ceil((u.size + want + 1) / P.length) + 1; let i = 0;
+    for (let s = 1; s <= tiers; s++) for (const n of P) { const c = s === 1 ? n : n + ' ' + s; if (!u.has(c) && i++ === want) return c; }
+    throw new Error('unreachable: no free pool name within ' + tiers + ' tiers');
+  }
 
   const HARNESSES = ['claude', 'codex', 'pi', 'omp', 'zsh'];
   // What the app launches (decision #262, AGENTS.md): Claude supervises, so oracle; Codex implements, so executor and never an oracle
@@ -1264,7 +1274,8 @@
     const crumbs = el('span', { class: 'crumbs' });
     const list = el('div');
     const foot = el('div', { class: 'foot' });
-    function nameFor(seed) { return rollName(rng('roll' + seed)); }
+    // opts.usedNames (the swarm's seat names): the product pool, reroll steps to the next unused name; without it a demo roll
+    function nameFor(seed) { return opts.usedNames ? poolName(opts.usedNames, seed - 1) : rollName(rng('roll' + seed)); }
     const kids = it => typeof it.children === 'function' ? it.children() : (it.children || []);
     const norm = s => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
     const aliasOf = it => [it.label, ...(it.aliases || [])].map(norm);
@@ -1732,5 +1743,5 @@
     return root;
   }
 
-  window.C = { RECORDS, recordLookup, e2eSummary, e2eChecklist, notification, NOTIFY_BODY, circleMark, taskMark, SEAT_MARK, prioChip, atHM, hhmm, editRuns, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { poolName, RECORDS, recordLookup, e2eSummary, e2eChecklist, notification, NOTIFY_BODY, circleMark, taskMark, SEAT_MARK, prioChip, atHM, hhmm, editRuns, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

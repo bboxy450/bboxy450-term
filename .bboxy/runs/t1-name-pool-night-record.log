@@ -1,0 +1,32 @@
+---
+authorship:
+  device_id: 01M5R073G6SXF2SFNRNQGG8JAR
+  issued_by: test-account:01M5R073FM0KRGB8YWBMM75558
+  kind: device
+  principal: operator:01M5R073G6SXF2SFNRNQGG8JAR
+  public_key: dmmjXVpXD+NKDllFnFLm31inZ/kDiW2CztsaOpUEQdI=
+  signer: device:01M5R073G6SXF2SFNRNQGG8JAR
+created: 2026-10-24T22:24:03.768Z
+created_by: device:01M5R073G6SXF2SFNRNQGG8JAR
+function: T1
+group: terminal
+id: 01M5R073NAC2Z6T12KAEQQC50X
+issued_by: test-account:01M5R073FM0KRGB8YWBMM75558
+last_run: 2026-10-24T22:24:03Z
+links: []
+number: 1
+provenance:
+  digest: sha256:cfcbf68396ffe9560d39e4036cebfa7680a0ef64a2363aab14f2a3a5748e5487
+  frontmatter_digest: sha256:e55aa4d16bf6ce2a0d47e30ff82ff4ce7fc0478be94636013a55a66a288097c2
+  log: .bboxy/log/2026-10-24.jsonl#1
+  sig: NYaI9QBjMqyt6xwZmAsndC4MMTDU1JXfjXp0rPmVpZ45OV1WWuy9LQHv0+YPD33YaRTizc/ZbWIklpR3Ir10CA==
+  signer: device:01M5R073G6SXF2SFNRNQGG8JAR
+result: 'pass: '
+run_by: test-account:01M5R073FM0KRGB8YWBMM75558
+status: pass
+title: T1 e2e promise
+type: e2e
+updated: 2026-10-24T22:24:03.768Z
+updated_by: device:01M5R073G6SXF2SFNRNQGG8JAR
+---
+The e2e record for promise T1; scripts/e2e/T1.sh is its test.

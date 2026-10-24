@@ -1,0 +1,48 @@
+T1 — shared per-swarm seat names; Nyx Copperwing <EXECUTOR>
+Brief 8d8da289-7b6b-4fdc-8582-9701753a7327; plan 1969d626-bc09-42a0-8cb8-19ee57954a47.
+Data ruling 141ec14e-c480-4943-bfeb-76094de07ed2: canonical proto seat_names.json, checked Rust POOL, no build.rs.
+Layering ruling 12ecf0ca-4f86-4c5a-b83d-8f222c3829b9: gallery includes the same JSON bytes, no upward dependency/runtime path read.
+Night proof ruling 70175797-af34-4556-a3d7-20c10d69b150: delivery gate on main; separate exact T1+U0 verification union; Oracle re-runs after U0 lands.
+
+Mechanism
+crates/bbt-proto/src/seat_names.json: one ordered 14-name product pool.
+crates/bbt-proto/src/seat_names.rs: checked const POOL, JSON equality/nonempty/uniqueness test.
+crates/bboxybook/src/modules.rs: one LazyLock parses include_str JSON, retaining explicit zsh gallery slot and old order; no dependency/lockfile change.
+crates/bbt-mux/src/logic.rs: registry-scoped first free name, retained closed names reserved, complete numbered suffix tiers; GUI None-name and MCP defaults only; explicit names/journal/retry/role/placement unchanged.
+crates/bbt-mux/tests/provider_gui.rs: unnamed spawn gets pool[0], replay and both logic/supervisor restart preserve name and one process.
+crates/bbt-mux/tests/mcp.rs: isolated spawn's default is in pool and same after restart.
+scripts/e2e/T1.sh: three real default spawns have nonempty distinct names; explicit --name unchanged.
+lab/web/gen-tokens.py + tokens.js: window.SEAT_NAMES from canonical JSON, TOKENS/STYLE unchanged.
+lab/web/components.js + showcase.js: per-swarm pool allocation/reroll; demo fixture names unchanged; exhaustion uses finite occupied-name bound, never generic fallback.
+Wren source c7d4bd99 + 9063407e, signed cherry-picks.
+
+Completed checks before exact gate
+proto seat_names: 1 passed / 0 failed.
+mux seat_name_tests: 2 passed / 0 failed.
+provider_gui operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch: 1 passed / 0 failed.
+mcp mcp_seat_spawn_runs_once_with_isolated_home_and_existing_wiring: 1 passed / 0 failed.
+strict cargo clippy --workspace --all-targets --locked -- -D warnings: exit 0 on 51bd4451.
+exported token equality test: exit 0.
+sh scripts/layering.sh: exit 0.
+rustfmt --check for touched gallery/proto files: exit 0.
+sh scripts/lab-check.sh: 40 pages x 4 densities, 0 findings, exit 0.
+node pool/export probes: exit 0; pool exhaustion including 1,680 occupied names and reroll checked.
+
+Failures retained, corrected or attributed
+Initial global-sccache probes stalled; only recorded own Cargo/wrapper clients stopped (-15); daemon/peer processes untouched. Local wrappers empty thereafter; main later adopted same bypass under #287.
+Initial Clippy exit 101: gallery imported bbt_proto without dependency. Corrected by include_str JSON parsing in approved modules.rs, no forbidden upward edge.
+cargo fmt --all --check exit 1 includes pre-existing unrelated formatting; no broad rewrite. Scoped touched-file check exit 0.
+
+Gallery/full app checks on 51bd4451
+cargo test -p bboxybook --lib --locked: 16 passed / 0 failed, exit 0.
+cargo build -p bboxy450-term --locked: exit 0.
+
+Night verification union (separate from delivered source)
+4d0d5994fcecff5323fc4a1972296d53ff72ed43 = signed cherry-picks of four T1 commits onto pending U0 9dab09a1.
+Union build exit 0. Exact T1.sh and lib.sh SHA256 recorded in the night inputs.
+T1 script exit 0: real PTY, 3 distinct defaults, explicit override exact.
+Runner exit 1 intentionally: seven other terminal promises untested, none failed; all 8 record writes succeeded.
+Signed throwaway T1 record issued_by and run_by test-account:01M5R073FM0KRGB8YWBMM75558.
+Private HOME/records, per-run generated file custody via U0; no operator account/Keychain/display/input.
+Night app/supervisor/logic shutdown completed, private account removed by runner.
+No U0 acceptance claim; Oracle repeats T1 night on accepted U0.

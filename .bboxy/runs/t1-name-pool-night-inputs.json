@@ -1,0 +1,16 @@
+{
+  "t1_source": "51bd44517582f5c92acdcf6e1e2d1eb9344dfd42",
+  "files": [
+    {
+      "path": "scripts/e2e/T1.sh",
+      "copy": "target/t1-name/night-scripts/T1.sh",
+      "sha256": "ee41accd76291eb5bd30e2975468eadb56227d24b81c65df436b332fa5243abc"
+    },
+    {
+      "path": "scripts/e2e/lib.sh",
+      "copy": "target/t1-name/night-scripts/lib.sh",
+      "sha256": "a54a974a09e3a59ea88592ef32dbd6fd438c57421a18c6bdf73e31b7d7943f08"
+    }
+  ],
+  "selection": "exact T1.sh only; other terminal promises explicitly untested, not claimed green"
+}

@@ -9,3 +9,12 @@ run_line "$seat" 'echo pty-$(tty | sed "s|/dev/||")'
 wait_text "$seat" '(?m)^pty-ttys?[0-9]+$'
 name=$(seat_field "$seat" record.name)
 [ -n "$name" ] && [ "$name" != zsh ] || fail "the seat is named '$name', not from the furry pool (no name pool in the app)"
+second=$(spawn_zsh) || fail "second spawn refused"
+third=$(spawn_zsh) || fail "third spawn refused"
+second_name=$(seat_field "$second" record.name)
+third_name=$(seat_field "$third" record.name)
+[ -n "$second_name" ] && [ -n "$third_name" ] || fail "a default name is empty"
+[ "$name" != "$second_name" ] && [ "$name" != "$third_name" ] && [ "$second_name" != "$third_name" ] ||
+    fail "default names collide: '$name', '$second_name', '$third_name'"
+custom=$(spawn_zsh 'T1 Explicit Name') || fail "named spawn refused"
+[ "$(seat_field "$custom" record.name)" = 'T1 Explicit Name' ] || fail "--name override was changed"
