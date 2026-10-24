@@ -195,7 +195,7 @@ fn app_status(
 
 /// Both GUI owners derive close requests from the same retained scene.
 fn close_request(
-    scene: &Scene,
+    scene: &scene::Scene,
     model: &bboxy450_term::model::Model,
     seat: SeatId,
     id: bbt_mux::Ulid,
@@ -207,7 +207,6 @@ fn close_request(
             .closes
             .undo_in(&model.ui, seat, now)
             .map(|_| live::UiMsg::UndoClose { seat })
-            .map_err(str::to_string)
     } else {
         scene
             .close_intent(model, seat, id, now)
