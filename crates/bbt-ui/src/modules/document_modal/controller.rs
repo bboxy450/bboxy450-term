@@ -98,7 +98,11 @@ impl Regions {
                     }
                 }
             }
-            if let c::LayoutKind::ScrollView { content, .. } = &n.kind {
+            // The shell owns the first viewport. A nested diagram's horizontal
+            // scroller must not replace the document's vertical scroll extent.
+            if let c::LayoutKind::ScrollView { content, .. } = &n.kind
+                && out.viewport.is_none()
+            {
                 out.viewport = Some(n.rect);
                 out.extent = [
                     (content[0] - n.rect.w).max(0.),

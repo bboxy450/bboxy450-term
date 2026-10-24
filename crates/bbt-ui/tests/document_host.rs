@@ -160,3 +160,40 @@ fn a_host_read_error_is_visible_without_claiming_a_frontmatter_failure() {
     assert!(visible.contains("not_found: no record"));
     assert!(!visible.contains("frontmatter does not parse"));
 }
+
+#[test]
+fn a_nested_diagram_viewport_never_replaces_the_document_scroll_owner() {
+    let shell = DocumentModal {
+        modal: true,
+        viewport: [900., 600.],
+        ..Default::default()
+    };
+    let layout = shell
+        .element_with_body(ctx(), &Metrics, [900., 600.], &|_| {
+            let mut style = ui::Style::new(ui::Preset::Card);
+            style.overrides.height = Some(ui::Length::Px(1000.));
+            c::Element::Box(c::Box::new(
+                style,
+                vec![
+                    c::Element::ScrollView(c::ScrollView {
+                        viewport: [100., 20.],
+                        offset: [0.; 2],
+                        content_width: Some(1000.),
+                        content: Box::new(c::Element::Text(c::Text::new(
+                            "a wide diagram",
+                            ui::Text::default(),
+                        ))),
+                    })
+                    .into(),
+                ],
+            ))
+        })
+        .layout(Rect::new(0., 0., 846., 492.), ctx(), &Metrics)
+        .unwrap();
+    let regions = Regions::retained(&layout);
+    assert!(regions.viewport.unwrap().w > 800.);
+    assert!(regions.extent[1] > 500.);
+    let mut scroll = Controller::default();
+    assert!(scroll.scroll([0., 300.], regions.extent));
+    assert_eq!(scroll.offset[1], 300.);
+}

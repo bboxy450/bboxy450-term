@@ -3561,6 +3561,9 @@ impl ApplicationHandler<UiEvent> for App {
                     .as_ref()
                     .map_or(1., |window| window.scale_factor()) as f32;
                 self.pointer = [position.x as f32 / scale, position.y as f32 / scale];
+                if self.document.open {
+                    return;
+                }
                 if matches!(&self.local_tab,Some(LocalTab::Settings {controller,..}) if controller.dragging())
                 {
                     if let Some(fraction) = self
