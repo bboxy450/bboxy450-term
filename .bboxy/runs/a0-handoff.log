@@ -1,0 +1,41 @@
+# A-0 prerequisite handoff: seat knowledge MCP bridge
+
+1. Signed source `da6d20a4f368972562cc936285478b66ea48d93f`, branch `exec5-a0`, worktree `/Users/feral/mydev/bboxy450-term-exec5`. Rebased cleanly onto `56e4c62e11be51bf3ef405c29524cf13f7624f54` before its exact gate. This report and the other new evidence files are an evidence-only successor; no source rebase/change after the gate. K-0 is accepted in `cfed48f8`.
+
+2. Files and mechanisms (line numbers at the exact gated source):
+
+- `crates/bbt-mux/src/mcp/knowledge.rs:18` — scoped knowledge_fetch/knowledge_write catalogue reuses K-0's portable WriteRequest/RecordRef. `:68` admits only e2e/ Markdown paths; `:79` refuses untyped/spoofed create ids or extra authority fields; `:135` reads through DataSource; `:153` refuses oversized results, never clips them.
+- `crates/bbt-mux/src/mcp/mod.rs:5` and `:15` — module and mutation classification bind op_id through the existing MCP bridge/journal.
+- `crates/bbt-mux/src/mcp/tools.rs:69` — add both tools to the authenticated seat catalogue.
+- `crates/bbt-mux/src/logic.rs:1226` and `:1261` — named control dispatch/helper uses the actual calling seat generation key; a signing hold is named. Writes go through BboxySource/Index under existing journal.effect; post-application uncertainty stays UNKNOWN and never redispatches. No allocator, journal, watcher or signing-key substitute was added.
+- `crates/bbt-mux/tests/mcp.rs:3385`, `:3477`, `:3596` — three real-bridge fixture tests; existing catalogue count assertions updated for the two added tools; readiness fixture/assertions unchanged.
+- `.bboxy/runs/a0-in-app-task.log:1` — task/template for the Oracle's assigned in-app Codex seat, including a verbatim canonical #258 section-1 snapshot (54 promises). No production record was created externally.
+
+3. Commands and actual results, failures included:
+
+- `cargo check --locked -p bbt-mux` — 0 (development).
+- `cargo test --locked -p bbt-mux --test mcp mcp_knowledge -- --nocapture` — 0, three passed, both before and after the final catalogue-only cleanup.
+- First `cargo test --locked -p bbt-mux --test mcp` — 101: 31 passed, one failed, three ignored. The old Oracle catalogue assertion expected30 and saw32 after adding two tools. Corrected only that count; raw failure remains in a0-checks.log.
+- Corrected full MCP command — 0: 32 passed, zero failed, three ignored.
+- `cargo clippy --workspace --all-targets --locked -- -D warnings` — 0 twice, before and after the final catalogue cleanup.
+- Canonical task-payload section1 verbatim comparison — 0. Source SHA256 f13d593d5b9f45d6a6bd705e770d994120f60bdb93d7ba962e7d9b3c73e0e9f3; task payload SHA256353b79af7f657cb1e753e555e683cadadb3879922a3878fe288a65ce411ebe80.
+- Exact clean detached `sh scripts/ci-local.sh` — **0**, 1055.958s, 2026-10-24T01:15:18.606488-07:00 to 2026-10-24T01:32:54.562327-07:00; final line `ci-local: all gates passed`. BBOXY_TEST_CUSTODY=memory, jobs2, O1, no debug info; environment/worktree/source recorded in a0-gate-state.log.
+- Within that exact gate: workspace build, strict Clippy, workspace tests and UI lint all 0; full MCP32/0/3ignored, all three new bridge tests green; native idle10.002s with frames0/callbacks0; 17 invariants, zero failures, seven named slow skips. Images-resolve, frontmatter, licensing and layering held. No --parity or slow/scale claim for this nonvisual bridge change.
+- Gate worktree remained clean. Gate and dev targets are deleted; no own load/build remains. Slot2 exit reported to the Oracle. Clean detached worktree was removed after recording evidence; the exact commit/log remain available.
+
+4. Acceptance evidence:
+
+- Own principal/signer: real MCP admission supplies the seat/generation; forged caller fields are refused and forged authorship is overwritten. Readback independently recomputes the metadata/body digests and DSSE PAE and verifies Ed25519. Two actual fixture seats use different generation keys; signed activity matches the returned signer and verifies its chain.
+- K-0/Index write: first create gets next number3 after two fixture tasks; unknown metadata survives; update retains id/number and uses current ref+etag. Exact retry returns the retained result across logic restart; argument conflict is refused without a second number.
+- Path/authority negatives: tasks/, lookalike prefixes, parent/absolute/non-Markdown paths, non-e2e type, caller spoof, create-id alias, stale etag and symlink escapes are refused. Existing outside-path bytes remain unchanged.
+- Genuine UNKNOWN proof: an owned fixture SQLite trigger rejects the doc/written event after atomic file commit. The first response is UNKNOWN with the file present. Removing that fixture file and retrying before/after logic restart never recreates it; one write_prepared only. No journal tampering or fake success injection.
+- Task text/template is supplied for the in-app writer under c81f800d/4d6bcc2a. Actual production54, the final function/group/expected manifest, and the missing-promise corpus-presence acceptance are **pending that stage**, not claimed by this prerequisite.
+
+5. Gaps and scope deliberately left untouched:
+
+- No production .bboxy/e2e files, no external/manual record writes; the root stays held. Fixtures use private temporary keys; production construction uses only identity's real admitted seat key.
+- No real Claude/Codex credentials/service run or first-turn claim here. General document GUI transport/view hosting stays with the later host work; no GUI/proto/app, scheduler, native delivery, capture or dependency changes.
+- Main advanced during the gate to `f0618c98d2fd660391474220fb761a5a07832dd2`: Sable native-wake5eb4557f (separate attach/Hook/refresh/pump hunks), its evidence, the first in-app feedback and decision #266. The gated bridge remains frozen as required.
+- **New #266 scope gap for Oracle disposition before acceptance:** the current e2e-only bridge requires explicit stable op_id as originally ruled; #266 now requires omitted-id minting, knowledge_search and a broader class/type write table. This handoff does not claim those new requirements. Oracle must accept this as the staged prerequisite with a #266 follow-up, or re-brief that work before acceptance; no unilateral scope widening or hidden re-gate was performed.
+
+6. Evidence: a0-ci.log SHA256 `4525d39b0cf90968275d769e9a9291d515a0affc52deef89ece1641bcdec92f2` (byte-identical to the raw external CI log); a0-checks.log retains every development verification result and the fixed failure; a0-gate-state.log records exact source/environment/slot/time/cleanup; a0-in-app-task.log is the supplied delegation payload. An evidence-only successor commit follows; the Oracle verifies and decides acceptance.

@@ -1,0 +1,37 @@
+{
+  "command": [
+    "sh",
+    "scripts/ci-local.sh"
+  ],
+  "source": "da6d20a4f368972562cc936285478b66ea48d93f",
+  "base": "56e4c62e11be51bf3ef405c29524cf13f7624f54",
+  "worktree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-a0-6nefoxew/ci-worktree",
+  "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-a0-6nefoxew/ci-target",
+  "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-a0-6nefoxew/a0-ci.log",
+  "grant": "acc09d25-c848-4687-9804-5b97b99104ed",
+  "started": "2026-10-24T01:15:18.606488-07:00",
+  "environment": {
+    "CARGO_TARGET_DIR": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-a0-6nefoxew/ci-target",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "pid": 9806,
+  "process_group": 9806,
+  "running": false,
+  "exit": 0,
+  "elapsed_s": 1055.958,
+  "finished": "2026-10-24T01:32:54.562327-07:00",
+  "all_gates_passed": true,
+  "worktree_status": "",
+  "target_deleted": true,
+  "log_sha256": "4525d39b0cf90968275d769e9a9291d515a0affc52deef89ece1641bcdec92f2",
+  "main_after_gate": "f0618c98d2fd660391474220fb761a5a07832dd2",
+  "main_changes": "f0618c98 decision #266: orient says what the seat can do, empties say why, ids are minted, destinations listed with rights, knowledge tools with a write table by class, counts never null; from the first in-app agent feedback\ned5cfdc7 Record first in-app Claude feedback from a ctl-driven e2e probe\n5eb4557f Merge idle wake via documented messaging socket (Sable)\n060b5532 Record exact clean CI and real first-contact wake evidence\n551312e3 Verify native hook wake, reject OSC registration, and retain restart identity\nf582c9ad Checkpoint authenticated Claude hook socket registration (verification pending)\n",
+  "worktree_removed": true,
+  "dev_target_deleted": true
+}
