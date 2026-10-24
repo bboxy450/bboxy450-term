@@ -217,6 +217,13 @@ impl LogicClient {
         self.capture_diagnostics.enable();
     }
 
+    /// Lossless audit for recovery-fixture preparation, before its controlled kill.
+    /// The ordinary product recorder remains nonblocking by default.
+    #[doc(hidden)]
+    pub fn enable_fixture_capture_diagnostics(&self) {
+        self.capture_diagnostics.enable_fixture_lossless();
+    }
+
     /// Snapshot last-observed cursors and inclusive phase spans without an RPC.
     /// Copy on IO, before diagnostic requests that would affect the window.
     pub fn capture_diagnostics(&self) -> bbt_supervisor::supervisor::capture_diagnostics::Snapshot {

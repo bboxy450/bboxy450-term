@@ -1,0 +1,245 @@
+R5g fixture-only lossless audit and frozen archive
+Authorization: Oracle88456a0c-7f04-4ffe-bb32-df0018889c46.
+Parent:5372b865 evidence of v3-1 missed2 after controlled SIGKILL.
+Source diff SHA25650771938c62c9ecc07cf9a13293779bc68134f1b56e7fda9e9408d1f8e2fcfd1.
+Default live recorder retains try_lock; its existing contention test still proves it returns with missed1. Only the pre-kill recovery fixture opts into bounded mutex updates.
+The timed restart constructs fresh logic and asserts fixture_lossless is false. missed==0 and every earlier assertion/deadline remain.
+The explicit R5G_RECOVERY_EVIDENCE path uses create_new and archives the full frozen bytes before any assertion; ordinary cleanup still reaps children.
+
+Archived four-seat audit:
+{
+  "sha256": "687a160e16bae27c778aea72823a8f4de32641cf34bbc41f8b14471c95b59221",
+  "bytes": 2098902,
+  "fixture_lossless": true,
+  "missed": 0,
+  "untracked": 0,
+  "synchronous_saves_after_readiness": 0,
+  "seats": [
+    {
+      "applied_observed_ns": 2517878417,
+      "applied_sequence": 17,
+      "captured_sequence": 0,
+      "checkpoint_byte_end": 65550,
+      "checkpoint_paused": false,
+      "checkpoint_pauses": 0,
+      "checkpoint_sequence": 17,
+      "committed_sequence": 0,
+      "forced_checkpoints": 0,
+      "generation": 1,
+      "idle_checkpoints": 1,
+      "last_progress_ns": 2308939125,
+      "notification_accepted": 0,
+      "notification_attempts": 0,
+      "notification_last_accepted": 0,
+      "notification_last_attempt": 0,
+      "notified_sequence": 17,
+      "observed_ns": 2517878417,
+      "pages": 0,
+      "parsed_byte_end": 65550,
+      "parsed_bytes": 65550,
+      "parsed_events": 17,
+      "ring_observed_ns": 0,
+      "seat": "01M5PZ1CD100CFZHTXY6JKTWEG",
+      "target_sequence": 17
+    },
+    {
+      "applied_observed_ns": 2536916042,
+      "applied_sequence": 17,
+      "captured_sequence": 0,
+      "checkpoint_byte_end": 65550,
+      "checkpoint_paused": false,
+      "checkpoint_pauses": 0,
+      "checkpoint_sequence": 17,
+      "committed_sequence": 0,
+      "forced_checkpoints": 0,
+      "generation": 1,
+      "idle_checkpoints": 1,
+      "last_progress_ns": 2316755750,
+      "notification_accepted": 0,
+      "notification_attempts": 0,
+      "notification_last_accepted": 0,
+      "notification_last_attempt": 0,
+      "notified_sequence": 17,
+      "observed_ns": 2536916042,
+      "pages": 0,
+      "parsed_byte_end": 65550,
+      "parsed_bytes": 65550,
+      "parsed_events": 17,
+      "ring_observed_ns": 0,
+      "seat": "01M5PZ1CD1N505JCMC2PMDMBM6",
+      "target_sequence": 17
+    },
+    {
+      "applied_observed_ns": 3913030459,
+      "applied_sequence": 770,
+      "captured_sequence": 1285,
+      "checkpoint_byte_end": 8374272,
+      "checkpoint_paused": false,
+      "checkpoint_pauses": 1,
+      "checkpoint_sequence": 512,
+      "committed_sequence": 1285,
+      "forced_checkpoints": 1,
+      "generation": 1,
+      "idle_checkpoints": 0,
+      "last_progress_ns": 3913030375,
+      "notification_accepted": 0,
+      "notification_attempts": 0,
+      "notification_last_accepted": 0,
+      "notification_last_attempt": 0,
+      "notified_sequence": 1285,
+      "observed_ns": 3914176209,
+      "pages": 771,
+      "parsed_byte_end": 12588032,
+      "parsed_bytes": 12588032,
+      "parsed_events": 770,
+      "ring_observed_ns": 3912887875,
+      "seat": "01M5PZ1CD1NGF2TMC75VT4AMXW",
+      "target_sequence": 1285
+    },
+    {
+      "applied_observed_ns": 2555812084,
+      "applied_sequence": 18,
+      "captured_sequence": 0,
+      "checkpoint_byte_end": 65550,
+      "checkpoint_paused": false,
+      "checkpoint_pauses": 0,
+      "checkpoint_sequence": 18,
+      "committed_sequence": 0,
+      "forced_checkpoints": 0,
+      "generation": 1,
+      "idle_checkpoints": 1,
+      "last_progress_ns": 2335404125,
+      "notification_accepted": 0,
+      "notification_attempts": 0,
+      "notification_last_accepted": 0,
+      "notification_last_attempt": 0,
+      "notified_sequence": 18,
+      "observed_ns": 2555812084,
+      "pages": 0,
+      "parsed_byte_end": 65550,
+      "parsed_bytes": 65550,
+      "parsed_events": 18,
+      "ring_observed_ns": 0,
+      "seat": "01M5PZ1CD1V0K75NPTM5NW2GW9",
+      "target_sequence": 18
+    }
+  ]
+}
+
+lossless-unit status:
+{
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-supervisor",
+    "--locked",
+    "--lib",
+    "capture_diagnostics::tests",
+    "--",
+    "--nocapture"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "at": "2026-10-24T05:42:50.259026-07:00",
+  "finished": true,
+  "source_diff_sha256": "50771938c62c9ecc07cf9a13293779bc68134f1b56e7fda9e9408d1f8e2fcfd1",
+  "pid": 79878,
+  "exit": 0,
+  "elapsed_s": 7.156418209022377,
+  "source_diff_sha256_after": "50771938c62c9ecc07cf9a13293779bc68134f1b56e7fda9e9408d1f8e2fcfd1"
+}
+Output SHA256:192bcab8f1c9597afada2e314c2f8c720358040d26a97871e0de6a833387d946
+Complete output JSON-escaped:
+"   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)\n    Finished `test` profile [optimized] target(s) in 6.81s\n     Running unittests src/lib.rs (target/r5g/debug/deps/bbt_supervisor-e4a124315a5fb7be)\n\nrunning 3 tests\ntest supervisor::capture_diagnostics::tests::bounded_trace_retains_totals_and_reports_overwrite_and_contention ... ok\ntest supervisor::capture_diagnostics::tests::cursor_generations_and_turn_pages_remain_distinct ... ok\ntest supervisor::capture_diagnostics::tests::fixture_lossless_counts_every_concurrent_writer_update ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 42 filtered out; finished in 0.00s\n\n"
+
+lossless-4 status:
+{
+  "argv": [
+    "env",
+    "R5G_SEATS=4",
+    "R5G_RECOVERY_EVIDENCE=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5g-q_dg7i1h/lossless-4-frozen.json",
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--test",
+    "recovery",
+    "checkpoint_bounded_recovery",
+    "--",
+    "--exact",
+    "--nocapture"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "at": "2026-10-24T05:43:51.054321-07:00",
+  "finished": true,
+  "source_diff_sha256": "50771938c62c9ecc07cf9a13293779bc68134f1b56e7fda9e9408d1f8e2fcfd1",
+  "pid": 81162,
+  "exit": 0,
+  "elapsed_s": 26.29411291697761,
+  "source_diff_sha256_after": "50771938c62c9ecc07cf9a13293779bc68134f1b56e7fda9e9408d1f8e2fcfd1"
+}
+Output SHA256:a01aeae38fcf6eaa23e32cfdc45588c908b0ba87b3980ae350efb6dfc72c248a
+Complete output JSON-escaped:
+"   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)\n   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)\n   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)\n   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)\n    Finished `test` profile [optimized] target(s) in 21.56s\n     Running tests/recovery.rs (target/r5g/debug/deps/recovery-7d0788ad483062a2)\n\nrunning 1 test\ncheckpoint_recovery frozen_archive=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5g-q_dg7i1h/lossless-4-frozen.json bytes=2098902\ncheckpoint_recovery delivery={\"burst_held\":1285,\"burst_returned\":1,\"burst_seen\":1285,\"client\":{\"decoded_event_frames\":1337,\"empty_receives\":10201,\"queued_events\":0,\"queued_output_sequence\":null,\"queued_raw_events\":0,\"read_bytes\":136070092,\"read_calls\":18497,\"receive_calls\":11538,\"returned_events\":1337},\"held_released\":1,\"held_sequence\":null,\"inner_empty\":10201,\"inner_receive_calls\":11538,\"last_burst_returned_sequence\":1285,\"last_burst_seen_sequence\":1285,\"other_returned\":52,\"receive_calls\":10254,\"release_requested\":true}\ncheckpoint_recovery capture_phase_totals=[[\"logic_turn\",{\"busy\":0,\"bytes\":0,\"calls\":10270,\"elapsed_ns\":3901458293,\"errors\":0,\"max_ns\":58798000,\"pending_peak\":1,\"work\":770}],[\"commands\",{\"busy\":0,\"bytes\":0,\"calls\":10271,\"elapsed_ns\":137217954,\"errors\":0,\"max_ns\":41726208,\"pending_peak\":0,\"work\":10}],[\"receive\",{\"busy\":0,\"bytes\":0,\"calls\":10272,\"elapsed_ns\":3112751477,\"errors\":0,\"max_ns\":13473542,\"pending_peak\":0,\"work\":0}],[\"event\",{\"busy\":0,\"bytes\":0,\"calls\":842,\"elapsed_ns\":590783318,\"errors\":0,\"max_ns\":5934334,\"pending_peak\":0,\"work\":0}],[\"replay_page\",{\"busy\":0,\"bytes\":12588032,\"calls\":771,\"elapsed_ns\":558186118,\"errors\":0,\"max_ns\":5884500,\"pending_peak\":0,\"work\":770}],[\"capture_request\",{\"busy\":0,\"bytes\":0,\"calls\":9,\"elapsed_ns\":39143666,\"errors\":0,\"max_ns\":5001375,\"pending_peak\":0,\"work\":0}],[\"read_ring_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":772,\"elapsed_ns\":453703251,\"errors\":0,\"max_ns\":5743166,\"pending_peak\":0,\"work\":0}],[\"recovery_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":4,\"elapsed_ns\":16307042,\"errors\":0,\"max_ns\":4131041,\"pending_peak\":0,\"work\":0}],[\"checkpoint_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":8,\"elapsed_ns\":39853126,\"errors\":0,\"max_ns\":5667750,\"pending_peak\":0,\"work\":0}],[\"parse\",{\"busy\":0,\"bytes\":12784682,\"calls\":823,\"elapsed_ns\":110072669,\"errors\":0,\"max_ns\":465042,\"pending_peak\":0,\"work\":822}],[\"checkpoint\",{\"busy\":0,\"bytes\":0,\"calls\":4,\"elapsed_ns\":27000209,\"errors\":0,\"max_ns\":7096959,\"pending_peak\":0,\"work\":0}],[\"maintenance\",{\"busy\":0,\"bytes\":0,\"calls\":10271,\"elapsed_ns\":44352600,\"errors\":0,\"max_ns\":17268041,\"pending_peak\":0,\"work\":0}],[\"supervisor_turn\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_dispatch\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_query\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_sweep\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_providers\",{\"busy\":0,\"bytes\":0,\"calls\":19,\"elapsed_ns\":50665,\"errors\":0,\"max_ns\":13167,\"pending_peak\":0,\"work\":0}],[\"maintenance_adapters\",{\"busy\":0,\"bytes\":0,\"calls\":19,\"elapsed_ns\":1658208,\"errors\":0,\"max_ns\":995917,\"pending_peak\":0,\"work\":0}],[\"maintenance_identity\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_messages\",{\"busy\":0,\"bytes\":0,\"calls\":37,\"elapsed_ns\":11996416,\"errors\":0,\"max_ns\":4647042,\"pending_peak\":0,\"work\":0}],[\"maintenance_provenance\",{\"busy\":0,\"bytes\":0,\"calls\":37,\"elapsed_ns\":24377209,\"errors\":0,\"max_ns\":12617167,\"pending_peak\":0,\"work\":102}],[\"checkpoint_service\",{\"busy\":0,\"bytes\":0,\"calls\":20542,\"elapsed_ns\":5991210,\"errors\":0,\"max_ns\":154458,\"pending_peak\":0,\"work\":0}]]\ncheckpoint_recovery supervisor_notification={\"seat\":\"01M5PZ1CD1NGF2TMC75VT4AMXW\",\"generation\":1,\"observed_ns\":1020978542,\"notified_sequence\":0,\"target_sequence\":0,\"ring_observed_ns\":0,\"captured_sequence\":0,\"committed_sequence\":0,\"applied_observed_ns\":0,\"applied_sequence\":0,\"last_progress_ns\":0,\"pages\":0,\"parsed_events\":0,\"parsed_bytes\":0,\"checkpoint_sequence\":0,\"checkpoint_byte_end\":0,\"parsed_byte_end\":0,\"checkpoint_pauses\":0,\"checkpoint_paused\":false,\"idle_checkpoints\":0,\"forced_checkpoints\":0,\"notification_attempts\":3124,\"notification_accepted\":1285,\"notification_last_attempt\":1285,\"notification_last_accepted\":1285}\ncheckpoint_recovery seat=01M5PZ1CD1NGF2TMC75VT4AMXW parsed_debt=4213760 backlog=8383502 parsed=12588032 confirmed=8374272 tail=20971534\ncheckpoint_recovery seat=01M5PZ1CD1V0K75NPTM5NW2GW9 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PZ1CD100CFZHTXY6JKTWEG parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PZ1CD1N505JCMC2PMDMBM6 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery reaped_owned_pids=[81393, 81396, 81388, 81390]\ncheckpoint_recovery seats=4 every_seat_live_ms=174.620\ntest checkpoint_bounded_recovery ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 4.43s\n\n"
+
+lossless-clippy status:
+{
+  "argv": [
+    "cargo",
+    "clippy",
+    "--workspace",
+    "--all-targets",
+    "--locked",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "at": "2026-10-24T05:45:33.584729-07:00",
+  "finished": true,
+  "source_diff_sha256": "50771938c62c9ecc07cf9a13293779bc68134f1b56e7fda9e9408d1f8e2fcfd1",
+  "pid": 81949,
+  "exit": 0,
+  "elapsed_s": 8.426212541002315,
+  "source_diff_sha256_after": "50771938c62c9ecc07cf9a13293779bc68134f1b56e7fda9e9408d1f8e2fcfd1"
+}
+Output SHA256:3ba967aaf5cd57eaf1c362c66423537a2675bb6504312dc3ad548a40738c6d97
+Complete output JSON-escaped:
+"    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)\n    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)\n    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-term)\n    Finished `dev` profile [optimized] target(s) in 8.33s\n"

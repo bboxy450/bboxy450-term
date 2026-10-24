@@ -274,7 +274,9 @@ fn checkpoint_recovery_child() {
         runtime.handle(),
     )
     .unwrap();
-    logic.client.enable_capture_diagnostics();
+    // Lossless audit is confined to this pre-kill fixture process; the timed
+    // restart below starts a fresh logic with the default recorder.
+    logic.client.enable_fixture_capture_diagnostics();
     let go = root.join("go");
     // Finite output avoids a growing ramp dataset. Small seats trickle at
     // 32 KiB/s; the large seat provides a genuine partially parsed backlog.
@@ -501,8 +503,23 @@ fn checkpoint_bounded_recovery() {
         std::thread::sleep(Duration::from_millis(10));
     }
     child.kill(); // Actual SIGKILL, not orderly Logic::shutdown.
-    let frozen: Value =
-        serde_json::from_slice(&std::fs::read(root.join("frozen.json")).unwrap()).unwrap();
+    let frozen_bytes = std::fs::read(root.join("frozen.json")).unwrap();
+    if let Some(path) = std::env::var_os("R5G_RECOVERY_EVIDENCE") {
+        // Archive before any assertion; tempfile cleanup still reaps all PIDs.
+        // create_new preserves earlier evidence if a label is accidentally reused.
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+            .unwrap();
+        std::io::Write::write_all(&mut file, &frozen_bytes).unwrap();
+        println!(
+            "checkpoint_recovery frozen_archive={} bytes={}",
+            Path::new(&path).display(),
+            frozen_bytes.len()
+        );
+    }
+    let frozen: Value = serde_json::from_slice(&frozen_bytes).unwrap();
     println!("checkpoint_recovery delivery={}", frozen["delivery"]);
     println!(
         "checkpoint_recovery capture_phase_totals={}",
@@ -513,6 +530,7 @@ fn checkpoint_bounded_recovery() {
         "checkpoint_recovery supervisor_notification={}",
         serde_json::to_string(&actor.seats.iter().find(|row| row.seat == seats[0])).unwrap()
     );
+    assert_eq!(frozen["fixture_lossless"], true);
     assert_eq!(frozen["missed"], 0);
     assert_eq!(frozen["untracked_seat_samples"], 0);
     assert_eq!(frozen["synchronous_saves_after_readiness"], 0);
@@ -657,6 +675,7 @@ fn checkpoint_bounded_recovery() {
         assert_eq!(snapshot.screen, expected[&seat]);
     }
     let elapsed = started.elapsed();
+    assert!(!logic.client.capture_diagnostics().fixture_lossless);
     logic.shutdown().unwrap();
     let probe = supervisor.connect().unwrap();
     let Reply::Seats { seats: recovered } = probe.request(Action::ListOwnedSeats).unwrap() else {

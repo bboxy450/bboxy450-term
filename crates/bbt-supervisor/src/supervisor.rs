@@ -37,7 +37,7 @@ pub mod capture_diagnostics {
     use std::collections::{HashMap, VecDeque};
     use std::sync::{
         Arc, Mutex, OnceLock, TryLockError,
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
     };
     use std::time::Instant;
 
@@ -201,6 +201,8 @@ pub mod capture_diagnostics {
     #[derive(Clone, Debug, Serialize)]
     pub struct Snapshot {
         pub enabled: bool,
+        /// Opt-in recovery-fixture audit; live traces leave this false.
+        pub fixture_lossless: bool,
         /// All timestamps use one process-relative monotonic clock. Compare
         /// logic and supervisor directly only when their process_id matches.
         pub process_id: u32,
@@ -232,6 +234,7 @@ pub mod capture_diagnostics {
     #[derive(Default)]
     pub struct Recorder {
         buffer: OnceLock<Mutex<Buffer>>,
+        fixture_lossless: AtomicBool,
         turn: AtomicU64,
         pages: AtomicU64,
         missed: AtomicU64,
@@ -252,6 +255,13 @@ pub mod capture_diagnostics {
                     spans: VecDeque::with_capacity(SPANS),
                 })
             });
+        }
+
+        /// Recovery-fixture audit only, enabled before the controlled kill.
+        /// Updates serialize in the bounded buffer; ordinary traces keep try_lock.
+        pub fn enable_fixture_lossless(&self) {
+            self.fixture_lossless.store(true, Ordering::Relaxed);
+            self.enable();
         }
 
         pub fn start(
@@ -297,10 +307,19 @@ pub mod capture_diagnostics {
             )))
         }
 
+        #[allow(
+            clippy::disallowed_methods,
+            reason = "explicit recovery-fixture audit serializes bounded diagnostic updates"
+        )]
         fn update(&self, f: impl FnOnce(&mut Buffer)) {
             let Some(buffer) = self.buffer.get() else {
                 return;
             };
+            if self.fixture_lossless.load(Ordering::Relaxed) {
+                let mut buffer = buffer.lock().unwrap_or_else(|error| error.into_inner());
+                f(&mut buffer);
+                return;
+            }
             match buffer.try_lock() {
                 Ok(mut buffer) => f(&mut buffer),
                 Err(TryLockError::Poisoned(error)) => f(&mut error.into_inner()),
@@ -338,6 +357,7 @@ pub mod capture_diagnostics {
             bbt_rt::assert_not_ui_thread();
             let mut snapshot = Snapshot {
                 enabled: self.buffer.get().is_some(),
+                fixture_lossless: self.fixture_lossless.load(Ordering::Relaxed),
                 process_id: std::process::id(),
                 sampled_ns: now_ns(),
                 started_ns: 0,
@@ -459,6 +479,7 @@ pub mod capture_diagnostics {
             assert!(!recorder.snapshot().enabled);
             assert!(recorder.snapshot().spans.is_empty());
             recorder.enable();
+            assert!(!recorder.snapshot().fixture_lossless);
             for _ in 0..SPANS + 3 {
                 recorder
                     .start(Phase::ReadRingRpc, Ulid::nil(), 1, 2, 3)
@@ -481,6 +502,40 @@ pub mod capture_diagnostics {
                 1,
                 "recording waited for a reader"
             );
+        }
+
+        #[test]
+        fn fixture_lossless_counts_every_concurrent_writer_update() {
+            let recorder = Arc::new(Recorder::default());
+            recorder.enable_fixture_lossless();
+            let start = Arc::new(std::sync::Barrier::new(5));
+            let writers: Vec<_> = (0..4)
+                .map(|_| {
+                    let recorder = recorder.clone();
+                    let start = start.clone();
+                    std::thread::spawn(move || {
+                        start.wait();
+                        for _ in 0..4096 {
+                            recorder.start(Phase::Parse, Ulid::nil(), 0, 0, 0).finish(
+                                Outcome::Ok,
+                                1,
+                                1,
+                            );
+                        }
+                    })
+                })
+                .collect();
+            start.wait();
+            for writer in writers {
+                writer.join().unwrap();
+            }
+            let snapshot = recorder.snapshot();
+            assert!(snapshot.fixture_lossless);
+            assert_eq!(snapshot.missed, 0);
+            assert_eq!(snapshot.totals[Phase::Parse as usize].1.calls, 4 * 4096);
+            assert_eq!(snapshot.totals[Phase::Parse as usize].1.work, 4 * 4096);
+            assert_eq!(snapshot.spans.len(), SPANS);
+            assert_eq!(snapshot.overwritten_spans, 4 * 4096 - SPANS as u64);
         }
 
         #[test]
