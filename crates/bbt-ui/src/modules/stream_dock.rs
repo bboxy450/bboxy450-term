@@ -1124,22 +1124,17 @@ fn kind_chip(key: &str, value: &str) -> c::Element {
 fn task_item(item: &WorkItem, k: &str, delegate: bool) -> c::Element {
     let sp = &STYLE.spacing;
     let t = &STYLE.r#type;
-    let (glyph, col) = match item.state.as_str() {
-        "running" => ("◑", ui::Color::Accent),
-        "reported" => ("◕", rgba(TOKENS.color.state.waiting)),
-        "accepted" => ("●", rgba(TOKENS.color.ui.ok)),
-        "done" => ("✓", rgba(TOKENS.color.ui.ok)),
-        "rejected" => ("✕", rgba(TOKENS.color.state.errored)),
-        "blocked" => ("⊘", rgba(TOKENS.color.state.errored)),
-        "claimed" => ("◔", ui::Color::Muted),
-        _ => ("○", ui::Color::Muted),
+    let col = match item.state.as_str() {
+        "running" => ui::Color::Accent,
+        "reported" => rgba(TOKENS.color.state.waiting),
+        "accepted" | "done" => rgba(TOKENS.color.ui.ok),
+        "rejected" | "blocked" => rgba(TOKENS.color.state.errored),
+        _ => ui::Color::Muted,
     };
     let mut cells = vec![
-        label(
+        named(
             format!("{k}/tglyph"),
-            glyph,
-            text_style(t.caption as f32, 400, false, col),
-            false,
+            ui::marks::Mark::task(&item.state).element(11., ui::Paint::solid(col)),
         )
         .into(),
         kind_chip(

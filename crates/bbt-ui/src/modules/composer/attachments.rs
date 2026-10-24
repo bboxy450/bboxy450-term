@@ -209,16 +209,16 @@ impl AttachmentPicker {
                 s.overrides.fill = Some(tint(ui::Color::Accent, 0.28));
             }
             let glyph = if a.kind == "task" {
-                super::view::task_glyph(&a.status)
+                super::view::task_mark(&format!("{k}/glyph"), &a.status, 14., ui::Color::Muted)
             } else {
-                super::view::artifact_glyph(&a.akind)
+                let mut glyph = c::Text::new(
+                    super::view::artifact_glyph(&a.akind),
+                    text_style(t.small as f32, 400, false, ui::Color::Muted),
+                );
+                glyph.wrap = false;
+                glyph.align = c::Alignment::Center;
+                named(format!("{k}/glyph"), c::Element::Text(glyph))
             };
-            let mut glyph = c::Text::new(
-                glyph,
-                text_style(t.small as f32, 400, false, ui::Color::Muted),
-            );
-            glyph.wrap = false;
-            glyph.align = c::Alignment::Center;
             let mut kind = text_style(t.micro as f32, 400, true, ui::Color::Muted);
             kind.uppercase = true;
             kind.tracking_em = 0.06;
@@ -229,7 +229,7 @@ impl AttachmentPicker {
                 c::Alignment::Center,
                 vec![
                     c::Item {
-                        element: named(format!("{k}/glyph"), c::Element::Text(glyph)),
+                        element: glyph,
                         extent: c::Extent::Fixed(14.),
                     },
                     fill(label(

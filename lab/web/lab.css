@@ -1530,8 +1530,8 @@ details[open] > summary::before { transform: rotate(90deg); }
 .mark { display: block; width: 100%; height: 100%; flex: none; }
 .mark svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .glyph > .mark { position: absolute; inset: 0; }
-.tglyph, .att .ak, .report .rk { display: inline-flex; align-items: center; justify-content: center; }
-.tglyph > .mark, .att .ak > .mark, .report .rk > .mark { width: 11px; height: 11px; }
+.tglyph, .att .ak, .report .rk, .apopt .ak { display: inline-flex; align-items: center; justify-content: center; }
+.tglyph > .mark, .att .ak > .mark, .report .rk > .mark, .apopt .ak > .mark { width: 11px; height: 11px; }
 .doc-status > .mark { display: inline-block; width: 10px; height: 10px; vertical-align: -1px; margin-right: 5px; }
 /* the waiting mark keeps its amber halo (text-shadow does not reach SVG): a drop-shadow on the mark */
 .seat-row.waiting .glyph > .mark { filter: drop-shadow(0 0 3px var(--c-waiting)); }

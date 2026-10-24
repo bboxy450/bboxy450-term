@@ -204,16 +204,11 @@ impl Report {
                 sp.s3 as f32,
                 c::Alignment::Center,
                 vec![
-                    label(
-                        format!("{key}/glyph"),
-                        super::view::task_glyph(status),
-                        text_style(
-                            t.caption as f32,
-                            400,
-                            false,
-                            crate::modules::seat_row::role_color("executor"),
-                        ),
-                        false,
+                    super::view::task_mark(
+                        &format!("{key}/glyph"),
+                        status,
+                        11.,
+                        crate::modules::seat_row::role_color("executor"),
                     )
                     .into(),
                     fill(label(

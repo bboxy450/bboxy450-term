@@ -46,17 +46,22 @@ fn dot(key: &str, size: f32, paint: ui::Color) -> c::Element {
     s.overrides.fill = Some(ui::Paint::solid(paint));
     named(key, c::Element::Box(c::Box::new(s, vec![])))
 }
-pub fn task_glyph(status: &str) -> &'static str {
-    match status {
-        "claimed" => "◔",
-        "running" => "◑",
-        "reported" => "◕",
-        "accepted" => "●",
-        "done" => "✓",
-        "rejected" => "✕",
-        "blocked" => "⊘",
-        _ => "○",
-    }
+pub(super) fn task_mark(key: &str, status: &str, width: f32, color: ui::Color) -> c::Element {
+    let mut style = plain(Some(11.), [0.; 4], 0.);
+    style.overrides.width = Some(ui::Length::Px(width));
+    row(
+        key,
+        style,
+        0.,
+        c::Alignment::Center,
+        vec![
+            c::Element::Spacer.into(),
+            ui::marks::Mark::task(status)
+                .element(11., ui::Paint::solid(color))
+                .into(),
+            c::Element::Spacer.into(),
+        ],
+    )
 }
 pub(super) fn artifact_glyph(kind: &str) -> &'static str {
     match kind {
@@ -355,9 +360,14 @@ impl Attachment {
         let sp = &STYLE.spacing;
         let t = &STYLE.r#type;
         let glyph = if self.kind == "task" {
-            task_glyph(&self.status)
+            task_mark(&format!("{key}/ak"), &self.status, 14., ui::Color::Muted)
         } else {
-            artifact_glyph(&self.akind)
+            label(
+                format!("{key}/ak"),
+                artifact_glyph(&self.akind),
+                text_style(t.caption as f32, 400, false, ui::Color::Muted),
+                false,
+            )
         };
         let mut s = plain(
             None,
@@ -380,12 +390,7 @@ impl Attachment {
             c::Alignment::Center,
             vec![
                 c::Item {
-                    element: label(
-                        format!("{key}/ak"),
-                        glyph,
-                        text_style(t.caption as f32, 400, false, ui::Color::Muted),
-                        false,
-                    ),
+                    element: glyph,
                     extent: c::Extent::Fixed(14.),
                 },
                 fill(label(
