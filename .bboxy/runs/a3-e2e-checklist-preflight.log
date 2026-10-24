@@ -1,0 +1,3234 @@
+A-3 Graph checklist: exact source 15755436a3d5a9f38fa2fdcbb8e432c2fd292bcf
+Verification records include failed/superseded attempts. Superseded compare outputs are not final evidence.
+{
+  "source": "15755436a3d5a9f38fa2fdcbb8e432c2fd292bcf",
+  "base": "bd63beedc88fb088efc0dd73eaf4a82bb7523222",
+  "scope": {
+    "cases": 40,
+    "status": {
+      "within policy": 40
+    },
+    "required": 40,
+    "measured": 40,
+    "max_rect_error": 0.08001708984375,
+    "max_baseline_error": 0.0078125,
+    "largest_pixel_fraction": 0.003227867117440227
+  },
+  "input_provenance": {
+    ".bboxy/specs/e2e-acceptance.md": "f13d593d5b9f45d6a6bd705e770d994120f60bdb93d7ba962e7d9b3c73e0e9f3",
+    "lab/web/e2e.js": "5cfeb294e53f04bbcab9566173543a8ec47cd1072e74adba7afd4978f0a24662",
+    "lab/web/gen-e2e.py": "70dd7ed6293f94f7a8960b2c5d33df07ea7d29f3e1fb5b7141e6e18b92781266",
+    "lab/web/e2e.html": "00b789f4862c4931f5feed9025025995cf77312add6d4926e8b5c9a5d8b66031",
+    "lab/web/components.js": "7d30ed1d71b8cec7a3e7deda92492e8f961a4d006b24043e076bd12c28c57ca2",
+    "lab/web/lab.css": "427a0b1041b7d399fb6f7f8168f44687e4ad7da929c0a5d02dab8cf079e20075",
+    "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65"
+  },
+  "verification": [
+    {
+      "label": "projection-ui",
+      "source": "5d2a2f6ac9cc15a78ed51922893691ca6d5142af",
+      "started_utc": "2026-10-24T05:43:37.163498+00:00",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-ui",
+        "--test",
+        "e2e_checklist",
+        "--locked"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 33.976,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/projection-ui.log",
+      "log_sha256": "93553ffa9a0320854f4fe39c86c95e168d83eb59337772e2749aae744ed77132",
+      "source_files": {
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "e3b03787206a3e1463e4c3829d8cede9eb6f194e3464341f591a7a8a57e60fe0",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "6fda12c822312f75d0f380da0756d67cbaea7552269eec94a8589581e6bb5145",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "canonical-ui",
+      "source": "5d2a2f6ac9cc15a78ed51922893691ca6d5142af",
+      "started_utc": "2026-10-24T05:46:26.891058+00:00",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-ui",
+        "--test",
+        "e2e_checklist",
+        "--locked"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 5.811,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/canonical-ui.log",
+      "log_sha256": "db12007b4571ce6e217915e30a3ebbff03b47c1bc79f69174be0eec788cbe2e2",
+      "source_files": {
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "285afd43ab8b864248515356e57bb1189f603e21200d131682efb20674376d14",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "cd1b31a41d38323172da8bf07aa529aba3ec2def40ea39736e1aa4dd661f78d6",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "raw-contract-ui",
+      "source": "fdd325a9c14231536e2d12c3333ce9dc8a7d3169",
+      "started_utc": "2026-10-24T05:52:19.968772+00:00",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-ui",
+        "--test",
+        "e2e_checklist",
+        "--locked"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 6.103,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/raw-contract-ui.log",
+      "log_sha256": "22d85efcc57f673a5048ceb3b8177c0a80366c2d0b501ad7384d96cd84d2216e",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "b498926f0ebcb523b090d6d0f031da162d7a421af6f49595bd7f9780b4b2dc08",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "605f49a69bbf6de7df4eeb4e9c97170c80b9e41d9c283f3b27f7a58671bc514e",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "c542d251b06e1ba9d06690f102625abdf68a5a700055865b71bad6be3fbf681f",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "view-ui",
+      "source": "fdd325a9c14231536e2d12c3333ce9dc8a7d3169",
+      "started_utc": "2026-10-24T06:03:26.771380+00:00",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-ui",
+        "--test",
+        "e2e_checklist",
+        "--locked"
+      ],
+      "exit": 101,
+      "elapsed_seconds": 5.177,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/view-ui.log",
+      "log_sha256": "1f53e7a64a0689efaa69125e57ea07c6504e328082ecd7ca1003df0f0a07014e",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "3a49fec679c3763bbd380a336c6207328b680c01111df672835037a28d9da24a",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "6368610718d68687b674163a2df713d9491a2094eaff0ac172e45afe33390c85",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "c542d251b06e1ba9d06690f102625abdf68a5a700055865b71bad6be3fbf681f",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "view-corrected-ui",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:05:44.283633+00:00",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-ui",
+        "--test",
+        "e2e_checklist",
+        "--locked"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 24.549,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/view-corrected-ui.log",
+      "log_sha256": "4e5d1331adf2cb0dfc1f8bf010696aa82404b276b70d262394c69ad4fe775256",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "3a49fec679c3763bbd380a336c6207328b680c01111df672835037a28d9da24a",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "f53eac3afbaa0a7e97dd665aa7b04d967e0057ced08f8e77cbae9b17d586d139",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "app-check",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:17:52.615448+00:00",
+      "argv": [
+        "cargo",
+        "check",
+        "-p",
+        "bboxy450-term",
+        "--all-targets",
+        "--locked"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 119.234,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/app-check.log",
+      "log_sha256": "ad90810ea9e57fc5efb169e02e6bcdbdeed1afe3cbbe9986eb098b621f88cdd7",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "31f94ef994b433d9114b5736c35a5f69c531b7a0f1979a0b103a7f9ce375df0c",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "04b3620b1e4d908376d2efaf7de234dcf44e948431ad5b89a8a1d4107de158e5",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "c0b85148e2b63a869184880476f89401389e96afa1fa0819c724b84e69600b99",
+        "crates/bboxy450-term/src/scene.rs": "8f2650bf9332d54ff81bad6a6967a96792c46ee1d75f84eaa8f54e04c4af6955",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "capture10",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:19:20.884480+00:00",
+      "argv": [
+        "node",
+        "crates/bboxybook/capture.mjs",
+        "target/e2e-checklist/scope10",
+        "target/e2e-checklist/scope10/requested.json"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 13.924,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/capture10.log",
+      "log_sha256": "c8a172def81165104805233f5f37e43c78f5932aaa0d1edf6352ed3bab03d777",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "31f94ef994b433d9114b5736c35a5f69c531b7a0f1979a0b103a7f9ce375df0c",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "04b3620b1e4d908376d2efaf7de234dcf44e948431ad5b89a8a1d4107de158e5",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "c0b85148e2b63a869184880476f89401389e96afa1fa0819c724b84e69600b99",
+        "crates/bboxy450-term/src/scene.rs": "8f2650bf9332d54ff81bad6a6967a96792c46ee1d75f84eaa8f54e04c4af6955",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "book-build",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:25:13.028410+00:00",
+      "argv": [
+        "cargo",
+        "build",
+        "-p",
+        "bboxybook",
+        "--locked"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 181.191,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/book-build.log",
+      "log_sha256": "98d8562fa6387a2f81c34f3ea13f1e72e89969047ccd1b8307d9e74f42d49d6f",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "04b3620b1e4d908376d2efaf7de234dcf44e948431ad5b89a8a1d4107de158e5",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "be415f7ae957edb0663762dba795df7c15cfc9c39a09a77770e005fc54accc0c",
+        "crates/bboxy450-term/src/scene.rs": "8f2650bf9332d54ff81bad6a6967a96792c46ee1d75f84eaa8f54e04c4af6955",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "render10",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:32:15.669112+00:00",
+      "argv": [
+        "target/e2e-dev/debug/bboxybook",
+        "render",
+        "--all",
+        "--out",
+        "target/e2e-checklist/scope10/native",
+        "--manifest",
+        "target/e2e-checklist/scope10/cases.json"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 34.566,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/render10.log",
+      "log_sha256": "3c2a4c92c2e5dbe5c2009bdccfdf49ca428afa8a2ec82363aa953a567f0d2ed2",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "04b3620b1e4d908376d2efaf7de234dcf44e948431ad5b89a8a1d4107de158e5",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "cb91381f8f09d285445372074f56b4e9846be94949eb8969d025dd933fdeaf92",
+        "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "app-bin-tests",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:32:15.669342+00:00",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term",
+        "--locked"
+      ],
+      "exit": 101,
+      "elapsed_seconds": 152.856,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/app-bin-tests.log",
+      "log_sha256": "489256fb1459df0708178efb769149ba5130387846a5ab46084a675ed4769ada",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "04b3620b1e4d908376d2efaf7de234dcf44e948431ad5b89a8a1d4107de158e5",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "cb91381f8f09d285445372074f56b4e9846be94949eb8969d025dd933fdeaf92",
+        "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "compare10",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:35:57.287283+00:00",
+      "argv": [
+        "target/e2e-dev/debug/bboxybook",
+        "compare",
+        "--strict-geometry",
+        "--out",
+        "target/e2e-checklist/scope10/report",
+        "--manifest",
+        "target/e2e-checklist/scope10/cases.json",
+        "--web-root",
+        "target/e2e-checklist/scope10/web",
+        "--native-root",
+        "target/e2e-checklist/scope10/native"
+      ],
+      "exit": 1,
+      "elapsed_seconds": 0.024,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/compare10.log",
+      "log_sha256": "ea5635b9db89f89c00957e7d6bfc7e47f59c632a0a793aa6acc7ff7780b288b0",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "04b3620b1e4d908376d2efaf7de234dcf44e948431ad5b89a8a1d4107de158e5",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "cb91381f8f09d285445372074f56b4e9846be94949eb8969d025dd933fdeaf92",
+        "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "compare10-corrected",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:39:53.517376+00:00",
+      "argv": [
+        "target/e2e-dev/debug/bboxybook",
+        "compare",
+        "--strict-geometry",
+        "--out",
+        "target/e2e-checklist/scope10",
+        "--manifest",
+        "target/e2e-checklist/scope10/cases.json"
+      ],
+      "exit": 1,
+      "elapsed_seconds": 0.793,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/compare10-corrected.log",
+      "log_sha256": "8a4f89000e313f5975eaf9b74603ac22933b4226c290482c6fbc88fdd85db589",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "04b3620b1e4d908376d2efaf7de234dcf44e948431ad5b89a8a1d4107de158e5",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "4a0bc7443dcaf60038078c10efe562351509c57d1015b0638e856490e6b774e0",
+        "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "dev-build-next",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:41:04.658530+00:00",
+      "argv": [
+        "cargo",
+        "build",
+        "-p",
+        "bboxybook",
+        "-p",
+        "bboxy450-term",
+        "--locked"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 45.57,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/dev-build-next.log",
+      "log_sha256": "d330430205fddc4c5df8022ea02409ea33c8771386c542cfb9f2facfb8ae1b79",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "7eee8e1355a320d141e6f5d9a351a317052827cd1a88081ccad78c60be199cb8",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "4a0bc7443dcaf60038078c10efe562351509c57d1015b0638e856490e6b774e0",
+        "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "render10-aligned",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:42:20.077229+00:00",
+      "argv": [
+        "target/e2e-dev/debug/bboxybook",
+        "render",
+        "--all",
+        "--out",
+        "target/e2e-checklist/scope10/native-aligned",
+        "--manifest",
+        "target/e2e-checklist/scope10/cases.json"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 56.259,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/render10-aligned.log",
+      "log_sha256": "001d260df6f50ac539e784590210fd41ab4b2152f4edaeeadd91e1a2a5a1610b",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "7eee8e1355a320d141e6f5d9a351a317052827cd1a88081ccad78c60be199cb8",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "4a0bc7443dcaf60038078c10efe562351509c57d1015b0638e856490e6b774e0",
+        "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "app-tests-corrected",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:42:20.077246+00:00",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term",
+        "--locked"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 42.165,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/app-tests-corrected.log",
+      "log_sha256": "009214139ed5d56d0643a72bf50ba0e5754ae2f1732fd37b1b4ae875749159eb",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "7eee8e1355a320d141e6f5d9a351a317052827cd1a88081ccad78c60be199cb8",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "4a0bc7443dcaf60038078c10efe562351509c57d1015b0638e856490e6b774e0",
+        "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "compare10-aligned",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:43:02.498326+00:00",
+      "argv": [
+        "target/e2e-dev/debug/bboxybook",
+        "compare",
+        "--strict-geometry",
+        "--out",
+        "target/e2e-checklist/scope10",
+        "--manifest",
+        "target/e2e-checklist/scope10/cases.json",
+        "--native-root",
+        "native-aligned"
+      ],
+      "exit": 1,
+      "elapsed_seconds": 2.045,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/compare10-aligned.log",
+      "log_sha256": "13484b054ebbe35fe871be04b982d9260d42370b594b6448aa066355b19030b6",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "7eee8e1355a320d141e6f5d9a351a317052827cd1a88081ccad78c60be199cb8",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "4a0bc7443dcaf60038078c10efe562351509c57d1015b0638e856490e6b774e0",
+        "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "compare10-completed",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:43:29.445418+00:00",
+      "argv": [
+        "target/e2e-dev/debug/bboxybook",
+        "compare",
+        "--strict-geometry",
+        "--out",
+        "target/e2e-checklist/scope10",
+        "--manifest",
+        "target/e2e-checklist/scope10/cases.json",
+        "--native-root",
+        "native-aligned"
+      ],
+      "exit": 1,
+      "elapsed_seconds": 0.612,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/compare10-completed.log",
+      "log_sha256": "dd0baa92bf4f6258dc6adf56d3f17658b9a5ea237e34ef94c140b4282d2b558b",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "7eee8e1355a320d141e6f5d9a351a317052827cd1a88081ccad78c60be199cb8",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "4a0bc7443dcaf60038078c10efe562351509c57d1015b0638e856490e6b774e0",
+        "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "capture40",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:44:12.673983+00:00",
+      "argv": [
+        "node",
+        "crates/bboxybook/capture.mjs",
+        "target/e2e-checklist/scope40",
+        "target/e2e-checklist/scope40/requested.json"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 19.723,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/capture40.log",
+      "log_sha256": "2c4c4a22e092fe9721083c5070ec480cf458d331237d3d0bc6a63ff2795d7858",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "919d5c09e00a7980442ec0bde20a839d7e87ec335a1481972cac9750afa1ce29",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "79ecb7d648000f1ac67448013bff3bf7cb8eedcd36ba505d195c5a19c65b7551",
+        "crates/bboxy450-term/src/scene.rs": "6e19ecda8db52b8d2f8d6ddfbd6559b3d56889975870005ba5d277a6c420520c",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "f9b9d0f196934eb3137997937d3554c59a61339345999e382998a7de6b6f6abb",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "dev-build-all40",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:44:13.768130+00:00",
+      "argv": [
+        "cargo",
+        "build",
+        "-p",
+        "bboxybook",
+        "-p",
+        "bboxy450-term",
+        "--locked"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 41.036,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/dev-build-all40.log",
+      "log_sha256": "466bb0e7d2366150a629dd40b0d969bb50cf3a01a3c41526efb1a3f86e9fc99b",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "919d5c09e00a7980442ec0bde20a839d7e87ec335a1481972cac9750afa1ce29",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "79ecb7d648000f1ac67448013bff3bf7cb8eedcd36ba505d195c5a19c65b7551",
+        "crates/bboxy450-term/src/scene.rs": "6e19ecda8db52b8d2f8d6ddfbd6559b3d56889975870005ba5d277a6c420520c",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "f9b9d0f196934eb3137997937d3554c59a61339345999e382998a7de6b6f6abb",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "render40",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:45:18.463412+00:00",
+      "argv": [
+        "target/e2e-dev/debug/bboxybook",
+        "render",
+        "--all",
+        "--out",
+        "target/e2e-checklist/scope40/native",
+        "--manifest",
+        "target/e2e-checklist/scope40/cases.json"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 129.6,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/render40.log",
+      "log_sha256": "7a2fcdf5774f6fbd0477dd1d2f3c4af71f839cb49601473f176725e1a993857d",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "919d5c09e00a7980442ec0bde20a839d7e87ec335a1481972cac9750afa1ce29",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "79ecb7d648000f1ac67448013bff3bf7cb8eedcd36ba505d195c5a19c65b7551",
+        "crates/bboxy450-term/src/scene.rs": "6e19ecda8db52b8d2f8d6ddfbd6559b3d56889975870005ba5d277a6c420520c",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "f9b9d0f196934eb3137997937d3554c59a61339345999e382998a7de6b6f6abb",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "graph-tests40",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:45:18.463449+00:00",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-ui",
+        "-p",
+        "bboxybook",
+        "--locked"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 64.086,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/graph-tests40.log",
+      "log_sha256": "555cf5112a8dd67ed7917f9372131c9adbe8674659d2b1a84566eec1423f125c",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "919d5c09e00a7980442ec0bde20a839d7e87ec335a1481972cac9750afa1ce29",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "79ecb7d648000f1ac67448013bff3bf7cb8eedcd36ba505d195c5a19c65b7551",
+        "crates/bboxy450-term/src/scene.rs": "6e19ecda8db52b8d2f8d6ddfbd6559b3d56889975870005ba5d277a6c420520c",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "f9b9d0f196934eb3137997937d3554c59a61339345999e382998a7de6b6f6abb",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "clippy-pre-rebase",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:46:44.003807+00:00",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 67.355,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/clippy-pre-rebase.log",
+      "log_sha256": "2a0926480d3838930afd0f9ea024cd0286cd00e40ddf92ebdc72d7100b39573a",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "919d5c09e00a7980442ec0bde20a839d7e87ec335a1481972cac9750afa1ce29",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "79ecb7d648000f1ac67448013bff3bf7cb8eedcd36ba505d195c5a19c65b7551",
+        "crates/bboxy450-term/src/scene.rs": "6e19ecda8db52b8d2f8d6ddfbd6559b3d56889975870005ba5d277a6c420520c",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "f9b9d0f196934eb3137997937d3554c59a61339345999e382998a7de6b6f6abb",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "compare40",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:47:46.599692+00:00",
+      "argv": [
+        "target/e2e-dev/debug/bboxybook",
+        "compare",
+        "--strict-geometry",
+        "--out",
+        "target/e2e-checklist/scope40",
+        "--manifest",
+        "target/e2e-checklist/scope40/cases.json"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 2.548,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/compare40.log",
+      "log_sha256": "7a8db5d7ac52a14bb4ca62f27e0df0caf90688d94010e8a67eb8b0447083564b",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "919d5c09e00a7980442ec0bde20a839d7e87ec335a1481972cac9750afa1ce29",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "79ecb7d648000f1ac67448013bff3bf7cb8eedcd36ba505d195c5a19c65b7551",
+        "crates/bboxy450-term/src/scene.rs": "6e19ecda8db52b8d2f8d6ddfbd6559b3d56889975870005ba5d277a6c420520c",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "f9b9d0f196934eb3137997937d3554c59a61339345999e382998a7de6b6f6abb",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "app-graph-docked",
+      "source": "3084f78a68690202fbc23ff7668082dcf3676367",
+      "started_utc": "2026-10-24T06:48:18.794075+00:00",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term",
+        "--locked",
+        "graph"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 12.856,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/app-graph-docked.log",
+      "log_sha256": "1279d6f1336209d5b5a6cd247680f2ab173c58e84f8c2f87f932b883a2eee907",
+      "source_files": {
+        "crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018",
+        "crates/bbt-ui/src/modules/e2e_checklist.rs": "919d5c09e00a7980442ec0bde20a839d7e87ec335a1481972cac9750afa1ce29",
+        "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3",
+        "crates/bboxy450-term/src/main.rs": "79ecb7d648000f1ac67448013bff3bf7cb8eedcd36ba505d195c5a19c65b7551",
+        "crates/bboxy450-term/src/scene.rs": "6e19ecda8db52b8d2f8d6ddfbd6559b3d56889975870005ba5d277a6c420520c",
+        "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65",
+        "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3",
+        "crates/bboxybook/tests/graphs.rs": "f9b9d0f196934eb3137997937d3554c59a61339345999e382998a7de6b6f6abb",
+        "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca",
+        "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"
+      }
+    },
+    {
+      "label": "clippy-rebased",
+      "source": "15755436a3d5a9f38fa2fdcbb8e432c2fd292bcf",
+      "started_utc": "2026-10-24T06:49:39.699034+00:00",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "elapsed_seconds": 42.295,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-checklist/clippy-rebased.log",
+      "log_sha256": "f665467ecfcb305ffa98bf2d4c2b8e48b781d4d8aa462849c0d1e616fa45fbbc",
+      "source_files": {}
+    }
+  ],
+  "superseded_failures": {
+    "view-ui": "compile101: incomplete MeasureStyle; corrected by explicit italic=false/tracking_em=0",
+    "app-bin-tests": "101: own local navigation route plus app binary missing for two existing real-process tests; corrected route then cargo build and app78/0",
+    "compare10": "1: incorrect relative root prefixes; no usable evidence",
+    "compare10-corrected": "1: real initial native header/mark/swatch layout mismatches",
+    "compare10-aligned": "1: compare started before render completion; excluded stale-layout/missing-PNG result",
+    "compare10-completed": "1: inline swatch baseline incorrectly used empty-box baseline; fixed by CSS bottom baseline minus1px"
+  },
+  "limits": [
+    "No live record store connected; app defaults to canonical54 missing/untested rows until A-0",
+    "No claim that checklist promises were actually exercised; fixture statuses are visual inputs",
+    "UTC Z/+00:00 last_run formatting; no non-UTC input fixture",
+    "App Graph input uses shared routing tests and native retained layout; no desktop keystroke injection or manual clicking"
+  ],
+  "post_gate_read_checks": {
+    "git_fetch_origin": 0,
+    "native_pixel_delta_measurement": 0,
+    "verdict_driver": 0,
+    "git_diff_check": 0,
+    "node_check_capture_inputs": 0,
+    "rustfmt_changed_sources": 0,
+    "git_rebase_signed_origin_main": 0
+  },
+  "signature_chain": [
+    "15755436a3d5a9f38fa2fdcbb8e432c2fd292bcf G A-3: host the canonical e2e checklist in the Graph tab",
+    "3adeb9c0bb37b7ec670883c2b0d774f1d5a56bea G lab: the e2e summary fails closed: invalid status is a fault, an empty catalogue is refused",
+    "90b792593a936db4ce975a1a1870043ff0c4024e G lab: the e2e headline lists manual rows, never 'all 54 pass' with one",
+    "7e584610b1430e5048e37ec7e5ea52f6c8274978 G lab: the e2e checklist, the Graph tab's acceptance view (A-3 reference)"
+  ],
+  "full_gate_ci_log_sha256": "fa5613d7a55737e815a002e4a0187ee7d319dc34a7cc2c5bb9f9bca148975599",
+  "final_scope40": {
+    "cases": 40,
+    "statuses": {
+      "within policy": 40
+    },
+    "max_rect_error": 0.08001708984375,
+    "max_baseline_error": 0.0078125
+  }
+}
+
+VERIFICATION projection-ui
+{"base": "5d2a2f6ac9cc15a78ed51922893691ca6d5142af", "started_utc": "2026-10-24T05:43:37.163498+00:00", "wrapper_pid": 21284, "command": ["cargo", "test", "-p", "bbt-ui", "--test", "e2e_checklist", "--locked"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bbt-ui/src/modules/e2e_checklist.rs": "e3b03787206a3e1463e4c3829d8cede9eb6f194e3464341f591a7a8a57e60fe0", "crates/bbt-ui/tests/e2e_checklist.rs": "6fda12c822312f75d0f380da0756d67cbaea7552269eec94a8589581e6bb5145", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+   Compiling serde_core v1.0.229
+   Compiling zmij v1.0.23
+   Compiling serde_json v1.0.154
+   Compiling proc-macro2 v1.0.107
+   Compiling winnow v1.0.4
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling memchr v2.8.3
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling itoa v1.0.18
+   Compiling winnow v0.7.15
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling syn v3.0.9
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui-model)
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 33.81s
+     Running tests/e2e_checklist.rs (target/e2e-dev/debug/deps/e2e_checklist-6cc5e98dd2882562)
+
+running 8 tests
+test blocked_is_a_failure_and_preserves_its_reason ... ok
+test canonical_order_is_preserved_and_duplicate_promises_are_visible ... ok
+test green_keeps_manual_rows_and_run_metadata_visible ... ok
+test missing_and_duplicate_records_name_the_gap_without_picking_metadata ... ok
+test missing_task_identity_or_status_cannot_track_a_failure ... ok
+test tracked_failures_are_amber_only_for_the_specified_open_task_states ... ok
+test tracking_lists_each_resolved_open_task_once ... ok
+test untested_invalid_or_unknown_input_never_makes_a_green_summary ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+ACTUAL EXIT 0
+
+
+VERIFICATION canonical-ui
+{"base": "5d2a2f6ac9cc15a78ed51922893691ca6d5142af", "started_utc": "2026-10-24T05:46:26.891058+00:00", "wrapper_pid": 27337, "command": ["cargo", "test", "-p", "bbt-ui", "--test", "e2e_checklist", "--locked"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bbt-ui/src/modules/e2e_checklist.rs": "285afd43ab8b864248515356e57bb1189f603e21200d131682efb20674376d14", "crates/bbt-ui/tests/e2e_checklist.rs": "cd1b31a41d38323172da8bf07aa529aba3ec2def40ea39736e1aa4dd661f78d6", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 5.61s
+     Running tests/e2e_checklist.rs (target/e2e-dev/debug/deps/e2e_checklist-6cc5e98dd2882562)
+
+running 10 tests
+test blocked_is_a_failure_and_preserves_its_reason ... ok
+test missing_task_identity_or_status_cannot_track_a_failure ... ok
+test missing_and_duplicate_records_name_the_gap_without_picking_metadata ... ok
+test canonical_order_is_preserved_and_duplicate_promises_are_visible ... ok
+test tracking_lists_each_resolved_open_task_once ... ok
+test missing_malformed_or_inconsistent_specs_fail_instead_of_empty_success ... ok
+test green_keeps_manual_rows_and_run_metadata_visible ... ok
+test tracked_failures_are_amber_only_for_the_specified_open_task_states ... ok
+test untested_invalid_or_unknown_input_never_makes_a_green_summary ... ok
+test the_real_spec_is_the_only_canonical_promise_list ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+ACTUAL EXIT 0
+
+
+VERIFICATION raw-contract-ui
+{"base": "fdd325a9c14231536e2d12c3333ce9dc8a7d3169", "started_utc": "2026-10-24T05:52:19.968772+00:00", "wrapper_pid": 36178, "command": ["cargo", "test", "-p", "bbt-ui", "--test", "e2e_checklist", "--locked"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "b498926f0ebcb523b090d6d0f031da162d7a421af6f49595bd7f9780b4b2dc08", "crates/bbt-ui/src/modules/e2e_checklist.rs": "605f49a69bbf6de7df4eeb4e9c97170c80b9e41d9c283f3b27f7a58671bc514e", "crates/bbt-ui/tests/e2e_checklist.rs": "c542d251b06e1ba9d06690f102625abdf68a5a700055865b71bad6be3fbf681f", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 5.93s
+     Running tests/e2e_checklist.rs (target/e2e-dev/debug/deps/e2e_checklist-6cc5e98dd2882562)
+
+running 11 tests
+test canonical_order_is_preserved_and_duplicate_promises_are_visible ... ok
+test green_keeps_manual_rows_and_run_metadata_visible ... ok
+test blocked_is_a_failure_and_preserves_its_reason ... ok
+test missing_malformed_or_inconsistent_specs_fail_instead_of_empty_success ... ok
+test tracked_by_wikilink_aliases_preserve_task_identity ... ok
+test tracking_lists_each_resolved_open_task_once ... ok
+test missing_and_duplicate_records_name_the_gap_without_picking_metadata ... ok
+test only_a_resolved_tracked_by_task_counts_as_tracking ... ok
+test tracked_failures_are_amber_only_for_the_specified_open_task_states ... ok
+test untested_invalid_or_unknown_input_never_makes_a_green_summary ... ok
+test the_real_spec_is_the_only_canonical_promise_list ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+ACTUAL EXIT 0
+
+
+VERIFICATION view-ui
+{"base": "fdd325a9c14231536e2d12c3333ce9dc8a7d3169", "started_utc": "2026-10-24T06:03:26.771380+00:00", "wrapper_pid": 54194, "command": ["cargo", "test", "-p", "bbt-ui", "--test", "e2e_checklist", "--locked"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "3a49fec679c3763bbd380a336c6207328b680c01111df672835037a28d9da24a", "crates/bbt-ui/src/modules/e2e_checklist.rs": "6368610718d68687b674163a2df713d9491a2094eaff0ac172e45afe33390c85", "crates/bbt-ui/tests/e2e_checklist.rs": "c542d251b06e1ba9d06690f102625abdf68a5a700055865b71bad6be3fbf681f", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+error[E0277]: the trait bound `bbt_ui_model::layout::TextStyle: Default` is not satisfied
+   --> crates/bbt-ui/src/modules/e2e_checklist.rs:951:31
+    |
+951 | ...                   ..Default::default()
+    |                         ^^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `bbt_ui_model::layout::TextStyle`
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `bbt-ui` (lib) due to 1 previous error
+
+ACTUAL EXIT 101
+
+
+VERIFICATION view-corrected-ui
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:05:44.283633+00:00", "wrapper_pid": 57654, "command": ["cargo", "test", "-p", "bbt-ui", "--test", "e2e_checklist", "--locked"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "3a49fec679c3763bbd380a336c6207328b680c01111df672835037a28d9da24a", "crates/bbt-ui/src/modules/e2e_checklist.rs": "f53eac3afbaa0a7e97dd665aa7b04d967e0057ced08f8e77cbae9b17d586d139", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 24.36s
+     Running tests/e2e_checklist.rs (target/e2e-dev/debug/deps/e2e_checklist-6cc5e98dd2882562)
+
+running 11 tests
+test blocked_is_a_failure_and_preserves_its_reason ... ok
+test untested_invalid_or_unknown_input_never_makes_a_green_summary ... ok
+test canonical_order_is_preserved_and_duplicate_promises_are_visible ... ok
+test green_keeps_manual_rows_and_run_metadata_visible ... ok
+test missing_and_duplicate_records_name_the_gap_without_picking_metadata ... ok
+test missing_malformed_or_inconsistent_specs_fail_instead_of_empty_success ... ok
+test only_a_resolved_tracked_by_task_counts_as_tracking ... ok
+test tracked_by_wikilink_aliases_preserve_task_identity ... ok
+test the_real_spec_is_the_only_canonical_promise_list ... ok
+test tracking_lists_each_resolved_open_task_once ... ok
+test tracked_failures_are_amber_only_for_the_specified_open_task_states ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+ACTUAL EXIT 0
+
+
+VERIFICATION app-check
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:17:52.615448+00:00", "wrapper_pid": 82256, "command": ["cargo", "check", "-p", "bboxy450-term", "--all-targets", "--locked"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "31f94ef994b433d9114b5736c35a5f69c531b7a0f1979a0b103a7f9ce375df0c", "crates/bbt-ui/src/modules/e2e_checklist.rs": "04b3620b1e4d908376d2efaf7de234dcf44e948431ad5b89a8a1d4107de158e5", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "c0b85148e2b63a869184880476f89401389e96afa1fa0819c724b84e69600b99", "crates/bboxy450-term/src/scene.rs": "8f2650bf9332d54ff81bad6a6967a96792c46ee1d75f84eaa8f54e04c4af6955", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling libc v0.2.191
+   Compiling syn v2.0.119
+    Checking cfg-if v1.0.5
+   Compiling serde_core v1.0.229
+    Checking typenum v1.20.1
+   Compiling zeroize_derive v1.5.0
+   Compiling syn v3.0.9
+    Checking zeroize v1.9.1
+   Compiling version_check v0.9.5
+   Compiling generic-array v0.14.7
+    Checking getrandom v0.2.17
+    Checking rand_core v0.6.4
+    Checking crypto-common v0.1.7
+    Checking subtle v2.6.1
+   Compiling serde v1.0.229
+    Checking const-oid v0.9.6
+    Checking bitflags v2.13.2
+    Checking block-buffer v0.10.4
+   Compiling serde_derive v1.0.229
+    Checking digest v0.10.7
+   Compiling jobserver v0.1.35
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.15
+    Checking log v0.4.34
+   Compiling cc v1.9.0
+   Compiling zerocopy v0.8.63
+   Compiling zerocopy-derive v0.8.63
+   Compiling autocfg v1.5.1
+   Compiling libm v0.2.16
+   Compiling num-traits v0.2.19
+    Checking objc2-encode v4.1.0
+    Checking arrayvec v0.7.8
+    Checking cpufeatures v0.2.17
+    Checking base64ct v1.8.3
+    Checking memchr v2.8.3
+    Checking smallvec v1.16.3
+   Compiling thiserror v2.0.21
+   Compiling cfg_aliases v0.2.2
+    Checking pem-rfc7468 v0.7.0
+   Compiling thiserror-impl v2.0.21
+    Checking inout v0.1.4
+   Compiling objc2 v0.6.5
+   Compiling crc32fast v1.5.3
+    Checking itoa v1.0.18
+    Checking cipher v0.4.4
+    Checking der v0.7.10
+    Checking foldhash v0.2.0
+    Checking hashbrown v0.17.1
+    Checking spki v0.7.3
+   Compiling radium v0.7.0
+    Checking pkcs8 v0.10.2
+    Checking tap v1.0.1
+   Compiling serde_json v1.0.154
+    Checking block2 v0.6.2
+    Checking dispatch2 v0.3.1
+    Checking wyz v0.5.1
+    Checking zmij v1.0.23
+    Checking hmac v0.12.1
+   Compiling bytemuck_derive v1.12.1
+    Checking equivalent v1.0.3
+    Checking base16ct v0.2.0
+    Checking funty v2.0.0
+    Checking bytemuck v1.25.2
+    Checking bitvec v1.1.1
+    Checking indexmap v2.14.2
+    Checking objc2-core-foundation v0.3.2
+    Checking ppv-lite86 v0.2.21
+   Compiling sha2-asm v0.6.4
+    Checking signature v2.2.0
+   Compiling pkg-config v0.3.34
+   Compiling semver v1.0.28
+   Compiling parking_lot_core v0.9.12
+    Checking bytes v1.12.1
+    Checking unicode-width v0.2.2
+    Checking objc2-foundation v0.3.2
+   Compiling rustc_version v0.4.1
+    Checking ff v0.13.1
+    Checking serdect v0.2.0
+    Checking once_cell v1.21.4
+    Checking scopeguard v1.2.0
+    Checking lock_api v0.4.14
+    Checking sec1 v0.7.3
+    Checking group v0.13.0
+    Checking hkdf v0.12.4
+    Checking crypto-bigint v0.5.5
+    Checking hybrid-array v0.4.15
+    Checking simd-adler32 v0.3.10
+    Checking parking_lot v0.12.5
+    Checking sha2 v0.10.9
+    Checking elliptic-curve v0.13.8
+    Checking objc2-metal v0.3.2
+   Compiling getrandom v0.3.4
+    Checking adler2 v2.0.1
+    Checking rustc-hash v1.1.0
+    Checking naga-types v30.0.1
+    Checking block-buffer v0.12.1
+    Checking crypto-common v0.2.2
+    Checking rfc6979 v0.4.0
+   Compiling naga v30.0.1
+    Checking errno v0.3.14
+    Checking bit-vec v0.9.1
+   Compiling strsim v0.11.1
+    Checking core-foundation-sys v0.8.7
+    Checking const-oid v0.10.2
+    Checking pin-project-lite v0.2.17
+   Compiling ident_case v1.0.1
+    Checking objc2-core-graphics v0.3.2
+    Checking raw-window-handle v0.6.2
+   Compiling fnv v1.0.7
+   Compiling darling_core v0.20.11
+    Checking digest v0.11.3
+    Checking bit-set v0.10.0
+    Checking miniz_oxide v0.9.1
+    Checking codespan-reporting v0.13.1
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+    Checking half v2.7.1
+    Checking static_assertions v1.1.0
+   Compiling objc-sys v0.3.5
+    Checking unicode-ident v1.0.27
+   Compiling float-cmp v0.9.0
+    Checking zlib-rs v0.6.8
+    Checking rand_core v0.10.1
+   Compiling getrandom v0.4.3
+   Compiling strict-num v0.1.1
+    Checking flate2 v1.1.10
+    Checking wgpu-types v30.0.1
+    Checking rand_core v0.9.5
+   Compiling darling_macro v0.20.11
+    Checking objc2-quartz-core v0.3.2
+   Compiling polycool v0.4.0
+    Checking ecdsa v0.16.9
+   Compiling curve25519-dalek v4.1.3
+    Checking rand_chacha v0.3.1
+   Compiling wgpu-hal v30.0.1
+    Checking num-integer v0.1.47
+    Checking cpufeatures v0.3.1
+   Compiling arrayref v0.3.9
+   Compiling num-bigint-dig v0.8.6
+   Compiling cfg_aliases v0.1.1
+   Compiling crossbeam-utils v0.8.23
+    Checking spin v0.9.9
+   Compiling thiserror v1.0.69
+   Compiling kurbo v0.13.1
+    Checking lazy_static v1.5.1
+   Compiling nix v0.28.0
+   Compiling tiny-skia-path v0.12.0
+    Checking num-iter v0.1.46
+    Checking rand v0.8.8
+    Checking wgpu-naga-bridge v30.0.1
+    Checking raw-window-metal v1.1.0
+   Compiling darling v0.20.11
+    Checking rand_chacha v0.9.0
+   Compiling miniz_oxide v0.8.9
+    Checking signal-hook-registry v1.4.8
+   Compiling fdeflate v0.3.7
+    Checking primeorder v0.13.6
+    Checking aead v0.5.2
+    Checking ctr v0.9.2
+    Checking mio v1.2.4
+   Compiling tokio-macros v2.7.2
+    Checking universal-hash v0.5.1
+   Compiling thiserror-impl v1.0.69
+    Checking libloading v0.8.9
+    Checking socket2 v0.6.5
+   Compiling unicode-segmentation v1.13.3
+    Checking profiling v1.0.18
+   Compiling zstd-safe v8.2.0
+   Compiling siphasher v1.0.4
+   Compiling vcpkg v0.2.15
+    Checking cursor-icon v1.2.0
+   Compiling httparse v1.10.1
+    Checking opaque-debug v0.3.1
+   Compiling rustversion v1.0.23
+   Compiling anyhow v1.0.104
+    Checking base64 v0.22.1
+    Checking polyval v0.6.2
+   Compiling libsqlite3-sys v0.38.2
+   Compiling svgtypes v0.16.1
+   Compiling png v0.18.1
+   Compiling convert_case v0.10.0
+    Checking tokio v1.54.1
+    Checking objc2 v0.5.3
+   Compiling derive_builder_core v0.20.2
+    Checking rand v0.9.5
+    Checking bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui-model)
+   Compiling simplecss v0.2.2
+    Checking chacha20 v0.10.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling aho-corasick v1.1.5
+   Compiling roxmltree v0.21.1
+    Checking aes v0.8.4
+   Compiling wgpu-core v30.0.1
+    Checking euclid v0.22.14
+    Checking keccak v0.1.6
+    Checking serde-big-array v0.5.1
+    Checking dbl v0.3.2
+   Compiling litrs v1.0.1
+   Compiling imagesize v0.15.0
+   Compiling heck v0.5.0
+   Compiling crc24 v0.1.6
+   Compiling pico-args v0.5.0
+   Compiling unicode-xid v0.2.6
+   Compiling data-url v0.3.2
+   Compiling regex-syntax v0.8.11
+    Checking byteorder v1.5.0
+   Compiling usvg v0.48.1
+   Compiling derive_more-impl v2.1.1
+   Compiling regex-automata v0.4.18
+   Compiling snafu-derive v0.9.2
+   Compiling document-features v0.2.12
+    Checking lyon_geom v1.0.20
+    Checking cmac v0.7.2
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-core)
+    Checking sha3 v0.10.9
+    Checking rand v0.10.3
+    Checking crossbeam-queue v0.3.14
+    Checking ulid v1.2.1
+   Compiling derive_builder_macro v0.20.2
+    Checking block2 v0.5.1
+   Compiling bitfields-impl v1.0.3
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking filedescriptor v0.8.3
+   Compiling tiny-skia v0.12.0
+    Checking ghash v0.5.1
+    Checking sha1 v0.11.0
+   Compiling rgb v0.8.53
+    Checking core-foundation v0.9.4
+    Checking http v1.5.0
+    Checking ed25519 v2.2.3
+    Checking serdect v0.3.0
+    Checking pkcs1 v0.7.5
+   Compiling wgpu v30.0.1
+    Checking password-hash v0.5.0
+    Checking sha1 v0.10.7
+    Checking blake2 v0.10.6
+   Compiling futures-macro v0.3.34
+   Compiling foreign-types-macros v0.2.4
+   Compiling num_enum_derive v0.7.6
+    Checking serial2 v0.2.38
+    Checking foreign-types-shared v0.3.1
+    Checking futures-task v0.3.34
+    Checking foldhash v0.1.5
+    Checking shell-words v1.1.1
+    Checking data-encoding v2.11.1
+    Checking dispatch v0.2.0
+    Checking bitflags v1.3.2
+    Checking slab v0.4.12
+    Checking futures-core v0.3.34
+    Checking same-file v1.0.6
+    Checking futures-sink v0.3.34
+    Checking signature v3.0.0
+    Checking downcast-rs v1.2.1
+    Checking ed25519 v3.0.0
+    Checking portable-pty v0.9.0
+    Checking walkdir v2.5.0
+    Checking futures-util v0.3.34
+    Checking core-graphics-types v0.1.3
+    Checking tungstenite v0.30.0
+    Checking objc2-foundation v0.2.2
+    Checking hashbrown v0.15.5
+    Checking foreign-types v0.5.0
+    Checking num_enum v0.7.6
+    Checking argon2 v0.5.3
+    Checking sha1-checked v0.10.0
+    Checking rsa v0.9.10
+    Checking cx448 v0.1.1
+    Checking ed25519-dalek v2.2.0
+   Compiling resvg v0.48.1
+    Checking aes-gcm v0.10.3
+    Checking bitfields v1.0.3
+    Checking derive_builder v0.20.2
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-rt)
+    Checking zstd v0.14.3
+    Checking lyon_path v1.0.19
+    Checking eax v0.5.0
+   Compiling regex v1.13.1
+    Checking snafu v0.9.2
+    Checking derive_more v2.1.1
+    Checking camellia v0.1.0
+    Checking blowfish v0.9.1
+    Checking aes-kw v0.2.1
+    Checking dsa v0.6.3
+    Checking x25519-dalek v2.0.1
+    Checking ocb3 v0.1.0
+    Checking p384 v0.13.1
+    Checking p521 v0.13.3
+    Checking p256 v0.13.2
+    Checking sha2 v0.11.1
+    Checking k256 v0.13.4
+    Checking security-framework-sys v2.17.0
+    Checking core-foundation v0.10.1
+    Checking hashlink v0.12.2
+    Checking twofish v0.7.1
+    Checking des v0.8.1
+    Checking cast5 v0.11.1
+    Checking cfb-mode v0.8.2
+    Checking idea v0.5.1
+   Compiling winit v0.30.13
+    Checking nom v8.0.0
+    Checking buffer-redux v1.1.0
+    Checking ripemd v0.1.3
+    Checking md-5 v0.10.6
+    Checking notify-types v2.1.0
+    Checking block-padding v0.3.3
+    Checking fsevent-sys v4.1.0
+    Checking tracing-core v0.1.36
+    Checking fixedbitset v0.5.7
+    Checking fallible-iterator v0.3.0
+    Checking fallible-streaming-iterator v0.1.9
+    Checking ryu v1.0.23
+    Checking hex v0.4.3
+    Checking float_next_after v1.0.0
+    Checking unsafe-libyaml v0.2.11
+    Checking replace_with v0.1.8
+    Checking pgp v0.21.0
+    Checking serde_yaml v0.9.34+deprecated
+    Checking lyon_tessellation v1.0.22
+    Checking rusqlite v0.40.2
+    Checking petgraph v0.8.3
+    Checking tracing v0.1.44
+    Checking notify v8.2.0
+    Checking security-framework v3.7.0
+    Checking ed25519-dalek v3.0.0
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-supervisor)
+    Checking objc2-app-kit v0.2.2
+    Checking core-graphics v0.23.2
+    Checking tokio-tungstenite v0.30.0
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-proto)
+    Checking objc2-core-text v0.3.2
+    Checking pollster v0.4.0
+    Checking dpi v0.1.2
+   Compiling rustix v1.1.5
+    Checking smol_str v0.2.2
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mux)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+    Checking objc2-app-kit v0.3.2
+    Checking fastrand v2.5.0
+    Checking tempfile v3.27.0
+warning: method `replace_records` is never used
+  --> crates/bboxy450-term/src/e2e_checklist.rs:36:12
+   |
+24 | impl Graph {
+   | ---------- method in this implementation
+...
+36 |     pub fn replace_records(&mut self, records: Vec<Record>, tasks: Vec<Task>) {
+   |            ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `bboxy450-term` (bin "bboxy450-term") generated 1 warning
+    Finished `dev` profile [optimized] target(s) in 1m 59s
+
+ACTUAL EXIT 0
+
+
+VERIFICATION capture10
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:19:20.884480+00:00", "wrapper_pid": 86936, "command": ["node", "crates/bboxybook/capture.mjs", "target/e2e-checklist/scope10", "target/e2e-checklist/scope10/requested.json"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "31f94ef994b433d9114b5736c35a5f69c531b7a0f1979a0b103a7f9ce375df0c", "crates/bbt-ui/src/modules/e2e_checklist.rs": "04b3620b1e4d908376d2efaf7de234dcf44e948431ad5b89a8a1d4107de158e5", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "c0b85148e2b63a869184880476f89401389e96afa1fa0819c724b84e69600b99", "crates/bboxy450-term/src/scene.rs": "8f2650bf9332d54ff81bad6a6967a96792c46ee1d75f84eaa8f54e04c4af6955", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+web: 10/10 captured; 0 failures
+
+ACTUAL EXIT 0
+
+
+VERIFICATION book-build
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:25:13.028410+00:00", "wrapper_pid": 99616, "command": ["cargo", "build", "-p", "bboxybook", "--locked"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "04b3620b1e4d908376d2efaf7de234dcf44e948431ad5b89a8a1d4107de158e5", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "be415f7ae957edb0663762dba795df7c15cfc9c39a09a77770e005fc54accc0c", "crates/bboxy450-term/src/scene.rs": "8f2650bf9332d54ff81bad6a6967a96792c46ee1d75f84eaa8f54e04c4af6955", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+   Compiling bitflags v2.13.2
+   Compiling objc2-encode v4.1.0
+   Compiling libc v0.2.191
+   Compiling arrayvec v0.7.8
+   Compiling cfg-if v1.0.5
+   Compiling num-traits v0.2.19
+   Compiling objc2 v0.6.5
+   Compiling libm v0.2.16
+   Compiling foldhash v0.2.0
+   Compiling hashbrown v0.17.1
+   Compiling bytemuck v1.25.2
+   Compiling dispatch2 v0.3.1
+   Compiling block2 v0.6.2
+   Compiling log v0.4.34
+   Compiling equivalent v1.0.3
+   Compiling objc2-core-foundation v0.3.2
+   Compiling indexmap v2.14.2
+   Compiling smallvec v1.16.3
+   Compiling thiserror v2.0.21
+   Compiling syn v2.0.119
+   Compiling objc2-foundation v0.3.2
+   Compiling zerocopy-derive v0.8.63
+   Compiling objc2-metal v0.3.2
+   Compiling rustc-hash v1.1.0
+   Compiling naga-types v30.0.1
+   Compiling zerocopy v0.8.63
+   Compiling objc2-core-graphics v0.3.2
+   Compiling bit-vec v0.9.1
+   Compiling simd-adler32 v0.3.10
+   Compiling unicode-width v0.2.2
+   Compiling raw-window-handle v0.6.2
+   Compiling codespan-reporting v0.13.1
+   Compiling bit-set v0.10.0
+   Compiling half v2.7.1
+   Compiling memchr v2.8.3
+   Compiling scopeguard v1.2.0
+   Compiling static_assertions v1.1.0
+   Compiling adler2 v2.0.1
+   Compiling unicode-ident v1.0.27
+   Compiling once_cell v1.21.4
+   Compiling wgpu-types v30.0.1
+   Compiling naga v30.0.1
+   Compiling lock_api v0.4.14
+   Compiling parking_lot_core v0.9.12
+   Compiling objc2-quartz-core v0.3.2
+   Compiling float-cmp v0.9.0
+   Compiling strict-num v0.1.1
+   Compiling crc32fast v1.5.3
+   Compiling raw-window-metal v1.1.0
+   Compiling parking_lot v0.12.5
+   Compiling objc-sys v0.3.5
+   Compiling miniz_oxide v0.9.1
+   Compiling libloading v0.8.9
+   Compiling polycool v0.4.0
+   Compiling arrayref v0.3.9
+   Compiling profiling v1.0.18
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling tiny-skia-path v0.12.0
+   Compiling wgpu-hal v30.0.1
+   Compiling kurbo v0.13.1
+   Compiling flate2 v1.1.10
+   Compiling objc2 v0.5.3
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling euclid v0.22.14
+   Compiling siphasher v1.0.4
+   Compiling core-foundation-sys v0.8.7
+   Compiling lyon_geom v1.0.20
+   Compiling core-foundation v0.9.4
+   Compiling svgtypes v0.16.1
+   Compiling serde v1.0.229
+   Compiling png v0.18.1
+   Compiling block2 v0.5.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling roxmltree v0.21.1
+   Compiling simplecss v0.2.2
+   Compiling foreign-types-shared v0.3.1
+   Compiling bitflags v1.3.2
+   Compiling imagesize v0.15.0
+   Compiling pulldown-cmark v0.13.4
+   Compiling dispatch v0.2.0
+   Compiling data-url v0.3.2
+   Compiling pico-args v0.5.0
+   Compiling objc2-foundation v0.2.2
+   Compiling usvg v0.48.1
+   Compiling core-graphics-types v0.1.3
+   Compiling foreign-types v0.5.0
+   Compiling tiny-skia v0.12.0
+   Compiling wgpu-core v30.0.1
+   Compiling lyon_path v1.0.19
+   Compiling rgb v0.8.53
+   Compiling unsafe-libyaml v0.2.11
+   Compiling unicase v2.10.0
+   Compiling float_next_after v1.0.0
+   Compiling ryu v1.0.23
+   Compiling tracing-core v0.1.36
+   Compiling pin-project-lite v0.2.17
+   Compiling tracing v0.1.44
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling lyon_tessellation v1.0.22
+   Compiling resvg v0.48.1
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+   Compiling objc2-app-kit v0.2.2
+   Compiling wgpu v30.0.1
+   Compiling core-graphics v0.23.2
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+   Compiling objc2-core-text v0.3.2
+   Compiling dpi v0.1.2
+   Compiling cursor-icon v1.2.0
+   Compiling pollster v0.4.0
+   Compiling unicode-segmentation v1.13.3
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mermaid)
+   Compiling smol_str v0.2.2
+   Compiling winit v0.30.13
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-doc)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+   Compiling serde_json v1.0.154
+    Finished `dev` profile [optimized] target(s) in 3m 01s
+
+ACTUAL EXIT 0
+
+
+VERIFICATION render10
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:32:15.669112+00:00", "wrapper_pid": 12036, "command": ["target/e2e-dev/debug/bboxybook", "render", "--all", "--out", "target/e2e-checklist/scope10/native", "--manifest", "target/e2e-checklist/scope10/cases.json"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "04b3620b1e4d908376d2efaf7de234dcf44e948431ad5b89a8a1d4107de158e5", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "cb91381f8f09d285445372074f56b4e9846be94949eb8969d025dd933fdeaf92", "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/e2e-checklist/scope10/native/layouts.json
+rendered 10 PNGs to target/e2e-checklist/scope10/native
+
+ACTUAL EXIT 0
+
+
+VERIFICATION app-bin-tests
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:32:15.669342+00:00", "wrapper_pid": 12037, "command": ["cargo", "test", "-p", "bboxy450-term", "--bin", "bboxy450-term", "--locked"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "04b3620b1e4d908376d2efaf7de234dcf44e948431ad5b89a8a1d4107de158e5", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "cb91381f8f09d285445372074f56b4e9846be94949eb8969d025dd933fdeaf92", "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+   Compiling libc v0.2.191
+   Compiling typenum v1.20.1
+   Compiling serde_core v1.0.229
+   Compiling zeroize v1.9.1
+   Compiling getrandom v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling generic-array v0.14.7
+   Compiling crypto-common v0.1.7
+   Compiling subtle v2.6.1
+   Compiling serde v1.0.229
+   Compiling const-oid v0.9.6
+   Compiling bitflags v2.13.2
+   Compiling block-buffer v0.10.4
+   Compiling zerocopy v0.8.63
+   Compiling digest v0.10.7
+   Compiling arrayvec v0.7.8
+   Compiling cpufeatures v0.2.17
+   Compiling base64ct v1.8.3
+   Compiling smallvec v1.16.3
+   Compiling num-traits v0.2.19
+   Compiling pem-rfc7468 v0.7.0
+   Compiling inout v0.1.4
+   Compiling cipher v0.4.4
+   Compiling der v0.7.10
+   Compiling tap v1.0.1
+   Compiling wyz v0.5.1
+   Compiling radium v0.7.0
+   Compiling dispatch2 v0.3.1
+   Compiling spki v0.7.3
+   Compiling hmac v0.12.1
+   Compiling pkcs8 v0.10.2
+   Compiling funty v2.0.0
+   Compiling base16ct v0.2.0
+   Compiling thiserror v2.0.21
+   Compiling objc2-core-foundation v0.3.2
+   Compiling bitvec v1.1.1
+   Compiling serde_json v1.0.154
+   Compiling ppv-lite86 v0.2.21
+   Compiling signature v2.2.0
+   Compiling bytes v1.12.1
+   Compiling objc2-foundation v0.3.2
+   Compiling ff v0.13.1
+   Compiling serdect v0.2.0
+   Compiling sec1 v0.7.3
+   Compiling group v0.13.0
+   Compiling sha2-asm v0.6.4
+   Compiling parking_lot_core v0.9.12
+   Compiling hkdf v0.12.4
+   Compiling crypto-bigint v0.5.5
+   Compiling hybrid-array v0.4.15
+   Compiling objc2-metal v0.3.2
+   Compiling elliptic-curve v0.13.8
+   Compiling parking_lot v0.12.5
+   Compiling sha2 v0.10.9
+   Compiling naga-types v30.0.1
+   Compiling block-buffer v0.12.1
+   Compiling crypto-common v0.2.2
+   Compiling objc2-core-graphics v0.3.2
+   Compiling rfc6979 v0.4.0
+   Compiling errno v0.3.14
+   Compiling core-foundation-sys v0.8.7
+   Compiling const-oid v0.10.2
+   Compiling digest v0.11.3
+   Compiling getrandom v0.3.4
+   Compiling half v2.7.1
+   Compiling zlib-rs v0.6.8
+   Compiling rand_core v0.10.1
+   Compiling wgpu-types v30.0.1
+   Compiling naga v30.0.1
+   Compiling flate2 v1.1.10
+   Compiling rand_core v0.9.5
+   Compiling objc2-quartz-core v0.3.2
+   Compiling ecdsa v0.16.9
+   Compiling rand_chacha v0.3.1
+   Compiling num-integer v0.1.47
+   Compiling cpufeatures v0.3.1
+   Compiling spin v0.9.9
+   Compiling lazy_static v1.5.1
+   Compiling num-iter v0.1.46
+   Compiling rand v0.8.8
+   Compiling raw-window-metal v1.1.0
+   Compiling rand_chacha v0.9.0
+   Compiling getrandom v0.4.3
+   Compiling signal-hook-registry v1.4.8
+   Compiling primeorder v0.13.6
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling aead v0.5.2
+   Compiling ctr v0.9.2
+   Compiling polycool v0.4.0
+   Compiling mio v1.2.4
+   Compiling universal-hash v0.5.1
+   Compiling socket2 v0.6.5
+   Compiling opaque-debug v0.3.1
+   Compiling base64 v0.22.1
+   Compiling wgpu-hal v30.0.1
+   Compiling tokio v1.54.1
+   Compiling polyval v0.6.2
+   Compiling thiserror v1.0.69
+   Compiling kurbo v0.13.1
+   Compiling rand v0.9.5
+   Compiling curve25519-dalek v4.1.3
+   Compiling num-bigint-dig v0.8.6
+   Compiling crossbeam-utils v0.8.23
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling chacha20 v0.10.2
+   Compiling aes v0.8.4
+   Compiling euclid v0.22.14
+   Compiling keccak v0.1.6
+   Compiling serde-big-array v0.5.1
+   Compiling dbl v0.3.2
+   Compiling byteorder v1.5.0
+   Compiling svgtypes v0.16.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-core)
+   Compiling cmac v0.7.2
+   Compiling sha3 v0.10.9
+   Compiling lyon_geom v1.0.20
+   Compiling png v0.18.1
+   Compiling rand v0.10.3
+   Compiling zstd-safe v8.2.0
+   Compiling crossbeam-queue v0.3.14
+   Compiling nix v0.28.0
+   Compiling ulid v1.2.1
+   Compiling filedescriptor v0.8.3
+   Compiling ghash v0.5.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling anyhow v1.0.104
+   Compiling httparse v1.10.1
+   Compiling sha1 v0.11.0
+   Compiling core-foundation v0.9.4
+   Compiling http v1.5.0
+   Compiling ed25519 v2.2.3
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling password-hash v0.5.0
+   Compiling sha1 v0.10.7
+   Compiling blake2 v0.10.6
+   Compiling serial2 v0.2.38
+   Compiling futures-core v0.3.34
+   Compiling signature v3.0.0
+   Compiling same-file v1.0.6
+   Compiling futures-sink v0.3.34
+   Compiling shell-words v1.1.1
+   Compiling futures-task v0.3.34
+   Compiling foldhash v0.1.5
+   Compiling data-encoding v2.11.1
+   Compiling downcast-rs v1.2.1
+   Compiling slab v0.4.12
+   Compiling futures-util v0.3.34
+   Compiling tungstenite v0.30.0
+   Compiling portable-pty v0.9.0
+   Compiling hashbrown v0.15.5
+   Compiling usvg v0.48.1
+   Compiling walkdir v2.5.0
+   Compiling core-graphics-types v0.1.3
+   Compiling ed25519 v3.0.0
+   Compiling objc2-foundation v0.2.2
+   Compiling num_enum v0.7.6
+   Compiling argon2 v0.5.3
+   Compiling sha1-checked v0.10.0
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling ed25519-dalek v2.2.0
+   Compiling libsqlite3-sys v0.38.2
+   Compiling wgpu-core v30.0.1
+   Compiling aes-gcm v0.10.3
+   Compiling bitfields v1.0.3
+   Compiling derive_builder v0.20.2
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-rt)
+   Compiling zstd v0.14.3
+   Compiling tiny-skia v0.12.0
+   Compiling curve25519-dalek v5.0.0
+   Compiling lyon_path v1.0.19
+   Compiling eax v0.5.0
+   Compiling derive_more v2.1.1
+   Compiling snafu v0.9.2
+   Compiling camellia v0.1.0
+   Compiling blowfish v0.9.1
+   Compiling crc24 v0.1.6
+   Compiling aes-kw v0.2.1
+   Compiling dsa v0.6.3
+   Compiling x25519-dalek v2.0.1
+   Compiling ocb3 v0.1.0
+   Compiling p384 v0.13.1
+   Compiling p521 v0.13.3
+   Compiling p256 v0.13.2
+   Compiling sha2 v0.11.1
+   Compiling k256 v0.13.4
+   Compiling security-framework-sys v2.17.0
+   Compiling core-foundation v0.10.1
+   Compiling hashlink v0.12.2
+   Compiling cfb-mode v0.8.2
+   Compiling idea v0.5.1
+   Compiling des v0.8.1
+   Compiling cast5 v0.11.1
+   Compiling twofish v0.7.1
+   Compiling nom v8.0.0
+   Compiling buffer-redux v1.1.0
+   Compiling ripemd v0.1.3
+   Compiling md-5 v0.10.6
+   Compiling notify-types v2.1.0
+   Compiling block-padding v0.3.3
+   Compiling fsevent-sys v4.1.0
+   Compiling fallible-iterator v0.3.0
+   Compiling fixedbitset v0.5.7
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling replace_with v0.1.8
+   Compiling hex v0.4.3
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling pgp v0.21.0
+   Compiling petgraph v0.8.3
+   Compiling rusqlite v0.40.2
+   Compiling lyon_tessellation v1.0.22
+   Compiling notify v8.2.0
+   Compiling security-framework v3.7.0
+   Compiling resvg v0.48.1
+   Compiling ed25519-dalek v3.0.0
+   Compiling wgpu v30.0.1
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-supervisor)
+   Compiling objc2-app-kit v0.2.2
+   Compiling core-graphics v0.23.2
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-proto)
+   Compiling objc2-core-text v0.3.2
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mux)
+   Compiling winit v0.30.13
+   Compiling rustix v1.1.5
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+   Compiling objc2-app-kit v0.3.2
+   Compiling fastrand v2.5.0
+   Compiling tempfile v3.27.0
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 2m 32s
+     Running unittests src/main.rs (target/e2e-dev/debug/deps/bboxy450_term-c428fec1b589e6c0)
+
+running 78 tests
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test composer_host_tests::operation_admission_is_bounded_without_consuming_terminal_input_capacity ... ok
+test budget::tests::hud_gpu_mean_counts_spans_without_a_cpu_row ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+test composer_host_tests::composer_submit_is_focus_local_and_newline_tab_navigation_remain_local ... ok
+test gpu::backdrop_key_tests::keys_follow_prior_content_and_only_timed_content_follows_time ... ok
+test e2e_checklist::tests::a_new_local_graph_has_no_invented_results_or_run_metadata ... ok
+test gpu::backdrop_key_tests::a_frosted_op_after_host_drawing_is_never_keyed ... ok
+test default_spawn_tests::default_picks_are_keyed_by_id_and_leave_placement_and_navigation_deferred ... ok
+test composer_host_tests::consumed_composer_press_never_leaks_a_kitty_release_after_focus_changes ... ok
+test e2e_checklist::tests::the_host_can_replace_its_snapshot_and_scroll_stays_local_and_bounded ... ok
+test input_tests::pane_controls_coalesce_to_the_latest_visible_set_and_size ... ok
+test input_tests::operator_keys_use_pty_bytes_and_keep_command_shortcuts_out_of_the_shell ... ok
+test input_tests::text_bursts_keep_byte_order_first_id_and_generation_boundaries ... ok
+test launcher_host_tests::a_graph_press_never_reaches_the_pty_but_an_earlier_pty_press_gets_its_release ... ok
+test input_tests::admission_limits_preserve_accepted_bytes_and_allow_merging_at_the_entry_cap ... ok
+test launcher_host_tests::consumed_local_presses_keep_local_repeats_without_leaking_into_the_pty ... ok
+test default_spawn_tests::host_picks_preserve_structured_location_without_parsing_labels ... ok
+test input_tests::input_queued_while_backend_is_lost_survives_resume_and_a_full_queue ... ok
+test launcher_host_tests::ime_preedit_converts_utf8_cursor_bytes_to_utf16_without_committing ... ok
+test launcher_host_tests::modal_input_never_reaches_a_pty_and_picks_do_not_repeat ... ok
+test launcher_host_tests::stage_switch_waits_for_the_new_outer_pane_before_locate_once ... ok
+test launcher_host_tests::actual_controller_filters_picks_climbs_and_preserves_the_named_gaps ... ok
+test launcher_host_tests::terminal_keys_stay_byte_exact_while_explicit_chords_move_focus ... ok
+test launcher_host_tests::terminal_route_uses_live_modes_and_forwards_only_requested_releases ... ok
+test live::tests::disconnected_mutations_wait_for_explicit_retry_while_pane_controls_survive ... ok
+test launcher_host_tests::published_screens_do_not_undo_local_focus_or_create_locate ... ok
+test live::tests::event_terminal_replies_release_fifo_while_status_and_gap_pushes_never_do ... ok
+test launcher_host_tests::graph_navigation_is_local_and_global_shortcuts_still_reach_the_app ... FAILED
+test live::tests::event_ack_follows_shared_model_publication_and_replays_do_not_publish_twice ... ok
+test live::tests::messaging_and_task_terminal_wrappers_release_only_their_own_fifo_slots ... ok
+test live::tests::empty_page_completions_publish_and_refusals_complete_only_the_matched_stream ... ok
+test live::tests::queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication ... ok
+test live::tests::resize_before_a_coalesced_watch_keeps_its_desired_grid ... ok
+test live::tests::controls_obey_logic_size_limits_and_discard_old_generations ... ok
+test live::tests::refused_watch_retries_stay_bounded_and_coalesce_the_latest_size ... ok
+test live::tests::generic_spawn_preserves_inputs_and_uses_io_defaults ... ok
+test live::tests::scroll_history_errors_are_correlated_behind_operations_and_async_pushes ... ok
+test live::tests::scroll_history_reads_yield_to_already_published_applied_actions ... ok
+test live::tests::sent_control_waits_for_an_observation_or_refusal_before_retrying ... ok
+test placement_tests::new_membership_does_not_focus_without_a_matching_spawn_result ... ok
+test live::tests::first_refused_resize_converges_without_another_ui_resize ... ok
+test placement_tests::spawn_pick_uses_ui_focus_and_only_known_catalogue_ids ... ok
+test scene::depth_tests::historical_gap_uses_cell_device_origin_and_last_row_scissor_at_both_scales ... ok
+test live::tests::real_io_scrollback_reaches_first_line_joins_live_and_releases_on_input ... FAILED
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... FAILED
+test scene::launcher_tests::ime_candidate_area_follows_the_retained_caret_and_pointer_uses_utf16 ... ok
+test scene::launcher_tests::assigned_task_uses_its_seat_subtree_and_retained_review_hit_without_moving_panes ... ok
+test scene::depth_tests::attention_loops_until_handled_and_a_muted_seat_stays_quiet ... ok
+test scene::depth_tests::the_focus_swell_rises_and_settles_over_swell_ms_and_keeps_frames_until_then ... ok
+test scroll_input_tests::admitted_input_resets_a_queued_scroll_anchor_and_refusal_does_not ... ok
+test scene::depth_tests::the_rim_size_moves_the_gutter_and_inset_and_never_the_sidebar ... ok
+test scroll_input_tests::scroll_shortcuts_stay_local_for_repeats_and_kitty_releases ... ok
+test scene::depth_tests::pane_rects_are_identical_across_activity_states ... ok
+test scroll_input_tests::ten_minutes_of_scroll_pressure_keep_one_composed_intent_per_pane ... ok
+test smoke_tests::idle_waits_for_producer_queued_work_and_late_frames_before_starting ... ok
+test smoke_tests::flapping_native_events_never_pass_and_deadline_has_a_named_reason ... ok
+test smoke_tests::native_invalidation_restarts_settling_and_old_timers_cannot_end_the_new_window ... ok
+test spawn_admission_tests::generic_and_legacy_spawns_share_the_same_cap ... ok
+test stall::load::tests::busy_ring_page_names_its_query_and_stays_unknown ... ok
+test stall::load::tests::functional_ci_reports_timing_failures_and_the_slow_switch_enforces_them ... ok
+test stall::load::tests::failed_tail_keeps_known_ring_cursor_and_does_not_report_marker_absence ... ok
+test stall::load::tests::probe_row_fits_every_fifteen_and_fifty_pane_fixture ... ok
+test scene::depth_tests::local_graph_uses_a_clipped_retained_viewport_and_keeps_the_terminal_stage ... ok
+test stall::load::tests::gui_errors_keep_the_operation_and_identify_the_consumer_path ... ok
+test stall::load::tests::ring_probe_follows_pages_and_never_combines_marker_bytes_across_a_gap ... ok
+test scene::launcher_tests::retained_launcher_hit_regions_and_unwrapped_foreground_order ... ok
+test scene::launcher_tests::no_launcher_paint_proof ... ok
+test stall::load::tests::settle_diagnostic_names_the_active_predicates_without_inventing_ui_results ... ok
+test stall::tests::lower_row_echo_does_not_acknowledge_a_probe_or_bypass_the_clip ... ok
+test verification_tests::verification_grid_validation_and_window_fit_use_real_cell_bounds ... ok
+test verification_tests::live_screen_hash_matches_frozen_palette_unicode_and_link_fixtures ... ok
+test stall::load::tests::gui_keeps_applying_and_acknowledging_while_side_finish_is_held ... ok
+test input_tests::ten_minute_disconnect_bounds_admission_and_drains_accepted_input_in_order ... ok
+test stall::load::tests::timeout_prints_and_saves_each_seat_without_inventing_unobserved_backend_results ... ok
+test gpu::clear_fold_tests::a_target_whose_first_op_is_a_material_or_nothing_is_still_cleared ... ok
+test gpu::clear_fold_tests::a_folded_clear_draws_the_scene_byte_identically_in_one_pass_fewer ... ok
+
+failures:
+
+---- launcher_host_tests::graph_navigation_is_local_and_global_shortcuts_still_reach_the_app stdout ----
+
+thread 'launcher_host_tests::graph_navigation_is_local_and_global_shortcuts_still_reach_the_app' (23570589) panicked at crates/bboxy450-term/src/main.rs:4614:9:
+assertion `left == right` failed
+  left: Local
+ right: Pane(Direction(Left))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- live::tests::real_io_scrollback_reaches_first_line_joins_live_and_releases_on_input stdout ----
+
+thread 'live::tests::real_io_scrollback_reaches_first_line_joins_live_and_releases_on_input' (23570606) panicked at crates/bboxy450-term/src/live.rs:2035:9:
+build the app before its real-process scroll test
+
+---- live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame stdout ----
+
+thread 'live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame' (23570605) panicked at crates/bboxy450-term/src/live.rs:2233:9:
+build the app binary before this real-process test
+
+
+failures:
+    launcher_host_tests::graph_navigation_is_local_and_global_shortcuts_still_reach_the_app
+    live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame
+    live::tests::real_io_scrollback_reaches_first_line_joins_live_and_releases_on_input
+
+test result: FAILED. 75 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+
+error: test failed, to rerun pass `-p bboxy450-term --bin bboxy450-term`
+
+ACTUAL EXIT 101
+
+
+VERIFICATION compare10
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:35:57.287283+00:00", "wrapper_pid": 15909, "command": ["target/e2e-dev/debug/bboxybook", "compare", "--strict-geometry", "--out", "target/e2e-checklist/scope10/report", "--manifest", "target/e2e-checklist/scope10/cases.json", "--web-root", "target/e2e-checklist/scope10/web", "--native-root", "target/e2e-checklist/scope10/native"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "04b3620b1e4d908376d2efaf7de234dcf44e948431ad5b89a8a1d4107de158e5", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "cb91381f8f09d285445372074f56b4e9846be94949eb8969d025dd933fdeaf92", "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+parity: 10 cases, 10 review; target/e2e-checklist/scope10/report/index.html
+geometry: 10 required; 0 measured; 10 unproven; 0 mismatches
+bboxybook: parity gate: 10 geometry failures (fail)
+
+ACTUAL EXIT 1
+
+
+VERIFICATION compare10-corrected
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:39:53.517376+00:00", "wrapper_pid": 18689, "command": ["target/e2e-dev/debug/bboxybook", "compare", "--strict-geometry", "--out", "target/e2e-checklist/scope10", "--manifest", "target/e2e-checklist/scope10/cases.json"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "04b3620b1e4d908376d2efaf7de234dcf44e948431ad5b89a8a1d4107de158e5", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "4a0bc7443dcaf60038078c10efe562351509c57d1015b0638e856490e6b774e0", "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+parity: 10 cases, 8 review; target/e2e-checklist/scope10/index.html
+geometry: 10 required; 10 measured; 0 unproven; 8 mismatches
+bboxybook: parity gate: 8 geometry failures (fail)
+
+ACTUAL EXIT 1
+
+
+VERIFICATION dev-build-next
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:41:04.658530+00:00", "wrapper_pid": 21757, "command": ["cargo", "build", "-p", "bboxybook", "-p", "bboxy450-term", "--locked"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "7eee8e1355a320d141e6f5d9a351a317052827cd1a88081ccad78c60be199cb8", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "4a0bc7443dcaf60038078c10efe562351509c57d1015b0638e856490e6b774e0", "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+   Compiling tokio v1.54.1
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-rt)
+   Compiling pulldown-cmark v0.13.4
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-supervisor)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-doc)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 45.52s
+
+ACTUAL EXIT 0
+
+
+VERIFICATION render10-aligned
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:42:20.077229+00:00", "wrapper_pid": 22871, "command": ["target/e2e-dev/debug/bboxybook", "render", "--all", "--out", "target/e2e-checklist/scope10/native-aligned", "--manifest", "target/e2e-checklist/scope10/cases.json"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "7eee8e1355a320d141e6f5d9a351a317052827cd1a88081ccad78c60be199cb8", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "4a0bc7443dcaf60038078c10efe562351509c57d1015b0638e856490e6b774e0", "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/e2e-checklist/scope10/native-aligned/layouts.json
+rendered 10 PNGs to target/e2e-checklist/scope10/native-aligned
+
+ACTUAL EXIT 0
+
+
+VERIFICATION app-tests-corrected
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:42:20.077246+00:00", "wrapper_pid": 22870, "command": ["cargo", "test", "-p", "bboxy450-term", "--bin", "bboxy450-term", "--locked"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "7eee8e1355a320d141e6f5d9a351a317052827cd1a88081ccad78c60be199cb8", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "4a0bc7443dcaf60038078c10efe562351509c57d1015b0638e856490e6b774e0", "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 37.04s
+     Running unittests src/main.rs (target/e2e-dev/debug/deps/bboxy450_term-c428fec1b589e6c0)
+
+running 78 tests
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+test budget::tests::hud_gpu_mean_counts_spans_without_a_cpu_row ... ok
+test composer_host_tests::operation_admission_is_bounded_without_consuming_terminal_input_capacity ... ok
+test composer_host_tests::composer_submit_is_focus_local_and_newline_tab_navigation_remain_local ... ok
+test default_spawn_tests::default_picks_are_keyed_by_id_and_leave_placement_and_navigation_deferred ... ok
+test e2e_checklist::tests::a_new_local_graph_has_no_invented_results_or_run_metadata ... ok
+test gpu::backdrop_key_tests::keys_follow_prior_content_and_only_timed_content_follows_time ... ok
+test gpu::backdrop_key_tests::a_frosted_op_after_host_drawing_is_never_keyed ... ok
+test e2e_checklist::tests::the_host_can_replace_its_snapshot_and_scroll_stays_local_and_bounded ... ok
+test input_tests::admission_limits_preserve_accepted_bytes_and_allow_merging_at_the_entry_cap ... ok
+test default_spawn_tests::host_picks_preserve_structured_location_without_parsing_labels ... ok
+test composer_host_tests::consumed_composer_press_never_leaks_a_kitty_release_after_focus_changes ... ok
+test input_tests::operator_keys_use_pty_bytes_and_keep_command_shortcuts_out_of_the_shell ... ok
+test input_tests::pane_controls_coalesce_to_the_latest_visible_set_and_size ... ok
+test input_tests::input_queued_while_backend_is_lost_survives_resume_and_a_full_queue ... ok
+test input_tests::text_bursts_keep_byte_order_first_id_and_generation_boundaries ... ok
+test launcher_host_tests::a_graph_press_never_reaches_the_pty_but_an_earlier_pty_press_gets_its_release ... ok
+test launcher_host_tests::consumed_local_presses_keep_local_repeats_without_leaking_into_the_pty ... ok
+test launcher_host_tests::graph_navigation_is_local_and_global_shortcuts_still_reach_the_app ... ok
+test launcher_host_tests::actual_controller_filters_picks_climbs_and_preserves_the_named_gaps ... ok
+test launcher_host_tests::ime_preedit_converts_utf8_cursor_bytes_to_utf16_without_committing ... ok
+test launcher_host_tests::modal_input_never_reaches_a_pty_and_picks_do_not_repeat ... ok
+test launcher_host_tests::stage_switch_waits_for_the_new_outer_pane_before_locate_once ... ok
+test launcher_host_tests::published_screens_do_not_undo_local_focus_or_create_locate ... ok
+test launcher_host_tests::terminal_keys_stay_byte_exact_while_explicit_chords_move_focus ... ok
+test launcher_host_tests::terminal_route_uses_live_modes_and_forwards_only_requested_releases ... ok
+test live::tests::disconnected_mutations_wait_for_explicit_retry_while_pane_controls_survive ... ok
+test live::tests::event_terminal_replies_release_fifo_while_status_and_gap_pushes_never_do ... ok
+test live::tests::controls_obey_logic_size_limits_and_discard_old_generations ... ok
+test live::tests::event_ack_follows_shared_model_publication_and_replays_do_not_publish_twice ... ok
+test live::tests::empty_page_completions_publish_and_refusals_complete_only_the_matched_stream ... ok
+test live::tests::messaging_and_task_terminal_wrappers_release_only_their_own_fifo_slots ... ok
+test live::tests::generic_spawn_preserves_inputs_and_uses_io_defaults ... ok
+test live::tests::queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication ... ok
+test live::tests::first_refused_resize_converges_without_another_ui_resize ... ok
+test live::tests::refused_watch_retries_stay_bounded_and_coalesce_the_latest_size ... ok
+test live::tests::scroll_history_errors_are_correlated_behind_operations_and_async_pushes ... ok
+test live::tests::scroll_history_reads_yield_to_already_published_applied_actions ... ok
+test live::tests::resize_before_a_coalesced_watch_keeps_its_desired_grid ... ok
+test live::tests::sent_control_waits_for_an_observation_or_refusal_before_retrying ... ok
+test placement_tests::new_membership_does_not_focus_without_a_matching_spawn_result ... ok
+test placement_tests::spawn_pick_uses_ui_focus_and_only_known_catalogue_ids ... ok
+test scene::depth_tests::historical_gap_uses_cell_device_origin_and_last_row_scissor_at_both_scales ... ok
+test scene::depth_tests::the_focus_swell_rises_and_settles_over_swell_ms_and_keeps_frames_until_then ... ok
+test scene::depth_tests::attention_loops_until_handled_and_a_muted_seat_stays_quiet ... ok
+test scene::launcher_tests::assigned_task_uses_its_seat_subtree_and_retained_review_hit_without_moving_panes ... ok
+test scene::launcher_tests::ime_candidate_area_follows_the_retained_caret_and_pointer_uses_utf16 ... ok
+test scene::depth_tests::pane_rects_are_identical_across_activity_states ... ok
+test scene::depth_tests::the_rim_size_moves_the_gutter_and_inset_and_never_the_sidebar ... ok
+test scroll_input_tests::admitted_input_resets_a_queued_scroll_anchor_and_refusal_does_not ... ok
+test scroll_input_tests::scroll_shortcuts_stay_local_for_repeats_and_kitty_releases ... ok
+test scene::depth_tests::local_graph_uses_a_clipped_retained_viewport_and_keeps_the_terminal_stage ... ok
+test smoke_tests::flapping_native_events_never_pass_and_deadline_has_a_named_reason ... ok
+test smoke_tests::idle_waits_for_producer_queued_work_and_late_frames_before_starting ... ok
+test smoke_tests::native_invalidation_restarts_settling_and_old_timers_cannot_end_the_new_window ... ok
+test scroll_input_tests::ten_minutes_of_scroll_pressure_keep_one_composed_intent_per_pane ... ok
+test spawn_admission_tests::generic_and_legacy_spawns_share_the_same_cap ... ok
+test stall::load::tests::busy_ring_page_names_its_query_and_stays_unknown ... ok
+test stall::load::tests::failed_tail_keeps_known_ring_cursor_and_does_not_report_marker_absence ... ok
+test stall::load::tests::functional_ci_reports_timing_failures_and_the_slow_switch_enforces_them ... ok
+test stall::load::tests::gui_errors_keep_the_operation_and_identify_the_consumer_path ... ok
+test stall::load::tests::probe_row_fits_every_fifteen_and_fifty_pane_fixture ... ok
+test stall::load::tests::ring_probe_follows_pages_and_never_combines_marker_bytes_across_a_gap ... ok
+test stall::load::tests::settle_diagnostic_names_the_active_predicates_without_inventing_ui_results ... ok
+test stall::tests::lower_row_echo_does_not_acknowledge_a_probe_or_bypass_the_clip ... ok
+test scene::launcher_tests::retained_launcher_hit_regions_and_unwrapped_foreground_order ... ok
+test stall::load::tests::gui_keeps_applying_and_acknowledging_while_side_finish_is_held ... ok
+test verification_tests::verification_grid_validation_and_window_fit_use_real_cell_bounds ... ok
+test verification_tests::live_screen_hash_matches_frozen_palette_unicode_and_link_fixtures ... ok
+test scene::launcher_tests::no_launcher_paint_proof ... ok
+test input_tests::ten_minute_disconnect_bounds_admission_and_drains_accepted_input_in_order ... ok
+test stall::load::tests::timeout_prints_and_saves_each_seat_without_inventing_unobserved_backend_results ... ok
+cockpit ready: supervisor=23793 logic=23796
+cockpit ready: supervisor=23794 logic=23797
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+GUI operation 01M5PABXMGR7WDTX0D74Y76Y84 accepted
+GUI operation 01M5PABXMG5TR1H7B54VJSZTNM accepted
+GUI operation 01M5PABXKJGQTM6K92RZZJHK7T rejected: not a built-in harness
+test gpu::clear_fold_tests::a_target_whose_first_op_is_a_material_or_nothing_is_still_cleared ... ok
+GUI operation 01M5PABXVFRYNNX2FWHF9J5TXJ accepted
+GUI operation 01M5PABXVJE4S8QF3WHFR4BWRM accepted
+GUI operation 01M5PABXVYGV54AZWV8ZSAJVCH accepted
+GUI operation 01M5PABXW5ZZ4J8JCPN2KY6GQY accepted
+GUI operation 01M5PABXWA3KYZNJ9D66Z20K73 accepted
+GUI operation 01M5PABXWC2P48VZ1GKKZ0S5AY accepted
+GUI operation 01M5PABXWF3X5VMT0ASGJDT52S accepted
+GUI operation 01M5PABXWRAZ97W0EEFJBQXB92 accepted
+GUI operation 01M5PABXWRWCMTMVPJHA7Y997C accepted
+GUI operation 01M5PABXWD462P0C8RKN8D4Z5T accepted
+GUI operation 01M5PABXWTNN4MNXHATGDVBGFX accepted
+GUI operation 01M5PABXX39QZTPEJMJ90RWH54 accepted
+GUI operation 01M5PABXX48TAMBG92914DDF03 accepted
+GUI operation 01M5PABXX85YW9MZKQPB8PBT3V accepted
+GUI operation 01M5PABXX61Z0NK2PSKCFZGMGY accepted
+GUI operation 01M5PABXXD9PAWQKAW4NEMJG4J accepted
+GUI operation 01M5PABXXEFFW8FC4DWG3KPMS0 accepted
+GUI operation 01M5PABXXBPSD6J1E73RES6RB0 accepted
+GUI operation 01M5PABXXP2841T5GNX7153E9X accepted
+GUI operation 01M5PABXY2BZ2BGPFWC8Q7PSQE accepted
+GUI operation 01M5PABXY3VRKAGP17EZDXVGAC accepted
+GUI operation 01M5PABXY3J7DT0C7C3FWKVCEK accepted
+GUI operation 01M5PABXY3CJ1XPQ91914MK8PW accepted
+GUI operation 01M5PABXXD4YJVCRB69WWJN0VK accepted
+GUI operation 01M5PABXY4Z4DNHFETRM8QS5P8 accepted
+test gpu::clear_fold_tests::a_folded_clear_draws_the_scene_byte_identically_in_one_pass_fewer ... ok
+GUI operation 01M5PABXYD52EM9RK7S5WB9SQK accepted
+GUI operation 01M5PABXYCDYRHGP0247FQ1WTH accepted
+GUI operation 01M5PABXYPCPK979SY56CSPSJY accepted
+GUI operation 01M5PABXZ5BZW404FXF0MGZH2D accepted
+GUI operation 01M5PABXZAE82X78H8A7EXSZEV accepted
+GUI operation 01M5PABXZW9MG3S5Z67XP688F1 accepted
+GUI operation 01M5PABY07N4NERR3WZR90GJJQ accepted
+GUI operation 01M5PABY14518S0245Q4G635PQ accepted
+GUI operation 01M5PABY221BKAN73000FCD6Z7 accepted
+GUI operation 01M5PABY329BY56816BH8JA2CB accepted
+GUI operation 01M5PABY3Y3M63QJV3HJAJVTZ0 accepted
+GUI operation 01M5PABY507RE0T51A6924KW1X accepted
+GUI operation 01M5PABY5EXDX7K1PQR5V223S2 accepted
+seat 01M5PABXRX0T9Z0FCVX182ZWD9 activity=Idle process=Running { pid: 23800 }
+GUI operation 01M5PABY5ZE8BXMRRXK3G2ZM06 accepted
+GUI operation 01M5PABY6011DGGJKCBBVFPE6D accepted
+GUI operation 01M5PABY60JNBHPC6KZH6WA2DN accepted
+GUI operation 01M5PABY60VXEE3V2T036MC3KJ accepted
+GUI operation 01M5PABY7BJSTXS37FAPKSBJ42 accepted
+GUI operation 01M5PABY7T2TN913DD7SZEYY8K accepted
+GUI operation 01M5PABYB3F06Z1YQ1N34EPQ47 accepted
+GUI operation 01M5PABYC0WGVHVZ47ARA4ZZ1X accepted
+GUI operation 01M5PABYCYCXCM6M77Q55E29BF accepted
+GUI operation 01M5PABYDMC1NQ41MSJE1T2D6V accepted
+GUI operation 01M5PABYF1KS9YV8KTS90J4FRY accepted
+GUI operation 01M5PABYFFH5GPB8G3JYX052E1 accepted
+GUI operation 01M5PABYFGAEC464DKYWYKGH5Y accepted
+GUI operation 01M5PABYFGTQPF352S9FRMBCT3 accepted
+GUI operation 01M5PABYFHFTH3K6C4TTEX7S2S accepted
+GUI operation 01M5PABYFHM01G2V78MXDYMQK2 accepted
+GUI operation 01M5PABYFJTNZGGRAJTA2DSEY2 accepted
+GUI operation 01M5PABYFJV8XYQ2DEHEW1346E accepted
+GUI operation 01M5PABYFYWHTSHX5CYT6RWZA8 accepted
+GUI operation 01M5PABYFYQTGC68FA7DDKFFTZ accepted
+GUI operation 01M5PABYFZG9XQ9WZ4PBEW49C9 accepted
+GUI operation 01M5PABYHBTE7D3SJVQS4JK8QA accepted
+GUI operation 01M5PABYJNJ2JZ89Z2PZ3ACCE2 accepted
+GUI operation 01M5PABYM5KC0SXWSXH3M7J4VF accepted
+GUI operation 01M5PABYMJ3JNAQTFCV6WRKBW5 accepted
+GUI operation 01M5PABYMKWG08X9BHFNVGAXZK accepted
+GUI operation 01M5PABYMKHCQQNFGJWV89VT1B accepted
+GUI operation 01M5PABYN0SEFFBV9GM7NNSR8D accepted
+GUI operation 01M5PABYP9DE0RJKR4PG82K2Z4 accepted
+GUI operation 01M5PABYQD93QS0YH7X33VX94X accepted
+GUI operation 01M5PABYQKWFEG6SR9QAM45HFA accepted
+GUI operation 01M5PABYRSZ6AXRTAT6NY34HE9 accepted
+GUI operation 01M5PABYRWH3TEJ8ZBWBS56PZ9 accepted
+GUI operation 01M5PABYS14ZXN7F6QYYA6VPSM accepted
+GUI operation 01M5PABYSGPMAXBCZB2HZMXVV3 accepted
+GUI operation 01M5PABYS3EYGNFKDD2R1ZG2BN accepted
+GUI operation 01M5PABYS3R49YG3P3XQDKR2WQ accepted
+GUI operation 01M5PABYS3RCKV5HW2RQ1C88EQ accepted
+GUI operation 01M5PABYS3QG5XXAT5SRJVYJDQ accepted
+GUI operation 01M5PABYS3ACQZDCDS126SEYNY accepted
+GUI operation 01M5PABYS35PJ6EBD1DRJPBQEK accepted
+GUI operation 01M5PABYS3P4RJA2C092H6MYV5 accepted
+GUI operation 01M5PABYS3KP4GXRT3ERC4F9AD accepted
+GUI operation 01M5PABYS34VB84ZT63SR9ZXWT accepted
+GUI operation 01M5PABYS3CAXAK2PCQBFNC32H accepted
+GUI operation 01M5PABYS3C41C6YE84QFW8VXB accepted
+GUI operation 01M5PABYS34TNG6N9Y62DK7M9X accepted
+GUI operation 01M5PABYS3TVY8B0621ZJ0WY6V accepted
+GUI operation 01M5PABYS3RSFAT5K1G8RACFBS accepted
+GUI operation 01M5PABYX325EWTJ83GWVCX7Z9 accepted
+GUI operation 01M5PABYS3JQBWHVJ1AB3SCPNX accepted
+GUI operation 01M5PABYS3MX3BTK799NZRFYDQ accepted
+GUI operation 01M5PABYS3D95S2EQBNDG75RBM accepted
+GUI operation 01M5PABYS308ZCQPW0KD844VMG accepted
+GUI operation 01M5PABYY3GWKB95VAWZC4SY3D accepted
+GUI operation 01M5PABYS3EC5BKGMSABQDW85C accepted
+GUI operation 01M5PABYS38WDKV17623MHEMWJ accepted
+GUI operation 01M5PABYS3S92Z3JJWSSVNGHFZ accepted
+GUI operation 01M5PABYS3CXMMDRC98CVC88KJ accepted
+GUI operation 01M5PABYS3H9EPDKYYP27VEHD6 accepted
+GUI operation 01M5PABYS3PPCEQMD74WZM5Q7E accepted
+GUI operation 01M5PABYZW8GN7AN1A3NWDMF9R accepted
+GUI operation 01M5PABYS3F44CA29NBGVM841Y accepted
+logic: orderly shutdown requested
+GUI operation 01M5PABYS3T9HKA6N5WFZ0GFVN accepted
+GUI operation 01M5PABYS3VWVB4RHMEK8W793T accepted
+logic: shutdown completed
+seat 01M5PABXRX0T9Z0FCVX182ZWD9 activity=Active process=Running { pid: 23800 }
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+GUI operation 01M5PABYS3B60D4FBKSRH1CPF6 accepted
+test live::tests::real_io_scrollback_reaches_first_line_joins_live_and_releases_on_input ... ok
+GUI operation 01M5PABYS34ZN0XSN08FJFM91C accepted
+GUI operation 01M5PABYS3RWN132FQPT0DP8W5 accepted
+GUI operation 01M5PABYS3Y1CTQD0NE74ZZJND accepted
+GUI operation 01M5PABYS3JA9XHAPC9E8T66ZQ accepted
+GUI operation 01M5PABYS3GTQE07TD8DVHXJG8 accepted
+GUI operation 01M5PABYS3D8EY5R1H5FX13WRH accepted
+GUI operation 01M5PABYS3MEKSG7RM2RHTP5JD accepted
+GUI operation 01M5PABYS3F30E1KBB8FB7NXD0 accepted
+GUI operation 01M5PABYS3FE8F7X87MC1N70CV accepted
+GUI operation 01M5PABYS3MJ758BDCHA11RB0N accepted
+GUI operation 01M5PABYS3H43SPKASTDPWG9MR accepted
+GUI operation 01M5PABYS36N335GBCMDDMEKH9 accepted
+GUI operation 01M5PABYS3Y89XKXMD9N4H8ER7 accepted
+GUI operation 01M5PABYS3ZJH387HWJ42TMF1J accepted
+GUI operation 01M5PABYS3P2ZE98HNZ08JPF1K accepted
+GUI operation 01M5PABYS3T1VH6SAVDMV3ZRXG accepted
+GUI operation 01M5PABYS3MGN8EKFN9RJZD78B accepted
+GUI operation 01M5PABYS3C0YYRRR8PSYNB6YA accepted
+GUI operation 01M5PABYS3V2Z6KT0PHNX98FJ6 accepted
+GUI operation 01M5PABYS34F9G3PNVHQ6VP6EV accepted
+GUI operation 01M5PABYS3CF74CDY1PKDN25KE accepted
+GUI operation 01M5PABYS3NZKP25HNWCHGY2B2 accepted
+GUI operation 01M5PABYS3AEXVCVG1BTBCC0NA accepted
+GUI operation 01M5PABYS31BAQFRBMX258WK62 accepted
+GUI operation 01M5PABYS3HZKPHSKSV4FXN5JJ accepted
+GUI operation 01M5PABYS33M0BACTHMCC69ZP8 accepted
+GUI operation 01M5PABYS399F6ST5XTM5A77P0 accepted
+GUI operation 01M5PABYS308KBT1B1NS7S7QBF accepted
+GUI operation 01M5PABYS362S66HNG7630D2NM accepted
+GUI operation 01M5PABYS3W291EK7C5KXNG579 accepted
+GUI operation 01M5PABYS3VWQ9V6H639KFGEKW accepted
+GUI operation 01M5PABYS31AC5A3KAP5EYK1E9 accepted
+GUI operation 01M5PABYS3X1MQ6C8GZXSTMJ9E accepted
+GUI operation 01M5PABYS3F940KTEV3HJBK5MR accepted
+GUI operation 01M5PABYS3GVYJHGBW26TRHAYY accepted
+GUI operation 01M5PABYS3KTQFBHQJNKCBE9BN accepted
+GUI operation 01M5PABYS3H9A1PH3TRKFMGYN8 accepted
+GUI operation 01M5PABYS3DYSHJ38VZMW0SE2Q accepted
+GUI operation 01M5PABYS325BSC0NNXS3P5EE1 accepted
+GUI operation 01M5PABYS36D4XA3D769CWM9PD accepted
+GUI operation 01M5PABYS3ECVFQNRBQ607P7KZ accepted
+GUI operation 01M5PABYS38THKRT047TMCH7FB accepted
+GUI operation 01M5PABYS3X1FZ81YPQ74SC1ND accepted
+GUI operation 01M5PABYS3RVF4QAW70NARHAAZ accepted
+GUI operation 01M5PABYS36DM2BEKWNA1A0RXK accepted
+GUI operation 01M5PABYS3CR7QXWSAJCNY6ZYE accepted
+GUI operation 01M5PABYS3JK4YCS1ZDKP4CABJ accepted
+GUI operation 01M5PABYS3CKRV89RDHED089E7 accepted
+GUI operation 01M5PABYS3PCRTGY4T7HXCC7PY accepted
+GUI operation 01M5PABYS3S1KR1VS2C9K82CJK accepted
+GUI operation 01M5PABYS3V4F9A34Q2C6YP26K accepted
+GUI operation 01M5PABYS37HTEYRD6D90R44NK accepted
+GUI operation 01M5PABYS3Y640PCMW15DACMTC accepted
+GUI operation 01M5PABYS3S6K9D6WVDMRXQYB1 accepted
+GUI operation 01M5PABYS3PHV4WEFY7XNW1ZEK accepted
+GUI operation 01M5PABYS3AK3HXX3A9N1T4RNF accepted
+GUI operation 01M5PABYS3ZFJNW0GXNV7XGER4 accepted
+GUI operation 01M5PABYS3MN8FZ2NV9H3EFAB5 accepted
+GUI operation 01M5PABYS3CC4168DMGHWBJ72M accepted
+GUI operation 01M5PABYS3715PWSSABTZJJ0BG accepted
+GUI operation 01M5PABYS3W9WDBV45NCC5YQWD accepted
+GUI operation 01M5PABYS36B87W4X1CH31F42W accepted
+GUI operation 01M5PABYS3003CFB49EZGBXDVE accepted
+GUI operation 01M5PABYS3G4PDXQ2B5NBWNRSN accepted
+GUI operation 01M5PABYS3HVT48DD42J79VZTH accepted
+GUI operation 01M5PABYS3C5405CX5HGQP4JW1 accepted
+GUI operation 01M5PABYS3HKSW1RRVY63M6KP1 accepted
+GUI operation 01M5PABYS333ATPKP4EG2SADST accepted
+GUI operation 01M5PABYS3SCDKJBEPQA1MXR8Q accepted
+GUI operation 01M5PABYS3YHMP7J2SMDNZD4NM accepted
+GUI operation 01M5PABYS3H13N614QW7MNM7XK accepted
+GUI operation 01M5PABYS3ZT22RZYDMS0WJW42 accepted
+GUI operation 01M5PABYS3GFPX0JX2FQFM11AE accepted
+GUI operation 01M5PABYS3BP1PZ46AR5RDXHA8 accepted
+GUI operation 01M5PABYS3ZP272MNJPP3G9QQS accepted
+GUI operation 01M5PABYS3B8Q21NQ7XZ94EQX3 accepted
+GUI operation 01M5PABYS36J3Q5PPG4FHGXK5Z accepted
+GUI operation 01M5PABYS361QK4HTGC509VK8V accepted
+GUI operation 01M5PABYS3YBTR3A7WPGDRA4BG accepted
+GUI operation 01M5PABYS3RH9N1TPRGBMHQK8V accepted
+GUI operation 01M5PABYS3QPF9B20K7B5BE4F5 accepted
+GUI operation 01M5PABYS3B22549XWT4FFMTRS accepted
+GUI operation 01M5PABYS3D2FCVADJSH5X1AVA accepted
+GUI operation 01M5PABYS3KAKC63Q7YE8R2RW3 accepted
+GUI operation 01M5PABYS3HXEXHDF39EV74NB7 accepted
+GUI operation 01M5PABYS3HMSTVQJRW8CV6DWB accepted
+GUI operation 01M5PABZTJPFMSDGNDRJPVJNS5 accepted
+GUI operation 01M5PABYS3X7M7WGG52FSRJPMH accepted
+GUI operation 01M5PABYS3ZG5QFN9EV4ZTDJ4Z accepted
+GUI operation 01M5PABYS3J2FQFE1MCRKXS1GM accepted
+GUI operation 01M5PABYS3NDTE5XM5SS7970Y4 accepted
+GUI operation 01M5PABYS32Y5WNCBR386CQGGX accepted
+GUI operation 01M5PABYS3TW4ZWKAW4S8JV9W0 accepted
+GUI operation 01M5PABYS35MJXXFZC2F9VPKS0 accepted
+GUI operation 01M5PABYS39YPZJ3ENGZE3SEPH accepted
+GUI operation 01M5PABYS3RZV3QPEJ2FETYT0S accepted
+GUI operation 01M5PABYS3A6DG3RGDSP6A4E26 accepted
+GUI operation 01M5PABYS36X79H0EWFJGQS03W accepted
+GUI operation 01M5PABYS3WRTFXXA53DB42PFS accepted
+GUI operation 01M5PABYS31AN6Y7Y7KRDHE044 accepted
+GUI operation 01M5PABYS33V7SWMD7TCFVKDKP accepted
+GUI operation 01M5PABYS38NVF5MHW90ZXHSMQ accepted
+GUI operation 01M5PABYS3FT3YGFEF0ECQH7QS accepted
+GUI operation 01M5PABYS3GRTHEYNVA6CZHAJY accepted
+GUI operation 01M5PABZYWJZ1B3YE82S498RT5 accepted
+GUI operation 01M5PABYS3TY10M52XKQ9K4PYM accepted
+GUI operation 01M5PABYS3T8RBBNZ5BHY5JS2Q accepted
+GUI operation 01M5PABYS35J3TDC7HEX9MF9KH accepted
+GUI operation 01M5PABZZMQ6RTTCR8R224VKDT accepted
+GUI operation 01M5PABYS3WC8H61TX0DQD9SRK accepted
+GUI operation 01M5PABYS37CJ0FDN50X505TW5 accepted
+GUI operation 01M5PABYS3VD49D595VFA0DTCB accepted
+GUI operation 01M5PABYS32KG800QB883VDD18 accepted
+GUI operation 01M5PAC00FWXZW00S3SQTZCK27 accepted
+GUI operation 01M5PABYS3PCQXDB5PPCP0XWES accepted
+GUI operation 01M5PAC00P0QRG4DVKDG0SS1RN accepted
+GUI operation 01M5PAC00PRQTBXJVCJ3HXVXK1 accepted
+GUI operation 01M5PAC00Q03RW9WB8QZVSZ9K1 accepted
+GUI operation 01M5PABYS3H0Y1MCQZFMEKW9MT accepted
+GUI operation 01M5PABYS3YYJZ9R09F24YEQBD accepted
+GUI operation 01M5PABYS3SWY1AFHSBKDCGF5M accepted
+GUI operation 01M5PABYS3SFX399V3P1P63YBP accepted
+GUI operation 01M5PABYS3V79RFRZCSB3RR9Y6 accepted
+GUI operation 01M5PABYS3GSEH0DJ99YY0K4DG accepted
+GUI operation 01M5PABYS3M2FGXDHYAZ1ADAN5 accepted
+GUI operation 01M5PABYS3VGJVYV61J49V00YY accepted
+GUI operation 01M5PABYS3FQ21J7GNV99XN8Y6 accepted
+GUI operation 01M5PABYS3WCCAQXA45MK4HK0Q accepted
+GUI operation 01M5PABYS3Y3K4NTGZ63W224NE accepted
+GUI operation 01M5PABYS3A3KY5M5J4EHE47M0 accepted
+GUI operation 01M5PABYS3KPRMH42EZ2RWX678 accepted
+GUI operation 01M5PABYS3XXZ8Y8GAVTJHM6JM accepted
+GUI operation 01M5PABYS3B9S99J2G6KQPBYXH accepted
+GUI operation 01M5PAC045EKSWJ6WQ4RBAVPHE accepted
+GUI operation 01M5PABYS3B125EDCTAJ165J0D accepted
+GUI operation 01M5PABYS3D2QEJ8QZW2HCAH58 accepted
+GUI operation 01M5PABYS3AJ08T99T0Y47AX8J accepted
+GUI operation 01M5PABYS38KMJYFD42VNTMQA0 accepted
+GUI operation 01M5PAC0579HVD92W96W1TBXAK accepted
+GUI operation 01M5PABYS320MMH4HMNH11N3DJ accepted
+GUI operation 01M5PABYS38H7CNKDX3NPB4TXP accepted
+GUI operation 01M5PABYS3K3G5JS18XAY8WBE2 accepted
+GUI operation 01M5PABYS3JDEPG4NHYS3XMFGG accepted
+GUI operation 01M5PAC06KMKRVN78RAEGRXHPJ accepted
+GUI operation 01M5PAC06KN3PRPKS3H0Y6M7KB accepted
+GUI operation 01M5PAC06K8XKG59AKKBRDNK2M accepted
+GUI operation 01M5PAC06KXAZ0TQX87FQMYDKX accepted
+GUI operation 01M5PABYS37DXV2D9SB6YR25F5 accepted
+GUI operation 01M5PABYS3WKNB776WQXDH9ZER accepted
+GUI operation 01M5PABYS30XBPAH43Y92HNHX5 accepted
+GUI operation 01M5PABYS3WJBXEMHQEKA9NA2W accepted
+GUI operation 01M5PABYS30V0KSZJJJRTCJZQA accepted
+GUI operation 01M5PABYS3B9E2SHXP0B71EJ9K accepted
+GUI operation 01M5PABYS3SBZE70ZGQ04JDCZG accepted
+GUI operation 01M5PABYS3Y716YZJ49EZH2CH5 accepted
+GUI operation 01M5PABYS3YG9KYW48ZRZSN0XT accepted
+GUI operation 01M5PABYS3BMH48V68QDAADMGW accepted
+GUI operation 01M5PABYS3EKFJXBV0GE7NJ12Z accepted
+GUI operation 01M5PABYS33HVWY2M1ZQM8Z6JR accepted
+GUI operation 01M5PABYS3AEZHGDMX9PQZS911 accepted
+GUI operation 01M5PABYS34FTR57KQ25DXJTBB accepted
+GUI operation 01M5PABYS3WF5V8V7XJ50T9ZGY accepted
+GUI operation 01M5PABYS3S7K58CP69XSBTG0F accepted
+GUI operation 01M5PAC0A69MA0SMKFBMG35WTP accepted
+GUI operation 01M5PABYS3MKA01N51NZV395F4 accepted
+GUI operation 01M5PABYTN270HGM9SGD4809R5 accepted
+GUI operation 01M5PABYTNZNTNCSQ59HJBG1T3 accepted
+GUI operation 01M5PABYTN650WG9M2ZD2R8VES accepted
+GUI operation 01M5PAC0AZEM5K8J0GKRVQKZNZ accepted
+GUI operation 01M5PABYTN7QEKY4F105RPK06K accepted
+GUI operation 01M5PABYTNTYNPE76H9STT5FG6 accepted
+GUI operation 01M5PABYTN3AKD1GHV4GFDGDCT accepted
+GUI operation 01M5PAC0BHHANY2DVNHV1XNYZA accepted
+GUI operation 01M5PAC0BHC9VAQJB7WMT2VGSX accepted
+GUI operation 01M5PAC0BHA6HN9DZQ64D715ME accepted
+GUI operation 01M5PAC0BHHDRCVAM24BCFK5BV accepted
+GUI operation 01M5PABYTNKY5KXN8F8WTK2ERY accepted
+GUI operation 01M5PABYTNA3DVX657Y0XHSP6K accepted
+GUI operation 01M5PABYTN8HSN01BMZAXHCBNN accepted
+GUI operation 01M5PABYTN0325S28M4C67FBE0 accepted
+GUI operation 01M5PABYTNADXSQQT73DAC98XF accepted
+GUI operation 01M5PABYTN8JC9PHQ8KY2FCKWR accepted
+GUI operation 01M5PABYTN7GDKGA220BHEM12T accepted
+GUI operation 01M5PABYTNR3FMZVNGSP39DEHT accepted
+GUI operation 01M5PABYTNZR4B1EZ13JMNVNFD accepted
+GUI operation 01M5PABYTND2B3FYVPEQKE49ZB accepted
+GUI operation 01M5PABYTN97E60QC8ZTEPTSE0 accepted
+GUI operation 01M5PABYVN5HWG2WMVKH8PHXZG accepted
+GUI operation 01M5PABYVVS1H961GV15QZ54GF accepted
+GUI operation 01M5PABYW2WZY49HDYDRNVHYBG accepted
+GUI operation 01M5PABYWH1KJ06R8GFEVMXK9M accepted
+GUI operation 01M5PABYWR0Q4W95PN3QB9RSJJ accepted
+GUI operation 01M5PABYWY3XWC1DGQ4NKX82CH accepted
+GUI operation 01M5PABYX5STXXFAK8GAHY8FDM accepted
+GUI operation 01M5PABYXJF6GF4756AHB3WV9J accepted
+GUI operation 01M5PABZ1R0DKADDVCP73E3E82 accepted
+GUI operation 01M5PABZ1R75HYX7XAHJSMHZC8 accepted
+GUI operation 01M5PABZ1RDRS3VTXS8B6Q9ZN7 accepted
+GUI operation 01M5PABZ1RGS90GY7XF5VS743Y accepted
+GUI operation 01M5PABZ1RD4KS2FCNMSJH6QJJ accepted
+GUI operation 01M5PABZ1RMKN81MBMHW9P1SEN accepted
+GUI operation 01M5PABZ1RB4BWT8VWS5M0F5TE accepted
+GUI operation 01M5PAC0KDPGYT1XDMTCX0E7JF accepted
+GUI operation 01M5PAC0KEG4T2FG0Y1CGJ9VVA accepted
+GUI operation 01M5PABZ1R3PZSR73FEBZKCVMS accepted
+GUI operation 01M5PABZ1RQX9TMQEHYSY6H0J0 accepted
+GUI operation 01M5PABZ1R93FBZEQ686Z72ZSE accepted
+GUI operation 01M5PABZ1RZ6EZKD8RDX8738SE accepted
+GUI operation 01M5PABZ1R5Z1RBVC8VAVGNPPW accepted
+GUI operation 01M5PABZ1R8N5ADNES7T8GR8NH accepted
+GUI operation 01M5PABZ1REQ0D816K0JRACY0Q accepted
+GUI operation 01M5PABZ22Z1WZG0BFTD0KGG0M accepted
+GUI operation 01M5PABZ2YW27AS6W0F72QDK05 accepted
+GUI operation 01M5PABZ35DWTPRZ3J60NFA2VE accepted
+GUI operation 01M5PABZ3BAXT9J55B3XVYYGJS accepted
+GUI operation 01M5PABZ3HTB1ZS6PV7JA3B8VQ accepted
+GUI operation 01M5PABZ4DR43J73P8EZAGXA19 accepted
+GUI operation 01M5PABZ4KFHEZR445DQ92ZAA8 accepted
+GUI operation 01M5PABZ4SF59VEWTXG0NNN84B accepted
+GUI operation 01M5PAC0QBYDVGZHASW960FJWN accepted
+GUI operation 01M5PABZ50C36QYNPJQQAS27SG accepted
+GUI operation 01M5PABZA2SJMVXT8RHBZCTDP6 accepted
+GUI operation 01M5PABZA2YCC8EMHZVQ7Z5WQB accepted
+GUI operation 01M5PABZA2BBQEQCHSB64PCVYB accepted
+GUI operation 01M5PAC0R48XD5682S3WKEBDJZ accepted
+GUI operation 01M5PABZA2BEPZEAEWV5G989EH accepted
+GUI operation 01M5PABZA2BJ7G9NTX59MN3215 accepted
+GUI operation 01M5PABZA2W8J8SF6MRPC5504R accepted
+GUI operation 01M5PABZA2N4AQ15ZWRFRN74T1 accepted
+GUI operation 01M5PABZA29V05PCXP019YT1SQ accepted
+GUI operation 01M5PABZA2BEDTMTJ80D113DZT accepted
+GUI operation 01M5PAC0TCX2SERWVZR0XKKE8F accepted
+GUI operation 01M5PABZA2GHJPXDZPJQN1EDFB accepted
+GUI operation 01M5PABZA2SY9Y30H9DQ0GX7CY accepted
+GUI operation 01M5PABZA2H037Z18AZC1WQD2V accepted
+GUI operation 01M5PABZA2334XV48QW9SNM7K6 accepted
+GUI operation 01M5PABZA29J13DTHTRSVE46HR accepted
+GUI operation 01M5PABZA9EBSFJEAB12G6GKEB accepted
+GUI operation 01M5PABZAN3JQDBMYC95C1AZBN accepted
+GUI operation 01M5PABZBNPP9DAQAKH905YRB5 accepted
+GUI operation 01M5PABZC3T6HEW15BK05BQJC5 accepted
+GUI operation 01M5PABZCB7W67S0GYJ8XG1M43 accepted
+GUI operation 01M5PABZCK7R77KDNRXG95V5Y3 accepted
+GUI operation 01M5PABZDE2K937SPEYNR95P2R accepted
+GUI operation 01M5PABZDN6N4HV4NES51YJ7H7 accepted
+GUI operation 01M5PABZDVRWE273J6FX0B2AX5 accepted
+GUI operation 01M5PABZMC7QSCQ2RN6N5ZW24S accepted
+GUI operation 01M5PABZMCS00KMTFSHGRXHZ7A accepted
+GUI operation 01M5PABZMCP3X64JMBR1608MCT accepted
+GUI operation 01M5PABZMCVSCTNMAV0CX7NVAS accepted
+GUI operation 01M5PABZMC0SD2RGMZ7P1AD7HW accepted
+GUI operation 01M5PABZMCDVF7MTA1S8C8DVNB accepted
+GUI operation 01M5PABZMCSSEWEJ00583BHDQ1 accepted
+GUI operation 01M5PAC0ZVX9Y2DR5R85DV32Z9 accepted
+GUI operation 01M5PAC0ZVDKE3ZGTJQ00SB7DQ accepted
+GUI operation 01M5PAC0ZVWH6WNCHJ7PT8FZTX accepted
+GUI operation 01M5PAC102FNK1C5P0A3NMPH2Q accepted
+GUI operation 01M5PAC102EAQ9KWS1EJ1QJ0S9 accepted
+GUI operation 01M5PAC102QWD4CF7PJMWWY7PJ accepted
+GUI operation 01M5PAC102C85J3ET0GQ5D1CDC accepted
+GUI operation 01M5PAC1037PY424QJFWMQQF0S accepted
+GUI operation 01M5PAC1031K9676A5RYKM3H8P accepted
+GUI operation 01M5PAC103PHB6EBKWRVVDHT5Q accepted
+GUI operation 01M5PAC103YGKN6256JCQ2J9QC accepted
+GUI operation 01M5PAC104NP5199EEHXNWHRZF accepted
+GUI operation 01M5PAC104WV4CJ39864CS4QGG accepted
+GUI operation 01M5PAC10J7ZX4F264KZTKPD97 accepted
+GUI operation 01M5PAC10K1K39S28TJ4JWZ84V accepted
+GUI operation 01M5PAC10K1RB3W7Y9AMMNBPFX accepted
+GUI operation 01M5PAC110J1FK8TNCQP9D1RXR accepted
+GUI operation 01M5PAC11WWE9E51S5P46GNSMD accepted
+GUI operation 01M5PAC11YAKZY7Y5SK6WJ5TBH accepted
+GUI operation 01M5PAC123BCAF861SERDKK3MM accepted
+seat 01M5PABXRX0T9Z0FCVX182ZWD9 activity=Active process=Running { pid: 23800 }
+GUI operation 01M5PAC13DM51B1G32YMK880JH accepted
+GUI operation 01M5PAC13WKW2TAJXJMB47Q4ZJ accepted
+GUI operation 01M5PAC13G0RXHQQGPBAYW445K accepted
+GUI operation 01M5PAC14VR6F4A189X3SDFX1P accepted
+GUI operation 01M5PAC15GKH8G1TZ0PE5MMT78 accepted
+GUI operation 01M5PAC15XBCEF5XHVVVEQHZPH accepted
+GUI operation 01M5PAC16CXNHG29F6VPR7D44K accepted
+seat 01M5PABXRX0T9Z0FCVX182ZWD9 activity=Idle process=Running { pid: 23800 }
+GUI operation 01M5PAC16S4KK6ZXVK0BS0DJKY accepted
+GUI operation 01M5PAC16S1DMAAX34986TYYYM accepted
+GUI operation 01M5PAC17PPVT5MRP7TJQHRD1Z accepted
+GUI operation 01M5PAC17QP4PZDJGPHKA990MD accepted
+seat 01M5PABXRX0T9Z0FCVX182ZWD9 activity=Idle process=Running { pid: 23800 }
+GUI operation 01M5PAC1875C73D6CBT5Y21HZB accepted
+GUI operation 01M5PAC18P12PF6P489SFKFHPM accepted
+GUI disconnected: GUI connection closed
+logic exited: signal: 9 (SIGKILL)
+GUI disconnected: recovery failed: logic exited during startup
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... ok
+
+test result: ok. 78 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.73s
+
+
+ACTUAL EXIT 0
+
+
+VERIFICATION compare10-aligned
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:43:02.498326+00:00", "wrapper_pid": 23907, "command": ["target/e2e-dev/debug/bboxybook", "compare", "--strict-geometry", "--out", "target/e2e-checklist/scope10", "--manifest", "target/e2e-checklist/scope10/cases.json", "--native-root", "native-aligned"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "7eee8e1355a320d141e6f5d9a351a317052827cd1a88081ccad78c60be199cb8", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "4a0bc7443dcaf60038078c10efe562351509c57d1015b0638e856490e6b774e0", "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+parity: 10 cases, 10 review; target/e2e-checklist/scope10/index.html
+geometry: 10 required; 10 measured; 0 unproven; 8 mismatches
+bboxybook: parity gate: 8 geometry failures (fail)
+
+ACTUAL EXIT 1
+
+
+VERIFICATION compare10-completed
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:43:29.445418+00:00", "wrapper_pid": 24428, "command": ["target/e2e-dev/debug/bboxybook", "compare", "--strict-geometry", "--out", "target/e2e-checklist/scope10", "--manifest", "target/e2e-checklist/scope10/cases.json", "--native-root", "native-aligned"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "7eee8e1355a320d141e6f5d9a351a317052827cd1a88081ccad78c60be199cb8", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "4a0bc7443dcaf60038078c10efe562351509c57d1015b0638e856490e6b774e0", "crates/bboxy450-term/src/scene.rs": "47cae346cbb98fbf9a5a6f86d54a4845ee6bb2ab0537f9da2e557809a45183ea", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "ac6fe9d10c73c0070c285060bcb0e2c4566aea137d7e429f66c4c7c83614550b", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+parity: 10 cases, 8 review; target/e2e-checklist/scope10/index.html
+geometry: 10 required; 10 measured; 0 unproven; 8 mismatches
+bboxybook: parity gate: 8 geometry failures (fail)
+
+ACTUAL EXIT 1
+
+
+VERIFICATION capture40
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:44:12.673983+00:00", "wrapper_pid": 27121, "command": ["node", "crates/bboxybook/capture.mjs", "target/e2e-checklist/scope40", "target/e2e-checklist/scope40/requested.json"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "919d5c09e00a7980442ec0bde20a839d7e87ec335a1481972cac9750afa1ce29", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "79ecb7d648000f1ac67448013bff3bf7cb8eedcd36ba505d195c5a19c65b7551", "crates/bboxy450-term/src/scene.rs": "6e19ecda8db52b8d2f8d6ddfbd6559b3d56889975870005ba5d277a6c420520c", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "f9b9d0f196934eb3137997937d3554c59a61339345999e382998a7de6b6f6abb", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+web: 40/40 captured; 0 failures
+
+ACTUAL EXIT 0
+
+
+VERIFICATION dev-build-all40
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:44:13.768130+00:00", "wrapper_pid": 27212, "command": ["cargo", "build", "-p", "bboxybook", "-p", "bboxy450-term", "--locked"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "919d5c09e00a7980442ec0bde20a839d7e87ec335a1481972cac9750afa1ce29", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "79ecb7d648000f1ac67448013bff3bf7cb8eedcd36ba505d195c5a19c65b7551", "crates/bboxy450-term/src/scene.rs": "6e19ecda8db52b8d2f8d6ddfbd6559b3d56889975870005ba5d277a6c420520c", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "f9b9d0f196934eb3137997937d3554c59a61339345999e382998a7de6b6f6abb", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-doc)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+    Finished `dev` profile [optimized] target(s) in 40.98s
+
+ACTUAL EXIT 0
+
+
+VERIFICATION render40
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:45:18.463412+00:00", "wrapper_pid": 30390, "command": ["target/e2e-dev/debug/bboxybook", "render", "--all", "--out", "target/e2e-checklist/scope40/native", "--manifest", "target/e2e-checklist/scope40/cases.json"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "919d5c09e00a7980442ec0bde20a839d7e87ec335a1481972cac9750afa1ce29", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "79ecb7d648000f1ac67448013bff3bf7cb8eedcd36ba505d195c5a19c65b7551", "crates/bboxy450-term/src/scene.rs": "6e19ecda8db52b8d2f8d6ddfbd6559b3d56889975870005ba5d277a6c420520c", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "f9b9d0f196934eb3137997937d3554c59a61339345999e382998a7de6b6f6abb", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: target/e2e-checklist/scope40/native/layouts.json
+rendered 40 PNGs to target/e2e-checklist/scope40/native
+
+ACTUAL EXIT 0
+
+
+VERIFICATION graph-tests40
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:45:18.463449+00:00", "wrapper_pid": 30391, "command": ["cargo", "test", "-p", "bbt-ui", "-p", "bboxybook", "--locked"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "919d5c09e00a7980442ec0bde20a839d7e87ec335a1481972cac9750afa1ce29", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "79ecb7d648000f1ac67448013bff3bf7cb8eedcd36ba505d195c5a19c65b7551", "crates/bboxy450-term/src/scene.rs": "6e19ecda8db52b8d2f8d6ddfbd6559b3d56889975870005ba5d277a6c420520c", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "f9b9d0f196934eb3137997937d3554c59a61339345999e382998a7de6b6f6abb", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-doc)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+    Finished `test` profile [optimized] target(s) in 48.07s
+     Running unittests src/lib.rs (target/e2e-dev/debug/deps/bboxybook-246c48371d18f395)
+
+running 16 tests
+test documents::diagram_policy_tests::engine_body_height_is_excluded_but_chrome_padding_and_following_gaps_stay_gated ... ok
+test fixtures::tests::web_model_uses_real_keys_trees_ownership_and_observation_axes ... ok
+test gallery::tests::registry_covers_exactly_the_built_design_entries ... ok
+test parity::tests::text_policy_requires_rects_and_baselines_even_when_pixels_pass ... ok
+test parity::tests::glyph_only_vectors_require_exact_geometry_and_waiting_kind_keeps_its_baseline ... ok
+test parity::tests::vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets ... ok
+test swarms::diagnostic_filter_keeps_every_partly_visible_part_and_every_non_descendant ... ok
+test gallery::tests::current_parity_matrix_has_unique_paths_and_geometry_routing ... ok
+test parity::tests::first_report_resolves_relative_reference_directories ... ok
+test parity::tests::historical_diffs_stay_visible_without_gating_the_current_design ... ok
+test parity::tests::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry ... ok
+test parity::tests::legacy_pixels_do_not_claim_geometry_or_weaken_the_current_gate ... ok
+test atoms::geometry_tests::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics ... ok
+test styles::geometry_tests::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds ... ok
+test gallery::tests::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list ... ok
+test documents::repository::tests::flat_document_composition_preserves_pixels_including_clips_and_alpha ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+     Running unittests src/main.rs (target/e2e-dev/debug/deps/bboxybook-0c9a44fed0c99b70)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/atoms.rs (target/e2e-dev/debug/deps/atoms-7c879031b73f8d76)
+
+running 3 tests
+test icon_phase_probe_compares_snapped_origins_and_baked_fractional_coverage ... ok
+test icon_size_gallery_renders_at_one_and_two_device_pixels_per_point ... ok
+test every_atom_renders_across_density_and_theme_and_references_have_canonical_keys ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s
+
+     Running tests/blending.rs (target/e2e-dev/debug/deps/blending-05ef873d05f83cb3)
+
+running 1 test
+test chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/clipping.rs (target/e2e-dev/debug/deps/clipping-d2cf9da4204974fd)
+
+running 3 tests
+test different_surfaces_use_their_own_clip_ranges ... ok
+test retained_material_keeps_the_outer_rounding_when_an_inner_clip_is_square ... ok
+test every_material_obeys_each_rounded_ancestor_at_one_and_two_x ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running tests/components.rs (target/e2e-dev/debug/deps/components-99d7f9998fd1227e)
+
+running 4 tests
+test component_cases_are_canonical_and_box_gallery_covers_materials_and_radii ... ok
+test a_retained_group_keeps_material_coverage_and_filters_the_completed_layer ... ok
+test retained_image_preserves_asset_colour_rounding_and_group_filtering ... ok
+test retained_scroll_content_moves_but_never_paints_outside_the_viewport ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests/documents.rs (target/e2e-dev/debug/deps/documents-6f724004fec8b24b)
+
+running 4 tests
+test document_matrix_covers_all_types_and_both_modal_presentations_and_source ... ok
+test native_document_layout_consumes_public_records_not_css_or_child_geometry ... ok
+test document_mermaid_uses_the_real_engine_and_only_source_scroll_state_from_old_records ... ok
+test every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overflow ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.29s
+
+     Running tests/fixtures.rs (target/e2e-dev/debug/deps/fixtures-37db9162e721b905)
+
+running 1 test
+test sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/graphs.rs (target/e2e-dev/debug/deps/graphs-a1368f07e05c6240)
+
+running 5 tests
+test former_graph_and_provenance_hand_painters_are_removed ... ok
+test graph_matrix_covers_each_live_card_and_the_empty_swarm ... ok
+test channel_layout_never_consumes_browser_svg_diagnostics ... ok
+test graph_layout_is_driven_by_records_not_browser_child_positions ... ok
+test checklist_layout_uses_public_promises_and_records_without_child_diagnostics ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/icon_filter.rs (target/e2e-dev/debug/deps/icon_filter-57e88441813dc7b8)
+
+running 1 test
+test icon_filter_interpolates_coverage_without_hidden_colour_or_atlas_neighbour_bleed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/launchers.rs (target/e2e-dev/debug/deps/launchers-da2d0c82c74450b1)
+
+running 3 tests
+test matrix_has_every_current_lab_state_and_separate_historical_keys ... ok
+test a_machine_subtitle_with_room_stays_on_one_line ... ok
+test geometry_uses_constructor_values_instead_of_child_dom_diagnostics ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/marks.rs (target/e2e-dev/debug/deps/marks-621e009fb55bf32a)
+
+running 2 tests
+test vector_shadow_reuses_tint_translation_and_bounds_alpha_before_blur ... ok
+test seat_and_task_marks_are_pixel_centred_at_96px_in_both_painters ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests/materials.rs (target/e2e-dev/debug/deps/materials-c804decd8f9f0046)
+
+running 3 tests
+test backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed ... ok
+test source_over_glow_keeps_destination_alpha ... ok
+test material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests/metrics.rs (target/e2e-dev/debug/deps/metrics-824d21517ea8ae83)
+
+running 3 tests
+test cache_hits_preserve_native_float_bits_and_instance_lifetime ... ok
+test every_app_font_key_field_including_float_bits_is_distinct ... ok
+test cached_coretext_values_match_the_raw_host_bit_for_bit ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/overlays.rs (target/e2e-dev/debug/deps/overlays-7cc82041737a8357)
+
+running 2 tests
+test layer_matrix_distinguishes_full_primitives_from_module_surfaces ... ok
+test overlay_blurs_only_the_backdrop_and_preserves_foreground_and_outside_pixels ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/panes.rs (target/e2e-dev/debug/deps/panes-e4c023785c9f0d93)
+
+running 4 tests
+test legacy_pane_calls_the_retained_composition_and_the_old_strip_painter_is_deleted ... ok
+test pane_registry_pairs_every_current_and_historical_case_without_collisions ... ok
+test legacy_pane_accepts_a_valid_hex_colour_after_its_hsl_round_trip ... ok
+test native_panes_ignore_child_web_bounds_and_font_diagnostics ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/parity_gate.rs (target/e2e-dev/debug/deps/parity_gate-84253b86a9768234)
+
+running 6 tests
+test missing_reference_does_not_hide_missing_geometry ... ok
+test strict_geometry_review_exits_one_after_writing_the_report ... ok
+test historical_geometry_review_exits_zero ... ok
+test pixel_only_review_exits_zero_and_is_counted_as_advisory ... ok
+test geometry_review_without_strict_flag_remains_advisory ... ok
+test missing_or_incomplete_geometry_exits_one ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s
+
+     Running tests/perf.rs (target/e2e-dev/debug/deps/perf-84506102df3f4951)
+
+running 2 tests
+test perf_cases_cover_six_states_with_ascii_slugs ... ok
+test hud_width_is_the_spark_and_every_part_is_named ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/render.rs (target/e2e-dev/debug/deps/render-5aa6f0228170d739)
+
+running 1 test
+test every_registered_component_renders_on_metal ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.83s
+
+     Running tests/seat_rows.rs (target/e2e-dev/debug/deps/seat_rows-464fc3bc3f043562)
+
+running 2 tests
+test seat_row_matrix_covers_lab_states_and_explicit_nested_row_fixtures ... ok
+test child_dom_rectangles_and_css_metrics_are_diagnostics_only ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/settings.rs (target/e2e-dev/debug/deps/settings-6e589bf4763ace51)
+
+running 3 tests
+test placeholder_settings_hand_painter_is_removed ... ok
+test settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme ... ok
+test settings_uses_public_records_and_viewport_not_diagnostic_geometry_or_css ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/shadow.rs (target/e2e-dev/debug/deps/shadow-a310307a8e58c79a)
+
+running 2 tests
+test css_shadow_uses_gaussian_mask_sigma_half_blur_and_knocks_out_the_box ... ok
+test positioned_style_moves_only_its_shadow_in_the_existing_chrome_pass ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/streams.rs (target/e2e-dev/debug/deps/streams-ff23ca449fb91d75)
+
+running 3 tests
+test old_stream_painter_is_deleted_in_favor_of_the_retained_composition ... ok
+test stream_matrix_covers_every_current_state_and_labels_legacy_cases ... ok
+test stream_layout_consumes_public_entries_but_never_browser_child_diagnostics ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/styles.rs (target/e2e-dev/debug/deps/styles-4ba7b00943df5b7b)
+
+running 2 tests
+test per_node_glow_drives_state_grade_and_seed_without_changing_the_box ... ok
+test style_matrix_is_canonical_and_every_preset_renders_on_the_native_device ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running tests/swarms.rs (target/e2e-dev/debug/deps/swarms-e5eba15fabe9d58c)
+
+running 3 tests
+test old_swarm_card_and_sidebar_hand_painters_are_gone ... ok
+test swarm_matrix_covers_every_current_and_legacy_state_with_distinct_keys ... ok
+test captured_child_geometry_and_fonts_do_not_enter_card_or_sidebar_layout ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/tabs.rs (target/e2e-dev/debug/deps/tabs-a38a3884cbcc3ceb)
+
+running 3 tests
+test old_module_and_json_painters_delegate_to_the_retained_compositions ... ok
+test all_current_and_legacy_tab_grid_cases_are_paired_without_key_collisions ... ok
+test tab_grid_layout_does_not_consume_child_dom_rectangles_fonts_or_backdrop_height ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/title_bars.rs (target/e2e-dev/debug/deps/title_bars-27b8ed6b64310df6)
+
+running 2 tests
+test titlebar_matrix_covers_current_states_and_keeps_legacy_diagnostic_only ... ok
+test native_titlebar_reads_public_strings_and_parent_width_not_child_diagnostics ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/widgets.rs (target/e2e-dev/debug/deps/widgets-468fc08b504b76fa)
+
+running 3 tests
+test control_matrix_has_canonical_keys_and_all_constructor_families ... ok
+test transparent_layout_border_does_not_cut_the_background_fill ... ok
+test thousand_row_views_clip_output_and_the_table_header_stays_fixed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s
+
+     Running unittests src/lib.rs (target/e2e-dev/debug/deps/bbt_ui-dc986785eb65f2e1)
+
+running 7 tests
+test marks::tests::glyphs_encode_grade_and_wait_kind_and_clips_balance ... ok
+test modules::pane::tests::constant_pane_border_keeps_activity_from_changing_height ... ok
+test modules::perf_hud::tests::lab_records_round_trip_and_idle_frames_stay_stubs ... ok
+test modules::pane::tests::gap_marker_fits_one_row_and_centers_its_hairlines_without_a_spacer ... ok
+test glow_never_moves_layout ... ok
+test rim_size_moves_only_gutter_and_inset ... ok
+test rim_never_covers_text ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/atoms.rs (target/e2e-dev/debug/deps/atoms-eb6434e1d8387781)
+
+running 7 tests
+test icons_keep_the_requested_logical_name_bounds_and_tint ... ok
+test a_waiting_kind_background_and_text_receive_dimming_once ... ok
+test hairline_is_one_physical_pixel_and_spinner_phase_is_explicit ... ok
+test kind_colours_do_not_recolour_state_or_apply_grade_and_dim_twice ... ok
+test text_shadow_color_is_independent_of_foreground_alpha_and_flow ... ok
+test glyph_shadow_inherits_kind_grade_and_ancestor_opacity_once ... ok
+test glyph_state_grade_and_wait_kind_are_independent_and_identity_is_not_recoloured ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/components.rs (target/e2e-dev/debug/deps/components-5a83fe7a52e344cf)
+
+running 23 tests
+test inline_middle_uses_the_parent_x_height_without_moving_the_content_box ... ok
+test a_retained_box_keeps_its_own_glow_state_until_after_its_content ... ok
+test image_has_square_intrinsics_a_baseline_and_validated_asset_geometry ... ok
+test floating_shadow_paints_over_outside_hair_without_a_foreground_duplicate ... ok
+test box_opacity_dim_and_forced_isolation_preserve_unfiltered_children_and_layout ... ok
+test field_marks_use_utf16_boundaries_and_keep_preedit_out_of_intrinsic_size ... ok
+test a_shrunk_row_remeasures_wrapped_text_before_choosing_its_height ... ok
+test column_snapshot_and_flex_spacer_are_solved_by_the_shared_engine ... ok
+test aligned_scaled_and_editing_text_paint_at_their_layout_baselines ... ok
+test intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero ... ok
+test max_content_text_basis_keeps_left_aligned_glyphs_and_short_inline_width ... ok
+test mixed_text_runs_align_baselines_and_keep_selection_metadata ... ok
+test mixed_type_rows_share_a_baseline ... ok
+test modal_highlight_stays_on_the_fill_inside_its_outside_border ... ok
+test natural_text_width_survives_float_subtraction_but_a_css_unit_still_wraps ... ok
+test painted_text_and_shadow_keep_the_resolved_baseline_for_every_line ... ok
+test nested_filters_retain_boundaries_and_ancestor_clips_without_recoloring_the_atoms ... ok
+test path_uses_declared_viewport_and_keeps_its_retained_stroke ... ok
+test path_fill_survives_retained_layout_and_theme_resolution ... ok
+test rect_tiles_repeat_in_the_assigned_slot_and_clip_the_partial_last_dash ... ok
+test rects_lay_out_as_one_slot_and_paint_box_rects_at_the_node_origin ... ok
+test wrapping_and_ellipsis_use_the_allocated_width ... ok
+test scroll_offset_clamps_and_every_child_draw_is_clipped ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/composer.rs (target/e2e-dev/debug/deps/composer-bde48a7241e305e4)
+
+running 8 tests
+test accepting_a_report_requires_reported_status_and_zero_exit ... ok
+test kind_chooser_is_local_and_offers_only_the_three_sendable_kinds ... ok
+test unresolved_labels_and_invalid_priority_are_named_refusals ... ok
+test preedit_does_not_send_or_filter_and_escape_restores_the_selection ... ok
+test reject_reason_requires_committed_nonempty_text_and_survives_refusal ... ok
+test submission_is_a_snapshot_and_a_stored_reply_does_not_erase_new_typing ... ok
+test task_status_is_canonical_in_graph_records_without_renaming_seat_activity ... ok
+test attachment_query_is_uncommitted_until_pick_and_preedit_never_filters_or_submits ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/documents.rs (target/e2e-dev/debug/deps/documents-3292c0ce300a25fa)
+
+running 6 tests
+test unsupported_diagram_preserves_source_instead_of_a_partial_drawing ... ok
+test short_code_cells_center_within_the_keys_padded_grid_row ... ok
+test diagram_state_is_serializable_and_drawing_never_scales_to_the_document ... ok
+test record_number_shares_the_type_chip_and_absent_numbers_keep_the_old_label ... ok
+test modal_retains_explicit_scroll_and_leaves_actions_as_visual_data ... ok
+test document_metadata_and_unsigned_or_broken_evidence_remain_visible ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/e2e_checklist.rs (target/e2e-dev/debug/deps/e2e_checklist-33e5959816ad6cf4)
+
+running 11 tests
+test blocked_is_a_failure_and_preserves_its_reason ... ok
+test missing_and_duplicate_records_name_the_gap_without_picking_metadata ... ok
+test canonical_order_is_preserved_and_duplicate_promises_are_visible ... ok
+test only_a_resolved_tracked_by_task_counts_as_tracking ... ok
+test tracked_by_wikilink_aliases_preserve_task_identity ... ok
+test green_keeps_manual_rows_and_run_metadata_visible ... ok
+test tracked_failures_are_amber_only_for_the_specified_open_task_states ... ok
+test tracking_lists_each_resolved_open_task_once ... ok
+test untested_invalid_or_unknown_input_never_makes_a_green_summary ... ok
+test missing_malformed_or_inconsistent_specs_fail_instead_of_empty_success ... ok
+test the_real_spec_is_the_only_canonical_promise_list ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/flow.rs (target/e2e-dev/debug/deps/flow-096bc0d0ead617de)
+
+running 4 tests
+test text_centers_or_ends_each_wrapped_line_and_ignores_collapsible_trailing_spaces ... ok
+test default_text_and_fitting_flow_keep_the_stack_geometry ... ok
+test nowrap_space_between_and_exact_fit_do_not_create_extra_rows ... ok
+test flow_wraps_in_source_order_with_independent_gaps_and_shared_row_baselines ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/graphs.rs (target/e2e-dev/debug/deps/graphs-4ba92751651b01d8)
+
+running 6 tests
+test annotated_links_preserve_source_identity_display_and_weight ... ok
+test work_tree_counts_terminal_items_and_keeps_artifacts_and_invariants_as_leaves ... ok
+test channels_compose_published_edges_at_true_size_and_scroll_in_the_viewport ... ok
+test graph_projects_live_and_blocked_tasks_without_inferring_authority ... ok
+test provenance_and_history_respect_signed_flags_and_bounded_reverse_order ... ok
+test subscriptions_wrap_at_available_width_without_changing_patterns ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/italic.rs (target/e2e-dev/debug/deps/italic-8b7f8390d6100d01)
+
+running 1 test
+test italic_is_backward_compatible_and_reaches_measurement_and_draw_records ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/launchers.rs (target/e2e-dev/debug/deps/launchers-262b08a9613a6d9f)
+
+running 6 tests
+test enter_picks_is_a_defaulted_public_constructor_input ... ok
+test legacy_launcher_delegates_without_hand_painting ... ok
+test typed_virtual_descent_and_explicit_paths_select_the_same_placement_level ... ok
+test lexical_tiers_are_stable_and_every_word_must_match ... ok
+test compact_selection_is_twenty_eight_percent_accent_over_surface ... ok
+test cap_keeps_navigation_available_and_dims_completed_launch_row_groups ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/links.rs (target/e2e-dev/debug/deps/links-e1ee5e8164cf16e5)
+
+running 1 test
+test all_link_states_render_and_unavailable_launcher_rows_cannot_activate ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/masks.rs (target/e2e-dev/debug/deps/masks-d9ba49b140e5b8ac)
+
+running 1 test
+test mask_keeps_layout_and_translates_local_coordinates_only_when_painted ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/measurement_cache.rs (target/e2e-dev/debug/deps/measurement_cache-53e542e241c2dfed)
+
+running 3 tests
+test independent_passes_observe_changed_measurements_and_nodes ... ok
+test flow_keeps_distinct_node_sizes_while_reusing_min_content_queries ... ok
+test nesting_does_not_repeat_leaf_measurement_at_the_same_constraint ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/overlays.rs (target/e2e-dev/debug/deps/overlays-565e115063fed4ea)
+
+running 2 tests
+test blur_parameters_round_trip_and_keep_the_backdrop_separate_from_foreground_fill ... ok
+test overlay_centres_the_panel_and_narrow_bounds_reflow_its_content ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/panes.rs (target/e2e-dev/debug/deps/panes-349c15288d3e2960)
+
+running 2 tests
+test pane_height_is_content_or_minimum_and_an_unavailable_gap_never_invents_a_range ... ok
+test pane_preserves_history_content_and_capability_actions_while_disconnected ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/provider_settings.rs (target/e2e-dev/debug/deps/provider_settings-45c612929b6bb91c)
+
+running 2 tests
+test settings_accepts_live_link_records_and_legacy_four_field_cloud_records ... ok
+test every_link_state_roundtrips_and_renders_in_both_settings_records ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/rim.rs (target/e2e-dev/debug/deps/rim-5386ce12b4cb10d8)
+
+running 3 tests
+test the_phase_is_the_labs_hash32_of_the_key ... ok
+test a_tab_reads_its_worst_seat_and_swells_with_its_seats ... ok
+test seat_rows_carry_the_rim_edge_to_edge_and_idle_rows_are_bare_at_rest ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/scroll_windowing.rs (target/e2e-dev/debug/deps/scroll_windowing-9c3de7d31e2a15ed)
+
+running 8 tests
+test anchor_survives_insert_remove_and_width_density_changes_by_stable_identity ... ok
+test invalid_style_or_gap_keeps_the_fallback_layout_error_instead_of_panicking ... ok
+test undeclared_content_uses_the_original_full_layout_without_measurement_shortcuts ... ok
+test nested_ancestors_keep_full_material_group_and_clip_rectangles ... ok
+test fractional_prefix_keeps_solver_addition_order_even_when_extent_sum_rounds_differently ... ok
+test real_sidebar_falls_back_for_a_variable_extra_and_anchors_survive_rebuilds ... ok
+test measurement_is_bounded_by_the_window_with_exact_extent_and_geometry ... ok
+test real_thousand_open_sidebar_matches_full_visible_geometry_and_extent_to_the_bit ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
+
+     Running tests/seat_rows.rs (target/e2e-dev/debug/deps/seat_rows-dd8f90e6a6f72685)
+
+running 7 tests
+test naturally_sized_text_is_not_truncated_by_float_subtraction ... ok
+test flex_max_violation_freezes_before_redistributing_remaining_space ... ok
+test compact_artifact_row_preserves_natural_chip_height_outside_its_flow_slot ... ok
+test subagents_filter_finished_work_and_overflow_after_seven ... ok
+test seat_identity_authority_and_activity_stay_independent_when_name_shrinks ... ok
+test waiting_halo_does_not_move_the_row_or_its_glyph_at_any_density ... ok
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/settings.rs (target/e2e-dev/debug/deps/settings-3584d94031b11583)
+
+running 5 tests
+test records_roundtrip_with_ordered_custom_harnesses_and_roles ... ok
+test account_projects_the_pinned_identity_and_recovery_limits_without_actions ... ok
+test draft_harness_never_claims_an_inferred_ready_state_can_submit ... ok
+test role_prompt_grows_to_its_content_then_retains_a_bounded_scroll_view ... ok
+test custom_role_order_and_defaults_drive_the_changed_marker ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/streams.rs (target/e2e-dev/debug/deps/streams-d9b69cacb311e6cd)
+
+running 10 tests
+test incomplete_channel_counts_keep_more_and_explicit_swarm_total ... ok
+test a_changed_task_keeps_its_reject_draft_visible_without_an_enabled_mutation ... ok
+test collapsed_epics_and_bounded_newest_first_external_lane_use_model_state ... ok
+test ended_subagent_holds_the_target_and_hides_the_delivery_ladder ... ok
+test routed_chips_keep_the_oracle_tint_visible_and_unknown_is_a_dashed_hollow_mark ... ok
+test chronology_foreign_authority_and_unknown_delivery_remain_independent ... ok
+test message_body_reflows_with_width_without_changing_the_model ... ok
+test report_rim_surrounds_the_clipped_card_without_changing_its_geometry ... ok
+test unread_marks_stay_round_and_compressed_chips_clip_their_text ... ok
+test task_review_hits_follow_the_painted_clip_and_zero_exit_gate ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/style.rs (target/e2e-dev/debug/deps/style-a84e9f25de00be00)
+
+running 5 tests
+test malformed_override_data_fails_instead_of_silently_changing_the_style ... ok
+test positioned_shadow_round_trips_validates_and_preserves_custom_defaults ... ok
+test token_references_and_nontrivial_overrides_round_trip_and_resolve_late ... ok
+test glow_state_round_trips_and_rejects_invalid_shader_inputs ... ok
+test presets_resolve_across_the_matrix_and_keep_effect_separate_from_fill_border ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/swarms.rs (target/e2e-dev/debug/deps/swarms-138017e39027e06e)
+
+running 6 tests
+test css_filter_uses_luminance_saturation_and_preserves_layout ... ok
+test caption_line_limit_preserves_two_lines_and_marks_truncated_content ... ok
+test a_literal_hyphen_is_a_wrap_opportunity_and_min_content_survives_flex_shrink ... ok
+test unfocused_card_dims_only_its_contents_and_keeps_the_identity_bumper ... ok
+test collapsed_thousand_seat_card_keeps_a_bounded_composition_and_clips_its_material ... ok
+test sidebar_scroll_and_phone_handle_use_the_supplied_viewport_without_reordering_cards ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/tabs.rs (target/e2e-dev/debug/deps/tabs-05cdf21b799e732b)
+
+running 6 tests
+test state_color_wins_over_focus_and_a_single_cell_keeps_the_grid_wrapper ... ok
+test grid_preserves_ratio_nested_axis_and_big_root_gap ... ok
+test single_seat_reduces_to_the_accepted_row_and_keeps_its_children ... ok
+test deeply_nested_grids_shrink_to_zero_but_their_cells_keep_the_two_pixel_minimum ... ok
+test collapsed_rollup_is_stable_worst_first_and_capped ... ok
+test expanded_tab_has_indented_seats_and_only_a_parent_shortcut ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/text_area.rs (target/e2e-dev/debug/deps/text_area-78bad35f94a5af13)
+
+running 2 tests
+test invalid_surrogate_boundaries_are_rejected_before_layout ... ok
+test editing_never_reflows_the_committed_paragraph_and_uses_shaped_positions ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/text_edit.rs (target/e2e-dev/debug/deps/text_edit-58e21855c6ce2b26)
+
+running 2 tests
+test ime_replaces_the_original_selection_only_on_commit ... ok
+test unicode_boundaries_cancellation_and_directional_selection_survive ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/title_bars.rs (target/e2e-dev/debug/deps/title_bars-a121a7db6a9b0edb)
+
+running 3 tests
+test old_titlebar_is_a_component_delegate ... ok
+test narrow_bar_wraps_title_and_ellipsizes_crumb_without_shrinking_controls ... ok
+test blur_filters_only_identity_and_dots_while_sidebar_state_changes_its_toggle ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/widgets.rs (target/e2e-dev/debug/deps/widgets-375b7ffcbe03fa78)
+
+running 4 tests
+test pressed_button_scales_visually_without_changing_its_flow_slot ... ok
+test empty_input_keeps_its_control_height_and_invalid_input_keeps_its_error_caption ... ok
+test side_border_consumes_only_its_edge_and_outline_rings_do_not_consume_layout ... ok
+test list_and_table_allocate_only_visible_rows_and_keep_full_scroll_extent ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxybook
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_ui
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+ACTUAL EXIT 0
+
+
+VERIFICATION clippy-pre-rebase
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:46:44.003807+00:00", "wrapper_pid": 33325, "command": ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "919d5c09e00a7980442ec0bde20a839d7e87ec335a1481972cac9750afa1ce29", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "79ecb7d648000f1ac67448013bff3bf7cb8eedcd36ba505d195c5a19c65b7551", "crates/bboxy450-term/src/scene.rs": "6e19ecda8db52b8d2f8d6ddfbd6559b3d56889975870005ba5d277a6c420520c", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "f9b9d0f196934eb3137997937d3554c59a61339345999e382998a7de6b6f6abb", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+   Compiling winnow v1.0.4
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-core)
+   Compiling toml_parser v1.1.5+spec-1.1.0
+    Checking futures-core v0.3.34
+   Compiling toml v0.9.12+spec-1.1.0
+    Checking futures-sink v0.3.34
+    Checking futures-util v0.3.34
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui-model)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-rt)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-supervisor)
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mermaid)
+    Checking unicase v2.10.0
+    Checking pulldown-cmark v0.13.4
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-proto)
+    Checking unicode-segmentation v1.13.3
+    Checking tokio-tungstenite v0.30.0
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-doc)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+   Compiling hashbrown v0.17.1
+   Compiling equivalent v1.0.3
+   Compiling indexmap v2.14.2
+    Checking toml_datetime v1.1.2+spec-1.1.0
+   Compiling toml_edit v0.25.17+spec-1.1.0
+   Compiling proc-macro-crate v3.5.0
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy-firehose)
+   Compiling target-triple v1.0.1
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-yarn-macros)
+    Checking serde_spanned v1.1.2
+    Checking toml_writer v1.1.3+spec-1.1.0
+    Checking toml v1.1.8+spec-1.1.0
+    Checking tokio-util v0.7.19
+    Checking termcolor v1.4.1
+    Checking glob v0.3.4
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-yarn)
+    Checking trybuild v1.0.120
+    Checking aho-corasick v1.1.5
+    Checking regex-syntax v0.8.11
+    Checking unicode-ident v1.0.27
+    Checking regex-automata v0.4.18
+    Checking proc-macro2 v1.0.107
+    Checking regex v1.13.1
+    Checking quote v1.0.47
+    Checking syn v2.0.119
+    Finished `dev` profile [optimized] target(s) in 1m 07s
+
+ACTUAL EXIT 0
+
+
+VERIFICATION compare40
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:47:46.599692+00:00", "wrapper_pid": 35583, "command": ["target/e2e-dev/debug/bboxybook", "compare", "--strict-geometry", "--out", "target/e2e-checklist/scope40", "--manifest", "target/e2e-checklist/scope40/cases.json"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "919d5c09e00a7980442ec0bde20a839d7e87ec335a1481972cac9750afa1ce29", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "79ecb7d648000f1ac67448013bff3bf7cb8eedcd36ba505d195c5a19c65b7551", "crates/bboxy450-term/src/scene.rs": "6e19ecda8db52b8d2f8d6ddfbd6559b3d56889975870005ba5d277a6c420520c", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "f9b9d0f196934eb3137997937d3554c59a61339345999e382998a7de6b6f6abb", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+parity: 40 cases, 0 review; target/e2e-checklist/scope40/index.html
+geometry: 40 required; 40 measured; 0 unproven; 0 mismatches
+parity gate: pass (0 pixel reviews advisory)
+
+ACTUAL EXIT 0
+
+
+VERIFICATION app-graph-docked
+{"base": "3084f78a68690202fbc23ff7668082dcf3676367", "started_utc": "2026-10-24T06:48:18.794075+00:00", "wrapper_pid": 36251, "command": ["cargo", "test", "-p", "bboxy450-term", "--bin", "bboxy450-term", "--locked", "graph"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {"crates/bboxy450-term/src/e2e_checklist.rs": "33f1ff37a7dd945c580866148d92e91740b3ba7937f1c941d45bd8e5fc4a6018", "crates/bbt-ui/src/modules/e2e_checklist.rs": "919d5c09e00a7980442ec0bde20a839d7e87ec335a1481972cac9750afa1ce29", "crates/bbt-ui/tests/e2e_checklist.rs": "e0db0aeeeba1c2ceffc06a3ded19a3fbcecb1ee73df2d27da5d2b4c5eda754a3", "crates/bboxy450-term/src/main.rs": "79ecb7d648000f1ac67448013bff3bf7cb8eedcd36ba505d195c5a19c65b7551", "crates/bboxy450-term/src/scene.rs": "6e19ecda8db52b8d2f8d6ddfbd6559b3d56889975870005ba5d277a6c420520c", "crates/bboxybook/capture-inputs.js": "56e55f77e912d67d895e6ed8eb689fa7b5e25df13f2e6055523960fc50520a65", "crates/bboxybook/src/graphs.rs": "bf58070be162cf6d204e81584047022bec51bb31dc1595868e35478949a86ec3", "crates/bboxybook/tests/graphs.rs": "f9b9d0f196934eb3137997937d3554c59a61339345999e382998a7de6b6f6abb", "crates/bbt-ui/src/modules/graph_tab.rs": "c703874b8202745d66f84cab67e4d51eee220b07172ee3adca497b5d1227d1ca", "crates/bbt-ui/src/modules/mod.rs": "ce256e47ecb6eb975700ceb79c48c35f49b334113b723d3434ae5c856c67121b"}}
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 12.45s
+     Running unittests src/main.rs (target/e2e-dev/debug/deps/bboxy450_term-c428fec1b589e6c0)
+
+running 4 tests
+test launcher_host_tests::graph_navigation_is_local_and_global_shortcuts_still_reach_the_app ... ok
+test e2e_checklist::tests::a_new_local_graph_has_no_invented_results_or_run_metadata ... ok
+test launcher_host_tests::a_graph_press_never_reaches_the_pty_but_an_earlier_pty_press_gets_its_release ... ok
+test scene::depth_tests::local_graph_uses_a_clipped_retained_viewport_and_keeps_the_terminal_stage ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 74 filtered out; finished in 0.02s
+
+
+ACTUAL EXIT 0
+
+
+VERIFICATION clippy-rebased
+{"base": "15755436a3d5a9f38fa2fdcbb8e432c2fd292bcf", "started_utc": "2026-10-24T06:49:39.699034+00:00", "wrapper_pid": 43284, "command": ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "target": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev", "phase": "running", "source_files": {}}
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mux)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-doc)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-core)
+    Finished `dev` profile [optimized] target(s) in 42.12s
+
+ACTUAL EXIT 0
+
+
+DECODED EXISTING NATIVE DELTAS (exit 0)
+[
+  {
+    "key": "graph/full-compact-light.png",
+    "changed_pixels": 51,
+    "over8_pixels": 0,
+    "max_channels": [
+      0,
+      0,
+      1,
+      0
+    ],
+    "bbox": [
+      1231,
+      26,
+      1232,
+      902
+    ]
+  },
+  {
+    "key": "graph/full-touch-light.png",
+    "changed_pixels": 51,
+    "over8_pixels": 0,
+    "max_channels": [
+      0,
+      0,
+      1,
+      0
+    ],
+    "bbox": [
+      1231,
+      26,
+      1232,
+      902
+    ]
+  },
+  {
+    "key": "settings/in-a-tab-comfortable-dark.png",
+    "changed_pixels": 1472,
+    "over8_pixels": 0,
+    "max_channels": [
+      2,
+      2,
+      2,
+      0
+    ],
+    "bbox": [
+      29,
+      78,
+      262,
+      132
+    ]
+  },
+  {
+    "key": "settings/in-a-tab-comfortable-light.png",
+    "changed_pixels": 1320,
+    "over8_pixels": 0,
+    "max_channels": [
+      2,
+      2,
+      1,
+      0
+    ],
+    "bbox": [
+      29,
+      78,
+      262,
+      132
+    ]
+  },
+  {
+    "key": "settings/in-a-tab-compact-dark.png",
+    "changed_pixels": 1028,
+    "over8_pixels": 0,
+    "max_channels": [
+      2,
+      1,
+      2,
+      0
+    ],
+    "bbox": [
+      29,
+      78,
+      222,
+      116
+    ]
+  },
+  {
+    "key": "settings/in-a-tab-compact-light.png",
+    "changed_pixels": 213,
+    "over8_pixels": 0,
+    "max_channels": [
+      1,
+      1,
+      1,
+      0
+    ],
+    "bbox": [
+      29,
+      78,
+      222,
+      116
+    ]
+  },
+  {
+    "key": "settings/in-a-tab-cozy-dark.png",
+    "changed_pixels": 1353,
+    "over8_pixels": 0,
+    "max_channels": [
+      1,
+      1,
+      2,
+      0
+    ],
+    "bbox": [
+      29,
+      78,
+      262,
+      124
+    ]
+  },
+  {
+    "key": "settings/in-a-tab-cozy-light.png",
+    "changed_pixels": 167,
+    "over8_pixels": 0,
+    "max_channels": [
+      1,
+      1,
+      1,
+      0
+    ],
+    "bbox": [
+      29,
+      78,
+      262,
+      124
+    ]
+  },
+  {
+    "key": "settings/in-a-tab-touch-dark.png",
+    "changed_pixels": 1972,
+    "over8_pixels": 0,
+    "max_channels": [
+      2,
+      3,
+      4,
+      0
+    ],
+    "bbox": [
+      29,
+      78,
+      262,
+      162
+    ]
+  },
+  {
+    "key": "settings/in-a-tab-touch-light.png",
+    "changed_pixels": 1807,
+    "over8_pixels": 0,
+    "max_channels": [
+      3,
+      3,
+      2,
+      0
+    ],
+    "bbox": [
+      29,
+      78,
+      262,
+      162
+    ]
+  }
+]
+
+CLEANUP
+{
+  "private_ci": 3544203264,
+  "dev": {
+    "utc": "2026-10-24T07:34:27.791802+00:00",
+    "path": "/Users/feral/mydev/bboxy450-term-exec6/target/e2e-dev",
+    "allocated_bytes_before": 2233962496,
+    "deleted": true,
+    "all_recorded_dev_commands_finished": true
+  },
+  "allocated_bytes_total": 5778165760
+}
+
+LIMITATIONS
+App starts with canonical54 missing/untested rows; no live record IO (A-0) or actual54-promise test results claimed.
+Graph host uses the app Scene dark/cozy context; pure checklist matrix covers4densities x2themes.
+last_run formatting expects UTC Z/+00:00; no non-UTC fixture.
+No manual desktop/keyboard injection; shared key-routing tests and native retained layout are the app-host evidence.
+Six slow invariants skipped by normal --parity selection; ignored real-keychain tests not run.
+10existing native PNGs differ only below tolerance (maximum4channel steps, zero pixels above8); no causal attribution claimed.
+Frozen15755436 not rebased after main advanced; Oracle verifies the merged tree.

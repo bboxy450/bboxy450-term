@@ -1611,3 +1611,44 @@ details[open] > summary::before { transform: rotate(90deg); }
 .composer .apempty { padding: var(--s4) var(--s5); color: var(--fg-dim); font-size: var(--t-small); }
 .composer .apfoot { padding: var(--s2) var(--s5); border-top: var(--hair-w) solid var(--hair); font-size: var(--t-small); color: var(--fg-dim); }
 .seat-row .badge.more, .ch-tab b.more { font-style: italic; letter-spacing: .02em; }
+
+/* E2E checklist (components.js e2eChecklist, spec #258 A-3): the summary band reads from across the room: the state word and what is
+   owed at the display size, one cell per promise in group order; groups below, one row per promise */
+.e2e { display: flex; flex-direction: column; gap: var(--s8); --e2-pass: var(--c-ok); --e2-fail: var(--c-errored); --e2-manual: var(--accent); }
+.e2e-head { --e2: var(--c-errored); border-radius: var(--r-card); padding: var(--s8) var(--s10); background: color-mix(in srgb, var(--e2) 13%, var(--surface)); box-shadow: inset 5px 0 0 var(--e2), 0 0 0 var(--hair-w) var(--hair); }
+.e2e-head.amber { --e2: var(--c-waiting); } .e2e-head.green { --e2: var(--c-ok); }
+.e2e-top { display: flex; align-items: baseline; gap: var(--s8); flex-wrap: wrap; }
+.e2e-word { font-size: var(--t-display); font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--e2); }
+.e2e-say { font-size: var(--t-display); font-weight: 600; color: var(--fg); }
+.e2e-say span { font-size: var(--t-heading); font-weight: 500; color: var(--fg-dim); }
+.e2e-meta { margin-left: auto; font-size: var(--t-label); color: var(--fg-dim); }
+.e2e-strip { display: flex; flex-wrap: wrap; gap: var(--s6); margin-top: var(--s8); }
+.e2s { display: inline-flex; gap: var(--s1); }
+.e2c { display: block; width: 14px; height: 22px; border-radius: 3px; background: var(--fg-dim); opacity: .28; }
+.e2c.pass { background: var(--e2-pass); opacity: 1; } .e2c.fail, .e2c.blocked { background: var(--e2-fail); opacity: 1; } .e2c.manual { background: var(--e2-manual); opacity: .85; }
+.e2c.untracked, .e2c.fault { box-shadow: inset 0 0 0 2px var(--fg); opacity: 1; }   /* what turns the night red: outlined */
+.e2e-counts { display: flex; flex-wrap: wrap; gap: var(--s9); margin-top: var(--s6); font-size: var(--t-row); color: var(--fg); }
+.e2k .e2c { display: inline-block; width: 8px; height: 12px; margin-right: var(--s3); vertical-align: -1px; box-shadow: none; }
+.e2k.zero { color: var(--fg-dim); opacity: .6; }
+.e2e-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: var(--s8); align-items: start; }
+.e2g { border-radius: var(--r-card); background: var(--surface); box-shadow: 0 0 0 var(--hair-w) var(--hair); padding: var(--s4) 0 var(--s3); }
+.e2g-h { display: flex; align-items: center; gap: var(--s5); padding: var(--s2) var(--s7) var(--s4); font-size: var(--t-row); }
+.e2g-h .e2c { width: 6px; height: 10px; border-radius: 1.5px; }
+.e2g-n { margin-left: auto; font-size: var(--t-small); color: var(--fg-dim); }
+.e2r { display: grid; grid-template-columns: 26px 12px minmax(0, 1fr) auto 34px 104px; align-items: center; column-gap: var(--s4); padding: 3px var(--s7); font-size: var(--t-small); color: var(--fg); }
+.e2r .e2id { font-family: var(--font-mono); color: var(--fg-dim); }
+.e2r .e2m { display: inline-flex; width: 11px; height: 11px; color: var(--fg-dim); }
+.e2r .e2t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e2r .e2s-word { font-family: var(--font-mono); font-size: var(--t-micro); text-transform: uppercase; letter-spacing: .06em; color: var(--fg-dim); }
+.e2r .e2when { font-family: var(--font-mono); color: var(--fg-dim); text-align: right; }
+.e2r .e2by { color: var(--fg-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e2r.pass .e2m, .e2r.pass .e2s-word { color: var(--e2-pass); }
+.e2r.fail .e2m, .e2r.fail .e2s-word, .e2r.blocked .e2m, .e2r.blocked .e2s-word { color: var(--e2-fail); }
+.e2r.manual .e2m, .e2r.manual .e2s-word { color: var(--e2-manual); }
+.e2r.untracked, .e2r.fault { background: color-mix(in srgb, var(--c-errored) 12%, transparent); }
+.e2r .e2note { grid-column: 3 / -1; display: flex; flex-wrap: wrap; gap: var(--s4); align-items: center; padding-top: 1px; }
+.e2r .e2task { font-family: var(--font-mono); font-size: var(--t-tiny); padding: 0 5px 0 7px; border-radius: var(--r-tag); background: var(--badge); color: var(--fg); box-shadow: inset 2px 0 0 var(--c-waiting); }   /* the open task that owes the fix */
+.e2r .e2task.closed { color: var(--fg-dim); text-decoration: line-through; box-shadow: none; }
+.e2r .e2untr { color: var(--c-errored); font-size: var(--t-small); }
+.e2r .e2why { color: var(--fg-dim); }
+.e2e-err { padding: var(--s8) var(--s10); border-radius: var(--r-card); background: color-mix(in srgb, var(--c-errored) 13%, var(--surface)); box-shadow: inset 5px 0 0 var(--c-errored); font-size: var(--t-row); color: var(--fg); }   /* a refused catalogue, never an empty green */

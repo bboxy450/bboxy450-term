@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>e2e checklist · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="e2e.js"></script>
+</head><body><script>
+// the Graph tab's e2e checklist (spec #258 §1, §4, A-3). The promises are §1 parsed (gen-e2e.py -> e2e.js); the records are fixtures in
+// the e2e record's public fields: function, number, status, last_run, run_by, result, reason, links [{ to, rel }]; tasks [{ ref, status }]
+const el = Lab.el, P = window.E2E_PROMISES, SEATS = ['seat:kestrel-voidwing', 'seat:nyx-copperwing', 'seat:rook-ashwhisker'];
+const at = i => '2026-10-24T0' + (1 + Math.floor(i / 20)) + ':' + String((i * 7) % 60).padStart(2, '0') + ':00Z';
+const rec = (p, i, status, x) => ({ function: p.id, number: 300 + i, status, ...(status === 'untested' ? {} : { last_run: at(i), run_by: SEATS[i % 3], result: status }), ...(x || {}) });
+const T = n => ({ to: '[[#' + n + ']]', rel: 'tracked-by' });
+const TASKS = [{ ref: '#341', status: 'running' }, { ref: '#342', status: 'accepted' }, { ref: '#343', status: 'running' }, { ref: '#344', status: 'open' }];
+const TASKS_AMBER = [{ ref: '#341', status: 'open' }, { ref: '#342', status: 'claimed' }, { ref: '#343', status: 'running' }];
+const BUNDLE = 'needs the bundled app: a bare cargo run posts no notification';
+const RECORDS = {
+  'all untested': P.map((p, i) => rec(p, i, 'untested')),
+  mixed: P.flatMap((p, i) => {
+    const o = { T5: ['fail'], T6: ['blocked', { reason: 'the supervisor cannot be killed from inside a seat', links: [T(344)] }], T8: ['fail', { links: [T(341)] }],
+      S2: ['untested'], S3: ['manual', { reason: 'the meter is judged by eye' }], R5: ['fail', { links: [T(342)] }], R6: ['blocked', { reason: BUNDLE }] }[p.id];
+    if (p.id === 'S4') return [];                                                    // no record: missing
+    if (p.id === 'K3') return [rec(p, i, 'pass'), rec(p, i, 'pass', { number: 400 + i })];          // two records: doubled
+    if (p.id === 'K2') return [rec(p, i, 'passed')];                                                 // not one of the five: invalid
+    if (o) return [rec(p, i, o[0], o[1])];
+    return [rec(p, i, ['messaging and tasks', 'live feed', 'settings', 'documents', 'records', 'identity', 'performance'].includes(p.group) ? 'untested' : 'pass')];
+  }),
+  'failures tracked': P.map((p, i) => {
+    const o = { T5: ['fail', { links: [T(341)] }], R6: ['blocked', { reason: BUNDLE, links: [T(342)] }], M2: ['fail', { links: [T(343)] }],
+      P1: ['manual', { reason: 'the hitch meter is judged by eye' }], I1: ['manual', { reason: 'the Keychain prompt needs the operator' }] }[p.id];
+    return o ? rec(p, i, o[0], o[1]) : rec(p, i, 'pass');
+  }),
+  'all pass': P.map((p, i) => ({ P1: rec(p, i, 'manual', { reason: 'the hitch meter is judged by eye' }), I1: rec(p, i, 'manual', { reason: 'the Keychain prompt needs the operator' }) })[p.id] || rec(p, i, 'pass')),
+};
+Lab.page({ title: 'e2e checklist', wide: true, note: 'The Graph tab\'s acceptance view (spec #258): the 54 promises of §1, parsed, joined to their e2e records. The band says the night at a glance: red when anything is missing, doubled, untested or a fail is untracked; amber when the only fails are tracked by open tasks; green when every promise passes (manual rows are judged by the Oracle and listed). Blocked counts as a fail. Outlined cells are what keeps it red.',
+  states: [...Object.keys(RECORDS), 'empty catalogue'],
+  render(s, body) { body.append(C.e2eChecklist({ promises: s === 'empty catalogue' ? [] : P, records: RECORDS[s] || [], tasks: s === 'failures tracked' ? TASKS_AMBER : TASKS })); } });
+</script></body></html>

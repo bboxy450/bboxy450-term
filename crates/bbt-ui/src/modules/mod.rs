@@ -1,5 +1,6 @@
 //! L7 modules compose retained components; they never emit draw primitives.
 pub mod composer;
+pub mod e2e_checklist;
 pub mod graph_tab;
 pub mod launcher;
 pub mod launcher_banner;

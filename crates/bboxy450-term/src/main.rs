@@ -3,6 +3,7 @@ mod assets;
 mod budget;
 mod capture;
 mod display_link;
+mod e2e_checklist;
 mod gpu;
 mod live;
 mod log;
@@ -33,6 +34,7 @@ use bbt_ui_model::{
     tokens::Theme,
 };
 use display_link::{Clock, DisplayLink, Mode};
+use e2e_checklist::{LocalTab, PageCommand};
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -223,6 +225,8 @@ impl FocusState {
 enum RoutedKey {
     Quit,
     OpenLauncher,
+    OpenGraph,
+    LocalPage(PageCommand),
     ToggleHud,
     Launcher(LauncherCommand),
     Composer(ComposeCommand),
@@ -366,6 +370,18 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
             RoutedKey::ToggleHud
         };
     }
+    if command
+        && !mods.alt_key()
+        && !mods.shift_key()
+        && !mods.control_key()
+        && physical == PhysicalKey::Code(KeyCode::KeyG)
+    {
+        return if repeat {
+            RoutedKey::Local
+        } else {
+            RoutedKey::OpenGraph
+        };
+    }
     if query.is_none() && mods.shift_key() && !command && !mods.alt_key() && !mods.control_key() {
         let motion = match key {
             Key::Named(NamedKey::PageUp) => Some(ScrollKey::PageUp),
@@ -503,6 +519,51 @@ fn finish_route(
     }
     routed
 }
+fn route_local_page(input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
+    let global = route_key(input, modes, None);
+    if matches!(
+        global,
+        RoutedKey::Quit
+            | RoutedKey::OpenLauncher
+            | RoutedKey::OpenGraph
+            | RoutedKey::ToggleHud
+            | RoutedKey::Pane(_)
+    ) {
+        return global;
+    }
+    // Balance a key owned by the PTY before the page opened. finish_route still
+    // suppresses releases for presses consumed by this local page.
+    if input.state == ElementState::Released {
+        return route_key(input, modes, None);
+    }
+    let mods = input.modifiers.state;
+    if mods.super_key()
+        && !mods.alt_key()
+        && !mods.shift_key()
+        && !mods.control_key()
+        && input.physical_key == PhysicalKey::Code(KeyCode::KeyW)
+    {
+        return if input.repeat {
+            RoutedKey::Local
+        } else {
+            RoutedKey::LocalPage(PageCommand::Close)
+        };
+    }
+    if mods.super_key() || mods.control_key() || mods.alt_key() {
+        return RoutedKey::Local;
+    }
+    let command = match &input.logical_key {
+        Key::Named(NamedKey::Escape) if !input.repeat => PageCommand::Close,
+        Key::Named(NamedKey::ArrowUp) => PageCommand::Up,
+        Key::Named(NamedKey::ArrowDown) => PageCommand::Down,
+        Key::Named(NamedKey::PageUp) => PageCommand::PageUp,
+        Key::Named(NamedKey::PageDown) => PageCommand::PageDown,
+        Key::Named(NamedKey::Home) => PageCommand::Top,
+        Key::Named(NamedKey::End) => PageCommand::Bottom,
+        _ => return RoutedKey::Local,
+    };
+    RoutedKey::LocalPage(command)
+}
 fn route_composer(input: &keyboard::Input<'_>, modes: u64, field: ComposeField) -> RoutedKey {
     if input.state == ElementState::Released {
         return RoutedKey::Local;
@@ -510,7 +571,7 @@ fn route_composer(input: &keyboard::Input<'_>, modes: u64, field: ComposeField) 
     let global = route_key(input, modes, Some(""));
     if matches!(
         global,
-        RoutedKey::Quit | RoutedKey::OpenLauncher | RoutedKey::ToggleHud
+        RoutedKey::Quit | RoutedKey::OpenLauncher | RoutedKey::OpenGraph | RoutedKey::ToggleHud
     ) {
         return global;
     }
@@ -817,6 +878,8 @@ struct App {
     launcher: Option<LauncherController>,
     launcher_layout: Option<scene::LauncherLayout>,
     launcher_parent: Option<TextFocus>,
+    local_tab: Option<LocalTab>,
+    local_page_layout: Option<scene::LocalPageLayout>,
     composer: ComposeController,
     composer_client: messaging::Client,
     composer_scope: Option<bbt_proto::SwarmId>,
@@ -873,6 +936,66 @@ struct App {
     stall: Option<stall::Native>,
 }
 impl App {
+    fn open_local_tab(&mut self, tab: LocalTab) {
+        self.close_launcher();
+        self.blur_reject();
+        self.composer.handle(ComposeCommand::Blur);
+        self.composer_dragging = false;
+        self.launcher_parent = None;
+        self.local_tab = Some(tab);
+        self.local_page_layout = None;
+        if let Some(window) = &self.window {
+            window.set_ime_allowed(false);
+        }
+        self.logger.write("local tab opened: Graph");
+        self.request_redraw();
+    }
+    fn open_graph(&mut self) {
+        if self.local_tab.is_none() {
+            match e2e_checklist::Graph::new(vec![], vec![]) {
+                Ok(graph) => self.open_local_tab(LocalTab::Graph(graph)),
+                Err(error) => self.logger.write(format!("Graph refused: {error}")),
+            }
+        } else {
+            self.close_launcher();
+            self.blur_reject();
+            self.composer.handle(ComposeCommand::Blur);
+            self.composer_dragging = false;
+            if let Some(window) = &self.window {
+                window.set_ime_allowed(false);
+            }
+            self.request_redraw();
+        }
+    }
+    fn close_local_tab(&mut self) {
+        self.local_tab = None;
+        self.local_page_layout = None;
+        self.logger.write("local tab closed: returning to panes");
+        self.request_redraw();
+    }
+    fn local_scroll(&mut self, delta: f32) {
+        let max = self
+            .local_page_layout
+            .as_ref()
+            .map_or(0., |page| page.max_scroll);
+        if let Some(LocalTab::Graph(graph)) = &mut self.local_tab
+            && graph.scroll_by(delta, max)
+        {
+            self.request_redraw();
+        }
+    }
+    fn local_page_command(&mut self, command: PageCommand) {
+        let page = self.local_page_layout.as_ref().map_or(0., |p| p.viewport.h);
+        match command {
+            PageCommand::Close => self.close_local_tab(),
+            PageCommand::Up => self.local_scroll(-28.),
+            PageCommand::Down => self.local_scroll(28.),
+            PageCommand::PageUp => self.local_scroll(-page),
+            PageCommand::PageDown => self.local_scroll(page),
+            PageCommand::Top => self.local_scroll(-f32::MAX),
+            PageCommand::Bottom => self.local_scroll(f32::MAX),
+        }
+    }
     fn composer_catalog(&mut self) {
         let Some(model) = &self.live_state else {
             return;
@@ -1412,6 +1535,10 @@ impl App {
                 self.request_redraw();
             }
             LauncherOutcome::Pick { id, modifiers } => {
+                if id == "graph" {
+                    self.open_graph();
+                    return;
+                }
                 if let Some(message) = spawn_pick(
                     &id,
                     modifiers,
@@ -1434,6 +1561,9 @@ impl App {
         }
     }
     fn focus_action(&mut self, action: FocusAction) {
+        if self.local_tab.is_some() {
+            self.close_local_tab();
+        }
         self.launcher_parent = None;
         self.blur_reject();
         self.composer.handle(ComposeCommand::Blur);
@@ -1953,15 +2083,37 @@ impl App {
         } else {
             None
         };
-        let layouts = self.scene.layout_with_dock(
-            logical,
-            self.animation_start.is_some() || self.animate,
-            self.conversation_layout.as_ref().map_or(0., |l| l.height),
-        )?;
+        let dock = self.conversation_layout.as_ref().map_or(0., |l| l.height);
+        let layouts = if self.local_tab.is_some() {
+            self.scene.local_page_chrome(logical, dock)?
+        } else {
+            self.scene.layout_with_dock(
+                logical,
+                self.animation_start.is_some() || self.animate,
+                dock,
+            )?
+        };
+        self.local_page_layout = self
+            .local_tab
+            .as_ref()
+            .map(|tab| match tab {
+                LocalTab::Graph(graph) => {
+                    self.scene
+                        .graph_page_layout(logical, dock, &graph.checklist, graph.scroll)
+                }
+            })
+            .transpose()?;
+        if let (Some(LocalTab::Graph(graph)), Some(layout)) =
+            (&mut self.local_tab, &self.local_page_layout)
+        {
+            graph.scroll = graph.scroll.min(layout.max_scroll);
+        }
         let bounds = self.scene.pane_bounds(&layouts);
         self.task_regions = self.scene.task_regions(&layouts);
         self.focus_bounds = self.scene.focus_bounds(&layouts);
-        if let Some(model) = &self.live_state {
+        if let Some(model) = &self.live_state
+            && self.local_tab.is_none()
+        {
             for event in self.focus.layout_ready(&model.ui, &self.focus_bounds) {
                 // The focus swell replaces the locate ripple (rim-glow §7): it starts when the
                 // focus lands, after any tab switch, once its layout is ready.
@@ -2013,6 +2165,9 @@ impl App {
         let start = Instant::now();
         let live = self.live_state.is_some();
         let mut ops = self.scene.paint(&layouts, logical, None, None);
+        if let Some(page) = &self.local_page_layout {
+            ops.extend(page.paint());
+        }
         if !live {
             ops.extend(self.scene.foreground_with_conversation(
                 logical,
@@ -2533,6 +2688,21 @@ impl ApplicationHandler<UiEvent> for App {
             }
             WindowEvent::MouseWheel { delta, .. }
                 if self.launcher.is_none()
+                    && self
+                        .local_page_layout
+                        .as_ref()
+                        .is_some_and(|p| p.contains(self.pointer)) =>
+            {
+                let delta = match delta {
+                    MouseScrollDelta::LineDelta(_, y) => -y * 28.,
+                    MouseScrollDelta::PixelDelta(p) => {
+                        -p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
+                    }
+                };
+                self.local_scroll(delta);
+            }
+            WindowEvent::MouseWheel { delta, .. }
+                if self.launcher.is_none()
                     && self.conversation_layout.as_ref().is_some_and(|layout| {
                         layout.actions.contains("conversation/rows", self.pointer)
                     }) =>
@@ -2686,6 +2856,28 @@ impl ApplicationHandler<UiEvent> for App {
                     }
                     return;
                 }
+                if self
+                    .local_page_layout
+                    .as_ref()
+                    .is_some_and(|p| p.closes(self.pointer))
+                {
+                    self.close_local_tab();
+                    return;
+                }
+                if self
+                    .local_page_layout
+                    .as_ref()
+                    .is_some_and(|p| p.focuses(self.pointer))
+                {
+                    self.blur_reject();
+                    self.composer.handle(ComposeCommand::Blur);
+                    self.composer_dragging = false;
+                    if let Some(window) = &self.window {
+                        window.set_ime_allowed(false);
+                    }
+                    self.request_redraw();
+                    return;
+                }
                 if let Some(action) = self
                     .conversation_layout
                     .as_ref()
@@ -2800,35 +2992,44 @@ impl ApplicationHandler<UiEvent> for App {
                             .get(&seat)
                             .map(|screen| screen.modes)
                     });
-                let routed =
-                    if self.launcher.is_none() && (self.composer.view.focus || self.reject_focus) {
-                        let routed = route_composer(
-                            &input,
-                            modes.unwrap_or_default(),
-                            if self.reject_focus {
-                                ComposeField::Body
-                            } else if self.composer.view.kind_menu
-                                || self.composer.view.attach_pick.is_some()
-                            {
-                                ComposeField::Address
-                            } else {
-                                self.composer.view.field
-                            },
-                        );
-                        finish_route(&mut self.keyboard, &input, routed)
-                    } else {
-                        route_input(
-                            &mut self.keyboard,
-                            &input,
-                            modes.unwrap_or_default(),
-                            self.launcher
-                                .as_ref()
-                                .map(|launcher| launcher.launcher.query.as_str()),
-                        )
-                    };
+                let routed = if self.local_tab.is_some()
+                    && self.launcher.is_none()
+                    && !self.composer.view.focus
+                    && !self.reject_focus
+                {
+                    let routed = route_local_page(&input, modes.unwrap_or_default());
+                    finish_route(&mut self.keyboard, &input, routed)
+                } else if self.launcher.is_none() && (self.composer.view.focus || self.reject_focus)
+                {
+                    let routed = route_composer(
+                        &input,
+                        modes.unwrap_or_default(),
+                        if self.reject_focus {
+                            ComposeField::Body
+                        } else if self.composer.view.kind_menu
+                            || self.composer.view.attach_pick.is_some()
+                        {
+                            ComposeField::Address
+                        } else {
+                            self.composer.view.field
+                        },
+                    );
+                    finish_route(&mut self.keyboard, &input, routed)
+                } else {
+                    route_input(
+                        &mut self.keyboard,
+                        &input,
+                        modes.unwrap_or_default(),
+                        self.launcher
+                            .as_ref()
+                            .map(|launcher| launcher.launcher.query.as_str()),
+                    )
+                };
                 match routed {
                     RoutedKey::Quit => self.request_close(event_loop),
                     RoutedKey::OpenLauncher => self.open_launcher(),
+                    RoutedKey::OpenGraph => self.open_graph(),
+                    RoutedKey::LocalPage(command) => self.local_page_command(command),
                     RoutedKey::ToggleHud => {
                         self.overlay = !self.overlay;
                         self.logger.write(format!("hitch overlay={}", self.overlay));
@@ -3624,6 +3825,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .then(|| new_launcher(None, 0)),
         launcher_layout: None,
         launcher_parent: None,
+        local_tab: None,
+        local_page_layout: None,
         composer: ComposeController::new(composer::Composer {
             focus: args.iter().any(|arg| arg == "--compose"),
             ..Default::default()
@@ -4387,6 +4590,94 @@ mod launcher_host_tests {
             0,
             query,
         )
+    }
+    #[test]
+    fn graph_navigation_is_local_and_global_shortcuts_still_reach_the_app() {
+        let graph = test_key(
+            &Key::Character("g".into()),
+            PhysicalKey::Code(KeyCode::KeyG),
+            Some("g"),
+            ModifiersState::SUPER,
+            false,
+        );
+        assert_eq!(route_key(&graph, 0, None), RoutedKey::OpenGraph);
+        assert_eq!(
+            route_composer(&graph, 0, ComposeField::Body),
+            RoutedKey::OpenGraph
+        );
+        let down = test_key(
+            &Key::Named(NamedKey::ArrowDown),
+            PhysicalKey::Code(KeyCode::ArrowDown),
+            None,
+            ModifiersState::empty(),
+            true,
+        );
+        assert_eq!(
+            route_local_page(&down, 0),
+            RoutedKey::LocalPage(PageCommand::Down)
+        );
+        let escape = test_key(
+            &Key::Named(NamedKey::Escape),
+            PhysicalKey::Code(KeyCode::Escape),
+            None,
+            ModifiersState::empty(),
+            false,
+        );
+        assert_eq!(
+            route_local_page(&escape, 0),
+            RoutedKey::LocalPage(PageCommand::Close)
+        );
+        let launcher = test_key(
+            &Key::Character("t".into()),
+            PhysicalKey::Code(KeyCode::KeyT),
+            Some("t"),
+            ModifiersState::SUPER,
+            false,
+        );
+        assert_eq!(route_local_page(&launcher, 0), RoutedKey::OpenLauncher);
+        let navigate = test_key(
+            &Key::Named(NamedKey::ArrowLeft),
+            PhysicalKey::Code(KeyCode::ArrowLeft),
+            None,
+            ModifiersState::SUPER | ModifiersState::ALT,
+            false,
+        );
+        assert_eq!(
+            route_local_page(&navigate, 0),
+            RoutedKey::Pane(Navigation::Direction(Direction::Left))
+        );
+    }
+    #[test]
+    fn a_graph_press_never_reaches_the_pty_but_an_earlier_pty_press_gets_its_release() {
+        let mut state = keyboard::State::default();
+        let mut letter = test_key(
+            &Key::Character("a".into()),
+            PhysicalKey::Code(KeyCode::KeyA),
+            Some("a"),
+            ModifiersState::empty(),
+            false,
+        );
+        assert!(matches!(
+            route_input(&mut state, &letter, 3 << 18, None),
+            RoutedKey::Terminal(_)
+        ));
+        letter.state = ElementState::Released;
+        let route = route_local_page(&letter, 3 << 18);
+        assert_eq!(
+            finish_route(&mut state, &letter, route),
+            RoutedKey::Terminal(b"\x1b[97;1:3u".to_vec())
+        );
+        letter.state = ElementState::Pressed;
+        let route = route_local_page(&letter, 3 << 18);
+        assert_eq!(finish_route(&mut state, &letter, route), RoutedKey::Local);
+        letter.state = ElementState::Released;
+        let route = route_local_page(&letter, 3 << 18);
+        assert_eq!(finish_route(&mut state, &letter, route), RoutedKey::Local);
+        letter.state = ElementState::Pressed;
+        assert!(matches!(
+            route_input(&mut state, &letter, 3 << 18, None),
+            RoutedKey::Terminal(_)
+        ));
     }
     #[test]
     fn terminal_keys_stay_byte_exact_while_explicit_chords_move_focus() {

@@ -41,7 +41,7 @@
     set(value) {
       components = value;
       for (const name of ['sidebar', 'pane', 'seatRow', 'tabRow', 'miniGrid',
-        'spaceHeader', 'graphPage', 'provenanceCard', 'subscriptionsCard',
+        'spaceHeader', 'graphPage', 'provenanceCard', 'subscriptionsCard', 'e2eChecklist',
       'externalLane', 'epicGroup', 'streamTabs', 'messageRow', 'composer', 'reportCard', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow', 'titleBar', 'picker', 'settingsPage', 'docView', 'docModal', 'perfHud']) {
         const original = value[name];
         if (typeof original !== 'function') continue;
@@ -255,6 +255,31 @@
       return JSON.parse(JSON.stringify({version:1,layer:'settings',frames:[{view,host:bounds(node),clip,textBounds,probes:[...node.querySelectorAll('.mrow,.thumb,.cap,.wo,.wo input,.wo-pct,.ht b,.sk,.fp,.acts,.act,.hero,.subkeys,.s-group,select')].map(n=>{const s=getComputedStyle(n);return {tag:n.className||n.tagName,value:n.textContent,rect:bounds(n),font:s.font,lineHeight:s.lineHeight,padding:s.padding,width:s.width,height:s.height,display:s.display,alignItems:s.alignItems}}),parts:diagnostics}]}));
     }
     if(window.bboxyGraphFixture){
+      const e2eCall=calls.find(c=>c.name==='e2eChecklist'&&c.node?.isConnected&&root.contains(c.node));
+      if(e2eCall){
+        const node=e2eCall.node,parts=[],add=(key,n,text=false)=>{if(!n)throw Error('Missing e2e diagnostic '+key);parts.push(text?{...textDiag(n),key}:{key,kind:'box',rect:bounds(n)});};
+        if(node.classList.contains('e2e-err')){
+          add('e2e/error',node);
+          const d=textDiag(node),s=getComputedStyle(node),p=[s.paddingTop,s.paddingRight,s.paddingBottom,s.paddingLeft].map(parseFloat),r=bounds(node);
+          d.rect={x:r.x+p[3],y:r.y+p[0],w:r.w-p[1]-p[3],h:r.h-p[0]-p[2]};d.font_diagnostics.baseline-=p[0];parts.push({...d,key:'e2e/error/text'});
+        }else{
+          add('e2e',node);add('e2e/head',node.querySelector('.e2e-head'));add('e2e/head/top',node.querySelector('.e2e-top'));
+          for(const [name,cls]of [['word','e2e-word'],['say','e2e-say'],['meta','e2e-meta']])add('e2e/head/'+name,node.querySelector('.'+cls),true);
+          add('e2e/strip',node.querySelector('.e2e-strip'));
+          [...node.querySelector('.e2e-strip').children].forEach((g,i)=>{add('e2e/strip/g'+i,g);[...g.children].forEach((n,j)=>add('e2e/strip/g'+i+'/c'+j,n));});
+          add('e2e/counts',node.querySelector('.e2e-counts'));
+          [...node.querySelector('.e2e-counts').children].forEach(n=>{const status=['pass','fail','blocked','untested','manual'].find(s=>n.classList.contains(s)),key='e2e/counts/'+status;add(key,n);add(key+'/swatch',n.querySelector('i'));parts.push({...rawTextDiag(n.lastChild),key:key+'/label'});});
+          add('e2e/groups',node.querySelector('.e2e-groups'));
+          [...node.querySelectorAll('.e2g')].forEach((g,i)=>{const k='e2e/g'+i,h=g.querySelector('.e2g-h');add(k,g);add(k+'/head',h);add(k+'/title',h.querySelector('b'),true);add(k+'/count',h.querySelector('.e2g-n'),true);const strip=h.querySelector('.e2s');add(k+'/strip',strip);[...strip.children].forEach((n,j)=>add(k+'/strip/c'+j,n));
+            [...g.querySelectorAll('.e2r')].forEach((r,j)=>{const p=k+'/r'+j;add(p,r);for(const [name,cls]of [['id','e2id'],['mark','e2m'],['text','e2t'],['status','e2s-word'],['when','e2when'],['by','e2by']]){const n=r.querySelector('.'+cls);add(p+'/'+name,n,name!=='mark'&&!!n.textContent);}
+              [...r.querySelectorAll('.e2task')].forEach((n,t)=>{add(p+'/task'+t,n);const d=textDiag(n),s=getComputedStyle(n),pad=[s.paddingTop,s.paddingRight,s.paddingBottom,s.paddingLeft].map(parseFloat),br=bounds(n);d.rect={x:br.x+pad[3],y:br.y+pad[0],w:br.w-pad[1]-pad[3],h:br.h-pad[0]-pad[2]};d.font_diagnostics.baseline-=pad[0];parts.push({...d,key:p+'/task'+t+'/text'});});
+              if(r.querySelector('.e2untr'))add(p+'/untracked',r.querySelector('.e2untr'),true);if(r.querySelector('.e2why'))add(p+'/reason',r.querySelector('.e2why'),true);
+            });
+          });
+        }
+        node.dataset.bboxyGraph='';
+        return JSON.parse(JSON.stringify({version:1,layer:'graphs',frames:[{view:{e2e:e2eCall.args[0],only:['e2e']},standalone:true,host:bounds(node),clip:null,parts}] }));
+      }
       const graphCall=calls.find(c=>c.name==='graphPage'&&c.node?.isConnected&&root.contains(c.node));
       const standalone=!graphCall&&calls.find(c=>['provenanceCard','subscriptionsCard'].includes(c.name)&&c.node?.isConnected&&root.contains(c.node));
       if(!graphCall&&!standalone)throw Error('Graph constructor missing');
