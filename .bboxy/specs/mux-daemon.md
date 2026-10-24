@@ -4,7 +4,7 @@ type: "spec"
 number: 84
 title: "Mux daemon — process survival and state delivery"
 created: "2026-10-21T19:43:20Z"
-updated: "2026-10-24T04:21:29Z"
+updated: "2026-10-24T06:49:47Z"
 links:
   - { to: "[[d21-ring-durability]]", rel: decision }
   - { to: "[[d22-tick-journal]]", rel: decision }
@@ -168,6 +168,8 @@ Measured by Seraph's C1d gates: a per-seat commit every 20 ms with a full flush 
 - **This gate supersedes the W1.2c targets (Oracle ruling, 2026-10-22, on Rook's W1.2d gap).** The ≥30 MiB/s queued throughput and ≤50 ms write-latency targets measured the per-seat writer W1.2d replaces; they no longer block landing. W1.2d reports its logic-stopped burst figures (24.79 MiB/s, max write 103.70 ms, p99 90.31 ms, max seal 60.15 ms at the time of the ruling) next to the W1.2c ones. Recovering throughput and latency is a separate follow-up task, W1.2f, queued after W1.2e.
 
 **Checkpoints ([[d253-checkpoint-policy]], 2026-10-24).** A parser checkpoint bounds recovery work, never durability: idle means caught up with the ring tail and 200 ms silent, so a backlogged seat never gets a maintenance checkpoint; a checkpoint is forced at R = 8 MiB of un-checkpointed bytes or 60 s of age; at most K = 4 saves in flight per logic process on a side task, the ingest loop never awaits one; a seat at 2R pauses its own replay until its save lands; close, seal, resize, shutdown and handover checkpoints stay forced; gate: checkpoint RPC at most 10 % of logic wall time at 967 seats, crash recovery at most 2R per seat ([[checkpoint-bounded]]).
+
+**Stale control socket recovery ([[d263-stale-socket-recovery]], 2026-10-24).** On start, the supervisor first takes the ownership lock `mux.sock.lock` (created if absent; `flock` succeeds when no live holder exists, so a lock left by a crash is taken too), **then** probes the existing `mux.sock` with `connect()`. `ECONNREFUSED` or `ENOENT` means nothing is listening: unlink the socket and bind, and log one line naming the stale socket's mtime. A successful connect means a live supervisor owns it: release the lock and refuse with the reason and the owner's pid when the lock file names one. Any other error refuses and says which. Never unlink without holding the lock; never probe before taking it. `ControlSocketOwnershipUnknown` is no longer a final state: it is the condition this paragraph resolves.
 
 ## Restart and reattachment
 
