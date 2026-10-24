@@ -1,0 +1,179 @@
+R5h checkpoint fixture watchdog correction
+
+Authorization: Oracle e461a517-c240-41e5-8075-45be3ab9f6d2; fixture only, original idle/debt/R-spacing assertions and 30 s no-progress rule retained.
+Diagnosis: signed 8a1250979db49f81741a21af65a2937683a6969d; .bboxy/runs/r5h-checkpoint-watchdog-diagnosis.log.
+
+Mechanism:
+- Fixture::catch_up treats stale best-effort recorder rows as a reason to query the authoritative Playback Snapshot. Its cursor confirms progress/completion; each query shares the remaining original 30 s guard.
+- A deterministic real-PTY regression freezes its recorder row permanently before release, then requires the real Snapshot to reach the captured ring watermark.
+- The held-save resume wait refreshes through Snapshot within its existing deadline, matching the earlier held-save fixture waits.
+- No production logic, supervisor, transport, recorder or checkpoint policy changes.
+
+Failure retained:
+- First after-fix O0 loaded attempt: 3 passed, 1 failed (held-save resume recorder-only loop). Original 100 MiB and stale-row regression passed. The next patch adds the same authoritative refresh to that loop; no deadline changed.
+- Full output and first patch are retained under /private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/attempt-1.
+
+Final loaded verification:
+- Base: 8a1250979db49f81741a21af65a2937683a6969d
+- Patch SHA256: 9fc58fde30c8683a7ae9ae58c06dafbd2775a942d6015c0875930933e70f2b16
+- Binary SHA256: dc45693382f01bc9cbe1eafd86241ae6bc56d2187dfd49ff771ae8181721fd80
+- Profile: {"debug_assertions": true, "debuginfo": 2, "opt_level": "0", "overflow_checks": true, "test": true}
+- Command: nice -n 10 <checkpoint_scheduling test binary> --nocapture; all four tests concurrent; four CPU-only workers bounded to 600 s.
+- Ten runs EXIT 0; 40 tests passed, including ten complete 100 MiB replays and ten permanently stale-row regressions.
+- All four owned CPU workers terminated and waited; no remaining recorded test descendants.
+run 1: EXIT 0, 58.599430 s, load1 14.704 -> 26.763
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-1/stdout.log SHA256 8f4529cd5354fba556143e6109533dacb605f877d3db94e078666651581cecf6
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-1/stderr.log SHA256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-1/result.json SHA256 6cdfcee5c779fee2c6d7daab5f74f188c8db214ee6cf6b583c66743a8f23f42d
+output:
+
+running 4 tests
+test a_stale_recorder_row_cannot_hide_authoritative_parser_completion ... ok
+test caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog ... ok
+test a_held_checkpoint_does_not_hold_snapshot_or_status_service ... ok
+100MiB: checkpoints=13 confirmed_bytes=100598784 parsed_end=104857608
+test hundred_mib_partial_replay_forces_r_spaced_checkpoints_and_never_exceeds_two_r_debt ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 57.67s
+
+run 2: EXIT 0, 31.228087 s, load1 26.763 -> 21.043
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-2/stdout.log SHA256 3542e1055f64cd8257ad96be0e4ed76ced9781f91ffff96dd080a7c29dc55b2f
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-2/stderr.log SHA256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-2/result.json SHA256 76d4dec4d84d9ae85e5e75344d829cab7683db3c819bfc8dc6c4332161692d3a
+output:
+
+running 4 tests
+test a_stale_recorder_row_cannot_hide_authoritative_parser_completion ... ok
+test caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog ... ok
+test a_held_checkpoint_does_not_hold_snapshot_or_status_service ... ok
+100MiB: checkpoints=13 confirmed_bytes=100588544 parsed_end=104857608
+test hundred_mib_partial_replay_forces_r_spaced_checkpoints_and_never_exceeds_two_r_debt ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.77s
+
+run 3: EXIT 0, 32.370365 s, load1 21.043 -> 22.610
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-3/stdout.log SHA256 a169820f09e5c0e5daaad4881cc57b4a785c174878e1d1cfdb3869d6bbbb389d
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-3/stderr.log SHA256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-3/result.json SHA256 4fcad61f29efad3926a287cc28abd22a6ccf3e5a71d3cc57d1a3e63fb2fcc1fb
+output:
+
+running 4 tests
+test a_stale_recorder_row_cannot_hide_authoritative_parser_completion ... ok
+test caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog ... ok
+test a_held_checkpoint_does_not_hold_snapshot_or_status_service ... ok
+100MiB: checkpoints=13 confirmed_bytes=100555776 parsed_end=104857608
+test hundred_mib_partial_replay_forces_r_spaced_checkpoints_and_never_exceeds_two_r_debt ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 31.90s
+
+run 4: EXIT 0, 31.215576 s, load1 22.610 -> 19.639
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-4/stdout.log SHA256 fc8450105b3472a7233e2ad8489a0605e047cd9519983145d1ebaed72c70e5b8
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-4/stderr.log SHA256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-4/result.json SHA256 b2ccc8998008511518b0226c13468ef4fee79a64a05a1ca6282cda95dad441c4
+output:
+
+running 4 tests
+test a_stale_recorder_row_cannot_hide_authoritative_parser_completion ... ok
+test caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog ... ok
+test a_held_checkpoint_does_not_hold_snapshot_or_status_service ... ok
+100MiB: checkpoints=13 confirmed_bytes=100582400 parsed_end=104857608
+test hundred_mib_partial_replay_forces_r_spaced_checkpoints_and_never_exceeds_two_r_debt ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 31.04s
+
+run 5: EXIT 0, 42.158575 s, load1 19.639 -> 24.165
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-5/stdout.log SHA256 2fab02988af3bd969087539f8e534ea4356ffb7429c6035fdd2a11b89c0cd677
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-5/stderr.log SHA256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-5/result.json SHA256 86e0ad6b0c308e289fc8a2eacf16e976661bb69ac262ed2f5abbaf45845014c6
+output:
+
+running 4 tests
+test a_stale_recorder_row_cannot_hide_authoritative_parser_completion ... ok
+test caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog ... ok
+test a_held_checkpoint_does_not_hold_snapshot_or_status_service ... ok
+100MiB: checkpoints=13 confirmed_bytes=100536320 parsed_end=104857608
+test hundred_mib_partial_replay_forces_r_spaced_checkpoints_and_never_exceeds_two_r_debt ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 41.56s
+
+run 6: EXIT 0, 46.460524 s, load1 24.165 -> 24.616
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-6/stdout.log SHA256 bc057448e90bdaa832e17fc501f5f3da7648696b2cd2bce54cf8f16419de18b1
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-6/stderr.log SHA256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-6/result.json SHA256 f43f382a4d7205726b00b931fe773ffbfe93afaf9aa884c4bfcc4db9d5709723
+output:
+
+running 4 tests
+test a_stale_recorder_row_cannot_hide_authoritative_parser_completion ... ok
+test caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog ... ok
+test a_held_checkpoint_does_not_hold_snapshot_or_status_service ... ok
+100MiB: checkpoints=13 confirmed_bytes=100562944 parsed_end=104857608
+test hundred_mib_partial_replay_forces_r_spaced_checkpoints_and_never_exceeds_two_r_debt ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 45.85s
+
+run 7: EXIT 0, 45.181710 s, load1 24.616 -> 29.475
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-7/stdout.log SHA256 53e63930e4341580ad12efdc844af26a31d827d0b120c1722870d4dfa4991108
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-7/stderr.log SHA256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-7/result.json SHA256 c068da68484f68b16a06f54ed3bb39316def48362bafbfaa066ec4267f7a3203
+output:
+
+running 4 tests
+test a_stale_recorder_row_cannot_hide_authoritative_parser_completion ... ok
+test caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog ... ok
+test a_held_checkpoint_does_not_hold_snapshot_or_status_service ... ok
+100MiB: checkpoints=13 confirmed_bytes=100587520 parsed_end=104857608
+test hundred_mib_partial_replay_forces_r_spaced_checkpoints_and_never_exceeds_two_r_debt ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 44.82s
+
+run 8: EXIT 0, 48.095536 s, load1 29.475 -> 30.801
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-8/stdout.log SHA256 21833b1445c874f9bd99e290955742d4f2fdbff82f43272dac6bfd610fe60eff
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-8/stderr.log SHA256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-8/result.json SHA256 23160409c56ec35ff116280782c4c041c3b581bcf1816d53d570bb38e0a0c6c1
+output:
+
+running 4 tests
+test a_stale_recorder_row_cannot_hide_authoritative_parser_completion ... ok
+test caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog ... ok
+test a_held_checkpoint_does_not_hold_snapshot_or_status_service ... ok
+100MiB: checkpoints=13 confirmed_bytes=100573184 parsed_end=104857608
+test hundred_mib_partial_replay_forces_r_spaced_checkpoints_and_never_exceeds_two_r_debt ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 47.56s
+
+run 9: EXIT 0, 43.120668 s, load1 30.801 -> 33.175
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-9/stdout.log SHA256 447b238dd9b77251fbf57d5dfc5eb9a539f8a3a06a52c7e0a81efbb9e5a12fb3
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-9/stderr.log SHA256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-9/result.json SHA256 2a867e10e412c719db38ab739e81f4432bd8e1aebac893fd01b5322318fd2a4a
+output:
+
+running 4 tests
+test a_stale_recorder_row_cannot_hide_authoritative_parser_completion ... ok
+test caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog ... ok
+test a_held_checkpoint_does_not_hold_snapshot_or_status_service ... ok
+100MiB: checkpoints=13 confirmed_bytes=100584448 parsed_end=104857608
+test hundred_mib_partial_replay_forces_r_spaced_checkpoints_and_never_exceeds_two_r_debt ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 42.73s
+
+run 10: EXIT 0, 46.557918 s, load1 33.175 -> 45.375
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-10/stdout.log SHA256 13bfde9d3124fe117c145e70ca9490f1c8fabfdb861fff73b8107ef965647803
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-10/stderr.log SHA256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/loaded-10/result.json SHA256 61237a0055664cb1848011adaec871d5640e81005ab47fe59ff92d129080b991
+output:
+
+running 4 tests
+test a_stale_recorder_row_cannot_hide_authoritative_parser_completion ... ok
+test caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog ... ok
+test a_held_checkpoint_does_not_hold_snapshot_or_status_service ... ok
+100MiB: checkpoints=13 confirmed_bytes=100559872 parsed_end=104857608
+test hundred_mib_partial_replay_forces_r_spaced_checkpoints_and_never_exceeds_two_r_debt ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 46.37s
+
+Strict verification:
+cargo clippy --workspace --all-targets --locked -- -D warnings — EXIT 0, 303.289574 s
+Log: /private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-fix-vmg6ogcu/strict-clippy.log
+Log SHA256: af461f34ada6ebb291af4af3715b21c30659ec34f8c8514f820b186d16b1be04
+
+Limits: loaded repeated fixture checks prove this fixture correction on the stated profile; they do not independently prove the 967/50 frame acceptance. The clean normal CI and one scheduled frame attempt remain separate evidence.
