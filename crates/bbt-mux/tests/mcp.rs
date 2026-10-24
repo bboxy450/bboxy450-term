@@ -3408,6 +3408,7 @@ fn seat_spawn_fixture() {
     assert_eq!(record.role.name, "oracle");
     assert_eq!(record.role.class, Class::Oracle);
     assert_eq!(record.swarm, f.own.swarm);
+    assert!(bbt_proto::seat_names::POOL.contains(&record.name.as_str()));
     assert_eq!(f.registry().list().unwrap().len(), baseline + 1);
     assert_eq!(f.mutate(f.oracle.id, op, "seat_spawn", args.clone()), first);
     let overlays = f.config.run_dir.join(format!("seat-{seat}/overlays"));
@@ -3422,6 +3423,7 @@ fn seat_spawn_fixture() {
     );
     f.restart();
     assert_eq!(f.mutate(f.oracle.id, op, "seat_spawn", args.clone()), first);
+    assert_eq!(f.registry().get(seat).unwrap().name, record.name);
     assert_eq!(f.registry().list().unwrap().len(), baseline + 1);
     assert!(f.screen(seat).contains("ISOLATED-SPAWN"));
     for (field, value) in [

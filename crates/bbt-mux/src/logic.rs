@@ -44,6 +44,71 @@ pub struct LogicConfig {
     pub ring: crate::ring::Settings,
 }
 
+fn first_available_seat_name(swarm: Ulid, records: &[SeatRecord]) -> String {
+    use bbt_proto::seat_names::POOL;
+    let occupied: BTreeSet<_> = records
+        .iter()
+        .filter(|record| record.swarm == swarm)
+        .map(|record| record.name.as_str())
+        .collect();
+    // One more complete pool tier than the occupied set can fill guarantees a name.
+    for tier in 0..=occupied.len() / POOL.len() {
+        for base in POOL {
+            let name = if tier == 0 {
+                base.to_owned()
+            } else {
+                format!("{base} {}", tier + 1)
+            };
+            if !occupied.contains(name.as_str()) {
+                return name;
+            }
+        }
+    }
+    unreachable!("the finite occupied set cannot fill the extra name tier")
+}
+
+#[cfg(test)]
+mod seat_name_tests {
+    use super::*;
+    use bbt_proto::seat_names::POOL;
+
+    #[test]
+    fn automatic_names_are_unique_in_the_swarm_for_every_harness() {
+        let swarm = Ulid::from(1);
+        let mut records = Vec::new();
+        for kind in ["claude", "codex", "pi", "omp", "zsh", "generic"] {
+            let name = first_available_seat_name(swarm, &records);
+            assert!(POOL.contains(&name.as_str()));
+            records.push(SeatRecord::new(Ulid::new(), swarm, name, kind));
+        }
+        let names: BTreeSet<_> = records.iter().map(|record| &record.name).collect();
+        assert_eq!(names.len(), records.len());
+        assert_eq!(first_available_seat_name(Ulid::from(2), &records), POOL[0]);
+        // A retained closed seat still owns its name, including while it can be undone.
+        records[0].lifecycle = Lifecycle::ClosedGrace;
+        assert_ne!(first_available_seat_name(swarm, &records), POOL[0]);
+    }
+
+    #[test]
+    fn exhausted_pool_uses_the_first_unused_numbered_name() {
+        let swarm = Ulid::from(1);
+        let mut records: Vec<_> = POOL
+            .into_iter()
+            .map(|name| SeatRecord::new(Ulid::new(), swarm, name, "zsh"))
+            .collect();
+        records.push(SeatRecord::new(
+            Ulid::new(),
+            swarm,
+            format!("{} 2", POOL[0]),
+            "codex",
+        ));
+        assert_eq!(
+            first_available_seat_name(swarm, &records),
+            format!("{} 2", POOL[1])
+        );
+    }
+}
+
 enum Command {
     RecoverSeats(oneshot::Sender<Result<()>>),
     GuiHosts(oneshot::Sender<Result<Vec<bbt_proto::GuiHost>>>),
@@ -2511,7 +2576,7 @@ impl Worker {
                     let mut record = SeatRecord::new(
                         id,
                         args.swarm_id,
-                        harness.name.clone(),
+                        self.default_seat_name(args.swarm_id)?,
                         harness.kind.clone(),
                     );
                     record.role = harness.resolve_role(args.role.as_deref())?;
@@ -5019,6 +5084,10 @@ impl Worker {
         Ok(bbt_proto::SeatId::from_u128(seat.0))
     }
 
+    fn default_seat_name(&self, swarm: Ulid) -> Result<String> {
+        Ok(first_available_seat_name(swarm, &self.registry.list()?))
+    }
+
     fn prepare_gui_spawn(
         &self,
         spec: bbt_proto::SpawnSpec,
@@ -5077,10 +5146,15 @@ impl Worker {
             }));
         }
         let harness = HarnessRecord::builtin(&spec.harness_kind)?;
+        let swarm = Ulid::from(spec.swarm.0.0);
+        let name = match spec.name {
+            Some(name) => name,
+            None => self.default_seat_name(swarm)?,
+        };
         let mut record = SeatRecord::new(
             Ulid::new(),
-            Ulid::from(spec.swarm.0.0),
-            spec.name.unwrap_or_else(|| harness.name.clone()),
+            swarm,
+            name,
             harness.kind.clone(),
         );
         record.location = match spec.location {

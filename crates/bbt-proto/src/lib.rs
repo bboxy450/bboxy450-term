@@ -4,6 +4,7 @@ pub mod gui;
 pub mod hosts;
 pub mod messaging;
 pub mod registry;
+pub mod seat_names;
 pub mod seat_state;
 pub mod streams;
 pub use bbt_ui_model::{SeatId, SwarmId, TabId};

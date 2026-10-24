@@ -49,23 +49,7 @@ pub fn height(id: &str, state: &str, d: Density) -> u32 {
         _ => 150,
     }
 }
-const NAMES: [&str; 15] = [
-    "Vesper Greywind",
-    "Nyx Copperwing",
-    "Lumen Foxglove",
-    "Rook Ashwhisker",
-    "Sable Quill",
-    "Pip Hollow",
-    "Marrow Finch",
-    "zsh",
-    "Tamsin Voss",
-    "Corvin Ember",
-    "Ilka Thistle",
-    "Dax Riven",
-    "Wren Starling",
-    "Halcyon Moss",
-    "Juniper Vale",
-];
+use bbt_proto::seat_names::DEMO_NAMES as NAMES;
 const DARK: [&str; 15] = [
     "#FFC53D", "#FF4FA3", "#B07BFF", "#2EE6A8", "#2E6BFF", "#FF7A45", "#58D7FF", "#9AA3C7",
     "#F2D16B", "#5BE08C", "#E96BFF", "#FF6B6B", "#4FD1FF", "#C9A96B", "#8AF0D0",
