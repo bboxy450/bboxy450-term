@@ -826,6 +826,8 @@ impl Messaging {
             kind: request.kind,
             body,
             attachments: request.attachments.clone(),
+            door: Some(authority.origin.door),
+            issued_by: authority.origin.issued_by.clone(),
             signature: String::new(),
         };
         envelope.sign(&authority.key)?;
@@ -1793,6 +1795,8 @@ fn mint(
         kind: request.kind,
         body,
         attachments: request.attachments.clone(),
+        door: None,
+        issued_by: None,
         signature: String::new(),
     };
     keys.finalize(&mut envelope, record, tx)?;

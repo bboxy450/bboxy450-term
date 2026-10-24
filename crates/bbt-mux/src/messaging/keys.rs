@@ -15,6 +15,8 @@ pub(crate) struct OperatorSigning {
     pub grant: String,
     pub epoch: u64,
     pub key: SigningKey,
+    /// The door and issuer this envelope records (decision #269); the window by default.
+    pub origin: crate::mcp::Origin,
 }
 
 /// Public fields of the persisted ID1d custody record, not IssuerState.

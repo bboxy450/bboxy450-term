@@ -3831,3 +3831,97 @@ fn d264_a_refused_send_is_stored_nowhere() {
             .any(|text| text.contains("refused payload"))
     );
 }
+
+/// Decision #269: an operator envelope sent through ctl carries its door and issuer in the
+/// signed body, the native frame names both, and the window's sends carry door gui.
+#[test]
+fn d269_ctl_envelopes_carry_door_and_issuer_signed_and_framed() {
+    use bbt_proto::messaging::{Door, Request, Response};
+    let f = Fixture::new();
+    f.prepare_operator();
+    let own = f.own.id;
+    let send = |text: &str, origin: bbt_mux::mcp::Origin| {
+        let id = Ulid::new();
+        let mut message = bbt_mux::messaging::SendRequest::text(format!("seats/{own}/inbox"), text);
+        message.id = id;
+        let response = f
+            .runtime
+            .block_on(
+                f.client()
+                    .gui_messaging(id, f.own.swarm, Request::Send { message }, origin),
+            )
+            .unwrap();
+        let Response::Stored { message } = response else {
+            panic!("{response:?}")
+        };
+        *message
+    };
+    let ctl = send(
+        "a question through ctl",
+        bbt_mux::mcp::Origin {
+            door: Door::Ctl,
+            issued_by: Some("Vesper (Oracle)".into()),
+        },
+    );
+    // In the envelope bytes, and signed: changing or stripping either breaks the signature.
+    let wire = serde_json::to_value(&ctl.envelope).unwrap();
+    assert_eq!(wire["door"], "ctl", "{wire}");
+    assert_eq!(wire["issued_by"], "Vesper (Oracle)", "{wire}");
+    ctl.envelope.verify_signature().unwrap();
+    let mut forged = ctl.envelope.clone();
+    forged.issued_by = Some("Mallory (Oracle)".into());
+    assert!(forged.verify_signature().is_err(), "the issuer is signed");
+    let mut stripped = ctl.envelope.clone();
+    stripped.door = None;
+    stripped.issued_by = None;
+    assert!(stripped.verify_signature().is_err(), "the door is signed");
+    // The frame a native Claude or Codex seat reads names the principal, door and issuer.
+    let frame = bbt_mux::messaging::ledger::Work {
+        id: Ulid::new(),
+        recipient: own,
+        agent: None,
+        messages: vec![ctl.clone()],
+        class: Class::Oracle,
+    }
+    .text();
+    assert!(
+        frame.contains("from: the operator principal, via ctl, issued by Vesper (Oracle)\n"),
+        "{frame}"
+    );
+    assert!(!frame.contains(&Ulid::nil().to_string()), "{frame}");
+    // The window's own send records door gui and no issuer.
+    let id = Ulid::new();
+    let mut message =
+        bbt_mux::messaging::SendRequest::text(format!("seats/{own}/inbox"), "from the window");
+    message.id = id;
+    let reply = f.gui(
+        id,
+        bbt_proto::GuiAction::Messaging {
+            id,
+            swarm_id: bbt_proto::SwarmId::from_u128(f.own.swarm.0),
+            request: Request::Send { message },
+        },
+    );
+    let bbt_proto::GuiReply::Messaging {
+        response: Response::Stored { message },
+        ..
+    } = reply
+    else {
+        panic!("{reply:?}")
+    };
+    assert_eq!(message.envelope.door, Some(Door::Gui));
+    assert_eq!(message.envelope.issued_by, None);
+    message.envelope.verify_signature().unwrap();
+    // A seat's own envelope never carries either.
+    let seat = data(f.mutate(
+        own,
+        Ulid::new(),
+        "message_send",
+        json!({"destination":format!("seats/{}/inbox", f.peer.id),"text":"seat says"}),
+    ));
+    assert!(seat["message"]["envelope"].get("door").is_none(), "{seat}");
+    assert!(
+        seat["message"]["envelope"].get("issued_by").is_none(),
+        "{seat}"
+    );
+}

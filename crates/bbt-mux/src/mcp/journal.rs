@@ -366,6 +366,7 @@ mod tests {
         let operator = Principal::Operator {
             device_id: Ulid::new(),
             door: super::super::Door::Gui,
+            issued_by: None,
         };
         call.tool = "gui_spawn".into();
         call.args = json!({"swarm":Ulid::new(),"harness":"zsh"});
@@ -389,6 +390,7 @@ mod tests {
         let other = Principal::Operator {
             device_id: Ulid::new(),
             door: super::super::Door::Gui,
+            issued_by: None,
         };
         let denied = journal
             .effect(&other, &call, || panic!("different device dispatched"))
@@ -412,6 +414,7 @@ mod tests {
         let operator = Principal::Operator {
             device_id: Ulid::new(),
             door: super::super::Door::Gui,
+            issued_by: None,
         };
         call.tool = "gui_spawn".into();
         let journal = Journal::new(store);

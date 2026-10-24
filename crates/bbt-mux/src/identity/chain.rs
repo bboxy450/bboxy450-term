@@ -230,6 +230,7 @@ impl ChainSeatKeys {
             },
             device: grant.device_pubkey.clone(),
             grant: self.identity.grant.digest.clone(),
+            origin: Default::default(),
             epoch: transition::counter(&grant.device_epoch)?,
             key,
         })

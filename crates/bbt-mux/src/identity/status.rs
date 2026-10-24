@@ -153,6 +153,7 @@ impl IdentityRuntime {
             grant: crate::store::digest(&bytes),
             epoch,
             key,
+            origin: Default::default(),
         })
     }
     pub(crate) fn close_open_holds(&self, root: &std::path::Path) -> Result<usize> {

@@ -145,6 +145,12 @@ pub enum GuiAction {
         #[serde(default)]
         seat: Option<Ulid>,
     },
+    /// Who issues this connection's operator requests (decision #269): `ctl --as LABEL`.
+    /// Attribution only, recorded on the envelopes the operator principal signs; it grants
+    /// nothing.
+    Issuer {
+        label: String,
+    },
     /// The window's answer to [`GuiReply::CaptureAsk`]: written, or why not.
     Captured {
         id: Ulid,
