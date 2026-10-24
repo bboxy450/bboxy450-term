@@ -325,6 +325,52 @@ pub(crate) fn write_plan(
     Ok(WritePlan::Record(Box::new(request)))
 }
 
+/// The operator's task create (ctl `task create`, #266 addendum): open and unassigned under
+/// `tasks/`, with a title and a verify command, delegated by the operator device. Edits and
+/// lifecycle keep the task_* tools; delegation assigns it later.
+pub(crate) fn operator_task(request: &mut d::WriteRequest, device: crate::Ulid) -> d::Result<()> {
+    let protected = |message: &str| Err(denied("task_field_protected", message));
+    if request.reference.is_some() {
+        return protected("operator task edits use the task_* tools");
+    }
+    if !request
+        .path
+        .as_deref()
+        .is_some_and(|path| path.starts_with("tasks/"))
+    {
+        return protected("an operator task is created under tasks/");
+    }
+    let delegator = json!(format!("operator:{device}"));
+    let metadata = request
+        .frontmatter
+        .as_object_mut()
+        .expect("validated frontmatter");
+    for field in ["title", "verify"] {
+        if metadata
+            .get(field)
+            .and_then(Value::as_str)
+            .is_none_or(|v| v.trim().is_empty())
+        {
+            return protected("a task needs a title and a verify command");
+        }
+    }
+    metadata.entry("status").or_insert_with(|| json!("open"));
+    metadata.entry("assignee").or_insert_with(|| json!("none"));
+    if metadata["status"] != "open"
+        || !(metadata["assignee"].is_null() || metadata["assignee"] == "none")
+    {
+        return protected("create tasks open and unassigned; delegation uses task delegate");
+    }
+    if metadata
+        .get("delegated_by")
+        .is_some_and(|value| *value != delegator)
+    {
+        return protected("an operator task is delegated by the operator device");
+    }
+    metadata.insert("delegated_by".into(), delegator);
+    Ok(())
+}
+
 fn task_report_remainder(metadata: &Value) -> d::Result<Value> {
     let mut value = metadata.clone();
     let object = value

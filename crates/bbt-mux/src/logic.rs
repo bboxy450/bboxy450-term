@@ -73,6 +73,12 @@ enum Command {
         crate::mcp::Origin,
         oneshot::Sender<Result<bbt_proto::messaging::TaskResponse>>,
     ),
+    GuiRecordWrite(
+        Ulid,
+        serde_json::Value,
+        crate::mcp::Origin,
+        oneshot::Sender<crate::knowledge::data_source::Result<serde_json::Value>>,
+    ),
     GuiKnowledge(
         String,
         serde_json::Value,
@@ -552,6 +558,22 @@ impl LogicClient {
         rx.await.map_err(|_| {
             self.unavailable("task outcome unknown; retry the original operation ID")
         })?
+    }
+    /// `ctl record write`: the operator's signed `e2e` record write (e2e acceptance §2).
+    pub async fn gui_record_write(
+        &self,
+        id: Ulid,
+        args: serde_json::Value,
+        origin: crate::mcp::Origin,
+    ) -> Result<crate::knowledge::data_source::Result<serde_json::Value>> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiRecordWrite(id, args, origin, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| {
+            self.unavailable("record write outcome unknown; retry the original operation ID")
+        })
     }
     /// Only the admitted GUI session calls this read port. The IO owner keeps
     /// the existing Index; hydration reads create no journal, watcher or ACK.
@@ -4964,6 +4986,162 @@ impl Worker {
         let result = self.work_item_call(&actor, &call, &journal)?;
         crate::mcp::work_items::response(&call.tool, result).map_err(invalid)
     }
+    /// `ctl record write` and `ctl task create` (e2e acceptance §2, #266 addendum): the
+    /// operator's write of an `e2e` record or a new open task, signed by the operator device
+    /// under its issuer and journaled like every operator mutation. Other record types and
+    /// task edits keep their seat and task_* paths.
+    fn gui_record_write(
+        &mut self,
+        id: Ulid,
+        args: serde_json::Value,
+        origin: crate::mcp::Origin,
+    ) -> crate::knowledge::data_source::Result<serde_json::Value> {
+        use crate::{
+            knowledge::data_source as d,
+            mcp::{self, knowledge as tool},
+        };
+        let device_id = self
+            .identity
+            .status()
+            .map_err(|e| d::CommandError::new("held", e.to_string()))?
+            .device_id.ok_or_else(|| {
+            d::CommandError::new("held", "held: operator device custody is unavailable")
+        })?;
+        let actor = crate::mcp::Actor::Operator {
+            device_id,
+            door: origin.door,
+            issued_by: origin.issued_by.clone(),
+        };
+        let call = crate::mcp::Call {
+            op_id: id,
+            tool: "knowledge_write".into(),
+            args,
+        };
+        call.validate().map_err(|e| d::CommandError::new("rejected", e.to_string()))?;
+        let journal = self.operator_journal.clone();
+        let value = match tool::prepare(&call) {
+            Ok(tool::Request::Write(request)) => {
+                journal.effect(&actor, &call, || self.operator_record_write(&call, *request))
+            }
+            Ok(_) => unreachable!("knowledge_write prepares a write"),
+            Err(reason) => journal.checked(&actor, &call, mcp::error(id, "rejected", &reason)),
+        }
+        .map_err(|e| d::CommandError::new("unknown", e.to_string()))?;
+        if value["isError"] == true {
+            let error = &value["structuredContent"]["error"];
+            return Err(d::CommandError::new(
+                error["code"].as_str().unwrap_or("unknown"),
+                error["message"].as_str().unwrap_or("record write refused"),
+            ));
+        }
+        Ok(value["structuredContent"].clone())
+    }
+    fn operator_record_write(
+        &mut self,
+        call: &crate::mcp::Call,
+        mut request: crate::knowledge::data_source::WriteRequest,
+    ) -> serde_json::Value {
+        use crate::{
+            knowledge::data_source as d,
+            mcp::{self, knowledge as tool},
+        };
+        let task = request.frontmatter["type"] == "task";
+        if !task && request.frontmatter["type"] != "e2e" {
+            return mcp::error(
+                call.op_id,
+                "knowledge_write_denied",
+                "operator record write covers e2e records and new tasks",
+            );
+        }
+        let signing = match self.identity.operator_signing() {
+            Ok(signing) => signing,
+            Err(error) => {
+                return mcp::error(
+                    call.op_id,
+                    "held",
+                    &format!("knowledge signing held: {error}"),
+                );
+            }
+        };
+        if task && let Err(error) = tool::operator_task(&mut request, signing.device_id) {
+            return mcp::error(call.op_id, &error.code, &error.message);
+        }
+        let context = crate::knowledge::WriteContext::operator(
+            signing.device_id,
+            signing.issuer.kind,
+            &signing.key,
+        );
+        let source = BboxySource::new(&self.index);
+        match request.reference.clone() {
+            Some(reference) => match source.fetch(d::FetchRequest { reference }) {
+                Ok(record) if record.frontmatter["type"] != "e2e" => {
+                    return mcp::error(
+                        call.op_id,
+                        "type_immutable",
+                        "an update must retain the current record type",
+                    );
+                }
+                Ok(record) if request.etag.as_ref().is_some_and(|etag| etag != &record.etag) => {
+                    return mcp::error(
+                        call.op_id,
+                        "etag_mismatch",
+                        "etag does not match the current record",
+                    );
+                }
+                Ok(_) => (),
+                Err(error) => {
+                    return mcp::error(
+                        call.op_id,
+                        &error.code,
+                        "knowledge update reference is unavailable or stale",
+                    );
+                }
+            },
+            None => match source.resolve(d::ResolveRequest {
+                locator: call.op_id.to_string(),
+            }) {
+                Err(error) if error.code == "not_found" => (),
+                _ => {
+                    return mcp::error(
+                        call.op_id,
+                        "rejected",
+                        "knowledge create id already exists or cannot be resolved uniquely",
+                    );
+                }
+            },
+        }
+        let result = match source.write(request, &context) {
+            Ok(result) => result,
+            Err(error)
+                if matches!(
+                    error.code.as_str(),
+                    "write_not_confirmed" | "write_applied_result_unavailable"
+                ) =>
+            {
+                return mcp::error(
+                    call.op_id,
+                    "unknown",
+                    "knowledge write outcome is not confirmed; inspect original operation, never redispatch it",
+                );
+            }
+            Err(error) => return mcp::error(call.op_id, &error.code, &error.message),
+        };
+        if self.scan().is_err() {
+            return mcp::error(
+                call.op_id,
+                "unknown",
+                "knowledge write applied; activity publication pending, inspect original operation",
+            );
+        }
+        match serde_json::to_value(result) {
+            Ok(value) => tool::bounded(call.op_id, mcp::success(call.op_id, value), true),
+            Err(_) => mcp::error(
+                call.op_id,
+                "unknown",
+                "knowledge write applied; result serialization unavailable",
+            ),
+        }
+    }
     fn gui_spawn(
         &mut self,
         id: Ulid,
@@ -5328,6 +5506,10 @@ impl Worker {
                     }
                     Command::GuiTask(id, request, origin, reply) => {
                         let result = self.gui_task(id, request, origin);
+                        let _ = reply.send(result);
+                    }
+                    Command::GuiRecordWrite(id, args, origin, reply) => {
+                        let result = self.gui_record_write(id, args, origin);
                         let _ = reply.send(result);
                     }
                     Command::GuiKnowledge(method, args, reply) => {

@@ -559,7 +559,7 @@ async fn gui_session(
                         continue;
                     }
                     let op=match &request.action {
-                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}=>*id,
+                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
@@ -614,6 +614,7 @@ async fn gui_session(
                             GuiAction::Messaging {id,swarm_id,request}=>Ok(GuiReply::Messaging {op:id,response:client.gui_messaging(id,Ulid::from(swarm_id.0.0),request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?}),
                             GuiAction::Task {id,request}=>Ok(GuiReply::Task {op:id,response:client.gui_task(id,request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?}),
                             GuiAction::Knowledge {..}=>unreachable!("knowledge was dispatched independently"),
+                            GuiAction::RecordWrite {id,args}=>Ok(GuiReply::Knowledge {op:id,response:serde_json::to_value(client.gui_record_write(id,args,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?)?}),
                             GuiAction::Watch {seat,view}=> {
                                 if view.seat!=Ulid::from(seat.0.0) {return Err(invalid("watch seat and view disagree"));}
                                 if views.len()>=1024&&!views.contains_key(&seat) {return Err(invalid("watch limit reached"));}

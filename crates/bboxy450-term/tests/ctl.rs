@@ -1485,3 +1485,117 @@ async fn ctl_never_prints_secrets() {
     }
     session.shutdown().await.unwrap();
 }
+
+/// `record write` (e2e acceptance §2): the operator signs an e2e record into the knowledge
+/// base; another record type and a stale etag are refused with their reasons.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ctl_record_write_signs_e2e_records_only() {
+    let root = tempfile::tempdir().unwrap();
+    let root = root.path().canonicalize().unwrap();
+    let (session, run, _) = noun_verb_fixture(&root).await;
+    let json =
+        |text: &str| -> Value { serde_json::from_str(text.lines().next().unwrap()).unwrap() };
+    let write = |name: &str, args: Value| {
+        let file = root.join(name);
+        std::fs::write(&file, args.to_string()).unwrap();
+        let (code, out, _) = ctl_raw(&run, &root, &["record", "write", file.to_str().unwrap()]);
+        (code, json(&out))
+    };
+
+    let (code, reply) = write(
+        "e2e.json",
+        json!({ "path": "e2e/T9.md", "body": "fixture\n",
+            "frontmatter": { "type": "e2e", "title": "T9 fixture", "function": "T9",
+                "group": "terminal", "status": "untested" } }),
+    );
+    assert_eq!(code, Some(0), "{reply}");
+    assert_eq!(
+        (&reply["noun"], &reply["verb"]),
+        (&json!("record"), &json!("write"))
+    );
+    let record = &reply["data"]["record"];
+    assert!(record["number"].is_u64(), "{reply}");
+    let text = std::fs::read_to_string(root.join("repository/.bboxy/e2e/T9.md")).unwrap();
+    assert!(
+        text.contains("status: untested") && text.contains("sig:"),
+        "{text}"
+    );
+
+    let (code, reply) = write(
+        "note.json",
+        json!({ "path": "notes/x.md", "body": "x\n",
+            "frontmatter": { "type": "note", "title": "x" } }),
+    );
+    assert_eq!(code, Some(1), "{reply}");
+    assert!(
+        reply["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("knowledge_write_denied"),
+        "{reply}"
+    );
+
+    let reference = json!({ "id": record["id"], "number": record["number"], "slug": record["slug"],
+        "path": record["path"], "digest": record["digest"] });
+    let (code, reply) = write(
+        "stale.json",
+        json!({ "ref": reference, "etag": "stale", "body": "fixture\n",
+            "frontmatter": { "type": "e2e", "title": "T9 fixture", "function": "T9",
+                "group": "terminal", "status": "pass" } }),
+    );
+    assert_eq!(code, Some(1), "{reply}");
+    assert!(
+        reply["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("etag_mismatch"),
+        "{reply}"
+    );
+    session.shutdown().await.unwrap();
+}
+
+/// `task create` (#266 addendum): an open, unassigned task under tasks/, delegated by the
+/// operator device; a create without --verify is a usage error.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ctl_task_create_opens_an_unassigned_operator_task() {
+    let root = tempfile::tempdir().unwrap();
+    let root = root.path().canonicalize().unwrap();
+    let (session, run, _) = noun_verb_fixture(&root).await;
+    let (code, out, _) = ctl_raw(
+        &run,
+        &root,
+        &[
+            "task",
+            "create",
+            "Fix the T9 fixture",
+            "--verify",
+            "true",
+            "--brief",
+            "why",
+        ],
+    );
+    let reply: Value = serde_json::from_str(out.lines().next().unwrap()).unwrap();
+    assert_eq!(code, Some(0), "{reply}");
+    let record = &reply["data"]["record"];
+    let path = record["path"].as_str().unwrap();
+    assert!(
+        path.starts_with("tasks/") && path.ends_with("-fix-the-t9-fixture.md"),
+        "{path}"
+    );
+    let front = &record["frontmatter"];
+    assert_eq!(
+        (&front["status"], &front["assignee"]),
+        (&json!("open"), &json!("none"))
+    );
+    assert!(
+        front["delegated_by"]
+            .as_str()
+            .unwrap()
+            .starts_with("operator:"),
+        "{front}"
+    );
+    assert!(record["number"].is_u64(), "{reply}");
+    let (code, _, _) = ctl_raw(&run, &root, &["task", "create", "no verify"]);
+    assert_eq!(code, Some(2));
+    session.shutdown().await.unwrap();
+}

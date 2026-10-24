@@ -175,6 +175,14 @@ pub enum GuiAction {
         after: u64,
         limit: usize,
     },
+    /// An operator-signed knowledge write of an `e2e` record (`ctl record write`, e2e
+    /// acceptance §2): `args` is the knowledge_write DTO (`path` or `ref`, `frontmatter`,
+    /// `body`, `etag`). Logic signs it with the operator device under its issuer and journals
+    /// it; the reply is `Knowledge` with the serialized data_source result.
+    RecordWrite {
+        id: Ulid,
+        args: serde_json::Value,
+    },
     /// Who issues this connection's operator requests (decision #269): `ctl --as LABEL`.
     /// Attribution only, recorded on the envelopes the operator principal signs; it grants
     /// nothing.
