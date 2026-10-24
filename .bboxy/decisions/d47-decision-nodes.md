@@ -15,7 +15,7 @@ links:
   - { to: "[[provenance]]", rel: constrains }
   - { to: "[[document-viewer]]", rel: consumer }
 created: 2026-10-23T23:37:35Z
-updated: 2026-10-24T00:24:57Z
+updated: "2026-10-24T09:49:31Z"
 ---
 # Decision 47: one file per decision; records are objects, the git tree is the first store
 
@@ -32,6 +32,8 @@ Decided by the operator, 2026-10-23, from the Architect's reading; the Oracle ad
 **The decision node.** Frontmatter `type: decision`, `number`, `title`, `status` (`decided | amended | superseded`), `decided` (date), `operator` (a list of the verbatim words that caused it, when there are any), `links` with the relations `decides` (a spec or a section), `constrains` (an invariant), `evidence` (research, runs), `answers` (a comment), `amends` and `supersedes` (another decision), `supersedes-as-index` for the ledger. Body: alternatives, choice, reason, as before; sub-rulings (a), (b), … stay inside the node they refine until one of them changes the choice, which is a new node with `amends`. File name `d<N>-<slug>.md`, so `[[d47-decision-nodes]]`. Numbering is unchanged and still global.
 
 **The sweep (an Executor assignment, briefed by the Oracle from this node).** Split entries 1 to 46 of the ledger into `d<N>-<slug>.md` nodes with the frontmatter above, each carrying the operator's words and the sub-rulings that entry holds today; replace each ledger entry with a one-line pointer under an anchor heading `## 47` style so `[[2026-10-22-architecture-round-1#N]]` keeps resolving; rewrite every `decision #N` and `#N` reference in `.bboxy/` (133 occurrences across specs, invariants, tasks, comments and research at this commit) as `[[dN-slug]]` with the number kept in the text; add `[[dN-slug]]` to the `links` of every spec and invariant that cites it. Acceptance: `cargo test -p bbt-doc --locked --test corpus` green; `grep -rnE 'decision #[0-9]+' .bboxy/specs .bboxy/invariants` returns nothing; every `[[d<N>-…]]` whose target is a record of type `decision` resolves to a node whose `number` is N (a spec whose slug happens to start with `d1-`, such as `d1-providers`, is an ordinary slug link and keeps its name; Oracle and Architect, 2026-10-23, from Velvet's validator stop); every other wikilink resolves; the ledger's anchors resolve; `sh scripts/records-push.sh` is the only path to main. Verified by the Architect against this node.
+
+**App-authored decisions (Kestrel's corpus edge, 2026-10-24).** A client cannot know a decision's number before the Index allocates it, so the Index **derives the filename**: a `knowledge_write` creating a `type: decision` record supplies `decisions/<slug>.md`, and under the allocation lock the Index stores it as `decisions/d<N>-<slug>.md` with the number it just assigned, returning the final path; a supplied basename that already begins `d<digits>-` must equal the allocated `N` or the write is refused as `decision_filename_required` naming the authoritative name, no number consumed. No refuse-and-resubmit dance, because the number can change between the two. The corpus rule (`d<number>-` for every decision) stays the gate; this makes the app unable to break it.
 
 **Amended by [[d48-every-record-has-a-number]]:** the sweep also assigns a `number` to every existing record and teaches `[[#N]]` to the viewer.
 
