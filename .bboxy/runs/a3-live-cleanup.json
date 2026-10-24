@@ -1,0 +1,30 @@
+{
+  "source_sha": "86744957990f95033f9e768ae52e495a8c14a7bd",
+  "recorded_utc": "2026-10-24T11:18:24.071651+00:00",
+  "private_gate_target": "/Users/feral/mydev/bboxy450-term-exec6/target/a3-live-ci-build-86744957990f",
+  "private_gate_target_absent": true,
+  "private_gate_path_allocated_bytes": 3949432832,
+  "private_gate_count_method": "sum st_blocks*512 by file path, not deduplicated for hard links; not a measurement of volume free-space delta",
+  "source_worktree_absent": true,
+  "source_worktree_remove_exit": 0,
+  "dev_target": "/Users/feral/mydev/bboxy450-term-exec6/target/a3-live-dev",
+  "dev_target_absent": true,
+  "dev_unique_regular_file_inodes": 7902,
+  "dev_regular_file_allocated_bytes_retired": 2197991424,
+  "dev_diagnostic_binary_hashes": {
+    "target/a3-live-dev/debug/bboxy450-term": {
+      "sha256": "c9ab6be4f1a1890587e87ad011654972ecea39ff3d44d477e59600bde4fd4421",
+      "bytes": 39378224
+    },
+    "target/a3-live-dev/debug/bboxybook": {
+      "sha256": "8e9dcea6ff447c16bfed0498115a905f38ef01afa3c71c4c199fe6703f594ca9",
+      "bytes": 17884944
+    }
+  },
+  "retained_open_baselines": [
+    "target/e2e-parity-15755436 (Nyx hosting reference)",
+    "target/a3-live-parity-86744957990f (current exact gated evidence)",
+    "target/a3-live-proof/provider-fault8 (scoped paired visual proof)"
+  ],
+  "disk_free_bytes_after": 56363003904
+}

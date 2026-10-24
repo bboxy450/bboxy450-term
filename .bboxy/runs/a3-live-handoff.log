@@ -1,0 +1,110 @@
+A-3 LIVE RECORDS + CTL E2E — EVIDENCE HANDOFF
+Generated UTC: 2026-10-24T11:22:11.137730+00:00
+Signed gated source: 86744957990f95033f9e768ae52e495a8c14a7bd
+Writing worktree/branch: /Users/feral/mydev/bboxy450-term-exec6 / exec6
+Base at gate start: d13f44a0ad51f65f1fa010c124562a143a320abb
+Stack: d956e87b (loader/read port), ded161f1 (Wren49837277 fault reference), 86744957 (live/ctl).
+Slot2 / early pause release: 36f8f9fc-836b-4d63-8f53-fe5a64b858d4; start receipt dff909b0; exit/release receipt ef3cea04.
+
+RESULT
+BBOXY_TEST_CUSTODY=memory CARGO_TARGET_DIR=<private> PARITY_OUT=<retained report> sh scripts/ci-local.sh --parity — EXIT0,2678.404s.
+Clean detached exact source; post-CI source status empty. Private target deleted and worktree removed0.
+Workspace1112 passed,22 ignored; strict workspace/all-target Clippy0; UI lint0; native idle10.002s,0 frames,0 callbacks.
+Invariants18 checks,0 failures,6 slow checks skipped. Current2104 cases:2000 required/measured,0 unproven,0 mismatches;72 advisory pixel reviews.
+Review keys versus pinned accepted9e77859f baseline:0 new,0 removed. Counts: documents16, harness-icon48, materials8.
+New cases40 =32 accepted upstream launcher-role cases +8 provider-fault cases. All8 provider-fault cases within policy; worst rect0.0487060546875px, baseline0.
+No tolerance/policy change. Historical1664 report alongside current:851 pixel reviews, explicitly diagnostic/non-gating.
+
+CRITERIA
+Live records: the admitted GUI port reuses existing DataSource DTOs + existing Index; root lookup is off the UI thread. List pages32, records128, task targets128, provider page256KiB, accumulated projection1MiB; at most one outstanding read.
+Refresh: changes_since plus doc/activity/task hints; one coalesced observer, no new timer/consumer/read mark. Close stops reads; reconnect restarts its source cursor; old replies cannot release a new request; identical snapshots do not dirty UI.
+ctl e2e: same loader and Checklist::project; status,last_run,run_by,tracked_tasks + global summary; --group terminal returns8 rows plus identical global summary; unknown group refuses.
+Provider failure: retained pass rows cannot retain a green verdict; named fault is visible; malformed/oversized/stale provider input fails closed.
+One fixture corpus: real IO published54 records and external ctl JSON exactly equal; task/doc notices drive amber->red->green, fault is red and close/reopen recovers; stage unchanged; fixture children reaped.
+Canonical seam: generated lab/web/e2e.js equality with spec section1; no capture.mjs injection.
+
+FILE:LINE — MECHANISM
+crates/bbt-mux/src/knowledge/read.rs:20 — Four bounded portable DataSource reads only; no write/ACK/read-mark method, no second reader.
+crates/bbt-mux/src/knowledge/mod.rs:7 — Exports the shared read dispatcher.
+crates/bbt-mux/src/logic.rs:335 — GUI read client and worker dispatch borrow the existing Index/registry off the UI thread (worker at4011).
+crates/bbt-mux/src/seat_socket.rs:496 — Knowledge op/reply after existing GUI admission; no new authority or admission path.
+crates/bbt-proto/src/gui.rs:156 — Additive Knowledge envelopes carry serialized existing request/result DTOs (reply at248).
+crates/bboxy450-term/src/lib.rs:7 — Exports the one loader/formatter module.
+crates/bboxy450-term/src/knowledge.rs:47 — Bounded E2eLoader, Watch at345, shared e2e_lines at440; validates refs/etags/numbers and projects faults red.
+crates/bboxy450-term/src/live.rs:91 — Coalesced atomic demand + Notify, one in-flight read; doc/activity/task wakes, existing ACK lane; Model publication at725, no polling timer.
+crates/bboxy450-term/src/model.rs:514 — Immutable optional Arc<Checklist>, preserved through metadata/grid rebuilds.
+crates/bboxy450-term/src/main.rs:1031 — Open/close Graph observation and prepared snapshot uptake at2042; existing focus/stage routing retained.
+crates/bboxy450-term/src/e2e_checklist.rs:21 — Graph holds the prepared Arc; uses the shared canonical promise parser.
+crates/bboxy450-term/src/ctl.rs:186 — e2e [--group] parse; portable read transport at332 and same loader/projection at549; group filters rows only, global summary retained.
+crates/bbt-ui/src/modules/e2e_checklist.rs:115 — Default-empty provider faults, serializable summary, red fault-first headline and named diagnostic line at874.
+crates/bbt-ui/tests/e2e_checklist.rs:75 — Default-only faults input in fixture; canonical generated-JS equality remains at24.
+crates/bbt-mux/tests/knowledge_gui.rs:88 — Allowed read DTOs, refused mutations and page/request/response bounds; oversized tests at119.
+crates/bboxy450-term/tests/knowledge_e2e.rs:110 — One signed corpus drives painted text/CLI; updates, faults, limits, coalescing, idle/close/reconnect (observer at225).
+crates/bboxy450-term/src/live.rs:1963 — Real production IO owner + admitted external ctl agree on54 records; task/doc changes, fault/recovery and shutdown.
+crates/bboxybook/src/graphs.rs:31 — Provider-fault state adds8 current cases.
+crates/bboxybook/tests/graphs.rs:11 — Matrix includes48 E2E cases.
+crates/bboxybook/capture-inputs.js:272 — Captures fault-line diagnostics only; browser geometry never feeds native layout.
+lab/web/components.js:354 — Wren49837277: public faults input, fault-first red summary and visible status lines.
+lab/web/e2e.html:35 — Wren: all-pass fixture with provider fault remains red.
+lab/web/lab.css:1654 — Wren: fault label/margin/colour reference.
+.bboxy/runs/a3-live-preflight.log:1 — Every dev verification argv/exit and four repaired failures; raw log digests.
+
+COMMANDS / REAL EXITS
+git fetch origin (before gate) —0; git rebase origin/main —0; signatures on all3 rebased commits verified good.
+git verify-commit 86744957990f95033f9e768ae52e495a8c14a7bd —0.
+Exact clean ci-local --parity —0 (raw log records source, environment, start/exit).
+python3 /tmp/velvet-a3-live-verdict.py 86744957990f95033f9e768ae52e495a8c14a7bd —0 (asserted report/capture pins, geometry,0 new review keys and provider8 pass).
+Cleanup driver —0; private target/source confirmed absent; inactive owned dev target deleted, hashes/counts in cleanup.json.
+git diff --exit-code 86744957990f95033f9e768ae52e495a8c14a7bd -- crates lab scripts —0.
+git fetch origin (after gate) —0; NO REBASE after gate.
+Auxiliary ICQ inbox --wait50 was refused1 (limit30); corrected --wait30 returned0. No source or service change.
+The other verification commands, including every failed attempt, are in a3-live-preflight.log.
+
+RAW LOG POINTERS
+.bboxy/runs/a3-live-ci.log:1428 — live_e2e_and_ctl_share_one_corpus
+.bboxy/runs/a3-live-ci.log:1508 — observer_coalesces
+.bboxy/runs/a3-live-ci.log:1509 — one_signed_corpus
+.bboxy/runs/a3-live-ci.log:3552 — idle probe PASS
+.bboxy/runs/a3-live-ci.log:3791 — parity: 2104
+.bboxy/runs/a3-live-ci.log:3792 — geometry: 2000
+.bboxy/runs/a3-live-ci.log:3793 — parity gate: pass
+.bboxy/runs/a3-live-ci.log:3804 — invariants: 18
+.bboxy/runs/a3-live-ci.log:3805 — ci-local: all gates passed
+.bboxy/runs/a3-live-ci.log:3807 — ACTUAL EXIT 0
+
+ARTIFACTS / PROVENANCE
+Retained exact report: target/a3-live-parity-86744957990f/report.json
+Report SHA256: 805443592f8bad97822f1a0720b3c1579e1b825ab47ddaa5437918e4cbdd15a8
+Capture revision equals gated source; capture SHA256: 76969723ad8bea0eb249865efab234f9a6c4b510c909e982d5a38d110266cd28
+cases.json SHA256: 840a7a5a65f170c7e5a56b244c9885165c9a60eba3f79ea9036830b23d32f322
+requested.json SHA256: 6a942b1201782cc476171c8e72a405f8462e443465228c0bbc01b5bdd864c6f2
+Raw CI log SHA256: 18981e50d0f5d1ef9a1ea9ac28e7f2c7dc5f0cb93c098742b6c26d5999df5b19
+a3-live-verdict.json binds current/pinned baseline, all key and geometry-summary deltas, provider8 results.
+a3-live-png-hashes.json records nonempty current web/native/backdrop/diff files.
+a3-live-cleanup.json records retired targets/binaries and retained baselines.
+
+LIMITS / DELIBERATELY UNCHECKED
+No production54 record seeding; that remains the Oracle-delegated in-app writer task. Fixtures use memory custody and stand-ins; no real model/network/Keychain/signing probe.
+22 stock ignored tests and6 slow invariant checks were not run. No967-seat calibration/scale run claimed.
+The baseline predates accepted role-default changes: overlapping PNGs moved in launcher72,picker56,settings8; no causal attribution of all those pixels to A-3. Eight Claude placement geometry summaries add one rect/baseline with unchanged max errors. All current geometry gates pass.
+Main moved during the gate; merged-tree verification remains with the Oracle. Latest observed origin/main: 4946033567f70a296bf144671da10093e80e174f
+Overlapping paths since gate base: crates/bboxy450-term/src/ctl.rs, crates/bboxy450-term/src/live.rs, crates/bbt-mux/src/logic.rs, crates/bbt-mux/src/seat_socket.rs, crates/bbt-proto/src/gui.rs
+Preserve both OperatorSpawned/Knowledge at the enum tail and reply matches; cockpit list ignore arm and live reply dispatch were coordinated with Seraph. No post-gate product edits/rebase.
+
+MAIN COMMITS SINCE GATE BASE
+49460335 decision #269: ctl messages carry door and issued_by in the signed body; work travels only as a delegated task; a peer never overrides a task's stop line
+14b89a15 Merge wake bisect evidence (Sable, evidence only)
+1411c5f5 Record private A-0 rerun refusal, zero counts, and bounded teardown
+51709755 Record wake size and original-content controls without a product fix
+d2ff1140 Merge ctl refusal read on early close (Seraph)
+98355737 ctl: a refusal that beats the request is still read, not lost to a broken pipe
+5fd01b7b Merge #264 reply routing (Seraph)
+ef949111 reply-route: --parity gate evidence for 0ce7c108 (all gates passed)
+e73bd85b Record exact short-DM wake controls on old and merged source
+ef0e2092 decision #267 and invariant #268: an idle swarm costs the message pump nothing, the pump scans only dirty swarms; R5g fixture uses the load fixture's swarm shape
+2cc61300 Merge ctl-stage: ctl spawn opens the seat on stage; gui.endpoint removed on SIGTERM/SIGINT (Seraph)
+0ce7c108 reply-route: focused bbt-proto + bbt-mux + bboxy450-term evidence on 56e4c62e
+31e941e0 messaging: a reply goes to its sender; an unknown destination names the valid one (decision #264)
+086514f4 ctl-stage: --parity gate evidence for e3ed6316 (all gates passed)
+e3ed6316 ctl-stage: focused bbt-proto + bbt-mux + bboxy450-term evidence on 56e4c62e
+39095eef ctl: a ctl-spawned seat opens on stage; SIGTERM/SIGINT to logic removes gui.endpoint
