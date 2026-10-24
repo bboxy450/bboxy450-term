@@ -62,7 +62,7 @@ number=$(sed -n 's/^number: *\([0-9][0-9]*\)$/\1/p' "$task" | head -1)
 unset BBOXY_TEST_CUSTODY
 step env CARGO_TARGET_DIR="$root/target" cargo build --release --locked -p bboxy450-term
 
-if ! $dry && "$bin" ctl seats >/dev/null 2>&1; then
+if ! $dry && "$bin" ctl seat ls >/dev/null 2>&1; then
     echo "e2e-seed: an app with --ctl is already running; using it"
 else
     log=$root/target/e2e-seed-app.log
@@ -70,7 +70,7 @@ else
     if ! $dry; then
         "$bin" --ctl > "$log" 2>&1 &
         tries=0
-        until "$bin" ctl seats >/dev/null 2>&1; do
+        until "$bin" ctl seat ls >/dev/null 2>&1; do
             tries=$((tries + 1))
             [ "$tries" -le 120 ] || { echo "e2e-seed: the app did not open ctl in 60 s; see $log" >&2; exit 1; }
             sleep 0.5
@@ -78,11 +78,11 @@ else
     fi
 fi
 
-printf '+ %s ctl --as %s spawn codex --role executor --placement new-tab --cwd %s --name e2e-seed\n' "$bin" "'$issuer'" "$root"
+printf '+ %s ctl --as %s seat spawn codex --role executor --place tab --cwd %s --name e2e-seed\n' "$bin" "'$issuer'" "$root"
 if $dry; then
     seat='<seat id>'
 else
-    spawned=$("$bin" ctl --as "$issuer" spawn codex --role executor --placement new-tab --cwd "$root" --name e2e-seed)
+    spawned=$("$bin" ctl --as "$issuer" seat spawn codex --role executor --place tab --cwd "$root" --name e2e-seed)
     echo "$spawned"
     seat=$(printf '%s\n' "$spawned" | sed -n 's/.*"seat":"\([0-9A-Z]*\)".*/\1/p')
     [ -n "$seat" ] || { echo "e2e-seed: spawn failed" >&2; exit 1; }
@@ -126,8 +126,8 @@ if ! $dry; then
     "$bin" ctl seat wait "$seat" --text 'Ask Codex to do anything' --timeout 120000 >/dev/null
 fi
 
-printf '+ %s ctl --as %s delegate %s %s\n' "$bin" "'$issuer'" "'#$number'" "$seat"
-if ! $dry; then "$bin" ctl --as "$issuer" delegate "#$number" "$seat"; fi
+printf '+ %s ctl --as %s task delegate %s %s\n' "$bin" "'$issuer'" "'#$number'" "$seat"
+if ! $dry; then "$bin" ctl --as "$issuer" task delegate "#$number" "$seat"; fi
 
 cat <<EOF
 
@@ -135,6 +135,6 @@ Seated $seat (Codex, executor) and delegated #$number.
 Next, at the window:
   1. If the script stopped at Codex's hook review, review it there; otherwise nothing to approve.
   2. Watch the seat: it orients, then writes .bboxy/e2e records through the app.
-  3. Completion: $bin ctl e2e | tail -1   shows untested 54, missing 0, doubled 0;
-     $bin ctl reports                     shows its verify_result (exit 0).
+  3. Completion: $bin ctl e2e list --human   ends with the summary: untested 54, missing 0, doubled 0;
+     $bin ctl task get '#$number'          shows the report and its verify_result (exit 0).
 EOF
