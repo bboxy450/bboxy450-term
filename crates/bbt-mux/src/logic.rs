@@ -94,7 +94,34 @@ enum Command {
         oneshot::Sender<Result<crate::InputReceipt>>,
     ),
     GuiResize(Ulid, u64, u16, u16, oneshot::Sender<Result<()>>),
-    GuiScreen(Ulid, oneshot::Sender<Result<bbt_proto::gui::SeatScreen>>),
+    GuiScreen(
+        Ulid,
+        bool,
+        oneshot::Sender<Result<bbt_proto::gui::SeatScreen>>,
+    ),
+    CtlRename(
+        Ulid,
+        String,
+        Ulid,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<()>>,
+    ),
+    CtlRecord(
+        Ulid,
+        String,
+        serde_json::Value,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<()>>,
+    ),
+    CtlResize(
+        Ulid,
+        u64,
+        u16,
+        u16,
+        Ulid,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<()>>,
+    ),
     CtlInput(
         Ulid,
         u64,
@@ -580,10 +607,10 @@ impl LogicClient {
             .map_err(|_| self.unavailable("input outcome unknown; keep the original input id"))?
     }
     /// One seat's visible screen as text, from the snapshot the window watches.
-    pub async fn gui_screen(&self, seat: Ulid) -> Result<bbt_proto::gui::SeatScreen> {
+    pub async fn gui_screen(&self, seat: Ulid, cells: bool) -> Result<bbt_proto::gui::SeatScreen> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::GuiScreen(seat, tx))
+            .send(Command::GuiScreen(seat, cells, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
@@ -605,6 +632,58 @@ impl LogicClient {
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await
             .map_err(|_| self.unavailable("input outcome unknown; keep the original input id"))?
+    }
+    /// Rename a seat through the ctl door: a journaled registry write and a state event.
+    pub async fn ctl_rename(
+        &self,
+        seat: Ulid,
+        name: String,
+        op: Ulid,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::CtlRename(seat, name, op, origin, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await
+            .map_err(|_| self.unavailable("rename outcome unknown"))?
+    }
+    /// Journals a ctl operation whose effect happens in the window (a relay), so it is
+    /// recorded and audited like every other ctl op.
+    pub async fn ctl_record(
+        &self,
+        op: Ulid,
+        tool: &str,
+        args: serde_json::Value,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::CtlRecord(op, tool.into(), args, origin, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("outcome unknown"))?
+    }
+    /// Resize through the ctl door: the window's resize, journaled once per id like input.
+    pub async fn ctl_resize(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        cols: u16,
+        rows: u16,
+        id: Ulid,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::CtlResize(
+                seat, generation, cols, rows, id, origin, tx,
+            ))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await
+            .map_err(|_| self.unavailable("resize outcome unknown"))?
     }
     /// Resize only the displayed process generation; validation runs on the worker.
     pub async fn gui_resize(
@@ -3504,16 +3583,38 @@ impl Worker {
             _ => Err(invalid("input receipt mismatch")),
         }
     }
-    /// Input through `ctl`: the operator principal with its door and issuer, journaled once
-    /// per input id (a retry replays, never types twice) and audited on `account/control`.
-    /// The journal keeps the byte count and digest, never the bytes.
-    fn ctl_input(
+    /// The window's resize path: the displayed generation, clamped to the grid's bounds.
+    fn seat_resize(&mut self, id: Ulid, generation: u64, cols: u16, rows: u16) -> Result<()> {
+        self.check_gui_generation(id, generation)?;
+        let attachment = self
+            .attachments
+            .get(&id)
+            .ok_or_else(|| invalid("seat not attached"))?
+            .clone();
+        let mut size = self
+            .views
+            .get(&id)
+            .ok_or_else(|| invalid("seat unavailable"))?
+            .info
+            .size;
+        size.cols = cols.clamp(2, 512);
+        size.rows = rows.clamp(1, 256).min(32768 / size.cols);
+        check_size(size.cols as usize, size.rows as usize)?;
+        match self.request_for_seat(id, Action::Resize { attachment, size })? {
+            Reply::Resized { .. } => Ok(()),
+            _ => Err(invalid("resize receipt mismatch")),
+        }
+    }
+    /// One `ctl` effect under the operator principal with its door and issuer, journaled
+    /// once per op id (a retry replays, never repeats) and audited on `account/control`.
+    /// `args` is what the journal keeps: never typed bytes, only their count and digest.
+    fn ctl_journaled(
         &mut self,
-        id: Ulid,
-        generation: u64,
-        input_id: Ulid,
-        bytes: Vec<u8>,
+        op: Ulid,
+        tool: &str,
+        args: serde_json::Value,
         origin: crate::mcp::Origin,
+        effect: impl FnOnce(&mut Self) -> Result<()>,
     ) -> Result<()> {
         let device_id = self
             .identity
@@ -3526,17 +3627,16 @@ impl Worker {
             issued_by: origin.issued_by,
         };
         let call = crate::mcp::Call {
-            op_id: input_id,
-            tool: "gui_input".into(),
-            args: serde_json::json!({"seat":id,"generation":generation,
-                "bytes":bytes.len(),"digest":crate::store::digest(&bytes)}),
+            op_id: op,
+            tool: tool.into(),
+            args,
         };
         call.validate()?;
         let (retained, fresh) = self.operator_journal.admit(&principal, &call)?;
         let result = if fresh {
-            let result = match self.seat_input(id, generation, input_id, bytes) {
-                Ok(_) => crate::mcp::success(input_id, serde_json::json!({"seat":id})),
-                Err(error) => crate::mcp::error(input_id, "rejected", &error.to_string()),
+            let result = match effect(self) {
+                Ok(()) => crate::mcp::success(op, serde_json::json!({"ok":true})),
+                Err(error) => crate::mcp::error(op, "rejected", &error.to_string()),
             };
             self.operator_journal.complete(&principal, &call, result)?
         } else {
@@ -3545,13 +3645,72 @@ impl Worker {
         if result["isError"] == true {
             let message = result["structuredContent"]["error"]["message"]
                 .as_str()
-                .unwrap_or("input outcome unavailable");
+                .unwrap_or("outcome unavailable");
             return Err(invalid(message.to_owned()));
         }
         Ok(())
     }
+    /// Input through `ctl` (#270): the window's input path, journaled as `gui_input`.
+    fn ctl_input(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        input_id: Ulid,
+        bytes: Vec<u8>,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        let args = serde_json::json!({"seat":id,"generation":generation,
+            "bytes":bytes.len(),"digest":crate::store::digest(&bytes)});
+        self.ctl_journaled(input_id, "gui_input", args, origin, |this| {
+            this.seat_input(id, generation, input_id, bytes).map(drop)
+        })
+    }
+    /// Rename through `ctl`: the registry name, then a state event so the window refreshes
+    /// the seat (ctl-cli §1a). A name is 1 to 64 printable characters.
+    fn ctl_rename(
+        &mut self,
+        id: Ulid,
+        name: String,
+        op: Ulid,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        let name = name.trim().to_owned();
+        if name.is_empty() || name.chars().count() > 64 || name.chars().any(char::is_control) {
+            return Err(invalid("a seat name is 1 to 64 printable characters"));
+        }
+        let args = serde_json::json!({"seat":id,"name":name});
+        self.ctl_journaled(op, "seat_rename", args, origin, |this| {
+            this.registry.update(id, |record| {
+                record.name = name.clone();
+                Ok(())
+            })?;
+            this.publish(
+                &format!("seat-{id}"),
+                Draft::new(
+                    format!("seat/{id}/state"),
+                    "rename",
+                    serde_json::json!({"name": name}),
+                ),
+            )
+        })
+    }
+    /// Resize through `ctl`: the window's resize path, journaled as `gui_resize`.
+    fn ctl_resize(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        cols: u16,
+        rows: u16,
+        op: Ulid,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        let args = serde_json::json!({"seat":id,"generation":generation,"cols":cols,"rows":rows});
+        self.ctl_journaled(op, "gui_resize", args, origin, |this| {
+            this.seat_resize(id, generation, cols, rows)
+        })
+    }
     /// One seat's visible screen as text rows, trailing blanks trimmed.
-    fn seat_screen(&self, id: Ulid) -> Result<bbt_proto::gui::SeatScreen> {
+    fn seat_screen(&self, id: Ulid, cells: bool) -> Result<bbt_proto::gui::SeatScreen> {
         let generation = self
             .views
             .get(&id)
@@ -3569,6 +3728,16 @@ impl Worker {
                 .collect(),
             cursor: snapshot.screen.cursor,
             modes: snapshot.screen.modes,
+            cols: snapshot.screen.cols,
+            sequence: snapshot.sequence,
+            cells: cells.then(|| {
+                snapshot
+                    .screen
+                    .cells
+                    .iter()
+                    .map(|row| style_runs(row))
+                    .collect()
+            }),
             title: snapshot.screen.title,
         })
     }
@@ -5223,8 +5392,20 @@ impl Worker {
                         let result = self.seat_input(id, generation, input_id, bytes);
                         let _ = reply.send(result);
                     }
-                    Command::GuiScreen(id, reply) => {
-                        let result = self.seat_screen(id);
+                    Command::GuiScreen(id, cells, reply) => {
+                        let result = self.seat_screen(id, cells);
+                        let _ = reply.send(result);
+                    }
+                    Command::CtlRename(id, name, op, origin, reply) => {
+                        let result = self.ctl_rename(id, name, op, origin);
+                        let _ = reply.send(result);
+                    }
+                    Command::CtlRecord(op, tool, args, origin, reply) => {
+                        let result = self.ctl_journaled(op, &tool, args, origin, |_| Ok(()));
+                        let _ = reply.send(result);
+                    }
+                    Command::CtlResize(id, generation, cols, rows, op, origin, reply) => {
+                        let result = self.ctl_resize(id, generation, cols, rows, op, origin);
                         let _ = reply.send(result);
                     }
                     Command::CtlInput(id, generation, input_id, bytes, origin, reply) => {
@@ -5232,27 +5413,7 @@ impl Worker {
                         let _ = reply.send(result);
                     }
                     Command::GuiResize(id, generation, cols, rows, reply) => {
-                        let result = (|| {
-                            self.check_gui_generation(id, generation)?;
-                            let attachment = self
-                                .attachments
-                                .get(&id)
-                                .ok_or_else(|| invalid("seat not attached"))?
-                                .clone();
-                            let mut size = self
-                                .views
-                                .get(&id)
-                                .ok_or_else(|| invalid("seat unavailable"))?
-                                .info
-                                .size;
-                            size.cols = cols.clamp(2, 512);
-                            size.rows = rows.clamp(1, 256).min(32768 / size.cols);
-                            check_size(size.cols as usize, size.rows as usize)?;
-                            match self.request_for_seat(id, Action::Resize { attachment, size })? {
-                                Reply::Resized { .. } => Ok(()),
-                                _ => Err(invalid("resize receipt mismatch")),
-                            }
-                        })();
+                        let result = self.seat_resize(id, generation, cols, rows);
                         let _ = reply.send(result);
                     }
                     Command::GuiEndpoint(reply) => {
@@ -5812,6 +5973,35 @@ fn check_size(cols: usize, rows: usize) -> Result<()> {
     Ok(())
 }
 
+/// One screen row as runs of equal style (`ctl seat screen --cells`).
+fn style_runs(cells: &[bbt_core::Cell]) -> Vec<bbt_proto::gui::StyledRun> {
+    let mut runs: Vec<bbt_proto::gui::StyledRun> = Vec::new();
+    for cell in cells {
+        if cell.flags.intersects(
+            bbt_core::term::cell::Flags::WIDE_CHAR_SPACER
+                | bbt_core::term::cell::Flags::LEADING_WIDE_CHAR_SPACER,
+        ) {
+            continue;
+        }
+        let flags = cell.flags.bits();
+        let mut text = cell.c.to_string();
+        if let Some(extra) = cell.zerowidth() {
+            text.extend(extra);
+        }
+        match runs.last_mut() {
+            Some(run) if run.fg == cell.fg && run.bg == cell.bg && run.flags == flags => {
+                run.text.push_str(&text)
+            }
+            _ => runs.push(bbt_proto::gui::StyledRun {
+                text,
+                fg: cell.fg,
+                bg: cell.bg,
+                flags,
+            }),
+        }
+    }
+    runs
+}
 /// One screen row as text: wide-glyph spacers skipped, zero-width marks kept.
 fn row_text(cells: &[bbt_core::Cell]) -> String {
     let mut text = String::new();
@@ -6149,4 +6339,3 @@ mod pending_tests {
         assert!(pending.is_empty());
     }
 }
-

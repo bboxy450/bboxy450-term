@@ -36,7 +36,12 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
                                           pageup pagedown delete shift-tab ctrl-<letter>; Kitty when on
   seat paste <seat> <file|->              bracketed when the program asked
   seat wait <seat> (--state idle|waiting|exited | --text REGEX) [--timeout MS]   default 30000
-  seat capture <seat|window> <file.png>   with stale, occluded and frame_presented_at
+  seat capture <seat|window> <file.png>   with stale, occluded, frame_presented_at, frame_seq
+  seat screen <seat> --cells | --scrollback FROM..TO   styled runs, or history rows
+  seat resize <seat> <cols>x<rows>
+  seat rename <seat> <name>
+  seat focus <seat>                       the window focuses it
+  seat watch <seat> [--timeout MS]        state and screen changes as event lines, then done
   message send (<seat|destination> | --reply-to ID) <text> [--swarm ID]
   message post <destination> <text> [--swarm ID]
   message inbox [--since SEQ]
@@ -134,6 +139,30 @@ pub enum Command {
     Screen {
         seat: String,
         human: bool,
+        /// `--scrollback A..B`: the history rows of that capture range (#27).
+        scrollback: Option<(u64, u64)>,
+        cells: bool,
+    },
+    /// `seat watch <seat> [--timeout MS]`: its state from the retained stream, its screen when
+    /// the screen's sequence moves; event lines, then a done line.
+    Watch {
+        seat: String,
+        timeout: Duration,
+    },
+    /// `seat rename <seat> <name>`.
+    Rename {
+        seat: String,
+        name: String,
+    },
+    /// `seat focus <seat>`: the window focuses it.
+    Focus {
+        seat: String,
+    },
+    /// `seat resize <seat> <cols>x<rows>`.
+    Resize {
+        seat: String,
+        cols: u16,
+        rows: u16,
     },
     /// `seat type`, `seat key`, `seat paste` (ctl-cli rev. 2): bytes for the window's one
     /// input path, from literal text, named keys, or a bracketed paste.
@@ -194,6 +223,10 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("seat", "key", "Input"),
     ("seat", "paste", "Input"),
     ("seat", "wait", "Screen"),
+    ("seat", "resize", "Resize"),
+    ("seat", "watch", "EventsRead"),
+    ("seat", "rename", "RenameSeat"),
+    ("seat", "focus", "FocusSeat"),
     ("seat", "capture", "Capture"),
     ("message", "send", "Messaging"),
     ("message", "post", "Messaging"),
@@ -243,6 +276,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
     let mut words = vec![];
     let mut human_flag = false;
     let mut unassigned_flag = false;
+    let mut cells_flag = false;
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         if arg == "--json" {
@@ -251,6 +285,8 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             human_flag = true;
         } else if arg == "--unassigned" {
             unassigned_flag = true;
+        } else if arg == "--cells" {
+            cells_flag = true;
         } else if let Some(flag) = arg.strip_prefix("--") {
             let value = it.next().ok_or(format!("--{flag} needs a value"))?;
             match flag {
@@ -341,7 +377,49 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
         ["seat", "screen", seat] => Command::Screen {
             seat: seat.into(),
             human: human_flag,
+            scrollback: flag("scrollback")
+                .map(|range| {
+                    range
+                        .split_once("..")
+                        .and_then(|(a, b)| Some((a.parse::<u64>().ok()?, b.parse::<u64>().ok()?)))
+                        .filter(|(a, b)| a <= b && b - a <= SCROLLBACK_SEQUENCES)
+                        .ok_or(format!(
+                            "{USAGE_PREFIX}--scrollback FROM..TO, capture sequences, at most {SCROLLBACK_SEQUENCES} apart, not {range}"
+                        ))
+                })
+                .transpose()?,
+            cells: cells_flag,
         },
+        ["seat", "rename", seat, name] => Command::Rename {
+            seat: seat.into(),
+            name: name.into(),
+        },
+        ["seat", "focus", seat] => Command::Focus { seat: seat.into() },
+        ["seat", "watch", seat] => Command::Watch {
+            seat: seat.into(),
+            timeout: Duration::from_millis(
+                flag("timeout")
+                    .map(|v| {
+                        v.parse::<u64>()
+                            .ok()
+                            .filter(|ms| (1..=3_600_000).contains(ms))
+                            .ok_or(format!("{USAGE_PREFIX}--timeout: 1 to 3600000 ms, not {v}"))
+                    })
+                    .transpose()?
+                    .unwrap_or(30_000),
+            ),
+        },
+        ["seat", "resize", seat, size] => {
+            let (cols, rows) = size
+                .split_once('x')
+                .and_then(|(c, r)| Some((c.parse::<u16>().ok()?, r.parse::<u16>().ok()?)))
+                .ok_or(format!("{USAGE_PREFIX}seat resize: COLSxROWS, not {size}"))?;
+            Command::Resize {
+                seat: seat.into(),
+                cols,
+                rows,
+            }
+        }
         ["seat", "type", seat, text] => Command::Type {
             seat: seat.into(),
             text: text.into(),
@@ -474,6 +552,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "place",
             "reply-to",
             "status",
+            "scrollback",
         ]
         .contains(&k.as_str())
     }) {
@@ -661,13 +740,101 @@ impl Client {
     }
     /// The seat's screen, with the op id of the read.
     pub fn screen(&mut self, seat: Ulid) -> Result<(Ulid, bbt_proto::gui::SeatScreen), String> {
+        self.screen_with(seat, false)
+    }
+    /// The seat's screen, with every cell's style as runs when `cells`.
+    pub fn screen_with(
+        &mut self,
+        seat: Ulid,
+        cells: bool,
+    ) -> Result<(Ulid, bbt_proto::gui::SeatScreen), String> {
         let id = self.mint();
         match self.call(
             Some(id),
-            GuiAction::Screen { id, seat },
+            GuiAction::Screen { id, seat, cells },
             |r| matches!(r, GuiReply::Screen { op, .. } if *op == id),
         )? {
             GuiReply::Screen { screen, .. } => Ok((id, screen)),
+            _ => unreachable!(),
+        }
+    }
+    /// One page of a retained stream after `after`, read-only (#272 `EventsRead`).
+    pub fn events_read(
+        &mut self,
+        stream: &str,
+        after: u64,
+        limit: usize,
+    ) -> Result<(Vec<bbt_proto::gui::RetainedEvent>, Option<u64>), String> {
+        let id = Ulid::new();
+        match self.call(
+            Some(id),
+            GuiAction::EventsRead {
+                id,
+                stream: stream.into(),
+                after,
+                limit,
+            },
+            |r| matches!(r, GuiReply::EventsRead { op, .. } if *op == id),
+        )? {
+            GuiReply::EventsRead { events, next, .. } => Ok((events, next)),
+            _ => unreachable!(),
+        }
+    }
+    /// The capture records of `from..=to`, every page of them (#27's lazy pages).
+    pub fn history(
+        &mut self,
+        seat: Ulid,
+        from: u64,
+        to: u64,
+    ) -> Result<Vec<bbt_proto::gui::HistoryRecord>, String> {
+        let mut records = vec![];
+        let mut at = from;
+        loop {
+            let wire = bbt_proto::SeatId::from_u128(seat.0);
+            let reply = self.call(
+                None,
+                GuiAction::GetHistory {
+                    seat: wire,
+                    from: at,
+                    to,
+                },
+                |r| matches!(r, GuiReply::History { seat: s, .. } if *s == wire),
+            )?;
+            let GuiReply::History {
+                records: page,
+                next,
+                ..
+            } = reply
+            else {
+                unreachable!()
+            };
+            records.extend(page);
+            match next {
+                Some(next) if next > at && next <= to => at = next,
+                _ => break,
+            }
+        }
+        Ok(records)
+    }
+    /// The window's resize; returns the op the app journaled it under.
+    pub fn resize(
+        &mut self,
+        seat: Ulid,
+        generation: u64,
+        cols: u16,
+        rows: u16,
+    ) -> Result<Ulid, String> {
+        match self.call(
+            None,
+            GuiAction::Resize {
+                seat: bbt_proto::SeatId::from_u128(seat.0),
+                generation,
+                cols,
+                rows,
+            },
+            |r| matches!(r, GuiReply::Ok { .. }),
+        )? {
+            GuiReply::Ok { op } => Ok(op),
             _ => unreachable!(),
         }
     }
@@ -882,7 +1049,7 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
             let (path, frame) = client.capture(&path, seat)?;
             vec![json!({ "kind": "captured", "path": path, "seat": seat,
                 "stale": frame.stale, "occluded": frame.occluded,
-                "frame_presented_at": frame.presented_at_ms })]
+                "frame_presented_at": frame.presented_at_ms, "frame_seq": frame.frame_seq })]
         }
         Command::E2e { group } => {
             let mut loader = crate::knowledge::E2eLoader::new(crate::knowledge::promises()?);
@@ -894,9 +1061,21 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
             }
             crate::knowledge::e2e_lines(loader.snapshot(), group.as_deref())?
         }
-        Command::Screen { seat, human } => {
+        Command::Screen {
+            seat,
+            human,
+            scrollback,
+            cells,
+        } => {
             let seat = resolve(&client.seats()?, &seat)?.record.id;
-            let (op, screen) = client.screen(seat)?;
+            let (op, mut screen) = client.screen_with(seat, cells)?;
+            if let Some((from, to)) = scrollback {
+                // The history rows of the range: its capture records replayed into a fresh
+                // terminal the seat's size, gaps marked where the ring has none (#27).
+                let records = client.history(seat, from, to)?;
+                screen.rows = replay_rows(&records, screen.cols, screen.rows.len());
+                screen.cells = None;
+            }
             if human {
                 let mut lines: Vec<Value> = screen.rows.into_iter().map(Value::String).collect();
                 lines.push(Value::String(format!(
@@ -909,6 +1088,15 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
                     json!({ "ok": true, "op": op, "noun": "seat", "verb": "screen", "data": screen }),
                 ]
             }
+        }
+        Command::Resize { seat, cols, rows } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let (_, screen) = client.screen(seat)?;
+            let op = client.resize(seat, screen.generation, cols, rows)?;
+            vec![
+                json!({ "ok": true, "op": op, "noun": "seat", "verb": "resize",
+                "data": { "seat": seat, "generation": screen.generation, "cols": cols, "rows": rows } }),
+            ]
         }
         Command::Type { seat, text } => input(client, &seat, "type", |_| Ok(text.into_bytes()))?,
         Command::Key { seat, keys } => input(client, &seat, "key", |modes| {
@@ -983,7 +1171,10 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
                 std::thread::sleep(Duration::from_millis(200));
             }
         }
-        Command::Send { .. }
+        Command::Watch { .. }
+        | Command::Rename { .. }
+        | Command::Focus { .. }
+        | Command::Send { .. }
         | Command::Ack { .. }
         | Command::TaskList { .. }
         | Command::TaskGet { .. }
@@ -1260,6 +1451,7 @@ fn run_verb(
     let data = match parsed.command {
         Command::Seats => serde_json::to_value(client.seats()?).map_err(|e| e.to_string())?,
         Command::Screen { .. }
+        | Command::Resize { .. }
         | Command::Type { .. }
         | Command::Key { .. }
         | Command::Paste { .. }
@@ -1272,6 +1464,91 @@ fn run_verb(
                 }
                 .map_err(|e| e.to_string())?;
             }
+            return Ok(());
+        }
+        Command::Rename { seat, name } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let op = client.mint();
+            client.call(
+                Some(op),
+                GuiAction::RenameSeat {
+                    id: op,
+                    seat,
+                    name: name.clone(),
+                },
+                |r| matches!(r, GuiReply::Ok { op: o } if *o == op),
+            )?;
+            json!({ "seat": seat, "name": name })
+        }
+        Command::Focus { seat } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let op = client.mint();
+            client.call(
+                Some(op),
+                GuiAction::FocusSeat { id: op, seat },
+                |r| matches!(r, GuiReply::Ok { op: o } if *o == op),
+            )?;
+            json!({ "seat": seat })
+        }
+        Command::Watch { seat, timeout } => {
+            // State: the seat's retained stream paged by our own cursor, never the window's
+            // lane. Screen: polled, a line only when its capture sequence moves (#272).
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let stream = format!("seat-{seat}");
+            let deadline = std::time::Instant::now() + timeout;
+            let (mut after, mut state, mut seen, mut events) = (0, None, None, 0u64);
+            loop {
+                while let (page, Some(next)) = client.events_read(&stream, after, 128)? {
+                    state = page
+                        .into_iter()
+                        .rev()
+                        .find(|e| e.subject.ends_with("/state"))
+                        .or(state);
+                    after = next;
+                }
+                let (page, _) = client.events_read(&stream, after, 128)?;
+                if let Some(last) = page.last() {
+                    after = last.seq;
+                }
+                for event in page.into_iter().filter(|e| e.subject.ends_with("/state")) {
+                    state = Some(event);
+                }
+                if let Some(event) = state.take() {
+                    events += 1;
+                    writeln!(
+                        out,
+                        "{}",
+                        json!({ "ok": true, "op": id, "event": {
+                        "kind": "state", "seat": seat, "seq": event.seq, "state": event.payload } })
+                    )
+                    .map_err(|e| e.to_string())?;
+                }
+                let (_, screen) = client.screen(seat)?;
+                if seen != Some(screen.sequence) {
+                    seen = Some(screen.sequence);
+                    events += 1;
+                    writeln!(
+                        out,
+                        "{}",
+                        json!({ "ok": true, "op": id, "event": {
+                        "kind": "screen", "seat": seat, "sequence": screen.sequence,
+                        "cursor": screen.cursor, "rows": screen.rows } })
+                    )
+                    .map_err(|e| e.to_string())?;
+                }
+                out.flush().map_err(|e| e.to_string())?;
+                if std::time::Instant::now() >= deadline {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(200));
+            }
+            writeln!(
+                out,
+                "{}",
+                json!({ "ok": true, "op": id, "done": true,
+                "data": { "seat": seat, "events": events } })
+            )
+            .map_err(|e| e.to_string())?;
             return Ok(());
         }
         Command::Send {
@@ -1431,6 +1708,51 @@ fn run_main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// The widest `--scrollback` range, in capture sequences: bounded so a reply fits the frame.
+const SCROLLBACK_SEQUENCES: u64 = 4096;
+/// The longest history a `--scrollback` replay keeps, in rows.
+const SCROLLBACK_ROWS: usize = 10_000;
+
+/// Replays capture records into a fresh terminal `cols` wide and `rows` high and returns
+/// every row it holds, history first, as text with trailing blanks trimmed. A gap in the
+/// ring becomes one marker row.
+pub fn replay_rows(
+    records: &[bbt_proto::gui::HistoryRecord],
+    cols: usize,
+    rows: usize,
+) -> Vec<String> {
+    use bbt_proto::gui::HistoryRecord;
+    let mut term =
+        bbt_core::Term::new_with_spare_rows(cols.max(2), rows.max(1), SCROLLBACK_ROWS, 0);
+    for record in records {
+        match record {
+            HistoryRecord::Bytes { bytes, .. } => term.advance(bytes),
+            HistoryRecord::Gap { from, to, reason } => {
+                term.advance(format!("\r\n[gap {from}..{to}: {reason}]\r\n").as_bytes())
+            }
+        }
+        drop(term.take_events());
+    }
+    let bounds = term.history_bounds();
+    term.history_window(bounds.start, (bounds.end - bounds.start) as usize)
+        .unwrap_or_default()
+        .iter()
+        .map(|row| {
+            row.iter()
+                .filter(|cell| {
+                    !cell.flags.intersects(
+                        bbt_core::term::cell::Flags::WIDE_CHAR_SPACER
+                            | bbt_core::term::cell::Flags::LEADING_WIDE_CHAR_SPACER,
+                    )
+                })
+                .map(|cell| cell.c)
+                .collect::<String>()
+                .trim_end()
+                .to_owned()
+        })
+        .collect()
+}
+
 /// One input through the window's path: the seat's current generation and modes, the
 /// bytes from `make`, and the ctl-cli reply.
 fn input(
@@ -1497,7 +1819,29 @@ mod tests {
         let seat = bbt_proto::SeatId::from_u128(1);
         let samples = [
             GuiAction::ListSeats,
-            GuiAction::Screen { id, seat: id },
+            GuiAction::Screen {
+                id,
+                seat: id,
+                cells: false,
+            },
+            GuiAction::Resize {
+                seat,
+                generation: 1,
+                cols: 80,
+                rows: 24,
+            },
+            GuiAction::EventsRead {
+                id,
+                stream: "s".into(),
+                after: 0,
+                limit: 1,
+            },
+            GuiAction::RenameSeat {
+                id,
+                seat: id,
+                name: "n".into(),
+            },
+            GuiAction::FocusSeat { id, seat: id },
             GuiAction::Input {
                 seat,
                 generation: 1,
@@ -1567,6 +1911,10 @@ mod tests {
             "task delegate #1 s",
             "e2e list",
             "app endpoint",
+            "seat watch s",
+            "seat rename s n",
+            "seat focus s",
+            "seat resize s 80x24",
         ] {
             let parsed = parse_full(&args(line)).unwrap_or_else(|e| panic!("{line}: {e}"));
             let (noun, verb) = parsed
@@ -1574,7 +1922,7 @@ mod tests {
                 .unwrap_or_else(|| panic!("{line}: not a table verb"));
             assert!(line.starts_with(&format!("{noun} {verb}")));
         }
-        assert_eq!(VERBS.len(), 18, "a new verb needs a parse line above");
+        assert_eq!(VERBS.len(), 22, "a new verb needs a parse line above");
     }
     #[test]
     fn errors_name_a_kind_a_hint_and_an_exit() {

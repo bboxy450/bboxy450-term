@@ -161,7 +161,10 @@ pub fn start(
                 {
                     let proxy = proxy.clone();
                     move |ask| {
-                        let _ = proxy.send_event(UiEvent::CaptureFor(ask));
+                        let _ = proxy.send_event(match ask {
+                            OperatorAsk::Capture(ask) => UiEvent::CaptureFor(ask),
+                            OperatorAsk::Focus(seat) => UiEvent::FocusFor(seat),
+                        });
                     }
                 },
             )
@@ -176,6 +179,13 @@ pub fn start(
     sender
 }
 
+/// What another operator door asks of the window, relayed by logic.
+#[derive(Debug)]
+pub enum OperatorAsk {
+    Capture(CaptureAsk),
+    /// Focus this seat, as the window's own row click does (`ctl seat focus`).
+    Focus(SeatId),
+}
 /// A capture logic relays from an operator door: the window writes the next presented
 /// frame (cropped to `seat`'s pane when named) to `path` and answers with
 /// [`UiMsg::Captured`].
@@ -632,7 +642,7 @@ async fn run(
     cwd: PathBuf,
     rendering: oneshot::Receiver<RenderContext>,
     backend_lost: impl Fn(Option<String>),
-    capture: impl Fn(CaptureAsk),
+    capture: impl Fn(OperatorAsk),
 ) -> Result<()> {
     logger.write(format!(
         "cockpit ready: supervisor={} logic={}",
@@ -1043,10 +1053,11 @@ async fn run(
                                 if changed {publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;}
                             }
                         },
-                        GuiReply::CaptureAsk {op,path,seat}=>capture(CaptureAsk {id:op,path:PathBuf::from(path),seat:seat.map(|seat| SeatId::from_u128(seat.0))}),
+                        GuiReply::CaptureAsk {op,path,seat}=>capture(OperatorAsk::Capture(CaptureAsk {id:op,path:PathBuf::from(path),seat:seat.map(|seat| SeatId::from_u128(seat.0))})),
+                        GuiReply::OperatorFocus {seat,..}=>capture(OperatorAsk::Focus(seat)),
                         GuiReply::Captured {op,path,..}=>logger.write(format!("capture {op} written: {path}")),
                         // The window never asks for a screen as text; ctl does.
-                        GuiReply::Screen {op,..}=>logger.write(format!("screen reply {op} unused by the window")),
+                        GuiReply::Screen {op,..}|GuiReply::EventsRead {op,..}=>logger.write(format!("ctl reply {op} unused by the window")),
                         GuiReply::OperatorSpawned {op,seat,spec}=> {
                             // Placed and focused as the launcher's own pick is.
                             let placed=Arc::make_mut(&mut model);

@@ -68,6 +68,8 @@ pub enum UiEvent {
     Capture,
     /// A capture asked through an operator door (`ctl capture`); answered when written.
     CaptureFor(live::CaptureAsk),
+    /// Focus a seat, asked through an operator door (`ctl seat focus`).
+    FocusFor(SeatId),
     /// No frame was presented for this capture in time (occluded, or the display asleep).
     CaptureDeadline(bbt_mux::Ulid),
     StallPoll,
@@ -2240,6 +2242,7 @@ impl App {
                     stale: true,
                     occluded: self.occluded,
                     presented_at_ms: unix_ms(self.last_presented),
+                    frame_seq: self.meter.total_frames(),
                 };
                 self.capture_for(ask, scale, frame);
             }
@@ -3010,6 +3013,7 @@ impl App {
                     stale: false,
                     occluded: false,
                     presented_at_ms: unix_ms(self.last_presented),
+                    frame_seq: self.meter.total_frames(),
                 };
                 self.capture_for(ask, scale, frame);
             }
@@ -3108,6 +3112,11 @@ impl ApplicationHandler<UiEvent> for App {
             UiEvent::DemoFinished => self.demo_finished = true,
             UiEvent::Capture => {
                 self.capture_pending = true;
+                self.request_redraw();
+            }
+            UiEvent::FocusFor(seat) => {
+                // The same activation a sidebar row click makes.
+                self.focus_action(FocusAction::Activate(seat, FocusOrigin::Row));
                 self.request_redraw();
             }
             UiEvent::CaptureFor(ask) => {
