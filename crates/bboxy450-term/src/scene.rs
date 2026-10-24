@@ -37,6 +37,29 @@ pub struct ConversationLayout {
     pub height: f32,
     pub actions: ui::modules::stream_dock::Regions,
 }
+pub struct LocalPageLayout {
+    pub layout: c::Layout,
+    pub viewport: Rect,
+    pub close: Rect,
+    pub max_scroll: f32,
+}
+impl LocalPageLayout {
+    pub fn paint(&self) -> Vec<c::Paint> {
+        c::paint(
+            &self.layout,
+            ui::Context::new(ui::Theme::Dark, ui::Density::Cozy),
+        )
+    }
+    pub fn contains(&self, at: [f32; 2]) -> bool {
+        contains(self.viewport, at)
+    }
+    pub fn closes(&self, at: [f32; 2]) -> bool {
+        contains(self.close, at)
+    }
+    pub fn focuses(&self, at: [f32; 2]) -> bool {
+        contains(self.layout.rect, at)
+    }
+}
 impl ConversationLayout {
     pub fn paint(&self) -> Vec<c::Paint> {
         c::paint(
@@ -496,12 +519,29 @@ impl Scene {
     ) -> Result<Vec<c::Layout>, String> {
         self.layout_docked_at(size, effects, dock_height, Instant::now())
     }
+    pub fn local_page_chrome(
+        &self,
+        size: [f32; 2],
+        dock_height: f32,
+    ) -> Result<Vec<c::Layout>, String> {
+        self.layout_contents(size, false, dock_height, Instant::now(), false)
+    }
     fn layout_docked_at(
         &self,
         size: [f32; 2],
         effects: bool,
         dock_height: f32,
         now: Instant,
+    ) -> Result<Vec<c::Layout>, String> {
+        self.layout_contents(size, effects, dock_height, now, true)
+    }
+    fn layout_contents(
+        &self,
+        size: [f32; 2],
+        effects: bool,
+        dock_height: f32,
+        now: Instant,
+        panes: bool,
     ) -> Result<Vec<c::Layout>, String> {
         let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
         // Rows, tabs and panes carry each seat's swell and attention (rim-glow §7-8).
@@ -598,6 +638,7 @@ impl Scene {
         for (id, rect) in self
             .tree
             .as_ref()
+            .filter(|_| panes)
             .map(|tree| stage_split(tree, bounds, self.rim).panes)
             .unwrap_or_default()
         {
@@ -628,6 +669,146 @@ impl Scene {
             );
         }
         Ok(layouts)
+    }
+    pub fn local_page_layout(
+        &self,
+        size: [f32; 2],
+        dock: f32,
+        label: &str,
+        body: c::Element,
+        scroll: f32,
+    ) -> Result<LocalPageLayout, String> {
+        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let sidebar = 300_f32.min(size[0] * 0.35);
+        let rect = Rect::new(
+            sidebar,
+            STYLE.spacing.title_bar as f32,
+            (size[0] - sidebar).max(1.),
+            (size[1] - STYLE.spacing.title_bar as f32 - dock).max(1.),
+        );
+        let header = 44_f32.min(rect.h);
+        let viewport = Rect::new(rect.x, rect.y + header, rect.w, (rect.h - header).max(1.));
+        let content_height = body
+            .layout(Rect::new(0., 0., rect.w, 0.), ctx, &self.metrics)
+            .map_err(|e| e.to_string())?
+            .rect
+            .h;
+        let max_scroll = (content_height - viewport.h).max(0.);
+        let mut close_style = ui::Style::new(ui::Preset::ButtonGhost);
+        close_style.overrides.text = Some(ui::Text {
+            size: Some(STYLE.r#type.label as f32),
+            line_height: 1.4,
+            ..Default::default()
+        });
+        let close = c::Element::Named {
+            name: "local/close".into(),
+            content: Box::new(c::Element::Box(c::Box::new(
+                close_style,
+                vec![
+                    c::Element::Text(c::Text::new(
+                        "Back to panes · Esc",
+                        ui::Text {
+                            size: Some(STYLE.r#type.label as f32),
+                            line_height: 1.4,
+                            ..Default::default()
+                        },
+                    ))
+                    .into(),
+                ],
+            ))),
+        };
+        let mut style = ui::Style::new(ui::Preset::Card);
+        style.overrides.fill = Some(ui::Paint::solid(ui::Color::Background));
+        style.overrides.border = Some(ui::Border {
+            width: ui::Length::Px(0.),
+            paint: ui::Paint::solid(ui::Color::Transparent),
+            outside: false,
+        });
+        style.overrides.radii = Some([ui::Length::Px(0.); 4]);
+        style.overrides.padding = Some([ui::Length::Px(0.); 4]);
+        let mut hs = style.clone();
+        hs.overrides.padding = Some([0., 16., 0., 16.].map(ui::Length::Px));
+        hs.overrides.height = Some(ui::Length::Px(header));
+        let mut head = c::Box::new(
+            hs,
+            vec![
+                c::Element::Text(c::Text::new(
+                    label,
+                    ui::Text {
+                        size: Some(STYLE.r#type.row as f32),
+                        weight: 600,
+                        line_height: 1.4,
+                        ..Default::default()
+                    },
+                ))
+                .into(),
+                c::Item {
+                    element: c::Element::Spacer,
+                    extent: c::Extent::Fill,
+                },
+                close.into(),
+            ],
+        );
+        head.gap = ui::Length::Px(0.);
+        let content = c::Element::Named {
+            name: "local/viewport".into(),
+            content: Box::new(c::Element::ScrollView(c::ScrollView {
+                viewport: [viewport.w, viewport.h],
+                offset: [0., scroll.clamp(0., max_scroll)],
+                content_width: Some(viewport.w),
+                content: Box::new(body),
+            })),
+        };
+        let mut root = c::Box::new(
+            style,
+            vec![
+                c::Item {
+                    element: c::Element::Box(head),
+                    extent: c::Extent::Fixed(header),
+                },
+                c::Item {
+                    element: content,
+                    extent: c::Extent::Fill,
+                },
+            ],
+        );
+        root.direction = Axis::Column;
+        root.align = c::Alignment::Stretch;
+        root.gap = ui::Length::Px(0.);
+        let layout = c::Element::Box(root)
+            .layout(rect, ctx, &self.metrics)
+            .map_err(|e| e.to_string())?;
+        let close = named(&layout, "local/close")
+            .ok_or("local page close control missing")?
+            .rect;
+        Ok(LocalPageLayout {
+            layout,
+            viewport,
+            close,
+            max_scroll,
+        })
+    }
+    pub fn graph_page_layout(
+        &self,
+        size: [f32; 2],
+        dock: f32,
+        checklist: &ui::modules::e2e_checklist::Checklist,
+        scroll: f32,
+    ) -> Result<LocalPageLayout, String> {
+        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let width = (size[0] - 300_f32.min(size[0] * 0.35)).max(1.);
+        let graph = ui::modules::graph_tab::GraphTab {
+            e2e: Some(checklist.clone()),
+            only: Some(vec!["e2e".into()]),
+            ..Default::default()
+        };
+        self.local_page_layout(
+            size,
+            dock,
+            "Graph · E2E checklist",
+            graph.element_width(ctx, &self.metrics, width),
+            scroll,
+        )
     }
     pub fn paint(
         &self,
@@ -953,6 +1134,31 @@ fn history_row_rect(
 #[cfg(test)]
 mod depth_tests {
     use super::*;
+
+    #[test]
+    fn local_graph_uses_a_clipped_retained_viewport_and_keeps_the_terminal_stage() {
+        let scene = Scene::new();
+        let focus = scene.focused();
+        let chrome = scene.local_page_chrome([1500., 900.], 240.).unwrap();
+        assert_eq!(chrome.len(), 2);
+        assert!(scene.pane_bounds(&chrome).is_empty());
+        let graph = crate::e2e_checklist::Graph::new(vec![], vec![]).unwrap();
+        let page = scene
+            .graph_page_layout([1500., 900.], 240., &graph.checklist, 100.)
+            .unwrap();
+        assert_eq!(page.viewport.x, 300.);
+        assert_eq!(page.viewport.y, STYLE.spacing.title_bar as f32 + 44.);
+        assert_eq!(page.viewport.y + page.viewport.h, 900. - 240.);
+        assert!(page.max_scroll > 0.);
+        assert!(page.contains([page.viewport.x + 10., page.viewport.y + 10.]));
+        assert!(page.closes([
+            page.close.x + page.close.w * 0.5,
+            page.close.y + page.close.h * 0.5
+        ]));
+        assert!(!page.closes([10., 10.]));
+        assert_eq!(scene.focused(), focus);
+        assert!(!page.paint().is_empty());
+    }
 
     #[test]
     fn historical_gap_uses_cell_device_origin_and_last_row_scissor_at_both_scales() {

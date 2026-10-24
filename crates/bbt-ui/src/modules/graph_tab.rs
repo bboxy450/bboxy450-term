@@ -180,6 +180,7 @@ pub struct GraphTab {
     pub subscriptions: Option<Vec<Subscription>>,
     pub channels: Option<Channels>,
     pub only: Option<Vec<String>>,
+    pub e2e: Option<super::e2e_checklist::Checklist>,
 }
 
 fn color(value: Option<&str>, fallback: ui::Color) -> ui::Color {
@@ -1252,7 +1253,21 @@ impl GraphTab {
         )
     }
     pub fn card_element(&self, ctx: ui::Context, m: &dyn c::Measure, which: &str) -> c::Element {
+        self.card_element_width(ctx, m, which, 960.)
+    }
+    pub fn card_element_width(
+        &self,
+        ctx: ui::Context,
+        m: &dyn c::Measure,
+        which: &str,
+        width: f32,
+    ) -> c::Element {
         match which {
+            "e2e" => self
+                .e2e
+                .as_ref()
+                .unwrap_or(&super::e2e_checklist::Checklist::default())
+                .element_width(ctx, m, width),
             "provenance" => self.provenance(
                 ctx,
                 self.provenance.as_ref().unwrap_or(&Provenance::default()),
@@ -1271,6 +1286,11 @@ impl GraphTab {
     pub fn element_width(&self, ctx: ui::Context, m: &dyn c::Measure, width: f32) -> c::Element {
         let want = |k: &str| self.only.as_ref().is_none_or(|v| v.iter().any(|s| s == k));
         let mut children = vec![];
+        if want("e2e")
+            && let Some(e2e) = &self.e2e
+        {
+            children.push(e2e.element_width(ctx, m, (width - 32.).max(0.)).into());
+        }
         if want("agents") {
             children.push(self.agents(ctx, m).into())
         }

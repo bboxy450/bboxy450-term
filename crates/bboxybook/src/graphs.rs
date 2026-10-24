@@ -22,6 +22,13 @@ pub const STATES: &[&str] = &[
     "artifact history",
     "empty swarm",
 ];
+pub const E2E_STATES: &[&str] = &[
+    "all untested",
+    "mixed",
+    "failures tracked",
+    "all pass",
+    "empty catalogue",
+];
 pub fn cases() -> Vec<Case> {
     let mut all = vec![];
     for state in STATES {
@@ -34,6 +41,25 @@ pub fn cases() -> Vec<Case> {
                     density: gallery::density_name(density).into(),
                     theme: gallery::theme_name(theme).into(),
                     page: "graph.html".into(),
+                    selector: ".card > .body".into(),
+                    width: 1246,
+                    height: 900,
+                    checker: false,
+                    fixture: Some(json!({"layer":"graphs"})),
+                });
+            }
+        }
+    }
+    for state in E2E_STATES {
+        for density in gallery::DENSITIES {
+            for theme in gallery::THEMES {
+                all.push(Case {
+                    component: "graph".into(),
+                    state: (*state).into(),
+                    slug: format!("e2e-{}", state.replace(' ', "-")),
+                    density: gallery::density_name(density).into(),
+                    theme: gallery::theme_name(theme).into(),
+                    page: "e2e.html".into(),
                     selector: ".card > .body".into(),
                     width: 1246,
                     height: 900,
@@ -70,7 +96,7 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
             let view: GraphTab = serde_json::from_value(frame["view"].clone())?;
             let host = &frame["host"];
             (if frame["standalone"].as_bool().unwrap_or(false) {
-                view.card_element(
+                view.card_element_width(
                     ctx,
                     &crate::components::Metrics,
                     view.only
@@ -78,6 +104,7 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
                         .and_then(|v| v.first())
                         .map(String::as_str)
                         .unwrap_or(""),
+                    seat_rows::number(host, "w")?,
                 )
             } else {
                 view.element_width(
