@@ -18,12 +18,6 @@ pub const POOL: [&str; 14] = [
     "Juniper Vale",
 ];
 
-/// Preserve the gallery's explicit shell sample without making it an automatic name.
-pub const DEMO_NAMES: [&str; 15] = [
-    POOL[0], POOL[1], POOL[2], POOL[3], POOL[4], POOL[5], POOL[6], "zsh", POOL[7], POOL[8],
-    POOL[9], POOL[10], POOL[11], POOL[12], POOL[13],
-];
-
 #[cfg(test)]
 mod tests {
     use super::*;

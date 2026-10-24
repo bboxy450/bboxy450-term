@@ -49,7 +49,21 @@ pub fn height(id: &str, state: &str, d: Density) -> u32 {
         _ => 150,
     }
 }
-use bbt_proto::seat_names::DEMO_NAMES as NAMES;
+// The gallery keeps its explicit shell sample; automatic names use the other entries.
+// Read the same data as proto without adding an upward dependency from the gallery.
+static NAMES: std::sync::LazyLock<[&'static str; 15]> = std::sync::LazyLock::new(|| {
+    #[derive(serde::Deserialize)]
+    struct Names<'a> {
+        #[serde(borrow)]
+        pool: Vec<&'a str>,
+    }
+    let Names { pool } = serde_json::from_str(include_str!("../../bbt-proto/src/seat_names.json"))
+        .expect("canonical seat-name data");
+    [
+        pool[0], pool[1], pool[2], pool[3], pool[4], pool[5], pool[6], "zsh", pool[7], pool[8],
+        pool[9], pool[10], pool[11], pool[12], pool[13],
+    ]
+});
 const DARK: [&str; 15] = [
     "#FFC53D", "#FF4FA3", "#B07BFF", "#2EE6A8", "#2E6BFF", "#FF7A45", "#58D7FF", "#9AA3C7",
     "#F2D16B", "#5BE08C", "#E96BFF", "#FF6B6B", "#4FD1FF", "#C9A96B", "#8AF0D0",
