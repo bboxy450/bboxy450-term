@@ -153,12 +153,17 @@ fn headless_cli_starts_real_gui_types_captures_and_stops_without_a_window() {
             .any(|r| r == "HEADLESS-CTL-42")
     );
     let png = f.root.path().join("pane.png");
+    let before_capture = f.ok(&["app", "status"]);
     let capture = f.ok(&["seat", "capture", seat, png.to_str().unwrap()]);
     assert_eq!(capture["data"]["offscreen"], true);
     assert_eq!(capture["data"]["stale"], false);
     assert!(capture["data"]["frame_presented_at"].is_null());
     assert!(capture["data"]["rendered_at_ms"].as_u64().unwrap() > 0);
-    assert!(capture["data"]["frame_seq"].as_u64().unwrap() > 0);
+    assert!(
+        capture["data"]["frame_seq"].as_u64().unwrap()
+            > before_capture["data"]["frame_seq"].as_u64().unwrap(),
+        "capture renders a fresh frame even while the terminal is idle"
+    );
     assert!(
         std::fs::read(png)
             .unwrap()
