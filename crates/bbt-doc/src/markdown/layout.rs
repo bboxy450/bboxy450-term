@@ -228,6 +228,7 @@ impl Markdown {
             m,
             width,
             diagrams: &[],
+            record_links: None,
         };
         let mut children = vec![];
         if !self.frontmatter.fields.is_empty() || self.frontmatter.error.is_some() {
@@ -264,8 +265,67 @@ impl Markdown {
             m,
             width,
             diagrams,
+            record_links: None,
         };
         r.blocks(self.display_blocks(title), "")
+    }
+    /// Body with authoritative record resolutions; missing targets stay inert.
+    pub fn body_element_with_links(
+        &self,
+        title: Option<&str>,
+        ctx: ui::Context,
+        m: &dyn c::Measure,
+        width: f32,
+        diagrams: &[Diagram],
+        links: &ui::modules::document_modal::controller::RecordLinks,
+    ) -> c::Element {
+        Render {
+            ctx,
+            m,
+            width: finite_width(width).min(STYLE.spacing.doc_measure as f32),
+            diagrams,
+            record_links: Some(links),
+        }
+        .blocks(self.display_blocks(title), "")
+    }
+    /// A live provider retains generic frontmatter alongside the known header
+    /// fields. No YAML bytes or verification badge are reconstructed here.
+    pub fn hosted_body_element(
+        &self,
+        title: &str,
+        ctx: ui::Context,
+        m: &dyn c::Measure,
+        width: f32,
+        links: &ui::modules::document_modal::controller::RecordLinks,
+    ) -> c::Element {
+        let r = Render {
+            ctx,
+            m,
+            width: finite_width(width).min(STYLE.spacing.doc_measure as f32),
+            diagrams: &[],
+            record_links: Some(links),
+        };
+        let typed = self.frontmatter.fields.contains_key("type");
+        let extra: Vec<_> = self
+            .frontmatter
+            .fields
+            .keys()
+            .filter(|key| {
+                !typed || (!KNOWN_FIELDS.contains(&key.as_str()) && key.as_str() != "number")
+            })
+            .cloned()
+            .collect();
+        let body = r.blocks(self.display_blocks(Some(title)), "");
+        if extra.is_empty() {
+            body
+        } else {
+            column(
+                "body-with-metadata",
+                plain([0.; 4]),
+                STYLE.spacing.s7 as f32,
+                vec![r.metadata(&self.frontmatter, &extra).into(), body.into()],
+            )
+        }
     }
     fn display_blocks(&self, title: Option<&str>) -> &[Block] {
         let Some(title) = title.filter(|title| !title.is_empty()) else {
@@ -335,6 +395,7 @@ impl Markdown {
                     m,
                     width,
                     diagrams: &[],
+                    record_links: None,
                 };
                 let extra: Vec<_> = self
                     .frontmatter
@@ -390,6 +451,7 @@ struct Render<'a> {
     m: &'a dyn c::Measure,
     width: f32,
     diagrams: &'a [Diagram],
+    record_links: Option<&'a ui::modules::document_modal::controller::RecordLinks>,
 }
 #[derive(Clone)]
 enum Piece {
@@ -838,37 +900,57 @@ impl Render<'_> {
     fn wiki(
         &self,
         key: &str,
-        _target: &str,
+        target: &str,
         display: &str,
         relation: Option<&str>,
         weight: Option<f32>,
         parent: ui::Text,
     ) -> c::Element {
+        let (display, enabled) = ui::modules::document_modal::controller::presentation(
+            target,
+            display,
+            self.record_links,
+        );
         let slug = nowrap(
             format!("{key}/slug"),
-            display,
+            display.clone(),
             ui::Text {
                 line_height: 16. / 11.,
                 ..font(
                     ui::TypeStep::Caption,
                     400,
                     false,
-                    ui::Color::Rgba(
-                        bbt_ui_model::draw::Color::hex(self.ctx.theme.palette().accent_soft).0,
-                    ),
+                    if enabled {
+                        ui::Color::Rgba(
+                            bbt_ui_model::draw::Color::hex(self.ctx.theme.palette().accent_soft).0,
+                        )
+                    } else {
+                        ui::Color::Muted
+                    },
                 )
             },
         );
-        let mut cells = vec![
-            row(
-                format!("{key}/slug-box"),
-                style(ui::Color::Accent, 0.1, 0., [0., 6., 0., 6.]),
-                0.,
-                vec![slug.into()],
-            )
-            .into(),
-        ];
-        if let Some(rel) = relation {
+        let mut slug_style = style(
+            if enabled {
+                ui::Color::Accent
+            } else {
+                ui::Color::Transparent
+            },
+            if enabled { 0.1 } else { 0. },
+            0.,
+            [0., 6., 0., 6.],
+        );
+        if !enabled {
+            slug_style.overrides.opacity = Some(0.7);
+        }
+        let mut cells =
+            vec![row(format!("{key}/slug-box"), slug_style, 0., vec![slug.into()]).into()];
+        let numbered = self
+            .record_links
+            .is_some_and(|links| links.contains_key(target))
+            && (ui::modules::document_modal::controller::numbered(target).is_some()
+                || display.starts_with('#'));
+        if let Some(rel) = relation.filter(|_| !numbered) {
             let co = match rel {
                 "violates" => {
                     ui::Color::Rgba(bbt_ui_model::draw::Color::hex(TOKENS.color.state.errored).0)
@@ -912,7 +994,7 @@ impl Render<'_> {
         }
         let mut chip_style = border(plain([0.; 4]), self.ctx, [true; 4]);
         chip_style.overrides.radii = Some([ui::Length::Px(STYLE.radius.tag as f32); 4]);
-        chip_style.overrides.border.as_mut().unwrap().outside = true;
+        chip_style.overrides.border.as_mut().unwrap().outside = enabled;
         let mut b = c::Box::new(chip_style, cells);
         b.gap = ui::Length::Px(0.);
         b.clip = true;
@@ -925,7 +1007,11 @@ impl Render<'_> {
         wrap.align = c::Alignment::Baseline;
         wrap.gap = ui::Length::Px(0.);
         wrap.style.overrides.text = Some(parent);
-        named(key, c::Element::Box(wrap))
+        ui::modules::document_modal::controller::link(
+            named(key, c::Element::Box(wrap)),
+            target,
+            enabled,
+        )
     }
     fn code(&self, key: &str, value: &str, line_height: f32) -> c::Element {
         let value = value.strip_suffix('\n').unwrap_or(value);

@@ -23,7 +23,9 @@ fn every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overfl
 #[test]
 fn document_matrix_covers_all_types_and_both_modal_presentations_and_source() {
     let cases = documents::cases();
-    assert_eq!(cases.len(), 136);
+    assert_eq!(cases.len(), (documents::STATES.len() + 1) * 8);
+    assert!(documents::STATES.contains(&"link · resolved"));
+    assert!(documents::STATES.contains(&"link · missing"));
     assert!(documents::legacy_cases().is_empty());
     assert_eq!(
         cases.iter().filter(|c| c.slug == "as-modal-source").count(),

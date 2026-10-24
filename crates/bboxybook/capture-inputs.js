@@ -191,8 +191,11 @@
       return diagnostics;
     };
     if(window.bboxyDocumentFixture){
-      const call=calls.find(c=>['docView','docModal'].includes(c.name)&&c.node?.isConnected&&root.contains(c.node));
-      if(!call)throw Error('Document constructor missing');
+      const documents=calls.filter(c=>['docView','docModal'].includes(c.name)&&c.node?.isConnected&&root.contains(c.node));
+      const top=documents.filter(c=>!documents.some(parent=>parent!==c&&parent.node!==c.node&&parent.node.contains(c.node)));
+      top.sort((a,b)=>(a.node.compareDocumentPosition(b.node)&Node.DOCUMENT_POSITION_FOLLOWING)?-1:1);
+      if(!top.length)throw Error('Document constructor missing');
+      const frames=top.map(call=>{
       const node=call.node,modal=call.name==='docModal',view=modal?node.querySelector('.doc-view'):node,diagnostics=[];
       const add=(key,n,text=false)=>{if(!n)throw Error('Missing document part '+key);diagnostics.push(text?{...textDiag(n),key}:{key,kind:'box',rect:bounds(n)});};
       add('document',node);if(modal){add('scroller',node.querySelector('.dm-body'));add('footer',node.querySelector('.dm-foot'));[...node.querySelectorAll('.dm-act')].forEach((n,i)=>{add('action'+i,n);add('action'+i+'/label',n.firstChild,true);if(n.lastChild.textContent)add('action'+i+'/key',n.lastChild,true);});}
@@ -209,7 +212,17 @@
       const probes=[...node.querySelectorAll('.doc-main,.doc-head,.doc-top,.doc-fm,.doc-prov,.doc-rail,.md,.md>*,.md li,.dm-foot,.dm-act,.wl')].map(n=>{const s=getComputedStyle(n);return {name:n.className||n.tagName,rect:bounds(n),font:s.font,line_height:s.lineHeight,margin:s.margin,padding:s.padding,border:s.border,display:s.display,gap:s.gap,align:s.alignItems,max_width:s.maxWidth};});
       const diagrams=[...(call.args[0].body||'').matchAll(/```mermaid[^\n]*\n([\s\S]*?)\n```/g)].map((match,i)=>{const source=match[1],show_source=[...view.querySelectorAll('.dgfig')][i]?.querySelector('.seg .on')?.textContent==='Source';try{return {source,graph:C.parseMermaid(source),show_source};}catch(error){return {source,error:String(error.message||error)};}});
       const md=view.querySelector('.md'),ms=getComputedStyle(md),cv=document.createElement('canvas'),mc=cv.getContext('2d');mc.font=ms.font;const chProbe=document.createElement('span');chProbe.style.cssText='display:block;width:1ch;height:0';md.append(chProbe);const ch={font:ms.font,zero:mc.measureText('0').width,unit:chProbe.getBoundingClientRect().width,font_kerning:ms.fontKerning,font_optical:ms.fontOpticalSizing};chProbe.remove();
-      return JSON.parse(JSON.stringify({version:1,layer:'documents',frames:[{view:{document:call.args[0],modal,seat_name:call.args[1]?.seat?.name||null,viewport:[innerWidth,innerHeight],diagrams},host,parts:diagnostics,textBounds,probes,ch}]}));
+      let clip=null;
+      for(let parent=node.parentElement;parent;parent=parent.parentElement){
+        const css=getComputedStyle(parent);
+        if([css.overflowX,css.overflowY].some(v=>v==='hidden'||v==='clip')) {
+          clip={rect:bounds(parent),radii:['TopLeft','TopRight','BottomRight','BottomLeft'].map(c=>parseFloat(css['border'+c+'Radius'])||0)};break;
+        }
+        if(parent===root)break;
+      }
+      return {view:{document:call.args[0],modal,seat_name:call.args[1]?.seat?.name||null,viewport:[innerWidth,innerHeight],diagrams},host,clip,record_index:[...(C.RECORDS?.values()||[])],parts:diagnostics,textBounds,probes,ch};
+      });
+      return JSON.parse(JSON.stringify({version:1,layer:'documents',frames}));
     }
     if(window.bboxyPerfFixture){
       // F5 perf HUD: the meter record each C.perfHud received, and hand-picked parts (the 600 bar phases stay pixel-only).

@@ -38,6 +38,16 @@ pub struct ConversationLayout {
     pub actions: ui::modules::stream_dock::Regions,
     context: ui::Context,
 }
+pub struct DocumentLayout {
+    pub layout: c::Layout,
+    pub regions: ui::modules::document_modal::controller::Regions,
+    context: ui::Context,
+}
+impl DocumentLayout {
+    pub fn paint(&self) -> Vec<c::Paint> {
+        c::paint(&self.layout, self.context)
+    }
+}
 pub struct LocalPageLayout {
     pub layout: c::Layout,
     pub viewport: Rect,
@@ -1002,7 +1012,9 @@ impl Scene {
             )
             .map_err(|e| e.to_string())?;
         let regions = ui::modules::composer::Regions::new(&layout).map_err(|e| e.to_string())?;
-        let actions = ui::modules::stream_dock::Regions::dock(&layout, &view.stream);
+        let mut actions = ui::modules::stream_dock::Regions::dock(&layout, &view.stream);
+        actions.record_text_links(&layout, &self.metrics);
+        actions.attachments("composer/attachments", &view.composer.attach);
         Ok(ConversationLayout {
             context: ctx,
             layout,
@@ -1200,6 +1212,68 @@ impl Scene {
             }
         }
         Ok(ops)
+    }
+    pub fn document_layout(
+        &self,
+        size: [f32; 2],
+        host: &bboxy450_term::documents::Host,
+        ctx: ui::Context,
+    ) -> Result<DocumentLayout, String> {
+        let mut document = host.view();
+        if let Some(notice) = &host.notice {
+            document.broken = Some(notice.clone());
+        }
+        let shell = ui::modules::document_modal::DocumentModal {
+            document,
+            modal: true,
+            viewport: size,
+            scroll: host.scroll.offset,
+            record_links: Some(host.links.clone()),
+            ..Default::default()
+        };
+        let element = shell.element_with_body(ctx, &self.metrics, size, &|width| {
+            if let Some(prepared) = &host.prepared {
+                prepared.markdown.hosted_body_element(
+                    &prepared.document.title,
+                    ctx,
+                    &self.metrics,
+                    width,
+                    &host.links,
+                )
+            } else {
+                c::Element::Text(c::Text::new(
+                    shell.document.body.clone(),
+                    ui::Text::default(),
+                ))
+            }
+        });
+        let w = 980_f32.min(size[0] * 0.94);
+        let h = size[1] * 0.82;
+        let rect = Rect::new((size[0] - w) / 2., (size[1] - h) / 2., w, h);
+        let layout = element
+            .layout(rect, ctx, &self.metrics)
+            .map_err(|e| e.to_string())?;
+        let regions = ui::modules::document_modal::controller::Regions::retained(&layout);
+        Ok(DocumentLayout {
+            layout,
+            regions,
+            context: ctx,
+        })
+    }
+    pub fn foreground_with_document(
+        &self,
+        size: [f32; 2],
+        launcher: Option<&LauncherLayout>,
+        hud: Option<&PerfHud>,
+        conversation: Option<&ConversationLayout>,
+        document: Option<&DocumentLayout>,
+    ) -> Vec<c::Paint> {
+        let mut ops = self.foreground_with_conversation(size, launcher, None, conversation);
+        if let Some(document) = document {
+            ops.extend(document.paint());
+        }
+        ops.extend(self.overlay(size, hud));
+        ops
     }
     pub fn foreground_with_conversation(
         &self,

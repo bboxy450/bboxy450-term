@@ -253,6 +253,7 @@ version = "0.0.1"
 dependencies = [
  "bboxy450-desktop-notifications",
  "bbt-core",
+ "bbt-doc",
  "bbt-mux",
  "bbt-proto",
  "bbt-render",

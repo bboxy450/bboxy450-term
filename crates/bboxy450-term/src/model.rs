@@ -520,6 +520,7 @@ pub struct Model {
     #[doc(hidden)]
     pub attention_episodes: crate::attention::Episodes,
     pub settings: Option<Arc<crate::settings::Snapshot>>,
+    pub document_reply: Option<Arc<crate::documents::Reply>>,
 }
 impl Default for Model {
     fn default() -> Self {
@@ -541,6 +542,7 @@ impl Default for Model {
             focus_swell: None,
             attention_episodes: crate::attention::Episodes::default(),
             settings: None,
+            document_reply: None,
         }
     }
 }
@@ -1106,6 +1108,7 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
         focus_swell: previous.focus_swell,
         attention_episodes: previous.attention_episodes.clone(),
         settings: previous.settings.clone(),
+        document_reply: previous.document_reply.clone(),
     };
     next.attention_episodes.retain(
         next.ui

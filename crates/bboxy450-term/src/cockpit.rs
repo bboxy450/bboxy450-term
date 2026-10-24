@@ -95,6 +95,13 @@ pub enum UiMsg {
         episode: Option<crate::attention::EpisodeKey>,
         landed: Option<std::time::Instant>,
     },
+    DocumentRead {
+        id: bbt_mux::Ulid,
+        read: crate::documents::Read,
+    },
+    ConsumeDocument {
+        id: bbt_mux::Ulid,
+    },
     Watched(Vec<(SeatId, View)>),
     /// The window's answer to a capture asked on the operator's behalf.
     Captured {

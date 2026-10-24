@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
     Task(String),
+    OpenRecord(String),
     Delegate(String),
     Accept(String),
     Reject(String),
@@ -77,6 +78,21 @@ impl Regions {
         for (i, entry) in view.entries.iter().enumerate() {
             let key = format!("e{i}");
             match entry {
+                Entry::Message { data, .. } => {
+                    for (j, attachment) in data.attach.iter().enumerate() {
+                        let target = if attachment.path.is_empty() {
+                            &attachment.id
+                        } else {
+                            &attachment.path
+                        };
+                        if !target.is_empty() {
+                            out.add(
+                                &format!("{key}/body/attach/a{j}"),
+                                Action::OpenRecord(target.clone()),
+                            );
+                        }
+                    }
+                }
                 Entry::Task { data, delegate } => {
                     out.add(&key, Action::Task(data.id.clone()));
                     if *delegate && data.state == "open" && data.assignee.is_empty() {
@@ -138,6 +154,96 @@ impl Regions {
             }
         }
         out
+    }
+    pub fn attachments(
+        &mut self,
+        prefix: &str,
+        attachments: &[crate::modules::composer::Attachment],
+    ) {
+        for (i, attachment) in attachments.iter().enumerate() {
+            let target = if attachment.path.is_empty() {
+                &attachment.id
+            } else {
+                &attachment.path
+            };
+            if !target.is_empty() {
+                self.add(
+                    &format!("{prefix}/a{i}"),
+                    Action::OpenRecord(target.clone()),
+                );
+            }
+        }
+    }
+    /// Plain stream text remains byte-identical. Link regions follow each
+    /// positioned run and its clipping; line wraps never create a giant hit box.
+    pub fn record_text_links(&mut self, layout: &c::Layout, measure: &dyn c::Measure) {
+        fn visit(
+            n: &c::Layout,
+            clip: Option<Rect>,
+            measure: &dyn c::Measure,
+            out: &mut Vec<(Action, Rect)>,
+        ) {
+            if let c::LayoutKind::Text { runs, .. } = &n.kind {
+                let value: String = runs.iter().map(|r| r.text.as_str()).collect();
+                let mut rest = value.as_str();
+                let mut base = 0;
+                while let Some(start) = rest.find("[[") {
+                    let tail = &rest[start + 2..];
+                    let Some(end) = tail.find("]]") else {
+                        break;
+                    };
+                    let label = &tail[..end];
+                    let target = label.split_once('|').map_or(label, |(target, _)| {
+                        target.strip_suffix('\\').unwrap_or(target)
+                    });
+                    if target.starts_with('#')
+                        || label
+                            .split_once('|')
+                            .is_some_and(|(_, alias)| alias.starts_with('#'))
+                    {
+                        let first = base + start;
+                        let last = first + end + 4;
+                        let mut offset = 0;
+                        for run in runs {
+                            let a = first.max(offset);
+                            let b = last.min(offset + run.text.len());
+                            if a < b {
+                                let style = bbt_ui_model::layout::TextStyle {
+                                    size: run.style.size,
+                                    weight: run.style.weight,
+                                    mono: run.style.mono,
+                                    italic: run.style.italic,
+                                    tracking_em: run.style.tracking_em,
+                                };
+                                let x = measure.width(&run.text[..a - offset], &style);
+                                let w = measure.width(&run.text[a - offset..b - offset], &style);
+                                let rect = Rect::new(run.rect.x + x, run.rect.y, w, run.rect.h);
+                                let rect = clip.map_or(rect, |old| intersect(old, rect));
+                                if rect.w > 0. && rect.h > 0. {
+                                    out.push((Action::OpenRecord(target.into()), rect));
+                                }
+                            }
+                            offset += run.text.len();
+                        }
+                    }
+                    let used = start + end + 4;
+                    base += used;
+                    rest = &rest[used..];
+                }
+            }
+            let clip = if matches!(
+                n.kind,
+                c::LayoutKind::ScrollView { .. } | c::LayoutKind::Box { clip: true, .. }
+            ) {
+                Some(clip.map_or(n.rect, |old| intersect(old, n.rect)))
+            } else {
+                clip
+            };
+            for child in &n.children {
+                visit(child, clip, measure, out);
+            }
+        }
+        visit(layout, None, measure, &mut self.actions);
     }
     /// Shared TaskRow interaction, namespaced by its caller's stable task id.
     pub fn task_row(&mut self, key: &str, id: &str, can_accept: bool) {
