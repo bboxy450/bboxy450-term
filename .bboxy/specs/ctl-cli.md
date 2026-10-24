@@ -15,7 +15,7 @@ links:
   - { to: "[[d272-ctl-one-grammar]]", rel: decision }
   - { to: "[[work-items]]", rel: record-type }
 created: "2026-10-24T15:24:41Z"
-updated: "2026-10-24T19:28:08Z"
+updated: "2026-10-24T19:38:52Z"
 ---
 # ctl
 
@@ -64,7 +64,7 @@ Two kinds of action sit behind the verbs, and the rule is the lens above: the wi
 ## 1b. The app lifecycle wire (Oracle's addendum to #282, 2026-10-24)
 
 - **`app start`** runs the real run, Session and model path with a real GUI client and no window, rendering offscreen (the capture renderer in `gpu.rs` already does); it prints its JSON reply **only after** the backend is up **and** the GUI client reports render readiness (first frame produced offscreen), so a script that reads the line can issue `seat` verbs at once; the reply carries the run directory, the mode (`window | headless`), `unattended: bool` and the generation, never the capability.
-- **`app stop`** is an authenticated relay through the endpoint to an orderly `Session` shutdown (seats stay in the supervisor per #11, checkpoints forced per #253 rule 4); there is **no PID-kill fallback** in `ctl`; if the endpoint does not answer, `stop` exits `4` with `endpoint_unavailable` and the hint names `debug ps`.
+- **`app stop`** is the **same explicit close as the native window** (Oracle's ruling against the code, 2026-10-24): an authenticated relay through the endpoint to `Session::shutdown`, which stops the logic process and then the supervisor, in that order, with checkpoints forced per #253 rule 4; a later `app start` always starts a new supervisor. An earlier draft of this bullet said seats stay in the supervisor across `stop`; that is not what the lifecycle does (the #11 survival covers a crashed GUI client, not an explicit close). **Supervisor adoption and detached seats are a separate later item**, not promised here. There is **no PID-kill fallback** in `ctl`; if the endpoint does not answer, `stop` exits `4` with `endpoint_unavailable` and the hint names `debug ps`.
 - **`app status`** reports liveness, mode, readiness (backend, GUI client, events lane, custody backend in use) and the generation; never the capability, never a Keychain secret ([[ctl-never-prints-secrets]]).
 
 ## 2. One reply shape
