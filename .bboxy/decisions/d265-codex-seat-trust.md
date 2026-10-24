@@ -12,7 +12,7 @@ links:
   - { to: "[[harness-adapters]]", rel: builds-on }
   - { to: "[[e2e-acceptance]]", rel: constrains }
 created: "2026-10-24T08:01:29Z"
-updated: "2026-10-24T08:47:23Z"
+updated: "2026-10-24T15:19:32Z"
 ---
 # Decision 265: Codex seat trust
 
@@ -29,3 +29,5 @@ Ruled by the Oracle on the operator's delegation, 2026-10-24, from Sable's resea
 Owner: Corvin Duskmantle <ARCHITECT>.
 
 **Addendum (Oracle, same day, recorded by the Architect).** Codex's own "Update available 0.163.0 → 0.164.0" chooser blocked an in-app seat before any input. In-app Codex seats launch with `-c check_for_update_on_startup=false`, per invocation and never written to a file; the operator updates Codex outside the app. Rejected: pressing Esc on the operator's behalf, because "skip this version" persists state that is theirs to set. Optional later: the launcher shows "Codex update available" as information.
+
+**Amended by [[d270-ctl-screen-input-wait]] (operator, 2026-10-24 morning).** The review stays native; the operator delegates answering it to the Oracle through `ctl screen` and `ctl input`, with one guard: approve only when the review lists exactly the app's own hooks, matched against `adapters/launch.rs`; otherwise stop and report with the screen.

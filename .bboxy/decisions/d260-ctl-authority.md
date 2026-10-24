@@ -12,7 +12,7 @@ links:
   - { to: "[[mux-daemon]]", rel: constrains }
   - { to: "[[desktop-notifications-research]]", rel: evidence }
 created: "2026-10-24T05:29:55Z"
-updated: "2026-10-24T05:31:34Z"
+updated: "2026-10-24T15:19:32Z"
 ---
 # Decision 260: how `ctl` is admitted
 
@@ -27,3 +27,5 @@ Ruled by the Architect on 2026-10-24 from Seraph's A-1 question. Facts as Seraph
 **Rules.** **Opt-in (Oracle, same day):** the endpoint file is written only when the operator enables `ctl`, by the `--ctl` flag or the setting, and is removed on exit; with `ctl` off there is no door at all, which is the default. Invariant [[ctl-opt-in]]. The endpoint file lives in the run directory, never at a well-known path, 0600, removed on exit; a stale file never admits, because the generation is checked as today. `ctl` discovers the run directory from `BBOXY_RUN_DIR` or the newest run directory of the uid. The listener refuses by ancestry and names the reason; the MCP catalogue and the `bboxy450` skill tell seats plainly that `ctl` is not theirs. Every `ctl` operation is journaled as `control/op` with kind `ctl` and audited on `account/control`. **The spec states in one sentence that this is not an OS security boundary**: a seat could double-fork and reparent to `launchd`; the day a real boundary is wanted (a shared host, the cloud phase), (C) becomes the second factor beside this, not a replacement. Rejected: (B), because the accidental case is the one that happens; (C) now, because it fights the automation; a well-known socket path, because every same-user process would find it without even looking.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
+
+**Amended by [[d270-ctl-screen-input-wait]] (operator, 2026-10-24 morning):** `ctl` gains `screen`, `input` and `wait` under the same principal, door and audit; no new authority, the operator already reads and types into every pane.
