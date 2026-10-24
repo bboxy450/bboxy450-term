@@ -4,6 +4,7 @@ pub mod ctl;
 pub mod grids;
 pub mod hosts;
 pub mod keyboard;
+pub mod knowledge;
 pub mod launcher;
 pub mod messaging;
 pub mod model;

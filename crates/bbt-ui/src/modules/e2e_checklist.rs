@@ -112,6 +112,8 @@ pub struct Checklist {
     pub promises: Vec<Promise>,
     pub records: Vec<Record>,
     pub tasks: Vec<Task>,
+    /// Host/provider failures invalidate the snapshot without inventing a row.
+    pub faults: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -147,7 +149,8 @@ impl Status {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Tone {
     Green,
     Amber,
@@ -164,7 +167,7 @@ pub struct Row<'a> {
     pub tracked_by: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Summary {
     pub tone: Tone,
     pub total: usize,
@@ -306,7 +309,7 @@ impl Checklist {
                 .iter()
                 .filter(|r| r.status.failure() && r.tracked_by.is_empty())
                 .count(),
-            faults: vec![],
+            faults: self.faults.clone(),
         };
         if self.promises.is_empty() {
             summary.faults.push("checklist has no promises".into());

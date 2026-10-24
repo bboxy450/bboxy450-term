@@ -28,6 +28,7 @@ impl Graph {
                 promises: parse_promises(include_str!("../../../.bboxy/specs/e2e-acceptance.md"))?,
                 records,
                 tasks,
+                faults: vec![],
             },
             scroll: 0.,
         })
