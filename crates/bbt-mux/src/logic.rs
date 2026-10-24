@@ -5122,6 +5122,7 @@ impl Worker {
             knowledge::data_source as d,
             mcp::{self, knowledge as tool},
         };
+        let origin = self.identity.bind_origin(origin);
         let device_id = self
             .identity
             .status()

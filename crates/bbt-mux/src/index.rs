@@ -800,10 +800,16 @@ impl Index {
         if let Some(label) = &self.issued_by {
             if map
                 .get("issued_by")
-                .is_some_and(|value| value.as_str() != Some(label))
+                .is_some_and(|value| {
+                    value.as_str() != Some(label)
+                        && current.as_ref().and_then(|doc| doc.metadata.get("issued_by"))
+                            != Some(value)
+                })
             {
                 return Err(invalid("test_account_label_mismatch: record attribution"));
             }
+            // A fetched record may retain its previous run's label. Its new
+            // signature always uses this receiver's verified account context.
             map.insert("issued_by".into(), json!(label));
             authorship["issued_by"] = json!(label);
         }
@@ -1336,11 +1342,60 @@ mod test_account_attribution {
             digest(serde_yaml::to_string(&front).unwrap().as_bytes()),
             signed_digest
         );
+        let refused = index
+            .apply_author(
+                Update {
+                    path: record.path.clone(),
+                    metadata: front,
+                    body: record.body.clone(),
+                    expected: Some(record.digest.clone()),
+                },
+                &author,
+            )
+            .unwrap_err();
+        assert!(refused.to_string().contains("test_account_label_mismatch"));
+        assert_eq!(
+            index.current(&record.path).unwrap().unwrap().digest,
+            record.digest
+        );
         let activity = index.activity.after(0, 16).unwrap();
         assert!(!activity.is_empty());
         for row in activity {
             assert_eq!(row.event.issued_by.as_deref(), Some(generated.issued_by()));
             row.verify().unwrap();
         }
+        let next_run = root.path().join("next-run");
+        let next = TestAccount::open(&root.path().join("next-keys"), &next_run).unwrap();
+        let account =
+            SqliteStore::open(&crate::store::object_dir(&next_run, "account").unwrap()).unwrap();
+        let head: Signed<AccountHead> =
+            serde_json::from_slice(&account.get("identity/head").unwrap().unwrap()).unwrap();
+        let next_device = head.payload.active_devices[0].device_id;
+        let next_key = next.key_store().load(next_device).unwrap().unwrap();
+        let next_author = crate::provenance::author::Author::operator(
+            next_device,
+            crate::messaging::wire::IssuerKind::GpgRoot,
+            &next_key,
+        );
+        index.set_issued_by(Some(next.issued_by().into()));
+        index
+            .apply_author(
+                Update {
+                    path: record.path.clone(),
+                    metadata: record.metadata,
+                    body: record.body,
+                    expected: Some(record.digest),
+                },
+                &next_author,
+            )
+            .unwrap();
+        let updated = index.current(&record.path).unwrap().unwrap();
+        assert_eq!(updated.metadata["issued_by"], next.issued_by());
+        assert_eq!(
+            updated.metadata["authorship"]["issued_by"],
+            next.issued_by()
+        );
+        assert_eq!(updated.metadata["created_by"], author.id);
+        assert_eq!(updated.metadata["updated_by"], next_author.id);
     }
 }

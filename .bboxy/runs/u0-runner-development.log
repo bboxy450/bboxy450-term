@@ -1,0 +1,70 @@
+RAW runner-file-first.log sha256=d52f0cf6dd88aa04c5e549a9b51fda31ef51f524895695196777b601c8bfdb48
+COMMAND ["cargo", "test", "-p", "bboxy450-term", "--locked", "--test", "test_account", "--test", "e2e_night", "--", "--nocapture"]
+BBOXY_TEST_CUSTODY removed; explicit test-account file custody
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 2m 53s
+     Running tests/e2e_night.rs (target/identity-file-dev/debug/deps/e2e_night-c075cee6e864f1d4)
+
+running 1 test
+
+thread 'the_runner_turns_script_exit_codes_into_verdicts_and_a_summary' (30257562) panicked at crates/bboxy450-term/tests/e2e_night.rs:114:9:
+assertion `left == right` failed: [Object {"error": String("unknown: knowledge write outcome is not confirmed; inspect original operation, never redispatch it"), "function": String("T1"), "kind": String("record")}, Object {"error": String("unknown: knowledge write outcome is not confirmed; inspect original operation, never redispatch it"), "function": String("T2"), "kind": String("record")}, Object {"error": String("unknown: knowledge write outcome is not confirmed; inspect original operation, never redispatch it"), "function": String("T3"), "kind": String("record")}, Object {"error": String("unknown: knowledge write outcome is not confirmed; inspect original operation, never redispatch it"), "function": String("T4"), "kind": String("record")}, Object {"error": String("unknown: knowledge write outcome is not confirmed; inspect original operation, never redispatch it"), "function": String("T5"), "kind": String("record")}, Object {"error": String("unknown: knowledge write outcome is not confirmed; inspect original operation, never redispatch it"), "function": String("T6"), "kind": String("record")}, Object {"error": String("unknown: knowledge write outcome is not confirmed; inspect original operation, never redispatch it"), "function": String("T7"), "kind": String("record")}, Object {"error": String("unknown: knowledge write outcome is not confirmed; inspect original operation, never redispatch it"), "function": String("T8"), "kind": String("record")}]
+  left: Number(1)
+ right: Null
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test the_runner_turns_script_exit_codes_into_verdicts_and_a_summary ... FAILED
+
+failures:
+
+failures:
+    the_runner_turns_script_exit_codes_into_verdicts_and_a_summary
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.82s
+
+error: test failed, to rerun pass `-p bboxy450-term --test e2e_night`
+
+END RAW
+RAW cross-run-attribution.log sha256=f93d194e6f560d506b21ca5bd7e78b104740134c8b62a7dfcc5f42f2d7fd16d1
+COMMAND ["cargo", "test", "-p", "bbt-mux", "--locked", "--lib", "verified_test_context_is_covered_by_document_and_activity_signatures", "--", "--nocapture"]
+BBOXY_TEST_CUSTODY removed; explicit test-account file custody
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [unoptimized] target(s) in 20.14s
+     Running unittests src/lib.rs (target/identity-file-dev/debug/deps/bbt_mux-669c1a58241b6205)
+
+running 1 test
+test index::test_account_attribution::verified_test_context_is_covered_by_document_and_activity_signatures ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 84 filtered out; finished in 0.18s
+
+
+END RAW
+RAW runner-file-second.log sha256=46ee80687d8ef727baa544ad9930ede0b3f84046b2d90c65ad902fa88f1e3e8c
+COMMAND ["cargo", "test", "-p", "bboxy450-term", "--locked", "--test", "test_account", "--test", "e2e_night", "--", "--nocapture"]
+BBOXY_TEST_CUSTODY removed; explicit test-account file custody
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `test` profile [unoptimized] target(s) in 46.22s
+     Running tests/e2e_night.rs (target/identity-file-dev/debug/deps/e2e_night-c075cee6e864f1d4)
+
+running 1 test
+test the_runner_turns_script_exit_codes_into_verdicts_and_a_summary ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.12s
+
+     Running tests/test_account.rs (target/identity-file-dev/debug/deps/test_account-3f376d5a0d7b04ce)
+
+running 2 tests
+test test_account_selector_is_explicit_and_rejects_bad_flags_before_custody ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authority ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.65s
+
+
+END RAW
