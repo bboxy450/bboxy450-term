@@ -2159,6 +2159,20 @@ fn finish(mut list: DrawList, clips: &[Clip], out: &mut Vec<Paint>) {
 fn color(c: [f32; 4], draw: DrawCtx, opacity: f32) -> Color {
     draw.color(Color(c)).alpha(opacity)
 }
+/// Splits a block's top-level alive rims from the rest of its paint (rim-glow §7): a host
+/// paints every block first and the rims after, so a swell lies over its neighbours as the
+/// lab's rim canvases do; at rest the rims touch no neighbour and nothing changes.
+pub fn split_rims(ops: Vec<Paint>) -> (Vec<Paint>, Vec<Paint>) {
+    ops.into_iter().partition(|op| {
+        !matches!(
+            op,
+            Paint::Material {
+                kind: Material::Rim,
+                ..
+            }
+        )
+    })
+}
 pub fn paint(layout: &Layout, ctx: Context) -> Vec<Paint> {
     paint_with_draw(layout, DrawCtx::new(ctx.theme, ctx.density))
 }

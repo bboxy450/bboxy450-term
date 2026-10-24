@@ -16,7 +16,7 @@
     window.cancelAnimationFrame=id=>{frames=frames.filter(f=>f.id!==id);};
     window.bboxyFreezeLayer=(timeMs=450)=>{for(const time of [0,0.000001,timeMs]){const ready=frames;frames=[];for(const f of ready)f.fn(time);}};
     let glow;
-    Object.defineProperty(window,'Glow',{configurable:true,get:()=>glow,set(value){glow=value;const attach=value.attach;value.attach=function(wrap,seat,opts){const seed=randomIndex;const cv=attach(wrap,seat,opts);glows.push({wrap,cv,seed:cv.dataset.phaseMs===undefined?seed:Number(cv.dataset.phaseMs),activity:seat.state,focused:!!opts?.focused,time_ms:450});return cv;};}});
+    Object.defineProperty(window,'Glow',{configurable:true,get:()=>glow,set(value){glow=value;const attach=value.attach;value.attach=function(wrap,seat,opts){const seed=randomIndex;const cv=attach(wrap,seat,opts);const SMS=window.TOKENS.glow.swell_ms,st=opts?.swell_at,attention=!!opts?.attn,swell=st==null?0:attention?Math.abs(Math.sin(Math.PI*st/SMS)):st>=0&&st<SMS?Math.sin(Math.PI*st/SMS):0;glows.push({wrap,cv,seed:cv.dataset.phaseMs===undefined?seed:Number(cv.dataset.phaseMs),activity:seat.state,focused:!!opts?.focused,time_ms:450,swell,attention});return cv;};}});
   }
   if (window.bboxyStreamFixture) {
     const timeout=window.setTimeout.bind(window);
@@ -435,7 +435,7 @@
           for(const child of node.childNodes)walk(child,{...flags,foreground:flags.foreground||node.tagName==='B'||node.classList.contains('path'),hover:flags.hover||node.classList.contains('hover')});
         };
         for(const child of term.childNodes)walk(child);
-        return {args:c.args,lines,host:{x:r.x,y:r.y,w:r.w},parts:diagnostics,glow:glow?{seed:glow.seed,time_ms:0,focused:glow.focused}:null};
+        return {args:c.args,lines,host:{x:r.x,y:r.y,w:r.w},parts:diagnostics,glow:glow?{seed:glow.seed,time_ms:0,focused:glow.focused,swell:glow.swell,attention:glow.attention}:null};
       });
       if(!items.length)throw Error('missing Pane constructor');
       return JSON.parse(JSON.stringify({version:1,layer:'panes',scope:'Pane and Strip; notes and adjacent SeatRows are shared fixture context',items},(k,v)=>typeof v==='function'?{$callback:true}:v instanceof Node?undefined:v));
@@ -501,7 +501,7 @@
     if(window.bboxySeatRowFixture){
       const selected=calls.filter(c=>['seatRow','subagentRows','taskRow','artifactRow'].includes(c.name)&&c.node?.isConnected&&root.contains(c.node));
       const parents=[...new Set(selected.map(c=>c.node.parentElement))];
-      const groups=parents.map(parent=>({host:bounds(parent),gap:parseFloat(parent.style.gap)||0,row_height:parseFloat(getComputedStyle(parent).getPropertyValue('--row-h')),rows:selected.filter(c=>c.node.parentElement===parent).map(c=>{c.node.dataset.bboxySeatRow='';return {kind:c.name,args:c.args,index:c.index,rect:bounds(c.node),parts:parts(c.node)};})}));
+      const groups=parents.map(parent=>({host:bounds(parent),gap:parseFloat(parent.style.gap)||0,row_height:parseFloat(getComputedStyle(parent).getPropertyValue('--row-h')),rows:selected.filter(c=>c.node.parentElement===parent).map(c=>{c.node.dataset.bboxySeatRow='';const g=glows.find(g=>g.wrap.contains(c.node));return {kind:c.name,args:c.args,index:c.index,rect:bounds(c.node),parts:parts(c.node),glow:g?{swell:g.swell,attention:g.attention}:null};})}));
       return JSON.parse(JSON.stringify({version:1,layer:'seat-row',scope:'SeatRow and nested subagent/task/artifact rows; notes are shared context, row-menu overlays hidden on both sides',groups},(k,v)=>typeof v==='function'?{$callback:true}:v instanceof Node?undefined:v));
     }
     // Derived only from the public Path record, never SVG getBBox/path APIs.

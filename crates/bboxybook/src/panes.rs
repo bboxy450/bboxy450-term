@@ -31,6 +31,8 @@ pub const STRIP_STATES: &[&str] = &[
     "worker view",
     "authority · revoked",
 ];
+/// swell.html's pane states (rim-glow §7, attention §2), frozen at the swell's peak.
+pub const SWELL_STATES: &[&str] = &["panes", "attention beside focus", "muted waiting"];
 pub const PANE_STATES: &[&str] = &[
     "gap · retained",
     "gap · unavailable",
@@ -52,7 +54,11 @@ fn slug(value: &str) -> String {
 }
 pub fn cases() -> Vec<Case> {
     let mut out = vec![];
-    for (page, states) in [("title-strip", STRIP_STATES), ("pane", PANE_STATES)] {
+    for (page, states) in [
+        ("title-strip", STRIP_STATES),
+        ("pane", PANE_STATES),
+        ("swell", SWELL_STATES),
+    ] {
         for state in states {
             for density in gallery::DENSITIES {
                 for theme in gallery::THEMES {
@@ -98,7 +104,11 @@ fn num(v: &Value, key: &str) -> Result<f32> {
 fn view(item: &Value) -> Result<Pane> {
     let v = &item["args"][0];
     let o = &item["args"][1];
-    let mut strip = Strip::new(seat_rows::seat(v, o, None));
+    let mut row = seat_rows::seat(v, o, None);
+    // The page's frozen swell or attention loop on this pane (swell.html; rim-glow §7).
+    row.swell = item["glow"]["swell"].as_f64().unwrap_or(0.) as f32;
+    row.attention = item["glow"]["attention"] == true;
+    let mut strip = Strip::new(row);
     strip.waiting_description = v["waitKind"].as_str().map(Into::into);
     strip.may_interrupt = o["onInterrupt"]["$callback"] == true;
     strip.may_mute = o["onMute"]["$callback"] == true;
@@ -196,15 +206,15 @@ pub fn render_case(
     let (w, h, mut pixels) = crate::read_png(Path::new(
         bg["path"].as_str().ok_or("missing Pane backdrop")?,
     ))?;
+    // Every pane, then every rim, so a swell lies over its neighbours as in the lab.
+    let mut rims = vec![];
     for (ctx, layout) in layouts(case)? {
-        pixels = crate::components::execute_at(
-            renderer,
-            c::paint(&layout, ctx),
-            pixels,
-            [w, h],
-            ctx,
-            0.,
-        )?;
+        let (body, rim) = c::split_rims(c::paint(&layout, ctx));
+        pixels = crate::components::execute_at(renderer, body, pixels, [w, h], ctx, 0.)?;
+        rims.push((ctx, rim));
+    }
+    for (ctx, rim) in rims {
+        pixels = crate::components::execute_at(renderer, rim, pixels, [w, h], ctx, 0.)?;
     }
     let x = num(&bg["crop"], "x")?.round() as u32;
     let y = num(&bg["crop"], "y")?.round() as u32;

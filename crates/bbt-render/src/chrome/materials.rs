@@ -1044,6 +1044,67 @@ mod tests {
         assert!(surface.backdrop_region(f32::NAN, 200, 100).is_err());
     }
     #[test]
+    fn the_swell_over_a_neighbours_nearest_text_cell_stays_under_the_cap() {
+        // rim-glow §7 acceptance (Wren's swell.html curve): at its peak (envelope 1) the swell
+        // weighs at most .48 over a neighbour's first text cell, the gap (rim size) plus the
+        // neighbour's 8 px padding past the border: 12 px at rim size 4. Every position along
+        // the edge is sampled, so every crest and core phase is covered. The rim keeps the
+        // destination's alpha, so the weight is read from colour: a white rim (unchanged by
+        // the hue rotation about the grey axis) over opaque black is the weight itself.
+        let rim = TOKENS.glow.rim as f32;
+        let near = rim + 8.;
+        let rect = Rect::new(60., 60., 400., 160.);
+        let (width, height) = (520u32, 280u32);
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let mut worst = 0f32;
+        for time_ms in [0., 700., 1400., 2100.] {
+            let out = render_to_rgba(
+                &mut renderer,
+                Scene {
+                    backdrop: Backdrop::Rgba(&[0, 0, 0, 255].repeat((width * height) as usize)),
+                    items: &[Surface {
+                        rect,
+                        radii: [10.; 4],
+                        clips: vec![],
+                        material: Material::Rim(Rim {
+                            color: Color::WHITE,
+                            waiting: Color::hex(TOKENS.color.state.waiting),
+                            errored: Color::hex(TOKENS.color.state.errored),
+                            activity: Activity::Active,
+                            focus: 1.,
+                            size: rim,
+                            depth: TOKENS.glow.depth as f32,
+                            phase_ms: 0.,
+                            outer: rim / 2.,
+                            alpha: 1.,
+                            swell: 1.,
+                            attention: false,
+                        }),
+                    }],
+                    width,
+                    height,
+                    scale: 1.,
+                    time_ms,
+                    theme: Theme::Dark,
+                },
+            )
+            .unwrap();
+            // The row of pixels `near` px above the top edge, clear of the corners.
+            let y = (rect.y - near) as u32;
+            for x in (rect.x + 12.) as u32..(rect.right() - 12.) as u32 {
+                worst = worst.max(f32::from(out[((y * width + x) * 4) as usize]) / 255.);
+            }
+        }
+        assert!(
+            worst > 0.2,
+            "the swell reaches the neighbour's cell: {worst}"
+        );
+        assert!(
+            worst <= 0.48 + 1. / 255.,
+            "swell weight over the nearest cell {worst}"
+        );
+    }
+    #[test]
     fn downsampled_blur_matches_the_full_resolution_mirrored_gaussian() {
         // A worst case for the 1/4 blur: 1-3 px stripes under a sigma-20 frosted box touching
         // the top edge, so the taps mirror at the border box and at the target edge.

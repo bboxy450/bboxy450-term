@@ -3,14 +3,15 @@ use std::collections::BTreeSet;
 #[test]
 fn seat_row_matrix_covers_lab_states_and_explicit_nested_row_fixtures() {
     let cases = seat_rows::cases();
-    assert_eq!(cases.len(), 232);
+    // 27 seat-row states, swell.html's rows (rim-glow §8) and two nested fixtures, x 8.
+    assert_eq!(cases.len(), 240);
     assert_eq!(
         cases
             .iter()
             .map(|c| c.relative())
             .collect::<BTreeSet<_>>()
             .len(),
-        232
+        240
     );
     assert_eq!(seat_rows::STATES.len(), 27);
     for state in [

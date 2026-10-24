@@ -73,6 +73,24 @@ pub fn cases() -> Vec<Case> {
             }
         }
     }
+    // swell.html's rows (rim-glow §7-8): the kit rim on every row and one frozen swell.
+    for density in gallery::DENSITIES {
+        for theme in gallery::THEMES {
+            out.push(Case {
+                component: "swell".into(),
+                state: "rows".into(),
+                slug: "rows".into(),
+                density: gallery::density_name(density).into(),
+                theme: gallery::theme_name(theme).into(),
+                page: "swell.html".into(),
+                selector: ".card > .body".into(),
+                width: 1246,
+                height: 600,
+                checker: false,
+                fixture: Some(json!({"layer":"seat-row"})),
+            });
+        }
+    }
     for state in ["task-states", "artifacts"] {
         for density in gallery::DENSITIES {
             for theme in gallery::THEMES {
@@ -200,7 +218,13 @@ pub fn seat(v: &Value, o: &Value, height: Option<f32>) -> row::SeatRow {
 pub(crate) fn element(v: &Value, height: Option<f32>, ctx: ui::Context) -> Result<c::Element> {
     let args = &v["args"];
     Ok(match v["kind"].as_str() {
-        Some("seatRow") => seat(&args[0], &args[1], height).element(ctx),
+        Some("seatRow") => {
+            // The page's frozen swell or attention loop on this row (swell.html; rim-glow §7).
+            let mut s = seat(&args[0], &args[1], height);
+            s.swell = v["glow"]["swell"].as_f64().unwrap_or(0.) as f32;
+            s.attention = v["glow"]["attention"] == true;
+            s.element(ctx)
+        }
         Some("subagentRows") => {
             let s = seat(&args[0], &Value::Null, None);
             let agents = args[0]["subagents"]
@@ -294,10 +318,14 @@ pub fn render_case(
     // Rows carry the alive rim (rim-glow §8), a material op, so paint order goes through the
     // material-capable executor rather than one flat draw list.
     let ctx = crate::components::context(case);
-    let mut ops = vec![];
+    let (mut ops, mut rims) = (vec![], vec![]);
     for layout in layout_case(case)? {
-        ops.extend(c::paint(&layout, ctx));
+        let (body, rim) = c::split_rims(c::paint(&layout, ctx));
+        ops.extend(body);
+        rims.extend(rim);
     }
+    // Every row, then every rim: a swell lies over the neighbouring rows (rim-glow §7).
+    ops.extend(rims);
     pixels = crate::components::execute(renderer, ops, pixels, [w, h], ctx)?;
     let x = number(&bg["crop"], "x")?.round() as u32;
     let y = number(&bg["crop"], "y")?.round() as u32;

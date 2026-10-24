@@ -567,9 +567,14 @@ impl Scene {
             Color::hex(ctx.theme.palette().bg),
         );
         let mut ops = vec![c::Paint::Draw(background)];
+        // Every block, then every rim, so a swell paints over its neighbours (rim-glow §7).
+        let mut rims = vec![];
         for layout in layouts {
-            ops.extend(c::paint(layout, ctx));
+            let (body, rim) = c::split_rims(c::paint(layout, ctx));
+            ops.extend(body);
+            rims.extend(rim);
         }
+        ops.extend(rims);
         if let Some(identity) = &self.identity {
             use bbt_proto::GuiIdentityState;
             let note = match identity.state {
