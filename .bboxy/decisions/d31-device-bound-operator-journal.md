@@ -9,7 +9,7 @@ operator: []
 links:
   - { to: "[[2026-10-22-architecture-round-1#31]]", rel: "supersedes-as-index" }
 created: "2026-10-23T15:47:38Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-10-24T05:29:55Z"
 ---
 # Decision 31: GUI operations are journaled under an operator principal bound to the device, in the account object
 
@@ -61,3 +61,5 @@ per-process, which is the stated intent. The only case with no device
 id is a custody **hold** (ID1d: store unavailable at start); then GUI
 operations queue as `Held` exactly like messaging sends and release on
 recovery. No nil, random or seat fallback, ever.
+
+**Amended by [[d260-ctl-authority]] (2026-10-24):** the GUI capability also reaches `bboxy450-term ctl` through `run_dir/gui.endpoint` (0600, removed on exit), with process-ancestry refusal for the app's own seats and a distinct `ctl` audit kind; the capability no longer stays inside the process tree, and the spec says plainly that this is not an OS boundary.
