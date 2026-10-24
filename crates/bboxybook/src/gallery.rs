@@ -364,6 +364,7 @@ pub fn parity_cases() -> Vec<Case> {
     out.extend(crate::seat_rows::cases());
     out.extend(crate::tabs::cases());
     out.extend(crate::swarms::cases());
+    out.extend(crate::close::cases());
     out.extend(crate::panes::cases());
     out.extend(crate::title_bars::cases());
     out.extend(crate::launchers::cases());

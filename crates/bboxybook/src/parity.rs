@@ -9,7 +9,9 @@ pub fn replay_images(out: &Path, cases: &[Case]) -> Result<usize> {
     let mut renderer = ChromeRenderer::new(crate::images()?)?;
     println!("adapter: {:?}", renderer.context.adapter_info);
     for (i, case) in cases.iter().enumerate() {
-        let rgba = if case.fixture.as_ref().is_some_and(|f|f["layer"]=="paths") {
+        let rgba = if case.fixture.as_ref().is_some_and(|f|f["layer"]=="close") {
+            crate::close::render_case(&mut renderer,case)?
+        } else if case.fixture.as_ref().is_some_and(|f|f["layer"]=="paths") {
             crate::paths::render_case(&mut renderer,case)?
         } else if case.fixture.as_ref().is_some_and(|f|f["layer"]=="documents") {
             crate::documents::render_case(&mut renderer,case)?
@@ -98,6 +100,7 @@ pub fn render(out: &Path, cases: &[Case]) -> Result<usize> {
     snapshots.extend(crate::seat_rows::snapshots(cases)?);
     snapshots.extend(crate::tabs::snapshots(cases)?);
     snapshots.extend(crate::swarms::snapshots(cases)?);
+    snapshots.extend(crate::close::snapshots(cases)?);
     snapshots.extend(crate::panes::snapshots(cases)?);
     snapshots.extend(crate::title_bars::snapshots(cases)?);
     snapshots.extend(crate::launchers::snapshots(cases)?);
@@ -163,7 +166,7 @@ impl CasePolicy {
             || f.is_some_and(|f| {
                 matches!(
                     f["layer"].as_str(),
-                    Some("seat-row" | "tabs" | "swarms" | "panes" | "titlebars" | "launchers" | "streams" | "graphs" | "settings" | "perf" | "documents")
+                    Some("close" | "seat-row" | "tabs" | "swarms" | "panes" | "titlebars" | "launchers" | "streams" | "graphs" | "settings" | "perf" | "documents")
                 )
             })
         {
@@ -187,7 +190,9 @@ impl CasePolicy {
             channel_tolerance: diff::CHANNEL_TOLERANCE,
             changed_pixel_budget: if vector { 0.005 } else if text { 0.02 } else { diff::CHANGED_BUDGET },
             geometry_tolerance_px: if vector { Some(0.) } else { text.then_some(0.5) },
-            scope: if f.is_some_and(|f|f["layer"]=="paths") {
+            scope: if f.is_some_and(|f|f["layer"]=="close") {
+                "T7 full window: native split, sidebar grace strip, panes and retained notice; public constructor data and an external viewport"
+            } else if f.is_some_and(|f|f["layer"]=="paths") {
                 "L6 Path strokes in caller-owned slots; public points tessellated natively; 1x/2x"
             } else if f.is_some_and(|f|f["layer"]=="documents") {
                 if crate::documents::has_diagram_body(case) { "Document figure chrome; engine canvas height removed from comparison coordinates only (renderer 4.4c); raw diagram pixels advisory" } else { "DocumentModal and static document views; public document records, native layout, shared enclosing backdrop" }
