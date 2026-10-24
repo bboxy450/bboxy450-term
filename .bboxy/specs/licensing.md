@@ -16,7 +16,7 @@ links:
   - { to: "[[yarn]]", rel: spec }
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
 created: 2026-10-23T16:26:37Z
-updated: 2026-10-23T23:56:02Z
+updated: "2026-10-24T04:47:36Z"
 ---
 # Licensing
 
@@ -42,6 +42,7 @@ Ours and clean: `MIT OR Apache-2.0`; the developer takes MIT (one paragraph, GPL
 | `bbt-doc` | `bboxy450-doc` | MIT OR Apache-2.0 | ours | none |
 | `bboxybook` | `bboxy450-book` | MIT OR Apache-2.0 | ours; `capture.mjs` drives a local Chrome, nothing vendored | none |
 | `bbt-supervisor` | `bboxy450-pty`, later | MIT OR Apache-2.0 | ours; `portable-pty` is a dependency, not vendored | none |
+| `bbt-plugin` | `bboxy450-plugin` ([[plugins]] §1, the shape and contract schemas, tiers, ceilings, the trust-record type) | MIT OR Apache-2.0 | ours | none |
 | `bbt-proto` | internal until decision [[d8-open-source\|#8]]'s plateau | MIT OR Apache-2.0 | ours | none |
 | `bbt-mux` | internal until decision [[d8-open-source\|#8]]'s plateau | MIT OR Apache-2.0 | ours | none |
 | `bboxy-firehose` | internal tool | MIT OR Apache-2.0 | ours | none |

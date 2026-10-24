@@ -14,7 +14,7 @@ links:
   - { to: "[[d47-decision-nodes]]", rel: model }
   - { to: "[[d48-every-record-has-a-number]]", rel: model }
 created: "2026-10-24T04:28:04Z"
-updated: "2026-10-24T04:28:04Z"
+updated: "2026-10-24T04:47:36Z"
 ---
 # Knowledge base
 
@@ -44,13 +44,13 @@ One JSON Schema document in `bbt-plugin` ([[plugins]] §1); the bundled provider
 - `list(filter, cursor?, limit)` → `page` of refs by `type`, `status`, `assignee`, `since`.
 - `links(ref)` → `{ outgoing: [edge], incoming: [edge] }`, an edge `{ from, to, rel, weight }`; this is the graph the Graph tab and the canvas draw.
 - `graph(scope, cursor?)` → a page of `{ nodes, edges }` for a scope (a type, a swarm, a record and its neighbourhood to depth d); the bundled provider serves the seven graphs of [[work-items]] that are documents (markdown, task, artifact); execution, channel and messaging graphs stay the app's.
-- `write(ref?, frontmatter, body, etag?)` → `record` with `lossy: bool`: create or update one record; the number is allocated by the app's Index under decision #48 for the bundled provider, and a foreign provider returns its own `external_id` beside the app's number; an `etag` mismatch is a command error; a write that the provider cannot hold losslessly returns `lossy: true` and the app shows it.
+- `write(ref?, path?, frontmatter, body, etag?)` → `record` with `lossy: bool`: create or update one record; **`path` is required on create** and is a relative Markdown path under the root, checked by the Index's path and etag guard (a path outside the root, or one that exists, is a command error by name); on update `ref` names the record and `path` is absent; the number is allocated by the app's Index under decision #48 for the bundled provider, and a foreign provider returns its own `external_id` beside the app's number; an `etag` mismatch is a command error; a write that the provider cannot hold losslessly returns `lossy: true` and the app shows it.
 - `changes_since(cursor)` → `{ changed: [ref], next }`: what moved since the cursor, by poll; the bundled provider answers from the index's activity log.
 - Tier: **export** for the contract ([[plugins]] §1a), because `write` sends content out; the bundled provider is local and shows `local` in the registry beside the tier.
 
 ## 3. Bundled
 
-- **In process, same contract.** The bundled provider implements the contract as a Rust trait inside logic over the existing index; no MCP hop for the default path. The same code serves the contract over stdio when invoked as `bboxy450-term plugin serve data_source-bboxy`, so `plugin check` proves the contract from both sides and a second app of the suite can run it as an ordinary plugin.
+- **In process, same contract.** The bundled provider implements the contract as a Rust trait inside logic over the existing index; no MCP hop for the default path. **Its data directory is the root itself:** a resource link from the bundled provider is a realpath-confined, symlink-refusing read of a real file under the root (`.bboxy/images/` first), 64 MiB cap, no copies; that is the [[plugins]] §1 resource-link rule applied to the bundled case, and the whole of Seraph's #250 point for it. The same code serves the contract over stdio when invoked as `bboxy450-term plugin serve data_source-bboxy`, so `plugin check` proves the contract from both sides and a second app of the suite can run it as an ordinary plugin.
 - **Registry.** Settings › Plugins lists it as `bboxy450-term-data_source-bboxy (bundled)` with its shape, tier `export (local)`, timings and health like any plugin; it cannot be disabled while it is the provider of a root.
 - **Roots and the swap.** A knowledge **root** is a place records live: the repository's `.bboxy/` first; later an Obsidian vault, a Notion workspace. Settings › Knowledge lists roots, and each root names its **provider**: the bundled one by default, swappable to any trusted plugin that implements `data_source`. Several roots mount at once; `#N` and slugs resolve per root, with the repository's `.bboxy` first in the order; a locator may be qualified by root. Swapping a provider never moves data: the records stay where they are and the new provider reads them, or refuses with a reason the app shows.
 - **Opinionated default.** The bundled provider is the one the app ships with and the one every acceptance in this repository runs against; a second provider must pass the same `plugin check` and the contract's conformance fixtures before Settings offers it.
@@ -73,6 +73,6 @@ The contract schema and the conformance fixtures live in `bbt-plugin`. The bundl
 
 ## 7. Order (the Oracle's briefs, when the operator says go)
 
-K-0 the `data_source` schema and conformance fixtures in `bbt-plugin`, with the trait in logic and the index behind it (acceptance 1). K-1 the stdio serve and `plugin check` against it (acceptance 2). K-2 Settings › Knowledge, roots and the swap, with the stub provider (acceptance 3). K-3 the first foreign provider, an Obsidian vault read-only, as the proof the swap is real. "Only that for now, later more will be added."
+K-0 the `data_source` schema and conformance fixtures in `bbt-plugin` (`bbt-plugin` enters the layering order below `bbt-proto` and the licensing map as `bboxy450-plugin` in the same commit), with the trait in logic and the index behind it (acceptance 1). K-1 the stdio serve and `plugin check` against it (acceptance 2). K-2 Settings › Knowledge, roots and the swap, with the stub provider (acceptance 3). K-3 the first foreign provider, an Obsidian vault read-only, as the proof the swap is real. "Only that for now, later more will be added."
 
 Owner: Corvin Duskmantle <ARCHITECT>.
