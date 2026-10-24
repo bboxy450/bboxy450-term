@@ -938,6 +938,19 @@ async fn run(
                         },
                         GuiReply::CaptureAsk {op,path,seat}=>capture(CaptureAsk {id:op,path:PathBuf::from(path),seat:seat.map(|seat| SeatId::from_u128(seat.0))}),
                         GuiReply::Captured {op,path}=>logger.write(format!("capture {op} written: {path}")),
+                        GuiReply::OperatorSpawned {op,seat,spec}=> {
+                            // Placed and focused as the launcher's own pick is.
+                            let placed=Arc::make_mut(&mut model);
+                            match placed.request_spawn(op,spec) {
+                                Ok(_)=>if placed.spawned(op,seat) {
+                                    if !seats.contains_key(&Ulid(seat.0.0)) {
+                                        queue_action(&mut outgoing,GuiAction::ListSeats);
+                                    }
+                                    publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                                },
+                                Err(reason)=>logger.write(format!("operator spawn {op} not placed: {reason}")),
+                            }
+                        }
                         GuiReply::Event {..}|GuiReply::Gap {..}|GuiReply::Events {..}|GuiReply::EventCursor {..}|GuiReply::EventStatus {..}=>unreachable!("handled before state dispatch"),
                       }}
                       // Every accepted projection is in the published Model

@@ -236,6 +236,14 @@ pub enum GuiReply {
         op: Ulid,
         path: String,
     },
+    /// Sent to the window: a seat spawned through another operator door (`ctl spawn`).
+    /// The window places it as it places its own launcher pick.
+    OperatorSpawned {
+        op: Ulid,
+        #[serde(with = "text_id")]
+        seat: SeatId,
+        spec: SpawnSpec,
+    },
 }
 
 #[cfg(test)]
