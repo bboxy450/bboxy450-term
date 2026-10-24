@@ -466,7 +466,11 @@ impl Pass {
             let entry = [
                 "flat", "gloss", "frosted", "glow", "glow", "glow", "rim", "rim",
             ][index];
-            let blend = if index == 5 || index == 7 {
+            let blend = if index == 7 {
+                // The rim's output is premultiplied; in a transparent group it keeps its
+                // coverage for the later source-over composite without squaring alpha.
+                wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING
+            } else if index == 5 {
                 // A transparent group must retain the effect's coverage for
                 // its later source-over composite. Normal fx keep dest alpha.
                 wgpu::BlendState::ALPHA_BLENDING

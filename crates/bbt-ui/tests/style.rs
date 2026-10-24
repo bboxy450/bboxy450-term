@@ -149,44 +149,44 @@ fn malformed_override_data_fails_instead_of_silently_changing_the_style() {
 fn glow_state_round_trips_and_rejects_invalid_shader_inputs() {
     let ctx = Context::new(Theme::Dark, Density::Cozy);
     let mut style = Style::new(Preset::PaneGlow);
-    assert_eq!(style.resolve(ctx).unwrap().glow, None);
+    assert_eq!(style.resolve(ctx).unwrap().rim, None);
     for activity in [
         GlowActivity::Idle,
         GlowActivity::Active,
         GlowActivity::Waiting,
         GlowActivity::Errored,
     ] {
-        let input = Glow {
+        let input = Rim {
             activity,
             inferred_multiplier: 0.5,
             seed: 12345,
             ..Default::default()
         };
-        style.overrides.glow = Some(input);
+        style.overrides.rim = Some(input);
         let copy: Style = serde_json::from_slice(&serde_json::to_vec(&style).unwrap()).unwrap();
-        assert_eq!(copy.resolve(ctx).unwrap().glow, Some(input));
+        assert_eq!(copy.resolve(ctx).unwrap().rim, Some(input));
     }
     for inferred_multiplier in [-0.1, 1.1, f32::NAN] {
-        style.overrides.glow = Some(Glow {
+        style.overrides.rim = Some(Rim {
             inferred_multiplier,
             ..Default::default()
         });
         assert!(style.resolve(ctx).is_err());
     }
     for glow in [
-        Glow {
+        Rim {
             halo_alpha: Some(1.1),
             ..Default::default()
         },
-        Glow {
+        Rim {
             particles: Some(49),
             ..Default::default()
         },
     ] {
-        style.overrides.glow = Some(glow);
+        style.overrides.rim = Some(glow);
         assert!(style.resolve(ctx).is_err());
     }
-    style.overrides.glow = Some(Glow {
+    style.overrides.rim = Some(Rim {
         seed: (1 << 24) + 1,
         ..Default::default()
     });

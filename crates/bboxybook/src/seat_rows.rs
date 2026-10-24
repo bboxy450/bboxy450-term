@@ -291,22 +291,14 @@ pub fn render_case(
     let (w, h, mut pixels) = crate::read_png(Path::new(
         bg["path"].as_str().ok_or("SeatRow backdrop missing")?,
     ))?;
-    // This module is entirely flat. Preserve paint order in one retained draw
-    // list instead of reading the GPU back after each label and icon.
-    let mut draw = bbt_ui_model::draw::DrawList::default();
+    // Rows carry the alive rim (rim-glow §8), a material op, so paint order goes through the
+    // material-capable executor rather than one flat draw list.
+    let ctx = crate::components::context(case);
+    let mut ops = vec![];
     for layout in layout_case(case)? {
-        crate::components::append_draw(
-            c::paint(&layout, crate::components::context(case)),
-            &mut draw,
-        )?;
+        ops.extend(c::paint(&layout, ctx));
     }
-    pixels = crate::components::execute(
-        renderer,
-        vec![c::Paint::Draw(draw)],
-        pixels,
-        [w, h],
-        crate::components::context(case),
-    )?;
+    pixels = crate::components::execute(renderer, ops, pixels, [w, h], ctx)?;
     let x = number(&bg["crop"], "x")?.round() as u32;
     let y = number(&bg["crop"], "y")?.round() as u32;
     let mut crop = vec![];

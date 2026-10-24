@@ -398,7 +398,7 @@ impl Pane {
                 _ => TOKENS.glow.particles_idle as u32,
             }
         };
-        style.overrides.glow = Some(ui::Glow {
+        style.overrides.rim = Some(ui::Rim {
             activity: seat.activity.into(),
             inferred_multiplier: if seat.grade == Grade::Inferred {
                 0.5
@@ -412,12 +412,12 @@ impl Pane {
             // The cell edge rule (rim-glow §3): the band stops at the terminal's padding, so
             // no text cell is ever lit, whatever the setting.
             depth: Some(self.depth.min(STYLE.spacing.s4 as f32)),
-            rim: Some(self.rim),
+            size: Some(self.rim),
             tint: match seat.color(ctx) {
                 ui::Color::Rgba(c) => Some(c),
                 _ => None,
             },
-            ..ui::Glow::default()
+            ..ui::Rim::default()
         });
         // The rim lies inside the pane, above its strip and terminal like the lab's rim canvas:
         // the pane box carries it (a material paints after the box's children). A plain box
@@ -430,7 +430,7 @@ impl Pane {
             outside: false,
         });
         fx.overrides.material = Some(ui::Material::Flat);
-        fx.overrides.glow = None;
+        fx.overrides.rim = None;
         let effect = c::Element::Box(c::Box::new(fx, vec![]));
         let mut b = c::Box::new(
             style,
@@ -764,9 +764,9 @@ pub(crate) mod rim_invariants {
                     kind: ui::Material::Rim,
                     rect,
                     radii,
-                    glow: Some(g),
+                    rim: Some(g),
                     ..
-                } => Some((rect, radii, g.depth.unwrap(), g.rim.unwrap())),
+                } => Some((rect, radii, g.depth.unwrap(), g.size.unwrap())),
                 _ => None,
             })
             .expect("a pane draws its rim")

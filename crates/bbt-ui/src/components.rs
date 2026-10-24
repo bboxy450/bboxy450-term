@@ -2139,7 +2139,7 @@ pub enum Paint {
         kind: Material,
         color: Color,
         blur: Option<crate::ResolvedBlur>,
-        glow: Option<crate::Glow>,
+        rim: Option<crate::Rim>,
         clips: Vec<Clip>,
     },
 }
@@ -2281,7 +2281,7 @@ fn paint_contents(
                     kind: s.material,
                     color: color(s.fill, draw, opacity),
                     blur: s.blur,
-                    glow: s.glow,
+                    rim: s.rim,
                     clips: clips.to_vec(),
                 });
             }
@@ -2412,14 +2412,20 @@ fn paint_contents(
                     radii: s.radii,
                 });
             }
-            if matches!(s.material, Material::Glow | Material::Rim) {
+            // The alive rim is a property of any block that carries `glow` (rim-glow §8), not
+            // only of a Rim material; the legacy particle Glow keeps its own kind.
+            if s.material == Material::Glow || s.material == Material::Rim || s.rim.is_some() {
                 after = Some(Paint::Material {
                     rect: node.rect,
                     radii: s.radii,
-                    kind: s.material,
+                    kind: if s.material == Material::Glow {
+                        Material::Glow
+                    } else {
+                        Material::Rim
+                    },
                     color: color(s.fill, draw, opacity),
                     blur: s.blur,
-                    glow: s.glow,
+                    rim: s.rim,
                     clips: clips.to_vec(),
                 });
             }

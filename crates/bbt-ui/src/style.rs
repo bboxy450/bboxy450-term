@@ -95,7 +95,7 @@ impl From<bbt_ui_model::Activity> for GlowActivity {
 /// Per-node state for the existing L2 effect. It does not alter fill or border.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
-pub struct Glow {
+pub struct Rim {
     pub activity: GlowActivity,
     pub inferred_multiplier: f32,
     /// Kept exactly representable when passed to the shader's f32 uniform.
@@ -115,7 +115,7 @@ pub struct Glow {
     /// The rim size R, px (the host's Settings › Rim size), R/2 each side of the border;
     /// None: the glow.rim token.
     #[serde(default)]
-    pub rim: Option<f32>,
+    pub size: Option<f32>,
     /// The outer half drawn, px: None is R/2 (a pane, whose gutter fits it); a block clips
     /// it to the spacing it has (rim-glow §8).
     #[serde(default)]
@@ -132,7 +132,7 @@ pub struct Glow {
     #[serde(default)]
     pub attention: bool,
 }
-impl Default for Glow {
+impl Default for Rim {
     fn default() -> Self {
         Self {
             activity: GlowActivity::Active,
@@ -143,7 +143,7 @@ impl Default for Glow {
             focused: false,
             tint: None,
             depth: None,
-            rim: None,
+            size: None,
             outer: None,
             rim_alpha: None,
             swell: 0.,
@@ -151,7 +151,44 @@ impl Default for Glow {
         }
     }
 }
-impl Glow {
+/// A block's rim phase from its key: FNV-1a over UTF-16 code units, mod 10 000 ms, the lab's
+/// `hash32(key) % 10000`, so neighbours do not pulse in step and native matches the reference.
+pub fn rim_phase(key: &str) -> u32 {
+    let mut h: u32 = 2_166_136_261;
+    for unit in key.encode_utf16() {
+        h = (h ^ u32::from(unit)).wrapping_mul(16_777_619);
+    }
+    h % 10_000
+}
+impl Rim {
+    /// The kit's default rim on a block that is not a pane (rim-glow §8): `outer` px of the
+    /// outer half fit the block's spacing (0 for rows and tabs that stack edge to edge), the
+    /// bloom stops at `padding`, and a row with `bare_when_idle` carries no rim at rest while
+    /// idle and unfocused (glow.row_idle). The host adds the swell and attention.
+    pub fn block(
+        activity: GlowActivity,
+        focused: bool,
+        tint: Option<[f32; 4]>,
+        phase: u32,
+        bare_when_idle: bool,
+        outer: f32,
+        padding: f32,
+    ) -> Self {
+        let bare = bare_when_idle
+            && !bbt_ui_model::TOKENS.glow.row_idle
+            && activity == GlowActivity::Idle
+            && !focused;
+        Self {
+            activity,
+            seed: phase,
+            focused,
+            tint,
+            depth: Some((bbt_ui_model::TOKENS.glow.depth as f32).min(padding.max(0.))),
+            outer: Some(outer),
+            rim_alpha: Some(if bare { 0. } else { 1. }),
+            ..Self::default()
+        }
+    }
     fn validate(self) -> Result<Self> {
         unit(self.inferred_multiplier)?;
         if let Some(alpha) = self.halo_alpha {
@@ -436,7 +473,7 @@ impl Default for Dim {
 pub struct Overrides {
     pub material: Option<Material>,
     pub blur: Option<Blur>,
-    pub glow: Option<Glow>,
+    pub rim: Option<Rim>,
     pub fill: Option<Paint>,
     pub radii: Option<[Length; 4]>,
     pub border: Option<Border>,
@@ -536,7 +573,7 @@ impl Style {
         };
         Ok(ResolvedStyle {
             material: base.material,
-            glow: o.glow.map(Glow::validate).transpose()?,
+            rim: o.rim.map(Rim::validate).transpose()?,
             blur: o
                 .blur
                 .map(|b| b.resolve(ctx.density))
@@ -678,7 +715,7 @@ pub struct ResolvedBlur {
 pub struct ResolvedStyle {
     pub material: Material,
     pub blur: Option<ResolvedBlur>,
-    pub glow: Option<Glow>,
+    pub rim: Option<Rim>,
     pub fill: [f32; 4],
     pub radii: [f32; 4],
     pub border: Option<ResolvedBorder>,

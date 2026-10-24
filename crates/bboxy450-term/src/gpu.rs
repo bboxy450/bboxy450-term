@@ -766,7 +766,7 @@ fn encode_ops(
                 kind,
                 color,
                 blur,
-                glow,
+                rim: glow,
                 clips,
             } => {
                 if !pending.primitives.is_empty() {
@@ -809,12 +809,12 @@ fn encode_ops(
                             },
                             focus: if s.focused { 1. } else { 0. },
                             depth: s.depth.unwrap_or(TOKENS.glow.depth as f32),
-                            size: s.rim.unwrap_or(TOKENS.glow.rim as f32),
+                            size: s.size.unwrap_or(TOKENS.glow.rim as f32),
                             phase_ms: (s.seed % 10_000) as f32,
                             outer: s
                                 .outer
                                 .unwrap_or(f32::MAX)
-                                .clamp(0., s.rim.unwrap_or(TOKENS.glow.rim as f32) / 2.),
+                                .clamp(0., s.size.unwrap_or(TOKENS.glow.rim as f32) / 2.),
                             alpha: s.rim_alpha.unwrap_or(1.),
                             swell: s.swell.clamp(0., 1.),
                             attention: s.attention,
@@ -961,7 +961,7 @@ mod backdrop_key_tests {
             kind,
             color: Color::TRANSPARENT,
             blur: None,
-            glow: None,
+            rim: None,
             clips: vec![],
         }
     }
@@ -1117,7 +1117,7 @@ mod clear_fold_tests {
             kind: ui::Material::Frosted,
             color: Color::hex("#2E6BFF"),
             blur: None,
-            glow: None,
+            rim: None,
             clips: vec![],
         };
         let mut after = DrawList::default();
