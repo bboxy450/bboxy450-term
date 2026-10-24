@@ -454,6 +454,65 @@ fn uneven_search_pages_defer_a_row_that_fits_a_fresh_quantum_without_clipping() 
 }
 
 #[test]
+fn decision_birth_names_the_allocated_number_and_refusal_consumes_nothing() {
+    let mut f = Fixture::new();
+    let key = f.key.clone();
+    let context = WriteContext::seat(Ulid(900), Some(3), &key);
+    let request = |path: &str, id| d::WriteRequest {
+        reference: None,
+        path: Some(path.into()),
+        frontmatter: json!({"id":Ulid(id).to_string(),"type":"decision","title":"Named at birth","unknown":{"keep":true}}),
+        body: "The original decision brief.\n".into(),
+        etag: None,
+    };
+    let first = BboxySource::new(&f.index)
+        .write(request("decisions/first.md", 1), &context)
+        .unwrap();
+    assert_eq!(first.record.reference.number, Some(1));
+    assert_eq!(first.record.reference.path, "decisions/d1-first.md");
+    assert_eq!(first.record.body, "The original decision brief.\n");
+    assert_eq!(first.record.frontmatter["unknown"], json!({"keep":true}));
+    assert!(!f.root.join("decisions/first.md").exists());
+    assert!(f.root.join(&first.record.reference.path).exists());
+    assert!(f.log.after(0, 128).unwrap().iter().any(|row| {
+        row.event.subject == format!("doc/{}/write_prepared", Ulid(1))
+            && row.event.payload["path"] == first.record.reference.path
+    }));
+    f.sync();
+    let before = f.log.last_sequence().unwrap();
+    let refused = BboxySource::new(&f.index)
+        .write(request("decisions/d999-second.md", 2), &context)
+        .unwrap_err();
+    assert_eq!(refused.code, "decision_filename_required");
+    assert!(refused.message.contains("decisions/d2-second.md"));
+    assert!(!f.root.join("decisions/d999-second.md").exists());
+    assert!(!f.root.join("decisions/d2-second.md").exists());
+    assert_eq!(f.log.last_sequence().unwrap(), before);
+    let second = BboxySource::new(&f.index)
+        .write(request("decisions/d2-second.md", 2), &context)
+        .unwrap();
+    assert_eq!(second.record.reference.number, Some(2));
+    assert_eq!(second.record.reference.path, "decisions/d2-second.md");
+    f.sync();
+    let updated = BboxySource::new(&f.index)
+        .write(
+            d::WriteRequest {
+                reference: Some(first.record.reference.clone()),
+                path: None,
+                frontmatter: first.record.frontmatter,
+                body: "Edited without renaming.\n".into(),
+                etag: Some(first.record.etag),
+            },
+            &context,
+        )
+        .unwrap();
+    assert_eq!(updated.record.reference.path, "decisions/d1-first.md");
+    assert_eq!(updated.record.reference.number, Some(1));
+    assert_eq!(updated.record.body, "Edited without renaming.\n");
+    assert!(f.log.verify_chain().unwrap() > 0);
+}
+
+#[test]
 fn checked_signed_write_allocates_once_and_changes_only_after_existing_outbox_publication() {
     let mut f = Fixture::new();
     f.seed(1, "a.md", json!({}), "original");

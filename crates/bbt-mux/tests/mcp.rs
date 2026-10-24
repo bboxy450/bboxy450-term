@@ -3176,6 +3176,20 @@ fn mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check() {
         "artifact_claim",
         json!({"kind":"file","ref":"fixture: artifact","task":f.task_path()}),
     ));
+    let decision = knowledge_create(
+        &f,
+        f.oracle.id,
+        "decision",
+        "decisions/writer-corpus.md",
+        "A decision created through the seat's knowledge tool.\n",
+    );
+    assert_eq!(
+        decision["path"],
+        format!(
+            "decisions/d{}-writer-corpus.md",
+            decision["number"].as_u64().unwrap()
+        )
+    );
     let binary =
         std::env::var_os("BBOXY_DOC_CORPUS_TEST_BINARY").expect("prebuild the bbt-doc corpus test");
     let output = std::process::Command::new(binary)
@@ -4036,7 +4050,10 @@ fn mcp_knowledge_refuses_outside_paths_forged_authority_type_ids_and_stale_etags
         ),
         "already exists",
     );
-    assert_eq!(data(knowledge_fetch(&f, f.own.id, "#1"))["id"], json!(f.task));
+    assert_eq!(
+        data(knowledge_fetch(&f, f.own.id, "#1"))["id"],
+        json!(f.task)
+    );
     assert_eq!(std::fs::read(&outside).unwrap(), original);
     std::fs::create_dir_all(f.config.repository.join(".bboxy/e2e")).unwrap();
     let link = f.config.repository.join(".bboxy/e2e/link.md");
@@ -4392,7 +4409,11 @@ fn mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_t
         }
     }
     for kind in ["spec", "decision", "invariant", "proposal"] {
-        let path = format!("records/oracle-{kind}.md");
+        let path = if kind == "decision" {
+            "decisions/oracle-decision.md".to_owned()
+        } else {
+            format!("records/oracle-{kind}.md")
+        };
         knowledge_denied(
             f.mutate(
                 f.own.id,
@@ -4404,7 +4425,20 @@ fn mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_t
         );
         assert!(!f.config.repository.join(".bboxy").join(&path).exists());
         let record = knowledge_create(&f, f.oracle.id, kind, &path, "Oracle original");
-        let file = f.config.repository.join(".bboxy").join(&path);
+        if kind == "decision" {
+            assert_eq!(
+                record["path"],
+                format!(
+                    "decisions/d{}-oracle-decision.md",
+                    record["number"].as_u64().unwrap()
+                )
+            );
+        }
+        let file = f
+            .config
+            .repository
+            .join(".bboxy")
+            .join(record["path"].as_str().unwrap());
         let before = std::fs::read(&file).unwrap();
         let mut update = knowledge_update_args(&record);
         update["body"] = json!("worker must not edit");
@@ -4428,6 +4462,25 @@ fn mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_t
         );
         verify_knowledge_record(&stored);
     }
+    let guessed = f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "knowledge_write",
+        knowledge_record_args("decisions/d999999-wrong.md", "decision", "no effect"),
+    );
+    knowledge_denied(guessed.clone(), "decision_filename_required");
+    assert!(
+        guessed["structuredContent"]["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("-wrong.md")
+    );
+    assert!(
+        !f.config
+            .repository
+            .join(".bboxy/decisions/d999999-wrong.md")
+            .exists()
+    );
     for actor in [f.own.id, f.oracle.id] {
         knowledge_denied(
             f.mutate(
@@ -4814,6 +4867,11 @@ fn mcp_knowledge266_search_pages_use_shared_root_resolution_and_refuse_stale_cur
             f.own.id,
             json!({"query":query,"limit":1}),
         ));
+        assert_eq!(
+            first["scope"],
+            json!({"seat":f.own.id,"role":f.own.role.name,"class":f.own.role.class})
+        );
+        assert!(first.get("empty_reason").is_none());
         assert_eq!(first["items"].as_array().unwrap().len(), 1);
         let old_cursor = first["next"].as_str().unwrap().to_owned();
         let mut seen = std::collections::BTreeSet::new();
@@ -4866,4 +4924,10 @@ fn mcp_knowledge266_search_pages_use_shared_root_resolution_and_refuse_stale_cur
     ));
     assert_eq!(empty["items"], json!([]));
     assert!(empty["next"].is_null());
+    assert_eq!(
+        empty["scope"],
+        json!({"seat":f.own.id,"role":f.own.role.name,"class":f.own.role.class})
+    );
+    assert_eq!(empty["empty_reason"], "nothing_yet");
+    assert!(empty["empty_message"].as_str().unwrap().len() > 10);
 }

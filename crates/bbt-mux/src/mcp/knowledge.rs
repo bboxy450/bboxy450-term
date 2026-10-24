@@ -38,7 +38,7 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
         json!({"type":{"type":"string","enum":types}});
     definition["properties"]["frontmatter"]["required"] = json!(["type"]);
     let write_help = if actor.role.class == Class::Oracle {
-        "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Tasks are created open; only open brief/verify/allowed_paths edits are generic. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools. Updates retain type, ref and etag."
+        "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.md; the Index returns its numbered final path. Tasks are created open; only open brief/verify/allowed_paths edits are generic. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools. Updates retain type, ref and etag."
     } else {
         "Create/update e2e, comment, research, note and artifact records as your seat. For your assigned task preserve every other field and the body, changing only report.summary, report.commit and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools. Updates retain type, ref and etag."
     };

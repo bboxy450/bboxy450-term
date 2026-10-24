@@ -20,6 +20,48 @@ use crate::store::{Result, Store, digest, events::Draft, invalid, sqlite::Sqlite
 
 const MAX_DOCUMENT: u64 = 2 * 1024 * 1024;
 
+/// A decision name refused before any intent, file or number is committed.
+#[derive(Debug)]
+pub(crate) struct DecisionFilenameRequired {
+    expected: String,
+}
+
+impl std::fmt::Display for DecisionFilenameRequired {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "decision filename required: {}; create with decisions/<slug>.md to let the Index assign its number",
+            self.expected
+        )
+    }
+}
+
+impl std::error::Error for DecisionFilenameRequired {}
+
+fn decision_birth_path(path: &str, number: u64) -> Result<String> {
+    let path = Path::new(path);
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default();
+    let prefixed = stem
+        .strip_prefix('d')
+        .and_then(|rest| rest.split_once('-'))
+        .filter(|(digits, _)| !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()));
+    let slug = prefixed.map_or(stem, |(_, slug)| slug);
+    let expected = format!(
+        "decisions/d{number}-{}.md",
+        if slug.is_empty() { "<slug>" } else { slug }
+    );
+    if path.parent() != Some(Path::new("decisions"))
+        || slug.is_empty()
+        || prefixed.is_some_and(|(digits, _)| digits.parse::<u64>() != Ok(number))
+    {
+        return Err(Box::new(DecisionFilenameRequired { expected }));
+    }
+    Ok(expected)
+}
+
 fn record_number(metadata: &Value) -> Option<u64> {
     metadata
         .get("number")
@@ -511,6 +553,7 @@ impl Index {
             &crate::provenance::author::Author::seat(seat, None, key),
             false,
         )
+        .map(|_| ())
     }
     /// Production activity has one append/sign/route owner; fixtures may append directly.
     pub(crate) fn route_activity(
@@ -643,9 +686,17 @@ impl Index {
     }
     pub(crate) fn apply_author(
         &self,
-        mut update: Update,
+        update: Update,
         author: &crate::provenance::author::Author<'_>,
     ) -> Result<()> {
+        self.apply_author_path(update, author).map(|_| ())
+    }
+    /// Return the path actually published after assigning a new record's number.
+    pub(crate) fn apply_author_path(
+        &self,
+        mut update: Update,
+        author: &crate::provenance::author::Author<'_>,
+    ) -> Result<String> {
         if update.metadata["id"]
             .as_str()
             .and_then(|id| id.parse::<Ulid>().ok())
@@ -702,7 +753,7 @@ impl Index {
         mut update: Update,
         author: &crate::provenance::author::Author<'_>,
         guarded: bool,
-    ) -> Result<()> {
+    ) -> Result<String> {
         bbt_rt::assert_not_ui_thread();
         // One OS lock per store root spans the fresh scan, signature and
         // atomic publication. Closing this descriptor also releases it after
@@ -710,12 +761,21 @@ impl Index {
         let number_lock = std::fs::File::open(&self.root)?;
         number_lock.lock()?;
         let key = author.key;
-        let destination = self.destination(&update.path)?;
+        self.destination(&update.path)?;
         if guarded {
             self.unchanged(&update)?;
         }
         let current = self.current(&update.path)?;
         self.assign_number(&mut update, current.as_ref())?;
+        let decision_birth = current.is_none() && update.metadata["type"] == "decision";
+        if decision_birth {
+            update.path = decision_birth_path(
+                &update.path,
+                record_number(&update.metadata).ok_or_else(|| invalid("record number missing"))?,
+            )?;
+            self.unchanged(&update)?;
+        }
+        let destination = self.destination(&update.path)?;
         let metadata = &mut update.metadata;
         let body = &update.body;
         let path = Path::new(&update.path);
@@ -801,7 +861,7 @@ impl Index {
         if guarded {
             self.unchanged(&update)?;
         }
-        if guarded && update.expected.is_none() {
+        if (guarded || decision_birth) && update.expected.is_none() {
             std::fs::hard_link(&temp, &destination)?;
         } else {
             std::fs::rename(&temp, &destination)?;
@@ -819,7 +879,7 @@ impl Index {
         completed.generation = author.generation;
         self.append_activity(completed, key)?;
         self.project_activity()?;
-        Ok(())
+        Ok(update.path)
     }
 }
 

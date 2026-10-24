@@ -1317,11 +1317,15 @@ impl Worker {
             Ok(tool::Request::Search(request)) => {
                 let source = BboxySource::new(&self.index);
                 let value = match source.search(request) {
-                    Ok(page) => tool::bounded(
-                        call.op_id,
-                        mcp::success(call.op_id, serde_json::to_value(page)?),
-                        false,
-                    ),
+                    Ok(page) => {
+                        let empty = page.items.is_empty();
+                        let data = mcp::tools::scoped_list(
+                            actor,
+                            serde_json::to_value(page)?,
+                            empty.then_some("nothing_yet"),
+                        );
+                        tool::bounded(call.op_id, mcp::success(call.op_id, data), false)
+                    }
                     Err(error) => mcp::error(call.op_id, &error.code, "knowledge search refused"),
                 };
                 journal.checked(actor, call, value)
@@ -1502,6 +1506,9 @@ impl Worker {
                 }
                 let result = match source.write(*request, &context) {
                     Ok(result) => result,
+                    Err(error) if error.code == "decision_filename_required" => {
+                        return mcp::error(call.op_id, &error.code, &error.message);
+                    }
                     Err(error)
                         if matches!(
                             error.code.as_str(),
