@@ -1,0 +1,38 @@
+#266(4) knowledge tools and class/type write authority — Executor handoff
+
+Signed source: 6e37d434215a9495f346ce81b3736cc05e9ced7f, branch exec5-knowledge266, worktree /Users/feral/mydev/bboxy450-term-exec5.
+Accepted base: d2ff1140. Own commits: a9891668 and 6e37d434.
+Declared dependencies: Aster be10de23, 731d80f2, 1a29900e, retained by Oracle grant 00e69af2 as local signed de80947e, 1084714e, 276e5ce8. Original author name/email/date tuples match. The dependencies were pending acceptance when this stack was gated; this handoff does not claim their independent acceptance.
+
+Files and mechanisms:
+- crates/bbt-mux/src/mcp/knowledge.rs:17 — knowledge_fetch/search/write catalogue uses the shared DataSource contract and the caller's class; the common optional-op_id loop remains last.
+- crates/bbt-mux/src/mcp/knowledge.rs:222 — generic updates keep type. Workers write e2e/comment/research/note/artifact and only their assigned task's report.summary, report.commit and verify_result. Every other task field and the body must match; the write routes through canonical Report. Oracle tasks are created open and unassigned; only open brief/verify/allowed_paths edits are generic. Lifecycle and assignment remain task_*.
+- crates/bbt-mux/src/mcp/knowledge.rs:347 — artifact claim/observation/lineage fields stay protected, including observed itself. Creates default to unclaimed, actual writer, inferred grade and empty history/lineage. Only the creator may correct ref/digest before observation or claim. Named task_field_protected, artifact_field_protected, type_immutable and knowledge_write_denied refusals are tested.
+- crates/bbt-mux/src/logic.rs:1276 — reads use DataSource; search consumes the shared authenticated scope/empty-result helper. The original knowledge call is journaled before effects; actual caller leaf signs the write, holds remain held, and uncertain writes remain UNKNOWN without redispatch. Task results reuse Report authority/status/notice logic, with a current-document digest precondition.
+- crates/bbt-mux/src/mcp/tools.rs — knowledge catalogue extension is preserved before the shared final optional-ID normalization. Scope/ID implementation remains Aster's dependency.
+- crates/bbt-mux/src/mcp/work_items.rs:65 — artifact_claim says responsibility only and directs document reads/edits to knowledge tools. Existing authorize body is unchanged and reused crate-locally.
+- crates/bbt-mux/src/index.rs:41 and :769 — after allocating N under the existing number lock, decision creation names decisions/d<N>-<slug>.md before any intent/file. A supplied wrong prefix returns typed decision_filename_required, with no number consumed. Existing callers retain unit-returning wrappers; no existing record is renamed.
+- crates/bbt-mux/src/knowledge/bboxy.rs:990 — read back and return the actual assigned path. Only the typed pre-effect filename error is reclassified; other uncertain Index failures keep UNKNOWN semantics.
+- crates/bbt-mux/tests/mcp.rs:4161, :4304, :4429, :4503, :4602 — class/signature rows, canonical Report/notice/retry/verification fences, Oracle task controls, artifact escape attempts, and bounded root/query/snapshot-bound reads with authenticated scope.
+- crates/bbt-mux/tests/knowledge.rs:457 — slug-only birth, authoritative prefix refusal with unchanged Index log/no file, next allocation unchanged, and updates retaining path/number.
+- crates/bbt-mux/tests/mcp.rs:2953 — actual writer corpus driver includes a decision created through an authenticated Oracle seat tool.
+
+Verification and failures:
+- Exact clean detached sh scripts/ci-local.sh: exit 0, 2026-10-24T04:22:17.925102-07:00 to 2026-10-24T04:51:25.387869-07:00, 1747.31 seconds, before the 05:25 cutoff. Build, strict workspace/all-target Clippy, workspace tests/doc tests, UI lint, native smoke and fast invariants passed. MCP: 45 passed, 0 failed, 3 ignored. Provider knowledge: 11 passed. Invariants: 17 checks, 0 failures, 8 slow checks skipped.
+- Native smoke: 10.002 seconds idle, 0 frames, 0 callbacks.
+- Development checks and every recorded command/exit are in a0-knowledge266-checks.log. Integrated MCP had 41 passes before #264 added four tests; provider had 11 passes. The normally ignored writer-corpus driver passed explicitly: child exit 0, five TOTAL fixture files, positive unique numbers, zero errors. This count includes seeded records; it is not a claim of five independent signature checks. Actual tool writes have seat-key signature assertions.
+- The initial full development MCP run exited 101 on a test page walk's stale_cursor. The fixture now restarts the entire bounded walk only on that named snapshot change, never combining snapshots. Product cursor validation is unchanged. The exact changed filenames were not captured. The next full development run passed, as did both integrated runs and the final gate; the original failure log is retained.
+- The extra corpus proof ran on the tree committed as 9224922a. Seven byte/scope comparisons in a0-knowledge266-rebase-proof.log establish unchanged Index/provider/policy/task code, standalone tests and corpus-driver body on frozen 6e37d434. Final full CI ran on 6e37d434 itself.
+- git verify-commit 6e37d434: exit 0; all five stack commits show good signatures. The evidence successor changes logs only.
+
+Raw CI SHA256: 12d066758e3d8e4f7a708f3d720c308a041cb03bf94fa4ae2872673ddb28630b
+Raw CI: .bboxy/runs/a0-knowledge266-ci.log (copied byte for byte).
+Other evidence: a0-knowledge266-checks.log, a0-knowledge266-rebase-proof.log, a0-knowledge266-gate-state.log.
+
+Integration and limits:
+- Main advanced during the gate to 9d69f7ad: A-3's GUI/ctl read port and GUI admission refusal, plus records. Per AGENTS, the tested stack stayed frozen. Shared logic additions are Command::GuiKnowledge, its client method and dispatch arm; knowledge/mod.rs adds read. Own commits do not edit that root module. Preserve those additive seams on integration.
+- No own GUI/proto/app/renderer, native delivery, settings, scheduler, bridge/journal or skill implementation. Common bridge/journal/skill/count changes are the declared Aster dependency. This was the granted normal gate; no visual parity replay was requested.
+- Real installed-client interop remains unrun here. The isolated-child MCP fixture is ignored only at top level: tests/mcp.rs:3094 invokes it explicitly under a disposable HOME with env_clear, and both parent tests (spawn and native interrupt) passed in the exact CI log at lines 2350 and 2360. The normally ignored corpus driver was run explicitly before the rebase. Production creation of the 54 e2e records is outside this tool change; no production records were manually created or verified here.
+- Tests use explicit fixtures or debug memory custody; no real harness service or login-keychain probe. Gate target and worktree and the private dev target are deleted. Slot 2 is released; no own workload remains. Tracked source is clean; pre-existing untracked legacy run logs are untouched. No merge, push or release performed. Oracle acceptance remains required.
+
+Evidence correction after 66cf9a9f: the earlier handoff overstated the unrun gap for the isolated subprocess fixture. Its two parent tests invoke it and assert child success (mcp.rs:3094-3144 and :3164); both parents passed in the frozen CI. Only this reporting note changed. Source 6e37d434 and raw CI SHA256 12d066758e3d8e4f7a708f3d720c308a041cb03bf94fa4ae2872673ddb28630b are unchanged.

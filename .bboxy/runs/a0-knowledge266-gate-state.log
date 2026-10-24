@@ -1,0 +1,34 @@
+{
+  "gate": {
+    "source": "6e37d434215a9495f346ce81b3736cc05e9ced7f",
+    "worktree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-knowledge266-89dt262r/ci-6e37d434",
+    "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-knowledge266-89dt262r/ci-target-6e37d434",
+    "command": [
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-knowledge266-89dt262r/a0-knowledge266-ci.log",
+    "started": "2026-10-24T04:22:17.925102-07:00",
+    "deadline": "2026-10-24T05:25:00-07:00",
+    "grant": "00e69af2-bd00-4045-ae6e-1892d0afe107",
+    "running": false,
+    "memory_custody": true,
+    "jobs": 2,
+    "pid": 58099,
+    "owned_pgid": 58099,
+    "exit": 0,
+    "deadline_stopped": false,
+    "ended": "2026-10-24T04:51:25.387869-07:00",
+    "elapsed_s": 1747.31,
+    "sha256": "12d066758e3d8e4f7a708f3d720c308a041cb03bf94fa4ae2872673ddb28630b",
+    "post_status": "",
+    "target_deleted": true
+  },
+  "cleanup": {
+    "source": "6e37d434215a9495f346ce81b3736cc05e9ced7f",
+    "gate_target_deleted": true,
+    "gate_worktree_removed": true,
+    "dev_target_deleted": true,
+    "origin_main_at_handoff": "9d69f7adf28ce3c3fe2aca6e029c809111952daf"
+  }
+}

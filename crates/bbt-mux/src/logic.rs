@@ -1305,44 +1305,247 @@ impl Worker {
             Ok(tool::Request::Fetch(locator)) => {
                 let source = BboxySource::new(&self.index);
                 let value = match tool::fetch(&source, locator) {
-                    Ok(record) => tool::bounded(call.op_id, mcp::success(call.op_id,serde_json::to_value(record)?),false),
-                    Err(reason) => mcp::error(call.op_id,"rejected",&reason),
+                    Ok(record) => tool::bounded(
+                        call.op_id,
+                        mcp::success(call.op_id, serde_json::to_value(record)?),
+                        false,
+                    ),
+                    Err(reason) => mcp::error(call.op_id, "rejected", &reason),
                 };
-                journal.checked(actor,call,value)
+                journal.checked(actor, call, value)
             }
-            Ok(tool::Request::Write(request)) => journal.effect(actor,call,|| {
+            Ok(tool::Request::Search(request)) => {
+                let source = BboxySource::new(&self.index);
+                let value = match source.search(request) {
+                    Ok(page) => {
+                        let empty = page.items.is_empty();
+                        let data = mcp::tools::scoped_list(
+                            actor,
+                            serde_json::to_value(page)?,
+                            empty.then_some("nothing_yet"),
+                        );
+                        tool::bounded(call.op_id, mcp::success(call.op_id, data), false)
+                    }
+                    Err(error) => mcp::error(call.op_id, &error.code, "knowledge search refused"),
+                };
+                journal.checked(actor, call, value)
+            }
+            Ok(tool::Request::Write(request)) => {
+                journal.effect(actor, call, || self.knowledge_write(actor, call, *request))
+            }
+            Err(reason) => {
+                journal.checked(actor, call, mcp::error(call.op_id, "rejected", &reason))
+            }
+        }
+    }
+    fn knowledge_write(
+        &mut self,
+        actor: &crate::mcp::SeatActor,
+        call: &crate::mcp::Call,
+        request: crate::knowledge::data_source::WriteRequest,
+    ) -> serde_json::Value {
+        use crate::{
+            knowledge::data_source as d,
+            mcp::{self, knowledge as tool},
+        };
+        let source = BboxySource::new(&self.index);
+        let current = match request.reference.clone() {
+            Some(reference) => match source.fetch(d::FetchRequest { reference }) {
+                Ok(record) => {
+                    if request
+                        .etag
+                        .as_ref()
+                        .is_some_and(|etag| etag != &record.etag)
+                    {
+                        return mcp::error(
+                            call.op_id,
+                            "etag_mismatch",
+                            "etag does not match the current record",
+                        );
+                    }
+                    Some(record)
+                }
+                Err(error) => {
+                    return mcp::error(
+                        call.op_id,
+                        &error.code,
+                        "knowledge update reference is unavailable or stale",
+                    );
+                }
+            },
+            None => None,
+        };
+        let record_id = request.frontmatter["id"]
+            .as_str()
+            .expect("prepared knowledge id")
+            .to_owned();
+        let plan = match tool::write_plan(actor, call, request, current.as_ref()) {
+            Ok(plan) => plan,
+            Err(error) => return mcp::error(call.op_id, &error.code, &error.message),
+        };
+        let authority = crate::mcp::Actor::from(actor);
+        let result = match plan {
+            tool::WritePlan::Report(report) => {
+                let effect = match crate::mcp::work_items::prepare(
+                    &self.index,
+                    &self.registry,
+                    &authority,
+                    &report,
+                ) {
+                    Ok(crate::mcp::work_items::Prepared::Effect(effect)) => effect,
+                    Ok(_) => {
+                        return mcp::error(
+                            call.op_id,
+                            "task_field_protected",
+                            "task result write requires the existing Report transition",
+                        );
+                    }
+                    Err(reason) => return mcp::error(call.op_id, "task_field_protected", &reason),
+                };
+                if !matches!(effect.as_ref(), crate::mcp::work_items::Effect::Task { document, .. }
+                    if current.as_ref().is_some_and(|old| document.id == old.reference.id && document.path == old.reference.path && document.digest == old.reference.digest))
+                {
+                    return mcp::error(
+                        call.op_id,
+                        "stale_reference",
+                        "task changed before Report; fetch it again",
+                    );
+                }
+                let value = self.control_work_item(&authority, &report, *effect);
+                if value["isError"] == true {
+                    return value;
+                }
+                if self.scan().is_err() {
+                    return mcp::error(
+                        call.op_id,
+                        "unknown",
+                        "task Report applied; activity publication pending, inspect original operation",
+                    );
+                }
+                let source = BboxySource::new(&self.index);
+                let record = source
+                    .resolve(d::ResolveRequest { locator: record_id })
+                    .and_then(|reference| source.fetch(d::FetchRequest { reference }));
+                match record {
+                    Ok(record) => d::WriteResult {
+                        record,
+                        lossy: false,
+                    },
+                    Err(_) => {
+                        return mcp::error(
+                            call.op_id,
+                            "unknown",
+                            "task Report applied; record readback unavailable, never redispatch it",
+                        );
+                    }
+                }
+            }
+            tool::WritePlan::Record(request) => {
+                if request.frontmatter["type"] == "task" {
+                    let document = crate::index::Document {
+                        id: record_id,
+                        path: request
+                            .reference
+                            .as_ref()
+                            .map(|reference| reference.path.as_str())
+                            .or(request.path.as_deref())
+                            .expect("prepared knowledge path")
+                            .to_owned(),
+                        metadata: request.frontmatter.clone(),
+                        body: request.body.clone(),
+                        digest: current
+                            .as_ref()
+                            .map(|old| old.reference.digest.clone())
+                            .unwrap_or_default(),
+                        error: current.as_ref().and_then(|old| old.parse_error.clone()),
+                        links: Vec::new(),
+                    };
+                    if let Err(reason) =
+                        crate::mcp::work_items::authorize(&document, &self.registry, &authority)
+                    {
+                        return mcp::error(call.op_id, "task_field_protected", &reason);
+                    }
+                }
                 let keys = self.identity.keys();
                 if let Some(reason) = keys.signing_hold() {
-                    return mcp::error(call.op_id,"held",&format!("knowledge signing held: {reason}"));
+                    return mcp::error(
+                        call.op_id,
+                        "held",
+                        &format!("knowledge signing held: {reason}"),
+                    );
                 }
-                let key = match keys.leaf(actor.seat_id,actor.process_generation) {
+                let key = match keys.leaf(actor.seat_id, actor.process_generation) {
                     Ok(key) if keys.ready_issuer().is_some() => key,
-                    _ => return mcp::error(call.op_id,"held","knowledge signing held: identity pending"),
+                    _ => {
+                        return mcp::error(
+                            call.op_id,
+                            "held",
+                            "knowledge signing held: identity pending",
+                        );
+                    }
                 };
-                let context = crate::knowledge::WriteContext::seat(actor.seat_id,Some(actor.process_generation),&key);
+                let context = crate::knowledge::WriteContext::seat(
+                    actor.seat_id,
+                    Some(actor.process_generation),
+                    &key,
+                );
                 let source = BboxySource::new(&self.index);
                 if request.reference.is_none() {
-                    match source.resolve(crate::knowledge::data_source::ResolveRequest { locator:call.op_id.to_string() }) {
+                    match source.resolve(d::ResolveRequest {
+                        locator: call.op_id.to_string(),
+                    }) {
                         Err(error) if error.code == "not_found" => (),
-                        _ => return mcp::error(call.op_id,"rejected","knowledge create id already exists or cannot be resolved uniquely"),
-                    }
-                }
-                let result = source.write(*request,&context);
-                match result {
-                    Ok(result) => {
-                        if self.scan().is_err() {
-                            return mcp::error(call.op_id,"unknown","knowledge write applied; activity publication pending, inspect original operation");
-                        }
-                        match serde_json::to_value(result) {
-                            Ok(value) => tool::bounded(call.op_id,mcp::success(call.op_id,value),true),
-                            Err(_) => mcp::error(call.op_id,"unknown","knowledge write applied; result serialization unavailable"),
+                        _ => {
+                            return mcp::error(
+                                call.op_id,
+                                "rejected",
+                                "knowledge create id already exists or cannot be resolved uniquely",
+                            );
                         }
                     }
-                    Err(error) if matches!(error.code.as_str(),"write_not_confirmed"|"write_applied_result_unavailable") => mcp::error(call.op_id,"unknown","knowledge write outcome is not confirmed; inspect original operation, never redispatch it"),
-                    Err(error) => mcp::error(call.op_id,&error.code,"knowledge write refused before application"),
                 }
-            }),
-            Err(reason) => journal.checked(actor,call,mcp::error(call.op_id,"rejected",&reason)),
+                let result = match source.write(*request, &context) {
+                    Ok(result) => result,
+                    Err(error) if error.code == "decision_filename_required" => {
+                        return mcp::error(call.op_id, &error.code, &error.message);
+                    }
+                    Err(error)
+                        if matches!(
+                            error.code.as_str(),
+                            "write_not_confirmed" | "write_applied_result_unavailable"
+                        ) =>
+                    {
+                        return mcp::error(
+                            call.op_id,
+                            "unknown",
+                            "knowledge write outcome is not confirmed; inspect original operation, never redispatch it",
+                        );
+                    }
+                    Err(error) => {
+                        return mcp::error(
+                            call.op_id,
+                            &error.code,
+                            "knowledge write refused before application",
+                        );
+                    }
+                };
+                if self.scan().is_err() {
+                    return mcp::error(
+                        call.op_id,
+                        "unknown",
+                        "knowledge write applied; activity publication pending, inspect original operation",
+                    );
+                }
+                result
+            }
+        };
+        match serde_json::to_value(result) {
+            Ok(value) => tool::bounded(call.op_id, mcp::success(call.op_id, value), true),
+            Err(_) => mcp::error(
+                call.op_id,
+                "unknown",
+                "knowledge write applied; result serialization unavailable",
+            ),
         }
     }
     fn work_item_call(

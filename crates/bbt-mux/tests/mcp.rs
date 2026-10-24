@@ -1107,7 +1107,7 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     initialize(&mut bridge);
     let list = rpc(&mut bridge, 2, "tools/list", json!({}));
     let tools = list["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 20);
+    assert_eq!(tools.len(), 21);
     assert!(
         tools
             .iter()
@@ -1867,8 +1867,8 @@ fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_r
         .runtime
         .block_on(f.client().control_catalogue(oracle, 1))
         .unwrap();
-    assert_eq!(worker["tools"].as_array().unwrap().len(), 20);
-    assert_eq!(admin["tools"].as_array().unwrap().len(), 32);
+    assert_eq!(worker["tools"].as_array().unwrap().len(), 21);
+    assert_eq!(admin["tools"].as_array().unwrap().len(), 33);
     for tool in [
         "ch_link",
         "ch_pause",
@@ -3176,6 +3176,20 @@ fn mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check() {
         "artifact_claim",
         json!({"kind":"file","ref":"fixture: artifact","task":f.task_path()}),
     ));
+    let decision = knowledge_create(
+        &f,
+        f.oracle.id,
+        "decision",
+        "decisions/writer-corpus.md",
+        "A decision created through the seat's knowledge tool.\n",
+    );
+    assert_eq!(
+        decision["path"],
+        format!(
+            "decisions/d{}-writer-corpus.md",
+            decision["number"].as_u64().unwrap()
+        )
+    );
     let binary =
         std::env::var_os("BBOXY_DOC_CORPUS_TEST_BINARY").expect("prebuild the bbt-doc corpus test");
     let output = std::process::Command::new(binary)
@@ -3994,9 +4008,8 @@ fn mcp_knowledge_refuses_outside_paths_forged_authority_type_ids_and_stale_etags
         .join(format!(".bboxy/tasks/{}.md", f.task));
     let original = std::fs::read(&outside).unwrap();
     for path in [
-        "tasks/forbidden.md",
+        "/tmp/forbidden.md",
         "../escape.md",
-        "e2evil/no.md",
         "e2e/../../escape.md",
         "e2e/not-markdown.txt",
     ] {
@@ -4007,7 +4020,7 @@ fn mcp_knowledge_refuses_outside_paths_forged_authority_type_ids_and_stale_etags
                 "knowledge_write",
                 knowledge_args(path, "denied"),
             ),
-            "restricted to e2e/",
+            "relative Markdown path",
         );
     }
     let mut args = knowledge_args("e2e/forged.md", "denied");
@@ -4020,7 +4033,7 @@ fn mcp_knowledge_refuses_outside_paths_forged_authority_type_ids_and_stale_etags
     args["frontmatter"]["type"] = json!("task");
     refused(
         f.mutate(f.own.id, Ulid::new(), "knowledge_write", args),
-        "record type e2e",
+        "task creation requires Oracle-class",
     );
     let mut args = knowledge_args("e2e/wrong-id.md", "denied");
     args["frontmatter"]["id"] = json!(f.task);
@@ -4037,7 +4050,10 @@ fn mcp_knowledge_refuses_outside_paths_forged_authority_type_ids_and_stale_etags
         ),
         "already exists",
     );
-    refused(knowledge_fetch(&f, f.own.id, "#1"), "restricted to e2e/");
+    assert_eq!(
+        data(knowledge_fetch(&f, f.own.id, "#1"))["id"],
+        json!(f.task)
+    );
     assert_eq!(std::fs::read(&outside).unwrap(), original);
     std::fs::create_dir_all(f.config.repository.join(".bboxy/e2e")).unwrap();
     let link = f.config.repository.join(".bboxy/e2e/link.md");
@@ -4079,7 +4095,7 @@ fn mcp_knowledge_refuses_outside_paths_forged_authority_type_ids_and_stale_etags
             "knowledge_write",
             json!({"ref":forged,"frontmatter":metadata,"body":"denied"}),
         ),
-        "restricted to e2e/",
+        "stale_reference",
     );
     assert_eq!(std::fs::read(&path).unwrap(), before);
     assert_eq!(std::fs::read(&outside).unwrap(), original);
@@ -4322,4 +4338,596 @@ fn d264_a_refused_send_is_stored_nowhere() {
             .iter()
             .any(|text| text.contains("refused payload"))
     );
+}
+fn knowledge_record_args(path: &str, kind: &str, body: &str) -> Value {
+    json!({"path":path,"frontmatter":{"type":kind,"title":format!("{kind} knowledge fixture"),"custom":{"preserved":true}},"body":body})
+}
+fn knowledge_update_args(record: &Value) -> Value {
+    let reference: bbt_mux::knowledge::data_source::RecordRef =
+        serde_json::from_value(record.clone()).unwrap();
+    json!({"ref":reference,"frontmatter":record["frontmatter"],"body":record["body"],"etag":record["etag"]})
+}
+fn knowledge_create(f: &Fixture, actor: Ulid, kind: &str, path: &str, body: &str) -> Value {
+    data(f.mutate(
+        actor,
+        Ulid::new(),
+        "knowledge_write",
+        knowledge_record_args(path, kind, body),
+    ))["record"]
+        .clone()
+}
+fn knowledge_denied(value: Value, code: &str) {
+    assert_eq!(value["isError"], true, "{value}");
+    assert_eq!(value["structuredContent"]["error"]["code"], code, "{value}");
+}
+fn knowledge_search(f: &Fixture, actor: Ulid, args: Value) -> Value {
+    let mut bridge = f.bridge(actor);
+    initialize(&mut bridge);
+    let response = rpc(
+        &mut bridge,
+        2,
+        "tools/call",
+        json!({"name":"knowledge_search","arguments":args}),
+    );
+    assert!(response.get("error").is_none(), "{response}");
+    response["result"].clone()
+}
+
+#[test]
+fn mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_types() {
+    let f = Fixture::new();
+    for kind in ["e2e", "comment", "research", "note", "artifact"] {
+        let path = format!("records/worker-{kind}.md");
+        let record = knowledge_create(&f, f.own.id, kind, &path, "original body");
+        let mut update = knowledge_update_args(&record);
+        update["body"] = json!("updated body");
+        let stored =
+            data(f.mutate(f.own.id, Ulid::new(), "knowledge_write", update))["record"].clone();
+        assert_eq!(stored["id"], record["id"]);
+        assert_eq!(stored["number"], record["number"]);
+        assert_eq!(stored["frontmatter"]["custom"]["preserved"], true);
+        assert_eq!(
+            stored["frontmatter"]["authorship"]["signer"],
+            format!("seat:{}", f.own.id)
+        );
+        verify_knowledge_record(&stored);
+        let doc = bbt_mux::index::Document::parse(
+            &path,
+            &std::fs::read_to_string(f.config.repository.join(".bboxy").join(&path)).unwrap(),
+        );
+        assert_item_signature(&doc, f.own.id);
+    }
+    let note = data(knowledge_fetch(&f, f.own.id, "records/worker-note.md"));
+    for actor in [f.own.id, f.oracle.id] {
+        for kind in ["research", "spec", "unlisted-kind"] {
+            let mut relabel = knowledge_update_args(&note);
+            relabel["frontmatter"]["type"] = json!(kind);
+            knowledge_denied(
+                f.mutate(actor, Ulid::new(), "knowledge_write", relabel),
+                "type_immutable",
+            );
+        }
+    }
+    for kind in ["spec", "decision", "invariant", "proposal"] {
+        let path = if kind == "decision" {
+            "decisions/oracle-decision.md".to_owned()
+        } else {
+            format!("records/oracle-{kind}.md")
+        };
+        knowledge_denied(
+            f.mutate(
+                f.own.id,
+                Ulid::new(),
+                "knowledge_write",
+                knowledge_record_args(&path, kind, "denied"),
+            ),
+            "knowledge_write_denied",
+        );
+        assert!(!f.config.repository.join(".bboxy").join(&path).exists());
+        let record = knowledge_create(&f, f.oracle.id, kind, &path, "Oracle original");
+        if kind == "decision" {
+            assert_eq!(
+                record["path"],
+                format!(
+                    "decisions/d{}-oracle-decision.md",
+                    record["number"].as_u64().unwrap()
+                )
+            );
+        }
+        let file = f
+            .config
+            .repository
+            .join(".bboxy")
+            .join(record["path"].as_str().unwrap());
+        let before = std::fs::read(&file).unwrap();
+        let mut update = knowledge_update_args(&record);
+        update["body"] = json!("worker must not edit");
+        knowledge_denied(
+            f.mutate(f.own.id, Ulid::new(), "knowledge_write", update.clone()),
+            "knowledge_write_denied",
+        );
+        update["frontmatter"]["type"] = json!("note");
+        knowledge_denied(
+            f.mutate(f.own.id, Ulid::new(), "knowledge_write", update),
+            "type_immutable",
+        );
+        assert_eq!(std::fs::read(&file).unwrap(), before);
+        let mut update = knowledge_update_args(&record);
+        update["body"] = json!("Oracle edit");
+        let stored =
+            data(f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", update))["record"].clone();
+        assert_eq!(
+            stored["frontmatter"]["authorship"]["signer"],
+            format!("seat:{}", f.oracle.id)
+        );
+        verify_knowledge_record(&stored);
+    }
+    let guessed = f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "knowledge_write",
+        knowledge_record_args("decisions/d999999-wrong.md", "decision", "no effect"),
+    );
+    knowledge_denied(guessed.clone(), "decision_filename_required");
+    assert!(
+        guessed["structuredContent"]["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("-wrong.md")
+    );
+    assert!(
+        !f.config
+            .repository
+            .join(".bboxy/decisions/d999999-wrong.md")
+            .exists()
+    );
+    for actor in [f.own.id, f.oracle.id] {
+        knowledge_denied(
+            f.mutate(
+                actor,
+                Ulid::new(),
+                "knowledge_write",
+                knowledge_record_args("records/unknown.md", "unlisted-kind", "denied"),
+            ),
+            "knowledge_write_denied",
+        );
+    }
+    let catalogue = f
+        .runtime
+        .block_on(f.client().control_catalogue(f.own.id, 1))
+        .unwrap();
+    let claim = catalogue["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|tool| tool["name"] == "artifact_claim")
+        .unwrap();
+    assert!(
+        claim["description"]
+            .as_str()
+            .unwrap()
+            .contains("responsibility only")
+    );
+    assert!(
+        claim["description"]
+            .as_str()
+            .unwrap()
+            .contains("knowledge_write")
+    );
+}
+
+#[test]
+fn mcp_knowledge266_worker_task_results_use_report_notice_and_acceptance_guards() {
+    let mut f = Fixture::new();
+    f.task_file(f.task_metadata());
+    let initial = data(knowledge_fetch(&f, f.own.id, "#1"));
+    let original_body = initial["body"].as_str().unwrap().to_owned();
+    let mut args = knowledge_update_args(&initial);
+    args["frontmatter"]["report"] =
+        json!({"summary":"knowledge Report via canonical transition","commit":"abc123"});
+    args["frontmatter"]["verify_result"] = verification("false", 0, json!([]));
+    let op = Ulid::new();
+    let first = f.mutate(f.own.id, op, "knowledge_write", args.clone());
+    let record = data(first.clone())["record"].clone();
+    assert_eq!(record["frontmatter"]["status"], "reported");
+    assert_eq!(
+        record["frontmatter"]["report"]["reported_by"],
+        format!("seat:{}", f.own.id)
+    );
+    assert_eq!(record["frontmatter"]["report"]["op_id"], json!(op));
+    assert!(record["body"].as_str().unwrap().starts_with(&original_body));
+    assert_item_signature(&f.task_document(), f.own.id);
+    assert_eq!(
+        f.mutate(f.own.id, op, "knowledge_write", args.clone()),
+        first
+    );
+    f.restart();
+    assert_eq!(f.mutate(f.own.id, op, "knowledge_write", args), first);
+    let inbox = data(f.call(f.oracle.id, Ulid::new(), "message_list", json!({})));
+    let notices: Vec<_> = inbox["page"]["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|row| {
+            row["envelope"]["kind"] == "task"
+                && row["envelope"]["body"]["task_id"] == json!(f.task)
+                && row["envelope"]["body"]["event"] == "report"
+        })
+        .collect();
+    assert_eq!(notices.len(), 1, "{inbox}");
+    refused(
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "task_accept",
+            json!({"task_path":f.task_path()}),
+        ),
+        "does not match",
+    );
+    for (field, value) in [
+        ("status", json!("accepted")),
+        ("assignee", json!(format!("seat:{}", f.peer.id))),
+        ("verify", json!("forged")),
+        ("allowed_paths", json!(["**"])),
+        ("custom", json!({"changed":true})),
+    ] {
+        let mut forged = knowledge_update_args(&record);
+        forged["frontmatter"][field] = value;
+        knowledge_denied(
+            f.mutate(f.own.id, Ulid::new(), "knowledge_write", forged),
+            "task_field_protected",
+        );
+    }
+    let file = f
+        .config
+        .repository
+        .join(format!(".bboxy/tasks/{}.md", f.task));
+    let before = std::fs::read(&file).unwrap();
+    let mut forged = knowledge_update_args(&record);
+    forged["body"] = json!("changed brief");
+    knowledge_denied(
+        f.mutate(f.own.id, Ulid::new(), "knowledge_write", forged),
+        "task_field_protected",
+    );
+    let mut forged = knowledge_update_args(&record);
+    forged["frontmatter"]["report"]["reported_by"] = json!(format!("seat:{}", f.oracle.id));
+    knowledge_denied(
+        f.mutate(f.own.id, Ulid::new(), "knowledge_write", forged),
+        "task_field_protected",
+    );
+    for actor in [f.peer.id, f.outside.id] {
+        let mut other = knowledge_update_args(&record);
+        other["frontmatter"]["report"]["summary"] = json!("not my task");
+        knowledge_denied(
+            f.mutate(actor, Ulid::new(), "knowledge_write", other),
+            "task_field_protected",
+        );
+    }
+    assert_eq!(std::fs::read(&file).unwrap(), before);
+    let mut next = knowledge_update_args(&record);
+    next["frontmatter"]["verify_result"] = verification("true", 1, json!([]));
+    let next = data(f.mutate(f.own.id, Ulid::new(), "knowledge_write", next))["record"].clone();
+    refused(
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "task_accept",
+            json!({"task_path":f.task_path()}),
+        ),
+        "exit_code is 1",
+    );
+    let mut valid = knowledge_update_args(&next);
+    valid["frontmatter"]["verify_result"] = verification("true", 0, json!([]));
+    data(f.mutate(f.own.id, Ulid::new(), "knowledge_write", valid));
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_accept",
+        json!({"task_path":f.task_path()}),
+    ));
+    let closed = data(knowledge_fetch(&f, f.own.id, "#1"));
+    let mut blocked = knowledge_update_args(&closed);
+    blocked["frontmatter"]["report"]["summary"] = json!("cannot rewrite closed results");
+    refused(
+        f.mutate(f.own.id, Ulid::new(), "knowledge_write", blocked),
+        "closed task",
+    );
+    let foreign = data(knowledge_fetch(&f, f.own.id, "#2"));
+    let mut blocked = knowledge_update_args(&foreign);
+    blocked["frontmatter"]["report"] = json!({"summary":"foreign task"});
+    knowledge_denied(
+        f.mutate(f.own.id, Ulid::new(), "knowledge_write", blocked),
+        "task_field_protected",
+    );
+}
+
+#[test]
+fn mcp_knowledge266_oracle_task_creation_and_open_brief_edits_do_not_delegate_or_accept() {
+    let f = Fixture::new();
+    knowledge_denied(
+        f.mutate(
+            f.own.id,
+            Ulid::new(),
+            "knowledge_write",
+            knowledge_record_args("tasks/new.md", "task", "brief"),
+        ),
+        "task_field_protected",
+    );
+    let mut create = knowledge_record_args("tasks/new.md", "task", "new brief");
+    create["frontmatter"]["verify"] = json!("true");
+    create["frontmatter"]["allowed_paths"] = json!(["fixture/**"]);
+    let mut forged = create.clone();
+    forged["frontmatter"]["status"] = json!("accepted");
+    knowledge_denied(
+        f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", forged),
+        "task_field_protected",
+    );
+    let mut assigned = create.clone();
+    assigned["frontmatter"]["assignee"] = json!(format!("seat:{}", f.own.id));
+    knowledge_denied(
+        f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", assigned),
+        "task_field_protected",
+    );
+    let first =
+        data(f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", create))["record"].clone();
+    assert_eq!(first["frontmatter"]["status"], "open");
+    assert_eq!(
+        first["frontmatter"]["delegated_by"],
+        format!("seat:{}", f.oracle.id)
+    );
+    let mut update = knowledge_update_args(&first);
+    update["body"] = json!("open revised brief");
+    update["frontmatter"]["verify"] = json!("true && true");
+    update["frontmatter"]["allowed_paths"] = json!(["fixture/narrow/**"]);
+    let edited =
+        data(f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", update))["record"].clone();
+    let file = f.config.repository.join(".bboxy/tasks/new.md");
+    let before = std::fs::read(&file).unwrap();
+    for (field, value) in [
+        ("status", json!("reported")),
+        ("assignee", json!(format!("seat:{}", f.own.id))),
+        ("delegated_by", json!(format!("seat:{}", f.peer.id))),
+    ] {
+        let mut bad = knowledge_update_args(&edited);
+        bad["frontmatter"][field] = value;
+        knowledge_denied(
+            f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", bad),
+            "task_field_protected",
+        );
+    }
+    assert_eq!(std::fs::read(&file).unwrap(), before);
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_delegate",
+        json!({"task_path":".bboxy/tasks/new.md","seat_id":f.own.id}),
+    ));
+    let claimed = data(knowledge_fetch(&f, f.oracle.id, "tasks/new.md"));
+    let mut bad = knowledge_update_args(&claimed);
+    bad["body"] = json!("cannot edit claimed brief");
+    knowledge_denied(
+        f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", bad),
+        "task_field_protected",
+    );
+    assert_eq!(
+        data(knowledge_fetch(&f, f.oracle.id, "tasks/new.md"))["frontmatter"]["status"],
+        "claimed"
+    );
+}
+
+#[test]
+fn mcp_knowledge266_artifacts_keep_claims_observations_lineage_and_creator_corrections() {
+    let f = Fixture::new();
+    let mut create = knowledge_record_args("artifacts/generic.md", "artifact", "description");
+    create["frontmatter"]["ref"] = json!("fixture-output-a");
+    create["frontmatter"]["digest"] = json!("unverified-a");
+    let first =
+        data(f.mutate(f.own.id, Ulid::new(), "knowledge_write", create.clone()))["record"].clone();
+    let metadata = &first["frontmatter"];
+    assert_eq!(metadata["claimed"], false);
+    assert_eq!(metadata["produced_by"], format!("seat:{}", f.own.id));
+    assert_eq!(metadata["grade"], "inferred");
+    assert_eq!(metadata["history"], json!([]));
+    for (field, value) in [
+        ("claimed", json!(true)),
+        ("produced_by", json!(format!("seat:{}", f.peer.id))),
+        ("grade", json!("reported")),
+        ("history", json!([{"kind":"claimed"}])),
+        ("for", json!(["[[#1]]"])),
+        ("derived_from", json!(["foreign"])),
+        ("observed", json!(true)),
+    ] {
+        let mut bad = knowledge_update_args(&first);
+        bad["frontmatter"][field] = value;
+        knowledge_denied(
+            f.mutate(f.own.id, Ulid::new(), "knowledge_write", bad),
+            "artifact_field_protected",
+        );
+    }
+    let mut update = knowledge_update_args(&first);
+    update["frontmatter"]["ref"] = json!("fixture-output-b");
+    update["frontmatter"]["digest"] = json!("unverified-b");
+    let corrected =
+        data(f.mutate(f.own.id, Ulid::new(), "knowledge_write", update))["record"].clone();
+    let mut steal = knowledge_update_args(&corrected);
+    steal["frontmatter"]["ref"] = json!("peer-change");
+    knowledge_denied(
+        f.mutate(f.peer.id, Ulid::new(), "knowledge_write", steal),
+        "artifact_field_protected",
+    );
+    let mut body = knowledge_update_args(&corrected);
+    body["body"] = json!("peer description, same responsibility");
+    let described =
+        data(f.mutate(f.peer.id, Ulid::new(), "knowledge_write", body))["record"].clone();
+    assert_eq!(
+        described["frontmatter"]["produced_by"],
+        format!("seat:{}", f.own.id)
+    );
+    assert_eq!(
+        described["frontmatter"]["authorship"]["signer"],
+        format!("seat:{}", f.peer.id)
+    );
+    let mut forged = create;
+    forged["path"] = json!("artifacts/forged.md");
+    forged["frontmatter"]["claimed"] = json!(true);
+    knowledge_denied(
+        f.mutate(f.own.id, Ulid::new(), "knowledge_write", forged),
+        "artifact_field_protected",
+    );
+    for (number, claimed, observed) in [(4, false, true), (5, true, false)] {
+        let id = Ulid::new();
+        let path = format!("artifacts/protected-{number}.md");
+        let metadata = json!({"id":id,"number":number,"type":"artifact","title":"trusted detector/claim fixture","ref":"observed-output","digest":"observed-digest","claimed":claimed,"produced_by":format!("seat:{}",f.own.id),"grade":"inferred","history":[],"for":[],"derived_from":[],"observed":observed});
+        let file = f.config.repository.join(".bboxy").join(&path);
+        std::fs::write(
+            &file,
+            format!(
+                "---\n{}---\nExisting detector/claim fixture.\n",
+                serde_yaml::to_string(&metadata).unwrap()
+            ),
+        )
+        .unwrap();
+        let record = data(knowledge_fetch(&f, f.own.id, &path));
+        let before = std::fs::read(&file).unwrap();
+        for actor in [f.own.id, f.oracle.id] {
+            for (field, value) in [
+                ("ref", json!("forged-ref")),
+                ("digest", json!("forged-digest")),
+                ("observed", json!(!observed)),
+                ("claimed", json!(!claimed)),
+            ] {
+                let mut bad = knowledge_update_args(&record);
+                bad["frontmatter"][field] = value;
+                knowledge_denied(
+                    f.mutate(actor, Ulid::new(), "knowledge_write", bad),
+                    "artifact_field_protected",
+                );
+            }
+            let mut relabel = knowledge_update_args(&record);
+            relabel["frontmatter"]["type"] = json!("note");
+            knowledge_denied(
+                f.mutate(actor, Ulid::new(), "knowledge_write", relabel),
+                "type_immutable",
+            );
+        }
+        assert_eq!(std::fs::read(&file).unwrap(), before);
+    }
+}
+
+#[test]
+fn mcp_knowledge266_search_pages_use_shared_root_resolution_and_refuse_stale_cursors() {
+    let f = Fixture::new();
+    let mut records = vec![];
+    for n in 0..3 {
+        records.push(knowledge_create(
+            &f,
+            f.own.id,
+            "note",
+            &format!("notes/needle-{n}.md"),
+            "unique-knowledge-needle\n",
+        ));
+    }
+    let spec = knowledge_create(
+        &f,
+        f.oracle.id,
+        "spec",
+        "specs/readable.md",
+        "Oracle knowledge body\n",
+    );
+    assert_eq!(
+        data(knowledge_fetch(
+            &f,
+            f.own.id,
+            &format!("#{}", spec["number"].as_u64().unwrap())
+        ))["body"],
+        "Oracle knowledge body\n"
+    );
+    for record in &records {
+        assert_eq!(
+            data(knowledge_fetch(
+                &f,
+                f.own.id,
+                record["id"].as_str().unwrap()
+            ))["id"],
+            record["id"]
+        );
+    }
+    let query = "type:note unique-knowledge-needle";
+    // The live fixture's detector may materialize artifact records between
+    // calls. A snapshot-bound cursor must reject that, so restart the whole
+    // walk on that one named response; never combine different snapshots.
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let (seen, old_cursor) = 'walk: loop {
+        assert!(
+            Instant::now() < deadline,
+            "knowledge root never yielded a stable bounded page walk"
+        );
+        let first = data(knowledge_search(
+            &f,
+            f.own.id,
+            json!({"query":query,"limit":1}),
+        ));
+        assert_eq!(
+            first["scope"],
+            json!({"seat":f.own.id,"role":f.own.role.name,"class":f.own.role.class})
+        );
+        assert!(first.get("empty_reason").is_none());
+        assert_eq!(first["items"].as_array().unwrap().len(), 1);
+        let old_cursor = first["next"].as_str().unwrap().to_owned();
+        let mut seen = std::collections::BTreeSet::new();
+        seen.insert(first["items"][0]["ref"]["id"].as_str().unwrap().to_owned());
+        let mut next = Some(old_cursor.clone());
+        while let Some(cursor) = next {
+            let response = knowledge_search(
+                &f,
+                f.own.id,
+                json!({"query":query,"limit":1,"cursor":cursor}),
+            );
+            if response["isError"] == true
+                && response["structuredContent"]["error"]["code"] == "stale_cursor"
+            {
+                eprintln!("knowledge page walk restarted on an explicit snapshot change");
+                continue 'walk;
+            }
+            let page = data(response);
+            assert!(
+                serde_json::to_vec(&page).unwrap().len()
+                    <= bbt_mux::knowledge::data_source::MAX_PAGE_BYTES + 1024
+            );
+            for item in page["items"].as_array().unwrap() {
+                assert!(seen.insert(item["ref"]["id"].as_str().unwrap().to_owned()));
+            }
+            next = page["next"].as_str().map(str::to_owned);
+        }
+        break (seen, old_cursor);
+    };
+    assert_eq!(seen.len(), 3);
+    knowledge_denied(
+        knowledge_search(
+            &f,
+            f.own.id,
+            json!({"query":"changed query","cursor":old_cursor}),
+        ),
+        "invalid_cursor",
+    );
+    let mut update = knowledge_update_args(&records[0]);
+    update["body"] = json!("unique-knowledge-needle revised\n");
+    data(f.mutate(f.own.id, Ulid::new(), "knowledge_write", update));
+    knowledge_denied(
+        knowledge_search(&f, f.own.id, json!({"query":query,"cursor":old_cursor})),
+        "stale_cursor",
+    );
+    let empty = data(knowledge_search(
+        &f,
+        f.own.id,
+        json!({"query":"no-such-knowledge-fixture"}),
+    ));
+    assert_eq!(empty["items"], json!([]));
+    assert!(empty["next"].is_null());
+    assert_eq!(
+        empty["scope"],
+        json!({"seat":f.own.id,"role":f.own.role.name,"class":f.own.role.class})
+    );
+    assert_eq!(empty["empty_reason"], "nothing_yet");
+    assert!(empty["empty_message"].as_str().unwrap().len() > 10);
 }

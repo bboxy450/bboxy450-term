@@ -985,8 +985,9 @@ impl DataSource for BboxySource<'_> {
             error: None,
             links: Vec::new(),
         })?;
-        self.index
-            .apply_author(
+        let path = self
+            .index
+            .apply_author_path(
                 Update {
                     path: path.clone(),
                     metadata: request.frontmatter,
@@ -996,6 +997,11 @@ impl DataSource for BboxySource<'_> {
                 &context.author,
             )
             .map_err(|e| {
+                if e.downcast_ref::<crate::index::DecisionFilenameRequired>()
+                    .is_some()
+                {
+                    return error("decision_filename_required", e.to_string());
+                }
                 error(
                     "write_not_confirmed",
                     format!("Index write not confirmed; inspect the record before retry: {e}"),
