@@ -1,0 +1,28 @@
+{
+  "measured_source": "345ed6def872c2e8b35195a14240424c5fb419a6",
+  "gate_source": "551312e3c1b7d5d50566a397bf2c8715134888e3",
+  "path_identity_exit": 0,
+  "paths": [
+    "crates/bbt-mux/src/adapters/hook.rs",
+    "crates/bbt-mux/src/adapters/native.rs",
+    "crates/bbt-mux/src/logic.rs",
+    "crates/bboxy450-term/tests/ctl.rs"
+  ],
+  "blobs": {
+    "crates/bbt-mux/src/adapters/hook.rs": "5228888bebcc5f9cb4c52e9ccf6f10471c65323c",
+    "crates/bbt-mux/src/adapters/native.rs": "b5287d7c821ccd1c0df84492d66c0489824700f1",
+    "crates/bbt-mux/src/logic.rs": "583c406f85581d10b8f9529840cbe02a508dcb21",
+    "crates/bboxy450-term/tests/ctl.rs": "51c526b483237c559254a8d8bc97cadcd6c1ee30"
+  },
+  "changed_paths_from_gate_base": [
+    "crates/bboxy450-term/tests/ctl.rs",
+    "crates/bbt-mux/src/adapters/hook.rs",
+    "crates/bbt-mux/src/adapters/native.rs",
+    "crates/bbt-mux/src/logic.rs"
+  ],
+  "gate_base": "44e78a7562ba1401b74ab2518aedd14f25d2c4e2",
+  "signatures": [
+    "551312e3c1b7d5d50566a397bf2c8715134888e3 G Verify native hook wake, reject OSC registration, and retain restart identity",
+    "f582c9adb7841109512b251ae5862eb8b02080e4 G Checkpoint authenticated Claude hook socket registration (verification pending)"
+  ]
+}

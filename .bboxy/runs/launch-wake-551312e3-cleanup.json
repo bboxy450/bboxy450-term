@@ -1,0 +1,23 @@
+{
+  "utc": "2026-10-24T08:11:34.494907+00:00",
+  "records": [
+    {
+      "kind": "ci-target",
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/ci-target-wake-x7cxvrjw",
+      "allocated_file_bytes_before": 3580678144,
+      "exists_after": false
+    },
+    {
+      "kind": "dev-target",
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/launch-wake-09bvv16q",
+      "allocated_file_bytes_before": 2432913408,
+      "exists_after": false
+    },
+    {
+      "kind": "detached-worktree",
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/ci-wake-fpamenzf",
+      "exists_after": false
+    }
+  ],
+  "allocated_file_bytes_removed": 6013591552
+}

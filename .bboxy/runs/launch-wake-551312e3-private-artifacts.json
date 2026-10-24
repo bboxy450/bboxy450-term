@@ -1,0 +1,90 @@
+{
+  "created_utc": "2026-10-24T07:56:20.374911+00:00",
+  "measured_source": "345ed6def872c2e8b35195a14240424c5fb419a6",
+  "gate": {
+    "source": "551312e3c1b7d5d50566a397bf2c8715134888e3",
+    "base": "44e78a7562ba1401b74ab2518aedd14f25d2c4e2",
+    "worktree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/ci-wake-fpamenzf",
+    "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/ci-target-wake-x7cxvrjw",
+    "slot": 2,
+    "grant": "ee3ba12e-0431-43d1-a542-fff02b9d7d13"
+  },
+  "private_artifacts": {
+    "trusted6-process.json": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted6-process.json",
+      "sha256": "7dae68662ba69a1eb88e312c5edf18ddcf083ecc05e602bade77decf86f7985b",
+      "bytes": 679
+    },
+    "trusted6-result.json": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted6-result.json",
+      "sha256": "8dd816195db492ac06482bd8a387ae70607f6fc233328a02cacf66845a341909",
+      "bytes": 56
+    },
+    "trusted6-registration.json": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted6-registration.json",
+      "sha256": "f053075fd0b3112a214f4fd16ce78f8bbe0b6c24c643fcfb16e8df2c5f035dc4",
+      "bytes": 277
+    },
+    "trusted6-screen-summary.json": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted6-screen-summary.json",
+      "sha256": "fdb0b01ff06195227e1440c3c6b1ff7e3c9c84397aa68f439efab6175bb9d8c7",
+      "bytes": 280
+    },
+    "trusted6-ctl.json": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted6-ctl.json",
+      "sha256": "49638da4f091ac8c1636e9229707313c1e681a5c60c3841d2e10ea724bff8048",
+      "bytes": 9103
+    },
+    "trusted7-process.json": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted7-process.json",
+      "sha256": "70ba82a630cd0ea74e4beb7238373ea663181e80b1a94a03b9cc3d4b87626a98",
+      "bytes": 680
+    },
+    "trusted7-result.json": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted7-result.json",
+      "sha256": "23c3806b4112408f062fecf30056c53e12890e28f2fc6418f12fab6e13dbc9c2",
+      "bytes": 57
+    },
+    "trusted7-registration.json": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted7-registration.json",
+      "sha256": "7cb8a2d87bb974b498f2ed908a20be545a85b0b7e401ef4dfb661d5488cbd4de",
+      "bytes": 277
+    },
+    "trusted7-screen-summary.json": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted7-screen-summary.json",
+      "sha256": "133a2b0f8cf93f046c7d806c4b8fc284cf957b7c833adca14179214a6ce70c46",
+      "bytes": 280
+    },
+    "trusted7-reply-proof.json": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted7-reply-proof.json",
+      "sha256": "e30b1425161c0ef75441c10994b5cf185e58fe4aa23e1c863b282eef7f8e4d34",
+      "bytes": 1829
+    },
+    "trusted7-ctl.json": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted7-ctl.json",
+      "sha256": "203a2a9c9985aa58e873a6a51ba79c826a7d28711c7044aa7ca0a371eb28bbe6",
+      "bytes": 20327
+    },
+    "trusted7-reap-check.json": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/trusted7-reap-check.json",
+      "sha256": "67c8ea2564e9a38a8c89126fa975f563f4c5f86cd2c127a344f1eed107bc3d56",
+      "bytes": 744
+    },
+    "fixed5-process.json": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/fixed5-process.json",
+      "sha256": "d2fd4195e14d90722f62c0fda175650b94454d449235bfb4bd5adc56cc7fb7b9",
+      "bytes": 673
+    },
+    "fixed5-result.json": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/fixed5-result.json",
+      "sha256": "8d15d6c597b98159dd32758a4b86e8f3694c622eb2ad0c3e9d569d3b1bcfeada",
+      "bytes": 56
+    },
+    "fixed5-screen-summary.json": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-wake-6ph3eds2/fixed5-screen-summary.json",
+      "sha256": "832ac6f36d298378575dcc9f96aedfced7595b0e826a54e7d54a999dabf8a11a",
+      "bytes": 279
+    }
+  },
+  "note": "Metadata manifest only. Raw native transcripts, API request blobs, capability endpoint files, and private tool stdout are excluded from Git."
+}

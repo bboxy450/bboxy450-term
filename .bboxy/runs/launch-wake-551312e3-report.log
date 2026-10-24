@@ -1,0 +1,46 @@
+W2.5b / #258 section 4: real idle Claude native first-contact wake
+Source: 551312e3c1b7d5d50566a397bf2c8715134888e3, branch sable-launch-wake, exec3. Base 44e78a7562ba1401b74ab2518aedd14f25d2c4e2.
+Oracle-scoped product change: authenticated hook socket discovery plus specific pre-write causes.
+The separate Codex trust task and reply-address usability fix are deliberately outside this branch.
+
+Mechanism (source at the gate SHA):
+- adapters/hook.rs:378: read documented CLAUDE_CODE_MESSAGING_SOCKET only for Claude SessionStart/Stop, from hook environment; force the capability-authenticated Hook RPC. Unknown stdin fields are stripped. No messaging token is read/forwarded.
+- adapters/native.rs:61,86: registration bound to seat, native PID/start, generation and native session; owned Unix socket; in-memory attachment handle is deliberately not persisted identity.
+- logic.rs:2343: restore the same validated endpoint on logic restart; :2486 stores only admitted Hook registration, never OSC; :3054 preserves the endpoint when legacy PID-file discovery is absent.
+- logic.rs:3202 and native.rs:400: preserve bounded specific pre-write discovery/identity/socket causes. A write/reply ambiguity is still NativeUnknown, without automatic retry or PTY fallback.
+- tests/ctl.rs:305: actual app hook shim + MCP bridge, forged OSC rejected, first-contact read/ack/reply, persisted identity, own logic SIGKILL and post-restart native transport. The restart subcase proves receipt/transport only, not post-restart MCP reply.
+
+Verification:
+- Initial test compile 6148ff78 EXIT101: wrong EventLog/Kv/SqliteStore test imports. Corrected in source; failure log retained.
+- Focused first-contact app test 5c463205 EXIT0: 1 passed; mux lib/adapters b6ac7061 EXIT0: 58+13 passed, 1 ignored; all ctl tests 5587c6f7 EXIT0: 3 passed.
+- Strict all-target workspace Clippy 511fdf80 EXIT0; exact build 4d089b09 EXIT0.
+- Full NORMAL ci-local: EXIT 0, 922.272s, SHA256 47f209382cb04ad6d66f1eb6836f07ae1e8cfdd304d0cf6021c3ae3f4831658e.
+- Measured native binary dd46837f4318180ffbcc0c11a0fb0ec158fe405f9523ad8c5dd889742eaa061b (source345ed6de); all four changed blobs equal gate source, identity command EXIT0.
+- No parity requested: this branch changes no render/UI/lab producer.
+
+Real client evidence, no desktop driving/operator prompt:
+- fixed5: actual trust dialog in fresh private CWD, registration null, specific missing-file cause. No consent answered. Blocked/unproven for native wake, not a pass.
+- trusted6 (as-is DM): automatic Claude message_list read + message_ack applied. Reply to guessed seats/000.../inbox rejected, then a self-inbox threaded reply. Intuitive operator reply FAIL, separately ruled in decision264.
+- trusted7 (destination named): ctl spawn 01M5PE7VX81B1HZZA5W6AGQ4XZ; DM 01M5PE7W1XAPHED9H8RPE92Q5C; actual operator inbox reply 01M5PE9A7KQ3RZ8TXW4N2HB6CD, exact reply_to + token, observed19.092s after app start. No native-ID retry. Final original receipt at that observation was native-written; the actual reply proves model work, not an inferred receipt.
+- Trusted CWD /Users/feral/mydev/bboxy450-term, verified read-only in Claude's own project state. DM prohibits file edits/shell; tool evidence lists no such tool.
+- trusted6 app EXIT0/50.666s; trusted7 EXIT0/180.361s; all9 recorded trusted7 PIDs absent at the recorded post-exit check.
+- Raw native transcripts, screens, capability endpoint files and private commands.jsonl stay outside Git. Committed native evidence is curated metadata/tool outcomes only, with private artifact paths/hashes.
+
+Limits/follow-ups:
+- A seat stopped at native workspace trust should show Waiting (needs you), not idle: named product follow-up, no state/UI edits here.
+- Automatic task-delegation wake was not separately exercised with a real model; DM/native delivery mechanism is proven.
+- Real native model execution is an observed functional run under current host load, no performance/quiet-control claim.
+- The first fresh-process launcher lost its child before readiness; baseline3's early custody-witness assertion failed before any seat spawn. Those are probe-method failures, not product regression claims. Raw own evidence remains in the private manifest root.
+- Codex selective hook trust: documented sources researched; no config/hash/auth/global-file change. Reported separately; not claimed implemented.
+
+Cleanup: private CI target, inactive dev target and detached worktree removed. Allocated file bytes removed 6013591552. Slot2 released on EXIT0.
+Origin/main observed after gate: 56e4c62e11be51bf3ef405c29524cf13f7624f54
+56e4c62e Merge remote-tracking branch 'origin/main' into HEAD
+f69ba98d decision #265: Codex seat trust, native hook review by hash, scoped MCP approval, no bypass flag, no copied credentials
+f5fe8d68 Merge a1-depth: ctl MAX_DEPTH refusal, ctl capture, ctl --help (Seraph)
+bc4debb6 a1-depth: --parity gate evidence for 0e56c6e9 (all gates passed)
+0e56c6e9 a1-depth: focused bbt-proto + bbt-mux + bboxy450-term evidence (382 passed, 0 failed)
+0df0d762 ctl capture: e2e test through the window's own session; ctl --help test
+3c00d49b ctl capture: the operator asks the window for a PNG of itself or one seat's pane
+2f47736d ctl door: a peer whose ancestry does not reach the root is refused
+No source rebase or repeat gate after freeze.
