@@ -19,7 +19,7 @@ links:
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
   - { to: "[[c1-live-seats]]", rel: shares-socket }
 created: 2026-10-22T20:09:59Z
-updated: 2026-10-22T20:09:59Z
+updated: "2026-10-24T06:11:54Z"
 ---
 # W2.5 MCP server and W2.5b seat wiring kit
 
@@ -75,6 +75,8 @@ Everything lives in the per-launch overlay directory (`launch-{ulid}`, mode 0700
 | zsh, generic | ZDOTDIR overlay exports `BBOXY_*` | nothing; `bboxy450-term mcp` works by hand in that shell |
 
 The skill is one `SKILL.md` generated from a template in the binary (`include_str!`), parameterised by role: the tool order `orient → task_* → message_* → artifact_claim`, DM by default and what the channel is for ([[messaging]]), and the report shape (files changed and mechanism, commands and exit status, evidence per criterion, gaps, worktree state). The role prompt stays what settings say.
+
+**Role defaults ([[d262-seat-role-defaults]], 2026-10-24, from Aster's launch audit).** The launcher's default role label follows the harness rule of `AGENTS.md`: a **Claude** seat defaults to `oracle`; a **Codex** seat defaults to `executor` and cannot be given an oracle-class role (the rule says Codex implements; an override would make an Executor an Oracle); a **zsh or generic** seat has no role and no grant. The operator overrides a Claude seat **per seat**: at spawn through the launcher's role presets (`oracle`, `architect`, `creativity`, `executor`, the last by decision #18), and later through the seat row's role chip, which issues a **new role grant epoch** ([[messaging]]: role changes are new epochs) and tells the harness in one oracle-class message carrying the new role prompt. The row's label is the grant's role, never free text, so it cannot lie. When the swarm already has an Oracle seat, the launcher still defaults a new Claude seat to `oracle` and says so beside the preset ("this swarm already has an Oracle: <name>"), information rather than a block. The current default of `executor` for a Claude seat is a bug against this paragraph.
 
 **Trust, stated plainly.** The capability sits in the environment of the whole harness process tree ([[architecture]] §6); accepted for v0.1. The bridge binds to (seat, generation): a resumed seat has a new generation and a new overlay, and the old bridge is refused. Decision [[d4-seat-identity|#4]] changes who signs envelopes, not this admission.
 
