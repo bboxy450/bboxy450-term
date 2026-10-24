@@ -1,0 +1,1058 @@
+R5g one-attempt frame outcome and approved R5h proposal
+{
+  "task": "R5g frame acceptance attempt and read-only R5h finding",
+  "at": "2026-10-24T08:55:27.906805-07:00",
+  "source": "d08fa9d5531c5b2eb63a95e502ebded836b94adf",
+  "base": "5422af0b",
+  "branch": "rook-r5g-frame-export",
+  "authorities": {
+    "fixture_scope": "12bd2ce9-f3d9-4156-bfdd-c3b4b1c08a9f",
+    "interval_policy": "946d5ea2424ccf256f69c0958f282625871a4502",
+    "window": "71d58114-5684-4d2f-92d3-9593fd2f33c3",
+    "release_analysis": "8cc1bb77-e0c4-4185-82cc-d107bd250f70",
+    "next_fix_approved": "e9a95500-911f-4f7b-ac0a-878ed9152717"
+  },
+  "result": {
+    "exit": 1,
+    "elapsed_s": 102.66444199997932,
+    "timed_out": false,
+    "host_load_before": [
+      4.4765625,
+      5.5322265625,
+      7.54296875
+    ],
+    "host_load_after": [
+      14.1181640625,
+      8.1796875,
+      8.31884765625
+    ],
+    "disk_free_after_bytes": 55627382784,
+    "owned_pid_count": 969,
+    "remaining_owned": [],
+    "binary_sha256_before": "d053b8989b5c1b132f9084f3120e815ab8900c085f64a3c89d1e07909a62cbe3",
+    "binary_sha256_after": "d053b8989b5c1b132f9084f3120e815ab8900c085f64a3c89d1e07909a62cbe3",
+    "binary_unchanged": true,
+    "memory_custody_witness": true,
+    "diagnostic_table": "/tmp/rook-r5g-frame-oc2eujtr/run-1/r5-frame.rEmhnn/report.diagnostics.json",
+    "diagnostic_summary": {
+      "phase_at_timeout": 2,
+      "false_settle_predicates": [
+        "IO: every watched published Screen contains R5PAUSED",
+        "IO: phase reached SETTLE",
+        "UI: latest Native::poll observed phase SETTLE (other UI settle checks inactive)"
+      ],
+      "rows": 50,
+      "gui_has_paused": 0,
+      "logic_has_paused": 0,
+      "ring_tail_has_paused": 50
+    },
+    "file_sha256": {
+      "stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr.log": "00547c457a30f286837bfaca77f441c29fd68a6394e8119734725a0381803bba",
+      "command.json": "b67402a9cb404aa25c7cd92a5359e3723bf052d9fb5a305e5816c3a9ffbbd5f1",
+      "reaped.json": "53c84b7eb19d7496c01d8529ff929cf8ddfa6b151b96ae2ba224a0a27918762e"
+    }
+  },
+  "failure_reason": "r5-unsettled-after-producers-stopped",
+  "maximum_attempts": 1,
+  "attempts_started": 1,
+  "checks": {
+    "freeze-test": {
+      "source": "d08fa9d5531c5b2eb63a95e502ebded836b94adf",
+      "argv": [
+        "cargo",
+        "test",
+        "--release",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term",
+        "stall::load::tests::capture_export_keeps_the_first_settled_cut_and_serializes_frozen_boundaries",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "cwd": "/tmp/rook-r5g-frame-oc2eujtr/tree",
+      "environment": {
+        "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g-frame",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_BUILD_JOBS": "2",
+        "CARGO_PROFILE_RELEASE_DEBUG": "0",
+        "CARGO_PROFILE_RELEASE_OPT_LEVEL": "3",
+        "CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS": "true",
+        "BBOXY_TEST_CUSTODY": "memory",
+        "GATE_SEATS": "967",
+        "GATE_WATCHED": "50",
+        "GATE_SECONDS": "10"
+      },
+      "at": "2026-10-24T07:50:21.673678-07:00",
+      "finished": true,
+      "pid": 5819,
+      "exit": 0,
+      "elapsed_s": 189.92368112498662,
+      "git_status_after": "",
+      "log_sha256": "696be02a097345ba957ab849f0e5ab997638bd98fdf14d8e90545341a9a1faa5"
+    },
+    "frame-clippy": {
+      "source": "d08fa9d5531c5b2eb63a95e502ebded836b94adf",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--release",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": "/tmp/rook-r5g-frame-oc2eujtr/tree",
+      "environment": {
+        "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g-frame",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_BUILD_JOBS": "2",
+        "CARGO_PROFILE_RELEASE_DEBUG": "0",
+        "CARGO_PROFILE_RELEASE_OPT_LEVEL": "3",
+        "CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS": "true",
+        "BBOXY_TEST_CUSTODY": "memory",
+        "GATE_SEATS": "967",
+        "GATE_WATCHED": "50",
+        "GATE_SECONDS": "10"
+      },
+      "at": "2026-10-24T07:55:53.036255-07:00",
+      "finished": true,
+      "pid": 14380,
+      "exit": 0,
+      "elapsed_s": 56.49255945900222,
+      "git_status_after": "",
+      "log_sha256": "e8d681ad6bc30a991b5bd653e2d193bd1f92b9241268df17ef70f1446e736f76"
+    },
+    "release-build": {
+      "source": "d08fa9d5531c5b2eb63a95e502ebded836b94adf",
+      "argv": [
+        "cargo",
+        "build",
+        "--release",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--message-format=json-render-diagnostics"
+      ],
+      "cwd": "/tmp/rook-r5g-frame-oc2eujtr/tree",
+      "environment": {
+        "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g-frame",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_BUILD_JOBS": "2",
+        "CARGO_PROFILE_RELEASE_DEBUG": "0",
+        "CARGO_PROFILE_RELEASE_OPT_LEVEL": "3",
+        "CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS": "true",
+        "BBOXY_TEST_CUSTODY": "memory",
+        "GATE_SEATS": "967",
+        "GATE_WATCHED": "50",
+        "GATE_SECONDS": "10"
+      },
+      "at": "2026-10-24T07:57:23.340098-07:00",
+      "finished": true,
+      "pid": 17326,
+      "exit": 0,
+      "elapsed_s": 91.21127304201946,
+      "git_status_after": "",
+      "log_sha256": "9c741ebf1b06a6222e2bc82bc5f520e11dfba34e0fe84d5143b245bf0027f28d"
+    }
+  },
+  "binary": {
+    "source": "d08fa9d5531c5b2eb63a95e502ebded836b94adf",
+    "path": "/Users/feral/mydev/bboxy450-term-rook/target/r5g-frame/release/bboxy450-term",
+    "sha256": "d053b8989b5c1b132f9084f3120e815ab8900c085f64a3c89d1e07909a62cbe3",
+    "retained_copy": "/tmp/rook-r5g-frame-oc2eujtr/bboxy450-term-d08fa9d5",
+    "profile": {
+      "opt_level": "3",
+      "debuginfo": 0,
+      "debug_assertions": true,
+      "overflow_checks": false,
+      "test": false
+    }
+  },
+  "partition": {
+    "diagnostic_sha256": "403ccea5222318fbdc37a68335fb7eefabe4ff3d5e108837fa8acf287b5f40bc",
+    "interval": "stop_to_timeout_only; settled_boundary_not_observed",
+    "later_ring_minus_logic": {
+      "max": 1023,
+      "median": 871.5,
+      "min": 773
+    },
+    "official_stop_to_settled_gate": "unproven",
+    "owners": {
+      "logic": {
+        "in_flight_end": {
+          "capture_request": {
+            "count": 0,
+            "group_started_ns": 42348654334
+          },
+          "checkpoint": {
+            "count": 0,
+            "group_started_ns": 74813996500
+          },
+          "checkpoint_rpc": {
+            "count": 0,
+            "group_started_ns": 74814239875
+          },
+          "checkpoint_service": {
+            "count": 0,
+            "group_started_ns": 74891002959
+          },
+          "commands": {
+            "count": 0,
+            "group_started_ns": 74891009125
+          },
+          "event": {
+            "count": 0,
+            "group_started_ns": 74889940667
+          },
+          "logic_turn": {
+            "count": 1,
+            "group_started_ns": 74891002959
+          },
+          "maintenance": {
+            "count": 0,
+            "group_started_ns": 74890967334
+          },
+          "maintenance_adapters": {
+            "count": 0,
+            "group_started_ns": 74758798417
+          },
+          "maintenance_identity": {
+            "count": 0,
+            "group_started_ns": 60015534459
+          },
+          "maintenance_messages": {
+            "count": 0,
+            "group_started_ns": 74793258459
+          },
+          "maintenance_provenance": {
+            "count": 0,
+            "group_started_ns": 74824758500
+          },
+          "maintenance_providers": {
+            "count": 0,
+            "group_started_ns": 74701675334
+          },
+          "parse": {
+            "count": 0,
+            "group_started_ns": 74890811792
+          },
+          "read_ring_rpc": {
+            "count": 0,
+            "group_started_ns": 74889964584
+          },
+          "receive": {
+            "count": 1,
+            "group_started_ns": 74891017667
+          },
+          "recovery_rpc": {
+            "count": 0,
+            "group_started_ns": 42344329584
+          },
+          "replay_page": {
+            "count": 0,
+            "group_started_ns": 74889964500
+          },
+          "supervisor_dispatch": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "supervisor_query": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "supervisor_sweep": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "supervisor_turn": {
+            "count": 0,
+            "group_started_ns": 0
+          }
+        },
+        "in_flight_start": {
+          "capture_request": {
+            "count": 0,
+            "group_started_ns": 42348654334
+          },
+          "checkpoint": {
+            "count": 0,
+            "group_started_ns": 42667615167
+          },
+          "checkpoint_rpc": {
+            "count": 0,
+            "group_started_ns": 42348654375
+          },
+          "checkpoint_service": {
+            "count": 0,
+            "group_started_ns": 54882676625
+          },
+          "commands": {
+            "count": 0,
+            "group_started_ns": 54882682167
+          },
+          "event": {
+            "count": 1,
+            "group_started_ns": 54882723084
+          },
+          "logic_turn": {
+            "count": 1,
+            "group_started_ns": 54882676625
+          },
+          "maintenance": {
+            "count": 0,
+            "group_started_ns": 54882640417
+          },
+          "maintenance_adapters": {
+            "count": 0,
+            "group_started_ns": 54693617834
+          },
+          "maintenance_identity": {
+            "count": 0,
+            "group_started_ns": 30012308167
+          },
+          "maintenance_messages": {
+            "count": 0,
+            "group_started_ns": 54857424000
+          },
+          "maintenance_provenance": {
+            "count": 0,
+            "group_started_ns": 54859487917
+          },
+          "maintenance_providers": {
+            "count": 0,
+            "group_started_ns": 54693616625
+          },
+          "parse": {
+            "count": 0,
+            "group_started_ns": 54882516625
+          },
+          "read_ring_rpc": {
+            "count": 1,
+            "group_started_ns": 54882732750
+          },
+          "receive": {
+            "count": 0,
+            "group_started_ns": 54882687459
+          },
+          "recovery_rpc": {
+            "count": 0,
+            "group_started_ns": 42344329584
+          },
+          "replay_page": {
+            "count": 1,
+            "group_started_ns": 54882732709
+          },
+          "supervisor_dispatch": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "supervisor_query": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "supervisor_sweep": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "supervisor_turn": {
+            "count": 0,
+            "group_started_ns": 0
+          }
+        },
+        "missed_delta": 0,
+        "overwritten_delta": 80966,
+        "phases": {
+          "capture_request": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "checkpoint": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 153,
+            "elapsed_ns": 1156019755,
+            "errors": 0,
+            "wall_fraction": 0.05778959754168269,
+            "work": 0
+          },
+          "checkpoint_rpc": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 153,
+            "elapsed_ns": 1126493545,
+            "errors": 0,
+            "wall_fraction": 0.05631357796204219,
+            "work": 0
+          },
+          "checkpoint_service": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 16396,
+            "elapsed_ns": 251303613,
+            "errors": 0,
+            "wall_fraction": 0.012562704567311463,
+            "work": 0
+          },
+          "commands": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 8198,
+            "elapsed_ns": 98773357,
+            "errors": 0,
+            "wall_fraction": 0.0049376946407554655,
+            "work": 8216
+          },
+          "event": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 8198,
+            "elapsed_ns": 17402793657,
+            "errors": 0,
+            "wall_fraction": 0.8699682139419653,
+            "work": 0
+          },
+          "logic_turn": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 8198,
+            "elapsed_ns": 20006787658,
+            "errors": 0,
+            "wall_fraction": 1.0001422569614515,
+            "work": 7537
+          },
+          "maintenance": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 8198,
+            "elapsed_ns": 1173552904,
+            "errors": 0,
+            "wall_fraction": 0.05866608223838959,
+            "work": 0
+          },
+          "maintenance_adapters": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 95,
+            "elapsed_ns": 42589544,
+            "errors": 0,
+            "wall_fraction": 0.002129057567224521,
+            "work": 0
+          },
+          "maintenance_identity": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 1,
+            "elapsed_ns": 3930416,
+            "errors": 0,
+            "wall_fraction": 0.0001964820737958672,
+            "work": 0
+          },
+          "maintenance_messages": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 184,
+            "elapsed_ns": 429001922,
+            "errors": 0,
+            "wall_fraction": 0.021445869164224057,
+            "work": 0
+          },
+          "maintenance_provenance": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 184,
+            "elapsed_ns": 364567668,
+            "errors": 0,
+            "wall_fraction": 0.018224791331900546,
+            "work": 0
+          },
+          "maintenance_providers": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 96,
+            "elapsed_ns": 436037,
+            "errors": 0,
+            "wall_fraction": 2.1797553747931147e-05,
+            "work": 0
+          },
+          "parse": {
+            "busy": 0,
+            "bytes": 113004466,
+            "calls": 7641,
+            "elapsed_ns": 1567933082,
+            "errors": 0,
+            "wall_fraction": 0.07838120532903017,
+            "work": 165207
+          },
+          "read_ring_rpc": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 7537,
+            "elapsed_ns": 14638251894,
+            "errors": 0,
+            "wall_fraction": 0.7317683646920328,
+            "work": 0
+          },
+          "receive": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 8197,
+            "elapsed_ns": 454891830,
+            "errors": 0,
+            "wall_fraction": 0.022740109472177264,
+            "work": 0
+          },
+          "recovery_rpc": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "replay_page": {
+            "busy": 0,
+            "bytes": 112885502,
+            "calls": 7537,
+            "elapsed_ns": 16232993186,
+            "errors": 0,
+            "wall_fraction": 0.8114897163810297,
+            "work": 165103
+          },
+          "supervisor_dispatch": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "supervisor_query": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "supervisor_sweep": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "supervisor_turn": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          }
+        },
+        "process_id": 27712,
+        "untracked_delta": 0,
+        "wall_ns": 20003941958
+      },
+      "supervisor": {
+        "in_flight_end": {
+          "capture_request": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "checkpoint": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "checkpoint_rpc": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "checkpoint_service": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "commands": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "event": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "logic_turn": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "maintenance": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "maintenance_adapters": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "maintenance_identity": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "maintenance_messages": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "maintenance_provenance": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "maintenance_providers": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "parse": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "read_ring_rpc": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "receive": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "recovery_rpc": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "replay_page": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "supervisor_dispatch": {
+            "count": 0,
+            "group_started_ns": 74890184250
+          },
+          "supervisor_query": {
+            "count": 0,
+            "group_started_ns": 74890184292
+          },
+          "supervisor_sweep": {
+            "count": 1,
+            "group_started_ns": 74890804834
+          },
+          "supervisor_turn": {
+            "count": 1,
+            "group_started_ns": 74890802250
+          }
+        },
+        "in_flight_start": {
+          "capture_request": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "checkpoint": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "checkpoint_rpc": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "checkpoint_service": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "commands": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "event": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "logic_turn": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "maintenance": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "maintenance_adapters": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "maintenance_identity": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "maintenance_messages": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "maintenance_provenance": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "maintenance_providers": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "parse": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "read_ring_rpc": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "receive": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "recovery_rpc": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "replay_page": {
+            "count": 0,
+            "group_started_ns": 0
+          },
+          "supervisor_dispatch": {
+            "count": 0,
+            "group_started_ns": 54884372459
+          },
+          "supervisor_query": {
+            "count": 1,
+            "group_started_ns": 54884372584
+          },
+          "supervisor_sweep": {
+            "count": 1,
+            "group_started_ns": 54886773334
+          },
+          "supervisor_turn": {
+            "count": 1,
+            "group_started_ns": 54886773250
+          }
+        },
+        "missed_delta": 31,
+        "overwritten_delta": 49703,
+        "phases": {
+          "capture_request": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "checkpoint": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "checkpoint_rpc": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "checkpoint_service": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "commands": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "event": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "logic_turn": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "maintenance": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "maintenance_adapters": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "maintenance_identity": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "maintenance_messages": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "maintenance_provenance": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "maintenance_providers": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "parse": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "read_ring_rpc": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "receive": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "recovery_rpc": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "replay_page": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 0,
+            "elapsed_ns": 0,
+            "errors": 0,
+            "wall_fraction": 0.0,
+            "work": 0
+          },
+          "supervisor_dispatch": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 7689,
+            "elapsed_ns": 27249694,
+            "errors": 0,
+            "wall_fraction": 0.0013622269354688125,
+            "work": 0
+          },
+          "supervisor_query": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 7690,
+            "elapsed_ns": 9364989889,
+            "errors": 0,
+            "wall_fraction": 0.46816090768538116,
+            "work": 0
+          },
+          "supervisor_sweep": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 17162,
+            "elapsed_ns": 19392798639,
+            "errors": 0,
+            "wall_fraction": 0.9694564885818068,
+            "work": 16595654
+          },
+          "supervisor_turn": {
+            "busy": 0,
+            "bytes": 0,
+            "calls": 17162,
+            "elapsed_ns": 20000780215,
+            "errors": 0,
+            "wall_fraction": 0.9998498162682012,
+            "work": 0
+          }
+        },
+        "process_id": 27712,
+        "untracked_delta": 0,
+        "wall_ns": 20003784458
+      }
+    },
+    "progress": {
+      "count": 50,
+      "max": 504,
+      "median": 171.5,
+      "min": 76,
+      "positive": 50
+    },
+    "source": "d08fa9d5531c5b2eb63a95e502ebded836b94adf",
+    "watched_page_fraction": 0.07443279819556853,
+    "watched_pages": 561
+  },
+  "extra_observations": {
+    "checkpoint_paused_all_seats": 0,
+    "max_parsed_debt_all_seats": 301586,
+    "logic_gui_ring_counts": {
+      "gui_paused": 0,
+      "later_logic_paused": 0,
+      "ring_tails_paused": 50,
+      "rows": 50,
+      "gui_four_cursors_match": 50,
+      "ring_errors": 0,
+      "ring_gaps": 0
+    }
+  },
+  "hashes": {
+    "/tmp/rook-r5g-frame-oc2eujtr/run-1/r5-frame.rEmhnn/report.diagnostics.json": {
+      "sha256": "403ccea5222318fbdc37a68335fb7eefabe4ff3d5e108837fa8acf287b5f40bc",
+      "bytes": 18308453
+    },
+    "/tmp/rook-r5g-frame-oc2eujtr/run-1/stderr.log": {
+      "sha256": "00547c457a30f286837bfaca77f441c29fd68a6394e8119734725a0381803bba",
+      "bytes": 20505144
+    },
+    "/tmp/rook-r5g-frame-oc2eujtr/run-1/stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/tmp/rook-r5g-frame-oc2eujtr/run-1/result.json": {
+      "sha256": "b9f50a4d08f25497ea6e50375c3a455b447a4acea82271ba0071cd41a7efbbca",
+      "bytes": 23918546
+    },
+    "/tmp/rook-r5g-frame-oc2eujtr/run-1/command.json": {
+      "sha256": "b67402a9cb404aa25c7cd92a5359e3723bf052d9fb5a305e5816c3a9ffbbd5f1",
+      "bytes": 826
+    },
+    "/tmp/rook-r5g-frame-oc2eujtr/run-1/reaped.json": {
+      "sha256": "53c84b7eb19d7496c01d8529ff929cf8ddfa6b151b96ae2ba224a0a27918762e",
+      "bytes": 10719
+    },
+    "/tmp/rook-r5g-frame-oc2eujtr/analysis/reproduce.py": {
+      "sha256": "de80e165d558cb36156bcf961b01be2846be1434ff67ad080e7189c85c9254d6",
+      "bytes": 4396
+    },
+    "/tmp/rook-r5g-frame-oc2eujtr/analysis/reproduced-core.json": {
+      "sha256": "01ef58d501b96fee2b946731628a39563458c0c93f7fdd4d54a24e50940833b9",
+      "bytes": 19353
+    },
+    "/tmp/rook-r5g-frame-oc2eujtr/analysis/reproduced-seats.csv": {
+      "sha256": "030cb758f2c20f20dc62b17d0914978053ee4281a1ff55c6ee309e0612c81862",
+      "bytes": 4646
+    }
+  },
+  "reproduce_command": "python3 /tmp/rook-r5g-frame-oc2eujtr/analysis/reproduce.py (EXIT 0); no runtime load or RPC",
+  "reproduce_program": "\"\"\"Reproduce the bounded frame partition from the retained immutable packet.\"\"\"\nfrom pathlib import Path\nimport csv\nimport hashlib\nimport json\nimport statistics\n\nart = Path(__file__).resolve().parent.parent\nrun = art / \"run-1\"\nresult = json.loads((run / \"result.json\").read_text())\npacket = Path(result[\"diagnostic_table\"])\ntable = json.loads(packet.read_text())\nstart, end = table[\"capture_at_stop\"], table[\"capture_at_timeout\"]\nowners = {}\nfor name in (\"logic\", \"supervisor\"):\n    a, b = start[name], end[name]\n    assert a[\"enabled\"] and b[\"enabled\"] and a[\"process_id\"] == b[\"process_id\"]\n    wall = b[\"sampled_ns\"] - a[\"sampled_ns\"]\n    assert wall > 0\n    old = dict(a[\"totals\"])\n    phases = {}\n    for phase, total in b[\"totals\"]:\n        delta = {key: total[key] - old[phase][key] for key in\n                 (\"calls\", \"elapsed_ns\", \"work\", \"bytes\", \"errors\", \"busy\")}\n        assert all(value >= 0 for value in delta.values())\n        delta[\"wall_fraction\"] = delta[\"elapsed_ns\"] / wall\n        phases[phase] = delta\n    owners[name] = {\"wall_ns\": wall, \"process_id\": b[\"process_id\"],\n                    \"missed_delta\": b[\"missed\"] - a[\"missed\"],\n                    \"overwritten_delta\": b[\"overwritten_spans\"] - a[\"overwritten_spans\"],\n                    \"untracked_delta\": b[\"untracked_seat_samples\"] - a[\"untracked_seat_samples\"],\n                    \"in_flight_start\": dict(a[\"in_flight\"]),\n                    \"in_flight_end\": dict(b[\"in_flight\"]), \"phases\": phases}\n\nbefore = {(r[\"seat\"], r[\"generation\"]): r for r in start[\"logic\"][\"seats\"]}\nafter = {(r[\"seat\"], r[\"generation\"]): r for r in end[\"logic\"][\"seats\"]}\nrows = []\nfor row in table[\"seats\"]:\n    key = row[\"seat\"], row[\"generation\"]\n    a, b = before[key], after[key]\n    gui = row[\"gui_at_timeout\"]\n    cursors = [gui.get(k) for k in (\"received\", \"applied\", \"applied_queued\", \"applied_written\")]\n    current = row[\"logic_current_snapshot\"][\"cursor\"][\"sequence\"]\n    ring = row[\"supervisor_ring_tail\"]\n    rows.append({\"name\": row[\"name\"], \"seat\": row[\"seat\"],\n                 \"stop_sequence\": a[\"applied_sequence\"], \"timeout_sequence\": b[\"applied_sequence\"],\n                 \"parsed_delta\": b[\"applied_sequence\"] - a[\"applied_sequence\"],\n                 \"pages_delta\": b[\"pages\"] - a[\"pages\"],\n                 \"end_observed_after_stop\": b[\"applied_observed_ns\"] > start[\"logic\"][\"sampled_ns\"],\n                 \"gui_four_cursors_match\": all(x is not None for x in cursors) and all(x == cursors[0] for x in cursors[1:]),\n                 \"later_logic_sequence\": current, \"later_ring_sequence\": ring[\"captured_sequence\"],\n                 \"later_ring_minus_logic\": ring[\"captured_sequence\"] - current,\n                 \"logic_paused\": row[\"logic_current_snapshot\"][\"has_paused\"],\n                 \"ring_paused\": ring[\"paused_in_examined_tail\"],\n                 \"ring_error\": ring[\"error\"], \"ring_gap\": ring[\"gap\"]})\n\npages = sum(row[\"pages_delta\"] for row in rows)\nprogress = [row[\"parsed_delta\"] for row in rows]\ngaps = [row[\"later_ring_minus_logic\"] for row in rows]\nreport = {\"source\": json.loads((art / \"binary.json\").read_text())[\"source\"],\n          \"diagnostic_sha256\": hashlib.sha256(packet.read_bytes()).hexdigest(),\n          \"interval\": \"stop_to_timeout_only; settled_boundary_not_observed\",\n          \"official_stop_to_settled_gate\": \"unproven\", \"owners\": owners,\n          \"watched_pages\": pages,\n          \"watched_page_fraction\": pages / owners[\"logic\"][\"phases\"][\"read_ring_rpc\"][\"calls\"],\n          \"progress\": {\"count\": len(progress), \"positive\": sum(x > 0 for x in progress),\n                       \"min\": min(progress), \"median\": statistics.median(progress), \"max\": max(progress)},\n          \"later_ring_minus_logic\": {\"min\": min(gaps), \"median\": statistics.median(gaps), \"max\": max(gaps)}}\nout = Path(__file__).parent\n(out / \"reproduced-core.json\").write_text(json.dumps(report, indent=2, sort_keys=True) + \"\\n\")\nwith (out / \"reproduced-seats.csv\").open(\"w\") as f:\n    writer = csv.DictWriter(f, fieldnames=list(rows[0]))\n    writer.writeheader()\n    writer.writerows(rows)\nprint(json.dumps({\"checkpoint_rpc_fraction\": owners[\"logic\"][\"phases\"][\"checkpoint_rpc\"][\"wall_fraction\"],\n                  \"read_ring_fraction\": owners[\"logic\"][\"phases\"][\"read_ring_rpc\"][\"wall_fraction\"],\n                  \"watched_page_fraction\": report[\"watched_page_fraction\"], \"progress\": report[\"progress\"]}))\n",
+  "source_mechanism": [
+    "logic.rs:3702-3745 \u2014 one synchronous ReadRing request per catch_up page.",
+    "logic.rs:1026/1036/5198 \u2014 one common FIFO ready deque, one event/page selected and requeued.",
+    "seat_socket.rs:616-626 \u2014 Watch/Unwatch updates only per-session GuiView state; no ingest interest registry.",
+    "supervisor.rs:917/971 \u2014 every actor turn runs the full seat.tick sweep before polling again."
+  ],
+  "proposal": {
+    "status": "approved by Oracle e9a95500; follow Architect if policy changes",
+    "mechanism": "Explicit accepted Watch/Unwatch/disconnect interest per session and seat+generation; two bounded round-robin lanes,3 watched page quanta to1 background quantum, empty-lane donation.",
+    "allocation_model": "75%/observed7.4433%=10.076x watched page allocation at unchanged global capacity; not a measured latency claim.",
+    "preserve": [
+      "one-page yields and command service",
+      "generation/Exit ordering",
+      "down-host no-spin",
+      "forced checkpoint/debt policy",
+      "single leased stream"
+    ],
+    "excluded": "No wire change or ReadRing batch in this patch."
+  },
+  "caveats": [
+    "The run failed. No first settled boundary exists; official stop-to-settled<=10% acceptance is unproven. The5.63% figure is stop-to-timeout only.",
+    "Completion-accounted inclusive spans overlap; never sum logic RPC,parse,maintenance and supervisor query/sweep as CPU or barrier cost.",
+    "Logic missed/untracked deltas0; supervisor missed31; overwritten logic80966/supervisor49703. Cumulative maxima and pending peaks are not subtracted.",
+    "All50 parser pairs advanced and all50 end observations are newer than stop; this is not a continuous trajectory. PAUSED continues every100ms, so no silent-final-tail claim.",
+    "Ring probes and logic CURRENT snapshots occur after the frozen timeout cut. Probes cover final bounded tail ranges, not all history.",
+    "MEASURE snapshot was held for the success-sidecar path and is absent from the timeout packet; measured-overlap ratio is unavailable on this failed run.",
+    "A first derived source label used binary hash; corrected to git source. A zero delta from the unpopulated supervisor captured_sequence field was discarded as unknown. Raw packet/binary/source unchanged.",
+    "One result read printed the unbounded diagnostic error field; subsequent summaries exclude it. Complete raw data remains in the hashed artifacts.",
+    "Early5s PNG is not the final settle state and is not used as settled-screen evidence."
+  ],
+  "remaining": "Implement approved R5h, deterministic quota/refcount/disconnect tests and small real-PTY visible-tail regression; strict Clippy/normal CI by slot; no new967 run without scheduled authorization."
+}
