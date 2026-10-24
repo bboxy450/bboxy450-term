@@ -3,7 +3,8 @@
 # raw OS bindings live only in per-OS crates (*-macos, *-windows, *-linux, *-ios,
 # *-android, *-web) behind an OS-agnostic facade crate. OS-agnostic crates that
 # are facades themselves (winit, wgpu) are not bindings. ALLOW lists the bindings
-# that predate the rule, by crate:dep; each leaves when its facade arrives.
+# that predate the rule, by crate:dep; each leaves when its facade arrives
+# (bbt-mux's core-foundation and security-framework leave with bboxy450-keychain-macos, decision #281).
 set -eu
 cd "$(dirname "$0")/.."
 BINDINGS="block2 core-foundation core-foundation-sys core-graphics core-text cocoa security-framework windows windows-sys zbus dbus web-sys wasm-bindgen jni"

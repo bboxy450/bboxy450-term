@@ -15,7 +15,7 @@ links:
   - { to: "[[d272-ctl-one-grammar]]", rel: decision }
   - { to: "[[work-items]]", rel: record-type }
 created: "2026-10-24T15:24:41Z"
-updated: "2026-10-24T19:13:30Z"
+updated: "2026-10-24T19:20:11Z"
 ---
 # ctl
 
@@ -42,8 +42,8 @@ flowchart LR
 | `message` | `send (<destination> \| --reply-to <id>) <text>`; `inbox [--since <cursor>] [--swarm <s>]`; `receipts <id>`; `ack <id>`; `post <channel> <text>` | `GuiAction::Messaging` (#37, #38 (f); reply routing #264) |
 | `task` | `list [--unassigned \| --seat <s> \| --status <st>]`; `get <#N\|path>`; `delegate <#N\|path> <seat>`; `reassign`; `status`; `report`; `accept <#N>`; `reject <#N> --reason <r>` | `GuiAction::Task`, one verb per W2.5d tool (#38 (i) for `--unassigned`) |
 | `record` | `fetch <#N\|slug\|path>`; `search <query> [--type <t>] [--cursor <c>]`; `write <path> --frontmatter <json> --body <file>`; `changes --since <cursor>` | the [[knowledge-base]] contract over the wire, operator authority ([[mcp-control-plane]] write table: the operator writes every type) |
-| `e2e` | `list [--group <g>]`; `run <function-id> <seat>` | the checklist view ([[e2e-acceptance]] §4 summary states); `run` is `task delegate` of the promise's e2e task |
-| `app` | `start [--headless] [--run-dir <d>] [--ctl]`; `stop`; `status`; `version`; `endpoint` | launch and shut down the app itself; **`--headless`** runs supervisor, logic and a headless GUI client (the capture renderer) with no window, so `screen`, `capture` and every other verb work on a locked display for the e2e nights; the run directory and whether `ctl` is enabled; the build |
+| `e2e` | `list [--group <g>]`; `run <function-id> <seat>`; `night [--group <g>]` (the unattended runner, [[e2e-acceptance]] §4a) | the checklist view ([[e2e-acceptance]] §4 summary states); `run` is `task delegate` of the promise's e2e task |
+| `app` | `start [--headless] [--unattended] [--run-dir <d>] [--ctl]` (`--unattended` selects the automation identity in file custody, #281, and refuses to start if the login Keychain would be needed); `stop`; `status`; `version`; `endpoint` | launch and shut down the app itself; **`--headless`** runs supervisor, logic and a headless GUI client (the capture renderer) with no window, so `screen`, `capture` and every other verb work on a locked display for the e2e nights; the run directory and whether `ctl` is enabled; the build |
 | `ui` | `open <graph\|settings\|launcher\|docs <path>>`; `key <named-key>…` (the window's own chrome keys, ⌘T, ⌘G, ⌘M, Esc); `focus <pane>`; `layout` (dump the solved layout tree) | the same `GuiAction`s the window's keyboard and menu issue; `layout` is the model the UI already holds, read |
 | `events` | `tail [--since <seq>] [--subject <glob>]` | `EventsRead` pages of the retained streams by the client's cursor, JSON lines, no attach, no ack, never a second consumer (§1a) |
 | `debug` | `logs <app\|logic\|supervisor> [--since]`; `journal <query>`; `metrics`; `snapshot <path>` (the R5 diagnostics table); `ps` (the app's own process tree); `invariants [--slow]` (runs `scripts/invariants.sh` on the checked-out tree) | reads of what the processes already write; `invariants` is a local command and touches no seat |
@@ -60,6 +60,12 @@ Two kinds of action sit behind the verbs, and the rule is the lens above: the wi
 - **Layout and focus belong to the window.** `seat close`, `seat undo-close`, `seat focus`, `seat spawn` and every `ui` verb are **relayed**: logic receives the `ctl` request under the operator principal and asks the attached window to perform it, the pattern `OperatorSpawned` already uses for spawn, because `ScheduleClose` and `UndoClose` carry the window's `Position` (tab, split path, ratios, `layout_revision`) that only the window knows, and focus is window state. In `--headless` mode the headless GUI client is the window and performs the same relay. New window actions this needs: `CloseSeat { seat }`, `UndoCloseSeat { seat }`, `FocusSeat { seat }`, taken by the window and turned into the existing `ScheduleClose`, `UndoClose` and focus with the window's own `Position`. No logic-side layout, ever.
 - **Registry and process belong to logic, and the window reconciles.** `seat rename` is a registry write (the seat's name), `seat restart` is the #11 restart-and-resume path for one seat (same seat id, generation + 1); both are logic actions the window learns from the state lane. New logic actions: `RenameSeat { seat, name }`, `RestartSeat { seat }`.
 - **`seat watch`** is two sources and no new protocol: seat state read from the durable `seat/*/state` stream by cursor through **`EventsRead { stream, after, limit }`**, a read-only window action that pages the retained log without attaching or acking (the browse rule of [[l9-messaging-tasks]] §3: a page by cursor, never a second consumer; the operator's one durable lane stays the window's), and the screen by polling `ScreenRead` with its `frame_seq`, emitting a line only when the sequence changes. `events tail` uses the same `EventsRead` with the client's `--since` cursor (Seraph's C-0 finding, 2026-10-24; rejected: attaching a second consumer, taking the lane from the window, relaying state to every `ctl` session). The window's `Watch`/`Applied` grid-delta protocol with its acks is the window's and is not what a command line speaks.
+
+## 1b. The app lifecycle wire (Oracle's addendum to #282, 2026-10-24)
+
+- **`app start`** runs the real run, Session and model path with a real GUI client and no window, rendering offscreen (the capture renderer in `gpu.rs` already does); it prints its JSON reply **only after** the backend is up **and** the GUI client reports render readiness (first frame produced offscreen), so a script that reads the line can issue `seat` verbs at once; the reply carries the run directory, the mode (`window | headless`), `unattended: bool` and the generation, never the capability.
+- **`app stop`** is an authenticated relay through the endpoint to an orderly `Session` shutdown (seats stay in the supervisor per #11, checkpoints forced per #253 rule 4); there is **no PID-kill fallback** in `ctl`; if the endpoint does not answer, `stop` exits `4` with `endpoint_unavailable` and the hint names `debug ps`.
+- **`app status`** reports liveness, mode, readiness (backend, GUI client, events lane, custody backend in use) and the generation; never the capability, never a Keychain secret ([[ctl-never-prints-secrets]]).
 
 ## 2. One reply shape
 

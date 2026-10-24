@@ -14,7 +14,7 @@ links:
   - { to: "[[d31-device-bound-operator-journal]]", rel: builds-on }
   - { to: "[[d28-structured-task-verification]]", rel: builds-on }
 created: "2026-10-24T05:17:08Z"
-updated: "2026-10-24T05:17:08Z"
+updated: "2026-10-24T19:18:29Z"
 ---
 # Decision 259: the overnight north star
 
@@ -29,3 +29,5 @@ Decided by the operator before sleeping, 2026-10-24; written by the Architect at
 **Rules.** `e2e` is a record type with the frontmatter in the spec, numbered, written only through the app so it is signed by the running seat; every promise in the checklist has one; `untested`, `fail`, `blocked` and `manual` are honest states and the view says why; seats use MCP tools and the app's own capture, never the operator's desktop; feedback goes as a DM for the day and as a comment record for the RFC loop; the Oracle accepts from the checklist view, never from a report. Rejected: hand-written results (inferred grade at best), a test harness outside the app, acceptance by summary.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
+
+**Amended by [[d282-app-tests-itself-unattended]] (operator, 2026-10-24 morning):** the night runs with no operator present: automation identity in file custody, headless app, one runner, nothing built or signed at night; the one remaining operator act is the automation device's enrollment, one root signature, once.
