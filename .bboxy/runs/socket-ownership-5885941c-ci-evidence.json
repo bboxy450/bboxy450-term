@@ -1,0 +1,129 @@
+{
+  "gate": {
+    "slot": 2,
+    "approval": "b5e40846-a3d0-4b18-95f4-c05e2bbbd256",
+    "source": "5885941c84fc8ca82ea5a332da483200ede6d710",
+    "base": "c775112d45c24e9b181911c9d40efc0a9b639bf8",
+    "branch_tip": "c92a161b6c86a03f40650929c93b1cb17a9914dd",
+    "worktree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/ci-normal",
+    "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/ci-normal/target-ci",
+    "old_source": "af5918bdfcddef64a41fbdd796a4237562d3c58b",
+    "transport_blob": "b1434a53585f0e67b0f3d0a071611c1194520252",
+    "recorded_utc": "2026-10-24T14:26:30.481138+00:00",
+    "mode": "normal",
+    "command": [
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "status": "passed; slot 2 released; target and gate worktree removed",
+    "command_id": "d8e9a710599b4602a1e962ad5a3df085",
+    "exec_session": 36009,
+    "owned_shell_pid": 60441,
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cmd-d8e9a710599b4602a1e962ad5a3df085.log",
+    "result": {
+      "id": "d8e9a710599b4602a1e962ad5a3df085",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/ci-normal/target-ci",
+        "CARGO_BUILD_JOBS=2",
+        "CARGO_TERM_COLOR=never",
+        "BBOXY_TEST_CUSTODY=memory",
+        "RUST_BACKTRACE=1",
+        "sh",
+        "scripts/ci-local.sh"
+      ],
+      "cwd": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/ci-normal",
+      "started_utc": "2026-10-24T14:27:16.633996+00:00",
+      "pid": 60441,
+      "exit": 0,
+      "elapsed_seconds": 1060.607145166956,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cmd-d8e9a710599b4602a1e962ad5a3df085.log",
+      "sha256": "3f61428b9c810d0dc887f2bec6c5e253cd43b04cbedded6ca8bdd260a425c837"
+    },
+    "cleanup": {
+      "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/ci-normal/target-ci",
+      "allocated_file_bytes_removed": 3611525120,
+      "files": 9683,
+      "active_target_pids": [],
+      "status_before_cleanup": "?? target-ci/",
+      "utc": "2026-10-24T14:51:24.804180+00:00",
+      "target_exists_after": false,
+      "status_after_target_cleanup": "",
+      "worktree_remove_exit": 0,
+      "worktree_remove_output": "",
+      "worktree_exists_after": false
+    },
+    "summary": {
+      "reported_workspace_summaries": 158,
+      "passed": 1134,
+      "failed": 0,
+      "ignored": 22,
+      "invariant_checks": 17,
+      "invariant_failures": 0,
+      "slow_skipped": 8,
+      "smoke": "idle probe PASS: idle 10.001s frames=0 callbacks=0 updates=20 CPU p50=12.767ms p99=14.356ms samples=21 warm_encode_p50=11.882ms warm_encode_p99=12.551ms"
+    },
+    "producer": {
+      "app_binary_sha256": "ce25c66db02ad1982edb9c2ffb27403a4fea84d6a95ed2874d6dfda4859821ed",
+      "cargo_lock_sha256": "91e4d9cb70822fedbb4c33eb31ec0767a033032f855fbcaba56d4412b0990701",
+      "ci_script_sha256": "8f0ea8f7ec18229bb7c2734a84339e7b2526eaf5c96768367f97313615507293",
+      "source_tree": "4946dfbf6f6e93580f3ae9df6dcf73b128311e7c",
+      "transport_blob": "b1434a53585f0e67b0f3d0a071611c1194520252"
+    }
+  },
+  "result": {
+    "id": "d8e9a710599b4602a1e962ad5a3df085",
+    "argv": [
+      "env",
+      "CARGO_TARGET_DIR=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/ci-normal/target-ci",
+      "CARGO_BUILD_JOBS=2",
+      "CARGO_TERM_COLOR=never",
+      "BBOXY_TEST_CUSTODY=memory",
+      "RUST_BACKTRACE=1",
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "cwd": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/ci-normal",
+    "started_utc": "2026-10-24T14:27:16.633996+00:00",
+    "pid": 60441,
+    "exit": 0,
+    "elapsed_seconds": 1060.607145166956,
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cmd-d8e9a710599b4602a1e962ad5a3df085.log",
+    "sha256": "3f61428b9c810d0dc887f2bec6c5e253cd43b04cbedded6ca8bdd260a425c837"
+  },
+  "producer": {
+    "app_binary_sha256": "ce25c66db02ad1982edb9c2ffb27403a4fea84d6a95ed2874d6dfda4859821ed",
+    "cargo_lock_sha256": "91e4d9cb70822fedbb4c33eb31ec0767a033032f855fbcaba56d4412b0990701",
+    "ci_script_sha256": "8f0ea8f7ec18229bb7c2734a84339e7b2526eaf5c96768367f97313615507293",
+    "source_tree": "4946dfbf6f6e93580f3ae9df6dcf73b128311e7c",
+    "transport_blob": "b1434a53585f0e67b0f3d0a071611c1194520252"
+  },
+  "summary": {
+    "reported_workspace_summaries": 158,
+    "passed": 1134,
+    "failed": 0,
+    "ignored": 22,
+    "invariant_checks": 17,
+    "invariant_failures": 0,
+    "slow_skipped": 8,
+    "smoke": "idle probe PASS: idle 10.001s frames=0 callbacks=0 updates=20 CPU p50=12.767ms p99=14.356ms samples=21 warm_encode_p50=11.882ms warm_encode_p99=12.551ms"
+  },
+  "cleanup": {
+    "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/ci-normal/target-ci",
+    "allocated_file_bytes_removed": 3611525120,
+    "files": 9683,
+    "active_target_pids": [],
+    "status_before_cleanup": "?? target-ci/",
+    "utc": "2026-10-24T14:51:24.804180+00:00",
+    "target_exists_after": false,
+    "status_after_target_cleanup": "",
+    "worktree_remove_exit": 0,
+    "worktree_remove_output": "",
+    "worktree_exists_after": false
+  },
+  "focused_source": "af5918bdfcddef64a41fbdd796a4237562d3c58b",
+  "focused_evidence_tip": "53a280b74c6b74e44ab55fb5cd730e6e3e961b2f",
+  "normal_ci_log": ".bboxy/runs/socket-ownership-5885941c-ci.log",
+  "origin_main_at_finish": "5422af0b7558b4fc7f6d8eedc4ac07d5e549c76b",
+  "private_cwd_removed": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/ci-normal"
+}
