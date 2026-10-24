@@ -4,7 +4,7 @@ type: "spec"
 number: 105
 title: "Work items — epics, specs, tasks as Markdown with frontmatter"
 created: "2026-10-21T22:23:16Z"
-updated: "2026-10-24T05:17:08Z"
+updated: "2026-10-24T05:32:38Z"
 links:
   - { to: "[[d18-executor-harness-override]]", rel: decision }
   - { to: "[[d28-structured-task-verification]]", rel: decision }
@@ -66,7 +66,7 @@ A record is one file and the file is the object: one decision, one comment, one 
 | bug | a defect with a reproduction | open, claimed, running, reported, fixed, wontfix, duplicate | `[[task\|blocks]]`, `[[spec\|violates]]`, `[[invariant\|violates]]` |
 | note | knowledge: runs, runbooks, evidence | none (always current until superseded) | anything |
 | invariant | a property that holds before and after every change, **with the command that checks it**; the thing bugs are checked against and specs may not contradict. No command, no invariant: then it is a preference and lives in a note | active, retired | `[[spec\|constrains]]`, `[[bug\|violated-by]]` |
-| e2e | one end-to-end test of one promised user-facing function ([[e2e-acceptance]] §1): `function`, `group`, `steps` naming the tool per action, `expected`, `status: pass \| fail \| blocked \| untested \| manual`, `last_run`, `result`, `run_by` (a seat), `evidence`; written only through the app so the running seat signs it | pass, fail, blocked, untested, manual | `[[spec\|tests]]`, `[[run\|evidence]]` |
+| e2e | one end-to-end test of one promised user-facing function ([[e2e-acceptance]] §1): `function`, `group`, `steps` naming the tool per action, `expected`, `status: pass \| fail \| blocked \| untested \| manual`, `last_run`, `result`, `run_by` (a seat), `evidence`; a `fail` links `[[task\|tracked-by]]` to an open task; written only through the app so the running seat signs it | pass, fail, blocked, untested, manual | `[[spec\|tests]]`, `[[run\|evidence]]`, `[[task\|tracked-by]]` |
 | decision | a numbered record of alternatives, choice, reason and date, written when the decision is made, **one file per decision** `d<N>-<slug>.md` with `number`, `status: decided \| amended \| superseded`, `decided`, `operator` (a list of verbatim words), and links `decides`, `constrains`, `evidence`, `answers`, `amends`, `supersedes` ([[d47-decision-nodes]]; [[2026-10-22-architecture-round-1]] is the index of the first 46) | proposed, decided, superseded | `[[spec\|changes]]`, `[[invariant\|creates]]` |
 | proposal | an RFC: motivation, design, alternatives, open questions; reviewed by red-team comments, closed by a decision that creates or changes a spec (operator, 2026-10-23: "proposal should also be a document type, then we can do entire RFC") | draft, review, accepted, rejected, withdrawn | `[[spec\|changes]]`, `[[decision\|decided-by]]`, `[[research\|evidence]]` |
 | comment | one review remark on one document version: `on: [[doc]]`, `on_digest` (the reviewed version's digest), `anchor` (section or line), `kind: question \| objection \| suggestion \| approval`; written by a seat and signed by its leaf like every record (operator: "comment should be a document type as well") | open, resolved, withdrawn | `[[doc\|on]]`, `[[comment\|resolves]]` |
