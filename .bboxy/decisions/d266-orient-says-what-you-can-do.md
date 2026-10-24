@@ -14,7 +14,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: evidence }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-24T08:28:43Z"
-updated: "2026-10-24T08:28:43Z"
+updated: "2026-10-24T08:45:42Z"
 ---
 # Decision 266: orient says what you can do
 
@@ -22,7 +22,7 @@ The first in-app agent feedback under [[e2e-acceptance]], 2026-10-24: a real Cla
 
 **1. "I have to make up op_id ULIDs myself, with no helper and no guidance on whether reuse means idempotency."** Ruled: the tool server **mints `op_id`** when the caller omits it and returns it in the result; a caller-supplied `op_id` is honoured for **idempotent retry**: the same `op_id` with the same arguments returns the first result again, the same `op_id` with different arguments is refused as `op_id_reused`. The catalogue states this on every `op_id` field; the skill says "omit op_id unless you are retrying". Rejected: a separate `mint_id` tool (one more call to learn about).
 
-**2. "task, markdown and execution graphs and task_list all came back empty, so I couldn't tell "nothing assigned" from "not visible to a worker"."** Ruled: **no bare empty result**. Every list and graph result carries `scope: { seat, role, class }` and, when empty, `empty_reason`, one of `nothing_assigned | not_visible_to_role | no_grant | no_swarm | nothing_yet`, with one line of text. A worker that sees nothing is told it is a worker seeing nothing, not left to guess.
+**2. "task, markdown and execution graphs and task_list all came back empty, so I couldn't tell "nothing assigned" from "not visible to a worker"."** Ruled: **no bare empty result**. Every list and graph result carries `scope: { seat: <ULID>, role: <role name>, class: <serialized class> }` and, when empty, `empty_reason`, one of `nothing_assigned | not_visible_to_role | no_grant | no_swarm | nothing_yet`, and `empty_message`, one line of text (field names fixed at Aster's ask, same day). A worker that sees nothing is told it is a worker seeing nothing, not left to guess.
 
 **3. "ch_ls operator was rejected (no read right), but message_send to operator/inbox is apparently allowed. Write-only destinations aren't listed anywhere."** Ruled, with [[d264-reply-routes-to-sender]]: `orient` carries **`destinations`**: every sink and channel the seat may address, each marked `read`, `post` or `write-only`; `operator/inbox` appears for every seat as `write-only`; `ch_ls` on a write-only destination refuses with "write-only; it is in your destinations", never a bare "no read right".
 

@@ -12,7 +12,7 @@ links:
   - { to: "[[harness-adapters]]", rel: builds-on }
   - { to: "[[e2e-acceptance]]", rel: constrains }
 created: "2026-10-24T08:01:29Z"
-updated: "2026-10-24T08:01:29Z"
+updated: "2026-10-24T08:47:23Z"
 ---
 # Decision 265: Codex seat trust
 
@@ -27,3 +27,5 @@ Ruled by the Oracle on the operator's delegation, 2026-10-24, from Sable's resea
 **Rules.** In [[w2-5-mcp-and-seat-wiring]] §3, the Codex row. The launcher shows, before the first Codex spawn after a hook change, that Codex will ask once and why. The e2e promise L3 (user config untouched) and L4 (first-turn `orient`) read against it. Rejected, as above: the bypass flag; the copied `auth.json`.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
+
+**Addendum (Oracle, same day, recorded by the Architect).** Codex's own "Update available 0.163.0 → 0.164.0" chooser blocked an in-app seat before any input. In-app Codex seats launch with `-c check_for_update_on_startup=false`, per invocation and never written to a file; the operator updates Codex outside the app. Rejected: pressing Esc on the operator's behalf, because "skip this version" persists state that is theirs to set. Optional later: the launcher shows "Codex update available" as information.
