@@ -65,6 +65,9 @@ pub struct AppStatus {
     pub generation: u64,
     pub frame_seq: u64,
     pub windows: usize,
+    /// Bounded readback of the retained close/grace UI, absent on older hosts.
+    #[serde(default)]
+    pub close: serde_json::Value,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body")]
@@ -526,6 +529,19 @@ mod tests {
                 }
             }
         }
+    }
+    #[test]
+    fn close_readback_is_optional_for_older_app_status_replies() {
+        let mut wire = serde_json::json!({
+            "running":true,"mode":"headless","unattended":false,
+            "backend_ready":true,"gui_ready":true,"events_ready":true,
+            "custody_backend":"memory","generation":1,"frame_seq":1,"windows":0
+        });
+        let legacy: AppStatus = serde_json::from_value(wire.clone()).unwrap();
+        assert!(legacy.close.is_null());
+        wire["close"] = serde_json::json!({"slots":[],"grace":[],"notices":[],"complete":true});
+        let current: AppStatus = serde_json::from_value(wire.clone()).unwrap();
+        assert_eq!(serde_json::to_value(current).unwrap(), wire);
     }
     #[test]
     fn gui_ids_keep_canonical_ulid_text_and_reject_malformed_ids() {

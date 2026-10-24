@@ -183,6 +183,18 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             }
                         }
                     }
+                    UiEvent::CloseFor { id, seat, undo } => {
+                        match crate::close_request(&scene, &model, seat, id, undo, Instant::now()) {
+                            Ok(message) => {
+                                crate::queue_pending(&mut pending, message)
+                                    .map_err(|_| "headless close admission full")?;
+                            }
+                            Err(reason) => logger.write(format!(
+                                "{} {seat} refused: {reason}",
+                                if undo { "undo close" } else { "close" }
+                            )),
+                        }
+                    }
                     UiEvent::Capture => {
                         if let Some(path) = &capture_path {
                             captures.push_back(PendingCapture {

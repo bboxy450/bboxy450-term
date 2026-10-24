@@ -237,6 +237,7 @@ mod tests {
             generation: 7,
             frame_seq: 1,
             windows: 0,
+            close: serde_json::Value::Null,
         };
         captures.app_answer(id, status.clone());
         assert_eq!(task.await.unwrap().unwrap(), status);

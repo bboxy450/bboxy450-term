@@ -1,0 +1,31 @@
+T7 headless integration checkpoint — pending runtime and final gate
+
+Base dc912364: signed U1 real offscreen GUI owner, including lifecycle/GPU
+wake accounting. T7 commits rebased as d41b90e9, c3901d4e, 38aa4db8,
+d09867a1. No U1 source was copied into a second host.
+
+main.rs::close_request — both GUI owners validate through Scene::close_intent
+or State::undo_in, then enqueue the existing UiMsg::Close/UndoClose. Registry
+metadata remains authoritative. The headless owner dispatches CloseFor through
+that same function and preserves the U1 model-publication focus rules.
+
+AppStatus.close — optional serde-default readback of close::status, requested
+on the existing admitted app lifecycle RPC. It has slots, live grace rows,
+retained notices, omission counts and an explicit complete flag. The small
+startup pipe excludes it. No store reader, timer, authority or lifecycle door.
+
+scripts/e2e/T7.sh — uses the shared e2e lib.sh protocol. Checks the original
+PTY PID/generation and shell variable, actual presented captures, both saved
+Positions, full UI slot order, authoritative 60-second grace, exact one-time
+retention notice, no expired undo, terminated PTY and retained ring access.
+
+Focused regression added to tests/headless.rs: three real zsh panes close via
+the window intent, disappear from retained UI/capture, restore the same slots,
+PID/generation and presented pane extent. Existing real three-PTY IO test and
+native key/click regressions are preserved.
+
+Quiet window acknowledged: no new builds/tests/apps while QUIET is active.
+The preceding 32-case native render finished (19.897 s). Read-only inspection
+finds all 32 diagnostic trees present and every measured rectangle within
+0.5 px. Formal strict comparison and post-integration checks remain pending.
+No completed full CI, runtime-script result or acceptance is claimed here.

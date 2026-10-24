@@ -206,7 +206,11 @@ impl State {
                             // the same close edit as the pure kit and headless host.
                             if let Some((si, ti)) = model.tab_of(*id) {
                                 let tab = &mut model.window.sidebar.swarms[si].tabs[ti];
-                                if tab.tree.leaves().len() == entry.intent.tree.leaves().len() {
+                                let mut current = tab.tree.leaves();
+                                let mut captured = entry.intent.tree.leaves();
+                                current.sort();
+                                captured.sort();
+                                if current == captured {
                                     tab.tree = entry.intent.tree.clone();
                                 }
                             }
@@ -272,6 +276,12 @@ impl State {
                     false
                 }
                 Lifecycle::ClosedRetained => {
+                    if !record.close.as_ref().is_some_and(|close| {
+                        close.operation == entry.intent.operation
+                            && close.position == entry.intent.position
+                    }) {
+                        return false;
+                    }
                     if let Some(swarm) = model
                         .window
                         .sidebar
@@ -314,7 +324,7 @@ pub fn status(model: &crate::model::Model, now: Instant) -> serde_json::Value {
     for swarm in &model.ui.window.sidebar.swarms {
         for tab in &swarm.tabs {
             for seat in &tab.seats {
-                if slots.len() < 4096 {
+                if slots.len() < 2048 {
                     slots.push(json!({"seat":seat.to_string(),"swarm":swarm.id.to_string(),"tab":tab.id.to_string()}));
                 } else {
                     omitted[0] += 1;
@@ -325,7 +335,7 @@ pub fn status(model: &crate::model::Model, now: Instant) -> serde_json::Value {
             if now >= row.until {
                 continue;
             }
-            if grace.len() < 1024 {
+            if grace.len() < 512 {
                 let undo = model.ui.seats.get(&row.seat).is_some_and(|s| {
                     matches!(s.lifecycle, ui::Lifecycle::ClosedGrace { .. })
                         && s.process_generation == row.undo.process_generation
@@ -337,7 +347,7 @@ pub fn status(model: &crate::model::Model, now: Instant) -> serde_json::Value {
         }
         for item in &swarm.stream {
             if let ui::StreamItem::Presence { text, time, .. } = item {
-                if notices.len() < 256 {
+                if notices.len() < 128 {
                     let clipped = text.chars().count() > 256;
                     truncated += usize::from(clipped);
                     notices.push(json!({"swarm":swarm.id.to_string(),"text":text.chars().take(256).collect::<String>(),"time":time,"truncated":clipped}));
@@ -585,6 +595,15 @@ mod tests {
             position: intent.position,
         });
         let grids = crate::grids::Grids::new();
+        let mut unrelated = records.clone();
+        unrelated[2].close.as_mut().unwrap().operation = Ulid(10);
+        let foreign = crate::model::build(&unrelated, &grids, &model);
+        assert!(
+            status(&foreign, now)["notices"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
         let closed = crate::model::build(&records, &grids, &model);
         let again = crate::model::build(&records, &grids, &closed);
         assert!(again.ui.tab_of(seat).is_none());

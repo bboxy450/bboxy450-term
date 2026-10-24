@@ -6,7 +6,47 @@ run_line "$seat" 't7_cookie=73189; echo T7_READY-$$'
 wait_text "$seat" '(?m)^T7_READY-[0-9]+$'
 shell=$(seat_field "$seat" state.process.pid)
 generation=$(seat_field "$seat" record.generation)
+case "$generation" in ''|*[!0-9]*) fail 'fixture generation is missing';; esac
+[ "$generation" -ge 1 ] || fail 'fixture generation is not live'
 [ -n "$shell" ] && kill -0 "$shell" 2>/dev/null || fail 'fixture PTY is not running'
+name=$(seat_field "$seat" record.name)
+# Read the retained UI used by both hosts, not another registry projection.
+wait_ui() {
+    phase=$1; tries=0
+    while :; do
+        ctl app status > "$E2E_WORK/t7-ui-$phase.json" || fail 'app status refused'
+        if python3 -I - "$E2E_WORK" "$phase" "$seat" "$name" <<'PYUI'
+import json,sys
+from pathlib import Path
+root,phase,seat,name=Path(sys.argv[1]),*sys.argv[2:]
+c=json.loads((root/f't7-ui-{phase}.json').read_text())['data']['close']
+assert c['complete'], 'the close readback is incomplete'
+slots=[s for s in c['slots'] if s['seat']==seat]
+grace=[g for g in c['grace'] if g['seat']==seat]
+if phase=='before':
+    assert len(slots)==1 and not grace
+else:
+    before=json.loads((root/'t7-ui-before.json').read_text())['data']['close']
+    owner=next(s for s in before['slots'] if s['seat']==seat)
+    if phase=='grace':
+        assert not slots and len(grace)==1
+        assert grace[0]['undo'] and 0 < grace[0]['remaining_ms'] <= 60000
+        assert grace[0]['swarm']==owner['swarm']
+    elif phase=='restored':
+        assert c['slots']==before['slots'], 'sidebar order or owner changed'
+        assert not grace
+    elif phase=='gone':
+        assert not slots and not grace
+        notices=[n for n in c['notices'] if n['text']==f'{name} closed; its history is kept']
+        assert len(notices)==1 and notices[0]['swarm']==owner['swarm']
+        assert notices[0]['time'] and not notices[0]['truncated']
+PYUI
+        then return; fi
+        tries=$((tries+1)); [ "$tries" -le 100 ] || fail "UI never reached $phase"
+        sleep 0.2
+    done
+}
+wait_ui before
 # A presented pane, not just a live backend record, is required before close.
 ctl seat capture "$seat" "$E2E_WORK/t7-before.png" > "$E2E_WORK/t7-before.json" || fail 'the running pane has no capture'
 wait_lifecycle() {
@@ -28,10 +68,12 @@ close() {
         tries=$((tries+1)); [ "$tries" -le 50 ] || fail 'closed pane is still visible in the window'
         sleep 0.2
     done
+    wait_ui grace
 }
 close first
 ctl seat undo-close "$seat" > "$E2E_WORK/t7-undo.json" || fail 'window undo refused'
 wait_lifecycle open 100
+wait_ui restored
 [ "$(seat_field "$seat" state.process.pid)" = "$shell" ] || fail 'undo spawned another PTY'
 [ "$(seat_field "$seat" record.generation)" = "$generation" ] || fail 'undo replaced the generation'
 run_line "$seat" 'echo T7_PERSIST-$t7_cookie-$$'
@@ -75,10 +117,16 @@ assert int(time.time()*1000) >= int(sys.argv[1]), 'grace ended early'
 PY
 [ "$?" -eq 0 ] || fail 'grace deadline was not held'
 [ "$(seat_field "$seat" record.generation)" = "$generation" ] || fail 'expiry invented a new generation'
+wait_ui gone
+tries=0
+while kill -0 "$shell" 2>/dev/null; do
+    tries=$((tries+1)); [ "$tries" -le 100 ] || fail 'the retained PTY is still running after grace'
+    sleep 0.1
+done
 # The record and ring remain readable; no purge is part of close.
 ctl seat screen "$seat" --scrollback 0..1 > "$E2E_WORK/t7-retained-history.json" || fail 'retained history is inaccessible'
 ctl seat undo-close "$seat" > "$E2E_WORK/t7-expired-undo.json" 2>&1 || :
 sleep 0.3
 [ "$(seat_field "$seat" record.lifecycle)" = closed_retained ] || fail 'expired undo reopened the seat'
 if ctl seat capture "$seat" "$E2E_WORK/t7-gone.png" > "$E2E_WORK/t7-gone.json" 2>&1; then fail 'retained seat still owns a pane'; fi
-note 'T7 same PID/generation, retained history, position, presented extent, and real grace/expiry held'
+note 'T7 same PID/generation, retained history, position, presented extent, sidebar order/grace/notice, and real grace/expiry held'

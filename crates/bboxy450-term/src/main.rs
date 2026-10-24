@@ -189,6 +189,30 @@ fn app_status(
         generation,
         frame_seq,
         windows,
+        close: bboxy450_term::close::status(model, Instant::now()),
+    }
+}
+
+/// Both GUI owners derive close requests from the same retained scene.
+fn close_request(
+    scene: &Scene,
+    model: &bboxy450_term::model::Model,
+    seat: SeatId,
+    id: bbt_mux::Ulid,
+    undo: bool,
+    now: Instant,
+) -> Result<live::UiMsg, String> {
+    if undo {
+        model
+            .closes
+            .undo_in(&model.ui, seat, now)
+            .map(|_| live::UiMsg::UndoClose { seat })
+            .map_err(str::to_string)
+    } else {
+        scene
+            .close_intent(model, seat, id, now)
+            .map(live::UiMsg::Close)
+            .map_err(|reason| reason.to_string())
     }
 }
 
@@ -197,7 +221,10 @@ fn now_ms() -> u64 {
 }
 
 /// The startup pipe carries only public readiness; all logs stay on stderr.
-fn write_app_ready(status: bbt_proto::gui::AppStatus) {
+fn write_app_ready(mut status: bbt_proto::gui::AppStatus) {
+    // The startup pipe is a small readiness line. Retained UI is requested
+    // separately through `app status`, under the admitted GUI frame bound.
+    status.close = serde_json::Value::Null;
     bbt_rt::handle().spawn(async move {
         use tokio::io::AsyncWriteExt;
         if let Ok(mut bytes) = serde_json::to_vec(&status) {
@@ -2412,18 +2439,12 @@ impl App {
         let Some(model) = &self.live_state else {
             return;
         };
-        if undo {
-            match model.closes.undo_in(&model.ui, seat, Instant::now()) {
-                Ok(_) => self.queue(live::UiMsg::UndoClose { seat }),
-                Err(reason) => self
-                    .logger
-                    .write(format!("undo close {seat} refused: {reason}")),
-            }
-        } else {
-            match self.scene.close_intent(model, seat, id, Instant::now()) {
-                Ok(intent) => self.queue(live::UiMsg::Close(intent)),
-                Err(reason) => self.logger.write(format!("close {seat} refused: {reason}")),
-            }
+        match close_request(&self.scene, model, seat, id, undo, Instant::now()) {
+            Ok(message) => self.queue(message),
+            Err(reason) => self.logger.write(format!(
+                "{} {seat} refused: {reason}",
+                if undo { "undo close" } else { "close" }
+            )),
         }
     }
     fn undo_latest_close(&mut self) {
