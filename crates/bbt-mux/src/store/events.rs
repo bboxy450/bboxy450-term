@@ -22,6 +22,9 @@ pub struct Draft {
     pub seat: Option<Ulid>,
     pub generation: Option<u64>,
     pub reply_to: Option<String>,
+    /// Derived from the verified account root; absent on ordinary account rows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub issued_by: Option<String>,
     pub payload: Value,
 }
 
@@ -35,6 +38,7 @@ impl Draft {
             seat: None,
             generation: None,
             reply_to: None,
+            issued_by: None,
             payload,
         }
     }
@@ -249,5 +253,99 @@ impl Events for EventLog {
             previous = hash;
         }
         Ok(sequence)
+    }
+}
+
+#[cfg(test)]
+mod attribution_tests {
+    use super::*;
+    #[derive(Serialize)]
+    struct LegacyDraft<'a> {
+        id: Ulid,
+        ts: u64,
+        subject: &'a str,
+        source: &'a str,
+        seat: Option<Ulid>,
+        generation: Option<u64>,
+        reply_to: Option<String>,
+        payload: &'a Value,
+    }
+    #[derive(Serialize)]
+    struct LegacyEnvelope<'a> {
+        seq: u64,
+        #[serde(flatten)]
+        event: LegacyDraft<'a>,
+        prev: &'a str,
+        provenance: &'a Provenance,
+    }
+    #[test]
+    fn real_account_rows_keep_the_original_serialization_and_signing_bytes() {
+        let mut event = Draft::new("account/control", "fixture", serde_json::json!({"a":1}));
+        event.id = Ulid(9);
+        event.ts = 7;
+        let legacy = LegacyDraft {
+            id: event.id,
+            ts: event.ts,
+            subject: &event.subject,
+            source: &event.source,
+            seat: event.seat,
+            generation: event.generation,
+            reply_to: None,
+            payload: &event.payload,
+        };
+        assert_eq!(
+            serde_json::to_vec(&event).unwrap(),
+            serde_json::to_vec(&legacy).unwrap()
+        );
+        let key = SigningKey::from_bytes(&[42; 32]); // public fixture, no native key
+        let payload =
+            serde_json::to_vec(&(1u64, &legacy, "prev", key.verifying_key().to_bytes())).unwrap();
+        let mut previous_signing = b"bboxy/event/v1\0".to_vec();
+        previous_signing.extend_from_slice(&(payload.len() as u64).to_le_bytes());
+        previous_signing.extend_from_slice(&payload);
+        let envelope = Envelope::signed(event.clone(), 1, "prev".into(), &key).unwrap();
+        assert_eq!(envelope.signing_bytes().unwrap(), previous_signing);
+        assert_eq!(
+            envelope.provenance.sig,
+            key.sign(&previous_signing).to_bytes()
+        );
+        let old = LegacyEnvelope {
+            seq: 1,
+            event: legacy,
+            prev: "prev",
+            provenance: &envelope.provenance,
+        };
+        assert_eq!(
+            serde_json::to_vec(&envelope).unwrap(),
+            serde_json::to_vec(&old).unwrap()
+        );
+    }
+    #[test]
+    fn test_account_rows_sign_the_host_derived_label_without_changing_payloads() {
+        let temp = tempfile::tempdir().unwrap();
+        let mut broker =
+            crate::bus::Broker::open(temp.path(), SigningKey::from_bytes(&[43; 32])).unwrap();
+        let label = "test-account:01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        broker.set_issued_by(Some(label.into()));
+        let payload = serde_json::json!(["arbitrary", "payload", 7]);
+        let row = broker
+            .publish(
+                "account",
+                Draft::new("account/control", "fixture", payload.clone()),
+            )
+            .unwrap();
+        assert_eq!(row.event.issued_by.as_deref(), Some(label));
+        assert_eq!(row.event.payload, payload);
+        row.verify().unwrap();
+        assert_eq!(serde_json::to_value(&row).unwrap()["issued_by"], label);
+        let mut forged = Draft::new("account/control", "fixture", Value::Null);
+        forged.issued_by = Some("test-account:another-run".into());
+        assert!(
+            broker
+                .publish("account", forged)
+                .unwrap_err()
+                .to_string()
+                .contains("test_account_label_mismatch")
+        );
     }
 }

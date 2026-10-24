@@ -12,6 +12,7 @@ pub enum Custody {
     DataProtection,
     LoginKeychain,
     Memory,
+    File,
 }
 impl Custody {
     pub fn label(self) -> &'static str {
@@ -19,6 +20,7 @@ impl Custody {
             Self::DataProtection => "data protection",
             Self::LoginKeychain => "dev custody",
             Self::Memory => "test custody",
+            Self::File => "private file custody",
         }
     }
 }
@@ -137,6 +139,9 @@ impl KeychainDeviceKeys {
     /// Reopen the recorded tier after restart; never migrate an existing key
     /// implicitly when app signing/entitlements change.
     pub fn resume(custody: Custody) -> Result<Self> {
+        if custody == Custody::File {
+            return Err(E::FileCustodyUnavailable);
+        }
         if custody == Custody::Memory {
             return Err(E::InvalidProof);
         }

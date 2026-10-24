@@ -17,7 +17,7 @@ use pgp::{
 
 use super::{
     PendingReason as E, Result,
-    agent::{Agent, Input},
+    agent::{Input, RootSigner},
     proof,
 };
 
@@ -95,7 +95,7 @@ impl Root {
 
     pub fn certify(
         &self,
-        agent: &Agent,
+        agent: &impl RootSigner,
         key: &SigningKey,
         device: ulid::Ulid,
         created: u32,
@@ -130,7 +130,7 @@ impl Root {
             &uid,
         ))?;
         let external = Adapter::new(self.certificate.primary_key.clone(), |digest: &[u8]| {
-            agent.sign(Input::Sha256(digest))
+            agent.sign_root(Input::Sha256(digest))
         });
         let cert = config(&external, created)?
             .sign_certification_third_party(
@@ -160,6 +160,51 @@ impl Root {
         );
         proof(certificate.to_bytes())
     }
+}
+
+/// A disposable root uses the same OpenPGP packet and self-certification rules.
+pub(crate) fn test_root(key: &SigningKey, created: u32, label: &str) -> Result<(Vec<u8>, String)> {
+    let public = proof(PublicKey::from_inner(proof(PubKeyInner::new(
+        KeyVersion::V4,
+        PublicKeyAlgorithm::EdDSALegacy,
+        Timestamp::from_secs(created),
+        None,
+        PublicParams::EdDSALegacy(EddsaLegacyPublicParams::Ed25519 {
+            key: proof(key.verifying_key().as_bytes().as_slice().try_into())?,
+        }),
+    ))?))?;
+    let uid = proof(UserId::from_str(PacketHeaderVersion::New, label))?;
+    let signer = Adapter::new(public.clone(), |digest: &[u8]| {
+        Ok(key.sign(digest).to_bytes())
+    });
+    let mut config = config(&signer, created)?;
+    config
+        .hashed_subpackets
+        .push(proof(Subpacket::regular(SubpacketData::KeyFlags(proof(
+            KeyFlags::try_from_reader([3u8].as_slice()),
+        )?)))?);
+    let signature = proof(config.sign_certification_third_party(
+        &signer,
+        &Password::empty(),
+        &public,
+        Tag::UserId,
+        &uid,
+    ))?;
+    proof(signature.verify_certification(&public, Tag::UserId, &uid))?;
+    let certificate = SignedPublicKey::new(
+        public,
+        SignedKeyDetails::new(
+            vec![],
+            vec![],
+            vec![SignedUser::new(uid, vec![signature])],
+            vec![],
+        ),
+        vec![],
+    );
+    let fingerprint = certificate.fingerprint().to_string().to_uppercase();
+    let bytes = proof(certificate.to_bytes())?;
+    Root::parse(&bytes, &fingerprint, u64::from(created))?;
+    Ok((bytes, fingerprint))
 }
 
 pub(crate) fn parse(bytes: &[u8]) -> Result<SignedPublicKey> {

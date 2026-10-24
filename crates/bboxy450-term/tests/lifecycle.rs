@@ -44,6 +44,7 @@ async fn start(root: &Path) -> Session {
         repository: root.join("repo"),
         shell_config: Some(root.join("zsh")),
         ctl: false,
+        test_account: None,
     })
     .await
     .unwrap()

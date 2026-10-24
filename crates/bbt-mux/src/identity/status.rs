@@ -75,6 +75,16 @@ pub struct IdentityRuntime {
     pub(super) bus_key: Option<ed25519_dalek::SigningKey>,
 }
 impl IdentityRuntime {
+    pub(crate) fn issued_by(&self) -> Option<&str> {
+        self.chain.as_ref().and_then(|chain| chain.test_label())
+    }
+    /// Test-account attribution is an account fact, never a ctl --as value.
+    pub(crate) fn bind_origin(&self, mut origin: crate::mcp::Origin) -> crate::mcp::Origin {
+        if let Some(label) = self.issued_by() {
+            origin.issued_by = Some(label.into());
+        }
+        origin
+    }
     pub fn keys(&self) -> Arc<dyn SeatKeys> {
         self.keys.clone()
     }

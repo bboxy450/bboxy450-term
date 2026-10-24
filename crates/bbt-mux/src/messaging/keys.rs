@@ -35,6 +35,10 @@ pub(crate) fn local_operator_grant(bytes: &[u8]) -> Result<(String, u64)> {
 }
 
 pub trait SeatKeys: Send + Sync {
+    /// Receiver-owned context authenticated by its root certificate and journal.
+    fn test_account_label(&self) -> Option<&str> {
+        None
+    }
     fn issuer(&self) -> Issuer;
     /// A pending custody provider has no issuer to pin. Its public hint from
     /// issuer() is never authority for signing or activation.
@@ -46,6 +50,10 @@ pub trait SeatKeys: Send + Sync {
     }
     fn leaf(&self, seat: Ulid, generation: u64) -> Result<SigningKey>;
     fn verify(&self, envelope: &Envelope) -> Result<()>;
+    /// Sign only after finalize has bound the current account's public context.
+    fn sign_envelope(&self, envelope: &mut Envelope, key: &SigningKey) -> Result<()> {
+        envelope.sign(key)
+    }
     /// The IO owner supplies the current registry record and existing account
     /// transaction. Local-dev keeps its exact v1 bytes; certified providers can
     /// bind the device and journal a signed SeatGrant before envelope signing.

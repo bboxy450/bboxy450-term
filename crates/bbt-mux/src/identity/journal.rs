@@ -8,7 +8,7 @@ use ulid::Ulid;
 
 use super::{
     Custody, DeviceKeyStore, PendingReason as E, Result,
-    agent::{Agent, Input},
+    agent::{Agent, Input, RootSigner},
     certificate::{self, Root},
     hex, proof,
 };
@@ -123,9 +123,9 @@ impl DeviceIdentity {
     }
 }
 impl<T: Serialize> Signed<T> {
-    fn issue(kind: &str, payload: T, agent: &Agent) -> Result<Self> {
+    fn issue(kind: &str, payload: T, agent: &impl RootSigner) -> Result<Self> {
         let bytes = signed_bytes(kind, &payload)?;
-        let sig = agent.sign(Input::Raw(&bytes))?;
+        let sig = agent.sign_root(Input::Raw(&bytes))?;
         Ok(Self {
             payload,
             digest: digest(&bytes),
@@ -255,216 +255,236 @@ impl Bootstrap {
         now: u64,
     ) -> Result<DeviceIdentity> {
         let root = Root::parse(&self.public_certificate, &self.fingerprint, now)?;
-        let device = super::local::first_device(account, keys)?;
-        let created: u32 = proof(now.try_into())?;
-        let mut db = account.connection().map_err(|_| E::StorageUnavailable)?;
-        // Persist only a public retry identity first. A cancelled root operation
-        // retains the same Keychain item and never installs partial authority.
-        let stage = db
-            .transaction_with_behavior(TransactionBehavior::Immediate)
-            .map_err(|_| E::StorageUnavailable)?;
-        let head: Option<Vec<u8>> = stage
-            .query_row("SELECT value FROM kv WHERE key='identity/head'", [], |r| {
-                r.get(0)
-            })
-            .optional()
-            .map_err(|_| E::StorageUnavailable)?;
-        if let Some(head) = head {
-            let head: Signed<AccountHead> = proof(serde_json::from_slice(&head))?;
-            let id = head
-                .payload
-                .active_devices
-                .first()
-                .ok_or(E::JournalConflict)?
-                .device_id;
-            let identity: Vec<u8> = stage
-                .query_row(
-                    "SELECT value FROM kv WHERE key=?1",
-                    [format!("identity/device/{id}")],
-                    |r| r.get(0),
-                )
-                .map_err(|_| E::StorageUnavailable)?;
-            let identity: DeviceIdentity = proof(serde_json::from_slice(&identity))?;
-            identity.verify(&self.fingerprint, &head, now)?;
-            let key = keys.load(id)?.ok_or(E::KeychainUnavailable(-25300))?;
-            if hex(&key.verifying_key().to_bytes()) != identity.grant.payload.device_pubkey {
-                return Err(E::InvalidProof);
-            }
-            if super::transition::get(&stage)
-                .map_err(|_| E::JournalConflict)?
-                .is_none()
-            {
-                super::transition::bootstrap(
-                    &stage,
-                    head.payload.root_pubkey.clone(),
-                    self.fingerprint.clone(),
-                    head.digest.clone(),
-                    now,
-                )
-                .map_err(|_| E::JournalConflict)?;
-                stage
-                    .execute(
-                        "UPDATE kv SET value=?1 WHERE key='identity/head'",
-                        [proof(serde_json::to_vec(&head))?],
-                    )
-                    .map_err(|_| E::StorageUnavailable)?;
-            }
-            stage
-                .execute("DELETE FROM kv WHERE key='identity/attempt'", [])
-                .map_err(|_| E::StorageUnavailable)?;
-            stage.commit().map_err(|_| E::StorageUnavailable)?;
-            return Ok(identity);
-        }
-        let pending: Option<Vec<u8>> = stage
-            .query_row(
-                "SELECT value FROM kv WHERE key='identity/pending'",
-                [],
-                |r| r.get(0),
-            )
-            .optional()
-            .map_err(|_| E::StorageUnavailable)?;
-        if pending.is_none() {
-            let pending = PendingDevice {
-                id: device,
-                created,
-                root: root.fingerprint.clone(),
-            };
-            stage
-                .execute(
-                    "INSERT INTO kv VALUES('identity/pending',?1)",
-                    [proof(serde_json::to_vec(&pending))?],
-                )
-                .map_err(|_| E::StorageUnavailable)?;
-        }
-        stage.commit().map_err(|_| E::StorageUnavailable)?;
-        // One authority writer, including Keychain creation and the three agent
-        // operations. A failed transaction rolls back all active authority.
-        let tx = db
-            .transaction_with_behavior(TransactionBehavior::Immediate)
-            .map_err(|_| E::StorageUnavailable)?;
-        let active: bool = tx
-            .query_row(
-                "SELECT EXISTS(SELECT 1 FROM kv WHERE key='identity/head')",
-                [],
-                |r| r.get(0),
-            )
-            .map_err(|_| E::StorageUnavailable)?;
-        if active {
-            return Err(E::JournalConflict);
-        }
-        let pending: Vec<u8> = tx
-            .query_row(
-                "SELECT value FROM kv WHERE key='identity/pending'",
-                [],
-                |r| r.get(0),
-            )
-            .map_err(|_| E::StorageUnavailable)?;
-        let pending: PendingDevice = proof(serde_json::from_slice(&pending))?;
-        if pending.root != root.fingerprint || pending.created > created {
-            return Err(E::FingerprintMismatch);
-        }
-        let key = match keys.load(pending.id)? {
-            Some(key) => key,
-            None => {
-                let mut seed = [0; 32];
-                getrandom::fill(&mut seed).map_err(|_| E::InvalidProof)?;
-                let key = SigningKey::from_bytes(&seed);
-                seed.fill(0);
-                keys.create(pending.id, &key)?;
-                let saved = keys
-                    .load(pending.id)?
-                    .ok_or(E::KeychainUnavailable(-25300))?;
-                if saved.verifying_key() != key.verifying_key() {
-                    return Err(E::InvalidProof);
-                }
-                key
-            }
-        };
-        let agent = Agent::new(
+        let signer = Agent::new(
             self.agent_socket.clone(),
             self.keygrip.clone(),
             root.public,
             self.timeout,
         )?;
-        let certificate = root.certify(&agent, &key, pending.id, pending.created)?;
-        let root_pubkey = hex(&root.public.to_bytes());
-        let device_pubkey = hex(&key.verifying_key().to_bytes());
-        let grant = Signed::issue(
-            "DeviceGrant",
-            DeviceGrant {
-                version: 1,
-                root_pubkey: root_pubkey.clone(),
-                account_epoch: "1".into(),
-                device_id: pending.id,
-                device_pubkey: device_pubkey.clone(),
-                device_epoch: "1".into(),
-                serial: "1".into(),
-                scopes: ["device_transport", "provenance_publish", "seat_issuance"]
-                    .map(str::to_string)
-                    .to_vec(),
-                role_ceiling: ["oracle", "worker"].map(str::to_string).to_vec(),
-                not_before: now,
-                expires_at: root
-                    .valid_until
-                    .unwrap_or(u64::MAX)
-                    .min(now + 30 * 24 * 3600),
-            },
-            &agent,
-        )?;
-        let head = Signed::issue(
-            "AccountHead",
-            AccountHead {
-                version: 1,
-                root_pubkey,
-                account_epoch: "1".into(),
-                previous_head_id: None,
-                active_devices: vec![ActiveDevice {
-                    device_id: pending.id,
-                    device_pubkey,
-                    device_epoch: "1".into(),
-                }],
-                revoked_devices: vec![],
-                current_binding_ids: vec![],
-                revoked_binding_ids: vec![],
-                issued_at: now,
-            },
-            &agent,
-        )?;
-        let identity = DeviceIdentity {
-            custody: keys.custody(),
-            root_fingerprint: root.fingerprint,
-            root_certificate: B64.encode(&self.public_certificate),
-            device_certificate: B64.encode(certificate),
-            grant,
-        };
-        identity.verify(&self.fingerprint, &head, now)?;
-        super::transition::bootstrap(
-            &tx,
-            head.payload.root_pubkey.clone(),
-            self.fingerprint.clone(),
-            head.digest.clone(),
+        install_certified(
+            account,
+            keys,
             now,
+            &self.fingerprint,
+            &self.public_certificate,
+            &signer,
         )
-        .map_err(|_| E::JournalConflict)?;
-        for (key, value) in [
-            (
-                "identity/head".to_string(),
-                proof(serde_json::to_vec(&head))?,
-            ),
-            (
-                format!("identity/device/{}", pending.id),
-                proof(serde_json::to_vec(&identity))?,
-            ),
-            ("identity/roster".to_string(), b"[]".to_vec()),
-        ] {
-            tx.execute("INSERT INTO kv VALUES(?1,?2)", params![key, value])
+    }
+}
+
+/// The one device/head installation path for native and disposable file roots.
+pub(crate) fn install_certified(
+    account: &SqliteStore,
+    keys: &dyn DeviceKeyStore,
+    now: u64,
+    fingerprint: &str,
+    public_certificate: &[u8],
+    signer: &impl RootSigner,
+) -> Result<DeviceIdentity> {
+    let root = Root::parse(public_certificate, fingerprint, now)?;
+    let device = super::local::first_device(account, keys)?;
+    let created: u32 = proof(now.try_into())?;
+    let mut db = account.connection().map_err(|_| E::StorageUnavailable)?;
+    // Persist only a public retry identity first. A cancelled root operation
+    // retains the same Keychain item and never installs partial authority.
+    let stage = db
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|_| E::StorageUnavailable)?;
+    let head: Option<Vec<u8>> = stage
+        .query_row("SELECT value FROM kv WHERE key='identity/head'", [], |r| {
+            r.get(0)
+        })
+        .optional()
+        .map_err(|_| E::StorageUnavailable)?;
+    if let Some(head) = head {
+        let head: Signed<AccountHead> = proof(serde_json::from_slice(&head))?;
+        let id = head
+            .payload
+            .active_devices
+            .first()
+            .ok_or(E::JournalConflict)?
+            .device_id;
+        let identity: Vec<u8> = stage
+            .query_row(
+                "SELECT value FROM kv WHERE key=?1",
+                [format!("identity/device/{id}")],
+                |r| r.get(0),
+            )
+            .map_err(|_| E::StorageUnavailable)?;
+        let identity: DeviceIdentity = proof(serde_json::from_slice(&identity))?;
+        identity.verify(fingerprint, &head, now)?;
+        let key = keys.load(id)?.ok_or(E::KeychainUnavailable(-25300))?;
+        if hex(&key.verifying_key().to_bytes()) != identity.grant.payload.device_pubkey {
+            return Err(E::InvalidProof);
+        }
+        if super::transition::get(&stage)
+            .map_err(|_| E::JournalConflict)?
+            .is_none()
+        {
+            super::transition::bootstrap(
+                &stage,
+                head.payload.root_pubkey.clone(),
+                fingerprint.to_owned(),
+                head.digest.clone(),
+                now,
+            )
+            .map_err(|_| E::JournalConflict)?;
+            stage
+                .execute(
+                    "UPDATE kv SET value=?1 WHERE key='identity/head'",
+                    [proof(serde_json::to_vec(&head))?],
+                )
                 .map_err(|_| E::StorageUnavailable)?;
         }
-        tx.execute("DELETE FROM kv WHERE key='identity/pending'", [])
+        stage
+            .execute("DELETE FROM kv WHERE key='identity/attempt'", [])
             .map_err(|_| E::StorageUnavailable)?;
-        tx.execute("DELETE FROM kv WHERE key='identity/attempt'", [])
-            .map_err(|_| E::StorageUnavailable)?;
-        tx.commit().map_err(|_| E::StorageUnavailable)?;
-        Ok(identity)
+        stage.commit().map_err(|_| E::StorageUnavailable)?;
+        return Ok(identity);
     }
+    let pending: Option<Vec<u8>> = stage
+        .query_row(
+            "SELECT value FROM kv WHERE key='identity/pending'",
+            [],
+            |r| r.get(0),
+        )
+        .optional()
+        .map_err(|_| E::StorageUnavailable)?;
+    if pending.is_none() {
+        let pending = PendingDevice {
+            id: device,
+            created,
+            root: root.fingerprint.clone(),
+        };
+        stage
+            .execute(
+                "INSERT INTO kv VALUES('identity/pending',?1)",
+                [proof(serde_json::to_vec(&pending))?],
+            )
+            .map_err(|_| E::StorageUnavailable)?;
+    }
+    stage.commit().map_err(|_| E::StorageUnavailable)?;
+    // One authority writer, including Keychain creation and the three agent
+    // operations. A failed transaction rolls back all active authority.
+    let tx = db
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|_| E::StorageUnavailable)?;
+    let active: bool = tx
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM kv WHERE key='identity/head')",
+            [],
+            |r| r.get(0),
+        )
+        .map_err(|_| E::StorageUnavailable)?;
+    if active {
+        return Err(E::JournalConflict);
+    }
+    let pending: Vec<u8> = tx
+        .query_row(
+            "SELECT value FROM kv WHERE key='identity/pending'",
+            [],
+            |r| r.get(0),
+        )
+        .map_err(|_| E::StorageUnavailable)?;
+    let pending: PendingDevice = proof(serde_json::from_slice(&pending))?;
+    if pending.root != root.fingerprint || pending.created > created {
+        return Err(E::FingerprintMismatch);
+    }
+    let key = match keys.load(pending.id)? {
+        Some(key) => key,
+        None => {
+            let mut seed = [0; 32];
+            getrandom::fill(&mut seed).map_err(|_| E::InvalidProof)?;
+            let key = SigningKey::from_bytes(&seed);
+            seed.fill(0);
+            keys.create(pending.id, &key)?;
+            let saved = keys
+                .load(pending.id)?
+                .ok_or(E::KeychainUnavailable(-25300))?;
+            if saved.verifying_key() != key.verifying_key() {
+                return Err(E::InvalidProof);
+            }
+            key
+        }
+    };
+    let certificate = root.certify(signer, &key, pending.id, pending.created)?;
+    let root_pubkey = hex(&root.public.to_bytes());
+    let device_pubkey = hex(&key.verifying_key().to_bytes());
+    let grant = Signed::issue(
+        "DeviceGrant",
+        DeviceGrant {
+            version: 1,
+            root_pubkey: root_pubkey.clone(),
+            account_epoch: "1".into(),
+            device_id: pending.id,
+            device_pubkey: device_pubkey.clone(),
+            device_epoch: "1".into(),
+            serial: "1".into(),
+            scopes: ["device_transport", "provenance_publish", "seat_issuance"]
+                .map(str::to_string)
+                .to_vec(),
+            role_ceiling: ["oracle", "worker"].map(str::to_string).to_vec(),
+            not_before: now,
+            expires_at: root
+                .valid_until
+                .unwrap_or(u64::MAX)
+                .min(now + 30 * 24 * 3600),
+        },
+        signer,
+    )?;
+    let head = Signed::issue(
+        "AccountHead",
+        AccountHead {
+            version: 1,
+            root_pubkey,
+            account_epoch: "1".into(),
+            previous_head_id: None,
+            active_devices: vec![ActiveDevice {
+                device_id: pending.id,
+                device_pubkey,
+                device_epoch: "1".into(),
+            }],
+            revoked_devices: vec![],
+            current_binding_ids: vec![],
+            revoked_binding_ids: vec![],
+            issued_at: now,
+        },
+        signer,
+    )?;
+    let identity = DeviceIdentity {
+        custody: keys.custody(),
+        root_fingerprint: root.fingerprint,
+        root_certificate: B64.encode(public_certificate),
+        device_certificate: B64.encode(certificate),
+        grant,
+    };
+    identity.verify(fingerprint, &head, now)?;
+    super::transition::bootstrap(
+        &tx,
+        head.payload.root_pubkey.clone(),
+        fingerprint.to_owned(),
+        head.digest.clone(),
+        now,
+    )
+    .map_err(|_| E::JournalConflict)?;
+    for (key, value) in [
+        (
+            "identity/head".to_string(),
+            proof(serde_json::to_vec(&head))?,
+        ),
+        (
+            format!("identity/device/{}", pending.id),
+            proof(serde_json::to_vec(&identity))?,
+        ),
+        ("identity/roster".to_string(), b"[]".to_vec()),
+    ] {
+        tx.execute("INSERT INTO kv VALUES(?1,?2)", params![key, value])
+            .map_err(|_| E::StorageUnavailable)?;
+    }
+    tx.execute("DELETE FROM kv WHERE key='identity/pending'", [])
+        .map_err(|_| E::StorageUnavailable)?;
+    tx.execute("DELETE FROM kv WHERE key='identity/attempt'", [])
+        .map_err(|_| E::StorageUnavailable)?;
+    tx.commit().map_err(|_| E::StorageUnavailable)?;
+    Ok(identity)
 }

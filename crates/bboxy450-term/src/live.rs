@@ -2280,6 +2280,7 @@ mod tests {
             repository: repository.clone(),
             shell_config: None,
             ctl: true,
+            test_account: None,
         })
         .await
         .unwrap();
@@ -2802,6 +2803,7 @@ mod tests {
             repository: repository.clone(),
             shell_config: Some(shell_config),
             ctl: false,
+            test_account: None,
         })
         .await
         .unwrap();
@@ -3004,6 +3006,7 @@ mod tests {
             repository: repository.clone(),
             shell_config: Some(shell_config),
             ctl: false,
+            test_account: None,
         })
         .await
         .unwrap();

@@ -84,7 +84,8 @@ impl IdentityRuntime {
         }
         .open()
     }
-    /// Memory/isolated-Keychain test seam. Production uses open_custodied.
+    /// Explicit custody, including a persistent per-run file store. A selected
+    /// store's failure is held; it never selects native or replacement keys.
     pub fn open_custodied_with_store(
         root: &Path,
         store: Arc<dyn DeviceKeyStore + Send + Sync>,

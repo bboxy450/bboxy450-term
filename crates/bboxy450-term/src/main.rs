@@ -4835,6 +4835,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         return Ok(());
     }
+    bboxy450_term::cockpit::Config::test_account_from_args(&hook_args)
+        .map_err(|error| error as Box<dyn std::error::Error>)?;
     let verify = Verify::from_args(&hook_args)?;
     let stall_config = stall::Config::parse(&hook_args)?;
     if let Some(config) = stall_config.as_ref().filter(|config| config.headless) {

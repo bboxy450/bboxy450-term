@@ -42,7 +42,11 @@ impl Work {
 /// role.
 fn sender(envelope: &Envelope) -> String {
     if envelope.seat != Ulid::nil() {
-        return format!("{} <{}>", envelope.seat, envelope.role.name);
+        let mut from = format!("{} <{}>", envelope.seat, envelope.role.name);
+        if let Some(label) = &envelope.issued_by {
+            from.push_str(&format!(", issued by {label}"));
+        }
+        return from;
     }
     let mut from = "the operator principal".to_string();
     if let Some(door) = envelope.door {
@@ -65,8 +69,13 @@ pub(crate) struct InboxSummary {
 pub struct Ledger {
     pub(crate) store: SqliteStore,
     swarm: Ulid,
+    test_label: Option<String>,
 }
 impl Ledger {
+    pub(crate) fn with_test_context(mut self, label: Option<String>) -> Self {
+        self.test_label = label;
+        self
+    }
     pub fn open(store: SqliteStore, swarm: Ulid) -> Result<Self> {
         tree::schema(&store)?;
         store.connection()?.execute_batch("CREATE TABLE IF NOT EXISTS msg_messages(seq INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,sender TEXT NOT NULL,request BLOB NOT NULL,envelope BLOB NOT NULL,held_out TEXT);
@@ -75,7 +84,11 @@ impl Ledger {
             CREATE TABLE IF NOT EXISTS msg_receipts(seq INTEGER PRIMARY KEY AUTOINCREMENT,message INTEGER NOT NULL,recipient TEXT NOT NULL,agent TEXT NOT NULL,data BLOB NOT NULL);
             CREATE TABLE IF NOT EXISTS msg_attempts(id TEXT PRIMARY KEY,recipient TEXT NOT NULL,data BLOB NOT NULL,outcome BLOB);
             CREATE TABLE IF NOT EXISTS msg_scheduler(recipient TEXT PRIMARY KEY,credit INTEGER NOT NULL,at_ms INTEGER NOT NULL,streak INTEGER NOT NULL);")?;
-        let ledger = Self { store, swarm };
+        let ledger = Self {
+            store,
+            swarm,
+            test_label: None,
+        };
         ledger.recover()?;
         Ok(ledger)
     }
@@ -174,7 +187,7 @@ impl Ledger {
         if let Some(old) = self.existing(request, sender)? {
             return Ok(old);
         }
-        envelope.verify_signature()?;
+        envelope.verify_signature_in_account(self.test_label.as_deref())?;
         let mut db = self.store.connection()?;
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         tx.execute(
