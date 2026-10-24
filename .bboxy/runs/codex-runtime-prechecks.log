@@ -1,0 +1,84 @@
+#279 development verification — Sable Embertail <EXECUTOR>
+Status: implementation in progress; autonomous real Codex wake and final clean CI are not yet proven.
+All command logs below are private local artifacts. No raw native transcript, key or capability is copied into Git.
+
+Completed commands (exit codes are actual; a later pass does not erase an earlier failure):
+3b5f84f27e414ee2a62c3525e2e5f0ab — EXIT 0, 0.847s — cargo fmt -p bbt-supervisor -p bbt-mux -p bboxy450-harness-wake-up
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-3b5f84f27e414ee2a62c3525e2e5f0ab.log sha256=ce600e4596a86ca20a6d260975e5b31d80f4b01512e3b1422fef13f20bb90c09
+f51082621d0b4ed284622544b639ae1a — EXIT 0, 130.778s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo check -p bbt-supervisor -p bbt-mux -p bboxy450-harness-wake-up --locked -j 4
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-f51082621d0b4ed284622544b639ae1a.log sha256=109c38820b2c1cd205dc223ae9be10f18f056ca9a2666dc8047f364e425dcd6d
+84a98bc2b9484657b5001533a1a3cb26 — EXIT 101, 18.693s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo check -p bbt-supervisor -p bbt-mux -p bboxy450-harness-wake-up --all-targets --locked -j 4
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-84a98bc2b9484657b5001533a1a3cb26.log sha256=1cd27d826c1dc6fc1ed37819c1b2c2ed87e54d6bd1bd1dbc41cc3a13580ae778
+5a0ce6861d0f4abcbbe9d014e93dc29f — EXIT 0, 0.128s — python3 /private/tmp/sable-codex-runtime-p08q2lv5/probe_remote_startup.py
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-5a0ce6861d0f4abcbbe9d014e93dc29f.log sha256=58630b0c999812fd9a0fb60289dd7590f92ce6312b66d2281a03e68e7f1d1338
+f19d70e71b4145f7917fb3e73bbece12 — EXIT 0, 0.590s — python3 /private/tmp/sable-codex-runtime-p08q2lv5/probe_remote_startup.py
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-f19d70e71b4145f7917fb3e73bbece12.log sha256=e71634819a494080535c99a4c19df000f883f1774a94bd5c88931405c7794337
+4d530276abe6459e94423a89fc646bb0 — EXIT 101, 105.460s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-supervisor -p bboxy450-harness-wake-up --locked -j 4
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-4d530276abe6459e94423a89fc646bb0.log sha256=42e0db3e64e74df79eefb200026c86d27394d5fbacc777ea9782e9f44ccc9aab
+5f3734cbec884c569894c7020252d02c — EXIT 101, 15.983s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-supervisor -p bboxy450-harness-wake-up --locked -j 4
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-5f3734cbec884c569894c7020252d02c.log sha256=a4927693060d800819fb6a07b5310c830b99acba0b6e37e2f65a664c71d15530
+39ef4f6db85c423a88f870f2dba51d54 — EXIT 0, 30.308s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-supervisor -p bboxy450-harness-wake-up --locked -j 4 --no-fail-fast
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-39ef4f6db85c423a88f870f2dba51d54.log sha256=71422ebdd71dffa3f196feb1febc0074d196a4819f67116020bf346248e82089
+991c6258c37d46f38f87407931041f17 — EXIT 101, 479.558s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bbt-supervisor -p bboxy450-harness-wake-up -p bbt-mux --locked -j4 --no-fail-fast
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-991c6258c37d46f38f87407931041f17.log sha256=48794bc2034e47ebfcea69898f1b54cd54b4e514fc0ef3437c9986262599d0bb
+b4525f67b08a4795a5782ca04b9505e0 — EXIT 101, 129.781s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo build -p bboxy450-term --locked -j4
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-b4525f67b08a4795a5782ca04b9505e0.log sha256=3288237104c16dfdc58e240159f7125450ef98a020de231c6ab2dbd5dc2e2d25
+3b30d82667c543728d4e3543519114ba — EXIT 0, 153.398s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-harness-wake-up --test ready_exec -p bbt-supervisor --test companions -p bbt-mux --test mcp mcp_seat_native_interrupt_is_bounded_audited_and_never_replayed --locked -j4 -- --nocapture
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-3b30d82667c543728d4e3543519114ba.log sha256=eda5f39fc602dcbb5c420617e614d10c59fdfca0b57fe1887828d50b3f97ccea
+56ed8f6cd04e4090b9bc1485c8d169a6 — EXIT 0, 15.762s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo build -p bboxy450-term --locked -j4
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-56ed8f6cd04e4090b9bc1485c8d169a6.log sha256=82a213c9c58a6932ab5cf6299c297b58b91a1de7dcca16caa9171df6cd3fa11f
+c8c12bdc6c2941928630fc344155fb64 — EXIT 0, 0.033s — target/codex-runtime/debug/deps/companions-746bf6279e0d999c --nocapture
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-c8c12bdc6c2941928630fc344155fb64.log sha256=560fb47d3092c28058675b4cbbb867cbd36fb0bf1722f72b48c5d97b3d3ff42f
+9364ba4a21b443e3b8c1fae1dcd6e355 — EXIT 0, 5.017s — target/codex-runtime/debug/deps/ready_exec-09724ac1444833a7 --nocapture
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-9364ba4a21b443e3b8c1fae1dcd6e355.log sha256=921b6e096b9a6c61c333ff3af5f7b4a24c545c60a9c6827a15a9657a96fcbc90
+7669f63c22d64896a725f6c254be70f4 — EXIT 101, 95.961s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --locked -j4 -- -D warnings
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-7669f63c22d64896a725f6c254be70f4.log sha256=6527e14221d30472311a6bfcf2260dbc033aa0ad59829ce0dde029425b66b5e3
+9f70ecfc046743209c09f2e8422717b5 — EXIT 101, 6.185s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --locked -j4 -- -D warnings
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-9f70ecfc046743209c09f2e8422717b5.log sha256=42264cd2060f10128577727f40cc41556b1d9a839c68910aeb83177058dda3a8
+f7295276da7445788cfc2f48571a1194 — EXIT 101, 7.573s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --locked -j4 -- -D warnings
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-f7295276da7445788cfc2f48571a1194.log sha256=97f02464ce0ada85d19ff9fd10706b16881170f5004b07c8548f1212409c14a9
+e546d512c45346f1bcb0c636b6877918 — EXIT 101, 48.918s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --locked -j4 -- -D warnings
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-e546d512c45346f1bcb0c636b6877918.log sha256=3066c4e2b2fa21b6a642fd7a298d86d9b5a2f80add299233a7263b37362dbce6
+1f695a2d136a437cb9514c90994a4573 — EXIT 101, 32.360s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --locked -j4 -- -D warnings
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-1f695a2d136a437cb9514c90994a4573.log sha256=763b29cad782b4ec2d2c55f90b8477752996f772507514d40ccbfed429ab34f5
+a90cd55294734f6a906c1b353f4d349e — EXIT 0, 14.732s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --locked -j4 -- -D warnings
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-a90cd55294734f6a906c1b353f4d349e.log sha256=dc74f48783a42adca175c7989250185095064ac7a4ee7058aabcfe7b2076ad18
+c8d4c05533a942e5bb821600d4928f7d — EXIT 0, 16.295s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-harness-wake-up --test ready_exec -p bbt-supervisor --test companions --locked -j4 -- --nocapture
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-c8d4c05533a942e5bb821600d4928f7d.log sha256=9b796a422facb8f54e15e6e7c0da5a72391a7eda3d2aef1b71af0aac9e29c5da
+b57c91caff5f4641ae1f7ebda90e0274 — EXIT 0, 90.763s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo build -p bboxy450-term --locked -j4
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-b57c91caff5f4641ae1f7ebda90e0274.log sha256=3b6df074e3146a41536d19b8d04355868d00a8575f52b2b6b00b108b0692b09f
+4bcc0b96bad64db08a9ed7ccd3e5e92a — EXIT 1, 39.986s — python3 /private/tmp/sable-codex-runtime-p08q2lv5/probe_runtime.py
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-4bcc0b96bad64db08a9ed7ccd3e5e92a.log sha256=35fafaaaaf805c3c4b90c85e49f029b880cad900be85ad76b1567b6a38ffc644
+d58f333de5124e43be04c4c1c06c70a7 — EXIT 1, 64.453s — python3 /private/tmp/sable-codex-runtime-p08q2lv5/probe_runtime.py
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-d58f333de5124e43be04c4c1c06c70a7.log sha256=3415bbe28351a35d51c6187a5013702f6959d08c74affc9176d6725b8342e1ea
+4614a592e2ce4b95a0267a5edfbc0446 — EXIT 1, 301.337s — python3 /private/tmp/sable-codex-runtime-p08q2lv5/probe_runtime.py
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-4614a592e2ce4b95a0267a5edfbc0446.log sha256=eef1d8b4a19922c87aec38f897a3b59949db42e9fb31fcfabd2a2a2d742955eb
+7534ace39cf3486cad1e64d093be7a0c — EXIT 101, 8.390s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-harness-wake-up --test codex_bootstrap --locked -j4 -- --nocapture
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-7534ace39cf3486cad1e64d093be7a0c.log sha256=ac4c72af6f15a62b010463419a78deccffbdd1b959489441e6b3a7a0489792d6
+ada53a77b1d247eb9a1ca175f73e5e21 — EXIT 0, 0.986s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test -p bboxy450-harness-wake-up --test codex_bootstrap --locked -j4 -- --nocapture
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-ada53a77b1d247eb9a1ca175f73e5e21.log sha256=8de34696106aaf89cbeb907612be5819fea9ae6f7d2a69a9ff40026033ed0ffa
+f2296f6dc0284a8aba8f2c5aa3f0e62a — EXIT 0, 20.811s — env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-runtime CARGO_BUILD_JOBS=4 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo clippy --workspace --all-targets --locked -j4 -- -D warnings
+  log=/private/tmp/sable-codex-runtime-p08q2lv5/cmd-f2296f6dc0284a8aba8f2c5aa3f0e62a.log sha256=28f940a4bf9f8ef2e9d19ccf6fc6ed2b6fa63240c183f6c55e80022e11c1d54d
+
+Interpretation:
+991c6258: initial three-package run had one failed target, MCP native-interrupt; its old fixture omitted runtime facts. All other targets passed, including real first-launch fixture and socket flood replay (170.04s). The fixture now supplies explicit facts for its in-process native server, preserving every interruption/timeout/journal assertion. Host subprocess ownership is covered separately.
+3b30d826: MCP native-interrupt passed 1/0. Its name filter selected zero ready-exec/companion tests, so those were explicitly run without that filter in 9364ba4a/c8c12bdc, and again through Cargo in c8d4c055 (2+3 pass, two private helpers ignored).
+Clippy found a nested-if lint, enum-size growth and one added-field fixture migration. The command-frame and optional companion are boxed without changing JSON, queue counts, byte limits or pending-ID ordering. No lint was allowed or weakened.
+a90cd552: strict workspace all-target clippy passed. f2296f6d: bootstrap scaffold clippy passed; the subsequent peer-PID guard and its new negative test still await the quiet-window release before rerun.
+ada53a77: read-only bootstrap and stale-binding tests 2/0. Additional peer-owner and attachment-generation cases were written during the quiet window and are not yet executed.
+
+Native observations before bootstrap repair:
+Live producer d56502cf61bc369ed807a91e0702843efac7dfef; binary SHA256 314bc26516a0e0fbfd91544823826f187400dfc6b415b302b7de74f628b93123.
+First probe live-rp22h0d5 stopped before spawning Codex: the harness incorrectly waited for a fixture-custody log label. live.rs labels only memory explicitly and misleadingly calls the file fixture native. The actual own 0600/32-byte fixture files existed. Recorded processes were stopped and independently verified absent.
+Second probe live-gva8fcwt stopped on a harness KeyError: ctl delegate returns a delegated/Applied wrapper, not a message ID. The parser was corrected using that actual reply. No native start nudge was sent. Recorded processes were independently verified absent.
+Third probe live-303no3f9 is a product finding: after scripted #270 trust (10 hooks, matching list, no repo hook source), the selected private runtime had one loaded idle thread but the app retained no harness_session_id; no app preflight trace appeared. No task was delegated and no model turn was started. Exact native hook timing is unproven.
+Read-only direct protocol query — EXIT 0: /private/tmp/sable-codex-runtime-p08q2lv5/read_loaded.py; only initialize/initialized/thread/loaded/list/thread/read. Artifact live-303no3f9/read-only-loaded.json.
+Selected requested endpoint /tmp/bboxy-cx-01M5QV1TF9PTAFTPAC1VS9EXTN/codex.sock resolved to /private/tmp/codex-daemon-501/340bf42df3b132bdb6aa1f490fbc15cd3793c41d1aafb0cd79b62d0c2cbde652. lsof reported owner PID53940, the supervisor-owned app-server, not operator daemon13411. The TUI was PID53941. A canonical directory name alone is not ownership proof.
+thread/loaded/list returned one ID 01a16fb0-f19d-7d13-99b3-801c13174b4a; thread/read returned that exact ID with status.type=idle. Code now uses only that read-only selected-runtime discovery, requires one ID and a matching idle/active reply, checks the kernel peer PID before protocol bytes, and fences the completion by the complete original Binding.
+Public ctl close in the third run returned Exited. App timer EXIT 0 at 301.337s, zero recorded surviving descendants; native_session remained None, native reports 0. This proves lifecycle cleanup, not autonomous wake.
+
+Official documentation fetched 2026-10-24:
+https://learn.chatgpt.com/docs/app-server#list-loaded-threads — loaded IDs are the runtime in-memory set; no stored-history scan or thread creation/resume is needed.
+https://learn.chatgpt.com/docs/app-server#track-thread-status-changes — status is explicit; unknown/notLoaded is never idle.
+
+Outstanding: post-quiet strict clippy and focused negative tests; rebuild/immutable-copy producer; fresh real no-nudge delegation before/after Logic SIGKILL, exact native tool/report/reply/ack proof; clean normal ci-local from rebased signed source; private-target cleanup and handoff.

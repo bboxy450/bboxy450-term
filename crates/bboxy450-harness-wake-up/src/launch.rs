@@ -68,8 +68,8 @@ fn runtime_endpoint(overlay: &Path) -> Result<PathBuf> {
     if endpoint.as_os_str().as_encoded_bytes().len() < 104 {
         return Ok(endpoint);
     }
-    // The socket remains physically inside the 0700 overlay. A short owned
-    // alias avoids Darwin's sun_path bound without changing the user's cwd.
+    // The requested locator stays in the 0700 overlay; Codex can resolve it
+    // to its own socket. A short alias avoids Darwin's sun_path bound.
     let alias = Path::new("/tmp").join(format!("bboxy-cx-{}", crate::Ulid::new()));
     std::os::unix::fs::symlink(overlay, &alias)?;
     Ok(alias.join("codex.sock"))
@@ -394,6 +394,7 @@ fn runtime_ready(endpoint: &Path) -> bool {
 /// explicitly selected seat socket, then replace this process with its TUI.
 /// Normal CODEX_HOME and authentication stay with Codex; no credential is copied.
 pub fn exec_when_ready(args: &[String]) -> Result<()> {
+    crate::assert_not_ui_thread();
     use std::os::unix::process::CommandExt;
     let [endpoint, program, rest @ ..] = args else {
         return Err(invalid("harness-exec needs socket and command"));
@@ -437,7 +438,7 @@ mod runtime_tests {
     use super::*;
 
     #[test]
-    fn long_runtime_paths_keep_the_socket_inside_the_overlay_and_release_the_alias() {
+    fn long_runtime_paths_keep_the_locator_in_the_overlay_and_release_the_alias() {
         let root = tempfile::tempdir().unwrap();
         let overlay = root.path().join("x".repeat(120));
         std::fs::DirBuilder::new()

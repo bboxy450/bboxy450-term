@@ -109,6 +109,10 @@ mod seat_name_tests {
     }
 }
 
+struct CodexDiscovery {
+    binding: Binding,
+    result: std::result::Result<(String, serde_json::Value), String>,
+}
 enum Command {
     RecoverSeats(oneshot::Sender<Result<()>>),
     GuiHosts(oneshot::Sender<Result<Vec<bbt_proto::GuiHost>>>),
@@ -246,6 +250,7 @@ enum Command {
         oneshot::Sender<Result<crate::adapters::Status>>,
     ),
     Status(Ulid, u64, oneshot::Sender<Result<crate::adapters::Status>>),
+    CodexDiscovery(Box<CodexDiscovery>, oneshot::Sender<Result<bool>>),
     Native(
         Ulid,
         u64,
@@ -925,6 +930,14 @@ impl LogicClient {
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     /// Called by the bound native reader, never interpreted as a new operation.
+    async fn codex_discovery(&self, discovery: CodexDiscovery) -> Result<bool> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::CodexDiscovery(Box::new(discovery), tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
+    }
     pub async fn native_event(
         &self,
         seat: Ulid,
@@ -4647,6 +4660,32 @@ impl Worker {
                     }
                 }
                 if view.adapter.record.kind == "codex"
+                    && view.adapter.binding.session.starts_with("process-")
+                    && view.native_reader.is_none()
+                    && view.adapter.binding.runtime.is_some()
+                {
+                    let binding = view.adapter.binding.clone();
+                    let session = binding.session.clone();
+                    let client = self.client.clone();
+                    let task = self.handle.spawn(async move {
+                        loop {
+                            match crate::adapters::native::discover_codex_thread(&binding).await {
+                                Ok(None) => tokio::time::sleep(Duration::from_millis(200)).await,
+                                result => {
+                                    let result = result
+                                        .and_then(|thread| thread.ok_or_else(|| invalid("native thread not loaded")))
+                                        .map_err(|error| crate::adapters::observe::short(
+                                            &format!("native bootstrap failed: {error}; no mutation attempted"), 512,
+                                        ));
+                                    let _ = client.codex_discovery(CodexDiscovery { binding, result }).await;
+                                    break;
+                                }
+                            }
+                        }
+                    });
+                    view.native_reader = Some(NativeReader { session, task });
+                }
+                if view.adapter.record.kind == "codex"
                     && !view.adapter.binding.session.starts_with("process-")
                     && view.native_reader.as_ref().is_none_or(|r| {
                         r.session != view.adapter.binding.session || r.task.is_finished()
@@ -4664,16 +4703,18 @@ impl Worker {
                     let generation = view.generation;
                     let client = self.client.clone();
                     let binding = view.adapter.binding.clone();
-                    let task=self.handle.spawn(async move {
-                            if crate::adapters::native::verify_codex_runtime(&binding,&path).is_err(){return;}
-                            loop {
-                                if let Ok(status)=crate::adapters::native::codex_status(&path,&thread).await {
-                                    let event=serde_json::json!({"source":"snapshot","method":"thread/status/changed","params":{"threadId":thread,"status":status}});
-                                    if client.native_event(id,generation,event).await.is_err(){break;}
-                                }
-                                tokio::time::sleep(Duration::from_millis(200)).await;
+                    let task = self.handle.spawn(async move {
+                        if crate::adapters::native::verify_codex_runtime(&binding, &path).is_err() {
+                            return;
+                        }
+                        loop {
+                            if let Ok(status) = crate::adapters::native::codex_owned_status(&binding).await {
+                                let event = serde_json::json!({"source":"snapshot","method":"thread/status/changed","params":{"threadId":thread,"status":status}});
+                                if client.native_event(id, generation, event).await.is_err() { break; }
                             }
-                        });
+                            tokio::time::sleep(Duration::from_millis(200)).await;
+                        }
+                    });
                     view.native_reader = Some(NativeReader { session, task });
                 }
                 view.adapter.tick(view.state.sequence, now);
@@ -5920,6 +5961,43 @@ impl Worker {
                         if result.is_ok() {
                             self.provenance.hook(id, generation, &event);
                             self.persist_native_session(id)?;
+                        }
+                        let _ = reply.send(result);
+                    }
+                    Command::CodexDiscovery(discovery, reply) => {
+                        let id = discovery.binding.seat;
+                        let result = (|| {
+                            let Some(view) = self.views.get_mut(&id) else {
+                                return Ok(false);
+                            };
+                            if view.generation != discovery.binding.generation
+                                || view.adapter.binding != discovery.binding
+                            {
+                                return Ok(false);
+                            }
+                            let (thread, status) = match discovery.result {
+                                Ok(thread) => thread,
+                                Err(reason) => {
+                                    view.delivery_failure = Some(reason);
+                                    return Ok(false);
+                                }
+                            };
+                            let bound = crate::adapters::native::bind_discovered_codex(
+                                &mut view.adapter,
+                                &discovery.binding,
+                                &thread,
+                                status,
+                                view.state.sequence,
+                                now_ms(),
+                            )?;
+                            if bound {
+                                view.delivery_failure = None;
+                            }
+                            Ok(bound)
+                        })();
+                        if matches!(result, Ok(true)) {
+                            self.persist_native_session(id)?;
+                            self.publish_adapter(id, self.views[&id].adapter.status.clone())?;
                         }
                         let _ = reply.send(result);
                     }

@@ -273,7 +273,7 @@ impl Adapter for Session {
                     if self.record.kind == "codex" && thread == &self.binding.session =>
                 {
                     native::verify_codex_runtime(&self.binding, path)?;
-                    native::codex_status(path, thread).await?;
+                    native::codex_owned_status(&self.binding).await?;
                 }
                 _ => {
                     return Err(invalid(
