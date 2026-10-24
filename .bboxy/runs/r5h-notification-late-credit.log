@@ -141,3 +141,87 @@ git diff --quiet 3dbe439a..55a5f890 -- crates Cargo.toml Cargo.lock: EXIT 0. Reb
 Initial abcb7217 release prebuild finished EXIT 0 but is superseded, never an acceptance result. A stop check found no remaining own build PIDs; none were signalled. It is retained as build-v1-abcb7217 in the private frame root. No full gate or scale attempt was started for that candidate.
 Raw root /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-fairness-ci6gdrl6
 Next: normal clean exact ci-local; then ONE 967/50 frame attempt with no other full gates, load1<8, disk>=10GiB. All frame assertions and deadlines remain. NG1 follows this fix.
+
+Oracle final assertion 1b4d184f-2f01-441f-a28e-4e4574efd0d2: an attached reserved seat with nothing to send must release at the next sweep. Added to the same deterministic regression; no further production change.
+Final test source 95ba7ba2be0f21e1b94eb7b949c917903b074e76, signed G.
+{"command": ["cargo", "fmt", "--package", "bbt-supervisor", "--", "--check"], "elapsed_s": 0.242881, "exit": 0, "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "name": "empty-turn-format"}
+{"command": ["cargo", "test", "-p", "bbt-supervisor", "--locked", "--lib", "supervisor::capture_read_tests::no_seat_starves_under_full_queue", "--", "--exact", "--nocapture"], "elapsed_s": 42.843875917, "exit": 0, "log_sha256": "3b54a6a99c67a5b6a78598ec302bde96622a99c80ef51481e6eb708f272dd49e", "name": "empty-turn-regression"}
+{"command": ["cargo", "clippy", "-p", "bbt-supervisor", "--all-targets", "--locked", "--", "-D", "warnings"], "elapsed_s": 22.548908625000003, "exit": 0, "log_sha256": "5204f15e51fa5e583ad77f0284ab74b7dc4bbda1f7ec4469e26668114d300540", "name": "empty-turn-clippy"}
+Raw final regression:
+   Compiling libc v0.2.191
+   Compiling proc-macro2 v1.0.107
+   Compiling cfg-if v1.0.5
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling serde_core v1.0.229
+   Compiling jobserver v0.1.35
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.15
+   Compiling cc v1.9.0
+   Compiling version_check v0.9.5
+   Compiling syn v3.0.9
+   Compiling generic-array v0.14.7
+   Compiling getrandom v0.3.4
+   Compiling serde v1.0.229
+   Compiling zerocopy v0.8.63
+   Compiling pkg-config v0.3.34
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling bitflags v2.13.2
+   Compiling typenum v1.20.1
+   Compiling serde_derive v1.0.229
+   Compiling syn v2.0.119
+   Compiling thiserror v1.0.69
+   Compiling parking_lot_core v0.9.12
+   Compiling cfg_aliases v0.1.1
+   Compiling nix v0.28.0
+   Compiling thiserror-impl v1.0.69
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_core v0.9.5
+   Compiling sha2-asm v0.6.4
+   Compiling getrandom v0.4.3
+   Compiling smallvec v1.16.3
+   Compiling anyhow v1.0.104
+   Compiling scopeguard v1.2.0
+   Compiling log v0.4.34
+   Compiling zmij v1.0.23
+   Compiling rustix v1.1.5
+   Compiling zstd-safe v8.2.0
+   Compiling lock_api v0.4.14
+   Compiling rand_chacha v0.9.0
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling errno v0.3.14
+   Compiling memchr v2.8.3
+   Compiling serde_json v1.0.154
+   Compiling digest v0.10.7
+   Compiling filedescriptor v0.8.3
+   Compiling rand v0.9.5
+   Compiling parking_lot v0.12.5
+   Compiling serde-big-array v0.5.1
+   Compiling arrayvec v0.7.8
+   Compiling cpufeatures v0.2.17
+   Compiling serial2 v0.2.38
+   Compiling unicode-width v0.2.2
+   Compiling downcast-rs v1.2.1
+   Compiling fastrand v2.5.0
+   Compiling cursor-icon v1.2.0
+   Compiling base64 v0.22.1
+   Compiling itoa v1.0.18
+   Compiling shell-words v1.1.1
+   Compiling once_cell v1.21.4
+   Compiling portable-pty v0.9.0
+   Compiling tempfile v3.27.0
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+   Compiling sha2 v0.10.9
+   Compiling ulid v1.2.1
+   Compiling zstd v0.14.3
+   Compiling mio v1.2.4
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Finished `test` profile [unoptimized] target(s) in 42.45s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-fairness-ci6gdrl6/target/debug/deps/bbt_supervisor-c8ef8dd88c252417)
+
+running 1 test
+test supervisor::capture_read_tests::no_seat_starves_under_full_queue ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.05s
