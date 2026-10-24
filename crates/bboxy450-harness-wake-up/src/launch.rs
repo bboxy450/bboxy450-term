@@ -243,7 +243,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
                 "-c".into(),
                 "mcp_servers.bboxy.args=[\"mcp\"]".into(),
                 "-c".into(),
-                "mcp_servers.bboxy.default_tools_approval_mode=\"auto\"".into(),
+                "mcp_servers.bboxy.default_tools_approval_mode=\"approve\"".into(),
                 "-c".into(),
                 "check_for_update_on_startup=false".into(),
                 "-c".into(),

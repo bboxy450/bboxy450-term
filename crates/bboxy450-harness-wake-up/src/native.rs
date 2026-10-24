@@ -360,6 +360,21 @@ async fn codex_handshake(path: &Path, thread: &str) -> Result<(Socket, Value)> {
     )
     .await?;
     let identity = reply(&mut socket, 2).await?;
+    // Opt-in observation of the read-only preflight, before a submission can run.
+    #[cfg(debug_assertions)]
+    if std::env::var_os("BBOXY_CODEX_PREFLIGHT_TRACE").is_some() {
+        eprintln!(
+            "BBOXY_CODEX_PREFLIGHT {}",
+            json!({
+                "requested_thread": super::observe::short(thread, 256),
+                "returned_thread": identity["thread"]["id"].as_str()
+                    .map(|id| super::observe::short(id, 256)),
+                "status_type": identity["thread"]["status"]["type"].as_str()
+                    .map(|status| super::observe::short(status, 256)),
+                "socket_target": std::fs::canonicalize(path).ok(),
+            })
+        );
+    }
     if identity["thread"]["id"] != thread
         || !matches!(
             identity["thread"]["status"]["type"].as_str(),

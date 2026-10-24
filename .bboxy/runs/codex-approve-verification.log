@@ -1,0 +1,606 @@
+{
+  "task": "#265 bboxy-only Codex tool approval; bounded wake observation, no repair",
+  "executor": "Sable Embertail <EXECUTOR>",
+  "source": "e5851261987503cf11ed225a3fa185680090f5ce",
+  "base": "4bd4654b8330685c6c2f572e9a2e305432faef9f",
+  "rulings": [
+    "5987981f-8dcb-4e3b-af62-4750335473f7",
+    "8da06f6a-d117-414d-9071-b11cb8edf3d8",
+    "344ddd52-78c7-458e-983c-10b7c08179c7",
+    "e510b3fe-3f92-48e0-a94c-14772790d4aa"
+  ],
+  "mechanisms": [
+    "crates/bboxy450-harness-wake-up/src/launch.rs:246: per-invocation bboxy default_tools_approval_mode changes auto to approve; other servers, hook review and user config unchanged by the app",
+    "crates/bboxy450-harness-wake-up/tests/adapters.rs:229: launch overlay expects approve, retains foreign prompt override and checks user files remain unchanged",
+    "crates/bboxy450-harness-wake-up/src/native.rs:363: debug-only BBOXY_CODEX_PREFLIGHT_TRACE opt-in logs bounded identity/status/socket metadata after read-only preflight; existing status/ID admission and mutation behavior untouched"
+  ],
+  "rebase_proof": {
+    "source": "e5851261987503cf11ed225a3fa185680090f5ce",
+    "base": "4bd4654b8330685c6c2f572e9a2e305432faef9f",
+    "source_signature_exit": 0,
+    "paths": [
+      "crates/bboxy450-harness-wake-up/src/launch.rs",
+      "crates/bboxy450-harness-wake-up/src/native.rs",
+      "crates/bboxy450-harness-wake-up/tests/adapters.rs"
+    ],
+    "blobs": {
+      "crates/bboxy450-harness-wake-up/src/launch.rs": "0da0005f632fb1e86c136c337e68a6a00f97f04a",
+      "crates/bboxy450-harness-wake-up/src/native.rs": "65d8217b576d23fcb833390ee418881a01f6d417",
+      "crates/bboxy450-harness-wake-up/tests/adapters.rs": "2ce8675dd16b8c4a1190cdcee78a5fdd4394fe8e"
+    },
+    "native_producer": "17c3ef197c2a52988e43ce24994c2d8e699cc9a8",
+    "native_kit_source_identical": true
+  },
+  "checks": {
+    "focused_kit": {
+      "command": "3beabbdaf54a40218da5d01d46634aee",
+      "exit": 0,
+      "passed": 14,
+      "ignored_helper": 1,
+      "elapsed_seconds": 108.362
+    },
+    "fmt": "cargo fmt -p bboxy450-harness-wake-up --check: EXIT 0",
+    "diff": "git diff --check: EXIT 0",
+    "commands": [
+      {
+        "id": "3beabbdaf54a40218da5d01d46634aee",
+        "argv": [
+          "env",
+          "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-approve",
+          "CARGO_BUILD_JOBS=4",
+          "cargo",
+          "test",
+          "-p",
+          "bboxy450-harness-wake-up",
+          "--locked",
+          "-j",
+          "4"
+        ],
+        "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+        "started_utc": "2026-10-24T18:50:31.279401+00:00",
+        "pid": 72465,
+        "exit": 0,
+        "elapsed_seconds": 108.36207320797257,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/cmd-3beabbdaf54a40218da5d01d46634aee.log",
+        "sha256": "1fe448975211b88a2cc17a6892de0a74701a0b293c42dbe49bee7b0de13e6e84"
+      },
+      {
+        "id": "0b3fb17ae91740a49fa541bfe5f5e0b0",
+        "argv": [
+          "env",
+          "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-approve",
+          "CARGO_BUILD_JOBS=4",
+          "cargo",
+          "build",
+          "-p",
+          "bboxy450-term",
+          "--locked",
+          "-j",
+          "4"
+        ],
+        "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+        "started_utc": "2026-10-24T18:53:36.699184+00:00",
+        "pid": 79445,
+        "exit": 0,
+        "elapsed_seconds": 147.79481004195986,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/cmd-0b3fb17ae91740a49fa541bfe5f5e0b0.log",
+        "sha256": "3b01049e5e573b935772765bc98ce7268a159c6d0fb3d84b99fa61a2d9044af4"
+      },
+      {
+        "id": "bffdf6697a2245e0ba0131e87a7feab3",
+        "argv": [
+          "python3",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/probe.py"
+        ],
+        "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+        "started_utc": "2026-10-24T18:57:46.377353+00:00",
+        "pid": 91111,
+        "exit": 1,
+        "elapsed_seconds": 1.4961342089809477,
+        "log": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/cmd-bffdf6697a2245e0ba0131e87a7feab3.log",
+        "sha256": "f983e59bb7767770615841dc41452a4b2798d88c6b7abff7c87c84f66b99d1db"
+      },
+      {
+        "id": "22adb0653b9f449d8abe87377bb5cce9",
+        "argv": [
+          "python3",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/probe.py"
+        ],
+        "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+        "started_utc": "2026-10-24T18:59:16.413886+00:00",
+        "pid": 94160,
+        "exit": 0,
+        "elapsed_seconds": 302.4503343750257,
+        "log": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/cmd-22adb0653b9f449d8abe87377bb5cce9.log",
+        "sha256": "f1ee38e52ec5e6c47502f077d7351d81a572c6de76e985489df6f4cd2d6d88ba"
+      },
+      {
+        "id": "a0c89f0d59c446ebb54ce7624548bc05",
+        "argv": [
+          "git",
+          "rebase",
+          "origin/main"
+        ],
+        "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+        "started_utc": "2026-10-24T19:08:57.006171+00:00",
+        "pid": 19389,
+        "exit": 0,
+        "elapsed_seconds": 0.17131054104538634,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/cmd-a0c89f0d59c446ebb54ce7624548bc05.log",
+        "sha256": "c8353a4464a0df907ef8414c1253913dc9c69fd84abc27f5669777f9c145f41b"
+      },
+      {
+        "id": "fbcc779f07d8451699dc33b2c9e6e7de",
+        "argv": [
+          "env",
+          "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-approve-gate",
+          "CARGO_BUILD_JOBS=4",
+          "sh",
+          "scripts/ci-local.sh"
+        ],
+        "cwd": "/private/tmp/ci-sable-approve-694bf8dc",
+        "started_utc": "2026-10-24T19:09:35.175138+00:00",
+        "pid": 19982,
+        "exit": 0,
+        "elapsed_seconds": 1431.2733640000224,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/cmd-fbcc779f07d8451699dc33b2c9e6e7de.log",
+        "sha256": "be34e6574131c028dc7fe1c3ba8255fc132952462d5395dd0c2f547f8c54c24d"
+      },
+      {
+        "id": "d2bc7d99bcd34cc9a4fc30ee973a5f21",
+        "argv": [
+          "python3",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/finalize_gate.py"
+        ],
+        "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+        "started_utc": "2026-10-24T19:33:35.697683+00:00",
+        "pid": 74607,
+        "exit": 0,
+        "elapsed_seconds": 2.618098500010092,
+        "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/cmd-d2bc7d99bcd34cc9a4fc30ee973a5f21.log",
+        "sha256": "87d01e7e8a177dba24c43a15c7eec5ebdab061782a8a6083d6a2c3c75520a6d8"
+      }
+    ]
+  },
+  "native_proof": {
+    "source": "17c3ef197c2a52988e43ce24994c2d8e699cc9a8",
+    "binary_sha256": "4422e8bf407edd1a83ee073b6a59a282eacf3897c776b9b9704ade26de1d6230",
+    "status": "passed",
+    "task_report_without_bboxy_prompt": true,
+    "manual_mcp_approvals_sent": 0,
+    "foreign_native_prompt": true,
+    "foreign_execution_count": 0,
+    "foreign_server_initialized": true,
+    "launch_approval_overrides": [
+      "mcp_servers.approval_foreign.default_tools_approval_mode=\"prompt\"",
+      "mcp_servers.bboxy.default_tools_approval_mode=\"approve\"",
+      "check_for_update_on_startup=false"
+    ],
+    "native_session": "01a16f48-20c3-7340-aa7a-5cd87f606b26",
+    "native_result_metadata": [
+      {
+        "name": "mcp__bboxy__orient",
+        "call_id": "call_d39bf1492ef042348ee2b0afabd99893",
+        "timestamp": "2026-10-24T18:59:51.393Z",
+        "output_observed": true,
+        "decoded_result_metadata": [
+          {
+            "op_id": "01M5QMH6FZWYQGWEKW2CVZC4AR"
+          }
+        ]
+      },
+      {
+        "name": "mcp__bboxy__task_status",
+        "call_id": "call_752e2fa9677e461a9007552d7cca12ef",
+        "timestamp": "2026-10-24T18:59:56.750Z",
+        "output_observed": true,
+        "decoded_result_metadata": [
+          {
+            "op_id": "01M5QMHBQB1NP1PBETP2W3F011",
+            "path": ".bboxy/tasks/l4.md"
+          }
+        ]
+      },
+      {
+        "name": "mcp__bboxy__task_report",
+        "call_id": "call_6fe5cdf2f95b402fab4c309b21adb947",
+        "timestamp": "2026-10-24T19:00:03.927Z",
+        "output_observed": true,
+        "decoded_result_metadata": [
+          {
+            "status": "accepted",
+            "op_id": "01M5QMHJQNZVCRC79C3A7DM0NG",
+            "path": ".bboxy/tasks/l4.md"
+          }
+        ]
+      },
+      {
+        "name": "mcp__bboxy__message_list",
+        "call_id": "call_825cac9555dc4dd1ab313eb69826006f",
+        "timestamp": "2026-10-24T19:00:05.653Z",
+        "output_observed": true,
+        "decoded_result_metadata": [
+          {
+            "kind": "messages",
+            "op_id": "01M5QMHME8QNVBRGPZ7EHKE2TZ"
+          }
+        ]
+      },
+      {
+        "name": "mcp__bboxy__message_send",
+        "call_id": "call_dae0f68505c14329a67bd70b32652474",
+        "timestamp": "2026-10-24T19:00:10.216Z",
+        "output_observed": true,
+        "decoded_result_metadata": [
+          {
+            "kind": "stored",
+            "status": "accepted",
+            "op_id": "01M5QMHRW7MMX66364SFYC7ZPC"
+          }
+        ]
+      },
+      {
+        "name": "mcp__bboxy__message_ack",
+        "call_id": "call_f28f40caef494e879430f5e6b4be0d5c",
+        "timestamp": "2026-10-24T19:00:12.583Z",
+        "output_observed": true,
+        "decoded_result_metadata": [
+          {
+            "kind": "applied",
+            "status": "applied",
+            "op_id": "01M5QMHV64T2ZY6JXS3DMGQ9PF"
+          },
+          {
+            "kind": "applied",
+            "status": "applied",
+            "op_id": "01M5QMHV8A6TA6SJG4GKH9NAKB"
+          }
+        ]
+      },
+      {
+        "name": "mcp__bboxy__message_receipts",
+        "call_id": "call_fec48e9ba7774a6ebe8c177b6ffba009",
+        "timestamp": "2026-10-24T19:00:14.492Z",
+        "output_observed": true,
+        "decoded_result_metadata": [
+          {
+            "kind": "receipts",
+            "op_id": "01M5QMHX1PA1AD2273YAAPKZRC"
+          }
+        ]
+      },
+      {
+        "name": "mcp__approval_foreign__foreign_write",
+        "call_id": "call_70512741886f42e19467f87fb48526ef",
+        "timestamp": "2026-10-24T19:00:19.181Z",
+        "output_observed": false,
+        "decoded_result_metadata": []
+      }
+    ],
+    "receipts": [
+      {
+        "message": "1M50PQQ8M0Q62RT6HTD4JRAHFW",
+        "recipient": "01M5QMG4YQADX5MRP1WVF5ZEKV",
+        "evidence": "application-acknowledged"
+      },
+      {
+        "message": "01M5QMG5SZTAQV4X90E2ZN39T9",
+        "recipient": "01M5QMG4YQADX5MRP1WVF5ZEKV",
+        "evidence": "application-acknowledged"
+      }
+    ],
+    "app_exit": 0,
+    "survivors": [],
+    "observed_seconds": 63.488438832981046,
+    "elapsed_seconds": 302.2326823750045,
+    "config_changed_keys": [
+      "hooks.state./<session-flags>/config.toml:post_compact:0:0.trusted_hash",
+      "hooks.state./<session-flags>/config.toml:post_tool_use:0:0.trusted_hash",
+      "hooks.state./<session-flags>/config.toml:pre_compact:0:0.trusted_hash",
+      "hooks.state./<session-flags>/config.toml:pre_tool_use:0:0.trusted_hash",
+      "hooks.state./<session-flags>/config.toml:session_end:0:0.trusted_hash",
+      "hooks.state./<session-flags>/config.toml:session_start:0:0.trusted_hash",
+      "hooks.state./<session-flags>/config.toml:stop:0:0.trusted_hash",
+      "hooks.state./<session-flags>/config.toml:subagent_start:0:0.trusted_hash",
+      "hooks.state./<session-flags>/config.toml:subagent_stop:0:0.trusted_hash",
+      "hooks.state./<session-flags>/config.toml:user_prompt_submit:0:0.trusted_hash"
+    ],
+    "preflight_unique_tuples": [
+      {
+        "count": 1355,
+        "requested_thread": "01a16f48-20c3-7340-aa7a-5cd87f606b26",
+        "returned_thread": "01a16f48-20c3-7340-aa7a-5cd87f606b26",
+        "socket_target": "/private/tmp/codex-daemon-501/f2c1f188d664bcd9d858b5dc8fbe0ca34d0643c16a0baee9b0670077d781a3dc",
+        "status_type": "notLoaded"
+      }
+    ],
+    "preflight_parsed_count": 1355,
+    "preflight_unparsed_line_count": 15,
+    "raw_log_sha256": "9de537d9b1e6ba919fb60c4844721a988cef4f402d262360cd4f842a6e5a034b",
+    "raw_transcripts_committed": false,
+    "transcripts": [
+      {
+        "path": "/Users/feral/.codex/sessions/2026/10/24/rollout-2026-10-24T11-59-20-01a16f48-20c3-7340-aa7a-5cd87f606b26.jsonl",
+        "sha256": "99ec89eda02d87f2bd819951a91aa39296934d09660cb429cd8771a2c09a3ba1"
+      }
+    ]
+  },
+  "native_identity": {
+    "client": "codex-cli 0.163.0",
+    "executable": "/opt/homebrew/Caskroom/codex/0.163.0/bin/codex",
+    "client_sha256": "8813367285524ac798dd96d1b071aea30d58708c7226fd236cd275cf1cfdee31",
+    "memory_custody_witness": true,
+    "native_binary": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/bin/bboxy450-term",
+      "sha256": "4422e8bf407edd1a83ee073b6a59a282eacf3897c776b9b9704ade26de1d6230",
+      "source": "17c3ef197c2a52988e43ce24994c2d8e699cc9a8",
+      "bytes": 129951056
+    },
+    "fixture_wrapper": "execs real Codex with one private foreign stdio MCP server; does not simulate the model or bboxy tools",
+    "first_bboxy_tool": "orient",
+    "external_sqlite_reads_while_app_alive": false
+  },
+  "approval_recipe": {
+    "kind": "hooks",
+    "expected_count": 10,
+    "on_screen_count": 10,
+    "repo_hook_source": false,
+    "choice": "Trust all and continue",
+    "screen": "approval-0-screen.txt",
+    "screen_sha256": "c546bd86cf6d88e0a209ba1ea8d732ba31407fa05d6979db7074d39ccbc94328",
+    "events": [
+      "SessionStart",
+      "SessionEnd",
+      "UserPromptSubmit",
+      "PreToolUse",
+      "PostToolUse",
+      "Stop",
+      "SubagentStart",
+      "SubagentStop",
+      "PreCompact",
+      "PostCompact"
+    ],
+    "command": "'/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/bin/bboxy450-term' hook --agent codex",
+    "manual_mcp_approvals_sent": 0,
+    "foreign_choice_sent": false,
+    "human_input_required": false
+  },
+  "config_metadata_before": {
+    "/Users/feral/.claude/settings.json": {
+      "present": true,
+      "bytes": 2624,
+      "sha256": "48c1aef88fbcdffda8de0bf86e6f417c56195f0ea4a2fe9d077c9d728e4f91f9"
+    },
+    "/Users/feral/.claude/settings.local.json": {
+      "present": false
+    },
+    "/Users/feral/.codex/config.toml": {
+      "present": true,
+      "bytes": 7875,
+      "sha256": "55c157130994fb0b62961c08148633dcb2961ae20aa7f18580d430db7c4d25de"
+    },
+    "/Users/feral/.codex/hooks.json": {
+      "present": true,
+      "bytes": 389,
+      "sha256": "b27a3962b2075e5e24a2b83f95ee2c5d5ce5ecdebe87463eb177cc059ebf891f"
+    }
+  },
+  "config_metadata_after": {
+    "/Users/feral/.claude/settings.json": {
+      "present": true,
+      "bytes": 2624,
+      "sha256": "48c1aef88fbcdffda8de0bf86e6f417c56195f0ea4a2fe9d077c9d728e4f91f9"
+    },
+    "/Users/feral/.claude/settings.local.json": {
+      "present": false
+    },
+    "/Users/feral/.codex/config.toml": {
+      "present": true,
+      "bytes": 7875,
+      "sha256": "0abf007ae3268988834ec1ae15531243087285913470d65fd27325ecbcbbfb35"
+    },
+    "/Users/feral/.codex/hooks.json": {
+      "present": true,
+      "bytes": 389,
+      "sha256": "b27a3962b2075e5e24a2b83f95ee2c5d5ce5ecdebe87463eb177cc059ebf891f"
+    }
+  },
+  "config_limit": "Native Codex persisted exactly ten hook trusted_hash entries after the separately authorized #270 Trust all choice. Hook hashes include the executable path, so this copied build needed fresh consent. No manual cache/config edits, copied auth, hook bypass or foreign-tool approval. The launcher itself writes no user config.",
+  "wake_observation": {
+    "accepted_rows": 1355,
+    "unparsed_interleaved_lines": 15,
+    "unique_tuples": [
+      {
+        "count": 1355,
+        "requested_thread": "01a16f48-20c3-7340-aa7a-5cd87f606b26",
+        "returned_thread": "01a16f48-20c3-7340-aa7a-5cd87f606b26",
+        "socket_target": "/private/tmp/codex-daemon-501/f2c1f188d664bcd9d858b5dc8fbe0ca34d0643c16a0baee9b0670077d781a3dc",
+        "status_type": "notLoaded"
+      }
+    ],
+    "selected_socket_owner_pid": 13411,
+    "own_seat_tui_pid": 94186,
+    "own_tui_explicit_remote_arg": false,
+    "own_tui_explicit_no_daemon_arg": false,
+    "own_tui_unix_sockets": "unnamed socketpairs; no explicitly selected listener",
+    "interpretation": "The app resolves the user-global socket to shared daemon 13411; thread/read reports this exact seat thread notLoaded. Existing native guard therefore rejects before thread/queue/add. The own seat TUI completed the task after one recorded ctl start nudge. No autonomous Codex wake is proven.",
+    "proposal_only": "Decision #279 chooses one explicit per-seat runtime and NativeUnknown/no retry for notLoaded. Documented Codex 0.163 Unix app-server plus TUI --remote mechanism is reported separately; no wake repair is in this approval source.",
+    "limits": "Debug stderr observation is not latency instrumentation; 15 interleaved lines were not reconstructed or counted as complete. No performance or zero-observer-cost claim. Shared-daemon owner inspected read-only, never signalled or mutated. Bootstrap test remains part of the eventual ruled repair."
+  },
+  "retained_failed_attempt": "First private runtime path exceeded macOS SUN_LEN; app startup exit 1 before seat spawn, then helper hit missing audit file. Shortened only the private run dir; exact source/binary unchanged. Full failed command log and private result remain retained.",
+  "private_artifacts": [
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/approval-live/completed-audit.json",
+      "bytes": 5489,
+      "sha256": "0c3cdcb5ff7460904c03699bc7c801f3cbd40dfaf385ae4c161ad20c5266baad"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/approval-live/result.json",
+      "bytes": 431087,
+      "sha256": "4e5b1bd667c987b3ac0f297f40c7d42ab4e0e217da5adba474dc5899aa5d912f"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/approval-live/recipe.json",
+      "bytes": 2530,
+      "sha256": "ce56aa8e501a6d5fe8facc437adb5af9afe7b4734544f0ea66ec9888bb87968b"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/approval-live/approval-0-screen.txt",
+      "bytes": 285,
+      "sha256": "627c0bcf23128bfe15489b21bde461e855ec4a36124cbf38e962f70eb2bbb522"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/approval-live/passed-screen.txt",
+      "bytes": 2451,
+      "sha256": "f63d499e90845c3bd89533e184813995a17b221cd945ea0b77dbab6d4e66e03e"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/approval-live/foreign-approval-screen.txt",
+      "bytes": 2451,
+      "sha256": "f63d499e90845c3bd89533e184813995a17b221cd945ea0b77dbab6d4e66e03e"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/approval-live/foreign-audit.jsonl",
+      "bytes": 228,
+      "sha256": "b04ac62972ea05da3d9bd4735965b5adadfeec219f9aaeabd5f606b7fd846283"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/approval-live/launch-overrides.json",
+      "bytes": 177,
+      "sha256": "2f329d6001b63c71172a73846836e4b882049ae1a0f9f19eb97dcda3d98c89d6"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/approval-live/selected-control-socket-owner.txt",
+      "bytes": 2150,
+      "sha256": "58a41873d939da44aea05a510993c3be290d22dca33da26ebde945cff488eb6e"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/approval-live/owned-codex-unix-sockets.txt",
+      "bytes": 586,
+      "sha256": "586143fedb43f8039f35bebb8e9b6b3a1a1567b73f683bd082f6d045c7117ba5"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/approval-live/preflight-trace.json",
+      "bytes": 404924,
+      "sha256": "907e36be1140443d948105c00e04027a0803f1ff0f3ed13626db768cc6bb3b8e"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/approval-live/app.log",
+      "bytes": 1682137,
+      "sha256": "9de537d9b1e6ba919fb60c4844721a988cef4f402d262360cd4f842a6e5a034b"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/approval-live/ctl.json",
+      "bytes": 172037,
+      "sha256": "05f7423c0a34d778e7cb834b2ed629f828586ca4dd3a1c8cd0be3e00eb2537f8"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/foreign-protocol-preflight.json",
+      "bytes": 1423,
+      "sha256": "63af568e88320dec2fb37a1905fda2f110d6a83240684c5a59a8a0a3bd3b6692"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/rebase-proof.json",
+      "bytes": 739,
+      "sha256": "bb77e77d6a6704ccb4546bde1c3a9f45121ee3d0eeb9cbb90d66535cf2e7269a"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/source-signature.log",
+      "bytes": 201,
+      "sha256": "9243fbcf1dfb42b85ee1da22eb1ee16ae5abceab89632e5719230b8fa100e75a"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/probe.py",
+      "bytes": 16467,
+      "sha256": "1a9ccc0b52fbf50ac3b99606777005ea7fa0a64353a680516b1e1544b9a08b24"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/foreign_mcp.py",
+      "bytes": 1941,
+      "sha256": "8bc0d25cf88e73d34a32874b0ec11cc1d707d2cb5bb30f9f2a7a4195b03f784b"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/final-proof-checks.json",
+      "bytes": 488,
+      "sha256": "59df4ef923d29c887903edd205e011e657e4f6e0117426fb2dfef4327800ce80"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/approval-live-longpath/result.json",
+      "bytes": 2539,
+      "sha256": "3b0dd13bbd12f5e7202c0ae91c3cb66559af742c5030c86094e18f58f13ba0f0"
+    }
+  ],
+  "raw_transcripts_committed": false,
+  "metadata_audit": {
+    "screen_file_sha256": "627c0bcf23128bfe15489b21bde461e855ec4a36124cbf38e962f70eb2bbb522",
+    "screen_content_sha256": "c546bd86cf6d88e0a209ba1ea8d732ba31407fa05d6979db7074d39ccbc94328",
+    "recipe_hash_excludes_exactly_one_appended_newline": true,
+    "one_hook_recipe_only": true,
+    "no_foreign_effects": true,
+    "raw_native_data_left_private": true,
+    "initial_audit_assertion": "file hash compared to recipe content hash failed; b[:-1] matches, and no original evidence was changed"
+  },
+  "metadata_audit_failures": [
+    "An initial non-gating check compared the recipe content hash to the screen-file hash and failed; the saved file appends exactly one newline, and b[:-1] matches the original recipe digest. A follow-up attempted a nonexistent approval-0-screen.json; that read failed. The actual screen and recipe were not changed. Final checks exited 0."
+  ],
+  "gate": {
+    "source": "e5851261987503cf11ed225a3fa185680090f5ce",
+    "base": "4bd4654b8330685c6c2f572e9a2e305432faef9f",
+    "source_signature_exit": 0,
+    "paths": [
+      "crates/bboxy450-harness-wake-up/src/launch.rs",
+      "crates/bboxy450-harness-wake-up/src/native.rs",
+      "crates/bboxy450-harness-wake-up/tests/adapters.rs"
+    ],
+    "blobs": {
+      "crates/bboxy450-harness-wake-up/src/launch.rs": "0da0005f632fb1e86c136c337e68a6a00f97f04a",
+      "crates/bboxy450-harness-wake-up/src/native.rs": "65d8217b576d23fcb833390ee418881a01f6d417",
+      "crates/bboxy450-harness-wake-up/tests/adapters.rs": "2ce8675dd16b8c4a1190cdcee78a5fdd4394fe8e"
+    },
+    "native_producer": "17c3ef197c2a52988e43ce24994c2d8e699cc9a8",
+    "native_kit_source_identical": true,
+    "worktree": "/private/tmp/ci-sable-approve-694bf8dc",
+    "target": "/Users/feral/mydev/bboxy450-term-exec3/target/codex-approve-gate",
+    "dev_bytes_freed": 2792247296,
+    "command_id": "fbcc779f07d8451699dc33b2c9e6e7de",
+    "session_id": 4986,
+    "owned_pid": 19982,
+    "binary": {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/bin/gated-bboxy450-term",
+      "sha256": "d2e59dfb0d163e51a48a1a857fdcb3ee44869322517de098d91395c8905e0a2b",
+      "bytes": 43085296,
+      "source": "e5851261987503cf11ed225a3fa185680090f5ce"
+    },
+    "exit": 0,
+    "elapsed_seconds": 1431.2733640000224,
+    "log_sha256": "be34e6574131c028dc7fe1c3ba8255fc132952462d5395dd0c2f547f8c54c24d",
+    "target_removed_bytes": 3876429824,
+    "worktree_removed": true,
+    "command": {
+      "id": "fbcc779f07d8451699dc33b2c9e6e7de",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/codex-approve-gate",
+        "CARGO_BUILD_JOBS=4",
+        "sh",
+        "scripts/ci-local.sh"
+      ],
+      "cwd": "/private/tmp/ci-sable-approve-694bf8dc",
+      "started_utc": "2026-10-24T19:09:35.175138+00:00",
+      "pid": 19982,
+      "exit": 0,
+      "elapsed_seconds": 1431.2733640000224,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/cmd-fbcc779f07d8451699dc33b2c9e6e7de.log",
+      "sha256": "be34e6574131c028dc7fe1c3ba8255fc132952462d5395dd0c2f547f8c54c24d"
+    },
+    "result_line_totals": {
+      "passed": 1187,
+      "failed": 0,
+      "ignored": 24,
+      "results": 177,
+      "not_unique_tests": true
+    },
+    "all_gates_passed": true,
+    "not_parity": "NORMAL gate: no renderer/UI/lab edits; no new parity claim"
+  }
+}
