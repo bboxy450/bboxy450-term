@@ -256,6 +256,7 @@ pub enum GraphKind {
     Provenance,
 }
 
+#[derive(Clone)]
 pub struct Index {
     root: PathBuf,
     store: SqliteStore,

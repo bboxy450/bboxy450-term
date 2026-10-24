@@ -452,6 +452,22 @@ fn gui_events_page(page: crate::bus::GuiPage) -> Result<GuiReply> {
         },
     })
 }
+fn gui_knowledge_reply(
+    op: Ulid,
+    result: Result<crate::knowledge::data_source::Result<serde_json::Value>>,
+) -> Result<GuiReply> {
+    let response = result.unwrap_or_else(|_| {
+        Err(crate::knowledge::data_source::CommandError::new(
+            "provider_unavailable",
+            "knowledge read interrupted; retry the read",
+        ))
+    });
+    Ok(GuiReply::Knowledge {
+        op,
+        response: serde_json::to_value(response)?,
+    })
+}
+
 async fn gui_session(
     stream: tokio::net::UnixStream,
     client: LogicClient,
@@ -497,6 +513,9 @@ async fn gui_session(
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     // Only the window captures: its session relays the operator's asks.
     let mut capture_asks = (door == crate::mcp::Door::Gui).then(|| client.captures.subscribe());
+    // Knowledge is operation-correlated side work; ordinary controls keep their FIFO.
+    // Dropping the session aborts these waiters, not a running provider's permit.
+    let mut knowledge_reads = tokio::task::JoinSet::new();
     let result:Result<()>=async {
         loop {
             tokio::select! {
@@ -523,6 +542,18 @@ async fn gui_session(
                     if !admitted {
                         admitted=true;
                         send(&mut write,&GuiReply::Identity(client.gui_identity().await?)).await?;
+                    }
+                    if let GuiAction::Knowledge {id,method,args} = request.action {
+                        if knowledge_reads.len() >= 2 {
+                            let error = crate::knowledge::data_source::CommandError::new(
+                                "provider_busy", "this GUI session already has two knowledge reads",
+                            );
+                            send(&mut write,&gui_knowledge_reply(id,Ok(Err(error)))?).await?;
+                        } else {
+                            let client = client.clone();
+                            knowledge_reads.spawn(async move { (id,client.gui_knowledge(method,args).await) });
+                        }
+                        continue;
                     }
                     let op=match &request.action {
                         GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}=>*id,
@@ -579,7 +610,7 @@ async fn gui_session(
                             }
                             GuiAction::Messaging {id,swarm_id,request}=>Ok(GuiReply::Messaging {op:id,response:client.gui_messaging(id,Ulid::from(swarm_id.0.0),request,door).await?}),
                             GuiAction::Task {id,request}=>Ok(GuiReply::Task {op:id,response:client.gui_task(id,request,door).await?}),
-                            GuiAction::Knowledge {id,method,args}=>Ok(GuiReply::Knowledge {op:id,response:serde_json::to_value(client.gui_knowledge(method,args).await?)?}),
+                            GuiAction::Knowledge {..}=>unreachable!("knowledge was dispatched independently"),
                             GuiAction::Watch {seat,view}=> {
                                 if view.seat!=Ulid::from(seat.0.0) {return Err(invalid("watch seat and view disagree"));}
                                 if views.len()>=1024&&!views.contains_key(&seat) {return Err(invalid("watch limit reached"));}
@@ -642,6 +673,10 @@ async fn gui_session(
                         }
                     }.await;
                     send(&mut write,&reply.unwrap_or_else(|e|GuiReply::Error {op,reason:e.to_string()})).await?;
+                }
+                Some(completed)=knowledge_reads.join_next(),if !knowledge_reads.is_empty()=> {
+                    let (op,response)=completed.map_err(|_|invalid("knowledge reply task interrupted"))?;
+                    send(&mut write,&gui_knowledge_reply(op,response)?).await?;
                 }
                 ask=async {capture_asks.as_mut().unwrap().recv().await},if admitted&&capture_asks.is_some()=> {
                     match ask {

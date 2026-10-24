@@ -1,5 +1,9 @@
 //! Restartable IO/logic owner. The UI gets an async bounded client, not a DB or PTY.
 
+#[cfg(test)]
+#[path = "knowledge/responsiveness_tests.rs"]
+mod knowledge_responsiveness_tests;
+
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::{
@@ -73,6 +77,8 @@ enum Command {
         serde_json::Value,
         oneshot::Sender<crate::knowledge::data_source::Result<serde_json::Value>>,
     ),
+    #[cfg(test)]
+    KnowledgeFixture(Arc<dyn DataSource + Send + Sync>, oneshot::Sender<()>),
     GuiMessageRow(
         Ulid,
         Ulid,
@@ -1027,7 +1033,10 @@ struct Worker {
     connections: Connections,
     config: LogicConfig,
     registry: Registry,
-    index: Index,
+    // Reads retain an immutable catalogue without holding the logic worker.
+    // Scans and provenance updates use copy-on-write while an older read is active.
+    index: Arc<Index>,
+    knowledge_reads: Arc<tokio::sync::Semaphore>,
     watch: FileWatch,
     bus: BusHandle,
     handle: tokio::runtime::Handle,
@@ -1048,6 +1057,8 @@ struct Worker {
     provenance: crate::provenance::engine::Engine,
     operator_journal: crate::mcp::journal::Journal,
     stale_gui_requests: u64,
+    #[cfg(test)]
+    knowledge_fixture: Option<Arc<dyn DataSource + Send + Sync>>,
 }
 impl Worker {
     fn open(
@@ -1106,7 +1117,8 @@ impl Worker {
             connections,
             config,
             registry,
-            index,
+            index: Arc::new(index),
+            knowledge_reads: Arc::new(tokio::sync::Semaphore::new(2)),
             watch,
             bus,
             handle,
@@ -1127,6 +1139,8 @@ impl Worker {
             provenance,
             operator_journal: crate::mcp::journal::Journal::new(account),
             stale_gui_requests: 0,
+            #[cfg(test)]
+            knowledge_fixture: None,
         };
         for (host, info) in worker.connections.owned_seats()? {
             // Several fixture links can wrap one local supervisor. Recover a
@@ -2507,7 +2521,7 @@ impl Worker {
         Ok(())
     }
     fn scan(&mut self) -> Result<()> {
-        for event in self.index.scan()? {
+        for event in Arc::make_mut(&mut self.index).scan()? {
             let stream = if event.subject.starts_with("task/") {
                 event.payload["swarm_id"]
                     .as_str()
@@ -4280,9 +4294,43 @@ impl Worker {
                         let _ = reply.send(result);
                     }
                     Command::GuiKnowledge(method, args, reply) => {
-                        let source = crate::knowledge::BboxySource::new(&self.index)
-                            .with_registry(&self.registry);
-                        let _ = reply.send(crate::knowledge::read(&source, &method, args));
+                        let Ok(permit) = self.knowledge_reads.clone().try_acquire_owned() else {
+                            let mut error = crate::knowledge::data_source::CommandError::new(
+                                "provider_busy",
+                                "knowledge read capacity is occupied",
+                            );
+                            error.retry_after_ms = Some(100);
+                            let _ = reply.send(Err(error));
+                            continue;
+                        };
+                        let index = self.index.clone();
+                        let registry = self.registry.clone();
+                        #[cfg(test)]
+                        let fixture = self.knowledge_fixture.clone();
+                        self.handle.spawn_blocking(move || {
+                            // Cancellation does not free capacity until the blocking read ends.
+                            let _permit = permit;
+                            if reply.is_closed() {
+                                return;
+                            }
+                            #[cfg(test)]
+                            if let Some(source) = fixture {
+                                let _ = reply.send(crate::knowledge::read(
+                                    source.as_ref(),
+                                    &method,
+                                    args,
+                                ));
+                                return;
+                            }
+                            let source =
+                                crate::knowledge::BboxySource::new(&index).with_registry(&registry);
+                            let _ = reply.send(crate::knowledge::read(&source, &method, args));
+                        });
+                    }
+                    #[cfg(test)]
+                    Command::KnowledgeFixture(source, reply) => {
+                        self.knowledge_fixture = Some(source);
+                        let _ = reply.send(());
                     }
                     Command::GuiMessageRow(swarm, message, reply) => {
                         let result = self.identity.status().and_then(|status| {
@@ -4695,7 +4743,7 @@ impl Worker {
                     .map(|(seat, view)| (*seat, view.generation, view.adapter.status.observed_ms))
                     .collect();
                 let changed = match self.provenance.step(
-                    &mut self.index,
+                    Arc::make_mut(&mut self.index),
                     &self.bus,
                     &self.handle,
                     &self.identity,

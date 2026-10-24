@@ -14,7 +14,7 @@ links:
   - { to: "[[d47-decision-nodes]]", rel: model }
   - { to: "[[d48-every-record-has-a-number]]", rel: model }
 created: "2026-10-24T04:28:04Z"
-updated: "2026-10-24T04:47:36Z"
+updated: "2026-10-24T13:31:51Z"
 ---
 # Knowledge base
 
@@ -52,6 +52,7 @@ One JSON Schema document in `bbt-plugin` ([[plugins]] §1); the bundled provider
 
 - **In process, same contract.** The bundled provider implements the contract as a Rust trait inside logic over the existing index; no MCP hop for the default path. **Its data directory is the root itself:** a resource link from the bundled provider is a realpath-confined, symlink-refusing read of a real file under the root (`.bboxy/images/` first), 64 MiB cap, no copies; that is the [[plugins]] §1 resource-link rule applied to the bundled case, and the whole of Seraph's #250 point for it. The same code serves the contract over stdio when invoked as `bboxy450-term plugin serve data_source-bboxy`, so `plugin check` proves the contract from both sides and a second app of the suite can run it as an ordinary plugin.
 - **Registry.** Settings › Plugins lists it as `bboxy450-term-data_source-bboxy (bundled)` with its shape, tier `export (local)`, timings and health like any plugin; it cannot be disabled while it is the provider of a root.
+- **GUI read ceiling.** The admitted GUI transport exposes only `resolve`, `fetch`, `list` and `changes_since`. Its effective document response cap is **256 KiB for the serialized portable result, including errors**, not 256 KiB of body: frontmatter and resource links share that budget. This is separate from the Index's 2 MiB document limit and the GUI's 1 MiB frame limit; an oversized result is a named `response_too_large` refusal. Reads run as bounded side work (two in flight globally and per GUI session), using the existing Index catalogue and provider. Input and Resize continue while a provider read is held; Knowledge replies correlate by operation ID independently of ordinary control replies.
 - **Roots and the swap.** A knowledge **root** is a place records live: the repository's `.bboxy/` first; later an Obsidian vault, a Notion workspace. Settings › Knowledge lists roots, and each root names its **provider**: the bundled one by default, swappable to any trusted plugin that implements `data_source`. Several roots mount at once; `#N` and slugs resolve per root, with the repository's `.bboxy` first in the order; a locator may be qualified by root. Swapping a provider never moves data: the records stay where they are and the new provider reads them, or refuses with a reason the app shows.
 - **Opinionated default.** The bundled provider is the one the app ships with and the one every acceptance in this repository runs against; a second provider must pass the same `plugin check` and the contract's conformance fixtures before Settings offers it.
 

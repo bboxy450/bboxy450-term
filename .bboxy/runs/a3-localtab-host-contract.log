@@ -1,0 +1,49 @@
+LocalTab host contract for Nyx's Settings checkpoint
+Velvet Vulpine <EXECUTOR> — 2026-10-24
+Read-only map of accepted A-3 at 60ecf53bd1ceaa982dea689116e2f46894878551;
+checked against exec6 base 11b00370. This note changes no host behavior.
+
+crates/bboxy450-term/src/e2e_checklist.rs:6 — LocalTab currently has only Graph.
+Graph owns its checklist snapshot and vertical scroll; Graph::scroll_by (:38)
+rejects non-finite input and clamps to the supplied maximum. The host owns layout.
+
+main.rs:1023 — open_local_tab closes the launcher, blurs reject/composer input,
+clears launcher_parent, installs the local tab, invalidates its layout and requests
+a redraw. The current Graph host enables knowledge observation and disables IME.
+main.rs:1057 — close_local_tab disables that observer, clears the tab/layout and
+returns to the existing panes. It does not create a second FocusState or Stage.
+main.rs:1657 — a pane focus action closes the local tab before using the existing
+focus authority. open_graph (:1040) currently treats any existing local tab as Graph.
+
+main.rs:538 — route_local_page retains global quit/launcher/Graph/HUD/pane commands;
+Esc and Cmd-W close, arrows/PageUp/PageDown/Home/End scroll. Other presses are local.
+main.rs:520 — finish_route balances releases of keys pressed in the PTY before
+the page opened, and suppresses releases/repeats for locally consumed presses.
+main.rs:3158 — page routing yields to an open launcher or focused composer/reject.
+
+scene.rs:40 — LocalPageLayout returns layout, inner viewport, close hit box and
+max_scroll. scene.rs:677 — local_page_layout excludes the sidebar/titlebar/dock,
+measures body height, adds the 44px header and one clipped ScrollView. main.rs:1066
+uses that maximum; :2852 sends wheel input only inside the page viewport (logical
+pixels, line step 28). Redraw clamps scroll again after resize (:2258).
+main.rs:2239 — a local tab substitutes local-page chrome for pane layout; :2320
+paints the page in the existing foreground flow. Close/page hit boxes (:3022)
+consume pointer input before terminal/composer handling; page clicks blur editing.
+
+main.rs:2037 — a new Model.e2e Arc replaces only Graph's checklist and invalidates
+layout. model.rs:514/:1002 preserves that snapshot through rebuilds. Knowledge,
+Results/EventLane/history and their operation ownership remain independent.
+
+Settings adaptations, not implemented by this note: add its variant dispatch;
+make open_graph distinguish variants; supply effective theme/density (the current
+page layout/paint hardcodes Dark/Cozy); enable IME for Settings editing; give its
+bounded internal ScrollView the inner viewport instead of adding a second scroll
+owner. Keep UI FocusState/Stage and keyboard release balancing as the sole owners.
+Graph's observe_knowledge switch is not a generic Settings preference-IO hook.
+
+Later documents reuse the admitted read-only Knowledge transport and portable DTOs.
+Preserve the E2e Watch's operation ownership when dispatching replies. Its effective
+GUI response cap is 256 KiB including portable errors/frontmatter/resources,
+separate from the Index's 2 MiB document bound and the GUI's 1 MiB frame bound.
+Settings/document hosting, preference IO and operator interaction were not added
+or tested by this map; the accepted source and its existing tests are the evidence.
