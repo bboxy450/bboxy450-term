@@ -1,0 +1,35 @@
+P-0 handoff, 2026-10-24; Kestrel Voidwing <EXECUTOR>
+Brief: plugins.md P-0 and decision #278; approved plan 0e52d8f1 / 6c1be1a9.
+Worktree /Users/feral/mydev/bboxy450-term-exec5; branch exec5-plugins-p0.
+Source b211b32cf1c202982fd55d5ea0e92d4b61438f04; signed G.
+Exact clean normal gate 6c0a51285b61505fcf8dad54f44d7a82ab51b537; signed G.
+Base 10f01fd4ebb0dae3a02f87ff4b0ba6e3d34b7824. Measurement successor changes logs only.
+
+Mechanisms and acceptance:
+crates/bbt-plugin/src/shape.rs:16 — 64-byte host-qualified names, app prefix, major/minor compatibility, additive metadata, fixed contract requirements.
+crates/bbt-plugin/src/{contracts,policy,trust}.rs and schemas/ — five 1.0 contracts; session/provider 0.1 describe-only, no 1.0/runtime acceptance; fixed Worker/Oracle/HostOnly authority, tier/hook/env policy, exact pinned task/event/decision/repo tables.
+crates/bbt-mux/src/plugins/trust.rs:19 — disposable fixture account pre-seeds trust by digest before execution, read-only content-addressed copy, cached --shape, per-plugin private data dir; production install paths refused.
+crates/bbt-mux/src/plugins/client.rs:37 — scrubbed child environment, current MCP negotiation, bounded frames/catalogue/stderr, fixed deadlines/cancellation; stdin close then TERM/KILL/reap, owned PIDs only.
+crates/bbt-mux/src/plugins/check.rs:642 — standalone headless seven-contract conformance, native Envelope/TaskVerification parsing kept strict, existing Index-signed disposable task records round-trip signed_record byte-for-byte.
+crates/bbt-mux/src/plugins/check.rs:693 — explicit n=100 cold/warm measurement, no latency pass threshold or automatic production load.
+crates/bboxy450-term/src/main.rs:4563 — early `plugin check` / `plugin measure` CLI, before GUI or real custody; bridge.rs changes only VERSIONS visibility/rustdoc.
+crates/bbt-mux/tests/fixtures/plugins/bboxy450-term-data_source-reference — independent Python stdlib reference executable; each fixture advertises one pinned contract, tests pin each variant's bytes before execution.
+crates/bbt-mux/tests/plugins.rs:56 — six required named refusals plus deadline/protocol/error/EOF/overflow/stderr/opaque-signed-record/cross-field negatives, with reaping assertions.
+crates/bbt-mux/src/plugins/client.rs:374 and app tests/plugins.rs:11 — actual stdio and binary path, environment negatives, isolated storage, lossless opaque values; no real service, credential or operator input.
+
+Verification before exact gate:
+Final focused kit 12/0, proto 2/0, mux integration 7/0, mux plugin unit 5/0, actual app CLI 1/0 = 27/0; strict workspace/all-target Clippy EXIT 0; layering EXIT 0; licenses EXIT 0.
+Rebased strict workspace/all-target Clippy EXIT 0; app build EXIT 0. p0-rebased-checks.log retains own-patch range-diff. Only conflict was the dependency-context union preserving HK-0's normal-to-dev move.
+Measurement EXIT 0, 100 raw cold + 100 raw warm samples. Nearest-rank independently checked: cold p50 29212 us / p99 39836 us; warm p50 40 us / p99 118 us. Profile/toolchain/load/binary+fixture SHA256/raw samples in p0-measurement.log. 103 owned child processes; shape once. Timing excludes cleanup and schema validation; not a production service or end-to-end benchmark.
+Development failures and their corrections remain unmodified in p0-development.log: fixture environment surprise (__CF_USER_TEXT_ENCODING added by macOS), /var vs /private/var test alias, narrow test-IO Clippy allowances, signed_record and native role-grant test vectors. No final failure waived.
+
+Scope/gaps:
+Conformance trust is fixture-only and does not grant production trust. No production discovery/registry, Settings, hook execution, real provider/session runtime, task state routing, or K-1 stdio knowledge server. No real harness conversation/credential. No UI/render/lab change, so this is the approved normal gate (no new parity run).
+The checker uses isolated public fixture keys, never operator or real seat keys; its report labels that scope. Current native strict Envelope parser and existing task verification contract were not weakened.
+Main moved during the frozen gate; no rebase/re-gate. Oracle owns any merged-tree verification. Production publishing/merging left untouched.
+
+Exact gate: sh scripts/ci-local.sh — EXIT 0, elapsed 1802.611 s; raw p0-ci.log SHA256 233517c7a315dd1f4cded16a3269ed4f00719e03109a7aafe2f4848d8de1d177.
+Workspace build, strict all-target Clippy, workspace tests, UI lint, native smoke and 21 default invariants all passed (9 slow checks skipped by the normal gate).
+Native smoke: idle 10.002 s, 0 frames / 0 callbacks; measured CPU p50 5.166 ms / p99 9.462 ms.
+Owned isolated gate target deleted at exit; owned dev target deleted after measurement. Clean gate worktree status and removal recorded separately in scratch state.
+Next authorized brief: #281/#282 file-first custody and per-run test account (T5), then #280 unlock. No operator input needed.
