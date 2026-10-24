@@ -234,6 +234,7 @@ impl EditingText {
                         style,
                         rect: r,
                         line_height: h,
+                        baseline: top + base,
                     }],
                     selectable: false,
                     ellipsis: false,
@@ -541,6 +542,8 @@ pub struct PositionedRun {
     pub style: ResolvedText,
     pub rect: Rect,
     pub line_height: f32,
+    /// Absolute logical y coordinate, shared by all runs on the same line.
+    pub baseline: f32,
 }
 #[derive(Debug, Clone)]
 pub enum LayoutKind {
@@ -672,6 +675,7 @@ fn text_lines(
         for run in &mut placed[start..] {
             run.rect.x += dx;
             run.rect.y = y + above - baseline(&run.style, m);
+            run.baseline = y + above;
         }
     };
     'runs: for run in &text.runs {
@@ -710,6 +714,7 @@ fn text_lines(
                         style: s.clone(),
                         rect: Rect::new(x, y, w, line),
                         line_height: line,
+                        baseline: y + base,
                     });
                     clamped = true;
                     break 'runs;
@@ -738,6 +743,7 @@ fn text_lines(
                 style: s.clone(),
                 rect: Rect::new(x, y, w, line),
                 line_height: line,
+                baseline: y + base,
             });
             x += w;
             if newline {
@@ -1189,6 +1195,7 @@ impl Element {
                 for run in &mut runs {
                     run.rect.x += rect.x;
                     run.rect.y += rect.y;
+                    run.baseline += rect.y;
                 }
                 (
                     LayoutKind::Text {
@@ -1685,6 +1692,7 @@ fn translate_layout(node: &mut Layout, dy: f32) {
     if let LayoutKind::Text { runs, .. } = &mut node.kind {
         for run in runs {
             run.rect.y += dy;
+            run.baseline += dy;
         }
     }
     for child in &mut node.children {
@@ -1733,6 +1741,7 @@ fn scale_layout(node: &mut Layout, pivot: Rect, scale: f32) {
         }
         LayoutKind::Text { runs, shadow, .. } => {
             for run in runs {
+                run.baseline = point(run.rect.x, run.baseline)[1];
                 run.rect = rect(run.rect);
                 run.style.size *= scale;
                 run.line_height *= scale;
@@ -2491,6 +2500,7 @@ fn paint_contents(
                     let (origin, style, max_width) = inputs(run);
                     list.push(Prim::TextShadow {
                         origin,
+                        baseline: Some(run.baseline),
                         text: run.text.clone().into(),
                         style,
                         max_width,
@@ -2502,6 +2512,7 @@ fn paint_contents(
                 let (origin, style, max_width) = inputs(run);
                 list.push(Prim::Text {
                     origin,
+                    baseline: Some(run.baseline),
                     text: run.text.clone().into(),
                     style,
                     max_width,

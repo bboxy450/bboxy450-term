@@ -25,6 +25,7 @@ impl DrawList {
     pub fn text(&mut self, rect: Rect, text: impl Into<Arc<str>>, style: TextStyle, color: Color) {
         self.push(Prim::Text {
             origin: [rect.x, rect.y],
+            baseline: None,
             text: text.into(),
             style,
             max_width: Some(rect.w),
@@ -108,6 +109,11 @@ impl DrawList {
                     Self::validate_primitives(primitives, groups + 1)?;
                 }
                 Prim::Clip { .. } => depth += 1,
+                Prim::Text { baseline, .. } | Prim::TextShadow { baseline, .. }
+                    if baseline.is_some_and(|y| !y.is_finite()) =>
+                {
+                    return Err("invalid text baseline");
+                }
                 Prim::Unclip if depth == 0 => return Err("unbalanced draw-list clip"),
                 Prim::Unclip => depth -= 1,
                 _ => {}

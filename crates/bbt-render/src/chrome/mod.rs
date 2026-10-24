@@ -484,6 +484,7 @@ impl ChromeRenderer {
                 }
                 Prim::TextShadow {
                     origin,
+                    baseline,
                     text,
                     style,
                     max_width,
@@ -507,11 +508,16 @@ impl ChromeRenderer {
                         continue;
                     }
                     let left = physical_x.floor() - 2.;
-                    let top = ((origin[1]
-                        + shadow.offset[1]
-                        + (style.pixels() * 1.4 - line.height as f32 / scale) * 0.5)
-                        * scale)
-                        .round();
+                    let top = baseline.map_or_else(
+                        || {
+                            ((origin[1]
+                                + shadow.offset[1]
+                                + (style.pixels() * 1.4 - line.height as f32 / scale) * 0.5)
+                                * scale)
+                                .round()
+                        },
+                        |y| ((y + shadow.offset[1]) * scale).round() - line.baseline,
+                    );
                     for part in line.parts {
                         // A text shadow is ink overflow, not a larger line box.
                         // Only the inherited clip bounds its padded coverage.
@@ -535,6 +541,7 @@ impl ChromeRenderer {
                 }
                 Prim::Text {
                     origin,
+                    baseline,
                     text,
                     style,
                     max_width,
@@ -552,10 +559,15 @@ impl ChromeRenderer {
                         continue;
                     }
                     let left = physical_x.floor() - 2.;
-                    let top = ((origin[1]
-                        + (style.pixels() * 1.4 - line.height as f32 / scale) * 0.5)
-                        * scale)
-                        .round();
+                    let top = baseline.map_or_else(
+                        || {
+                            ((origin[1]
+                                + (style.pixels() * 1.4 - line.height as f32 / scale) * 0.5)
+                                * scale)
+                                .round()
+                        },
+                        |y| (y * scale).round() - line.baseline,
+                    );
                     for part in line.parts {
                         // Preserve the old line canvas' clipping of overhangs.
                         let x0 = part.offset[0].max(0);
@@ -608,13 +620,13 @@ impl ChromeRenderer {
                     image,
                     radius,
                 } => {
-                    let uv = self
-                        .icons
-                        .rects
-                        .get(image.as_ref())
-                        .ok_or_else(|| RenderError(format!("unbaked image: {image}")))?;
+                    let uv = self.icons.image(
+                        image.as_ref(),
+                        [rect.w * scale, rect.h * scale],
+                        scale,
+                    )?;
                     let mut item = make(*rect, Color::WHITE, 3.0, clip);
-                    item.uv = *uv;
+                    item.uv = uv;
                     item.radii = [radius * scale; 4];
                     instances.push(item);
                 }
@@ -1335,6 +1347,113 @@ mod tests {
         }
     }
     #[test]
+    fn minified_bitmap_uses_integrated_texels_in_gpu_readback() {
+        let mut renderer = ChromeRenderer::new(vec![icons::Image {
+            name: "bars".into(),
+            width: 64,
+            height: 64,
+            rgba: (0..64 * 64)
+                .flat_map(|i| {
+                    let v = if i % 64 % 3 == 0 { 255 } else { 0 };
+                    [v, v, v, 255]
+                })
+                .collect(),
+        }])
+        .unwrap();
+        let mut list = DrawList::default();
+        list.push(Prim::Image {
+            rect: Rect::new(4., 4., 8., 8.),
+            image: "bars".into(),
+            radius: 0.,
+        });
+        let pixels = renderer.render_to_rgba(&list, 16, 16, 1.).unwrap();
+        for y in 0..8 {
+            for x in 0..8 {
+                let at = (((y + 4) * 16 + x + 4) * 4) as usize;
+                let v = if x % 3 == 2 { 64 } else { 96 };
+                assert_eq!(&pixels[at..at + 4], &[v, v, v, 255]);
+            }
+        }
+        assert_eq!(pixels, renderer.render_to_rgba(&list, 16, 16, 1.).unwrap());
+    }
+
+    #[test]
+    fn resolved_text_baseline_places_actual_ink_and_shadow_at_both_device_scales() {
+        use bbt_ui_model::draw::{TextShadow, TextStyle, TypeScale};
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        for scale in [1_f32, 2.] {
+            for size in [10_f32, 11., 12.5, 19.] {
+                for mono in [false, true] {
+                    let style = TextStyle {
+                        scale: TypeScale::Custom(size),
+                        mono,
+                        ..Default::default()
+                    };
+                    let metrics = text::measure("Hg", style, None).unwrap();
+                    for leading in [1_f32, 1.35, 1.4, 2.] {
+                        let height = (size * leading * 64.).floor() / 64.;
+                        let y = 20.3125;
+                        let baseline = y
+                            + metrics.ascent.round()
+                            + ((height - metrics.ascent.round() - metrics.descent.round()) * 0.5)
+                                .floor();
+                        let origin = [6.25, y + (height - size * 1.4) * 0.5];
+                        let mut list = DrawList::default();
+                        list.push(Prim::Text {
+                            origin,
+                            baseline: Some(baseline),
+                            text: "H".into(),
+                            style,
+                            max_width: None,
+                            color: Color::WHITE,
+                        });
+                        let width = (64. * scale) as u32;
+                        let height = (64. * scale) as u32;
+                        let pixels = renderer
+                            .render_to_rgba(&list, width, height, scale)
+                            .unwrap();
+                        // H has a flat baseline, no descender or optical overshoot.
+                        // Read actual GPU coverage, independently of layout metadata.
+                        let last_ink_row = pixels
+                            .chunks_exact(width as usize * 4)
+                            .rposition(|row| {
+                                row.as_chunks::<4>().0.iter().any(|pixel| pixel[0] > 8)
+                            })
+                            .unwrap();
+                        assert_eq!(
+                            last_ink_row as i32,
+                            (baseline * scale).round() as i32 - 1,
+                            "size {size}, mono {mono}, leading {leading}, scale {scale}"
+                        );
+                        let warm = renderer.text_cache_stats().coverage;
+                        list.primitives[0] = Prim::TextShadow {
+                            origin,
+                            baseline: Some(baseline),
+                            text: "H".into(),
+                            style,
+                            max_width: None,
+                            shadow: TextShadow {
+                                color: Color::WHITE,
+                                blur_radius: 0.,
+                                offset: [0.; 2],
+                            },
+                        };
+                        assert_eq!(
+                            pixels,
+                            renderer
+                                .render_to_rgba(&list, width, height, scale)
+                                .unwrap()
+                        );
+                        let shadow = renderer.text_cache_stats().coverage;
+                        assert_eq!(warm.misses, shadow.misses);
+                        assert_eq!(warm.shape_misses, shadow.shape_misses);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn text_shadow_uses_cached_glyph_coverage_beneath_translucent_text() {
         use bbt_ui_model::draw::{TextShadow, TextStyle, TypeScale};
         const W: usize = 64;
@@ -1354,6 +1473,7 @@ mod tests {
             if let Some(shadow) = shadow {
                 list.push(Prim::TextShadow {
                     origin,
+                    baseline: None,
                     text: "?".into(),
                     style,
                     max_width: None,
@@ -1362,6 +1482,7 @@ mod tests {
             }
             list.push(Prim::Text {
                 origin,
+                baseline: None,
                 text: "?".into(),
                 style,
                 max_width: None,

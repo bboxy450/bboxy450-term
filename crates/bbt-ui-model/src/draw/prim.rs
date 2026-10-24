@@ -245,9 +245,11 @@ pub enum Prim {
         radii: [f32; 4],
         color: Color,
     },
-    /// Origin is the top-left of the line box; the renderer owns baseline and ellipsis.
+    /// Origin is the line-box top-left. A resolved baseline is an absolute logical
+    /// y coordinate; None retains the legacy vertically centred mask placement.
     Text {
         origin: Pt,
+        baseline: Option<f32>,
         text: Arc<str>,
         style: TextStyle,
         max_width: Option<f32>,
@@ -256,6 +258,7 @@ pub enum Prim {
     /// Glyph coverage beneath its foreground text, with the same shaping inputs.
     TextShadow {
         origin: Pt,
+        baseline: Option<f32>,
         text: Arc<str>,
         style: TextStyle,
         max_width: Option<f32>,

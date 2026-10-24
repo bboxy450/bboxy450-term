@@ -47,6 +47,7 @@ pub(super) struct Part {
 pub(super) struct Line {
     pub width: u32,
     pub height: u32,
+    pub baseline: f32,
     pub advance: f32,
     pub parts: Vec<Part>,
 }
@@ -238,6 +239,7 @@ impl Cache {
         Ok(Line {
             width: shape.width,
             height: shape.height,
+            baseline: shape.baseline,
             advance: shape.advance,
             parts,
         })

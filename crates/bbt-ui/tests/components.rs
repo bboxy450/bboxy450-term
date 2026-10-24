@@ -20,6 +20,114 @@ fn context() -> Context {
     Context::new(Theme::Dark, Density::Cozy)
 }
 
+#[test]
+fn painted_text_and_shadow_keep_the_resolved_baseline_for_every_line() {
+    for size in [10_f32, 11., 12.5, 19.] {
+        for leading in [1_f32, 1.35, 1.4, 2.] {
+            let style = bbt_ui::Text {
+                size: Some(size),
+                line_height: leading,
+                ..Default::default()
+            };
+            let mut text = c::Text::new("H\nH", style);
+            text.shadow = Some(c::TextShadow {
+                color: Paint::solid(Color::Rgba([1.; 4])),
+                blur_radius: 0.,
+                offset: [0.; 2],
+            });
+            let layout = c::Element::Text(text)
+                .layout(Rect::new(15.25, 20.3125, 200., 0.), context(), &Metrics)
+                .unwrap();
+            let height = (size * leading * 64.).floor() / 64.;
+            let first = layout.rect.y + layout.baseline;
+            let mut text_baselines = vec![];
+            let mut shadow_baselines = vec![];
+            for op in c::paint(&layout, context()) {
+                if let c::Paint::Draw(list) = op {
+                    for p in list.primitives {
+                        match p {
+                            Prim::Text { baseline, .. } => text_baselines.push(baseline),
+                            Prim::TextShadow { baseline, .. } => shadow_baselines.push(baseline),
+                            _ => {}
+                        }
+                    }
+                }
+            }
+            assert_eq!(text_baselines, [Some(first), Some(first + height)]);
+            assert_eq!(shadow_baselines, text_baselines);
+        }
+    }
+}
+
+#[test]
+fn aligned_scaled_and_editing_text_paint_at_their_layout_baselines() {
+    for scale in [0.9, 1., 1.1] {
+        let mut big = c::Text::new(
+            "H",
+            bbt_ui::Text {
+                size: Some(19.),
+                ..Default::default()
+            },
+        );
+        big.wrap = false;
+        let edit = c::EditingText {
+            value: "H".into(),
+            placeholder: String::new(),
+            style: bbt_ui::Text {
+                size: Some(12.5),
+                line_height: 1.35,
+                ..Default::default()
+            },
+            placeholder_paint: Paint::solid(Color::Muted),
+            edit: Default::default(),
+            name: "edit".into(),
+        };
+        let mut row = c::Box::new(
+            Style::new(Preset::Card),
+            vec![
+                c::Element::Text(big).into(),
+                c::Element::EditingText(edit).into(),
+            ],
+        );
+        row.direction = Axis::Row;
+        row.align = c::Alignment::Baseline;
+        row.scale = scale;
+        let layout = c::Element::Box(row)
+            .layout(Rect::new(15.25, 20.3125, 200., 0.), context(), &Metrics)
+            .unwrap();
+        fn baselines(node: &c::Layout, out: &mut Vec<f32>) {
+            if let c::LayoutKind::Text { runs, .. } = &node.kind
+                && runs.iter().any(|run| !run.text.is_empty())
+            {
+                let expected = node.rect.y + node.baseline;
+                assert!((runs[0].baseline - expected).abs() < 0.0001);
+                out.push(expected);
+            }
+            for child in &node.children {
+                baselines(child, out);
+            }
+        }
+        let mut expected = vec![];
+        baselines(&layout, &mut expected);
+        let actual: Vec<_> = c::paint(&layout, context())
+            .into_iter()
+            .filter_map(|op| match op {
+                c::Paint::Draw(list) => Some(list.primitives),
+                _ => None,
+            })
+            .flatten()
+            .filter_map(|p| match p {
+                Prim::Text { baseline, text, .. } if !text.is_empty() => baseline,
+                _ => None,
+            })
+            .collect();
+        assert_eq!(actual.len(), 2);
+        for (painted, measured) in actual.iter().zip(expected) {
+            assert!((painted - measured).abs() < 0.0001);
+        }
+    }
+}
+
 fn edit_part<'a>(node: &'a c::Layout, part: &str) -> &'a c::Layout {
     if matches!(&node.kind, c::LayoutKind::Named(key) if key == part) {
         return node;

@@ -1,0 +1,85 @@
+Advisory baseline + bitmap preflight — Velvet Vulpine <EXECUTOR>
+Brief afd42b15; all-five diagnosis DM2c39ee9a, Oracle scope/rulings959bcde4. No changes before reporting all causes. Base ef193a2; scoped captures accepted69d2fc54, report94d9bd6d. Detailed diagnosis in advisory-five-diagnosis.log; read-only peer provenance in target/advisory-five-ef193a2/provenance.json.
+
+Implementation: retained UI runs carry their absolute layout baseline through translation, alignment, scaling and paint. Text and TextShadow accept an optional baseline; cached shaping exposes its original mask baseline, so the renderer translates coverage to the resolved physical baseline. Legacy callers None keep their old placement. No WGSL/pass/coverage algorithm/cache key change; zero-blur shadow reuses warm shape/mask. Tests read real GPU H coverage at1x/2x, sizes10/11/12.5/19, sans/mono, four line heights; component tests cover multiline, mixed-size baseline alignment, editing text and scales0.9/1/1.1.
+Bitmap images retain their premultiplied source; first minified use integrates source texel footprint to a physical-size bitmap in the existing atlas, cached by name/physical-size/scale. Warm hits add no shelf entry/upload; magnification uses original bitmap. SVG path stays unchanged. Unit and GPU bars fixture distinguish integrated source footprint from level0 bilinear undersampling; transparent hidden RGB cannot fringe the result. No extra GPU pass or shader.
+
+Scoped baseline-only render100 exit0/strict compare0:92 measured geometry/0 mismatch. Reviews100->24: documents44->16, settings24->0, graph16->0, stream8->0, materials8 unchanged. The remaining16 are diagram-engine raws and8 legacy particle coverage, both retained per Oracle ruling. Combined renderer repeats100 cases and strict compare0 with the same24 remaining keys. This is scoped reused-capture proof, not fresh full-catalog acceptance and not a claim of0 new keys outside the100.
+Real portrait crop72px in84px context: baseline-only native2726 changed pixels, RGB MAE8.1354875; prefiltered1911,4.7291194. Read the side-by-side web/before/after crop: integrated eyes/hair/hoodie detail replaces jaggies; native quality now comparable to the web. Residual sampling/hair differences remain, with no reference compensation or asset substitution. Material shader and dashed borders are untouched.
+
+Preserved failure: first full cargo test -p bbt-ui --locked exit101,22/1 components. My new alignment/editing regression incorrectly counted the retained empty tail Text primitive as visible text. Filtered empty strings from both expected layout nodes and inspected primitives; production unchanged; corrected full UI test0. Initial diagnostic scipy import1 before producing any fit; no dependency installed, no fit claimed. Source-reading nonexistent layout/text path commands exited1/2 without writes. All raw command statuses below; diagnostic generation, lossless crops, parser-branch check and diff/formatter checks0.
+
+Full exact clean ci-local --parity not yet run; requires Oracle gate slot. Current known external app fixture missing number is Sable-owned681cdf18, to consume when accepted. No code push. Legacy Glow8/diagram16 retained; dashed distribution deferred, and app hosting stays with Nyx/Wren. Full moved-module/key-set/geometry result and actual CI exit will be in the evidence successor. Keep alive-rim ordering and clips unchanged (Seraphcdd60982); peers Sable8742ccf7 and Nyxf1d68314 report no active shared-renderer write overlap.
+
+UTC 2026-10-24T04:37:33.100991+00:00
+
+STATUS baseline-book-build.status.json
+{"base": "ef193a2af4b7a661e9ee11d2900085bc6c2899c2", "command": ["cargo", "build", "-p", "bboxybook", "--locked"], "command_pid": 95104, "diff_sha256": "73a81ecefaea17a5e1c46345e4f9286954d61f1bc58218f5b0307964b899e396", "elapsed_seconds": 67.952, "exit": 0, "log_sha256": "8feb73c2657553b824db734e4a356db63e75aaf7446d7a54d9501d1fd670dee5", "phase": "finished", "started_utc": "2026-10-24T04:27:56.368855+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-dev", "wrapper_pid": 95064}
+
+STATUS baseline-compare100.status.json
+{"base": "ef193a2af4b7a661e9ee11d2900085bc6c2899c2", "command": ["target/advisory-five-ef193a2/bboxybook-baseline", "compare", "--strict-geometry", "--out", "target/advisory-five-ef193a2/baseline-report", "--manifest", "target/advisory-five-ef193a2/review100.json", "--web-root", "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/gate-69d2fc5/web", "--native-root", "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-five-ef193a2/baseline-native"], "command_pid": 3251, "diff_sha256": "f28cfa6b99495b3c8739989d1ee3af8e1b723969d9aa019934bef5a0430a92d5", "elapsed_seconds": 9.885, "exit": 0, "log_sha256": "20bbd77d579444028ef2506c6d90281bd823c6e9c55cfa25565b914fca09a5b3", "phase": "finished", "started_utc": "2026-10-24T04:31:10.063939+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-dev", "wrapper_pid": 3236}
+
+STATUS baseline-gpu.status.json
+{"base": "ef193a2af4b7a661e9ee11d2900085bc6c2899c2", "command": ["cargo", "test", "-p", "bbt-render", "--lib", "--locked", "chrome::tests::resolved_text_baseline_places_actual_ink_and_shadow_at_both_device_scales", "--", "--exact", "--nocapture"], "command_pid": 90787, "elapsed_seconds": 42.92, "exit": 0, "phase": "finished", "started_utc": "2026-10-24T04:25:54.102379+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-dev", "wrapper_pid": 90775}
+
+STATUS baseline-render100.status.json
+{"base": "ef193a2af4b7a661e9ee11d2900085bc6c2899c2", "command": ["target/advisory-dev/debug/bboxybook", "render", "--all", "--out", "target/advisory-five-ef193a2/baseline-native", "--manifest", "target/advisory-five-ef193a2/review100.json"], "command_pid": 99214, "diff_sha256": "73a81ecefaea17a5e1c46345e4f9286954d61f1bc58218f5b0307964b899e396", "elapsed_seconds": 49.188, "exit": 0, "log_sha256": "7daac7ccbd8efae0f5fe0ab6bc60f6e07e5afb90d5ba1da2b4170b559e1281f8", "phase": "finished", "started_utc": "2026-10-24T04:29:18.640951+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-dev", "wrapper_pid": 99180}
+
+STATUS baseline-ui.status.json
+{"base": "ef193a2af4b7a661e9ee11d2900085bc6c2899c2", "command": ["cargo", "test", "-p", "bbt-ui", "--test", "components", "--locked", "painted_text_and_shadow_keep_the_resolved_baseline_for_every_line", "--", "--exact", "--nocapture"], "command_pid": 92625, "diff_sha256": "73a81ecefaea17a5e1c46345e4f9286954d61f1bc58218f5b0307964b899e396", "elapsed_seconds": 8.389, "exit": 0, "log_sha256": "ad78e829f91c2a62f10cee94f48b40d965dc1810c82ef129d25315f330bdaa9c", "phase": "finished", "started_utc": "2026-10-24T04:27:16.461649+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-dev", "wrapper_pid": 92610}
+
+STATUS combined-book-build.status.json
+{"base": "ef193a2af4b7a661e9ee11d2900085bc6c2899c2", "command": ["cargo", "build", "-p", "bboxybook", "--locked"], "command_pid": 4053, "diff_sha256": "f28cfa6b99495b3c8739989d1ee3af8e1b723969d9aa019934bef5a0430a92d5", "elapsed_seconds": 28.813, "exit": 0, "log_sha256": "2031b0369e1903966a388664346f33ab09e49bc1f9dcb46a3b94ce9a0f9b8ec4", "phase": "finished", "started_utc": "2026-10-24T04:31:52.560012+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-dev", "wrapper_pid": 4023}
+
+STATUS combined-compare100.status.json
+{"base": "ef193a2af4b7a661e9ee11d2900085bc6c2899c2", "command": ["target/advisory-dev/debug/bboxybook", "compare", "--strict-geometry", "--out", "target/advisory-five-ef193a2/combined-report", "--manifest", "target/advisory-five-ef193a2/review100.json", "--web-root", "/Users/feral/mydev/bboxy450-term-nyx/target/l9-m-c/gate-69d2fc5/web", "--native-root", "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-five-ef193a2/combined-native"], "command_pid": 6935, "diff_sha256": "c6e381a1ebcad24562d6dce3bb8e70456dd6af7f822de46bf63af189a21cc2b3", "elapsed_seconds": 2.381, "exit": 0, "log_sha256": "12341803f16ee74f8e2b57e3632428ed7a788f893d09833e8197e574ecafecc9", "phase": "finished", "started_utc": "2026-10-24T04:34:14.170537+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-dev", "wrapper_pid": 6921}
+
+STATUS combined-render100.status.json
+{"base": "ef193a2af4b7a661e9ee11d2900085bc6c2899c2", "command": ["target/advisory-dev/debug/bboxybook", "render", "--all", "--out", "target/advisory-five-ef193a2/combined-native", "--manifest", "target/advisory-five-ef193a2/review100.json"], "command_pid": 5682, "diff_sha256": "5465f11a627da320f58def815101d5bf337cf31dd0e1d656dc9b016aacca0a16", "elapsed_seconds": 21.458, "exit": 0, "log_sha256": "7904e4e883630e3636bf144ac46e28662ee92f6f74b302bfaedba1d031d74728", "phase": "finished", "started_utc": "2026-10-24T04:32:52.556968+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-dev", "wrapper_pid": 5667}
+
+STATUS renderer-complete.status.json
+{"base": "ef193a2af4b7a661e9ee11d2900085bc6c2899c2", "command": ["cargo", "test", "-p", "bbt-render", "--lib", "--locked"], "command_pid": 3274, "diff_sha256": "f28cfa6b99495b3c8739989d1ee3af8e1b723969d9aa019934bef5a0430a92d5", "elapsed_seconds": 12.909, "exit": 0, "log_sha256": "ef3602eb173b94650e65bc51502f6d0402088846a52ecfc8beb5335f8fa111e0", "phase": "finished", "started_utc": "2026-10-24T04:31:11.221406+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-dev", "wrapper_pid": 3256}
+
+STATUS strict-workspace.status.json
+{"base": "ef193a2af4b7a661e9ee11d2900085bc6c2899c2", "command": ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "command_pid": 7628, "diff_sha256": "93eb11377eef5b5b79b8903afb2f081b1fc277e90d907da429f120802f354b36", "elapsed_seconds": 59.38, "exit": 101, "log_sha256": "4350f770b0af8245c9919f7b88098cc65b7a0af3b27bc9e15f7bfb1bb6066592", "phase": "finished", "started_utc": "2026-10-24T04:35:39.102300+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-dev", "wrapper_pid": 7614}
+
+STATUS ui-complete.status.json
+{"base": "ef193a2af4b7a661e9ee11d2900085bc6c2899c2", "command": ["cargo", "test", "-p", "bbt-ui", "--locked"], "command_pid": 6130, "diff_sha256": "c6e381a1ebcad24562d6dce3bb8e70456dd6af7f822de46bf63af189a21cc2b3", "elapsed_seconds": 9.981, "exit": 101, "log_sha256": "b3baf14cffad6bb87b36ba17462820a4cc85785c31c5ddbe36650d79919a2e89", "phase": "finished", "started_utc": "2026-10-24T04:33:32.208547+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-dev", "wrapper_pid": 6116}
+
+STATUS ui-corrected.status.json
+{"base": "ef193a2af4b7a661e9ee11d2900085bc6c2899c2", "command": ["cargo", "test", "-p", "bbt-ui", "--locked"], "command_pid": 7121, "diff_sha256": "93eb11377eef5b5b79b8903afb2f081b1fc277e90d907da429f120802f354b36", "elapsed_seconds": 5.125, "exit": 0, "log_sha256": "d90de61b4997cc3cc3fb12990ba073d11b81f210be23a83b0760fde2fd9f17cb", "phase": "finished", "started_utc": "2026-10-24T04:34:41.679677+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-dev", "wrapper_pid": 7107}
+target/advisory-five-ef193a2/provenance.json sha256 248cbef9d3c8f25ea067f5210044a86e56e48748f579c55f793cae292319050c
+target/advisory-five-ef193a2/cases.json sha256 2a7783437733d88a59fcabf67e230260cd022d8af6430c513d328c1c28c51bff
+target/advisory-five-ef193a2/layouts.json sha256 806532631539aa87c688fbe2275402d013515a632d4ac0bfec0d118a18ee028c
+target/advisory-five-ef193a2/review100.json sha256 2e6d0548234617138b4379a6642e6529ce98d83f167f9b22f93c880cd416ba74
+target/advisory-five-ef193a2/metrics.json sha256 bbdc4acc94c78e096284c937972061215a8c77e330943e08e35e8230fcfd2a13
+target/advisory-five-ef193a2/text-shift-metrics.json sha256 508299a75332ad334a05271075d256852c2edb840803f8158c5beaf08e60a8b4
+target/advisory-five-ef193a2/crop-manifest.json sha256 e5b10263ea8951fa7d7626bfb52c4023660d537f5d1ee9704bef988c2d30e73a
+target/advisory-five-ef193a2/source-equivalence.diff sha256 1ec6904916af7239d913227861a20d64d9919cd9925ebf9f96086725fd8d6fc9
+target/advisory-five-ef193a2/baseline-only-source-files.json sha256 0763982f1ad4b03f34559e842c670ce33c9a0343231769dd197967b5984c2567
+
+FINAL PRECHECKS: full UI140/0, renderer73/0. Strict workspace all-target Clippy first101 on my new GPU test chunks_exact(4); changed only to as_chunks::<4>().0.iter(); corrected Clippy0. Format/diff checks0. Slot1 granted526b2e38 for combined exact clean --parity.
+
+FINAL STATUS ui-complete
+{"base": "ef193a2af4b7a661e9ee11d2900085bc6c2899c2", "command": ["cargo", "test", "-p", "bbt-ui", "--locked"], "command_pid": 6130, "diff_sha256": "c6e381a1ebcad24562d6dce3bb8e70456dd6af7f822de46bf63af189a21cc2b3", "elapsed_seconds": 9.981, "exit": 101, "log_sha256": "b3baf14cffad6bb87b36ba17462820a4cc85785c31c5ddbe36650d79919a2e89", "phase": "finished", "started_utc": "2026-10-24T04:33:32.208547+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-dev", "wrapper_pid": 6116}
+
+FINAL STATUS ui-corrected
+{"base": "ef193a2af4b7a661e9ee11d2900085bc6c2899c2", "command": ["cargo", "test", "-p", "bbt-ui", "--locked"], "command_pid": 7121, "diff_sha256": "93eb11377eef5b5b79b8903afb2f081b1fc277e90d907da429f120802f354b36", "elapsed_seconds": 5.125, "exit": 0, "log_sha256": "d90de61b4997cc3cc3fb12990ba073d11b81f210be23a83b0760fde2fd9f17cb", "phase": "finished", "started_utc": "2026-10-24T04:34:41.679677+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-dev", "wrapper_pid": 7107}
+
+FINAL STATUS strict-workspace
+{"base": "ef193a2af4b7a661e9ee11d2900085bc6c2899c2", "command": ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "command_pid": 7628, "diff_sha256": "93eb11377eef5b5b79b8903afb2f081b1fc277e90d907da429f120802f354b36", "elapsed_seconds": 59.38, "exit": 101, "log_sha256": "4350f770b0af8245c9919f7b88098cc65b7a0af3b27bc9e15f7bfb1bb6066592", "phase": "finished", "started_utc": "2026-10-24T04:35:39.102300+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-dev", "wrapper_pid": 7614}
+
+FINAL STATUS strict-corrected
+{"base": "ef193a2af4b7a661e9ee11d2900085bc6c2899c2", "command": ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "command_pid": 11275, "diff_sha256": "5f301995828979e5d24062c0ed1095e3f1b289a00f62ce68817916c2f257ccaa", "elapsed_seconds": 11.7, "exit": 0, "log_sha256": "3970ccd9ba747e81eec65ba0b7e1e7f545bc92415133ec52f24eb67961255c7d", "phase": "finished", "started_utc": "2026-10-24T04:38:20.747600+00:00", "target": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-dev", "wrapper_pid": 11261}
+
+FINAL SOURCE HASHES (before commit)
+crates/bbt-render/src/chrome/icons.rs 46d1fce66e16f56ee000362c204582e16c3f1d51f5aec59a971b23d52358b180
+crates/bbt-render/src/chrome/mod.rs c50111ea41e4058cbdce6b9e428a14502f79c50717ebd51ab687d81733793664
+crates/bbt-render/src/chrome/text.rs 27fbe27768390a8d0202c9442c199c6df252334eb663843678f16ea2417837c3
+crates/bbt-render/src/chrome/text_cache.rs ee5e03165e21844917f5bf201053b9389542d501675b6344859aaf505b6358c7
+crates/bbt-render/src/chrome/text_glyphs.rs ba36929dbb95eed0b31ed044fc2e20c42586cc355850a20247426f5cc5f1fcfc
+crates/bbt-ui-model/src/draw/list.rs 5c3c233f094140ea8d1f8244cde595ff8750418f1e7bf6b94779bf4e4d58f4ef
+crates/bbt-ui-model/src/draw/prim.rs b8c439cc988c5105dd914dde4622665058439c9b205256d03a81da4771874743
+crates/bbt-ui/src/atoms.rs a9c5ef20a2a43b28aae5a311ac42ac8cb70d07bb61dceaabe05eec27f60cf13e
+crates/bbt-ui/src/components.rs f88b9fd7f26dda68e39790e0581155a5b5d5e5cffe92331ed2948479143ab437
+crates/bbt-ui/tests/components.rs 41ec118cb80936ce49078bbe9e7fa37e5f7a3a9e8e645fafe3397a5eb8bdedc1
