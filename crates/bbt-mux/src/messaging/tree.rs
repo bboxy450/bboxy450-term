@@ -148,6 +148,20 @@ impl Tree {
     pub(crate) fn set_operator(&mut self, device_id: Ulid) {
         self.operator_device = Some(device_id);
     }
+    /// Whether `path` names a node of this swarm's tree.
+    pub fn contains(&self, path: &str) -> bool {
+        self.nodes.contains_key(path)
+    }
+    /// The paths `actor` may write, in order, at most `limit` (decision #264: a refusal
+    /// lists them).
+    pub fn writable(&self, actor: Actor, limit: usize) -> Vec<String> {
+        self.nodes
+            .keys()
+            .filter(|path| self.check(actor, path, Right::Write).is_ok())
+            .take(limit)
+            .cloned()
+            .collect()
+    }
     pub fn check(&self, actor: Actor, path: &str, right: Right) -> Result<()> {
         if actor.controls() {
             return Ok(());

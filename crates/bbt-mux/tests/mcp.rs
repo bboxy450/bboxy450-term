@@ -3649,3 +3649,185 @@ fn mcp_knowledge_post_commit_failure_is_unknown_and_never_recreates_a_deleted_fi
         1
     );
 }
+
+/// Decision #264 over the real MCP bridge: the operator's DM to a seat.
+fn operator_dm(f: &Fixture, seat: Ulid, text: &str) -> Ulid {
+    use bbt_proto::messaging::Request;
+    let id = Ulid::new();
+    let mut message = bbt_mux::messaging::SendRequest::text(format!("seats/{seat}/inbox"), text);
+    message.id = id;
+    let reply = f.gui(
+        id,
+        bbt_proto::GuiAction::Messaging {
+            id,
+            swarm_id: bbt_proto::SwarmId::from_u128(f.own.swarm.0),
+            request: Request::Send { message },
+        },
+    );
+    assert!(
+        matches!(reply, bbt_proto::GuiReply::Messaging { .. }),
+        "{reply:?}"
+    );
+    id
+}
+/// Every message the operator's inbox holds, by text.
+fn operator_inbox(f: &Fixture) -> Vec<String> {
+    use bbt_proto::messaging::{Request, Response};
+    let id = Ulid::new();
+    let reply = f.gui(
+        id,
+        bbt_proto::GuiAction::Messaging {
+            id,
+            swarm_id: bbt_proto::SwarmId::from_u128(f.own.swarm.0),
+            request: Request::List {
+                thread: None,
+                channel: None,
+                after: 0,
+                limit: 128,
+            },
+        },
+    );
+    let bbt_proto::GuiReply::Messaging {
+        response: Response::Messages { page },
+        ..
+    } = reply
+    else {
+        panic!("{reply:?}")
+    };
+    page.items
+        .iter()
+        .map(|item| serde_json::to_value(&item.envelope.body).unwrap()["text"].to_string())
+        .collect()
+}
+fn texts(page: &Value) -> String {
+    page["page"]["items"].to_string()
+}
+
+#[test]
+fn d264_a_reply_without_destination_goes_to_the_sender() {
+    let f = Fixture::new();
+    f.prepare_operator();
+    let (own, peer) = (f.own.id, f.peer.id);
+    // To the operator: the reply to an operator DM lands in operator/inbox.
+    let dm = operator_dm(&f, own, "operator asks");
+    let sent = data(f.mutate(
+        own,
+        Ulid::new(),
+        "message_send",
+        json!({"text":"answer to the operator","reply_to":dm}),
+    ));
+    assert_eq!(
+        sent["message"]["envelope"]["context"], "operator/inbox",
+        "{sent}"
+    );
+    assert!(
+        operator_inbox(&f)
+            .iter()
+            .any(|text| text.contains("answer to the operator"))
+    );
+    // To a seat: the reply to a peer's message lands in the peer's inbox.
+    let asked = data(f.mutate(
+        peer,
+        Ulid::new(),
+        "message_send",
+        json!({"destination":format!("seats/{own}/inbox"),"text":"peer asks"}),
+    ));
+    let asked = asked["message"]["envelope"]["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    data(f.mutate(
+        own,
+        Ulid::new(),
+        "message_send",
+        json!({"text":"answer to the peer","reply_to":asked}),
+    ));
+    let inbox = data(f.call(peer, Ulid::new(), "message_list", json!({})));
+    assert!(texts(&inbox).contains("answer to the peer"), "{inbox}");
+    // Neither destination nor reply_to: refused, naming both ways.
+    refused(
+        f.mutate(
+            own,
+            Ulid::new(),
+            "message_send",
+            json!({"text":"to nobody"}),
+        ),
+        "reply_to",
+    );
+}
+
+#[test]
+fn d264_orient_and_the_skill_say_how_to_reach_the_operator() {
+    let f = Fixture::new();
+    let line = "to reach the operator, reply with reply_to, or send to operator/inbox";
+    let orient = data(f.call(f.own.id, Ulid::new(), "orient", json!({})));
+    assert_eq!(orient["operator"], line, "{orient}");
+    let skill = include_str!("../src/adapters/skills/bboxy450/SKILL.md");
+    assert!(
+        skill
+            .contains("To reach the operator, reply with `reply_to`, or send to `operator/inbox`."),
+        "the skill names the operator's inbox"
+    );
+}
+
+#[test]
+fn d264_an_unknown_destination_is_refused_with_the_valid_one() {
+    let f = Fixture::new();
+    f.prepare_operator();
+    let own = f.own.id;
+    // The seat that guessed the operator's inbox from the envelope's nil seat id.
+    let dm = operator_dm(&f, own, "operator asks again");
+    let nil = format!("seats/{}/inbox", Ulid::nil());
+    refused(
+        f.mutate(
+            own,
+            Ulid::new(),
+            "message_send",
+            json!({"destination":nil,"text":"guessed","reply_to":dm}),
+        ),
+        "came from operator/inbox",
+    );
+    // Without a message to infer from, the refusal lists what the seat may address.
+    let listed = refused(
+        f.mutate(
+            own,
+            Ulid::new(),
+            "message_send",
+            json!({"destination":"seats/nowhere/inbox","text":"lost"}),
+        ),
+        "you may address: ",
+    );
+    let listed = listed.to_string();
+    assert!(listed.contains("operator/inbox"), "{listed}");
+    assert!(
+        listed.contains(&format!("seats/{}/inbox", f.peer.id)),
+        "{listed}"
+    );
+}
+
+#[test]
+fn d264_a_refused_send_is_stored_nowhere() {
+    let f = Fixture::new();
+    f.prepare_operator();
+    let own = f.own.id;
+    let dm = operator_dm(&f, own, "operator asks a third time");
+    let nil = format!("seats/{}/inbox", Ulid::nil());
+    for args in [
+        json!({"destination":nil,"text":"refused payload one","reply_to":dm}),
+        json!({"destination":"seats/nowhere/inbox","text":"refused payload two"}),
+        json!({"text":"refused payload three"}),
+    ] {
+        // A tool error, and the refusal does not echo the payload back.
+        let error = refused(f.mutate(own, Ulid::new(), "message_send", args), "rejected");
+        assert!(!error.to_string().contains("refused payload"), "{error}");
+    }
+    for seat in [own, f.peer.id, f.oracle.id] {
+        let page = data(f.call(seat, Ulid::new(), "message_list", json!({"limit":128})));
+        assert!(!texts(&page).contains("refused payload"), "{seat}: {page}");
+    }
+    assert!(
+        !operator_inbox(&f)
+            .iter()
+            .any(|text| text.contains("refused payload"))
+    );
+}

@@ -47,11 +47,11 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     let mut definitions = vec![
         (
             "message_send",
-            "Send within your current W2.4 destination grants as this seat. Stored/held means durable acceptance, not model receipt; use message_receipts for delivery evidence.",
+            "Send within your current W2.4 destination grants as this seat. To answer a message, pass reply_to and omit destination: the reply goes to its sender (the operator is operator/inbox). Stored/held means durable acceptance, not model receipt; use message_receipts for delivery evidence.",
             json!({"destination":path,"text":{"type":"string","maxLength":16384},"thread_id":id,"reply_to":id,
              "priority":{"type":"integer","minimum":0,"maximum":9},"kind":{"enum":["text","chunk","decision"]},
              "attachments":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":512}}}),
-            vec!["destination", "text"],
+            vec!["text"],
         ),
         (
             "message_list",
@@ -149,7 +149,7 @@ impl From<RateArgs> for Rate {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Send {
-    destination: String,
+    destination: Option<String>,
     text: String,
     thread_id: Option<Ulid>,
     reply_to: Option<Ulid>,
@@ -301,7 +301,17 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Option<Request>, Str
             let a: Send = tools::parse(&call.args)?;
             let message = SendRequest {
                 id: call.op_id,
-                destination: path(a.destination, true)?,
+                // No destination: logic routes the reply to its sender (decision #264).
+                destination: match (a.destination, a.reply_to) {
+                    (Some(destination), _) => path(destination, true)?,
+                    (None, Some(_)) => String::new(),
+                    (None, None) => {
+                        return Err(
+                            "message_send needs a destination, or reply_to to answer a message's sender"
+                                .into(),
+                        );
+                    }
+                },
                 thread_id: a.thread_id,
                 reply_to: a.reply_to,
                 priority: a.priority.unwrap_or(0),
