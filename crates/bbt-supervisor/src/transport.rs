@@ -136,7 +136,8 @@ pub fn default_socket_path() -> io::Result<PathBuf> {
 }
 
 // Keep this inode forever: unlinking/recreating the lock could split owners
-// across two independent flocks. Only closing the last descriptor releases it.
+// across two independent flocks. BoundSocket explicitly unlocks at owner drop;
+// closing the last descriptor also releases the lock after a crash.
 fn socket_ownership(path: &Path, uid: libc::uid_t) -> io::Result<File> {
     let mut lock_name = path.as_os_str().to_os_string();
     lock_name.push(".lock");
@@ -320,6 +321,16 @@ impl Drop for BoundSocket {
             && metadata.ino() == self.ino
         {
             let _ = fs::remove_file(&self.path);
+        }
+        // A pre-exec fork child can retain this open file description despite
+        // CLOEXEC. End ownership now, rather than waiting for its last close.
+        // SAFETY: _ownership owns the valid descriptor throughout this drop.
+        while unsafe { libc::flock(self._ownership.as_raw_fd(), libc::LOCK_UN) } != 0 {
+            let error = io::Error::last_os_error();
+            if error.kind() != io::ErrorKind::Interrupted {
+                eprintln!("supervisor: control socket ownership unlock failed: {error}");
+                break;
+            }
         }
     }
 }
@@ -795,6 +806,91 @@ mod tests {
         assert_eq!((before.dev(), before.ino()), (after.dev(), after.ino()));
         let bound = bind_orphan_fixture(&path);
         drop(bound);
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn dropping_owner_releases_flock_while_a_fork_child_keeps_the_descriptor() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("run/mux.sock");
+        let lock_path = root.path().join("run/mux.sock.lock");
+        let bound = BoundSocket::bind(&path).unwrap();
+        let before = fs::symlink_metadata(&path).unwrap();
+        let lock_before = fs::symlink_metadata(&lock_path).unwrap();
+        let ownership_fd = bound._ownership.as_raw_fd();
+        let (mut parent_gate, child_gate) = std::os::unix::net::UnixStream::pair().unwrap();
+        let parent_fd = parent_gate.as_raw_fd();
+        let child_fd = child_gate.as_raw_fd();
+        // SAFETY: after fork the child only uses valid inherited descriptors
+        // with libc and _exit; it never allocates or runs Rust destructors.
+        let pid = unsafe { libc::fork() };
+        assert!(pid >= 0, "fork: {}", io::Error::last_os_error());
+        if pid == 0 {
+            // SAFETY: the gate and ownership descriptors were opened above.
+            unsafe {
+                libc::close(parent_fd);
+                for _ in 0..2 {
+                    let flags = libc::fcntl(ownership_fd, libc::F_GETFD);
+                    let state = u8::from(flags >= 0 && flags & libc::FD_CLOEXEC != 0);
+                    if libc::write(child_fd, (&state as *const u8).cast(), 1) != 1 {
+                        libc::_exit(2);
+                    }
+                    let mut command = 0u8;
+                    if libc::read(child_fd, (&mut command as *mut u8).cast(), 1) != 1 {
+                        libc::_exit(3);
+                    }
+                }
+                libc::_exit(0);
+            }
+        }
+        eprintln!("ownership release owned_fork_child_pid={pid}");
+        drop(child_gate);
+        let mut initial_flags = [0u8];
+        let ready = parent_gate.read_exact(&mut initial_flags);
+        drop(bound);
+        // The child is blocked on its gate and still has the same open file
+        // description. Closing only the parent's File leaves its flock held.
+        let replacement = BoundSocket::bind(&path);
+        let check = parent_gate.write_all(&[1]);
+        let mut retained_flags = [0u8];
+        let retained = parent_gate.read_exact(&mut retained_flags);
+        let release = parent_gate.write_all(&[2]);
+        drop(parent_gate);
+        let mut status = 0;
+        let reaped = loop {
+            // SAFETY: pid is our fork child and status is writable.
+            let result = unsafe { libc::waitpid(pid, &mut status, 0) };
+            if result < 0 && io::Error::last_os_error().kind() == io::ErrorKind::Interrupted {
+                continue;
+            }
+            break result;
+        };
+        // Reap before asserting so a failed restart cannot leak a held child.
+        ready.unwrap();
+        check.unwrap();
+        retained.unwrap();
+        release.unwrap();
+        assert_eq!(reaped, pid);
+        assert_eq!(status, 0);
+        assert_eq!(initial_flags, [1], "child inherited the CLOEXEC descriptor");
+        assert_eq!(retained_flags, [1], "child still has it after owner drop");
+        let replacement = replacement.expect("owner drop must release its inherited flock");
+        let after = fs::symlink_metadata(&path).unwrap();
+        assert_ne!((before.dev(), before.ino()), (after.dev(), after.ino()));
+        let lock_after = fs::symlink_metadata(&lock_path).unwrap();
+        assert_eq!(
+            (lock_before.dev(), lock_before.ino()),
+            (lock_after.dev(), lock_after.ino()),
+            "ownership authority must retain its persistent inode",
+        );
+        let live = BoundSocket::bind(&path).err().unwrap();
+        assert_eq!(live.kind(), io::ErrorKind::AddrInUse);
+        let still_live = fs::symlink_metadata(&path).unwrap();
+        assert_eq!(
+            (after.dev(), after.ino()),
+            (still_live.dev(), still_live.ino())
+        );
+        drop(replacement);
         assert!(!path.exists());
     }
 
