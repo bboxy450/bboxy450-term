@@ -1,0 +1,8 @@
+source a9e60ae
+ci-local --parity exit=0
+parity: 1664 cases, 859 review; target/parity/legacy/index.html
+parity: 1768 cases, 172 review; target/parity/index.html
+parity gate: pass (172 pixel reviews advisory)
+invariants: 13 checks, 0 failures, 3 slow checks skipped
+ci-local: all gates passed
+done

@@ -3,8 +3,6 @@ id: 01M5NC2YESME91PR6YHH2T70KF
 type: invariant
 title: rim size moves only the gutter and the stage inset
 status: pending
-slow: true
-gate: pending-g3
 check: cargo test -p bbt-ui --locked --lib rim_size_moves_only_gutter_and_inset -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: a rim slider that moves anything but the gutter and the inset breaks strict geometry parity for every pane case and turns a glow setting into an unbounded layout setting
 links:

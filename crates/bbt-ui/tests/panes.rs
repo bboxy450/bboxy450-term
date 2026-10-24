@@ -47,6 +47,7 @@ fn pane() -> Pane {
         glow_seed: Some(7),
         opacity: 1.,
         depth: bbt_ui_model::TOKENS.glow.depth as f32,
+        rim: bbt_ui_model::TOKENS.glow.rim as f32,
     }
 }
 fn context() -> ui::Context {

@@ -14,6 +14,18 @@ pub struct SplitLayout {
     pub dividers: Vec<Divider>,
 }
 
+/// The tiled stage (rim-glow §2): the gutter between panes is the rim size R, so neighbouring
+/// rims' outer halves meet, and the inset at the stage edge is R/2, one outer half.
+pub fn stage_split(tree: &SplitNode, bounds: Rect, rim: f32) -> SplitLayout {
+    let inset = rim / 2.;
+    let inner = Rect::new(
+        bounds.x + inset,
+        bounds.y + inset,
+        (bounds.w - rim).max(1.),
+        (bounds.h - rim).max(1.),
+    );
+    solve_split(tree, inner, rim)
+}
 /// The same solver serves full panes, mini-grids and launcher previews.
 pub fn solve_split(tree: &SplitNode, bounds: Rect, gutter: f32) -> SplitLayout {
     fn walk(tree: &SplitNode, rect: Rect, gutter: f32, path: &mut NodePath, out: &mut SplitLayout) {

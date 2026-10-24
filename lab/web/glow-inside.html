@@ -11,6 +11,12 @@
   .gi-stage { position: relative; background: var(--bg); border-radius: var(--r-pill); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: 112px 112px; }
   .gi-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
   .gi-stage .pane { min-width: 0; }
+  .gi-stage.small { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: 84px 84px; }
+  .rs-grid { display: grid; grid-template-columns: 64px repeat(3, minmax(0, 1fr)); gap: 16px 14px; align-items: center; }
+  .rs-h { font-size: var(--t-caption); color: var(--fg); font-weight: 600; line-height: 1.35; }
+  .rs-h small { display: block; font-weight: 400; color: var(--fg-dim); font-size: var(--t-small); }
+  .rs-size { font-family: var(--font-mono); font-size: var(--t-row); color: var(--fg); }
+  .rs-size small { display: block; font-size: var(--t-small); color: var(--fg-dim); }
   .gi-lane { display: flex; align-items: center; gap: var(--s5); margin-bottom: var(--s6); font-size: var(--t-caption); color: var(--fg-dim); }
   .gi-lane input { width: 120px; }
   .gi-lane b { color: var(--fg); font-weight: 600; min-width: 34px; }
@@ -59,7 +65,7 @@ const VS = `#version 300 es
 void main(){ vec2 p = vec2(gl_VertexID == 1 ? 3. : -1., gl_VertexID == 2 ? 3. : -1.); gl_Position = vec4(p, 0., 1.); }`;
 const FS = `#version 300 es
 precision highp float;
-uniform int uMode, uN; uniform float uLane, uIn, uDpr, uH, uTime;
+uniform int uMode, uN; uniform float uLane, uRim, uRimOut, uIn, uDpr, uH, uTime;
 uniform vec4 uRect[6], uCol[6], uP[6];   // uRect: the region (css px); uCol: rgb + alpha; uP: activity, focus, phase ms, radius
 out vec4 o;
 const float TAU = 6.2831853;
@@ -106,8 +112,9 @@ void main(){
       float crest = .5 + .5*sin(TAU*(s/wl(150., P) - t*.35));
       if (m > 0.) I = (.3 + .7*crest*crest)*m;
     } else if (uMode == 7) {                // alive rim: 2 px inside, flowing hue gradient, crests both ways, inner bloom, pulse
-      float rim = smoothstep(0., .6, -d)*(1. - smoothstep(1.6, 2.4, -d));
-      float bloom = step(1.6, -d)*exp(-(-d - 2.)/(.3*uLane))*(1. - smoothstep(uLane - 1., uLane, -d));   // reaches L px in
+      float inner = uRim - uRimOut;
+      float rim = smoothstep(-uRimOut, -uRimOut + .6, -d)*(1. - smoothstep(inner - .4, inner + .4, -d));
+      float bloom = step(inner - .4, -d)*exp(-(-d - inner)/(.3*uLane))*(1. - smoothstep(uLane - 1., uLane, -d));   // from the rim to L px in
       if (rim + bloom > 0.) {
         float a1 = .5 + .5*sin(TAU*(s/wl(170., P) - t*.45)), a2 = .5 + .5*sin(TAU*(s/wl(110., P) + t*.30) + 1.7);
         float crest = max(a1*a1, .8*a2*a2), pulse = .5 - .5*cos(time/(2600./(.5 + spd))*TAU);
@@ -144,7 +151,7 @@ function shared() {
   if (!gl) return (GL = false);
   const sh = (type, src) => { const x = gl.createShader(type); gl.shaderSource(x, src); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(x)); return x; };
   const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
-  const U = {}; for (const n of ['uMode', 'uN', 'uLane', 'uIn', 'uDpr', 'uH', 'uTime', 'uRect', 'uCol', 'uP']) U[n] = gl.getUniformLocation(prog, n);
+  const U = {}; for (const n of ['uMode', 'uN', 'uLane', 'uRim', 'uRimOut', 'uIn', 'uDpr', 'uH', 'uTime', 'uRect', 'uCol', 'uP']) U[n] = gl.getUniformLocation(prog, n);
   return (GL = { gl, cv, prog, U });
 }
 const probe = document.createElement('canvas').getContext('2d');
@@ -153,8 +160,8 @@ const ACT = { idle: 0, active: 1, waiting: 2, errored: 3 };
 
 function stage(v) {
   const g = v.gap === 'lane' ? lane : v.gap;
-  const st = el('div', { class: 'gi-stage', style: `padding:${g}px;gap:${g}px` });
-  const panes = SEATS.map(s => { const p = C.pane(s, { focused: !!s.focused, unfocused: !s.focused, height: 112 }); st.append(p); return { s, p }; });
+  const st = el('div', { class: 'gi-stage' + (v.small ? ' small' : ''), style: `padding:${g}px;gap:${g}px` });
+  const panes = (v.small ? SEATS.slice(0, 4) : SEATS).map(s => { const p = C.pane(s, { focused: !!s.focused, unfocused: !s.focused, height: v.small ? 84 : 112 }); st.append(p); return { s, p }; });
   const cv = el('canvas'); st.append(cv); const ctx = cv.getContext('2d');
   function frame(ts) {
     if (!cv.isConnected) return;
@@ -176,7 +183,7 @@ function stage(v) {
     }
     const { gl, U } = S; S.cv.width = w; S.cv.height = h;
     gl.viewport(0, 0, w, h); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); gl.useProgram(S.prog);
-    gl.uniform1i(U.uMode, v.mode); gl.uniform1i(U.uN, panes.length); gl.uniform1f(U.uLane, lane); gl.uniform1f(U.uIn, inner);
+    gl.uniform1i(U.uMode, v.mode); gl.uniform1i(U.uN, panes.length); gl.uniform1f(U.uLane, lane); gl.uniform1f(U.uRim, v.rim != null ? v.rim : T.glow.rim); gl.uniform1f(U.uRimOut, v.rimOut != null ? v.rimOut : (v.rim != null ? v.rim : T.glow.rim) / 2); gl.uniform1f(U.uIn, inner);
     gl.uniform1f(U.uDpr, dpr); gl.uniform1f(U.uH, h); gl.uniform1f(U.uTime, ts);
     gl.uniform4fv(U.uRect, rect); gl.uniform4fv(U.uCol, col); gl.uniform4fv(U.uP, par);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -191,12 +198,22 @@ function card(v) { return el('div', { class: 'gi-card' }, el('h3', {}, v.title),
 
 Lab.page({ title: 'glow inside', wide: true,
   note: 'Can the activity glow live inside the pane, to save the lane between panes? Eight readings of the same seats (Vesper focused and active, Nyx and Aster active, Rook waiting, Sable and zsh idle). Variants inside the pane pack panes 2 px apart, so the space they win shows as bigger panes in the same frame. The lane slider is the Settings glow lane (2 to 8 px). Needs WebGL2.',
-  states: ['gallery', ...VARIANTS.map(v => v.id)],
+  states: ['gallery', ...VARIANTS.map(v => v.id), 'rim sizes'],
   render(s, body) {
     const slider = el('input', { type: 'range', min: T.glow.depth_min, max: T.glow.depth_max, step: 1, value: lane });
     const val = el('b', {}, lane + ' px');
     const grid = el('div', { class: 'gi-grid' });
-    const draw = () => { grid.innerHTML = ''; for (const v of VARIANTS) if (s === 'gallery' || s === v.id) grid.append(card(v)); };
+    // rim sizes (operator: "rim size configurable from 2 to 8 px" ... "choice is half half or always 1px outside, and more inside"):
+    // the alive rim at each size, three ways: centred with the gap following the rim; centred in today's fixed 2 px gap, where the
+    // outer halves overlap and spill; 1 px outside and the rest inside, in the 2 px gap. The slider is the bloom depth.
+    const sizes = () => { const t = el('div', { class: 'rs-grid' }, el('span'),
+        el('div', { class: 'rs-h' }, 'half / half', el('small', {}, 'gap grows with the rim, outer halves meet')),
+        el('div', { class: 'rs-h' }, 'half / half · gap 2 px', el('small', {}, 'layout fixed; outer halves overlap and spill')),
+        el('div', { class: 'rs-h' }, '1 px out, rest in · gap 2 px', el('small', {}, 'layout fixed; the extra size is inside')));
+      for (const R of [2, 4, 6, 8]) t.append(el('div', { class: 'rs-size' }, R + ' px', el('small', {}, R / 2 + ' · ' + R / 2 + ' | 1 · ' + (R - 1))),
+        stage({ mode: 7, small: true, rim: R, rimOut: R / 2, gap: R }), stage({ mode: 7, small: true, rim: R, rimOut: R / 2, gap: 2 }), stage({ mode: 7, small: true, rim: R, rimOut: 1, gap: 2 }));
+      return t; };
+    const draw = () => { grid.innerHTML = ''; if (s === 'rim sizes') { grid.style.display = 'block'; grid.append(sizes()); return; } for (const v of VARIANTS) if (s === 'gallery' || s === v.id) grid.append(card(v)); };
     slider.addEventListener('input', () => { lane = +slider.value; val.textContent = lane + ' px'; draw(); });
     body.append(el('div', { class: 'gi-lane' }, el('span', {}, 'glow lane'), slider, val), grid);
     draw();

@@ -6,4 +6,4 @@ pub mod split;
 pub use sidebar::*;
 pub use size::*;
 pub use solve::{Box_, Child, TextMeasure, TextStyle, solve_box};
-pub use split::{Divider, SplitLayout, solve_split};
+pub use split::{Divider, SplitLayout, solve_split, stage_split};

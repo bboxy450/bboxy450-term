@@ -361,25 +361,32 @@ fn phone_sheet_geometry_snap_and_touch_density_match_the_lab_frame() {
 }
 
 #[test]
-fn scene_fifteen_gutters_are_the_fixed_two_pixel_divider() {
-    // The gutter is a fixed 2 px divider, not the glow (rim-glow §2): the rim and its
-    // bloom are drawn inside each pane, so no glow setting reaches the solver.
-    assert_eq!(TOKENS.layout.gutter, 2.);
-    let gutter = TOKENS.layout.gutter as f32;
+fn scene_fifteen_gutters_are_the_rim_size_and_the_inset_half_of_it() {
+    // The gutter is the rim size R and the stage inset R/2 (rim-glow §2): neighbouring rims'
+    // outer halves meet. The default token is the default rim.
+    assert_eq!(TOKENS.layout.gutter, TOKENS.glow.rim);
     let fixture: serde_json::Value =
         serde_json::from_str(include_str!("fixtures/scene15.json")).unwrap();
     let tree = fixture_tree(&fixture["tree"]);
-    let solved = solve_split(&tree, Rect::new(0.0, 0.0, 1600.0, 900.0), gutter);
-    assert_eq!(solved.panes.len(), 15);
-    for divider in &solved.dividers {
-        match divider.axis {
-            Axis::Row => near(divider.rect.w, gutter),
-            Axis::Column => near(divider.rect.h, gutter),
+    for rim in [2.0_f32, 4.0, 8.0] {
+        let solved = stage_split(&tree, Rect::new(0.0, 0.0, 1600.0, 900.0), rim);
+        assert_eq!(solved.panes.len(), 15);
+        for divider in &solved.dividers {
+            match divider.axis {
+                Axis::Row => near(divider.rect.w, rim),
+                Axis::Column => near(divider.rect.h, rim),
+            }
         }
-    }
-    for (i, (_, a)) in solved.panes.iter().enumerate() {
-        for (_, b) in &solved.panes[i + 1..] {
-            assert!(!a.intersects(*b), "panes overlap");
+        let left = solved
+            .panes
+            .iter()
+            .map(|(_, r)| r.x)
+            .fold(f32::MAX, f32::min);
+        near(left, rim / 2.);
+        for (i, (_, a)) in solved.panes.iter().enumerate() {
+            for (_, b) in &solved.panes[i + 1..] {
+                assert!(!a.intersects(*b), "panes overlap");
+            }
         }
     }
 }

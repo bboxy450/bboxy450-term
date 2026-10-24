@@ -662,6 +662,7 @@ pub(crate) fn rim(ctx: ui::Context, state: Option<ui::Glow>) -> materials::Rim {
         depth: state
             .depth
             .unwrap_or(bbt_ui_model::TOKENS.glow.depth as f32),
+        size: state.rim.unwrap_or(bbt_ui_model::TOKENS.glow.rim as f32),
         phase_ms: (state.seed % 10_000) as f32,
     }
 }

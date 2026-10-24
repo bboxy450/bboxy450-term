@@ -52,6 +52,7 @@ pub fn material(kind: Kind, theme: Theme) -> Material {
             activity: Activity::Active,
             focus: 1.,
             depth: TOKENS.glow.depth as f32,
+            size: TOKENS.glow.rim as f32,
             phase_ms: 0.,
         }),
     }

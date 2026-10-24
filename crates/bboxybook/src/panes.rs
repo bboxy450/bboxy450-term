@@ -155,6 +155,7 @@ fn view(item: &Value) -> Result<Pane> {
         glow_seed: item["glow"]["seed"].as_u64().map(|n| n as u32),
         opacity: bbt_ui_model::TOKENS.window.opacity as f32,
         depth: bbt_ui_model::TOKENS.glow.depth as f32,
+        rim: bbt_ui_model::TOKENS.glow.rim as f32,
     })
 }
 pub fn layouts(case: &Case) -> Result<Vec<(ui::Context, c::Layout)>> {
@@ -313,6 +314,7 @@ pub fn paint_legacy_pane(
         glow_seed: None,
         opacity: bbt_ui_model::TOKENS.window.opacity as f32,
         depth: bbt_ui_model::TOKENS.glow.depth as f32,
+        rim: bbt_ui_model::TOKENS.glow.rim as f32,
     };
     let layout = p
         .element(ctx)

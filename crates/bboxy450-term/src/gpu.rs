@@ -809,6 +809,7 @@ fn encode_ops(
                             },
                             focus: if s.focused { 1. } else { 0. },
                             depth: s.depth.unwrap_or(TOKENS.glow.depth as f32),
+                            size: s.rim.unwrap_or(TOKENS.glow.rim as f32),
                             phase_ms: (s.seed % 10_000) as f32,
                         })
                     }

@@ -1,5 +1,6 @@
 // Pane glow: the alive rim, the chosen look (operator 2026-10-23: "8px alive rim is the thing we want"; spec rim-glow).
-// A 2 px rim just inside the pane border where the seat colour flows round as a moving hue gradient, two crest waves
+// A rim of the Rim size setting (glow.rim, 2 to 8, default 4) centred on the pane border, half outside and half inside (operator
+// 2026-10-23: "half / half, gap grows with the rim, outer halves meet"); the gutter is the rim size, so neighbours' halves meet where the seat colour flows round as a moving hue gradient, two crest waves
 // running in opposite directions, a bloom breathing from 2 px to glow.depth px inward (Settings › Glow depth, 2 to 8),
 // and a pulse that quickens with activity. All of it lies inside the pane's 8 px padding, never over a text cell, and
 // never moves layout. One shared WebGL2 context renders each pane and copies into that pane's own canvas (above the
@@ -60,7 +61,7 @@
   void main(){ vec2 p = vec2(gl_VertexID == 1 ? 3. : -1., gl_VertexID == 2 ? 3. : -1.); gl_Position = vec4(p, 0., 1.); }`;
   const FS = `#version 300 es
   precision highp float;
-  uniform vec2 uOrigin, uSize; uniform float uR, uDepth, uDpr, uH, uTime, uAct, uFocus; uniform vec4 uCol;
+  uniform vec2 uOrigin, uSize; uniform float uR, uRim, uRimOut, uDepth, uDpr, uH, uTime, uAct, uFocus; uniform vec4 uCol;
   out vec4 o;
   const float TAU = 6.2831853;
   float sdf(vec2 q, vec2 hs, float r){ r = min(r, min(hs.x, hs.y)); vec2 d = abs(q) - hs + vec2(r); return min(max(d.x, d.y), 0.) + length(max(d, vec2(0.))) - r; }
@@ -79,8 +80,9 @@
   void main(){
     vec2 p = vec2(gl_FragCoord.x, uH - gl_FragCoord.y) / uDpr - uOrigin;
     vec2 hs = uSize*.5, q = p - hs; float d = sdf(q, hs, uR);
-    float rim = smoothstep(0., .6, -d)*(1. - smoothstep(1.6, 2.4, -d));
-    float bloom = step(1.6, -d)*exp(-(-d - 2.)/(.3*uDepth))*(1. - smoothstep(uDepth - 1., uDepth, -d));
+    float inner = uRim - uRimOut;   // the rim runs from uRimOut px outside the edge to inner px inside it
+    float rim = smoothstep(-uRimOut, -uRimOut + .6, -d)*(1. - smoothstep(inner - .4, inner + .4, -d));
+    float bloom = step(inner - .4, -d)*exp(-(-d - inner)/(.3*uDepth))*(1. - smoothstep(uDepth - 1., uDepth, -d));   // from the rim to depth
     if (rim + bloom <= 0.) discard;
     float P = perimLen(hs, uR), s = perim(q, hs, uR);
     float spd = 0., amp = .65;
@@ -103,7 +105,7 @@
     if (!gl) return (GL = false);
     const sh = (type, src) => { const x = gl.createShader(type); gl.shaderSource(x, src); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(x)); return x; };
     const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
-    const U = {}; for (const n of ['uOrigin', 'uSize', 'uR', 'uDepth', 'uDpr', 'uH', 'uTime', 'uAct', 'uFocus', 'uCol']) U[n] = gl.getUniformLocation(prog, n);
+    const U = {}; for (const n of ['uOrigin', 'uSize', 'uR', 'uRim', 'uRimOut', 'uDepth', 'uDpr', 'uH', 'uTime', 'uAct', 'uFocus', 'uCol']) U[n] = gl.getUniformLocation(prog, n);
     return (GL = { gl, cv, prog, U });
   }
   // any CSS colour to [r, g, b] in 0..1
@@ -134,7 +136,8 @@
       const root = getComputedStyle(document.documentElement), col = rgb(state === 'waiting' ? root.getPropertyValue('--c-waiting') : state === 'errored' ? root.getPropertyValue('--c-errored') : opts.color || window.C.seatColor(seat));
       gl.viewport(0, 0, w, h); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); gl.useProgram(S.prog);
       gl.uniform2f(U.uOrigin, br.left - cr.left, br.top - cr.top); gl.uniform2f(U.uSize, br.width, br.height);
-      gl.uniform1f(U.uR, parseFloat(css.borderTopLeftRadius) || 0); gl.uniform1f(U.uDepth, depthEff); gl.uniform1f(U.uDpr, dpr); gl.uniform1f(U.uH, h);
+      gl.uniform1f(U.uR, parseFloat(css.borderTopLeftRadius) || 0); const rimPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glow-rim')) || window.TOKENS.glow.rim;
+      gl.uniform1f(U.uRim, rimPx); gl.uniform1f(U.uRimOut, rimPx / 2); gl.uniform1f(U.uDepth, depthEff); gl.uniform1f(U.uDpr, dpr); gl.uniform1f(U.uH, h);
       gl.uniform1f(U.uTime, held + phase); gl.uniform1f(U.uAct, ACT[state]); gl.uniform1f(U.uFocus, opts.focused ? 1 : 0);
       gl.uniform4f(U.uCol, col[0], col[1], col[2], seat.grade === 'inferred' ? 0.5 : 1);
       gl.drawArrays(gl.TRIANGLES, 0, 3);

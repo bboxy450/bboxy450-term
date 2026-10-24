@@ -17,13 +17,13 @@ use bbt_ui::{
 use bbt_ui_model::{
     Activity, STYLE, SeatId, SplitNode, Stage, TOKENS, WaitKind,
     draw::{Color, DrawList, TextStyle, TypeScale},
-    layout::{Axis, Rect, TextMeasure, TextStyle as MeasureStyle, solve_split},
+    layout::{Axis, Rect, TextMeasure, TextStyle as MeasureStyle, stage_split},
 };
 use std::{cell::RefCell, collections::HashMap};
 
-/// Settings > Glow depth range (rim-glow §3).
-pub const DEPTH_MIN: f32 = TOKENS.glow.depth_min as f32;
-pub const DEPTH_MAX: f32 = TOKENS.glow.depth_max as f32;
+/// Settings > Rim size range (rim-glow §3).
+pub const RIM_MIN: f32 = TOKENS.glow.rim_min as f32;
+pub const RIM_MAX: f32 = TOKENS.glow.rim_max as f32;
 
 /// The host retains the very layout it paints; pointer input never reconstructs
 /// browser positions or guesses a row's height.
@@ -76,9 +76,9 @@ pub struct Scene {
     backend_lost: bool,
     identity: Option<bbt_proto::GuiIdentity>,
     metrics: Metrics,
-    /// The glow depth (Settings > Glow depth, 2-8 px): how far each pane's rim blooms
-    /// inside its border. Runtime paint state; layout never reads it.
-    depth: f32,
+    /// The rim size R (Settings > Rim size, 2-8 px), centred on each pane's border: the
+    /// gutter between panes is R and the stage inset R/2, so changing it relayouts.
+    rim: f32,
 }
 type FontKey = (u32, u16, bool, bool, u32);
 #[derive(Default)]
@@ -207,23 +207,23 @@ impl Scene {
             identity: None,
             hosts: vec![],
             metrics: Metrics::default(),
-            depth: TOKENS.glow.depth as f32,
+            rim: TOKENS.glow.rim as f32,
         }
-        .with_env_depth()
+        .with_env_rim()
     }
-    /// BBOXY_GLOW_DEPTH=2..8 for manual checks until Settings is hosted in the app.
-    fn with_env_depth(mut self) -> Self {
-        if let Some(px) = std::env::var("BBOXY_GLOW_DEPTH")
+    /// BBOXY_RIM_SIZE=2..8 for manual checks until Settings is hosted in the app.
+    fn with_env_rim(mut self) -> Self {
+        if let Some(px) = std::env::var("BBOXY_RIM_SIZE")
             .ok()
             .and_then(|v| v.parse().ok())
         {
-            self.set_depth(px);
+            self.set_rim(px);
         }
         self
     }
-    /// Repaints on the next frame; never moves layout.
-    pub fn set_depth(&mut self, px: f32) {
-        self.depth = px.clamp(DEPTH_MIN, DEPTH_MAX);
+    /// Takes effect at the next layout: the gutter and the stage inset follow it.
+    pub fn set_rim(&mut self, px: f32) {
+        self.rim = px.clamp(RIM_MIN, RIM_MAX);
     }
     pub fn live() -> Self {
         Self {
@@ -236,9 +236,9 @@ impl Scene {
             identity: None,
             hosts: vec![],
             metrics: Metrics::default(),
-            depth: TOKENS.glow.depth as f32,
+            rim: TOKENS.glow.rim as f32,
         }
-        .with_env_depth()
+        .with_env_rim()
     }
     pub fn set_model(&mut self, model: &bboxy450_term::model::Model, stage: &Stage) {
         self.identity = model.identity.clone();
@@ -458,19 +458,12 @@ impl Scene {
                 )
                 .map_err(|e| e.to_string())?,
         ];
-        // A fixed gutter between panes and as the panes area's inset (rim-glow §2): the glow
-        // is drawn inside each pane, so no glow setting reaches the layout.
-        let g = TOKENS.layout.gutter as f32;
-        let bounds = Rect::new(
-            bounds.x + g,
-            bounds.y + g,
-            (bounds.w - 2. * g).max(1.),
-            (bounds.h - 2. * g).max(1.),
-        );
+        // The gutter between panes is the rim size and the stage inset half of it (rim-glow
+        // §2): neighbouring rims' outer halves meet; depth never reaches the layout.
         for (id, rect) in self
             .tree
             .as_ref()
-            .map(|tree| solve_split(tree, bounds, g).panes)
+            .map(|tree| stage_split(tree, bounds, self.rim).panes)
             .unwrap_or_default()
         {
             let seat = self.seats[self.seat_index[&id]].clone();
@@ -490,7 +483,8 @@ impl Scene {
                 reconnected: false,
                 glow_seed: effects.then_some(id.0.0 as u32),
                 opacity: 1.,
-                depth: self.depth,
+                depth: TOKENS.glow.depth as f32,
+                rim: self.rim,
             };
             layouts.push(
                 pane.element(pane_ctx)
@@ -762,24 +756,56 @@ mod depth_tests {
     }
 
     #[test]
-    fn the_glow_depth_repaints_and_never_moves_a_pane() {
+    fn the_rim_size_moves_the_gutter_and_inset_and_never_the_sidebar() {
         let mut scene = Scene::new();
-        let g = TOKENS.layout.gutter as f32;
-        let reference = panes(&scene);
-        let sidebar = 300_f32.min(1600. * 0.35);
-        let left = reference.iter().map(|r| r.x).fold(f32::MAX, f32::min);
-        assert!(
-            (left - (sidebar + g)).abs() < 0.01,
-            "the stage inset is the gutter"
-        );
-        for depth in [DEPTH_MIN, 5., DEPTH_MAX] {
-            scene.set_depth(depth);
-            assert_eq!(panes(&scene), reference, "depth {depth} moved a pane");
+        let sidebar_edge = 300_f32.min(1600. * 0.35);
+        let chrome = |scene: &Scene| {
+            scene.layout([1600., 960.], true).unwrap()[..2]
+                .iter()
+                .map(|l| l.rect)
+                .collect::<Vec<_>>()
+        };
+        let reference = chrome(&scene);
+        // rim-glow §6.5: rim 2, 4, 8 give gutter 2, 4, 8 and inset 1, 2, 4.
+        for (rim, gutter, inset) in [(2., 2., 1.), (4., 4., 2.), (8., 8., 4.)] {
+            scene.set_rim(rim);
+            let rects = panes(&scene);
+            let left = rects.iter().map(|r| r.x).fold(f32::MAX, f32::min);
+            assert!(
+                (left - (sidebar_edge + inset)).abs() < 0.01,
+                "rim {rim}: inset {}",
+                left - sidebar_edge
+            );
+            let right = rects.iter().map(|r| r.right()).fold(f32::MIN, f32::max);
+            assert!(
+                (1600. - right - inset).abs() < 0.01,
+                "rim {rim}: right inset {}",
+                1600. - right
+            );
+            let gaps: Vec<f32> = rects
+                .iter()
+                .flat_map(|a| rects.iter().map(move |b| (a, b)))
+                .filter(|(a, b)| a.y < b.bottom() && b.y < a.bottom() && b.x > a.right() - 0.01)
+                .map(|(a, b)| b.x - a.right())
+                .collect();
+            assert!(
+                !gaps.is_empty() && gaps.iter().any(|g| (g - gutter).abs() < 0.01),
+                "rim {rim}: gaps {gaps:?}"
+            );
+            assert!(
+                gaps.iter().all(|g| *g >= gutter - 0.01),
+                "rim {rim}: a gap under the gutter: {gaps:?}"
+            );
+            assert_eq!(
+                chrome(&scene),
+                reference,
+                "rim {rim} moved the title bar or the sidebar"
+            );
         }
-        scene.set_depth(20.);
-        assert_eq!(scene.depth, DEPTH_MAX);
-        scene.set_depth(0.5);
-        assert_eq!(scene.depth, DEPTH_MIN);
+        scene.set_rim(20.);
+        assert_eq!(scene.rim, RIM_MAX);
+        scene.set_rim(0.5);
+        assert_eq!(scene.rim, RIM_MIN);
     }
 
     #[test]

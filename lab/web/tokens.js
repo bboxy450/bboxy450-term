@@ -131,7 +131,9 @@ window.TOKENS = {
     "particle_speed": 18,
     "particles_active": 40,
     "particles_idle": 6,
-    "rim": 2,
+    "rim": 4,
+    "rim_max": 8,
+    "rim_min": 2,
     "row_alpha": 0.3,
     "row_idle": false,
     "row_particles_active": 4,
@@ -141,7 +143,7 @@ window.TOKENS = {
   },
   "layout": {
     "cohort_gap": 8,
-    "gutter": 2
+    "gutter": 4
   },
   "meta": {
     "version": 1
