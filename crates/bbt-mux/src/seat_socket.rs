@@ -129,7 +129,9 @@ impl SeatEndpoint {
                         let client=client.clone();
                         peers.spawn(async move {
                             let _permit=permit;
-                            let _=gui_session(stream,client,capability,door).await;
+                            if let Err(error)=gui_session(stream,client,capability,door).await {
+                                eprintln!("GUI session ended: door={door:?}, reason={}",gui_session_error_reason(&error));
+                            }
                         });
                     }
                     _=peers.join_next(),if !peers.is_empty()=>{}
@@ -166,6 +168,31 @@ impl SeatEndpoint {
             }
         });
         Ok(Self { task, _file: file })
+    }
+}
+
+fn gui_session_error_reason(error: &crate::store::Error) -> String {
+    // Error Display implementations can include rejected input values. Log
+    // only fixed categories and numeric metadata, never frame payload bytes.
+    if error.is::<tokio::time::error::Elapsed>() {
+        "deadline has elapsed".into()
+    } else if let Some(error) = error.downcast_ref::<std::io::Error>() {
+        format!(
+            "I/O error ({:?}, os={:?})",
+            error.kind(),
+            error.raw_os_error()
+        )
+    } else if let Some(error) = error.downcast_ref::<serde_json::Error>() {
+        format!(
+            "invalid GUI frame ({:?}, line={}, column={})",
+            error.classify(),
+            error.line(),
+            error.column(),
+        )
+    } else if let Some(error) = error.downcast_ref::<rusqlite::Error>() {
+        format!("GUI store error ({:?})", error.sqlite_error_code())
+    } else {
+        "GUI session failed".into()
     }
 }
 
@@ -920,6 +947,28 @@ mod gui_tests {
         logic::{Logic, LogicConfig},
         registry::SeatRecord,
     };
+
+    #[tokio::test]
+    async fn session_error_reasons_name_deadlines_without_logging_payloads() {
+        let elapsed = tokio::time::timeout(Duration::ZERO, std::future::pending::<()>())
+            .await
+            .unwrap_err();
+        let elapsed: crate::store::Error = elapsed.into();
+        assert_eq!(gui_session_error_reason(&elapsed), "deadline has elapsed");
+
+        let io: crate::store::Error = std::io::Error::other("private-payload-value").into();
+        let reason = gui_session_error_reason(&io);
+        assert!(reason.starts_with("I/O error"));
+        assert!(!reason.contains("private-payload-value"));
+
+        let json: crate::store::Error =
+            serde_json::from_str::<GuiReply>(r#"{"kind":"private-payload-value"}"#)
+                .unwrap_err()
+                .into();
+        let reason = gui_session_error_reason(&json);
+        assert!(reason.starts_with("invalid GUI frame"));
+        assert!(!reason.contains("private-payload-value"));
+    }
 
     #[test]
     fn repeated_ticks_keep_one_check_per_seat_and_hot_seats_stay_at_the_back() {
