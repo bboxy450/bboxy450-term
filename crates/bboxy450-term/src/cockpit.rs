@@ -88,6 +88,13 @@ pub enum UiMsg {
         stream: String,
         sequence: u64,
     },
+    /// Local attention handling, not a GUI socket RPC or a read watermark.
+    AttentionFocus {
+        seat: SeatId,
+        generation: u64,
+        episode: Option<crate::attention::EpisodeKey>,
+        landed: Option<std::time::Instant>,
+    },
     Watched(Vec<(SeatId, View)>),
     /// The window's answer to a capture asked on the operator's behalf.
     Captured {

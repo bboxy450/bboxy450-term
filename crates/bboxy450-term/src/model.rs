@@ -512,6 +512,12 @@ pub struct Model {
     pub metadata_initialized: bool,
     pub events: Arc<EventLane>,
     pub e2e: Option<Arc<bbt_ui::modules::e2e_checklist::Checklist>>,
+    /// G5 paint state only; neither map changes layout or selects a seat.
+    pub attention: BTreeMap<SeatId, crate::attention::Attention>,
+    pub focus_swell: Option<(SeatId, Instant)>,
+    /// IO bookkeeping; episode internals are private to the attention module.
+    #[doc(hidden)]
+    pub attention_episodes: crate::attention::Episodes,
 }
 impl Default for Model {
     fn default() -> Self {
@@ -528,11 +534,73 @@ impl Default for Model {
             metadata_initialized: false,
             events: Arc::new(EventLane::default()),
             e2e: None,
+            attention: BTreeMap::new(),
+            focus_swell: None,
+            attention_episodes: crate::attention::Episodes::default(),
         }
     }
 }
 
 impl Model {
+    /// Consume current state only, before publishing its live lane delivery.
+    pub fn observe_attention(&mut self, seat: &GuiSeat, now: Instant) {
+        let id = SeatId::from_u128(seat.record.id.0);
+        if self
+            .ui
+            .seats
+            .get(&id)
+            .is_some_and(|old| old.process_generation > seat.state.generation)
+            || self.states.get(&id).is_some_and(|old| {
+                old.generation == seat.state.generation && old.observed_ms > seat.state.observed_ms
+            })
+        {
+            return;
+        }
+        self.attention_episodes.observe(seat, now);
+        self.attention = self.attention_episodes.paint();
+    }
+
+    pub fn attention_key(&self, seat: SeatId) -> Option<crate::attention::EpisodeKey> {
+        self.attention_episodes.key(seat)
+    }
+
+    pub fn notifications(
+        &self,
+        settings: &crate::attention::Notifications,
+        frontmost: bool,
+        focused: Option<SeatId>,
+    ) -> crate::attention::Desired {
+        self.attention_episodes
+            .notifications(settings, frontmost, focused)
+    }
+
+    /// The explicit UI intent is bound to its generation and exact episode.
+    /// The landing timestamp is supplied after a tab switch has a real layout.
+    pub fn attention_focus(
+        &mut self,
+        seat: SeatId,
+        generation: u64,
+        episode: Option<crate::attention::EpisodeKey>,
+        landed: Option<Instant>,
+    ) -> bool {
+        if !self.ui.seats.get(&seat).is_some_and(|row| {
+            row.process_generation == generation && row.lifecycle == ui::Lifecycle::Open
+        }) {
+            return false;
+        }
+        let mut changed = episode.is_some_and(|key| {
+            key.generation == generation && self.attention_episodes.handle(seat, key)
+        });
+        if let Some(at) = landed {
+            self.focus_swell = Some((seat, at));
+            changed = true;
+        }
+        if changed {
+            self.attention = self.attention_episodes.paint();
+        }
+        changed
+    }
+
     pub fn request_spawn(
         &mut self,
         op: Ulid,
@@ -757,6 +825,7 @@ impl Model {
     pub fn apply_seat_states(&mut self, seats: &[GuiSeat]) {
         self.states.retain(|id, _| self.ui.seats.contains_key(id));
         for seat in seats {
+            self.observe_attention(seat, Instant::now());
             let id = SeatId::from_u128(seat.record.id.0);
             let Some(row) = self.ui.seats.get_mut(&id) else {
                 continue;
@@ -1000,7 +1069,18 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
         metadata_initialized: true,
         events: previous.events.clone(),
         e2e: previous.e2e.clone(),
+        attention: previous.attention.clone(),
+        focus_swell: previous.focus_swell,
+        attention_episodes: previous.attention_episodes.clone(),
     };
+    next.attention_episodes.retain(
+        next.ui
+            .seats
+            .iter()
+            .filter(|(_, seat)| seat.lifecycle == ui::Lifecycle::Open)
+            .map(|(id, _)| *id),
+    );
+    next.attention = next.attention_episodes.paint();
     next.place_ready_spawns();
     next
 }

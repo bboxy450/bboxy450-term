@@ -1,0 +1,21 @@
+[package]
+name = "bboxy450-desktop-notifications"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "Desktop notifications with stable identifiers and response callbacks"
+
+[features]
+probe = ["bboxy450-desktop-notifications-macos/probe"]
+
+[target.'cfg(target_os = "macos")'.dependencies]
+bboxy450-desktop-notifications-macos = { path = "../bboxy450-desktop-notifications-macos", version = "0.0.1" }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+bboxy450-desktop-notifications-windows = { path = "../bboxy450-desktop-notifications-windows", version = "0.0.1" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+bboxy450-desktop-notifications-linux = { path = "../bboxy450-desktop-notifications-linux", version = "0.0.1" }
