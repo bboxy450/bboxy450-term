@@ -67,6 +67,12 @@ while True:
             text = text_of(env)
             calls = [("message_ack", {"message": mid}),
                      ("message_send", {"destination": "operator/inbox", "text": "pong: " + text, "reply_to": mid})]
+            if text == "knock":
+                # A real seat process trying the operator's door (decision #260).
+                env = dict(os.environ, BBOXY_RUN_DIR=os.environ["BBT_RUN"])
+                knocked = subprocess.run([BIN, "ctl", "seats"], env=env, capture_output=True, text=True, timeout=20)
+                calls[1] = ("message_send", {"destination": "operator/inbox", "reply_to": mid,
+                            "text": "knock: " + knocked.stdout.strip() + " exit=" + str(knocked.returncode)})
             report = re.match(r"report (\S+)", text)
             if report:
                 calls.append(("task_report", {"task_path": report.group(1), "summary": "stand-in claude reported",
@@ -148,9 +154,10 @@ async fn ctl_drives_a_claude_seat_from_outside_the_app() {
     executable(
         &bin.join("claude"),
         &format!(
-            "#!/bin/sh\nBBT_BIN={} BBT_AGENT_LOG={} exec python3 -I {}\n",
+            "#!/bin/sh\nBBT_BIN={} BBT_AGENT_LOG={} BBT_RUN={} exec python3 -I {}\n",
             quote(&binary),
             quote(&log),
+            quote(&run),
             quote(&bin.join("agent.py"))
         ),
     );
@@ -214,6 +221,27 @@ async fn ctl_drives_a_claude_seat_from_outside_the_app() {
             .find(|r| r["receipt"]["evidence"] == "application-acknowledged")
     });
     assert_eq!(acked["kind"], "receipt", "{acked}");
+
+    // A real seat process (a child of the app's own supervisor) is refused at ctl's door,
+    // by name, and nothing it asked for ran (decision #260, invariant #261).
+    let knock = ctl(&run, &["dm", &seat, "knock"]);
+    let knock = knock[0]["message"].as_str().unwrap().to_owned();
+    let answer = until("the seat's knock result", &log, || {
+        ctl(&run, &["inbox"])
+            .into_iter()
+            .find(|m| m["message"]["envelope"]["reply_to"] == knock.as_str())
+    });
+    let text = answer["message"]["envelope"]["body"]["text"]
+        .as_str()
+        .unwrap_or_default();
+    assert!(
+        text.contains(bbt_mux::ctl_door::REFUSAL) && text.ends_with("exit=1"),
+        "a seat must be refused at the door: {text}"
+    );
+    assert!(
+        !text.contains("\"kind\":\"seat\""),
+        "the refused seat saw no roster: {text}"
+    );
 
     // delegate, then the seat reports, then reports returns its verify_result.
     // By #N, the selector the spec promises (NUM2); the report names the path.
