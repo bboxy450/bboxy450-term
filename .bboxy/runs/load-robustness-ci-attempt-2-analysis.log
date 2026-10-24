@@ -1,0 +1,7 @@
+NORMAL CI ATTEMPT2 — source af3ffda4aff43d836bd780facd00ff98c0406fa4
+Strict all-target workspace Clippy: EXIT0/50.404s. Normal CI: EXIT101/305.537s.
+The repaired app-main suite passed73/73, including the realIO messaging/task helper; process/custody/launcher/lifecycle checks passed. New failure composed_decision_and_task_delegation_cross_the_real_gui_boundary at crates/bboxy450-term/tests/messaging_flow.rs:302: expect("operator read-only inventory").
+Source: messaging_flow.rs:78 writes a fresh task without number. NUM2 rejects it as invalid, so the operator's task inventory does not include that task. No scheduler/deadline change is needed.
+Raw CI2 log load-robustness-ci-af3ffda4.log SHA256db9038c0c7767d3516def1ada91d2477093eb818897e6cf5672a84e05e8882a7; strict2 and gate metadata adjacent. No recorded owned descendants remained. Own gate2 worktree/target removed,2,575,134,720allocatedbytes removed. Slot1 release/failure report b6e3c383.
+Second refusal changed the premise: a single-point fixture fix does not complete NUM2 migration. No identical third gate was run.
+Vesper95995fc4 now authorizes valid unique numbers in every raw record fixture NUM2 refuses across workspace tests/src test modules, fixtures only. Preserve intentional malformed/duplicate-number/generic-Markdown cases. Run FULL workspace cargo test --no-fail-fast before requesting the next normal gate; conditional slot2 follows green precheck.
