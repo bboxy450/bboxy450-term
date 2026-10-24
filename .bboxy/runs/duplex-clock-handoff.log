@@ -1,0 +1,46 @@
+Duplex fixture: completion-driven progress and controlled-clock deadline
+Recorded 2026-10-24T00:30:51.736636+00:00
+Gated signed source 4a5abaf0970e89d14e2d4774a3796ef5228385b6; source code commit eb776d6118f65da73fdc4c3b583562a30aed0976.
+Base e11c7c0e5df83ab5a291dccc3f924245c52f31a6. Branch rook-duplex-controlled-clock in /Users/feral/mydev/bboxy450-term-rook.
+Original queued aadc0f8 was rebased under slot grant fb653903. Both source-file SHA256 values remain identical to the dev runs.
+
+Mechanisms
+crates/bboxy450-term/src/cockpit.rs:864 — bounded json_frame + direct write_all in the fake peer removes its accidental startup-writer deadline.
+crates/bboxy450-term/src/cockpit.rs:905 — finite 1000-input/1000-reply completion replaces the fixture's 10-second wall-clock assertion; deterministic Busy barrier and all ordering/data assertions remain.
+crates/bboxy450-term/src/cockpit.rs:954 — start_paused unit arms the real product write_frame against a full duplex buffer, checks pending before expiry and Elapsed at two seconds of virtual time, with millisecond timer-wheel resolution.
+crates/bboxy450-term/Cargo.toml:29 — Tokio test-util is a dev-only feature of the existing resolved package. No Cargo.lock change or new package.
+Product write_frame implementation is byte-identical to base; production write deadline remains two seconds.
+
+Acceptance evidence
+cargo test -p bboxy450-term --lib --locked cockpit::gui_io_tests -- --nocapture — exit 0, 4 passed/0 failed in development. Raw group output retained in private scratch clock-group.log.
+Exact full_duplex_bursts test — 20 no-added-load + 20 with eight bounded owned CPU workers, all exit 0 and Busy > 0 in every run; full output committed in duplex-clock-repeats.log.
+No-added-load Busy 5..629; added-load Busy 24..663. Ambient loadavg 7.49..7.80; with workers 7.49..11.01. This does not claim to reproduce Oracle's 25..30 host load. All eight owned workers terminated and waited.
+cargo clippy --workspace --all-targets --locked -- -D warnings — development exit 0. Repeated as a stage of the exact clean gate, exit 0.
+sh scripts/ci-local.sh — exit 0 in 647.351s, clean detached worktree of 4a5abaf0970e89d14e2d4774a3796ef5228385b6. Full output duplex-clock-ci.log; raw SHA256 5659da868a91ea5f42dc5000a60681bb0e58fda393476190822da865ae185c48.
+Gate stages layering, workspace build, strict all-target workspace Clippy, workspace tests, UI IO lint, app smoke and default invariants all exit 0 (ci-local set -e completes all stages and prints all gates passed).
+Default invariants: 14 checks, 0 failures, 5 slow checks skipped. Both changed tests passed in the exact workspace test output; full-rate socket flood and existing synthetic R5 contract also passed.
+O1 with debug assertions retained, no incremental/debug info, jobs=2, BBOXY_TEST_CUSTODY=memory. One own idle dev cache reused exclusively; source was clean and frozen, no concurrent Cargo in that target.
+git diff --check — exit 0. Source signatures — both good with machine key. CI source hashes match development hashes.
+
+Cleanup and state
+Actual child exit was persisted before deleting its owned target. Freed 2937552896 allocated bytes. Free before 76949270528 bytes; minimum 73700548608; after cleanup 76441579520. 10 GiB guard never fired.
+Slot 1 release reported in ICQ f375a9fe-98ab-4971-853d-fca3530e99ba.
+Main moved during gate to db97b8e14f34e9c8d20945001250228d69c07bcb; no overlap in either changed source file. Per AGENTS.md, exact tested source is retained without another rebase/gate. Main movement:
+db97b8e1 d43: the alive-border property is Style.rim beside the existing hairline Style.border
+9a938f2b mantras spec (#209) from the distillation; invariants local-first (#210), no-copyleft-deps (#211), seats-967-frame (#212, provisional budget); d47 acceptance scoped to decision records; Style.rim wording
+63355d3c Split decision nodes and number the complete record corpus
+46466c00 Split decision nodes and number the complete record corpus
+131f7bcc Merge MK1: seat and task marks centred by construction as vector paths (Sable, Wren lab), operator ask
+a786925e Record MK1 centering, shared halo and paired gate evidence
+6dca3794 Gate geometric glyphs as vectors and qualify shadow pass counts
+243c9abb Render centred mark geometry with shared cached path shadows
+2a1c2fc6 lab: the check mark is centred too; marks.html shows every mark at 96 px
+3d0b32ce lab: state marks are geometry, centred by construction (standalone on main)
+a6e45dc7 Define shared centred seat and task mark paths and pixel proof
+CI worktree is removed after the post-exit clean-tree/signature/source audit. Evidence-only successor changes only duplex-clock logs. Pre-existing untracked W1 logs remain untouched. No main merge or push by this Executor.
+
+Gaps / work left untouched
+No --parity or --slow run: this is a fixture/dev-feature change with no visual/product behavior change, and slot authorized normal CI.
+No scale-load or R5f diagnostic window run: Oracle schedules that ONE run separately. No production scheduling, capture, protocol, transport or custody behavior edited.
+The retired fixture's wall-clock failure was supplied by Oracle; it was not independently reproduced at 25..30 load here. The finite burst has no own wall-clock deadline; the real product deadline is separately tested with controlled time.
+First signing attempt hit a stale keybox lock; its individual git exit was not captured because the outer shell continued. No commit resulted. Subsequent captured commit/rebase/signature checks all exit 0; no signing bypass or global GPG edits. Development evidence records the failure and scope extension.
