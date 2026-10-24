@@ -1,0 +1,126 @@
+DRAFT FOR ORACLE DELEGATION — A-0, initial e2e corpus only
+Prepared from spec #258 at base cfed48f8c9974055094dc84d765f27868fcbcbff.
+Canonical source .bboxy/specs/e2e-acceptance.md SHA256 f13d593d5b9f45d6a6bd705e770d994120f60bdb93d7ba962e7d9b3c73e0e9f3.
+This is a task payload snapshot, not a second canonical list or an acceptance report.
+Actual records have NOT been created by this preparation.
+
+ROLE: EXECUTOR — to the in-app Codex seat selected by the Oracle
+Create one initial e2e record per promise in the exact section-1 snapshot below (54 promises). Use only this app's knowledge_write/knowledge_fetch MCP tools for record IO. Never hand-edit .bboxy/e2e or substitute an external/fixture signing key. Confirm orient/self_status identifies your own admitted seat/generation. If identity is held or the app is using debug memory custody, stop and report the named blocker; do not change custody or enroll a root.
+
+Use path e2e/<lowercase function id>.md, for example e2e/t1.md. For each function keep one stable, non-nil ULID op_id for its create; never mint another create id on an unknown outcome. The host binds record id to op_id and allocates the next record number through Index/NUM2. Do not supply id, number, authorship or provenance. Existing paths must be read first and updated through the returned ref/etag, never overwritten as a new create. If an existing record is already tested, report it to the Oracle instead of resetting it.
+
+Create arguments template (replace placeholders from the checklist, no guessed expectations):
+{
+  "op_id": "<stable ULID for this function's create>",
+  "path": "e2e/t1.md",
+  "frontmatter": {
+    "type": "e2e",
+    "title": "T1 <short description>",
+    "function": "T1",
+    "group": "terminal",
+    "status": "untested",
+    "steps": [],
+    "expected": "<the exact text following **T1** in the canonical list>"
+  },
+  "body": "# T1 <short description>\n\nUntested. Execution steps and evidence will be recorded by the later assigned test run.\n"
+}
+
+Copy each group heading exactly and expected text exactly, including punctuation. Leave last_run, run_by, result and evidence absent: no test has been run. Do not claim pass, blocked or manual during initial creation. Unknown outcomes: retain the same op_id and inspect with knowledge_fetch by path; never redispatch under a new id. Stop and report mismatched content or signing/permission failure. Do not drive the operator's desktop, access credentials, or call unrelated services for this local record-seeding task.
+
+Read back all records with knowledge_fetch. Report function -> path -> assigned number -> digest and the actual authorship signer. Verify there is exactly one per parsed promise, each type=e2e/status=untested/group/expected matches this list, and no function was invented or omitted. Record the exact tool outcomes; do not treat a send receipt as acceptance. Send the manifest and blockers to the Oracle through message/task tools. The Oracle verifies the corpus/presence gate and decides when to commit/push the app-authored files; this task text does not authorize a merge.
+
+Canonical checklist snapshot follows verbatim:
+
+## 1. The acceptance checklist
+
+Every promised user-facing function, one line of expectation each, from [[vision]], the specs and the decisions as of today. **"All promised functionality is there, is intuitive, works" is the acceptance criterion**, and each line below is one promise. 54 promises. A promise with no e2e record is a gap the checklist shows; a promise whose record fails is red until it passes.
+
+### terminal
+
+- **T1** ⌘T on a Claude, Codex or zsh row opens a real PTY seat in a pane within one frame, named from the furry pool, in the chosen placement
+- **T2** typing in a focused pane reaches the program; the echo appears within one frame; a 100 kB paste arrives intact
+- **T3** resizing a pane or the window resizes the PTY and the program redraws at the new size with no stale cells
+- **T4** a pane shows real cells: colours, bold, italics, underline, wide glyphs and emoji align to the grid; the cursor shape follows the program
+- **T5** the app is killed and relaunched: every seat is attached to the same PTY, layout, focus and scroll positions are identical, the programs never noticed
+- **T6** the supervisor dies: seats survive; the app says so, restarts it, re-attaches, resumes by session id
+- **T7** closing a pane shows the grace strip for 60 s, ⌘Z brings it back with the PTY and its position; after grace it is gone and says so
+- **T8** OSC 7501 state from a harness shows as reported grade; a harness that stays silent shows idle, never an invented state
+
+### launcher and placement
+
+- **L1** ⌘T opens the centred launcher over the blurred window with harness rows, search, and role presets; Esc closes it with no spawn
+- **L2** a new seat lands exactly where the operator picked (split right, split down, new tab, new space), never a guessed slot
+- **L3** every launched seat has our MCP server, the hook shim and the bboxy450 skill at launch; the user's own ~/.claude and ~/.codex are byte-identical before and after
+- **L4** a fresh Claude seat and a fresh Codex seat each call orient and task_report on their first turn in a fixture task
+
+### scrollback
+
+- **S1** scrolling up shows earlier output byte-identical to the ring, paged lazily; the top row of a 20k-line fixture is line 1; the join with live rows is seamless
+- **S2** a gap in the ring shows the gap marker at the right row, never a silent splice
+- **S3** 50 watched seats scrolled to the top stay under the retained-heap budget; paging shows no hitch on the meter
+- **S4** a pane whose dimensions cannot fit three viewports in the budget refuses history by name, and the live pane is unaffected
+
+### keyboard
+
+- **K1** every key combination reaches the program under the kitty protocol when the program asks for it; ⌘⌥ navigation stays the app's; plain keys are the terminal's
+- **K2** ⌘M mutes the focused seat: its row stays, the amber muted mark shows, it works one to one with the operator
+- **K3** ⌘G opens the Graph tab; ⌘-click on a .md path or a wikilink opens the document modal
+
+### rim, swell and attention
+
+- **R1** every pane and strip carries the alive rim centred on the border, two counter-moving waves, seat colour, pulse by activity, focused ×1.3; text is never covered
+- **R2** Settings › Rim size 2 to 8 moves only the gutter and the stage inset; at 2, 4 and 8 the gaps are 2, 4, 8 and the insets 1, 2, 4
+- **R3** focusing a block swells its silk 40 px past the rim and settles in 0.9 s; nothing moves; the old locate ripple is gone
+- **R4** seat rows, tabs and cards carry the rim and the swell out of the box; idle rows show no rim at rest
+- **R5** a seat waiting on the operator loops the swell in amber on its row and pane until handled; focusing it stops the loop with one swell
+- **R6** a waiting seat posts one desktop notification with the question's first line; a repeat replaces it; clicking it raises the window, switches space and tab, focuses the pane; muted seats post nothing
+
+### messaging and tasks
+
+- **M1** a DM, a channel post and a swarm-stream post from the composer each arrive at the right seats with a receipt; the operator principal signs as the device
+- **M2** the role chip fans out to the exact seats holding the role, one receipt each, shown as one send; above 32 seats it refuses with a named reason
+- **M3** the operator delegates a task by #N or path to a seat; the seat's frontmatter says claimed and its row shows the task; the seat gets one oracle-class message
+- **M4** a report with verify_result whose command differs from verify, or whose exit code is non-zero, is refused on accept with the reason named
+- **M5** the operator alone lists open unassigned tasks account-wide; a seat asking gets the existing refusal
+- **M6** groups stay their own destination; a message to a muted seat waits; priority delays, never deletes
+
+### live feed
+
+- **F1** the stream dock shows one swarm at a time with its channels; arrivals appear within one event-lane delivery; nothing polls
+- **F2** unread counts come from the operator's read marks and survive a restart; viewing a stream marks it read
+- **F3** killing logic and restarting resumes the events lane at its cursors: no duplicate row, no lost event
+- **F4** a filter change while attached migrates the consumer: pending rows for still-granted subjects are delivered, revoked ones dropped unprojected, one audit line on account/control
+
+### settings
+
+- **G1** Settings › Appearance: Rim size 2 to 8 default 4; depth is no longer a setting
+- **G2** Settings › Notifications: on by default, per-harness off, only-when-not-frontmost
+- **G3** Settings › Plugins lists every discovered plugin with trust state, tier, shape, health and the call-and-hook timeline; a 10 s hook shows the warning
+- **G4** Settings › Knowledge lists roots with their provider; swapping to a stub provider and back moves no file
+- **G5** theme is data: a token change in design/tokens.toml changes the look without a code change
+
+### documents
+
+- **D1** a .md opens in the modal rendered natively: headings, lists, tables, code, task lists, footnotes; true size, never scaled
+- **D2** a mermaid fence renders through our engine: no overlaps, edges on borders, deterministic
+- **D3** `[[slug]]`, `[[#N]]` and `[[slug|alias]]` resolve; a bad link shows as broken, never silently skipped; ![[bboxy.png]] renders the image from .bboxy/images
+- **D4** the modal opens, scrolls, copies, closes, and feeds the document into the focused harness
+
+### records
+
+- **N1** every record has a unique number; a new record created through the app takes the next free one; a duplicate or invalid number is refused and shown as broken
+- **N2** every decision is its own node; the Graph tab shows a decision with its decides, constrains, evidence, answers, amends edges
+- **N3** a comment pinned to a digest shows beside the version it was made on; the RFC loop runs in the app: proposal, comments, decision, spec
+- **N4** the Graph tab shows agents (seat, role, now, blocked on), the work tree, the provenance card and what each seat listens to
+
+### identity
+
+- **I1** first launch enrols one device key in the Keychain with one prompt under the GPG root; later launches prompt nothing
+- **I2** every seat has its own generation key certified by the device key; every message envelope verifies; a seat with a nil seat id and a non-operator role is refused
+- **I3** the local-dev issuer path works offline and is marked as such everywhere it shows; pinned receivers refuse local-dev envelopes
+- **I4** every record write from the app is signed by the device key with signer device:<id>; git log shows only good signatures on main
+
+### performance
+
+- **P1** the hitch meter shows zero hitches idle at 120 Hz with 1000 sidebar rows and 50 watched panes once R5g lands; the HUD is in our look
+- **P2** an Oracle broadcast reaches 1000 seats under the bus budget; 400 idle seats stay under the memory budget

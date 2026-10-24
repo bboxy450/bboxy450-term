@@ -1107,7 +1107,7 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     initialize(&mut bridge);
     let list = rpc(&mut bridge, 2, "tools/list", json!({}));
     let tools = list["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 18);
+    assert_eq!(tools.len(), 20);
     assert!(
         tools
             .iter()
@@ -1849,8 +1849,8 @@ fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_r
         .runtime
         .block_on(f.client().control_catalogue(oracle, 1))
         .unwrap();
-    assert_eq!(worker["tools"].as_array().unwrap().len(), 18);
-    assert_eq!(admin["tools"].as_array().unwrap().len(), 30);
+    assert_eq!(worker["tools"].as_array().unwrap().len(), 20);
+    assert_eq!(admin["tools"].as_array().unwrap().len(), 32);
     for tool in [
         "ch_link",
         "ch_pause",
@@ -3329,5 +3329,301 @@ fn mcp_numeric_selectors_refuse_invalid_missing_and_ambiguous_handles() {
             .repository
             .join(format!(".bboxy/artifacts/{op}.md"))
             .exists()
+    );
+}
+
+fn knowledge_args(path: &str, body: &str) -> Value {
+    json!({"path":path,"frontmatter":{"type":"e2e","title":"T1 fixture","function":"T1","group":"terminal","status":"untested","expected":"fixture expectation","unknown":{"kept":true}},"body":body})
+}
+fn knowledge_fetch(f: &Fixture, seat: Ulid, locator: &str) -> Value {
+    let mut bridge = f.bridge(seat);
+    initialize(&mut bridge);
+    let reply = rpc(
+        &mut bridge,
+        2,
+        "tools/call",
+        json!({"name":"knowledge_fetch","arguments":{"locator":locator}}),
+    );
+    assert!(reply.get("error").is_none(), "{reply}");
+    reply["result"].clone()
+}
+fn verify_knowledge_record(record: &Value) -> [u8; 32] {
+    use base64::Engine;
+    let mut metadata = record["frontmatter"].clone();
+    let proof = metadata
+        .as_object_mut()
+        .unwrap()
+        .remove("provenance")
+        .unwrap();
+    let body = record["body"].as_str().unwrap();
+    let front_hash = bbt_mux::store::digest(serde_yaml::to_string(&metadata).unwrap().as_bytes());
+    let body_hash = bbt_mux::store::digest(body.as_bytes());
+    assert_eq!(proof["frontmatter_digest"], format!("sha256:{front_hash}"));
+    assert_eq!(proof["digest"], format!("sha256:{body_hash}"));
+    let payload = format!("{front_hash}{body_hash}");
+    let domain = b"bboxy/item/v1";
+    let mut pae = format!("DSSEv1 {} ", domain.len()).into_bytes();
+    pae.extend(domain);
+    pae.extend(format!(" {} ", payload.len()).as_bytes());
+    pae.extend(payload.as_bytes());
+    let public: [u8; 32] = base64::engine::general_purpose::STANDARD
+        .decode(metadata["authorship"]["public_key"].as_str().unwrap())
+        .unwrap()
+        .try_into()
+        .unwrap();
+    let sig = base64::engine::general_purpose::STANDARD
+        .decode(proof["sig"].as_str().unwrap())
+        .unwrap();
+    ed25519_dalek::VerifyingKey::from_bytes(&public)
+        .unwrap()
+        .verify_strict(&pae, &ed25519_dalek::Signature::from_slice(&sig).unwrap())
+        .unwrap();
+    public
+}
+
+#[test]
+fn mcp_knowledge_real_bridge_writes_with_the_seat_key_and_replays_without_reallocation() {
+    let mut f = Fixture::new();
+    let op = Ulid::new();
+    let mut args = knowledge_args("e2e/t1.md", "# Untested T1\n");
+    args["frontmatter"]["authorship"] =
+        json!({"signer":"device:forged","kind":"device","public_key":"forged"});
+    let first = f.mutate(f.own.id, op, "knowledge_write", args.clone());
+    let value = data(first.clone());
+    assert_eq!(value["record"]["id"], json!(op));
+    assert_eq!(value["record"]["number"], 3);
+    assert_eq!(
+        value["record"]["frontmatter"]["unknown"],
+        json!({"kept":true})
+    );
+    assert_eq!(
+        value["record"]["frontmatter"]["authorship"]["signer"],
+        format!("seat:{}", f.own.id)
+    );
+    assert_eq!(value["record"]["frontmatter"]["authorship"]["kind"], "seat");
+    assert_eq!(
+        value["record"]["frontmatter"]["authorship"]["process_generation"],
+        "1"
+    );
+    let public = verify_knowledge_record(&value["record"]);
+    let path = f.config.repository.join(".bboxy/e2e/t1.md");
+    let bytes = std::fs::read(&path).unwrap();
+    assert_eq!(
+        f.mutate(f.own.id, op, "knowledge_write", args.clone()),
+        first
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    let mut conflicting = args.clone();
+    conflicting["body"] = json!("changed arguments");
+    refused(
+        f.mutate(f.own.id, op, "knowledge_write", conflicting),
+        "conflict",
+    );
+    let fetched = data(knowledge_fetch(&f, f.own.id, "#3"));
+    assert_eq!(fetched["id"], json!(op));
+    assert_eq!(fetched["body"], "# Untested T1\n");
+    verify_knowledge_record(&fetched);
+    let directory = bbt_mux::store::object_dir(&f.config.run_dir, "index").unwrap();
+    let log = EventLog::open(&directory).unwrap();
+    assert!(log.verify_chain().unwrap() > 0);
+    let written: Vec<_> = log
+        .after(0, 1024)
+        .unwrap()
+        .into_iter()
+        .filter(|row| row.event.subject == format!("doc/{op}/written"))
+        .collect();
+    assert_eq!(written.len(), 1);
+    written[0].verify().unwrap();
+    assert_eq!(written[0].provenance.signer, public);
+    assert_eq!(written[0].event.seat, Some(f.own.id));
+    assert_eq!(written[0].event.generation, Some(1));
+    f.restart();
+    assert_eq!(f.mutate(f.own.id, op, "knowledge_write", args), first);
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    let reference: bbt_mux::knowledge::data_source::RecordRef =
+        serde_json::from_value(value["record"].clone()).unwrap();
+    let update = json!({"ref":reference,"frontmatter":value["record"]["frontmatter"],"body":"updated by the other admitted fixture seat\n","etag":value["record"]["etag"]});
+    let peer = data(f.mutate(f.peer.id, Ulid::new(), "knowledge_write", update));
+    assert_eq!(peer["record"]["number"], 3);
+    assert_eq!(peer["record"]["id"], json!(op));
+    assert_eq!(
+        peer["record"]["frontmatter"]["authorship"]["signer"],
+        format!("seat:{}", f.peer.id)
+    );
+    assert_ne!(verify_knowledge_record(&peer["record"]), public);
+    let catalogue = f
+        .runtime
+        .block_on(f.client().control_catalogue(f.own.id, 1))
+        .unwrap();
+    let write = catalogue["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|tool| tool["name"] == "knowledge_write")
+        .unwrap();
+    assert_eq!(
+        write["inputSchema"]["properties"]["op_id"]["type"],
+        "string"
+    );
+    assert!(
+        write["inputSchema"]["required"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("op_id"))
+    );
+}
+
+#[test]
+fn mcp_knowledge_refuses_outside_paths_forged_authority_type_ids_and_stale_etags() {
+    use std::os::unix::fs::symlink;
+    let f = Fixture::new();
+    let outside = f
+        .config
+        .repository
+        .join(format!(".bboxy/tasks/{}.md", f.task));
+    let original = std::fs::read(&outside).unwrap();
+    for path in [
+        "tasks/forbidden.md",
+        "../escape.md",
+        "e2evil/no.md",
+        "e2e/../../escape.md",
+        "e2e/not-markdown.txt",
+    ] {
+        refused(
+            f.mutate(
+                f.own.id,
+                Ulid::new(),
+                "knowledge_write",
+                knowledge_args(path, "denied"),
+            ),
+            "restricted to e2e/",
+        );
+    }
+    let mut args = knowledge_args("e2e/forged.md", "denied");
+    args["seat_id"] = json!(f.oracle.id);
+    refused(
+        f.mutate(f.own.id, Ulid::new(), "knowledge_write", args),
+        "tool schema",
+    );
+    let mut args = knowledge_args("e2e/wrong-type.md", "denied");
+    args["frontmatter"]["type"] = json!("task");
+    refused(
+        f.mutate(f.own.id, Ulid::new(), "knowledge_write", args),
+        "record type e2e",
+    );
+    let mut args = knowledge_args("e2e/wrong-id.md", "denied");
+    args["frontmatter"]["id"] = json!(f.task);
+    refused(
+        f.mutate(f.own.id, Ulid::new(), "knowledge_write", args),
+        "id must equal op_id",
+    );
+    refused(
+        f.mutate(
+            f.own.id,
+            f.task,
+            "knowledge_write",
+            knowledge_args("e2e/alias-task.md", "denied"),
+        ),
+        "already exists",
+    );
+    refused(knowledge_fetch(&f, f.own.id, "#1"), "restricted to e2e/");
+    assert_eq!(std::fs::read(&outside).unwrap(), original);
+    std::fs::create_dir_all(f.config.repository.join(".bboxy/e2e")).unwrap();
+    let link = f.config.repository.join(".bboxy/e2e/link.md");
+    symlink(&outside, &link).unwrap();
+    let guarded = f.mutate(
+        f.own.id,
+        Ulid::new(),
+        "knowledge_write",
+        knowledge_args("e2e/link.md", "denied"),
+    );
+    assert_eq!(guarded["isError"], true);
+    assert_eq!(std::fs::read(&outside).unwrap(), original);
+    let created = data(f.mutate(
+        f.own.id,
+        Ulid::new(),
+        "knowledge_write",
+        knowledge_args("e2e/valid.md", "original"),
+    ));
+    let reference: bbt_mux::knowledge::data_source::RecordRef =
+        serde_json::from_value(created["record"].clone()).unwrap();
+    let metadata = created["record"]["frontmatter"].clone();
+    let path = f.config.repository.join(".bboxy/e2e/valid.md");
+    let before = std::fs::read(&path).unwrap();
+    refused(
+        f.mutate(
+            f.own.id,
+            Ulid::new(),
+            "knowledge_write",
+            json!({"ref":reference,"frontmatter":metadata,"body":"stale","etag":"wrong"}),
+        ),
+        "etag_mismatch",
+    );
+    let mut forged = reference.clone();
+    forged.path = format!("tasks/{}.md", f.task);
+    refused(
+        f.mutate(
+            f.own.id,
+            Ulid::new(),
+            "knowledge_write",
+            json!({"ref":forged,"frontmatter":metadata,"body":"denied"}),
+        ),
+        "restricted to e2e/",
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    assert_eq!(std::fs::read(&outside).unwrap(), original);
+    assert!(!f.config.repository.join("escape.md").exists());
+    assert!(
+        !f.config
+            .repository
+            .join(".bboxy/e2e/alias-task.md")
+            .exists()
+    );
+    let mut bridge = f.bridge(f.own.id);
+    initialize(&mut bridge);
+    assert_eq!(
+        rpc(
+            &mut bridge,
+            2,
+            "tools/call",
+            json!({"name":"knowledge_write","arguments":knowledge_args("e2e/no-op.md","denied")})
+        )["error"]["code"],
+        -32602
+    );
+}
+
+#[test]
+fn mcp_knowledge_post_commit_failure_is_unknown_and_never_recreates_a_deleted_file() {
+    let mut f = Fixture::new();
+    let directory = bbt_mux::store::object_dir(&f.config.run_dir, "index").unwrap();
+    let db = rusqlite::Connection::open(directory.join("events.sqlite")).unwrap();
+    db.execute_batch("CREATE TRIGGER fixture_lost_write_outcome BEFORE INSERT ON events WHEN NEW.subject LIKE 'doc/%/written' BEGIN SELECT RAISE(ABORT,'fixture loss after file commit'); END;").unwrap();
+    let id = Ulid::new();
+    let args = knowledge_args("e2e/uncertain.md", "actually committed\n");
+    let first = f.mutate(f.own.id, id, "knowledge_write", args.clone());
+    refused(first.clone(), "unknown");
+    let path = f.config.repository.join(".bboxy/e2e/uncertain.md");
+    assert!(path.exists(), "fault is after the atomic file effect");
+    db.execute_batch("DROP TRIGGER fixture_lost_write_outcome")
+        .unwrap();
+    drop(db);
+    std::fs::remove_file(&path).unwrap();
+    assert_eq!(
+        f.mutate(f.own.id, id, "knowledge_write", args.clone()),
+        first
+    );
+    assert!(!path.exists());
+    f.restart();
+    assert_eq!(f.mutate(f.own.id, id, "knowledge_write", args), first);
+    assert!(!path.exists());
+    let log = EventLog::open(&directory).unwrap();
+    assert!(log.verify_chain().unwrap() > 0);
+    assert_eq!(
+        log.after(0, 1024)
+            .unwrap()
+            .iter()
+            .filter(|row| row.event.subject == format!("doc/{id}/write_prepared"))
+            .count(),
+        1
     );
 }
