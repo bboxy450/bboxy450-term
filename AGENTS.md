@@ -52,10 +52,20 @@ Who decides what:
 - **Executors never push main.** Rebase onto `origin/main` before your exact gate. If main moves while the gate runs, do NOT rebase and re-gate: hand off the exact gated commit plus an evidence-only successor, and name what landed on main meanwhile. The Oracle verifies the merged tree, merges and pushes, and asks for a re-gate only when the new main overlaps your files.
 - Work only inside your allowed files. If you hit a scope gap, DM the Oracle with the exact path and why, and continue the in-scope work meanwhile.
 - **Touch only what you own on this machine.** Never `pkill`, `killall` or kill by name or pattern; kill only PIDs you started yourself and recorded. Delete only directories you created. Peers' processes, targets, worktrees and `/tmp` dirs are theirs, even when they look stale: ask the owner. (A broad pkill and a stale-looking target deletion each broke a peer's gate on 2026-10-22.)
-- **Never drive the operator's desktop.** No `osascript`/System Events keystrokes or clicks, no `screencapture` of the screen, no AppleEvents to other apps: focus is the operator's, and injected keys land in whatever they have open (on 2026-10-22 an agent's Cmd+T and a typed shell loop went into the operator's Safari). Drive our app only through its own flags, sockets and `--capture`; if a check needs real hands, ask the Oracle to ask the operator.
+- **Never drive the operator's desktop.** No `osascript`/System Events keystrokes or clicks, no `screencapture` of the screen, no AppleEvents to other apps: focus is the operator's, and injected keys land in whatever they have open (on 2026-10-22 an agent's Cmd+T and a typed shell loop went into the operator's Safari). Drive our app only through its own flags, sockets, `ctl` and `--capture`. A check that seems to need real hands is a design bug (see below), not a request to the operator.
 - **Release builds use production identity custody** (the debug-only `BBOXY_TEST_CUSTODY=memory` selector is compiled out), so a plain `--release` app run reaches the login keychain. For optimized measurement runs build with `CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true` and set `BBOXY_TEST_CUSTODY=memory`; check the app log shows memory custody before trusting the run.
 - Fix a problem at the layer it comes from. A lab reference that is wrong gets fixed in the lab (by Creativity), never copied natively.
 - Measure before optimising. Read the images before claiming visual results.
+
+## Unattended by design
+
+The operator, 2026-10-24: "the entire app should be automatically testable and smoke testable automatically, that's the core", and bboxy450-term "gives you full control over everything programmatically, so you never need to ask for my permissions".
+
+- **Every smoke test, agent test and e2e run works with nobody at the machine**: a locked display, no display, overnight. A step that waits for the operator (a GUI click, a login-Keychain prompt, a physical probe, a pane authorization) is a design bug: route it to an automated path and name the gap; never put it on the operator's list as the plan.
+- **`bboxy450-term ctl` is the control surface**: start the app (headless when there is no display), spawn and inspect seats, read any pane as text or image, type text and terminal codes into a seat's own PTY, message, delegate and read reports. Typing goes into our seat's PTY, never the OS desktop.
+- **Harness prompts are answered by `ctl` recipes** under written rules (e.g. Codex hook review: the count matches our own hooks and the repo has no hook source of its own). Anything outside a rule stops and shows the screen.
+- **Automation uses its own identity**, never the operator's login keychain: a dedicated e2e device whose store the harness unlocks itself, and records it signs say so.
+- **Identity custody is cross-platform**: one facade with per-OS backends (macOS Keychain first; Linux and Windows as named backends), the same shape as the notifications family.
 
 ## CI is local
 
