@@ -1,0 +1,500 @@
+R5g calibration-v2-1 — failed before controlled SIGKILL
+Source: a40c2e8b792a158ccd1ea9ee7ef0e3d03656dc1e; detached clean tree /tmp/rook-r5g-ci2-d3gp48ux/tree.
+Authorization: Oracle 4c908c7d quiet window, confirmed 5bffe3b3 at 03:01 PDT.
+Outcome: EXIT 101, not a recovery timing result and not one of the three settled budget runs.
+No deadline/assertion/source change and no v2-2/v2-3 rerun.
+
+Wrapper status (actual command/environment/start load/disk/elapsed/hash):
+{
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--test",
+    "recovery",
+    "checkpoint_bounded_recovery",
+    "--",
+    "--exact",
+    "--nocapture"
+  ],
+  "cwd": "/tmp/rook-r5g-ci2-d3gp48ux/tree",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory",
+    "R5G_SEATS": "967"
+  },
+  "source": "a40c2e8b792a158ccd1ea9ee7ef0e3d03656dc1e",
+  "at": "2026-10-24T03:00:51.114694-07:00",
+  "load_before": [
+    3.19677734375,
+    3.4326171875,
+    3.81982421875
+  ],
+  "free_bytes_before": 61465538560,
+  "finished": true,
+  "git_status_before": "",
+  "pid": 52446,
+  "exit": 101,
+  "elapsed_s": 622.455095207959,
+  "load_after": [
+    5.1484375,
+    6.40283203125,
+    5.5712890625
+  ],
+  "free_bytes_after": 61274824704,
+  "git_status_after": "",
+  "log_sha256": "aa4d2386dfcc1518b374fb52b8f511b158f190d4da533aa9d2b3e579db6ac33b"
+}
+
+Failure:
+recovery.rs:398 parent: child exited 101; child recovery.rs:280: did not reach the mid-replay kill boundary within its 90s guard.
+All 967 producer completion files had been observed before the failure. The fixture never reached its deliberate SIGKILL/frozen-state stage; the parent cleanup killed/reaped the owned child on unwind.
+
+Decoded failure diagnostics (numeric metadata; full original log retained locally):
+{
+  "log_sha256": "aa4d2386dfcc1518b374fb52b8f511b158f190d4da533aa9d2b3e579db6ac33b",
+  "diagnostics_sha256": "e7bd949490edfcf1cab06a028dd8e2915f43a4864ecbfa1c4179c9bc07e7fbcd",
+  "burst": {
+    "seat": "01M5PNP9VFSRJHDDV9GK0Y3JBG",
+    "generation": 1,
+    "observed_ns": 521729657791,
+    "notified_sequence": 0,
+    "target_sequence": 0,
+    "ring_observed_ns": 521729657791,
+    "captured_sequence": 4329,
+    "committed_sequence": 4329,
+    "applied_observed_ns": 45237750,
+    "applied_sequence": 0,
+    "last_progress_ns": 0,
+    "pages": 0,
+    "parsed_events": 0,
+    "parsed_bytes": 0,
+    "checkpoint_sequence": 0,
+    "checkpoint_byte_end": 0,
+    "parsed_byte_end": 0,
+    "checkpoint_pauses": 0,
+    "checkpoint_paused": false,
+    "idle_checkpoints": 0,
+    "forced_checkpoints": 0
+  },
+  "turn": 5112,
+  "sampled_ns": 611737352333,
+  "missed": 0,
+  "untracked": 0,
+  "overwritten": 22823,
+  "totals": [
+    [
+      "logic_turn",
+      {
+        "calls": 5111,
+        "elapsed_ns": 611564315815,
+        "max_ns": 3891502250,
+        "work": 941,
+        "bytes": 0,
+        "errors": 0,
+        "busy": 0,
+        "pending_peak": 919
+      }
+    ],
+    [
+      "commands",
+      {
+        "calls": 5112,
+        "elapsed_ns": 51075743802,
+        "max_ns": 656447583,
+        "work": 1936,
+        "bytes": 0,
+        "errors": 0,
+        "busy": 0,
+        "pending_peak": 0
+      }
+    ],
+    [
+      "receive",
+      {
+        "calls": 5112,
+        "elapsed_ns": 21172894398,
+        "max_ns": 11425916,
+        "work": 0,
+        "bytes": 0,
+        "errors": 0,
+        "busy": 0,
+        "pending_peak": 0
+      }
+    ],
+    [
+      "event",
+      {
+        "calls": 2904,
+        "elapsed_ns": 5978552574,
+        "max_ns": 18050458,
+        "work": 0,
+        "bytes": 0,
+        "errors": 0,
+        "busy": 0,
+        "pending_peak": 0
+      }
+    ],
+    [
+      "replay_page",
+      {
+        "calls": 953,
+        "elapsed_ns": 5524671408,
+        "max_ns": 18025291,
+        "work": 11451,
+        "bytes": 12899328,
+        "errors": 0,
+        "busy": 0,
+        "pending_peak": 0
+      }
+    ],
+    [
+      "capture_request",
+      {
+        "calls": 1935,
+        "elapsed_ns": 9052132439,
+        "max_ns": 24242542,
+        "work": 0,
+        "bytes": 0,
+        "errors": 0,
+        "busy": 0,
+        "pending_peak": 0
+      }
+    ],
+    [
+      "read_ring_rpc",
+      {
+        "calls": 954,
+        "elapsed_ns": 5183614414,
+        "max_ns": 17880959,
+        "work": 0,
+        "bytes": 0,
+        "errors": 0,
+        "busy": 0,
+        "pending_peak": 0
+      }
+    ],
+    [
+      "recovery_rpc",
+      {
+        "calls": 967,
+        "elapsed_ns": 3976980601,
+        "max_ns": 24241250,
+        "work": 0,
+        "bytes": 0,
+        "errors": 0,
+        "busy": 0,
+        "pending_peak": 0
+      }
+    ],
+    [
+      "checkpoint_rpc",
+      {
+        "calls": 1192,
+        "elapsed_ns": 7925536266,
+        "max_ns": 40100167,
+        "work": 0,
+        "bytes": 0,
+        "errors": 0,
+        "busy": 0,
+        "pending_peak": 0
+      }
+    ],
+    [
+      "parse",
+      {
+        "calls": 1246,
+        "elapsed_ns": 352056515,
+        "max_ns": 9038709,
+        "work": 11744,
+        "bytes": 13425116,
+        "errors": 0,
+        "busy": 0,
+        "pending_peak": 0
+      }
+    ],
+    [
+      "checkpoint",
+      {
+        "calls": 417,
+        "elapsed_ns": 4267387799,
+        "max_ns": 51579834,
+        "work": 0,
+        "bytes": 0,
+        "errors": 0,
+        "busy": 0,
+        "pending_peak": 0
+      }
+    ],
+    [
+      "maintenance",
+      {
+        "calls": 5112,
+        "elapsed_ns": 531067211480,
+        "max_ns": 3880274333,
+        "work": 0,
+        "bytes": 0,
+        "errors": 0,
+        "busy": 0,
+        "pending_peak": 0
+      }
+    ],
+    [
+      "supervisor_turn",
+      {
+        "calls": 0,
+        "elapsed_ns": 0,
+        "max_ns": 0,
+        "work": 0,
+        "bytes": 0,
+        "errors": 0,
+        "busy": 0,
+        "pending_peak": 0
+      }
+    ],
+    [
+      "supervisor_dispatch",
+      {
+        "calls": 0,
+        "elapsed_ns": 0,
+        "max_ns": 0,
+        "work": 0,
+        "bytes": 0,
+        "errors": 0,
+        "busy": 0,
+        "pending_peak": 0
+      }
+    ],
+    [
+      "supervisor_query",
+      {
+        "calls": 0,
+        "elapsed_ns": 0,
+        "max_ns": 0,
+        "work": 0,
+        "bytes": 0,
+        "errors": 0,
+        "busy": 0,
+        "pending_peak": 0
+      }
+    ],
+    [
+      "supervisor_sweep",
+      {
+        "calls": 0,
+        "elapsed_ns": 0,
+        "max_ns": 0,
+        "work": 0,
+        "bytes": 0,
+        "errors": 0,
+        "busy": 0,
+        "pending_peak": 0
+      }
+    ]
+  ],
+  "in_flight": [
+    [
+      "logic_turn",
+      {
+        "count": 1,
+        "group_started_ns": 611576317791
+      }
+    ],
+    [
+      "commands",
+      {
+        "count": 0,
+        "group_started_ns": 611576618833
+      }
+    ],
+    [
+      "receive",
+      {
+        "count": 0,
+        "group_started_ns": 611576619041
+      }
+    ],
+    [
+      "event",
+      {
+        "count": 0,
+        "group_started_ns": 611576637250
+      }
+    ],
+    [
+      "replay_page",
+      {
+        "count": 0,
+        "group_started_ns": 611576645333
+      }
+    ],
+    [
+      "capture_request",
+      {
+        "count": 0,
+        "group_started_ns": 521725563625
+      }
+    ],
+    [
+      "read_ring_rpc",
+      {
+        "count": 0,
+        "group_started_ns": 611576645375
+      }
+    ],
+    [
+      "recovery_rpc",
+      {
+        "count": 0,
+        "group_started_ns": 502656539250
+      }
+    ],
+    [
+      "checkpoint_rpc",
+      {
+        "count": 0,
+        "group_started_ns": 611565637750
+      }
+    ],
+    [
+      "parse",
+      {
+        "count": 0,
+        "group_started_ns": 611581740416
+      }
+    ],
+    [
+      "checkpoint",
+      {
+        "count": 0,
+        "group_started_ns": 611564509166
+      }
+    ],
+    [
+      "maintenance",
+      {
+        "count": 1,
+        "group_started_ns": 611581875375
+      }
+    ],
+    [
+      "supervisor_turn",
+      {
+        "count": 0,
+        "group_started_ns": 0
+      }
+    ],
+    [
+      "supervisor_dispatch",
+      {
+        "count": 0,
+        "group_started_ns": 0
+      }
+    ],
+    [
+      "supervisor_query",
+      {
+        "count": 0,
+        "group_started_ns": 0
+      }
+    ],
+    [
+      "supervisor_sweep",
+      {
+        "count": 0,
+        "group_started_ns": 0
+      }
+    ]
+  ],
+  "seat_count": 967,
+  "parsed_debt_max": 65536,
+  "paused_seats": 69,
+  "pause_episodes": 98
+}
+
+Retained-span partition:
+{
+  "retained_span_count": 8192,
+  "retained_start_ns": 574482894375,
+  "retained_end_ns": 611581875208,
+  "retained_interval_ns": 37098980833,
+  "release_latest_bound_ns": 521729657791,
+  "phases": {
+    "logic_turn": {
+      "calls": 1386,
+      "inclusive_ns": 37059757864
+    },
+    "commands": {
+      "calls": 1386,
+      "inclusive_ns": 312737
+    },
+    "receive": {
+      "calls": 1386,
+      "inclusive_ns": 6557741
+    },
+    "event": {
+      "calls": 1386,
+      "inclusive_ns": 2079047632
+    },
+    "maintenance": {
+      "calls": 1385,
+      "inclusive_ns": 33683126694
+    },
+    "checkpoint_rpc": {
+      "calls": 164,
+      "inclusive_ns": 2119062033
+    },
+    "checkpoint": {
+      "calls": 164,
+      "inclusive_ns": 2303897587
+    },
+    "read_ring_rpc": {
+      "calls": 310,
+      "inclusive_ns": 1805252427
+    },
+    "parse": {
+      "calls": 315,
+      "inclusive_ns": 243755280
+    },
+    "replay_page": {
+      "calls": 310,
+      "inclusive_ns": 2050046445
+    }
+  },
+  "never_notified": 9,
+  "never_parsed": 392,
+  "limits": "Retained tail only, not the whole 90s interval. Spans overlap; sums are not additive. No transport/fixture-held queue snapshot or maintenance subphase timings were captured."
+}
+
+Source-grounded limits:
+logic.rs:4613-4656 receives at most one event per host/turn, and only records/schedules a matching generation with a sequence above the view cursor.
+provider/mod.rs:212-217 returns None while the checkpoint side task owns the serial link.
+client.rs:297-306 pops the oldest queued event before reading more socket bytes.
+recovery.rs:111-132 holds burst notifications inside CrashLink until the release flag changes; that internal slot and the transport queues were not exported in this attempt.
+The burst row has parsed/notified/target/page counters all zero, so it was not a started replay that merely stopped at a checkpoint. The physical location of its undelivered notification is unproven.
+Other seats did parse: 575 of 967 have nonzero parsed bytes at failure. Retained replay-page count is 310 over the final 37.099s; the whole-run totals include the long admission ramp and must not be called the 90s post-release partition.
+Maintenance is 33.683126694s in that retained interval; checkpoint RPC is 2.119062033s, overlapping the loop. No subphase sample proves which maintenance call dominates.
+Fixture recovery.rs:225 creates a distinct swarm per seat; messaging/service.rs:1597-1606 ready() reconciles then queries every swarm, and :1633-1638 events() queries every swarm again. store/sqlite.rs:23/61-75 bounds the idle connection LRU to 64. This is a static candidate, not measured attribution.
+
+Cleanup (all 970 recorded owned PIDs gone; only private run directory removed by fixture):
+{
+  "at": "2026-10-24T03:11:56.918646-07:00",
+  "recorded_count": 970,
+  "remaining": [],
+  "run_dir_exists": false,
+  "free_bytes": 61253005312
+}
+
+Private raw root: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5g-q_dg7i1h
+Raw log: calibration-v2-1.log; complete extracted snapshot: calibration-v2-1-failure-diagnostics.json.
+No release/merge/acceptance claim. #254 remains pending.
