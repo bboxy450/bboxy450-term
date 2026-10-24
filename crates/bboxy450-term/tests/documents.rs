@@ -86,7 +86,11 @@ fn errors_and_disconnect_finish_once_and_retry_only_on_a_new_open() {
         .unwrap()
         .prepare();
     host.apply(&reply);
-    assert!(host.view().broken.unwrap().starts_with("not_found:"));
+    assert!(host.error.as_ref().unwrap().starts_with("not_found:"));
+    assert!(
+        host.view().broken.is_none(),
+        "a failed read does not diagnose frontmatter"
+    );
     assert!(host.next_read().is_none());
     assert!(!host.apply(&reply));
     host.show("#1".into());
@@ -280,4 +284,28 @@ fn task_delegate_keeps_its_provider_path() {
     assert!(
         matches!(&batch.commands[0],bboxy450_term::cockpit::UiMsg::Task {request:bbt_proto::messaging::TaskRequest::Delegate {task_path,..},..} if task_path==&card.path)
     );
+}
+
+#[test]
+fn known_backend_loss_is_a_visible_final_outcome_and_late_data_cannot_restart_the_read() {
+    let mut host = Host::default();
+    host.show("#44".into());
+    let (id, _) = host.next_read().unwrap();
+    assert!(host.unavailable("document_backend_unavailable: connection lost"));
+    assert!(host.settled());
+    assert!(host.apply(&Reply {
+        id,
+        response: Response::Resolved(reference(44))
+    }));
+    assert!(host.next_read().is_none());
+    assert!(host.prepared.is_none());
+    assert!(
+        host.error
+            .as_deref()
+            .unwrap()
+            .starts_with("document_backend_unavailable:")
+    );
+    host.show("#44".into());
+    assert!(host.error.is_none());
+    assert!(host.next_read().is_some());
 }

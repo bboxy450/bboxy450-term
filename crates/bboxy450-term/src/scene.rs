@@ -1229,16 +1229,14 @@ impl Scene {
         host: &bboxy450_term::documents::Host,
         ctx: ui::Context,
     ) -> Result<DocumentLayout, String> {
-        let mut document = host.view();
-        if let Some(notice) = &host.notice {
-            document.broken = Some(notice.clone());
-        }
+        let document = host.view();
         let shell = ui::modules::document_modal::DocumentModal {
             document,
             modal: true,
             viewport: size,
             scroll: host.scroll.offset,
             record_links: Some(host.links.clone()),
+            notice: host.error.as_ref().or(host.notice.as_ref()).cloned(),
             ..Default::default()
         };
         let element = shell.element_with_body(ctx, &self.metrics, size, &|width| {

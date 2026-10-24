@@ -1233,10 +1233,16 @@ impl App {
         self.request_redraw();
     }
     fn drive_document(&mut self) {
-        if self.live_commands.is_none() && self.document.open {
-            self.document.unavailable(
-                "document_backend_unavailable: Knowledge reads require a live connection",
-            );
+        if self.document.open
+            && (self.live_commands.is_none() || (self.backend_lost && !self.document.settled()))
+        {
+            if self.document.unavailable(
+                "document_backend_unavailable: open the record again after the connection recovers",
+            ) {
+                self.document_layout = None;
+                self.request_redraw();
+            }
+            return;
         }
         if self.live_commands.is_some()
             && let Some((id, read)) = self.document.next_read()

@@ -90,6 +90,8 @@ pub struct DocumentModal {
     pub diagrams: Vec<Diagram>,
     /// Resolutions supplied by the host; None keeps legacy/plain chips.
     pub record_links: Option<controller::RecordLinks>,
+    /// Host read/action status, distinct from malformed source frontmatter.
+    pub notice: Option<String>,
 }
 impl Default for DocumentModal {
     fn default() -> Self {
@@ -101,6 +103,7 @@ impl Default for DocumentModal {
             scroll: [0.; 2],
             diagrams: vec![],
             record_links: None,
+            notice: None,
         }
     }
 }
@@ -248,6 +251,7 @@ struct Build<'a> {
     diagrams: &'a [Diagram],
     body: Option<&'a dyn Fn(f32) -> c::Element>,
     record_links: Option<&'a controller::RecordLinks>,
+    notice: Option<&'a str>,
 }
 // A cell's public text, code-font flag and assignee-colour flag.
 type Cells = Vec<(String, bool, bool)>;
@@ -1110,6 +1114,10 @@ impl Build<'_> {
         let rail = !plain_doc;
         let main_w = (w - 36. - if rail { 298. } else { 0. }).max(0.);
         let mut children = vec![self.heading(d, plain_doc).into(), space(12.)];
+        if let Some(notice) = self.notice {
+            children.push(text("notice", notice, font(12., 400, true, ui::Color::Muted)).into());
+            children.push(space(12.));
+        }
         if !plain_doc {
             children.push(self.frontmatter(d, main_w).into());
             children.push(space(14.));
@@ -1319,6 +1327,7 @@ impl DocumentModal {
             diagrams: &self.diagrams,
             body,
             record_links: self.record_links.as_ref(),
+            notice: self.notice.as_deref(),
         };
         if !self.modal {
             return named("document", b.view(&self.document, available[0], false));

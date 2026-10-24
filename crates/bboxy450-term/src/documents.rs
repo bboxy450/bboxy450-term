@@ -228,12 +228,17 @@ impl Host {
         }
         true
     }
-    pub fn unavailable(&mut self, reason: &str) {
+    pub fn unavailable(&mut self, reason: &str) -> bool {
+        let changed = self.error.as_deref() != Some(reason);
+        if changed {
+            self.epoch = self.epoch.wrapping_add(1);
+        }
         self.queued.clear();
         self.error = Some(reason.into());
+        changed
     }
     pub fn settled(&self) -> bool {
-        self.pending.is_none() && self.queued.is_empty()
+        self.error.is_some() || (self.pending.is_none() && self.queued.is_empty())
     }
     pub fn view(&self) -> Document {
         self.prepared
@@ -242,7 +247,6 @@ impl Host {
             .unwrap_or_else(|| Document {
                 path: self.target.clone(),
                 title: self.target.clone(),
-                broken: self.error.clone(),
                 body: if self.error.is_some() {
                     "Open the record again to retry.".into()
                 } else {

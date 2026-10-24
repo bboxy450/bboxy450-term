@@ -129,3 +129,34 @@ fn stream_numbered_links_and_attachments_are_measured_actions_without_paint_chan
     assert!(number);
     assert!(attachment);
 }
+
+#[test]
+fn a_host_read_error_is_visible_without_claiming_a_frontmatter_failure() {
+    let view = DocumentModal {
+        document: Document {
+            title: "#999".into(),
+            body: "Open again to retry.".into(),
+            ..Default::default()
+        },
+        notice: Some("not_found: no record".into()),
+        ..Default::default()
+    };
+    let layout = view
+        .element(ctx(), &Metrics, [600., 500.])
+        .layout(Rect::new(0., 0., 600., 0.), ctx(), &Metrics)
+        .unwrap();
+    fn text(n: &c::Layout) -> String {
+        let mut s = if let c::LayoutKind::Text { runs, .. } = &n.kind {
+            runs.iter().map(|r| r.text.as_str()).collect()
+        } else {
+            String::new()
+        };
+        for child in &n.children {
+            s += &text(child);
+        }
+        s
+    }
+    let visible = text(&layout);
+    assert!(visible.contains("not_found: no record"));
+    assert!(!visible.contains("frontmatter does not parse"));
+}
