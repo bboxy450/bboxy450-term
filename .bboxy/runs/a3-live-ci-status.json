@@ -1,0 +1,39 @@
+{
+  "phase": "finished",
+  "source_sha": "86744957990f95033f9e768ae52e495a8c14a7bd",
+  "slot_message": "36f8f9fc-836b-4d63-8f53-fe5a64b858d4",
+  "source": "/private/tmp/ci-velvet-a3-live-86744957990f",
+  "target": "/Users/feral/mydev/bboxy450-term-exec6/target/a3-live-ci-build-86744957990f",
+  "report": "/Users/feral/mydev/bboxy450-term-exec6/target/a3-live-parity-86744957990f",
+  "log": "/Users/feral/mydev/bboxy450-term-exec6/target/a3-live-proof/ci-86744957990f.log",
+  "wrapper_pid": 72659,
+  "command": [
+    "sh",
+    "scripts/ci-local.sh",
+    "--parity"
+  ],
+  "environment": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec6/target/a3-live-ci-build-86744957990f",
+    "PARITY_OUT": "/Users/feral/mydev/bboxy450-term-exec6/target/a3-live-parity-86744957990f",
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "started_utc": "2026-10-24T10:29:19.423589+00:00",
+  "ci_pid": 72711,
+  "ci_exit": 0,
+  "elapsed_seconds": 2678.404,
+  "private_target_deleted": true,
+  "private_target_allocated_bytes_retired": 3949432832,
+  "post_ci_status": "",
+  "source_remove_exit": 0,
+  "report_sha256": "805443592f8bad97822f1a0720b3c1579e1b825ab47ddaa5437918e4cbdd15a8",
+  "log_sha256": "18981e50d0f5d1ef9a1ea9ac28e7f2c7dc5f0cb93c098742b6c26d5999df5b19",
+  "finished_utc": "2026-10-24T11:13:59.992292+00:00"
+}

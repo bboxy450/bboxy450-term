@@ -112,6 +112,8 @@ pub struct Checklist {
     pub promises: Vec<Promise>,
     pub records: Vec<Record>,
     pub tasks: Vec<Task>,
+    /// Host/provider failures invalidate the snapshot without inventing a row.
+    pub faults: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -147,7 +149,8 @@ impl Status {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Tone {
     Green,
     Amber,
@@ -164,7 +167,7 @@ pub struct Row<'a> {
     pub tracked_by: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Summary {
     pub tone: Tone,
     pub total: usize,
@@ -306,7 +309,7 @@ impl Checklist {
                 .iter()
                 .filter(|r| r.status.failure() && r.tracked_by.is_empty())
                 .count(),
-            faults: vec![],
+            faults: self.faults.clone(),
         };
         if self.promises.is_empty() {
             summary.faults.push("checklist has no promises".into());
@@ -514,6 +517,13 @@ impl Summary {
             }
             Tone::Red => {
                 let mut labels = vec![];
+                if !self.faults.is_empty() {
+                    labels.push(format!(
+                        "{} fault{}",
+                        self.faults.len(),
+                        if self.faults.len() == 1 { "" } else { "s" }
+                    ));
+                }
                 let untested = self
                     .untested
                     .saturating_sub(self.missing + self.doubled + self.invalid);
@@ -535,9 +545,6 @@ impl Summary {
                 }
                 if self.invalid > 0 {
                     labels.push(format!("{} invalid", self.invalid));
-                }
-                if !self.faults.is_empty() {
-                    labels.push(format!("{} invalid records", self.faults.len()));
                 }
                 labels
             }
@@ -834,25 +841,45 @@ impl Checklist {
         });
         head_style.overrides.border_sides = Some([false, false, false, true]);
         head_style.overrides.rings = Some(vec![hair()]);
+        let mut head_children = vec![
+            top.into(),
+            c::Item {
+                element: c::Element::Spacer,
+                extent: c::Extent::Fixed(STYLE.spacing.s8 as f32),
+            },
+            cells.into(),
+            c::Item {
+                element: c::Element::Spacer,
+                extent: c::Extent::Fixed(STYLE.spacing.s6 as f32),
+            },
+            count_row.into(),
+        ];
+        for (i, fault) in out.summary.faults.iter().enumerate() {
+            head_children.push(c::Item {
+                element: c::Element::Spacer,
+                extent: c::Extent::Fixed(STYLE.spacing.s6 as f32),
+            });
+            let style = font(STYLE.r#type.label as f32, 400, false, ui::Color::Foreground);
+            let mut text = c::Text::new("", style);
+            text.runs = vec![
+                c::TextRun {
+                    value: "fault".into(),
+                    style: font(STYLE.r#type.label as f32, 600, false, tone_color(Tone::Red)),
+                },
+                c::TextRun {
+                    value: format!(" · {fault}"),
+                    style,
+                },
+            ];
+            head_children.push(named(format!("e2e/head/fault{i}"), c::Element::Text(text)).into());
+        }
         let head = block(
             "e2e/head",
             Axis::Column,
             head_style,
             0.,
             c::Alignment::Stretch,
-            vec![
-                top.into(),
-                c::Item {
-                    element: c::Element::Spacer,
-                    extent: c::Extent::Fixed(STYLE.spacing.s8 as f32),
-                },
-                cells.into(),
-                c::Item {
-                    element: c::Element::Spacer,
-                    extent: c::Extent::Fixed(STYLE.spacing.s6 as f32),
-                },
-                count_row.into(),
-            ],
+            head_children,
         );
         let gap = STYLE.spacing.s8 as f32;
         let columns = ((width + gap) / (460. + gap)).floor().max(1.) as usize;

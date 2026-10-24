@@ -28,6 +28,7 @@ pub const E2E_STATES: &[&str] = &[
     "failures tracked",
     "all pass",
     "empty catalogue",
+    "provider fault",
 ];
 pub fn cases() -> Vec<Case> {
     let mut all = vec![];

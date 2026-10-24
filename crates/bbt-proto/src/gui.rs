@@ -151,6 +151,13 @@ pub enum GuiAction {
         #[serde(default)]
         error: Option<String>,
     },
+    /// Read-only portable data_source call. `args` is the existing method DTO;
+    /// admission is the same operator GUI admission as every other view read.
+    Knowledge {
+        id: Ulid,
+        method: String,
+        args: serde_json::Value,
+    },
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body")]
@@ -243,6 +250,12 @@ pub enum GuiReply {
         #[serde(with = "text_id")]
         seat: SeatId,
         spec: SpawnSpec,
+    },
+    /// Serialized data_source Result<Value, CommandError>, bounded by the
+    /// provider page limit. It carries no new document or error DTO.
+    Knowledge {
+        op: Ulid,
+        response: serde_json::Value,
     },
 }
 

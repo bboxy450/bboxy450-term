@@ -72,6 +72,7 @@ fn checklist(status: &str) -> Checklist {
             ..Default::default()
         }],
         tasks: vec![],
+        faults: vec![],
     }
 }
 

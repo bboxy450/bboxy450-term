@@ -36,6 +36,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl [--endpoint FILE] <command>
   delegate <#N|path|id> <seat>
   reports [--since TIME]
   capture <file.png> [--seat SEAT]
+  e2e [--group GROUP]
 A <seat> is a seat id or a unique seat name. Output is one JSON object per line.";
 
 /// Where the app's `gui.sock` is and the capability that admits a client.
@@ -111,6 +112,9 @@ pub enum Command {
         path: PathBuf,
         seat: Option<String>,
     },
+    E2e {
+        group: Option<String>,
+    },
 }
 
 /// Parses everything after `ctl`; returns the endpoint file override and the command.
@@ -179,16 +183,27 @@ pub fn parse(args: &[String]) -> Result<(Option<PathBuf>, Command), String> {
         ["reports"] => Command::Reports {
             since: flag("since"),
         },
+        ["e2e"] => Command::E2e {
+            group: flag("group"),
+        },
         ["capture", path] => Command::Capture {
             path: std::path::absolute(path).map_err(|e| format!("capture {path}: {e}"))?,
             seat: flag("seat"),
         },
         _ => return Err(USAGE.into()),
     };
-    if let Some(unknown) = flags
-        .keys()
-        .find(|k| !["swarm", "name", "cwd", "since", "placement", "seat"].contains(&k.as_str()))
-    {
+    if let Some(unknown) = flags.keys().find(|k| {
+        ![
+            "swarm",
+            "name",
+            "cwd",
+            "since",
+            "placement",
+            "seat",
+            "group",
+        ]
+        .contains(&k.as_str())
+    }) {
         return Err(format!("unknown flag --{unknown}\n{USAGE}"));
     }
     Ok((endpoint, command))
@@ -318,6 +333,29 @@ impl Client {
             |r| matches!(r, GuiReply::Captured { op, .. } if *op == id),
         )? {
             GuiReply::Captured { path, .. } => Ok(path),
+            _ => unreachable!(),
+        }
+    }
+    pub fn knowledge(
+        &mut self,
+        call: &crate::knowledge::ReadCall,
+    ) -> bbt_mux::knowledge::data_source::Result<Value> {
+        use bbt_mux::knowledge::data_source::CommandError;
+        let id = Ulid::new();
+        let reply = self
+            .call(
+                Some(id),
+                GuiAction::Knowledge {
+                    id,
+                    method: call.method.into(),
+                    args: call.args.clone(),
+                },
+                |r| matches!(r, GuiReply::Knowledge {op,..} if *op == id),
+            )
+            .map_err(|e| CommandError::new("transport", e))?;
+        match reply {
+            GuiReply::Knowledge { response, .. } => serde_json::from_value(response)
+                .map_err(|e| CommandError::new("invalid_provider_result", e.to_string()))?,
             _ => unreachable!(),
         }
     }
@@ -514,6 +552,16 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
             };
             let path = client.capture(&path, seat)?;
             vec![json!({ "kind": "captured", "path": path, "seat": seat })]
+        }
+        Command::E2e { group } => {
+            let mut loader = crate::knowledge::E2eLoader::new(crate::knowledge::promises()?);
+            // Validate the group before sending any provider request. The
+            // projection still supplies the global summary for filtered rows.
+            crate::knowledge::e2e_lines(loader.snapshot(), group.as_deref())?;
+            while let Some(call) = loader.next_request() {
+                loader.respond(client.knowledge(&call));
+            }
+            crate::knowledge::e2e_lines(loader.snapshot(), group.as_deref())?
         }
         Command::Reports { since } => {
             let mut cards = vec![];

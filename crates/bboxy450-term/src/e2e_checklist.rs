@@ -1,6 +1,7 @@
 //! Local Graph-tab state. Record IO belongs to the host/A-0; the page starts
 //! with the canonical promises and no claimed results.
-use bbt_ui::modules::e2e_checklist::{Checklist, Record, Task, parse_promises};
+use bbt_ui::modules::e2e_checklist::{Checklist, Record, Task};
+use std::sync::Arc;
 
 pub enum LocalTab {
     Graph(Graph),
@@ -17,18 +18,19 @@ pub enum PageCommand {
 }
 
 pub struct Graph {
-    pub checklist: Checklist,
+    pub checklist: Arc<Checklist>,
     pub scroll: f32,
 }
 
 impl Graph {
     pub fn new(records: Vec<Record>, tasks: Vec<Task>) -> Result<Self, String> {
         Ok(Self {
-            checklist: Checklist {
-                promises: parse_promises(include_str!("../../../.bboxy/specs/e2e-acceptance.md"))?,
+            checklist: Arc::new(Checklist {
+                promises: bboxy450_term::knowledge::promises()?,
                 records,
                 tasks,
-            },
+                faults: vec![],
+            }),
             scroll: 0.,
         })
     }

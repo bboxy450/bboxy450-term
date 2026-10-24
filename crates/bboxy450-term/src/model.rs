@@ -511,6 +511,7 @@ pub struct Model {
     pub operation_results: Arc<crate::messaging::Results>,
     pub metadata_initialized: bool,
     pub events: Arc<EventLane>,
+    pub e2e: Option<Arc<bbt_ui::modules::e2e_checklist::Checklist>>,
 }
 impl Default for Model {
     fn default() -> Self {
@@ -526,6 +527,7 @@ impl Default for Model {
             operation_results: Arc::default(),
             metadata_initialized: false,
             events: Arc::new(EventLane::default()),
+            e2e: None,
         }
     }
 }
@@ -997,6 +999,7 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
         operation_results: previous.operation_results.clone(),
         metadata_initialized: true,
         events: previous.events.clone(),
+        e2e: previous.e2e.clone(),
     };
     next.place_ready_spawns();
     next

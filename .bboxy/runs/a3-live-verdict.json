@@ -1,0 +1,551 @@
+{
+  "source_sha": "86744957990f95033f9e768ae52e495a8c14a7bd",
+  "base_sha": "d13f44a0ad51f65f1fa010c124562a143a320abb",
+  "ci_exit": 0,
+  "ci_seconds": 2678.404,
+  "status_counts": {
+    "review pixels": 72,
+    "within policy": 2032
+  },
+  "current_cases": 2104,
+  "required_geometry": 2000,
+  "measured_geometry": 2000,
+  "unproven_geometry_keys": [],
+  "geometry_mismatch_keys": [],
+  "max_rect_error_px": 0.5,
+  "max_baseline_error_px": 0.046875,
+  "pixel_reviews_by_module": {
+    "harness-icon": 48,
+    "materials": 8,
+    "documents": 16
+  },
+  "baseline_source": "15755436a3d5a9f38fa2fdcbb8e432c2fd292bcf",
+  "baseline_accepted_main": "9e77859f",
+  "baseline_report_sha256": "9acd8ad2edd2102fb6d9bc5c090c778ef31dc7fe1a04a7ab9ae77c4d1bd70b5e",
+  "baseline_cases": 2064,
+  "baseline_reviews": 72,
+  "new_review_keys": [],
+  "removed_review_keys": [],
+  "overlap_geometry_metrics_changed_keys": [
+    "launcher/claude-placements-comfortable-dark.png",
+    "launcher/claude-placements-comfortable-light.png",
+    "launcher/claude-placements-compact-dark.png",
+    "launcher/claude-placements-compact-light.png",
+    "launcher/claude-placements-cozy-dark.png",
+    "launcher/claude-placements-cozy-light.png",
+    "launcher/claude-placements-touch-dark.png",
+    "launcher/claude-placements-touch-light.png"
+  ],
+  "overlap_native_pngs_changed_by_module": {
+    "launcher": 72,
+    "picker": 56,
+    "settings": 8
+  },
+  "overlap_native_png_changed_keys": [
+    "launcher/cap-reached-comfortable-dark.png",
+    "launcher/cap-reached-comfortable-light.png",
+    "launcher/cap-reached-compact-dark.png",
+    "launcher/cap-reached-compact-light.png",
+    "launcher/cap-reached-cozy-dark.png",
+    "launcher/cap-reached-cozy-light.png",
+    "launcher/cap-reached-touch-dark.png",
+    "launcher/cap-reached-touch-light.png",
+    "launcher/claude-placements-comfortable-dark.png",
+    "launcher/claude-placements-comfortable-light.png",
+    "launcher/claude-placements-compact-dark.png",
+    "launcher/claude-placements-compact-light.png",
+    "launcher/claude-placements-cozy-dark.png",
+    "launcher/claude-placements-cozy-light.png",
+    "launcher/claude-placements-touch-dark.png",
+    "launcher/claude-placements-touch-light.png",
+    "launcher/preset-split-down-comfortable-dark.png",
+    "launcher/preset-split-down-comfortable-light.png",
+    "launcher/preset-split-down-compact-dark.png",
+    "launcher/preset-split-down-compact-light.png",
+    "launcher/preset-split-down-cozy-dark.png",
+    "launcher/preset-split-down-cozy-light.png",
+    "launcher/preset-split-down-touch-dark.png",
+    "launcher/preset-split-down-touch-light.png",
+    "launcher/preset-split-right-comfortable-dark.png",
+    "launcher/preset-split-right-comfortable-light.png",
+    "launcher/preset-split-right-compact-dark.png",
+    "launcher/preset-split-right-compact-light.png",
+    "launcher/preset-split-right-cozy-dark.png",
+    "launcher/preset-split-right-cozy-light.png",
+    "launcher/preset-split-right-touch-dark.png",
+    "launcher/preset-split-right-touch-light.png",
+    "launcher/query-focused-empty-comfortable-dark.png",
+    "launcher/query-focused-empty-comfortable-light.png",
+    "launcher/query-focused-empty-compact-dark.png",
+    "launcher/query-focused-empty-compact-light.png",
+    "launcher/query-focused-empty-cozy-dark.png",
+    "launcher/query-focused-empty-cozy-light.png",
+    "launcher/query-focused-empty-touch-dark.png",
+    "launcher/query-focused-empty-touch-light.png",
+    "launcher/root-comfortable-dark.png",
+    "launcher/root-comfortable-light.png",
+    "launcher/root-compact-dark.png",
+    "launcher/root-compact-light.png",
+    "launcher/root-cozy-dark.png",
+    "launcher/root-cozy-light.png",
+    "launcher/root-touch-dark.png",
+    "launcher/root-touch-light.png",
+    "launcher/ssh-rig-harnesses-comfortable-dark.png",
+    "launcher/ssh-rig-harnesses-comfortable-light.png",
+    "launcher/ssh-rig-harnesses-compact-dark.png",
+    "launcher/ssh-rig-harnesses-compact-light.png",
+    "launcher/ssh-rig-harnesses-cozy-dark.png",
+    "launcher/ssh-rig-harnesses-cozy-light.png",
+    "launcher/ssh-rig-harnesses-touch-dark.png",
+    "launcher/ssh-rig-harnesses-touch-light.png",
+    "launcher/typed-co-comfortable-dark.png",
+    "launcher/typed-co-comfortable-light.png",
+    "launcher/typed-co-compact-dark.png",
+    "launcher/typed-co-compact-light.png",
+    "launcher/typed-co-cozy-dark.png",
+    "launcher/typed-co-cozy-light.png",
+    "launcher/typed-co-touch-dark.png",
+    "launcher/typed-co-touch-light.png",
+    "launcher/typed-ssh-rig-cod-comfortable-dark.png",
+    "launcher/typed-ssh-rig-cod-comfortable-light.png",
+    "launcher/typed-ssh-rig-cod-compact-dark.png",
+    "launcher/typed-ssh-rig-cod-compact-light.png",
+    "launcher/typed-ssh-rig-cod-cozy-dark.png",
+    "launcher/typed-ssh-rig-cod-cozy-light.png",
+    "launcher/typed-ssh-rig-cod-touch-dark.png",
+    "launcher/typed-ssh-rig-cod-touch-light.png",
+    "picker/cap-machine-comfortable-dark.png",
+    "picker/cap-machine-comfortable-light.png",
+    "picker/cap-machine-compact-dark.png",
+    "picker/cap-machine-compact-light.png",
+    "picker/cap-machine-cozy-dark.png",
+    "picker/cap-machine-cozy-light.png",
+    "picker/cap-machine-touch-dark.png",
+    "picker/cap-machine-touch-light.png",
+    "picker/cap-swarm-comfortable-dark.png",
+    "picker/cap-swarm-comfortable-light.png",
+    "picker/cap-swarm-compact-dark.png",
+    "picker/cap-swarm-compact-light.png",
+    "picker/cap-swarm-cozy-dark.png",
+    "picker/cap-swarm-cozy-light.png",
+    "picker/cap-swarm-touch-dark.png",
+    "picker/cap-swarm-touch-light.png",
+    "picker/open-comfortable-dark.png",
+    "picker/open-comfortable-light.png",
+    "picker/open-compact-dark.png",
+    "picker/open-compact-light.png",
+    "picker/open-cozy-dark.png",
+    "picker/open-cozy-light.png",
+    "picker/open-touch-dark.png",
+    "picker/open-touch-light.png",
+    "picker/rerolled-comfortable-dark.png",
+    "picker/rerolled-comfortable-light.png",
+    "picker/rerolled-compact-dark.png",
+    "picker/rerolled-compact-light.png",
+    "picker/rerolled-cozy-dark.png",
+    "picker/rerolled-cozy-light.png",
+    "picker/rerolled-touch-dark.png",
+    "picker/rerolled-touch-light.png",
+    "picker/typed-c-comfortable-dark.png",
+    "picker/typed-c-comfortable-light.png",
+    "picker/typed-c-compact-dark.png",
+    "picker/typed-c-compact-light.png",
+    "picker/typed-c-cozy-dark.png",
+    "picker/typed-c-cozy-light.png",
+    "picker/typed-c-touch-dark.png",
+    "picker/typed-c-touch-light.png",
+    "picker/typed-co-comfortable-dark.png",
+    "picker/typed-co-comfortable-light.png",
+    "picker/typed-co-compact-dark.png",
+    "picker/typed-co-compact-light.png",
+    "picker/typed-co-cozy-dark.png",
+    "picker/typed-co-cozy-light.png",
+    "picker/typed-co-touch-dark.png",
+    "picker/typed-co-touch-light.png",
+    "picker/typed-z-comfortable-dark.png",
+    "picker/typed-z-comfortable-light.png",
+    "picker/typed-z-compact-dark.png",
+    "picker/typed-z-compact-light.png",
+    "picker/typed-z-cozy-dark.png",
+    "picker/typed-z-cozy-light.png",
+    "picker/typed-z-touch-dark.png",
+    "picker/typed-z-touch-light.png",
+    "settings/in-a-tab-comfortable-dark.png",
+    "settings/in-a-tab-comfortable-light.png",
+    "settings/in-a-tab-compact-dark.png",
+    "settings/in-a-tab-compact-light.png",
+    "settings/in-a-tab-cozy-dark.png",
+    "settings/in-a-tab-cozy-light.png",
+    "settings/in-a-tab-touch-dark.png",
+    "settings/in-a-tab-touch-light.png"
+  ],
+  "new_case_keys": [
+    "graph/e2e-provider-fault-comfortable-dark.png",
+    "graph/e2e-provider-fault-comfortable-light.png",
+    "graph/e2e-provider-fault-compact-dark.png",
+    "graph/e2e-provider-fault-compact-light.png",
+    "graph/e2e-provider-fault-cozy-dark.png",
+    "graph/e2e-provider-fault-cozy-light.png",
+    "graph/e2e-provider-fault-touch-dark.png",
+    "graph/e2e-provider-fault-touch-light.png",
+    "launcher/claude-architect-placements-comfortable-dark.png",
+    "launcher/claude-architect-placements-comfortable-light.png",
+    "launcher/claude-architect-placements-compact-dark.png",
+    "launcher/claude-architect-placements-compact-light.png",
+    "launcher/claude-architect-placements-cozy-dark.png",
+    "launcher/claude-architect-placements-cozy-light.png",
+    "launcher/claude-architect-placements-touch-dark.png",
+    "launcher/claude-architect-placements-touch-light.png",
+    "launcher/claude-roles-comfortable-dark.png",
+    "launcher/claude-roles-comfortable-light.png",
+    "launcher/claude-roles-compact-dark.png",
+    "launcher/claude-roles-compact-light.png",
+    "launcher/claude-roles-cozy-dark.png",
+    "launcher/claude-roles-cozy-light.png",
+    "launcher/claude-roles-no-oracle-yet-comfortable-dark.png",
+    "launcher/claude-roles-no-oracle-yet-comfortable-light.png",
+    "launcher/claude-roles-no-oracle-yet-compact-dark.png",
+    "launcher/claude-roles-no-oracle-yet-compact-light.png",
+    "launcher/claude-roles-no-oracle-yet-cozy-dark.png",
+    "launcher/claude-roles-no-oracle-yet-cozy-light.png",
+    "launcher/claude-roles-no-oracle-yet-touch-dark.png",
+    "launcher/claude-roles-no-oracle-yet-touch-light.png",
+    "launcher/claude-roles-touch-dark.png",
+    "launcher/claude-roles-touch-light.png",
+    "launcher/codex-placements-comfortable-dark.png",
+    "launcher/codex-placements-comfortable-light.png",
+    "launcher/codex-placements-compact-dark.png",
+    "launcher/codex-placements-compact-light.png",
+    "launcher/codex-placements-cozy-dark.png",
+    "launcher/codex-placements-cozy-light.png",
+    "launcher/codex-placements-touch-dark.png",
+    "launcher/codex-placements-touch-light.png"
+  ],
+  "provider_fault_cases": [
+    {
+      "changed_fraction": 0.001451943516550258,
+      "geometry": {
+        "baselines": 305,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0487060546875,
+        "rects": 586
+      },
+      "key": "graph/e2e-provider-fault-comfortable-light.png",
+      "mean_error": 0.0001017425076620384,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "GraphTab cards; public records, independent native geometry; demo backdrop shared",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.001451943516550258,
+      "geometry": {
+        "baselines": 305,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0487060546875,
+        "rects": 586
+      },
+      "key": "graph/e2e-provider-fault-compact-light.png",
+      "mean_error": 0.0001017425076620384,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "GraphTab cards; public records, independent native geometry; demo backdrop shared",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.001451943516550258,
+      "geometry": {
+        "baselines": 305,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0487060546875,
+        "rects": 586
+      },
+      "key": "graph/e2e-provider-fault-cozy-light.png",
+      "mean_error": 0.0001017425076620384,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "GraphTab cards; public records, independent native geometry; demo backdrop shared",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.001451943516550258,
+      "geometry": {
+        "baselines": 305,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0487060546875,
+        "rects": 586
+      },
+      "key": "graph/e2e-provider-fault-touch-light.png",
+      "mean_error": 0.0001017425076620384,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "GraphTab cards; public records, independent native geometry; demo backdrop shared",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0013224751637672986,
+      "geometry": {
+        "baselines": 305,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0487060546875,
+        "rects": 586
+      },
+      "key": "graph/e2e-provider-fault-comfortable-dark.png",
+      "mean_error": 0.00010544340724446474,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "GraphTab cards; public records, independent native geometry; demo backdrop shared",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0013224751637672986,
+      "geometry": {
+        "baselines": 305,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0487060546875,
+        "rects": 586
+      },
+      "key": "graph/e2e-provider-fault-compact-dark.png",
+      "mean_error": 0.00010544340724446474,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "GraphTab cards; public records, independent native geometry; demo backdrop shared",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0013224751637672986,
+      "geometry": {
+        "baselines": 305,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0487060546875,
+        "rects": 586
+      },
+      "key": "graph/e2e-provider-fault-cozy-dark.png",
+      "mean_error": 0.00010544340724446474,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "GraphTab cards; public records, independent native geometry; demo backdrop shared",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0013224751637672986,
+      "geometry": {
+        "baselines": 305,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.0487060546875,
+        "rects": 586
+      },
+      "key": "graph/e2e-provider-fault-touch-dark.png",
+      "mean_error": 0.00010544340724446474,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "GraphTab cards; public records, independent native geometry; demo backdrop shared",
+        "text": true
+      },
+      "status": "within policy"
+    }
+  ],
+  "private_target_deleted": true,
+  "private_target_allocated_bytes_retired": 3949432832,
+  "source_remove_exit": 0,
+  "artifacts": {
+    "report.json": "805443592f8bad97822f1a0720b3c1579e1b825ab47ddaa5437918e4cbdd15a8",
+    "capture.json": "76969723ad8bea0eb249865efab234f9a6c4b510c909e982d5a38d110266cd28",
+    "cases.json": "840a7a5a65f170c7e5a56b244c9885165c9a60eba3f79ea9036830b23d32f322",
+    "requested.json": "6a942b1201782cc476171c8e72a405f8462e443465228c0bbc01b5bdd864c6f2"
+  },
+  "attribution_limit": "Baseline predates the accepted main changes between9e77859f andd13f44a0; pixel/metric differences are an observation, not all attributed to A-3.",
+  "overlap_geometry_summary_changes": [
+    {
+      "key": "launcher/claude-placements-comfortable-dark.png",
+      "before": {
+        "baselines": 24,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 45
+      },
+      "after": {
+        "baselines": 25,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 46
+      }
+    },
+    {
+      "key": "launcher/claude-placements-comfortable-light.png",
+      "before": {
+        "baselines": 24,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 45
+      },
+      "after": {
+        "baselines": 25,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 46
+      }
+    },
+    {
+      "key": "launcher/claude-placements-compact-dark.png",
+      "before": {
+        "baselines": 24,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 45
+      },
+      "after": {
+        "baselines": 25,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 46
+      }
+    },
+    {
+      "key": "launcher/claude-placements-compact-light.png",
+      "before": {
+        "baselines": 24,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 45
+      },
+      "after": {
+        "baselines": 25,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 46
+      }
+    },
+    {
+      "key": "launcher/claude-placements-cozy-dark.png",
+      "before": {
+        "baselines": 24,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 45
+      },
+      "after": {
+        "baselines": 25,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 46
+      }
+    },
+    {
+      "key": "launcher/claude-placements-cozy-light.png",
+      "before": {
+        "baselines": 24,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 45
+      },
+      "after": {
+        "baselines": 25,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 46
+      }
+    },
+    {
+      "key": "launcher/claude-placements-touch-dark.png",
+      "before": {
+        "baselines": 24,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 45
+      },
+      "after": {
+        "baselines": 25,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 46
+      }
+    },
+    {
+      "key": "launcher/claude-placements-touch-light.png",
+      "before": {
+        "baselines": 24,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 45
+      },
+      "after": {
+        "baselines": 25,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.03515625,
+        "rects": 46
+      }
+    }
+  ],
+  "geometry_summary_delta_note": "Eight existing Claude placement cases now measure one additional rect/baseline on the accepted role-defaults base; their max rect and baseline errors are unchanged."
+}
