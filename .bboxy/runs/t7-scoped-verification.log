@@ -1,0 +1,86 @@
+T7 scoped verification — source 209c855b7c130a49e9171725a82e5aaf2d5f5e43
+Worktree /Users/feral/mydev/bboxy450-term-exec6, branch velvet-t7.
+All source/checkpoint commits signed. Current accepted-main base 408f6c22.
+Declared U1 dependency: dc912364 (four original U1 source commits), replayed
+without a second host; T7 uses the actual headless Scene/Session/render owner.
+
+Implementation
+- close.rs::Intent::prepare captures the actual full Scene split path, ratios,
+  tab, swarm, revision and generation. The IO State confirms only matching
+  registry metadata, restores the saved split and sidebar order, and emits the
+  exact retained notice once. Delayed metadata and foreign op ids are covered.
+- main.rs::close_request and headless.rs::CloseFor share validation/admission.
+  The pane close hit and Cmd+Z use the native retained layout/focus path.
+- AppStatus.close is optional, bounded retained UI readback with omission
+  counts/complete; no new reader, lifecycle authority or timer. The startup
+  readiness pipe clears that field so large UI state cannot overflow it.
+- closed_strip.rs is the shared native sidebar grace row. Countdown and drain
+  use the authoritative remaining deadline; the product uses existing frame
+  pacing and existing pane components. Undo retains PID/generation and position.
+- bboxybook close cases route four public lab poses through native components,
+  native split solving, independent semantic diagnostics and the canonical gate.
+  No renderer or shared layout-solver edits. Geometry/pixel policy unchanged.
+
+Commands and actual exits
+t7-build-7: cargo build -p bboxy450-term -p bboxybook --locked — EXIT 0, 36.118 s; target/t7-proof/t7-build-7.log
+t7-focused-3: cargo test -p bboxy450-term --locked t7_ -- --nocapture — EXIT 0, 221.949 s; target/t7-proof/t7-focused-3.log
+t7-focused-4: cargo test -p bboxy450-term --locked t7_ -- --nocapture — EXIT 0, 66.950 s; target/t7-proof/t7-focused-4.log
+t7-ui-unit-2: cargo test -p bbt-ui --locked --test closed_strip — EXIT 0, 46.988 s; target/t7-proof/t7-ui-unit-2.log
+t7-proto-compat: cargo test -p bbt-proto --locked close_readback_is_optional_for_older_app_status_replies — EXIT 0, 83.460 s; target/t7-proof/t7-proto-compat.log
+t7-clippy-3: cargo clippy --workspace --all-targets --locked -- -D warnings — EXIT 0, 20.758 s; target/t7-proof/t7-clippy-3.log
+t7-clippy-4: cargo clippy --workspace --all-targets --locked -- -D warnings — EXIT 0, 53.925 s; target/t7-proof/t7-clippy-4.log
+t7-render-7: target/t7-dev/debug/bboxybook render --all --out target/t7-parity-dev/native --manifest target/t7-parity-dev/cases.json — EXIT 0, 46.722 s; target/t7-proof/t7-render-7.log
+t7-compare-7: target/t7-dev/debug/bboxybook compare --strict-geometry --out target/t7-parity-dev --manifest target/t7-parity-dev/cases.json — EXIT 0, 5.202 s; target/t7-proof/t7-compare-7.log
+
+Focused app suite: 5 library + 2 native key/hit + 1 real headless three-pane
+restoration tests; 8 passed, 0 failed. The final 209c855b test-only change awaits
+orderly GUI shutdown rather than relying on the failure-only PID fallback.
+Clippy on the immediately preceding source 7286dca9 exited 0; the exact clean
+full gate reruns Clippy including that test-only change.
+Component regression: 1 passed across 8 theme/density contexts.
+Protocol compatibility regression: 1 passed; absent close readback defaults null.
+
+Scoped gallery verdict
+32 cases; 32 required/measured; 0 unproven; 0 mismatches; 0 reviews.
+Maximum rectangle error 0.062500000 px; baseline error 0.007812500 px.
+Native/web Touch grace and gone poses read as images. Undo wraps and centres
+without tuning dimensions; each diagnostic comes from its own engine.
+report SHA256 bb13b2928eb7c7e25754e621f3735a738aef9f25875016bfced97ae2aca88550
+
+Real runtime script
+Exact scripts/e2e/T7.sh, unchanged shared lib.sh from Seraph 88b9e588, run
+against ctl app start --headless --ctl. Each path is private to this fixture;
+explicit debug memory custody creates a fresh per-run account, no operator
+identity/Keychain/window/input. This is a scoped script fixture, not another
+repository runner. Production e2e-night's App::start switch to the real U1 host
+is Seraph's named integration seam; a full terminal-night verdict is not claimed.
+Script EXIT 0 in 63.434 s; app STOP EXIT 0; orderly headless GUI stopped.
+Fixture /Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/headless-1792876998750321000
+{
+  "source": "c077b8add05aa2f57033d203bd2f5a22106c424e",
+  "script_sha256": "a62f3bf5a9b656c90d6cc08e66ccb2d3c50f8b021812532bbded0bde7ddac066",
+  "lib_source": "88b9e588",
+  "lib_sha256": "a54a974a09e3a59ea88592ef32dbd6fd438c57421a18c6bdf73e31b7d7943f08",
+  "custody": "per-run process memory, explicit debug selector",
+  "run": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/headless-1792876998750321000/run"
+}
+Assertions: original shell PID/generation/cookie survive undo; presented pane
+extent and both saved Positions match; UI slots preserve owner/order; grace
+has a live undo and remaining time; a real 60 s deadline elapses; PTY exits;
+row/pane/undo are absent; ring/history remains readable; one exact notice is
+"T7 retained fixture closed; its history is kept" in its original swarm.
+/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/headless-1792876998750321000/driver.log: SHA256 9ade87befedb6fa2fe9ad84f7ff38e3bd512f8391537612f2b776447b13f09c6
+/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/headless-1792876998750321000/status.json: SHA256 02b238f4fc47e2a5fa2bd388c9a04a3d6bc4dfc74f9b8b45ad5df628566e0ac6
+/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/headless-1792876998750321000/provenance.json: SHA256 62937aa0f7cfd684f6208b469d8a912fb627ed0add04b4f50071895d592fd455
+
+Earlier failures retained, not reclassified
+- An early real-IO proof found restored seats appended to the sidebar; fixed
+  by retaining the original row order and covered by both multi-pane proofs.
+- Scoped probes found fixture frame/notice diagnostics and Touch min-content
+  wrapping; native fixes and Wren's paired lab split normalization are explicit.
+- t7-build-6 EXIT 101: shared close helper type/import errors, corrected in
+  c077b8ad. t7-build-7 EXIT 0 is the succeeding real build.
+No tolerance, AA, raster or renderer compensation was introduced.
+
+Outstanding before final handoff: exact clean full ci-local --parity and the
+current review-key delta. This record does not claim that final gate has passed.
