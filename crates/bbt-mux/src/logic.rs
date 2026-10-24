@@ -325,6 +325,14 @@ pub struct EndpointInfo {
     pub capability: [u8; 32],
 }
 
+/// Process-tree admission belongs to a seat generation, not a Logic process.
+/// Never Debug/log this private durable value.
+#[derive(Serialize, Deserialize)]
+struct SeatAdmission {
+    generation: u64,
+    capability: [u8; 32],
+}
+
 struct GuiWatchLife {
     epoch: Arc<AtomicU64>,
 }
@@ -3395,9 +3403,37 @@ impl Worker {
             return Ok(info.clone());
         }
         self.endpoints.remove(&id);
-        let path = self.endpoint_root.join(format!("{id}.sock"));
-        let mut capability = [0; 32];
-        getrandom::fill(&mut capability).map_err(std::io::Error::other)?;
+        // Surviving harness/MCP processes retain their launch environment.
+        // Keep both the short address and admission across a Logic restart;
+        // a new seat generation gets a new capability and rejects old peers.
+        use std::os::unix::ffi::OsStrExt;
+        let run = std::fs::canonicalize(&self.config.run_dir)?;
+        let digest = crate::store::digest(run.as_os_str().as_bytes());
+        // SAFETY: geteuid has no pointer arguments or side effects.
+        let root = PathBuf::from("/tmp").join(format!(
+            "bbt-seat-{}-{}",
+            unsafe { libc::geteuid() },
+            &digest[..20],
+        ));
+        let path = root.join(format!("{id}.sock"));
+        let directory = object_dir(&self.config.run_dir, &format!("seat-{id}"))?;
+        let store = SqliteStore::open(&directory)?;
+        let saved = store
+            .get("seat_admission")?
+            .map(|bytes| serde_json::from_slice::<SeatAdmission>(&bytes))
+            .transpose()?;
+        let admission = match saved {
+            Some(saved) if saved.generation == generation => saved,
+            _ => {
+                let mut capability = [0; 32];
+                getrandom::fill(&mut capability).map_err(std::io::Error::other)?;
+                SeatAdmission {
+                    generation,
+                    capability,
+                }
+            }
+        };
+        let capability = admission.capability;
         let endpoint = crate::seat_socket::SeatEndpoint::bind(
             &self.handle,
             &path,
@@ -3406,6 +3442,7 @@ impl Worker {
             generation,
             capability,
         )?;
+        store.put("seat_admission", &serde_json::to_vec(&admission)?)?;
         let info = EndpointInfo {
             path,
             generation,
@@ -6416,7 +6453,15 @@ fn retry_capture(mut request: impl FnMut() -> Result<Reply>) -> Result<Reply> {
 }
 impl Drop for Worker {
     fn drop(&mut self) {
+        let roots: BTreeSet<_> = self
+            .endpoints
+            .values()
+            .filter_map(|(info, _)| info.path.parent().map(|path| path.to_path_buf()))
+            .collect();
         self.endpoints.clear();
+        for root in roots {
+            let _ = std::fs::remove_dir(root);
+        }
         drop(self.gui_endpoint.take());
         let _ = std::fs::remove_dir(&self.endpoint_root);
     }

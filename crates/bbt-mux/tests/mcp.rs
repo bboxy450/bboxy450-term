@@ -1347,6 +1347,59 @@ fn mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_a
 }
 
 #[test]
+fn running_mcp_bridge_survives_logic_restart_with_the_same_generation_admission() {
+    let mut fixture = Fixture::new();
+    let seat = fixture.own.id;
+    let old = fixture
+        .runtime
+        .block_on(fixture.client().endpoint(seat))
+        .unwrap();
+    let mut bridge = fixture.bridge(seat);
+    initialize(&mut bridge);
+    let call = |bridge: &mut Bridge, id| {
+        rpc(
+            bridge,
+            id,
+            "tools/call",
+            json!({"name":"orient","arguments":{}}),
+        )
+    };
+    assert!(call(&mut bridge, 2).get("error").is_none());
+    fixture.restart();
+    let after = call(&mut bridge, 3);
+    assert!(
+        after.get("error").is_none(),
+        "surviving MCP bridge: {after}"
+    );
+    assert_eq!(after["result"]["isError"], false, "{after}");
+    let current = fixture
+        .runtime
+        .block_on(fixture.client().endpoint(seat))
+        .unwrap();
+    assert_eq!(current.path, old.path);
+    assert_eq!(current.generation, old.generation);
+    assert!(
+        current.capability == old.capability,
+        "same generation admission changed"
+    );
+
+    for (claimed_seat, generation, capability) in [
+        (fixture.peer.id, old.generation, old.capability),
+        (seat, old.generation + 1, old.capability),
+        (seat, old.generation, [0; 32]),
+    ] {
+        let mut foreign = Bridge::new(BridgeConfig {
+            socket: old.path.clone(),
+            seat: claimed_seat,
+            generation,
+            capability,
+        });
+        initialize(&mut foreign);
+        assert!(call(&mut foreign, 4).get("error").is_some());
+    }
+}
+
+#[test]
 fn mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_arguments() {
     let fixture = Fixture::new();
     let own = fixture.own.id;
