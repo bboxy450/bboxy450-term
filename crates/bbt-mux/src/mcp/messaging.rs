@@ -419,6 +419,22 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Option<Request>, Str
     Ok(Some(req))
 }
 
+pub(crate) fn destination_list(rows: Vec<crate::messaging::tree::Destination>) -> Value {
+    json!(
+        rows.into_iter()
+            .map(|row| {
+                let rights = match (row.read, row.post) {
+                    (true, true) => vec!["read", "post"],
+                    (true, false) => vec!["read"],
+                    (false, true) => vec!["write-only"],
+                    (false, false) => unreachable!("destination has no granted right"),
+                };
+                json!({"path":row.path,"rights":rights})
+            })
+            .collect::<Vec<_>>()
+    )
+}
+
 pub(crate) fn with_counts(
     mut value: Value,
     summary: crate::messaging::ledger::InboxSummary,

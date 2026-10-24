@@ -2193,13 +2193,38 @@ impl Worker {
                         now_ms(),
                     )
                     .map_err(|e| e.to_string())?;
-                Ok(
-                    json!({"actor":actor,"seat":self.control_seat(record),"tasks":tools::orient_documents(&source,record)?,
+                let tasks = tools::orient_documents(&source, record)?;
+                let empty = tasks["items"].as_array().is_some_and(Vec::is_empty);
+                let tasks = tools::scoped_list(actor, tasks, empty.then_some("nothing_assigned"));
+                let destinations = crate::mcp::messaging::destination_list(
+                    self.messaging
+                        .destinations(record.id, record.generation)
+                        .map_err(|e| e.to_string())?,
+                );
+                let summary = self
+                    .messaging
+                    .inbox_summary(record.id, record.generation)
+                    .map_err(|_| "inbox counts are unavailable; no count was substituted")?;
+                let catalogue = tools::catalogue(actor);
+                let tools = catalogue["tools"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|tool| json!({"name":tool["name"],"description":tool["description"]}))
+                    .collect::<Vec<_>>();
+                let value = json!({
+                    "actor":actor,"seat":self.control_seat(record),"tasks":tasks,"tools":tools,
+                    "destinations":destinations,
                     "operator":"to reach the operator, reply with reply_to, or send to operator/inbox",
+                    "op_id_guidance":"ids are minted for you unless you retry",
                     "execution":tools::graph(&self.index,&source,actor,record,&tools::GraphRead{graph:"execution".into(),after:None,limit:Some(32)},true)?,
-                    "channels":channels,"unread_count":null,"unread_unavailable":"no read cursor exists; delivery and application acknowledgment are separate evidence",
-                    "pending_application_ack":self.messaging.pending_application_ack(record.id,record.generation).map_err(|e|e.to_string())?}),
-                )
+                    "channels":crate::mcp::messaging::result_for_seat(actor, channels)
+                });
+                Ok(tools::scoped_list(
+                    actor,
+                    crate::mcp::messaging::with_counts(value, summary),
+                    None,
+                ))
             }
             "self_status" => {
                 let _: tools::Empty = tools::parse(&call.args)?;

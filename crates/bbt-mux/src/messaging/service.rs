@@ -449,6 +449,19 @@ impl Messaging {
         self.swarm(record.swarm)?.ledger.inbox_summary(seat, 128)
     }
 
+    pub(crate) fn destinations(
+        &mut self,
+        seat: Ulid,
+        generation: u64,
+    ) -> Result<Vec<super::tree::Destination>> {
+        let record = self.record(seat, generation)?;
+        self.sync_seat(&record)?;
+        Ok(self.swarm(record.swarm)?.tree.destinations(Actor::Seat {
+            seat,
+            class: record.role.class,
+        }))
+    }
+
     fn swarm(&mut self, id: Ulid) -> Result<&mut Swarm> {
         if !self.swarms.contains_key(&id) {
             let store = SqliteStore::open(&object_dir(&self.root, &format!("swarm-{id}"))?)?;

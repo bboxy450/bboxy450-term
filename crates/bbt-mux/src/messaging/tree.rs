@@ -17,6 +17,11 @@ pub enum Actor {
     Operator,
     Seat { seat: Ulid, class: Class },
 }
+pub(crate) struct Destination {
+    pub path: String,
+    pub read: bool,
+    pub post: bool,
+}
 impl Actor {
     pub fn seat(self) -> Option<Ulid> {
         match self {
@@ -162,6 +167,41 @@ impl Tree {
             .cloned()
             .collect()
     }
+    pub(crate) fn destinations(&self, actor: Actor) -> Vec<Destination> {
+        self.nodes
+            .keys()
+            .filter(|path| !path.is_empty())
+            .filter_map(|path| {
+                let read = self.readable(actor, path).is_ok();
+                let post = self.check(actor, path, Right::Write).is_ok();
+                (read || post).then(|| Destination {
+                    path: path.clone(),
+                    read,
+                    post,
+                })
+            })
+            .collect()
+    }
+    fn readable(&self, actor: Actor, path: &str) -> Result<()> {
+        // The operator's private inbox is write-only for every seat, including
+        // Oracle-class seats. The trusted operator retains its own read access.
+        if matches!(actor, Actor::Seat { .. })
+            && (path == "operator" || path.starts_with("operator/"))
+        {
+            return Err(invalid(if self.check(actor, path, Right::Write).is_ok() {
+                "write-only; it is in your destinations"
+            } else {
+                "operator inbox is private; no posting grant"
+            }));
+        }
+        self.check(actor, path, Right::Read).map_err(|error| {
+            if self.check(actor, path, Right::Write).is_ok() {
+                invalid("write-only; it is in your destinations")
+            } else {
+                error
+            }
+        })
+    }
     pub fn check(&self, actor: Actor, path: &str, right: Right) -> Result<()> {
         if actor.controls() {
             return Ok(());
@@ -195,7 +235,7 @@ impl Tree {
     }
     pub fn ls(&self, actor: Actor, path: &str) -> Result<Vec<Node>> {
         let path = normalize(path, false)?;
-        self.check(actor, &path, Right::Read)?;
+        self.readable(actor, &path)?;
         let node = self
             .nodes
             .get(&path)

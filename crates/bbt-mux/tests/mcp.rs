@@ -1132,8 +1132,9 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     assert_eq!(data["actor"]["role"]["name"], "executor");
     assert_eq!(data["tasks"]["items"][0]["id"], json!(fixture.task));
     assert_eq!(data["tasks"]["items"][0]["verify"], "true");
-    assert!(data["unread_count"].is_null());
-    assert_eq!(data["pending_application_ack"], 0);
+    assert_eq!(data["unread"], json!({"count":0,"basis":"no_cursor_yet"}));
+    assert_eq!(data["pending_ack"]["count"], 0);
+    assert_eq!(data["pending_ack"]["ids"], json!([]));
     let second = rpc(&mut bridge, 5, "tools/call", params);
     assert_eq!(first["result"], second["result"]);
     let audit = fixture.audits(fixture.own.id, 2);
@@ -1392,7 +1393,7 @@ fn mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_
 }
 
 #[test]
-fn mcp_unread_is_unknown_and_application_ack_is_a_separate_count() {
+fn mcp_orient_unread_has_a_basis_and_acknowledgement_remains_separate() {
     use bbt_mux::messaging::{api, wire::SendRequest};
     let fixture = Fixture::new();
     let own = fixture.own.id;
@@ -1407,8 +1408,15 @@ fn mcp_unread_is_unknown_and_application_ack_is_a_separate_count() {
         ))
         .unwrap();
     let first = fixture.call(own, Ulid::new(), "orient", json!({}));
-    assert!(first["structuredContent"]["unread_count"].is_null());
-    assert_eq!(first["structuredContent"]["pending_application_ack"], 1);
+    assert_eq!(
+        first["structuredContent"]["unread"],
+        json!({"count":1,"basis":"no_cursor_yet"})
+    );
+    assert_eq!(first["structuredContent"]["pending_ack"]["count"], 1);
+    assert_eq!(
+        first["structuredContent"]["pending_ack"]["ids"],
+        json!([message])
+    );
     fixture
         .runtime
         .block_on(fixture.client().messaging(
@@ -1421,8 +1429,12 @@ fn mcp_unread_is_unknown_and_application_ack_is_a_separate_count() {
         ))
         .unwrap();
     let second = fixture.call(own, Ulid::new(), "orient", json!({}));
-    assert!(second["structuredContent"]["unread_count"].is_null());
-    assert_eq!(second["structuredContent"]["pending_application_ack"], 0);
+    assert_eq!(
+        second["structuredContent"]["unread"],
+        json!({"count":1,"basis":"no_cursor_yet"})
+    );
+    assert_eq!(second["structuredContent"]["pending_ack"]["count"], 0);
+    assert_eq!(second["structuredContent"]["pending_ack"]["ids"], json!([]));
 }
 
 #[test]
@@ -2435,6 +2447,192 @@ fn mcp_counts_have_a_basis_and_ack_ids_without_equating_acknowledgement_with_rea
     let receipts = &receipts["result"]["structuredContent"];
     assert_eq!(receipts["scope"]["seat"], json!(f.peer.id));
     assert!(receipts.get("empty_reason").is_none());
+}
+
+#[test]
+fn mcp_destinations_explain_rights_and_write_only_reads_without_expanding_grants() {
+    let f = Fixture::new();
+    for seat in [f.own.id, f.oracle.id] {
+        let mut bridge = f.bridge(seat);
+        initialize(&mut bridge);
+        let orient = rpc(&mut bridge, 2, "tools/call", json!({"name":"orient"}));
+        assert_eq!(orient["result"]["isError"], false, "{orient}");
+        let rows = orient["result"]["structuredContent"]["destinations"]
+            .as_array()
+            .unwrap();
+        let rights =
+            |path: &str| rows.iter().find(|row| row["path"] == path).unwrap()["rights"].clone();
+        assert_eq!(rights("operator/inbox"), json!(["write-only"]));
+        assert_eq!(
+            rights(&format!("seats/{seat}/inbox")),
+            json!(["read", "post"])
+        );
+        assert!(!rows.iter().any(|row| {
+            row["path"]
+                .as_str()
+                .unwrap()
+                .contains(&f.outside.id.to_string())
+        }));
+        for path in ["operator", "operator/inbox"] {
+            let denied = rpc(
+                &mut bridge,
+                3,
+                "tools/call",
+                json!({"name":"ch_ls","arguments":{"path":path}}),
+            );
+            assert_eq!(denied["result"]["isError"], true);
+            assert!(
+                denied["result"]["structuredContent"]["error"]["message"]
+                    .as_str()
+                    .unwrap()
+                    .contains("write-only; it is in your destinations"),
+                "{denied}"
+            );
+        }
+    }
+    let mut worker = f.bridge(f.own.id);
+    initialize(&mut worker);
+    let peer = format!("seats/{}/inbox", f.peer.id);
+    let first = rpc(&mut worker, 4, "tools/call", json!({"name":"orient"}));
+    let rows = first["result"]["structuredContent"]["destinations"]
+        .as_array()
+        .unwrap();
+    assert_eq!(
+        rows.iter().find(|row| row["path"] == peer).unwrap()["rights"],
+        json!(["write-only"])
+    );
+    let denied = rpc(
+        &mut worker,
+        5,
+        "tools/call",
+        json!({"name":"ch_ls","arguments":{"path":peer}}),
+    );
+    assert_eq!(denied["result"]["isError"], true);
+    assert!(
+        denied["result"]["structuredContent"]["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("write-only; it is in your destinations")
+    );
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "ch_grant",
+        json!({"path":peer,"seat":f.own.id,"rights":[]}),
+    ));
+    let changed = rpc(&mut worker, 6, "tools/call", json!({"name":"orient"}));
+    assert_eq!(changed["result"]["isError"], false);
+    assert!(
+        !changed["result"]["structuredContent"]["destinations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["path"] == peer)
+    );
+    let send = rpc(
+        &mut worker,
+        7,
+        "tools/call",
+        json!({"name":"message_send","arguments":{"destination":peer,"text":"refused after revocation"}}),
+    );
+    assert_eq!(send["result"]["isError"], true);
+    let page = data(f.call(f.peer.id, Ulid::new(), "message_list", json!({})));
+    assert!(!texts(&page).contains("refused after revocation"));
+    // The hint must not advertise a posting grant that was explicitly revoked.
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "ch_grant",
+        json!({"path":"operator","seat":f.own.id,"rights":[]}),
+    ));
+    let changed = rpc(&mut worker, 8, "tools/call", json!({"name":"orient"}));
+    assert_eq!(changed["result"]["isError"], false);
+    assert!(
+        changed["result"]["structuredContent"]["destinations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|row| row["path"] != "operator/inbox")
+    );
+    let denied = rpc(
+        &mut worker,
+        9,
+        "tools/call",
+        json!({"name":"ch_ls","arguments":{"path":"operator/inbox"}}),
+    );
+    assert_eq!(denied["result"]["isError"], true);
+    assert!(
+        denied["result"]["structuredContent"]["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("no posting grant")
+    );
+}
+
+#[test]
+fn mcp_orient_cold_start_names_identity_allowed_tools_tasks_counts_and_actions() {
+    let f = Fixture::new();
+    for record in [&f.own, &f.peer, &f.oracle] {
+        let mut bridge = f.bridge(record.id);
+        initialize(&mut bridge);
+        let catalogue = rpc(&mut bridge, 2, "tools/list", json!({}));
+        let response = rpc(&mut bridge, 3, "tools/call", json!({"name":"orient"}));
+        assert_eq!(response["result"]["isError"], false, "{response}");
+        let value = &response["result"]["structuredContent"];
+        assert_eq!(value["actor"]["seat_id"], json!(record.id));
+        assert_eq!(value["actor"]["swarm_id"], json!(record.swarm));
+        assert_eq!(value["actor"]["process_generation"], record.generation);
+        assert_eq!(value["actor"]["role"], json!(record.role));
+        assert_eq!(value["seat"]["record"]["name"], record.name);
+        assert_eq!(
+            value["scope"],
+            json!({"seat":record.id,"role":record.role.name,"class":record.role.class})
+        );
+        let expected = catalogue["result"]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tool| json!({"name":tool["name"],"description":tool["description"]}))
+            .collect::<Vec<_>>();
+        assert_eq!(value["tools"], json!(expected));
+        let tools = value["tools"].as_array().unwrap();
+        assert_eq!(
+            tools.iter().any(|tool| tool["name"] == "ch_grant"),
+            record.role.class == Class::Oracle
+        );
+        for tool in tools {
+            let line = tool["description"].as_str().unwrap();
+            assert!(!line.is_empty() && !line.contains('\n'));
+        }
+        assert_eq!(value["tasks"]["scope"], value["scope"]);
+        if record.id == f.own.id {
+            assert_eq!(value["tasks"]["items"][0]["id"], json!(f.task));
+            assert!(value["tasks"].get("empty_reason").is_none());
+        } else {
+            assert_eq!(value["tasks"]["items"], json!([]));
+            assert_eq!(value["tasks"]["empty_reason"], "nothing_assigned");
+            assert!(!value["tasks"]["empty_message"].as_str().unwrap().is_empty());
+        }
+        assert_eq!(value["execution"]["scope"], value["scope"]);
+        assert_eq!(value["channels"]["scope"], value["scope"]);
+        assert_eq!(value["unread"], json!({"count":0,"basis":"no_cursor_yet"}));
+        assert_eq!(value["pending_ack"]["count"], 0);
+        assert_eq!(value["pending_ack"]["ids"], json!([]));
+        assert_eq!(
+            value["pending_ack"]["action"],
+            "call message_ack for each id listed"
+        );
+        assert_eq!(
+            value["operator"],
+            "to reach the operator, reply with reply_to, or send to operator/inbox"
+        );
+        assert_eq!(
+            value["op_id_guidance"],
+            "ids are minted for you unless you retry"
+        );
+        assert!(value.get("unread_count").is_none());
+        assert!(value.get("pending_application_ack").is_none());
+    }
 }
 
 // Work-item fixtures deliberately use local zsh PTYs and fixture MCP clients.

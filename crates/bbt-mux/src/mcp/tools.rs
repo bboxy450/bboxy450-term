@@ -28,7 +28,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Value {
     let definitions = [
         (
             "orient",
-            "Read your authenticated role, own task briefs, own channel tree and execution context. Delivery evidence is separate from unread state.",
+            "Read your authenticated identity, permitted tools and destinations, own tasks, unread and acknowledgement actions, operator routing and retry guidance.",
             json!({}),
             json!([]),
         ),
