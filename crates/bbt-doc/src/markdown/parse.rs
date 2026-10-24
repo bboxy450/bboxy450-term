@@ -41,7 +41,18 @@ fn frontmatter(source: &str) -> (Frontmatter, usize) {
                 serde_yaml::from_str::<BTreeMap<String, serde_yaml::Value>>(raw)
             };
             let (fields, error, error_line) = match value {
-                Ok(fields) => (fields, None, None),
+                Ok(fields) => {
+                    let invalid_number = fields
+                        .get("number")
+                        .is_some_and(|value| value.as_u64().is_none_or(|number| number == 0));
+                    let error = invalid_number
+                        .then(|| "frontmatter number must be a positive integer".into());
+                    let error_line = invalid_number
+                        .then(|| raw.lines().position(|line| line.starts_with("number:")))
+                        .flatten()
+                        .map(|line| line + 2);
+                    (fields, error, error_line)
+                }
                 Err(error) => {
                     // YAML starts on Markdown line two; BOM and CRLF do not
                     // add lines. Preserve the location before stringifying it.

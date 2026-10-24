@@ -343,6 +343,7 @@ fn mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_chang
     let source = std::fs::read_to_string(root.join("note.md")).unwrap();
     let doc = Document::parse("note.md", &source);
     assert!(doc.error.is_none());
+    assert_eq!(doc.metadata["number"], 1);
     assert!(
         doc.metadata["updated_by"]
             .as_str()
@@ -412,4 +413,290 @@ fn mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_chang
         std::thread::sleep(Duration::from_millis(20));
     }
     assert!(!watch.failed());
+}
+
+#[test]
+fn record_numbers_use_fresh_nested_frontmatter_and_are_immutable() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join(".bboxy");
+    let index = Index::open(
+        &root,
+        SqliteStore::open(&temp.path().join("state")).unwrap(),
+    )
+    .unwrap();
+    let seat = Ulid::new();
+    let key = SigningKey::from_bytes(&[71; 32]);
+    index
+        .write(
+            "first.md",
+            json!({"id":Ulid::new(),"type":"note"}),
+            "First\n",
+            seat,
+            &key,
+        )
+        .unwrap();
+    let first = Document::parse(
+        "first.md",
+        &std::fs::read_to_string(root.join("first.md")).unwrap(),
+    );
+    assert_eq!(first.metadata["number"], 1);
+    std::fs::create_dir(root.join("nested")).unwrap();
+    std::fs::write(root.join("nested/spec.md"), format!("\u{feff}---\r\nid: {}\r\ntype: spec\r\nnumber: 90 # fresh external record\r\n---\r\nnumber: 999999\r\n", Ulid::new())).unwrap();
+    // The Index mirror was never rescanned; allocation must read the files.
+    assert!(index.documents.is_empty());
+    index
+        .write(
+            "second.md",
+            json!({"id":Ulid::new(),"type":"note"}),
+            "Second\n",
+            seat,
+            &key,
+        )
+        .unwrap();
+    let source = std::fs::read_to_string(root.join("second.md")).unwrap();
+    let second = Document::parse("second.md", &source);
+    assert_eq!(second.metadata["number"], 91);
+    assert!(
+        index
+            .write(
+                "duplicate.md",
+                json!({"id":Ulid::new(),"type":"note","number":90}),
+                "Rejected",
+                seat,
+                &key
+            )
+            .is_err()
+    );
+    assert!(!root.join("duplicate.md").exists());
+    let mut metadata = second.metadata.clone();
+    metadata["number"] = json!(92);
+    assert!(
+        index
+            .write("second.md", metadata, "No renumber", seat, &key)
+            .is_err()
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("second.md")).unwrap(),
+        source
+    );
+    let mut metadata = second.metadata;
+    metadata.as_object_mut().unwrap().remove("number");
+    index
+        .write("second.md", metadata, "Updated\n", seat, &key)
+        .unwrap();
+    let updated = Document::parse(
+        "second.md",
+        &std::fs::read_to_string(root.join("second.md")).unwrap(),
+    );
+    assert_eq!(updated.metadata["number"], 91);
+}
+
+#[test]
+fn invalid_legacy_numbers_remain_visible_and_block_new_writes() {
+    for number in [
+        "",
+        "number: 0\n",
+        "number: -1\n",
+        "number: '4'\n",
+        "number: 1.5\n",
+    ] {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join(".bboxy");
+        let mut index = Index::open(
+            &root,
+            SqliteStore::open(&temp.path().join("state")).unwrap(),
+        )
+        .unwrap();
+        let source = format!(
+            "---\nid: {}\ntype: note\n{number}---\nRetained broken body\n",
+            Ulid::new()
+        );
+        std::fs::write(root.join("legacy.md"), &source).unwrap();
+        index.scan().unwrap();
+        let legacy = &index.documents["legacy.md"];
+        assert!(legacy.error.as_deref().unwrap().contains("number"));
+        assert!(legacy.body.contains("Retained broken body"));
+        let key = SigningKey::from_bytes(&[72; 32]);
+        assert!(
+            index
+                .write(
+                    "new.md",
+                    json!({"id":Ulid::new(),"type":"artifact"}),
+                    "No write",
+                    Ulid::new(),
+                    &key
+                )
+                .is_err()
+        );
+        assert!(!root.join("new.md").exists());
+        assert!(
+            index
+                .write(
+                    "legacy.md",
+                    legacy.metadata.clone(),
+                    "No repair",
+                    Ulid::new(),
+                    &key
+                )
+                .is_err()
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("legacy.md")).unwrap(),
+            source
+        );
+    }
+}
+
+#[test]
+fn duplicate_numbers_in_different_types_refuse_allocation() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join(".bboxy");
+    let index = Index::open(
+        &root,
+        SqliteStore::open(&temp.path().join("state")).unwrap(),
+    )
+    .unwrap();
+    for (name, kind) in [("spec", "spec"), ("task", "task")] {
+        std::fs::write(
+            root.join(format!("{name}.md")),
+            format!(
+                "---\nid: {}\ntype: {kind}\nnumber: 7\n---\nBody\n",
+                Ulid::new()
+            ),
+        )
+        .unwrap();
+    }
+    let error = index
+        .write(
+            "new.md",
+            json!({"id":Ulid::new(),"type":"note"}),
+            "No write",
+            Ulid::new(),
+            &SigningKey::from_bytes(&[73; 32]),
+        )
+        .unwrap_err();
+    assert!(error.to_string().contains("duplicate record number 7"));
+    assert!(!root.join("new.md").exists());
+}
+
+#[test]
+#[ignore = "subprocess fixture used by concurrent_processes_allocate_under_one_root_lock"]
+fn number_allocation_child() {
+    let fixture = std::path::PathBuf::from(std::env::var_os("BBOXY_NUM2_FIXTURE").unwrap());
+    let name = std::env::var("BBOXY_NUM2_WRITER").unwrap();
+    let index = Index::open(
+        &fixture.join(".bboxy"),
+        SqliteStore::open(&fixture.join(&name)).unwrap(),
+    )
+    .unwrap();
+    std::fs::write(fixture.join(format!("{name}.ready")), b"ready").unwrap();
+    let seat = Ulid::new();
+    let key = SigningKey::from_bytes(&[74; 32]);
+    for n in 0..4 {
+        index
+            .write(
+                &format!("{name}-{n}.md"),
+                json!({"id":Ulid::new(),"type":"note"}),
+                "Child record\n",
+                seat,
+                &key,
+            )
+            .unwrap();
+    }
+}
+
+#[test]
+fn concurrent_processes_allocate_under_one_root_lock() {
+    struct OwnedChild(std::process::Child);
+    impl Drop for OwnedChild {
+        fn drop(&mut self) {
+            if self.0.try_wait().ok().flatten().is_none() {
+                let _ = self.0.kill();
+                let _ = self.0.wait();
+            }
+        }
+    }
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join(".bboxy");
+    std::fs::create_dir(&root).unwrap();
+    let lock = std::fs::File::open(&root).unwrap();
+    lock.lock().unwrap();
+    let mut children = Vec::new();
+    for name in ["writer-a", "writer-b"] {
+        let log = std::fs::File::create(temp.path().join(format!("{name}.log"))).unwrap();
+        let child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "number_allocation_child",
+                "--ignored",
+                "--nocapture",
+            ])
+            .env("BBOXY_NUM2_FIXTURE", temp.path())
+            .env("BBOXY_NUM2_WRITER", name)
+            .stdout(log.try_clone().unwrap())
+            .stderr(log)
+            .spawn()
+            .unwrap();
+        eprintln!("NUM2 owned fixture child {name}: PID {}", child.id());
+        children.push((name, OwnedChild(child)));
+    }
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    while children
+        .iter()
+        .any(|(name, _)| !temp.path().join(format!("{name}.ready")).exists())
+    {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "number writer did not become ready"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    std::thread::sleep(Duration::from_millis(100));
+    for (name, child) in &mut children {
+        assert!(child.0.try_wait().unwrap().is_none());
+        assert!(
+            !root.join(format!("{name}-0.md")).exists(),
+            "writer bypassed the store lock"
+        );
+    }
+    // Both independent Index instances opened before this fresh maximum.
+    std::fs::write(
+        root.join("anchor.md"),
+        format!(
+            "---\nid: {}\ntype: spec\nnumber: 41\n---\nAnchor\n",
+            Ulid::new()
+        ),
+    )
+    .unwrap();
+    drop(lock);
+    for (name, child) in &mut children {
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        let status = loop {
+            if let Some(status) = child.0.try_wait().unwrap() {
+                break status;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "number writer timed out"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        };
+        assert!(
+            status.success(),
+            "{}",
+            std::fs::read_to_string(temp.path().join(format!("{name}.log"))).unwrap()
+        );
+    }
+    let mut numbers = std::collections::BTreeSet::new();
+    for name in ["writer-a", "writer-b"] {
+        for n in 0..4 {
+            let path = format!("{name}-{n}.md");
+            let doc = Document::parse(&path, &std::fs::read_to_string(root.join(&path)).unwrap());
+            assert!(doc.error.is_none(), "{:?}", doc.error);
+            assert!(numbers.insert(doc.metadata["number"].as_u64().unwrap()));
+            assert!(doc.metadata["provenance"]["sig"].is_string());
+        }
+    }
+    assert_eq!(numbers, (42..=49).collect());
+    eprintln!("NUM2 independent-process numbers: {numbers:?}");
 }

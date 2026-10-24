@@ -145,3 +145,24 @@ fn metadata_errors_use_markdown_lines_including_delimiter_bom_and_crlf() {
         None
     );
 }
+#[test]
+fn invalid_explicit_record_numbers_keep_their_source_and_show_a_diagnostic() {
+    for value in ["0", "-1", "1.5", "'47'", "null", "true", "[]"] {
+        let source = format!("---\ntitle: Kept\nnumber: {value}\n---\nRetained body.\n");
+        let doc = bbt_doc::parse(&source);
+        assert_eq!(doc.frontmatter.number(), None, "{value}");
+        assert!(doc.frontmatter.error.as_deref().unwrap().contains("number"));
+        assert_eq!(doc.frontmatter.error_line, Some(3));
+        assert_eq!(doc.source, source);
+        assert!(!doc.blocks.is_empty());
+        assert!(doc.frontmatter.fields.contains_key("number"));
+    }
+    for source in ["Plain Markdown\n", "---\ntitle: Generic\n---\nBody\n"] {
+        let doc = bbt_doc::parse(source);
+        assert!(doc.frontmatter.error.is_none());
+        assert_eq!(doc.frontmatter.number(), None);
+    }
+    let doc = bbt_doc::parse("---\nnumber: 47\n---\nBody\n");
+    assert!(doc.frontmatter.error.is_none());
+    assert_eq!(doc.frontmatter.number(), Some(47));
+}
