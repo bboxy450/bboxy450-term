@@ -14,7 +14,7 @@ links:
   - { to: "[[document-viewer]]", rel: decides }
   - { to: "[[licensing]]", rel: decides }
 created: 2026-10-23T23:56:02Z
-updated: 2026-10-23T23:56:02Z
+updated: "2026-10-24T15:36:34Z"
 ---
 # Decision 52: brand and face
 
@@ -27,3 +27,5 @@ Decided 2026-10-23.
 **Images in records.** Records carry images by wikilink: `![[bboxy.png]]` renders the image inline, `[[bboxy.png]]` links to it; images live in `.bboxy/images/` as files, not records (they carry no frontmatter and no number; an image a seat produces is an artifact of kind image, [[work-items]]). The viewer draws them at true size, never scaled ([[renderer]] §4.4b applies). Invariant [[images-resolve]], check `sh scripts/images.sh`: the face is the identity file and every image wikilink resolves. Rejected: images inline as data URIs (unreadable diffs); images anywhere in the tree (links that rot).
 
 Owner: Corvin Duskmantle <ARCHITECT>.
+
+**Amended 2026-10-24 (operator, verbatim: "we always use my bboxy icon and identity pic on everything").** Every bundle, app and probe uses an icon generated from the face: a tracked `.icns`, `.iconset` or `AppIcon*` carries a `.source-sha256` sidecar equal to the face's hash, and `scripts/images.sh` fails any that does not ([[images-resolve]]).

@@ -11,7 +11,7 @@ links:
   - { to: "[[2026-10-22-architecture-round-1#44]]", rel: "supersedes-as-index" }
   - { to: "[[attention]]", rel: "decides" }
 created: "2026-10-23T22:28:51Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-10-24T15:36:34Z"
 ---
 # Decision 44: Attention: a waiting seat swells, pulses and notifies; the notification focuses it
 
@@ -36,3 +36,5 @@ signing, so [[d24-defer-code-signing|#24]] holds (Oracle). Muted seats never not
 the harness for questions (the adapters already report them); a
 notification that steals focus on its own; a separate notification
 daemon.
+
+**Amended 2026-10-24 (probe with the operator present, Vesper's report):** the bundle is signed with the approved Apple Development identity, never ad-hoc (probe with the operator present, 2026-10-24, Vesper's report: an ad-hoc-signed bundle gets "Notifications are not allowed for this application" from `UNUserNotificationCenter` and macOS never shows a prompt; the same bundle signed with the approved Apple Development identity, team UQB3368A84, works first time). Recorded in [[desktop-notifications]] §3 and §5.

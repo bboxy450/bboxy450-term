@@ -11,7 +11,7 @@ links:
   - { to: "[[desktop-notifications]]", rel: "decides" }
   - { to: "[[desktop-notifications-research]]", rel: "evidence" }
 created: "2026-10-23T23:05:15Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-10-24T15:36:34Z"
 ---
 # Decision 45: Desktop notifications are a facade over one crate per OS
 
@@ -42,3 +42,5 @@ sufficiency and delivered-identifier replace. Names are free on
 crates.io (404 on all four). Rejected: notifications inside the app crate (unportable, and
 attention is a kit consumer); one crate with `cfg` blocks per OS (the
 seam hidden, the dummies invisible).
+
+**Amended 2026-10-24 (probe with the operator present, Vesper's report):** the bundle is signed with the approved Apple Development identity, never ad-hoc (probe with the operator present, 2026-10-24, Vesper's report: an ad-hoc-signed bundle gets "Notifications are not allowed for this application" from `UNUserNotificationCenter` and macOS never shows a prompt; the same bundle signed with the approved Apple Development identity, team UQB3368A84, works first time). Recorded in [[desktop-notifications]] §3 and §5.
