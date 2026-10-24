@@ -27,6 +27,7 @@ sh scripts/licenses.sh
 sh scripts/brand.sh
 sh scripts/images.sh
 sh scripts/cross-os.sh
+sh scripts/never-block.sh
 git add -- "$@"
 git diff --cached --quiet && { echo "records-push: nothing staged" >&2; exit 3; }
 git -c commit.gpgsign=true commit -q -m "$message"

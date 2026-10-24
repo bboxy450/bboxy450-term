@@ -10,11 +10,11 @@ links:
   - { to: "[[d53-evolve-and-restart]]", rel: decides }
   - { to: "[[work-items]]", rel: uses }
 created: 2026-10-24T00:06:11Z
-updated: "2026-10-24T04:24:45Z"
+updated: "2026-10-24T19:28:08Z"
 ---
 # Mantras
 
-Owner: Corvin Duskmantle <ARCHITECT>. Distilled 2026-10-23 by a read-only subagent from all 156 records under `.bboxy/` plus `AGENTS.md`, under the Architect's brief and the operator's list of that evening (verbatim where quoted). Twenty-five mantras. Each names where it already binds, the executable gate that holds it today, the candidate gate where none exists, and the mantra it trades against. A mantra with no gate is judgement, and says so: no command, no invariant ([[invariants/README|README]]). The operator's words that lived only in chat are recorded here for the first time and marked **chat**.
+Owner: Corvin Duskmantle <ARCHITECT>. Distilled 2026-10-23 by a read-only subagent from all 156 records under `.bboxy/` plus `AGENTS.md`, under the Architect's brief and the operator's list of that evening (verbatim where quoted). Twenty-six mantras. Each names where it already binds, the executable gate that holds it today, the candidate gate where none exists, and the mantra it trades against. A mantra with no gate is judgement, and says so: no command, no invariant ([[invariants/README|README]]). The operator's words that lived only in chat are recorded here for the first time and marked **chat**.
 
 Order: the operator ranked 1 and 2 first ([[d53-evolve-and-restart]]). The rest is grouped: product, surface, system, law.
 
@@ -118,8 +118,12 @@ Operator: "we are building from scratch, so it is a layer cake of abstractions; 
 
 Operator: "I WANT VIZUALIZATION TO ALWAYS BE OURS, and we plug into data sourcse! like document bases, code hosting, git or what not, everything pluggable and with opionated defaults!" ([[d255-visualization-is-ours]]); earlier: "opinionated not locked" (#12), "for now we have built in shit, and opinionated built in shit" ([[plugins]]). Binds: [[plugins]] §1 (contracts first, MCP only the wire; a contract returns records, resources and results, never UI; built-ins are the default providers), #249, [[d41-plugins]], the one look on every platform ([[vision]]). Gate: none yet. Candidate: `plugin check` refuses a shape whose result schemas carry a UI type (P-0). Tension: 9, a plugin that could draw would ship faster for its author; the cockpit's look is the product, so it does not get to.
 
+## 26. Never block the swarm; no test needs the operator; verdicts are scripts
+
+Operator, 2026-10-24, verbatim: "test and e2e tests and smoke tests should not require MY INPUT, fully autonomous! NEVER BLOCK SWARM", now the first section of `AGENTS.md`. Binds: [[d282-app-tests-itself-unattended]] (a throwaway test account per run, headless, one runner, nothing built or signed at night, zero operator acts), [[e2e-acceptance]] §4a, [[ctl-cli]] (recipes answer known prompts; our own tools pre-allowed per seat), the Oracle's rule-on-the-spot with records following. Gates: [[never-block-swarm]] (no open task parked on a person, in the default set) and [[e2e-runs-unattended]] (pending U-3). Tension: 17, a verdict by script is exactly what "the spec signs off" means for a running app; and 21, an agent's intuitiveness feedback stays useful as a comment while never being a verdict.
+
 ## What this record is for
 
-Briefs cite a mantra by number alongside the decision; a new spec's lens line names the mantras it serves and the one it trades against; a candidate gate above becomes an invariant when someone writes its command, and the mantra's line here changes from candidate to gate the same day. Twenty-five is the count (the twenty-fifth earned its place the next day, in the operator's words); the next one earns its place or does not get in.
+Briefs cite a mantra by number alongside the decision; a new spec's lens line names the mantras it serves and the one it trades against; a candidate gate above becomes an invariant when someone writes its command, and the mantra's line here changes from candidate to gate the same day. Twenty-six is the count (the twenty-fifth and twenty-sixth earned their places the next day, in the operator's words); the next one earns its place or does not get in.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
