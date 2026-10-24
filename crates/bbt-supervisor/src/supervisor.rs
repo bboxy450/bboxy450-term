@@ -661,6 +661,7 @@ impl Supervisor {
             routes: HashMap::new(),
             seats: BTreeMap::new(),
             last_notified_seat: None,
+            notification_waiter: None,
             active: None,
             next_token: 2,
             pending_io: Vec::new(),
@@ -878,6 +879,7 @@ struct Actor {
     routes: HashMap<Token, Route>,
     seats: BTreeMap<Ulid, Seat>,
     last_notified_seat: Option<Ulid>,
+    notification_waiter: Option<Ulid>,
     active: Option<(Ulid, Ulid)>,
     next_token: usize,
     pending_io: Vec<PendingIo>,
@@ -908,8 +910,21 @@ impl Drop for Actor {
 
 impl Actor {
     fn tick_seats(&mut self) -> io::Result<()> {
+        if self.notification_waiter.is_some_and(|id| {
+            !self.seats.get(&id).is_some_and(|seat| {
+                seat.pending_event.is_some()
+                    && self.active.is_some_and(|(client, _)| {
+                        seat.writer.is_some_and(|(writer, _)| writer == client)
+                    })
+            })
+        }) {
+            self.notification_waiter = None;
+        }
         let mut ids: Vec<_> = self.seats.keys().copied().collect();
-        if let Some(last) = self.last_notified_seat {
+        if let Some(waiting) = self.notification_waiter {
+            let start = ids.partition_point(|id| *id < waiting);
+            ids.rotate_left(start);
+        } else if let Some(last) = self.last_notified_seat {
             // Rotate on admissions, not sweeps: a full channel must not let
             // the same hot seat reclaim every credit the receiver returns.
             let start = ids.partition_point(|id| *id <= last);
@@ -1555,24 +1570,35 @@ impl Actor {
     }
 
     fn notify(&mut self, client: Ulid, event: &Event) -> bool {
-        let accepted = match self.clients.get_mut(&client) {
-            Some(Target::Local(tx)) => match tx.try_send(event.clone()) {
-                Ok(()) => true,
-                Err(mpsc::TrySendError::Full(_)) => false,
-                Err(mpsc::TrySendError::Disconnected(_)) => {
-                    self.disconnect(client);
-                    false
-                }
-            },
-            Some(Target::Socket { peer, .. }) => peer
-                .enqueue(Message::Event {
-                    event: event.clone(),
-                })
-                .unwrap_or(false),
-            None => false,
-        };
+        // A credit may return halfway through a sweep. Keep the first refused
+        // seat's turn until it is serviced; later hot seats cannot jump it.
+        let eligible = self
+            .notification_waiter
+            .is_none_or(|waiting| waiting == event.seat());
+        let accepted = eligible
+            && match self.clients.get_mut(&client) {
+                Some(Target::Local(tx)) => match tx.try_send(event.clone()) {
+                    Ok(()) => true,
+                    Err(mpsc::TrySendError::Full(_)) => false,
+                    Err(mpsc::TrySendError::Disconnected(_)) => {
+                        self.disconnect(client);
+                        false
+                    }
+                },
+                Some(Target::Socket { peer, .. }) => peer
+                    .enqueue(Message::Event {
+                        event: event.clone(),
+                    })
+                    .unwrap_or(false),
+                None => false,
+            };
         if accepted {
             self.last_notified_seat = Some(event.seat());
+            self.notification_waiter = None;
+        } else if eligible && self.last_notified_seat != Some(event.seat()) {
+            // A seat that just used a credit cannot reserve the next one for
+            // its own newly captured output ahead of the other pending seats.
+            self.notification_waiter = Some(event.seat());
         }
         let generation = match event {
             Event::Output { generation, .. }
@@ -2461,6 +2487,7 @@ mod capture_read_tests {
             routes: HashMap::new(),
             seats: BTreeMap::new(),
             last_notified_seat: None,
+            notification_waiter: None,
             active: None,
             next_token: 2,
             pending_io: Vec::new(),
@@ -2526,6 +2553,51 @@ mod capture_read_tests {
                 .collect::<Vec<_>>(),
             (1..=7).collect::<Vec<_>>()
         );
+
+        // A receiver can return a credit halfway through a sweep, after the
+        // waiting seat was refused. The hot seat must not steal that credit.
+        let publish = |actor: &mut Actor, id: Ulid, sequence: Option<u64>| {
+            let mut seat = actor.seats.remove(&id).unwrap();
+            if let Some(seq) = sequence {
+                assert!(seat.pending_event.is_none());
+                seat.pending_event = Some(Event::Output {
+                    seat: id,
+                    generation: 1,
+                    seq,
+                    bytes: vec![b'x'],
+                });
+            }
+            seat.publish_pending(actor);
+            actor.seats.insert(id, seat);
+        };
+        publish(&mut actor, hot, Some(8));
+        publish(&mut actor, hot, Some(9));
+        publish(&mut actor, waiting, Some(2));
+        assert_eq!(rx.try_recv().unwrap().seat(), hot);
+        publish(&mut actor, hot, None);
+        assert!(
+            actor.seats[&hot].pending_event.is_some(),
+            "hot seat stole a credit returned after the waiting seat's turn"
+        );
+        publish(&mut actor, waiting, None);
+        let event = rx.try_recv().unwrap();
+        assert_eq!(event.seat(), waiting);
+        assert_eq!(event.sequence(), Some(2));
+        publish(&mut actor, hot, None);
+        let event = rx.try_recv().unwrap();
+        assert_eq!(event.seat(), hot);
+        assert_eq!(event.sequence(), Some(9));
+
+        // A detached writer cannot keep the retry turn and hold other seats.
+        publish(&mut actor, hot, Some(10));
+        publish(&mut actor, waiting, Some(3));
+        actor.seats.get_mut(&waiting).unwrap().writer = None;
+        assert_eq!(rx.try_recv().unwrap().sequence(), Some(10));
+        publish(&mut actor, hot, Some(11));
+        actor.tick_seats().unwrap();
+        let event = rx.try_recv().unwrap();
+        assert_eq!(event.seat(), hot);
+        assert_eq!(event.sequence(), Some(11));
     }
 
     #[test]
