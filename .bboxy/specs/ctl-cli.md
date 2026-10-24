@@ -15,7 +15,7 @@ links:
   - { to: "[[d272-ctl-one-grammar]]", rel: decision }
   - { to: "[[work-items]]", rel: record-type }
 created: "2026-10-24T15:24:41Z"
-updated: "2026-10-24T15:31:48Z"
+updated: "2026-10-24T17:30:10Z"
 ---
 # ctl
 
@@ -58,7 +58,7 @@ Every verb prints JSON lines on stdout, nothing else there (stderr is for `--hum
 
 ## 3. One error model
 
-`{"ok":false,"op":"<ulid>","error":{"kind":"<snake_case>","message":"<one sentence>","hint":"<what is valid>"}}` and a non-zero exit. The kinds are the names the specs already use, never new ones for `ctl`: `ctl_disabled`, `endpoint_unavailable`, `ancestry_refused` (#260), `dangling_destination` (#264, with the valid destination in `hint`), `op_id_reused` (#266), `task_field_protected`, `artifact_field_protected`, `type_immutable`, `resource_outside_data_dir`, `timeout`, `refused` (with the reason the window gives). Every error carries a `hint` that says what would be valid ([[mantras]] 20); an error without a hint is a bug. Exit codes: `0` ok, `1` refused by name, `2` usage, `3` timeout, `4` endpoint unavailable or `ctl` disabled.
+`{"ok":false,"op":"<ulid>","error":{"kind":"<snake_case>","message":"<one sentence>","hint":"<what is valid>"}}` and a non-zero exit. The kinds are the names the specs already use, never new ones for `ctl`: `ctl_disabled`, `endpoint_unavailable`, `ancestry_refused` (#260), `dangling_destination` (#264, with the valid destination in `hint`), `op_id_reused` (#266), `task_field_protected`, `artifact_field_protected`, `type_immutable`, `resource_outside_data_dir`, `timeout`, `refused` (with the reason the window gives), and `usage` for a malformed command line (the one kind that is `ctl`'s own, because the window has no command line; its `hint` is the grammar line for that noun; Seraph's C-0, confirmed 2026-10-24). Every error carries a `hint` that says what would be valid ([[mantras]] 20); an error without a hint is a bug. Exit codes: `0` ok, `1` refused by name, `2` usage, `3` timeout, `4` endpoint unavailable or `ctl` disabled.
 
 ## 4. Recipes
 
