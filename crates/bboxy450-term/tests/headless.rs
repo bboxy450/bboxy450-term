@@ -217,6 +217,55 @@ fn headless_smoke_uses_the_idle_probe_with_no_window_or_operator() {
 }
 
 #[test]
+fn headless_consumes_launch_results_so_ten_seats_are_placed_and_capturable() {
+    let mut f = Fixture::new();
+    f.start();
+    for index in 1..=10 {
+        let name = format!("headless-launch-{index}");
+        let spawn = f.ok(&["seat", "spawn", "zsh", "--name", &name, "--place", "tab"]);
+        let seat = spawn["data"]["seat"].as_str().unwrap();
+        let marker = format!("HEADLESS-SPAWN-{index}");
+        f.ok(&["seat", "type", seat, &format!("printf '{marker}\\n'")]);
+        f.ok(&["seat", "key", seat, "enter"]);
+        f.ok(&[
+            "seat",
+            "wait",
+            seat,
+            "--text",
+            &format!("(?m)^{marker}$"),
+            "--timeout",
+            "20000",
+        ]);
+        let png = f.root.path().join(format!("seat-{index}.png"));
+        let capture = await_value(&f, || {
+            let (code, rows) = f.ctl(&["seat", "capture", seat, png.to_str().unwrap()]);
+            assert!(
+                !f.log().contains("spawn_queue_full"),
+                "launch {index} was not placed: {}",
+                f.log()
+            );
+            (code == 0).then(|| rows.last().unwrap().clone())
+        });
+        assert_eq!(capture["data"]["seat"], seat);
+        assert_eq!(capture["data"]["offscreen"], true);
+        assert_eq!(capture["data"]["stale"], false);
+        assert!(
+            std::fs::read(png)
+                .unwrap()
+                .starts_with(b"\x89PNG\r\n\x1a\n")
+        );
+        eprintln!("launch {index}: real PTY marker and offscreen pane capture verified");
+    }
+    f.ok(&["app", "stop"]);
+    await_value(&f, || {
+        f.log()
+            .contains("headless GUI stopped: Ok(())")
+            .then_some(Value::Bool(true))
+    });
+    f.pid = None;
+}
+
+#[test]
 fn idle_probe_rejects_an_external_lifecycle_wake() {
     use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
     let mut f = Fixture::new();
