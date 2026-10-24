@@ -242,6 +242,30 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 dirty = true;
             }
             if let Some(next) = updates.take() {
+                if smoke {
+                    let last = next
+                        .events
+                        .records()
+                        .back()
+                        .map(|record| match record.as_ref() {
+                            bbt_proto::events::GuiEventRecord::Event(row) => format!(
+                                "{}:{}:{}",
+                                row.metadata.reference.position.stream,
+                                row.metadata.reference.position.sequence,
+                                row.metadata.subject
+                            ),
+                            bbt_proto::events::GuiEventRecord::Gap(gap) => {
+                                format!("gap:{}:{}..{}", gap.stream, gap.first, gap.last)
+                            }
+                        });
+                    logger.write(format!(
+                        "smoke model: events={:?} rows={} last={last:?} cursors_changed={} hosts_changed={} seats={} screens={} e2e={} settings={}",
+                        next.events.state(), next.events.records().len(),
+                        next.events.cursors() != model.events.cursors(),
+                        next.hosts != model.hosts, next.ui.seats.len(), next.screens.len(),
+                        next.e2e.is_some(), next.settings.is_some(),
+                    ));
+                }
                 if next.ui.window.stage != model.ui.window.stage {
                     // Correlated launch/close changes the IO model's stage;
                     // ordinary screen publications preserve explicit GUI focus.
