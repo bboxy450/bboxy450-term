@@ -3,6 +3,11 @@
 set -eu
 cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 if [ "$(uname -s)" != Darwin ]; then echo 'notification probe requires macOS' >&2; exit 2; fi
+identity=3943AF130A015B36824B7FBC86AA672E7B25F3C4
+if ! security find-identity -v -p codesigning | grep -F "$identity" >/dev/null; then
+    echo "notification-probe: approved Apple Development identity $identity is unavailable" >&2
+    exit 2
+fi
 cargo build --locked -p bboxy450-term --features notification-probe --example notification_probe
 target_root=${CARGO_TARGET_DIR:-target}
 bundle=${1:-"$target_root/debug/bboxy450-notification-probe.app"}
@@ -15,7 +20,8 @@ plutil -replace CFBundleName -string bboxy450-notification-probe "$bundle/Conten
 plutil -replace CFBundleDisplayName -string bboxy450-notification-probe "$bundle/Contents/Info.plist"
 cp "$target_root/debug/examples/notification_probe" "$bundle/Contents/MacOS/notification_probe"
 cp NOTICE LICENSE-MIT LICENSE-APACHE "$bundle/Contents/Resources/"
+cp packaging/macos/bboxy.icns "$bundle/Contents/Resources/"
 plutil -lint "$bundle/Contents/Info.plist"
-codesign --force --sign - --timestamp=none "$bundle"
+codesign --force --sign "$identity" --options runtime --timestamp=none "$bundle"
 codesign --verify --strict --verbose=2 "$bundle"
 printf '%s\n' "$bundle"

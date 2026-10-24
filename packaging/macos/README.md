@@ -4,6 +4,31 @@
 packages release code, with production identity custody; never use that for
 fixtures. Bare `cargo run` remains bare and logs the missing bundle once.
 
+Both recipes require the approved Apple Development identity
+`3943AF130A015B36824B7FBC86AA672E7B25F3C4` (team `UQB3368A84`). They fail if it
+is unavailable. An ad-hoc signature fails notification authorization on this
+machine; the identity-signed bundle works. Developer ID distribution signing
+remains deferred.
+
+Both bundles include `bboxy.icns`, generated from `.bboxy/images/bboxy.png`,
+which is byte-identical to `~/.agents/identity/bboxy.png` (SHA256
+`bc5cc774612f29a452967a5a4fa993292092a59b58dfd03dfb7ddb6b3286c370`).
+The adjacent `.source-sha256` records that source digest. To regenerate on macOS
+from the repository root:
+
+```sh
+icon_work=$(mktemp -d)
+mkdir "$icon_work/bboxy.iconset"
+for size in 16 32 128 256 512; do
+    sips -z "$size" "$size" .bboxy/images/bboxy.png --out "$icon_work/bboxy.iconset/icon_${size}x${size}.png"
+    double=$((size * 2))
+    sips -z "$double" "$double" .bboxy/images/bboxy.png --out "$icon_work/bboxy.iconset/icon_${size}x${size}@2x.png"
+done
+iconutil -c icns -o packaging/macos/bboxy.icns "$icon_work/bboxy.iconset"
+shasum -a 256 .bboxy/images/bboxy.png | cut -c1-64 > packaging/macos/bboxy.icns.source-sha256
+rm -r "$icon_work"
+```
+
 `sh scripts/notification-probe-macos.sh` builds a separate debug-only fixture
 bundle. It starts no logic, PTY or Keychain access. The facade's opt-in `probe`
 feature only reads native delivered identifiers and is absent in release.
@@ -24,7 +49,16 @@ desktop or a permission dialog. Open the printed probe `.app` in that session:
 
 Logs append to the current user's temporary directory at
 `bboxy450-notification-probe/proof.jsonl`, including process ids across launch.
-The bundle is ad-hoc signed with a distinct stable probe identifier. Record the
-bundle/binary digest with the results. An unopened bundle or an `Ok` from
-scheduling is not evidence of delivery or delivered-id replacement. Send the
-three actual results to the Architect for the spec's acceptance record.
+The probe has a distinct stable bundle identifier. Record the bundle/binary
+digest with the results. Cold-launch proof requires a post and exit in one PID,
+then the click in a different PID; `deferred_landing` only records a tab switch.
+
+The operator-present session on 2026-10-24 proved persisted permission,
+replacement without duplicate delivered identifiers, and click while closed.
+The first authorization timed out and returned Denied before later Granted;
+it was not a clean single-Allow flow. The full committed raw proof is
+[attention-physical-probe-2026-10-24.jsonl](../../.bboxy/runs/attention-physical-probe-2026-10-24.jsonl)
+at `14bc2d49`, SHA256
+`8b6d3935481ec31e5b3582dd5d7c4dfc555e065f6a254248085e637e4bdedad2`.
+Lines 216/218 and 222 show PID 73566 posting and exiting; 224, 227 and 228 show
+PID 74411 launching, receiving the click, and focusing seat 3 in tab 2.

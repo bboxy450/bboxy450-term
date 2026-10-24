@@ -2426,9 +2426,6 @@ impl App {
             let events = self.focus.layout_ready(&model.ui, &self.focus_bounds);
             self.attention_focus_events(&events, false);
             for event in events {
-                if let InputEvent::Locate { seat, .. } = &event {
-                    self.scene.swell(*seat, Instant::now());
-                }
                 self.logger.write(format!("ui input: {event:?}"));
             }
         }

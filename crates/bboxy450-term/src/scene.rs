@@ -281,8 +281,6 @@ impl Scene {
     }
     /// A seat waiting for the operator loops the swell in its waiting amber until handled
     /// (attention §2); muted, it keeps the ordinary waiting rim. None: handled.
-    // Fed from Model.attention once ATTENTION (Kestrel) lands; tests drive it until then.
-    #[cfg_attr(not(test), allow(dead_code))]
     pub fn set_attention(&mut self, seat: SeatId, state: Option<(Instant, bool)>) {
         match state {
             Some(state) => self.attention.insert(seat, state),
@@ -332,6 +330,17 @@ impl Scene {
     pub fn set_model(&mut self, model: &bboxy450_term::model::Model, stage: &Stage) {
         self.identity = model.identity.clone();
         self.hosts = model.hosts.clone();
+        self.attention.clear();
+        for (seat, state) in &model.attention {
+            self.set_attention(*seat, Some((state.since, state.muted)));
+        }
+        self.swells
+            .retain(|seat, _| model.ui.seats.contains_key(seat));
+        if let Some((seat, at)) = model.focus_swell
+            && model.ui.seats.contains_key(&seat)
+        {
+            self.swell(seat, at);
+        }
         let tab = model
             .ui
             .window
@@ -1321,6 +1330,82 @@ mod depth_tests {
         );
         scene.set_attention(seat, None);
         assert!(!scene.animating(t0));
+    }
+
+    #[test]
+    fn published_attention_drives_both_blocks_without_moving_focus_or_restarting_swell() {
+        use bboxy450_term::{grids::Grids, model};
+        use bbt_mux::Ulid;
+        use bbt_proto::{Grade, GuiSeat, ProcessStatus, SeatState, registry::SeatRecord};
+
+        let seat = SeatId::from_u128(3);
+        let mut current = GuiSeat {
+            record: SeatRecord::new(Ulid(3), Ulid(2), "fixture", "zsh"),
+            state: SeatState {
+                generation: 1,
+                process: ProcessStatus::Running { pid: 9 },
+                activity: bbt_proto::Activity::Waiting(bbt_proto::WaitKind::Question),
+                grade: Grade::Shim,
+                title: String::new(),
+                detail: Some("Your answer is needed".into()),
+                turn_open: true,
+                observed_ms: 10,
+                subagents: vec![],
+            },
+        };
+        let mut model = model::build(
+            std::slice::from_ref(&current.record),
+            &Grids::new(),
+            &model::Model::default(),
+        );
+        let stage = model.ui.window.stage.clone();
+        let mut scene = Scene::live();
+        scene.set_model(&model, &stage);
+        let rects = panes(&scene);
+        model.apply_seat_states(std::slice::from_ref(&current));
+        let since = model.attention[&seat].since;
+        scene.set_model(&model, &stage);
+        let peak = since + std::time::Duration::from_millis(TOKENS.glow.swell_ms as u64 * 4 + 450);
+        let rims = rims_of(&scene, seat, peak);
+        assert!(rims.len() >= 2, "row and pane must loop: {rims:?}");
+        assert!(rims.iter().all(|(e, a)| (*e - 1.).abs() < 1e-3 && *a));
+        assert!(scene.animating(peak));
+        assert_eq!(scene.focused(), stage.focused);
+        assert_eq!(panes(&scene), rects);
+
+        current.record.muted = true;
+        model.apply_seat_states(std::slice::from_ref(&current));
+        scene.set_model(&model, &stage);
+        assert!(!scene.animating(peak));
+        assert!(
+            rims_of(&scene, seat, peak)
+                .iter()
+                .all(|r| *r == (0., false))
+        );
+
+        let key = model.attention_key(seat);
+        assert!(model.attention_focus(seat, 1, key, Some(peak)));
+        scene.set_model(&model, &stage);
+        assert!(scene.attention.is_empty());
+        assert!(scene.animating(peak));
+        let done = peak + std::time::Duration::from_millis(TOKENS.glow.swell_ms as u64 + 1);
+        scene.set_model(&model, &stage);
+        assert!(
+            !scene.animating(done),
+            "a repeated publication must keep the original start"
+        );
+        assert!(
+            rims_of(&scene, seat, done)
+                .iter()
+                .all(|r| *r == (0., false))
+        );
+        assert_eq!(scene.focused(), stage.focused);
+        assert_eq!(panes(&scene), rects);
+
+        current.state.activity = bbt_proto::Activity::Idle;
+        model.apply_seat_states(&[current]);
+        scene.set_model(&model, &stage);
+        assert!(scene.attention.is_empty());
     }
 
     #[test]
