@@ -943,91 +943,11 @@ pub fn bracketed(text: &[u8], modes: u64) -> Vec<u8> {
     out
 }
 
-/// A named key, encoded by the same encoder as the window's keyboard against the seat's
-/// current modes, so a seat with the Kitty protocol on gets Kitty sequences.
+/// A named key, encoded by the window's keyboard adapter against the seat's current modes,
+/// so a seat with the Kitty protocol on gets Kitty sequences.
 pub fn key_bytes(name: &str, modes: u64) -> Result<Vec<u8>, String> {
-    use bbt_core::keyboard::{
-        ElementState, Input, Key, KeyCode, KeyLocation, Modifiers, ModifiersState, NamedKey,
-        PhysicalKey,
-    };
-    let unknown = || format!("input --key: unknown key {name}");
-    let (key, physical, mods, text): (Key, PhysicalKey, ModifiersState, Option<String>) =
-        if let Some(letter) = name.strip_prefix("ctrl-") {
-            let c = letter
-                .chars()
-                .next()
-                .filter(|c| letter.len() == 1 && c.is_ascii_lowercase())
-                .ok_or_else(unknown)?;
-            let code = [
-                KeyCode::KeyA,
-                KeyCode::KeyB,
-                KeyCode::KeyC,
-                KeyCode::KeyD,
-                KeyCode::KeyE,
-                KeyCode::KeyF,
-                KeyCode::KeyG,
-                KeyCode::KeyH,
-                KeyCode::KeyI,
-                KeyCode::KeyJ,
-                KeyCode::KeyK,
-                KeyCode::KeyL,
-                KeyCode::KeyM,
-                KeyCode::KeyN,
-                KeyCode::KeyO,
-                KeyCode::KeyP,
-                KeyCode::KeyQ,
-                KeyCode::KeyR,
-                KeyCode::KeyS,
-                KeyCode::KeyT,
-                KeyCode::KeyU,
-                KeyCode::KeyV,
-                KeyCode::KeyW,
-                KeyCode::KeyX,
-                KeyCode::KeyY,
-                KeyCode::KeyZ,
-            ][(c as u8 - b'a') as usize];
-            (
-                Key::Character(c.to_string()),
-                PhysicalKey::Code(code),
-                ModifiersState::CONTROL,
-                None,
-            )
-        } else {
-            let (named, mods) = match name {
-                "enter" | "return" => (NamedKey::Enter, ModifiersState::empty()),
-                "esc" | "escape" => (NamedKey::Escape, ModifiersState::empty()),
-                "tab" => (NamedKey::Tab, ModifiersState::empty()),
-                "shift-tab" => (NamedKey::Tab, ModifiersState::SHIFT),
-                "backspace" => (NamedKey::Backspace, ModifiersState::empty()),
-                "space" => (NamedKey::Space, ModifiersState::empty()),
-                "up" => (NamedKey::ArrowUp, ModifiersState::empty()),
-                "down" => (NamedKey::ArrowDown, ModifiersState::empty()),
-                "left" => (NamedKey::ArrowLeft, ModifiersState::empty()),
-                "right" => (NamedKey::ArrowRight, ModifiersState::empty()),
-                "home" => (NamedKey::Home, ModifiersState::empty()),
-                "end" => (NamedKey::End, ModifiersState::empty()),
-                "pageup" => (NamedKey::PageUp, ModifiersState::empty()),
-                "pagedown" => (NamedKey::PageDown, ModifiersState::empty()),
-                "delete" => (NamedKey::Delete, ModifiersState::empty()),
-                _ => return Err(unknown()),
-            };
-            (Key::Named(named), PhysicalKey::Unidentified, mods, None)
-        };
-    let input = Input {
-        unmodified_key: key.clone(),
-        logical_key: key,
-        physical_key: physical,
-        text: text.as_deref(),
-        text_all_modifiers: None,
-        location: KeyLocation::Standard,
-        state: ElementState::Pressed,
-        repeat: false,
-        modifiers: Modifiers {
-            state: mods,
-            ..Default::default()
-        },
-    };
-    bbt_core::keyboard::encode(&input, modes).ok_or_else(unknown)
+    crate::keyboard::named_key_bytes(name, modes)
+        .ok_or_else(|| format!("seat key: unknown key {name}"))
 }
 
 #[cfg(test)]
