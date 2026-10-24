@@ -134,3 +134,66 @@ impl Inline {
         out
     }
 }
+
+impl Markdown {
+    /// Install provider metadata as semantic fields without manufacturing YAML
+    /// source bytes or a signature-verification claim.
+    pub fn set_metadata(&mut self, fields: &impl Serialize) -> Result<(), serde_yaml::Error> {
+        self.frontmatter.fields = serde_yaml::from_value(serde_yaml::to_value(fields)?)?;
+        Ok(())
+    }
+    pub fn link_targets(&self) -> Vec<String> {
+        fn inlines(values: &[Inline], out: &mut std::collections::BTreeSet<String>) {
+            for value in values {
+                match value {
+                    Inline::WikiLink { target, .. } => {
+                        out.insert(target.clone());
+                    }
+                    Inline::Emphasis(v)
+                    | Inline::Strong(v)
+                    | Inline::Strike(v)
+                    | Inline::Link { content: v, .. } => inlines(v, out),
+                    _ => {}
+                }
+            }
+        }
+        fn blocks(values: &[Block], out: &mut std::collections::BTreeSet<String>) {
+            for block in values {
+                match &block.kind {
+                    BlockKind::Paragraph(v) | BlockKind::Heading { content: v, .. } => {
+                        inlines(v, out)
+                    }
+                    BlockKind::Quote(v) | BlockKind::Footnote { blocks: v, .. } => blocks(v, out),
+                    BlockKind::List { items, .. } => {
+                        for item in items {
+                            blocks(item, out);
+                        }
+                    }
+                    BlockKind::Table { header, rows, .. } => {
+                        for cell in header.iter().chain(rows.iter().flatten()) {
+                            inlines(cell, out);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        let mut out = std::collections::BTreeSet::new();
+        blocks(&self.blocks, &mut out);
+        for field in [
+            "parent",
+            "children",
+            "depends_on",
+            "links",
+            "superseded_by",
+            "derived_from",
+        ] {
+            for value in self.frontmatter.strings(field) {
+                for link in bbt_ui::modules::graph_tab::parse_links(&value) {
+                    out.insert(link.slug);
+                }
+            }
+        }
+        out.into_iter().collect()
+    }
+}

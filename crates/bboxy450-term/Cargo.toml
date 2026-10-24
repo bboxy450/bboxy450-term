@@ -17,6 +17,7 @@ required-features = ["notification-probe"]
 
 [dependencies]
 bboxy450-desktop-notifications = { path = "../bboxy450-desktop-notifications" }
+bbt-doc = { path = "../bbt-doc" }
 bbt-core = { path = "../bbt-core" }
 bbt-proto = { path = "../bbt-proto" }
 bbt-mux = { path = "../bbt-mux" }

@@ -8,6 +8,7 @@ use bbt_ui_model::{
     layout::{Axis, TextStyle as MeasureStyle},
 };
 use serde::{Deserialize, Serialize};
+pub mod controller;
 mod diagram;
 pub use diagram::{Diagram, Figure, FlowEdge, FlowGraph, FlowNode};
 
@@ -87,6 +88,10 @@ pub struct DocumentModal {
     pub scroll: [f32; 2],
     /// Semantic diagram records supplied by the document producer, not SVGs.
     pub diagrams: Vec<Diagram>,
+    /// Resolutions supplied by the host; None keeps legacy/plain chips.
+    pub record_links: Option<controller::RecordLinks>,
+    /// Host read/action status, distinct from malformed source frontmatter.
+    pub notice: Option<String>,
 }
 impl Default for DocumentModal {
     fn default() -> Self {
@@ -97,6 +102,8 @@ impl Default for DocumentModal {
             viewport: [1280., 960.],
             scroll: [0.; 2],
             diagrams: vec![],
+            record_links: None,
+            notice: None,
         }
     }
 }
@@ -243,30 +250,52 @@ struct Build<'a> {
     m: &'a dyn c::Measure,
     diagrams: &'a [Diagram],
     body: Option<&'a dyn Fn(f32) -> c::Element>,
+    record_links: Option<&'a controller::RecordLinks>,
+    notice: Option<&'a str>,
 }
 // A cell's public text, code-font flag and assignee-colour flag.
 type Cells = Vec<(String, bool, bool)>;
 impl Build<'_> {
     fn link(&self, key: &str, src: &str, parent: ui::Text) -> c::Element {
         let l = parse_links(src).into_iter().next().expect("parsed link");
+        let (display, enabled) = controller::presentation(&l.slug, &l.display, self.record_links);
         let slug = nowrap(
             format!("{key}/slug"),
-            l.display,
+            display.clone(),
             ui::Text {
                 line_height: 16. / 11.,
-                ..font(11., 400, false, color(self.ctx.theme.palette().accent_soft))
+                ..font(
+                    11.,
+                    400,
+                    false,
+                    if enabled {
+                        color(self.ctx.theme.palette().accent_soft)
+                    } else {
+                        ui::Color::Muted
+                    },
+                )
             },
         );
-        let mut all = vec![
-            row(
-                format!("{key}/slug-box"),
-                surface(ui::Color::Accent, 0.1, 0., [0., 6., 0., 6.]),
-                0.,
-                vec![slug.into()],
-            )
-            .into(),
-        ];
-        if let Some(rel) = l.relation {
+        let mut slug_style = surface(
+            if enabled {
+                ui::Color::Accent
+            } else {
+                ui::Color::Transparent
+            },
+            if enabled { 0.1 } else { 0. },
+            0.,
+            [0., 6., 0., 6.],
+        );
+        if !enabled {
+            slug_style.overrides.opacity = Some(0.7);
+        }
+        let mut all =
+            vec![row(format!("{key}/slug-box"), slug_style, 0., vec![slug.into()]).into()];
+        let numbered = self
+            .record_links
+            .is_some_and(|links| links.contains_key(&l.slug))
+            && (controller::numbered(&l.slug).is_some() || display.starts_with('#'));
+        if let Some(rel) = l.relation.filter(|_| !numbered) {
             let co = match rel.as_str() {
                 "violates" => color(TOKENS.color.state.errored),
                 "constrains" => color(TOKENS.color.state.waiting),
@@ -308,7 +337,7 @@ impl Build<'_> {
                 hair(self.ctx),
                 1.,
                 [true; 4],
-                true,
+                enabled,
             ),
             all,
         );
@@ -323,7 +352,7 @@ impl Build<'_> {
         wrap.align = c::Alignment::Baseline;
         wrap.gap = ui::Length::Px(0.);
         wrap.style.overrides.text = Some(parent);
-        named(key, c::Element::Box(wrap))
+        controller::link(named(key, c::Element::Box(wrap)), &l.slug, enabled)
     }
     fn rich(&self, key: &str, value: &str, f: ui::Text) -> c::Element {
         if !value.contains("[[") {
@@ -1085,6 +1114,10 @@ impl Build<'_> {
         let rail = !plain_doc;
         let main_w = (w - 36. - if rail { 298. } else { 0. }).max(0.);
         let mut children = vec![self.heading(d, plain_doc).into(), space(12.)];
+        if let Some(notice) = self.notice {
+            children.push(text("notice", notice, font(12., 400, true, ui::Color::Muted)).into());
+            children.push(space(12.));
+        }
         if !plain_doc {
             children.push(self.frontmatter(d, main_w).into());
             children.push(space(14.));
@@ -1293,6 +1326,8 @@ impl DocumentModal {
             m,
             diagrams: &self.diagrams,
             body,
+            record_links: self.record_links.as_ref(),
+            notice: self.notice.as_deref(),
         };
         if !self.modal {
             return named("document", b.view(&self.document, available[0], false));

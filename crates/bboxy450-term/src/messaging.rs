@@ -229,6 +229,8 @@ pub fn task_item(
         ..Default::default()
     }
 }
+// Keep the provider path intact: Delegate consumes a task path. Only the
+// message-building seam below converts that locator to a wire wikilink.
 pub fn task_attachment(card: &wire::TaskCard) -> bbt_ui::modules::composer::Attachment {
     bbt_ui::modules::composer::Attachment {
         id: card.id.to_string(),
@@ -402,6 +404,58 @@ impl Results {
     }
 }
 
+fn attachment_reference(value: &str) -> Result<String, &'static str> {
+    if value.is_empty() {
+        return Err("attachment_unresolved");
+    }
+    if value.trim() != value || value.chars().any(char::is_control) {
+        return Err("attachment_reference_invalid");
+    }
+    let (inner, wrapped) =
+        if let Some(inner) = value.strip_prefix("[[").and_then(|s| s.strip_suffix("]]")) {
+            (inner, true)
+        } else {
+            (value, false)
+        };
+    if inner.contains(['[', ']', '{', '}']) {
+        return Err("attachment_reference_unknown_shape");
+    }
+    let (target, alias) = inner
+        .split_once('|')
+        .map_or((inner, None), |(target, alias)| {
+            (target.strip_suffix('\\').unwrap_or(target), Some(alias))
+        });
+    if alias.is_some_and(|alias| alias.trim().is_empty()) {
+        return Err("attachment_reference_invalid");
+    }
+    if target.is_empty()
+        || target.trim() != target
+        || target.contains([':', '\\'])
+        || target.ends_with('/')
+    {
+        return Err("attachment_reference_unknown_shape");
+    }
+    let known = if target.starts_with('#') {
+        bbt_ui::modules::document_modal::controller::numbered(target).is_some()
+    } else {
+        std::path::Path::new(target)
+            .components()
+            .all(|part| matches!(part, std::path::Component::Normal(_)))
+    };
+    if !known {
+        return Err("attachment_reference_unknown_shape");
+    }
+    let reference = if wrapped {
+        value.to_owned()
+    } else {
+        format!("[[{value}]]")
+    };
+    if reference.len() > 512 {
+        return Err("attachment_reference_too_large");
+    }
+    Ok(reference)
+}
+
 pub struct Batch {
     pub commands: Vec<UiMsg>,
     pending: Pending,
@@ -528,16 +582,13 @@ impl Client {
         if draft.priority > 9 {
             return Err("priority_out_of_range");
         }
+        if draft.attach.len() > 32 {
+            return Err("attachment_count");
+        }
         let attachments = draft
             .attach
             .iter()
-            .map(|a| {
-                if a.path.is_empty() {
-                    Err("attachment_unresolved")
-                } else {
-                    Ok(a.path.clone())
-                }
-            })
+            .map(|a| attachment_reference(&a.path))
             .collect::<Result<Vec<_>, _>>()?;
         let kind = match draft.kind.as_str() {
             "text" => MessageKind::Text,
@@ -759,6 +810,27 @@ impl Client {
     }
 }
 
+/// Original retained attachment references, with no inferred record type or
+/// rewritten target. Bounds match the admitted W2.4 attachment vocabulary.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct MessageAttachments {
+    pub references: Vec<String>,
+    pub omitted: usize,
+}
+impl MessageAttachments {
+    pub fn bounded(references: &[String]) -> Self {
+        let kept: Vec<_> = references
+            .iter()
+            .take(32)
+            .filter(|s| s.len() <= 512)
+            .cloned()
+            .collect();
+        Self {
+            omitted: references.len() - kept.len(),
+            references: kept,
+        }
+    }
+}
 pub fn message_entries(
     rows: &[wire::MessageRow],
     contexts: &BTreeMap<Ulid, String>,
@@ -766,6 +838,18 @@ pub fn message_entries(
     swarm: SwarmId,
     model: &crate::model::Model,
     read: Option<(&str, u64)>,
+) -> Vec<bbt_ui::modules::stream_dock::Entry> {
+    message_entries_with_attachments(rows, contexts, groups, swarm, model, read, &BTreeMap::new())
+}
+
+pub fn message_entries_with_attachments(
+    rows: &[wire::MessageRow],
+    contexts: &BTreeMap<Ulid, String>,
+    groups: &VecDeque<SendGroup>,
+    swarm: SwarmId,
+    model: &crate::model::Model,
+    read: Option<(&str, u64)>,
+    attachments: &BTreeMap<Ulid, MessageAttachments>,
 ) -> Vec<bbt_ui::modules::stream_dock::Entry> {
     use bbt_ui::modules::stream_dock::{Entry, Receipts};
     let mut out = vec![];
@@ -785,6 +869,24 @@ pub fn message_entries(
                 .is_some_and(|bus| bus.stream == stream && bus.seq > read)
         });
         let mut gap = None;
+        if let Some(attachments) = attachments.get(&row.id) {
+            view.attach = attachments
+                .references
+                .iter()
+                .map(|reference| bbt_ui::modules::composer::Attachment {
+                    kind: "record".into(),
+                    title: reference.clone(),
+                    path: reference.clone(),
+                    ..Default::default()
+                })
+                .collect();
+            if attachments.omitted > 0 {
+                gap = Some(format!(
+                    "attachment_view_limit: {} references not shown; originals retained",
+                    attachments.omitted
+                ));
+            }
+        }
         if let Some(group) = groups
             .iter()
             .find(|group| group.swarm == swarm && group.ids.contains(&row.id))
@@ -811,10 +913,14 @@ pub fn message_entries(
                 });
             } else {
                 view.receipts = None;
-                gap = Some(format!(
+                let receipts = format!(
                     "receipt coverage incomplete · {} of {} message projections",
                     members.len(),
                     group.ids.len()
+                );
+                gap = Some(gap.map_or_else(
+                    || receipts.clone(),
+                    |attachments| format!("{attachments} · {receipts}"),
                 ));
             }
         }

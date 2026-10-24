@@ -1,6 +1,8 @@
 //! Bounded view state. Shared server projections, ledger cursors and bus
 //! positions remain separate; this cache never acknowledges or proves read.
-use super::{Reply, Results, SendGroup, UiMsg, message_entries, wire};
+use super::{
+    MessageAttachments, Reply, Results, SendGroup, UiMsg, message_entries_with_attachments, wire,
+};
 use bbt_mux::Ulid;
 use bbt_proto::SwarmId;
 use bbt_ui::modules::stream_dock::{Channel, Entry, UnreadCount};
@@ -39,7 +41,7 @@ pub struct History {
     scope: Option<SwarmId>,
     rows: VecDeque<Row>,
     bytes: usize,
-    listed: Vec<(Ulid, Option<wire::BusPosition>, String)>,
+    listed: Vec<(Ulid, Option<wire::BusPosition>, String, MessageAttachments)>,
     list: Option<List>,
     list_wanted: Option<u64>,
     list_next: Option<u64>,
@@ -401,6 +403,7 @@ impl History {
                             item.envelope.id,
                             item.bus.clone(),
                             item.envelope.context.clone(),
+                            MessageAttachments::bounded(&item.envelope.attachments),
                         )
                     })
                     .collect();
@@ -414,7 +417,7 @@ impl History {
                     self.omitted += 1;
                 }
                 // Join by the actual publication position, never ledger sequence.
-                for (id, bus, context) in &self.listed {
+                for (id, bus, context, _) in &self.listed {
                     if let Some(old) = self
                         .rows
                         .iter_mut()
@@ -523,19 +526,25 @@ impl History {
             .iter()
             .map(|row| (row.row.id, row.context.clone()))
             .collect::<BTreeMap<_, _>>();
-        let messages = message_entries(
+        let attachments = self
+            .listed
+            .iter()
+            .map(|(id, _, _, attachments)| (*id, attachments.clone()))
+            .collect();
+        let messages = message_entries_with_attachments(
             &rows,
             &contexts,
             groups,
             scope,
             model,
             self.cursor.map(|c| (stream.as_str(), c.0)),
+            &attachments,
         );
         out.extend(messages);
         let missing = self
             .listed
             .iter()
-            .filter(|(id, bus, _)| {
+            .filter(|(id, bus, _, _)| {
                 bus.is_none()
                     || !self
                         .rows

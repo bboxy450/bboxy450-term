@@ -1,0 +1,69 @@
+Document hosting checkpoint 2 CORE — Nyx Copperwing <EXECUTOR>
+2026-10-24T17:37:13.572816+00:00
+Own writing worktree: /Users/feral/mydev/bboxy450-term-nyx; branch nyx-document-host.
+Implementation source: fc1dd3ca8e4d54ebcbc28e4c7501a3167b40e338 (signed).
+Focused integration base: ce9913132b129eef1a9ee9e6f6116d766505b0a4, Velvet's signed Settings CORE; NOT accepted Settings.
+NOT A FINAL HANDOFF. Oracle df525c4a requires accepted Settings as the final base, then one exact clean ci-local --parity gate plus frozen-input A/B and a final native capture. No full gate or slot has been used.
+
+Authorization and scope:
+The operator directly authorized edits and requested document hosting in parallel with Velvet's Settings work.
+Approved checkpoint: [[#N]] from stream/task/attachment and inside the viewer opens the unique current record; native Markdown/Mermaid shell scrolls; failed reads remain visible by name; closing restores the surviving focus anchor; Input/Resize stay live.
+Oracle b62bd201 adds bounded original List attachment retention by message id (display/action only).
+Oracle c30e7d22 assigns the adjacent composer attachment normalization as a SEPARATE commit: current rebased f8504b8a; original d7c8060d. Plain picker paths wrap once at Send; already-wrapped refs remain intact; malformed refs refuse before Send. Delegate still consumes the original plain path.
+
+Mechanisms (file:line):
+crates/bboxy450-term/src/documents.rs:17 — resolve/fetch through existing GuiAction::Knowledge and the accepted DataSource/NUM2 resolver; no new RPC or watcher.
+crates/bboxy450-term/src/documents.rs:44 — full portable Result cap256KiB, exact fetched RecordRef match, lossless body+frontmatter, named oversize/stale errors; metadata is not signature verification.
+crates/bboxy450-term/src/documents.rs:106 — bounded response parsing and Markdown preparation run on IO-owned blocking work, guarded off the UI thread.
+crates/bboxy450-term/src/documents.rs:160 — one-flight navigation epoch drains stale replies without reopening, auto-retry or focus mutation; at most128 link probes, with a named limit.
+crates/bboxy450-term/src/live.rs — op-correlated Knowledge reply/preparation publication and local consumption; independent Settings context arm, Graph watcher and terminal response FIFO preserved.
+crates/bboxy450-term/src/model.rs:517 — optional retained document reply survives metadata/grid publications beside Settings/events/results/history state.
+crates/bboxy450-term/src/main.rs:1166 — open/close/drive/read-error routing; captured Stage restored through FocusState, surviving-anchor reconciliation, prior PTY releases balanced; modal keys/pointer/wheel/IME cannot reach the covered pane.
+crates/bboxy450-term/src/main.rs:1321 — shared Settings IME policy gives the document modal priority; close restores Settings/launcher/composer/reject editing.
+crates/bboxy450-term/src/scene.rs:1217 — retained modal uses Scene::ui_context(), existing Markdown/Mermaid layout, one outer vertical viewport and keyed inner horizontal viewports; unwrapped ops precede HUD.
+crates/bboxy450-term/src/messaging/history.rs:406 — latest bounded List page retains original attachment strings by id, without re-deriving author/priority/signature/read state.
+crates/bboxy450-term/src/messaging.rs:816 — display refs capped32 and512 bytes per whole ref, explicit omission reason; generic attachment action opens its canonical reference.
+crates/bbt-ui/src/modules/document_modal/controller.rs — kit-owned clipped hit regions, missing-number chips inert, bounded scroll/pan; deferred footer/source/expand actions return a named unavailable outcome.
+crates/bbt-doc/src/markdown/mod.rs:139 — semantic provider metadata and AST targets; no manufactured YAML source bytes.
+crates/bboxybook/src/documents.rs — public-record-index fixture adapter adds resolved/missing link states only; capture-inputs.js retains all top-level document frames in paint order with clips. Record lookup stays deferred.
+Cargo.toml/Cargo.lock add only the existing local bbt-doc edge; no dependency versions changed by this checkpoint.
+
+Verified development commands, real exits:
+CARGO_TARGET_DIR=target/doc-host-dev BBOXY_TEST_CUSTODY=memory cargo clippy --workspace --all-targets --locked -- -D warnings — EXIT0, latest target/doc-host-settings-union-clippy.log.
+cargo test -p bboxy450-term --locked --bin bboxy450-term (same explicit env) — EXIT0,92 passed/0failed; target/doc-host-settings-union-app.log. Includes real IO Knowledge resolve/fetch concurrent with Input/Resize, composed task attachment + retained [[#1]] hit/open, and orderly children reaping.
+cargo test -p bboxy450-term --locked --bin bboxy450-term document_uses_effective_context_without_moving_panes_and_keeps_hud_last — EXIT0,1/0; target/doc-host-settings-union-context-exact.log. First selector mistakenly named scene::tests instead of scene::launcher_tests: EXIT0 but0 tests, NOT evidence; original log retained.
+cargo test -p bbt-doc --locked --test record_host — EXIT0,3/0; target/doc-host-pan-test.log. Actual wide Mermaid/code/table retained viewports accept horizontal offsets.
+Earlier app document tests11/0; UI host5/0; bbt-ui/bbt-doc/app package tests379/0; bboxybook document corpus4/0. These predate the final focused Settings union and are development evidence, not the final clean gate.
+Focused native/web capture+render+strict comparison — EXIT0,16 required/16 measured/0unproven/0geometry mismatches/0pixel reviews; target/doc-host-focused-v1/report.json SHA25624b6b50252515d940b4c51f54a28d495344222ba53a01bb9fc6bf777194c3caf. This predates Settings integration and is not a full-catalogue gate.
+git diff --check — EXIT0. All source commits GPG G as Boxy.
+
+Native focused integration:
+Exact argv and hashes: target/doc-host-native/union-long-proof.json, source fc1dd3ca, appEXIT0; memory custody explicit in log; isolated config unchanged; orderly logic/supervisor shutdown and children reaped.
+Read image: target/doc-host-native/document-light-compact.png, SHA2561e7811e4630e021f58e72d7d555f1fbd08018c1b14c7b91de288bd04e24c6435 — current#44 over Settings Appearance, light/compact/rim6.
+First10s native run: processEXIT0 but NO PNG, so not visual evidence. The30s run logged resolutions then capture Ok(()); no production/test deadline changed.
+Only own generated runtime projection logs were retired after owned process exit; per-file hashes/bytes in union-proof.json and union-long-proof.json (685554 +699103 bytes). No peer target/capture or real config/custody was touched.
+One duplicate inactive target/debug created by ui-lint's internal cargo was retired after its EXIT0;523682139 bytes, target/doc-host-duplicate-target-cleanup.json. The one dev target is target/doc-host-dev.
+Earlier development compile/fixture failures and repairs remain in target/doc-host-*.log; no timeout/tolerance/policy relaxation. Final evidence ledger will include the exact clean gate.
+
+Pending / deliberately deferred:
+Accepted Settings/ATTENTION base and Oracle slot; then rebase, strict clippy and exact clean ci-local --parity, retained Settings-baseline byte replay, final-source native capture and signed final handoff.
+Velvet f9d5d4c8 confirmed final Settings gallery/cases/capture/backdrops/hashes will be retained outside the disposable target as this checkpoint's named baseline. No writes in that peer gallery.
+No record lookup, in-document find, selection/source copy, feed, terminal-path semantics or pinning. No renderer/shader, protocol, authority, ACK/read-mark or Event consumer changes. No manual/hardware IME/desktop-input claim; no desktop automation used.
+
+ATTENTION shared-file follow-up, source c20cb299362414f0ce41ff1faeffa99912cb9fdd:
+Reading original notification callback0517bb10:main.rs891-921 showed explicit clicks use focus_action(). The document successor adds only3 lines at main.rs:2092: close_document() before an explicit pane activation, alongside existing LocalTab dismissal. It drains the old read epoch/restores the old anchor first, then lets the existing Focus controller apply the new explicit target, so closing later cannot undo a notification activation. No notification policy, signer, fields, ACK or cursor change. Kestrel received current hunk pointers in ICQ80cf63bf.
+Strict workspace/all-target Clippy -D warnings EXIT0 (target/doc-host-explicit-focus-clippy.log); app document_ filter EXIT0,4 passed/0failed including document return/covered-key/effective-context and live document-event/ctl integration (target/doc-host-explicit-focus-tests.log). The actual rebased ATTENTION callback still awaits its accepted source and is not claimed tested here. Native focused image remains sourcefc1dd3ca. Final accepted Settings base/gate requirement unchanged.
+
+Frozen Settings/ATTENTION focused union (2026-10-24T18:08:40.026208+00:00):
+Current signed document source 215d5b8028ccae130b4b73036895f0dbe80c541a; base3463acd876445ae40c358f5e2559fb6dd52d4017 (signed frozen Settings+policy, NOT yet accepted). Accepted ATTENTION0e00439b is its ancestor. Rebased only the document range from ce991313; additive conflicts were the bbt-doc/desktop-notifications Cargo edges and local DocumentRead/ConsumeDocument/AttentionFocus variants. Settings policy binding is unchanged; Model build preserves attention/focus_swell/episodes, Settings and document_reply together; the direct Locate->scene.swell deletion stays deleted. The separate M3-adjacent normalization is now 0fea94ee46c8a738de661eff0c1227b6160be3fe.
+Tests/documents.rs extends actual Model::attention_focus + held Arc snapshots + repeated document replies + metadata rebuild, retaining the original landing Instant and unconsumed reply. Scene's regression applies repeated document publications and verifies the stored swell Instant is the original. main.rs also withholds deferred layout_ready/Locate while the document covers the pane, alongside the existing LocalTab visibility condition; explicit activation closes the modal before the common Focus action.
+CARGO_TARGET_DIR=target/doc-host-dev BBOXY_TEST_CUSTODY=memory cargo clippy --workspace --all-targets --locked -- -D warnings — EXIT0 (target/doc-host-bound-settings-clippy.log); cargo test -p bboxy450-term --locked --test documents — EXIT0,11/0 (target/doc-host-bound-settings-documents.log); cargo test -p bboxy450-term --locked --bin bboxy450-term — EXIT0,97/0 (target/doc-host-bound-settings-app.log). After the visibility guard: the same strict Clippy EXIT0 (target/doc-host-bound-settings-final-clippy.log), bin document_ focused checks EXIT0,5/0 (target/doc-host-bound-settings-final-focused.log). No failure, tolerance, timeout or clock change. No full gate/slot used.
+Pending final proof remains exactly the Oracle cut: rebase onto accepted Settings, strict Clippy and one exact clean ci-local --parity, frozen Settings native-byte replay, final-source native capture, then signed handoff. The earlier native image and focused16 parity remain development evidence at their named earlier sources.
+
+Final accepted-base preflight (2026-10-24T19:43:17.129346+00:00):
+Document code/script commit 1835b7e42a06411330eee56c3559008d9459e39e, accepted main base e716b26928c6b70ffe4704230174ffac4ab8a246; accepted Settings e9c4d01d/e91906fc is in the ancestry. Rebase kept only document-owned source and evidence changes. Strict workspace/all-target Clippy -D warnings EXIT0 after the final rebase (target/doc-host-final-precheck.log).
+New unattended native proof driver: tests/document_host_ctl.py, syntax-checked with py_compile EXIT0. It copies only tracked knowledge Markdown into a private project, generates fresh fixture-custody keys in its own directory, supplies its own Settings/ZDOTDIR/runtime, and uses ctl spawn/type/wait/screen/capture assertions. The app's document-ready capture and loaded outcome, PNG framing, terminal output and orderly child reaping are script assertions. Runtime/custody/private project are retired after shutdown; no operator identity, Keychain, desktop input or physical probe. Actual driver execution is pending the gate-built binary, not claimed green by syntax checking.
+Settings baseline is pinned to signed evidence24ad4450 and manifestSHA2562a6ed8fc2de2065d7132937ffc7f9eafe8f24d96490aaa6ba8433031b2219399 (8641 entries). Read-only report/capture hashes and 2128 native files were verified; policy-required geometry2024/2024,0unproven/0mismatches,72pixel reviews, Settings96 within policy. Two initial local report-inspection attempts incorrectly assumed a summary object and non-optional policy tolerance; the final reader follows parity.rs245/674, without modifying any report or threshold.
+Gate admission is self-service per accepted AGENTS040ef7c4 and Oracle abffcd32/0953b72b. The exact clean gate launch/result JSON will bind the containing signed HEAD, private worktree/target, memory custody, jobs2/O1/debug assertions and actual exit. Full --parity, frozen-input byte replay and ctl-native verdict remain to run; no success claim yet.
+
+Final verification supersedes historical Pending sections: exact clean e733fe14 ci-local --parity EXIT0,2040/2040 geometry,0mismatches,72 unchanged reviews,16 new cases within policy; frozen Settings replay2128/2128 exact PNG bytes; unattended ctl capture final EXIT0 with fresh private fixture custody and orderly reaping. Verification-only driver46b5f668; original instrumentation failures preserved. Final evidence and mechanisms: document-host-checkpoint2-handoff.log + verdict.json. No post-gate product source edit.

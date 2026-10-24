@@ -15,7 +15,7 @@ use bboxy450_term::launcher::{
     Outcome as LauncherOutcome,
 };
 use bboxy450_term::scrollback::Request as ScrollRequest;
-use bboxy450_term::{keyboard, messaging};
+use bboxy450_term::{documents, keyboard, messaging};
 use bbt_proto::{SeatId, View};
 use bbt_rt::{HitchMeter, Latest, Phases, UiInbox, UiMsg};
 use bbt_ui::modules::composer::{
@@ -215,6 +215,10 @@ impl FocusState {
             .and_then(|s| s.focused)
             .and_then(owner)
             .or_else(|| Some(next.window.stage.clone()));
+    }
+    fn restore(&mut self, stage: Stage, source: &UiModel) {
+        self.stage = Some(stage);
+        self.reconcile(None, source);
     }
     fn apply(
         &mut self,
@@ -701,6 +705,18 @@ fn route_settings(input: &keyboard::Input<'_>, modes: u64, editing: bool) -> Rou
         _ => global,
     }
 }
+fn route_document(input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
+    let routed = route_local_page(input, modes);
+    if matches!(
+        routed,
+        RoutedKey::Quit | RoutedKey::ToggleHud | RoutedKey::LocalPage(_)
+    ) || input.state == ElementState::Released
+    {
+        routed
+    } else {
+        RoutedKey::Local
+    }
+}
 fn route_composer(input: &keyboard::Input<'_>, modes: u64, field: ComposeField) -> RoutedKey {
     if input.state == ElementState::Released {
         return RoutedKey::Local;
@@ -1121,6 +1137,9 @@ struct App {
     system_theme: Theme,
     local_tab: Option<LocalTab>,
     local_page_layout: Option<scene::LocalPageLayout>,
+    document: documents::Host,
+    document_return: Option<Stage>,
+    document_layout: Option<scene::DocumentLayout>,
     composer: ComposeController,
     composer_client: messaging::Client,
     composer_scope: Option<bbt_proto::SwarmId>,
@@ -1181,6 +1200,73 @@ struct App {
     stall: Option<stall::Native>,
 }
 impl App {
+    fn open_document(&mut self, target: String) {
+        if !self.document.open {
+            self.document_return = self.focus.stage.clone();
+        }
+        self.document.show(target);
+        self.document_layout = None;
+        self.composer_dragging = false;
+        self.query_dragging = false;
+        self.sync_text_ime();
+        self.drive_document();
+        self.request_redraw();
+    }
+    fn close_document(&mut self) {
+        self.document.close();
+        if let Some(stage) = self.document_return.take()
+            && let Some(model) = &self.live_state
+        {
+            self.focus.restore(stage, &model.ui);
+            if let Some(stage) = &self.focus.stage {
+                self.scene.set_model(model, stage);
+            }
+        }
+        self.document_layout = None;
+        self.sync_text_ime();
+        self.request_redraw();
+    }
+    fn drive_document(&mut self) {
+        if self.document.open
+            && (self.live_commands.is_none() || (self.backend_lost && !self.document.settled()))
+        {
+            if self.document.unavailable(
+                "document_backend_unavailable: open the record again after the connection recovers",
+            ) {
+                self.document_layout = None;
+                self.request_redraw();
+            }
+            return;
+        }
+        if self.live_commands.is_some()
+            && let Some((id, read)) = self.document.next_read()
+        {
+            self.queue(live::UiMsg::DocumentRead { id, read });
+        }
+    }
+    fn document_command(&mut self, command: PageCommand) {
+        if matches!(command, PageCommand::Close) {
+            self.close_document();
+            return;
+        }
+        let Some(layout) = &self.document_layout else {
+            return;
+        };
+        let height = layout.regions.viewport.map_or(200., |r| r.h * 0.9);
+        let y = match command {
+            PageCommand::Up => -28.,
+            PageCommand::Down => 28.,
+            PageCommand::PageUp => -height,
+            PageCommand::PageDown => height,
+            PageCommand::Top => -f32::MAX,
+            PageCommand::Bottom => f32::MAX,
+            PageCommand::Close => 0.,
+        };
+        if self.document.scroll.scroll([0., y], layout.regions.extent) {
+            self.document_layout = None;
+            self.request_redraw();
+        }
+    }
     fn open_local_tab(&mut self, tab: LocalTab) {
         if self.rim_preview.take().is_some() {
             self.apply_preferences();
@@ -1272,10 +1358,11 @@ impl App {
     fn sync_text_ime(&self) {
         if let Some(window) = &self.window {
             window.set_ime_allowed(
-                self.launcher.is_some()
-                    || self.composer.view.focus
-                    || self.reject_focus
-                    || self.settings_ime(),
+                !self.document.open
+                    && (self.launcher.is_some()
+                        || self.composer.view.focus
+                        || self.reject_focus
+                        || self.settings_ime()),
             );
         }
     }
@@ -1623,12 +1710,8 @@ impl App {
         use bbt_ui::modules::stream_dock::Action;
         let parse = |id: &str| id.parse::<bbt_mux::Ulid>().ok();
         match action {
-            Action::Task(id) => {
-                if let Some(id) = parse(&id) {
-                    self.blur_reject();
-                    self.task_records.detail(id);
-                }
-            }
+            Action::OpenRecord(target) => self.open_document(target),
+            Action::Task(id) => self.open_document(id),
             Action::Delegate(id) => {
                 if let Some(task) = parse(&id).and_then(|id| self.task_records.task(id)) {
                     let attachment = messaging::task_attachment(task);
@@ -1718,7 +1801,8 @@ impl App {
         self.refresh_conversation();
         if let Some(window) = &self.window {
             window.set_ime_allowed(
-                self.launcher.is_some() || self.composer.view.focus || self.reject_focus,
+                !self.document.open
+                    && (self.launcher.is_some() || self.composer.view.focus || self.reject_focus),
             );
         }
         self.request_redraw();
@@ -2044,6 +2128,9 @@ impl App {
         }
     }
     fn focus_action(&mut self, action: FocusAction) {
+        if self.document.open {
+            self.close_document();
+        }
         if self.local_tab.is_some() {
             self.close_local_tab();
         }
@@ -2395,7 +2482,9 @@ impl App {
                 )
                 .map_err(|e| e.to_string())?,
         );
-        if self.launcher.is_some() || self.composer.view.focus {
+        if !self.document.open
+            && (self.launcher.is_some() || self.composer.view.focus || self.settings_ime())
+        {
             window.set_ime_allowed(true);
             self.logger.write("debug text field open");
         }
@@ -2554,6 +2643,22 @@ impl App {
         if let Some(state) = self.live_updates.take() {
             self.mute.observe(&state);
             self.composer_notice();
+            if let Some(reply) = &state.document_reply
+                && self.document.apply(reply)
+            {
+                self.queue(live::UiMsg::ConsumeDocument { id: reply.id });
+                self.logger.write(format!(
+                    "document {}: {:?}",
+                    self.document.target,
+                    match &reply.response {
+                        documents::Response::Resolved(_) => "resolved",
+                        documents::Response::Fetched(_) => "loaded",
+                        documents::Response::Failed(_) => "refused",
+                    }
+                ));
+                self.document_layout = None;
+                self.request_redraw();
+            }
             if let Some(snapshot) = &state.e2e
                 && !self
                     .live_state
@@ -2582,6 +2687,9 @@ impl App {
                 .collect();
             self.focus
                 .reconcile(self.live_state.as_ref().map(|old| &old.ui), &state.ui);
+            if self.document.open && self.document_return.is_none() {
+                self.document_return = self.focus.stage.clone();
+            }
             let refresh = self.live_state.as_ref().is_none_or(|old| {
                 old.hosts != state.hosts
                     || old.ui.seats.keys().ne(state.ui.seats.keys())
@@ -2634,7 +2742,12 @@ impl App {
             self.refresh_conversation();
             for (op, outcome) in results {
                 if let bboxy450_term::model::SpawnOutcome::Placed(seat) = &outcome {
-                    self.focus_action(FocusAction::Activate(*seat, FocusOrigin::Keyboard));
+                    if !self.document.open {
+                        self.focus_action(FocusAction::Activate(*seat, FocusOrigin::Keyboard));
+                    } else {
+                        self.logger
+                            .write(format!("spawn {op} placed; document return focus retained"));
+                    }
                 } else {
                     self.logger
                         .write(format!("spawn {op} outcome: {outcome:?}"));
@@ -2646,6 +2759,7 @@ impl App {
             self.sync_notifications();
             self.verify();
         }
+        self.drive_document();
         self.flush_commands();
     }
     fn demo(&mut self) {
@@ -2814,6 +2928,7 @@ impl App {
         self.focus_bounds = self.scene.focus_bounds(&layouts);
         if let Some(model) = &self.live_state
             && self.local_tab.is_none()
+            && !self.document.open
         {
             let events = self.focus.layout_ready(&model.ui, &self.focus_bounds);
             self.attention_focus_events(&events, false);
@@ -2866,6 +2981,20 @@ impl App {
                 winit::dpi::LogicalSize::new(caret.w, caret.h),
             );
         }
+        if self.document.open {
+            let context = self.scene.ui_context();
+            if self
+                .document_layout
+                .as_ref()
+                .is_none_or(|layout| !layout.matches(logical, context))
+            {
+                let layout = self.scene.document_layout(logical, &self.document)?;
+                self.document.scroll.scroll([0.; 2], layout.regions.extent);
+                self.document_layout = Some(layout);
+            }
+        } else {
+            self.document_layout = None;
+        }
         phases.layout = start.elapsed();
         let overlay = self.overlay.then(|| {
             perf_hud(
@@ -2880,22 +3009,24 @@ impl App {
             ops.extend(page.paint());
         }
         if !live {
-            ops.extend(self.scene.foreground_with_conversation(
+            ops.extend(self.scene.foreground_with_document(
                 logical,
                 self.launcher_layout.as_ref(),
                 overlay.as_ref(),
                 self.conversation_layout.as_ref(),
+                self.document_layout.as_ref(),
             ));
         }
         let pane_overlay = if let Some(model) = &self.live_state {
             let mut ops = self
                 .scene
                 .history_foreground(model, &self.pane_bounds, scale)?;
-            ops.extend(self.scene.foreground_with_conversation(
+            ops.extend(self.scene.foreground_with_document(
                 logical,
                 self.launcher_layout.as_ref(),
                 overlay.as_ref(),
                 self.conversation_layout.as_ref(),
+                self.document_layout.as_ref(),
             ));
             ops
         } else {
@@ -2995,6 +3126,7 @@ impl App {
             }
             if (!self.fake || self.last_update == 20)
                 && self.capture_pending
+                && (!self.document.open || self.document.settled())
                 && (self.verify.grid_size.is_none() || self.verify.grid_ready)
                 && let Some(path) = &self.capture
             {
@@ -3425,6 +3557,9 @@ impl ApplicationHandler<UiEvent> for App {
                     .as_ref()
                     .map_or(1., |window| window.scale_factor()) as f32;
                 self.pointer = [position.x as f32 / scale, position.y as f32 / scale];
+                if self.document.open {
+                    return;
+                }
                 if matches!(&self.local_tab,Some(LocalTab::Settings {controller,..}) if controller.dragging())
                 {
                     if let Some(fraction) = self
@@ -3491,6 +3626,36 @@ impl ApplicationHandler<UiEvent> for App {
                     .and_then(|layout| layout.row_at(self.pointer))
                 {
                     self.launcher_command(LauncherCommand::Hover(index));
+                }
+            }
+            WindowEvent::MouseWheel { delta, .. } if self.document.open => {
+                let [mut dx, mut dy] = match delta {
+                    MouseScrollDelta::LineDelta(x, y) => [-x * 28., -y * 28.],
+                    MouseScrollDelta::PixelDelta(p) => {
+                        let scale = self.window.as_ref().map_or(1., |w| w.scale_factor() as f32);
+                        [-p.x as f32 / scale, -p.y as f32 / scale]
+                    }
+                };
+                if self.modifiers.shift_key() && dx == 0. {
+                    dx = dy;
+                    dy = 0.;
+                }
+                if let Some(layout) = &self.document_layout {
+                    let horizontal = layout.regions.horizontal_at(self.pointer).cloned();
+                    let extent = layout.regions.extent;
+                    let root_dx = if horizontal.as_ref().is_some_and(|r| r.root) {
+                        dx
+                    } else {
+                        0.
+                    };
+                    let mut changed = self.document.scroll.scroll([root_dx, dy], extent);
+                    if let Some(region) = horizontal.filter(|r| !r.root) {
+                        changed |= self.document.scroll.pan(&region.key, dx, region.max);
+                    }
+                    if changed {
+                        self.document_layout = None;
+                        self.request_redraw();
+                    }
                 }
             }
             WindowEvent::MouseWheel { delta, .. }
@@ -3584,6 +3749,24 @@ impl ApplicationHandler<UiEvent> for App {
                 button: MouseButton::Left,
                 ..
             } => {
+                if self.document.open {
+                    use bbt_ui::modules::document_modal::controller::Action;
+                    let action = self
+                        .document_layout
+                        .as_ref()
+                        .and_then(|l| l.regions.hit(self.pointer));
+                    match action {
+                        Some(Action::Open(target)) => self.open_document(target),
+                        Some(Action::Close) => self.close_document(),
+                        Some(Action::Unavailable(name)) => {
+                            self.document.notice = Some(format!("{name} is not available yet"));
+                            self.document_layout = None;
+                            self.request_redraw();
+                        }
+                        None => {}
+                    }
+                    return;
+                }
                 if self.launcher.is_some() {
                     if let Some(layout) = &self.launcher_layout {
                         if layout.query_contains(self.pointer) {
@@ -3613,6 +3796,13 @@ impl ApplicationHandler<UiEvent> for App {
                 {
                     use composer::Hit;
                     let hit = layout.regions.hit(self.pointer);
+                    if hit.is_none()
+                        && let Some(bbt_ui::modules::stream_dock::Action::OpenRecord(target)) =
+                            layout.actions.hit(self.pointer)
+                    {
+                        self.open_document(target);
+                        return;
+                    }
                     let at = if hit == Some(Hit::AttachQuery) {
                         self.composer.view.attach_pick.as_ref().map(|p| {
                             self.scene
@@ -3751,6 +3941,7 @@ impl ApplicationHandler<UiEvent> for App {
                     self.settings_action(settings_controller::Action::EndDrag);
                 }
             }
+            WindowEvent::Ime(_) if self.document.open => {}
             WindowEvent::Ime(Ime::Preedit(text, cursor)) => {
                 if self.launcher.is_some() {
                     self.launcher_command(preedit_command(text, cursor));
@@ -3850,7 +4041,10 @@ impl ApplicationHandler<UiEvent> for App {
                             .get(&seat)
                             .map(|screen| screen.modes)
                     });
-                let routed = if self.local_tab.is_some()
+                let routed = if self.document.open {
+                    let routed = route_document(&input, modes.unwrap_or_default());
+                    finish_route(&mut self.keyboard, &input, routed)
+                } else if self.local_tab.is_some()
                     && self.launcher.is_none()
                     && !self.composer.view.focus
                     && !self.reject_focus
@@ -3894,7 +4088,13 @@ impl ApplicationHandler<UiEvent> for App {
                     RoutedKey::OpenSettings => self.open_settings("Account"),
                     RoutedKey::SettingsKey(key) => self.settings_key(key),
                     RoutedKey::MuteFocused => self.mute_focused(),
-                    RoutedKey::LocalPage(command) => self.local_page_command(command),
+                    RoutedKey::LocalPage(command) => {
+                        if self.document.open {
+                            self.document_command(command);
+                        } else {
+                            self.local_page_command(command);
+                        }
+                    }
                     RoutedKey::ToggleHud => {
                         self.overlay = !self.overlay;
                         self.logger.write(format!("hitch overlay={}", self.overlay));
@@ -4225,6 +4425,7 @@ const HELP: &str = "bboxy450-term: GPU terminal for agent swarms.
 
 Debug and verification only, never for normal use:
   --launcher           open the launcher at startup (same controller as Cmd+T)
+  --document <record>  open a record via Knowledge (debug capture only)
   --compose            focus the inline composer at startup
   --settings SECTION   open the local Settings tab
   --settings-config P  use this preferences TOML path (for isolated probes)
@@ -4799,6 +5000,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         system_theme: Theme::Dark,
         local_tab: None,
         local_page_layout: None,
+        document: {
+            let mut host = documents::Host::default();
+            if let Some(pair) = args.windows(2).find(|p| p[0] == "--document") {
+                host.show(pair[1].clone());
+            }
+            host
+        },
+        document_return: None,
+        document_layout: None,
         composer: ComposeController::new(composer::Composer {
             focus: args.iter().any(|arg| arg == "--compose"),
             ..Default::default()
@@ -5301,7 +5511,10 @@ mod input_tests {
                 }
                 live::UiMsg::Watched(panes) => watched = panes,
                 live::UiMsg::SpawnZsh | live::UiMsg::Spawn { .. } => spawns += 1,
-                live::UiMsg::ConsumeSpawn { .. } | live::UiMsg::Scroll { .. } => {}
+                live::UiMsg::ConsumeSpawn { .. }
+                | live::UiMsg::Scroll { .. }
+                | live::UiMsg::DocumentRead { .. }
+                | live::UiMsg::ConsumeDocument { .. } => {}
                 live::UiMsg::Messaging { .. }
                 | live::UiMsg::Task { .. }
                 | live::UiMsg::EventPage { .. }
@@ -5616,6 +5829,82 @@ mod launcher_host_tests {
             0,
             query,
         )
+    }
+    #[test]
+    fn document_return_anchor_survives_refresh_and_reconciles_a_removed_seat() {
+        let model = fixture();
+        let mut focus = FocusState::default();
+        focus.reconcile(None, &model);
+        focus
+            .apply(
+                &model,
+                FocusAction::Activate(SeatId::from_u128(2), FocusOrigin::Row),
+                &[],
+                Instant::now(),
+            )
+            .unwrap();
+        let anchor = focus.stage.clone().unwrap();
+        let mut next = model.clone();
+        next.seats.get_mut(&SeatId::from_u128(2)).unwrap().title = "updated while reading".into();
+        focus.restore(anchor.clone(), &next);
+        assert_eq!(
+            focus.stage.as_ref().unwrap().focused,
+            Some(SeatId::from_u128(2))
+        );
+        next.apply(bbt_ui_model::event::Update::SeatClosedByDaemon {
+            seat: SeatId::from_u128(2),
+        })
+        .unwrap();
+        focus.restore(anchor, &next);
+        let focused = focus.stage.as_ref().unwrap().focused;
+        assert_ne!(focused, Some(SeatId::from_u128(2)));
+        assert!(focused.is_some_and(|id| next.seats.contains_key(&id)));
+    }
+    #[test]
+    fn document_keys_never_navigate_the_covered_pane_and_balance_prior_pty_releases() {
+        let mut state = keyboard::State::default();
+        let mut letter = test_key(
+            &Key::Character("a".into()),
+            PhysicalKey::Code(KeyCode::KeyA),
+            Some("a"),
+            ModifiersState::empty(),
+            false,
+        );
+        assert!(matches!(
+            route_input(&mut state, &letter, 3 << 18, None),
+            RoutedKey::Terminal(_)
+        ));
+        letter.state = ElementState::Released;
+        let routed = route_document(&letter, 3 << 18);
+        assert!(matches!(
+            finish_route(&mut state, &letter, routed),
+            RoutedKey::Terminal(_)
+        ));
+        letter.state = ElementState::Pressed;
+        let routed = route_document(&letter, 3 << 18);
+        assert_eq!(finish_route(&mut state, &letter, routed), RoutedKey::Local);
+        letter.state = ElementState::Released;
+        let routed = route_document(&letter, 3 << 18);
+        assert_eq!(finish_route(&mut state, &letter, routed), RoutedKey::Local);
+        let navigation = test_key(
+            &Key::Named(NamedKey::ArrowLeft),
+            PhysicalKey::Code(KeyCode::ArrowLeft),
+            None,
+            ModifiersState::SUPER | ModifiersState::ALT,
+            false,
+        );
+        assert_eq!(route_document(&navigation, 0), RoutedKey::Local);
+        let down = test_key(
+            &Key::Named(NamedKey::PageDown),
+            PhysicalKey::Code(KeyCode::PageDown),
+            None,
+            ModifiersState::empty(),
+            false,
+        );
+        assert_eq!(
+            route_document(&down, 0),
+            RoutedKey::LocalPage(PageCommand::PageDown)
+        );
     }
     #[test]
     fn graph_navigation_is_local_and_global_shortcuts_still_reach_the_app() {

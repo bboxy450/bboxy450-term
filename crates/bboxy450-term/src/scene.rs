@@ -38,6 +38,26 @@ pub struct ConversationLayout {
     pub actions: ui::modules::stream_dock::Regions,
     context: ui::Context,
 }
+pub struct DocumentLayout {
+    pub layout: c::Layout,
+    pub regions: ui::modules::document_modal::controller::Regions,
+    context: ui::Context,
+    viewport_size: [f32; 2],
+}
+impl DocumentLayout {
+    pub fn matches(&self, size: [f32; 2], ctx: ui::Context) -> bool {
+        self.viewport_size == size
+            && self.context.theme == ctx.theme
+            && self.context.density == ctx.density
+            && self.context.seat == ctx.seat
+            && self.context.swarm == ctx.swarm
+            && self.context.focused == ctx.focused
+            && self.context.selected == ctx.selected
+    }
+    pub fn paint(&self) -> Vec<c::Paint> {
+        c::paint(&self.layout, self.context)
+    }
+}
 pub struct LocalPageLayout {
     pub layout: c::Layout,
     pub viewport: Rect,
@@ -1002,7 +1022,9 @@ impl Scene {
             )
             .map_err(|e| e.to_string())?;
         let regions = ui::modules::composer::Regions::new(&layout).map_err(|e| e.to_string())?;
-        let actions = ui::modules::stream_dock::Regions::dock(&layout, &view.stream);
+        let mut actions = ui::modules::stream_dock::Regions::dock(&layout, &view.stream);
+        actions.record_text_links(&layout, &self.metrics);
+        actions.attachments("composer/attachments", &view.composer.attach);
         Ok(ConversationLayout {
             context: ctx,
             layout,
@@ -1200,6 +1222,68 @@ impl Scene {
             }
         }
         Ok(ops)
+    }
+    pub fn document_layout(
+        &self,
+        size: [f32; 2],
+        host: &bboxy450_term::documents::Host,
+    ) -> Result<DocumentLayout, String> {
+        let ctx = self.ui_context();
+        let document = host.view();
+        let shell = ui::modules::document_modal::DocumentModal {
+            document,
+            modal: true,
+            viewport: size,
+            scroll: host.scroll.offset,
+            record_links: Some(host.links.clone()),
+            notice: host.error.as_ref().or(host.notice.as_ref()).cloned(),
+            ..Default::default()
+        };
+        let element = shell.element_with_body(ctx, &self.metrics, size, &|width| {
+            if let Some(prepared) = &host.prepared {
+                prepared.markdown.hosted_body_element(
+                    &prepared.document.title,
+                    ctx,
+                    &self.metrics,
+                    width,
+                    &host.links,
+                    host.scroll.horizontal(),
+                )
+            } else {
+                c::Element::Text(c::Text::new(
+                    shell.document.body.clone(),
+                    ui::Text::default(),
+                ))
+            }
+        });
+        let w = 980_f32.min(size[0] * 0.94);
+        let h = size[1] * 0.82;
+        let rect = Rect::new((size[0] - w) / 2., (size[1] - h) / 2., w, h);
+        let layout = element
+            .layout(rect, ctx, &self.metrics)
+            .map_err(|e| e.to_string())?;
+        let regions = ui::modules::document_modal::controller::Regions::retained(&layout);
+        Ok(DocumentLayout {
+            layout,
+            regions,
+            context: ctx,
+            viewport_size: size,
+        })
+    }
+    pub fn foreground_with_document(
+        &self,
+        size: [f32; 2],
+        launcher: Option<&LauncherLayout>,
+        hud: Option<&PerfHud>,
+        conversation: Option<&ConversationLayout>,
+        document: Option<&DocumentLayout>,
+    ) -> Vec<c::Paint> {
+        let mut ops = self.foreground_with_conversation(size, launcher, None, conversation);
+        if let Some(document) = document {
+            ops.extend(document.paint());
+        }
+        ops.extend(self.overlay(size, hud));
+        ops
     }
     pub fn foreground_with_conversation(
         &self,
@@ -1682,6 +1766,67 @@ mod launcher_tests {
                 "real-task-id".into()
             ))
         );
+    }
+
+    #[test]
+    fn document_uses_effective_context_without_moving_panes_and_keeps_hud_last() {
+        let mut scene = Scene::new();
+        let mut preferences = bboxy450_term::settings::Preferences::default();
+        preferences.appearance.theme = "light".into();
+        preferences.appearance.density = "compact".into();
+        scene.set_appearance(&preferences, ui::Theme::Dark);
+        let size = [1600., 960.];
+        let panes = scene.pane_bounds(&scene.layout(size, false).unwrap());
+        let mut host = bboxy450_term::documents::Host::default();
+        host.show("#44".into());
+        let document = scene.document_layout(size, &host).unwrap();
+        assert_eq!(document.context.theme, ui::Theme::Light);
+        assert_eq!(document.context.density, ui::Density::Compact);
+        assert!(document.matches(size, scene.ui_context()));
+        let hud = crate::perf_hud(
+            bbt_rt::HitchMeter::new(120.).perf_record(std::time::Instant::now(), 0.),
+        );
+        let document_ops = document.paint();
+        let hud_ops = scene.overlay(size, Some(&hud));
+        let foreground =
+            scene.foreground_with_document(size, None, Some(&hud), None, Some(&document));
+        assert_eq!(foreground.len(), document_ops.len() + hud_ops.len());
+        assert_eq!(
+            format!("{:?}", &foreground[..document_ops.len()]),
+            format!("{document_ops:?}")
+        );
+        assert_eq!(
+            format!("{:?}", &foreground[document_ops.len()..]),
+            format!("{hud_ops:?}")
+        );
+        assert_eq!(
+            panes,
+            scene.pane_bounds(&scene.layout(size, false).unwrap())
+        );
+    }
+
+    #[test]
+    fn repeated_document_publications_keep_the_original_focus_swell_instant() {
+        let record =
+            bbt_proto::SeatRecord::new(bbt_mux::Ulid::new(), bbt_mux::Ulid::new(), "Anchor", "zsh");
+        let seat = SeatId::from_u128(record.id.0);
+        let generation = record.generation;
+        let mut model = bboxy450_term::model::build(
+            &[record],
+            &bboxy450_term::grids::Grids::new(),
+            &Default::default(),
+        );
+        let landed = Instant::now();
+        assert!(model.attention_focus(seat, generation, None, Some(landed)));
+        let mut scene = Scene::live();
+        for _ in 0..3 {
+            model.document_reply = Some(std::sync::Arc::new(bboxy450_term::documents::Reply {
+                id: bbt_mux::Ulid::new(),
+                response: bboxy450_term::documents::Response::Failed("not_found: retained".into()),
+            }));
+            scene.set_model(&model, &model.ui.window.stage);
+            assert_eq!(scene.swells.get(&seat), Some(&landed));
+        }
     }
 
     /// Captured also on the unchanged accepted source. Compare the complete

@@ -1,0 +1,53 @@
+Document hosting checkpoint 2 + M3-adjacent attachment normalization — verified handoff
+
+Exact clean gated product source: e733fe14254a7a1fc9fea68a01781f31a977c748 (GPG G).
+Accepted base: e716b26928c6b70ffe4704230174ffac4ab8a246, includes Settings e9c4d01d and ATTENTION.
+Verified Python driver tip: 46b5f6689b6764550ec282911d043cc1b0833583 (GPG G); the ONLY code path changed after the gate is tests/document_host_ctl.py. Product Rust/UI/lab sources are byte-identical to e733fe14.
+Separate approved normalization commit: 82660629 (GPG G).
+Branch/worktree: nyx-document-host, /Users/feral/mydev/bboxy450-term-nyx.
+Retained exact clean source cut: /Users/feral/mydev/bboxy450-term-nyx/target/ci-doc-e733fe14254a (kept for binary resource paths/review; clean). No second CI gate or post-gate product edit.
+
+Mechanisms (lines in gated source):
+crates/bboxy450-term/src/documents.rs:16 — existing GuiAction::Knowledge resolve/fetch; Reader matches op IDs, checks complete portable Result <=256 KiB including metadata/resources/error, rejects stale references by name; Host epochs drain old replies without reopening a closed/replaced modal.
+crates/bboxy450-term/src/live.rs:1048 — Markdown preparation is spawn_blocking, with independent Knowledge operation correlation and retained completion; Input/Resize/Applied service stays independent. Existing Graph loader, Settings context watch, event lane/ACK/read marks unchanged.
+crates/bboxy450-term/src/model.rs:523 — retain document_reply alongside events, operation_results, history, Settings, attention/focus_swell/episodes; rebuild at1111 preserves it and the original attention landing Instant.
+crates/bboxy450-term/src/cockpit.rs:98 — local DocumentRead/ConsumeDocument intents only, translating through the existing Knowledge wire action.
+crates/bboxy450-term/src/main.rs:1203 — open/close/drive, one Stage return anchor, modal key/pointer/wheel ownership, prior PTY release balance; close before explicit pane activation at2130; shared sync_text_ime at1358 restores the surviving owner.
+crates/bboxy450-term/src/scene.rs:1226 — foreground native document uses Scene::ui_context(), clipped retained layout and existing chrome submission; HUD remains last. No renderer/shader/submit changes.
+crates/bbt-ui/src/modules/document_modal/controller.rs:176 — clipped semantic link hits, missing-number chips inert, bounded vertical and per-key horizontal scrolling; deferred footer/source/expand actions return named unavailable outcomes.
+crates/bbt-ui/src/modules/document_modal.rs:1308 — kit-owned body/controller shell with visible named read errors and optional public record links; default fixture output preserved.
+crates/bbt-doc/src/markdown/mod.rs + layout.rs:215 — semantic provider metadata/link targets, retained code/table/Mermaid viewports; no manufactured YAML or signature verification claim.
+crates/bbt-ui/src/modules/stream_dock/actions.rs:264 — measured text/attachment action regions, without paint/layout changes.
+crates/bboxy450-term/src/messaging.rs:234,407,591,816 and messaging/history.rs:398 — original List attachment strings by message id, capped as whole references and named on truncation; 128-row/256 KiB list bound; one bracket normalization building point, idempotent for existing [[...]], unknown shapes refuse before Send. Delegate retains its plain provider path.
+crates/bboxybook/capture-inputs.js:223 + src/documents.rs:33,78 — public record index plus every live top-level document frame in paint order/clips, resolved/missing states only. No record lookup native implementation.
+Cargo edge: app depends on existing local bbt-doc; no dependency version upgrade. lib.rs export only. Tests: app/tests/documents.rs, bbt-ui/tests/document_host.rs, bbt-doc/tests/record_host.rs and bboxybook/tests/documents.rs.
+
+Acceptance evidence:
+- Unique current #N from stream/task/attachment and within the viewer: app document tests11/0, kit host5/0, record host3/0. The real IO regression composes/sends a task attachment, keeps its original List reference and opens the record through the actual Knowledge read.
+- Native Markdown/Mermaid scroll shell: record_host wide Mermaid/code/table panning, document-host nested viewport/scroll bounds, clipped hit regions and missing-link inertness all pass in the exact workspace gate.
+- Named read failures: stale/oversize/not-found/disconnected/known backend loss complete once and remain visible; no clipping, retry only on a new explicit open.
+- Close/focus: document return anchor reconciles removed/replaced seats; covered keys and prior PTY releases balance; explicit activation dismisses before Focus apply; repeated publications keep the original ATTENTION Instant (gate tests).
+- Non-blocking reads: same-GUI and other-GUI held-provider Input/Resize tests pass; real_io_echo_resize_reflow_and_logic_loss_retains_last_frame passes; no new RPC, watcher, consumer, ACK or authority fork.
+- M3-adjacent attachment fix: tests wrap task paths once, preserve existing refs, refuse unknown shapes, preserve Delegate's path; the real recipient row resolves the attachment.
+
+Actual verification commands/results:
+sh scripts/ci-local.sh --parity — EXIT0, exact clean detached e733fe14, private target, memory custody, jobs2/O1/debug guards. Raw log: document-host-checkpoint2-ci.log. Workspace1234 passed/0failed/24ignored; strict workspace all-target Clippy -D warnings0; UI IO lint0; native smoke0 (idle10.007s,0frames/0callbacks);23 invariants0failures,8 inherited slow checks skipped.
+Full current catalogue2144;2040 required/measured geometry,0unproven/0mismatches;72 advisory keys exactly match accepted Settings,0new/removed review keys; all16 added resolved/missing link cases within policy;96 Settings cases retained. Legacy diagnostic1664/851 pixel reviews is non-gating.
+Gate-built bboxybook replay-images --manifest <accepted Settings cases.json> --out baseline-replay — EXIT0,2128 PNGs rendered from the unchanged signed/pinned baseline input file. File comparison v2 — EXIT0,2128/2128 exact PNG SHA256 matches,0changed. See document-host-checkpoint2-byte-replay.json and byte-compare.log. Baseline input/capture/backdrops/native hashes bind signed24ad4450 manifestSHA2a6ed8fc2de2065d7132937ffc7f9eafe8f24d96490aaa6ba8433031b2219399.
+Python tests/document_host_ctl.py with preserved gate binary, --source-root exact cut and fresh private --out — final EXIT0. ctl seat ls/spawn/type/wait/screen/capture all0; current#44 loaded; fresh1600x960 frame(stale=false,occluded=false), PNGSHA4d5f18b2c9031c2e7abe6f4b21c324de39f1367de5899138b5e69144ae825206. Image was read.2 fresh32-byte keys0600 in0700 fixture directory; process0, children reaped; account/runtime/project removed. No operator input, desktop automation, production identity or login Keychain.
+
+Failures/instrument corrections (retained, not hidden):
+Pre-run static audit caught the ctl spawn shape: data.seat is an ID, not a nested record (bca39d01).
+First native script EXIT1: it incorrectly expected a fixture label in the startup log. Product loaded#44 and all initial ctl calls were0; app exited0/reaped. Driver46b5f668 verifies actual generated key metadata instead; fresh-account retry EXIT0. Existing live.rs656 labels all non-memory selectors native, including fixtures; source selection in identity/io.rs113 is correct. Reported to Vesper/Kestrel; no product logging/custody edit.
+First byte comparator EXIT1 before checking PNGs: direct JSON equality rejected4612 float serialization representations (max observed delta1.1368683772161603e-13). The original input file never changed; exact Case/fixture structure and string/integer fields remain, changed float representations are identical IEEE754 f32 values. Corrected read-only comparison of the already-rendered files EXIT0 with all2128 exact PNG hashes. No renderer rerun, pixel/geometry tolerance or acceptance relaxation. Both original logs and corrected instrument source/hash are retained.
+Earlier development failures/commands remain in core.log; final proof supersedes its historical Pending sections.
+
+Artifacts/provenance:
+Final retained cut: /Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a
+Signed evidence: verdict.json, ci.log, native.json, byte-replay.json, byte-compare.log, gallery-hashes.jsonl under .bboxy/runs/document-host-checkpoint2-*.
+Gallery manifest binds13804 files,878117481 bytes; SHA59c3286670850b54f602dc2bf2581e73efab604003dc036e543d344d39430416.
+Gate binaries SHA: bboxybook a2aa70b6f1c9f2a93b091d8257f02a0d0e197affc9e497a0773283683d9639da; app f2b6eb615b40bb397bd26203d3e8ff2a927f6e4a8f1a416f718a6f0f974dd10f.
+Own inactive dev cache retired7525126144 allocated bytes; own gate cache retired4310331392; total11835457536. Binaries/galleries/reports/hashes retained outside deleted targets; peer baseline read-only.
+Main advanced while gated; pinned observed origin/main 683e6bd1d051fdcf90d5ee1e7fc007a8571dc312. No rebase/re-gate per repository rule; Oracle verifies the merged tree. Exact list is in verdict.json.
+
+Deferred/not claimed: lookup, document find, selection/source copy, feed, terminal-path semantics, pinning;8 inherited slow invariants and967 load not run here. No manual/hardware IME test or external publication/merge. Existing provider cap remains256 KiB.

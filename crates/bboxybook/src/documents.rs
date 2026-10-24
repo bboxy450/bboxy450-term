@@ -27,6 +27,8 @@ pub const STATES: &[&str] = &[
     "modal · plain markdown",
     "title in body",
     "different first heading",
+    "link · resolved",
+    "link · missing",
 ];
 pub fn cases() -> Vec<Case> {
     let mut all = vec![];
@@ -83,11 +85,74 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
         .ok_or("Document frames missing")?
         .iter()
         .map(|frame| {
-            let view: DocumentModal = serde_json::from_value(frame["view"].clone())?;
+            let mut view: DocumentModal = serde_json::from_value(frame["view"].clone())?;
             let host = &frame["host"];
             let available = [seat_rows::number(host, "w")?, seat_rows::number(host, "h")?];
             let markdown = bbt_doc::parse(&view.document.body);
+            if let Some(index) = frame["record_index"]
+                .as_array()
+                .filter(|index| !index.is_empty())
+            {
+                let catalogue: Vec<_> = index
+                    .iter()
+                    .map(|entry| {
+                        let mut record = bbt_doc::Markdown::default();
+                        record
+                            .set_metadata(&json!({"number":entry["n"]}))
+                            .expect("record index metadata");
+                        (
+                            entry["path"].as_str().unwrap_or_default().to_owned(),
+                            record,
+                        )
+                    })
+                    .collect();
+                let mut links = bbt_ui::modules::document_modal::controller::RecordLinks::new();
+                let mut targets = markdown.link_targets();
+                for field in view
+                    .document
+                    .links
+                    .iter()
+                    .chain(view.document.children.iter())
+                    .chain(view.document.depends_on.iter())
+                    .chain(view.document.parent.iter())
+                    .chain(view.document.superseded_by.iter())
+                    .chain(view.document.prov.derived_from.iter())
+                {
+                    targets.extend(
+                        bbt_ui::modules::graph_tab::parse_links(field)
+                            .into_iter()
+                            .map(|link| link.slug),
+                    );
+                }
+                for target in targets {
+                    let number = bbt_doc::links::resolve(
+                        catalogue
+                            .iter()
+                            .map(|(path, markdown)| bbt_doc::links::Record { path, markdown }),
+                        &target,
+                    )
+                    .ok()
+                    .and_then(|resolved| resolved.record.markdown.frontmatter.number());
+                    links.insert(target, number);
+                }
+                view.record_links = Some(links);
+            }
             let element = view.element_with_body(ctx, &metrics, available, &|width| {
+                let title: Option<&str> = Some(if view.document.title.is_empty() {
+                    &view.document.path
+                } else {
+                    &view.document.title
+                });
+                if let Some(links) = &view.record_links {
+                    return markdown.body_element_with_links(
+                        title,
+                        ctx,
+                        &metrics,
+                        width,
+                        &view.diagrams,
+                        links,
+                    );
+                }
                 markdown.body_element_with_title(
                     Some(if view.document.title.is_empty() {
                         &view.document.path

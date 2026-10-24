@@ -1,0 +1,184 @@
+{
+  "product_source": "e733fe14254a7a1fc9fea68a01781f31a977c748",
+  "driver_binding": {
+    "product_source": "e733fe14254a7a1fc9fea68a01781f31a977c748",
+    "driver_commit": "46b5f6689b6764550ec282911d043cc1b0833583",
+    "product_sources_identical": true,
+    "only_changed_path": "crates/bboxy450-term/tests/document_host_ctl.py",
+    "driver_sha256": "8ef17a1791f8e01eb052ea0804f61114850cbf4898c512270550450e4d922e03",
+    "syntax_exit": 0,
+    "native_script_exit": 0,
+    "assertion_basis": "fresh fixture-generated key file metadata, not the existing memory-only selector log"
+  },
+  "first_attempt": {
+    "source": "e733fe14254a7a1fc9fea68a01781f31a977c748",
+    "scope": "Current #44 native document, concurrent terminal IO and ctl capture; focus/scroll/error semantics are asserted by the Rust integration tests",
+    "custody": "fresh generated debug fixture keys in the private run; never login Keychain",
+    "commands": [
+      {
+        "command": [
+          "seat",
+          "ls"
+        ],
+        "exit": 0,
+        "op": "01M5QV0XCZCSPPQV36BYC42585"
+      },
+      {
+        "command": [
+          "seat",
+          "spawn"
+        ],
+        "exit": 0,
+        "op": "01M5QV0XDZRZ29C5P709Q9V2Y9"
+      },
+      {
+        "command": [
+          "seat",
+          "type"
+        ],
+        "exit": 0,
+        "op": "01M5QV0XJXGJ7S9G0W9GY3EZD6"
+      },
+      {
+        "command": [
+          "seat",
+          "wait"
+        ],
+        "exit": 0,
+        "op": "01M5QV0XM7YTVBQT6F0NQFS3NT"
+      }
+    ],
+    "owned_pid": 52194,
+    "process_exit": 0,
+    "pass_": false,
+    "failure": "AssertionError: document/custody readiness was not proven",
+    "private_account_retired": true
+  },
+  "first_attempt_result": {
+    "argv": [
+      "python3",
+      "/Users/feral/mydev/bboxy450-term-nyx/crates/bboxy450-term/tests/document_host_ctl.py",
+      "--bin",
+      "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/binaries/bboxy450-term",
+      "--source-root",
+      "/Users/feral/mydev/bboxy450-term-nyx/target/ci-doc-e733fe14254a",
+      "--out",
+      "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/native-ctl"
+    ],
+    "product_source": "e733fe14254a7a1fc9fea68a01781f31a977c748",
+    "driver_commit": "bca39d01114e12c3d4c594339e9f1d7e8e7e0a16",
+    "driver_sha256": "13f85650e012913e63dd9b7485654688b63259cf568dcd2e0ad17d07679b5c9c",
+    "start": "2026-10-24T20:53:13.596234+00:00",
+    "exit_code": 1,
+    "end": "2026-10-24T20:54:15.757027+00:00"
+  },
+  "final_attempt": {
+    "source": "e733fe14254a7a1fc9fea68a01781f31a977c748",
+    "scope": "Current #44 native document, concurrent terminal IO and ctl capture; focus/scroll/error semantics are asserted by the Rust integration tests",
+    "custody": "fresh generated debug fixture keys in the private run; never login Keychain",
+    "commands": [
+      {
+        "command": [
+          "seat",
+          "ls"
+        ],
+        "exit": 0,
+        "op": "01M5QV79MNG55MWE13N415SGX5"
+      },
+      {
+        "command": [
+          "seat",
+          "spawn"
+        ],
+        "exit": 0,
+        "op": "01M5QV7C687WH9SZ76AD4ZK8CR"
+      },
+      {
+        "command": [
+          "seat",
+          "type"
+        ],
+        "exit": 0,
+        "op": "01M5QV7CB41HM5HM4SE5E1Q6M1"
+      },
+      {
+        "command": [
+          "seat",
+          "wait"
+        ],
+        "exit": 0,
+        "op": "01M5QV7CCHQMDY1ET21R257C9Q"
+      },
+      {
+        "command": [
+          "seat",
+          "capture"
+        ],
+        "exit": 0,
+        "op": "01M5QV7D0T2MAXKFAPTZ9R32WS"
+      },
+      {
+        "command": [
+          "seat",
+          "screen"
+        ],
+        "exit": 0,
+        "op": "01M5QV7D7GDAP3PB71Y10RCN3A"
+      }
+    ],
+    "owned_pid": 61942,
+    "fixture_store": {
+      "generated_keys": 2,
+      "directory_mode": 448,
+      "key_metadata": [
+        {
+          "size": 32,
+          "mode": 384
+        },
+        {
+          "size": 32,
+          "mode": 384
+        }
+      ]
+    },
+    "seat": "01M5QV7C76REN00GQB6F215ZRN",
+    "frame": {
+      "frame_presented_at": 1792875410472,
+      "frame_seq": 21,
+      "occluded": false,
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/native-ctl-v2/document.png",
+      "seat": null,
+      "stale": false
+    },
+    "image": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/native-ctl-v2/document.png",
+      "width": 1600,
+      "height": 960,
+      "sha256": "4d5f18b2c9031c2e7abe6f4b21c324de39f1367de5899138b5e69144ae825206"
+    },
+    "document_loaded": true,
+    "terminal_io_live": true,
+    "process_exit": 0,
+    "pass_": true,
+    "failure": null,
+    "private_account_retired": true
+  },
+  "final_attempt_result": {
+    "argv": [
+      "python3",
+      "/Users/feral/mydev/bboxy450-term-nyx/crates/bboxy450-term/tests/document_host_ctl.py",
+      "--bin",
+      "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/binaries/bboxy450-term",
+      "--source-root",
+      "/Users/feral/mydev/bboxy450-term-nyx/target/ci-doc-e733fe14254a",
+      "--out",
+      "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/native-ctl-v2"
+    ],
+    "product_source": "e733fe14254a7a1fc9fea68a01781f31a977c748",
+    "driver_commit": "46b5f6689b6764550ec282911d043cc1b0833583",
+    "driver_sha256": "8ef17a1791f8e01eb052ea0804f61114850cbf4898c512270550450e4d922e03",
+    "start": "2026-10-24T20:56:45.438508+00:00",
+    "exit_code": 0,
+    "end": "2026-10-24T20:57:47.138209+00:00"
+  }
+}

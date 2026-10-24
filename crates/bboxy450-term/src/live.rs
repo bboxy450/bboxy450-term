@@ -12,6 +12,7 @@ use std::{
 use crate::{UiEvent, log::Logger};
 use bboxy450_term::{
     cockpit::{self, Session},
+    documents,
     grids::Grids,
     knowledge,
     model::{self, Model, PanePreparer},
@@ -694,6 +695,9 @@ async fn run(
     let mut controls = PaneControls::default();
     let mut history = History::default();
     let mut action_replies = ActionReplies::default();
+    let mut document_reader = documents::Reader::default();
+    let mut document_preparation: Option<(Ulid, tokio::task::JoinHandle<Arc<documents::Reply>>)> =
+        None;
     let mut knowledge_watch = knowledge::Watch::new(knowledge::promises().map_err(invalid)?);
     knowledge_watch.observe(commands.knowledge.enabled.load(Ordering::Acquire));
     let mut in_flight = None;
@@ -764,6 +768,13 @@ async fn run(
                 }
             }
         }
+        if lost
+            && let Some(reply) =
+                document_reader.disconnected("Knowledge connection lost; open again to retry")
+        {
+            Arc::make_mut(&mut model).document_reply = Some(reply);
+            updates.publish(model.clone());
+        }
         knowledge_watch.connection(!lost);
         if let Some(snapshot) = knowledge_watch.publication() {
             Arc::make_mut(&mut model).e2e = Some(snapshot);
@@ -786,6 +797,11 @@ async fn run(
                             publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                         }
                     }
+                },
+                prepared=async {(&mut document_preparation.as_mut().expect("guarded document worker").1).await}, if document_preparation.is_some()=> {
+                    let (id,_)=document_preparation.take().expect("completed document worker");
+                    let reply=prepared.unwrap_or_else(|error|Arc::new(documents::Reply {id,response:documents::Response::Failed(format!("document_preparation_failed: {error}"))}));
+                    Arc::make_mut(&mut model).document_reply=Some(reply); updates.publish(model.clone());
                 },
                 _=commands.knowledge.notify.notified()=> {
                     knowledge_watch.observe(commands.knowledge.enabled.load(Ordering::Acquire));
@@ -857,6 +873,12 @@ async fn run(
                             }
                         }
                     }
+                    UiMsg::DocumentRead {id,read}=> {
+                        if let Some(action)=document_reader.admit(*id,read.clone()) { queue_action(&mut outgoing,action); }
+                    },
+                    UiMsg::ConsumeDocument {id}=> {
+                        if model.document_reply.as_ref().is_some_and(|r|r.id==*id) {Arc::make_mut(&mut model).document_reply=None;}
+                    },
                     UiMsg::Watched(panes)=> {
                         Arc::make_mut(&mut model).ui.window.stage.focused = panes.first().map(|(seat, _)| *seat);
                         controls.set_watched(panes,&mut outgoing,Instant::now());
@@ -1021,7 +1043,10 @@ async fn run(
                         },
                         GuiReply::Error {op,reason}=> {
                             if terminal_reply == Some(ActionReply::Knowledge(op)) {
-                                knowledge_watch.response(op,Err(bbt_mux::knowledge::data_source::CommandError::new("transport",reason.clone())));
+                                let result=Err(bbt_mux::knowledge::data_source::CommandError::new("transport",reason.clone()));
+                                if let Some(work)=document_reader.response(op,result.clone()) {
+                                    document_preparation=Some((op,tokio::task::spawn_blocking(move ||work.prepare())));
+                                } else { knowledge_watch.response(op,result); }
                             }
                             operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Refused(reason.clone()));
                             publish_page_refusal(&mut model,&updates,terminal_reply.as_ref(),&reason)?;
@@ -1042,7 +1067,9 @@ async fn run(
                         GuiReply::Knowledge {op,response}=> {
                             if terminal_reply == Some(ActionReply::Knowledge(op)) {
                                 let result=serde_json::from_value(response).unwrap_or_else(|error| Err(bbt_mux::knowledge::data_source::CommandError::new("invalid_provider_result",format!("invalid knowledge reply: {error}"))));
-                                knowledge_watch.response(op,result);
+                                if let Some(work)=document_reader.response(op,result.clone()) {
+                                    document_preparation=Some((op,tokio::task::spawn_blocking(move ||work.prepare())));
+                                } else {knowledge_watch.response(op,result);}
                             }
                         },
                         GuiReply::History {seat,records,next}=> {
@@ -2503,6 +2530,26 @@ mod tests {
         editor.handle(composer::Command::Edit(bbt_ui::text_edit::Command::Insert(
             "Decision through the production GUI IO owner".into(),
         )));
+        let card = bbt_proto::messaging::TaskCard {
+            id: task_id,
+            path: task_path.into(),
+            title: "Actual task attachment".into(),
+            status: "open".into(),
+            assignee: None,
+            delegated_by: None,
+            updated: None,
+            verify: None,
+        };
+        editor.handle(composer::Command::Attach(
+            bboxy450_term::messaging::task_attachment(&card),
+        ));
+        editor.handle(composer::Command::Attach(composer::Attachment {
+            kind: "record".into(),
+            path: "[[#1]]".into(),
+            title: "#1".into(),
+            ..Default::default()
+        }));
+
         let composer::Outcome::Submit(draft) = editor.handle(composer::Command::Send) else {
             panic!("committed decision");
         };
@@ -2548,15 +2595,93 @@ mod tests {
         })
         .await;
         history.observe(&current.events);
+        let mut list_ops = vec![];
+        for command in history.commands() {
+            if let UiMsg::Messaging { id, .. } = &command {
+                list_ops.push(*id);
+            }
+            sender.send(command).await.unwrap();
+        }
+        until(updates, current, |model| {
+            list_ops
+                .iter()
+                .all(|op| model.operation_results.rows().any(|r| r.op == *op))
+        })
+        .await;
+        history.replies(&current.operation_results);
+        let entries = history.entries(current, client.groups(), &[]);
+        assert!(entries.iter().any(|entry|matches!(entry,Entry::Message {data,..} if data.attach.iter().any(|a|a.path=="[[#1]]"))));
+        let conversation = bbt_ui::modules::composer::Conversation {
+            stream: bbt_ui::modules::stream_dock::StreamDock {
+                entries: entries.clone(),
+                dock: true,
+                ..Default::default()
+            },
+            composer: editor.view.clone(),
+            scroll: 0.,
+        };
+        let layout = crate::scene::Scene::new()
+            .conversation_layout([1400., 1000.], &conversation)
+            .unwrap();
+        fn attachment(
+            n: &bbt_ui::components::Layout,
+            index: usize,
+        ) -> Option<bbt_ui_model::layout::Rect> {
+            if matches!(&n.kind,bbt_ui::components::LayoutKind::Named(key) if key.ends_with(&format!("/body/attach/a{index}")))
+            {
+                Some(n.rect)
+            } else {
+                n.children.iter().find_map(|child| attachment(child, index))
+            }
+        }
+        let mut document = documents::Host::default();
+        for (index, expected) in [format!("[[{task_path}]]"), "[[#1]]".into()]
+            .iter()
+            .enumerate()
+        {
+            let r = attachment(&layout.layout, index).expect("live attachment card");
+            let bbt_ui::modules::stream_dock::Action::OpenRecord(target) = layout
+                .actions
+                .hit([r.x + r.w / 2., r.y + r.h / 2.])
+                .expect("live attachment action")
+            else {
+                panic!("attachment must open a record");
+            };
+            assert_eq!(
+                &target, expected,
+                "plain task paths wrap once; bracketed #N stays intact"
+            );
+            document.show(target);
+            for _ in 0..2 {
+                let (id, read) = document.next_read().expect("resolve then fetch");
+                sender.send(UiMsg::DocumentRead { id, read }).await.unwrap();
+                until(updates, current, |model| {
+                    model.document_reply.as_ref().is_some_and(|r| r.id == id)
+                })
+                .await;
+                assert!(document.apply(current.document_reply.as_ref().unwrap()));
+                sender.send(UiMsg::ConsumeDocument { id }).await.unwrap();
+            }
+            assert!(document.open);
+            assert_eq!(document.prepared.as_ref().unwrap().document.number, Some(1));
+        }
+        eprintln!(
+            "PASS composed task attachment and retained #N -> retained hit -> document modal -> Knowledge resolve/fetch"
+        );
         assert!(history.entries(current, client.groups(), &[]).iter().any(|entry| matches!(entry, Entry::Message {data,..} if data.text == "Decision through the production GUI IO owner" && data.kind.as_deref() == Some("decision") && data.issuer_kind.as_deref() == Some("local-dev") && data.unread)));
         assert!(
             history.actions().is_empty(),
             "receive, publication and transport ACK do not mark read"
         );
+        document.close();
+        history.observe(&current.events);
         let action = history
             .viewed_all()
             .expect("explicit view advances the durable read-mark");
-        let read = current.events.cursors()[&stream].high;
+        let bboxy450_term::messaging::HistoryAction::Read { sequence: read, .. } = &action else {
+            panic!("explicit view sends a read mark");
+        };
+        let read = *read;
         sender.send(action.into()).await.unwrap();
         until(updates, current, |model| {
             model
@@ -2969,6 +3094,93 @@ mod tests {
         })
         .await;
         eprintln!("PASS real IO: standalone hi row in Replica, prepared frame published");
+        // Document resolve/fetch uses the same admitted session as terminal
+        // controls; its result survives later grid publications until consumed.
+        let original = (current.screens[&seat].cols, current.screens[&seat].rows);
+        let document_op = Ulid::new();
+        sender
+            .send(UiMsg::DocumentRead {
+                id: document_op,
+                read: documents::Read::Resolve("#1".into()),
+            })
+            .await
+            .unwrap();
+        sender
+            .send(UiMsg::Resize {
+                seat,
+                generation: view.generation,
+                cols: 81,
+                rows: 17,
+            })
+            .await
+            .unwrap();
+        input(&sender, seat, view.generation, b"echo DOCUMENT_IO_LIVE\r").await;
+        until(&updates, &mut current, |model| {
+            model
+                .document_reply
+                .as_ref()
+                .is_some_and(|r| r.id == document_op)
+                && model.screens.get(&seat).is_some_and(|screen| {
+                    screen.cols == 81
+                        && screen.rows == 17
+                        && lines(screen)
+                            .iter()
+                            .any(|line| line.trim() == "DOCUMENT_IO_LIVE")
+                })
+        })
+        .await;
+        let documents::Response::Resolved(reference) =
+            &current.document_reply.as_ref().unwrap().response
+        else {
+            panic!("document did not resolve: {:?}", current.document_reply);
+        };
+        let reference = reference.clone();
+        sender
+            .send(UiMsg::ConsumeDocument { id: document_op })
+            .await
+            .unwrap();
+        let fetch_op = Ulid::new();
+        sender
+            .send(UiMsg::DocumentRead {
+                id: fetch_op,
+                read: documents::Read::Fetch(reference),
+            })
+            .await
+            .unwrap();
+        until(&updates, &mut current, |model| {
+            model
+                .document_reply
+                .as_ref()
+                .is_some_and(|r| r.id == fetch_op)
+        })
+        .await;
+        assert!(
+            matches!(&current.document_reply.as_ref().unwrap().response,documents::Response::Fetched(record) if record.document.number==Some(1))
+        );
+        sender
+            .send(UiMsg::ConsumeDocument { id: fetch_op })
+            .await
+            .unwrap();
+        sender
+            .send(UiMsg::Resize {
+                seat,
+                generation: view.generation,
+                cols: u16::try_from(original.0).unwrap(),
+                rows: u16::try_from(original.1).unwrap(),
+            })
+            .await
+            .unwrap();
+        until(&updates, &mut current, |model| {
+            model
+                .screens
+                .get(&seat)
+                .is_some_and(|screen| (screen.cols, screen.rows) == original)
+        })
+        .await;
+        eprintln!(
+            "PASS document Knowledge resolve/fetch and concurrent Input/Resize through one IO owner"
+        );
+
         messaging_through_the_one_io_owner(
             &sender,
             &updates,

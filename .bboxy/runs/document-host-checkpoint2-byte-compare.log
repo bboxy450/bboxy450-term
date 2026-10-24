@@ -1,0 +1,82 @@
+Read-only byte comparison instrument, preserved verbatim after its actual EXIT0.
+Helper SHA256: 97bdbc5d24ec221eb290fa5502e808829aec54f43ef7ef6b6894d549c19ee952
+Original comparator stopped on an over-strict output-manifest equality check, before checking PNGs.
+Native replay command EXIT0. The pinned input-file hash remains unchanged. The v2 instrument checks exact structure/strings/integers, identical IEEE754 f32 for differing float representations, then exact SHA256 equality of all baseline/candidate PNGs. No pixel or geometry tolerance changes.
+
+BEGIN INSTRUMENT
+from pathlib import Path
+import argparse, hashlib, json, struct
+p=argparse.ArgumentParser()
+p.add_argument('--baseline',type=Path,required=True)
+p.add_argument('--replay',type=Path,required=True)
+p.add_argument('--out',type=Path,required=True)
+p.add_argument('--source',required=True)
+p.add_argument('--baseline-source',required=True)
+p.add_argument('--baseline-hashes',type=Path,required=True)
+a=p.parse_args()
+def digest(path):
+ h=hashlib.sha256()
+ with path.open('rb') as f:
+  while data:=f.read(1048576):h.update(data)
+ return h.hexdigest()
+manifest=[json.loads(line) for line in a.baseline_hashes.read_text().splitlines()]
+assert manifest[0]['source']==a.baseline_source, 'baseline source binding changed'
+assert Path(manifest[0]['root']).resolve()==a.baseline.resolve(), 'baseline root changed'
+expected={row['path']:row for row in manifest[1:]}
+input_paths=['cases.json','capture.json',*[p for p in expected if p.startswith('backdrops/')]]
+for rel in input_paths:
+ assert digest(a.baseline/rel)==expected[rel]['sha256'], f'baseline input hash changed: {rel}'
+cases=json.loads((a.baseline/'cases.json').read_text())
+replayed=json.loads((a.replay/'manifest.json').read_text())
+normalized_floats=0
+max_float_delta=0
+def roundtrip(a,b,path='case'):
+ global normalized_floats,max_float_delta
+ if a==b:return
+ if isinstance(a,dict) and isinstance(b,dict):
+  assert a.keys()==b.keys(), f'replay manifest keys changed: {path}'
+  for key in a:roundtrip(a[key],b[key],path+'.'+key)
+ elif isinstance(a,list) and isinstance(b,list):
+  assert len(a)==len(b), f'replay manifest list changed: {path}'
+  for av,bv in zip(a,b):roundtrip(av,bv,path+'[]')
+ elif isinstance(a,float) and isinstance(b,float):
+  assert struct.pack('!f',a)==struct.pack('!f',b), f'replay numeric value changed at f32 precision: {path}'
+  normalized_floats+=1;max_float_delta=max(max_float_delta,abs(a-b))
+ else:raise AssertionError(f'replay manifest value changed: {path}')
+roundtrip(cases,replayed)
+rows=[]
+for case in cases:
+ rel=f"{case['component']}/{case['slug']}-{case['density']}-{case['theme']}.png"
+ old=a.baseline/'native'/rel;new=a.replay/rel
+ baseline_hash=digest(old)
+ assert baseline_hash==expected['native/'+rel]['sha256'], f'baseline PNG hash changed: {rel}'
+ rows.append({'path':rel,'baseline':baseline_hash,'candidate':digest(new)})
+changed=[r['path'] for r in rows if r['baseline']!=r['candidate']]
+proof={'scope':'Exact native PNG byte comparison after rendering the pinned baseline input file; separate from strict geometry parity','source':a.source,'baseline_source':a.baseline_source,'baseline':str(a.baseline.resolve()),'replay':str(a.replay.resolve()),'baseline_hash_manifest_sha256':digest(a.baseline_hashes),'verified_baseline_inputs':len(input_paths),'cases_sha256':digest(a.baseline/'cases.json'),'capture_sha256':digest(a.baseline/'capture.json'),'output_manifest_sha256':digest(a.replay/'manifest.json'),'manifest_roundtrip':{'float32_equivalent':True,'normalized_float_representations':normalized_floats,'max_observed_float64_delta':max_float_delta,'note':'Diagnostic for serde_json parse/serialize float representations; original input-file hash and exact PNG hashes remain authoritative. No pixel or geometry tolerance added.'},'count':len(rows),'identical':len(rows)-len(changed),'changed':changed,'files':rows}
+a.out.write_text(json.dumps(proof,indent=2)+'\n')
+print(json.dumps({k:v for k,v in proof.items() if k!='files'},indent=2))
+raise SystemExit(bool(changed))
+END INSTRUMENT
+
+ACTUAL OUTPUT / EXIT0
+{
+  "scope": "Exact native PNG byte comparison after rendering the pinned baseline input file; separate from strict geometry parity",
+  "source": "e733fe14254a7a1fc9fea68a01781f31a977c748",
+  "baseline_source": "e91906fc30c4305e5b85e69be9b269b253b2778b",
+  "baseline": "/Users/feral/mydev/bboxy450-term-exec6/target/settings-parity-e91906fc30c4",
+  "replay": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/baseline-replay",
+  "baseline_hash_manifest_sha256": "2a6ed8fc2de2065d7132937ffc7f9eafe8f24d96490aaa6ba8433031b2219399",
+  "verified_baseline_inputs": 2130,
+  "cases_sha256": "44e2e524d959dbb46ff9dc5098b67e7a140041c062fc4b0f14186934c886f6c9",
+  "capture_sha256": "2070f4976ba5485769f7fb90f06eed74bc84fef63f35e245df222f119a2cacbe",
+  "output_manifest_sha256": "79427fec272c095e5313b07735407cc4349599f6b49eee5f3973a1b920546ead",
+  "manifest_roundtrip": {
+    "float32_equivalent": true,
+    "normalized_float_representations": 4612,
+    "max_observed_float64_delta": 1.1368683772161603e-13,
+    "note": "Diagnostic for serde_json parse/serialize float representations; original input-file hash and exact PNG hashes remain authoritative. No pixel or geometry tolerance added."
+  },
+  "count": 2128,
+  "identical": 2128,
+  "changed": []
+}
