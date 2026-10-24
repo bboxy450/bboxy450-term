@@ -249,10 +249,18 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         .back()
                         .map(|record| match record.as_ref() {
                             bbt_proto::events::GuiEventRecord::Event(row) => format!(
-                                "{}:{}:{}",
+                                "{}:{}:{}:{:?}",
                                 row.metadata.reference.position.stream,
                                 row.metadata.reference.position.sequence,
-                                row.metadata.subject
+                                row.metadata.subject,
+                                match &row.payload {
+                                    bbt_proto::events::GuiEventPayload::Activity { summary } =>
+                                        summary.reason.as_ref().map(|reason| reason
+                                            .chars()
+                                            .take(256)
+                                            .collect::<String>()),
+                                    _ => None,
+                                }
                             ),
                             bbt_proto::events::GuiEventRecord::Gap(gap) => {
                                 format!("gap:{}:{}..{}", gap.stream, gap.first, gap.last)
