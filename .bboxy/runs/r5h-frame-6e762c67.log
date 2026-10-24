@@ -1,0 +1,136 @@
+R5h ONE 967/50 frame attempt: failed; upstream notification admission finding
+Recorded 2026-10-24T21:36:59.861593+00:00
+Owner Rook Ashwhisker <EXECUTOR>
+
+Source: 6e762c670393e92acc6ae99ecf256f57c48b64d4, signed; exact clean normal CI EXIT 0.
+CI evidence successor 047892cb4442c465dacfb9070e4af8caf32d4a76, source bytes unchanged.
+CI raw .bboxy/runs/r5h-checkpoint-fix-ci.log SHA256 67bb166427cfb8682ec696ae911c13335adc5d1c60dd37586248ba353aaf1014.
+Normal CI: all gates passed; invariants 22 checks, 0 failures, 9 slow checks skipped.
+Fixture fix: 10 loaded O0 runs, all 40 tests passed; strict all-target workspace Clippy EXIT 0.
+No assertion, policy, clock or product deadline changed for this frame attempt.
+
+Command: sh scripts/gates.sh frame
+Environment: GATE_SEATS=967 GATE_WATCHED=50 GATE_SECONDS=10; release O3, debug assertions enabled, memory custody positively witnessed.
+Raw root: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-frame-bzprwdkp
+Preflight UTC: 2026-10-24T21:15:04.447882+00:00
+Preflight load1: 5.07080078125; free bytes: 20694122496.
+App PID 98716; wrapper PID 98706; 969 recorded owned PIDs, all reaped, no remaining rows.
+EXIT 1; elapsed 112.631010500 seconds; outer timeout=False.
+Failure: r5-unsettled-after-producers-stopped; unchanged 20-second settle guard.
+GUI PAUSED 47/50; later authoritative logic CURRENT Snapshot PAUSED 47/50; examined ring tails PAUSED 50/50.
+No first-settled boundary exists: official stop-to-settled checkpoint acceptance is UNPROVEN.
+No retry. QUIET START 539b6dd8-8f75-4e29-a612-dd9b7b9e9ebd; END 59aa5829-5d2d-4bb9-9688-847d21f10c79.
+Raw table SHA256 09bfaffa92f3361ee7e4195905ccece4aa6bd7a10cb59e08bc8a8c600b071eab
+Binary retained outside target: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-frame-bzprwdkp/bboxy450-term
+Binary before/after SHA256 80032e97b19d45d8d6d3e1593c5cb8d99151c57ad762f87492adc8863fd49689; unchanged=true.
+
+Context preserved, no attribution manufactured:
+Aster pre-existing gate 79019 was present at launch under the running-gates exception; it ended with a 50-PTY openpty code 6 failure inside the frame interval. 967+50 can exceed ptmx_max=999. Future 967 attempt must start with no other full gate running.
+Seraph reported ~10 seconds of dependency compilation at 14:15 before stopping; earlier short build/test and Nyx pre-existing renderer also crossed the quiet notice, with their reports retained in local inbox/context. No claim of an otherwise perfectly isolated run.
+
+Stop-to-timeout diagnostic partition ONLY (not stop-to-settled):
+logic: wall_ns=20001186500, missed_delta=1, overwritten_delta=57416, untracked_delta=0.
+  logic_turn: calls=5892, elapsed_ns=20003981753, work=5006, bytes=0, wall_fraction=1.000139754.
+  read_ring_rpc: calls=5006, elapsed_ns=13960175803, work=0, bytes=0, wall_fraction=0.697967383.
+  checkpoint_rpc: calls=184, elapsed_ns=1704886874, work=0, bytes=0, wall_fraction=0.085239287.
+  parse: calls=5264, elapsed_ns=1288532141, work=167177, bytes=71322568, wall_fraction=0.064422785.
+  maintenance: calls=5892, elapsed_ns=1168489913, work=0, bytes=0, wall_fraction=0.058421030.
+  receive: calls=5892, elapsed_ns=390423362, work=0, bytes=0, wall_fraction=0.019520010.
+supervisor: wall_ns=20001424291, missed_delta=21, overwritten_delta=34846, untracked_delta=0.
+  supervisor_turn: calls=12233, elapsed_ns=19999010157, work=0, bytes=0, wall_fraction=0.999879302.
+  supervisor_query: calls=5190, elapsed_ns=9084519894, work=0, bytes=0, wall_fraction=0.454193650.
+  supervisor_sweep: calls=12233, elapsed_ns=19288165959, work=11829311, bytes=0, wall_fraction=0.964339623.
+Watched replay pages 2133/5006 = 42.608869357%; overall fraction is NOT a both-runnable quota assertion.
+Checkpoint RPC fraction 8.523928688% is below 10% numerically in stop-to-timeout, not official acceptance because first settled was never observed.
+Inclusive completion-accounted spans overlap and are not additive CPU/barrier attribution. Missed samples make totals lower bounds. Only 8192 recent spans retained per recorder; overwritten clipping is partial/lower-bound. Query includes actor revisit delay; owners are sequential non-atomic cuts.
+Rows are last observed; Snapshot refresh can refresh observed_ns without parser progress. Repeated PAUSED is not a unique fresh final marker.
+
+Mechanism, checked against the exact tested source:
+crates/bboxy450-term/src/stall/load.rs:91-97 — fixture uses in-process Supervisor::connect through RingProbe/ObservedConnection, not SocketSupervisor.
+crates/bbt-supervisor/src/supervisor.rs:26,698 — local event channel is bounded at 128.
+crates/bbt-supervisor/src/supervisor.rs:977-982 — every sweep starts at the first BTreeMap seat key.
+crates/bbt-supervisor/src/supervisor.rs:1544-1553 — local try_send rejects a notification when the shared channel is full.
+crates/bbt-supervisor/src/supervisor.rs:1566-1573 — counters record admission attempts and successful admissions.
+crates/bbt-supervisor/src/supervisor.rs:2018-2024,2117 — rejected pending events are retained and retried in fixed sweep order; ring capture continues.
+crates/bbt-mux/src/logic.rs:5683-5720 — one notification per host per turn is admitted to PendingSeats; watch priority begins only afterward.
+crates/bbt-mux/src/logic.rs:5725-5749 — completed targets leave the pending replay slots; no newer target appears until notification admission.
+Finding: retained notification retry/admission starves these three watched seats, before the watched replay lanes. Ring bytes are present; parsed debt is well below R; zero debt pauses. This is not a demonstrated notification drop.
+
+name,attempts_delta_stop_to_timeout,accepted_delta,last_accepted,logic_current,later_ring_tail
+r5-pty-3,12409,0,1146,1146,1339
+r5-pty-9,12409,0,929,929,1340
+r5-pty-10,12408,0,1085,1085,1337
+
+All 50 watched seats (later ring probe and Snapshot are not simultaneous):
+name,seat,generation,gui_received,gui_applied,gui_queued,gui_written,logic_current,logic_paused,ring_tail,ring_paused,ring_gap,ring_error
+r5-pty-0,01M5QW8TX7F8MEZZ61QPKC6ACY,1,1315,1315,1315,1315,1315,True,1336,True,None,None
+r5-pty-1,01M5QW8TYC0MHG6ZG4T2VZPX29,1,1325,1325,1325,1325,1325,True,1333,True,None,None
+r5-pty-2,01M5QW8TZNPCR7QVJPG5EMNJSB,1,1276,1276,1276,1276,1276,True,1346,True,None,None
+r5-pty-3,01M5QW8V0SPA8KGSR23Y1G94XJ,1,1146,1146,1146,1146,1146,False,1339,True,None,None
+r5-pty-4,01M5QW8V1Z0G00FX33DWGNT3B7,1,1256,1256,1256,1256,1256,True,1347,True,None,None
+r5-pty-5,01M5QW8V3806273HG5C7EBA1NS,1,1301,1301,1301,1301,1301,True,1337,True,None,None
+r5-pty-6,01M5QW8V4P5YWAMAB7TSCTYBRD,1,1321,1321,1321,1321,1321,True,1343,True,None,None
+r5-pty-7,01M5QW8V5R49EZ729FDWD9E1C6,1,1238,1238,1238,1238,1238,True,1346,True,None,None
+r5-pty-8,01M5QW8V6QFJNWS9VXA098JCS2,1,1310,1310,1310,1310,1310,True,1340,True,None,None
+r5-pty-9,01M5QW8V7XTR1EP2SYJHHCMZ3R,1,929,929,929,929,929,False,1340,True,None,None
+r5-pty-10,01M5QW8V8QYVJZ6ZK44N4ERC8P,1,1085,1085,1085,1085,1085,False,1337,True,None,None
+r5-pty-11,01M5QW8V9P6BTKTZY5GZWNQG28,1,1304,1304,1304,1304,1304,True,1341,True,None,None
+r5-pty-12,01M5QW8VAJ54APN3MSZZXJJK3C,1,1326,1326,1326,1326,1326,True,1342,True,None,None
+r5-pty-13,01M5QW8VBX5ZGVYT1XW3EYXZMQ,1,1302,1302,1302,1302,1302,True,1344,True,None,None
+r5-pty-14,01M5QW8VCVXMBSPENYGPW14DM1,1,1303,1303,1303,1303,1303,True,1338,True,None,None
+r5-pty-15,01M5QW8VDP07FBGPR2A3X9DTXZ,1,1237,1237,1237,1237,1237,True,1346,True,None,None
+r5-pty-16,01M5QW8VEM4F88XC5F76YDMGMY,1,1329,1329,1329,1329,1329,True,1339,True,None,None
+r5-pty-17,01M5QW8VFSB84WZ8DWX8HVP517,1,1303,1303,1303,1303,1303,True,1337,True,None,None
+r5-pty-18,01M5QW8VGQC4BY1R5M0TFCWRZR,1,1318,1318,1318,1318,1318,True,1338,True,None,None
+r5-pty-19,01M5QW8VHM3EWQ7NGCPV1GT3H5,1,1329,1329,1329,1329,1329,True,1336,True,None,None
+r5-pty-20,01M5QW8VJFZAWDSHJ5TPWQVE6F,1,1313,1313,1313,1313,1313,True,1343,True,None,None
+r5-pty-21,01M5QW8VKQ0R7SMGSCSZNDNHRB,1,1252,1252,1252,1252,1252,True,1342,True,None,None
+r5-pty-22,01M5QW8VMMP3JHZKK0YV3GAM4S,1,1310,1310,1310,1310,1310,True,1338,True,None,None
+r5-pty-23,01M5QW8VNG6349JQ5HW0QC0N2D,1,1332,1332,1332,1332,1332,True,1344,True,None,None
+r5-pty-24,01M5QW8VPFPDG6SN3Q6YT6Y69V,1,1285,1285,1285,1285,1285,True,1342,True,None,None
+r5-pty-25,01M5QW8VQQSXTXX40BTDCG81Z2,1,1309,1309,1309,1309,1309,True,1338,True,None,None
+r5-pty-26,01M5QW8VRM53F8P0Z0MS4MCR37,1,1290,1290,1290,1290,1290,True,1336,True,None,None
+r5-pty-27,01M5QW8VSDPWZXEYXB7KQ5TFGB,1,1279,1279,1279,1279,1279,True,1335,True,None,None
+r5-pty-28,01M5QW8VTBFNZ2RAE0A2YSM5NR,1,1320,1320,1320,1320,1320,True,1337,True,None,None
+r5-pty-29,01M5QW8VVJACVM43H4TG49KAW3,1,1324,1324,1324,1324,1324,True,1338,True,None,None
+r5-pty-30,01M5QW8VWFNRWCNT5XWT0XWAAW,1,1313,1313,1313,1313,1313,True,1333,True,None,None
+r5-pty-31,01M5QW8VXEFRSX1B0397VSZC1J,1,1297,1297,1297,1297,1297,True,1330,True,None,None
+r5-pty-32,01M5QW8VYCFKVQAMD4MH8Y32MP,1,1288,1288,1288,1288,1288,True,1341,True,None,None
+r5-pty-33,01M5QW8VZJTAPKY9G9XRGPX380,1,1295,1295,1295,1295,1295,True,1334,True,None,None
+r5-pty-34,01M5QW8W0JRK51RX97JXJ142F5,1,1256,1256,1256,1256,1256,True,1333,True,None,None
+r5-pty-35,01M5QW8W1EB83PDQ7JN21VC2QS,1,1306,1306,1306,1306,1306,True,1332,True,None,None
+r5-pty-36,01M5QW8W2C69DX02N7S9NDMVFF,1,1237,1237,1237,1237,1237,True,1332,True,None,None
+r5-pty-37,01M5QW8W3RVJSXXQN8BGXYPXJX,1,1283,1283,1283,1283,1283,True,1331,True,None,None
+r5-pty-38,01M5QW8W4NDA8Y2DD2CQG2Y3Q0,1,1302,1302,1302,1302,1302,True,1330,True,None,None
+r5-pty-39,01M5QW8W5HSNV15HJPHT4HXP5J,1,1303,1303,1303,1303,1303,True,1335,True,None,None
+r5-pty-40,01M5QW8W6F10ECBJ6W0SFJ3MEC,1,1266,1266,1266,1266,1266,True,1333,True,None,None
+r5-pty-41,01M5QW8W7QZJMZWDXXFFHK2WQW,1,1284,1284,1284,1284,1284,True,1328,True,None,None
+r5-pty-42,01M5QW8W8QXA2CRNXWPP2BTRPF,1,1303,1303,1303,1303,1303,True,1324,True,None,None
+r5-pty-43,01M5QW8W9NW3CMEEQD9CV5Z92T,1,1296,1296,1296,1296,1296,True,1328,True,None,None
+r5-pty-44,01M5QW8WAJAVDVS5CP5RN5MJ22,1,1299,1299,1299,1299,1299,True,1331,True,None,None
+r5-pty-45,01M5QW8WBTCCZQNC49R1ZMBW1V,1,1235,1235,1235,1235,1235,True,1327,True,None,None
+r5-pty-46,01M5QW8WCS28KR257BN8Y5V8F2,1,1244,1244,1244,1244,1244,True,1329,True,None,None
+r5-pty-47,01M5QW8WDX3797CK9HAGEHNR6J,1,1287,1287,1287,1287,1287,True,1332,True,None,None
+r5-pty-48,01M5QW8WF6RV4ACDN4DQ995F2G,1,1315,1315,1315,1315,1317,True,1324,True,None,None
+r5-pty-49,01M5QW8WG3DR7GW662SKYTH887,1,1257,1257,1257,1257,1257,True,1326,True,None,None
+
+Proposed next step (approved by Oracle 8ab17d55-7164-4bd5-8177-f8f451a47ff5 after the analysis):
+Fair rotating service of retained per-seat notifications in supervisor.rs; same capacity/FIFO/lifecycle/Exit/generation/ring/checkpoint rules. No wire, capacity, throttle or batch change. Deterministic capacity-1/two-pending-seat/one-credit-per-turn counterexample must fail first on current order. Then focused checks, exact clean normal CI, ONE new frame attempt starting only after all other gates finish.
+No production fix or extra attempt is represented by this evidence commit. NG1 remains queued after this newly prioritized fix.
+
+Cleanup: {"allocated_bytes_retired": 1171787776, "free_after": 13654679552, "free_before": 12579373056, "remaining_recorded_pids": [], "retained_binary_sha256": "80032e97b19d45d8d6d3e1593c5cb8d99151c57ad762f87492adc8863fd49689", "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-frame-bzprwdkp/target", "target_exists_after": false, "utc": "2026-10-24T21:35:30.943734+00:00"}
+
+Raw file hashes:
+stdout.log: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+stderr.log: 465e108b529432caa7d831481af9038acbed4e63cfb4332639780b1e0b7b0d06
+command.json: 361dbf57899ba083fe5bc3576a7601ef70976b2299e4a56d03322e594fac592c
+reaped.json: df92fbd4be53b39acd2bb390680c48d79af0d9569ddad305f5c5e2bb1aa146ad
+analysis/partition.json: a323c46e3c3363cae2921f58edc3c909888558c89cb9ede8969a8a5bd3e3f2e0
+analysis/admission-stragglers.json: f9eca974ee24c8abe6a19b1abddf005dffc53c733d5586a712ac5d431828069e
+analysis/target-cleanup.json: ffc07d4e863adf8e78c048cb58d8991a28e04156093b9a1688bb569f4ca75a26
+
+Read-only analysis script: /tmp/rook-r5h-checks/partition-frame.py SHA256 44feddf7b13306545df6191f495ff073939e97d1f13f63d2eeddb64c68bce292
+The parser was first checked against the previous raw packet and reproduced its 5.63136% checkpoint and 7.44328% watched-page figures; analysis launched no product process.
+Additional local command issue: icq inbox --limit 100 was rejected (max 50); corrected bounded read EXIT 0. No runtime or measurement data changed.
+git diff --quiet 6e762c670393e92acc6ae99ecf256f57c48b64d4 HEAD -- crates scripts Cargo.toml Cargo.lock: EXIT 0 before this evidence-only commit.
+Worktree: /Users/feral/mydev/bboxy450-term-rook; no push or merge performed.
