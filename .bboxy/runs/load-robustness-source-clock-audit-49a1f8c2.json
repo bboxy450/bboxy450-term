@@ -1,0 +1,1495 @@
+{
+  "source": "49a1f8c2a3e8041d6bbe9651db9cfb67aceb2f16",
+  "scope_ruling": "5d4b876f-3d83-448d-91f4-703e9f4446db",
+  "method": "Source-only lexical scan of Rust test bodies for clock/sleep sites; comments and string literals excluded when locating test bodies. Candidate list, not failure evidence or a complete helper/callgraph audit.",
+  "scanner_sha256": "953779d4481daec87c9473ad48c1a49fc7759ede4e3b9ad00486cb8ee7fd712c",
+  "inventory_totals": {
+    "timing_candidates": 146,
+    "nonignored": 137,
+    "paused_clock": 5,
+    "nonignored_nonpaused_direct_sleep_or_elapsed_candidates": 55
+  },
+  "observed_failures": [
+    "crates/bbt-mux/tests/socket_backlog.rs: socket_request_flood_replays_exact_output_and_delivers_exit_to_logic (pass 5 only)"
+  ],
+  "disposition": "Fix only the reproduced socket-backlog failure. Other candidates are retained for later evidence, with no source changes, deadline increases or disabled tests. Functional polling with a hang guard is distinct from a scheduling/throughput assertion.",
+  "candidates": [
+    {
+      "file": "crates/bboxy-firehose/tests/cli.rs",
+      "name": "byte_and_line_rate_caps_keep_the_exact_stream",
+      "line": 78,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": false,
+      "elapsed_assertion_candidate": true,
+      "sites": [
+        {
+          "line": 91,
+          "code": "let started = Instant::now();"
+        },
+        {
+          "line": 95,
+          "code": "assert!(started.elapsed() >= Duration::from_millis(240));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bboxy-firehose/tests/cli.rs",
+      "name": "interrupting_slow_playback_restores_modes_without_waiting_for_the_rate",
+      "line": 134,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": false,
+      "elapsed_assertion_candidate": true,
+      "sites": [
+        {
+          "line": 145,
+          "code": "let started = Instant::now();"
+        },
+        {
+          "line": 151,
+          "code": "assert!(started.elapsed() < Duration::from_millis(500));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bboxy450-term/src/live.rs",
+      "name": "real_io_echo_resize_reflow_and_logic_loss_retains_last_frame",
+      "line": 1893,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 2037,
+          "code": "tokio::time::timeout(Duration::from_secs(15), async {"
+        },
+        {
+          "line": 2124,
+          "code": "let reason = tokio::time::timeout(Duration::from_secs(10), lost_receiver.recv())"
+        },
+        {
+          "line": 2140,
+          "code": "tokio::time::sleep(Duration::from_millis(150)).await;"
+        },
+        {
+          "line": 2173,
+          "code": "tokio::time::timeout(Duration::from_secs(10), task)"
+        }
+      ]
+    },
+    {
+      "file": "crates/bboxy450-term/tests/lifecycle.rs",
+      "name": "gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position",
+      "line": 260,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 317,
+          "code": "tokio::time::timeout(Duration::from_secs(5), async {"
+        },
+        {
+          "line": 334,
+          "code": "tokio::time::sleep(Duration::from_millis(20)).await;"
+        },
+        {
+          "line": 410,
+          "code": "let replacement = tokio::time::timeout(Duration::from_secs(15), async {"
+        }
+      ]
+    },
+    {
+      "file": "crates/bboxy450-term/tests/lifecycle.rs",
+      "name": "gui_history_is_lazy_bounded_capture_pages_with_ordered_gaps_and_control_cursors",
+      "line": 446,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 464,
+          "code": "tokio::time::timeout(Duration::from_secs(15), async {"
+        },
+        {
+          "line": 472,
+          "code": "tokio::time::sleep(Duration::from_millis(20)).await;"
+        }
+      ]
+    },
+    {
+      "file": "crates/bboxy450-term/tests/lifecycle.rs",
+      "name": "gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it",
+      "line": 585,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 617,
+          "code": "tokio::time::sleep(Duration::from_millis(delay)).await;"
+        },
+        {
+          "line": 618,
+          "code": "tokio::time::timeout(Duration::from_secs(5), async {"
+        },
+        {
+          "line": 628,
+          "code": "tokio::time::sleep(Duration::from_millis(20)).await;"
+        },
+        {
+          "line": 633,
+          "code": "let retained = tokio::time::timeout(Duration::from_secs(15), async {"
+        }
+      ]
+    },
+    {
+      "file": "crates/bboxy450-term/tests/r5_stall.rs",
+      "name": "synthetic_runtime_contract_keeps_fifteen_encoded_panes_live_under_mixed_io",
+      "line": 11,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 43,
+          "code": "let start = Instant::now();"
+        },
+        {
+          "line": 48,
+          "code": "if start.elapsed() > Duration::from_secs(90) {"
+        },
+        {
+          "line": 56,
+          "code": "std::thread::sleep(Duration::from_millis(20));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bboxy450-term/tests/recovery.rs",
+      "name": "partial_startup_survives_cancelled_poll_and_shutdown_reaps_its_child",
+      "line": 525,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 549,
+          "code": "let pending_pid = tokio::time::timeout(Duration::from_secs(5), async {"
+        },
+        {
+          "line": 554,
+          "code": "tokio::time::sleep(Duration::from_millis(10)).await;"
+        },
+        {
+          "line": 560,
+          "code": "tokio::time::timeout(Duration::from_millis(20), session.event())"
+        },
+        {
+          "line": 567,
+          "code": "tokio::time::timeout("
+        },
+        {
+          "line": 576,
+          "code": "tokio::time::timeout(Duration::from_secs(5), async {"
+        },
+        {
+          "line": 586,
+          "code": "tokio::time::sleep(Duration::from_millis(10)).await;"
+        }
+      ]
+    },
+    {
+      "file": "crates/bboxy450-term/tests/recovery.rs",
+      "name": "recovered_generation_admission_rejects_unknown_and_conflicting_launches_but_exact_retry_is_idempotent",
+      "line": 642,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 678,
+          "code": "tokio::time::timeout(Duration::from_secs(5), async {"
+        },
+        {
+          "line": 689,
+          "code": "tokio::time::sleep(Duration::from_millis(20)).await;"
+        },
+        {
+          "line": 802,
+          "code": "tokio::time::timeout(Duration::from_secs(5), second.wait())"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/src/identity/agent.rs",
+      "name": "agent_deadline_is_bounded",
+      "line": 385,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 401,
+          "code": "std::thread::sleep(Duration::from_millis(160));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/src/index.rs",
+      "name": "sibling_build_writes_do_not_dirty_watch_or_trigger_reconciliation",
+      "line": 1047,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 1078,
+          "code": "let until = Instant::now() + Duration::from_secs(1);"
+        },
+        {
+          "line": 1080,
+          "code": "while Instant::now() < until {"
+        },
+        {
+          "line": 1086,
+          "code": "std::thread::sleep(Duration::from_millis(10));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/src/mcp/journal.rs",
+      "name": "concurrent_operation_retries_return_one_committed_result",
+      "line": 632,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 671,
+          "code": "std::thread::sleep(std::time::Duration::from_millis(30));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/adapters.rs",
+      "name": "adapters_logic_launch_retains_overlay_until_exit_and_authenticates_shim_fallback",
+      "line": 573,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 614,
+          "code": "let until = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 622,
+          "code": "assert!(Instant::now() < until);"
+        },
+        {
+          "line": 623,
+          "code": "std::thread::sleep(Duration::from_millis(10));"
+        },
+        {
+          "line": 684,
+          "code": "let until = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 687,
+          "code": "Instant::now() < until,"
+        },
+        {
+          "line": 690,
+          "code": "std::thread::sleep(Duration::from_millis(10));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/adapters.rs",
+      "name": "adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it",
+      "line": 696,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": true,
+      "sites": [
+        {
+          "line": 735,
+          "code": "let observed_at = Instant::now();"
+        },
+        {
+          "line": 753,
+          "code": "Instant::now() < until,"
+        },
+        {
+          "line": 755,
+          "code": "observed_at.elapsed(),"
+        },
+        {
+          "line": 759,
+          "code": "std::thread::sleep(Duration::from_millis(10));"
+        },
+        {
+          "line": 763,
+          "code": "observed_at.elapsed()"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/capture_busy.rs",
+      "name": "capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint",
+      "line": 49,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 92,
+          "code": "let until = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 95,
+          "code": "Instant::now() < until,"
+        },
+        {
+          "line": 98,
+          "code": "std::thread::sleep(Duration::from_millis(10));"
+        },
+        {
+          "line": 105,
+          "code": "let until = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 111,
+          "code": "Instant::now() < until,"
+        },
+        {
+          "line": 114,
+          "code": "std::thread::sleep(Duration::from_millis(10));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/capture_busy.rs",
+      "name": "large_capture_catchup_yields_to_control_between_history_pages",
+      "line": 163,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 220,
+          "code": "let until = Instant::now() + Duration::from_secs(10);"
+        },
+        {
+          "line": 231,
+          "code": "assert!(Instant::now() < until, \"fixture prefix was not captured\");"
+        },
+        {
+          "line": 232,
+          "code": "std::thread::sleep(Duration::from_millis(5));"
+        },
+        {
+          "line": 236,
+          "code": "let until = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 238,
+          "code": "assert!(Instant::now() < until, \"catch-up never started\");"
+        },
+        {
+          "line": 239,
+          "code": "std::thread::sleep(Duration::from_millis(2));"
+        },
+        {
+          "line": 241,
+          "code": "let started = Instant::now();"
+        },
+        {
+          "line": 244,
+          "code": "tokio::time::timeout(Duration::from_secs(1), logic.client.record(other)).await"
+        },
+        {
+          "line": 248,
+          "code": "let latency = started.elapsed();"
+        },
+        {
+          "line": 255,
+          "code": "let until = Instant::now() + Duration::from_secs(10);"
+        },
+        {
+          "line": 269,
+          "code": "assert!(Instant::now() < until, \"yielded replay did not finish\");"
+        },
+        {
+          "line": 270,
+          "code": "std::thread::sleep(Duration::from_millis(10));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/capture_fairness.rs",
+      "name": "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+      "line": 139,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 225,
+          "code": "let until = Instant::now() + Duration::from_secs(15);"
+        },
+        {
+          "line": 242,
+          "code": "assert!(Instant::now() < until, \"owned fixture output not captured\");"
+        },
+        {
+          "line": 243,
+          "code": "std::thread::sleep(Duration::from_millis(5));"
+        },
+        {
+          "line": 247,
+          "code": "let started = Instant::now();"
+        },
+        {
+          "line": 268,
+          "code": "started.elapsed(),"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/capture_fairness.rs",
+      "name": "down_host_replay_parks_and_idle_local_polling_stays_bounded_until_reconnect",
+      "line": 452,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 530,
+          "code": "let until = Instant::now() + Duration::from_secs(15);"
+        },
+        {
+          "line": 545,
+          "code": "assert!(Instant::now() < until, \"outage fixture was not captured\");"
+        },
+        {
+          "line": 546,
+          "code": "std::thread::sleep(Duration::from_millis(5));"
+        },
+        {
+          "line": 550,
+          "code": "let until = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 553,
+          "code": "Instant::now() < until,"
+        },
+        {
+          "line": 556,
+          "code": "std::thread::sleep(Duration::from_millis(2));"
+        },
+        {
+          "line": 561,
+          "code": "let started = Instant::now();"
+        },
+        {
+          "line": 562,
+          "code": "std::thread::sleep(Duration::from_secs(1));"
+        },
+        {
+          "line": 563,
+          "code": "let elapsed = started.elapsed();"
+        },
+        {
+          "line": 585,
+          "code": "let until = Instant::now() + Duration::from_secs(10);"
+        },
+        {
+          "line": 596,
+          "code": "Instant::now() < until,"
+        },
+        {
+          "line": 599,
+          "code": "std::thread::sleep(Duration::from_millis(5));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/identity_io.rs",
+      "name": "interaction_required_is_pending_without_a_prompt_or_replacement",
+      "line": 34,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": false,
+      "elapsed_assertion_candidate": true,
+      "sites": [
+        {
+          "line": 40,
+          "code": "let start = Instant::now();"
+        },
+        {
+          "line": 47,
+          "code": "assert!(start.elapsed() < Duration::from_secs(2));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/identity_io.rs",
+      "name": "stuck_custody_has_a_two_second_bound_and_retry_does_not_add_workers",
+      "line": 107,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": false,
+      "elapsed_assertion_candidate": true,
+      "sites": [
+        {
+          "line": 115,
+          "code": "let start = Instant::now();"
+        },
+        {
+          "line": 122,
+          "code": "assert!(start.elapsed() >= Duration::from_millis(1800));"
+        },
+        {
+          "line": 123,
+          "code": "assert!(start.elapsed() < Duration::from_millis(2500));"
+        },
+        {
+          "line": 128,
+          "code": "let start = Instant::now();"
+        },
+        {
+          "line": 130,
+          "code": "assert!(start.elapsed() < Duration::from_millis(2500));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/identity_local.rs",
+      "name": "pending_logic_keeps_pty_live_retries_at_30s_and_releases_durable_sends_in_order",
+      "line": 647,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 707,
+          "code": "let until = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 714,
+          "code": "assert!(Instant::now() < until);"
+        },
+        {
+          "line": 715,
+          "code": "std::thread::sleep(Duration::from_millis(20));"
+        },
+        {
+          "line": 743,
+          "code": "let until = Instant::now() + Duration::from_secs(35);"
+        },
+        {
+          "line": 745,
+          "code": "while Instant::now() < until {"
+        },
+        {
+          "line": 759,
+          "code": "std::thread::sleep(Duration::from_millis(50));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/logic.rs",
+      "name": "a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_identity",
+      "line": 167,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 204,
+          "code": "let until = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 226,
+          "code": "Instant::now() < until,"
+        },
+        {
+          "line": 229,
+          "code": "std::thread::sleep(Duration::from_millis(20));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/logic.rs",
+      "name": "supervisor_expires_grace_after_logic_stops_and_undo_preserves_process",
+      "line": 243,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 289,
+          "code": "let until = Instant::now() + Duration::from_secs(10);"
+        },
+        {
+          "line": 300,
+          "code": "Instant::now() < until,"
+        },
+        {
+          "line": 303,
+          "code": "std::thread::sleep(Duration::from_millis(20));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/logic.rs",
+      "name": "hard_killed_separate_logic_process_recovers_the_same_zsh_view",
+      "line": 395,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 444,
+          "code": "let until = Instant::now() + Duration::from_secs(10);"
+        },
+        {
+          "line": 449,
+          "code": "assert!(Instant::now() < until);"
+        },
+        {
+          "line": 450,
+          "code": "std::thread::sleep(Duration::from_millis(20));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/logic.rs",
+      "name": "ring_live_logic_catches_up_coalesced_notifications_after_a_stall",
+      "line": 796,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 807,
+          "code": "std::thread::sleep(Duration::from_millis(750));"
+        },
+        {
+          "line": 809,
+          "code": "match self.client.recv_timeout(timeout) {"
+        },
+        {
+          "line": 841,
+          "code": "let until = Instant::now() + Duration::from_secs(30);"
+        },
+        {
+          "line": 855,
+          "code": "assert!(Instant::now() < until, \"live logic failed to catch up\");"
+        },
+        {
+          "line": 856,
+          "code": "std::thread::sleep(Duration::from_millis(20));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/logic.rs",
+      "name": "ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshold",
+      "line": 862,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 885,
+          "code": "let until = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 895,
+          "code": "Instant::now() < until,"
+        },
+        {
+          "line": 898,
+          "code": "std::thread::sleep(Duration::from_millis(10));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/mcp.rs",
+      "name": "gui_operator_dm_replays_once_and_tasks_share_mcp_verification",
+      "line": 301,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 405,
+          "code": "let published = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 421,
+          "code": "Instant::now() < published,"
+        },
+        {
+          "line": 424,
+          "code": "std::thread::sleep(Duration::from_millis(10));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/mcp.rs",
+      "name": "mcp_seat_input_consumes_readiness_and_enter_is_explicit",
+      "line": 741,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 745,
+          "code": "std::thread::sleep(Duration::from_millis(80));"
+        },
+        {
+          "line": 780,
+          "code": "std::thread::sleep(Duration::from_millis(80));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/mcp.rs",
+      "name": "mcp_seat_input_lost_receipt_is_unknown_and_never_repeated_after_restart",
+      "line": 810,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 814,
+          "code": "std::thread::sleep(Duration::from_millis(80));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/messaging.rs",
+      "name": "live_logic_and_capability_socket_deliver_dm_native_written_without_claiming_model_receipt",
+      "line": 706,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 802,
+          "code": "tokio::time::timeout(std::time::Duration::from_secs(5), received)"
+        },
+        {
+          "line": 815,
+          "code": "let until = std::time::Instant::now() + std::time::Duration::from_secs(5);"
+        },
+        {
+          "line": 835,
+          "code": "std::time::Instant::now() < until,"
+        },
+        {
+          "line": 839,
+          "code": "std::thread::sleep(std::time::Duration::from_millis(25));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/messaging.rs",
+      "name": "supervisor_final_fence_rejects_a_user_draft_without_accepting_any_guarded_bytes",
+      "line": 939,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 957,
+          "code": "std::thread::sleep(std::time::Duration::from_millis(50));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/messaging.rs",
+      "name": "live_supervisor_admits_fresh_guard_and_rejects_replaced_foreground_evidence",
+      "line": 1057,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 1079,
+          "code": "let until = std::time::Instant::now() + std::time::Duration::from_secs(3);"
+        },
+        {
+          "line": 1093,
+          "code": "assert!(std::time::Instant::now() < until);"
+        },
+        {
+          "line": 1094,
+          "code": "std::thread::sleep(std::time::Duration::from_millis(10));"
+        },
+        {
+          "line": 1124,
+          "code": "client.recv_timeout(std::time::Duration::from_millis(50))"
+        },
+        {
+          "line": 1129,
+          "code": "std::time::Instant::now() < until,"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/provenance.rs",
+      "name": "live_detection_claim_hook_rename_delete_and_restart_preserve_evidence",
+      "line": 210,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 261,
+          "code": "std::thread::sleep(Duration::from_millis(400));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/provenance.rs",
+      "name": "symlinks_outside_paths_and_oversized_files_never_leak_content_or_partial_hashes",
+      "line": 278,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 292,
+          "code": "std::thread::sleep(Duration::from_millis(400));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/provenance.rs",
+      "name": "custody_hold_keeps_observations_ephemeral_until_legitimate_projection_recovers",
+      "line": 377,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 385,
+          "code": "let until = Instant::now() + Duration::from_secs(8);"
+        },
+        {
+          "line": 394,
+          "code": "assert!(Instant::now() < until, \"missing held observation\");"
+        },
+        {
+          "line": 395,
+          "code": "std::thread::sleep(Duration::from_millis(20));"
+        },
+        {
+          "line": 411,
+          "code": "let until = Instant::now() + Duration::from_secs(36);"
+        },
+        {
+          "line": 414,
+          "code": "Instant::now() < until,"
+        },
+        {
+          "line": 417,
+          "code": "std::thread::sleep(Duration::from_millis(50));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/provider.rs",
+      "name": "logic_routes_real_seats_recovery_history_ownership_and_close_by_location",
+      "line": 193,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 283,
+          "code": "let until = std::time::Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 297,
+          "code": "std::time::Instant::now() < until,"
+        },
+        {
+          "line": 300,
+          "code": "std::thread::sleep(Duration::from_millis(10));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/provider_fake.rs",
+      "name": "headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_restart",
+      "line": 334,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 446,
+          "code": "let until = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 448,
+          "code": "assert!(Instant::now() < until);"
+        },
+        {
+          "line": 449,
+          "code": "std::thread::sleep(Duration::from_millis(10));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/provider_gui.rs",
+      "name": "one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart",
+      "line": 346,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 511,
+          "code": "let until = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 513,
+          "code": "assert!(Instant::now() < until);"
+        },
+        {
+          "line": 514,
+          "code": "std::thread::sleep(Duration::from_millis(10));"
+        },
+        {
+          "line": 518,
+          "code": "let until = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 527,
+          "code": "assert!(Instant::now() < until);"
+        },
+        {
+          "line": 528,
+          "code": "std::thread::sleep(Duration::from_millis(10));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/socket_backlog.rs",
+      "name": "socket_request_flood_replays_exact_output_and_delivers_exit_to_logic",
+      "line": 61,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 132,
+          "code": "tokio::time::timeout(Duration::from_secs(90), async {"
+        },
+        {
+          "line": 139,
+          "code": "tokio::time::sleep(Duration::from_millis(10)).await;"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-mux/tests/storage_bus_index.rs",
+      "name": "mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_changes",
+      "line": 323,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 409,
+          "code": "let until = std::time::Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 411,
+          "code": "assert!(std::time::Instant::now() < until);"
+        },
+        {
+          "line": 412,
+          "code": "std::thread::sleep(Duration::from_millis(20));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-rt/tests/r5_instruments.rs",
+      "name": "real_file_read_stalls_off_ui_while_thread_cpu_and_ui_progress_remain_observable",
+      "line": 5,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": false,
+      "elapsed_assertion_candidate": true,
+      "sites": [
+        {
+          "line": 13,
+          "code": "let start = Instant::now();"
+        },
+        {
+          "line": 21,
+          "code": "let slice = Instant::now();"
+        },
+        {
+          "line": 22,
+          "code": "while slice.elapsed() < Duration::from_millis(1) {"
+        },
+        {
+          "line": 26,
+          "code": "assert!(start.elapsed() < Duration::from_secs(5));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-rt/tests/runtime.rs",
+      "name": "million_messages_per_second_never_wait_for_a_consumer",
+      "line": 48,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": false,
+      "elapsed_assertion_candidate": true,
+      "sites": [
+        {
+          "line": 51,
+          "code": "let start = Instant::now();"
+        },
+        {
+          "line": 56,
+          "code": "let elapsed = start.elapsed();"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-rt/tests/runtime.rs",
+      "name": "cancel_kills_the_process_group_including_a_grandchild",
+      "line": 170,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 173,
+          "code": "let deadline = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 182,
+          "code": "assert!(Instant::now() < deadline);"
+        },
+        {
+          "line": 183,
+          "code": "std::thread::sleep(Duration::from_millis(2));"
+        },
+        {
+          "line": 191,
+          "code": "let deadline = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 203,
+          "code": "Instant::now() < deadline,"
+        },
+        {
+          "line": 206,
+          "code": "std::thread::sleep(Duration::from_millis(10));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-supervisor/src/client/tests.rs",
+      "name": "an_unanswered_request_becomes_disconnected_at_the_bounded_recovery_deadline",
+      "line": 143,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": false,
+      "elapsed_assertion_candidate": true,
+      "sites": [
+        {
+          "line": 152,
+          "code": "let _ = released.recv_timeout(Duration::from_secs(20));"
+        },
+        {
+          "line": 156,
+          "code": "let started = Instant::now();"
+        },
+        {
+          "line": 162,
+          "code": "let elapsed = started.elapsed();"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-supervisor/src/ring/writer.rs",
+      "name": "undurable_admission_budget_pauses_until_a_full_flush_returns_credit",
+      "line": 973,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 993,
+          "code": "ready.recv_timeout(Duration::from_secs(2)).unwrap();"
+        },
+        {
+          "line": 1013,
+          "code": "let until = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 1016,
+          "code": "Instant::now() < until,"
+        },
+        {
+          "line": 1019,
+          "code": "thread::sleep(Duration::from_millis(2));"
+        },
+        {
+          "line": 1024,
+          "code": ".recv_timeout(Duration::from_secs(2))"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-supervisor/src/ring/writer.rs",
+      "name": "one_writer_tick_orders_two_trickling_seats_without_full_flushes",
+      "line": 1090,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 1117,
+          "code": "let until = Instant::now() + Duration::from_secs(2);"
+        },
+        {
+          "line": 1123,
+          "code": ".recv_timeout(Duration::from_secs(2))"
+        },
+        {
+          "line": 1137,
+          "code": "assert!(Instant::now() < until, \"tick did not publish its boundary\");"
+        },
+        {
+          "line": 1138,
+          "code": "thread::sleep(Duration::from_millis(2));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-supervisor/src/ring/writer.rs",
+      "name": "stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte",
+      "line": 1152,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": true,
+      "sites": [
+        {
+          "line": 1173,
+          "code": "ready.recv_timeout(Duration::from_secs(2)).unwrap();"
+        },
+        {
+          "line": 1175,
+          "code": "thread::sleep(Duration::from_millis(150));"
+        },
+        {
+          "line": 1178,
+          "code": "let start = Instant::now();"
+        },
+        {
+          "line": 1193,
+          "code": "start.elapsed() < Duration::from_millis(50),"
+        },
+        {
+          "line": 1204,
+          "code": ".recv_timeout(Duration::from_secs(5))"
+        },
+        {
+          "line": 1213,
+          "code": "let until = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 1216,
+          "code": "Instant::now() < until,"
+        },
+        {
+          "line": 1219,
+          "code": "thread::sleep(Duration::from_millis(2));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-supervisor/src/supervisor/child_events.rs",
+      "name": "a_live_child_cannot_make_the_shutdown_wait_infinite",
+      "line": 134,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": false,
+      "elapsed_assertion_candidate": true,
+      "sites": [
+        {
+          "line": 139,
+          "code": "let started = Instant::now();"
+        },
+        {
+          "line": 141,
+          "code": "let elapsed = started.elapsed();"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-supervisor/src/supervisor.rs",
+      "name": "exited_between_spawn_and_registration_emits_exactly_one_exit",
+      "line": 2390,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 2406,
+          "code": "let until = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 2425,
+          "code": "assert!(Instant::now() < until, \"owned fast child did not exit\");"
+        },
+        {
+          "line": 2426,
+          "code": "std::thread::sleep(Duration::from_millis(1));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-supervisor/src/supervisor.rs",
+      "name": "an_early_exiting_writer_is_drained_before_reaping_without_blocking_the_actor",
+      "line": 2448,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": true,
+      "sites": [
+        {
+          "line": 2471,
+          "code": "let until = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 2480,
+          "code": "assert!(Instant::now() < until, \"owned child never entered exit\");"
+        },
+        {
+          "line": 2481,
+          "code": "std::thread::sleep(Duration::from_millis(1));"
+        },
+        {
+          "line": 2483,
+          "code": "let started = Instant::now();"
+        },
+        {
+          "line": 2489,
+          "code": "assert!(started.elapsed() < Duration::from_secs(1));"
+        },
+        {
+          "line": 2492,
+          "code": "assert!(Instant::now() < until, \"exiting PTY was not drained/reaped\");"
+        },
+        {
+          "line": 2493,
+          "code": "std::thread::sleep(Duration::from_millis(1));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-supervisor/src/supervisor.rs",
+      "name": "shutdown_closes_a_blocked_staged_pty_and_preserves_capture_and_one_exit",
+      "line": 2515,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": true,
+      "sites": [
+        {
+          "line": 2536,
+          "code": "let until = Instant::now() + Duration::from_secs(10);"
+        },
+        {
+          "line": 2543,
+          "code": "assert!(Instant::now() < until, \"writer never reached the PTY\");"
+        },
+        {
+          "line": 2544,
+          "code": "std::thread::sleep(Duration::from_millis(1));"
+        },
+        {
+          "line": 2547,
+          "code": "seat.output_since = Some(Instant::now());"
+        },
+        {
+          "line": 2569,
+          "code": "assert!(Instant::now() < until, \"owned writer did not stop\");"
+        },
+        {
+          "line": 2570,
+          "code": "std::thread::sleep(Duration::from_millis(1));"
+        },
+        {
+          "line": 2573,
+          "code": "let started = Instant::now();"
+        },
+        {
+          "line": 2577,
+          "code": "started.elapsed() < Duration::from_secs(1),"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-supervisor/tests/journal_config.rs",
+      "name": "supervisor_shutdown_preserves_every_already_admitted_byte_for_offline_reopen",
+      "line": 24,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 54,
+          "code": "let deadline = Instant::now() + Duration::from_secs(5);"
+        },
+        {
+          "line": 68,
+          "code": "Instant::now() < deadline,"
+        },
+        {
+          "line": 71,
+          "code": "std::thread::sleep(Duration::from_millis(2));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-supervisor/tests/reaping.rs",
+      "name": "stdio_eof_does_not_wait_for_a_still_running_child",
+      "line": 176,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 206,
+          "code": "let until = Instant::now() + Duration::from_secs(10);"
+        },
+        {
+          "line": 208,
+          "code": "assert!(Instant::now() < until, \"child never closed its stdio\");"
+        },
+        {
+          "line": 209,
+          "code": "std::thread::sleep(Duration::from_millis(1));"
+        },
+        {
+          "line": 222,
+          "code": "assert!(Instant::now() < until, \"exit after closed stdio was lost\");"
+        },
+        {
+          "line": 224,
+          "code": "client.recv_timeout(Duration::from_millis(100))"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-supervisor/tests/supervisor.rs",
+      "name": "blocked_write_survives_fencing_and_becomes_unknown_without_replay",
+      "line": 495,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 531,
+          "code": "let deadline = Instant::now() + Duration::from_secs(4);"
+        },
+        {
+          "line": 537,
+          "code": "assert!(Instant::now() < deadline);"
+        },
+        {
+          "line": 538,
+          "code": "std::thread::sleep(Duration::from_millis(20));"
+        }
+      ]
+    },
+    {
+      "file": "crates/bbt-supervisor/tests/supervisor.rs",
+      "name": "slow_reader_backpressures_and_recovers_the_complete_output",
+      "line": 595,
+      "ignored": false,
+      "paused": false,
+      "has_sleep": true,
+      "elapsed_assertion_candidate": false,
+      "sites": [
+        {
+          "line": 608,
+          "code": "std::thread::sleep(Duration::from_millis(100));"
+        },
+        {
+          "line": 616,
+          "code": "let deadline = Instant::now() + DEADLINE;"
+        },
+        {
+          "line": 618,
+          "code": "assert!(Instant::now() < deadline);"
+        },
+        {
+          "line": 619,
+          "code": "match client.recv_timeout(Duration::from_secs(2)).unwrap() {"
+        }
+      ]
+    }
+  ]
+}
