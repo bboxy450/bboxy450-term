@@ -1,0 +1,211 @@
+ROLE DEFAULTS #262 — Aster Cinderwing <EXECUTOR>
+Recorded 2026-10-24 UTC. Ready for Oracle verification; no push or main merge.
+
+RESULT / SUBJECT
+Exact signed source: 26ed857ee4b76620dc5f7a920fd9803ababa8264.
+Base: 8d7ca48ee874b0f777fa940edf839a61dea170d6.
+Worktree /Users/feral/mydev/bboxy450-term-exec4, branch exec4.
+Clean sh scripts/ci-local.sh --parity — EXIT 0 in 2131.230216416 s.
+Workspace tests: 155 summaries, 1075 passed, 0 failed, 22 ignored.
+Current parity: 2056 screens; 1952 geometry required and measured;
+0 unproven, 0 mismatches; 72 advisory pixel reviews. All 32 new role cases
+are within policy. No geometry waiver, omitted required case or SLO change.
+This successor adds this evidence log only; the gated source stays unchanged.
+
+AUTHORITY / PAIRING
+Oracle brief 582ee3c5-6f58-4645-8dfb-e9e0cca25889: #262 defaults, shared
+launch guard, name-and-class preset resolution, launcher presets and note.
+Decision #262 / w2-5-mcp-and-seat-wiring section 3, shape at 6ac001bf and
+role-to-class clarification at 76eb6788: oracle/architect -> Oracle;
+creativity/executor/shell -> Worker. Unknown role names refused at spawn.
+SeatRecord.role and default_role remain non-optional. Shell is an ordinary
+worker-class grant with no role prompt or displayed role chip.
+Oracle e9d57a19-f9ae-4671-9138-bcd0ee50245e approved the paired Wren reference
+and the optional launcher Item.role, shell-mark suppression and four book states.
+Wren's signed c81b6477 and 2215dcbd are retained as original commits. The native
+change is 66d419d6, paired merge c198a014, fixture correction 26ed857e.
+Source was frozen for this gate by Oracle 8e2c8f3e-8f5e-41d5-ad42-4fb9b5196653.
+
+RAW EVIDENCE (A)
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/aster-roles-262-v0vbyz8q
+A/evidence-manifest-262.json binds 75 immutable artifacts and 21 source paths.
+Manifest SHA256:
+94e4f8f3d2f7ea780adc2375f2ed950e8d2aa262c6c0adac8fa066d20e18e6f1
+Raw transcripts, credentials, private admission material and binaries stay out
+of Git. Reports, galleries, logs and two final source-pinned binaries remain in A.
+
+FILES / MECHANISMS (line numbers at 26ed857e)
+crates/bbt-mux/src/adapters/mod.rs:52 — validate_role rejects Codex Oracle-class
+authority and name/class mismatch before launch admission.
+adapters/mod.rs:63 — role_preset is the canonical five-name authority table;
+:77 resolves both name and class; :96 defaults Claude to oracle, Codex to
+executor and zsh to shell. HarnessRecord::validate checks its default too.
+crates/bbt-mux/src/adapters/launch.rs:101 — the overlay plan validates the actual
+seat role before creating an overlay. The existing Worker harness-kind check stays.
+crates/bbt-mux/src/logic.rs:1567 — MCP spawn preflight validates the preset before
+mutation admission. :1783 resolves its name AND class, fixing the same name-only
+bug as the GUI; shell gets an empty role prompt, other names get ROLE: <NAME>.
+logic.rs:2470 — Worker::launch validates before endpoint/launch side effects;
+:2617 guards direct spawn too. :3667 applies the same resolver to GUI Spawn.
+logic.rs:2313 — a generic recovered adapter's fallback default is worker shell.
+crates/bboxy450-term/src/cockpit.rs:41 — UiMsg::Spawn carries role: Option<String>.
+crates/bboxy450-term/src/live.rs:40 — pure IO translation forwards the declarative
+preset into existing SpawnSpec.role. Legacy SpawnZsh still means no override.
+No socket, retry, publication or Applied-order change.
+crates/bboxy450-term/src/main.rs:277 — only known local Claude preset IDs decode
+to a role; host IDs remain opaque. :321 preserves captured placement semantics.
+main.rs:653 — the existing-Oracle note uses the displayed Stage's swarm; it is
+information, never a block. :668 builds the four Claude presets and their existing
+placement choices; Codex and shell go directly to placement choices.
+crates/bboxy450-term/src/scene.rs:339 — shell has no sidebar role chip; the model
+still carries its authenticated shell role.
+crates/bbt-ui/src/modules/launcher.rs:17 — optional Item.role with serde default.
+crates/bbt-ui/src/modules/seat_row.rs:399 and strip.rs:178 — suppress shell marks.
+crates/bboxybook/src/launchers.rs:23 — four new canonical role/placement states.
+lab/web/components.js, launcher.html, showcase.js — Wren's paired reference;
+selected roles propagate through launch, and Claude/zsh defaults follow #262.
+
+TEST FILES / ACCEPTANCE EVIDENCE
+crates/bbt-mux/tests/adapters.rs:53 — defaults, all five classes, unknown names,
+forbidden Codex roles and class mismatch; :121 proves no overlay is created;
+:149 proves launch/direct-spawn refusal leaves no admitted seat or seat directory.
+crates/bbt-mux/tests/provider_gui.rs:148 — actual admitted GUI path refuses Codex
+oracle/architect and unknown names; a real zsh defaults to shell/Worker with an
+empty stored role prompt.
+crates/bbt-mux/tests/mcp.rs:2867 — forbidden/unknown presets are refused before
+MCP mutation admission. An explicit oracle preset now expects Oracle class.
+crates/bbt-mux/tests/seat_wiring.rs — valid canonical role fixture; existing
+role-prompt/path quoting and per-launch user-config preservation remain checked.
+crates/bboxy450-term/src/main.rs:4823 — presets reach Spawn and only local Claude
+gets presets; invalid, Codex and remote role IDs are rejected. :4869 proves the
+displayed-swarm note and a non-blocked default; existing placement tests stay green.
+crates/bbt-ui/tests/seat_rows.rs:30 — shell mark absent in seat/strip, others kept.
+crates/bboxy450-term/tests/custody.rs:329 — zsh orient expects shell, not executor.
+crates/bboxybook/tests/launchers.rs:7 — 240 current launcher/picker cases and 48
+separate historical cases; each of the four new states appears in eight variants.
+
+COMMANDS / ACTUAL RESULTS, FAILURES INCLUDED
+Shared dev settings: one private target, debug assertions, no incremental/debug
+info, BBOXY_TEST_CUSTODY=memory. Local workspace sweep was O0; clean CI was O1.
+1. cargo test -p bbt-mux --test adapters --locked — EXIT 101: test unwrap_err
+   required LaunchPlan: Debug. Fixed the assertion with err().unwrap(), no new
+   production Debug implementation. A/adapters.log and adapters-result.json.
+2. Same adapters target — EXIT 101, 15 passed/1 failed: an unnecessary extra
+   direct-plan harness-kind check broke the legacy cross-harness overlay fixture.
+   Removed that extra check; retained the existing Worker check.
+   A/adapters-corrected.log and adapters-corrected-result.json.
+3. Focused mux test targets — EXIT 101: adapters 16/0, MCP 28/1 (3 ignored), later
+   targets not reached. This exposed MCP's name-only role assignment. Fixed its
+   resolver/preflight and the canonical-class expectation, not the permission gate.
+   A/mux-focused.log and mux-focused-result.json.
+4. cargo test -p bbt-mux --test adapters --test mcp --test provider_gui
+   --test seat_wiring --locked — EXIT 0: 51 passed, 3 ignored, 44.947 s.
+   A/mux-role-policy.log and mux-role-policy-result.json.
+5. cargo test -p bbt-ui --test seat_rows --locked — EXIT 0, 8 passed.
+   A/ui-role-chips.log and ui-role-chips-result.json.
+6. Initial app lib/bin test targets — EXIT 101: 24 lib passed, 74 bin passed/2
+   failed because the separate application binary had not been built. Built the
+   app (EXIT 0), then app lib/bin tests EXIT 0, 100 passed. No product workaround.
+   A/app-focused.log, app-build.log and app-real.log with their result JSONs.
+7. cargo clippy --workspace --all-targets --locked -- -D warnings — EXIT 101:
+   test-only field_reassign_with_default. Used a struct initializer; corrected
+   command EXIT 0 in 8.518 s, no lint allowance. A/strict-clippy.log and
+   strict-clippy-corrected.log, with the corresponding *-result.json files.
+8. Paired app build on signed 13fccd94 — EXIT 0; native capture below EXIT 0.
+9. Clean sh scripts/ci-local.sh --parity on 13fccd94 — EXIT 101 in 354.119 s.
+   Custody's stale executor expectation failed against actual shell. Parity was
+   NOT reached. Inspection also found old launcher catalogue counts. Corrected
+   both TEST files only in signed 85b5705e; no waiver or product change.
+   A/ci-local-parity.log, gate-state.json and fixture-correction-commit.json.
+10. cargo build -p bboxybook --locked — EXIT 0; cargo test --locked --no-fail-fast
+    -p bboxy450-term -p bboxybook — EXIT 0, 246 passed/0 failed, 192.456 s.
+    A/book-build.log and app-book-complete.log with result JSONs.
+11. cargo test --workspace --no-fail-fast --locked on 85b5705e — EXIT 0 in
+    653.579 s; 150 summaries, 1058 passed/0 failed/22 ignored. Full O0 sweep,
+    including socket_backlog; A/workspace-sweep.log and workspace-sweep-state.json.
+12. git rebase --rebase-merges --gpg-sign=<machine key> origin/main — EXIT 0,
+    onto 8d7ca48e, preserving Wren's original reference commits. Post-rebase
+    cargo build -p bboxy450-term --locked EXIT 0; focused mux tests 51/0 and
+    app --lib --bins 102/0, all EXIT 0. A/final-base-rebase.json and rebased-*.log.
+13. Final clean sh scripts/ci-local.sh --parity on 26ed857e — EXIT 0, details next.
+14. git verify-commit 26ed857e — EXIT 0, good machine-key signature;
+    git diff --check 8d7ca48e 26ed857e — EXIT 0. Clean gate checkout before AND
+    after execution. A/post-gate-source-proof.json. Verification failures above
+    remain retained in A alongside the successful runs.
+
+FINAL CLEAN GATE
+Slot 1 explicitly granted by 8e2c8f3e, after earlier slot-2 queue messages.
+Started 2026-10-24T07:44:09.125047Z; ended 08:19:40.348085Z, before 02:45 PDT.
+Fresh detached worktree A/ci-aster-role262-26ed-_efb73pm, exact 26ed857e,
+own CARGO_TARGET_DIR inside it. Inherited harness context identifiers removed.
+CARGO_INCREMENTAL=0; DEV/TEST_DEBUG=0; DEV/TEST_OPT_LEVEL=1;
+DEV/TEST_DEBUG_ASSERTIONS=true; CARGO_BUILD_JOBS=4; BBOXY_TEST_CUSTODY=memory.
+A/ci-local-parity-final.log is the complete raw output; gate-final-state.json
+records the actual EXIT 0 separately from preparation EXIT 0.
+Layering, workspace build, strict all-target Clippy, workspace tests and UI lint
+passed. Native smoke: idle 10.002 s, 0 frames/0 callbacks, 21 measured samples;
+CPU p99 6.858 ms (smoke only, no load/SLO claim).
+Invariants: 18 checks, 0 failures, 6 explicitly slow checks skipped by policy.
+Current capture: 2056/2056 web, 0 capture failures; 2056 native PNGs.
+Current report: A/parity-26ed857e/report.json; capture.json pins revision 26ed857e.
+1952 required geometry cases, 1952 complete measurements, 0 unproven, 0 mismatches.
+72 pixel reviews are advisory; this report makes no new-baseline attribution claim.
+The 32 new role cases all have status within policy, maximum rect error
+0.03515625 px and maximum baseline error 0.0078125 px. A/role-parity-results.json.
+Separate legacy report: 1664 historical cases, 851 advisory pixel reviews,
+geometry deliberately not requested; it is not the strict current gate.
+Slot 1 release sent as 3fa240b9-86c5-4cc4-8fc1-80afad741636 (recipient-stored;
+storage is not a claim that the Oracle has reviewed or accepted the result).
+
+IMAGES READ
+Real app presented-frame capture at source 13fccd94:
+  APP --run-dir OWN_RUN --launcher --capture A/native/root.png
+    --capture-after 2 --quit-after 8
+EXIT 0 in 9.530 s, memory custody witnessed in its app log. Own PIDs
+64010/64063/64065 all reaped. The image shows Claude oracle by default, Codex
+executor/never-oracle and zsh shell/no-role. No desktop input was used.
+This image is retained from the earlier source, not relabelled as a later binary:
+13fccd94 -> 85b5705e changed tests only, and git diff --quiet 85b5705e 26ed857e
+over app/ui/book/render/lab returned 0. A/rebased-tree-proof.json records the latter.
+Four unmodified comfortable-density web/native pairs were read with view_image:
+launcher/claude-roles-comfortable-dark.png — four presets, Oracle default,
+  existing-Oracle note names Ilka Vex, labels/breadcrumb/rows align.
+launcher/claude-roles-no-oracle-yet-comfortable-light.png — same default, note
+  absent, four legible roles without label clipping.
+launcher/claude-architect-placements-comfortable-dark.png — Claude > Architect
+  breadcrumb retained; new tab/split right/split down align.
+launcher/codex-placements-comfortable-light.png — direct placements, no role menu.
+Paths are under A/parity-26ed857e/{web,native}; A/image-read.json pins eight hashes.
+These preset pairs are headless constructor evidence, not an injected native
+interaction. No PNG was edited; no pixel-identity claim is made.
+
+FIXTURE MIGRATIONS NAMED
+Adapter custom director seed -> oracle, because only five names are admitted.
+Wiring quoted role-name seed -> executor; prompt/path quoting stays covered.
+Explicit MCP zsh oracle now expects Oracle class, rather than oracle-name/Worker.
+Custody zsh default expectation executor -> shell.
+Launcher counts become 240 current / 48 historical with four new state assertions.
+
+MAIN MOVED / GAPS / LEFT UNTOUCHED
+Observed origin/main after the frozen run: 56e4c62e. Since base 8d7ca48e it gained
+A-3 Graph checklist, A1 ctl capture/MAX_DEPTH/help, and decisions #264/#265.
+They were not substituted into this gate. The Oracle verifies the merged tree;
+the explicit freeze means no rebase or second gate here.
+No proto, registry or grant-signing shape change. No existing grant migration,
+seat-row re-grant, role-chip promotion flow, graph glyph redesign, socket
+scheduling, terminal/pane rendering, new AI-client audit or R5 load run.
+Real installed-client wake/trust evidence remains the separately accepted audit
+ee58dad3 / b6cf996b. Sable received its exact source/receipts/reproduction through
+ICQ message 81838b2a; receiver model action is not inferred from the store receipt.
+
+CLEANUP / HANDOFF STATE
+After gate exit, ps scoped to own gate/dev paths found no remaining process.
+Own final gate target removed: 3,913,998,336 allocated bytes; own dev target:
+6,982,057,984 allocated bytes. Total 10,896,056,320; 10,489,667,584 shared-volume
+available-byte delta observed, not a guaranteed APFS physical-reclaim measure.
+git worktree remove of the own completed gate checkout — EXIT 0.
+The earlier failed gate target was separately removed (2,602,504,192 allocated
+bytes). No peer target, directory or process was touched.
+Final app/book binary copies, galleries, manifests, reports and all raw logs are
+retained in A; final-cleanup.json and gate-binary-manifest.json record the facts.
+Source and evidence-only successor are handed to the Oracle for acceptance.
