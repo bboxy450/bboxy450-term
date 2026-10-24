@@ -1,0 +1,93 @@
+R5h handoff — Rook Ashwhisker <EXECUTOR>
+Gated commit: d96c53be3982600d0441b5a984695fd5eff2808e
+Implementation commit: c50400049aa6cd7d10eb88cf8d98cded34093e7e
+Branch/worktree: rook-r5h-watched-replay /Users/feral/mydev/bboxy450-term-rook
+Oracle slot2 grant: a1be739b-8c09-415c-ba62-3b70ad94ab59; release sent3efa775f-d08d-4567-a8d0-abb2d30b7867.
+Base:39e47829ccec81cb4a8bc91ce48010b66c1a150d. Signed clean rebase from8a60ec5a; range-diff changes only the unit-test hunk enclosing-function label (row_text now precedes tests), no R5h implementation drift.
+
+Mechanism / paths
+crates/bbt-mux/src/logic.rs:241 — actor-owned refcounts for session+seat+process-generation watch interests; weak lifetime token+atomic epoch makes disconnect cleanup independent of a full command queue.
+crates/bbt-mux/src/logic.rs:1147 — bounded round-robin watched/background lanes, named3:1 policy data; empty lanes donate, lane changes retain FIFO and quota; parked hosts remain parked.
+crates/bbt-mux/src/logic.rs:5056 — round-start/command cleanup and local watch-interest admission. Generation validation precedes registration; no checkpoint/link wait added.
+crates/bbt-mux/src/seat_socket.rs:508 — session interest forwarded on successful Watch, Unwatch and removed-view cleanup; lifetime dropped at:796 before awaited bus-lease cleanup.
+crates/bbt-mux/tests/logic.rs:7 + tests/common/capture_priority.rs — exact #276 command; four real PTYs/one swarm/explicit key, finite output then park, held notifications; fixed page budget proves visible tail before backgrounds finish; all Screens equal serial captured replay.
+.bboxy/invariants/watched-replay-priority.md — #276 activation, slow/gate removed alongside test. Design remains3:1; gate floor remains at least half in every8-round window.
+Included previously approved fixture parent7667ba6b (originald08fa9d5): stall/load.rs frozen MEASURE/stop/first-settled boundaries, success sidecar after Finish plus freeze/serialization unit. No readiness/deadline/RPC/policy change. Its previous failed frame evidence is retained in b5930a9a/.bboxy/runs/r5g-frame-window.log.
+
+Verification
+sh scripts/ci-local.sh — EXIT0; every sequential stage held, all gates passed.
+Clean detached worktree: /private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-ci-fulgtygx/tree; clean before and after (git status --porcelain empty).
+Environment: separate own CARGO_TARGET_DIR,2 jobs,incremental0,dev/test O1/debug0/debug assertions true,BBOXY_TEST_CUSTODY=memory. PTY fixtures use explicit test keys.
+{
+  "source": "d96c53be3982600d0441b5a984695fd5eff2808e",
+  "tree": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-ci-fulgtygx/tree",
+  "target": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-ci-fulgtygx/target",
+  "command": [
+    "sh",
+    "scripts/ci-local.sh"
+  ],
+  "slot": 2,
+  "slot_message": "a1be739b-8c09-415c-ba62-3b70ad94ab59",
+  "wrapper_pid": 91119,
+  "start": "2026-10-24T10:29:18.791517-07:00",
+  "free_bytes_before": 37154148352,
+  "loadavg_before": [
+    25.18310546875,
+    15.6337890625,
+    16.8408203125
+  ],
+  "exit": 0,
+  "child_pid": 91144,
+  "elapsed_s": 1346.002400833997,
+  "log_bytes": 205537,
+  "log_sha256": "9874be43a728b76436c72e62475baecc576748e59fd8ed5e9b6b4a2dbbd38f0b",
+  "worktree_after": ""
+}
+Raw log: .bboxy/runs/r5h-final-ci.log; SHA256 9874be43a728b76436c72e62475baecc576748e59fd8ed5e9b6b4a2dbbd38f0b; 205537 bytes.
+Workspace build0; strict workspace/all-target Clippy -D warnings0; workspace tests/doctests0; UI disallowed-I/O lint0; native smoke0 (idle10.002s,0frames/0callbacks); invariants19 checks/0failures/8named slow skips; checkpoint-bounded and watched-replay-priority pass.
+Before/after: .bboxy/runs/r5h-dev.log and r5h-verification.log. Pre-R5h f4ac1dba fails101 at intended watched cursor22<tail33 under82page budget; fixed source passes. All before/after four-PTY PIDs gone. Deterministic unit quota/refcounts/disconnect/generation/Exit tests10/0; existing fairness2/0 and checkpoint scheduling3/0; strict workspace Clippy0 before slot.
+
+Failures preserved / gaps
+Initial development compile E0061 (unavailable context omitted) and fixture module-path E0425 corrected; actual outputs retained in r5h-dev.log. First shell result capture used zsh read-only status; corrected wrapper uses run_status.
+CI runner preflight EXIT1 before any CI child launched: /var vs/private/var lexical path guard. Corrected to resolved paths; original traceback below. One actual full CI launch, EXIT0.
+Traceback (most recent call last):
+  File "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-ci-fulgtygx/run-ci.py", line 6, in <module>
+    assert tree.parent==root and target.parent==root
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+No new967 run and no watched-settling/latency claim. The post-merge scheduled967-real-PTY/50-watched frame run still owes watched seats settled and checkpoint RPC<=10% of logic wall over producer-stop to first-settled. Measured-overlap ratio informational only. #267 dirty-swarm pump remains parked.
+No source rebase/change after CI started; any later main work requires Oracle merged-tree verification. No merge/push or LANDED claim from Executor.
+
+Provenance
+gpg: Signature made Sat Oct 24 10:28:34 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+
+1:  fb8fcafa = 1:  7667ba6b Export frozen capture boundaries after a successful frame fixture
+2:  77f77f50 = 2:  b5930a9a Record the failed frame window and measured replay bottleneck
+3:  41cf602b ! 3:  c5040004 Prioritize explicitly watched replay with bounded background service
+    @@ crates/bbt-mux/src/logic.rs: impl Worker {
+                      pending_events.parked.len(),
+                  );
+                  turn.finish(Outcome::Ok, 0, 0);
+    -@@ crates/bbt-mux/src/logic.rs: fn check_size(cols: usize, rows: usize) -> Result<()> {
+    +@@ crates/bbt-mux/src/logic.rs: fn row_text(cells: &[bbt_core::Cell]) -> String {
+      #[cfg(test)]
+      mod pending_tests {
+          use super::*;
+4:  8a60ec5a = 4:  d96c53be Record R5h focused regression and strict Clippy evidence
+
+
+Cleanup
+{
+  "at": "2026-10-24T10:52:18.077116-07:00",
+  "removed_owned_target": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-ci-fulgtygx/target",
+  "allocated_bytes_before": 3754164224,
+  "free_bytes_before": 23737344000,
+  "free_bytes_after": 27245506560,
+  "raw_ci_log_preserved": true,
+  "source": "d96c53be3982600d0441b5a984695fd5eff2808e"
+}
+
+Own dev cache already removed before gate; no active Rook build/app/load remains. Raw tables, binary, before/after logs and source commits retained. Prepared clean CI worktree retained without target.

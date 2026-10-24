@@ -1,0 +1,476 @@
+R5h signed-source focused verification
+2026-10-24T09:43:22.306809-07:00
+Source41cf602b8c6088ffed1187769ba964005d38d29b; signatures G; rebase onto c07e26e1 changed no implementation bytes (git diff --quiet3522a50c..41cf602b -- named crates paths EXIT0).
+All commands use own target/r5g-frame;2 jobs;dev/test opt1+debug0;debug assertions retained; explicit fixture keys or BBOXY_TEST_CUSTODY=memory.
+
+{"label": "pending-final", "source": "41cf602b8c6088ffed1187769ba964005d38d29b", "argv": ["cargo", "test", "-p", "bbt-mux", "--locked", "--lib", "pending_tests", "--", "--nocapture"], "start": "2026-10-24T09:32:17.067063-07:00", "elapsed_s": 116.3081033329945, "exit": 0, "log_sha256": "46d5d8ef82bdad18101c4a78f1b4277ef9880884a4da6c15d2c1ede5c54f0a11"}
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-doc)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 1m 55s
+     Running unittests src/lib.rs (target/r5g-frame/debug/deps/bbt_mux-40e0fccf26d2d7ee)
+
+running 10 tests
+test logic::pending_tests::down_host_work_is_parked_until_a_provider_up_transition ... ok
+test logic::pending_tests::replacement_generation_discards_only_the_old_generation_work ... ok
+test logic::pending_tests::watch_refcounts_are_idempotent_and_disconnect_releases_only_its_session ... ok
+test logic::pending_tests::watched_and_background_work_stays_parked_without_a_ready_spin ... ok
+test logic::pending_tests::pending_seats_rotate_without_changing_an_unfinished_target ... ok
+test logic::pending_tests::watched_quota_is_three_to_one_and_each_lane_rotates ... ok
+test logic::pending_tests::closed_watch_admission_cannot_resurrect_interest_or_change_its_token ... ok
+test logic::pending_tests::empty_lanes_donate_without_borrowing_the_next_background_turn ... ok
+test logic::pending_tests::pending_notifications_stay_bounded_and_preserve_resize_and_exit_order ... ok
+test logic::pending_tests::ended_interest_demotes_next_round_without_tombstones_or_generation_leaks ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 67 filtered out; finished in 0.01s
+
+
+
+{"label": "priority-final", "source": "41cf602b8c6088ffed1187769ba964005d38d29b", "argv": ["cargo", "test", "-p", "bbt-mux", "--locked", "--test", "logic", "watched_lane_gets_at_least_half_of_replay_pages", "--", "--exact", "--nocapture"], "start": "2026-10-24T09:34:13.374862-07:00", "elapsed_s": 133.39995912503218, "exit": 0, "log_sha256": "9773ce7f864c86b6a3a13d59cdb40b168bfbdfcee41dc62e366ee0d84a53de7e"}
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 2m 01s
+     Running tests/logic.rs (target/r5g-frame/debug/deps/logic-173ac3c763159c70)
+
+running 1 test
+owned priority seat=01M5QCA8EDXDCRATCBK47NJ7CQ pid=4501
+owned priority seat=01M5QCA8EDJS22584E1C3CRCMF pid=4503
+owned priority seat=01M5QCA8ED5V0DFQ1C3V1RC55F pid=4505
+owned priority seat=01M5QCA8ED61ET280FJKY0DZP0 pid=4508
+watched source pages=33, fixed budget=82, watched replay pages=32
+test watched_lane_gets_at_least_half_of_replay_pages ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 11.34s
+
+
+
+{"label": "regressions", "source": "41cf602b8c6088ffed1187769ba964005d38d29b", "argv": ["cargo", "test", "-p", "bbt-mux", "--locked", "--test", "capture_fairness", "--test", "checkpoint_scheduling", "--", "--nocapture", "--test-threads=1"], "start": "2026-10-24T09:36:26.775396-07:00", "elapsed_s": 54.74770633399021, "exit": 0, "log_sha256": "bd2b999fc23a4c5b6e492b99b9ac18bbe99190f53d48ee97036e164be83b0976"}
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 28.92s
+     Running tests/capture_fairness.rs (target/r5g-frame/debug/deps/capture_fairness-7e57b7a02cc6c106)
+
+running 2 tests
+test down_host_replay_parks_and_idle_local_polling_stays_bounded_until_reconnect ... owned outage fixture seat=01M5QCBG4N0E8TDYGX2JTD5HK2 pid=5409
+down-host idle 1.000803292s: local_receives=81, remote_receives=81, bound=110, capture_retries=0
+ok
+test four_watched_seats_advance_during_a_large_replay_and_match_serial_screens ... owned fixture seat=01M5QCBHDH6T4DV2N8P5NV3ZTA pid=5425
+owned fixture seat=01M5QCBHDHD61N53MCEP96MDWP pid=5428
+owned fixture seat=01M5QCBHDH4ZW00DS486DM0KVV pid=5430
+owned fixture seat=01M5QCBHDHPVYY0YDSWC965MJJ pid=5432
+other three watched seats updated during replay: 292.648834ms, huge_pages=8
+exact serial Screen seat=01M5QCBHDH6T4DV2N8P5NV3ZTA sequence=257
+exact serial Screen seat=01M5QCBHDHD61N53MCEP96MDWP sequence=1
+exact serial Screen seat=01M5QCBHDH4ZW00DS486DM0KVV sequence=1
+exact serial Screen seat=01M5QCBHDHPVYY0YDSWC965MJJ sequence=1
+ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.46s
+
+     Running tests/checkpoint_scheduling.rs (target/r5g-frame/debug/deps/checkpoint_scheduling-3e957dd5529ad685)
+
+running 3 tests
+test a_held_checkpoint_does_not_hold_snapshot_or_status_service ... ok
+test caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog ... ok
+test hundred_mib_partial_replay_forces_r_spaced_checkpoints_and_never_exceeds_two_r_debt ... 100MiB: checkpoints=14 confirmed_bytes=104857608 parsed_end=104857608
+ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.61s
+
+
+
+{"label": "strict-clippy", "source": "41cf602b8c6088ffed1187769ba964005d38d29b", "argv": ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "start": "2026-10-24T09:37:21.523840-07:00", "elapsed_s": 328.0946943750023, "exit": 0, "log_sha256": "227057844024bc31cf80d7af8afbbbd488bfd7ec8e94668d54f6f389e1ed5c6c"}
+    Checking libc v0.2.191
+    Checking serde_core v1.0.229
+    Checking cfg-if v1.0.5
+    Checking serde v1.0.229
+    Checking memchr v2.8.3
+    Checking itoa v1.0.18
+   Compiling serde_json v1.0.154
+    Checking zmij v1.0.23
+   Compiling winnow v1.0.4
+    Checking bitflags v2.13.2
+   Compiling toml_parser v1.1.5+spec-1.1.0
+    Checking log v0.4.34
+    Checking smallvec v1.16.3
+    Checking arrayvec v0.7.8
+   Compiling zerocopy v0.8.63
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling zerocopy-derive v0.8.63
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)
+    Checking typenum v1.20.1
+    Checking zeroize v1.9.1
+    Checking allocator-api2 v0.2.21
+    Checking foldhash v0.2.0
+    Checking scopeguard v1.2.0
+    Checking equivalent v1.0.3
+    Checking hashbrown v0.17.1
+    Checking lock_api v0.4.14
+    Checking libm v0.2.16
+    Checking parking_lot_core v0.9.12
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui)
+    Checking num-traits v0.2.19
+    Checking parking_lot v0.12.5
+    Checking unicode-width v0.2.2
+    Checking getrandom v0.2.17
+    Checking generic-array v0.14.7
+    Checking rand_core v0.6.4
+    Checking indexmap v2.14.2
+    Checking once_cell v1.21.4
+    Checking cursor-icon v1.2.0
+   Compiling crc32fast v1.5.3
+    Checking pin-project-lite v0.2.17
+    Checking crypto-common v0.1.7
+    Checking thiserror v2.0.21
+    Checking subtle v2.6.1
+    Checking simd-adler32 v0.3.10
+    Checking adler2 v2.0.1
+    Checking miniz_oxide v0.9.1
+    Checking zlib-rs v0.6.8
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mermaid)
+    Checking ryu v1.0.23
+    Checking const-oid v0.9.6
+    Checking unsafe-libyaml v0.2.11
+    Checking flate2 v1.1.10
+    Checking unicase v2.10.0
+    Checking pulldown-cmark v0.13.4
+    Checking serde_yaml v0.9.34+deprecated
+    Checking core-foundation-sys v0.8.7
+    Checking unicode-segmentation v1.13.3
+    Checking block-buffer v0.10.4
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-doc)
+    Checking digest v0.10.7
+    Checking objc2-encode v4.1.0
+    Checking bytes v1.12.1
+   Compiling cfg_aliases v0.2.2
+   Compiling objc2 v0.6.5
+    Checking base64 v0.22.1
+    Checking serde-big-array v0.5.1
+    Checking errno v0.3.14
+    Checking cpufeatures v0.2.17
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+    Checking dispatch2 v0.3.1
+    Checking block2 v0.6.2
+    Checking signal-hook-registry v1.4.8
+    Checking mio v1.2.4
+   Compiling bytemuck_derive v1.12.1
+    Checking socket2 v0.6.5
+    Checking tokio v1.54.1
+    Checking bytemuck v1.25.2
+    Checking objc2-core-foundation v0.3.2
+    Checking objc2-foundation v0.3.2
+    Checking base64ct v1.8.3
+    Checking unicode-ident v1.0.27
+    Checking getrandom v0.3.4
+    Checking objc2-metal v0.3.2
+    Checking ppv-lite86 v0.2.21
+    Checking rustc-hash v1.1.0
+    Checking naga-types v30.0.1
+    Checking pem-rfc7468 v0.7.0
+   Compiling naga v30.0.1
+    Checking inout v0.1.4
+    Checking raw-window-handle v0.6.2
+    Checking objc2-core-graphics v0.3.2
+    Checking bit-vec v0.9.1
+    Checking bit-set v0.10.0
+    Checking cipher v0.4.4
+    Checking der v0.7.10
+    Checking codespan-reporting v0.13.1
+    Checking half v2.7.1
+    Checking static_assertions v1.1.0
+    Checking wgpu-types v30.0.1
+    Checking spki v0.7.3
+    Checking objc2-quartz-core v0.3.2
+   Compiling wgpu-hal v30.0.1
+    Checking float-cmp v0.9.0
+    Checking strict-num v0.1.1
+    Checking raw-window-metal v1.1.0
+    Checking sha2-asm v0.6.4
+    Checking pkcs8 v0.10.2
+    Checking num-integer v0.1.47
+    Checking wgpu-naga-bridge v30.0.1
+    Checking polycool v0.4.0
+    Checking libloading v0.8.9
+    Checking arrayref v0.3.9
+    Checking tap v1.0.1
+    Checking profiling v1.0.18
+    Checking wyz v0.5.1
+    Checking tiny-skia-path v0.12.0
+    Checking kurbo v0.13.1
+    Checking sha2 v0.10.9
+    Checking radium v0.7.0
+   Compiling wgpu-core v30.0.1
+    Checking hmac v0.12.1
+    Checking miniz_oxide v0.8.9
+    Checking fdeflate v0.3.7
+    Checking euclid v0.22.14
+    Checking futures-task v0.3.34
+    Checking funty v2.0.0
+    Checking siphasher v1.0.4
+   Compiling litrs v1.0.1
+    Checking slab v0.4.12
+    Checking futures-core v0.3.34
+    Checking futures-sink v0.3.34
+    Checking base16ct v0.2.0
+    Checking futures-util v0.3.34
+   Compiling document-features v0.2.12
+    Checking bitvec v1.1.1
+    Checking svgtypes v0.16.1
+    Checking lyon_geom v1.0.20
+    Checking png v0.18.1
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking rand_core v0.9.5
+   Compiling wgpu v30.0.1
+    Checking signature v2.2.0
+    Checking simplecss v0.2.2
+    Checking roxmltree v0.21.1
+    Checking data-url v0.3.2
+    Checking imagesize v0.15.0
+    Checking pico-args v0.5.0
+    Checking usvg v0.48.1
+    Checking tiny-skia v0.12.0
+    Checking rand_chacha v0.9.0
+    Checking lyon_path v1.0.19
+    Checking ff v0.13.1
+    Checking crossbeam-utils v0.8.23
+    Checking serdect v0.2.0
+    Checking num-iter v0.1.46
+    Checking rgb v0.8.53
+    Checking float_next_after v1.0.0
+    Checking rand_core v0.10.1
+    Checking lyon_tessellation v1.0.22
+    Checking resvg v0.48.1
+    Checking sec1 v0.7.3
+    Checking crossbeam-queue v0.3.14
+    Checking group v0.13.0
+    Checking rand v0.9.5
+    Checking hkdf v0.12.4
+    Checking objc2-core-text v0.3.2
+    Checking crypto-bigint v0.5.5
+    Checking hybrid-array v0.4.15
+    Checking pollster v0.4.0
+   Compiling objc-sys v0.3.5
+    Checking elliptic-curve v0.13.8
+    Checking ulid v1.2.1
+    Checking getrandom v0.4.3
+   Compiling aho-corasick v1.1.5
+   Compiling regex-syntax v0.8.11
+    Checking thiserror v1.0.69
+   Compiling regex-automata v0.4.18
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-render)
+    Checking block-buffer v0.12.1
+    Checking crypto-common v0.2.2
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+    Checking zstd-sys v2.1.2+zstd.1.5.7
+    Checking rfc6979 v0.4.0
+    Checking const-oid v0.10.2
+    Checking digest v0.11.3
+    Checking zstd-safe v8.2.0
+   Compiling regex v1.13.1
+    Checking nix v0.28.0
+    Checking objc2 v0.5.3
+    Checking filedescriptor v0.8.3
+    Checking anyhow v1.0.104
+    Checking serial2 v0.2.38
+    Checking shell-words v1.1.1
+    Checking downcast-rs v1.2.1
+    Checking block2 v0.5.1
+    Checking portable-pty v0.9.0
+    Checking zstd v0.14.3
+    Checking ecdsa v0.16.9
+    Checking rand_chacha v0.3.1
+    Checking core-foundation v0.9.4
+   Compiling foreign-types-macros v0.2.4
+    Checking cpufeatures v0.3.1
+    Checking data-encoding v2.11.1
+    Checking dispatch v0.2.0
+    Checking bitflags v1.3.2
+    Checking spin v0.9.9
+    Checking foreign-types-shared v0.3.1
+    Checking lazy_static v1.5.1
+    Checking foreign-types v0.5.0
+    Checking core-graphics-types v0.1.3
+    Checking objc2-foundation v0.2.2
+    Checking rand v0.8.8
+    Checking primeorder v0.13.6
+    Checking ctr v0.9.2
+    Checking aead v0.5.2
+   Compiling winit v0.30.13
+    Checking universal-hash v0.5.1
+    Checking opaque-debug v0.3.1
+    Checking tracing-core v0.1.36
+    Checking tracing v0.1.44
+    Checking polyval v0.6.2
+    Checking curve25519-dalek v4.1.3
+    Checking objc2-app-kit v0.2.2
+    Checking num-bigint-dig v0.8.6
+    Checking core-graphics v0.23.2
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Checking chacha20 v0.10.2
+    Checking aes v0.8.4
+    Checking keccak v0.1.6
+    Checking dbl v0.3.2
+    Checking smol_str v0.2.2
+    Checking byteorder v1.5.0
+    Checking dpi v0.1.2
+    Checking cmac v0.7.2
+    Checking sha3 v0.10.9
+    Checking rand v0.10.3
+    Checking httparse v1.10.1
+    Checking ghash v0.5.1
+    Checking rustix v1.1.5
+    Checking sha1 v0.11.0
+    Checking ed25519 v2.2.3
+    Checking serdect v0.3.0
+    Checking pkcs1 v0.7.5
+    Checking password-hash v0.5.0
+    Checking sha1 v0.10.7
+    Checking http v1.5.0
+    Checking blake2 v0.10.6
+    Checking fastrand v2.5.0
+    Checking foldhash v0.1.5
+    Checking same-file v1.0.6
+    Checking signature v3.0.0
+    Checking walkdir v2.5.0
+    Checking ed25519 v3.0.0
+    Checking tungstenite v0.30.0
+    Checking hashbrown v0.15.5
+    Checking tempfile v3.27.0
+    Checking num_enum v0.7.6
+    Checking argon2 v0.5.3
+    Checking sha1-checked v0.10.0
+    Checking rsa v0.9.10
+    Checking cx448 v0.1.1
+    Checking ed25519-dalek v2.2.0
+    Checking snafu v0.9.2
+    Checking aes-gcm v0.10.3
+    Checking libsqlite3-sys v0.38.2
+    Checking bitfields v1.0.3
+    Checking derive_builder v0.20.2
+    Checking curve25519-dalek v5.0.0
+    Checking crc24 v0.1.6
+    Checking eax v0.5.0
+    Checking derive_more v2.1.1
+    Checking camellia v0.1.0
+    Checking blowfish v0.9.1
+    Checking aes-kw v0.2.1
+    Checking dsa v0.6.3
+    Checking x25519-dalek v2.0.1
+    Checking ocb3 v0.1.0
+    Checking p384 v0.13.1
+    Checking p521 v0.13.3
+    Checking p256 v0.13.2
+    Checking sha2 v0.11.1
+    Checking k256 v0.13.4
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)
+    Checking des v0.8.1
+    Checking cfb-mode v0.8.2
+    Checking idea v0.5.1
+    Checking cast5 v0.11.1
+    Checking twofish v0.7.1
+    Checking ripemd v0.1.3
+    Checking md-5 v0.10.6
+    Checking security-framework-sys v2.17.0
+    Checking core-foundation v0.10.1
+    Checking block-padding v0.3.3
+    Checking hashlink v0.12.2
+    Checking notify-types v2.1.0
+    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-plugin)
+    Checking buffer-redux v1.1.0
+    Checking nom v8.0.0
+    Checking fsevent-sys v4.1.0
+    Checking fallible-iterator v0.3.0
+    Checking hex v0.4.3
+    Checking fallible-streaming-iterator v0.1.9
+    Checking replace_with v0.1.8
+    Checking fixedbitset v0.5.7
+    Checking petgraph v0.8.3
+    Checking pgp v0.21.0
+    Checking rusqlite v0.40.2
+    Checking notify v8.2.0
+    Checking security-framework v3.7.0
+    Checking ed25519-dalek v3.0.0
+    Checking tokio-tungstenite v0.30.0
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxybook)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-term)
+    Checking objc2-app-kit v0.3.2
+    Checking toml_datetime v1.1.2+spec-1.1.0
+   Compiling toml_edit v0.25.17+spec-1.1.0
+   Compiling proc-macro-crate v3.5.0
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy-firehose)
+   Compiling target-triple v1.0.1
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn-macros)
+    Checking serde_spanned v1.1.2
+    Checking toml_writer v1.1.3+spec-1.1.0
+    Checking toml v1.1.8+spec-1.1.0
+    Checking tokio-util v0.7.19
+    Checking termcolor v1.4.1
+    Checking glob v0.3.4
+    Checking trybuild v1.0.120
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn)
+    Checking num-bigint v0.4.8
+   Compiling ahash v0.8.12
+   Compiling ref-cast v1.0.27
+    Checking num-complex v0.4.6
+    Checking num-rational v0.4.2
+   Compiling ref-cast-impl v1.0.27
+    Checking num v0.4.3
+    Checking borrow-or-share v0.2.4
+   Compiling jsonschema-value v0.60.1
+    Checking bit-vec v0.8.0
+   Compiling unicode-general-category v1.1.0
+    Checking proc-macro2 v1.0.107
+    Checking bit-set v0.8.0
+    Checking fluent-uri v0.4.1
+    Checking fraction v0.17.0
+   Compiling strum_macros v0.28.0
+    Checking outref v0.5.2
+    Checking bytecount v0.6.9
+    Checking num-cmp v0.1.0
+    Checking micromap v0.3.0
+    Checking vsimd v0.8.0
+    Checking percent-encoding v2.3.2
+    Checking referencing v0.60.1
+    Checking uuid-simd v0.8.0
+    Checking strum v0.28.0
+    Checking fancy-regex v0.19.2
+    Checking quote v1.0.47
+    Checking jsonschema-regex v0.60.1
+    Checking email_address v0.2.9
+    Checking jsonschema v0.60.1
+    Checking syn v2.0.119
+    Finished `dev` profile [optimized] target(s) in 5m 27s
+
+
+No throughput or wall-clock speedup claim; page counts gate #276. Official967/50 settling+stop-to-first-settled checkpoint-share acceptance remains a separate scheduled window. No new967 run.
+
+priority-final-reaped.json
+{
+  "pids": [
+    "4501",
+    "4503",
+    "4505",
+    "4508"
+  ],
+  "command": "ps -p 4501,4503,4505,4508 -o pid,ppid,stat,comm",
+  "exit": 1,
+  "stdout": ""
+}
+
+
+inactive-release-cleanup.json
+{
+  "at": "2026-10-24T09:39:19.178009-07:00",
+  "removed_inactive_owned_profile": "/Users/feral/mydev/bboxy450-term-rook/target/r5g-frame/release",
+  "allocated_bytes_before": 1487687680,
+  "retained_measured_binary": "/tmp/rook-r5g-frame-oc2eujtr/bboxy450-term-d08fa9d5",
+  "retained_binary_sha256": "d053b8989b5c1b132f9084f3120e815ab8900c085f64a3c89d1e07909a62cbe3",
+  "free_bytes_before": 16101281792,
+  "free_bytes_after": 17496522752,
+  "active_dev_profile_debug_untouched": true
+}
+
+
+Finished private dev target removed
+{"path": "/Users/feral/mydev/bboxy450-term-rook/target/r5g-frame", "allocated_bytes_before": 1137074176, "free_bytes_before": 15618191360, "free_bytes_after": 16692617216, "active_builds_after_driver_exit": false, "retained_binary_and_raw_evidence": true}

@@ -7,8 +7,8 @@ mod knowledge_responsiveness_tests;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::{
-    Arc, OnceLock,
-    atomic::{AtomicBool, Ordering},
+    Arc, OnceLock, Weak,
+    atomic::{AtomicBool, AtomicU64, Ordering},
 };
 use std::time::{Duration, Instant};
 
@@ -108,6 +108,13 @@ enum Command {
     GuiSeat(Ulid, oneshot::Sender<Result<crate::seat_socket::GuiSeat>>),
     GuiIdentity(oneshot::Sender<Result<bbt_proto::GuiIdentity>>),
     GuiDevice(oneshot::Sender<Result<Ulid>>),
+    GuiWatchInterest {
+        session: Ulid,
+        life: Weak<GuiWatchLife>,
+        seat: Ulid,
+        generation: Option<u64>,
+        reply: oneshot::Sender<Result<()>>,
+    },
     Messaging(
         Ulid,
         u64,
@@ -181,6 +188,7 @@ impl Command {
                 | Self::Record(..)
                 | Self::Endpoint(..)
                 | Self::Status(..)
+                | Self::GuiWatchInterest { .. }
         )
     }
 }
@@ -207,6 +215,114 @@ pub struct EndpointInfo {
     pub capability: [u8; 32],
 }
 
+struct GuiWatchLife {
+    epoch: Arc<AtomicU64>,
+}
+impl Drop for GuiWatchLife {
+    fn drop(&mut self) {
+        // The last strong reference is gone before this notification. Cleanup
+        // cannot be lost behind a full command channel or a cancelled socket.
+        self.epoch.fetch_add(1, Ordering::Release);
+    }
+}
+
+/// Ephemeral interest belongs to one GUI connection, never to Snapshot calls.
+pub(crate) struct GuiWatchSession {
+    id: Ulid,
+    life: Arc<GuiWatchLife>,
+}
+
+struct GuiWatchOwner {
+    life: Weak<GuiWatchLife>,
+    seats: BTreeMap<Ulid, u64>,
+}
+
+#[derive(Default)]
+struct GuiWatchInterests {
+    sessions: BTreeMap<Ulid, GuiWatchOwner>,
+    references: BTreeMap<(Ulid, u64), usize>,
+}
+impl GuiWatchInterests {
+    fn remove_reference(&mut self, key: (Ulid, u64)) -> bool {
+        let count = self.references.get_mut(&key).unwrap();
+        *count -= 1;
+        if *count == 0 {
+            self.references.remove(&key);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn update(
+        &mut self,
+        session: Ulid,
+        life: Weak<GuiWatchLife>,
+        seat: Ulid,
+        generation: Option<u64>,
+    ) -> Result<bool> {
+        let _live = life
+            .upgrade()
+            .ok_or_else(|| invalid("GUI watch session closed"))?;
+        if self
+            .sessions
+            .get(&session)
+            .is_some_and(|owner| !Weak::ptr_eq(&owner.life, &life))
+        {
+            return Err(invalid("GUI watch session token changed"));
+        }
+        let old = self
+            .sessions
+            .get(&session)
+            .and_then(|owner| owner.seats.get(&seat))
+            .copied();
+        if old == generation {
+            return Ok(false);
+        }
+        let mut changed = false;
+        if let Some(old) = old {
+            self.sessions.get_mut(&session).unwrap().seats.remove(&seat);
+            changed |= self.remove_reference((seat, old));
+        }
+        if let Some(generation) = generation {
+            self.sessions
+                .entry(session)
+                .or_insert_with(|| GuiWatchOwner {
+                    life,
+                    seats: BTreeMap::new(),
+                })
+                .seats
+                .insert(seat, generation);
+            let references = self.references.entry((seat, generation)).or_default();
+            changed |= *references == 0;
+            *references += 1;
+        } else if self.sessions[&session].seats.is_empty() {
+            self.sessions.remove(&session);
+        }
+        Ok(changed)
+    }
+
+    fn prune_closed(&mut self) -> bool {
+        let closed: Vec<_> = self
+            .sessions
+            .iter()
+            .filter(|(_, owner)| owner.life.strong_count() == 0)
+            .map(|(&session, _)| session)
+            .collect();
+        let mut changed = false;
+        for session in closed {
+            for key in self.sessions.remove(&session).unwrap().seats {
+                changed |= self.remove_reference(key);
+            }
+        }
+        changed
+    }
+
+    fn watched(&self) -> BTreeSet<(Ulid, u64)> {
+        self.references.keys().copied().collect()
+    }
+}
+
 #[derive(Clone)]
 pub struct LogicClient {
     tx: mpsc::Sender<Command>,
@@ -218,8 +334,40 @@ pub struct LogicClient {
     gui_peers: Arc<std::sync::RwLock<Option<crate::ctl_door::Peers>>>,
     /// Captures asked of the window on the operator's behalf.
     pub(crate) captures: Arc<crate::gui_capture::Captures>,
+    gui_watch_epoch: Arc<AtomicU64>,
 }
 impl LogicClient {
+    pub(crate) fn gui_watch_session(&self) -> GuiWatchSession {
+        GuiWatchSession {
+            id: Ulid::new(),
+            life: Arc::new(GuiWatchLife {
+                epoch: self.gui_watch_epoch.clone(),
+            }),
+        }
+    }
+
+    pub(crate) async fn gui_watch_interest(
+        &self,
+        session: &GuiWatchSession,
+        seat: Ulid,
+        generation: Option<u64>,
+    ) -> Result<()> {
+        let (reply, receive) = oneshot::channel();
+        self.tx
+            .send(Command::GuiWatchInterest {
+                session: session.id,
+                life: Arc::downgrade(&session.life),
+                seat,
+                generation,
+                reply,
+            })
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        receive
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?
+    }
+
     pub(crate) fn gui_peers(&self) -> Option<crate::ctl_door::Peers> {
         *self.gui_peers.read().unwrap_or_else(|e| e.into_inner())
     }
@@ -845,6 +993,7 @@ impl Logic {
             capture_diagnostics: Arc::new(Recorder::default()),
             gui_peers: Arc::default(),
             captures: Arc::default(),
+            gui_watch_epoch: Arc::default(),
         };
         let stop = Arc::new(AtomicBool::new(false));
         let stopping = stop.clone();
@@ -997,7 +1146,10 @@ type CheckpointCompletion = (Ulid, CheckpointCursor, bool, Result<CheckpointResu
 #[derive(Default)]
 struct PendingSeats {
     seats: BTreeMap<(HostId, Ulid), PendingSeat>,
-    ready: VecDeque<(HostId, Ulid)>,
+    ready_watched: VecDeque<(HostId, Ulid)>,
+    ready_background: VecDeque<(HostId, Ulid)>,
+    watched: BTreeSet<(Ulid, u64)>,
+    watched_streak: usize,
     parked: BTreeSet<HostId>,
 }
 struct PendingSeat {
@@ -1008,14 +1160,63 @@ struct PendingSeat {
     queued: bbt_supervisor::client::PendingEvents,
 }
 impl PendingSeats {
+    const WATCHED_QUANTA: usize = 3;
+
     #[cfg(test)]
     fn is_empty(&self) -> bool {
         self.seats.is_empty()
     }
     fn has_ready(&self) -> bool {
-        self.ready
+        self.ready_watched
             .iter()
+            .chain(&self.ready_background)
             .any(|(host, _)| !self.parked.contains(host))
+    }
+    fn ready_len(&self) -> usize {
+        self.ready_watched.len() + self.ready_background.len()
+    }
+    fn is_watched(&self, key: &(HostId, Ulid)) -> bool {
+        self.seats
+            .get(key)
+            .is_some_and(|slot| self.watched.contains(&(key.1, slot.generation)))
+    }
+    fn enqueue(&mut self, key: (HostId, Ulid)) {
+        if self.is_watched(&key) {
+            self.ready_watched.push_back(key);
+        } else {
+            self.ready_background.push_back(key);
+        }
+        // Each pending seat has one queue entry, apart from the page currently
+        // checked out by next(). Interest changes never append tombstones.
+        debug_assert!(self.ready_len() <= self.seats.len());
+    }
+    fn set_watched(&mut self, watched: BTreeSet<(Ulid, u64)>) {
+        if self.watched == watched {
+            return;
+        }
+        self.watched = watched;
+        let old_watched = std::mem::take(&mut self.ready_watched);
+        let old_background = std::mem::take(&mut self.ready_background);
+        let mut promoted = VecDeque::new();
+        let mut demoted = VecDeque::new();
+        for key in old_watched {
+            if self.is_watched(&key) {
+                self.ready_watched.push_back(key);
+            } else {
+                demoted.push_back(key);
+            }
+        }
+        for key in old_background {
+            if self.is_watched(&key) {
+                promoted.push_back(key);
+            } else {
+                self.ready_background.push_back(key);
+            }
+        }
+        // New lane members join behind its existing waiters. Keep the current
+        // quota: repeated Watch/Unwatch cannot reset background service.
+        self.ready_watched.extend(promoted);
+        self.ready_background.extend(demoted);
     }
     fn park(&mut self, host: &HostId) {
         self.parked.insert(host.clone());
@@ -1043,6 +1244,10 @@ impl PendingSeats {
         }
         let mut queued = bbt_supervisor::client::PendingEvents::default();
         queued.confirm_ring(key.1, generation, first)?;
+        let old_priority = self
+            .seats
+            .get(&key)
+            .map(|slot| self.watched.contains(&(key.1, slot.generation)));
         let replaced = self.seats.insert(
             key.clone(),
             PendingSeat {
@@ -1054,20 +1259,49 @@ impl PendingSeats {
             },
         );
         if replaced.is_none() {
-            self.ready.push_back(key);
+            self.enqueue(key);
+        } else if old_priority != Some(self.is_watched(&key)) {
+            let before = self.ready_len();
+            self.ready_watched.retain(|queued| queued != &key);
+            self.ready_background.retain(|queued| queued != &key);
+            if self.ready_len() < before {
+                self.enqueue(key);
+            }
         }
         Ok(())
     }
-    fn next(&mut self) -> Option<((HostId, Ulid), Event)> {
-        for _ in 0..self.ready.len() {
-            let key = self.ready.pop_front()?;
+    fn pop_lane(&mut self, watched: bool) -> Option<(HostId, Ulid)> {
+        let ready = if watched {
+            &mut self.ready_watched
+        } else {
+            &mut self.ready_background
+        };
+        for _ in 0..ready.len() {
+            let key = ready.pop_front()?;
             if self.parked.contains(&key.0) {
-                self.ready.push_back(key);
+                ready.push_back(key);
             } else {
-                return Some((key.clone(), self.seats[&key].active.clone()));
+                return Some(key);
             }
         }
         None
+    }
+    fn next(&mut self) -> Option<((HostId, Ulid), Event)> {
+        if self.watched_streak < Self::WATCHED_QUANTA
+            && let Some(key) = self.pop_lane(true)
+        {
+            self.watched_streak += 1;
+            return Some((key.clone(), self.seats[&key].active.clone()));
+        }
+        if let Some(key) = self.pop_lane(false) {
+            self.watched_streak = 0;
+            return Some((key.clone(), self.seats[&key].active.clone()));
+        }
+        let key = self.pop_lane(true)?;
+        // Empty background capacity is donated, never borrowed from its next
+        // runnable turn. At most three watched pages precede that turn.
+        self.watched_streak = Self::WATCHED_QUANTA;
+        Some((key.clone(), self.seats[&key].active.clone()))
     }
     fn finish(&mut self, key: (HostId, Ulid), complete: bool) {
         if complete {
@@ -1080,7 +1314,7 @@ impl PendingSeats {
                 }
             }
         }
-        self.ready.push_back(key);
+        self.enqueue(key);
     }
 }
 struct NativeReader {
@@ -1156,6 +1390,8 @@ struct Worker {
     checkpoint_completion: Option<std::sync::mpsc::Receiver<CheckpointCompletion>>,
     checkpoint_cursor: Option<Ulid>,
     checkpoint_progress: u64,
+    gui_watches: GuiWatchInterests,
+    gui_watch_epoch_seen: u64,
 }
 impl Worker {
     fn open(
@@ -1245,6 +1481,8 @@ impl Worker {
             checkpoint_completion: None,
             checkpoint_cursor: None,
             checkpoint_progress: 0,
+            gui_watches: GuiWatchInterests::default(),
+            gui_watch_epoch_seen: 0,
         };
         for (host, info) in worker.connections.owned_seats()? {
             // Several fixture links can wrap one local supervisor. Recover a
@@ -4801,6 +5039,16 @@ impl Worker {
         request.finish(capture_outcome(&result), 0, 0);
         result
     }
+    fn refresh_gui_watch_interest(&mut self, pending: &mut PendingSeats) {
+        let epoch = self.client.gui_watch_epoch.load(Ordering::Acquire);
+        if epoch != self.gui_watch_epoch_seen {
+            self.gui_watch_epoch_seen = epoch;
+            if self.gui_watches.prune_closed() {
+                pending.set_watched(self.gui_watches.watched());
+            }
+        }
+    }
+
     fn run(&mut self, commands: &mut mpsc::Receiver<Command>, stop: Arc<AtomicBool>) -> Result<()> {
         let mut scan_at = Instant::now();
         let mut adapters_at = Instant::now();
@@ -4816,6 +5064,7 @@ impl Worker {
                 self.client
                     .capture_diagnostics
                     .start(Phase::LogicTurn, Ulid::nil(), 0, 0, 0);
+            self.refresh_gui_watch_interest(&mut pending_events);
             let checkpoint_service = self.client.capture_diagnostics.start(
                 Phase::CheckpointService,
                 Ulid::nil(),
@@ -4852,6 +5101,29 @@ impl Worker {
                 }
                 command_count += 1;
                 match command {
+                    Command::GuiWatchInterest {
+                        session,
+                        life,
+                        seat,
+                        generation,
+                        reply,
+                    } => {
+                        let result = (|| {
+                            if let Some(generation) = generation
+                                && self
+                                    .views
+                                    .get(&seat)
+                                    .is_none_or(|view| view.info.generation != generation)
+                            {
+                                return Err(invalid("stale GUI watch generation"));
+                            }
+                            if self.gui_watches.update(session, life, seat, generation)? {
+                                pending_events.set_watched(self.gui_watches.watched());
+                            }
+                            Ok(())
+                        })();
+                        let _ = reply.send(result);
+                    }
                     Command::GuiHosts(reply) => {
                         let _ = reply.send(Ok(self.connections.gui_hosts()));
                     }
@@ -5242,6 +5514,7 @@ impl Worker {
                 }
             }
             command_span.finish(Outcome::Ok, command_count, 0);
+            self.refresh_gui_watch_interest(&mut pending_events);
             let receive =
                 self.client
                     .capture_diagnostics
@@ -5441,7 +5714,7 @@ impl Worker {
             }
             turn.pending(
                 pending_events.seats.len(),
-                pending_events.ready.len(),
+                pending_events.ready_len(),
                 pending_events.parked.len(),
             );
             turn.finish(Outcome::Ok, 0, 0);
@@ -5560,6 +5833,187 @@ fn row_text(cells: &[bbt_core::Cell]) -> String {
 #[cfg(test)]
 mod pending_tests {
     use super::*;
+    fn session(epoch: &Arc<AtomicU64>) -> GuiWatchSession {
+        GuiWatchSession {
+            id: Ulid::new(),
+            life: Arc::new(GuiWatchLife {
+                epoch: epoch.clone(),
+            }),
+        }
+    }
+    fn interest(
+        watches: &mut GuiWatchInterests,
+        session: &GuiWatchSession,
+        seat: Ulid,
+        generation: Option<u64>,
+    ) -> bool {
+        watches
+            .update(session.id, Arc::downgrade(&session.life), seat, generation)
+            .unwrap()
+    }
+    #[test]
+    fn watch_refcounts_are_idempotent_and_disconnect_releases_only_its_session() {
+        let epoch = Arc::new(AtomicU64::new(0));
+        let one = session(&epoch);
+        let two = session(&epoch);
+        let seat = Ulid::from(1);
+        let mut watches = GuiWatchInterests::default();
+        assert!(interest(&mut watches, &one, seat, Some(1)));
+        assert!(!interest(&mut watches, &one, seat, Some(1)));
+        assert!(!interest(&mut watches, &two, seat, Some(1)));
+        assert_eq!(watches.references[&(seat, 1)], 2);
+        assert!(!interest(&mut watches, &one, seat, None));
+        assert_eq!(watches.references[&(seat, 1)], 1);
+        drop(one);
+        assert!(!watches.prune_closed());
+        assert_eq!(watches.watched(), BTreeSet::from([(seat, 1)]));
+        drop(two);
+        assert_eq!(epoch.load(Ordering::Acquire), 2);
+        assert!(watches.prune_closed());
+        assert!(watches.references.is_empty());
+        assert!(watches.sessions.is_empty());
+    }
+    #[test]
+    fn closed_watch_admission_cannot_resurrect_interest_or_change_its_token() {
+        let epoch = Arc::new(AtomicU64::new(0));
+        let one = session(&epoch);
+        let seat = Ulid::from(1);
+        let mut watches = GuiWatchInterests::default();
+        interest(&mut watches, &one, seat, Some(1));
+        assert!(interest(&mut watches, &one, seat, Some(2)));
+        assert_eq!(watches.watched(), BTreeSet::from([(seat, 2)]));
+        let other = session(&epoch);
+        assert!(
+            watches
+                .update(one.id, Arc::downgrade(&other.life), seat, Some(3))
+                .is_err()
+        );
+        let id = one.id;
+        let late = Arc::downgrade(&one.life);
+        drop(one);
+        assert!(watches.update(id, late, seat, Some(3)).is_err());
+        assert!(watches.prune_closed());
+        assert!(watches.watched().is_empty());
+    }
+    #[test]
+    fn watched_quota_is_three_to_one_and_each_lane_rotates() {
+        let mut pending = PendingSeats::default();
+        let seats = [Ulid::from(1), Ulid::from(2), Ulid::from(3), Ulid::from(4)];
+        pending.set_watched(BTreeSet::from([(seats[0], 1), (seats[1], 1)]));
+        for seat in seats {
+            pending
+                .push(HostId::Local, output(seat, 1, 1000), 1, 1)
+                .unwrap();
+        }
+        let mut watched_turn = 0;
+        let mut background_turn = 0;
+        let mut classes = Vec::new();
+        for turn in 0..128 {
+            let (key, event) = pending.next().unwrap();
+            let watched = turn % 4 != 3;
+            let expected = if watched {
+                let seat = seats[watched_turn % 2];
+                watched_turn += 1;
+                seat
+            } else {
+                let seat = seats[2 + background_turn % 2];
+                background_turn += 1;
+                seat
+            };
+            assert_eq!(event.seat(), expected);
+            classes.push(watched);
+            pending.finish(key, false);
+        }
+        assert!(
+            classes
+                .windows(8)
+                .all(|window| window.iter().filter(|&&w| w).count() >= 4)
+        );
+        assert_eq!(background_turn, 32);
+    }
+    #[test]
+    fn empty_lanes_donate_without_borrowing_the_next_background_turn() {
+        let watched = Ulid::from(1);
+        let background = Ulid::from(2);
+        let mut pending = PendingSeats::default();
+        pending.set_watched(BTreeSet::from([(watched, 1)]));
+        pending
+            .push(HostId::Local, output(watched, 1, 1000), 1, 1)
+            .unwrap();
+        for _ in 0..100 {
+            let (key, event) = pending.next().unwrap();
+            assert_eq!(event.seat(), watched);
+            pending.finish(key, false);
+        }
+        pending
+            .push(HostId::Local, output(background, 1, 1000), 1, 1)
+            .unwrap();
+        let (key, event) = pending.next().unwrap();
+        assert_eq!(event.seat(), background);
+        pending.finish(key, true);
+        pending.set_watched(BTreeSet::new());
+        for _ in 0..100 {
+            let (key, event) = pending.next().unwrap();
+            assert_eq!(event.seat(), watched);
+            pending.finish(key, false);
+        }
+    }
+    #[test]
+    fn ended_interest_demotes_next_round_without_tombstones_or_generation_leaks() {
+        let watched = Ulid::from(1);
+        let background = Ulid::from(2);
+        let mut pending = PendingSeats::default();
+        pending.set_watched(BTreeSet::from([(watched, 1)]));
+        for seat in [watched, background] {
+            pending
+                .push(HostId::Local, output(seat, 1, 1000), 1, 1)
+                .unwrap();
+        }
+        for _ in 0..10_000 {
+            pending.set_watched(BTreeSet::new());
+            pending.set_watched(BTreeSet::from([(watched, 1)]));
+            assert_eq!(pending.ready_len(), 2);
+            assert_eq!(
+                pending
+                    .ready_watched
+                    .iter()
+                    .chain(&pending.ready_background)
+                    .collect::<BTreeSet<_>>()
+                    .len(),
+                2
+            );
+        }
+        pending.set_watched(BTreeSet::new());
+        let (key, event) = pending.next().unwrap();
+        assert_eq!(event.seat(), background);
+        pending.finish(key, false);
+        pending.set_watched(BTreeSet::from([(watched, 1)]));
+        pending
+            .push(HostId::Local, output(watched, 2, 1), 2, 1)
+            .unwrap();
+        assert!(pending.ready_watched.is_empty());
+        assert_eq!(pending.ready_background.len(), 2);
+    }
+    #[test]
+    fn watched_and_background_work_stays_parked_without_a_ready_spin() {
+        let mut pending = PendingSeats::default();
+        let watched = Ulid::from(1);
+        pending.set_watched(BTreeSet::from([(watched, 1)]));
+        for seat in [watched, Ulid::from(2)] {
+            pending
+                .push(HostId::Local, output(seat, 1, 1000), 1, 1)
+                .unwrap();
+        }
+        pending.park(&HostId::Local);
+        for _ in 0..100 {
+            assert!(!pending.has_ready());
+            assert!(pending.next().is_none());
+            assert_eq!(pending.ready_len(), 2);
+        }
+        pending.resume(&HostId::Local);
+        assert!(pending.has_ready());
+        assert_eq!(pending.next().unwrap().1.seat(), watched);
+    }
     fn output(seat: Ulid, generation: u64, seq: u64) -> Event {
         Event::Output {
             seat,
@@ -5594,12 +6048,13 @@ mod pending_tests {
             }
         }
         assert_eq!(pending.seats.len(), 4);
-        assert_eq!(pending.ready.len(), 4);
+        assert_eq!(pending.ready_len(), 4);
     }
     #[test]
     fn pending_notifications_stay_bounded_and_preserve_resize_and_exit_order() {
         let mut pending = PendingSeats::default();
         let seat = Ulid::from(1);
+        pending.set_watched(BTreeSet::from([(seat, 1)]));
         for seq in 1..10_001 {
             pending
                 .push(HostId::Local, output(seat, 1, seq), 1, 1)
@@ -5639,7 +6094,7 @@ mod pending_tests {
                 1,
             )
             .unwrap();
-        assert_eq!(pending.ready.len(), 1);
+        assert_eq!(pending.ready_len(), 1);
         let mut sequences = Vec::new();
         while let Some((key, event)) = pending.next() {
             sequences.push(event.sequence().unwrap());
@@ -5672,7 +6127,7 @@ mod pending_tests {
         ));
         pending.finish(key, true);
         assert!(pending.is_empty());
-        assert!(pending.ready.is_empty());
+        assert_eq!(pending.ready_len(), 0);
     }
     #[test]
     fn down_host_work_is_parked_until_a_provider_up_transition() {
@@ -5685,7 +6140,7 @@ mod pending_tests {
         for _ in 0..100 {
             assert!(pending.next().is_none());
         }
-        assert_eq!(pending.ready.len(), 1);
+        assert_eq!(pending.ready_len(), 1);
         pending.resume(&HostId::Local);
         assert!(pending.has_ready());
         let (key, event) = pending.next().unwrap();

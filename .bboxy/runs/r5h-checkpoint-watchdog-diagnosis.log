@@ -1,0 +1,448 @@
+Checkpoint watchdog read-only diagnosis — Rook Ashwhisker <EXECUTOR>
+2026-10-24T12:15:27.328436-07:00
+Brief55efd3d0; exact profile confirmation5ece44bf; temporary diagnostic seams approved4d25be1d. Original Oracle failure log was not retained, so the exact cause of THAT100MiB occurrence remains unproven.
+Baseline: f64cf82e4ba13d5fe80de8ae9c6a112076810cf7 (HK-0), R5h not an ancestor. checkpoint_scheduling.rs is byte-identical to R5h candidate. One private clean source tree, no full gate or967 run.
+Raw/artifact root: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-load-kw7xv0y8
+
+Natural unchanged reproduction
+Compiler artifact profile verified: O0,debuginfo2,debug assertions/overflow checks true. Nice10; all three checkpoint_scheduling tests default concurrent, not whole workspace. Four finite600s CPU-only workers; ambient load differs from Oracle11–14, so this is a reproduction, not a controlled performance comparison.
+Unchanged binary SHA256 5cbdbb382a1840d873bc8979f0680cb03b3a91e5111eae4eff18dcedaea72bb5
+Run target command: nice -n10 <unchanged artifact> --nocapture. Full stdout/stderr each run; one1s sample after20s recorded as observer cost.
+[
+  {
+    "exit": 0,
+    "elapsed_s": 41.99520649999613,
+    "loadavg_before": [
+      12.3837890625,
+      42.26416015625,
+      41.58544921875
+    ],
+    "loadavg_after": [
+      22.5390625,
+      40.67919921875,
+      41.029296875
+    ],
+    "remaining": {},
+    "observer_sample_after_s": 20
+  },
+  {
+    "exit": 0,
+    "elapsed_s": 43.661568582989275,
+    "loadavg_before": [
+      22.5390625,
+      40.67919921875,
+      41.029296875
+    ],
+    "loadavg_after": [
+      21.36328125,
+      38.2265625,
+      40.12060546875
+    ],
+    "remaining": {},
+    "observer_sample_after_s": 20
+  },
+  {
+    "exit": 0,
+    "elapsed_s": 61.08059924998088,
+    "loadavg_before": [
+      21.36328125,
+      38.2265625,
+      40.12060546875
+    ],
+    "loadavg_after": [
+      24.890625,
+      35.96728515625,
+      39.12939453125
+    ],
+    "remaining": {},
+    "observer_sample_after_s": 20
+  },
+  {
+    "exit": 0,
+    "elapsed_s": 43.18581908300985,
+    "loadavg_before": [
+      24.890625,
+      35.96728515625,
+      39.12939453125
+    ],
+    "loadavg_after": [
+      22.3203125,
+      33.9169921875,
+      38.2314453125
+    ],
+    "remaining": {},
+    "observer_sample_after_s": 20
+  },
+  {
+    "exit": 0,
+    "elapsed_s": 41.50590991700301,
+    "loadavg_before": [
+      22.3203125,
+      33.9169921875,
+      38.2314453125
+    ],
+    "loadavg_after": [
+      24.32861328125,
+      33.0830078125,
+      37.7333984375
+    ],
+    "remaining": {},
+    "observer_sample_after_s": 20
+  },
+  {
+    "exit": 101,
+    "elapsed_s": 49.68227312498493,
+    "loadavg_before": [
+      24.32861328125,
+      33.0830078125,
+      37.7333984375
+    ],
+    "loadavg_after": [
+      22.96875,
+      31.36865234375,
+      36.83251953125
+    ],
+    "remaining": {},
+    "observer_sample_after_s": 20
+  }
+]
+Runs1–5: all3 tests pass. Run6: target EXIT101;100MiB test passes, but caught-up-idle and held-save20MiB tests both panic at the same helper:264 parser stopped advancing. Driver EXIT0 signifies completed cleanup, not test success. Original100MiB test passed6/6 in this batch.
+
+running 3 tests
+test caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog ... FAILED
+100MiB: checkpoints=14 confirmed_bytes=104857608 parsed_end=104857608
+test hundred_mib_partial_replay_forces_r_spaced_checkpoints_and_never_exceeds_two_r_debt ... ok
+test a_held_checkpoint_does_not_hold_snapshot_or_status_service ... FAILED
+
+failures:
+
+failures:
+    a_held_checkpoint_does_not_hold_snapshot_or_status_service
+    caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog
+
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 49.43s
+
+
+Natural diagnostic compact rows/last spans (full2 snapshots retained separately, not pasted):
+[
+  {
+    "index": 1,
+    "sampled_ns": 41552143500,
+    "missed": 1336,
+    "turn": 4813,
+    "seats": [
+      {
+        "seat": "01M5QMRAGA0GW57N7MK4WSHBGM",
+        "applied_sequence": 1297,
+        "captured_sequence": 1297,
+        "parsed_byte_end": 20969472,
+        "checkpoint_byte_end": 16770048,
+        "checkpoint_paused": false,
+        "observed_ns": 11532606333,
+        "last_progress_ns": 11532606333
+      },
+      {
+        "seat": "01M5QMRAJEE7C1HGGVA93C283H",
+        "applied_sequence": 1,
+        "captured_sequence": 0,
+        "parsed_byte_end": 72,
+        "checkpoint_byte_end": 72,
+        "checkpoint_paused": false,
+        "observed_ns": 893079958,
+        "last_progress_ns": 424794791
+      }
+    ],
+    "last_event_span": null,
+    "last_parse_span": null,
+    "last_checkpoint_span": null,
+    "last_turn_span": {
+      "phase": "logic_turn",
+      "turn": 4812,
+      "start_ns": 41535966000,
+      "elapsed_ns": 12324250,
+      "seat": "00000000000000000000000000",
+      "generation": 0,
+      "from": 0,
+      "to": 0,
+      "request_id": "00000000000000000000000000",
+      "outcome": "ok",
+      "work": 0,
+      "bytes": 0,
+      "pending": 0,
+      "ready": 0,
+      "parked": 0
+    }
+  },
+  {
+    "index": 2,
+    "sampled_ns": 49195690416,
+    "missed": 4073,
+    "turn": 7032,
+    "seats": [
+      {
+        "seat": "01M5QMRAGEPMD391GA9YP0QR86",
+        "applied_sequence": 1296,
+        "captured_sequence": 1296,
+        "parsed_byte_end": 20961280,
+        "checkpoint_byte_end": 16751616,
+        "checkpoint_paused": false,
+        "observed_ns": 19192922458,
+        "last_progress_ns": 19192922458
+      },
+      {
+        "seat": "01M5QMRAQ9PC0M6TGH4VVWYBHF",
+        "applied_sequence": 1,
+        "captured_sequence": 0,
+        "parsed_byte_end": 72,
+        "checkpoint_byte_end": 72,
+        "checkpoint_paused": false,
+        "observed_ns": 6675398458,
+        "last_progress_ns": 731954250
+      },
+      {
+        "seat": "01M5QMRAYH4SEERK7FEDA389CQ",
+        "applied_sequence": 1306,
+        "captured_sequence": 1306,
+        "parsed_byte_end": 20971528,
+        "checkpoint_byte_end": 20971528,
+        "checkpoint_paused": false,
+        "observed_ns": 17223631583,
+        "last_progress_ns": 17115758666
+      },
+      {
+        "seat": "01M5QMRB4YWQ787DN2WBFSF4A1",
+        "applied_sequence": 1,
+        "captured_sequence": 0,
+        "parsed_byte_end": 72,
+        "checkpoint_byte_end": 72,
+        "checkpoint_paused": false,
+        "observed_ns": 15571142458,
+        "last_progress_ns": 15259392458
+      }
+    ],
+    "last_event_span": null,
+    "last_parse_span": null,
+    "last_checkpoint_span": null,
+    "last_turn_span": {
+      "phase": "logic_turn",
+      "turn": 7031,
+      "start_ns": 49170396875,
+      "elapsed_ns": 12323375,
+      "seat": "00000000000000000000000000",
+      "generation": 0,
+      "from": 0,
+      "to": 0,
+      "request_id": "00000000000000000000000000",
+      "outcome": "ok",
+      "work": 0,
+      "bytes": 0,
+      "pending": 0,
+      "ready": 0,
+      "parked": 0
+    }
+  }
+]
+
+Expected20MiB end=20,971,528. First row applied=captured1297, parsed end20,969,472; second applied=captured1296, parsed end20,961,280. Both byte counters are stale at panic while all known captured sequences are reported applied; missed1336/4073; final pending/ready0, paused false. Both snapshots have only logic_turn+receive in flight, no parse/replay/checkpoint. Totals are completion-accounted lower bounds with missed/overwritten observations; retained spans are not a continuous30s trajectory and are not CPU attribution.
+
+Source mechanism on pinnedf64
+bbt-supervisor/src/supervisor.rs:314–329 — ordinary Recorder.update uses try_lock; collisions increment missed and skip the update.
+bbt-supervisor/src/supervisor.rs:356–405 — snapshot holds that buffer mutex while copying totals, seats and8192 retained spans.
+bbt-mux/tests/checkpoint_scheduling.rs:209–215/:240–269 — row() reads only recorder seats; catch_up uses parsed_byte_end as its sole liveness clock and completion conjunction. It never asks authoritative worker state on timeout.
+bbt-mux/src/logic.rs:3715–3735 — live Event applies to Playback first, then publishes sequence/cumulative parse stats; parsed_byte_end/checkpoint fields are separately copied at record_checkpoint_state:3613–3626. Partial field observations and dropped last updates are not a liveness oracle.
+bbt-supervisor/src/ring.rs:300–335 — Playback requires contiguous event sequence and increments byte_end by actual Output bytes; event coalescer preserves the newest Event payload and supervisor flush_output retains it. No empty-payload notification substitution was found.
+
+Forced final-row-loss diagnostic (temporary only)
+Patch SHA256 ae6207902f22bb3dfb5d25dc9bd83e2c129a5a2508eee64a5aae1ed2631b5bff. It suppresses seat-row publications at finite end while parsing, ring/RPC handling, phase spans and confirmed saves continue. Original watchdog/assertions/deadline remain unchanged. No CPU workers during this probe.
+Patch (review excerpt; blank context-line whitespace trimmed; exact raw patch retained at artifact root with the SHA above):
+--- a/crates/bbt-supervisor/src/supervisor.rs
++++ b/crates/bbt-supervisor/src/supervisor.rs
+@@ -235,6 +235,7 @@
+     pub struct Recorder {
+         buffer: OnceLock<Mutex<Buffer>>,
+         fixture_lossless: AtomicBool,
++        fixture_drop_final_from: AtomicU64,
+         turn: AtomicU64,
+         pages: AtomicU64,
+         missed: AtomicU64,
+@@ -329,6 +330,11 @@
+             }
+         }
+
++        /// Temporary diagnostic fault: drop final cursor publications only.
++        pub fn diagnostic_drop_final_rows(&self, from: u64) {
++            self.fixture_drop_final_from.store(from, Ordering::Relaxed);
++        }
++
+         pub fn seat(&self, seat: Ulid, generation: u64, f: impl FnOnce(&mut Seat, u64)) {
+             self.update(|buffer| {
+                 if !buffer.seats.contains_key(&seat) && buffer.seats.len() == SEATS {
+@@ -343,9 +349,15 @@
+                         ..Seat::default()
+                     };
+                 }
++                let cutoff = self.fixture_drop_final_from.load(Ordering::Relaxed);
++                let previous = (cutoff != 0).then(|| row.clone());
+                 let now = now_ns();
+                 row.observed_ns = now;
+                 f(row, now);
++                if cutoff != 0 && row.parsed_byte_end >= cutoff {
++                    *row = previous.unwrap();
++                    self.missed.fetch_add(1, Ordering::Relaxed);
++                }
+             });
+         }
+
+--- a/crates/bbt-mux/src/logic.rs
++++ b/crates/bbt-mux/src/logic.rs
+@@ -241,6 +241,11 @@
+
+     /// Snapshot last-observed cursors and inclusive phase spans without an RPC.
+     /// Copy on IO, before diagnostic requests that would affect the window.
++    /// Temporary fixture-only diagnostic; never shipped.
++    pub fn diagnostic_drop_final_capture_rows(&self, from: u64) {
++        self.capture_diagnostics.diagnostic_drop_final_rows(from);
++    }
++
+     pub fn capture_diagnostics(&self) -> bbt_supervisor::supervisor::capture_diagnostics::Snapshot {
+         self.capture_diagnostics.snapshot()
+     }
+--- a/crates/bbt-mux/tests/checkpoint_scheduling.rs
++++ b/crates/bbt-mux/tests/checkpoint_scheduling.rs
+@@ -446,3 +446,39 @@
+     println!("100MiB: checkpoints={checkpoints} confirmed_bytes={previous} parsed_end={end}");
+     fixture.finish();
+ }
++
++#[test]
++fn diagnostic_lost_final_row_reproduces_false_parser_watchdog() {
++    let fixture = Fixture::new();
++    fixture.spawn(fixture.seat, 100 * 1024 * 1024);
++    let (through, end) = fixture.start_and_capture(100 * 1024 * 1024);
++    fixture.logic().client.diagnostic_drop_final_capture_rows(end);
++    fixture.held.store(false, Ordering::Release);
++    let started = Instant::now();
++    loop {
++        let actual = fixture.runtime.block_on(fixture.logic().client.snapshot(fixture.seat, 1)).unwrap();
++        if actual.sequence >= through {
++            println!("AUTHORITATIVE_BEFORE_WATCHDOG sequence={} required={} elapsed_s={}", actual.sequence, through, started.elapsed().as_secs_f64());
++            break;
++        }
++        assert!(started.elapsed() < Duration::from_secs(120), "diagnostic authoritative parser never caught up");
++        std::thread::sleep(Duration::from_millis(20));
++    }
++    let before = fixture.row(fixture.seat).unwrap();
++    assert!(before.parsed_byte_end < end);
++    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| fixture.catch_up(through, end)));
++    let panic = result.expect_err("unchanged watchdog should reject the deliberately stale row");
++    let reason = panic.downcast_ref::<String>().map(String::as_str).or_else(||panic.downcast_ref::<&str>().copied()).unwrap_or("");
++    assert!(reason.starts_with("parser stopped advancing"));
++    let actual = fixture.runtime.block_on(fixture.logic().client.snapshot(fixture.seat, 1)).unwrap();
++    let stale = fixture.row(fixture.seat).unwrap();
++    assert!(actual.sequence >= through);
++    assert!(stale.parsed_byte_end < end);
++    assert!(fixture.saves.lock().unwrap()[&fixture.seat].last().copied().unwrap() >= end);
++    println!("FORCED_ROW_LOSS_RESULT actual_sequence={} required={} stale_parsed_end={} expected_end={} missed={}", actual.sequence, through, stale.parsed_byte_end, end, fixture.logic().client.capture_diagnostics().missed);
++    fixture.logic().client.diagnostic_drop_final_capture_rows(0);
++    fixture.runtime.block_on(fixture.logic().client.snapshot(fixture.seat, 1)).unwrap();
++    assert!(fixture.row(fixture.seat).unwrap().parsed_byte_end >= end);
++    fixture.catch_up(through, end);
++    fixture.finish();
++}
+
+Probe result EXIT0 means the EXPECTED unchanged-watchdog panic was caught and verified; it does NOT mean that watchdog passed under the fault. Authoritative cursor reached6412/6412 after9.397726834s BEFORE the guard ran; guard later panicked on stale104,846,336 vs expected104,857,608. Clearing injection plus existing Snapshot refresh made the same unmodified helper return; confirmed saved end reached expected end.
+
+running 1 test
+AUTHORITATIVE_BEFORE_WATCHDOG sequence=6412 required=6412 elapsed_s=9.397726834
+FORCED_ROW_LOSS_RESULT actual_sequence=6412 required=6412 stale_parsed_end=104846336 expected_end=104857608 missed=998
+test diagnostic_lost_final_row_reproduces_false_parser_watchdog ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 43.17s
+
+
+{
+  "source": "f64cf82e4ba13d5fe80de8ae9c6a112076810cf7",
+  "patch_sha256": "ae6207902f22bb3dfb5d25dc9bd83e2c129a5a2508eee64a5aae1ed2631b5bff",
+  "binary_sha256": "114b48ba9e81506d36470748e0b85c9e4e5e910e0fa296df100053fb52fe8600",
+  "retained_binary": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-load-kw7xv0y8/forced-checkpoint_scheduling-o0",
+  "profile": {
+    "opt_level": "0",
+    "debuginfo": 2,
+    "debug_assertions": true,
+    "overflow_checks": true,
+    "test": true
+  },
+  "argv": [
+    "nice",
+    "-n",
+    "10",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-load-kw7xv0y8/target/debug/deps/checkpoint_scheduling-8cfeb58735b17e27",
+    "diagnostic_lost_final_row_reproduces_false_parser_watchdog",
+    "--exact",
+    "--nocapture"
+  ],
+  "load_workers": 0,
+  "loadavg_before": [
+    6.67626953125,
+    18.40478515625,
+    29.64013671875
+  ],
+  "start": "2026-10-24T12:09:10.129544-07:00",
+  "pid": 19597,
+  "exit": 0,
+  "elapsed_s": 43.74576962500578,
+  "stdout_sha256": "ce0b22733673949457942ff443850cb00d5f68cb15ffaa3b5cbaa90c1e9d5523",
+  "stderr_sha256": "bf736374fcb9f59d77c83dfb9b67307047aae1c73796c72f167db5a7e25df7ff"
+}
+
+Conclusion / proposed next step, not implemented
+The shared watchdog can declare parser stopped after parsing has completed, because its source is best-effort telemetry. Natural loaded failures show the same stale-byte-end/tail-applied pattern; no product parse stall was captured. The lost original100MiB report cannot be retroactively proven identical.
+Propose a fixture-only authoritative Snapshot cursor/progress confirmation when telemetry appears stale; refresh/check the byte/debt observation and keep every idle/debt/R-spacing assertion and the30s rule. Do not widen a throughput/wall budget or change checkpoint policy. Oracle decides the fix after this read-only report.
+
+Restoration and provenance
+{
+  "at": "2026-10-24T12:12:27.555099-07:00",
+  "source": "f64cf82e4ba13d5fe80de8ae9c6a112076810cf7",
+  "reverse_patch_check": 0,
+  "reverse_patch_apply": 0,
+  "restored_sha256": {
+    "crates/bbt-supervisor/src/supervisor.rs": "624d52b0d116855bf3cc59baaaa02dbb1184ce84a789c6e5d7611b136479b65e",
+    "crates/bbt-mux/src/logic.rs": "93140d42195302455ee29d5076840123c57fcf75227cc8792663a6c6c2923ba4",
+    "crates/bbt-mux/tests/checkpoint_scheduling.rs": "e1f4dd1afe0f213bca6c667f05f6ccade272b4dffd9f3230e218d3e996154919"
+  },
+  "git_diff_quiet": 0,
+  "git_status_porcelain": "",
+  "temporary_source_hooks_shipped": false
+}
+All3 source files restored byte-for-byte; reverse-apply check/apply0, per-file hashes match originals, git diff --quiet0 and empty git status. Main Rook/R5h source unchanged. No diagnostic hooks or production fix committed.
+Hashes:
+{
+  "load-state.json": "acdfeccb499886fcfd5fa7e1b01e5a86287fe0e431d7de931944ac6fddf13345",
+  "load-results.json": "1456e095c0b2f9d147335fe040e03d2cab52d10c47f0933aadca7e052c3a436a",
+  "loaded-6/stdout.log": "57fb2654d52ad459e2acfdd2f166e5b200c3ac0fd856fe0e7f82a5f3b8ecc412",
+  "loaded-6/stderr.log": "c5185c4b170269365a374ffe21bc0fe5517c932c1b120d5f191a8c1ad9f03ec2",
+  "loaded-6/compact-diagnostics.json": "9076b667aad22b54822aba25169be788db4a60f2f219a79ec60bebe5d5a17974",
+  "fault-run-state.json": "56f9d1900b86baba18b72f946dce394b4a09424578ad5b1d7bb6900b61e41860",
+  "fault-run-result.json": "116ca1ee18ad6b6904c092c1f51171a516ae687948c64237fe3d160fa158f8fd",
+  "fault-stdout.log": "ce0b22733673949457942ff443850cb00d5f68cb15ffaa3b5cbaa90c1e9d5523",
+  "fault-stderr.log": "bf736374fcb9f59d77c83dfb9b67307047aae1c73796c72f167db5a7e25df7ff",
+  "final-row-fault.patch": "ae6207902f22bb3dfb5d25dc9bd83e2c129a5a2508eee64a5aae1ed2631b5bff",
+  "fault-files.json": "535fb6e76b01ae991a5380fbc87d664a69802e6817911a95f49cc507b453d6ed",
+  "restore-proof.json": "e4a1cd8692fed4e28bd8cb3e6b3bf8b9406ded24f73880bed901f6e20961ec6c",
+  "run-checkpoint-load.py": "386093559cde58fb795b000e05b776a663e882656864330a46a654cc189d8909",
+  "prepare-checkpoint-fault.py": "09fc3422ed9b82ae7e988ef4d07225d84b946e5afa60b2e8a7e49c53ca612a16",
+  "unchanged-checkpoint_scheduling-o0": "5cbdbb382a1840d873bc8979f0680cb03b3a91e5111eae4eff18dcedaea72bb5",
+  "forced-checkpoint_scheduling-o0": "114b48ba9e81506d36470748e0b85c9e4e5e910e0fa296df100053fb52fe8600"
+}
+All four CPU workers individually terminated/waited (expected-15); natural runner recorded no surviving fixture children; forced diagnostic called Fixture.finish successfully. Runtime test/driver PIDs absent at finalps read. Raw logs, symbols sampled, exact source/patch and both binaries retained.
+
+Finished private target cleanup
+{
+  "removed_owned_target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-checkpoint-load-kw7xv0y8/target",
+  "allocated_bytes_before": 1902882816,
+  "free_bytes_before": 32825954304,
+  "free_bytes_after": 34658922496,
+  "raw_logs_and_both_binaries_retained": true
+}
+
+Evidence formatting: initial git diff --check reported three whitespace-only unified-diff context lines. The review excerpt is normalized; raw final-row-fault.patch bytes/hash are unchanged. No production source changed.

@@ -1,0 +1,418 @@
+R5h development verification (intermediate; exact clean CI still owed)
+2026-10-24T09:28:37.496695-07:00
+Environment: target/r5g-frame;2 jobs;incremental0;dev/test opt1+debug0+default debug assertions;BBOXY_TEST_CUSTODY=memory; real PTYs use explicit SigningKey [93;32].
+Counts are gates; runtime is reported, not a throughput threshold.
+
+{"log": "/tmp/rook-r5h-checks/pending-tests.log", "sha256": "0896bed545c4cb7d33ccbe9e6d153bdd27420e7dc9fddab6ea9d924388168ab1", "cargo_exit": 101, "command": "cargo test -p bbt-mux --locked --lib pending_tests -- --nocapture; first compile; shell status capture independently failed1"}
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling libc v0.2.191
+   Compiling syn v2.0.119
+   Compiling cfg-if v1.0.5
+   Compiling typenum v1.20.1
+   Compiling version_check v0.9.5
+   Compiling generic-array v0.14.7
+   Compiling getrandom v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling subtle v2.6.1
+   Compiling syn v3.0.9
+   Compiling zeroize_derive v1.5.0
+   Compiling zeroize v1.9.1
+   Compiling crypto-common v0.1.7
+   Compiling serde_core v1.0.229
+   Compiling const-oid v0.9.6
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling jobserver v0.1.35
+   Compiling zmij v1.0.23
+   Compiling find-msvc-tools v0.1.15
+   Compiling shlex v2.0.1
+   Compiling cpufeatures v0.2.17
+   Compiling cc v1.9.0
+   Compiling base64ct v1.8.3
+   Compiling itoa v1.0.18
+   Compiling memchr v2.8.3
+   Compiling pem-rfc7468 v0.7.0
+   Compiling inout v0.1.4
+   Compiling der v0.7.10
+   Compiling cipher v0.4.4
+   Compiling radium v0.7.0
+   Compiling serde_json v1.0.154
+   Compiling zerocopy v0.8.63
+   Compiling spki v0.7.3
+   Compiling pkcs8 v0.10.2
+   Compiling bitflags v2.13.2
+   Compiling tap v1.0.1
+   Compiling wyz v0.5.1
+   Compiling hmac v0.12.1
+   Compiling funty v2.0.0
+   Compiling base16ct v0.2.0
+   Compiling bitvec v1.1.1
+   Compiling ppv-lite86 v0.2.21
+   Compiling sha2-asm v0.6.4
+   Compiling signature v2.2.0
+   Compiling log v0.4.34
+   Compiling pkg-config v0.3.34
+   Compiling bytes v1.12.1
+   Compiling semver v1.0.28
+   Compiling rustc_version v0.4.1
+   Compiling ff v0.13.1
+   Compiling serdect v0.2.0
+   Compiling smallvec v1.16.3
+   Compiling sec1 v0.7.3
+   Compiling group v0.13.0
+   Compiling hkdf v0.12.4
+   Compiling crypto-bigint v0.5.5
+   Compiling hybrid-array v0.4.15
+   Compiling libm v0.2.16
+   Compiling autocfg v1.5.1
+   Compiling thiserror v2.0.21
+   Compiling num-traits v0.2.19
+   Compiling elliptic-curve v0.13.8
+   Compiling sha2 v0.10.9
+   Compiling winnow v1.0.4
+   Compiling getrandom v0.3.4
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling block-buffer v0.12.1
+   Compiling crypto-common v0.2.2
+   Compiling serde_spanned v1.1.2
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling rfc6979 v0.4.0
+   Compiling thiserror-impl v2.0.21
+   Compiling errno v0.3.14
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling ident_case v1.0.1
+   Compiling winnow v0.7.15
+   Compiling strsim v0.11.1
+   Compiling fnv v1.0.7
+   Compiling const-oid v0.10.2
+   Compiling foldhash v0.2.0
+   Compiling hashbrown v0.17.1
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling digest v0.11.3
+   Compiling darling_core v0.20.11
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling rand_core v0.10.1
+   Compiling parking_lot_core v0.9.12
+   Compiling getrandom v0.4.3
+   Compiling rand_core v0.9.5
+   Compiling darling_macro v0.20.11
+   Compiling num-integer v0.1.47
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)
+   Compiling ecdsa v0.16.9
+   Compiling curve25519-dalek v4.1.3
+   Compiling rand_chacha v0.3.1
+   Compiling cpufeatures v0.3.1
+   Compiling crossbeam-utils v0.8.23
+   Compiling spin v0.9.9
+   Compiling num-bigint-dig v0.8.6
+   Compiling cfg_aliases v0.1.1
+   Compiling scopeguard v1.2.0
+   Compiling pin-project-lite v0.2.17
+   Compiling thiserror v1.0.69
+   Compiling rand v0.8.8
+   Compiling lock_api v0.4.14
+   Compiling nix v0.28.0
+   Compiling lazy_static v1.5.1
+   Compiling num-iter v0.1.46
+   Compiling darling v0.20.11
+   Compiling rand_chacha v0.9.0
+   Compiling signal-hook-registry v1.4.8
+   Compiling primeorder v0.13.6
+   Compiling aead v0.5.2
+   Compiling mio v1.2.4
+   Compiling ctr v0.9.2
+   Compiling tokio-macros v2.7.2
+   Compiling universal-hash v0.5.1
+   Compiling thiserror-impl v1.0.69
+   Compiling socket2 v0.6.5
+   Compiling anyhow v1.0.104
+   Compiling rustversion v1.0.23
+   Compiling equivalent v1.0.3
+   Compiling unicode-segmentation v1.13.3
+   Compiling vcpkg v0.2.15
+   Compiling zstd-safe v8.2.0
+   Compiling opaque-debug v0.3.1
+   Compiling httparse v1.10.1
+   Compiling base64 v0.22.1
+   Compiling polyval v0.6.2
+   Compiling convert_case v0.10.0
+   Compiling libsqlite3-sys v0.38.2
+   Compiling indexmap v2.14.2
+   Compiling tokio v1.54.1
+   Compiling rand v0.9.5
+   Compiling parking_lot v0.12.5
+   Compiling derive_builder_core v0.20.2
+   Compiling chacha20 v0.10.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling aes v0.8.4
+   Compiling keccak v0.1.6
+   Compiling serde-big-array v0.5.1
+   Compiling arrayvec v0.7.8
+   Compiling dbl v0.3.2
+   Compiling cursor-icon v1.2.0
+   Compiling heck v0.5.0
+   Compiling pulldown-cmark v0.13.4
+   Compiling unicode-xid v0.2.6
+   Compiling rustix v1.1.5
+   Compiling core-foundation-sys v0.8.7
+   Compiling byteorder v1.5.0
+   Compiling once_cell v1.21.4
+   Compiling unicode-width v0.2.2
+   Compiling crc24 v0.1.6
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+   Compiling derive_more-impl v2.1.1
+   Compiling snafu-derive v0.9.2
+   Compiling cmac v0.7.2
+   Compiling sha3 v0.10.9
+   Compiling crossbeam-queue v0.3.14
+   Compiling rand v0.10.3
+   Compiling derive_builder_macro v0.20.2
+   Compiling ulid v1.2.1
+   Compiling bitfields-impl v1.0.3
+   Compiling filedescriptor v0.8.3
+   Compiling ghash v0.5.1
+   Compiling sha1 v0.11.0
+   Compiling http v1.5.0
+   Compiling ed25519 v2.2.3
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling password-hash v0.5.0
+   Compiling sha1 v0.10.7
+   Compiling blake2 v0.10.6
+   Compiling futures-macro v0.3.34
+   Compiling num_enum_derive v0.7.6
+   Compiling serial2 v0.2.38
+   Compiling slab v0.4.12
+   Compiling downcast-rs v1.2.1
+   Compiling futures-task v0.3.34
+   Compiling futures-core v0.3.34
+   Compiling data-encoding v2.11.1
+   Compiling foldhash v0.1.5
+   Compiling same-file v1.0.6
+   Compiling futures-sink v0.3.34
+   Compiling unsafe-libyaml v0.2.11
+   Compiling signature v3.0.0
+   Compiling unicase v2.10.0
+   Compiling zlib-rs v0.6.8
+   Compiling shell-words v1.1.1
+   Compiling ryu v1.0.23
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling portable-pty v0.9.0
+   Compiling tungstenite v0.30.0
+   Compiling flate2 v1.1.10
+   Compiling ed25519 v3.0.0
+   Compiling futures-util v0.3.34
+   Compiling walkdir v2.5.0
+   Compiling hashbrown v0.15.5
+   Compiling num_enum v0.7.6
+   Compiling argon2 v0.5.3
+   Compiling sha1-checked v0.10.0
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling ed25519-dalek v2.2.0
+   Compiling aes-gcm v0.10.3
+   Compiling bitfields v1.0.3
+   Compiling derive_builder v0.20.2
+   Compiling zstd v0.14.3
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+   Compiling eax v0.5.0
+   Compiling snafu v0.9.2
+   Compiling derive_more v2.1.1
+   Compiling k256 v0.13.4
+   Compiling camellia v0.1.0
+   Compiling blowfish v0.9.1
+   Compiling core-foundation v0.10.1
+   Compiling security-framework-sys v2.17.0
+   Compiling aes-kw v0.2.1
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui)
+   Compiling x25519-dalek v2.0.1
+   Compiling dsa v0.6.3
+   Compiling ocb3 v0.1.0
+   Compiling p521 v0.13.3
+   Compiling p384 v0.13.1
+   Compiling p256 v0.13.2
+   Compiling sha2 v0.11.1
+   Compiling hashlink v0.12.2
+   Compiling notify-types v2.1.0
+   Compiling idea v0.5.1
+   Compiling twofish v0.7.1
+   Compiling des v0.8.1
+   Compiling cfb-mode v0.8.2
+   Compiling cast5 v0.11.1
+   Compiling nom v8.0.0
+   Compiling buffer-redux v1.1.0
+   Compiling md-5 v0.10.6
+   Compiling ripemd v0.1.3
+   Compiling block-padding v0.3.3
+   Compiling fsevent-sys v4.1.0
+   Compiling replace_with v0.1.8
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling hex v0.4.3
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mermaid)
+   Compiling fastrand v2.5.0
+   Compiling fallible-iterator v0.3.0
+   Compiling fixedbitset v0.5.7
+   Compiling petgraph v0.8.3
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-doc)
+   Compiling rusqlite v0.40.2
+   Compiling tempfile v3.27.0
+   Compiling pgp v0.21.0
+   Compiling notify v8.2.0
+   Compiling ed25519-dalek v3.0.0
+   Compiling security-framework v3.7.0
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-plugin)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+error[E0061]: this method takes 1 argument but 0 arguments were supplied
+   --> crates/bbt-mux/src/logic.rs:356:31
+    |
+356 |             .map_err(|_| self.unavailable())?;
+    |                               ^^^^^^^^^^^-- argument #1 of type `&str` is missing
+    |
+note: method defined here
+   --> crates/bbt-mux/src/logic.rs:404:8
+    |
+404 |     fn unavailable(&self, context: &str) -> crate::store::Error {
+    |        ^^^^^^^^^^^        -------------
+help: provide the argument
+    |
+356 |             .map_err(|_| self.unavailable(/* &str */))?;
+    |                                           ++++++++++
+
+error[E0061]: this method takes 1 argument but 0 arguments were supplied
+   --> crates/bbt-mux/src/logic.rs:357:40
+    |
+357 |         receive.await.map_err(|_| self.unavailable())?
+    |                                        ^^^^^^^^^^^-- argument #1 of type `&str` is missing
+    |
+note: method defined here
+   --> crates/bbt-mux/src/logic.rs:404:8
+    |
+404 |     fn unavailable(&self, context: &str) -> crate::store::Error {
+    |        ^^^^^^^^^^^        -------------
+help: provide the argument
+    |
+357 |         receive.await.map_err(|_| self.unavailable(/* &str */))?
+    |                                                    ++++++++++
+
+For more information about this error, try `rustc --explain E0061`.
+error: could not compile `bbt-mux` (lib test) due to 2 previous errors
+
+
+{"log": "/tmp/rook-r5h-checks/pending-tests-fixed.log", "sha256": "c6f9fae35f0d9b0c9654704f2c7d9d9b597f96c01d5c857019e82416b634ce9d", "cargo_exit": 0, "command": "cargo test -p bbt-mux --locked --lib pending_tests -- --nocapture"}
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 2m 35s
+     Running unittests src/lib.rs (target/r5g-frame/debug/deps/bbt_mux-40e0fccf26d2d7ee)
+
+running 10 tests
+test logic::pending_tests::down_host_work_is_parked_until_a_provider_up_transition ... ok
+test logic::pending_tests::replacement_generation_discards_only_the_old_generation_work ... ok
+test logic::pending_tests::empty_lanes_donate_without_borrowing_the_next_background_turn ... ok
+test logic::pending_tests::watched_and_background_work_stays_parked_without_a_ready_spin ... ok
+test logic::pending_tests::watched_quota_is_three_to_one_and_each_lane_rotates ... ok
+test logic::pending_tests::watch_refcounts_are_idempotent_and_disconnect_releases_only_its_session ... ok
+test logic::pending_tests::pending_seats_rotate_without_changing_an_unfinished_target ... ok
+test logic::pending_tests::closed_watch_admission_cannot_resurrect_interest_or_change_its_token ... ok
+test logic::pending_tests::pending_notifications_stay_bounded_and_preserve_resize_and_exit_order ... ok
+test logic::pending_tests::ended_interest_demotes_next_round_without_tombstones_or_generation_leaks ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 67 filtered out; finished in 0.00s
+
+
+
+{"log": "/tmp/rook-r5h-checks/priority-pty.log", "sha256": "d4a1adf3b2895b80ddb14cb888dfe7ce5149de17b02b0c5b02e4c0d8d578f842", "cargo_exit": 101, "command": "cargo test -p bbt-mux --locked --test logic watched_lane_gets_at_least_half_of_replay_pages -- --exact --nocapture; module-path compile failure"}
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+error[E0425]: cannot find function `capture_config` in module `super`
+   --> crates/bbt-mux/tests/common/capture_priority.rs:149:47
+    |
+149 |     let supervisor = Supervisor::start(super::capture_config(temp.path())).unwrap();
+    |                                               ^^^^^^^^^^^^^^ not found in `super`
+    |
+help: consider importing this function
+    |
+  2 + use crate::common::capture_config;
+    |
+help: if you import `capture_config`, refer to it directly
+    |
+149 -     let supervisor = Supervisor::start(super::capture_config(temp.path())).unwrap();
+149 +     let supervisor = Supervisor::start(capture_config(temp.path())).unwrap();
+    |
+
+For more information about this error, try `rustc --explain E0425`.
+error: could not compile `bbt-mux` (test "logic") due to 1 previous error
+
+
+{"log": "/tmp/rook-r5h-checks/priority-pty-fixed.log", "sha256": "2162b84d0c8844a81b976f50330d7d96ebbc7854e43a155a06a7ecdcc6991d81", "cargo_exit": 0, "command": "cargo test -p bbt-mux --locked --test logic watched_lane_gets_at_least_half_of_replay_pages -- --exact --nocapture"}
+    Blocking waiting for file lock on package cache
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 24.61s
+     Running tests/logic.rs (target/r5g-frame/debug/deps/logic-173ac3c763159c70)
+
+running 1 test
+owned priority seat=01M5QBQQ4GBP8RB2G3BWZD30YD pid=85428
+owned priority seat=01M5QBQQ4GM8FPTRA94HY8QBVK pid=85434
+owned priority seat=01M5QBQQ4G9T90VF10EFTD24TJ pid=85436
+owned priority seat=01M5QBQQ4GAAWXEY9CXTV8Z0AH pid=85439
+watched source pages=35, fixed budget=86, watched replay pages=35
+test watched_lane_gets_at_least_half_of_replay_pages ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 12.20s
+
+
+
+Four recorded PTY PIDs85428,85434,85436,85439: ps -p ... -o pid,ppid,stat,comm — exit1, no rows after test.
+Snapshot exactness asserted both at visible tail and all-seat completion. Sliding8 page floor asserted until watched completion; fixed3:1 and donation/refcount/disconnect/generation/Exit unit tests pass.
+Before probe: immediate parentf4ac1dba, detached own test overlay only. Baseline run still active; result not claimed yet.
+
+Immediate pre-R5h negative control
+{
+  "base": "f4ac1dba3e809f476b14224e9ebd6eb92d78de85",
+  "tree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-before-jt_es2a5/tree",
+  "fixture_sha256": "3de65f810ab17f3154ab540e6fc547533953a65d37825674aa286c3797d826db",
+  "wrapper_sha256": "9798a11c5981544438a377b222ea11e65b4bfaf60e49023790b1538becfa157a",
+  "purpose": "same external GUI/capture fixture on the immediate pre-R5h source; expected visible-tail failure; no production edits"
+}
+{"command": "cargo test --manifest-path <own before tree>/Cargo.toml -p bbt-mux --locked --test r5h_before watched_lane_gets_at_least_half_of_replay_pages -- --exact --nocapture", "exit": 101, "sha256": "26927defbc3309da19775bfc9748005de1360a7c4ed13b7975fe8eae88269c61"}
+   Compiling bbt-ui-model v0.0.1 (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-before-jt_es2a5/tree/crates/bbt-ui-model)
+   Compiling bbt-core v0.0.1 (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-before-jt_es2a5/tree/crates/bbt-core)
+   Compiling bbt-rt v0.0.1 (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-before-jt_es2a5/tree/crates/bbt-rt)
+   Compiling bbt-ui v0.0.1 (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-before-jt_es2a5/tree/crates/bbt-ui)
+   Compiling bbt-mermaid v0.0.1 (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-before-jt_es2a5/tree/crates/bbt-mermaid)
+   Compiling bbt-proto v0.0.1 (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-before-jt_es2a5/tree/crates/bbt-proto)
+   Compiling bbt-supervisor v0.0.1 (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-before-jt_es2a5/tree/crates/bbt-supervisor)
+   Compiling bbt-doc v0.0.1 (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-before-jt_es2a5/tree/crates/bbt-doc)
+   Compiling bbt-plugin v0.0.1 (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-before-jt_es2a5/tree/crates/bbt-plugin)
+   Compiling bbt-mux v0.0.1 (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-before-jt_es2a5/tree/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 3m 28s
+     Running tests/r5h_before.rs (target/r5g-frame/debug/deps/r5h_before-948dc170cc3d2242)
+
+running 1 test
+owned priority seat=01M5QBZGZ8FYT9CFVFKZ20YK4Q pid=93442
+owned priority seat=01M5QBZGZ8A3RVVH1R6DMYD3GG pid=93444
+owned priority seat=01M5QBZGZ8QGD5EA5CTF2RXTTB pid=93446
+owned priority seat=01M5QBZGZ8R1H0V1704D91T2PM pid=93448
+watched source pages=33, fixed budget=82, watched replay pages=22
+
+thread 'watched_lane_gets_at_least_half_of_replay_pages' (27582324) panicked at crates/bbt-mux/tests/common/capture_priority.rs:324:5:
+assertion `left == right` failed: watched tail starved behind background replay
+  left: 22
+ right: 33
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+test watched_lane_gets_at_least_half_of_replay_pages ... FAILED
+
+failures:
+
+failures:
+    watched_lane_gets_at_least_half_of_replay_pages
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.53s
+
+error: test failed, to rerun pass `-p bbt-mux --test r5h_before`
+{"command": "ps -p 93442,93444,93446,93448 -o pid,ppid,stat,comm", "exit": 1, "stdout": ""}

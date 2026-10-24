@@ -505,6 +505,7 @@ async fn gui_session(
     let mut filters_at = Instant::now();
     let mut event_cursors = BTreeMap::new();
     let mut views: BTreeMap<bbt_proto::SeatId, GuiView> = BTreeMap::new();
+    let watch_session = client.gui_watch_session();
     let mut checks = GuiChecks::default();
     let mut state_events = VecDeque::new();
     let mut actions = 0;
@@ -619,18 +620,26 @@ async fn gui_session(
                                 let snapshot=client.snapshot(view.seat,view.generation).await?;
                                 let last=Some((snapshot.view,snapshot.sequence));
                                 let mut stream=ViewStream::default();stream.offer(snapshot)?;
+                                client.gui_watch_interest(&watch_session,view.seat,Some(view.generation)).await?;
                                 views.insert(seat,GuiView {stream,generation:view.generation,last,in_flight:None});
                                 checks.schedule(seat);
                                 Ok(GuiReply::Ok {op})
                             }
-                            GuiAction::Unwatch {seat}=>{views.remove(&seat);checks.remove(seat);Ok(GuiReply::Ok {op})}
+                            GuiAction::Unwatch {seat}=>{
+                                views.remove(&seat);checks.remove(seat);
+                                client.gui_watch_interest(&watch_session,Ulid::from(seat.0.0),None).await?;
+                                Ok(GuiReply::Ok {op})
+                            }
                             GuiAction::Applied {seat,view,sequence}=> {
                                 if view.seat!=Ulid::from(seat.0.0) {return Err(invalid("ack seat and view disagree"));}
                                 let watched=views.get_mut(&seat).ok_or_else(||invalid("seat is not watched"))?;
                                 watched.applied(view,sequence)?;
                                 checks.remove(seat);
                                 let result=gui_check_view(&client,&mut write,seat,watched).await;
-                                if result.is_err() {views.remove(&seat);}
+                                if result.is_err() {
+                                    views.remove(&seat);
+                                    let _=client.gui_watch_interest(&watch_session,Ulid::from(seat.0.0),None).await;
+                                }
                                 result?;
                                 Ok(GuiReply::Ok {op})
                             }
@@ -755,6 +764,7 @@ async fn gui_session(
                         if let Some(watched)=views.get_mut(&seat)
                             && let Err(error)=gui_fallback_check(&client,&mut write,seat,watched).await {
                             views.remove(&seat);
+                            let _=client.gui_watch_interest(&watch_session,Ulid::from(seat.0.0),None).await;
                             send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:error.to_string()}).await?;
                         }
                         prefer_view=false;
@@ -783,6 +793,7 @@ async fn gui_session(
         }
         Ok(())
     }.await;
+    drop(watch_session);
     if let Some(active) = lane.take() {
         active.close().await;
     }
