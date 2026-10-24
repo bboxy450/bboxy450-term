@@ -1,0 +1,38 @@
+# #269 live proof (also #264 sender routing), 2026-10-24 07:11-07:12 PDT
+# Run by Seraph Quillfire <EXECUTOR>, accepted by Vesper. Curated: no transcripts, no capability.
+
+build      main c775112d, debug, BBOXY_TEST_CUSTODY=memory
+app        bboxy450-term --run-dir <temp> --ctl, from Seraph's worktree (repository with the fixture task)
+seat       ctl --as 'Vesper, Oracle' spawn claude --placement new-tab --cwd /Users/feral/mydev/bboxy450-term --name live-269
+             -> seat 01M5Q41NQ6ZXYG4VZJGY9GS6PB, swarm 01M5Q41NPRW9AQQNFGA7CXQBAG
+             -> Claude Code v2.1.304, Opus 5.5, role oracle (the #262 Claude default)
+fixture    task number 9269, id 01M5Q41A6GA86AA5HNV62G7AMG, untracked in Seraph's worktree, removed after:
+             "reply to the delegating message (message_send with reply_to and no destination)
+              quoting, exactly and in full, the from: line of the frame that delivered this task;
+              write no files, run no commands"
+delegate   ctl --as 'Vesper, Oracle' delegate '#9269' 01M5Q41NQ6ZXYG4VZJGY9GS6PB -> applied
+
+frame the seat was shown (read from its pane capture):
+  from: the operator principal, via ctl, issued by Vesper, Oracle
+
+line the seat quoted back (its reply body, verbatim):
+  from: the operator principal, via ctl, issued by Vesper, Oracle
+
+Delegate envelope (as stored)
+  id 46S25P06MB3WSKJGY8NGPKF7FE  kind task  seat 00000000000000000000000000  role operator/oracle
+  context seats/01M5Q41NQ6ZXYG4VZJGY9GS6PB/inbox  door ctl  issued_by "Vesper, Oracle"
+Reply envelope (as stored)
+  id 01M5Q4284R9YJJYYJ2JMK6HNPE  kind text  seat 01M5Q41NQ6ZXYG4VZJGY9GS6PB  role oracle/oracle
+  context operator/inbox  reply_to 46S25P06MB3WSKJGY8NGPKF7FE  door -  issued_by -
+  -> #264: reply_to with no destination routed to operator/inbox
+
+seat's own account: routed to operator/inbox "not to Vesper's seat ... the from: line credits the
+operator rather than Vesper"; wrote no files, ran no commands, did not open the task file.
+observed: Claude Code wraps the frame in its own peer preamble; the seat still acted on the Delegate.
+
+evidence files (Seraph's scratchpad, not committed)
+  seat.png     sha256 be412b9ae6ba42a2fb2a91ca27c737933b55a7b1aa97cb787c4123b20bbbc827  (ctl capture --seat, stale:false)
+  inbox.jsonl  sha256 6054fa6b81aa26a74ab94f9a752fa3141d8b07a711168a203e5241af725fc73a  (ctl inbox; no capability field)
+
+cleanup    stopped only the run's PIDs (window, logic 17631, supervisor 17630; seat claude 18068 had exited);
+           removed the fixture task, the run's .bboxy/log and .bboxy/artifacts, the temp run dir and the build target

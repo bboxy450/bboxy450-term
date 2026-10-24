@@ -244,6 +244,42 @@ async fn ctl_drives_a_claude_seat_from_outside_the_app() {
     });
     assert_eq!(listed["harness"], "claude", "{listed}");
 
+    // --role takes the launcher's preset table and guard (#262): an executor Claude is a
+    // worker, Codex is never an oracle, and an unknown name is refused by that name.
+    let repo = repository.to_str().unwrap();
+    let tester = ctl(
+        &run,
+        &[
+            "spawn", "claude", "--role", "executor", "--cwd", repo, "--name", "tester",
+        ],
+    );
+    let tester = tester[0]["seat"].as_str().unwrap().to_owned();
+    let tester = until("the executor seat in ctl seats", &log, || {
+        ctl(&run, &["seats"])
+            .into_iter()
+            .find(|s| s["seat"] == tester.as_str())
+    });
+    assert_eq!(tester["role"]["name"], "executor", "{tester}");
+    assert_eq!(tester["role"]["class"], "worker", "{tester}");
+    for (harness, role, reason) in [
+        ("codex", "oracle", "codex_oracle_role_forbidden"),
+        ("claude", "wizard", "unknown_role_preset"),
+    ] {
+        let (ok, lines) = ctl_in(
+            &run,
+            &root,
+            &["spawn", harness, "--role", role, "--cwd", repo],
+        );
+        assert!(!ok, "{harness} --role {role}: {lines:?}");
+        assert!(
+            lines[0]["reason"]
+                .as_str()
+                .unwrap_or_default()
+                .contains(reason),
+            "{harness} --role {role}: {lines:?}"
+        );
+    }
+
     // dm, then inbox shows the seat's reply, then receipts show its read mark.
     let sent = ctl(&run, &["dm", &seat, "ping"]);
     assert_eq!(sent[0]["kind"], "sent", "{sent:?}");
