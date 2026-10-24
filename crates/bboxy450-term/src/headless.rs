@@ -108,6 +108,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let mut scene = Scene::live();
     let mut focus = crate::FocusState::default();
     let mut model = Arc::new(Model::default());
+    let mut spawn_results_seen = BTreeMap::new();
     let mut watched = Vec::<(SeatId, View)>::new();
     let mut sizes = BTreeMap::new();
     let mut bounds = Vec::<(SeatId, Rect)>::new();
@@ -273,6 +274,21 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         next.hosts != model.hosts, next.ui.seats.len(), next.screens.len(),
                         next.e2e.is_some(), next.settings.is_some(),
                     ));
+                }
+                // The IO model retains a bounded launch request until its GUI
+                // consumer observes the outcome. Acknowledge once per result,
+                // as the window does; IO owns pending/unknown retention rules.
+                spawn_results_seen.retain(|op, _| next.spawns.contains_key(op));
+                for (&op, request) in &next.spawns {
+                    if !request.consumed
+                        && request.outcome.is_result()
+                        && spawn_results_seen.get(&op) != Some(&request.outcome)
+                    {
+                        crate::queue_pending(&mut pending, live::UiMsg::ConsumeSpawn { id: op })
+                            .map_err(|_| "headless spawn-result admission full")?;
+                        logger.write(format!("headless spawn {op}: {:?}", request.outcome));
+                        spawn_results_seen.insert(op, request.outcome.clone());
+                    }
                 }
                 if next.ui.window.stage != model.ui.window.stage {
                     // Correlated launch/close changes the IO model's stage;
