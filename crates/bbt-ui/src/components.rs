@@ -2139,7 +2139,7 @@ pub enum Paint {
         kind: Material,
         color: Color,
         blur: Option<crate::ResolvedBlur>,
-        glow: Option<crate::Glow>,
+        rim: Option<crate::Rim>,
         clips: Vec<Clip>,
     },
 }
@@ -2158,6 +2158,20 @@ fn finish(mut list: DrawList, clips: &[Clip], out: &mut Vec<Paint>) {
 }
 fn color(c: [f32; 4], draw: DrawCtx, opacity: f32) -> Color {
     draw.color(Color(c)).alpha(opacity)
+}
+/// Splits a block's top-level alive rims from the rest of its paint (rim-glow §7): a host
+/// paints every block first and the rims after, so a swell lies over its neighbours as the
+/// lab's rim canvases do; at rest the rims touch no neighbour and nothing changes.
+pub fn split_rims(ops: Vec<Paint>) -> (Vec<Paint>, Vec<Paint>) {
+    ops.into_iter().partition(|op| {
+        !matches!(
+            op,
+            Paint::Material {
+                kind: Material::Rim,
+                ..
+            }
+        )
+    })
 }
 pub fn paint(layout: &Layout, ctx: Context) -> Vec<Paint> {
     paint_with_draw(layout, DrawCtx::new(ctx.theme, ctx.density))
@@ -2281,7 +2295,7 @@ fn paint_contents(
                     kind: s.material,
                     color: color(s.fill, draw, opacity),
                     blur: s.blur,
-                    glow: s.glow,
+                    rim: s.rim,
                     clips: clips.to_vec(),
                 });
             }
@@ -2412,14 +2426,20 @@ fn paint_contents(
                     radii: s.radii,
                 });
             }
-            if matches!(s.material, Material::Glow | Material::Rim) {
+            // The alive rim is a property of any block that carries `glow` (rim-glow §8), not
+            // only of a Rim material; the legacy particle Glow keeps its own kind.
+            if s.material == Material::Glow || s.material == Material::Rim || s.rim.is_some() {
                 after = Some(Paint::Material {
                     rect: node.rect,
                     radii: s.radii,
-                    kind: s.material,
+                    kind: if s.material == Material::Glow {
+                        Material::Glow
+                    } else {
+                        Material::Rim
+                    },
                     color: color(s.fill, draw, opacity),
                     blur: s.blur,
-                    glow: s.glow,
+                    rim: s.rim,
                     clips: clips.to_vec(),
                 });
             }

@@ -571,14 +571,14 @@ fn nested_filters_retain_boundaries_and_ancestor_clips_without_recoloring_the_at
 
 #[test]
 fn a_retained_box_keeps_its_own_glow_state_until_after_its_content() {
-    let state = bbt_ui::Glow {
+    let state = bbt_ui::Rim {
         activity: bbt_ui::GlowActivity::Waiting,
         inferred_multiplier: 0.5,
         seed: 42,
         ..Default::default()
     };
     let mut s = Style::new(Preset::PaneGlow);
-    s.overrides.glow = Some(state);
+    s.overrides.rim = Some(state);
     let element = c::Element::Box(c::Box::new(
         s,
         vec![text("foreground", bbt_ui::TypeStep::Body).into()],
@@ -588,7 +588,7 @@ fn a_retained_box_keeps_its_own_glow_state_until_after_its_content() {
         .unwrap();
     let ops = c::paint(&layout, context());
     assert!(
-        matches!(ops.last(), Some(c::Paint::Material { glow: Some(actual), .. }) if *actual==state)
+        matches!(ops.last(), Some(c::Paint::Material { rim: Some(actual), .. }) if *actual==state)
     );
     assert!(ops.iter().any(|op| matches!(op,c::Paint::Draw(d) if d.primitives.iter().any(|p|matches!(p,Prim::Text{..})))));
 }

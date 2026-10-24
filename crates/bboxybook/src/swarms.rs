@@ -517,6 +517,11 @@ fn append_ops(ops: Vec<c::Paint>, out: &mut bbt_ui_model::draw::DrawList) {
                     out.unclip()
                 }
             }
+            // The legacy flat sidebar cannot carry the alive rim; its v2 reference has none.
+            c::Paint::Material {
+                kind: ui::Material::Rim,
+                ..
+            } => {}
             c::Paint::Material { .. } => {
                 unreachable!("SwarmCard lab chrome uses only flat and gloss")
             }

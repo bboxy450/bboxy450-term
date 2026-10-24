@@ -236,23 +236,46 @@ impl TabRow {
                 max_fraction: None,
             },
         });
-        let header = named(
-            "header",
-            box_row(
-                if margin > 0. {
-                    let mut style = ui::Style::new(ui::Preset::CardRow);
-                    style.overrides.height = Some(ui::Length::Px(d.tab_h as f32));
-                    style
-                } else {
-                    style(
-                        Some(d.tab_h as f32),
-                        [0., d.pad_x as f32, 0., d.pad_x as f32],
-                    )
-                },
-                d.gap as f32,
-                children,
-            ),
-        );
+        let mut header_style = if margin > 0. {
+            let mut style = ui::Style::new(ui::Preset::CardRow);
+            style.overrides.height = Some(ui::Length::Px(d.tab_h as f32));
+            style
+        } else {
+            let mut s = style(
+                Some(d.tab_h as f32),
+                [0., d.pad_x as f32, 0., d.pad_x as f32],
+            );
+            // The row radius, as a seat row's (--r-row): invisible on a transparent row until
+            // the rim follows its corners.
+            s.overrides.radii = Some([ui::Length::Px(TOKENS.radius.chip as f32); 4]);
+            s
+        };
+        // The tab's alive rim (rim-glow §8) reads its worst seat, state and colour, and swells
+        // when one of its seats does; edge to edge like a row, bare while idle.
+        if let Some(worst) = self.seats.iter().min_by_key(|s| match s.row.activity {
+            Activity::Errored => 0,
+            Activity::Waiting(_) => 1,
+            Activity::Active => 2,
+            Activity::Idle => 3,
+        }) {
+            header_style.overrides.rim = Some(ui::Rim {
+                swell: self.seats.iter().map(|s| s.row.swell).fold(0., f32::max),
+                attention: self.seats.iter().any(|s| s.row.attention),
+                ..ui::Rim::block(
+                    worst.row.activity.into(),
+                    false,
+                    match worst.row.color(ctx) {
+                        ui::Color::Rgba(c) => Some(c),
+                        _ => None,
+                    },
+                    ui::rim_phase(&self.name),
+                    true,
+                    0.,
+                    0.,
+                )
+            });
+        }
+        let header = named("header", box_row(header_style, d.gap as f32, children));
         let mut all = vec![inset(header, margin).into()];
         if self.expanded {
             let mut seats = vec![];

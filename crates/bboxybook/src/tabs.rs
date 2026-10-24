@@ -233,14 +233,9 @@ pub fn render_case(
             .ok_or("TabRow/MiniGrid backdrop missing")?,
     ))?;
     let ctx = crate::components::context(case);
-    let mut draw = DrawList::default();
-    append(
-        &layout_case(case)?,
-        DrawCtx::new(ctx.theme, ctx.density),
-        &mut draw,
-    );
-    let pixels =
-        crate::components::execute(renderer, vec![c::Paint::Draw(draw)], pixels, [w, h], ctx)?;
+    // Tabs and their rows carry the alive rim (rim-glow §8): the material-capable executor.
+    let ops = c::paint_with_draw(&layout_case(case)?, DrawCtx::new(ctx.theme, ctx.density));
+    let pixels = crate::components::execute(renderer, ops, pixels, [w, h], ctx)?;
     let x = seat_rows::number(&bg["crop"], "x")?.round() as u32;
     let y = seat_rows::number(&bg["crop"], "y")?.round() as u32;
     let mut crop = vec![];

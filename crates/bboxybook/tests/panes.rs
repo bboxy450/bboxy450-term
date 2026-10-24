@@ -4,7 +4,8 @@ use std::collections::BTreeSet;
 #[test]
 fn pane_registry_pairs_every_current_and_historical_case_without_collisions() {
     let mut all = panes::cases();
-    assert_eq!(all.len(), 136);
+    // 17 title-strip and pane states plus 3 swell.html states (rim-glow §7), x 8.
+    assert_eq!(all.len(), 160);
     let old = panes::legacy_cases();
     assert_eq!(old.len(), 80);
     assert!(
@@ -17,7 +18,7 @@ fn pane_registry_pairs_every_current_and_historical_case_without_collisions() {
             .map(|c| c.relative())
             .collect::<BTreeSet<_>>()
             .len(),
-        216
+        240
     );
     assert_eq!(panes::STRIP_STATES.len(), 11);
     assert_eq!(panes::PANE_STATES.len(), 6);

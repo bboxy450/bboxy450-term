@@ -69,7 +69,7 @@ fn a_retained_group_keeps_material_coverage_and_filters_the_completed_layer() {
             color: Color::WHITE,
             blur: None,
             clips: vec![],
-            glow: Some(bbt_ui::Glow {
+            rim: Some(bbt_ui::Rim {
                 halo_alpha: Some(0.8),
                 particles: Some(0),
                 ..Default::default()

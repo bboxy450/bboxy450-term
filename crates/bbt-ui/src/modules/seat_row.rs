@@ -192,6 +192,10 @@ pub struct SeatRow {
     pub noise: Option<f32>,
     /// Optional per-container density override, as in the subtitle fixture.
     pub row_height: Option<f32>,
+    /// The host's focus swell envelope this frame, 0 to 1 (rim-glow §7).
+    pub swell: f32,
+    /// The waiting attention loop (attention §2).
+    pub attention: bool,
 }
 impl SeatRow {
     pub fn new(
@@ -223,6 +227,8 @@ impl SeatRow {
             interrupt_sent: false,
             noise: None,
             row_height: None,
+            swell: 0.,
+            attention: false,
         }
     }
     pub fn color(&self, ctx: ui::Context) -> ui::Color {
@@ -291,6 +297,24 @@ impl SeatRow {
                 color: shadow,
             });
         }
+        // The alive rim (rim-glow §8): rows stack edge to edge, so no outer half and no bloom;
+        // an idle, unfocused row carries none at rest but still takes the swell.
+        style.overrides.rim = Some(ui::Rim {
+            swell: self.swell,
+            attention: self.attention,
+            ..ui::Rim::block(
+                self.activity.into(),
+                self.focused,
+                match color {
+                    ui::Color::Rgba(c) => Some(c),
+                    _ => None,
+                },
+                ui::rim_phase(&self.key),
+                true,
+                0.,
+                0.,
+            )
+        });
         let mut children = vec![];
         if let Some(where_) = &self.where_ {
             children.push(

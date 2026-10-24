@@ -335,8 +335,8 @@ fn paint_box(
         };
         g.color = Color(ctx.seat).alpha(s.opacity);
         g.seed = seed;
-        if s.glow.is_some() {
-            crate::components::configure_glow(&mut g, ctx, s.glow);
+        if s.rim.is_some() {
+            crate::components::configure_glow(&mut g, ctx, s.rim);
             g.color = g.color.alpha(s.opacity);
             g.waiting = g.waiting.alpha(s.opacity);
             g.errored = g.errored.alpha(s.opacity);
@@ -351,7 +351,7 @@ fn paint_box(
     }
     if s.material == Material::Rim {
         // style.html explicitly shows an active, focused pane-glow fixture.
-        let state = s.glow.unwrap_or(bbt_ui::Glow {
+        let state = s.rim.unwrap_or(bbt_ui::Rim {
             focused: true,
             ..Default::default()
         });

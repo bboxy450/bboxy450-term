@@ -541,7 +541,7 @@ pub fn execute_at(
                 kind,
                 color,
                 blur,
-                glow,
+                rim: glow,
                 clips,
             } => {
                 let material = match kind {
@@ -632,6 +632,12 @@ pub(crate) fn append_draw(ops: Vec<c::Paint>, out: &mut DrawList) -> Result<()> 
                     mask,
                 });
             }
+            // A flat draw list cannot carry the alive rim (a material pass); the galleries that
+            // flatten (frozen v2 references, rows inside larger legacy scenes) have no rim to match.
+            c::Paint::Material {
+                kind: ui::Material::Rim,
+                ..
+            } => {}
             c::Paint::Material { .. } => {
                 return Err("flat composition requires a material pass".into());
             }
@@ -641,7 +647,7 @@ pub(crate) fn append_draw(ops: Vec<c::Paint>, out: &mut DrawList) -> Result<()> 
 }
 
 /// The pane's alive rim (rim-glow), in the seat colour, to the glow depth.
-pub(crate) fn rim(ctx: ui::Context, state: Option<ui::Glow>) -> materials::Rim {
+pub(crate) fn rim(ctx: ui::Context, state: Option<ui::Rim>) -> materials::Rim {
     use ui::GlowActivity as A;
     let state = state.unwrap_or_default();
     materials::Rim {
@@ -662,11 +668,18 @@ pub(crate) fn rim(ctx: ui::Context, state: Option<ui::Glow>) -> materials::Rim {
         depth: state
             .depth
             .unwrap_or(bbt_ui_model::TOKENS.glow.depth as f32),
-        size: state.rim.unwrap_or(bbt_ui_model::TOKENS.glow.rim as f32),
+        size: state.size.unwrap_or(bbt_ui_model::TOKENS.glow.rim as f32),
         phase_ms: (state.seed % 10_000) as f32,
+        outer: state.outer.unwrap_or(f32::MAX).clamp(
+            0.,
+            state.size.unwrap_or(bbt_ui_model::TOKENS.glow.rim as f32) / 2.,
+        ),
+        alpha: state.rim_alpha.unwrap_or(1.),
+        swell: state.swell.clamp(0., 1.),
+        attention: state.attention,
     }
 }
-pub(crate) fn configure_glow(g: &mut materials::Glow, ctx: ui::Context, state: Option<ui::Glow>) {
+pub(crate) fn configure_glow(g: &mut materials::Glow, ctx: ui::Context, state: Option<ui::Rim>) {
     g.color = Color(ctx.seat);
     g.focus = if ctx.focused { 1. } else { 0. };
     if let Some(state) = state {

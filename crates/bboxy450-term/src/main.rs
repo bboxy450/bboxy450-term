@@ -1256,6 +1256,11 @@ impl App {
         self.focus_bounds = self.scene.focus_bounds(&layouts);
         if let Some(model) = &self.live_state {
             for event in self.focus.layout_ready(&model.ui, &self.focus_bounds) {
+                // The focus swell replaces the locate ripple (rim-glow §7): it starts when the
+                // focus lands, after any tab switch, once its layout is ready.
+                if let InputEvent::Locate { seat, .. } = &event {
+                    self.scene.swell(*seat, Instant::now());
+                }
                 self.logger.write(format!("ui input: {event:?}"));
             }
         }
@@ -1376,7 +1381,9 @@ impl App {
                     }
                 });
             if !self.animate {
-                self.pacer.as_ref().unwrap().set_active(false)?;
+                // Idle frames pause the link, except while a swell or attention loop runs.
+                let swelling = self.scene.animating(Instant::now()) && !self.occluded;
+                self.pacer.as_ref().unwrap().set_active(swelling)?;
             }
             if self.meter.total_frames() == 1 {
                 self.logger.write(format!(

@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 
 #[test]
 fn per_node_glow_drives_state_grade_and_seed_without_changing_the_box() {
-    use bbt_ui::{Glow, GlowActivity, Material};
+    use bbt_ui::{GlowActivity, Material, Rim};
     let mut renderer = ChromeRenderer::new(vec![]).unwrap();
     let ctx = Context::new(Theme::Dark, Density::Cozy);
     let mut style = Style::new(Preset::PaneGlow);
@@ -19,7 +19,7 @@ fn per_node_glow_drives_state_grade_and_seed_without_changing_the_box() {
         GlowActivity::Waiting,
         GlowActivity::Errored,
     ] {
-        style.overrides.glow = Some(Glow {
+        style.overrides.rim = Some(Rim {
             activity,
             inferred_multiplier: 0.,
             seed: 123,
@@ -30,7 +30,7 @@ fn per_node_glow_drives_state_grade_and_seed_without_changing_the_box() {
             no_effect,
             "zero grade must remove the effect for every selected state colour"
         );
-        style.overrides.glow.as_mut().unwrap().inferred_multiplier = 1.;
+        style.overrides.rim.as_mut().unwrap().inferred_multiplier = 1.;
         let image = styles::preview(&mut renderer, &style, ctx).unwrap();
         assert_ne!(image, no_effect);
         rendered.insert(image);
@@ -40,7 +40,7 @@ fn per_node_glow_drives_state_grade_and_seed_without_changing_the_box() {
         4,
         "each state must reach the existing L2 effect"
     );
-    style.overrides.glow = Some(Glow {
+    style.overrides.rim = Some(Rim {
         halo_alpha: Some(0.),
         particles: Some(0),
         ..Default::default()
@@ -50,9 +50,9 @@ fn per_node_glow_drives_state_grade_and_seed_without_changing_the_box() {
         no_effect,
         "independent halo/count inputs must reach L2"
     );
-    style.overrides.glow = Some(Glow::default());
+    style.overrides.rim = Some(Rim::default());
     let first = styles::preview(&mut renderer, &style, ctx).unwrap();
-    style.overrides.glow.as_mut().unwrap().seed += 1;
+    style.overrides.rim.as_mut().unwrap().seed += 1;
     assert_ne!(styles::preview(&mut renderer, &style, ctx).unwrap(), first);
 }
 

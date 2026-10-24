@@ -105,7 +105,7 @@ fn pane_preserves_history_content_and_capability_actions_while_disconnected() {
     let state = ops
         .iter()
         .find_map(|p| {
-            if let c::Paint::Material { glow: Some(g), .. } = p {
+            if let c::Paint::Material { rim: Some(g), .. } = p {
                 Some(g)
             } else {
                 None

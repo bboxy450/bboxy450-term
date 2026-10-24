@@ -133,12 +133,15 @@ fn rim_hue(c:vec3f,a:f32)->vec3f {let k=vec3f(0.57735);let ca=cos(a);return c*ca
 @fragment fn rim(v:Vertex)->@location(0) vec4f {
     let i=items[v.index];let mask=clip_mask(v);if mask<=0.0 {discard;}
     let k=view.w;let depth=i.p1.w/k;let d=rounded_sdf(v.point,i.rect,i.radii)/k;
-    // The rim of size R centred on the border, R/2 out and R/2 in, and the bloom from its
-    // inner edge to depth: the band [-R/2, depth) across the border (rim-glow §1).
-    let size=i.p1.x/k;let out=size*0.5;let inner=size-out;
+    // The rim of size R centred on the border, R/2 in and `out` (R/2, or less where a block
+    // has less spacing) out, and the bloom from its inner edge to depth (rim-glow §1, §8).
+    let size=i.p1.x/k;let out=i.p3.y/k;let inner=size*0.5;
     let core=smoothstep(-out,-out+0.6,-d)*(1.0-smoothstep(inner-0.4,inner+0.4,-d));
-    let bloom=step(inner-0.4,-d)*exp(-(-d-inner)/(0.3*depth))*(1.0-smoothstep(depth-1.0,depth,-d));
-    if core+bloom<=0.0 {discard;}
+    let bloom=step(inner-0.4,-d)*exp(-(-d-inner)/(0.3*max(depth,0.1)))*(1.0-smoothstep(depth-1.0,depth,-d));
+    // The focus swell past the rim's outer edge, `ext` px at this instant (rim-glow §7).
+    let ext=i.p2.y/k;let env=i.p2.z;let attn=i.p2.w>0.5;
+    var sw=0.0;if ext>0.5 {sw=step(out-0.4,d)*(1.0-smoothstep(out+ext*0.8,out+ext,d));}
+    if core+bloom+sw<=0.0 {discard;}
     let hs=i.rect.zw*0.5/k;let q=(v.point-i.rect.xy)/k-hs;let r=i.radii.x/k;
     let p=rim_perim_len(hs,r);let s=rim_perim(q,hs,r);
     let act=u32(i.p1.y);
@@ -149,10 +152,17 @@ fn rim_hue(c:vec3f,a:f32)->vec3f {let k=vec3f(0.57735);let ca=cos(a);return c*ca
     let a2=0.5+0.5*sin(RIM_TAU*(s/rim_wl(110.0,p)+t*0.30)+1.7);
     let crest=max(a1*a1,0.8*a2*a2);let pulse=0.5-0.5*cos(time/(2600.0/(0.5+spd))*RIM_TAU);
     var intensity=(0.42+0.58*crest)*(0.72+0.28*pulse)*core+0.3*crest*(0.6+0.4*pulse)*bloom;
-    var c=rim_hue(i.color.rgb,0.55*sin(RIM_TAU*(s/p-t*0.12))+0.3*sin(RIM_TAU*(s/rim_wl(230.0,p)+t*0.2)));
+    // Attention holds the hue (the waiting amber stays amber).
+    var c=rim_hue(i.color.rgb,(0.55*sin(RIM_TAU*(s/p-t*0.12))+0.3*sin(RIM_TAU*(s/rim_wl(230.0,p)+t*0.2)))*select(1.0,0.15,attn));
     c=clamp(mix(c,vec3f(1.0),0.22*crest*core),vec3f(0.0),vec3f(1.0));
     intensity*=amp*mix(1.0,1.3,i.p1.z);
-    if act==2u {intensity*=0.6+0.4*(0.5-0.5*cos(time/1600.0*RIM_TAU));}  // waiting breathes on top
-    intensity=clamp(intensity,0.0,1.0)*i.color.a*mask;
+    // Attention pulses with its swell loop; otherwise waiting breathes on top.
+    if attn {intensity*=0.55+0.45*env;} else if act==2u {intensity*=0.6+0.4*(0.5-0.5*cos(time/1600.0*RIM_TAU));}
+    // The swell: a soft bloom carrying the rim's crests, weight falling to zero at the reach, one
+    // faint travelling core; fixed weight, not scaled by activity.
+    let u=clamp((d-out)/max(ext,1.0),0.0,1.0);let c0=0.35+0.1*sin(RIM_TAU*(s/rim_wl(190.0,p)-t*0.31));let kc=(u-c0)/0.22;
+    var swell=0.0;if sw>0.0 {swell=env*(0.6*exp(-u*2.8)*(0.45+0.55*crest)+0.18*exp(-(kc*kc)))*sw;}
+    intensity=clamp(intensity,0.0,1.0)*i.p3.x;
+    intensity=(intensity+swell*(1.0-intensity))*i.color.a*mask;
     return vec4f(c*intensity,intensity);
 }

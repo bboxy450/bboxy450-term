@@ -3,7 +3,7 @@
 use super::{ChromeRenderer, ChromeTarget};
 use crate::{Result, device::DeviceContext};
 use bbt_ui_model::{
-    Theme,
+    TOKENS, Theme,
     draw::{Color, DrawList},
     layout::Rect,
 };
@@ -94,6 +94,16 @@ pub struct Rim {
     pub depth: f32,
     /// Added to the frame clock, so neighbouring panes do not move in step.
     pub phase_ms: f32,
+    /// The outer half actually drawn, px: R/2 for a pane, clipped to the spacing a block
+    /// has for any other block (rim-glow §8; 0 for rows that stack edge to edge).
+    pub outer: f32,
+    /// The rim's weight at rest (idle rows carry none); never scales the swell.
+    pub alpha: f32,
+    /// The focus swell's envelope, 0 to 1 (rim-glow §7): it reaches glow.swell px past the
+    /// rim's outer edge at 1. The host computes it from the swell's start on its clock.
+    pub swell: f32,
+    /// The waiting attention loop (attention §2): hue held, the rim pulsing with the swell.
+    pub attention: bool,
 }
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Material {
@@ -282,8 +292,10 @@ impl Surface {
                 };
                 // The state colour keeps the seat's alpha (an inferred seat draws at .5).
                 i.color = [state[0], state[1], state[2], r.color.0[3]];
-                // The rim's outer half lies outside the box: the quad grows by R/2 (vs adds one pixel).
-                i.p0[3] = r.size * 0.5 * scale;
+                // The rim's outer half and the swell lie outside the box: the quad grows by both
+                // (vs adds one pixel).
+                let reach = TOKENS.glow.swell as f32 * r.swell;
+                i.p0[3] = (r.outer + reach) * scale;
                 i.p1 = [
                     r.size * scale,
                     match r.activity {
@@ -295,10 +307,20 @@ impl Surface {
                     r.focus,
                     r.depth * scale,
                 ];
-                i.p2[0] = r.phase_ms;
-                if !(1.0..=32.).contains(&r.depth)
+                i.p2 = [
+                    r.phase_ms,
+                    reach * scale,
+                    r.swell,
+                    if r.attention { 1. } else { 0. },
+                ];
+                i.p3[0] = r.alpha;
+                i.p3[1] = r.outer * scale;
+                if !(0.0..=32.).contains(&r.depth)
                     || !(1.0..=16.).contains(&r.size)
+                    || !(0.0..=r.size * 0.5).contains(&r.outer)
                     || !(0.0..=1.).contains(&r.focus)
+                    || !(0.0..=1.).contains(&r.alpha)
+                    || !(0.0..=1.).contains(&r.swell)
                 {
                     return Err("invalid rim parameters".into());
                 }
@@ -444,7 +466,11 @@ impl Pass {
             let entry = [
                 "flat", "gloss", "frosted", "glow", "glow", "glow", "rim", "rim",
             ][index];
-            let blend = if index == 5 || index == 7 {
+            let blend = if index == 7 {
+                // The rim's output is premultiplied; in a transparent group it keeps its
+                // coverage for the later source-over composite without squaring alpha.
+                wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING
+            } else if index == 5 {
                 // A transparent group must retain the effect's coverage for
                 // its later source-over composite. Normal fx keep dest alpha.
                 wgpu::BlendState::ALPHA_BLENDING
@@ -1016,6 +1042,67 @@ mod tests {
         };
         assert_eq!(flat.backdrop_region(1., 200, 100).unwrap(), None);
         assert!(surface.backdrop_region(f32::NAN, 200, 100).is_err());
+    }
+    #[test]
+    fn the_swell_over_a_neighbours_nearest_text_cell_stays_under_the_cap() {
+        // rim-glow §7 acceptance (Wren's swell.html curve): at its peak (envelope 1) the swell
+        // weighs at most .48 over a neighbour's first text cell, the gap (rim size) plus the
+        // neighbour's 8 px padding past the border: 12 px at rim size 4. Every position along
+        // the edge is sampled, so every crest and core phase is covered. The rim keeps the
+        // destination's alpha, so the weight is read from colour: a white rim (unchanged by
+        // the hue rotation about the grey axis) over opaque black is the weight itself.
+        let rim = TOKENS.glow.rim as f32;
+        let near = rim + 8.;
+        let rect = Rect::new(60., 60., 400., 160.);
+        let (width, height) = (520u32, 280u32);
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let mut worst = 0f32;
+        for time_ms in [0., 700., 1400., 2100.] {
+            let out = render_to_rgba(
+                &mut renderer,
+                Scene {
+                    backdrop: Backdrop::Rgba(&[0, 0, 0, 255].repeat((width * height) as usize)),
+                    items: &[Surface {
+                        rect,
+                        radii: [10.; 4],
+                        clips: vec![],
+                        material: Material::Rim(Rim {
+                            color: Color::WHITE,
+                            waiting: Color::hex(TOKENS.color.state.waiting),
+                            errored: Color::hex(TOKENS.color.state.errored),
+                            activity: Activity::Active,
+                            focus: 1.,
+                            size: rim,
+                            depth: TOKENS.glow.depth as f32,
+                            phase_ms: 0.,
+                            outer: rim / 2.,
+                            alpha: 1.,
+                            swell: 1.,
+                            attention: false,
+                        }),
+                    }],
+                    width,
+                    height,
+                    scale: 1.,
+                    time_ms,
+                    theme: Theme::Dark,
+                },
+            )
+            .unwrap();
+            // The row of pixels `near` px above the top edge, clear of the corners.
+            let y = (rect.y - near) as u32;
+            for x in (rect.x + 12.) as u32..(rect.right() - 12.) as u32 {
+                worst = worst.max(f32::from(out[((y * width + x) * 4) as usize]) / 255.);
+            }
+        }
+        assert!(
+            worst > 0.2,
+            "the swell reaches the neighbour's cell: {worst}"
+        );
+        assert!(
+            worst <= 0.48 + 1. / 255.,
+            "swell weight over the nearest cell {worst}"
+        );
     }
     #[test]
     fn downsampled_blur_matches_the_full_resolution_mirrored_gaussian() {

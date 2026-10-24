@@ -147,6 +147,8 @@ border_active = 2
 rim = 4                       # px, the alive rim's default size, centred on the pane border: half outside, half inside (operator 2026-10-23: "rim size configurable from 2 to 8 px, half of size on each side"); Settings › Appearance › Rim size
 rim_min = 2                   # Rim size range
 rim_max = 8
+swell = 40                    # px the focus swell reaches past the rim's outer edge at its peak (operator 2026-10-23: "40px swell is fucking perfect!"; rim-glow §7)
+swell_ms = 900                # the swell's whole life: reach(t) = swell · sin(π t / swell_ms); a waiting seat's attention loop repeats it (attention §2)
 depth = 8                     # px the bloom reaches inside the pane, fixed (the setting is the rim size now); clipped to the content padding (cell edge rule)
 depth_min = 2                 # retiring: the Settings row is the rim size now; kept until the native Settings row (G3) stops reading it
 depth_max = 8

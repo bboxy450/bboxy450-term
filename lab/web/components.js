@@ -308,7 +308,7 @@
     const say = PENDING_SAY[st] + ' · ' + (st === 'accepted' ? 'by ' + (p.by || 'the Oracle') : st === 'rejected' ? (p.reason || 'no reason given') : (p.outcome || (st === 'unknown' ? 'no confirmation from the mux · never retried' : 'some effects applied')));
     const top = el('span', { class: 'ptop' }, el('span', { class: 'tname' }, p.name));
     if (st !== 'accepted' && opts.onDismiss) top.append(el('button', { class: 'undo', onclick: e => { e.stopPropagation(); opts.onDismiss(p); } }, 'dismiss'));
-    return el('div', { class: 'tab-row pending ' + st, title: (p.op ? 'op ' + p.op + ' · ' : '') + say }, mark, harnessIcon(p.harness), el('span', { class: 'pcol' }, top, el('span', { class: 'pcap' }, say)));
+    return el('div', { class: 'tab-row pending ' + st, 'data-rim-key': p.op || p.name, title: (p.op ? 'op ' + p.op + ' · ' : '') + say }, mark, harnessIcon(p.harness), el('span', { class: 'pcol' }, top, el('span', { class: 'pcap' }, say)));
   }
   // invariant chip (work-items.md): outlined "inv · <title>" where an item is constrained, red "breaks inv · <title>" where a bug violates
   const invChip = (title, rel) => el('span', { class: 'invchip ' + rel, title: (rel === 'violates' ? 'violates invariant ' : 'constrained by invariant ') + title }, rel === 'violates' ? 'breaks ' : 'inv ', el('b', {}, title));
@@ -856,7 +856,9 @@
       for (const t of (s.tasks || [])) { w.append(taskRow(t, s, { onAccept: opts.onAccept })); for (const a of (t.artifacts || [])) w.append(artifactRow(a)); }
       return w;
     }
-    const row = el('div', { class: 'tab-row' }, el('span', { class: 'caret' }, opts.expanded ? '▾' : '▸'), el('span', { class: 'tname' }, tab.name));
+    // the tab's alive border reads its worst seat (rim-glow §8): state and colour
+    const worst = rollup(seats)[0];
+    const row = el('div', { class: 'tab-row', 'data-rim-key': tab.name, 'data-rim-state': worst.state, style: '--seat:' + seatColor(worst) }, el('span', { class: 'caret' }, opts.expanded ? '▾' : '▸'), el('span', { class: 'tname' }, tab.name));
     if (!opts.expanded) {
       const roll = el('span', { class: 'roll' });
       const rolled = rollup(seats).slice(0, T.sidebar.collapse_glyphs);
@@ -1277,8 +1279,14 @@
   }
   // report-back card (work-items.md: the Executor's report is a handoff, not proof): what changed, what ran with its exit
   // status, each acceptance check, gaps; Accept and Re-brief belong to the delegator. Accepting flips the task to done.
+  // the desktop notification (attention §3), the lab's picture of the macOS banner: app icon, seat and harness, what it asks
+  function notification(seat, line, onClick) {
+    return el('div', { class: 'notif', role: 'button', tabindex: '0', onclick: onClick }, logo(32, { square: true }),
+      el('div', { class: 'nb' }, el('div', { class: 'nt' }, el('b', {}, seat.name), el('span', {}, '· ' + seat.harness), el('span', { class: 'nw' }, 'now')),
+        el('div', { class: 'ns' }, 'needs your answer'), el('div', { class: 'nm' }, line)));
+  }
   function reportCard(r, opts) {
-    const card = el('div', { class: 'report ' + (r.verdict || 'pending') }, el('div', { class: 'rh' }, el('span', { class: 'rk' }, taskMark(r.state || 'reported')), el('b', {}, r.task), el('span', { class: 'rs' }, r.verdict === 'accepted' ? 'done' : 'reported')),
+    const card = el('div', { class: 'report ' + (r.verdict || 'pending'), 'data-rim-key': r.task }, el('div', { class: 'rh' }, el('span', { class: 'rk' }, taskMark(r.state || 'reported')), el('b', {}, r.task), el('span', { class: 'rs' }, r.verdict === 'accepted' ? 'done' : 'reported')),
       el('div', { class: 'rsec' }, ...r.files.map(f => el('div', { class: 'rf' }, el('code', {}, f.path), el('span', { class: 'rd' }, el('i', { class: 'add' }, '+' + f.add), ' ', el('i', { class: 'del' }, '−' + f.del))))),
       el('div', { class: 'rsec' }, ...r.checks.map(k => el('div', { class: 'rc ' + (k.ok ? 'ok' : 'bad') }, el('span', { class: 'ck' }, k.ok ? '✓' : '✕'), el('code', {}, k.cmd), el('span', { class: 'ex' }, k.exit)))),
       r.gaps ? el('div', { class: 'rgap' }, 'gap · ' + r.gaps) : null, r.commit ? el('div', { class: 'rcommit' }, el('code', {}, r.commit), ' signed') : null);
@@ -1550,5 +1558,5 @@
     return root;
   }
 
-  window.C = { circleMark, taskMark, SEAT_MARK, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { notification, circleMark, taskMark, SEAT_MARK, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();
