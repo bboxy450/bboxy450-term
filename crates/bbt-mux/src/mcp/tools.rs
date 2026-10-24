@@ -147,6 +147,28 @@ pub(crate) fn clip(text: &str, bound: usize) -> &str {
     &text[..n]
 }
 
+/// Add caller scope after filtering; the caller names why its authorized page is empty.
+pub(crate) fn scoped_list(actor: &Actor, mut value: Value, empty_reason: Option<&str>) -> Value {
+    value["scope"] = json!({
+        "seat":actor.seat_id,"role":actor.role.name,"class":actor.role.class
+    });
+    if let Some(reason) = empty_reason {
+        let message = match reason {
+            "nothing_assigned" => "Nothing is assigned to this seat in the requested view.",
+            "not_visible_to_role" => {
+                "This role sees only its authorized items; none are visible in this view."
+            }
+            "no_grant" => "No current grant exposes items in this view.",
+            "no_swarm" => "No swarm is selected for this view.",
+            "nothing_yet" => "No items are available in this authorized view at this cursor.",
+            _ => unreachable!("noncanonical MCP empty reason"),
+        };
+        value["empty_reason"] = json!(reason);
+        value["empty_message"] = json!(message);
+    }
+    value
+}
+
 pub(crate) fn graph(
     index: &Index,
     source: &dyn DataSource,
@@ -155,7 +177,7 @@ pub(crate) fn graph(
     args: &GraphRead,
     own_only: bool,
 ) -> std::result::Result<Value, String> {
-    match args.graph.as_str() {
+    let value = match args.graph.as_str() {
         "execution" => execution_graph(index, actor, seat, args, own_only),
         "task" | "markdown" => views::graph(
             source,
@@ -171,7 +193,16 @@ pub(crate) fn graph(
         )
         .map_err(|e| e.to_string()),
         _ => Err("graph is unavailable in this catalogue".into()),
-    }
+    }?;
+    let empty = value["nodes"].as_array().is_some_and(Vec::is_empty);
+    let reason = if args.graph == "task" && (own_only || actor.role.class != Class::Oracle) {
+        "nothing_assigned"
+    } else if actor.role.class != Class::Oracle {
+        "not_visible_to_role"
+    } else {
+        "nothing_yet"
+    };
+    Ok(scoped_list(actor, value, empty.then_some(reason)))
 }
 
 // Execution is host-owned, outside the document data_source contract.

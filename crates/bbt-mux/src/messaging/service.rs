@@ -439,6 +439,16 @@ impl Messaging {
             .ledger
             .pending_application_ack(seat)
     }
+
+    pub(crate) fn inbox_summary(
+        &mut self,
+        seat: Ulid,
+        generation: u64,
+    ) -> Result<super::ledger::InboxSummary> {
+        let record = self.record(seat, generation)?;
+        self.swarm(record.swarm)?.ledger.inbox_summary(seat, 128)
+    }
+
     fn swarm(&mut self, id: Ulid) -> Result<&mut Swarm> {
         if !self.swarms.contains_key(&id) {
             let store = SqliteStore::open(&object_dir(&self.root, &format!("swarm-{id}"))?)?;

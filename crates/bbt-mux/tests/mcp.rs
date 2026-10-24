@@ -2270,6 +2270,173 @@ fn mcp_minted_read_ids_are_retryable_and_every_catalogue_explains_optional_ids()
     }
 }
 
+#[test]
+fn mcp_list_and_graph_pages_explain_authenticated_scope_and_empty_views() {
+    let f = Fixture::new();
+    let mut bridge = f.bridge(f.peer.id);
+    initialize(&mut bridge);
+    let expected = json!({
+        "seat":f.peer.id,"role":f.peer.role.name,"class":f.peer.role.class
+    });
+    for (tool, args, reason) in [
+        ("task_list", json!({}), "nothing_assigned"),
+        ("graph_read", json!({"graph":"task"}), "nothing_assigned"),
+        (
+            "graph_read",
+            json!({"graph":"markdown"}),
+            "not_visible_to_role",
+        ),
+        ("message_list", json!({}), "nothing_yet"),
+        (
+            "seat_list",
+            json!({"after":Ulid::from(u128::MAX)}),
+            "nothing_yet",
+        ),
+    ] {
+        let response = rpc(
+            &mut bridge,
+            2,
+            "tools/call",
+            json!({"name":tool,"arguments":args}),
+        );
+        assert_eq!(response["result"]["isError"], false, "{tool}: {response}");
+        let value = &response["result"]["structuredContent"];
+        assert_eq!(value["scope"], expected, "{tool}");
+        assert_eq!(value["empty_reason"], reason, "{tool}");
+        let line = value["empty_message"].as_str().unwrap();
+        assert!(!line.is_empty() && !line.contains('\n'));
+    }
+    for (tool, args, collection) in [
+        ("seat_list", json!({"limit":1}), "items"),
+        (
+            "ch_ls",
+            json!({"path":format!("seats/{}/inbox",f.peer.id)}),
+            "nodes",
+        ),
+        (
+            "screen_read",
+            json!({"seat_id":f.peer.id,"expected_process_generation":"1","limit_rows":1}),
+            "rows",
+        ),
+        (
+            "history_read",
+            json!({"seat_id":f.peer.id,"expected_process_generation":"1","limit_records":1}),
+            "records",
+        ),
+    ] {
+        let response = rpc(
+            &mut bridge,
+            3,
+            "tools/call",
+            json!({"name":tool,"arguments":args}),
+        );
+        assert_eq!(response["result"]["isError"], false, "{tool}: {response}");
+        let value = &response["result"]["structuredContent"];
+        assert_eq!(value["scope"], expected, "{tool}");
+        if value[collection].as_array().unwrap().is_empty() {
+            assert_eq!(value["empty_reason"], "nothing_yet");
+        } else {
+            assert!(value.get("empty_reason").is_none());
+        }
+    }
+    let denied = rpc(
+        &mut bridge,
+        4,
+        "tools/call",
+        json!({"name":"graph_read","arguments":{"graph":"execution"}}),
+    );
+    assert_eq!(denied["result"]["isError"], true);
+    let mut oracle = f.bridge(f.oracle.id);
+    initialize(&mut oracle);
+    let folder = rpc(
+        &mut oracle,
+        5,
+        "tools/call",
+        json!({"name":"ch_ls","arguments":{"path":"channels"}}),
+    );
+    assert_eq!(folder["result"]["isError"], false);
+    let folder = &folder["result"]["structuredContent"];
+    assert_eq!(folder["nodes"], json!([]));
+    assert_eq!(
+        folder["scope"],
+        json!({"seat":f.oracle.id,"role":"oracle","class":Class::Oracle})
+    );
+    assert_eq!(folder["empty_reason"], "nothing_yet");
+}
+
+#[test]
+fn mcp_counts_have_a_basis_and_ack_ids_without_equating_acknowledgement_with_reading() {
+    let f = Fixture::new();
+    let mut sender = f.bridge(f.peer.id);
+    let mut receiver = f.bridge(f.own.id);
+    initialize(&mut sender);
+    initialize(&mut receiver);
+    let mut ids = Vec::new();
+    for text in ["first", "second"] {
+        let response = rpc(
+            &mut sender,
+            2,
+            "tools/call",
+            json!({"name":"message_send","arguments":{
+                "destination":format!("seats/{}/inbox",f.own.id),"text":text
+            }}),
+        );
+        assert_eq!(response["result"]["isError"], false);
+        ids.push(response["result"]["structuredContent"]["message"]["envelope"]["id"].clone());
+    }
+    let first = rpc(
+        &mut receiver,
+        3,
+        "tools/call",
+        json!({"name":"message_list","arguments":{}}),
+    );
+    assert_eq!(first["result"]["isError"], false);
+    let first = &first["result"]["structuredContent"];
+    assert_eq!(first["unread"], json!({"count":2,"basis":"no_cursor_yet"}));
+    assert_eq!(first["pending_ack"]["count"], 2);
+    assert_eq!(first["pending_ack"]["ids"], json!(ids));
+    assert_eq!(first["pending_ack"]["ids_truncated"], false);
+    assert_eq!(
+        first["pending_ack"]["action"],
+        "call message_ack for each id listed"
+    );
+    let ack = rpc(
+        &mut receiver,
+        4,
+        "tools/call",
+        json!({"name":"message_ack","arguments":{"message":ids[0]}}),
+    );
+    assert_eq!(ack["result"]["isError"], false);
+    let after = rpc(
+        &mut receiver,
+        5,
+        "tools/call",
+        json!({"name":"message_list","arguments":{}}),
+    );
+    let after = &after["result"]["structuredContent"];
+    assert_eq!(after["unread"], json!({"count":2,"basis":"no_cursor_yet"}));
+    assert_eq!(after["pending_ack"]["count"], 1);
+    assert_eq!(after["pending_ack"]["ids"], json!([ids[1]]));
+    let outbox = rpc(
+        &mut sender,
+        6,
+        "tools/call",
+        json!({"name":"message_list","arguments":{}}),
+    );
+    let outbox = &outbox["result"]["structuredContent"];
+    assert_eq!(outbox["unread"], json!({"count":0,"basis":"no_cursor_yet"}));
+    assert_eq!(outbox["pending_ack"]["count"], 0);
+    let receipts = rpc(
+        &mut sender,
+        7,
+        "tools/call",
+        json!({"name":"message_receipts","arguments":{"message":ids[1]}}),
+    );
+    let receipts = &receipts["result"]["structuredContent"];
+    assert_eq!(receipts["scope"]["seat"], json!(f.peer.id));
+    assert!(receipts.get("empty_reason").is_none());
+}
+
 // Work-item fixtures deliberately use local zsh PTYs and fixture MCP clients.
 // They prove the protocol/terminal path, not a real model's first-turn behavior.
 impl Fixture {
