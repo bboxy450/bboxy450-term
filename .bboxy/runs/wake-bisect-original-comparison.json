@@ -1,0 +1,1416 @@
+{
+  "source": "aea0fd6a78c7582912b025766b0d6e8ecf07f283",
+  "binary_sha256": "a051e0e792e6f6f6185cb694eef98f5d33ce627625bfd5a1e690a39a0d85e61f",
+  "short_evidence_commit": "e73bd85b722ff168ee95a17f1d6ab13d3b148ae6",
+  "assignments": [
+    "045c38c2-e80e-419c-ad83-18c5e5d68104",
+    "c4b61eec-8bef-40c7-badd-22895cbf4328",
+    "556cba35-bc49-4d7b-adcb-a7a12c2505db",
+    "306c5328-31ab-4dda-9aeb-8d40e4a4dcb6"
+  ],
+  "cases": [
+    {
+      "source": "aea0fd6a78c7582912b025766b0d6e8ecf07f283",
+      "binary_sha256": "a051e0e792e6f6f6185cb694eef98f5d33ce627625bfd5a1e690a39a0d85e61f",
+      "seat": "01M5PRD4S51CNFEEX3B7J66WP8",
+      "dm_started_utc": "2026-10-24T10:48:18.581502+00:00",
+      "body_bytes": 7168,
+      "memory_custody_witness": true,
+      "status": "correlated_operator_reply",
+      "reply_seconds": 16.55832674994599,
+      "reply_observed_utc": "2026-10-24T10:48:35.139882+00:00",
+      "observation_seconds": 16.55831762496382,
+      "app_pid": 13342,
+      "app_exit": 0,
+      "elapsed_seconds": 180.3834162079729,
+      "started_utc": "2026-10-24T10:48:18.182217+00:00",
+      "ended_utc": "2026-10-24T10:51:18.556938+00:00",
+      "remaining_recorded_pids": [],
+      "error": null,
+      "label": "l7",
+      "body_sha256": "89cdd2abb8bd5b39e4d3c9224583e6841ca4a23d3768aab50d97f5ec0777e486",
+      "challenge": "01M5PRD4Y8JW85VXV3HYZ486K4",
+      "receipt": {
+        "agent": null,
+        "arrivals": [
+          {
+            "batch_ms": 0,
+            "coalesce": false,
+            "links": [],
+            "path": "seats/01M5PRD4S51CNFEEX3B7J66WP8/inbox",
+            "paused": false
+          }
+        ],
+        "attempt": "01M5PRD5WX3JE522H9N0J3PB7Z",
+        "batch_key": "seats/01M5PRD4S51CNFEEX3B7J66WP8/inbox",
+        "class": "oracle",
+        "eligible_ms": 1792838899528,
+        "evidence": "native-written",
+        "held": null,
+        "message": "01M5PRD4Y8JW85VXV3HYZ486K4",
+        "message_sequence": 1,
+        "native_id": null,
+        "note": "frame written; receiver/model acceptance unverified",
+        "received_ms": 1792838898649,
+        "recipient": "01M5PRD4S51CNFEEX3B7J66WP8",
+        "relayed_via_main": false,
+        "sender": "00000000000000000000000000"
+      },
+      "ctl_counts": {
+        "spawn": 1,
+        "dm": 1,
+        "inbox": 8,
+        "receipts": 8,
+        "seats": 2
+      },
+      "reply": {
+        "id": "01M5PRF2ZQ8K3W7N4X6Y9B1C5D",
+        "reply_to": "01M5PRD4Y8JW85VXV3HYZ486K4",
+        "seat": "01M5PRD4S51CNFEEX3B7J66WP8",
+        "context": "operator/inbox",
+        "timestamp": 1792838914,
+        "body": {
+          "text": "SABLE-LONG",
+          "type": "text"
+        },
+        "role": {
+          "class": "oracle",
+          "name": "oracle"
+        }
+      },
+      "frame_analysis": {
+        "attempts": [
+          {
+            "id": "01M5PRD51H7HC1SJTPNSH37NHH",
+            "outcome": {
+              "evidence": "recipient-stored",
+              "native_id": null,
+              "note": "native attachment unavailable: Claude session-file discovery failed: No such file or directory (os error 2); no mutation attempted"
+            },
+            "body_bytes": 7168,
+            "work_text_bytes": 7490,
+            "reconstructed_frame_bytes": 7726,
+            "reconstructed_frame_sha256": "97b35f037c3ca2fa56dc8f2336412c8c04463085471146a706778e7294c5dbd6",
+            "measurement_kind": "source reconstruction from persisted Work, not captured socket bytes",
+            "full_body_in_work": true
+          },
+          {
+            "id": "01M5PRD5F8P25X44D7BD3NM82J",
+            "outcome": {
+              "evidence": "recipient-stored",
+              "native_id": null,
+              "note": "native attachment unavailable: Claude session-file discovery failed: No such file or directory (os error 2); no mutation attempted"
+            },
+            "body_bytes": 7168,
+            "work_text_bytes": 7490,
+            "reconstructed_frame_bytes": 7726,
+            "reconstructed_frame_sha256": "052b9b2284d56b83fed5239a35c4cc27e630c2b809a42e806bdd1228a45121a8",
+            "measurement_kind": "source reconstruction from persisted Work, not captured socket bytes",
+            "full_body_in_work": true
+          },
+          {
+            "id": "01M5PRD5WX3JE522H9N0J3PB7Z",
+            "outcome": {
+              "evidence": "native-written",
+              "native_id": null,
+              "note": "frame written; receiver/model acceptance unverified"
+            },
+            "body_bytes": 7168,
+            "work_text_bytes": 7490,
+            "reconstructed_frame_bytes": 7726,
+            "reconstructed_frame_sha256": "0c1eba4762c4defebdb8877d1c7cbc174642468f7ae2f755f9ae573354fd9c05",
+            "measurement_kind": "source reconstruction from persisted Work, not captured socket bytes",
+            "full_body_in_work": true
+          }
+        ],
+        "verified_ledger_source_identical": true
+      }
+    },
+    {
+      "source": "aea0fd6a78c7582912b025766b0d6e8ecf07f283",
+      "binary_sha256": "a051e0e792e6f6f6185cb694eef98f5d33ce627625bfd5a1e690a39a0d85e61f",
+      "seat": "01M5PRV55Q1SZHVJQZM7XHW6JR",
+      "dm_started_utc": "2026-10-24T10:55:57.782038+00:00",
+      "body_bytes": 11182,
+      "memory_custody_witness": true,
+      "status": "no_correlated_reply_within_watchdog",
+      "reply_seconds": null,
+      "reply_observed_utc": null,
+      "observation_seconds": 140.12970762496116,
+      "app_pid": 21636,
+      "app_exit": 0,
+      "elapsed_seconds": 180.56294025003444,
+      "started_utc": "2026-10-24T10:55:57.295878+00:00",
+      "ended_utc": "2026-10-24T10:58:57.851368+00:00",
+      "remaining_recorded_pids": [],
+      "error": null,
+      "label": "orig",
+      "body_sha256": "f982b937feaf04d460ed996a4ffffea5ab9ac4386ba410086f317931c937e72f",
+      "challenge": "01M5PRV5CM4NMJQS5SKWZ4AN6F",
+      "receipt": {
+        "agent": null,
+        "arrivals": [
+          {
+            "batch_ms": 0,
+            "coalesce": false,
+            "links": [],
+            "path": "seats/01M5PRV55Q1SZHVJQZM7XHW6JR/inbox",
+            "paused": false
+          }
+        ],
+        "attempt": "01M5PRV6E39VY3CANKMBRG0FAY",
+        "batch_key": "seats/01M5PRV55Q1SZHVJQZM7XHW6JR/inbox",
+        "class": "oracle",
+        "eligible_ms": 1792839358769,
+        "evidence": "native-written",
+        "held": null,
+        "message": "01M5PRV5CM4NMJQS5SKWZ4AN6F",
+        "message_sequence": 1,
+        "native_id": null,
+        "note": "frame written; receiver/model acceptance unverified",
+        "received_ms": 1792839357861,
+        "recipient": "01M5PRV55Q1SZHVJQZM7XHW6JR",
+        "relayed_via_main": false,
+        "sender": "00000000000000000000000000"
+      },
+      "ctl_counts": {
+        "spawn": 1,
+        "dm": 1,
+        "inbox": 63,
+        "receipts": 63,
+        "seats": 4
+      },
+      "frame_analysis": {
+        "attempts": [
+          {
+            "id": "01M5PRV5FQPGXTJBRWKQ59F7SB",
+            "outcome": {
+              "evidence": "recipient-stored",
+              "native_id": null,
+              "note": "native attachment unavailable: Claude session-file discovery failed: No such file or directory (os error 2); no mutation attempted"
+            },
+            "body_bytes": 11182,
+            "work_text_bytes": 11504,
+            "reconstructed_frame_bytes": 11828,
+            "reconstructed_frame_sha256": "a349e9fa6b05aa01fd05b0436444c9d532a19514bf4c15aaebcf674eccd99cc4",
+            "measurement_kind": "source reconstruction from persisted Work, not captured socket bytes",
+            "full_body_in_work": true
+          },
+          {
+            "id": "01M5PRV5YG4VPBE05ZBC29BHDY",
+            "outcome": {
+              "evidence": "recipient-stored",
+              "native_id": null,
+              "note": "native attachment unavailable: Claude session-file discovery failed: No such file or directory (os error 2); no mutation attempted"
+            },
+            "body_bytes": 11182,
+            "work_text_bytes": 11504,
+            "reconstructed_frame_bytes": 11828,
+            "reconstructed_frame_sha256": "fa10a4a78bbefb7127658f4136dcc7985fba2a7bfd2820bac23f7651c4ea409f",
+            "measurement_kind": "source reconstruction from persisted Work, not captured socket bytes",
+            "full_body_in_work": true
+          },
+          {
+            "id": "01M5PRV6E39VY3CANKMBRG0FAY",
+            "outcome": {
+              "evidence": "native-written",
+              "native_id": null,
+              "note": "frame written; receiver/model acceptance unverified"
+            },
+            "body_bytes": 11182,
+            "work_text_bytes": 11504,
+            "reconstructed_frame_bytes": 11828,
+            "reconstructed_frame_sha256": "1cc63584a1b9531702573ce1f9a48f9fb19859110aee087ac071a9ce2c0428ce",
+            "measurement_kind": "source reconstruction from persisted Work, not captured socket bytes",
+            "full_body_in_work": true
+          }
+        ],
+        "verified_ledger_source_identical": true
+      },
+      "tool_summary": {
+        "tool_counts": {
+          "orient": 1,
+          "self_status": 1,
+          "knowledge_fetch": 54,
+          "knowledge_write": 1
+        },
+        "tool_results": [
+          {
+            "op_id": "01M5PRVXKNCTRMHARH446BTSQV",
+            "tool": "orient",
+            "isError": false,
+            "status": null,
+            "error": null,
+            "result_sha256": "208a5b60587943165d6abd9824caaea3e9bbe13b20fead456725db0cd8388fd0"
+          },
+          {
+            "op_id": "01M5PRWH6GRFT6EW0FW2XCYM9X",
+            "tool": "self_status",
+            "isError": false,
+            "status": null,
+            "error": null,
+            "result_sha256": "8c33454dcf70eb05f36366bacbdfaa0bafebc251bbd85f779fce6dfc138ff485"
+          },
+          {
+            "op_id": "01M5PRWH7C72TP1T3Y41TK61XA",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "9fe23c034ec5c255fe96f6bd4632e06632d8e853cac041826699f72118753b5b"
+          },
+          {
+            "op_id": "01M5PS0E2EK7Q9W3HZRBX40001",
+            "tool": "knowledge_write",
+            "isError": false,
+            "status": null,
+            "error": null,
+            "result_sha256": "a2c883fd915a706cc339481e357fe628469e25874d9c5709ad2714c544699664",
+            "record": {
+              "path": "e2e/t1.md",
+              "number": 1,
+              "digest": "d9a8c43005fa0628c1ed53a34b3475417bdfa04dd8be6e4c9ee0c137246fffe1",
+              "signer": "seat:01M5PRV55Q1SZHVJQZM7XHW6JR"
+            }
+          },
+          {
+            "op_id": "01M5PRXTQ6SCHA16WF2ZD1NE6Y",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "8073ee8eaccda103f004196ff398be591f12280bd1d57f92f4be2bcae26a7458"
+          },
+          {
+            "op_id": "01M5PRXTR6QSCPBJ0ZT3FBX660",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "d249c2ca56fd68058c88e75bfd4cceec9b2fb124e53a910e325e16bdb425484e"
+          },
+          {
+            "op_id": "01M5PRXTSAXHP0ESZQRQN0N9C6",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "469d4e02c09d88e3ced9338adbfe93d1fd6a892c4d5f938b456e83e78413e008"
+          },
+          {
+            "op_id": "01M5PRXTT77KMS11JRTM52Y96V",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "51428336dfdd24d38a2615a2c3be5ed5690d5351e47b9e3fc74a03d8a6deb94f"
+          },
+          {
+            "op_id": "01M5PRXTV4WN02HQVA6461XYC5",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "66b2c5ada15aef1ecaa4ea50be1b68c54d5629345a60890380939946b35162ab"
+          },
+          {
+            "op_id": "01M5PRXTW8F37RZEQP8K6H04A3",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "158ed6457b17cf9c6eb42f0e1cb1bc5b0470baf2ff1fc19d9f28a78bc26f568f"
+          },
+          {
+            "op_id": "01M5PRXTXC37W3BE6GTRFNWEPQ",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "1d2839af7855a13ea9475eb7aa9ead5cb5583546e14a6c503d498f6da5369057"
+          },
+          {
+            "op_id": "01M5PRXTYBN74MJT1R1P4K9FS7",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "89ada162ba16f6a078d6c4f449ed2a47bce5ebbbb33b4096718181f1262dd264"
+          },
+          {
+            "op_id": "01M5PRXTZDZ0R0WMSR50PWZAD7",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "d3c1f3d9655febb94b6280c7df11ac2e21b230ea10bc2f19b2d450a2f707e53b"
+          },
+          {
+            "op_id": "01M5PRXTZG6DB9GTF00YMKSMP5",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "ab60ace1cca2f1c91c404fe8927946e639e78ba405978d6db414902d3346f4cf"
+          },
+          {
+            "op_id": "01M5PRXV4RC1HZQXGWWNQXC6E0",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "cab0f9484b87b8f48d33955b66d1311512873429b7e5870748e876c848d61cd2"
+          },
+          {
+            "op_id": "01M5PRXV5FFFDNDEX8GYM375Q5",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "05d6971eb49fb08cd74c14cde20fe4e981c096dc4f073895fa44af2e6d219c8f"
+          },
+          {
+            "op_id": "01M5PRXV6HMH66KJ1F3DH3XT37",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "9592b3249116a36ce96e7c0302c7ea2b29f3457680f8bbb86a7c4fb651244495"
+          },
+          {
+            "op_id": "01M5PRXV7GAX3MDH60E7SYRSGC",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "7e5b926a0ace6455925ffc0fc7e34fae9fd6a36cb80a47a320ff34a8dabd090d"
+          },
+          {
+            "op_id": "01M5PRXV8KQBB33XEKD57FQF62",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "ad00e079c5e2a10ffc5a640537549ca40cc38ba715313bf1f06c7c94a790d8ec"
+          },
+          {
+            "op_id": "01M5PRXV9HDP4F97D3GF2H0SVT",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "f12fac0592e346800446ca9729655a3e62edf517b616bd6165211582f8ea3ce7"
+          },
+          {
+            "op_id": "01M5PRXVADCCJRMWY55HGEZB6K",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "974317d3d9f38a33105f7d990a633d634a0642b6244d432c853c58809b06def2"
+          },
+          {
+            "op_id": "01M5PRXVBJBF77RRHGAERPCE2X",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "2b3d83cf3f595ab3ff880ee76ec94a356c244a26ed418b6c7cff57f92726957d"
+          },
+          {
+            "op_id": "01M5PRXVCFQQ77HYTATP3805YR",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "92c5101b8964e1e35857356196d766a9c5ed5bb10e9b9db7adbf33c2e4cd32b8"
+          },
+          {
+            "op_id": "01M5PRXVDDBVTZ5R404Z6RGRFY",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "6dd65d344cc06a56d5992cfe925d876aa8474a9b34f285f26f7f05309430d1eb"
+          },
+          {
+            "op_id": "01M5PRXVEJ48BBQXRTQMQ63Z4K",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "4eac556e87f93f8449f483258a6574fa506b2431f1c4ffa0e6cff03496034feb"
+          },
+          {
+            "op_id": "01M5PRXVFRWRF0MKG1KWAGAGYR",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "68756aac612e8f7b3139539941d346632bf2aa94a1eaf75299420735c69e5c7a"
+          },
+          {
+            "op_id": "01M5PRXVGDACHR5WJYQFYG7Y19",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "87552e95facded0523576bde0366f1fe26825277d040afc962743b80f1a7d58f"
+          },
+          {
+            "op_id": "01M5PRXVHC1Q4RQK77NYQCCKTT",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "422fb6024bb56749108e5fedcb5c9dcbb36eb5199f7ecf5e06d7c86863cf33b4"
+          },
+          {
+            "op_id": "01M5PRXVJBA5NSKCY8GS07GKBR",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "44318a005b821c90c1f11fb39bae7428d94cbdd351664d40e391e965b07f1e27"
+          },
+          {
+            "op_id": "01M5PRXVKGH0EQYEBT528YKYZG",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "de27d8ae0a97fda5715e27af11962f477ce63ac4fcecb77edbba586fb7ca1b1b"
+          },
+          {
+            "op_id": "01M5PRXVMGCHA48ERNM7X4P516",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "b23a86fa121c9b20801be3183c5f95de4aef983bdf2906d9624663fd035cc032"
+          },
+          {
+            "op_id": "01M5PRXVNHFXK11MEWHEMTDF9C",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "4b7fd9d0ddd8715b63f4cb53087ec354d6e8bcbc9e56148f674ab6d1ed57775c"
+          },
+          {
+            "op_id": "01M5PRXVPJ3SW0QB0D7HPSJA69",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "0dfc64b044bb138da06bd655f4b690903b1cd53a7c4f5c863a216423db78f528"
+          },
+          {
+            "op_id": "01M5PRXVQJY6JFQ2J79KCWTBH6",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "3bdbc6bc3f2b5ad142ed02910298076d4aeff3cb521b3a604edc96931612c58a"
+          },
+          {
+            "op_id": "01M5PRXVRHPW6KWD7NCF5H8GNG",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "8a20309da723f4d8f4f81558be3d141d340f790b26d7b52079a215a63ad6e012"
+          },
+          {
+            "op_id": "01M5PRXVVHJYN1BJMVH1M59CCE",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "d28a0c1334c4aef2b27359f90f94382fdc0ce2502636e310de8515b194ad4d0f"
+          },
+          {
+            "op_id": "01M5PRXVWW93GQMRJH276SPYQ3",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "ef344c65e0e5eee6b48c211585194575d53787885142476546640d25814d8e4f"
+          },
+          {
+            "op_id": "01M5PRXVXTYKPQSZPJTJB4R06B",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "17de4be4ad2bbbb1f8cdc2380931e97893c9c66923f4cac8e4d70b9a9e43f4c1"
+          },
+          {
+            "op_id": "01M5PRXVYRBKX8VWD8XN0CBA73",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "3dbd479bc7c467e489d991c789e669ea3ee400727a0028bd3d29008de67b757f"
+          },
+          {
+            "op_id": "01M5PRXVZYBMW0GVHBZN6E9033",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "b33ea48a44eb4bc210c59d4de6d9d5fba95661f2f268accf6a8a897c8d8bd0e9"
+          },
+          {
+            "op_id": "01M5PRXW0Y193T86H4MV8KRMNZ",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "304b7dde37a403bbbfa42d83e915520b7b27ea15d37e4958f377a49eedc65adc"
+          },
+          {
+            "op_id": "01M5PRXW1Z8DXR6199RCK52MRN",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "c5730d25908e58e2fe1254454375d725d2af7e57a8179b9444f260b96678fc42"
+          },
+          {
+            "op_id": "01M5PRXW39QBRE3HY925ZX4DRV",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "4451acbf824874ccee649c3312f0888432dfad6d6af3545d7441f8e26e62156a"
+          },
+          {
+            "op_id": "01M5PRXW4EJC6XRXWEM6EGWR1V",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "1edd7435e3c1540b23af8dc0ae1fc178d05acc4950bf295c9939b5c034206d22"
+          },
+          {
+            "op_id": "01M5PRXW5EQXAAFQABKA41824V",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "03c9b3f5faee1a04f7885012e2a6f5c721e979c828f4a5a714ba80ece1ef3356"
+          },
+          {
+            "op_id": "01M5PRXW6EF0GC3JPP5GMFVZ5G",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "e1682c3d531905dcbc2ea0126672c5c36c1fbd37736ef9bb02bd29cef969c7c4"
+          },
+          {
+            "op_id": "01M5PRXW7F3A44X06ZV6CT2K48",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "12ef6d76e150cf67c7ca2713455071d72ca5357b5366d13c4e4407a0ca8fe0d8"
+          },
+          {
+            "op_id": "01M5PRXW8DQPG61XTHM07WXGD8",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "402298441620287560fca062c4a73dc93020215cf879291240859eb33bd75c60"
+          },
+          {
+            "op_id": "01M5PRXW9CNGY3P7B65GGM4ZWF",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "d0d6b8adb07471926a16568ede7f49c6dbcdf91447684d9843ec82609235ee0f"
+          },
+          {
+            "op_id": "01M5PRXWAFG1DK19Z238GDVKXP",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "70b6814ef69f13ddd077b1c27edfd4b7afebbaedf1f1663d7def1db09f02f9c7"
+          },
+          {
+            "op_id": "01M5PRXWBE1X51P3MTJDSRVRCJ",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "e9cec22adabbe01dbc022953631d74c06a9bcf94f78ff93586083de8f61a19b4"
+          },
+          {
+            "op_id": "01M5PRXWCCYKEFEB8F33P5901Q",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "0ca7d7fc2a9ca8d9c80ca1297aa07cd586d4112cb0d5a71ea722277b7b574307"
+          },
+          {
+            "op_id": "01M5PRXWDCJ7GXHRC7KVCCQJMG",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "401b039cc23172de3f9f712de50e17aa08a3c75d6e8b3a54e0382d5e48a3353e"
+          },
+          {
+            "op_id": "01M5PRXWEBV6HEYCZNPZTED7HQ",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "c6d1e9d0a88c9262010b085ddc7b05f48bbdb23c28b17873bcdfb6e687043c06"
+          },
+          {
+            "op_id": "01M5PRXWFC0PPWKHRCR61VDB62",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "de8387a178d8f195ef34ed045a73ebdbe0edccc554d15fdb3c66771e06a6d5d4"
+          },
+          {
+            "op_id": "01M5PRXWG4BSHREMY2FK4176AC",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "d39cb076fa073a187277b2cdee8f3868558c16ce08322f7e832e22038011037b"
+          },
+          {
+            "op_id": "01M5PRXWH71Z8KX1458VZE6WT7",
+            "tool": "knowledge_fetch",
+            "isError": true,
+            "status": "rejected",
+            "error": {
+              "code": "rejected",
+              "message": "knowledge lookup refused: not_found"
+            },
+            "result_sha256": "355a4fc36dc3ea13e3f1527f8eb3e1cae0f3a09090f1ca4d3c22f842232ffa12"
+          }
+        ],
+        "private_e2e_file_count": 1,
+        "operator_reply_observed": false,
+        "app_exit": 0,
+        "probe_observation_status": "no_correlated_reply_within_watchdog"
+      }
+    },
+    {
+      "source": "aea0fd6a78c7582912b025766b0d6e8ecf07f283",
+      "binary_sha256": "a051e0e792e6f6f6185cb694eef98f5d33ce627625bfd5a1e690a39a0d85e61f",
+      "seat": "01M5PS11G207GYSM6SM2N0269A",
+      "dm_started_utc": "2026-10-24T10:59:10.592427+00:00",
+      "body_bytes": 11182,
+      "memory_custody_witness": true,
+      "status": "correlated_operator_reply",
+      "reply_seconds": 20.200984207971487,
+      "reply_observed_utc": "2026-10-24T10:59:30.793444+00:00",
+      "observation_seconds": 20.200974999985192,
+      "app_pid": 24648,
+      "app_exit": 0,
+      "elapsed_seconds": 181.27026124997064,
+      "started_utc": "2026-10-24T10:59:10.142323+00:00",
+      "ended_utc": "2026-10-24T11:02:11.410171+00:00",
+      "remaining_recorded_pids": [],
+      "error": null,
+      "label": "p11",
+      "body_sha256": "d84840d19bee2053f0f89845655632422c9e34f0ebe12632a3554cdc3a6460b5",
+      "challenge": "01M5PS11P7C51MWX0ZZJJ2CGC1",
+      "receipt": {
+        "agent": null,
+        "arrivals": [
+          {
+            "batch_ms": 0,
+            "coalesce": false,
+            "links": [],
+            "path": "seats/01M5PS11G207GYSM6SM2N0269A/inbox",
+            "paused": false
+          }
+        ],
+        "attempt": "01M5PS12NHTR8SWRD76T86J078",
+        "batch_key": "seats/01M5PS11G207GYSM6SM2N0269A/inbox",
+        "class": "oracle",
+        "eligible_ms": 1792839551572,
+        "evidence": "native-written",
+        "held": null,
+        "message": "01M5PS11P7C51MWX0ZZJJ2CGC1",
+        "message_sequence": 1,
+        "native_id": null,
+        "note": "frame written; receiver/model acceptance unverified",
+        "received_ms": 1792839550681,
+        "recipient": "01M5PS11G207GYSM6SM2N0269A",
+        "relayed_via_main": false,
+        "sender": "00000000000000000000000000"
+      },
+      "ctl_counts": {
+        "spawn": 1,
+        "dm": 1,
+        "inbox": 10,
+        "receipts": 10,
+        "seats": 2
+      },
+      "reply": {
+        "id": "01M5PS3QX7C51MWX0ZZJJ2CGD4",
+        "reply_to": "01M5PS11P7C51MWX0ZZJJ2CGC1",
+        "seat": "01M5PS11G207GYSM6SM2N0269A",
+        "context": "operator/inbox",
+        "timestamp": 1792839568,
+        "body": {
+          "text": "SABLE-LONG",
+          "type": "text"
+        },
+        "role": {
+          "class": "oracle",
+          "name": "oracle"
+        }
+      },
+      "frame_analysis": {
+        "attempts": [
+          {
+            "id": "01M5PS11SMBZCJPAG0FHB50T0P",
+            "outcome": {
+              "evidence": "recipient-stored",
+              "native_id": null,
+              "note": "native attachment unavailable: Claude session-file discovery failed: No such file or directory (os error 2); no mutation attempted"
+            },
+            "body_bytes": 11182,
+            "work_text_bytes": 11504,
+            "reconstructed_frame_bytes": 11783,
+            "reconstructed_frame_sha256": "62731ece36956fe4d4a05f439496041a2c3482400c8cd74c6413ecfe526da36f",
+            "measurement_kind": "source reconstruction from persisted Work, not captured socket bytes",
+            "full_body_in_work": true
+          },
+          {
+            "id": "01M5PS127MVFXRN1XG48VH2AZJ",
+            "outcome": {
+              "evidence": "recipient-stored",
+              "native_id": null,
+              "note": "native attachment unavailable: Claude session-file discovery failed: No such file or directory (os error 2); no mutation attempted"
+            },
+            "body_bytes": 11182,
+            "work_text_bytes": 11504,
+            "reconstructed_frame_bytes": 11783,
+            "reconstructed_frame_sha256": "9dceefa1d72d30decfd2aa34c6ea67868aedfbdca9505fd5f7ba33ec354a894b",
+            "measurement_kind": "source reconstruction from persisted Work, not captured socket bytes",
+            "full_body_in_work": true
+          },
+          {
+            "id": "01M5PS12NHTR8SWRD76T86J078",
+            "outcome": {
+              "evidence": "native-written",
+              "native_id": null,
+              "note": "frame written; receiver/model acceptance unverified"
+            },
+            "body_bytes": 11182,
+            "work_text_bytes": 11504,
+            "reconstructed_frame_bytes": 11783,
+            "reconstructed_frame_sha256": "c303f9a9aee63f1ae88a4ca4085c44c1690ede806b8df1da88c603f7dbe7795f",
+            "measurement_kind": "source reconstruction from persisted Work, not captured socket bytes",
+            "full_body_in_work": true
+          }
+        ],
+        "verified_ledger_source_identical": true
+      }
+    }
+  ],
+  "excluded_startup_attempt": {
+    "app_exit": 1,
+    "harness_status": "probe_error",
+    "harness_error": "AssertionError(('app exited', 1))",
+    "seat_or_dm_sent": false,
+    "app_log_sha256": "0e8ce2fadf7e670b16dee100d92c5f4cc1fbc79fbb78b415fb98597045d45192",
+    "app_log": "Error: Error { kind: InvalidInput, message: \"path must be shorter than SUN_LEN\" }\ncockpit stopped: supervisor exited during startup\npanel: Some(\"Monitor #53534\"), current=75000mHz max_mode=75000mHz maximumFramesPerSecond=75\napp error: supervisor exited during startup\nError: \"supervisor exited during startup\"\n"
+  },
+  "commands": [
+    {
+      "id": "65bc363dd05a41aa8f75ab39bb17e72c",
+      "argv": [
+        "python3",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-long.py",
+        "long-7k-aea0fd6a"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T10:47:42.003114+00:00",
+      "pid": 12566,
+      "exit": 1,
+      "elapsed_seconds": 0.39728049997938797,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/cmd-65bc363dd05a41aa8f75ab39bb17e72c.log",
+      "sha256": "17141d473ca35ca893560f828b42721ef1a4d943945e810a128860100abfea62"
+    },
+    {
+      "id": "be1eb08f6cdf4610bc47e8955a4d5f59",
+      "argv": [
+        "python3",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-long.py",
+        "l7"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T10:48:18.025473+00:00",
+      "pid": 13341,
+      "exit": 0,
+      "elapsed_seconds": 180.7348741669557,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/cmd-be1eb08f6cdf4610bc47e8955a4d5f59.log",
+      "sha256": "cd4b8d1b969aa414ae3c7703cb7d0868130166ca93d56395f2c1dabd66e98a77"
+    },
+    {
+      "id": "ad972e8c86144bacbcf2c0fb2d0c2379",
+      "argv": [
+        "python3",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-original.py",
+        "orig",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/original-dm.txt"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T10:55:57.082251+00:00",
+      "pid": 21632,
+      "exit": 0,
+      "elapsed_seconds": 181.05825620802352,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/cmd-ad972e8c86144bacbcf2c0fb2d0c2379.log",
+      "sha256": "2f12adbcdf3600d5d0ffd29c9bb836389e0d6418cc33fca388ffa6848512cc03"
+    },
+    {
+      "id": "a4a2c711e99a49f8897918f0d66c7cf2",
+      "argv": [
+        "python3",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-padding11.py",
+        "p11"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T10:59:09.948905+00:00",
+      "pid": 24647,
+      "exit": 0,
+      "elapsed_seconds": 181.55202125001233,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/cmd-a4a2c711e99a49f8897918f0d66c7cf2.log",
+      "sha256": "1fb311c25306eead47a33a998ec289bb094d11b2ccb2d05bfabef2ab8a74fd10"
+    }
+  ],
+  "post_exit_identity_checks": [
+    {
+      "label": "l7",
+      "recorded_identity_count": 19,
+      "matching_processes_remaining": []
+    },
+    {
+      "label": "orig",
+      "recorded_identity_count": 40,
+      "matching_processes_remaining": []
+    },
+    {
+      "label": "p11",
+      "recorded_identity_count": 10,
+      "matching_processes_remaining": []
+    }
+  ],
+  "private_artifacts": [
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/l7/reply-seat.json",
+      "bytes": 428,
+      "sha256": "87a3902039bc77690064f1533d770b7c7372409fbada66086ffe92c4a62b74aa"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/l7/reply-screen.txt",
+      "bytes": 2245,
+      "sha256": "5386a2ecba1d24fa1354bdb4283c039a283d52c19c622a71300eda8d7387bc1b"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/l7/reply-registration.json",
+      "bytes": 277,
+      "sha256": "408ddbd30cbd975085e002ac677dbceff95bcf3fdc2686420ae8064c1064b718"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/l7/result.json",
+      "bytes": 20082,
+      "sha256": "116e5c6fc442b3c85cbe2cc4da377b435a90f13ba4d712c606129ae701e0756f"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/l7/frame-analysis.json",
+      "bytes": 1879,
+      "sha256": "65c4660d3fb45cb59d19bbda5dde58e42eb293e1f03670261b96824af8f70f26"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/l7/owned-processes.json",
+      "bytes": 3503,
+      "sha256": "74d2cb2caa376bf88a381b933d4bac42459f692907629ee37c1f7ab11f8ab85d"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/l7/observe-1-screen-summary.json",
+      "bytes": 300,
+      "sha256": "d2b733cef295d924093e201e3c17ff501a417eb96dd8257cc1bb192f341814fd"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/l7/ctl.json",
+      "bytes": 102068,
+      "sha256": "20ac079d92a6f5679955839d976b972da0cca829e0b6d7e64ac57d857e211131"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/l7/observe-1-screen.txt",
+      "bytes": 2252,
+      "sha256": "c247ec0aff453fae83910595bcdf73b6d0d7063784fe41771fde870f5ec56853"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/l7/observe-1-registration.json",
+      "bytes": 277,
+      "sha256": "408ddbd30cbd975085e002ac677dbceff95bcf3fdc2686420ae8064c1064b718"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/l7/reply-screen-summary.json",
+      "bytes": 297,
+      "sha256": "fe155cd98b2a023f3e242c8d544c93f5dc8713070fcbc8414b192ce4cd2f330a"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/l7/reply-screen.json",
+      "bytes": 198607,
+      "sha256": "09dd5e635a002284ebe0122da6bfc9a5b3d0580e3b59a42e338f28becd749392"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/l7/app.log",
+      "bytes": 22042,
+      "sha256": "fbc6ce6274adb615e46ddd01c97e98435d347b8d926c028f8c56e91a578f0408"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/l7/observe-1-seat.json",
+      "bytes": 428,
+      "sha256": "87a3902039bc77690064f1533d770b7c7372409fbada66086ffe92c4a62b74aa"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/l7/observe-1-screen.json",
+      "bytes": 198631,
+      "sha256": "34aeb1245fef8db105301a4fa0ab8e89ee1d9c790a5ed1461f07ee8638227b62"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/deadline-screen.txt",
+      "bytes": 2248,
+      "sha256": "73738f1998c20f6a55b88c53e7cf5ffa662e50d2378733a16da6e4a594df2640"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/tool-summary-final.json",
+      "bytes": 19763,
+      "sha256": "868dd7690a451f6a831d2a458558719ebce25f80add4885255070e278ea97fe4"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/tool-results.json",
+      "bytes": 11406,
+      "sha256": "8d9b988471c19a1f52f5e3594916a9ff6d55d35961fc256b61aecd20cb632e89"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/deadline-seat.json",
+      "bytes": 428,
+      "sha256": "3a57268f0c494135e6eb68c4b43b200d1671c66c1b66edc3a017ad87d125fac6"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/observe-2-seat.json",
+      "bytes": 428,
+      "sha256": "3a57268f0c494135e6eb68c4b43b200d1671c66c1b66edc3a017ad87d125fac6"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/deadline-screen-summary.json",
+      "bytes": 302,
+      "sha256": "62774390cc87ecf4c6b80358f8f0feef4fc4d964687e4c9d7b120ba4a92ea3ac"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/result.json",
+      "bytes": 26633,
+      "sha256": "9e469c876179f4733f17465c2c8e463308d8219c3d111f79d675b2d616ff5216"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/observe-3-screen.json",
+      "bytes": 198612,
+      "sha256": "7f9ff184810ffc77386ee05873a63a595fa73eb853242f71a8d993a4beb47ee0"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/frame-analysis.json",
+      "bytes": 1888,
+      "sha256": "5312279cd4ebd1f1def64fe55cfa8de9751261d6b9d764e2806b3fba27279f27"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/deadline-screen.json",
+      "bytes": 198613,
+      "sha256": "2b1798a018f267111af26ab9c8ca99729cf96c7b6e2fc82e87568d6ac02a18f3"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/observe-3-seat.json",
+      "bytes": 428,
+      "sha256": "3a57268f0c494135e6eb68c4b43b200d1671c66c1b66edc3a017ad87d125fac6"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/observe-2-screen-summary.json",
+      "bytes": 301,
+      "sha256": "60787ffea47bcbaded8a5764e791bc971a2007d9f7bc75fc1b7505008cbc4f5b"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/observe-3-screen-summary.json",
+      "bytes": 302,
+      "sha256": "1f0dcd0f1dd3b4b7693979dc4f7ba528fb23a70ba2b2a85957a2d015f8f93908"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/observe-2-screen.txt",
+      "bytes": 2247,
+      "sha256": "447b752408ad8cb11098cf8e049c8aab693b051d0f06e8de57b7b05ad9747b6f"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/owned-processes.json",
+      "bytes": 6130,
+      "sha256": "0c2e34f6dd52861e6cad4ba382b88cf92fd784a7bdadf0de673d25d087acbb4e"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/observe-1-screen-summary.json",
+      "bytes": 300,
+      "sha256": "3aed13b70a8e3f46e69bbc705ac461c21b7940cce438acb249b67d74471d3134"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/ctl.json",
+      "bytes": 945648,
+      "sha256": "6df5bb4e17d2f05e65644496b5b5d52090a992ef4d7e1f6decce4fd117a1c281"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/observe-2-screen.json",
+      "bytes": 198612,
+      "sha256": "e2668a7b965f915c2030d40c18fff1b8c0f2cd163d3de4812cc16ead262d85b9"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/observe-3-registration.json",
+      "bytes": 277,
+      "sha256": "b7f8598208d3e12dbe4ef8ce07639e7eafeeb9546a37ae6c895afbe57eaf7c49"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/observe-1-screen.txt",
+      "bytes": 2245,
+      "sha256": "677cda5135577ed45b09b8ccf0bd91ab7f29491ce106b052f05541bea3d8c858"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/observe-2-registration.json",
+      "bytes": 277,
+      "sha256": "b7f8598208d3e12dbe4ef8ce07639e7eafeeb9546a37ae6c895afbe57eaf7c49"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/deadline-registration.json",
+      "bytes": 277,
+      "sha256": "b7f8598208d3e12dbe4ef8ce07639e7eafeeb9546a37ae6c895afbe57eaf7c49"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/observe-3-screen.txt",
+      "bytes": 2248,
+      "sha256": "424f15d3b49dafa0732c7e25d84dcfdc111bd76f490401b6921460b6aed96bf4"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/observe-1-registration.json",
+      "bytes": 277,
+      "sha256": "b7f8598208d3e12dbe4ef8ce07639e7eafeeb9546a37ae6c895afbe57eaf7c49"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/app.log",
+      "bytes": 39393,
+      "sha256": "a7579797b59ec101ac70a4eb0fc54c57facff23f0368bc694779aad7d7eeb91d"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/observe-1-seat.json",
+      "bytes": 428,
+      "sha256": "3a57268f0c494135e6eb68c4b43b200d1671c66c1b66edc3a017ad87d125fac6"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/orig/observe-1-screen.json",
+      "bytes": 198606,
+      "sha256": "af246febecad2baefb0766dda0e986c71ba2d8f77fec2b913c6eb72241a53c20"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/p11/reply-seat.json",
+      "bytes": 428,
+      "sha256": "e0a5c61ce5590065acaa78911ae9f8485dd5096ec90b861266947731ba6d0e1d"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/p11/reply-screen.txt",
+      "bytes": 2246,
+      "sha256": "6df16ca9ffb093ae91e1c50e1618bf92ad3f3308a4e3b927e5a05e3ca5b6a6ad"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/p11/reply-registration.json",
+      "bytes": 277,
+      "sha256": "ecc05f282f43798aba025cf2a0d810efd4e53ddb9a9201ef7b98a36c6e0d10a5"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/p11/result.json",
+      "bytes": 28203,
+      "sha256": "d2926b115808c3b24af2799a808a032cd4195fb0022b029369134d3a22d9e6fb"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/p11/frame-analysis.json",
+      "bytes": 1888,
+      "sha256": "dfc9cde634d0ee4a4ecf0ea188c1f439909c65701aa20f9325af02d1fdfde959"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/p11/owned-processes.json",
+      "bytes": 2427,
+      "sha256": "a419530fc18911455fc019280026ce75deb7bba62d1f2e0ceb43d97178270975"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/p11/observe-1-screen-summary.json",
+      "bytes": 300,
+      "sha256": "d487cbb2296e39d7000253768ab4d01c3bd51c07ab77155c73d939b615158de8"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/p11/ctl.json",
+      "bytes": 171867,
+      "sha256": "aa9ea95c9c27890474e77a44f2ffc504f0c85ea8c2d2d421b074e1f6306aacad"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/p11/observe-1-screen.txt",
+      "bytes": 2252,
+      "sha256": "645b3935acbd2a6c62f1a86aa080cb1c5938d4b6baf693665a7f830ac6c8d081"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/p11/observe-1-registration.json",
+      "bytes": 277,
+      "sha256": "ecc05f282f43798aba025cf2a0d810efd4e53ddb9a9201ef7b98a36c6e0d10a5"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/p11/reply-screen-summary.json",
+      "bytes": 297,
+      "sha256": "169e11f3898c1ee6b76498f144447122d9918f6711bd8d5a1921b6bdad0d1d90"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/p11/reply-screen.json",
+      "bytes": 198607,
+      "sha256": "5e079e0d40b4a0522c27fe016cfee6a24e46d5af1180f25691e1233930beffbf"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/p11/app.log",
+      "bytes": 21099,
+      "sha256": "68a72155d2d6ea4183b795d13457e4c447bd477ca975d932d6c9afeb055c7686"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/p11/observe-1-seat.json",
+      "bytes": 428,
+      "sha256": "e0a5c61ce5590065acaa78911ae9f8485dd5096ec90b861266947731ba6d0e1d"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/p11/observe-1-screen.json",
+      "bytes": 198631,
+      "sha256": "f719a064fa8869966d0fba07b2a8c4fec4122b3c929a754c180f0b9107e99ed2"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-long.py",
+      "bytes": 16980,
+      "sha256": "931973e44650cb3bb0cad0ef070bcd803054bad4861dc29141a23f12ed6f50dd"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-original.py",
+      "bytes": 9733,
+      "sha256": "ff537560a9e36d321ae6a349619b22bd20d4665ace281383edf49782f6c971fe"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-padding11.py",
+      "bytes": 9770,
+      "sha256": "664369aec5ec6a0d4ac9368d9f6c193462a85f539432b0cfcb079132b4f26df9"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/original-dm.txt",
+      "bytes": 11182,
+      "sha256": "f982b937feaf04d460ed996a4ffffea5ab9ac4386ba410086f317931c937e72f"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/padding-11182.txt",
+      "bytes": 11182,
+      "sha256": "d84840d19bee2053f0f89845655632422c9e34f0ebe12632a3554cdc3a6460b5"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/long-body.txt",
+      "bytes": 7168,
+      "sha256": "89cdd2abb8bd5b39e4d3c9224583e6841ca4a23d3768aab50d97f5ec0777e486"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/analyse-frame.py",
+      "bytes": 2152,
+      "sha256": "75b70499da95b00461f874ae7e131bbb70ca91bdede1147f014512d198a5206b"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/analyse-case-frame.py",
+      "bytes": 2182,
+      "sha256": "cffce510a818b46413ef3e1ec7987025302e1e4990410ea173091bee8fa7444d"
+    }
+  ],
+  "final_client_sha256": "b9ac5374839f14abf3f1f45610637c332b5daee5ce0d1634726cef87aab78e6a",
+  "owned_target_exists": false,
+  "verification_sha256": "e52bf7d55064026ad5d862a9d6e978185885bfd04503bef0ae0ca9c6d048ddb0",
+  "recorded_utc": "2026-10-24T11:04:04.080446+00:00",
+  "docs": [
+    {
+      "url": "https://code.claude.com/docs/en/cross-session-messaging#limitations",
+      "finding": "Current docs describe the same-machine serialized message ceiling at about one million characters."
+    },
+    {
+      "url": "https://code.claude.com/docs/en/errors#message-too-large-for-cross-session-delivery",
+      "finding": "Current error example gives the exact ceiling as 1,048,576 serialized characters, and describes sender refusal."
+    }
+  ]
+}

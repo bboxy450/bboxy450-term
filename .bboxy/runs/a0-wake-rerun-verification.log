@@ -1,0 +1,25 @@
+$ python3 /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-a0-30min.py a0 /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/original-dm.txt
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T11:07:08.190779+00:00
+OWNED_COMMAND_PID 33652
+OWNED_APP a0 33655
+PROBE_ERROR a0 AssertionError(('app exited', 1))
+APP_EXIT a0 1 SURVIVORS []
+EXIT 1 elapsed_seconds=0.274 PID=33652
+$ python3 /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-a0-watchdog.py seed /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/original-dm.txt
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T11:09:01.684480+00:00
+OWNED_COMMAND_PID 37447
+OWNED_APP seed 37448
+CHALLENGE seed 01M5PSK3982GV7RWCT65WAS04V 01M5PSK3FCES8P0FW65S9M467F
+SCREEN seed {"tag": "observe-1", "sequence": 28, "sha256": "21c8e175087a69a49a3a61fc15028c49d960d3d06c9d7850c601f1679f8d3a46", "flags": {"trust": false, "permission": true, "sign in": false, "log in": false, "allow": false, "claude": true, "sable-wake-control": false}}
+SCREEN seed {"tag": "observe-2", "sequence": 66, "sha256": "32dda48c58db0b2e647ef75351912f34bccf546d87d52ab4c48ccd13f97b3d6b", "flags": {"trust": false, "permission": true, "sign in": false, "log in": false, "allow": false, "claude": true, "sable-wake-control": false}}
+PROBE_ERROR seed AssertionError(('app exited before observation end', -15))
+APP_EXIT seed -15 SURVIVORS []
+EXIT 1 elapsed_seconds=248.925 PID=37447
+$ python3 /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/verify-a0.py
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T11:16:15.379405+00:00
+OWNED_COMMAND_PID 48741
+{"records": 0, "write_calls": 0, "readback_calls": 0, "app_exit": -15, "matching_processes_remaining": [], "earlier_T1_audit_gap_ms": 39}
+EXIT 0 elapsed_seconds=0.040 PID=48741

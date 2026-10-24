@@ -1,0 +1,431 @@
+{
+  "assignment": "405846c2-449e-4f61-a6f5-3313dc0e3489",
+  "release": "56742270-d872-47f9-bcd6-0a5847dd8d41",
+  "mode": "app runs only, no gate, no product fix",
+  "private_root": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi",
+  "client_before": {
+    "at_utc": "2026-10-24T10:37:24.331482+00:00",
+    "claude_executable": "/opt/homebrew/Caskroom/claude-code/2.1.304/claude",
+    "claude_sha256": "b9ac5374839f14abf3f1f45610637c332b5daee5ce0d1634726cef87aab78e6a",
+    "claude_version": "2.1.304 (Claude Code)",
+    "trusted_cwd": "/Users/feral/mydev/bboxy450-term",
+    "hasTrustDialogAccepted": true,
+    "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)"
+  },
+  "client_after": {
+    "at_utc": "2026-10-24T10:43:45.085759+00:00",
+    "claude_executable": "/opt/homebrew/Caskroom/claude-code/2.1.304/claude",
+    "claude_sha256": "b9ac5374839f14abf3f1f45610637c332b5daee5ce0d1634726cef87aab78e6a",
+    "hasTrustDialogAccepted": true
+  },
+  "body": "Read this DM and reply using bboxy message_send to operator/inbox with token SABLE-WAKE-CONTROL and reply_to this message ID. No file edits or shell commands.",
+  "body_bytes": 158,
+  "cases": [
+    {
+      "label": "old-5eb4557f",
+      "source": "5eb4557fdbe46746fb6c66364019801dc72961bb",
+      "binary_sha256": "949ce14a8d62f767babd9caa9e39b5f302b43edcbca4a1c15a37ad5eeb0dedb0",
+      "seat": "01M5PQVDMV6JFPY24ZJ76JFJTC",
+      "challenge": "01M5PQVDV8BR7AS5NSBR9HHGVB",
+      "dm_started_utc": "2026-10-24T10:38:37.861787+00:00",
+      "reply_id": "01M5PQW3K7ZB2N4R6T8V0X1Y2A",
+      "reply_to": "01M5PQVDV8BR7AS5NSBR9HHGVB",
+      "reply_context": "operator/inbox",
+      "reply_text": "SABLE-WAKE-CONTROL",
+      "reply_role": {
+        "class": "worker",
+        "name": "executor"
+      },
+      "reply_timestamp_seconds": 1792838331,
+      "reply_observed_utc": "2026-10-24T10:39:26.474112+00:00",
+      "reply_observed_upper_bound_seconds": 48.612317,
+      "receipt": {
+        "agent": null,
+        "arrivals": [
+          {
+            "batch_ms": 0,
+            "coalesce": false,
+            "links": [],
+            "path": "seats/01M5PQVDMV6JFPY24ZJ76JFJTC/inbox",
+            "paused": false
+          }
+        ],
+        "attempt": "01M5PQVEVT1SFJ767KDP4TASWZ",
+        "batch_key": "seats/01M5PQVDMV6JFPY24ZJ76JFJTC/inbox",
+        "class": "oracle",
+        "eligible_ms": 1792838318877,
+        "evidence": "native-written",
+        "held": null,
+        "message": "01M5PQVDV8BR7AS5NSBR9HHGVB",
+        "message_sequence": 1,
+        "native_id": null,
+        "note": "frame written; receiver/model acceptance unverified",
+        "received_ms": 1792838317943,
+        "recipient": "01M5PQVDMV6JFPY24ZJ76JFJTC",
+        "relayed_via_main": false,
+        "sender": "00000000000000000000000000"
+      },
+      "ctl_counts": {
+        "spawn": 1,
+        "dm": 1,
+        "inbox": 2,
+        "receipts": 2,
+        "seats": 1
+      },
+      "memory_custody_witness": true,
+      "app_pid": 94764,
+      "app_exit": 0,
+      "app_elapsed_seconds": 181.43340566701954,
+      "remaining_recorded_pids": [],
+      "harness_status": "probe_error",
+      "harness_error": "CalledProcessError(1, ['ps', '-p', '94825', '-o', 'command='])"
+    },
+    {
+      "label": "new-aea0fd6a",
+      "source": "aea0fd6a78c7582912b025766b0d6e8ecf07f283",
+      "binary_sha256": "a051e0e792e6f6f6185cb694eef98f5d33ce627625bfd5a1e690a39a0d85e61f",
+      "seat": "01M5PR15EJF71F25FP2DZWXKB1",
+      "challenge": "01M5PR15NRNQN5KST973MH95SD",
+      "dm_started_utc": "2026-10-24T10:41:46.101272+00:00",
+      "reply_id": "01M5PS2A7QK3V8X9N4R6T2W1YH",
+      "reply_to": "01M5PR15NRNQN5KST973MH95SD",
+      "reply_context": "operator/inbox",
+      "reply_text": "SABLE-WAKE-CONTROL",
+      "reply_role": {
+        "class": "oracle",
+        "name": "oracle"
+      },
+      "reply_timestamp_seconds": 1792838524,
+      "reply_observed_utc": "2026-10-24T10:42:05.587274+00:00",
+      "reply_observed_upper_bound_seconds": 19.485962332983036,
+      "receipt": {
+        "agent": null,
+        "arrivals": [
+          {
+            "batch_ms": 0,
+            "coalesce": false,
+            "links": [],
+            "path": "seats/01M5PR15EJF71F25FP2DZWXKB1/inbox",
+            "paused": false
+          }
+        ],
+        "attempt": "01M5PR17HAMZR5NTJR8J37R4X8",
+        "batch_key": "seats/01M5PR15EJF71F25FP2DZWXKB1/inbox",
+        "class": "oracle",
+        "eligible_ms": 1792838507966,
+        "evidence": "native-written",
+        "held": null,
+        "message": "01M5PR15NRNQN5KST973MH95SD",
+        "message_sequence": 1,
+        "native_id": null,
+        "note": "frame written; receiver/model acceptance unverified",
+        "received_ms": 1792838506184,
+        "recipient": "01M5PR15EJF71F25FP2DZWXKB1",
+        "relayed_via_main": false,
+        "sender": "00000000000000000000000000"
+      },
+      "ctl_counts": {
+        "spawn": 1,
+        "dm": 1,
+        "inbox": 9,
+        "receipts": 9,
+        "seats": 2
+      },
+      "memory_custody_witness": true,
+      "app_pid": 1834,
+      "app_exit": 0,
+      "app_elapsed_seconds": 181.74389233300462,
+      "remaining_recorded_pids": [],
+      "harness_status": "correlated_operator_reply",
+      "harness_error": null
+    }
+  ],
+  "commands": [
+    {
+      "id": "964af48c61e04c54be73a01f2bdc14a5",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/sable-wake-bisect-1oq_a4pi",
+        "CARGO_BUILD_JOBS=2",
+        "cargo",
+        "build",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T10:35:50.667414+00:00",
+      "pid": 86577,
+      "exit": 0,
+      "elapsed_seconds": 153.87221770797623,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/cmd-964af48c61e04c54be73a01f2bdc14a5.log",
+      "sha256": "638b9e45ea358ea9c45743323be2dc065b732b14fe8ce2c20dded2efe63cdb21"
+    },
+    {
+      "id": "615042bac0cb4910ae2f90f6fd0f0f57",
+      "argv": [
+        "python3",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/observe-existing.py",
+        "old-5eb4557f"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T10:39:26.304134+00:00",
+      "pid": 96421,
+      "exit": 0,
+      "elapsed_seconds": 0.3226409580092877,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/cmd-615042bac0cb4910ae2f90f6fd0f0f57.log",
+      "sha256": "6b84667a2b073a3ca1db2798e53a35501c2bcf2b58e724d821cff5986fa00dd2"
+    },
+    {
+      "id": "8d46b58101774cdd9da24f6421f40051",
+      "argv": [
+        "env",
+        "CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/sable-wake-bisect-1oq_a4pi",
+        "CARGO_BUILD_JOBS=2",
+        "cargo",
+        "build",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T10:39:45.364301+00:00",
+      "pid": 96727,
+      "exit": 0,
+      "elapsed_seconds": 73.39279554202221,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/cmd-8d46b58101774cdd9da24f6421f40051.log",
+      "sha256": "d3bbec7077bfc918608e98a5263cdb3f051d1e695e496f3d91063f4b17c0c3cc"
+    },
+    {
+      "id": "884be4edfc8e4396a18d10bdceb64ee2",
+      "argv": [
+        "python3",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe.py",
+        "old-5eb4557f"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T10:38:36.368968+00:00",
+      "pid": 94757,
+      "exit": 1,
+      "elapsed_seconds": 181.70362137496704,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/cmd-884be4edfc8e4396a18d10bdceb64ee2.log",
+      "sha256": "2970d89d2a3a0e815aae0508a78fc07d851ef5819d7c74565f103989e6f905d7"
+    },
+    {
+      "id": "3734a1506c434a08915c8c49e204a3c2",
+      "argv": [
+        "python3",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe.py",
+        "new-aea0fd6a"
+      ],
+      "cwd": "/Users/feral/mydev/bboxy450-term-exec3",
+      "started_utc": "2026-10-24T10:41:44.570211+00:00",
+      "pid": 1828,
+      "exit": 0,
+      "elapsed_seconds": 182.2996175000444,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/cmd-3734a1506c434a08915c8c49e204a3c2.log",
+      "sha256": "4d9b5afffe3a87d6d492b495a7604d5062535c6943a3583f84227fa929c100fd"
+    }
+  ],
+  "private_artifacts": [
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/old-5eb4557f/result.json",
+      "bytes": 4246,
+      "sha256": "c507559bbf7a09c255fdc1ad6eef90ff29895cb548eddc606967e6332a740922"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/old-5eb4557f/observation.json",
+      "bytes": 5852,
+      "sha256": "8252a1ba5b22489511108bd2b132fdfe2d7da618cdeab92dc290ef31d296cba4"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/old-5eb4557f/resumed-reply-screen-summary.json",
+      "bytes": 304,
+      "sha256": "fecf9405e2a5eb162a3ff841d6135cdc7939e1a833ea99ff3eeb3b1498961a2e"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/old-5eb4557f/owned-processes.json",
+      "bytes": 2084,
+      "sha256": "2d1b285bf78f51e3e3481d7c8f7e293480bff074cd844034de009a7b5ed625fd"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/old-5eb4557f/resumed-reply-seat.json",
+      "bytes": 428,
+      "sha256": "e7bb1986d319979f4399903cf6d8700ff6868ea852a0722c104e0d96c803a8fe"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/old-5eb4557f/reply-summary.json",
+      "bytes": 463,
+      "sha256": "c8ef947eb43144d19a2ebdd181541e0c968dd13c2dcb1b60ea17f7649d4186b5"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/old-5eb4557f/ctl.json",
+      "bytes": 11127,
+      "sha256": "7bba79ff08b4cc1c17cb1aea882d05f036de844290033bbbc28354fe731a03f9"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/old-5eb4557f/resumed-reply-screen.json",
+      "bytes": 198582,
+      "sha256": "7cba2dad9dbdc01d09cb3abaa15aeb6f2bed68e7aeb01d97c2fd3567cb2d2dd7"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/old-5eb4557f/resumed-reply-registration.json",
+      "bytes": 277,
+      "sha256": "3cfd641d3f9a97948d1c70219aec4a7871f3e6727b337b52fdd4ecd3a3ab6789"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/old-5eb4557f/app.log",
+      "bytes": 7809,
+      "sha256": "3d2110c096c9f4edaf4fa065d1cd3b525d3df30ea73dda62e406fde3df65e48c"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/old-5eb4557f/resumed-reply-screen.txt",
+      "bytes": 2237,
+      "sha256": "a120aa5ada8d446bc6e06a91a90691a076706a70a17451cdddf21b35c23f5e43"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/new-aea0fd6a/reply-seat.json",
+      "bytes": 427,
+      "sha256": "2a6108adcf860d56b4801bfa63f8d44dffda699548b700f2dd8c866c5573aac2"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/new-aea0fd6a/reply-screen.txt",
+      "bytes": 2246,
+      "sha256": "4addd1f6b1b930c31607e695decb1c2581673a078e8685e308ebf1fa139091bf"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/new-aea0fd6a/reply-registration.json",
+      "bytes": 275,
+      "sha256": "af59afe0fd753ef720a3d354499c7e8b7d94e3de99a91da39f7057b71f407d89"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/new-aea0fd6a/result.json",
+      "bytes": 5944,
+      "sha256": "f4fa2c82d86d7271e62988d0e73fa4b3564878bdda02cf18e401ae4b0dba5192"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/new-aea0fd6a/owned-processes.json",
+      "bytes": 4273,
+      "sha256": "a22bda696200b16225035a25b156387a10fe0b5396476a6b6d85238e5a9417af"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/new-aea0fd6a/observe-1-screen-summary.json",
+      "bytes": 301,
+      "sha256": "328396cde49d98e527cd8cae3d667202bdc2f1f27f2e0834c14e5e2a5a1f6a84"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/new-aea0fd6a/ctl.json",
+      "bytes": 33889,
+      "sha256": "7ce8f6b6e2f2890e630b80de76a1c3277f3180c310779f0bcb4debe81adbb717"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/new-aea0fd6a/observe-1-screen.txt",
+      "bytes": 2285,
+      "sha256": "33ceace93ac85dc4b9b973a0bb4453e44bdb03a90cd6f4bb8066304d7b450f56"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/new-aea0fd6a/observe-1-registration.json",
+      "bytes": 275,
+      "sha256": "af59afe0fd753ef720a3d354499c7e8b7d94e3de99a91da39f7057b71f407d89"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/new-aea0fd6a/reply-screen-summary.json",
+      "bytes": 296,
+      "sha256": "d04c752b7b1a45ffaef3d422caf9db05bb9944589d766312f530639cdd6cc5d4"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/new-aea0fd6a/reply-screen.json",
+      "bytes": 198607,
+      "sha256": "9ce3dd561819b478b5b7a2e8eeaf68985d460324c0cb49fd70deeb1c8b19f1d9"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/new-aea0fd6a/app.log",
+      "bytes": 9529,
+      "sha256": "9bcf0a974693dc116f1f75f2ecbdb3b71ada05ac45748ea7d21666e4f332166c"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/new-aea0fd6a/observe-1-seat.json",
+      "bytes": 427,
+      "sha256": "2a6108adcf860d56b4801bfa63f8d44dffda699548b700f2dd8c866c5573aac2"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/new-aea0fd6a/observe-1-screen.json",
+      "bytes": 198713,
+      "sha256": "3773365f8da3a7f8f35e2a6e0f085ddbd408f5d6e1369fd5393749785e15f017"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe.py",
+      "bytes": 9821,
+      "sha256": "f4b2654e99f89dfd6e66620e9cf2f67f70180a873ae1545b23c39d3ad4a13fb6"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/observe-existing.py",
+      "bytes": 2558,
+      "sha256": "1110b3705ee48c8483abb467bf74fe9a8e6924e99feb21fc0c33a411b6a7141e"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/run.py",
+      "bytes": 1357,
+      "sha256": "e7833a6455f55dc625b50d92d9a39c80b6153356e803ab38ae54967e27814f6c"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/client-preflight.json",
+      "bytes": 396,
+      "sha256": "0acd6d2180d22cc0a8cccb1bbdef8d7eb48ce66bfe4ef142bf841b699a339118"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/client-postflight.json",
+      "bytes": 248,
+      "sha256": "6bf93253b58bc72e13e2806d791c0c6ec44fd04f811da341c5b7fdf6bfbd102f"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/old-binary.json",
+      "bytes": 295,
+      "sha256": "9b2fe8b72a3da836597bb6a96f2140c30636547d94a7b0638bde1fd302bb38ad"
+    },
+    {
+      "private_path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/new-binary.json",
+      "bytes": 417,
+      "sha256": "a9dae409949cdacf28d69669dab4cdc42fc161fb07ea305b96a5d9f7a1de4401"
+    }
+  ],
+  "cleanup": {
+    "deleted_owned_target": "/Users/feral/mydev/bboxy450-term-exec3/target/sable-wake-bisect-1oq_a4pi",
+    "unique_allocated_file_bytes": 2331406336,
+    "target_exists_after": false,
+    "apps": [
+      {
+        "label": "old-5eb4557f",
+        "pid": 94764,
+        "exit": 0,
+        "remaining_recorded_pids": []
+      },
+      {
+        "label": "new-aea0fd6a",
+        "pid": 1834,
+        "exit": 0,
+        "remaining_recorded_pids": []
+      }
+    ],
+    "finished_utc": "2026-10-24T10:45:32.477460+00:00"
+  },
+  "verification_sha256": "214cfca394c06d9a2a7065185ba0908b50f9ca891ff33e23cdece044cd836b70",
+  "post_exit_identity_checks": [
+    {
+      "label": "old-5eb4557f",
+      "recorded_identities": 7,
+      "remaining_matching_identities": [],
+      "pid_numbers_reused_by_other_identity": []
+    },
+    {
+      "label": "new-aea0fd6a",
+      "recorded_identities": 26,
+      "remaining_matching_identities": [],
+      "pid_numbers_reused_by_other_identity": []
+    }
+  ]
+}

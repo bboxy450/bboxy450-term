@@ -1,0 +1,43 @@
+$ python3 /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-long.py long-7k-aea0fd6a
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T10:47:42.003114+00:00
+OWNED_COMMAND_PID 12566
+OWNED_APP long-7k-aea0fd6a 12567
+PROBE_ERROR long-7k-aea0fd6a AssertionError(('app exited', 1))
+APP_EXIT long-7k-aea0fd6a 1 SURVIVORS []
+EXIT 1 elapsed_seconds=0.397 PID=12566
+$ python3 /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-long.py l7
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T10:48:18.025473+00:00
+OWNED_COMMAND_PID 13341
+OWNED_APP l7 13342
+CHALLENGE l7 01M5PRD4S51CNFEEX3B7J66WP8 01M5PRD4Y8JW85VXV3HYZ486K4
+SCREEN l7 {"tag": "observe-1", "sequence": 32, "sha256": "c247ec0aff453fae83910595bcdf73b6d0d7063784fe41771fde870f5ec56853", "flags": {"trust": false, "permission": true, "sign in": false, "log in": false, "allow": false, "claude": true, "sable-wake-control": false}}
+CORRELATED_REPLY l7 16.558
+SCREEN l7 {"tag": "reply", "sequence": 105, "sha256": "5386a2ecba1d24fa1354bdb4283c039a283d52c19c622a71300eda8d7387bc1b", "flags": {"trust": false, "permission": true, "sign in": false, "log in": false, "allow": false, "claude": true, "sable-wake-control": false}}
+APP_EXIT l7 0 SURVIVORS []
+EXIT 0 elapsed_seconds=180.735 PID=13341
+$ python3 /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-original.py orig /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/original-dm.txt
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T10:55:57.082251+00:00
+OWNED_COMMAND_PID 21632
+OWNED_APP orig 21636
+CHALLENGE orig 01M5PRV55Q1SZHVJQZM7XHW6JR 01M5PRV5CM4NMJQS5SKWZ4AN6F
+SCREEN orig {"tag": "observe-1", "sequence": 18, "sha256": "677cda5135577ed45b09b8ccf0bd91ab7f29491ce106b052f05541bea3d8c858", "flags": {"trust": false, "permission": true, "sign in": false, "log in": false, "allow": false, "claude": true, "sable-wake-control": false}}
+SCREEN orig {"tag": "observe-2", "sequence": 230, "sha256": "447b752408ad8cb11098cf8e049c8aab693b051d0f06e8de57b7b05ad9747b6f", "flags": {"trust": false, "permission": true, "sign in": false, "log in": false, "allow": false, "claude": true, "sable-wake-control": false}}
+SCREEN orig {"tag": "observe-3", "sequence": 823, "sha256": "424f15d3b49dafa0732c7e25d84dcfdc111bd76f490401b6921460b6aed96bf4", "flags": {"trust": false, "permission": false, "sign in": false, "log in": false, "allow": false, "claude": true, "sable-wake-control": false}}
+SCREEN orig {"tag": "deadline", "sequence": 1113, "sha256": "73738f1998c20f6a55b88c53e7cf5ffa662e50d2378733a16da6e4a594df2640", "flags": {"trust": false, "permission": false, "sign in": false, "log in": false, "allow": false, "claude": true, "sable-wake-control": false}}
+NO_CORRELATED_REPLY orig 140.13
+APP_EXIT orig 0 SURVIVORS []
+EXIT 0 elapsed_seconds=181.058 PID=21632
+$ python3 /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi/probe-padding11.py p11
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T10:59:09.948905+00:00
+OWNED_COMMAND_PID 24647
+OWNED_APP p11 24648
+CHALLENGE p11 01M5PS11G207GYSM6SM2N0269A 01M5PS11P7C51MWX0ZZJJ2CGC1
+SCREEN p11 {"tag": "observe-1", "sequence": 33, "sha256": "645b3935acbd2a6c62f1a86aa080cb1c5938d4b6baf693665a7f830ac6c8d081", "flags": {"trust": false, "permission": true, "sign in": false, "log in": false, "allow": false, "claude": true, "sable-wake-control": false}}
+CORRELATED_REPLY p11 20.201
+SCREEN p11 {"tag": "reply", "sequence": 140, "sha256": "6df16ca9ffb093ae91e1c50e1618bf92ad3f3308a4e3b927e5a05e3ca5b6a6ad", "flags": {"trust": false, "permission": true, "sign in": false, "log in": false, "allow": false, "claude": true, "sable-wake-control": false}}
+APP_EXIT p11 0 SURVIVORS []
+EXIT 0 elapsed_seconds=181.552 PID=24647
