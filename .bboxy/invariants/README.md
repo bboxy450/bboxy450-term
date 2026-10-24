@@ -40,6 +40,7 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[ctl-opt-in]] no gui.endpoint exists unless ctl is enabled, and the app's own seats are refused at the door | `cargo test -p bbt-mux --locked --test gui_endpoint ctl_endpoint_opt_in_and_ancestry_refusal -- --exact` | pending A-1 (slow, gated) |
 | [[idle-swarms-cost-nothing]] the message pump's cost is independent of the number of idle swarms | `cargo test -p bbt-mux --locked --test logic pump_scans_only_dirty_swarms -- --exact` | pending R5i (slow, gated) |
 | [[ctl-never-prints-secrets]] ctl never prints a capability or a Keychain secret | `cargo test -p bboxy450-term --locked --test ctl ctl_never_prints_secrets -- --exact` | pending C-0 (slow, gated) |
+| [[watched-replay-priority]] watched seats get at least half of the replay pages when both lanes are runnable | `cargo test -p bbt-mux --locked --test logic watched_lane_gets_at_least_half_of_replay_pages -- --exact` | pending R5h (slow, gated) |
 
 A violation halts the work that broke it: the task goes `blocked` with
 `[[invariant|violates]]`, and the halt names the invariant, the evidence and

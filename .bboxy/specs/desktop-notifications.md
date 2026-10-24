@@ -17,7 +17,7 @@ links:
   - { to: "[[licensing]]", rel: licence }
   - { to: "[[desktop-notifications-research]]", rel: research }
 created: 2026-10-23T23:04:45Z
-updated: "2026-10-24T15:36:34Z"
+updated: "2026-10-24T15:38:09Z"
 ---
 # Desktop notifications
 
@@ -82,7 +82,7 @@ pub fn open(on_response: Box<dyn Fn(Response) + Send + Sync + 'static>) -> Resul
 2. A test double of the delegate delivers a default-action response and the facade's callback receives `Clicked(id)` with the posted id; posting twice with one id yields one delivered notification (identifier replace); `remove` clears it.
 3. Run unbundled, `open` returns `NoBundle` without touching the notification centre (no exception, the log line present); run as the bundle, `authorize` prompts once and the state persists across launches.
 4. On a Linux or Windows build of the facade (CI cross-check or a local VM), `open` returns `Unsupported` with the marker text.
-5. Two Apple behaviours the research found in no Apple document are measured on this machine before the crate is trusted. **Measured, 2026-10-24:** an ad-hoc-signed `.app` is **not** enough, `UNUserNotificationCenter` answers "Notifications are not allowed for this application" and no prompt appears; the same bundle signed with the approved Apple Development identity works first time, so the bundle is identity-signed (**Gap:** the evidence log path, to be added from Kestrel's handoff). Still to measure: re-adding a request with a **delivered** notification's identifier replaces it in Notification Center, not only a pending one.
-6. Cold-launch delivery: with the app not running, clicking a delivered notification launches the bundle and the delegate receives the response, which the app turns into the seat focus; this is the test that proves the delegate is set early enough. **Unproven as of 2026-10-24:** the operator's click was made with the app open.
+5. Two Apple behaviours the research found in no Apple document are measured on this machine before the crate is trusted. **Measured, 2026-10-24:** an ad-hoc-signed `.app` is **not** enough, `UNUserNotificationCenter` answers "Notifications are not allowed for this application" and no prompt appears; the same bundle signed with the approved Apple Development identity works first time, so the bundle is identity-signed (**Gap:** the evidence log path, to be added from Kestrel's handoff). **Measured, same day:** re-adding a request with a **delivered** notification's identifier replaces it in Notification Center. All three Apple behaviours pass with the identity-signed bundle (Vesper, 2026-10-24).
+6. Cold-launch delivery: with the app not running, clicking a delivered notification launches the bundle and the delegate receives the response, which the app turns into the seat focus; this is the test that proves the delegate is set early enough. **Proven, 2026-10-24:** with the app closed, the click launched a new pid with `deferred_landing: true` and the delegate received the response (Vesper's report; the evidence log path is still owed to this record).
 
 Owner: Corvin Duskmantle <ARCHITECT>.
