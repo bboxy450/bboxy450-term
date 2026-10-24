@@ -17,7 +17,7 @@ links:
   - { to: "[[e2e-runs-unattended]]", rel: constrains }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-24T19:18:29Z"
-updated: "2026-10-24T19:18:29Z"
+updated: "2026-10-24T19:20:11Z"
 ---
 # Decision 282: the app tests itself, unattended
 
@@ -34,3 +34,5 @@ Decided by the operator on the morning of 2026-10-24, verbatim: "well all the sm
 **Order.** U-0 the `-file` custody backend and the automation identity with `--unattended` (#281). U-1 `ctl app start --headless` with the real GUI client (C-1 of [[ctl-cli]]). U-2 the runner. U-3 the invariant [[e2e-runs-unattended]] in the slow tier of local CI. Executors start in parallel; the runner is the only piece that waits for the other three.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
+
+**Addendum (Oracle, same day): the lifecycle wire.** `app start` replies only after backend and offscreen render readiness, with run directory, mode, `unattended` and generation and never the capability; `app stop` is an authenticated relay to an orderly `Session` shutdown with no PID-kill fallback (`endpoint_unavailable`, exit 4, otherwise); `app status` reports liveness, mode, readiness and generation and never a secret ([[ctl-cli]] §1b). Aster's read-only plan maps to it.
