@@ -1,0 +1,86 @@
+# Wake bisect: exact short-DM controls
+
+Sable Embertail <EXECUTOR>, 2026-10-24T10:45:32.477460+00:00.
+Assignment 405846c2; explicit early release 56742270; app runs only, no gate.
+Evidence only. No product source changed and no fix is proposed.
+
+## Result
+
+Both exact sources wake a fresh real Claude seat from one identical 158-byte
+DM sent via the app's public ctl path, with no operator prompt or PTY input.
+The seat replies with SABLE-WAKE-CONTROL, exact reply_to, its own seat ID,
+and destination operator/inbox. A native-written receipt remains only a
+transport observation; the separate correlated inbox reply establishes the
+model/tool result.
+
+| Source | Seat role | Challenge | Reply | Observed reply upper bound |
+| --- | --- | --- | --- | --- |
+| 5eb4557fdbe46746fb6c66364019801dc72961bb | executor/worker | 01M5PQVDV8BR7AS5NSBR9HHGVB | 01M5PQW3K7ZB2N4R6T8V0X1Y2A | 48.612 s |
+| aea0fd6a78c7582912b025766b0d6e8ecf07f283 | oracle/oracle | 01M5PR15NRNQN5KST973MH95SD | 01M5PS2A7QK3V8X9N4R6T2W1YH | 19.486 s |
+
+The second native argv includes --append-system-prompt 'ROLE: ORACLE'.
+Both register the documented Claude messaging socket in their private seat
+stores. Both app logs witness selector=memory custody (debug).
+The trusted CWD is /Users/feral/mydev/bboxy450-term; read-only checks of
+Claude's own hasTrustDialogAccepted entry are true before and after.
+Claude 2.1.304 binary SHA256 is b9ac5374839f14abf3f1f45610637c332b5daee5ce0d1634726cef87aab78e6a throughout.
+
+## Controls and limits
+
+One fixed runtime executable path, one fresh private repository/run directory
+and memory custody process per source; one spawn and exactly one DM each.
+Both use --ctl --run-dir <private> --quit-after 180.
+Both builds use one private dev target, CARGO_BUILD_JOBS=2, cargo build
+--locked -p bboxy450-term --bin bboxy450-term.
+The first app closes and recorded descendants are absent before the next app.
+No screen/desktop driving, trust approval, terminal input, follow-up ping,
+ambiguous native-write retry, native client upgrade or manual global config edit.
+
+This is a functional comparison under observed shared-host load, not a quiet
+latency benchmark. The aea build starts after the first reply was observed.
+Old polling was interrupted by a process disappearing between ps inventory
+and ps command lookup. The initial driver exits 1 for this harness error.
+Read-only observation resumes against the SAME app/seat/challenge, sends no
+second DM, and finds the correlated reply. The old reply envelope timestamp
+is approximately 13 seconds after DM, at one-second timestamp resolution;
+48.612 seconds is the observed upper bound after the polling interruption.
+The resumed observer exits 0. The new driver handles that ps race and exits 0.
+
+The reported regression is NOT reproduced by these short-message controls.
+The Oracle role prompt alone is not sufficient to reproduce it here.
+The original approximately 7 KB first DM followed by a ping was NOT tested,
+nor was its task content copied. No causal attribution to size, role or merge
+is made, and no product fix is authorized by this result.
+
+## Verification and provenance
+
+- Old exact dev build: EXIT 0, 153.872 s, clean source.
+- Old app driver: EXIT 1, 181.704 s, ps inventory race described above.
+- Same-app resumed read-only observer: EXIT 0, 0.323 s.
+- New exact dev build: EXIT 0, 73.393 s, clean source.
+- New app driver: EXIT 0; actual elapsed is in comparison.json.
+- Both app processes: EXIT 0; all recorded descendant PIDs absent at close.
+- Every ctl invocation exits 0; per-verb counts and correlated envelopes are
+  in wake-bisect-short-comparison.json.
+- Actual command output is wake-bisect-short-verification.log, SHA256
+  214cfca394c06d9a2a7065185ba0908b50f9ca891ff33e23cdece044cd836b70.
+- No cargo tests, strict clippy or ci-local run: this assignment is an
+  app-only bisect with no product diff; both full gate slots belong to peers.
+- Private native pane text, raw ctl results, registration and owned-process
+  metadata remain at /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-wake-bisect-1oq_a4pi; paths, sizes and digests are in comparison.json.
+  No raw native transcripts, endpoint capabilities or credentials enter Git.
+- Private build target deleted: 2331406336 unique allocated file bytes
+  (st_blocks * 512, unique device/inode; not a global volume-free delta).
+  Retained small proof files and the final standalone app binary stay private.
+
+## Mechanism pointers
+
+At aea0fd6a, crates/bbt-mux/src/adapters/mod.rs:97 selects oracle for Claude;
+crates/bbt-mux/src/logic.rs:3810 constructs ROLE: ORACLE in prepare_gui_spawn,
+and crates/bbt-mux/src/adapters/launch.rs:185 passes --append-system-prompt. The compared native.rs, hook.rs, seat_socket.rs
+and app ctl.rs blobs are byte-identical between the two sources (git diff
+--name-only for these paths returns no lines). Thus this result verifies
+the asked short-message control, not the original long-first case.
+
+Next decision remains with the Oracle: whether to reproduce the exact
+long-first sequence or disposition the original observation another way.
