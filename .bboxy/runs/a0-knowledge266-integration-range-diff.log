@@ -1,0 +1,75 @@
+COMMAND ["git", "range-diff", "--no-color", "d2ff1140..b67dd35e", "fffc95e51c6b2ec1fafd4fd62de8ac31a1e1afc2..15ef9754772776a8624bf53b167dc1796ad114db"]
+1:  a9891668 ! 1:  05416303 Checkpoint knowledge search and per-class signed write policy
+    @@ crates/bbt-mux/src/logic.rs: impl Worker {
+                      };
+     -                journal.checked(actor,call,value)
+     +                journal.checked(actor, call, value)
+    -             }
+    --            Ok(tool::Request::Write(request)) => journal.effect(actor,call,|| {
+    ++            }
+     +            Ok(tool::Request::Search(request)) => {
+     +                let source = BboxySource::new(&self.index);
+     +                let value = match source.search(request) {
+    @@ crates/bbt-mux/src/logic.rs: impl Worker {
+     +                        );
+     +                    }
+     +                }
+    -+            }
+    +             }
+    +-            Ok(tool::Request::Write(request)) => journal.effect(actor,call,|| {
+     +            tool::WritePlan::Record(request) => {
+     +                if request.frontmatter["type"] == "task" {
+     +                    let document = crate::index::Document {
+    @@ crates/bbt-mux/src/mcp/knowledge.rs
+     +        "knowledge_fetch" | "knowledge_search" | "knowledge_write"
+     +    )
+      }
+    - pub(crate) fn mutation(tool: &str) -> bool {
+    -     tool == "knowledge_write"
+    - }
+    - 
+     -pub(crate) fn catalogue() -> Vec<Value> {
+     +pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
+          let contract = d::method_schema("write", false).expect("contract write schema");
+    @@ crates/bbt-mux/src/mcp/tools.rs: pub(crate) fn catalogue(actor: &Actor) -> Value
+          tools.extend(super::seats::catalogue(actor));
+     -    tools.extend(super::knowledge::catalogue());
+     +    tools.extend(super::knowledge::catalogue(actor));
+    -     json!({"tools":tools})
+    - }
+    - 
+    +     for tool in &mut tools {
+    +         tool["inputSchema"]["properties"]["op_id"] = json!({
+    +             "type":"string",
+     
+      ## crates/bbt-mux/src/mcp/work_items.rs ##
+     @@ crates/bbt-mux/src/mcp/work_items.rs: pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
+    @@ crates/bbt-mux/tests/mcp.rs: fn mcp_knowledge_refuses_outside_paths_forged_autho
+          );
+          assert_eq!(std::fs::read(&path).unwrap(), before);
+          assert_eq!(std::fs::read(&outside).unwrap(), original);
+    -@@ crates/bbt-mux/tests/mcp.rs: fn mcp_knowledge_refuses_outside_paths_forged_authority_type_ids_and_stale_etags
+    -     );
+    -     let mut bridge = f.bridge(f.own.id);
+    -     initialize(&mut bridge);
+    -+    let mut malformed = knowledge_args("e2e/no-op.md", "denied");
+    -+    malformed["op_id"] = json!("not-a-ULID");
+    -     assert_eq!(
+    -         rpc(
+    -             &mut bridge,
+    -             2,
+    -             "tools/call",
+    --            json!({"name":"knowledge_write","arguments":knowledge_args("e2e/no-op.md","denied")})
+    -+            json!({"name":"knowledge_write","arguments":malformed})
+    -         )["error"]["code"],
+    -         -32602
+    -     );
+     @@ crates/bbt-mux/tests/mcp.rs: fn d264_a_refused_send_is_stored_nowhere() {
+                  .any(|text| text.contains("refused payload"))
+          );
+2:  de80947e < -:  -------- Mint MCP operation IDs and name conflicting retries (#266)
+3:  1084714e < -:  -------- Explain MCP list scope and inbox count basis (#266)
+4:  276e5ce8 < -:  -------- Align accepted knowledge bridge with minted MCP IDs (#266)
+5:  6e37d434 = 2:  c4e80720 Derive decision names under allocation lock and scope knowledge search
+6:  66cf9a9f = 3:  5b5cecce Record exact knowledge policy CI and decision naming evidence
+7:  b67dd35e = 4:  15ef9754 Clarify parent-driven isolated MCP fixture coverage

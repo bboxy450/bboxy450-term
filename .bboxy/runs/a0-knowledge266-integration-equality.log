@@ -1,0 +1,141 @@
+{
+  "gated_source": "6e37d434",
+  "old_evidence_tip": "b67dd35e",
+  "accepted_main": "fffc95e51c6b2ec1fafd4fd62de8ac31a1e1afc2",
+  "rebased_tip": "15ef9754772776a8624bf53b167dc1796ad114db",
+  "comparisons": [
+    {
+      "path": "crates/bbt-mux/src/index.rs",
+      "scope": "whole file",
+      "equal_to_gated_source": true,
+      "sha256": "5e1a1674850dc72a79b7a571e2d6d198981a6d1c779f487fcfaa6d13f6f12c86"
+    },
+    {
+      "path": "crates/bbt-mux/src/knowledge/bboxy.rs",
+      "scope": "whole file",
+      "equal_to_gated_source": true,
+      "sha256": "77ffe6554087bf2374b3ffe061a1c65a83d399549ce854479436c7b69f4f15e7"
+    },
+    {
+      "path": "crates/bbt-mux/src/mcp/knowledge.rs",
+      "scope": "whole file",
+      "equal_to_gated_source": true,
+      "sha256": "bbd7c7d46f11214c482a33248f5ef7067483e2afa98eb7176e98f7c954aaaad2"
+    },
+    {
+      "path": "crates/bbt-mux/src/mcp/work_items.rs",
+      "scope": "whole file",
+      "equal_to_gated_source": true,
+      "sha256": "635471a7ba5ea725843781f78f3c5bc2f609cee086e8a035a587f77073d8d440"
+    },
+    {
+      "path": "crates/bbt-mux/tests/knowledge.rs",
+      "scope": "whole file",
+      "equal_to_gated_source": true,
+      "sha256": "62e2618add815001f2d88b5f52afd669b290e8e9b44c3d0a34af941293da0789"
+    },
+    {
+      "path": "crates/bbt-mux/src/logic.rs",
+      "scope": "knowledge_call and knowledge_write",
+      "equal_to_gated_source": true,
+      "sha256": "ace30d26ccfce1720bebff40836fde034a5f9658987ba216d81f755e4ff3913b"
+    },
+    {
+      "path": "crates/bbt-mux/src/messaging/tree.rs",
+      "scope": "whole file",
+      "equal_to_accepted_main": true,
+      "sha256": "fdb1495ebc5924b26947503d87be200b3ecd4268d1ae865a0ac132b8410a7747"
+    },
+    {
+      "path": "crates/bbt-mux/src/mcp/bridge.rs",
+      "scope": "whole file",
+      "equal_to_accepted_main": true,
+      "sha256": "d6c733bbab0be89b0d7ae3a708e722fbedc0853f2d0bf67661927a8a81626d2b"
+    },
+    {
+      "path": "crates/bbt-mux/src/mcp/journal.rs",
+      "scope": "whole file",
+      "equal_to_accepted_main": true,
+      "sha256": "088b74ece4ce89871af7d9ded8574e8f59bd036546818d86bef30179d0008cab"
+    },
+    {
+      "path": "crates/bbt-mux/src/messaging/service.rs",
+      "scope": "whole file",
+      "equal_to_accepted_main": true,
+      "sha256": "acbb1c91a884c69946542bc753b0bf8e88d76c2ae97bb54ca338b1328bcd5682"
+    },
+    {
+      "path": "crates/bbt-mux/src/knowledge/mod.rs",
+      "scope": "whole file",
+      "equal_to_accepted_main": true,
+      "sha256": "b9c7d28c037b2f077bd7dd721be89ae66a8b69479da358771934dd1cceb2c692"
+    },
+    {
+      "path": "crates/bbt-mux/src/knowledge/read.rs",
+      "scope": "whole file",
+      "equal_to_accepted_main": true,
+      "sha256": "67a1e81a5e2731f81322b55c5884c7eb77438a2755bfb0492d19aa1ec1321733"
+    },
+    {
+      "path": "crates/bbt-mux/src/adapters/skills/bboxy450/SKILL.md",
+      "scope": "whole file",
+      "equal_to_accepted_main": true,
+      "sha256": "5712c5fdbaf9b5de5c7c6ee57fc5f94f31623b3e82f21a75a1c9725b2be5bff0"
+    },
+    {
+      "path": "crates/bbt-mux/src/mcp/tools.rs",
+      "scope": "only catalogue(actor) seam differs from accepted main",
+      "equal_except_named_seam": true
+    },
+    {
+      "path": "crates/bbt-mux/tests/mcp.rs",
+      "scope": "all knowledge test/helper functions plus writer corpus driver",
+      "equal_to_gated_source": true,
+      "functions": [
+        "mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check",
+        "knowledge_args",
+        "knowledge_fetch",
+        "mcp_knowledge_real_bridge_writes_with_the_seat_key_and_replays_without_reallocation",
+        "mcp_knowledge_refuses_outside_paths_forged_authority_type_ids_and_stale_etags",
+        "mcp_knowledge_post_commit_failure_is_unknown_and_never_recreates_a_deleted_file",
+        "knowledge_record_args",
+        "knowledge_update_args",
+        "knowledge_create",
+        "knowledge_denied",
+        "knowledge_search",
+        "mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_types",
+        "mcp_knowledge266_worker_task_results_use_report_notice_and_acceptance_guards",
+        "mcp_knowledge266_oracle_task_creation_and_open_brief_edits_do_not_delegate_or_accept",
+        "mcp_knowledge266_artifacts_keep_claims_observations_lineage_and_creator_corrections",
+        "mcp_knowledge266_search_pages_use_shared_root_resolution_and_refuse_stale_cursors"
+      ]
+    }
+  ],
+  "old_evidence_files_unchanged": true,
+  "no_build_or_test_started": true,
+  "accepted_tests_changed_only": [
+    "mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results",
+    "mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_result",
+    "mcp_knowledge_refuses_outside_paths_forged_authority_type_ids_and_stale_etags",
+    "mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check"
+  ],
+  "shared_test_changes": "Only catalogue count increments in two shared tests; negative knowledge checks and the writer-corpus driver equal the gated source. Every other accepted-main top-level test/helper function is unchanged.",
+  "own_author_metadata_preserved": true,
+  "own_signatures_good": true,
+  "three_old_dependency_copies_absent": true,
+  "git_product_diff_check": {
+    "command": [
+      "git",
+      "diff",
+      "--check",
+      "fffc95e51c6b2ec1fafd4fd62de8ac31a1e1afc2..15ef9754772776a8624bf53b167dc1796ad114db",
+      "--",
+      "crates/"
+    ],
+    "exit": 0
+  },
+  "raw_evidence_diff_check": {
+    "exit": 2,
+    "reason": "Three original whitespace-only context lines in the unfiltered Git range-diff (30,40,44); retained as raw evidence, not product source."
+  }
+}

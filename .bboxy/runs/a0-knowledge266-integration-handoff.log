@@ -1,0 +1,32 @@
+#266(4) git-only integration after Aster acceptance
+
+Instruction: Vesper 117d37e1; predecessor merge-order instruction 76386042.
+Accepted pinned main: fffc95e51c6b2ec1fafd4fd62de8ac31a1e1afc2. Aster e5f61f20 and evidence51f5c403 are ancestors (both checks exit0).
+Previously gated source: 6e37d434215a9495f346ce81b3736cc05e9ced7f.
+Previous evidence tip: b67dd35ee01904af393fe8f1d8dd405557870b82.
+Rebased code source: c4e8072084b21d69bffc05e708a3dc9b68abf4d4.
+Rebased original evidence tip: 15ef9754772776a8624bf53b167dc1796ad114db.
+
+Commit mapping:
+a9891668 -> 05416303 (knowledge policy/search)
+6e37d434 -> c4e80720 (decision naming and search scope)
+66cf9a9f -> 5b5cecce (gate evidence)
+b67dd35e -> 15ef9754 (fixture-coverage reporting correction)
+
+Dropped exactly the three local dependency copies de80947e,1084714e,276e5ce8. Their newer accepted implementation stays in the base; each old copy is absent from the new ancestry (exit1), and all four own commits retain original author name/email/date with good signatures.
+
+Unfiltered range-diff is committed alongside this note. Naming and both evidence patches are '='. The first core patch is marked '!'; it is NOT represented as a byte-identical patch:
+- Repeated-brace hunk alignment in logic changed, but complete knowledge_call/knowledge_write method text equals the gated source byte for byte.
+- Obsolete knowledge::mutation was already deleted upstream, so its old context disappears.
+- tools.rs now already has Aster's final optional-ID loop as context. Its only change from accepted main is catalogue(actor).
+- The malformed-op_id test migration was already supplied upstream, so that old patch hunk disappears. Its final knowledge refusal test function still equals the gated source byte for byte.
+
+Fifteen file/scope comparisons are in the equality log. Whole Index, BboxySource, MCP knowledge policy, work-items, and standalone knowledge-test files equal gated6e37d434. Both complete private knowledge methods and all16 knowledge test/helper/corpus functions match it. All63 accepted-main top-level MCP test/helper functions remain present. Only four accepted functions change: two catalogue count increments for knowledge_search, and the knowledge refusal/corpus functions that equal the gated source. All remaining accepted function bodies are unchanged.
+
+Accepted-main Tree::check, bridge, journal, messaging service, root knowledge module/read export and skill file are byte-identical to the new base. Thus the newer operator/inbox write-only fence, actionable orient and optional-ID normalization are retained. No own policy or writer behavior changed during this rebase.
+
+No cargo build/test, gate, app, trace or capture was started. The prior exact clean CI passed on6e37d434 (raw SHA25612d066758e3d8e4f7a708f3d720c308a041cb03bf94fa4ae2872673ddb28630b); it is still labelled with that actual source. This is source/diff evidence, not a claim of a new runtime gate on the rebased tree. Per Vesper's instruction, he performs the merged-tree check; no re-gate was run.
+
+Product git diff --check (accepted main through rebased tip, crates/ only) exited0; tracked tree was clean before this evidence-only commit. All previous evidence files are unchanged. Private targets remain deleted. No merge or push performed; Oracle acceptance remains pending.
+
+Raw-output whitespace: the staged whole-evidence git diff --check returned2 because the unfiltered range-diff contains three trailing-space context lines (30,40,44). They are original Git output, retained byte for byte; the product-only diff check is0. No source whitespace or behavior change is hidden by this data-format exception.
