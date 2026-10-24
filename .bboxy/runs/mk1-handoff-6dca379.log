@@ -1,0 +1,159 @@
+MK1 HANDOFF — Sable Embertail <EXECUTOR>
+Recorded 2026-10-24T00:12:06.738753+00:00
+Signed source 6dca379471e09ef5df416e6727555d10b0674b78; branch sable-mk1, worktree /Users/feral/mydev/bboxy450-term-exec3.
+Base 0c7b26d. All five source/lab commits verify G.
+Paired Wren source 964f43e + 965945c, cherry-picked as 3d0b32c + 2a1c2fc.
+
+MECHANISM
+crates/bbt-ui/src/marks.rs:16 — shared Mark seat/task mapping, centred 16-unit paths, both atom/retained painters; no app shape definition.
+marks.rs:93 — combined coverage shadow; the ring/pie and blocked slash union receive grade/ancestor alpha once.
+crates/bbt-ui/src/atoms.rs:148 — seat Glyph paints shared geometry; kind/grade annotations retain their existing roles.
+crates/bbt-ui/src/modules/seat_row.rs:819, stream_dock.rs:942, graph_tab.rs:507/662, document_modal.rs:424 — shared task paths in the paired lab slots; graph text uses actual native space advance.
+crates/bbt-ui-model/src/draw/prim.rs:213 and list.rs:78 — generic validated PathShadow.
+crates/bbt-render/src/chrome/path_masks.rs:77 — CPU path coverage, stroke/phase/DPR bounds, conservative allocation guard.
+crates/bbt-render/src/chrome/text_cache.rs:71/276 — path and glyph coverage share one R8 atlas, LRU/budget/pins/repack and Gaussian; tint/integer translation reuse.
+crates/bbt-render/src/chrome/mod.rs:441 — encode the existing tinted R8 quad; no new shader or GPU blur pass.
+crates/bboxybook/capture-inputs.js:539 and src/atoms.rs:321 — measure actual SVG viewport and native emitted path transform independently; kind text retains actual baseline.
+crates/bboxybook/src/parity.rs:155 — approved vector-only Glyph policy: exact 0px geometry and 0.5% pixel advisory; waiting-kind text still needs baseline at 0.5px/2%. Approval 80229835; spec 55707b5. No geometry exemption or synthetic baseline.
+
+ACCEPTANCE / ACTUAL RESULTS
+Exact clean detached gate: env CARGO_TARGET_DIR=/private/tmp/ci-sable-mk1-l3xje6gr/target/gate PARITY_OUT=/Users/feral/mydev/bboxy450-term-exec3/target/mk1-parity-6dca379 BBOXY_TEST_CUSTODY=memory sh scripts/ci-local.sh --parity.
+EXIT 0, 1792.459s. Full log mk1-ci-6dca379.log SHA256 646c7ad7dbe6f939953ff7c3376e807e89aa4249b4117a1a7b26f1db596134ff.
+Strict all-target workspace Clippy -D warnings: EXIT 0 in that gate (also focused prechecks 0).
+Workspace tests: 960 passed, 0 failed, 21 existing ignored (141 reported test stages including doctests; before invariant repeats).
+UI wait lint passed. Smoke idle 10.002s: 0 frames, 0 callbacks. Lab-check: 38 pages x 4 densities, 0 findings.
+Invariants: 12 checks, 0 failures, 4 named slow skips; strict Clippy still ran separately in ci-local.
+Current catalogue: 1768 cases; 1664 required/measured, 0 unproven, 0 geometry mismatches. 172 pixel reviews advisory.
+Legacy diagnostic: 1664 historical diagnostic cases, 867 pixel reviews, explicitly non-gating; not used as the review baseline.
+Baseline /Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d/report.json SHA256 aaf9c291eb7a96f47684ff88e50c1731f0b7dbe40698dc992473a7540cc1d8a7.
+Current report SHA256 e732ca38dbabfed174c5ad4f129318639359d6a97464474b18ac7073f48d7769. Same 1768 keys; reviews 172 -> 172, no new or removed keys.
+All 172 existing reviews explained individually in mk1-review-delta-6dca379.log: 148 native/web pairs byte-identical; 8 graph and 8 settings composite chrome variants have paired mark changes; 8 native-identical cases have tiny web-only capture variation (exact counts/bounds/maxima included). Four crop sheets were image-read.
+Native 96px proof: 12 semantic cases x 2 painters x 1x/2x = 48 zero-offset ink-bounds checks, fill orientation asserted. Gate-written centering.json and four PNGs preserved at /Users/feral/mydev/bboxy450-term-exec3/target/mk1-native-6dca379.
+Wren web 96px DSF2 proof: all 12 zero-offset ink bounds (measure.json); seat.png/task.png image-read. Check coordinates corrected by Wren to y .25/3.55/-3.55 before pairing.
+Final gate native-retained-2x.png and native-atom-1x.png image-read; current native/web seat-row/waiting-cozy-dark.png image-read side by side: amber geometric halo and kind annotation remain.
+Shared-mask/alpha/cache regressions passed. Velvet read signed pre-policy producer ee52568 and found no shared-mask correctness blocker (27f5eb3e). Producers were byte-identical after that review; only policy/test successor changed.
+Pass counter qualification: background+mark shadow/plain = 3/3; mark-only = 3/2; blur=0 in both. Do not infer universally no extra total pass.
+
+FAILURES, THEN FIXES (raw outputs/actual commands in mk1-verification-6dca379.log)
+UI suite first EXIT101: old Prim::Text("●") expectation. Replaced with filled-path activity assertion; full UI then EXIT0.
+Seven-case strict subset first EXIT1: one graph geometry mismatch. Native graph spacing, 11px bug slot and actual inline-flex font diagnostic corrected; graph subset EXIT0, measured1/unproven0/mismatches0.
+Vector-only old-policy subset EXIT1: 3 unproven, 0 mismatches, complete exact viewport rects but no font baseline. Approved exact-vector policy successor, same frozen images/layouts EXIT0, measured3/unproven0/mismatches0.
+New policy test first EXIT101: synthetic baseline was on a box node, correctly still unproven. Fixed fixture to a text node; book lib16/0. No production bypass.
+Final exact clean gate had no failing stage. No second full gate.
+
+LIMITS / LEFT ALONE
+No app, core, mux, proto, Cargo/dependency/lock or shader edits in MK1. No operator desktop driving or injected keystrokes. No throughput/quiet-control performance claim.
+Literal Unicode font-atlas regression remains; receipt/signature, rejected-message and invariant labels remain text because they are outside the seat/task mark brief.
+This is the exact gated source, not a claim about a later merged tree. origin/main is now e11c7c0e5df83ab5a291dccc3f924245c52f31a6; later changes include G3/R4D and R5f plus records. No rebase/re-gate after it moved, per AGENTS. Oracle verifies the integration (notably shared UI/book/lab hunks).
+Own private gate target and worktree, plus mk1-dev, removed after preserving proof; du before removal: 3,164,496 + 1,580,420 KiB = 4,858,793,984 allocated bytes (4.53 GiB). No peer directories/processes touched. Full gallery retained outside the deleted CI tree.
+Artifact digests and exact gate metadata: mk1-artifacts-6dca379.log. Full local command inventory is private at /private/tmp/sable-mk1-0Dr65M/commands.jsonl (ICQ transcripts not committed).
+
+MAIN CHANGES AFTER THE GATED BASE (read-only snapshot)
+e11c7c0 Merge G3 + R4D: the alive rim straddles the border (operator's option A) and the frosted blur runs at 1/4 resolution (Seraph, Wren lab), decisions #35/#42
+88487b3 runs: R4D + G3 + rim-A paired gate a9e60ae, ci-local --parity exit 0, 0 new review keys vs 172, moved cases split blur vs rim
+
+.bboxy/runs/g3-ci.log
+.bboxy/runs/g3-gate.log
+.bboxy/runs/g3-moved-split.log
+.bboxy/runs/g3-review-keys.log
+eabcaec decisions: quote the titles of d47 to d49 for the frontmatter parser
+
+.bboxy/decisions/d47-decision-nodes.md
+.bboxy/decisions/d48-every-record-has-a-number.md
+.bboxy/decisions/d49-swarm-canvas.md
+248b6ad decisions #50 to #53: licence rule, frontmatter is the GUI kit's public name, brand and face with two checks, the two first mantras with the restart invariant
+
+.bboxy/decisions/2026-10-22-architecture-round-1.md
+.bboxy/decisions/d50-licence-when-mit-when-apache.md
+.bboxy/decisions/d51-frontmatter-is-the-gui-kit.md
+.bboxy/decisions/d52-brand-and-face.md
+.bboxy/decisions/d53-evolve-and-restart.md
+.bboxy/images/bboxy.png
+.bboxy/invariants/README.md
+.bboxy/invariants/bboxy450-prefix.md
+.bboxy/invariants/images-resolve.md
+.bboxy/invariants/restart-keeps-state.md
+.bboxy/specs/document-viewer.md
+.bboxy/specs/licensing.md
+scripts/brand.sh
+scripts/images.sh
+45d7ccf Merge F1 diagnosis record (Velvet): harness-icon reviews are a reference coverage artifact; native analytic AA kept
+596bc07 decision #49: the swarm canvas, an endless zoom view of every graph structured like the board; logged for later; #48 wording
+
+.bboxy/decisions/2026-10-22-architecture-round-1.md
+.bboxy/decisions/d48-every-record-has-a-number.md
+.bboxy/decisions/d49-swarm-canvas.md
+.bboxy/specs/work-items.md
+crates/bbt-mermaid/tests/fixtures/bboxy/d49-swarm-canvas-1.mmd
+7932e6d Merge remote-tracking branch 'origin/main' into HEAD
+785413e Merge R5f: logic and supervisor catch-up instrumentation, default off (Rook)
+22a0cb7 decision #48: every record carries a number, one global sequence continuing from the decisions
+
+.bboxy/decisions/2026-10-22-architecture-round-1.md
+.bboxy/decisions/d47-decision-nodes.md
+.bboxy/decisions/d48-every-record-has-a-number.md
+.bboxy/specs/work-items.md
+e2a165b decision #47: one file per decision, records are objects, the git tree is the first store; renderer: harness-icon reviews are a reference artifact (MSAA vs analytic AA)
+
+.bboxy/decisions/2026-10-22-architecture-round-1.md
+.bboxy/decisions/d47-decision-nodes.md
+.bboxy/specs/renderer.md
+.bboxy/specs/work-items.md
+23a87ce Record harness icon coverage diagnosis and advisory ruling
+
+.bboxy/runs/f1-diagnosis.log
+b2c19b7 R5f: record exact CI and gate cleanup evidence
+
+.bboxy/runs/r5f-ci-status.log
+.bboxy/runs/r5f-ci.log
+.bboxy/runs/r5f-handoff.log
+a9e60ae bboxybook capture: pane backdrops hide the rim canvas too
+
+crates/bboxybook/capture.mjs
+5b9e267 G3: the native alive rim centred on the border, Rim size 2-8, the gutter follows it
+
+.bboxy/invariants/rim-size-is-layout.md
+crates/bboxy450-term/src/gpu.rs
+crates/bboxy450-term/src/scene.rs
+crates/bboxybook/src/components.rs
+crates/bboxybook/src/materials.rs
+crates/bboxybook/src/modules.rs
+crates/bboxybook/src/panes.rs
+crates/bbt-render/src/chrome/materials.rs
+crates/bbt-render/src/chrome/materials.wgsl
+crates/bbt-ui-model/src/layout/mod.rs
+crates/bbt-ui-model/src/layout/split.rs
+crates/bbt-ui-model/tests/layout.rs
+crates/bbt-ui/src/lib.rs
+crates/bbt-ui/src/modules/pane.rs
+crates/bbt-ui/src/modules/settings.rs
+crates/bbt-ui/src/style.rs
+crates/bbt-ui/tests/panes.rs
+7de6ea3 lab: the rim comment no longer swallows the sidebar variables (lab.js:28)
+
+lab/web/lab.js
+192e40d design: the native rim pass is G3 (rim-glow §5, e35d0d8), not G4, in the token comments
+
+design/tokens.toml
+cd88839 design: the alive rim centred on the border, Rim size 2-8, the gap follows it
+
+design/tokens.toml
+lab/web/components.js
+lab/web/glow-inside.html
+lab/web/glow.js
+lab/web/lab.css
+lab/web/lab.js
+lab/web/showcase.js
+lab/web/splits.html
+lab/web/tokens.js
+d10cf31 R4D: frosted blur at 1/4 resolution
+
+crates/bbt-render/src/chrome/materials.rs
+crates/bbt-render/src/chrome/materials.wgsl
+a7d400c R5f: buffer capture-path diagnostics for the scale run
+
+.bboxy/runs/r5f-development.log
+crates/bboxy450-term/src/stall/load.rs
+crates/bbt-mux/src/logic.rs
+crates/bbt-mux/tests/capture_fairness.rs
+crates/bbt-supervisor/src/supervisor.rs
