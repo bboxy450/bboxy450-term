@@ -12,7 +12,7 @@ links:
   - { to: "[[harness-adapters]]", rel: builds-on }
   - { to: "[[e2e-acceptance]]", rel: constrains }
 created: "2026-10-24T08:01:29Z"
-updated: "2026-10-24T18:31:10Z"
+updated: "2026-10-24T19:10:06Z"
 ---
 # Decision 265: Codex seat trust
 
@@ -33,3 +33,5 @@ Owner: Corvin Duskmantle <ARCHITECT>.
 **Amended by [[d270-ctl-screen-input-wait]] (operator, 2026-10-24 morning).** The review stays native; the operator delegates answering it to the Oracle through `ctl screen` and `ctl input`, with one guard: approve only when the review lists exactly the app's own hooks, matched against `adapters/launch.rs`; otherwise stop and report with the screen.
 
 **Amended 2026-10-24 (Oracle's ruling, recorded):** the per-invocation override for our server is `-c mcp_servers.bboxy.default_tools_approval_mode="approve"`, server-wide for `bboxy` only, because Codex 0.163's `auto` mode does not preapprove tools annotated `destructiveHint=true` (our `task_report`) and still prompted (Sable's finding, Codex config reference and enum validation). Other servers keep their own modes and prompts.
+
+**Amended by [[d279-codex-runtime-per-seat]] (2026-10-24):** native control and the TUI share one explicitly selected runtime per seat, never the operator's user-global daemon; the credential rule here is unchanged, so the per-seat runtime must keep the operator's login by a documented mechanism, not a copied `auth.json`.

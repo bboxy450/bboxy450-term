@@ -14,7 +14,7 @@ links:
   - { to: "[[cross-os-facade]]", rel: invariant }
   - { to: "[[d39-suite-is-the-product]]", rel: direction }
 created: "2026-10-24T15:28:01Z"
-updated: "2026-10-24T15:28:01Z"
+updated: "2026-10-24T19:10:06Z"
 ---
 # Harness kits
 
@@ -50,6 +50,7 @@ Not a process wrapper. A library that knows, per harness, how to launch it wired
 - **Observe:** OSC 7501 (`observe.rs:344-379`), the 7502 shim (`hook.rs:118-285`), 133 and 7 for shells, 21337 as a hint (`observe.rs:282-341`); Claude's sessions file (`native.rs:110-203`) and Codex's app-server events (`:205-290`); grade precedence and the dialog latch (`observe.rs:181-249`); the `OscTap` over `Term::on_unknown_osc` (`observe.rs:405-435`, `bbt-core/src/lib.rs:217-222`).
 - **Hook shim:** `prepare`, `osc`, `known`, `parse`, `project` (`hook.rs:23-285`) and the CLI body (`:329-430`) travel; the shim writes its OSC to the tty when it has one and otherwise hands the event to a **caller-supplied sink** (a small trait), so the app's seat-socket wire is the app's.
 - **Own vocabulary, mapped by the app.** The crate defines its own small `State`, `WaitingKind`, `Grade`, `Evidence`, `LaunchPlan { program, args, cwd, env, overlay, harness_session_id }`, `ArbiterView` and `LiteralInput`. Today the module borrows `bbt_proto::messaging::{State, Evidence}` (`observe.rs:18`, `mod.rs:178`), `bbt_proto::registry::{Role, SeatRecord}` (`launch.rs:11-22`) and `bbt_supervisor::protocol::{LaunchSpec, InputState, InputReceipt, InputContext}` (`launch.rs:32`, `guard.rs:147-170`); after the split `bbt-mux` owns one mapping function per type, tested both ways, and the kit depends on neither the wire crate nor the host. No new "types below both" crate: six enums are not a crate.
+- **Codex runtime per seat ([[d279-codex-runtime-per-seat]]).** The Codex adapter takes its native endpoint from the launch plan, a runtime selected per seat (a seat-private app-server the kit starts, or a documented pinned socket that keeps the operator's login without a copied credential), never from the user-global daemon path `~/.codex/app-server-control/…` that `logic.rs:3913-3925` reads today; `WakeMethod::CodexRpc` is answered only when that runtime reports the bound thread `idle | active`; `notLoaded` is `unknown` and wakes as `NativeUnknown`. Which documented mechanism provides the runtime is Sable's research item before HK-0 lands the adapter.
 - **Dependencies:** `bbt-core` (public, Apache-2.0) for the OSC tap and nothing else of ours; `bbt-rt` optional, for the debug `assert_not_ui_thread` (`launch.rs:99`, `native.rs:33`); `tokio`, `tokio-tungstenite` and `futures-util` for the Codex app-server WebSocket and the Claude socket; `mio` for the shim's socket write; `base64`, `serde`, `serde_json`, `ulid`, `libc`. No `rusqlite`, no `bbt-proto`, no `bbt-supervisor`.
 
 ## 3. `bboxy450-harness-host`: run a program in a PTY and keep what it said
