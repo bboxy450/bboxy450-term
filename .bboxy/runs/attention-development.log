@@ -1,0 +1,1537 @@
+ATTENTION development commands and actual output. Memory custody or pure fixtures only; no real primary enrollment.
+Command/status ledger
+COMMAND ['git', 'switch', '-c', 'exec5-attention', 'origin/main']
+branch 'exec5-attention' set up to track 'origin/main' by rebasing.
+Switched to a new branch 'exec5-attention'
+EXIT 0
+['icq', 'inbox', '--after', '7544', '--limit', '30'] — exit 0
+{"argv": ["cargo", "check", "-p", "bboxy450-desktop-notifications", "-p", "bboxy450-desktop-notifications-macos", "-p", "bboxy450-desktop-notifications-windows", "-p", "bboxy450-desktop-notifications-linux"], "exit": 101, "seconds": 3.5902947499998845, "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target"}
+{"argv": ["cargo", "fmt", "-p", "bboxy450-desktop-notifications", "-p", "bboxy450-desktop-notifications-macos", "-p", "bboxy450-desktop-notifications-windows", "-p", "bboxy450-desktop-notifications-linux"], "exit": 0, "seconds": 0.1311979580204934}
+{"argv": ["cargo", "check", "--locked", "-p", "bboxy450-desktop-notifications"], "exit": 101, "seconds": 0.1227380420314148}
+{"argv": ["cargo", "check", "--offline", "-p", "bboxy450-term", "--all-targets"], "exit": 101, "seconds": 44.48051745904377}
+{"argv": ["cargo", "fmt", "-p", "bboxy450-term"], "exit": 0, "seconds": 0.1917879160027951}
+{"argv": ["cargo", "check", "--locked", "-p", "bboxy450-term", "--all-targets"], "exit": 101, "seconds": 0.7357706670300104}
+{"argv": ["cargo", "fmt", "-p", "bboxy450-term"], "exit": 0, "seconds": 0.2041308750049211}
+{"argv": ["cargo", "check", "--locked", "-p", "bboxy450-term", "--all-targets"], "exit": 0, "seconds": 1.8316782089532353}
+{"argv": ["rustup", "target", "add", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-gnu"], "exit": 0, "seconds": 7.531589667021763}
+{"argv": ["cargo", "test", "--locked", "-p", "bboxy450-term", "--lib", "attention::tests"], "exit": 0, "seconds": 87.55951683298917}
+{"argv": ["cargo", "fmt", "-p", "bboxy450-term", "-p", "bboxy450-desktop-notifications", "-p", "bboxy450-desktop-notifications-macos"], "exit": 0, "seconds": 1.5163295000093058}
+{"argv": ["cargo", "check", "--locked", "-p", "bboxy450-term", "--all-targets", "--features", "notification-probe"], "exit": 0, "seconds": 11.376914584019687}
+{"name": "notification-family-tests", "argv": ["cargo", "test", "--locked", "-p", "bboxy450-desktop-notifications", "-p", "bboxy450-desktop-notifications-macos", "-p", "bboxy450-desktop-notifications-windows", "-p", "bboxy450-desktop-notifications-linux"], "exit": 0, "seconds": 2.6016495829680935}
+{"name": "notification-worker-tests", "argv": ["cargo", "test", "--locked", "-p", "bboxy450-term", "--lib", "notifications::tests"], "exit": 0, "seconds": 5.4925903340335935}
+{"name": "cross-linux", "argv": ["cargo", "check", "--locked", "-p", "bboxy450-desktop-notifications", "--target", "x86_64-unknown-linux-gnu"], "exit": 0, "seconds": 0.34408191696275026}
+{"name": "cross-windows", "argv": ["cargo", "check", "--locked", "-p", "bboxy450-desktop-notifications", "--target", "x86_64-pc-windows-gnu"], "exit": 0, "seconds": 0.35543066705577075}
+{"name": "clippy-probe1", "argv": ["cargo", "clippy", "--locked", "-p", "bboxy450-term", "-p", "bboxy450-desktop-notifications", "-p", "bboxy450-desktop-notifications-macos", "-p", "bboxy450-desktop-notifications-linux", "-p", "bboxy450-desktop-notifications-windows", "--all-targets", "--features", "notification-probe", "--", "-D", "warnings"], "exit": 101, "seconds": 1.0775643330416642}
+{"argv": ["cargo", "fmt", "-p", "bboxy450-term", "-p", "bboxy450-desktop-notifications-macos"], "exit": 0, "seconds": 0.23404954199213535}
+{"argv": ["cargo", "clippy", "--locked", "-p", "bboxy450-term", "-p", "bboxy450-desktop-notifications", "-p", "bboxy450-desktop-notifications-macos", "-p", "bboxy450-desktop-notifications-linux", "-p", "bboxy450-desktop-notifications-windows", "--all-targets", "--features", "notification-probe", "--", "-D", "warnings"], "exit": 101, "seconds": 11.249734708981123}
+{"argv": ["cargo", "fmt", "-p", "bboxy450-term"], "exit": 0, "seconds": 0.22962483298033476}
+{"argv": ["cargo", "clippy", "--workspace", "--locked", "--all-targets", "--features", "bboxy450-term/notification-probe", "--", "-D", "warnings"], "exit": 0, "seconds": 25.451113749993965}
+{"argv": ["cargo", "test", "--locked", "-p", "bboxy450-term", "--bin", "bboxy450-term", "attention"], "exit": 0, "seconds": 18.205548290978186}
+{"argv": ["cargo", "test", "--locked", "-p", "bboxy450-term", "--lib"], "exit": 0, "seconds": 9.262595334032085}
+{"argv": ["cargo", "fmt", "-p", "bboxy450-term"], "exit": 0, "seconds": 0.266761916980613}
+{"argv": ["cargo", "clippy", "--workspace", "--locked", "--all-targets", "--features", "bboxy450-term/notification-probe", "--", "-D", "warnings"], "exit": 0, "seconds": 2.973331541987136}
+{"argv": ["cargo", "test", "--locked", "-p", "bboxy450-term", "--lib"], "exit": 0, "seconds": 7.879321249958593}
+{"argv": ["cargo", "test", "--locked", "-p", "bboxy450-term", "--bin", "bboxy450-term", "cold_notification"], "exit": 0, "seconds": 28.8125181250507}
+{"argv": ["git", "diff", "--cached", "--name-only"], "exit": 0}
+{"argv": ["git", "add", "--", "Cargo.toml", "Cargo.lock", "crates/bboxy450-desktop-notifications", "crates/bboxy450-desktop-notifications-macos", "crates/bboxy450-desktop-notifications-windows", "crates/bboxy450-desktop-notifications-linux", "crates/bboxy450-term/Cargo.toml", "crates/bboxy450-term/src/attention.rs", "crates/bboxy450-term/src/notifications.rs", "crates/bboxy450-term/src/lib.rs", "crates/bboxy450-term/src/model.rs", "crates/bboxy450-term/src/live.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/cockpit.rs", "crates/bboxy450-term/examples/notification_probe.rs", "packaging/macos/Info.plist", "packaging/macos/README.md", "scripts/bundle-macos.sh", "scripts/notification-probe-macos.sh"], "exit": 0}
+{"argv": ["git", "diff", "--cached", "--check"], "exit": 0}
+{"argv": ["git", "diff", "--cached", "--stat"], "exit": 0}
+{"argv": ["git", "config", "--get", "user.signingkey"], "exit": 0}
+{"argv": ["git", "config", "--get", "commit.gpgsign"], "exit": 0}
+{"argv": ["git", "config", "--get", "user.name"], "exit": 0}
+{"argv": ["git", "config", "--get", "user.email"], "exit": 0}
+{"argv": ["sh", "scripts/notification-probe-macos.sh", "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe.app"], "exit": 0, "seconds": 26.950996208004653}
+{"started_pid": 9211, "argv": ["/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/examples/notification_probe"]}
+{"argv": ["/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/examples/notification_probe"], "pid": 9211, "exit": 1, "seconds": 0.21533383399946615, "expected_NoBundle": true}
+{"argv": ["cargo", "rustc", "--locked", "-p", "bboxy450-term", "--example", "notification_probe", "--features", "notification-probe", "--", "-C", "debug-assertions=no", "--emit=metadata"], "exit": 101, "seconds": 0.7277684999862686, "expected_debug_only_refusal": true}
+{"argv": ["git", "diff", "--cached", "--", "Cargo.lock"], "exit": 0}
+{"argv": ["git", "diff", "--check"], "exit": 0}
+{"argv": ["git", "commit", "-m", "Add notification facade and waiting attention state", "-m", "Install the macOS UserNotifications delegate before the event loop and keep native waits on one bounded worker. Derive waiting episodes from the live GUI lane, preserve explicit focus handling, and provide an ad-hoc signed debug probe for native acceptance."], "exit": 0}
+{"argv": ["git", "rev-parse", "HEAD"], "exit": 0}
+{"argv": ["git", "verify-commit", "HEAD"], "exit": 0}
+{"argv": ["git", "fetch", "origin"], "exit": 0}
+{"argv": ["git", "rebase", "origin/main"], "exit": 0}
+{"argv": ["sh", "scripts/notification-probe-macos.sh", "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe.app"], "exit": 0, "seconds": 31.36311904102331}
+{"argv": ["cargo", "clippy", "--workspace", "--locked", "--all-targets", "--features", "bboxy450-term/notification-probe", "--", "-D", "warnings"], "exit": 0, "seconds": 11.749542250006925}
+{"argv": ["sh", "scripts/layering.sh"], "exit": 0, "seconds": 0.06942929199431092}
+{"argv": ["sh", "scripts/cross-os.sh"], "exit": 0, "seconds": 0.06371066597057506}
+{"argv": ["sh", "scripts/licenses.sh"], "exit": 0, "seconds": 0.0772089579841122}
+{"argv": ["sh", "scripts/brand.sh"], "exit": 0, "seconds": 0.05091441603144631}
+{"argv": ["cargo", "package", "--locked", "--list", "-p", "bboxy450-desktop-notifications"], "exit": 0, "seconds": 0.3401760410051793}
+{"argv": ["cargo", "package", "--locked", "--list", "-p", "bboxy450-desktop-notifications-macos"], "exit": 0, "seconds": 0.2801694580120966}
+{"argv": ["cargo", "package", "--locked", "--list", "-p", "bboxy450-desktop-notifications-linux"], "exit": 0, "seconds": 0.28164908301550895}
+{"argv": ["cargo", "package", "--locked", "--list", "-p", "bboxy450-desktop-notifications-windows"], "exit": 0, "seconds": 0.2845176669652574}
+{"argv": ["cargo", "fmt", "-p", "bboxy450-term"], "exit": 0, "seconds": 0.19199533300707117}
+{"argv": ["cargo", "clippy", "--workspace", "--locked", "--all-targets", "--features", "bboxy450-term/notification-probe", "--", "-D", "warnings"], "exit": 0, "seconds": 0.6090594170382246}
+{"argv": ["git", "add", "--", "crates/bboxy450-term/examples/notification_probe.rs"], "exit": 0, "seconds": 0.021270165976602584}
+{"argv": ["git", "commit", "-m", "Distinguish native focus evidence from a raise request"], "exit": 0, "seconds": 0.23108779202448204}
+{"argv": ["sh", "scripts/notification-probe-macos.sh", "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe-final.app"], "exit": 0, "seconds": 0.9587079170159996}
+{"argv": ["cargo", "metadata", "--locked", "--no-deps", "--format-version", "1"], "exit": 0}
+{"argv": ["cargo", "fmt", "-p", "bboxy450-term"], "exit": 0, "seconds": 0.2879834169871174}
+{"argv": ["cargo", "test", "--locked", "-p", "bboxy450-term", "--lib", "notifications::tests"], "exit": 0, "seconds": 17.574583042005543}
+{"argv": ["cargo", "clippy", "--workspace", "--locked", "--all-targets", "--features", "bboxy450-term/notification-probe", "--", "-D", "warnings"], "exit": 0, "seconds": 4.697562250017654}
+{"argv": ["git", "diff", "--check"], "exit": 0}
+{"argv": ["git", "add", "--", "crates/bboxy450-term/src/notifications.rs"], "exit": 0}
+{"argv": ["git", "commit", "-m", "Honor newer mute state before a pending notification post"], "exit": 0}
+{"argv": ["git", "rev-parse", "HEAD"], "exit": 0}
+{"argv": ["git", "verify-commit", "HEAD"], "exit": 0}
+{"argv": ["git", "fetch", "origin"], "exit": 0}
+{"argv": ["git", "rebase", "origin/main"], "exit": 0}
+{"argv": ["git", "rev-parse", "HEAD"], "exit": 0}
+{"argv": ["git", "diff", "--name-status", "35857f7", "HEAD"], "exit": 0}
+{"argv": ["git", "diff", "--exit-code", "35857f7", "HEAD", "--", "crates/bboxy450-desktop-notifications", "crates/bboxy450-desktop-notifications-macos", "crates/bboxy450-desktop-notifications-linux", "crates/bboxy450-desktop-notifications-windows", "crates/bboxy450-term/examples/notification_probe.rs"], "exit": 0}
+{"argv": ["git", "worktree", "add", "--detach", "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/ci-worktree", "c52c0233e39ffea30e1af3a7e09d138c7bb81fce"], "exit": 0}
+{"argv": ["git", "-C", "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/ci-worktree", "status", "--porcelain"], "exit": 0}
+{"argv": ["git", "verify-commit", "HEAD"], "exit": 0}
+{"argv": ["sh", "scripts/ci-local.sh", "--parity"], "cwd": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/ci-worktree", "exit": 1, "driver_exit": 1, "seconds": 1431.3715375839965, "cleanup": "private gate target removed"}
+{"argv": ["git", "-C", "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/ci-worktree", "status", "--porcelain"], "exit": 0}
+{"argv": ["git", "worktree", "remove", "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/ci-worktree"], "exit": 0}
+{"argv": ["git", "fetch", "origin"], "exit": 0}
+{"argv": ["git", "rebase", "origin/main"], "exit": 0}
+{"argv": ["git", "rev-parse", "HEAD"], "exit": 0}
+{"argv": ["git", "verify-commit", "HEAD"], "exit": 0}
+{"argv": ["git", "diff", "--exit-code", "35857f7", "HEAD", "--", "crates/bboxy450-desktop-notifications", "crates/bboxy450-desktop-notifications-macos", "crates/bboxy450-desktop-notifications-linux", "crates/bboxy450-desktop-notifications-windows", "crates/bboxy450-term/examples/notification_probe.rs"], "exit": 0}
+{"argv": ["sh", "scripts/licenses.sh"], "exit": 0, "seconds": 0.1158290000166744}
+report reader: object/list assumption exit1; optional-null geometry assumption exit1; corrected typed-array/optional-geometry summary extraction exit0
+{"argv": ["sh", "scripts/invariants.sh"], "exit": 0, "seconds": 105.9742422499694}
+{"argv": ["cargo", "clippy", "--workspace", "--locked", "--all-targets", "--features", "bboxy450-term/notification-probe", "--", "-D", "warnings"], "exit": 0, "seconds": 35.446138542029075}
+
+
+FILE app-check1.log
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling libc v0.2.191
+    Checking cfg-if v1.0.5
+   Compiling serde_core v1.0.229
+    Checking typenum v1.20.1
+   Compiling version_check v0.9.5
+    Checking subtle v2.6.1
+   Compiling serde v1.0.229
+    Checking const-oid v0.9.6
+   Compiling find-msvc-tools v0.1.15
+    Checking log v0.4.34
+   Compiling generic-array v0.14.7
+   Compiling shlex v2.0.1
+   Compiling zmij v1.0.23
+   Compiling zerocopy v0.8.63
+   Compiling autocfg v1.5.1
+   Compiling libm v0.2.16
+    Checking memchr v2.8.3
+    Checking smallvec v1.16.3
+    Checking base64ct v1.8.3
+   Compiling thiserror v2.0.21
+   Compiling num-traits v0.2.19
+   Compiling cfg_aliases v0.2.2
+    Checking itoa v1.0.18
+    Checking pem-rfc7468 v0.7.0
+   Compiling crc32fast v1.5.3
+    Checking foldhash v0.2.0
+   Compiling radium v0.7.0
+    Checking hashbrown v0.17.1
+   Compiling serde_json v1.0.154
+    Checking tap v1.0.1
+    Checking wyz v0.5.1
+   Compiling syn v2.0.119
+   Compiling syn v3.0.9
+    Checking base16ct v0.2.0
+   Compiling jobserver v0.1.35
+    Checking funty v2.0.0
+    Checking equivalent v1.0.3
+   Compiling parking_lot_core v0.9.12
+   Compiling semver v1.0.28
+    Checking indexmap v2.14.2
+    Checking bytes v1.12.1
+   Compiling cc v1.9.0
+    Checking unicode-width v0.2.2
+    Checking getrandom v0.2.17
+    Checking cpufeatures v0.2.17
+    Checking rand_core v0.6.4
+    Checking bitvec v1.1.1
+   Compiling pkg-config v0.3.34
+   Compiling rustc_version v0.4.1
+    Checking scopeguard v1.2.0
+    Checking once_cell v1.21.4
+    Checking hybrid-array v0.4.15
+    Checking lock_api v0.4.14
+    Checking simd-adler32 v0.3.10
+    Checking rustc-hash v1.1.0
+    Checking parking_lot v0.12.5
+   Compiling winnow v1.0.4
+    Checking bitflags v2.13.2
+    Checking dispatch2 v0.3.1
+   Compiling getrandom v0.3.4
+    Checking adler2 v2.0.1
+   Compiling toml_parser v1.1.5+spec-1.1.0
+    Checking crypto-common v0.2.2
+    Checking objc2-core-foundation v0.3.2
+   Compiling sha2-asm v0.6.4
+    Checking block-buffer v0.12.1
+    Checking errno v0.3.14
+   Compiling naga v30.0.1
+   Compiling toml_writer v1.1.3+spec-1.1.0
+    Checking raw-window-handle v0.6.2
+   Compiling fnv v1.0.7
+    Checking core-foundation-sys v0.8.7
+    Checking const-oid v0.10.2
+    Checking pin-project-lite v0.2.17
+   Compiling arrayvec v0.7.8
+   Compiling strsim v0.11.1
+    Checking bit-vec v0.9.1
+   Compiling winnow v0.7.15
+    Checking ff v0.13.1
+   Compiling ident_case v1.0.1
+    Checking digest v0.11.3
+    Checking bit-set v0.10.0
+    Checking group v0.13.0
+    Checking miniz_oxide v0.9.1
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+    Checking codespan-reporting v0.13.1
+    Checking zlib-rs v0.6.8
+   Compiling float-cmp v0.9.0
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.21
+   Compiling bytemuck_derive v1.12.1
+   Compiling objc-sys v0.3.5
+    Checking static_assertions v1.1.0
+    Checking rand_core v0.10.1
+   Compiling bytemuck v1.25.2
+   Compiling serde_spanned v1.1.2
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling getrandom v0.4.3
+   Compiling strict-num v0.1.1
+    Checking rand_core v0.9.5
+   Compiling polycool v0.4.0
+    Checking naga-types v30.0.1
+   Compiling curve25519-dalek v4.1.3
+    Checking wgpu-types v30.0.1
+    Checking num-integer v0.1.47
+    Checking flate2 v1.1.10
+   Compiling toml v0.9.12+spec-1.1.0
+    Checking cpufeatures v0.3.1
+   Compiling zeroize_derive v1.5.0
+   Compiling zerocopy-derive v0.8.63
+    Checking objc2-foundation v0.3.2
+   Compiling darling_core v0.20.11
+   Compiling wgpu-hal v30.0.1
+   Compiling cfg_aliases v0.1.1
+   Compiling crossbeam-utils v0.8.23
+   Compiling num-bigint-dig v0.8.6
+    Checking zeroize v1.9.1
+   Compiling thiserror v1.0.69
+   Compiling arrayref v0.3.9
+    Checking spin v0.9.9
+    Checking der v0.7.10
+    Checking lazy_static v1.5.1
+   Compiling kurbo v0.13.1
+   Compiling tiny-skia-path v0.12.0
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking inout v0.1.4
+    Checking digest v0.10.7
+    Checking cipher v0.4.4
+    Checking hmac v0.12.1
+    Checking signature v2.2.0
+    Checking spki v0.7.3
+    Checking hkdf v0.12.4
+    Checking crypto-bigint v0.5.5
+    Checking sha2 v0.10.9
+    Checking rfc6979 v0.4.0
+    Checking pkcs8 v0.10.2
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking ctr v0.9.2
+    Checking universal-hash v0.5.1
+    Checking serdect v0.2.0
+    Checking aead v0.5.2
+    Checking sec1 v0.7.3
+   Compiling nix v0.28.0
+   Compiling darling_macro v0.20.11
+    Checking num-iter v0.1.46
+   Compiling thiserror-impl v1.0.69
+   Compiling darling v0.20.11
+   Compiling tokio-macros v2.7.2
+   Compiling miniz_oxide v0.8.9
+    Checking signal-hook-registry v1.4.8
+   Compiling fdeflate v0.3.7
+    Checking socket2 v0.6.5
+    Checking mio v1.2.4
+    Checking libloading v0.8.9
+   Compiling siphasher v1.0.4
+   Compiling zstd-safe v8.2.0
+    Checking cursor-icon v1.2.0
+   Compiling vcpkg v0.2.15
+    Checking elliptic-curve v0.13.8
+   Compiling unicode-segmentation v1.13.3
+   Compiling httparse v1.10.1
+   Compiling anyhow v1.0.104
+   Compiling rustversion v1.0.23
+    Checking opaque-debug v0.3.1
+    Checking profiling v1.0.18
+    Checking base64 v0.22.1
+    Checking polyval v0.6.2
+   Compiling png v0.18.1
+   Compiling svgtypes v0.16.1
+   Compiling convert_case v0.10.0
+   Compiling libsqlite3-sys v0.38.2
+    Checking tokio v1.54.1
+    Checking ecdsa v0.16.9
+    Checking primeorder v0.13.6
+   Compiling derive_builder_core v0.20.2
+    Checking objc2 v0.5.3
+    Checking objc2-metal v0.3.2
+    Checking serde-big-array v0.5.1
+    Checking aes v0.8.4
+    Checking dbl v0.3.2
+   Compiling simplecss v0.2.2
+    Checking chacha20 v0.10.2
+   Compiling curve25519-dalek v5.0.0
+    Checking euclid v0.22.14
+    Checking keccak v0.1.6
+   Compiling roxmltree v0.21.1
+   Compiling aho-corasick v1.1.5
+   Compiling wgpu-core v30.0.1
+   Compiling unicode-xid v0.2.6
+   Compiling data-url v0.3.2
+   Compiling pico-args v0.5.0
+   Compiling heck v0.5.0
+   Compiling crc24 v0.1.6
+   Compiling regex-syntax v0.8.11
+   Compiling litrs v1.0.1
+    Checking byteorder v1.5.0
+   Compiling imagesize v0.15.0
+    Checking lyon_geom v1.0.20
+   Compiling snafu-derive v0.9.2
+   Compiling document-features v0.2.12
+   Compiling usvg v0.48.1
+   Compiling derive_more-impl v2.1.1
+    Checking sha3 v0.10.9
+    Checking rand v0.10.3
+    Checking block2 v0.5.1
+    Checking ppv-lite86 v0.2.21
+    Checking half v2.7.1
+    Checking rand_chacha v0.3.1
+    Checking rand_chacha v0.9.0
+    Checking rand v0.8.8
+    Checking crossbeam-queue v0.3.14
+    Checking rand v0.9.5
+    Checking cmac v0.7.2
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling derive_builder_macro v0.20.2
+   Compiling tiny-skia v0.12.0
+    Checking ulid v1.2.1
+   Compiling bitfields-impl v1.0.3
+    Checking filedescriptor v0.8.3
+   Compiling regex-automata v0.4.18
+    Checking ghash v0.5.1
+    Checking pkcs1 v0.7.5
+    Checking serdect v0.3.0
+    Checking ed25519 v2.2.3
+    Checking blake2 v0.10.6
+    Checking sha1 v0.10.7
+    Checking sha1 v0.11.0
+   Compiling num_enum_derive v0.7.6
+   Compiling rgb v0.8.53
+   Compiling futures-macro v0.3.34
+   Compiling foreign-types-macros v0.2.4
+    Checking core-foundation v0.9.4
+    Checking http v1.5.0
+    Checking password-hash v0.5.0
+    Checking objc2-core-graphics v0.3.2
+    Checking serial2 v0.2.38
+   Compiling wgpu v30.0.1
+    Checking futures-task v0.3.34
+    Checking foreign-types-shared v0.3.1
+    Checking foldhash v0.1.5
+    Checking shell-words v1.1.1
+    Checking slab v0.4.12
+    Checking data-encoding v2.11.1
+    Checking futures-core v0.3.34
+    Checking dispatch v0.2.0
+    Checking bitflags v1.3.2
+    Checking downcast-rs v1.2.1
+    Checking same-file v1.0.6
+    Checking futures-sink v0.3.34
+    Checking signature v3.0.0
+    Checking objc2-foundation v0.2.2
+    Checking portable-pty v0.9.0
+    Checking tungstenite v0.30.0
+    Checking walkdir v2.5.0
+    Checking futures-util v0.3.34
+    Checking ed25519 v3.0.0
+    Checking core-graphics-types v0.1.3
+    Checking hashbrown v0.15.5
+    Checking foreign-types v0.5.0
+    Checking num_enum v0.7.6
+   Compiling resvg v0.48.1
+    Checking argon2 v0.5.3
+    Checking sha1-checked v0.10.0
+    Checking ed25519-dalek v2.2.0
+    Checking cx448 v0.1.1
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking objc2-quartz-core v0.3.2
+   Compiling regex v1.13.1
+    Checking rsa v0.9.10
+    Checking aes-gcm v0.10.3
+    Checking bitfields v1.0.3
+    Checking dsa v0.6.3
+    Checking derive_more v2.1.1
+    Checking derive_builder v0.20.2
+    Checking eax v0.5.0
+    Checking snafu v0.9.2
+    Checking raw-window-metal v1.1.0
+    Checking zstd v0.14.3
+    Checking lyon_path v1.0.19
+    Checking blowfish v0.9.1
+    Checking camellia v0.1.0
+    Checking aes-kw v0.2.1
+    Checking x25519-dalek v2.0.1
+    Checking p384 v0.13.1
+    Checking p521 v0.13.3
+    Checking p256 v0.13.2
+    Checking k256 v0.13.4
+    Checking objc2-user-notifications v0.3.2
+    Checking ocb3 v0.1.0
+    Checking idea v0.5.1
+    Checking cast5 v0.11.1
+    Checking des v0.8.1
+    Checking cfb-mode v0.8.2
+    Checking twofish v0.7.1
+    Checking ripemd v0.1.3
+    Checking md-5 v0.10.6
+    Checking block-padding v0.3.3
+    Checking sha2 v0.11.1
+    Checking core-foundation v0.10.1
+    Checking security-framework-sys v2.17.0
+    Checking notify-types v2.1.0
+    Checking fsevent-sys v4.1.0
+    Checking hashlink v0.12.2
+   Compiling winit v0.30.13
+    Checking buffer-redux v1.1.0
+    Checking nom v8.0.0
+    Checking tracing-core v0.1.36
+    Checking fallible-streaming-iterator v0.1.9
+    Checking ryu v1.0.23
+    Checking float_next_after v1.0.0
+    Checking replace_with v0.1.8
+    Checking unsafe-libyaml v0.2.11
+    Checking hex v0.4.3
+    Checking fixedbitset v0.5.7
+    Checking fallible-iterator v0.3.0
+    Checking ed25519-dalek v3.0.0
+    Checking tracing v0.1.44
+    Checking petgraph v0.8.3
+    Checking lyon_tessellation v1.0.22
+    Checking security-framework v3.7.0
+    Checking rusqlite v0.40.2
+    Checking notify v8.2.0
+    Checking serde_yaml v0.9.34+deprecated
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+    Checking tokio-tungstenite v0.30.0
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking objc2-app-kit v0.2.2
+    Checking objc2-core-text v0.3.2
+    Checking core-graphics v0.23.2
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking dpi v0.1.2
+   Compiling rustix v1.1.5
+    Checking wgpu-naga-bridge v30.0.1
+    Checking pollster v0.4.0
+    Checking smol_str v0.2.2
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking objc2-app-kit v0.3.2
+    Checking fastrand v2.5.0
+    Checking pgp v0.21.0
+    Checking tempfile v3.27.0
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+error[E0004]: non-exhaustive patterns: `bboxy450_term::cockpit::UiMsg::AttentionFocus { .. }` not covered
+    --> crates/bboxy450-term/src/main.rs:3056:19
+     |
+3056 |               match receiver
+     |  ___________________^
+3057 | |                 .try_recv()
+3058 | |                 .expect("capacity-one reconnect must make progress")
+     | |____________________________________________________________________^ pattern `bboxy450_term::cockpit::UiMsg::AttentionFocus { .. }` not covered
+     |
+note: `bboxy450_term::cockpit::UiMsg` defined here
+    --> crates/bboxy450-term/src/cockpit.rs:32:1
+     |
+  32 | pub enum UiMsg {
+     | ^^^^^^^^^^^^^^
+...
+  91 |     AttentionFocus {
+     |     -------------- not covered
+     = note: the matched value is of type `bboxy450_term::cockpit::UiMsg`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+     |
+3080 ~                 },
+3081 +                 bboxy450_term::cockpit::UiMsg::AttentionFocus { .. } => todo!()
+     |
+
+For more information about this error, try `rustc --explain E0004`.
+error: could not compile `bboxy450-term` (bin "bboxy450-term" test) due to 1 previous error
+
+
+FILE attention-tests1.log
+   Compiling cfg-if v1.0.5
+   Compiling typenum v1.20.1
+   Compiling subtle v2.6.1
+   Compiling const-oid v0.9.6
+   Compiling libc v0.2.191
+   Compiling serde_core v1.0.229
+   Compiling objc2-encode v4.1.0
+   Compiling zeroize v1.9.1
+   Compiling log v0.4.34
+   Compiling zerocopy v0.8.63
+   Compiling libm v0.2.16
+   Compiling memchr v2.8.3
+   Compiling smallvec v1.16.3
+   Compiling base64ct v1.8.3
+   Compiling itoa v1.0.18
+   Compiling foldhash v0.2.0
+   Compiling objc2 v0.6.5
+   Compiling tap v1.0.1
+   Compiling pem-rfc7468 v0.7.0
+   Compiling wyz v0.5.1
+   Compiling hashbrown v0.17.1
+   Compiling zmij v1.0.23
+   Compiling radium v0.7.0
+   Compiling der v0.7.10
+   Compiling equivalent v1.0.3
+   Compiling generic-array v0.14.7
+   Compiling base16ct v0.2.0
+   Compiling funty v2.0.0
+   Compiling indexmap v2.14.2
+   Compiling bytemuck v1.25.2
+   Compiling num-traits v0.2.19
+   Compiling block-buffer v0.10.4
+   Compiling getrandom v0.2.17
+   Compiling cpufeatures v0.2.17
+   Compiling inout v0.1.4
+   Compiling block2 v0.6.2
+   Compiling thiserror v2.0.21
+   Compiling rand_core v0.6.4
+   Compiling unicode-width v0.2.2
+   Compiling bytes v1.12.1
+   Compiling once_cell v1.21.4
+   Compiling spki v0.7.3
+   Compiling crypto-common v0.1.7
+   Compiling scopeguard v1.2.0
+   Compiling crypto-bigint v0.5.5
+   Compiling digest v0.10.7
+   Compiling cipher v0.4.4
+   Compiling serde v1.0.229
+   Compiling bitflags v2.13.2
+   Compiling serde_json v1.0.154
+   Compiling bitvec v1.1.1
+   Compiling pkcs8 v0.10.2
+   Compiling hmac v0.12.1
+   Compiling signature v2.2.0
+   Compiling lock_api v0.4.14
+   Compiling dispatch2 v0.3.1
+   Compiling hkdf v0.12.4
+   Compiling sha2-asm v0.6.4
+   Compiling parking_lot_core v0.9.12
+   Compiling hybrid-array v0.4.15
+   Compiling simd-adler32 v0.3.10
+   Compiling sha2 v0.10.9
+   Compiling arrayvec v0.7.8
+   Compiling serdect v0.2.0
+   Compiling parking_lot v0.12.5
+   Compiling rustc-hash v1.1.0
+   Compiling objc2-core-foundation v0.3.2
+   Compiling adler2 v2.0.1
+   Compiling naga-types v30.0.1
+   Compiling sec1 v0.7.3
+   Compiling block-buffer v0.12.1
+   Compiling crypto-common v0.2.2
+   Compiling rfc6979 v0.4.0
+   Compiling errno v0.3.14
+   Compiling core-foundation-sys v0.8.7
+   Compiling raw-window-handle v0.6.2
+   Compiling pin-project-lite v0.2.17
+   Compiling const-oid v0.10.2
+   Compiling bit-vec v0.9.1
+   Compiling crc32fast v1.5.3
+   Compiling miniz_oxide v0.9.1
+   Compiling getrandom v0.3.4
+   Compiling codespan-reporting v0.13.1
+   Compiling bit-set v0.10.0
+   Compiling unicode-ident v1.0.27
+   Compiling zlib-rs v0.6.8
+   Compiling static_assertions v1.1.0
+   Compiling rand_core v0.10.1
+   Compiling wgpu-types v30.0.1
+   Compiling rand_core v0.9.5
+   Compiling ppv-lite86 v0.2.21
+   Compiling half v2.7.1
+   Compiling num-integer v0.1.47
+   Compiling ff v0.13.1
+   Compiling cpufeatures v0.3.1
+   Compiling rand_chacha v0.3.1
+   Compiling group v0.13.0
+   Compiling float-cmp v0.9.0
+   Compiling spin v0.9.9
+   Compiling elliptic-curve v0.13.8
+   Compiling naga v30.0.1
+   Compiling strict-num v0.1.1
+   Compiling lazy_static v1.5.1
+   Compiling num-iter v0.1.46
+   Compiling digest v0.11.3
+   Compiling rand_chacha v0.9.0
+   Compiling getrandom v0.4.3
+   Compiling objc-sys v0.3.5
+   Compiling signal-hook-registry v1.4.8
+   Compiling polycool v0.4.0
+   Compiling aead v0.5.2
+   Compiling ctr v0.9.2
+   Compiling ecdsa v0.16.9
+   Compiling primeorder v0.13.6
+   Compiling universal-hash v0.5.1
+   Compiling mio v1.2.4
+   Compiling socket2 v0.6.5
+   Compiling libloading v0.8.9
+   Compiling base64 v0.22.1
+   Compiling cursor-icon v1.2.0
+   Compiling objc2-foundation v0.3.2
+   Compiling arrayref v0.3.9
+   Compiling opaque-debug v0.3.1
+   Compiling profiling v1.0.18
+   Compiling tiny-skia-path v0.12.0
+   Compiling tokio v1.54.1
+   Compiling polyval v0.6.2
+   Compiling thiserror v1.0.69
+   Compiling rand v0.8.8
+   Compiling kurbo v0.13.1
+   Compiling objc2 v0.5.3
+   Compiling rand v0.9.5
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling curve25519-dalek v4.1.3
+   Compiling num-bigint-dig v0.8.6
+   Compiling crossbeam-utils v0.8.23
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling chacha20 v0.10.2
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling serde-big-array v0.5.1
+   Compiling aes v0.8.4
+   Compiling euclid v0.22.14
+   Compiling objc2-metal v0.3.2
+   Compiling flate2 v1.1.10
+   Compiling keccak v0.1.6
+   Compiling dbl v0.3.2
+   Compiling siphasher v1.0.4
+   Compiling byteorder v1.5.0
+   Compiling sha3 v0.10.9
+   Compiling cmac v0.7.2
+   Compiling svgtypes v0.16.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling crossbeam-queue v0.3.14
+   Compiling png v0.18.1
+   Compiling rand v0.10.3
+   Compiling zstd-safe v8.2.0
+   Compiling nix v0.28.0
+   Compiling lyon_geom v1.0.20
+   Compiling block2 v0.5.1
+   Compiling ulid v1.2.1
+   Compiling filedescriptor v0.8.3
+   Compiling ghash v0.5.1
+   Compiling httparse v1.10.1
+   Compiling anyhow v1.0.104
+   Compiling sha1 v0.11.0
+   Compiling core-foundation v0.9.4
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling ed25519 v2.2.3
+   Compiling http v1.5.0
+   Compiling blake2 v0.10.6
+   Compiling sha1 v0.10.7
+   Compiling password-hash v0.5.0
+   Compiling serial2 v0.2.38
+   Compiling roxmltree v0.21.1
+   Compiling simplecss v0.2.2
+   Compiling pico-args v0.5.0
+   Compiling data-url v0.3.2
+   Compiling futures-task v0.3.34
+   Compiling foldhash v0.1.5
+   Compiling shell-words v1.1.1
+   Compiling bitflags v1.3.2
+   Compiling data-encoding v2.11.1
+   Compiling imagesize v0.15.0
+   Compiling slab v0.4.12
+   Compiling futures-core v0.3.34
+   Compiling downcast-rs v1.2.1
+   Compiling objc2-core-graphics v0.3.2
+   Compiling same-file v1.0.6
+   Compiling futures-sink v0.3.34
+   Compiling signature v3.0.0
+   Compiling dispatch v0.2.0
+   Compiling foreign-types-shared v0.3.1
+   Compiling portable-pty v0.9.0
+   Compiling walkdir v2.5.0
+   Compiling futures-util v0.3.34
+   Compiling ed25519 v3.0.0
+   Compiling foreign-types v0.5.0
+   Compiling objc2-foundation v0.2.2
+   Compiling usvg v0.48.1
+   Compiling core-graphics-types v0.1.3
+   Compiling hashbrown v0.15.5
+   Compiling argon2 v0.5.3
+   Compiling rsa v0.9.10
+   Compiling num_enum v0.7.6
+   Compiling objc2-quartz-core v0.3.2
+   Compiling sha1-checked v0.10.0
+   Compiling ed25519-dalek v2.2.0
+   Compiling tungstenite v0.30.0
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling cx448 v0.1.1
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling tiny-skia v0.12.0
+   Compiling aes-gcm v0.10.3
+   Compiling libsqlite3-sys v0.38.2
+   Compiling lyon_path v1.0.19
+   Compiling bitfields v1.0.3
+   Compiling derive_builder v0.20.2
+   Compiling raw-window-metal v1.1.0
+   Compiling zstd v0.14.3
+   Compiling aes-kw v0.2.1
+   Compiling camellia v0.1.0
+   Compiling blowfish v0.9.1
+   Compiling curve25519-dalek v5.0.0
+   Compiling eax v0.5.0
+   Compiling derive_more v2.1.1
+   Compiling wgpu-hal v30.0.1
+   Compiling snafu v0.9.2
+   Compiling crc24 v0.1.6
+   Compiling dsa v0.6.3
+   Compiling objc2-user-notifications v0.3.2
+   Compiling x25519-dalek v2.0.1
+   Compiling p384 v0.13.1
+   Compiling p521 v0.13.3
+   Compiling k256 v0.13.4
+   Compiling p256 v0.13.2
+   Compiling ocb3 v0.1.0
+   Compiling sha2 v0.11.1
+   Compiling core-foundation v0.10.1
+   Compiling security-framework-sys v2.17.0
+   Compiling notify-types v2.1.0
+   Compiling cast5 v0.11.1
+   Compiling des v0.8.1
+   Compiling cfb-mode v0.8.2
+   Compiling idea v0.5.1
+   Compiling twofish v0.7.1
+   Compiling ripemd v0.1.3
+   Compiling md-5 v0.10.6
+   Compiling rgb v0.8.53
+   Compiling fsevent-sys v4.1.0
+   Compiling block-padding v0.3.3
+   Compiling hashlink v0.12.2
+   Compiling nom v8.0.0
+   Compiling buffer-redux v1.1.0
+   Compiling fallible-iterator v0.3.0
+   Compiling tracing-core v0.1.36
+   Compiling hex v0.4.3
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling ryu v1.0.23
+   Compiling float_next_after v1.0.0
+   Compiling unsafe-libyaml v0.2.11
+   Compiling replace_with v0.1.8
+   Compiling fixedbitset v0.5.7
+   Compiling lyon_tessellation v1.0.22
+   Compiling rusqlite v0.40.2
+   Compiling resvg v0.48.1
+   Compiling tracing v0.1.44
+   Compiling notify v8.2.0
+   Compiling petgraph v0.8.3
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling ed25519-dalek v3.0.0
+   Compiling wgpu-core v30.0.1
+   Compiling security-framework v3.7.0
+   Compiling objc2-app-kit v0.2.2
+   Compiling bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling tokio-tungstenite v0.30.0
+   Compiling objc2-core-text v0.3.2
+   Compiling rustix v1.1.5
+   Compiling core-graphics v0.23.2
+   Compiling pgp v0.21.0
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling smol_str v0.2.2
+   Compiling dpi v0.1.2
+   Compiling fastrand v2.5.0
+   Compiling pollster v0.4.0
+   Compiling bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+   Compiling objc2-app-kit v0.3.2
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling tempfile v3.27.0
+   Compiling winit v0.30.13
+   Compiling wgpu v30.0.1
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 1m 27s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/bboxy450_term-88b0c07fb09b4d73)
+
+running 4 tests
+test attention::tests::all_three_wait_reasons_and_generation_are_typed ... ok
+test attention::tests::live_state_updates_preserve_stage_and_handling_survives_model_rebuild ... ok
+test attention::tests::muted_and_supplied_notification_preferences_never_post_or_change_focus ... ok
+test attention::tests::one_episode_loops_until_explicit_focus_or_leaving_and_repeat_keeps_its_key ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+
+
+FILE bare-no-bundle.log
+{"argv": ["/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/examples/notification_probe"], "pid": 9211, "exit": 1, "seconds": 0.21533383399946615, "expected_NoBundle": true}
+probe open: NoBundle
+Error: NoBundle
+
+
+FILE bboxy450-desktop-notifications-linux-package.log
+.cargo_vcs_info.json
+Cargo.lock
+Cargo.toml
+Cargo.toml.orig
+LICENSE-APACHE
+LICENSE-MIT
+README.md
+src/lib.rs
+
+
+FILE bboxy450-desktop-notifications-macos-package.log
+.cargo_vcs_info.json
+Cargo.lock
+Cargo.toml
+Cargo.toml.orig
+LICENSE-APACHE
+LICENSE-MIT
+README.md
+src/lib.rs
+
+
+FILE bboxy450-desktop-notifications-package.log
+.cargo_vcs_info.json
+Cargo.lock
+Cargo.toml
+Cargo.toml.orig
+LICENSE-APACHE
+LICENSE-MIT
+README.md
+src/lib.rs
+
+
+FILE bboxy450-desktop-notifications-windows-package.log
+.cargo_vcs_info.json
+Cargo.lock
+Cargo.toml
+Cargo.toml.orig
+LICENSE-APACHE
+LICENSE-MIT
+README.md
+src/lib.rs
+
+
+FILE brand-post-g3.log
+brand: held
+
+
+FILE build-probe-final.log
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 0.87s
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe-final.app/Contents/Info.plist: OK
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe-final.app: replacing existing signature
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe-final.app: valid on disk
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe-final.app: satisfies its Designated Requirement
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe-final.app
+
+
+FILE check-app2.log
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+error[E0277]: expected an `Fn(notifications::Event)` closure, found `std::sync::Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+   --> crates/bboxy450-term/src/notifications.rs:113:45
+    |
+113 |                 Err(error) => report(error, &event, &mut last_error),
+    |                                             ^^^^^^ expected an `Fn(notifications::Event)` closure, found `std::sync::Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+    |
+    = help: the trait `Fn(notifications::Event)` is not implemented for `std::sync::Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+    = note: required for the cast from `&Arc<dyn Fn(Event) + Send + Sync>` to `&dyn std::ops::Fn(notifications::Event)`
+    = note: the full name for the type has been written to '/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/bboxy450_term-68b67483703e86a9.long-type-18271944762824162567.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+error[E0277]: expected an `Fn(notifications::Event)` closure, found `std::sync::Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+   --> crates/bboxy450-term/src/notifications.rs:124:43
+    |
+124 |                     report(Error::Denied, &event, &mut last_error);
+    |                                           ^^^^^^ expected an `Fn(notifications::Event)` closure, found `std::sync::Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+    |
+    = help: the trait `Fn(notifications::Event)` is not implemented for `std::sync::Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+    = note: required for the cast from `&Arc<dyn Fn(Event) + Send + Sync>` to `&dyn std::ops::Fn(notifications::Event)`
+    = note: the full name for the type has been written to '/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/bboxy450_term-68b67483703e86a9.long-type-1475230847611477712.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+error[E0277]: expected an `Fn(notifications::Event)` closure, found `std::sync::Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+   --> crates/bboxy450-term/src/notifications.rs:133:35
+    |
+133 |                     report(error, &event, &mut last_error);
+    |                                   ^^^^^^ expected an `Fn(notifications::Event)` closure, found `std::sync::Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+    |
+    = help: the trait `Fn(notifications::Event)` is not implemented for `std::sync::Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+    = note: required for the cast from `&Arc<dyn Fn(Event) + Send + Sync>` to `&dyn std::ops::Fn(notifications::Event)`
+    = note: the full name for the type has been written to '/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/bboxy450_term-68b67483703e86a9.long-type-487010202556574123.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+error[E0277]: expected an `Fn(notifications::Event)` closure, found `std::sync::Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+   --> crates/bboxy450-term/src/notifications.rs:147:53
+    |
+147 |                         Err(error) => report(error, &event, &mut last_error),
+    |                                                     ^^^^^^ expected an `Fn(notifications::Event)` closure, found `std::sync::Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+    |
+    = help: the trait `Fn(notifications::Event)` is not implemented for `std::sync::Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+    = note: required for the cast from `&Arc<dyn Fn(Event) + Send + Sync>` to `&dyn std::ops::Fn(notifications::Event)`
+    = note: the full name for the type has been written to '/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/bboxy450_term-68b67483703e86a9.long-type-1604844240896419864.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `bboxy450-term` (lib test) due to 4 previous errors
+warning: build failed, waiting for other jobs to finish...
+error[E0277]: expected an `Fn(notifications::Event)` closure, found `Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+   --> crates/bboxy450-term/src/notifications.rs:113:45
+    |
+113 |                 Err(error) => report(error, &event, &mut last_error),
+    |                                             ^^^^^^ expected an `Fn(notifications::Event)` closure, found `Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+    |
+    = help: the trait `Fn(notifications::Event)` is not implemented for `Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+    = note: required for the cast from `&Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>` to `&dyn std::ops::Fn(notifications::Event)`
+
+error[E0277]: expected an `Fn(notifications::Event)` closure, found `Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+   --> crates/bboxy450-term/src/notifications.rs:124:43
+    |
+124 |                     report(Error::Denied, &event, &mut last_error);
+    |                                           ^^^^^^ expected an `Fn(notifications::Event)` closure, found `Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+    |
+    = help: the trait `Fn(notifications::Event)` is not implemented for `Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+    = note: required for the cast from `&Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>` to `&dyn std::ops::Fn(notifications::Event)`
+
+error[E0277]: expected an `Fn(notifications::Event)` closure, found `Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+   --> crates/bboxy450-term/src/notifications.rs:133:35
+    |
+133 |                     report(error, &event, &mut last_error);
+    |                                   ^^^^^^ expected an `Fn(notifications::Event)` closure, found `Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+    |
+    = help: the trait `Fn(notifications::Event)` is not implemented for `Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+    = note: required for the cast from `&Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>` to `&dyn std::ops::Fn(notifications::Event)`
+
+error[E0277]: expected an `Fn(notifications::Event)` closure, found `Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+   --> crates/bboxy450-term/src/notifications.rs:147:53
+    |
+147 |                         Err(error) => report(error, &event, &mut last_error),
+    |                                                     ^^^^^^ expected an `Fn(notifications::Event)` closure, found `Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+    |
+    = help: the trait `Fn(notifications::Event)` is not implemented for `Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>`
+    = note: required for the cast from `&Arc<(dyn std::ops::Fn(notifications::Event) + std::marker::Send + Sync + 'static)>` to `&dyn std::ops::Fn(notifications::Event)`
+
+error: could not compile `bboxy450-term` (lib) due to 4 previous errors
+
+
+FILE check-app3.log
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 1.79s
+
+
+FILE clippy-pending-mute.log
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 4.56s
+
+
+FILE clippy-post-g3.log
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn-macros)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Checking bboxy450-desktop-notifications-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-windows)
+    Checking bboxy450-desktop-notifications-linux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-linux)
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Finished `dev` profile [optimized] target(s) in 11.62s
+
+
+FILE clippy-probe-observations.log
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 0.52s
+
+
+FILE clippy-probe1.log
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bboxy450-desktop-notifications-linux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-linux)
+    Checking bboxy450-desktop-notifications-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-windows)
+error: use of a disallowed method `std::sync::mpsc::Receiver::recv_timeout`
+   --> crates/bboxy450-desktop-notifications-macos/src/lib.rs:150:10
+    |
+150 |         .recv_timeout(COMPLETION_TIMEOUT)
+    |          ^^^^^^^^^^^^
+    |
+    = note: UI must use try_recv
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#disallowed_methods
+    = note: `-D clippy::disallowed-methods` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::disallowed_methods)]`
+
+error: could not compile `bboxy450-desktop-notifications-macos` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `bboxy450-desktop-notifications-macos` (lib test) due to 1 previous error
+
+
+FILE clippy-stage2.log
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+error: field assignment outside of initializer for an instance created with Default::default()
+   --> crates/bboxy450-term/src/attention.rs:309:9
+    |
+309 |         settings.only_when_not_frontmost = true;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: consider initializing the variable with `attention::Notifications { only_when_not_frontmost: true, ..Default::default() }` and removing relevant reassignments
+   --> crates/bboxy450-term/src/attention.rs:308:9
+    |
+308 |         let mut settings = Notifications::default();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#field_reassign_with_default
+    = note: `-D clippy::field-reassign-with-default` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::field_reassign_with_default)]`
+
+error: unnecessary use of `clone` to create a slice from a reference
+   --> crates/bboxy450-term/src/attention.rs:324:13
+    |
+324 |             &[seat.record.clone()],
+    |             ^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(&seat.record)`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#cloned_ref_to_slice_refs
+    = note: `-D clippy::cloned-ref-to-slice-refs` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::cloned_ref_to_slice_refs)]`
+
+error: unnecessary use of `clone` to create a slice from a reference
+   --> crates/bboxy450-term/src/attention.rs:329:33
+    |
+329 |         model.apply_seat_states(&[seat.clone()]);
+    |                                 ^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(&seat)`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#cloned_ref_to_slice_refs
+
+error: unnecessary use of `clone` to create a slice from a reference
+   --> crates/bboxy450-term/src/attention.rs:336:37
+    |
+336 |         model = crate::model::build(&[seat.record.clone()], &grids, &model);
+    |                                     ^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(&seat.record)`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#cloned_ref_to_slice_refs
+
+error: could not compile `bboxy450-term` (lib test) due to 4 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: this `if` can be collapsed into the outer `match`
+   --> crates/bboxy450-term/examples/notification_probe.rs:159:17
+    |
+159 | /                 if self.commands.try_send(Command::Native(key)).is_err() {
+160 | |                     self.log("busy", serde_json::json!(key));
+161 | |                 }
+    | |_________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#collapsible_match
+    = note: `-D clippy::collapsible-match` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::collapsible_match)]`
+help: collapse nested if block
+    |
+158 ~             Some(key @ ('a' | 'p' | 'r' | 'c' | 'd'))
+159 ~                 if self.commands.try_send(Command::Native(key)).is_err() => {
+160 |                     self.log("busy", serde_json::json!(key));
+161 ~                 }
+    |
+
+error: could not compile `bboxy450-term` (example "notification_probe") due to 1 previous error
+error: this `if` statement can be collapsed
+    --> crates/bboxy450-term/src/main.rs:2157:9
+     |
+2157 | /         if let live::UiMsg::AttentionFocus {
+2158 | |             generation: old_generation,
+2159 | |             episode: old_episode,
+2160 | |             landed: old_landed,
+...    |
+2169 | |         }
+     | |_________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#collapsible_if
+     = note: `-D clippy::collapsible-if` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+     |
+2162 ~         } = &mut pending[index]
+2163 ~             && *old_generation == *generation {
+2164 |                 *old_episode = *episode;
+2165 |                 *old_landed = landed.or(*old_landed);
+2166 |                 return Ok(());
+2167 ~             }
+     |
+
+error: could not compile `bboxy450-term` (bin "bboxy450-term") due to 1 previous error
+error: could not compile `bboxy450-term` (bin "bboxy450-term" test) due to 1 previous error
+
+
+FILE clippy-stage3.log
+   Compiling winnow v1.0.4
+    Checking tokio v1.54.1
+    Checking futures-core v0.3.34
+    Checking futures-sink v0.3.34
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+   Compiling pulldown-cmark v0.13.4
+    Checking unicase v2.10.0
+    Checking unicode-segmentation v1.13.3
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+   Compiling hashbrown v0.17.1
+   Compiling equivalent v1.0.3
+    Checking futures-util v0.3.34
+    Checking toml_datetime v1.1.2+spec-1.1.0
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+   Compiling target-triple v1.0.1
+    Checking serde_spanned v1.1.2
+    Checking toml_writer v1.1.3+spec-1.1.0
+    Checking termcolor v1.4.1
+    Checking glob v0.3.4
+    Checking aho-corasick v1.1.5
+   Compiling indexmap v2.14.2
+    Checking regex-syntax v0.8.11
+    Checking unicode-ident v1.0.27
+    Checking proc-macro2 v1.0.107
+    Checking toml_parser v1.1.5+spec-1.1.0
+    Checking quote v1.0.47
+    Checking toml v1.1.8+spec-1.1.0
+    Checking syn v2.0.119
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling toml_edit v0.25.17+spec-1.1.0
+    Checking trybuild v1.0.120
+    Checking regex-automata v0.4.18
+    Checking proc-macro-crate v3.5.0
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn-macros)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking regex v1.13.1
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking tokio-tungstenite v0.30.0
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking tokio-util v0.7.19
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-yarn)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 25.31s
+
+
+FILE clippy-stage4.log
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Finished `dev` profile [optimized] target(s) in 2.85s
+
+
+FILE commit-probe-observations.log
+
+
+FILE commit-probe-observations2.log
+[exec5-attention 35857f7] Distinguish native focus evidence from a raise request
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+
+FILE cross-linux.log
+    Checking bboxy450-desktop-notifications-linux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-linux)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Finished `dev` profile [optimized] target(s) in 0.32s
+
+
+FILE cross-os-post-g3.log
+cross-os: held
+
+
+FILE cross-windows.log
+    Checking bboxy450-desktop-notifications-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-windows)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Finished `dev` profile [optimized] target(s) in 0.33s
+
+
+FILE fmt-app.log
+
+
+FILE fmt-app2.log
+
+
+FILE fmt-pending-mute.log
+
+
+FILE fmt-probe-observations.log
+
+
+FILE fmt-probe.log
+
+
+FILE fmt-stage2.log
+
+
+FILE fmt-stage3.log
+
+
+FILE fmt-stage4.log
+
+
+FILE layers-post-g3.log
+layering: held
+
+
+FILE licenses-post-g3.log
+licenses: 19 workspace crates, SPDX map and required root/crate files present
+
+
+FILE notification-check.log
+    Updating crates.io index
+     Locking 1 package to highest Rust 1.99 compatible version
+      Adding objc2-user-notifications v0.3.2
+ Downloading crates ...
+  Downloaded objc2-user-notifications v0.3.2
+   Compiling objc2 v0.6.5
+    Checking objc2-encode v4.1.0
+    Checking bitflags v2.13.2
+    Checking bboxy450-desktop-notifications-linux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-linux)
+    Checking bboxy450-desktop-notifications-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-windows)
+    Checking block2 v0.6.2
+    Checking objc2-foundation v0.3.2
+    Checking objc2-user-notifications v0.3.2
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+error[E0599]: no method named `ivars` found for reference `&Delegate` in the current scope
+  --> crates/bboxy450-desktop-notifications-macos/src/lib.rs:68:37
+   |
+68 |             deliver(response, &self.ivars().callback, || completion.call(()));
+   |                                     ^^^^^ method not found in `&Delegate`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `DefinedClass` which provides `ivars` is implemented but not in scope; perhaps you want to import it
+   |
+ 9 + use objc2::DefinedClass;
+   |
+
+error[E0599]: no associated function or constant named `alloc` found for struct `Delegate` in the current scope
+   --> crates/bboxy450-desktop-notifications-macos/src/lib.rs:107:30
+    |
+ 46 | / define_class!(
+ 47 | |     #[unsafe(super(NSObject))]
+ 48 | |     #[name = "BBoxy450NotificationDelegate"]
+ 49 | |     #[ivars = Ivars]
+...   |
+ 82 | | );
+    | |_- associated function or constant `alloc` not found for this struct
+...
+107 |       let delegate = Delegate::alloc().set_ivars(Ivars { callback });
+    |                                ^^^^^ associated function or constant not found in `Delegate`
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `AnyThread` which provides `alloc` is implemented but not in scope; perhaps you want to import it
+    |
+  9 + use objc2::AnyThread;
+    |
+
+error[E0308]: mismatched types
+   --> crates/bboxy450-desktop-notifications-macos/src/lib.rs:144:61
+    |
+144 |         center.getNotificationSettingsWithCompletionHandler(&callback);
+    |                -------------------------------------------- ^^^^^^^^^ expected `&Block<dyn Fn(NonNull<_>)>`, found `&RcBlock<dyn Fn(*mut _)>`
+    |                |
+    |                arguments to this method are incorrect
+    |
+    = note: expected reference `&block2::Block<(dyn Fn(NonNull<UNNotificationSettings>) + 'static)>`
+               found reference `&RcBlock<dyn Fn(*mut UNNotificationSettings)>`
+note: method defined here
+   --> /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/objc2-user-notifications-0.3.2/src/generated/UNUserNotificationCenter.rs:117:16
+    |
+117 |         pub fn getNotificationSettingsWithCompletionHandler(
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some errors have detailed explanations: E0308, E0599.
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `bboxy450-desktop-notifications-macos` (lib) due to 3 previous errors
+
+
+FILE notification-check2-0.log
+
+
+FILE notification-check2-1.log
+error: cannot update the lock file /Users/feral/mydev/bboxy450-term-exec5/Cargo.lock because --locked was passed to prevent this
+help: to generate the lock file without accessing the network, remove the --locked flag and use --offline instead.
+
+
+FILE notification-family-tests.log
+   Compiling bitflags v2.13.2
+   Compiling bboxy450-desktop-notifications-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-windows)
+   Compiling bboxy450-desktop-notifications-linux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-linux)
+   Compiling objc2-foundation v0.3.2
+   Compiling objc2-user-notifications v0.3.2
+   Compiling bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Finished `test` profile [optimized] target(s) in 1.89s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/bboxy450_desktop_notifications-79414bba07c83c5f)
+
+running 1 test
+test tests::notifier_port_is_send_and_sync ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/bboxy450_desktop_notifications_linux-b78f836c1948ee60)
+
+running 1 test
+test tests::research_marker_is_the_runtime_result ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/bboxy450_desktop_notifications_macos-a65a7ff2d2515e5f)
+
+running 2 tests
+test tests::delegate_forwards_the_posted_id_before_completing ... ok
+test tests::a_panicking_callback_does_not_skip_native_completion ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/bboxy450_desktop_notifications_windows-dcb1490a2a3aa324)
+
+running 1 test
+test tests::research_marker_is_the_runtime_result ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxy450_desktop_notifications
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxy450_desktop_notifications_linux
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxy450_desktop_notifications_macos
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxy450_desktop_notifications_windows
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+
+FILE notification-worker-tests.log
+   Compiling bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+   Compiling bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Finished `test` profile [optimized] target(s) in 5.33s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/bboxy450_term-88b0c07fb09b4d73)
+
+running 1 test
+test notifications::tests::replacement_and_removal_use_the_same_id_off_the_caller_thread ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.00s
+
+
+
+FILE probe-bundle-build1.log
+   Compiling bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 26.74s
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe.app/Contents/Info.plist: OK
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe.app: replacing existing signature
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe.app: valid on disk
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe.app: satisfies its Designated Requirement
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe.app
+
+
+FILE probe-bundle-rebased.log
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+   Compiling bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 31.26s
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe.app/Contents/Info.plist: OK
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe.app: replacing existing signature
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe.app: valid on disk
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe.app: satisfies its Designated Requirement
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/bboxy450-notification-probe.app
+
+
+FILE probe-check1.log
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Finished `dev` profile [optimized] target(s) in 11.31s
+
+
+FILE probe-release-cfg-proof.log
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+error: notification_probe is debug-only; it must not be included in release builds
+ --> crates/bboxy450-term/examples/notification_probe.rs:8:1
+  |
+8 | compile_error!("notification_probe is debug-only; it must not be included in release builds");
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: could not compile `bboxy450-term` (example "notification_probe") due to 1 previous error
+
+
+FILE rustup-cross-targets.log
+info: downloading 2 components
+
+
+FILE test-pending-mute.log
+   Compiling bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+   Compiling bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Finished `test` profile [optimized] target(s) in 17.30s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/bboxy450_term-88b0c07fb09b4d73)
+
+running 3 tests
+test notifications::tests::replacement_and_removal_use_the_same_id_off_the_caller_thread ... ok
+test notifications::tests::a_fresh_worker_withdraws_known_inactive_ids_from_an_old_process ... ok
+test notifications::tests::a_mute_admitted_during_authorization_prevents_the_pending_post ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 24 filtered out; finished in 0.00s
+
+
+
+FILE tests-cold-click.log
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 28.43s
+     Running unittests src/main.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/bboxy450_term-fb2f2193fbf54293)
+
+running 1 test
+test launcher_host_tests::cold_notification_waits_for_its_exact_seat_and_never_selects_a_substitute ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 66 filtered out; finished in 0.00s
+
+
+
+FILE tests-lib-after-withdraw.log
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 7.45s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/bboxy450_term-88b0c07fb09b4d73)
+
+running 26 tests
+test attention::tests::muted_and_supplied_notification_preferences_never_post_or_change_focus ... ok
+test attention::tests::all_three_wait_reasons_and_generation_are_typed ... ok
+test attention::tests::one_episode_loops_until_explicit_focus_or_leaving_and_repeat_keeps_its_key ... ok
+test attention::tests::live_state_updates_preserve_stage_and_handling_survives_model_rebuild ... ok
+test keyboard_adapter_uses_neutral_core_and_live_modes ... ok
+test cockpit::gui_io_tests::writer_task_death_is_disconnected_even_while_the_reader_stays_connected ... ok
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test model::event_lane_tests::metadata_rebuild_and_reconnect_preserve_the_published_window ... ok
+test model::event_lane_tests::rows_dedupe_by_canonical_identity_and_keep_per_stream_order ... ok
+test model::event_lane_tests::stale_transport_snapshots_cannot_roll_back_operator_read_state ... ok
+test model::event_lane_tests::sparse_history_pages_keep_next_without_acknowledging_or_marking_read ... ok
+test model::tests::a_second_spawn_and_refresh_preserve_the_first_explicit_split ... ok
+test model::tests::custody_held_spawns_release_in_admission_order_with_the_same_captured_requests ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test model::tests::pending_spawns_are_bounded_and_a_reused_id_never_requeues_an_effect ... ok
+test model::tests::removed_or_replaced_anchor_keeps_the_new_seat_and_names_the_partial_outcome ... ok
+test model::tests::reversed_spawn_replies_use_their_captured_anchors_and_duplicates_are_inert ... ok
+test model::tests::unknown_spawn_and_unrelated_metadata_never_place_or_lose_the_request ... ok
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test cockpit::gui_io_tests::oversized_request_is_rejected_before_enqueue_without_stopping_the_writer ... ok
+test notifications::tests::a_fresh_worker_withdraws_known_inactive_ids_from_an_old_process ... ok
+test model::event_lane_tests::byte_budget_is_independent_of_row_count ... ok
+test notifications::tests::replacement_and_removal_use_the_same_id_off_the_caller_thread ... ok
+test model::event_lane_tests::window_eviction_is_visible_and_old_replays_do_not_repopulate_it ... ok
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+
+
+FILE tests-lib-full.log
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 8.65s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/bboxy450_term-88b0c07fb09b4d73)
+
+running 25 tests
+test attention::tests::muted_and_supplied_notification_preferences_never_post_or_change_focus ... ok
+test attention::tests::all_three_wait_reasons_and_generation_are_typed ... ok
+test attention::tests::live_state_updates_preserve_stage_and_handling_survives_model_rebuild ... ok
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test keyboard_adapter_uses_neutral_core_and_live_modes ... ok
+test attention::tests::one_episode_loops_until_explicit_focus_or_leaving_and_repeat_keeps_its_key ... ok
+test cockpit::gui_io_tests::writer_task_death_is_disconnected_even_while_the_reader_stays_connected ... ok
+test model::event_lane_tests::byte_budget_is_independent_of_row_count ... ok
+test model::event_lane_tests::metadata_rebuild_and_reconnect_preserve_the_published_window ... ok
+test model::event_lane_tests::rows_dedupe_by_canonical_identity_and_keep_per_stream_order ... ok
+test model::event_lane_tests::sparse_history_pages_keep_next_without_acknowledging_or_marking_read ... ok
+test model::event_lane_tests::stale_transport_snapshots_cannot_roll_back_operator_read_state ... ok
+test model::tests::a_second_spawn_and_refresh_preserve_the_first_explicit_split ... ok
+test model::tests::custody_held_spawns_release_in_admission_order_with_the_same_captured_requests ... ok
+test model::tests::pending_spawns_are_bounded_and_a_reused_id_never_requeues_an_effect ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test model::tests::removed_or_replaced_anchor_keeps_the_new_seat_and_names_the_partial_outcome ... ok
+test model::tests::reversed_spawn_replies_use_their_captured_anchors_and_duplicates_are_inert ... ok
+test cockpit::gui_io_tests::oversized_request_is_rejected_before_enqueue_without_stopping_the_writer ... ok
+test model::event_lane_tests::window_eviction_is_visible_and_old_replays_do_not_repopulate_it ... ok
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test model::tests::unknown_spawn_and_unrelated_metadata_never_place_or_lose_the_request ... ok
+test notifications::tests::replacement_and_removal_use_the_same_id_off_the_caller_thread ... ok
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+
+
+FILE tests-live-attention.log
+   Compiling bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 17.76s
+     Running unittests src/main.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-7iph9ywy/dev-target/debug/deps/bboxy450_term-fb2f2193fbf54293)
+
+running 1 test
+test live::tests::waiting_attention_is_published_before_ack_but_history_pages_are_passive ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 66 filtered out; finished in 0.00s
+
+Evidence recording follow-up: first staged diff --check exit2 for an extra aggregate separator newline at EOF; aggregate separator trimmed, raw CI file unchanged; final diff --check exit0.

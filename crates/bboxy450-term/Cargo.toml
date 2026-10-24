@@ -8,7 +8,15 @@ authors.workspace = true
 rust-version.workspace = true
 description = "bboxy450-term: bboxy450-term"
 
+[features]
+notification-probe = ["bboxy450-desktop-notifications/probe"]
+
+[[example]]
+name = "notification_probe"
+required-features = ["notification-probe"]
+
 [dependencies]
+bboxy450-desktop-notifications = { path = "../bboxy450-desktop-notifications" }
 bbt-core = { path = "../bbt-core" }
 bbt-proto = { path = "../bbt-proto" }
 bbt-mux = { path = "../bbt-mux" }

@@ -1,4 +1,5 @@
 //! App process boundaries, IO-owned terminal models and worker-prepared frames.
+pub mod attention;
 pub mod cockpit;
 pub mod ctl;
 pub mod grids;
@@ -8,6 +9,7 @@ pub mod knowledge;
 pub mod launcher;
 pub mod messaging;
 pub mod model;
+pub mod notifications;
 pub mod scrollback;
 
 #[cfg(test)]

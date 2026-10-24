@@ -70,6 +70,9 @@ pub enum UiEvent {
     /// No frame was presented for this capture in time (occluded, or the display asleep).
     CaptureDeadline(bbt_mux::Ulid),
     StallPoll,
+    Notification(bboxy450_desktop_notifications::Response),
+    NotificationReady,
+    NotificationError(String),
 }
 struct Wake(EventLoopProxy<UiEvent>);
 impl bbt_rt::Waker for Wake {
@@ -147,6 +150,35 @@ enum FocusAction {
 enum TextFocus {
     Composer(ComposeField),
     Reject(bbt_mux::Ulid),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum NotificationTarget {
+    Pending,
+    Ready,
+    Refused(&'static str),
+}
+fn notification_target(
+    seat: SeatId,
+    received: Instant,
+    now: Instant,
+    model: Option<&bboxy450_term::model::Model>,
+    window: bool,
+) -> NotificationTarget {
+    if now.saturating_duration_since(received) >= Duration::from_secs(30) {
+        return NotificationTarget::Refused("seat unavailable within 30 seconds");
+    }
+    let Some(row) = model.and_then(|model| model.ui.seats.get(&seat)) else {
+        return NotificationTarget::Pending;
+    };
+    if row.lifecycle != bbt_ui_model::Lifecycle::Open {
+        return NotificationTarget::Refused("seat is closed");
+    }
+    if window {
+        NotificationTarget::Ready
+    } else {
+        NotificationTarget::Pending
+    }
 }
 impl FocusState {
     fn reconcile(&mut self, _previous: Option<&UiModel>, next: &UiModel) {
@@ -958,6 +990,10 @@ struct App {
     focus_bounds: Vec<(SeatId, Rect)>,
     scroll_wheel: Option<(SeatId, f64)>,
     focus: FocusState,
+    notifications: Option<bboxy450_term::notifications::Worker>,
+    notification_settings: bboxy450_term::attention::Notifications,
+    frontmost: bool,
+    pending_notification: Option<(SeatId, Instant)>,
     spawn_results_seen: BTreeMap<bbt_mux::Ulid, bboxy450_term::model::SpawnOutcome>,
     launcher: Option<LauncherController>,
     launcher_layout: Option<scene::LauncherLayout>,
@@ -1671,7 +1707,7 @@ impl App {
         {
             window.set_ime_allowed(false);
         }
-        let Some(model) = &self.live_state else {
+        let Some(model) = self.live_state.clone() else {
             return;
         };
         match self
@@ -1680,15 +1716,106 @@ impl App {
         {
             Ok(events) => {
                 self.scene.set_model(
-                    model,
+                    &model,
                     self.focus.stage.as_ref().expect("focus action stage"),
                 );
+                self.attention_focus_events(&events, true);
                 for event in events {
                     self.logger.write(format!("ui input: {event:?}"));
                 }
                 self.request_redraw();
+                self.sync_notifications();
             }
             Err(error) => self.logger.write(format!("focus refused: {error}")),
+        }
+    }
+    fn attention_focus_events(&mut self, events: &[InputEvent], explicit: bool) {
+        let Some(model) = &self.live_state else {
+            return;
+        };
+        let now = Instant::now();
+        let mut landed: BTreeMap<SeatId, Option<Instant>> = BTreeMap::new();
+        if explicit && let Some(seat) = self.focus.stage.as_ref().and_then(|stage| stage.focused) {
+            landed.insert(seat, None);
+        }
+        for event in events {
+            if let InputEvent::Locate { seat, .. } = event {
+                landed.insert(*seat, Some(now));
+            }
+        }
+        let actions: Vec<_> = landed
+            .into_iter()
+            .filter_map(|(seat, landed)| {
+                let row = model.ui.seats.get(&seat)?;
+                Some(live::UiMsg::AttentionFocus {
+                    seat,
+                    generation: row.process_generation,
+                    episode: model.attention_key(seat),
+                    landed,
+                })
+            })
+            .collect();
+        for action in actions {
+            self.queue(action);
+        }
+    }
+    fn sync_notifications(&mut self) {
+        if let (Some(worker), Some(model)) = (&mut self.notifications, &self.live_state) {
+            let focused = self.focus.stage.as_ref().and_then(|stage| stage.focused);
+            let known = model
+                .ui
+                .seats
+                .keys()
+                .map(|seat| bboxy450_desktop_notifications::NotificationId(seat.0.to_string()))
+                .collect();
+            worker.submit(
+                model.notifications(&self.notification_settings, self.frontmost, focused),
+                known,
+            );
+        }
+    }
+    fn notification_clicked(&mut self, id: bboxy450_desktop_notifications::NotificationId) {
+        match id.0.parse::<bbt_mux::Ulid>() {
+            Ok(id) => {
+                self.pending_notification = Some((SeatId::from_u128(id.0), Instant::now()));
+                self.apply_notification_click();
+            }
+            Err(_) => self
+                .logger
+                .write("notification focus refused: invalid seat id"),
+        }
+    }
+    fn apply_notification_click(&mut self) {
+        let Some((seat, at)) = self.pending_notification else {
+            return;
+        };
+        match notification_target(
+            seat,
+            at,
+            Instant::now(),
+            self.live_state.as_deref(),
+            self.window.is_some(),
+        ) {
+            NotificationTarget::Pending => return,
+            NotificationTarget::Refused(reason) => {
+                self.pending_notification = None;
+                self.logger
+                    .write(format!("notification focus refused: {reason}"));
+                return;
+            }
+            NotificationTarget::Ready => {}
+        }
+        self.pending_notification = None;
+        // The same controller used for a sidebar activation owns tab selection
+        // and the deferred Locate after the target tab's layout becomes ready.
+        self.focus_action(FocusAction::Activate(seat, FocusOrigin::Row));
+        if self.focus.stage.as_ref().and_then(|stage| stage.focused) == Some(seat)
+            && let Some(window) = &self.window
+        {
+            window.set_minimized(false);
+            window.focus_window();
+            self.logger
+                .write(format!("notification focused seat {seat}"));
         }
     }
     fn queue(&mut self, message: live::UiMsg) {
@@ -1988,6 +2115,7 @@ impl App {
             prepared.publish(result);
         });
         self.window = Some(window);
+        self.apply_notification_click();
         if self.smoke {
             // Force an early producer wake before GPU bootstrap. This catches
             // the live-seat startup race in the real native CI probe.
@@ -2154,6 +2282,8 @@ impl App {
                 self.spawn_results_seen.insert(op, outcome);
                 self.queue(live::UiMsg::ConsumeSpawn { id: op });
             }
+            self.apply_notification_click();
+            self.sync_notifications();
             self.verify();
         }
         self.flush_commands();
@@ -2293,12 +2423,9 @@ impl App {
         if let Some(model) = &self.live_state
             && self.local_tab.is_none()
         {
-            for event in self.focus.layout_ready(&model.ui, &self.focus_bounds) {
-                // The focus swell replaces the locate ripple (rim-glow §7): it starts when the
-                // focus lands, after any tab switch, once its layout is ready.
-                if let InputEvent::Locate { seat, .. } = &event {
-                    self.scene.swell(*seat, Instant::now());
-                }
+            let events = self.focus.layout_ready(&model.ui, &self.focus_bounds);
+            self.attention_focus_events(&events, false);
+            for event in events {
                 self.logger.write(format!("ui input: {event:?}"));
             }
         }
@@ -2500,7 +2627,14 @@ impl App {
     }
 }
 impl ApplicationHandler<UiEvent> for App {
-    fn about_to_wait(&mut self, _: &ActiveEventLoop) {
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        self.apply_notification_click();
+        event_loop.set_control_flow(
+            self.pending_notification
+                .map_or(ControlFlow::Wait, |(_, at)| {
+                    ControlFlow::WaitUntil(at + Duration::from_secs(30))
+                }),
+        );
         if let Some(size) = self.pending_resize.take()
             && let Some(window) = &self.window
         {
@@ -2517,6 +2651,16 @@ impl ApplicationHandler<UiEvent> for App {
     }
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: UiEvent) {
         match event {
+            UiEvent::Notification(bboxy450_desktop_notifications::Response::Clicked(id)) => {
+                self.notification_clicked(id)
+            }
+            UiEvent::Notification(bboxy450_desktop_notifications::Response::Dismissed(_)) => {}
+            UiEvent::NotificationReady => {
+                if let Some(worker) = &mut self.notifications {
+                    worker.flush();
+                }
+            }
+            UiEvent::NotificationError(reason) => self.logger.write(reason),
             UiEvent::StallPoll => {
                 let stall = &mut self.stall;
                 if let Some(gpu) = &self.gpu {
@@ -2802,6 +2946,10 @@ impl ApplicationHandler<UiEvent> for App {
             }
         }
         match event {
+            WindowEvent::Focused(focused) => {
+                self.frontmost = focused;
+                self.sync_notifications();
+            }
             WindowEvent::CloseRequested => {
                 self.request_close(event_loop);
             }
@@ -3362,6 +3510,30 @@ fn queue_pending(
         && pending.iter().filter(|m| is_operation(m)).count() >= PENDING_OPERATIONS
     {
         return Err(AdmissionRefused::Operation);
+    }
+    if let live::UiMsg::AttentionFocus {
+        seat,
+        generation,
+        episode,
+        landed,
+    } = &message
+        && let Some(index) = pending.iter().position(
+            |old| matches!(old, live::UiMsg::AttentionFocus { seat: old, .. } if old == seat),
+        )
+    {
+        if let live::UiMsg::AttentionFocus {
+            generation: old_generation,
+            episode: old_episode,
+            landed: old_landed,
+            ..
+        } = &mut pending[index]
+            && *old_generation == *generation
+        {
+            *old_episode = *episode;
+            *old_landed = landed.or(*old_landed);
+            return Ok(());
+        }
+        pending.remove(index);
     }
     if let live::UiMsg::Input { bytes, .. } = &message {
         let mut input_bytes = 0;
@@ -3984,6 +4156,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .find(|pair| pair[0] == "--capture")
         .map(|pair| std::path::PathBuf::from(&pair[1]));
     let logger = log::Logger::new();
+    // The delegate is installed before run_app finishes application launch.
+    // Authorization and native completion waits run only on the bounded worker.
+    let callback_proxy = proxy.clone();
+    let notifications = match bboxy450_desktop_notifications::open(Box::new(move |response| {
+        let _ = callback_proxy.send_event(UiEvent::Notification(response));
+    })) {
+        Ok(notifier) => {
+            let progress = proxy.clone();
+            match bboxy450_term::notifications::Worker::start(
+                notifier,
+                Arc::new(move |event| {
+                    let _ = progress.send_event(match event {
+                        bboxy450_term::notifications::Event::Ready => UiEvent::NotificationReady,
+                        bboxy450_term::notifications::Event::Error(reason) => {
+                            UiEvent::NotificationError(reason)
+                        }
+                    });
+                }),
+            ) {
+                Ok(worker) => Some(worker),
+                Err(error) => {
+                    logger.write(format!("notifications unavailable: {error}"));
+                    None
+                }
+            }
+        }
+        Err(error) => {
+            logger.write(error.to_string());
+            None
+        }
+    };
     let (render_context, rendering) = tokio::sync::oneshot::channel();
     let (stall, live_commands) = if let Some(config) = stall_config {
         let proxy = proxy.clone();
@@ -4034,6 +4237,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         focus_bounds: vec![],
         scroll_wheel: None,
         focus: FocusState::default(),
+        notifications,
+        notification_settings: bboxy450_term::attention::Notifications::default(),
+        frontmost: false,
+        pending_notification: None,
         spawn_results_seen: BTreeMap::new(),
         launcher: args
             .iter()
@@ -4547,6 +4754,7 @@ mod input_tests {
                 | live::UiMsg::Task { .. }
                 | live::UiMsg::EventPage { .. }
                 | live::UiMsg::EventCursor { .. }
+                | live::UiMsg::AttentionFocus { .. }
                 | live::UiMsg::MarkEventsRead { .. }
                 | live::UiMsg::Captured { .. } => {
                     panic!("pane admission fixture produced a messaging intent")
@@ -5248,6 +5456,45 @@ mod launcher_host_tests {
             Some(SeatId::from_u128(1))
         );
     }
+    #[test]
+    fn cold_notification_waits_for_its_exact_seat_and_never_selects_a_substitute() {
+        let seat = SeatId::from_u128(3);
+        let now = Instant::now();
+        let mut model = bboxy450_term::model::Model::default();
+        assert_eq!(
+            notification_target(seat, now, now, None, false),
+            NotificationTarget::Pending
+        );
+        model.metadata_initialized = true;
+        assert_eq!(
+            notification_target(seat, now, now, Some(&model), true),
+            NotificationTarget::Pending
+        );
+        model.ui = fixture();
+        let stage = model.ui.window.stage.clone();
+        assert_eq!(
+            notification_target(seat, now, now, Some(&model), false),
+            NotificationTarget::Pending
+        );
+        assert_eq!(
+            notification_target(seat, now, now, Some(&model), true),
+            NotificationTarget::Ready
+        );
+        assert_eq!(
+            model.ui.window.stage, stage,
+            "readiness and native responses only emit an explicit focus intent"
+        );
+        assert!(matches!(
+            notification_target(seat, now, now + Duration::from_secs(30), Some(&model), true),
+            NotificationTarget::Refused(_)
+        ));
+        model.ui.seats.get_mut(&seat).unwrap().lifecycle = bbt_ui_model::Lifecycle::ClosedRetained;
+        assert_eq!(
+            notification_target(seat, now, now, Some(&model), true),
+            NotificationTarget::Refused("seat is closed")
+        );
+    }
+
     #[test]
     fn stage_switch_waits_for_the_new_outer_pane_before_locate_once() {
         let model = fixture();

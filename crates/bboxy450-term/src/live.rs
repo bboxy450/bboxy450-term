@@ -357,7 +357,17 @@ fn publish_delivery(
         ),
         GuiEventRecord::Gap(gap) => (gap.stream.clone(), gap.last),
     };
+    let seat = match &record {
+        GuiEventRecord::Event(row) => match &row.payload {
+            GuiEventPayload::Seat { seat } => Some(seat.clone()),
+            _ => None,
+        },
+        GuiEventRecord::Gap(_) => None,
+    };
     if event_model(model).apply(record).map_err(invalid)? {
+        if let Some(seat) = seat {
+            Arc::make_mut(model).observe_attention(&seat, Instant::now());
+        }
         updates.publish(model.clone());
     }
     Ok((seq != 0).then_some(GuiAction::EventAck { stream, seq }))
@@ -791,6 +801,11 @@ async fn run(
                     UiMsg::EventCursor {stream}=>queue_action(&mut outgoing,GuiAction::GetEventCursor {stream:stream.clone()}),
                     UiMsg::Captured {id,error,frame}=>queue_action(&mut outgoing,GuiAction::Captured {id:*id,error:error.clone(),frame:*frame}),
                     UiMsg::MarkEventsRead {stream,sequence}=>queue_action(&mut outgoing,GuiAction::MarkEventsRead {stream:stream.clone(),seq:*sequence}),
+                    UiMsg::AttentionFocus {seat,generation,episode,landed}=> {
+                        if Arc::make_mut(&mut model).attention_focus(*seat,*generation,*episode,*landed) {
+                            updates.publish(model.clone());
+                        }
+                    }
                     UiMsg::Resize {seat,generation,cols,rows}=> {
                         if seats.get(&Ulid(seat.0.0)).is_some_and(|metadata| metadata.state.generation==*generation) {
                             if grids.screen(*seat).is_some_and(|screen| (screen.cols,screen.rows) != (usize::from(*cols),usize::from(*rows)))
@@ -2004,6 +2019,92 @@ mod tests {
         assert_eq!(published.events.page_snapshots()["swarm-exact"].revision, 2);
         assert!(!published.events.page_errors().contains_key("swarm-exact"));
         assert!(replies.0.is_empty());
+    }
+
+    #[test]
+    fn waiting_attention_is_published_before_ack_but_history_pages_are_passive() {
+        use bbt_proto::events::*;
+        let make_row = |sequence, activity| {
+            let seat = GuiSeat {
+                record: bbt_proto::SeatRecord::new(Ulid(3), Ulid(1), "question fixture", "claude"),
+                state: bbt_proto::SeatState {
+                    generation: 1,
+                    process: ProcessStatus::Running { pid: 9 },
+                    activity,
+                    grade: bbt_proto::Grade::Shim,
+                    title: String::new(),
+                    detail: Some("May I continue?".into()),
+                    turn_open: true,
+                    observed_ms: sequence,
+                    subagents: vec![],
+                },
+            };
+            GuiEventRecord::Event(Box::new(GuiEventEnvelope {
+                metadata: EventMetadata {
+                    reference: EventReference {
+                        position: EventPosition {
+                            stream: "account".into(),
+                            sequence,
+                        },
+                        hash: format!("{sequence:064x}"),
+                    },
+                    id: Ulid(u128::from(sequence)),
+                    ts: sequence,
+                    subject: "seat/fixture/state".into(),
+                    source: "fixture".into(),
+                    seat: Some(Ulid(3)),
+                    generation: Some(1),
+                    proof: EventProof {
+                        scope: EventSignatureScope::OriginalRetainedEnvelope,
+                        public_key: "fixture reference".into(),
+                        signature: "not independently verified by display cache".into(),
+                        prev: String::new(),
+                    },
+                },
+                projected_at: sequence,
+                cursor: None,
+                payload: GuiEventPayload::Seat {
+                    seat: Box::new(seat),
+                },
+            }))
+        };
+        let dirty = bbt_rt::DirtySet::new(1, Arc::new(NoWake));
+        let updates = Latest::new(dirty.source(0));
+        let mut model = Arc::new(Model::default());
+        let waiting = make_row(
+            1,
+            bbt_proto::Activity::Waiting(bbt_proto::WaitKind::Question),
+        );
+        let ack = publish_delivery(&mut model, &updates, waiting.clone()).unwrap();
+        assert!(matches!(ack, Some(GuiAction::EventAck { seq: 1, .. })));
+        let published = updates.take().unwrap();
+        assert!(published.attention.contains_key(&SeatId::from_u128(3)));
+        assert!(published.ui.window.stage.focused.is_none());
+        let episode = published.attention_key(SeatId::from_u128(3));
+        publish_delivery(&mut model, &updates, waiting.clone()).unwrap();
+        assert!(updates.take().is_none());
+        assert_eq!(model.attention_key(SeatId::from_u128(3)), episode);
+        publish_delivery(&mut model, &updates, make_row(2, bbt_proto::Activity::Idle)).unwrap();
+        assert!(updates.take().unwrap().attention.is_empty());
+        let mut history = Arc::new(Model::default());
+        event_model(&mut history)
+            .apply_page(GuiEventPage {
+                records: vec![waiting],
+                next: None,
+                cursor: GuiEventCursor {
+                    stream: "account".into(),
+                    admitted: 1,
+                    acknowledged: 1,
+                    read: 0,
+                    high: 1,
+                    unread: 0,
+                },
+            })
+            .unwrap();
+        assert!(
+            history.attention.is_empty(),
+            "reading a historical wait must never notify"
+        );
     }
 
     #[test]

@@ -1,0 +1,110 @@
+ATTENTION final handoff — exact clean CI exit 0; Oracle acceptance pending
+Source: 568aa522fdcee8e65eb2d1d7e304efd1a57c2e2a; branch exec5-attention-followup; base c07e26e1bef0f6d86da532a8c60f2f3df22f7e88.
+Frozen old branch exec5-attention remains 237e537edd68ba4a145e7db1c44ea4aaf2ba709f.
+
+New follow-up mechanisms:
+- scripts/bundle-macos.sh:10 and notification-probe-macos.sh:7: pinned approved Apple Development identity, named missing-identity refusal, runtime signature, strict verification. Bare cargo has no runner.
+- packaging/macos/Info.plist:9 + bboxy.icns + .source-sha256: canonical bboxy face included in both bundles; repository/source home PNG digests agree; generated icon decoded and viewed.
+- scene.rs:330: model attention/focus Instants feed existing G5 setters; old attention entries removed, closed-seat swell entries bounded; no paint/math/layout change.
+- main.rs:2427: direct Locate->Scene swell removed; existing AttentionFocus local IO intent is the single model trigger after landing.
+- scene.rs:1336: actual model waiting -> both row/pane loop; mute quiets; handling clears; focus swell ends once; repeated model publication cannot restart it; geometry/focus stay unchanged.
+- .bboxy/runs/attention-physical-results.log: full committed raw evidence 14bc2d49 cited; no duplicate raw log. All three Apple behaviours proven with initial timeout/Denied nuance. Original first-session extracts lacked the later cold-launch PIDs.
+
+Preserved original ATTENTION mechanisms:
+- Four facade/backend crates with no bbt-* dependencies. macOS early define_class delegate, 2s completion bounds and exact identifier; Windows/Linux named Unsupported dummies and research markers.
+- model.rs:516 attention/focus_swell/episodes preserved through rebuild with events, operation_results, history and e2e.
+- live.rs:348 current Waiting observed before model publication/ACK; history remains passive; local AttentionFocus at804 uses no GUI ActionReplies slot.
+- main.rs:1732/1762/1788 focus intents, policy, cold exact-target path; early open4162 before run_app4321; one bounded native worker.
+
+Prechecks (actual logs retained):
+- App library34/0.
+- Initial binary test precheck87/3 exit101: explicit assertions required building the app executable first. cargo build0, rerun90/0. No product fix for that precondition.
+- Notification family5/0; Linux and Windows facade cargo check each0; no VM/runtime OS backend claimed.
+- Strict workspace/all-target Clippy with notification-probe feature0.
+- Both bundle recipes0, plutil0, strict signature verification0, exact certificate SHA1/team and sealed icon verification0. First extra certificate extraction used the wrong optional-argument form; corrected read-only helper0, no bundle modification.
+- images/licenses/layering0; rebase all five patches '=' and only upstream raw-proof/spec/lab changes in tree delta.
+- git diff35857f7 -- facade/backend directories + notification_probe example0; physical probe native source unchanged. New binary hashes are separate artifacts, not claimed as physically run.
+
+Physical evidence:
+231-line .bboxy/runs/attention-physical-probe-2026-10-24.jsonl at14bc2d49, sha2568b6d3935481ec31e5b3582dd5d7c4dfc555e065f6a254248085e637e4bdedad2, signature verified0.
+Permission timeout99/Denied100 before Granted119; permission persisted into new73566 without authorize. Replacement153/155 then singleton delivered lists157-165. Cold73566 post216/218, exit222 -> new74411 launch224/click227/focus228. deferred_landing is tab switch, not proof alone. Old ad-hoc denial at5; identity-signed operator artifact works.
+
+Deliberately separate: Settings persistence/host/Cmd-M transport (Velvet), real Windows/Linux backends, Developer ID distribution signing. Product uses pure supplied prefs and authoritative record.muted. G5 projection glue is complete here; Seraph notified so no duplicate follow-up.
+
+Full clean ci-local --parity in granted slot 2: EXIT 0, 3302.6083278656006 s.
+Start 2026-10-24T09:28:47-0700; end 2026-10-24T10:23:49-0700.
+Raw .bboxy/runs/attention-followup-ci.log SHA256 b2d2d3f069e6b84e92f19b1ba001dc8219135de755a59c108a1fa360efe426cb.
+Workspace test groups: 1165 passed, 0 failed, 23 ignored (before invariant reruns).
+UI lint0; native smoke0: bare NoBundle logged once, idle10.001 s with0frames/0callbacks, CPU p50 4.908ms/p99 6.697ms.
+Invariants:19 checks,0failures,8 named slow checks skipped. No ignored real-Keychain tests were run. The gate used explicit BBOXY_TEST_CUSTODY=memory; fixtures also retain their injected stores. Code signing separately used the approved signing identity.
+Current strict parity:2104 cases,2000 required/measured geometry,0unproven,0mismatches;72 pixel reviews advisory. No advisory-baseline delta is claimed.
+Legacy diagnostic:1664 cases,851 pixel reviews, non-gating; no legacy geometry claim.
+The first post-gate report reader assumed an object but report.json is an array; it raised AttributeError (reader exit1). Corrected bounded array reader0 confirms2104 rows/2000 complete geometry/72 reviews. No source or gate change.
+Both the owned development target and the gate target are deleted; own detached gate worktree removed exit0. Both signed bundles and parity artifacts remain in the new scratch. No owned build/app job remains. No source rebase after the gate, no merge or push.
+
+
+Current parity report binding:
+{
+  "cases": 2104,
+  "statuses": {
+    "review pixels": 72,
+    "within policy": 2032
+  },
+  "required": 2000,
+  "complete": 2000,
+  "sha256": "56f17276f7198592606afba54cf0349cda1d5e2d938ecb655208daa5c9d6934c"
+}
+
+New artifact bindings (not represented as physically run):
+[
+  {
+    "bundle": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-followup-n24qzjws/bboxy450-term.app",
+    "certificate_sha1": "3943AF130A015B36824B7FBC86AA672E7B25F3C4",
+    "team": "UQB3368A84",
+    "identifier": "com.bboxy450.term",
+    "icon_sha256": "64f56a52a0bc39b89496322f7f94105fa6422eed9d1dba399a731961efa412db",
+    "source_icon_sha256": "bc5cc774612f29a452967a5a4fa993292092a59b58dfd03dfb7ddb6b3286c370",
+    "binary_sha256": "4bccfeb8382ffc0516c3a58a6c4834f771e27cd554025f3e9f414c6ab507e1bb",
+    "manifest_sha256": "9afb3246a67010fa312feff7b8e3414fcc15e66cfa9bb6bd285e28cb2606616a",
+    "exit": 0
+  },
+  {
+    "bundle": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-followup-n24qzjws/bboxy450-notification-probe.app",
+    "certificate_sha1": "3943AF130A015B36824B7FBC86AA672E7B25F3C4",
+    "team": "UQB3368A84",
+    "identifier": "com.bboxy450.term.notification-probe",
+    "icon_sha256": "64f56a52a0bc39b89496322f7f94105fa6422eed9d1dba399a731961efa412db",
+    "source_icon_sha256": "bc5cc774612f29a452967a5a4fa993292092a59b58dfd03dfb7ddb6b3286c370",
+    "binary_sha256": "dc596524cd7caaf66c85af8533bf3442ad4ff974a646c2a16917f75ebc7cfd8d",
+    "manifest_sha256": "1e31173b0f2ea51b06bb445888b536c7b6190641608ca1de28a1abe318b0369a",
+    "exit": 0
+  }
+]
+
+bboxy450-term canonical relative file manifest:
+71cb3fc892623da26c3c1d4c98aaf328373cecb2b5c3be2004bf66b058e85edf  Contents/Info.plist
+4bccfeb8382ffc0516c3a58a6c4834f771e27cd554025f3e9f414c6ab507e1bb  Contents/MacOS/bboxy450-term
+cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  Contents/Resources/LICENSE-APACHE
+e3012f47cfba2c19c3ee490477faf30d45d1234759c86508a18f487ebe564c0a  Contents/Resources/LICENSE-MIT
+e3bf876931c7709d403042dc1a3478f05831db07c11f42a2874ed658fd0b8ea4  Contents/Resources/NOTICE
+64f56a52a0bc39b89496322f7f94105fa6422eed9d1dba399a731961efa412db  Contents/Resources/bboxy.icns
+371c7b30cae8bc355b8aa2192ea3a5d003680f2544aeda23e54f3923dcbd6e3f  Contents/_CodeSignature/CodeResources
+
+bboxy450-notification-probe canonical relative file manifest:
+8d1a935252b7c534834e9df67d1c5cf29b0a90c1bb379b2253e3dccdf4e17414  Contents/Info.plist
+dc596524cd7caaf66c85af8533bf3442ad4ff974a646c2a16917f75ebc7cfd8d  Contents/MacOS/notification_probe
+cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  Contents/Resources/LICENSE-APACHE
+e3012f47cfba2c19c3ee490477faf30d45d1234759c86508a18f487ebe564c0a  Contents/Resources/LICENSE-MIT
+e3bf876931c7709d403042dc1a3478f05831db07c11f42a2874ed658fd0b8ea4  Contents/Resources/NOTICE
+64f56a52a0bc39b89496322f7f94105fa6422eed9d1dba399a731961efa412db  Contents/Resources/bboxy.icns
+371c7b30cae8bc355b8aa2192ea3a5d003680f2544aeda23e54f3923dcbd6e3f  Contents/_CodeSignature/CodeResources
+
+Gate cleanup:
+deleted owned cargo target /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-followup-n24qzjws/ci-target
+worktree removal exit 0
+
+Tracked product state: source remains 568aa522fdcee8e65eb2d1d7e304efd1a57c2e2a. The next commit contains evidence logs only. Frozen old exec5-attention is unchanged at237e537e.
+
+Main moved during the frozen gate to 39e47829ccec81cb4a8bc91ce48010b66c1a150d (Seraph ctl/capture work). Shared-path deltas are app Cargo.toml/cockpit.rs/live.rs plus separate ctl/keyboard/proto/mux work; no own patch was rebased or changed. The Oracle verifies the merged tree.
+
+Evidence packaging: initial git diff --cached --check exit2 named a trailing space in the cleanup annotation and one outer aggregate EOF blank. Only those wrapper lines were normalized; raw CI bytes were not changed. Final diff-check0.

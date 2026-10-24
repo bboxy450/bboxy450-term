@@ -1,0 +1,62 @@
+ATTENTION: operator-present physical probe, 2026-10-24
+Executor: Kestrel Voidwing. Session performed by the operator with Vesper.
+
+Primary raw evidence (already committed; no duplicate copy here):
+  commit 14bc2d4933b1b0368c4120c41250b72902817b81
+  .bboxy/runs/attention-physical-probe-2026-10-24.jsonl
+  231 lines
+  sha256 8b6d3935481ec31e5b3582dd5d7c4dfc555e065f6a254248085e637e4bdedad2
+
+Signing finding:
+  Line 5: ad-hoc bundle PID 59260 authorize fails with
+  "Notifications are not allowed for this application". The operator saw no
+  prompt. Re-signing a copy with the approved Apple Development identity made
+  authorization and delivery work. Both bundle recipes now require that
+  identity; they do not fall back to an ad-hoc or unsigned bundle.
+  Certificate SHA1 3943AF130A015B36824B7FBC86AA672E7B25F3C4; team UQB3368A84.
+  Working physical artifact: ~/Applications/bboxy450-notification-probe.app.
+  The executor inspected its signature read-only and did not alter that copy.
+
+Behaviour 1: permission and persistence — PROVEN, with first-flow nuance.
+  PID 62270 first timed out at line 99 and returned Denied at 100, then Granted
+  at 119. This was not a clean single-Allow flow. Repeated Granted at 149/151
+  and posts in fresh PID 73566 at 216/218, without any authorize call in that
+  PID, prove the permission persisted across process launches. Operator
+  reported that the probe worked; Corvin recorded the observed prompt flow.
+
+Behaviour 2: delivered identifier replacement — PROVEN.
+  PID 62270 posts at 153, replaces with R at 155, then lists exactly one
+  delivered identifier 00000000000000000000000003 at 157/159/161/163/165.
+  Operator confirmed replacement did not duplicate the delivered notice.
+  This is native delivered-list evidence, not just a scheduling result.
+
+Behaviour 3: click while closed — PROVEN by different process IDs.
+  PID 73566 posts at 216/218 and exits at 222 (1792856162363 ms).
+  PID 74411 window_ready at 224 (1792856163570 ms), clicked at 227, then
+  focused seat 00000000000000000000000003 in tab 00000000000000000000000002
+  at 228 with raise_requested true. Operator confirmed the click worked.
+  deferred_landing means the tab changed; it is not itself cold-launch proof.
+
+The first-session extracts (210-line full snapshot and 106-line PID-62270
+snapshot) lacked the later processes. Their earlier UNPROVEN cold-click
+disposition is superseded by the complete committed 231-line evidence above.
+
+Physical source binding:
+  Original probe source 35857f7ad6e2fe915a9c2cca94e672b532127afb.
+  Facade, backends and notification_probe example remain unchanged by this
+  signing/icon/state-projection follow-up; the final handoff names the diff
+  command and its actual result. A new build's digest is recorded separately;
+  the physical session is not represented as a run of a later binary.
+
+Icon source:
+  .bboxy/images/bboxy.png equals ~/.agents/identity/bboxy.png byte for byte.
+  Source SHA256 bc5cc774612f29a452967a5a4fa993292092a59b58dfd03dfb7ddb6b3286c370.
+  packaging/macos/bboxy.icns is a sips/iconutil size conversion of that file.
+  Its .source-sha256 sidecar records the source; both app/probe recipes include
+  it through CFBundleIconFile. No alternate portrait or generated art is used.
+
+Deliberately separate work:
+  Settings hosting/persistence/Cmd-M transport remain the Settings owner's
+  follow-up. The pure Notifications contract and authoritative record.muted
+  remain the attention policy inputs. Windows/Linux remain named Unsupported
+  dummies; Developer ID distribution signing stays deferred.
