@@ -250,7 +250,14 @@ impl Client {
         action: GuiAction,
         mut answer: impl FnMut(&GuiReply) -> bool,
     ) -> Result<GuiReply, String> {
-        self.send(action)?;
+        if let Err(write) = self.send(action) {
+            // The door can refuse and close before the request is written; its reason is
+            // already in our buffer, so a seat reads the refusal, not a broken pipe.
+            return match self.reply() {
+                Ok(GuiReply::Error { reason, .. }) => Err(reason),
+                _ => Err(write),
+            };
+        }
         loop {
             let reply = self.reply()?;
             if let GuiReply::Error { op: failed, reason } = &reply
@@ -601,6 +608,28 @@ mod tests {
     use super::*;
     fn args(s: &str) -> Vec<String> {
         s.split(' ').map(Into::into).collect()
+    }
+    /// The door refuses and closes before the request is written (a seat under load):
+    /// the write fails, and the refusal already buffered is still what the caller reads.
+    #[test]
+    fn a_refusal_that_beats_the_request_is_still_read() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("gui.sock");
+        let listener = std::os::unix::net::UnixListener::bind(&path).unwrap();
+        let mut client = Client::connect(&Endpoint {
+            path: path.clone(),
+            capability: [0; 32],
+        })
+        .unwrap();
+        let (mut door, _) = listener.accept().unwrap();
+        let refusal = serde_json::to_string(&GuiReply::Error {
+            op: Ulid::nil(),
+            reason: bbt_mux::ctl_door::REFUSAL.into(),
+        })
+        .unwrap();
+        door.write_all(format!("{refusal}\n").as_bytes()).unwrap();
+        drop(door);
+        assert_eq!(client.seats().unwrap_err(), bbt_mux::ctl_door::REFUSAL);
     }
     #[test]
     fn commands_parse_in_the_spec_s_shapes() {
