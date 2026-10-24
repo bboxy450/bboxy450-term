@@ -4,7 +4,7 @@ type: "spec"
 number: 84
 title: "Mux daemon — process survival and state delivery"
 created: "2026-10-21T19:43:20Z"
-updated: "2026-10-24T04:20:48Z"
+updated: "2026-10-24T04:21:29Z"
 links:
   - { to: "[[d21-ring-durability]]", rel: decision }
   - { to: "[[d22-tick-journal]]", rel: decision }
@@ -87,8 +87,6 @@ For a plain shell or a harness without a usable resume mapping, create the confi
 
 Shadows from [[ux-prototype]] are published remote participants, not owned remote seats. They have no PTY, pane, screen/scrollback permission or resume mapping. Their owner's signed presence/roster supplies the allowed identity/state metadata through [[messaging]]. Showing a shadow must never grant remote control or trigger remote bootstrap.
 
-**Checkpoints ([[d253-checkpoint-policy]], 2026-10-24).** A parser checkpoint bounds recovery work, never durability: idle means caught up with the ring tail and 200 ms silent, so a backlogged seat never gets a maintenance checkpoint; a checkpoint is forced at R = 8 MiB of un-checkpointed bytes or 60 s of age; at most K = 4 saves in flight per logic process on a side task, the ingest loop never awaits one; a seat at 2R pauses its own replay until its save lands; close, seal, resize, shutdown and handover checkpoints stay forced; gate: checkpoint RPC at most 10 % of logic wall time at 967 seats, crash recovery at most 2R per seat ([[checkpoint-bounded]]).
-
 ## Reversible close lifecycle
 
 The operator's undo-close decision in [[vision]] adds `open → closed_grace → closed_retained`. These are lifecycle values, not extra harness activity states. Mute policy is also independent; closing does not silently mute or unmute a seat.
@@ -168,6 +166,8 @@ Measured by Seraph's C1d gates: a per-seat commit every 20 ms with a full flush 
 - **One tick journal per machine (decision [[d22-tick-journal|#22]], 2026-10-22, from Rook's writer sample: 492 of 967 samples in per-file barriers, the writer busy 30.8 s of 32.2 s at 40 seats, Busy at seat 58).** The barrier cost is per file, two per seat per tick, so it scales with seats; a shared journal makes it one per tick whatever the seat count. Every seat's records for a tick are appended, in order, to one `journal-{ulid}.log` per supervisor process, framed exactly like ring records (BBR1 header, seat key, CRC32C), followed by one **tick-commit record**; the committed boundary is the last valid tick-commit record, so there is no marker file and the tick costs **one barrier**. Per-seat ring files become derived: the writer compacts journal records into them when idle and at seal; replay and history read the seat ring plus the journal tail. Checkpoints record the journal offset they cover. Crash recovery scans the journal from the last checkpoint's offset, accepts CRC-valid records up to the last valid tick-commit, rejects the torn suffix, and rebuilds any seat ring that is behind; the §loss bounds are unchanged. Durable points full-flush the journal (one file); seat rings get their full flush only at seal. Rotation at 64 MiB or when every record is compacted and checkpointed; an old journal is deleted only then (its content lives on in seat rings and blobs, so never-delete holds). A CRC failure in the journal loses only the torn tail, as before.
 - **Gate.** `bboxy-firehose` at the machine's measured maximum seats for 60 s: writer busy fraction under 50 % and no `Busy` at 400 seats on this Mac; logic alive throughout, writer p99 commit latency reported, and a `SIGKILL` of the supervisor mid-run replays with zero CRC errors, admitted-minus-committed loss of at most one tick per seat, and the pre-capture tail reported per seat and under the platform's PTY buffer plus 2 ms at the fixture rate (`crates/bbt-supervisor/tests/capture_crash.rs`). That command becomes `.bboxy/invariants/ring-durability.md` when W1.2d lands.
 - **This gate supersedes the W1.2c targets (Oracle ruling, 2026-10-22, on Rook's W1.2d gap).** The ≥30 MiB/s queued throughput and ≤50 ms write-latency targets measured the per-seat writer W1.2d replaces; they no longer block landing. W1.2d reports its logic-stopped burst figures (24.79 MiB/s, max write 103.70 ms, p99 90.31 ms, max seal 60.15 ms at the time of the ruling) next to the W1.2c ones. Recovering throughput and latency is a separate follow-up task, W1.2f, queued after W1.2e.
+
+**Checkpoints ([[d253-checkpoint-policy]], 2026-10-24).** A parser checkpoint bounds recovery work, never durability: idle means caught up with the ring tail and 200 ms silent, so a backlogged seat never gets a maintenance checkpoint; a checkpoint is forced at R = 8 MiB of un-checkpointed bytes or 60 s of age; at most K = 4 saves in flight per logic process on a side task, the ingest loop never awaits one; a seat at 2R pauses its own replay until its save lands; close, seal, resize, shutdown and handover checkpoints stay forced; gate: checkpoint RPC at most 10 % of logic wall time at 967 seats, crash recovery at most 2R per seat ([[checkpoint-bounded]]).
 
 ## Restart and reattachment
 
