@@ -4,7 +4,7 @@ type: "spec"
 number: 87
 title: "MCP control plane — the Oracle's hands"
 created: "2026-10-21T20:04:14Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-10-24T07:53:44Z"
 ---
 # MCP control plane — the Oracle's hands
 
@@ -283,3 +283,7 @@ Catalogue total: 36 tools. Workers: eleven.
 | `code_graph` | `op: definition \| references \| callers \| callees \| dependents \| dependencies \| impact, symbol \| path, depth?, max_results?` | Queries the code graph ([[work-items]]) built by tree-sitter over the caller's worktree; `impact` walks references outward from a set of paths (a task's `allowed_paths`) and returns what else may change. Returns symbols with `path:line` and weighted edges. Scoped like `code_search`. | O E C |
 
 Catalogue total: 43 tools. `how` and `find` share the index; `code_search` reads the filesystem, not the index: `find` returns items and graph edges, `how` returns tools and doc excerpts. `.bboxy/graph.md` is the hand-maintained ancestor of `graph_read execution` and `communication`; once the index exists the file is generated, not edited.
+
+## Reply routing ([[d264-reply-routes-to-sender]], 2026-10-24)
+
+`message_send { reply_to }` with no `destination` routes to the sender of the referenced message: that seat's inbox, or `operator/inbox` when the message was authored by the operator principal (decision #31). A refusal for a dangling or unknown destination names the valid one when it can be inferred from the message being replied to, and otherwise lists the sinks the caller may address; a refused send is a tool error to the caller and is stored nowhere. `orient` says how to reach the operator in one line.
