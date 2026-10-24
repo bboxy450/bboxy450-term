@@ -152,6 +152,16 @@ fn headless_cli_starts_real_gui_types_captures_and_stops_without_a_window() {
             .iter()
             .any(|r| r == "HEADLESS-CTL-42")
     );
+    f.ok(&[
+        "seat",
+        "spawn",
+        "zsh",
+        "--name",
+        "other-tab",
+        "--place",
+        "tab",
+    ]);
+    f.ok(&["seat", "focus", seat]);
     let png = f.root.path().join("pane.png");
     let before_capture = f.ok(&["app", "status"]);
     let capture = f.ok(&["seat", "capture", seat, png.to_str().unwrap()]);

@@ -175,7 +175,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
                                 scene.set_model(&model, focus.stage.as_ref().expect("focus stage"));
                                 dirty = true;
                             }
-                            Err(reason) => logger.write(format!("operator focus refused: {reason}")),
+                            Err(reason) => {
+                                logger.write(format!("operator focus refused: {reason}"))
+                            }
                         }
                     }
                     UiEvent::Capture => {
@@ -238,6 +240,11 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 dirty = true;
             }
             if let Some(next) = updates.take() {
+                if next.ui.window.stage != model.ui.window.stage {
+                    // Correlated launch/close changes the IO model's stage;
+                    // ordinary screen publications preserve explicit GUI focus.
+                    focus.stage = Some(next.ui.window.stage.clone());
+                }
                 model = next;
                 focus.reconcile(None, &model.ui);
                 scene.set_model(&model, focus.stage.as_ref().expect("reconciled stage"));
