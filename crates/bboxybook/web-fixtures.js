@@ -45,7 +45,8 @@ function fixture(c) {
     case 'new_seat_row':node=el('div',{class:'tab-row newseat',style:'width:300px'},el('span',{class:'plus'},'+'),'new seat',el('span',{style:'margin-left:auto'},C.kbd('⌘T')));break;
     case 'closed_strip':node=el('div',{class:'tab-row closed-strip',style:'width:300px'},'Nyx Copperwing · 52s',el('button',{class:'undo'},'undo ⌘Z'));break;
     case 'new_swarm_button':node=el('div',{class:'new-cohort',style:'width:260px'},'+ new swarm');break;
-    case 'stream_dock':node=el('div',{class:'stream-dock',style:'width:700px'},...[s,b].map(seat=>C.messageRow({author:{kind:'seat',id:seat.key,name:seat.name},role:seat.role,ts:C.atHM('12:07'),priority_class:seat.role==='oracle'?'oracle':'worker',priority:5,text:'B claimed. File:line pointers checked. Report is ready.',unread:true})));break;
+    // The same adapter hosts the pinned v2 constructor; from/time are its inputs.
+    case 'stream_dock':node=el('div',{class:'stream-dock',style:'width:700px'},...[s,b].map(seat=>C.messageRow({author:{kind:'seat',id:seat.key,name:seat.name},from:seat.name,role:seat.role,time:'12:07',ts:Date.UTC(2026,9,23,12,7),priority_class:seat.role==='oracle'?'oracle':'worker',priority:5,text:'B claimed. File:line pointers checked. Report is ready.',unread:true})));break;
     case 'pane':node=C.pane(s,{...options,height:c.height-28});node.style.width='700px';break;
     case 'banner':node=el('div',{class:'banner'},el('span',{},'Split right'),C.miniGrid(tree,b.key,true));break;
     case 'glow_canvas':node=C.pane(s,{focused:true,height:100});node.style.width='450px';break;
