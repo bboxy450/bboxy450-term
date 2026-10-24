@@ -1,0 +1,1271 @@
+{
+  "probe1": {
+    "process": {
+      "argv": [
+        "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+        "--ctl",
+        "--run-dir",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/native-run",
+        "--quit-after",
+        "300"
+      ],
+      "cwd": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/native-repository",
+      "pid": 55778,
+      "started_utc": "2026-10-24T08:36:18.431871+00:00",
+      "binary_sha256": "569bd1ab215fae34ecec3dd4c7b342795933109c6ac09a59cfa72d1e8e8bdfd0",
+      "source": "2470e1ee165643ebfc3b1ea9ce4314d43404cbe0"
+    },
+    "result": {
+      "exit": 0,
+      "elapsed_seconds": 300.81503104197327,
+      "ended_utc": "2026-10-24T08:41:19.241832+00:00"
+    },
+    "seat": {
+      "harness": "codex",
+      "kind": "spawned",
+      "seat": "01M5PGVFK2JS6DHDA6WM3BWA2Z",
+      "swarm": "01M5PGVFJK6NJKC3BKEBQ77EFX"
+    },
+    "delegation": [
+      {
+        "kind": "delegated",
+        "response": {
+          "kind": "applied"
+        },
+        "seat": "01M5PGVFK2JS6DHDA6WM3BWA2Z",
+        "task": "#1"
+      }
+    ],
+    "ctl_commands": [
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/native-run/gui.endpoint",
+          "spawn",
+          "codex",
+          "--name",
+          "Sable Codex Tool Approval",
+          "--cwd",
+          "/Users/feral/mydev/bboxy450-term",
+          "--placement",
+          "new-tab"
+        ],
+        "utc": "2026-10-24T08:36:19.803179+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.18039091600803658
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/native-run/gui.endpoint",
+          "delegate",
+          "#1",
+          "01M5PGVFK2JS6DHDA6WM3BWA2Z"
+        ],
+        "utc": "2026-10-24T08:36:19.902469+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.09553787502227351
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/native-run/gui.endpoint",
+          "seats"
+        ],
+        "utc": "2026-10-24T08:36:57.792811+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.037271459004841745
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/native-run/gui.endpoint",
+          "capture",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/initial.png",
+          "--seat",
+          "01M5PGVFK2JS6DHDA6WM3BWA2Z"
+        ],
+        "utc": "2026-10-24T08:36:57.889562+00:00",
+        "exit": 1,
+        "elapsed_seconds": 0.046535000030416995
+      }
+    ],
+    "logic_sigkill_observed": true,
+    "logic_sigkill_cause": "UNPROVEN",
+    "input_proof_files": [],
+    "initial-screen-summary.json": {
+      "sequence": 9,
+      "text_sha256": "439db3a27cb7868a7d1d942f9dd6e3d5cc8df2aebeabeed8f0ac5e1daed8f115",
+      "words": {
+        "codex": true,
+        "hooks": false,
+        "review": false,
+        "trust": false,
+        "allow": false,
+        "approve": false,
+        "node_repl": false,
+        "task_report": false,
+        "sign in": false,
+        "log in": false
+      }
+    },
+    "classification": "BLOCKED at native update chooser. No input submitted. App logic later SIGKILL, replacement memory custody held the saved issuer; cause unproven. ctl capture failed because no pane was on screen."
+  },
+  "probe2": {
+    "process": {
+      "argv": [
+        "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+        "--ctl",
+        "--run-dir",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run",
+        "--quit-after",
+        "180"
+      ],
+      "cwd": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-repository",
+      "pid": 67072,
+      "started_utc": "2026-10-24T08:45:18.274294+00:00",
+      "binary_sha256": "569bd1ab215fae34ecec3dd4c7b342795933109c6ac09a59cfa72d1e8e8bdfd0",
+      "source": "2470e1ee165643ebfc3b1ea9ce4314d43404cbe0"
+    },
+    "result": {
+      "exit": 0,
+      "elapsed_seconds": 180.31904224999016,
+      "ended_utc": "2026-10-24T08:48:18.589356+00:00"
+    },
+    "seat": {
+      "harness": "codex",
+      "kind": "spawned",
+      "seat": "01M5PHBYQSKXB149P3ZCQ1GBSC",
+      "swarm": "01M5PHBYQA0M7VMHYM0ZQQENQZ"
+    },
+    "delegation": [
+      {
+        "kind": "delegated",
+        "response": {
+          "kind": "applied"
+        },
+        "seat": "01M5PHBYQSKXB149P3ZCQ1GBSC",
+        "task": "#1"
+      }
+    ],
+    "ctl_commands": [
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "spawn",
+          "codex",
+          "--name",
+          "Sable Codex Tool Approval",
+          "--cwd",
+          "/Users/feral/mydev/bboxy450-term",
+          "--placement",
+          "new-tab"
+        ],
+        "utc": "2026-10-24T08:45:19.521214+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.07984554202994332
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "delegate",
+          "#1",
+          "01M5PHBYQSKXB149P3ZCQ1GBSC"
+        ],
+        "utc": "2026-10-24T08:45:19.584922+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.06327216699719429
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "seats"
+        ],
+        "utc": "2026-10-24T08:45:29.890707+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.02473766601178795
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "seats"
+        ],
+        "utc": "2026-10-24T08:45:38.900420+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.033893082989379764
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "seats"
+        ],
+        "utc": "2026-10-24T08:45:39.075436+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.02752958401106298
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "seats"
+        ],
+        "utc": "2026-10-24T08:45:55.967013+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.026915374968666583
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:45:56.228048+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.05353045801166445
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:45:58.293470+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.060969916987232864
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:00.343804+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.048675375001039356
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:02.390235+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04094583401456475
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:04.425853+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.03036629204871133
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:06.479013+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.05217808298766613
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:08.522918+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.042861333990003914
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:10.598345+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.0713664999930188
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:12.658538+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.055327790963929147
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:14.721438+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.059135040966793895
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:16.788718+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.06220429198583588
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:18.852198+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.057358707999810576
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:20.881290+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.026252000010572374
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:22.923856+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04084883298492059
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:24.973435+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04822208400582895
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:27.028636+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04963287495775148
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:29.078179+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04594720801105723
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:31.129734+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.047200208995491266
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:33.181905+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.05005658301524818
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:35.225094+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04193487501470372
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:37.279988+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.0494937080075033
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:39.329048+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.044881666952278465
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:41.377128+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04537545895436779
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:43.425947+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.047871333023067564
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:45.486998+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.06052366696530953
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:47.543406+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04887308302568272
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:49.599872+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.0500254170037806
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:51.645476+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04348320805002004
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:53.695188+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04448008397594094
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:55.743816+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04319241602206603
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:57.803162+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.055297707964200526
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:46:59.858247+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.051240500004496425
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:01.914163+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.051556750026065856
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:03.974964+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.0592368749785237
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:06.014568+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.03357574995607138
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:08.070665+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04957145900698379
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:10.118302+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.044536042027175426
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:12.164931+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.0404103749897331
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:14.217134+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.0484988329699263
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:16.275600+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.0565594169893302
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:18.326828+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.046476249990519136
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:20.378047+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.047233292018063366
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:22.434988+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.05302345799282193
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:24.520839+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.0853942499961704
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:26.582140+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.054585790960118175
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:28.641049+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.056438583007548004
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:30.702790+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.05543604196282104
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:32.735985+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.030855832970701158
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:34.803736+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.06262866698671132
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:36.863982+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.054907542013097554
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:38.914156+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04736000002594665
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:40.963364+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.048420291976071894
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:43.015476+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04830337502062321
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:45.068283+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04821762500796467
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:47.117129+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04554024996468797
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:49.167993+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.045610666973516345
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:51.219787+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04836133396020159
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:53.271250+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.047134833002928644
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:55.313154+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.03983520803740248
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:57.362587+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.0446247499785386
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:47:59.424474+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.056564792001154274
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:48:01.483599+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.05481020797742531
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:48:03.529920+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04090987500967458
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:48:05.575402+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.041070375009439886
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe2/native-run/gui.endpoint",
+          "reports"
+        ],
+        "utc": "2026-10-24T08:48:07.623730+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.04754275002051145
+      }
+    ],
+    "logic_sigkill_observed": false,
+    "logic_sigkill_cause": null,
+    "input_proof_files": [
+      "native-seed-proof.json"
+    ],
+    "update_skip": {
+      "op": "01M5PHCHPMAC56SXY0N1V7K2JX",
+      "bytes": [
+        27,
+        91,
+        50,
+        55,
+        117
+      ],
+      "modes": 1972464,
+      "action": "Escape only, skipping documented version update chooser; no Enter, upgrade or trust approval"
+    },
+    "before-screen-summary.json": {
+      "sequence": 5,
+      "text_sha256": "439db3a27cb7868a7d1d942f9dd6e3d5cc8df2aebeabeed8f0ac5e1daed8f115",
+      "words": {
+        "codex": true,
+        "hooks": false,
+        "review": false,
+        "trust": false,
+        "allow": false,
+        "approve": false,
+        "node_repl": false,
+        "task_report": false,
+        "sign in": false,
+        "log in": false
+      }
+    },
+    "ready-screen-summary.json": {
+      "sequence": 7,
+      "text_sha256": "4b69ea2fcf2c1d60187bcdf0b6febd1b73b8a27aebb1fc2615166f3ac9c38fa5",
+      "words": {
+        "codex": true,
+        "hooks": false,
+        "review": false,
+        "trust": false,
+        "allow": false,
+        "approve": false,
+        "node_repl": false,
+        "task_report": false,
+        "sign in": false,
+        "log in": false
+      }
+    },
+    "classification": "Diagnostic only. Sent Escape to documented update chooser before the later no-Escape ruling arrived, inspected normal composer, then one initial assignment. No upgrade or trust approval supplied. The task-report watchdog timed out; no model/tool acceptance claim."
+  },
+  "probe3": {
+    "process": {
+      "argv": [
+        "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+        "--ctl",
+        "--run-dir",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/native-run",
+        "--quit-after",
+        "180"
+      ],
+      "cwd": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/native-repository",
+      "pid": 90567,
+      "started_utc": "2026-10-24T09:01:34.616882+00:00",
+      "binary_sha256": "e67c7137b47b73392b7038233eb40a8680178853c8f3cf26d4b37c5c9179c29e",
+      "source": "38d99e646ff59861b2b0a2cd009018bc726e3b4e"
+    },
+    "result": {
+      "exit": 0,
+      "elapsed_seconds": 180.64495312504005,
+      "ended_utc": "2026-10-24T09:04:35.259539+00:00"
+    },
+    "seat": {
+      "harness": "codex",
+      "kind": "spawned",
+      "seat": "01M5PJ9R6G0R1FK5S50YHNYMGC",
+      "swarm": "01M5PJ9R61T6DHTA1KFZG2XVND"
+    },
+    "delegation": [
+      {
+        "kind": "delegated",
+        "response": {
+          "kind": "applied"
+        },
+        "seat": "01M5PJ9R6G0R1FK5S50YHNYMGC",
+        "task": "#1"
+      }
+    ],
+    "ctl_commands": [
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/native-run/gui.endpoint",
+          "spawn",
+          "codex",
+          "--name",
+          "Sable Codex Tool Approval",
+          "--cwd",
+          "/Users/feral/mydev/bboxy450-term",
+          "--placement",
+          "new-tab"
+        ],
+        "utc": "2026-10-24T09:01:35.864408+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.08381629199720919
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/native-run/gui.endpoint",
+          "delegate",
+          "#1",
+          "01M5PJ9R6G0R1FK5S50YHNYMGC"
+        ],
+        "utc": "2026-10-24T09:01:35.921247+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.05624208296649158
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/native-run/gui.endpoint",
+          "seats"
+        ],
+        "utc": "2026-10-24T09:01:36.052644+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.02023162500699982
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "ctl",
+          "--endpoint",
+          "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/probe3/native-run/gui.endpoint",
+          "seats"
+        ],
+        "utc": "2026-10-24T09:02:00.284057+00:00",
+        "exit": 0,
+        "elapsed_seconds": 0.02709175000200048
+      }
+    ],
+    "logic_sigkill_observed": false,
+    "logic_sigkill_cause": null,
+    "input_proof_files": [],
+    "before-screen-summary.json": {
+      "sequence": 1,
+      "text_sha256": "0a22a0c4c6b172686441095830ab5f3d11bb77de4560035b0748382a73c8912e",
+      "words": {
+        "codex": false,
+        "hooks": false,
+        "review": false,
+        "trust": false,
+        "allow": false,
+        "approve": false,
+        "node_repl": false,
+        "task_report": false,
+        "sign in": false,
+        "log in": false
+      }
+    },
+    "ready-screen-summary.json": {
+      "sequence": 10,
+      "text_sha256": "a12c1c977cb7c564e3cd9180ea727cc3cad3eec89af7c6bd17c214b5c3aaa8d4",
+      "words": {
+        "codex": false,
+        "hooks": true,
+        "review": true,
+        "trust": true,
+        "allow": false,
+        "approve": false,
+        "node_repl": false,
+        "task_report": false,
+        "sign in": false,
+        "log in": false
+      }
+    },
+    "process_observation": {
+      "utc": "2026-10-24T09:02:00.152843+00:00",
+      "processes": [
+        {
+          "pid": 90567,
+          "ppid": 90566,
+          "stamp_comm": "Sat Oct 24 02:01:34 2026     /Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "updates_false_override": false,
+          "argv_contains_dash_logic": false,
+          "argv_contains_dash_supervisor": false,
+          "bboxy_override_key_present": false
+        },
+        {
+          "pid": 90584,
+          "ppid": 90567,
+          "stamp_comm": "Sat Oct 24 02:01:35 2026     /Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "updates_false_override": false,
+          "argv_contains_dash_logic": false,
+          "argv_contains_dash_supervisor": false,
+          "bboxy_override_key_present": false
+        },
+        {
+          "pid": 90585,
+          "ppid": 90567,
+          "stamp_comm": "Sat Oct 24 02:01:35 2026     /Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua/debug/bboxy450-term",
+          "updates_false_override": false,
+          "argv_contains_dash_logic": false,
+          "argv_contains_dash_supervisor": false,
+          "bboxy_override_key_present": false
+        },
+        {
+          "pid": 90603,
+          "ppid": 90584,
+          "stamp_comm": "Sat Oct 24 02:01:35 2026     codex",
+          "updates_false_override": true,
+          "argv_contains_dash_logic": false,
+          "argv_contains_dash_supervisor": false,
+          "bboxy_override_key_present": true
+        },
+        {
+          "pid": 91163,
+          "ppid": 90585,
+          "stamp_comm": "Sat Oct 24 02:02:00 2026     (ps)",
+          "updates_false_override": false,
+          "argv_contains_dash_logic": false,
+          "argv_contains_dash_supervisor": false,
+          "bboxy_override_key_present": false
+        }
+      ],
+      "interpretation": "Literal argv substring observations only; source and overlay regression pin mode values auto/false. Process-role classification was not inferred from these substring checks."
+    },
+    "classification": "CLEAN DEFAULT-LAUNCH PROOF: update=false and bboxy approval override keys present on actual Codex process; compiled source pins auto/false values. Native screen directly asks review of 10 new/changed hooks. NO terminal input or approval submitted. Both real tool-consent proof rows BLOCKED/UNPROVEN until operator review."
+  },
+  "live_acceptance": {
+    "bboxy_task_report_without_prompt": {
+      "state": "BLOCKED",
+      "reason": "native hook review precedes model/tool execution"
+    },
+    "non_bboxy_tool_still_prompts": {
+      "state": "BLOCKED",
+      "reason": "native hook review precedes model/tool execution"
+    },
+    "hook_review": {
+      "state": "EXPECTED BLOCK",
+      "reason": "hook hash includes the binary path; every new build path needs its own operator approval; no bypass or copied credential permitted by decision265"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+Decision265: per-invocation Codex tool approval and startup update checks
+Source 38d99e646ff59861b2b0a2cd009018bc726e3b4e; predecessor375e7dc7; base6ac6fcac2ed1ed3ef34bcb5b972fcbd2b620ddff; branch sable-codex-tools in exec3.
+Only production file: crates/bbt-mux/src/adapters/launch.rs:235 — adds exactly two -c values:
+mcp_servers.bboxy.default_tools_approval_mode="auto"
+check_for_update_on_startup=false
+No other server approval, global policy/sandbox, hook command/hash, CODEX_HOME, auth or credential setting is changed.
+Regression: crates/bbt-mux/tests/adapters.rs:496 — fake user config remains byte-identical; explicit other-server prompt remains; only the two requested overrides are added; existing raw-hook/no-bypass checks remain.
+Official configuration reference: https://learn.chatgpt.com/docs/config-file/config-reference
+Installed client: Codex0.163.0. Updates are managed by the operator outside the app, per decision265 addendum.
+
+Commands/results:
+- Original candidate2470: adapters13/0, EXIT0/73.186s; app build0/148.606s.
+- Revised update flag before final rebase: adapters16/0, EXIT0/36.170s; strict all-target workspace Clippy0/51.386s.
+- Exact final source: app build0/28.715s; strict all-target workspace Clippy0/6.751s.
+- Exact clean NORMAL ci-local slot2: EXIT 0, 762.239s, SHA256 75f96d8efdc68533c4dd97bfaceddd6e1830de8a2ca85d320fd32930cd98207b.
+Full precheck and gate logs are verbatim; command/result/hash ledger is committed. No parity required/requested: no render/UI/lab producer changed.
+
+Live rows, deliberately separate:
+1. Original auto-only launch blocked at native update chooser. NO input. Same app later reports logic SIGKILL; cause unproven. Replacement debug memory identity correctly holds rather than replacing the saved issuer. Capture says no pane on screen. This is a recorded block, not evidence against the approval override.
+2. Diagnostic Escape before the later ruling: update chooser skipped, normal composer observed, one initial fixture assignment submitted. Report watchdog131.553s EXIT1; no model/tool success claim. No native upgrade or trust approval. config.toml unchanged. The observed version.json still has dismissed_version0.159.2 and mtime2026-10-23T21:03:31.051596Z, so no persisted dismissal change is observed there; do not generalize to all runtime state.
+3. Revised clean source38d99e64: actual native process has both override keys; source/unit regression pins values auto/false. Directly reaches 'Hooks need review', '10 hooks are new or changed'; update chooser absent in this screen. NO terminal input/approval in this case. App EXIT0/180.645s, orderly logic/supervisor shutdown; recorded5 PIDs absent.
+   Hook hash includes the binary path, so each new build path needs its own one-time operator review. The private build's hook command path differs from the operator-reviewed earlier launch. Native review is working as designed, not bypassed.
+   task_report-without-consent: BLOCKED/UNPROVEN pending that review.
+   non-bboxy-consent: BLOCKED/UNPROVEN pending that review.
+No subsequent native probe/approval was attempted. Oracle has put the review on the operator's morning list.
+
+User-state proof:
+config.toml before/after SHA256a8b60d2a768c1f8a1b90c83f3e163169fd9cc7df2605257f2819bab263eba55a, 7875bytes.
+version.json observed SHA25636067d60ac0b3f9907d8cb1fbbd1f22e79a941a4e9087b8559783c044c6af38c, dismissed0.159.2, previous-day mtime.
+No global file written by the app wiring/driver. Driver/wiring never reads, copies or links auth.json; the native client owns its ordinary authentication. No hash invention or bypass flag. Native clients' own session/transcript/runtime writes are outside that narrow file comparison and not claimed byte-identical.
+Raw native screens, transcripts, capability endpoint files and the general commands.jsonl stay PRIVATE; committed evidence contains curated outcomes and artifact path/hash metadata only.
+
+Separate scope:
+- LaunchPlan.notes at launch.rs:276 is unused by production Worker::launch at logic.rs:2595; a notes string alone cannot show the required pre-spawn notice. Oracle assigned the data/UI notice to Aster; no UI/data-lane work here.
+- No fix for the unproven first-probe logic SIGKILL.
+- New wake-regression bisect is queued AFTER the03:00–04:00 pause (short DM on aea0fd6a versus5eb4557f); no comparison or fix performed during this task.
+
+Cleanup: CI target, inactive dev target and detached source worktree removed. Unique allocated file bytes removed 5213450240 (method in cleanup JSON; no volume delta claim). Slot2 released on EXIT0.
+Origin/main after gate: bd1ba105c048a83381e35da4f8d64de19519d352
+bd1ba105 #266 (4): observed is detector-owned and immutable to generic writes; a generic update never changes a record's type
+No rebase/re-gate after freeze.

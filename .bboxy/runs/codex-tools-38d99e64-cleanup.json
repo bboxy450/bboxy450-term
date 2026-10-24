@@ -1,0 +1,28 @@
+{
+  "utc": "2026-10-24T09:22:45.841020+00:00",
+  "method": "st_blocks*512 once per device/inode within each removed target; not a global volume free-space delta",
+  "records": [
+    {
+      "kind": "ci-target",
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/ci-target-qd88cf5i",
+      "unique_allocated_file_bytes_before": 3589599232,
+      "file_paths_before": 9658,
+      "unique_file_inodes": 9658,
+      "exists_after": false
+    },
+    {
+      "kind": "dev-target",
+      "path": "/Users/feral/mydev/bboxy450-term-exec3/target/codex-tools-4w6bxvua",
+      "unique_allocated_file_bytes_before": 1623851008,
+      "file_paths_before": 6972,
+      "unique_file_inodes": 6972,
+      "exists_after": false
+    },
+    {
+      "kind": "detached-worktree",
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-tools-jodu5h0w/ci-source-_lv56psy",
+      "exists_after": false
+    }
+  ],
+  "unique_allocated_file_bytes_removed": 5213450240
+}
