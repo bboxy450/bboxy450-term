@@ -1,0 +1,47 @@
+{
+  "sha": "40cec4b9881fb2514341588963f0fc006cb2c273",
+  "tree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/ci-40cec4b9",
+  "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/ci-40cec4b9/target/k0-ci",
+  "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/k0-ci-parity.log",
+  "created_at": 1792821902.060565,
+  "clean_before": true,
+  "started": true,
+  "slot": 2,
+  "oracle_permission": "15c279f9-5f5b-4912-b7d5-dd007ad12ff8",
+  "condition": "Oracle 3fec865a confirms Rook not running967; GO slot2",
+  "started_utc": "2026-10-24T06:07:03Z",
+  "running": false,
+  "env": {
+    "CARGO_TARGET_DIR": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/ci-40cec4b9/target/k0-ci",
+    "PARITY_OUT": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/ci-40cec4b9/target/k0-parity",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "pid": 60511,
+  "exit": 0,
+  "elapsed": 2558.847,
+  "command": [
+    "sh",
+    "scripts/ci-local.sh",
+    "--parity"
+  ],
+  "clean_after": true,
+  "reports": [
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/parity-report.json",
+      "sha256": "77d19eaccda51d557c13040bf63d763577e08f10a8d6361bb4100ee174c3bec4"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/parity-legacy-report.json",
+      "sha256": "5b06ef24cbe72db4cdcd8249dc171e780d0d8cf5e8af4a5d8f951acc460b348d"
+    }
+  ],
+  "target_deleted": true,
+  "worktree_removed": true,
+  "dev_target_deleted": true
+}

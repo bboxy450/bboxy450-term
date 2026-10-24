@@ -1,0 +1,49 @@
+Kestrel Voidwing <EXECUTOR> — K-0 handoff — exact gate passed
+
+Source: 40cec4b9881fb2514341588963f0fc006cb2c273 on exec5-k0.
+Base: d7d62335057499f3e73247ba123f25927400d486 (includes 1d4fac95 + smoke evidence).
+Both code commits are signed: ac098b04 portable kit; 40cec4b9 bundled adapter + current read consumers.
+Brief d0804dff; plan a09d4183; approval d928c311; slot GO 3fec865a.
+
+Mechanisms
+- crates/bbt-plugin/src/data_source.rs:9 — version 1.0/export contract, portable serde DTOs for eight methods, named command errors; one JSON schema asset selected by method_schema at :280. Unknown fields stay additive.
+- crates/bbt-mux/src/knowledge/mod.rs:34 — eight-method DataSource; WriteContext binds an already-admitted actual signer, never a JSON principal. K-0 does not add a wire mutation entry point.
+- knowledge/bboxy.rs:715 — bbt_doc::links::resolve is the matcher; Index::by_number is the fresh uniqueness authority; no second matcher/allocator/store.
+- knowledge/bboxy.rs:46/:79 — resource read uses root directory descriptors and O_NOFOLLOW for every component, realpath/inode checks, regular files only, 64 MiB cap, direct file resource links; no copies. MCP metadata type resource_link/mimeType.
+- knowledge/bboxy.rs:261/:286/:404 — root/query/snapshot-bound pages, <=128 records /256 KiB; remainder defers rather than dropping. Graph keeps cross-page outgoing edges and marks edge truncation explicitly.
+- knowledge/bboxy.rs:832/:897/:913 — frontmatter-first search, existing weighted degree, filters/list and links over current Index data. Swarm scope consumes existing registry/reference helpers; ambiguous/foreign references refuse.
+- knowledge/bboxy.rs:935 — Index::apply_author owns guarded signed write and immutable numbers; path only on create, exact ref/etag on update, resource admission before the effect. An uncertain/applied-but-unavailable result is named and never retried automatically.
+- knowledge/bboxy.rs:1035 — changes_since reads verified canonical document activity pages; prepared/written intents are not fabricated changes. Existing host scan/publish/ack remains the visibility boundary; no second ledger, consumer or ACK.
+- knowledge/mod.rs:59; mcp/tools.rs:137/:225; logic.rs:1233/:2057 — existing document graph/orient/retained reads dispatch through the provider with old actor ownership filters kept. Execution graphs remain host-owned. Index:241 adds only the existing-root getter; work_items adds only visibility of existing scope helpers.
+- tests/knowledge_views.rs:151/:225 — alternate DataSource without an Index proves actual view dispatch and foreign/null/stale-assignment negatives; direct-Index view bypass guard exempts the explicitly host-owned execution graph.
+- tests/knowledge.rs:127/:457/:690 — all eight methods against shared kit seed; signed write allocates 9; etag/number/path/resource negatives; activity verification and cursor reopen; 208/1000 bounded pages on IO.
+- Cargo.toml/Cargo.lock; bbt-plugin licences — new kit below proto, serde/serde_json only in production; dev-only jsonschema validator. Corvin's licence map and layering placement were already in upstream 7de32fcf and are not duplicated in our patch.
+
+Acceptance disposition
+- knowledge-base §6.1 (approved split): trait, Index implementation and existing document-facing reads PROVEN by focused tests; unhosted document modal/Graph/sidebar provider binding stays Nyx checkpoint 2 and K-2, as ruled.
+- §6.2: K-0 fixtures/schema/eight-method in-process conformance PROVEN; stdio/--shape/plugin check is K-1, UNPROVEN here.
+- §6.3: Settings/roots/swap is K-2, deliberately untouched; no swap proof claimed.
+- §6.4: final development provider log: 208 records/2 pages 742.125 us; 1000/8 pages 10.2585 ms, on IO with stable unique results. These are test-host observations, not controlled 120 Hz native-frame measurements.
+- §6.5: PROVEN on exact source by clean ci-local --parity: corpus/images pass; 2024 current cases, 1920 required and measured, 0 unproven, 0 mismatches; 72 advisory reviews; 17 invariant checks pass, 7 named slow skips. No visual-source change; no pixel byte-identity claim.
+
+Failures retained
+- Initial provider test: 8 passed/1 failed because fixture also created an ordinary ref link beside its structured dependency. Corrected the fixture to use the raw target ID and the task graph for isolation; product resolver/graph body was not changed to suppress the edge. Updated provider suite 10/0.
+- Combined provider/view/MCP command: exit 101 only at mcp_seat_input_consumes_readiness_and_enter_is_explicit, 28/1/3 MCP; named draft/tool/render-transition refusal. Isolated same test passed 1/0, no source change. Exact frozen MCP suite passed 29/0/3 (8.39 s), so Vesper e00a09e6/3fec865a disposition is a load flake owned by Sable; main now includes her test-only fix at 77d9ad3d; fixed 80 ms fixture sleeps at mcp.rs:750/:785, generic assertion :1030. No input/guard/scheduler fix in K-0.
+
+Not done
+No K-1/P-0 runner, stdio serve/check, Settings, Obsidian, GUI/wire/app work, root swap, production record bootstrap, new number allocator, second matcher, or real Keychain/ATTENTION probe use. A-0 queued after acceptance; Vesper c81f800d rules the follow-up as seat-principal knowledge MCP tools constrained to e2e/, then actual creation delegated by Oracle via ctl to an in-app Codex seat; no e2e records hand-written or fixture-signed in the repository.
+
+Exact gate
+sh scripts/ci-local.sh --parity — exit 0, 2558.847 s, all gates passed.
+Clean detached source before and after; private CARGO_TARGET_DIR; memory custody/O1/debug guards; full catalogue (no BBOXYBOOK_GALLERY).
+CI SHA256 565cf25205e0e20ae1bf131f2635c65c2212700e5b039ae24d86262b2a7c6600.
+Current report SHA256 77d19eaccda51d557c13040bf63d763577e08f10a8d6361bb4100ee174c3bec4.
+Gate/dev targets and CI worktree removed; reports copied before cleanup.
+Full commands + exits/digests and metadata-helper correction: k0-checks.log. Full outputs: k0-dev.log and k0-ci.log. Raw current/legacy parity reports: k0-parity-current.log and k0-parity-legacy.log; gate state k0-gate-state.log.
+Historical diagnostic: 1664 cases/851 advisory reviews, explicitly not the current geometry verdict.
+
+Main movement
+Origin/main is now bd63beedc88fb088efc0dd73eaf4a82bb7523222. During the gate: A-1 ctl (adf77ecf; shared lib/logic/MCP additions), Sable's test-only readiness/resume repairs (77d9ad3d), and #262/#263 records. No post-gate rebase/re-gate. The Oracle verifies the merged tree; minimal named K-0 logic read hunks remain frozen.
+
+Handoff state
+This record is committed in an evidence-only successor of the exact source; its hash is in the DM. No merge/push by the Executor. Existing unrelated untracked run logs left untouched. K-1/K-2/K-3 and actual A-0 record population remain as stated, not completed here.

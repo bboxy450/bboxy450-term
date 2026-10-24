@@ -9,6 +9,7 @@ use ulid::Ulid;
 
 use super::SeatActor as Actor;
 use crate::index::{Document, GraphKind, Index};
+use crate::knowledge::{DataSource, data_source, views};
 use crate::registry::{Class, SeatRecord};
 
 pub(crate) fn catalogue(actor: &Actor) -> Value {
@@ -104,17 +105,11 @@ pub(crate) fn page_limit(limit: Option<usize>) -> std::result::Result<usize, Str
     }
 }
 pub(crate) fn own_document(doc: &Document, seat: &SeatRecord) -> bool {
-    // A current assignment overrides a stale historical registry task list.
-    if let Some(assignee) = doc.metadata.get("assignee") {
-        return assignee
-            .as_str()
-            .is_some_and(|id| id == seat.id.to_string() || id == format!("seat:{}", seat.id));
-    }
-    seat.tasks.iter().any(|id| id.to_string() == doc.id)
+    views::owned(&doc.metadata, &doc.id, seat)
 }
 
 pub(crate) fn retained_documents(
-    index: &Index,
+    source: &dyn DataSource,
     actor: &Actor,
     seat: &SeatRecord,
     call: &super::Call,
@@ -123,28 +118,11 @@ pub(crate) fn retained_documents(
     if value["isError"] == true {
         return true;
     }
-    let document_allowed = |item: &Value| {
-        item["path"]
-            .as_str()
-            .and_then(|path| index.documents.get(path))
-            .is_some_and(|doc| doc.id == item["id"] && own_document(doc, seat))
-    };
     let data = &value["structuredContent"];
     match call.tool.as_str() {
-        "orient" => data["tasks"]["items"]
-            .as_array()
-            .is_some_and(|items| items.iter().all(document_allowed)),
+        "orient" => views::retained(source, seat, &data["tasks"]["items"], false),
         "graph_read" if actor.role.class != Class::Oracle => {
-            data["nodes"].as_array().is_some_and(|items| {
-                items.iter().all(|item| {
-                    if item["path"].is_null() {
-                        item["id"] == seat.id.to_string()
-                            || item["id"] == format!("seat:{}", seat.id)
-                    } else {
-                        document_allowed(item)
-                    }
-                })
-            })
+            views::retained(source, seat, &data["nodes"], true)
         }
         _ => true,
     }
@@ -159,18 +137,40 @@ pub(crate) fn clip(text: &str, bound: usize) -> &str {
 
 pub(crate) fn graph(
     index: &Index,
+    source: &dyn DataSource,
     actor: &Actor,
     seat: &SeatRecord,
     args: &GraphRead,
     own_only: bool,
 ) -> std::result::Result<Value, String> {
-    let kind = match args.graph.as_str() {
-        "execution" => GraphKind::Execution,
-        "task" => GraphKind::Task,
-        "markdown" => GraphKind::Markdown,
-        _ => return Err("graph is unavailable in this catalogue".into()),
-    };
-    if kind == GraphKind::Execution && actor.role.class != Class::Oracle && !own_only {
+    match args.graph.as_str() {
+        "execution" => execution_graph(index, actor, seat, args, own_only),
+        "task" | "markdown" => views::graph(
+            source,
+            seat,
+            if args.graph == "task" {
+                data_source::DocumentGraph::Task
+            } else {
+                data_source::DocumentGraph::Markdown
+            },
+            args.after.as_deref(),
+            page_limit(args.limit)?,
+            own_only || actor.role.class != Class::Oracle,
+        )
+        .map_err(|e| e.to_string()),
+        _ => Err("graph is unavailable in this catalogue".into()),
+    }
+}
+
+// Execution is host-owned, outside the document data_source contract.
+fn execution_graph(
+    index: &Index,
+    actor: &Actor,
+    seat: &SeatRecord,
+    args: &GraphRead,
+    own_only: bool,
+) -> std::result::Result<Value, String> {
+    if actor.role.class != Class::Oracle && !own_only {
         return Err("execution graph requires oracle-class authority".into());
     }
     let limit = page_limit(args.limit)?;
@@ -185,7 +185,10 @@ pub(crate) fn graph(
         .map(|doc| doc.id.clone())
         .collect();
     allowed.extend([seat.id.to_string(), format!("seat:{}", seat.id)]);
-    let graph = index.graphs.get(&kind).ok_or("graph unavailable")?;
+    let graph = index
+        .graphs
+        .get(&GraphKind::Execution)
+        .ok_or("graph unavailable")?;
     let names: BTreeSet<_> = graph
         .node_weights()
         .filter(|id| {
@@ -219,16 +222,9 @@ pub(crate) fn graph(
     )
 }
 
-pub(crate) fn orient_documents(index: &Index, seat: &SeatRecord) -> Value {
-    let docs: Vec<_> = index
-        .documents
-        .values()
-        .filter(|doc| own_document(doc, seat))
-        .collect();
-    json!({"items":docs.iter().take(8).map(|doc|{
-        let verify=&doc.metadata["verify"];
-        json!({"id":doc.id,"path":doc.path,"title":doc.metadata["title"].as_str().map(|s|clip(s,512)),
-            "status":doc.metadata["status"],"verify":if verify.to_string().len()<=4096{verify.clone()}else{json!({"unavailable":"verify exceeds card bound; read the document"})},
-            "body":clip(&doc.body,16*1024),"body_truncated":doc.body.len()>16*1024,"parse_error":doc.error})
-    }).collect::<Vec<_>>(),"truncated":docs.len()>8})
+pub(crate) fn orient_documents(
+    source: &dyn DataSource,
+    seat: &SeatRecord,
+) -> std::result::Result<Value, String> {
+    views::orient(source, seat).map_err(|e| e.to_string())
 }

@@ -1,0 +1,777 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:bboxy450:data_source:1.0",
+  "title": "bboxy450 data_source 1.0",
+  "description": "Eight methods; unknown fields are additive. Authority is supplied by the host, never JSON. Bundled provider data_dir is its root.",
+  "$defs": {
+    "RecordRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "number": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "external_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "slug",
+        "path",
+        "digest"
+      ],
+      "additionalProperties": true
+    },
+    "ResourceLink": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "resource_link"
+        },
+        "uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mimeType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 67108864
+        }
+      },
+      "required": [
+        "type",
+        "uri",
+        "name",
+        "mimeType",
+        "size"
+      ],
+      "additionalProperties": true
+    },
+    "Record": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "number": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "external_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "frontmatter": {
+          "type": "object"
+        },
+        "body": {
+          "type": "string"
+        },
+        "etag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResourceLink"
+          }
+        },
+        "parse_error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "slug",
+        "path",
+        "digest",
+        "frontmatter",
+        "body",
+        "etag",
+        "resources"
+      ],
+      "additionalProperties": true
+    },
+    "CommandError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string"
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecordRef"
+          }
+        },
+        "retry_after_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "additionalProperties": true
+    },
+    "ResolveRequest": {
+      "type": "object",
+      "properties": {
+        "locator": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "locator"
+      ],
+      "additionalProperties": true
+    },
+    "FetchRequest": {
+      "type": "object",
+      "properties": {
+        "ref": {
+          "$ref": "#/$defs/RecordRef"
+        }
+      },
+      "required": [
+        "ref"
+      ],
+      "additionalProperties": true
+    },
+    "SearchRequest": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "cursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 128
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": true
+    },
+    "Filter": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "assignee": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "since": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [],
+      "additionalProperties": true
+    },
+    "ListRequest": {
+      "type": "object",
+      "properties": {
+        "filter": {
+          "$ref": "#/$defs/Filter"
+        },
+        "cursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 128
+        }
+      },
+      "required": [],
+      "additionalProperties": true
+    },
+    "SearchHit": {
+      "type": "object",
+      "properties": {
+        "ref": {
+          "$ref": "#/$defs/RecordRef"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "number": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "snippet": {
+          "type": "string"
+        },
+        "score": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "ref",
+        "title",
+        "type",
+        "number",
+        "snippet",
+        "score"
+      ],
+      "additionalProperties": true
+    },
+    "RefPage": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecordRef"
+          },
+          "maxItems": 128
+        },
+        "next": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "items",
+        "next"
+      ],
+      "additionalProperties": true
+    },
+    "SearchPage": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SearchHit"
+          },
+          "maxItems": 128
+        },
+        "next": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "items",
+        "next"
+      ],
+      "additionalProperties": true
+    },
+    "Edge": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "minLength": 1
+        },
+        "to": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "weight": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "rel",
+        "weight"
+      ],
+      "additionalProperties": true
+    },
+    "Links": {
+      "type": "object",
+      "properties": {
+        "outgoing": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Edge"
+          }
+        },
+        "incoming": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Edge"
+          }
+        }
+      },
+      "required": [
+        "outgoing",
+        "incoming"
+      ],
+      "additionalProperties": true
+    },
+    "Scope": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "all"
+            },
+            "graph": {
+              "type": "string",
+              "enum": [
+                "markdown",
+                "task",
+                "artifact"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "graph"
+          ],
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "type"
+            },
+            "graph": {
+              "type": "string",
+              "enum": [
+                "markdown",
+                "task",
+                "artifact"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "graph",
+            "type"
+          ],
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "swarm"
+            },
+            "graph": {
+              "type": "string",
+              "enum": [
+                "markdown",
+                "task",
+                "artifact"
+              ]
+            },
+            "swarm": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "graph",
+            "swarm"
+          ],
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "neighborhood"
+            },
+            "graph": {
+              "type": "string",
+              "enum": [
+                "markdown",
+                "task",
+                "artifact"
+              ]
+            },
+            "ref": {
+              "$ref": "#/$defs/RecordRef"
+            },
+            "depth": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16
+            }
+          },
+          "required": [
+            "kind",
+            "graph",
+            "ref",
+            "depth"
+          ],
+          "additionalProperties": true
+        }
+      ]
+    },
+    "GraphRequest": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "cursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 128
+        }
+      },
+      "required": [
+        "scope"
+      ],
+      "additionalProperties": true
+    },
+    "Node": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RecordRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "frontmatter": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "ref",
+        "title",
+        "type"
+      ],
+      "additionalProperties": true
+    },
+    "GraphPage": {
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Node"
+          },
+          "maxItems": 128
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Edge"
+          },
+          "maxItems": 512
+        },
+        "next": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "edges_truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "nodes",
+        "edges",
+        "next",
+        "edges_truncated"
+      ],
+      "additionalProperties": true
+    },
+    "WriteRequest": {
+      "type": "object",
+      "properties": {
+        "ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RecordRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "frontmatter": {
+          "type": "object"
+        },
+        "body": {
+          "type": "string"
+        },
+        "etag": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "frontmatter",
+        "body"
+      ],
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "anyOf": [
+              {
+                "not": {
+                  "required": [
+                    "ref"
+                  ]
+                }
+              },
+              {
+                "properties": {
+                  "ref": {
+                    "type": "null"
+                  }
+                },
+                "required": [
+                  "ref"
+                ]
+              }
+            ]
+          },
+          "then": {
+            "required": [
+              "path"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "path": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "WriteResult": {
+      "type": "object",
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/Record"
+        },
+        "lossy": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "record",
+        "lossy"
+      ],
+      "additionalProperties": true
+    },
+    "ChangesRequest": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 128
+        }
+      },
+      "required": [
+        "cursor"
+      ],
+      "additionalProperties": true
+    },
+    "Changes": {
+      "type": "object",
+      "properties": {
+        "changed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecordRef"
+          },
+          "maxItems": 128
+        },
+        "next": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "changed",
+        "next"
+      ],
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,212 @@
+K-0 exact source 40cec4b9881fb2514341588963f0fc006cb2c273
+base d7d62335057499f3e73247ba123f25927400d486
+Common development env: target/k0-dev; CARGO_INCREMENTAL=0; profile debug=0; O1; jobs=2; BBOXY_TEST_CUSTODY=memory.
+Full development outputs are k0-dev.log; full exact gate is k0-ci.log.
+
+{"command": ["cargo", "test", "-p", "bbt-plugin"], "elapsed": 37.72, "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/kit-test-initial.log"}
+{"command": ["cargo", "check", "-p", "bbt-mux"], "elapsed": 68.173, "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/check-mux-initial.log"}
+{"command": ["cargo", "test", "--locked", "-p", "bbt-plugin"], "elapsed": 3.947, "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/kit-test-with-projection.log"}
+{"command": ["cargo", "test", "--locked", "-p", "bbt-mux", "--test", "knowledge", "--", "--nocapture"], "elapsed": 120.007, "exit": 101, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/provider-tests-first.log"}
+{"command": ["cargo", "test", "--locked", "-p", "bbt-mux", "--test", "knowledge", "--", "--nocapture"], "elapsed": 22.825, "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/provider-tests-second.log"}
+{"command": ["cargo", "check", "--locked", "-p", "bbt-mux"], "elapsed": 4.154, "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/check-view-routing.log"}
+{"command": ["cargo", "test", "--locked", "-p", "bbt-plugin"], "elapsed": 3.232, "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/kit-final-dev.log"}
+{"command": ["cargo", "test", "--locked", "-p", "bbt-mux", "--test", "knowledge", "--test", "knowledge_views", "--test", "mcp", "--", "--nocapture"], "elapsed": 75.802, "exit": 101, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/provider-and-view-tests.log"}
+{"command": ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "elapsed": 91.19, "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/strict-workspace-clippy.log"}
+{"command": ["cargo", "test", "--locked", "-p", "bbt-plugin"], "elapsed": 2.357, "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/kit-write-path-regression.log"}
+{"command": ["cargo", "test", "--locked", "-p", "bbt-mux", "--test", "knowledge", "--test", "knowledge_views", "--", "--nocapture"], "elapsed": 27.772, "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/provider-final-dev.log"}
+{"command": ["cargo", "test", "--locked", "-p", "bbt-mux", "--test", "mcp", "mcp_seat_input_consumes_readiness_and_enter_is_explicit", "--", "--exact", "--nocapture"], "elapsed": 10.896, "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/mcp-input-isolated.log"}
+{"command": ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "elapsed": 33.574, "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/strict-rebased-clippy.log"}
+{"command": ["sh", "scripts/licenses.sh"], "elapsed": 0.099, "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/licences-rebased.log"}
+{"command": ["sh", "scripts/layering.sh"], "elapsed": 0.039, "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/layering-rebased.log"}
+{"command": ["cargo", "package", "--locked", "--list", "-p", "bbt-plugin"], "elapsed": 0.236, "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/package-kit-list.log"}
+{"command": ["sh", "scripts/ci-local.sh", "--parity"], "cwd": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/ci-40cec4b9", "elapsed": 2558.847, "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-k0-jrrzosbl/k0-ci-parity.log", "sha": "40cec4b9881fb2514341588963f0fc006cb2c273"}
+
+Signed source verification:
+['git', 'verify-commit', 'HEAD'] — exit 0
+gpg: Signature made Fri Oct 23 23:02:37 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+
+['git', 'verify-commit', 'HEAD~1'] — exit 0
+gpg: Signature made Fri Oct 23 23:02:37 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+
+Frozen source / whitespace checks:
+[
+  {
+    "command": [
+      "git",
+      "diff",
+      "--quiet",
+      "40cec4b9881fb2514341588963f0fc006cb2c273",
+      "--",
+      "Cargo.toml",
+      "Cargo.lock",
+      "crates"
+    ],
+    "exit": 0,
+    "output": ""
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit": 0,
+    "output": ""
+  }
+]
+
+Lock delta (no existing package versions removed):
+{
+  "added": [
+    {
+      "name": "allocator-api2",
+      "version": "0.2.21"
+    },
+    {
+      "name": "bbt-plugin",
+      "version": "0.0.1"
+    },
+    {
+      "name": "bit-set",
+      "version": "0.8.0"
+    },
+    {
+      "name": "bit-vec",
+      "version": "0.8.0"
+    },
+    {
+      "name": "borrow-or-share",
+      "version": "0.2.4"
+    },
+    {
+      "name": "bytecount",
+      "version": "0.6.9"
+    },
+    {
+      "name": "email_address",
+      "version": "0.2.9"
+    },
+    {
+      "name": "fancy-regex",
+      "version": "0.19.2"
+    },
+    {
+      "name": "fluent-uri",
+      "version": "0.4.1"
+    },
+    {
+      "name": "fraction",
+      "version": "0.17.0"
+    },
+    {
+      "name": "jsonschema",
+      "version": "0.60.1"
+    },
+    {
+      "name": "jsonschema-regex",
+      "version": "0.60.1"
+    },
+    {
+      "name": "jsonschema-value",
+      "version": "0.60.1"
+    },
+    {
+      "name": "micromap",
+      "version": "0.3.0"
+    },
+    {
+      "name": "num",
+      "version": "0.4.3"
+    },
+    {
+      "name": "num-bigint",
+      "version": "0.4.8"
+    },
+    {
+      "name": "num-cmp",
+      "version": "0.1.0"
+    },
+    {
+      "name": "num-complex",
+      "version": "0.4.6"
+    },
+    {
+      "name": "num-rational",
+      "version": "0.4.2"
+    },
+    {
+      "name": "outref",
+      "version": "0.5.2"
+    },
+    {
+      "name": "ref-cast",
+      "version": "1.0.27"
+    },
+    {
+      "name": "ref-cast-impl",
+      "version": "1.0.27"
+    },
+    {
+      "name": "referencing",
+      "version": "0.60.1"
+    },
+    {
+      "name": "strum",
+      "version": "0.28.0"
+    },
+    {
+      "name": "strum_macros",
+      "version": "0.28.0"
+    },
+    {
+      "name": "unicode-general-category",
+      "version": "1.1.0"
+    },
+    {
+      "name": "uuid-simd",
+      "version": "0.8.0"
+    },
+    {
+      "name": "vsimd",
+      "version": "0.8.0"
+    }
+  ],
+  "removed": []
+}
+
+Exact current parity summary:
+{
+  "cases": 2024,
+  "statuses": {
+    "review pixels": 72,
+    "within policy": 1952
+  },
+  "geometry_required": 1920,
+  "required_geometry_complete": 1920,
+  "ci_sha256": "565cf25205e0e20ae1bf131f2635c65c2212700e5b039ae24d86262b2a7c6600",
+  "report_sha256": "77d19eaccda51d557c13040bf63d763577e08f10a8d6361bb4100ee174c3bec4",
+  "gate_elapsed_s": 2558.847,
+  "summary_note": "Required geometry only; optional snapshots are not counted as required."
+}
+Preparation note: a post-gate summary helper initially counted optional geometry along with required geometry and asserted 1976==1920 (exit 1). Corrected the summary predicate to required geometry (1920 complete). Gate/report files were unchanged; no gate rerun.
+Main moved while exact gate ran (source not rebased):
+bd63beed decision #263: stale mux.sock recovery, lock first then connect probe, unlink and bind only when nothing listens
+77d9ad3d Merge MCP readiness + recovery argv fixtures (Sable, tests only)
+b4e12cc9 Record loaded readiness and deterministic resume publication verification
+adf77ecf Merge A-1 bboxy450-term ctl (Seraph)
+8c076321 Wait for the initial fixture publication before gating its replacement
+b6046a63 A-1: --parity gate evidence for 01238cd6 (all gates passed, ctl-opt-in pass)
+1647186a Prove resumed argv publication can lag the reported process
+6d800cc8 Wait for resumed fixture argv publication before asserting exact launches
+76eb6788 #262: the role-to-class table, oracle and architect are Oracle class, creativity, executor and shell are Worker; the class comes from the table at grant time only
+00d99d4f Wait for MCP input readiness and hold the consumed fixture state
+6ac001bf #262 shape: shell seats carry Role::Shell of the worker class with an ordinary grant and no prompt; no Option<Role>, no Class::None
+b6cf996b Merge e2e launch audit (Aster, evidence only)
+ee58dad3 Record real Claude and Codex launch audit and native wake gaps
+96e6ce70 decision #262: launcher role defaults, Claude oracle, Codex executor and not overridable upward, per-seat override as a new grant epoch
+01238cd6 A-1: the ctl e2e test proves a real seat process is refused at the door
+a10d2a6c A-1: bboxy450-term ctl, the operator's door into a running app (decision #260, invariant #261)
