@@ -125,6 +125,22 @@ impl PendingEvents {
     }
 }
 
+/// Fixed-size, numeric observations of the serial client. Reading these does
+/// not drain events, issue a request, or acquire another logic lease.
+#[derive(Clone, Copy, Debug, Default, serde::Serialize)]
+pub struct ClientDiagnostics {
+    pub read_calls: u64,
+    pub read_bytes: u64,
+    pub decoded_event_frames: u64,
+    pub receive_calls: u64,
+    pub returned_events: u64,
+    pub empty_receives: u64,
+    pub queued_events: usize,
+    pub queued_raw_events: usize,
+    /// Latest queued Output for the caller's exact seat/generation, if any.
+    pub queued_output_sequence: Option<u64>,
+}
+
 /// The same logic can run in a separate process against W2.1's private socket.
 pub struct SocketSupervisor {
     stream: std::os::unix::net::UnixStream,
@@ -134,6 +150,7 @@ pub struct SocketSupervisor {
     lease: Option<Ulid>,
     pending_request: Option<PendingRequest>,
     broken: bool,
+    diagnostics: ClientDiagnostics,
 }
 impl SocketSupervisor {
     pub fn connect(path: &Path, capability: [u8; 32]) -> Result<Self> {
@@ -148,6 +165,7 @@ impl SocketSupervisor {
             lease: None,
             pending_request: None,
             broken: false,
+            diagnostics: ClientDiagnostics::default(),
         };
         match client.request(Action::AcquireLogic { capability })? {
             Reply::Acquired { logic_lease, .. } => client.lease = Some(logic_lease),
@@ -155,6 +173,22 @@ impl SocketSupervisor {
         }
         Ok(client)
     }
+    /// Copy counters and one focused queue observation without consuming data.
+    /// The queue observation costs two tree lookups, not a scan across seats.
+    pub fn diagnostics(&self, seat: Ulid, generation: u64) -> ClientDiagnostics {
+        ClientDiagnostics {
+            queued_events: self.events.ordered.len(),
+            queued_raw_events: self.events.raw_count,
+            queued_output_sequence: self
+                .events
+                .slots
+                .get(&(seat, generation, 0))
+                .and_then(|slot| self.events.ordered.get(slot))
+                .and_then(|pending| pending.event.sequence()),
+            ..self.diagnostics
+        }
+    }
+
     fn check_connection(&mut self) -> Result<()> {
         if self.broken {
             return Err(invalid("supervisor disconnected"));
@@ -174,6 +208,7 @@ impl SocketSupervisor {
 
     fn read(&mut self, timeout: Duration) -> Result<()> {
         self.check_connection()?;
+        self.diagnostics.read_calls = self.diagnostics.read_calls.saturating_add(1);
         let timeout = self.pending_request.as_ref().map_or(timeout, |pending| {
             timeout.min(pending.expires.saturating_duration_since(Instant::now()))
         });
@@ -204,9 +239,14 @@ impl SocketSupervisor {
             Err(e) => return Err(e.into()),
         };
         self.check_connection()?;
+        self.diagnostics.read_bytes = self.diagnostics.read_bytes.saturating_add(count as u64);
         for frame in self.decoder.push(&bytes[..count])? {
             match frame.body {
-                Message::Event { event } => self.events.push(event)?,
+                Message::Event { event } => {
+                    self.diagnostics.decoded_event_frames =
+                        self.diagnostics.decoded_event_frames.saturating_add(1);
+                    self.events.push(event)?;
+                }
                 Message::Reply { request_id, result } => {
                     if self
                         .pending_request
@@ -297,10 +337,18 @@ impl SupervisorConnection for SocketSupervisor {
     fn receive(&mut self, timeout: Duration) -> Result<Option<Event>> {
         bbt_rt::assert_not_ui_thread();
         self.check_connection()?;
-        if let Some(event) = self.events.pop_front() {
-            return Ok(Some(event));
+        self.diagnostics.receive_calls = self.diagnostics.receive_calls.saturating_add(1);
+        let event = if let Some(event) = self.events.pop_front() {
+            Some(event)
+        } else {
+            self.read(timeout)?;
+            self.events.pop_front()
+        };
+        if event.is_some() {
+            self.diagnostics.returned_events = self.diagnostics.returned_events.saturating_add(1);
+        } else {
+            self.diagnostics.empty_receives = self.diagnostics.empty_receives.saturating_add(1);
         }
-        self.read(timeout)?;
-        Ok(self.events.pop_front())
+        Ok(event)
     }
 }

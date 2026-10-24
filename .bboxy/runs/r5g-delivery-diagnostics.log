@@ -1,0 +1,553 @@
+R5g delivery diagnostics — distinct-swarm reproduction before declared workload correction
+Parent: 04a93338aa12a26f31a029dc58e2d458bdc467ff; tested tracked source diff ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286.
+Authorization: Oracle39d0990a; scope map delivered02662b53.
+All assertions/deadlines retained; no protocol, transport, provider or checkpoint-policy change.
+Client observations are fixed numeric counters and two focused tree lookups; observing a queue does not drain it.
+Actor notification accepted means enqueue admission, not logic receipt. Its row is a last observation; no cross-process clock arithmetic is valid.
+Additional phase spans retain the same8192-span/2048-seat limits; totals remain completion-accounted and inclusive.
+
+Results and cleanup:
+{
+  "runs": [
+    {
+      "seats": 4,
+      "exit": 0,
+      "wrapper_s": 55.77228604198899,
+      "every_seat_live_ms": 427.862,
+      "log_sha256": "9f9b1fdc12c1660a37f45dac553b6b0493e94fd037a8832e0a56664b6977588d",
+      "source_diff_sha256": "ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286",
+      "start_load": "not separately sampled",
+      "delivery": {
+        "burst_held": 1327,
+        "burst_returned": 10,
+        "burst_seen": 1336,
+        "client": {
+          "decoded_event_frames": 1413,
+          "empty_receives": 9297,
+          "queued_events": 0,
+          "queued_output_sequence": null,
+          "queued_raw_events": 0,
+          "read_bytes": 130383642,
+          "read_calls": 17820,
+          "receive_calls": 10695,
+          "returned_events": 1398
+        },
+        "held_released": 1,
+        "held_sequence": null,
+        "inner_empty": 9297,
+        "inner_receive_calls": 10695,
+        "last_burst_returned_sequence": 1440,
+        "last_burst_seen_sequence": 1440,
+        "other_returned": 62,
+        "receive_calls": 9369,
+        "release_requested": true
+      },
+      "phases": {
+        "maintenance": {
+          "calls": 9400,
+          "inclusive_s": 0.133932831,
+          "mean_ms": 0.014248173510638298,
+          "max_ms": 34.098167
+        },
+        "maintenance_messages": {
+          "calls": 52,
+          "inclusive_s": 0.067637748,
+          "mean_ms": 1.300725923076923,
+          "max_ms": 29.14475
+        },
+        "maintenance_provenance": {
+          "calls": 52,
+          "inclusive_s": 0.044700165,
+          "mean_ms": 0.8596185576923078,
+          "max_ms": 13.296333
+        },
+        "maintenance_adapters": {
+          "calls": 27,
+          "inclusive_s": 0.003497458,
+          "mean_ms": 0.12953548148148147,
+          "max_ms": 1.460041
+        },
+        "checkpoint_rpc": {
+          "calls": 8,
+          "inclusive_s": 0.050213833,
+          "mean_ms": 6.276729125,
+          "max_ms": 8.402834
+        },
+        "checkpoint_service": {
+          "calls": 18800,
+          "inclusive_s": 0.014394215,
+          "mean_ms": 0.0007656497340425532,
+          "max_ms": 0.43875
+        },
+        "logic_turn": {
+          "calls": 9399,
+          "inclusive_s": 5.580782382,
+          "mean_ms": 0.5937634197255027,
+          "max_ms": 141.660666
+        }
+      },
+      "supervisor_notification": {
+        "seat": "01M5PQQG5H29V5P0R655EDG0RK",
+        "generation": 1,
+        "observed_ns": 2964912917,
+        "notified_sequence": 0,
+        "target_sequence": 0,
+        "ring_observed_ns": 0,
+        "captured_sequence": 0,
+        "committed_sequence": 0,
+        "applied_observed_ns": 0,
+        "applied_sequence": 0,
+        "last_progress_ns": 0,
+        "pages": 0,
+        "parsed_events": 0,
+        "parsed_bytes": 0,
+        "checkpoint_sequence": 0,
+        "checkpoint_byte_end": 0,
+        "parsed_byte_end": 0,
+        "checkpoint_pauses": 0,
+        "checkpoint_paused": false,
+        "idle_checkpoints": 0,
+        "forced_checkpoints": 0,
+        "notification_attempts": 3772,
+        "notification_accepted": 1351,
+        "notification_last_attempt": 1440,
+        "notification_last_accepted": 1440
+      }
+    },
+    {
+      "seats": 64,
+      "exit": 0,
+      "wrapper_s": 29.865447749965824,
+      "every_seat_live_ms": 2777.891,
+      "log_sha256": "29d674387497bcd97d056d94443ecaec585e5e8b4bef160143d066b5e2baaddd",
+      "source_diff_sha256": "ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286",
+      "start_load": {
+        "at": "2026-10-24T03:37:53.742564-07:00",
+        "load": [
+          13.38134765625,
+          19.72216796875,
+          13.52294921875
+        ],
+        "free": 50900803584
+      },
+      "delivery": {
+        "burst_held": 90,
+        "burst_returned": 4,
+        "burst_seen": 93,
+        "client": {
+          "decoded_event_frames": 1528,
+          "empty_receives": 1426,
+          "queued_events": 0,
+          "queued_output_sequence": null,
+          "queued_raw_events": 0,
+          "read_bytes": 104321376,
+          "read_calls": 15322,
+          "receive_calls": 1795,
+          "returned_events": 369
+        },
+        "held_released": 1,
+        "held_sequence": null,
+        "inner_empty": 1426,
+        "inner_receive_calls": 1795,
+        "last_burst_returned_sequence": 2079,
+        "last_burst_seen_sequence": 2079,
+        "other_returned": 276,
+        "receive_calls": 1706,
+        "release_requested": true
+      },
+      "phases": {
+        "maintenance": {
+          "calls": 2361,
+          "inclusive_s": 12.816511032,
+          "mean_ms": 5.428424833545108,
+          "max_ms": 511.003583
+        },
+        "maintenance_messages": {
+          "calls": 117,
+          "inclusive_s": 11.215001455,
+          "mean_ms": 95.85471329059828,
+          "max_ms": 493.359208
+        },
+        "maintenance_provenance": {
+          "calls": 117,
+          "inclusive_s": 0.555499328,
+          "mean_ms": 4.747857504273504,
+          "max_ms": 43.851
+        },
+        "maintenance_adapters": {
+          "calls": 92,
+          "inclusive_s": 1.012945794,
+          "mean_ms": 11.010280369565217,
+          "max_ms": 95.122291
+        },
+        "checkpoint_rpc": {
+          "calls": 128,
+          "inclusive_s": 0.90434958,
+          "mean_ms": 7.06523109375,
+          "max_ms": 31.36
+        },
+        "checkpoint_service": {
+          "calls": 4722,
+          "inclusive_s": 0.047363752,
+          "mean_ms": 0.0100304430326133,
+          "max_ms": 2.824375
+        },
+        "logic_turn": {
+          "calls": 2360,
+          "inclusive_s": 25.210737216,
+          "mean_ms": 10.682515769491525,
+          "max_ms": 537.993
+        }
+      },
+      "supervisor_notification": {
+        "seat": "01M5PQT3PHHBAP2B4HVFY0GJR7",
+        "generation": 1,
+        "observed_ns": 13058844625,
+        "notified_sequence": 0,
+        "target_sequence": 0,
+        "ring_observed_ns": 0,
+        "captured_sequence": 0,
+        "committed_sequence": 0,
+        "applied_observed_ns": 0,
+        "applied_sequence": 0,
+        "last_progress_ns": 0,
+        "pages": 0,
+        "parsed_events": 0,
+        "parsed_bytes": 0,
+        "checkpoint_sequence": 0,
+        "checkpoint_byte_end": 0,
+        "parsed_byte_end": 0,
+        "checkpoint_pauses": 0,
+        "checkpoint_paused": false,
+        "idle_checkpoints": 0,
+        "forced_checkpoints": 0,
+        "notification_attempts": 20377,
+        "notification_accepted": 638,
+        "notification_last_attempt": 2079,
+        "notification_last_accepted": 2079
+      }
+    },
+    {
+      "seats": 65,
+      "exit": 0,
+      "wrapper_s": 34.15251433302183,
+      "every_seat_live_ms": 3395.25,
+      "log_sha256": "60b0dc0bef27a5b9efb415d7ef561f1455bdf4980bd62d19a8747bb177b81a96",
+      "source_diff_sha256": "ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286",
+      "start_load": {
+        "at": "2026-10-24T03:38:45.699780-07:00",
+        "load": [
+          16.8486328125,
+          19.39697265625,
+          13.7744140625
+        ],
+        "free": 49984339968
+      },
+      "delivery": {
+        "burst_held": 226,
+        "burst_returned": 1,
+        "burst_seen": 226,
+        "client": {
+          "decoded_event_frames": 1127,
+          "empty_receives": 1517,
+          "queued_events": 0,
+          "queued_output_sequence": null,
+          "queued_raw_events": 0,
+          "read_bytes": 115173493,
+          "read_calls": 16372,
+          "receive_calls": 1904,
+          "returned_events": 387
+        },
+        "held_released": 1,
+        "held_sequence": null,
+        "inner_empty": 1517,
+        "inner_receive_calls": 1904,
+        "last_burst_returned_sequence": 1741,
+        "last_burst_seen_sequence": 1741,
+        "other_returned": 161,
+        "receive_calls": 1679,
+        "release_requested": true
+      },
+      "phases": {
+        "maintenance": {
+          "calls": 2361,
+          "inclusive_s": 14.924645648,
+          "mean_ms": 6.321323866158407,
+          "max_ms": 1113.543084
+        },
+        "maintenance_messages": {
+          "calls": 104,
+          "inclusive_s": 13.827439713,
+          "mean_ms": 132.95615108653845,
+          "max_ms": 1087.434375
+        },
+        "maintenance_provenance": {
+          "calls": 104,
+          "inclusive_s": 0.659763712,
+          "mean_ms": 6.343881846153846,
+          "max_ms": 36.05175
+        },
+        "maintenance_adapters": {
+          "calls": 97,
+          "inclusive_s": 0.410460209,
+          "mean_ms": 4.231548546391752,
+          "max_ms": 53.17625
+        },
+        "checkpoint_rpc": {
+          "calls": 130,
+          "inclusive_s": 0.904253667,
+          "mean_ms": 6.955797438461539,
+          "max_ms": 22.574958
+        },
+        "checkpoint_service": {
+          "calls": 4722,
+          "inclusive_s": 0.050865259,
+          "mean_ms": 0.01077197352816603,
+          "max_ms": 9.404291
+        },
+        "logic_turn": {
+          "calls": 2360,
+          "inclusive_s": 28.231115581,
+          "mean_ms": 11.96233711059322,
+          "max_ms": 1174.173666
+        }
+      },
+      "supervisor_notification": {
+        "seat": "01M5PQVQES46KJ2PZC5RWYAAFK",
+        "generation": 1,
+        "observed_ns": 19238835375,
+        "notified_sequence": 0,
+        "target_sequence": 0,
+        "ring_observed_ns": 0,
+        "captured_sequence": 0,
+        "committed_sequence": 0,
+        "applied_observed_ns": 0,
+        "applied_sequence": 0,
+        "last_progress_ns": 0,
+        "pages": 0,
+        "parsed_events": 0,
+        "parsed_bytes": 0,
+        "checkpoint_sequence": 0,
+        "checkpoint_byte_end": 0,
+        "parsed_byte_end": 0,
+        "checkpoint_pauses": 0,
+        "checkpoint_paused": false,
+        "idle_checkpoints": 0,
+        "forced_checkpoints": 0,
+        "notification_attempts": 12269,
+        "notification_accepted": 781,
+        "notification_last_attempt": 1741,
+        "notification_last_accepted": 1741
+      }
+    }
+  ],
+  "recorded_pids_checked": 136,
+  "remaining": [],
+  "interpretation": "All three pass; this does not reproduce a discontinuity at65. Ambient loads differ. Phase durations overlap; these are completion-accounted pre-kill totals, not a full-count overhead gate."
+}
+
+Interpretation: 4/64/65 all passed; no abrupt failure at65 was reproduced. Message maintenance dominated64/65; different ambient loads prevent a quiet controlled threshold claim. No claim that ledger pool reopen is the measured sub-operation.
+No 967 recovery budget or 967/50 overhead acceptance is derived here. #254 stays pending.
+
+Oracle ruling d6aff179: the calibration fixture must use stall/load.rs swarm shape1-2. The O(swarms) ready/events pump is separate work after R5g; do not silently fix it here.
+The source in this commit preserves the distinct-swarm reproduction, before that workload correction.
+
+delivery-supervisor status:
+{
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-supervisor",
+    "--locked",
+    "--lib"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "at": "2026-10-24T03:34:44.844334-07:00",
+  "finished": true,
+  "source_diff_sha256": "ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286",
+  "pid": 84100,
+  "exit": 0,
+  "elapsed_s": 39.052521167031955,
+  "source_diff_sha256_after": "ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286"
+}
+Raw output SHA256: 4f2ca4f314c51267d9cfebea05f7ff21a444e9ab645c5e2d6f48adc4831270e2
+Raw output, JSON-escaped to preserve bytes without trailing-whitespace edits:
+"   Compiling serde_core v1.0.229\n   Compiling generic-array v0.14.7\n   Compiling syn v3.0.9\n   Compiling serde v1.0.229\n   Compiling serde_derive v1.0.229\n   Compiling bitflags v2.13.2\n   Compiling typenum v1.20.1\n   Compiling syn v2.0.119\n   Compiling getrandom v0.4.3\n   Compiling smallvec v1.16.3\n   Compiling parking_lot_core v0.9.12\n   Compiling crypto-common v0.1.7\n   Compiling thiserror-impl v1.0.69\n   Compiling block-buffer v0.10.4\n   Compiling errno v0.3.14\n   Compiling serde_json v1.0.154\n   Compiling thiserror v1.0.69\n   Compiling rustix v1.1.5\n   Compiling filedescriptor v0.8.3\n   Compiling digest v0.10.7\n   Compiling nix v0.28.0\n   Compiling parking_lot v0.12.5\n   Compiling arrayvec v0.7.8\n   Compiling serde-big-array v0.5.1\n   Compiling tempfile v3.27.0\n   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)\n   Compiling portable-pty v0.9.0\n   Compiling sha2 v0.10.9\n   Compiling ulid v1.2.1\n   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)\n   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)\n    Finished `test` profile [optimized] target(s) in 28.84s\n     Running unittests src/lib.rs (target/r5g/debug/deps/bbt_supervisor-e4a124315a5fb7be)\n\nrunning 44 tests\ntest client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok\ntest client::tests::a_peer_closed_after_its_final_reply_does_not_hide_buffered_bytes_behind_timeout_setup ... ok\ntest client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok\ntest client::tests::diagnostic_queue_observation_keeps_the_same_event_order ... ok\ntest ring::checksum_tests::crc_matches_the_table_for_all_bytes_unaligned_splits_and_short_tails ... ok\ntest ring::checksum_tests::fixed_sha_vectors_and_a_software_written_cold_blob_still_verify ... ok\ntest ring::journal::tests::metadata_only_debt_keeps_the_five_second_full_flush_deadline ... ok\ntest ring::journal::tests::bad_crc_and_oversized_header_never_commit_a_later_tick ... ok\ntest ring::journal::tests::old_segment_waits_for_every_sealed_projection_and_checkpoint ... ok\ntest ring::paging_tests::output_weight_bounds_real_json_for_all_bytes_and_boundary_metadata ... ok\ntest client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok\ntest ring::writer::crash_tests::capture_crash_child ... ignored, private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost\ntest ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ignored, release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture\ntest ring::paging_tests::a_full_page_returns_before_decoding_the_following_entry ... ok\ntest client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok\ntest ring::journal::tests::legacy_checkpoint_publication_offsets_remain_readable ... ok\ntest ring::journal::tests::checkpoint_carries_offset_and_rotated_tail_replays_without_effects ... ok\ntest supervisor::capture_diagnostics::tests::bounded_trace_retains_totals_and_reports_overwrite_and_contention ... ok\ntest supervisor::capture_diagnostics::tests::cursor_generations_and_turn_pages_remain_distinct ... ok\ntest ring::writer::tests::orderly_shutdown_leaves_a_durable_journal_that_rebuilds_the_projection ... ok\ntest ring::writer::tests::ring_and_journal_paging_is_contiguous_wire_bounded_and_does_not_decode_past_full ... ok\ntest ring::journal::tests::crash_rebuilds_two_seats_only_through_the_last_tick_and_rejects_torn_suffix ... ok\ntest ring::writer::tests::undurable_admission_budget_pauses_until_a_full_flush_returns_credit ... ok\ntest supervisor::child_events::tests::a_live_child_cannot_make_the_shutdown_wait_infinite ... ok\ntest supervisor::capture_read_tests::a_full_retained_capture_buffer_is_not_pty_eof ... ok\ntest transport::tests::fragmented_and_coalesced_frames_round_trip ... ok\ntest supervisor::capture_read_tests::exited_between_spawn_and_registration_emits_exactly_one_exit ... ok\ntest transport::tests::fork_inherited_listener_is_live_until_the_child_releases_it ... ok\ntest transport::tests::full_listener_backlog_is_live_and_never_unlinked ... ok\ntest ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok\ntest transport::tests::priority_replies_never_interleave_a_partially_written_event ... ok\ntest transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok\ntest transport::tests::ownership_lock_persists_and_legacy_without_one_fails_closed ... ok\ntest transport::tests::replies_pass_unsent_events_with_fifo_order_in_both_lanes ... ok\ntest transport::tests::stale_and_live_socket_paths_survive_2000_parallel_iterations ... ignored, manual 2000-iteration parallel stale/live socket stress\ntest ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok\ntest transport::tests::refused_socket_rebinds_without_replacing_a_live_socket_or_file ... ok\ntest supervisor::capture_read_tests::an_early_exiting_writer_is_drained_before_reaping_without_blocking_the_actor ... ok\ntest transport::tests::invalid_lock_types_permissions_and_owner_are_rejected_without_changes ... ok\ntest transport::tests::saturated_events_leave_capacity_for_one_maximum_reply_without_growing_the_queue ... ok\ntest ring::paging_tests::hot_and_cold_pages_fit_the_wire_and_keep_every_record_in_order ... ok\ntest supervisor::capture_read_tests::shutdown_closes_a_blocked_staged_pty_and_preserves_capture_and_one_exit ... ok\ntest client::tests::a_timed_out_request_blocks_new_writes_until_its_late_reply_is_drained ... ok\ntest client::tests::an_unanswered_request_becomes_disconnected_at_the_bounded_recovery_deadline ... ok\n\ntest result: ok. 41 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 10.01s\n\n"
+
+delivery-4 status:
+{
+  "argv": [
+    "env",
+    "R5G_SEATS=4",
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--test",
+    "recovery",
+    "checkpoint_bounded_recovery",
+    "--",
+    "--exact",
+    "--nocapture"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "at": "2026-10-24T03:35:39.831451-07:00",
+  "finished": true,
+  "source_diff_sha256": "ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286",
+  "pid": 86345,
+  "exit": 0,
+  "elapsed_s": 55.77228604198899,
+  "source_diff_sha256_after": "ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286"
+}
+Raw output SHA256: 9f9b1fdc12c1660a37f45dac553b6b0493e94fd037a8832e0a56664b6977588d
+Raw output, JSON-escaped to preserve bytes without trailing-whitespace edits:
+"   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)\n   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)\n   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)\n   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)\n    Finished `test` profile [optimized] target(s) in 48.88s\n     Running tests/recovery.rs (target/r5g/debug/deps/recovery-7d0788ad483062a2)\n\nrunning 1 test\ncheckpoint_recovery delivery={\"burst_held\":1327,\"burst_returned\":10,\"burst_seen\":1336,\"client\":{\"decoded_event_frames\":1413,\"empty_receives\":9297,\"queued_events\":0,\"queued_output_sequence\":null,\"queued_raw_events\":0,\"read_bytes\":130383642,\"read_calls\":17820,\"receive_calls\":10695,\"returned_events\":1398},\"held_released\":1,\"held_sequence\":null,\"inner_empty\":9297,\"inner_receive_calls\":10695,\"last_burst_returned_sequence\":1440,\"last_burst_seen_sequence\":1440,\"other_returned\":62,\"receive_calls\":9369,\"release_requested\":true}\ncheckpoint_recovery capture_phase_totals=[[\"logic_turn\",{\"busy\":0,\"bytes\":0,\"calls\":9399,\"elapsed_ns\":5580782382,\"errors\":0,\"max_ns\":141660666,\"pending_peak\":1,\"work\":812}],[\"commands\",{\"busy\":0,\"bytes\":0,\"calls\":9400,\"elapsed_ns\":267497222,\"errors\":0,\"max_ns\":103499583,\"pending_peak\":0,\"work\":10}],[\"receive\",{\"busy\":0,\"bytes\":0,\"calls\":9400,\"elapsed_ns\":3551057512,\"errors\":0,\"max_ns\":11419209,\"pending_peak\":0,\"work\":0}],[\"event\",{\"busy\":0,\"bytes\":0,\"calls\":879,\"elapsed_ns\":1557896679,\"errors\":0,\"max_ns\":135273875,\"pending_peak\":0,\"work\":0}],[\"replay_page\",{\"busy\":0,\"bytes\":12598272,\"calls\":813,\"elapsed_ns\":1431343998,\"errors\":0,\"max_ns\":134806958,\"pending_peak\":0,\"work\":851}],[\"capture_request\",{\"busy\":0,\"bytes\":0,\"calls\":9,\"elapsed_ns\":68577082,\"errors\":0,\"max_ns\":20989208,\"pending_peak\":0,\"work\":0}],[\"read_ring_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":814,\"elapsed_ns\":1262084926,\"errors\":0,\"max_ns\":134545709,\"pending_peak\":0,\"work\":0}],[\"recovery_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":4,\"elapsed_ns\":23799833,\"errors\":0,\"max_ns\":9081083,\"pending_peak\":0,\"work\":0}],[\"checkpoint_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":8,\"elapsed_ns\":50213833,\"errors\":0,\"max_ns\":8402834,\"pending_peak\":0,\"work\":0}],[\"parse\",{\"busy\":0,\"bytes\":12794922,\"calls\":875,\"elapsed_ns\":190339014,\"errors\":0,\"max_ns\":13019916,\"pending_peak\":0,\"work\":913}],[\"checkpoint\",{\"busy\":0,\"bytes\":0,\"calls\":7,\"elapsed_ns\":62326457,\"errors\":0,\"max_ns\":17415167,\"pending_peak\":0,\"work\":0}],[\"maintenance\",{\"busy\":0,\"bytes\":0,\"calls\":9400,\"elapsed_ns\":133932831,\"errors\":0,\"max_ns\":34098167,\"pending_peak\":0,\"work\":0}],[\"supervisor_turn\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_dispatch\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_query\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_sweep\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_providers\",{\"busy\":0,\"bytes\":0,\"calls\":27,\"elapsed_ns\":42293,\"errors\":0,\"max_ns\":2375,\"pending_peak\":0,\"work\":0}],[\"maintenance_adapters\",{\"busy\":0,\"bytes\":0,\"calls\":27,\"elapsed_ns\":3497458,\"errors\":0,\"max_ns\":1460041,\"pending_peak\":0,\"work\":0}],[\"maintenance_identity\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_messages\",{\"busy\":0,\"bytes\":0,\"calls\":52,\"elapsed_ns\":67637748,\"errors\":0,\"max_ns\":29144750,\"pending_peak\":0,\"work\":0}],[\"maintenance_provenance\",{\"busy\":0,\"bytes\":0,\"calls\":52,\"elapsed_ns\":44700165,\"errors\":0,\"max_ns\":13296333,\"pending_peak\":0,\"work\":132}],[\"checkpoint_service\",{\"busy\":0,\"bytes\":0,\"calls\":18800,\"elapsed_ns\":14394215,\"errors\":0,\"max_ns\":438750,\"pending_peak\":0,\"work\":0}]]\ncheckpoint_recovery supervisor_notification={\"seat\":\"01M5PQQG5H29V5P0R655EDG0RK\",\"generation\":1,\"observed_ns\":2964912917,\"notified_sequence\":0,\"target_sequence\":0,\"ring_observed_ns\":0,\"captured_sequence\":0,\"committed_sequence\":0,\"applied_observed_ns\":0,\"applied_sequence\":0,\"last_progress_ns\":0,\"pages\":0,\"parsed_events\":0,\"parsed_bytes\":0,\"checkpoint_sequence\":0,\"checkpoint_byte_end\":0,\"parsed_byte_end\":0,\"checkpoint_pauses\":0,\"checkpoint_paused\":false,\"idle_checkpoints\":0,\"forced_checkpoints\":0,\"notification_attempts\":3772,\"notification_accepted\":1351,\"notification_last_attempt\":1440,\"notification_last_accepted\":1440}\ncheckpoint_recovery seat=01M5PQQG5H29V5P0R655EDG0RK parsed_debt=4224000 backlog=8373262 parsed=12598272 confirmed=8374272 tail=20971534\ncheckpoint_recovery seat=01M5PQQG5HZE81AHAJ9TB76QC6 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQQG5HVTSVCM7WM389PNB6 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQQG5H61T9PKTH30Z53JAA parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery reaped_owned_pids=[87627, 87639, 87634, 87631]\ncheckpoint_recovery seats=4 every_seat_live_ms=427.862\ntest checkpoint_bounded_recovery ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 6.58s\n\n"
+
+delivery-64 status:
+{
+  "argv": [
+    "env",
+    "R5G_SEATS=64",
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--test",
+    "recovery",
+    "checkpoint_bounded_recovery",
+    "--",
+    "--exact",
+    "--nocapture"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "at": "2026-10-24T03:37:53.845816-07:00",
+  "finished": true,
+  "source_diff_sha256": "ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286",
+  "pid": 93181,
+  "exit": 0,
+  "elapsed_s": 29.865447749965824,
+  "source_diff_sha256_after": "ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286"
+}
+Raw output SHA256: 29d674387497bcd97d056d94443ecaec585e5e8b4bef160143d066b5e2baaddd
+Raw output, JSON-escaped to preserve bytes without trailing-whitespace edits:
+"    Finished `test` profile [optimized] target(s) in 0.52s\n     Running tests/recovery.rs (target/r5g/debug/deps/recovery-7d0788ad483062a2)\n\nrunning 1 test\ncheckpoint_recovery delivery={\"burst_held\":90,\"burst_returned\":4,\"burst_seen\":93,\"client\":{\"decoded_event_frames\":1528,\"empty_receives\":1426,\"queued_events\":0,\"queued_output_sequence\":null,\"queued_raw_events\":0,\"read_bytes\":104321376,\"read_calls\":15322,\"receive_calls\":1795,\"returned_events\":369},\"held_released\":1,\"held_sequence\":null,\"inner_empty\":1426,\"inner_receive_calls\":1795,\"last_burst_returned_sequence\":2079,\"last_burst_seen_sequence\":2079,\"other_returned\":276,\"receive_calls\":1706,\"release_requested\":true}\ncheckpoint_recovery capture_phase_totals=[[\"logic_turn\",{\"busy\":0,\"bytes\":0,\"calls\":2360,\"elapsed_ns\":25210737216,\"errors\":0,\"max_ns\":537993000,\"pending_peak\":61,\"work\":1303}],[\"commands\",{\"busy\":0,\"bytes\":0,\"calls\":2361,\"elapsed_ns\":2921869826,\"errors\":0,\"max_ns\":65803375,\"pending_peak\":0,\"work\":130}],[\"receive\",{\"busy\":0,\"bytes\":0,\"calls\":2361,\"elapsed_ns\":3425947700,\"errors\":0,\"max_ns\":35070041,\"pending_peak\":0,\"work\":0}],[\"event\",{\"busy\":0,\"bytes\":0,\"calls\":1855,\"elapsed_ns\":5123751117,\"errors\":0,\"max_ns\":88506583,\"pending_peak\":0,\"work\":0}],[\"replay_page\",{\"busy\":0,\"bytes\":16166912,\"calls\":1304,\"elapsed_ns\":4250252756,\"errors\":0,\"max_ns\":88440208,\"pending_peak\":0,\"work\":2813}],[\"capture_request\",{\"busy\":0,\"bytes\":0,\"calls\":129,\"elapsed_ns\":612147501,\"errors\":0,\"max_ns\":11957250,\"pending_peak\":0,\"work\":0}],[\"read_ring_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":1305,\"elapsed_ns\":4034083116,\"errors\":0,\"max_ns\":88212333,\"pending_peak\":0,\"work\":0}],[\"recovery_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":64,\"elapsed_ns\":264207542,\"errors\":0,\"max_ns\":6651875,\"pending_peak\":0,\"work\":0}],[\"checkpoint_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":128,\"elapsed_ns\":904349580,\"errors\":0,\"max_ns\":31360000,\"pending_peak\":0,\"work\":0}],[\"parse\",{\"busy\":0,\"bytes\":16721778,\"calls\":1579,\"elapsed_ns\":222859143,\"errors\":0,\"max_ns\":2649500,\"pending_peak\":0,\"work\":3088}],[\"checkpoint\",{\"busy\":0,\"bytes\":0,\"calls\":135,\"elapsed_ns\":1424359200,\"errors\":0,\"max_ns\":35853250,\"pending_peak\":0,\"work\":0}],[\"maintenance\",{\"busy\":0,\"bytes\":0,\"calls\":2361,\"elapsed_ns\":12816511032,\"errors\":0,\"max_ns\":511003583,\"pending_peak\":0,\"work\":0}],[\"supervisor_turn\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_dispatch\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_query\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_sweep\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_providers\",{\"busy\":0,\"bytes\":0,\"calls\":95,\"elapsed_ns\":148586,\"errors\":0,\"max_ns\":2625,\"pending_peak\":0,\"work\":0}],[\"maintenance_adapters\",{\"busy\":0,\"bytes\":0,\"calls\":92,\"elapsed_ns\":1012945794,\"errors\":0,\"max_ns\":95122291,\"pending_peak\":0,\"work\":0}],[\"maintenance_identity\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_messages\",{\"busy\":0,\"bytes\":0,\"calls\":117,\"elapsed_ns\":11215001455,\"errors\":0,\"max_ns\":493359208,\"pending_peak\":0,\"work\":0}],[\"maintenance_provenance\",{\"busy\":0,\"bytes\":0,\"calls\":117,\"elapsed_ns\":555499328,\"errors\":0,\"max_ns\":43851000,\"pending_peak\":0,\"work\":1601}],[\"checkpoint_service\",{\"busy\":0,\"bytes\":0,\"calls\":4722,\"elapsed_ns\":47363752,\"errors\":0,\"max_ns\":2824375,\"pending_peak\":0,\"work\":0}]]\ncheckpoint_recovery supervisor_notification={\"seat\":\"01M5PQT3PHHBAP2B4HVFY0GJR7\",\"generation\":1,\"observed_ns\":13058844625,\"notified_sequence\":0,\"target_sequence\":0,\"ring_observed_ns\":0,\"captured_sequence\":0,\"committed_sequence\":0,\"applied_observed_ns\":0,\"applied_sequence\":0,\"last_progress_ns\":0,\"pages\":0,\"parsed_events\":0,\"parsed_bytes\":0,\"checkpoint_sequence\":0,\"checkpoint_byte_end\":0,\"parsed_byte_end\":0,\"checkpoint_pauses\":0,\"checkpoint_paused\":false,\"idle_checkpoints\":0,\"forced_checkpoints\":0,\"notification_attempts\":20377,\"notification_accepted\":638,\"notification_last_attempt\":2079,\"notification_last_accepted\":2079}\ncheckpoint_recovery seat=01M5PQT3PHHBAP2B4HVFY0GJR7 parsed_debt=4204544 backlog=8379406 parsed=12592128 confirmed=8387584 tail=20971534\ncheckpoint_recovery seat=01M5PQT3PHDRVFSEV4RAJPZZKR parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH59PPBGAE0ZWDXA3R parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHH3HWERRJC92B31KS parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH4T1E8TK5Q35QR1HZ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHS64RVVW1SE1417EQ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHPFHT1QPWYVWR0DCX parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHEZAJ58N0ST1E4XAD parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHBANGPMRJ1FTN7DMA parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHK1NVMAWNCMBDD165 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHG91ZVQ7B1PX4F8YN parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHB1GH7CRHFVZ9K425 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHTEKR149J60GR7N6G parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH5Q4A5VRYBCJ7P97N parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHNPGE6E0AQWJJ6KGM parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHBSBKBZAH7Z5KHA7X parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHYXD0NWFYJ2DQ6TM6 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHJDVPM2QHH7Q45YM9 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHWQA4K96N4JPRD8TX parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHGZV07M6N51R50NB1 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH8ZEQ0FDG42B7MS5A parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH32HD3HP4N08BEQQZ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHATXZ4BPC239DVBWK parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHJH5H5VSQ7Y25E3C0 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHQ1A8VYSXFXM5SR7T parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHKMQ6NPQ3QS5XA9XF parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH4FB2JXA6TRW2S17P parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHKQZQEX47MVY10FSN parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH4Y9K6E2S4TST9GD4 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHG60P66Z66QN18KJM parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHZYPCWA17QHQSZF8E parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHGH29GD2MR4DKKJ6S parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHPVWGPTJVBZ6Y1H43 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH0TQCMPV88J4EBRPH parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHVJGY46ESG2C4MT9Z parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH6NDB9TDAFYY215VA parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH90EEF2S4637NVF5G parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH71XTP74MRBYG2K97 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHM6X6Y1PCRHKF3P67 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH2AM4DD6NZPPZN2F5 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHD0BCZ0QQ6PSH04NQ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHMY5ZXGKP7NZBGDXQ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHJK8VKF8XEQEJ83HW parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH1AS0YSTTCAKANVTD parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHX11WPB21NAWRE0NY parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHM4QE325C8N5N05TH parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH403ADDSBS7YDR5JT parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHRKXCBE7ZX2XYPK50 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH0KA3ZJQ89CP7S24C parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHRED5GBGMB3W278SQ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH44QRYMXEEDCZ764M parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHNYXRQGTTCQGC3PD4 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH3FC7ATCQ5S2N3X6W parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHCK17D5JRFRREXD1J parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHFJH9M4YJQH9RHE9N parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHGHZG6GCAMY6FEPRJ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHRGMWY9Y7TC74RCHZ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHQXJJP06B3E71AKKA parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHBP4ZNKPWRKESC9DV parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHN43XZ82KR0GS7KV5 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHAGNK2CEKYJ57AVJN parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH2MEBV7YVJ88YH6X7 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PH3P96CCWJZSPDZEJD parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQT3PHRNFFYM090QSQ5WXN parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery reaped_owned_pids=[93475, 93399, 93460, 93441, 93520, 93317, 93491, 93526, 93470, 93481, 93349, 93235, 93365, 93228, 93283, 93410, 93426, 93312, 93417, 93518, 93325, 93272, 93258, 93512, 93293, 93495, 93451, 93224, 93251, 93499, 93374, 93268, 93386, 93503, 93307, 93230, 93222, 93301, 93329, 93457, 93265, 93343, 93355, 93468, 93435, 93455, 93516, 93286, 93483, 93248, 93392, 93336, 93508, 93479, 93506, 93473, 93528, 93241, 93278, 93405, 93303, 93463, 93298, 93382]\ncheckpoint_recovery seats=64 every_seat_live_ms=2777.891\ntest checkpoint_bounded_recovery ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 29.27s\n\n"
+
+delivery-65 status:
+{
+  "argv": [
+    "env",
+    "R5G_SEATS=65",
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--test",
+    "recovery",
+    "checkpoint_bounded_recovery",
+    "--",
+    "--exact",
+    "--nocapture"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "at": "2026-10-24T03:38:45.950559-07:00",
+  "finished": true,
+  "source_diff_sha256": "ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286",
+  "pid": 95085,
+  "exit": 0,
+  "elapsed_s": 34.15251433302183,
+  "source_diff_sha256_after": "ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286"
+}
+Raw output SHA256: 60b0dc0bef27a5b9efb415d7ef561f1455bdf4980bd62d19a8747bb177b81a96
+Raw output, JSON-escaped to preserve bytes without trailing-whitespace edits:
+"    Finished `test` profile [optimized] target(s) in 1.01s\n     Running tests/recovery.rs (target/r5g/debug/deps/recovery-7d0788ad483062a2)\n\nrunning 1 test\ncheckpoint_recovery delivery={\"burst_held\":226,\"burst_returned\":1,\"burst_seen\":226,\"client\":{\"decoded_event_frames\":1127,\"empty_receives\":1517,\"queued_events\":0,\"queued_output_sequence\":null,\"queued_raw_events\":0,\"read_bytes\":115173493,\"read_calls\":16372,\"receive_calls\":1904,\"returned_events\":387},\"held_released\":1,\"held_sequence\":null,\"inner_empty\":1517,\"inner_receive_calls\":1904,\"last_burst_returned_sequence\":1741,\"last_burst_seen_sequence\":1741,\"other_returned\":161,\"receive_calls\":1679,\"release_requested\":true}\ncheckpoint_recovery capture_phase_totals=[[\"logic_turn\",{\"busy\":0,\"bytes\":0,\"calls\":2360,\"elapsed_ns\":28231115581,\"errors\":0,\"max_ns\":1174173666,\"pending_peak\":61,\"work\":1268}],[\"commands\",{\"busy\":0,\"bytes\":0,\"calls\":2361,\"elapsed_ns\":6177682659,\"errors\":0,\"max_ns\":605054000,\"pending_peak\":0,\"work\":132}],[\"receive\",{\"busy\":0,\"bytes\":0,\"calls\":2362,\"elapsed_ns\":3161977425,\"errors\":0,\"max_ns\":38877542,\"pending_peak\":0,\"work\":0}],[\"event\",{\"busy\":0,\"bytes\":0,\"calls\":1698,\"elapsed_ns\":2795963226,\"errors\":0,\"max_ns\":101322833,\"pending_peak\":0,\"work\":0}],[\"replay_page\",{\"busy\":0,\"bytes\":16472064,\"calls\":1269,\"elapsed_ns\":2426440462,\"errors\":0,\"max_ns\":101274917,\"pending_peak\":0,\"work\":2876}],[\"capture_request\",{\"busy\":0,\"bytes\":0,\"calls\":131,\"elapsed_ns\":821760587,\"errors\":0,\"max_ns\":16284334,\"pending_peak\":0,\"work\":0}],[\"read_ring_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":1270,\"elapsed_ns\":2251024876,\"errors\":0,\"max_ns\":101021250,\"pending_peak\":0,\"work\":0}],[\"recovery_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":65,\"elapsed_ns\":375582748,\"errors\":0,\"max_ns\":16283500,\"pending_peak\":0,\"work\":0}],[\"checkpoint_rpc\",{\"busy\":0,\"bytes\":0,\"calls\":130,\"elapsed_ns\":904253667,\"errors\":0,\"max_ns\":22574958,\"pending_peak\":0,\"work\":0}],[\"parse\",{\"busy\":0,\"bytes\":16787328,\"calls\":1430,\"elapsed_ns\":181196432,\"errors\":0,\"max_ns\":1747375,\"pending_peak\":0,\"work\":3037}],[\"checkpoint\",{\"busy\":0,\"bytes\":0,\"calls\":127,\"elapsed_ns\":1515062836,\"errors\":0,\"max_ns\":91604250,\"pending_peak\":0,\"work\":0}],[\"maintenance\",{\"busy\":0,\"bytes\":0,\"calls\":2361,\"elapsed_ns\":14924645648,\"errors\":0,\"max_ns\":1113543084,\"pending_peak\":0,\"work\":0}],[\"supervisor_turn\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_dispatch\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_query\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"supervisor_sweep\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_providers\",{\"busy\":0,\"bytes\":0,\"calls\":97,\"elapsed_ns\":164329,\"errors\":0,\"max_ns\":6417,\"pending_peak\":0,\"work\":0}],[\"maintenance_adapters\",{\"busy\":0,\"bytes\":0,\"calls\":97,\"elapsed_ns\":410460209,\"errors\":0,\"max_ns\":53176250,\"pending_peak\":0,\"work\":0}],[\"maintenance_identity\",{\"busy\":0,\"bytes\":0,\"calls\":0,\"elapsed_ns\":0,\"errors\":0,\"max_ns\":0,\"pending_peak\":0,\"work\":0}],[\"maintenance_messages\",{\"busy\":0,\"bytes\":0,\"calls\":104,\"elapsed_ns\":13827439713,\"errors\":0,\"max_ns\":1087434375,\"pending_peak\":0,\"work\":0}],[\"maintenance_provenance\",{\"busy\":0,\"bytes\":0,\"calls\":104,\"elapsed_ns\":659763712,\"errors\":0,\"max_ns\":36051750,\"pending_peak\":0,\"work\":973}],[\"checkpoint_service\",{\"busy\":0,\"bytes\":0,\"calls\":4722,\"elapsed_ns\":50865259,\"errors\":0,\"max_ns\":9404291,\"pending_peak\":0,\"work\":0}]]\ncheckpoint_recovery supervisor_notification={\"seat\":\"01M5PQVQES46KJ2PZC5RWYAAFK\",\"generation\":1,\"observed_ns\":19238835375,\"notified_sequence\":0,\"target_sequence\":0,\"ring_observed_ns\":0,\"captured_sequence\":0,\"committed_sequence\":0,\"applied_observed_ns\":0,\"applied_sequence\":0,\"last_progress_ns\":0,\"pages\":0,\"parsed_events\":0,\"parsed_bytes\":0,\"checkpoint_sequence\":0,\"checkpoint_byte_end\":0,\"parsed_byte_end\":0,\"checkpoint_pauses\":0,\"checkpoint_paused\":false,\"idle_checkpoints\":0,\"forced_checkpoints\":0,\"notification_attempts\":12269,\"notification_accepted\":781,\"notification_last_attempt\":1741,\"notification_last_accepted\":1741}\ncheckpoint_recovery seat=01M5PQVQES46KJ2PZC5RWYAAFK parsed_debt=4204544 backlog=8379406 parsed=12592128 confirmed=8387584 tail=20971534\ncheckpoint_recovery seat=01M5PQVQES6QKA7R3R3AC7YASK parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES2FWFBYSGEGP4BT72 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESQAHQWJ1SFWBNWC7J parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESZ8179GYZAYTQNMHC parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESKCHDR89CYJPJJR2N parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES5N6HWK72QKWV8HZE parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESVG2F8C0HQZV6WM6J parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESVH2N535FNRCXRXNZ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESZC2Z8WKECCARTP08 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESVW9ZY3WFEDWFVEE5 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQEST4XRQ9EBK6X9CP6T parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESCQNHTD6JCXMRMR6T parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESMQVW1NNH2AZXXAJ2 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESY79A57B3MYG24ZNC parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES49K7Q0V1B42BA8N3 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES4YHG3R5AJDM7PXRF parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESWJ94H2NBX9CF25VC parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESA1RKWCDF0QAQ6WGR parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES5JPTBT94EHP29M6F parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES2S2FHN7SPZY3DVJD parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES6Z5Q1YPXXMZGX2B6 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESJ1AYGBDS7Z6FS7T3 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESPG6X0KSW6YCB7GCP parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESS3WQY5R8WZT6DJD4 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESEJ25DBXM10ZW0FMC parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES1QYGCVJQMV5W44D6 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESP670FYW0B2JKN3JZ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESESQEK5Z26HRZT81C parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESR1WZRQJYCW1FNDAC parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESXHEA5DQHCB17PQD7 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES6VW9YVB55J20E46W parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESC6T510MX0PJE4AYE parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESSMGDRMT5ST93112X parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESQ7XZJBRFMHZRYMJ8 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESG5RF63BRND33SDSN parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES2MZ7S8F0H7HC4QVJ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESAD8PCKWKET39Z3AY parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESTX7M0VPS59BW6HM6 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESF9YF4JEQY5HP6WWG parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESAV6WDF87AA35S04Y parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESDGWV0WZ17PEKRQ89 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESB0SEMZ2ETXB9976V parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESDVA2M2T3BGXYC44V parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESX5TXZ9S1GJEWZDWS parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESHJ8RXAQZ6JKVMPTH parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES85EM43X754199XX3 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES0D2WJV0E61CRTVGV parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES8XYZ4PPZSK8WRJEW parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESWBZ2Z85RKBN1D3CW parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESPGKSCV8DKKCC9ZPB parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESKVVZF5Y7B9G3MGK1 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESZJ5N7511RWSEC2PX parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESKZXD15GCZ28SV926 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES28NGRD1QJKPV6Z74 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES236YB3AV3Y0YVSEK parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESJWP0JWFXHY0X2VGJ parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES3KY7TK1THSB5F1S6 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES8BSVY4H2SCPJ7NRP parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES4VJRSJJZ3C6AQHKV parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESTHPR3M4CNJBC7Y0B parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESQCZP677KCGKGV0KV parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESBR5GE75Y1VPNMRDE parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQESBVSM8E9HF5BHN080 parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery seat=01M5PQVQES77WEEMCPZ4FAJ4BT parsed_debt=0 backlog=0 parsed=65550 confirmed=65550 tail=65550\ncheckpoint_recovery reaped_owned_pids=[95510, 95333, 95579, 95558, 95144, 95425, 95293, 95608, 95138, 95278, 95620, 95281, 95291, 95159, 95140, 95406, 95295, 95983, 95506, 95615, 95515, 95286, 95429, 95442, 95465, 95859, 95898, 95409, 95260, 95458, 95483, 95311, 95347, 95434, 95423, 95504, 95298, 95593, 95153, 95528, 95538, 95273, 95343, 95300, 95525, 95421, 95146, 95694, 95364, 95303, 95411, 95242, 95687, 95432, 95162, 95198, 95233, 95520, 95283, 95494, 95384, 95276, 95148, 95215, 95533]\ncheckpoint_recovery seats=65 every_seat_live_ms=3395.250\ntest checkpoint_bounded_recovery ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 32.84s\n\n"
+
+delivery-clippy status:
+{
+  "argv": [
+    "cargo",
+    "clippy",
+    "--workspace",
+    "--all-targets",
+    "--locked",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-rook",
+  "env": {
+    "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-rook/target/r5g",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "CARGO_BUILD_JOBS": "2",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "at": "2026-10-24T03:40:46.444957-07:00",
+  "finished": true,
+  "source_diff_sha256": "ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286",
+  "pid": 98406,
+  "exit": 0,
+  "elapsed_s": 205.39626349997707,
+  "source_diff_sha256_after": "ccba67747c086282cad43e2ebb33fb4b8899fcbca8b2a1c29ecf63a4a3f1e286"
+}
+Raw output SHA256: a2225d44654998e2c9a323064c50f35583cdf8cbf92c4445d3751c472197f872
+Raw output, JSON-escaped to preserve bytes without trailing-whitespace edits:
+"   Compiling winnow v1.0.4\n    Checking log v0.4.34\n    Checking smallvec v1.16.3\n   Compiling zerocopy v0.8.63\n   Compiling zerocopy-derive v0.8.63\n   Compiling toml_parser v1.1.5+spec-1.1.0\n   Compiling toml v0.9.12+spec-1.1.0\n   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)\n    Checking hashbrown v0.17.1\n    Checking parking_lot_core v0.9.12\n    Checking parking_lot v0.12.5\n    Checking indexmap v2.14.2\n   Compiling crc32fast v1.5.3\n    Checking simd-adler32 v0.3.10\n    Checking adler2 v2.0.1\n    Checking miniz_oxide v0.9.1\n    Checking zlib-rs v0.6.8\n    Checking serde_yaml v0.9.34+deprecated\n    Checking flate2 v1.1.10\n    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui)\n    Checking objc2-encode v4.1.0\n   Compiling cfg_aliases v0.2.2\n   Compiling objc2 v0.6.5\n    Checking dispatch2 v0.3.1\n    Checking block2 v0.6.2\n   Compiling bytemuck_derive v1.12.1\n    Checking bytemuck v1.25.2\n    Checking objc2-core-foundation v0.3.2\n    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)\n    Checking unicode-ident v1.0.27\n    Checking mio v1.2.4\n    Checking objc2-foundation v0.3.2\n    Checking tokio v1.54.1\n    Checking objc2-metal v0.3.2\n    Checking rustc-hash v1.1.0\n    Checking naga-types v30.0.1\n   Compiling naga v30.0.1\n    Checking bit-vec v0.9.1\n    Checking raw-window-handle v0.6.2\n    Checking bit-set v0.10.0\n    Checking half v2.7.1\n    Checking codespan-reporting v0.13.1\n    Checking static_assertions v1.1.0\n    Checking wgpu-types v30.0.1\n    Checking objc2-core-graphics v0.3.2\n    Checking objc2-quartz-core v0.3.2\n   Compiling wgpu-hal v30.0.1\n    Checking ppv-lite86 v0.2.21\n    Checking float-cmp v0.9.0\n    Checking strict-num v0.1.1\n    Checking raw-window-metal v1.1.0\n    Checking polycool v0.4.0\n    Checking libloading v0.8.9\n    Checking arrayref v0.3.9\n    Checking profiling v1.0.18\n    Checking tiny-skia-path v0.12.0\n    Checking kurbo v0.13.1\n   Compiling wgpu-core v30.0.1\n    Checking miniz_oxide v0.8.9\n    Checking fdeflate v0.3.7\n    Checking wgpu-naga-bridge v30.0.1\n    Checking euclid v0.22.14\n    Checking siphasher v1.0.4\n   Compiling litrs v1.0.1\n   Compiling arrayvec v0.7.8\n   Compiling document-features v0.2.12\n    Checking svgtypes v0.16.1\n    Checking lyon_geom v1.0.20\n    Checking wgpu-core-deps-apple v30.0.1\n    Checking png v0.18.1\n   Compiling wgpu v30.0.1\n    Checking simplecss v0.2.2\n    Checking roxmltree v0.21.1\n    Checking imagesize v0.15.0\n   Compiling cfg-if v1.0.5\n    Checking pico-args v0.5.0\n    Checking data-url v0.3.2\n    Checking usvg v0.48.1\n    Checking tiny-skia v0.12.0\n    Checking lyon_path v1.0.19\n    Checking rgb v0.8.53\n    Checking float_next_after v1.0.0\n    Checking lyon_tessellation v1.0.22\n    Checking resvg v0.48.1\n    Checking objc2-core-text v0.3.2\n   Compiling bitflags v2.13.2\n    Checking pollster v0.4.0\n    Checking futures-core v0.3.34\n   Compiling objc-sys v0.3.5\n    Checking futures-sink v0.3.34\n    Checking futures-util v0.3.34\n   Compiling aho-corasick v1.1.5\n   Compiling regex-syntax v0.8.11\n    Checking rand_chacha v0.9.0\n   Compiling regex-automata v0.4.18\n    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-render)\n   Compiling regex v1.13.1\n    Checking objc2 v0.5.3\n    Checking rand v0.9.5\n    Checking ulid v1.2.1\n    Checking core-foundation v0.9.4\n    Checking block2 v0.5.1\n   Compiling foreign-types-macros v0.2.4\n    Checking foreign-types-shared v0.3.1\n    Checking dispatch v0.2.0\n    Checking bitflags v1.3.2\n    Checking objc2-foundation v0.2.2\n    Checking core-graphics-types v0.1.3\n    Checking foreign-types v0.5.0\n    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)\n   Compiling winit v0.30.13\n    Checking tracing-core v0.1.36\n    Checking tracing v0.1.44\n    Checking core-graphics v0.23.2\n    Checking dpi v0.1.2\n    Checking smol_str v0.2.2\n    Checking portable-pty v0.9.0\n    Checking rand_chacha v0.3.1\n    Checking rand v0.8.8\n    Checking num-bigint-dig v0.8.6\n    Checking objc2-app-kit v0.2.2\n    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)\n    Checking tungstenite v0.30.0\n    Checking rsa v0.9.10\n    Checking dsa v0.6.3\n    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)\n    Checking hashlink v0.12.2\n    Checking petgraph v0.8.3\n    Checking pgp v0.21.0\n    Checking rusqlite v0.40.2\n    Checking notify v8.2.0\n    Checking tokio-tungstenite v0.30.0\n   Compiling pulldown-cmark v0.13.4\n    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mermaid)\n    Checking unicase v2.10.0\n    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)\n    Checking unicode-segmentation v1.13.3\n    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-doc)\n   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxybook)\n   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-term)\n    Checking objc2-app-kit v0.3.2\n   Compiling equivalent v1.0.3\n    Checking toml_datetime v1.1.2+spec-1.1.0\n   Compiling toml_edit v0.25.17+spec-1.1.0\n    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy-firehose)\n   Compiling target-triple v1.0.1\n    Checking serde_spanned v1.1.2\n    Checking toml_writer v1.1.3+spec-1.1.0\n   Compiling proc-macro-crate v3.5.0\n    Checking toml v1.1.8+spec-1.1.0\n   Compiling bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn-macros)\n    Checking tokio-util v0.7.19\n    Checking termcolor v1.4.1\n    Checking glob v0.3.4\n    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-yarn)\n    Checking trybuild v1.0.120\n    Checking proc-macro2 v1.0.107\n    Checking quote v1.0.47\n    Checking syn v2.0.119\n    Finished `dev` profile [optimized] target(s) in 3m 25s\n"
+
+Whitespace verification: first staged diff --check EXIT2 (one blank line at EOF), removed the extra blank, then reran the check.

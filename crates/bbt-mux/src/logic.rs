@@ -4466,7 +4466,15 @@ impl Worker {
                 self.client
                     .capture_diagnostics
                     .start(Phase::LogicTurn, Ulid::nil(), 0, 0, 0);
+            let checkpoint_service = self.client.capture_diagnostics.start(
+                Phase::CheckpointService,
+                Ulid::nil(),
+                0,
+                0,
+                0,
+            );
             self.service_checkpoints(false)?;
+            checkpoint_service.finish(Outcome::Ok, 0, 0);
             let poll_ready = made_progress && pending_events.has_ready();
             made_progress = false;
             let command_span =
@@ -4938,20 +4946,52 @@ impl Worker {
                     .start(Phase::Maintenance, Ulid::nil(), 0, 0, 0);
             if !self.checkpoint_saves.active() {
                 if providers_at.elapsed() >= Duration::from_millis(200) {
+                    let phase = self.client.capture_diagnostics.start(
+                        Phase::MaintenanceProviders,
+                        Ulid::nil(),
+                        0,
+                        0,
+                        0,
+                    );
                     self.refresh_providers(&mut provider_recoveries, &mut pending_events)?;
+                    phase.finish(Outcome::Ok, 0, 0);
                     providers_at = Instant::now();
                 }
                 if adapters_at.elapsed() >= Duration::from_millis(200) {
+                    let phase = self.client.capture_diagnostics.start(
+                        Phase::MaintenanceAdapters,
+                        Ulid::nil(),
+                        0,
+                        0,
+                        0,
+                    );
                     self.refresh_adapters()?;
+                    phase.finish(Outcome::Ok, 0, 0);
                     adapters_at = Instant::now();
                 }
                 if identity_at.elapsed() >= Duration::from_secs(30) {
+                    let phase = self.client.capture_diagnostics.start(
+                        Phase::MaintenanceIdentity,
+                        Ulid::nil(),
+                        0,
+                        0,
+                        0,
+                    );
                     self.refresh_identity()?;
+                    phase.finish(Outcome::Ok, 0, 0);
                     identity_at = Instant::now();
                 }
                 if messages_at.elapsed() >= Duration::from_millis(100) {
+                    let phase = self.client.capture_diagnostics.start(
+                        Phase::MaintenanceMessages,
+                        Ulid::nil(),
+                        0,
+                        0,
+                        0,
+                    );
                     self.pump_messages()?;
                     self.publish_control_audits()?;
+                    phase.finish(Outcome::Ok, 0, 0);
                     messages_at = Instant::now();
                 }
                 let replies: Vec<_> = self
@@ -4965,6 +5005,13 @@ impl Worker {
                     self.flush_protocol_replies(id)?;
                 }
                 if scan_at.elapsed() >= Duration::from_millis(100) {
+                    let phase = self.client.capture_diagnostics.start(
+                        Phase::MaintenanceProvenance,
+                        Ulid::nil(),
+                        0,
+                        0,
+                        0,
+                    );
                     if self.watch.failed() {
                         return Err(invalid(
                             "filesystem watch failed; index reconciliation required",
@@ -4997,12 +5044,21 @@ impl Worker {
                     if self.watch.changed() || changed {
                         self.scan()?;
                     }
+                    phase.finish(Outcome::Ok, active.len() as u64, 0);
                     scan_at = Instant::now();
                 }
             }
             // Each completed save gets an ordinary ingest/command turn before
             // the next is dispatched, interleaving the single leased stream.
+            let checkpoint_service = self.client.capture_diagnostics.start(
+                Phase::CheckpointService,
+                Ulid::nil(),
+                0,
+                0,
+                0,
+            );
             self.service_checkpoints(true)?;
+            checkpoint_service.finish(Outcome::Ok, 0, 0);
             maintenance.finish(Outcome::Ok, 0, 0);
             if self.checkpoint_saves.active() && !made_progress {
                 // The side-task completion unparks this thread. Contended

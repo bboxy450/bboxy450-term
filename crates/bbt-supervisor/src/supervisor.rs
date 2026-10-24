@@ -69,8 +69,14 @@ pub mod capture_diagnostics {
         SupervisorDispatch,
         SupervisorQuery,
         SupervisorSweep,
+        MaintenanceProviders,
+        MaintenanceAdapters,
+        MaintenanceIdentity,
+        MaintenanceMessages,
+        MaintenanceProvenance,
+        CheckpointService,
     }
-    const PHASES: [Phase; 16] = [
+    const PHASES: [Phase; 22] = [
         Phase::LogicTurn,
         Phase::Commands,
         Phase::Receive,
@@ -87,6 +93,12 @@ pub mod capture_diagnostics {
         Phase::SupervisorDispatch,
         Phase::SupervisorQuery,
         Phase::SupervisorSweep,
+        Phase::MaintenanceProviders,
+        Phase::MaintenanceAdapters,
+        Phase::MaintenanceIdentity,
+        Phase::MaintenanceMessages,
+        Phase::MaintenanceProvenance,
+        Phase::CheckpointService,
     ];
 
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
@@ -170,6 +182,11 @@ pub mod capture_diagnostics {
         pub checkpoint_paused: bool,
         pub idle_checkpoints: u64,
         pub forced_checkpoints: u64,
+        /// Admission to the actor's notification queue, not receipt by logic.
+        pub notification_attempts: u64,
+        pub notification_accepted: u64,
+        pub notification_last_attempt: u64,
+        pub notification_last_accepted: u64,
     }
     impl Seat {
         pub fn progress(&mut self, sequence: u64, now: u64) {
@@ -1470,7 +1487,7 @@ impl Actor {
     }
 
     fn notify(&mut self, client: Ulid, event: &Event) -> bool {
-        match self.clients.get_mut(&client) {
+        let accepted = match self.clients.get_mut(&client) {
             Some(Target::Local(tx)) => match tx.try_send(event.clone()) {
                 Ok(()) => true,
                 Err(mpsc::TrySendError::Full(_)) => false,
@@ -1485,7 +1502,22 @@ impl Actor {
                 })
                 .unwrap_or(false),
             None => false,
-        }
+        };
+        let generation = match event {
+            Event::Output { generation, .. }
+            | Event::Resized { generation, .. }
+            | Event::Exited { generation, .. } => *generation,
+        };
+        self.capture_diagnostics
+            .seat(event.seat(), generation, |row, _| {
+                row.notification_attempts = row.notification_attempts.saturating_add(1);
+                row.notification_last_attempt = event.sequence().unwrap();
+                if accepted {
+                    row.notification_accepted = row.notification_accepted.saturating_add(1);
+                    row.notification_last_accepted = event.sequence().unwrap();
+                }
+            });
+        accepted
     }
 
     fn disconnect(&mut self, id: Ulid) {

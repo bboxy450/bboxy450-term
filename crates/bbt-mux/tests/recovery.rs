@@ -49,6 +49,23 @@ fn main() {
 }
 "#;
 
+#[derive(Clone, Copy, Debug, Default, serde::Serialize)]
+struct DeliveryDiagnostics {
+    receive_calls: u64,
+    inner_receive_calls: u64,
+    inner_empty: u64,
+    burst_seen: u64,
+    burst_held: u64,
+    held_released: u64,
+    burst_returned: u64,
+    other_returned: u64,
+    last_burst_seen_sequence: u64,
+    last_burst_returned_sequence: u64,
+    held_sequence: Option<u64>,
+    release_requested: bool,
+    client: bbt_supervisor::client::ClientDiagnostics,
+}
+
 struct CrashLink {
     inner: SocketSupervisor,
     burst_seat: Ulid,
@@ -60,6 +77,14 @@ struct CrashLink {
     worker: Option<std::thread::ThreadId>,
     side_saves: Arc<AtomicU64>,
     synchronous_saves: Arc<AtomicU64>,
+    delivery: Arc<Mutex<DeliveryDiagnostics>>,
+}
+impl CrashLink {
+    fn observe_client(&self) {
+        let mut delivery = self.delivery.lock().unwrap();
+        delivery.client = self.inner.diagnostics(self.burst_seat, 1);
+        delivery.held_sequence = self.latest.as_ref().and_then(Event::sequence);
+    }
 }
 impl SupervisorConnection for CrashLink {
     fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
@@ -89,12 +114,14 @@ impl SupervisorConnection for CrashLink {
             // The previous page has returned to Worker and its cursor/accounting
             // has been published. This thread cannot parse another byte. No
             // checkpoint owns the serial stream while ReadRing owns its lock.
+            self.observe_client();
             self.frozen.store(true, Ordering::Release);
             loop {
                 std::thread::park();
             }
         }
         let reply = self.inner.request(action)?;
+        self.observe_client();
         if burst_read && let Reply::RingHistory { history } = &reply {
             for record in &history.records {
                 let seq = record.event.sequence().unwrap();
@@ -109,20 +136,60 @@ impl SupervisorConnection for CrashLink {
         Ok(reply)
     }
     fn receive(&mut self, timeout: Duration) -> bbt_mux::store::Result<Option<Event>> {
+        {
+            let mut delivery = self.delivery.lock().unwrap();
+            delivery.receive_calls = delivery.receive_calls.saturating_add(1);
+        }
         if !self.held.load(Ordering::Acquire)
             && let Some(event) = self.latest.take()
         {
+            {
+                let mut delivery = self.delivery.lock().unwrap();
+                delivery.held_released = delivery.held_released.saturating_add(1);
+                delivery.burst_returned = delivery.burst_returned.saturating_add(1);
+                delivery.last_burst_returned_sequence = event.sequence().unwrap();
+            }
+            self.observe_client();
             return Ok(Some(event));
         }
         let mut wait = timeout;
         loop {
-            let Some(event) = self.inner.receive(wait)? else {
+            let event = self.inner.receive(wait)?;
+            {
+                let mut delivery = self.delivery.lock().unwrap();
+                delivery.inner_receive_calls = delivery.inner_receive_calls.saturating_add(1);
+                if event.is_none() {
+                    delivery.inner_empty = delivery.inner_empty.saturating_add(1);
+                }
+            }
+            let Some(event) = event else {
+                self.observe_client();
                 return Ok(None);
             };
+            if event.seat() == self.burst_seat {
+                let mut delivery = self.delivery.lock().unwrap();
+                delivery.burst_seen = delivery.burst_seen.saturating_add(1);
+                delivery.last_burst_seen_sequence = event.sequence().unwrap();
+            }
             if event.seat() == self.burst_seat && self.held.load(Ordering::Acquire) {
                 self.latest = Some(event);
+                {
+                    let mut delivery = self.delivery.lock().unwrap();
+                    delivery.burst_held = delivery.burst_held.saturating_add(1);
+                }
+                self.observe_client();
                 wait = Duration::ZERO;
             } else {
+                {
+                    let mut delivery = self.delivery.lock().unwrap();
+                    if event.seat() == self.burst_seat {
+                        delivery.burst_returned = delivery.burst_returned.saturating_add(1);
+                        delivery.last_burst_returned_sequence = event.sequence().unwrap();
+                    } else {
+                        delivery.other_returned = delivery.other_returned.saturating_add(1);
+                    }
+                }
+                self.observe_client();
                 return Ok(Some(event));
             }
         }
@@ -183,6 +250,7 @@ fn checkpoint_recovery_child() {
     let ready = Arc::new(Mutex::new(BTreeSet::new()));
     let side_saves = Arc::new(AtomicU64::new(0));
     let synchronous_saves = Arc::new(AtomicU64::new(0));
+    let delivery = Arc::new(Mutex::new(DeliveryDiagnostics::default()));
     let logic = Logic::start(
         CrashLink {
             inner: SocketSupervisor::connect(
@@ -199,6 +267,7 @@ fn checkpoint_recovery_child() {
             worker: None,
             side_saves: side_saves.clone(),
             synchronous_saves: synchronous_saves.clone(),
+            delivery: delivery.clone(),
         },
         config(&root),
         SigningKey::from_bytes(&[93; 32]),
@@ -274,21 +343,26 @@ fn checkpoint_recovery_child() {
         );
         std::thread::sleep(Duration::from_millis(5));
     }
+    delivery.lock().unwrap().release_requested = true;
     held.store(false, Ordering::Release);
+    let snapshot = || {
+        let mut value = serde_json::to_value(logic.client.capture_diagnostics()).unwrap();
+        value["delivery"] = serde_json::to_value(*delivery.lock().unwrap()).unwrap();
+        value["side_saves_after_readiness"] = json!(side_saves.load(Ordering::Relaxed));
+        value["synchronous_saves_after_readiness"] =
+            json!(synchronous_saves.load(Ordering::Relaxed));
+        value
+    };
     let until = Instant::now() + Duration::from_secs(90);
     while !frozen.load(Ordering::Acquire) {
         assert!(
             Instant::now() < until,
             "did not reach the mid-replay kill boundary; {}",
-            serde_json::to_string(&logic.client.capture_diagnostics()).unwrap()
+            serde_json::to_string(&snapshot()).unwrap()
         );
         std::thread::sleep(Duration::from_millis(1));
     }
-    let mut snapshot = serde_json::to_value(logic.client.capture_diagnostics()).unwrap();
-    snapshot["side_saves_after_readiness"] = json!(side_saves.load(Ordering::Relaxed));
-    snapshot["synchronous_saves_after_readiness"] =
-        json!(synchronous_saves.load(Ordering::Relaxed));
-    write_json(&root.join("frozen.json"), &snapshot);
+    write_json(&root.join("frozen.json"), &snapshot());
     loop {
         std::thread::park();
     }
@@ -357,6 +431,7 @@ fn checkpoint_bounded_recovery() {
         ..Default::default()
     })
     .unwrap();
+    supervisor.enable_capture_diagnostics();
     let seats: Vec<_> = (0..count).map(|_| Ulid::new()).collect();
     write_json(
         &root.join("input.json"),
@@ -397,8 +472,16 @@ fn checkpoint_bounded_recovery() {
         let exit = child.0.as_mut().unwrap().try_wait().unwrap();
         assert!(
             exit.is_none(),
-            "child exited {exit:?}: {}",
-            std::fs::read_to_string(root.join("child.stderr")).unwrap()
+            "child exited {exit:?}: {}; supervisor_notification={}",
+            std::fs::read_to_string(root.join("child.stderr")).unwrap(),
+            serde_json::to_string(
+                &supervisor
+                    .capture_diagnostics()
+                    .seats
+                    .into_iter()
+                    .find(|row| row.seat == seats[0])
+            )
+            .unwrap()
         );
         assert!(
             advanced.elapsed() < Duration::from_secs(120),
@@ -410,6 +493,16 @@ fn checkpoint_bounded_recovery() {
     child.kill(); // Actual SIGKILL, not orderly Logic::shutdown.
     let frozen: Value =
         serde_json::from_slice(&std::fs::read(root.join("frozen.json")).unwrap()).unwrap();
+    println!("checkpoint_recovery delivery={}", frozen["delivery"]);
+    println!(
+        "checkpoint_recovery capture_phase_totals={}",
+        frozen["totals"]
+    );
+    let actor = supervisor.capture_diagnostics();
+    println!(
+        "checkpoint_recovery supervisor_notification={}",
+        serde_json::to_string(&actor.seats.iter().find(|row| row.seat == seats[0])).unwrap()
+    );
     assert_eq!(frozen["missed"], 0);
     assert_eq!(frozen["untracked_seat_samples"], 0);
     assert_eq!(frozen["synchronous_saves_after_readiness"], 0);
