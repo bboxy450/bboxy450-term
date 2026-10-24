@@ -180,3 +180,104 @@ fn attachment_overflow_is_named_on_the_message_without_changing_its_projection()
     assert!(entries.iter().any(|entry|matches!(entry,bbt_ui::modules::stream_dock::Entry::Message {data,..} if data.attach.len()==32 && data.text=="Original text" && data.priority==7 && data.kind.as_deref()==Some("decision"))));
     assert!(entries.iter().any(|entry|matches!(entry,bbt_ui::modules::stream_dock::Entry::Note {text,..} if text.contains("attachment_view_limit: 2"))));
 }
+
+fn attachment_draft(path: &str) -> bbt_ui::modules::composer::Submission {
+    use bbt_ui::modules::composer::{Address, Attachment, Submission};
+    Submission {
+        delegate: false,
+        to: vec![Address {
+            kind: "channel".into(),
+            destination: "swarms/one".into(),
+            ..Default::default()
+        }],
+        attach: vec![Attachment {
+            kind: "task".into(),
+            path: path.into(),
+            ..Default::default()
+        }],
+        text: "Review this record".into(),
+        kind: "text".into(),
+        priority: 0,
+    }
+}
+#[test]
+fn composer_wraps_task_paths_once_and_preserves_existing_wire_references() {
+    use bboxy450_term::{cockpit::UiMsg, messaging::Client};
+    use bbt_proto::messaging::Request;
+    let client = Client::default();
+    let swarm = Some(bbt_proto::SwarmId::from_u128(1));
+    for (input, expected) in [
+        (".bboxy/tasks/one.md", "[[.bboxy/tasks/one.md]]"),
+        ("#44", "[[#44]]"),
+        ("[[#44]]", "[[#44]]"),
+        ("[[task-slug|#44]]", "[[task-slug|#44]]"),
+    ] {
+        let batch = client.prepare(swarm, attachment_draft(input)).unwrap();
+        let UiMsg::Messaging {
+            request: Request::Send { message: args },
+            ..
+        } = &batch.commands[0]
+        else {
+            panic!("one message");
+        };
+        assert_eq!(args.attachments, [expected]);
+    }
+}
+#[test]
+fn composer_refuses_unknown_attachment_shapes_before_any_send_is_admitted() {
+    let client = bboxy450_term::messaging::Client::default();
+    for input in [
+        "https://example.test/record.md",
+        "/etc/passwd",
+        "../record.md",
+        "[[#44]]tail",
+        "[[[[#44]]]]",
+        "#0",
+        "#044",
+        "[[#44|]]",
+        "not\na\nreference",
+    ] {
+        let error = client
+            .prepare(
+                Some(bbt_proto::SwarmId::from_u128(1)),
+                attachment_draft(input),
+            )
+            .err()
+            .expect("named pre-send refusal");
+        assert!(
+            error.starts_with("attachment_reference_"),
+            "{input}: {error}"
+        );
+    }
+}
+#[test]
+fn task_delegate_keeps_its_provider_path() {
+    use bboxy450_term::messaging::{self, Client};
+    let card = bbt_proto::messaging::TaskCard {
+        id: Ulid::new(),
+        path: ".bboxy/tasks/one.md".into(),
+        title: "A task".into(),
+        status: "open".into(),
+        assignee: None,
+        delegated_by: None,
+        updated: None,
+        verify: None,
+    };
+    let attachment = messaging::task_attachment(&card);
+    assert_eq!(attachment.path, card.path);
+    let mut draft = attachment_draft(&attachment.path);
+    draft.attach = vec![attachment];
+    draft.delegate = true;
+    draft.to = vec![bbt_ui::modules::composer::Address {
+        kind: "seat".into(),
+        id: Ulid::new().to_string(),
+        destination: "swarms/one/seats/two/inbox".into(),
+        ..Default::default()
+    }];
+    let batch = Client::default()
+        .prepare(Some(bbt_proto::SwarmId::from_u128(1)), draft)
+        .unwrap();
+    assert!(
+        matches!(&batch.commands[0],bboxy450_term::cockpit::UiMsg::Task {request:bbt_proto::messaging::TaskRequest::Delegate {task_path,..},..} if task_path==&card.path)
+    );
+}

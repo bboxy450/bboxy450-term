@@ -2530,6 +2530,19 @@ mod tests {
         editor.handle(composer::Command::Edit(bbt_ui::text_edit::Command::Insert(
             "Decision through the production GUI IO owner".into(),
         )));
+        let card = bbt_proto::messaging::TaskCard {
+            id: task_id,
+            path: task_path.into(),
+            title: "Actual task attachment".into(),
+            status: "open".into(),
+            assignee: None,
+            delegated_by: None,
+            updated: None,
+            verify: None,
+        };
+        editor.handle(composer::Command::Attach(
+            bboxy450_term::messaging::task_attachment(&card),
+        ));
         editor.handle(composer::Command::Attach(composer::Attachment {
             kind: "record".into(),
             path: "[[#1]]".into(),
@@ -2610,38 +2623,50 @@ mod tests {
         let layout = crate::scene::Scene::new()
             .conversation_layout([1400., 1000.], &conversation)
             .unwrap();
-        fn attachment(n: &bbt_ui::components::Layout) -> Option<bbt_ui_model::layout::Rect> {
-            if matches!(&n.kind,bbt_ui::components::LayoutKind::Named(key) if key.ends_with("/body/attach/a0"))
+        fn attachment(
+            n: &bbt_ui::components::Layout,
+            index: usize,
+        ) -> Option<bbt_ui_model::layout::Rect> {
+            if matches!(&n.kind,bbt_ui::components::LayoutKind::Named(key) if key.ends_with(&format!("/body/attach/a{index}")))
             {
                 Some(n.rect)
             } else {
-                n.children.iter().find_map(attachment)
+                n.children.iter().find_map(|child| attachment(child, index))
             }
         }
-        let r = attachment(&layout.layout).expect("live attachment card");
-        let bbt_ui::modules::stream_dock::Action::OpenRecord(target) = layout
-            .actions
-            .hit([r.x + r.w / 2., r.y + r.h / 2.])
-            .expect("live attachment action")
-        else {
-            panic!("attachment must open a record");
-        };
         let mut document = documents::Host::default();
-        document.show(target);
-        for _ in 0..2 {
-            let (id, read) = document.next_read().expect("resolve then fetch");
-            sender.send(UiMsg::DocumentRead { id, read }).await.unwrap();
-            until(updates, current, |model| {
-                model.document_reply.as_ref().is_some_and(|r| r.id == id)
-            })
-            .await;
-            assert!(document.apply(current.document_reply.as_ref().unwrap()));
-            sender.send(UiMsg::ConsumeDocument { id }).await.unwrap();
+        for (index, expected) in [format!("[[{task_path}]]"), "[[#1]]".into()]
+            .iter()
+            .enumerate()
+        {
+            let r = attachment(&layout.layout, index).expect("live attachment card");
+            let bbt_ui::modules::stream_dock::Action::OpenRecord(target) = layout
+                .actions
+                .hit([r.x + r.w / 2., r.y + r.h / 2.])
+                .expect("live attachment action")
+            else {
+                panic!("attachment must open a record");
+            };
+            assert_eq!(
+                &target, expected,
+                "plain task paths wrap once; bracketed #N stays intact"
+            );
+            document.show(target);
+            for _ in 0..2 {
+                let (id, read) = document.next_read().expect("resolve then fetch");
+                sender.send(UiMsg::DocumentRead { id, read }).await.unwrap();
+                until(updates, current, |model| {
+                    model.document_reply.as_ref().is_some_and(|r| r.id == id)
+                })
+                .await;
+                assert!(document.apply(current.document_reply.as_ref().unwrap()));
+                sender.send(UiMsg::ConsumeDocument { id }).await.unwrap();
+            }
+            assert!(document.open);
+            assert_eq!(document.prepared.as_ref().unwrap().document.number, Some(1));
         }
-        assert!(document.open);
-        assert_eq!(document.prepared.as_ref().unwrap().document.number, Some(1));
         eprintln!(
-            "PASS live stream #N attachment -> retained hit -> document modal -> Knowledge resolve/fetch"
+            "PASS composed task attachment and retained #N -> retained hit -> document modal -> Knowledge resolve/fetch"
         );
         assert!(history.entries(current, client.groups(), &[]).iter().any(|entry| matches!(entry, Entry::Message {data,..} if data.text == "Decision through the production GUI IO owner" && data.kind.as_deref() == Some("decision") && data.issuer_kind.as_deref() == Some("local-dev") && data.unread)));
         assert!(
