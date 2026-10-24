@@ -1,0 +1,6 @@
+flowchart LR
+  O["Oracle or operator shell<br/>bboxy450-term ctl noun verb args<br/>--json default, --human, --op, --as"] --> P["parse: one grammar<br/>nouns seat message task record e2e app recipe"]
+  P --> G["map: one GuiAction per verb<br/>Spawn, Input, ScreenRead, Capture,<br/>Messaging, Task, Knowledge, Events"]
+  G -- "gui.sock, operator principal,<br/>door ctl, issued_by" --> L["logic<br/>control/op journal, account/control audit"]
+  L --> R["one reply shape<br/>ok data | error kind message hint<br/>streams: event lines then done"]
+  RC["recipe records<br/>.bboxy/recipes/*.md, numbered<br/>steps: screen, match, input, wait, report"] -- "recipe run" --> P

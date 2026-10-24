@@ -16,7 +16,7 @@ links:
   - { to: "[[rim-glow]]", rel: promises }
   - { to: "[[attention]]", rel: promises }
 created: "2026-10-24T05:17:08Z"
-updated: "2026-10-24T15:19:32Z"
+updated: "2026-10-24T15:24:41Z"
 ---
 # E2E acceptance
 
@@ -155,6 +155,8 @@ links:
 The record is written and updated **through the app** (the knowledge base's `write`, [[knowledge-base]] §2, so it is signed by the running seat's key and numbered by the Index), never by hand from outside; a hand edit shows as inferred grade. `steps` name the MCP tool or app command for each action, so a second seat can repeat the run. `status: manual` means the Oracle's eye is the test; the record says why.
 
 ## 3. The Oracle's channel into the app
+
+The channel's grammar, reply shape, error model and recipes are [[ctl-cli]] (decision #272); this section keeps the authority story and the command inventory as the checklist that spec was designed from.
 
 The Oracle sits outside the app (its own session, ICQ) and talks to the seats inside through **`bboxy450-term ctl`**, an operator-side CLI over `gui.sock` under the **existing operator principal** (decision #31): the same `GuiAction::Messaging` and `GuiAction::Task` wrappers the GUI uses (decisions #37 and #38), journaled as `control/op`, audited on `account/control`, dispatched through the same functions the MCP tools call. **No new authority**: `ctl` can do exactly what the operator can do in the window, nothing more. Commands: `ctl spawn <claude|codex|zsh> [placement]` (the same `GuiAction::Spawn` the launcher issues, with the same explicit placement rule of decision #29 and the full seat wiring of [[w2-5-mcp-and-seat-wiring]]; added 2026-10-24 when Aster found no supported route from outside the app to start a real harness seat), `ctl seats` (the roster with state), `ctl dm <seat> <text>`, `ctl post <channel> <text>`, `ctl inbox [--since]`, `ctl receipts <message-id>`, `ctl delegate <#N|path> <seat>`, `ctl reports [--since]` (task reports with their `verify_result`), `ctl e2e [--group]` (the checklist with each promise's record status), `ctl capture <seat|window> <path>` (the app's own capture; the no-desktop-driving rule of `AGENTS.md`), and, from [[d270-ctl-screen-input-wait]]: `ctl screen <seat>` (the seat's visible screen, the MCP `screen_read`), `ctl input <seat> <text|codes>` (text and terminal codes through the same `GuiAction::Input` as the window's keyboard, our own PTY and never the desktop), `ctl wait <seat> <idle|waiting|exited|text:<pattern>> [--timeout ms]` (returns state and screen at the match, or a named timeout). Output is JSON lines; the Oracle's ICQ session reads it and briefs from it. **Admission ([[d260-ctl-authority]]).** Logic writes `run_dir/gui.endpoint` with the socket path, the capability and the generation **only when `ctl` is enabled by the `--ctl` flag or the setting** (off by default, [[ctl-opt-in]]), mode 0600, removed on exit; `ctl` finds the run directory from `BBOXY_RUN_DIR` or the newest one of the uid; the listener refuses a peer whose process ancestry contains this app's supervisor and says why, so a seat that tries `ctl` is told it is the operator's door and its tools are the MCP catalogue; every `ctl` operation is journaled and audited with kind `ctl`, distinct from `gui`. **This is not an OS security boundary**: on macOS a bare app cannot confine a same-user process; a seat could double-fork and reparent. It is the same honesty as "a plugin is code you run as yourself"; an operator-minted token becomes a second factor when a real boundary is wanted, not now.
 
