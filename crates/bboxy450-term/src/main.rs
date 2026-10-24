@@ -258,20 +258,26 @@ const LAUNCHABLES: [(&str, &str, &str, &str, &str); 5] = [
     (
         "claude",
         "Claude",
-        "executor by default",
+        "oracle by default",
         "#D97757",
         "Suggestions",
     ),
     (
         "codex",
         "Codex",
-        "executor by default",
+        "executor · never an oracle",
         "#1F2937",
         "Suggestions",
     ),
     ("pi", "pi", "executor by default", "#7C3AED", "Harnesses"),
     ("omp", "omp", "executor by default", "#0EA5E9", "Harnesses"),
-    ("zsh", "zsh", "~", "#111827", "Shells"),
+    ("zsh", "zsh", "~ · shell, no role", "#111827", "Shells"),
+];
+const ROLE_PRESETS: [(&str, &str, &str); 4] = [
+    ("oracle", "Oracle", "supervises, briefs, verifies"),
+    ("architect", "Architect", "specs, invariants, decisions"),
+    ("creativity", "Creativity", "diverges before the pick"),
+    ("executor", "Executor", "implements a scoped brief"),
 ];
 
 fn default_spawn(
@@ -282,6 +288,13 @@ fn default_spawn(
     if modifiers != Modifiers::default() {
         return None;
     }
+    let (id, role) = match id.strip_prefix("claude:as:") {
+        Some(role) if ROLE_PRESETS.iter().any(|(name, _, _)| *name == role) => {
+            ("claude", Some(role.to_owned()))
+        }
+        Some(_) => return None,
+        None => (id, None),
+    };
     for (kind, _, _, _, _) in LAUNCHABLES {
         let location = if id == kind {
             Some(bbt_proto::Where::Local)
@@ -303,6 +316,7 @@ fn default_spawn(
                 placement: None,
                 harness_kind: kind.into(),
                 name: None,
+                role: role.clone(),
                 location,
             });
         }
@@ -692,25 +706,72 @@ fn preedit_command(text: String, cursor: Option<(usize, usize)>) -> LauncherComm
 
 /// Public item records, with the provider projection kept authoritative. Picks
 /// are identified by id; a display label never becomes a command.
+#[cfg(test)]
 fn launcher_items(
     model: Option<&bboxy450_term::model::Model>,
 ) -> Vec<bbt_ui::modules::launcher::Item> {
+    launcher_items_for(model, None)
+}
+
+fn swarm_oracle<'a>(
+    model: Option<&'a bboxy450_term::model::Model>,
+    stage: Option<&Stage>,
+) -> Option<&'a str> {
+    let model = model?;
+    let swarm = stage.unwrap_or(&model.ui.window.stage).swarm?;
+    model.ui.seats.values().find_map(|seat| {
+        (seat.swarm == swarm
+            && seat.harness.0 == "claude"
+            && seat.lifecycle == bbt_ui_model::Lifecycle::Open
+            && seat.role.as_ref().is_some_and(|role| role.name == "oracle"))
+        .then_some(seat.name.as_str())
+    })
+}
+
+fn launcher_items_for(
+    model: Option<&bboxy450_term::model::Model>,
+    stage: Option<&Stage>,
+) -> Vec<bbt_ui::modules::launcher::Item> {
     use bbt_ui::modules::launcher::Item;
+    fn placements(item: &Item, role: &str) -> Vec<Item> {
+        let prefix = if item.role.as_deref() == Some(role) {
+            item.id.clone()
+        } else {
+            format!("{}:as:{role}", item.id)
+        };
+        [
+            ("tab", "New tab"),
+            ("right", "Split right"),
+            ("bottom", "Split down"),
+        ]
+        .into_iter()
+        .map(|(id, label)| Item {
+            id: format!("{prefix}:{id}"),
+            label: label.into(),
+            harness: item.harness.clone(),
+            role: Some(role.into()),
+            kind: "Placement".into(),
+            tile: item.tile.clone(),
+            ..Default::default()
+        })
+        .collect()
+    }
     let launchables = || {
         LAUNCHABLES
             .into_iter()
             .map(|(id, label, sub, tile, section)| Item {
                 id: id.into(),
                 label: label.into(),
-                sub: if id == "zsh" {
-                    sub.into()
-                } else {
-                    bbt_mux::adapters::HarnessRecord::builtin(id).map_or_else(
-                        |_| sub.into(),
-                        |harness| format!("{} by default", harness.default_role.name),
-                    )
-                },
+                sub: sub.into(),
                 harness: id.into(),
+                role: Some(
+                    match id {
+                        "claude" => "oracle",
+                        "zsh" => "shell",
+                        _ => "executor",
+                    }
+                    .into(),
+                ),
                 kind: if id == "zsh" { "Shell" } else { "Harness" }.into(),
                 tile: Some(tile.into()),
                 section: Some(section.into()),
@@ -721,38 +782,49 @@ fn launcher_items(
             .collect::<Vec<_>>()
     };
     let mut items = launchables();
+    let note =
+        swarm_oracle(model, stage).map(|name| format!("this swarm already has an Oracle: {name}"));
     for item in &mut items {
-        item.children = Some(
-            [
-                ("tab", "New tab"),
-                ("right", "Split right"),
-                ("bottom", "Split down"),
-            ]
-            .into_iter()
-            .map(|(id, label)| Item {
-                id: format!("{}:{id}", item.id),
-                label: label.into(),
-                harness: item.harness.clone(),
-                kind: "Placement".into(),
-                tile: item.tile.clone(),
-                ..Default::default()
-            })
-            .collect(),
-        );
+        item.children = Some(if item.id == "claude" {
+            if let Some(note) = &note {
+                item.sub.push_str(&format!(" · {note}"));
+            }
+            ROLE_PRESETS
+                .into_iter()
+                .map(|(role, label, say)| Item {
+                    id: format!("{}:as:{role}", item.id),
+                    label: label.into(),
+                    sub: if role == "oracle" {
+                        format!("default · {}", note.as_deref().unwrap_or(say))
+                    } else {
+                        say.into()
+                    },
+                    harness: item.harness.clone(),
+                    role: Some(role.into()),
+                    kind: "Role".into(),
+                    tile: item.tile.clone(),
+                    enter_picks: true,
+                    children: Some(placements(item, role)),
+                    ..Default::default()
+                })
+                .collect()
+        } else {
+            placements(item, item.role.as_deref().expect("launch default role"))
+        });
     }
     let mut providers = model.map_or_else(Vec::new, |m| m.provider_launcher_items());
     for root in &mut providers {
         for host in root.children.iter_mut().flatten() {
             if host.children.is_some() {
                 host.children = Some(
-                    items
-                        .clone()
+                    launchables()
                         .into_iter()
                         .map(|mut item| {
                             item.id = format!("{}:{}", host.id, item.id);
-                            for child in item.children.iter_mut().flatten() {
-                                child.id = format!("{}:{}", host.id, child.id);
-                            }
+                            item.children = Some(placements(
+                                &item,
+                                item.role.as_deref().expect("launch default role"),
+                            ));
                             item
                         })
                         .collect(),
@@ -830,10 +902,18 @@ fn launcher_items(
 }
 
 fn new_launcher(model: Option<&bboxy450_term::model::Model>, used: usize) -> LauncherController {
+    new_launcher_for(model, used, None)
+}
+
+fn new_launcher_for(
+    model: Option<&bboxy450_term::model::Model>,
+    used: usize,
+    stage: Option<&Stage>,
+) -> LauncherController {
     use bbt_ui::modules::launcher::{Cap, Launcher};
     LauncherController::new(
         Launcher {
-            items: launcher_items(model),
+            items: launcher_items_for(model, stage),
             query: String::new(),
             path: vec![],
             selected: Some(0),
@@ -1489,7 +1569,11 @@ impl App {
             .iter()
             .filter(|m| m.is_spawn())
             .count();
-        self.launcher = Some(new_launcher(self.live_state.as_deref(), used));
+        self.launcher = Some(new_launcher_for(
+            self.live_state.as_deref(),
+            used,
+            self.focus.stage.as_ref(),
+        ));
         self.launcher_layout = None;
         if let Some(window) = &self.window {
             window.set_ime_allowed(true);
@@ -1967,10 +2051,14 @@ impl App {
             self.focus
                 .reconcile(self.live_state.as_ref().map(|old| &old.ui), &state.ui);
             let refresh = self.live_state.as_ref().is_none_or(|old| {
-                old.hosts != state.hosts || old.ui.seats.keys().ne(state.ui.seats.keys())
+                old.hosts != state.hosts
+                    || old.ui.seats.keys().ne(state.ui.seats.keys())
+                    || (self.launcher.is_some()
+                        && swarm_oracle(Some(old), self.focus.stage.as_ref())
+                            != swarm_oracle(Some(&state), self.focus.stage.as_ref()))
             });
             if refresh && let Some(launcher) = &mut self.launcher {
-                launcher.replace_items(launcher_items(Some(&state)));
+                launcher.replace_items(launcher_items_for(Some(&state), self.focus.stage.as_ref()));
                 self.launcher_layout = None;
             }
             self.scene
@@ -5085,6 +5173,95 @@ mod launcher_host_tests {
 mod spawn_admission_tests {
     use super::*;
 
+    #[test]
+    fn claude_presets_reach_spawn_and_only_claude_gets_presets() {
+        let items = launcher_items(None);
+        let claude = items.iter().find(|item| item.id == "claude").unwrap();
+        assert_eq!(claude.role.as_deref(), Some("oracle"));
+        assert!(claude.enter_picks);
+        for (preset, (role, _, _)) in claude.children.as_ref().unwrap().iter().zip(ROLE_PRESETS) {
+            assert_eq!(preset.id, format!("claude:as:{role}"));
+            assert_eq!(preset.kind, "Role");
+            assert_eq!(preset.role.as_deref(), Some(role));
+            let live::UiMsg::Spawn { role: selected, .. } =
+                spawn_pick(&preset.id, Default::default(), None, None).unwrap()
+            else {
+                panic!("preset must admit a spawn")
+            };
+            assert_eq!(selected.as_deref(), Some(role));
+            for placement in preset.children.as_ref().unwrap() {
+                assert_eq!(placement.role.as_deref(), Some(role));
+                let live::UiMsg::Spawn { role: selected, .. } =
+                    spawn_pick(&placement.id, Default::default(), None, None).unwrap()
+                else {
+                    panic!("placement must admit a spawn")
+                };
+                assert_eq!(selected.as_deref(), (role != "oracle").then_some(role));
+            }
+        }
+        for id in [
+            "codex:as:oracle",
+            "claude:as:shell",
+            "claude:as:director",
+            "ssh:rig:claude:as:architect",
+        ] {
+            assert!(spawn_pick(id, Default::default(), None, None).is_none());
+        }
+        for (id, role) in [("codex", "executor"), ("zsh", "shell")] {
+            let item = items.iter().find(|item| item.id == id).unwrap();
+            assert!(
+                item.children
+                    .as_ref()
+                    .unwrap()
+                    .iter()
+                    .all(|child| child.kind == "Placement" && child.role.as_deref() == Some(role))
+            );
+        }
+    }
+
+    #[test]
+    fn existing_oracle_note_uses_the_displayed_swarm_and_never_blocks_the_default() {
+        use bbt_ui_model::{Role, RoleClass, Seat, SwarmId};
+        let mut model = bboxy450_term::model::Model::default();
+        let mut seat = Seat::new(
+            SeatId::from_u128(11),
+            SwarmId::from_u128(1),
+            [0; 32],
+            "Existing Oracle",
+            "claude",
+        );
+        seat.role = Some(Role {
+            name: "oracle".into(),
+            class: RoleClass::Oracle,
+        });
+        model.ui.seats.insert(seat.id, seat);
+        let mut stage = Stage {
+            swarm: Some(SwarmId::from_u128(1)),
+            ..Default::default()
+        };
+        let items = launcher_items_for(Some(&model), Some(&stage));
+        let claude = items.iter().find(|item| item.id == "claude").unwrap();
+        assert!(
+            claude
+                .sub
+                .ends_with("this swarm already has an Oracle: Existing Oracle")
+        );
+        assert!(claude.enter_picks);
+        assert_eq!(claude.role.as_deref(), Some("oracle"));
+        assert!(spawn_pick("claude", Default::default(), Some(&model), Some(&stage)).is_some());
+        let oracle = &claude.children.as_ref().unwrap()[0];
+        assert_eq!(
+            oracle.sub,
+            "default · this swarm already has an Oracle: Existing Oracle"
+        );
+        stage.swarm = Some(SwarmId::from_u128(2));
+        let items = launcher_items_for(Some(&model), Some(&stage));
+        assert_eq!(
+            items.iter().find(|item| item.id == "claude").unwrap().sub,
+            "oracle by default"
+        );
+    }
+
     fn generic() -> live::UiMsg {
         live::UiMsg::Spawn {
             id: bbt_mux::Ulid::new(),
@@ -5092,6 +5269,7 @@ mod spawn_admission_tests {
             placement: None,
             harness_kind: "codex".into(),
             name: Some("named seat".into()),
+            role: None,
             location: bbt_proto::Where::Local,
         }
     }
@@ -5163,7 +5341,7 @@ mod default_spawn_tests {
         let rows = launcher_items(None);
         assert_eq!(
             rows.iter().find(|row| row.id == "claude").unwrap().sub,
-            "executor by default"
+            "oracle by default"
         );
     }
 
@@ -5224,6 +5402,19 @@ mod default_spawn_tests {
                     .unwrap()
                     .iter()
                     .any(|row| row.id == format!("{id}:right"))
+            );
+            let claude = host_row
+                .children
+                .as_ref()
+                .unwrap()
+                .iter()
+                .find(|row| row.id == format!("{host}:claude"))
+                .unwrap();
+            assert_eq!(claude.role.as_deref(), Some("oracle"));
+            assert!(
+                claude.children.as_ref().unwrap().iter().all(|row| {
+                    row.kind == "Placement" && row.role.as_deref() == Some("oracle")
+                })
             );
         }
         assert!(default_spawn("ssh:missing:codex", Modifiers::default(), Some(&model)).is_none());

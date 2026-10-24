@@ -98,6 +98,7 @@ fn claude_wiring(overlay: &Path, context: &LaunchContext<'_>) -> Result<PathBuf>
 pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<LaunchPlan> {
     bbt_rt::assert_not_ui_thread();
     record.validate()?;
+    super::validate_role(&record.kind, &context.seat.role)?;
     if !context.executable.is_absolute()
         || !context.cwd.is_absolute()
         || !context.overlay_parent.is_absolute()

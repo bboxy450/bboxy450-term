@@ -13,6 +13,8 @@ pub struct Item {
     pub label: String,
     pub sub: String,
     pub harness: String,
+    /// Declarative spawn preset; the backend resolves its authority class.
+    pub role: Option<String>,
     pub kind: String,
     pub tile: Option<String>,
     pub section: Option<String>,

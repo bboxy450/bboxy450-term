@@ -5,10 +5,10 @@ use std::collections::BTreeSet;
 #[test]
 fn matrix_has_every_current_lab_state_and_separate_historical_keys() {
     let mut all = launchers::cases();
-    assert_eq!(all.len(), 208);
+    assert_eq!(all.len(), 240);
     assert_eq!(
         all.iter().filter(|c| c.component == "launcher").count(),
-        144
+        176
     );
     assert_eq!(all.iter().filter(|c| c.component == "picker").count(), 64);
     let old = launchers::legacy_cases();
@@ -23,13 +23,17 @@ fn matrix_has_every_current_lab_state_and_separate_historical_keys() {
             .map(|c| c.relative())
             .collect::<BTreeSet<_>>()
             .len(),
-        256
+        288
     );
     for state in [
         "query · focused empty",
         "query · caret",
         "query · selection",
         "query · preedit",
+        "Claude ▸ roles",
+        "Claude ▸ roles · no Oracle yet",
+        "Claude ▸ Architect ▸ placements",
+        "Codex ▸ placements",
     ] {
         assert_eq!(
             all.iter()

@@ -356,7 +356,11 @@ impl Scene {
             .iter()
             .map(|(id, seat)| {
                 let mut row = SeatRow::new(id.to_string(), &seat.name, &seat.harness.0);
-                row.role = seat.role.as_ref().map(|role| role.name.clone());
+                row.role = seat
+                    .role
+                    .as_ref()
+                    .filter(|role| role.name != "shell")
+                    .map(|role| role.name.clone());
                 row.title = seat.title.clone();
                 row.activity = seat.activity;
                 row.grade = seat.grade;

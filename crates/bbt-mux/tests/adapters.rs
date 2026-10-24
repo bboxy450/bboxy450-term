@@ -50,6 +50,161 @@ fn runtime() -> tokio::runtime::Runtime {
 }
 
 #[test]
+fn harness_defaults_follow_the_role_contract_and_validate_authority() {
+    use bbt_mux::registry::{Class, Role};
+    for (kind, name, class) in [
+        ("claude", "oracle", Class::Oracle),
+        ("codex", "executor", Class::Worker),
+        ("zsh", "shell", Class::Worker),
+    ] {
+        let harness = HarnessRecord::builtin(kind).unwrap();
+        assert_eq!(
+            harness.default_role,
+            Role {
+                name: name.into(),
+                class
+            }
+        );
+        harness.validate().unwrap();
+    }
+    let mut codex = HarnessRecord::builtin("codex").unwrap();
+    codex.default_role.class = Class::Oracle;
+    assert_eq!(
+        codex.validate().unwrap_err().to_string(),
+        "codex_oracle_role_forbidden"
+    );
+    let claude = HarnessRecord::builtin("claude").unwrap();
+    for (name, class) in [
+        ("oracle", Class::Oracle),
+        ("architect", Class::Oracle),
+        ("creativity", Class::Worker),
+        ("executor", Class::Worker),
+        ("shell", Class::Worker),
+    ] {
+        assert_eq!(
+            claude.resolve_role(Some(name)).unwrap(),
+            Role {
+                name: name.into(),
+                class
+            }
+        );
+    }
+    assert_eq!(
+        claude
+            .resolve_role(Some("director"))
+            .unwrap_err()
+            .to_string(),
+        "unknown_role_preset"
+    );
+    let codex = HarnessRecord::builtin("codex").unwrap();
+    for name in ["oracle", "architect"] {
+        assert_eq!(
+            codex.resolve_role(Some(name)).unwrap_err().to_string(),
+            "codex_oracle_role_forbidden"
+        );
+    }
+    assert_eq!(
+        bbt_mux::adapters::validate_role(
+            "claude",
+            &Role {
+                name: "oracle".into(),
+                class: Class::Worker
+            }
+        )
+        .unwrap_err()
+        .to_string(),
+        "role_class_mismatch"
+    );
+}
+
+#[test]
+fn codex_launch_refuses_oracle_class_before_creating_an_overlay() {
+    use bbt_mux::registry::Class;
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path().to_path_buf();
+    let overlays = root.join("overlays");
+    let mut seat = SeatRecord::new(Ulid::new(), Ulid::new(), "forged", "codex");
+    // The class is authoritative even when a caller labels it executor.
+    seat.role.class = Class::Oracle;
+    let context = LaunchContext {
+        seat: &seat,
+        cwd: &root,
+        role_prompt: "",
+        executable: std::path::Path::new("/fixture/bboxy450-term"),
+        overlay_parent: &overlays,
+        user_home: &root,
+        user_zdotdir: None,
+        socket: &root.join("seat.sock"),
+        capability: [0; 32],
+        resume: false,
+    };
+    let error = plan(&HarnessRecord::builtin("codex").unwrap(), &context)
+        .err()
+        .unwrap();
+    assert_eq!(error.to_string(), "codex_oracle_role_forbidden");
+    assert!(!overlays.exists());
+}
+
+#[test]
+fn logic_refuses_codex_oracle_authority_without_admitting_a_seat() {
+    use bbt_mux::logic::{Logic, LogicConfig};
+    use bbt_mux::registry::Class;
+    let directory = tempfile::tempdir().unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let supervisor = Supervisor::start(common::capture_config(directory.path())).unwrap();
+    let run_dir = directory.path().join("run");
+    let repository = directory.path().join("repository");
+    std::fs::create_dir_all(repository.join(".bboxy")).unwrap();
+    let logic = Logic::start(
+        supervisor.connect().unwrap(),
+        LogicConfig {
+            run_dir: run_dir.clone(),
+            repository,
+            ring: Default::default(),
+        },
+        ed25519_dalek::SigningKey::from_bytes(&[31; 32]),
+        runtime.handle(),
+    )
+    .unwrap();
+    let mut record = SeatRecord::new(Ulid::new(), Ulid::new(), "forged", "codex");
+    record.role.class = Class::Oracle;
+    let error = runtime
+        .block_on(logic.client.spawn_harness(
+            record.clone(),
+            HarnessRecord::builtin("codex").unwrap(),
+            bbt_mux::adapters::launch::LaunchOptions {
+                cwd: directory.path().into(),
+                role_prompt: String::new(),
+                executable: "/fixture/bboxy450-term".into(),
+                user_home: directory.path().into(),
+                user_zdotdir: None,
+                resume: false,
+            },
+        ))
+        .unwrap_err();
+    assert_eq!(error.to_string(), "codex_oracle_role_forbidden");
+    let mut spec = bbt_mux::LaunchSpec::new("/bin/zsh", directory.path());
+    spec.seat = record.id;
+    spec.generation = record.generation;
+    let error = runtime
+        .block_on(logic.client.spawn(record.clone(), spec))
+        .unwrap_err();
+    assert_eq!(error.to_string(), "codex_oracle_role_forbidden");
+    assert!(
+        runtime
+            .block_on(logic.client.gui_seats())
+            .unwrap()
+            .is_empty()
+    );
+    assert!(!run_dir.join(format!("seat-{}", record.id)).exists());
+    logic.shutdown().unwrap();
+}
+
+#[test]
 fn adapters_claude_wire_capture_runs_through_term_callback_and_ends_only_running_rows() {
     let mut term = bbt_core::Term::new(80, 24, 0);
     let tap = OscTap::install(&mut term);

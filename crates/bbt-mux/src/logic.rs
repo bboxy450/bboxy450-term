@@ -1563,10 +1563,13 @@ impl Worker {
                 return Err("target process binding changed".into());
             }
         }
-        if let crate::mcp::seats::Request::Spawn(args) = &request
-            && !args.cwd.is_dir()
-        {
-            return Err("spawn cwd is not an available directory".into());
+        if let crate::mcp::seats::Request::Spawn(args) = &request {
+            if !args.cwd.is_dir() {
+                return Err("spawn cwd is not an available directory".into());
+            }
+            HarnessRecord::builtin(&args.approved_profile)
+                .and_then(|harness| harness.resolve_role(args.role.as_deref()))
+                .map_err(|error| error.to_string())?;
         }
         Ok(request)
     }
@@ -1781,16 +1784,18 @@ impl Worker {
                         harness.name.clone(),
                         harness.kind.clone(),
                     );
-                    record.role = harness.default_role.clone();
-                    if let Some(name) = args.role {
-                        record.role.name = name;
-                    }
+                    record.role = harness.resolve_role(args.role.as_deref())?;
+                    let role_prompt = if record.role.name == "shell" {
+                        String::new()
+                    } else {
+                        format!("ROLE: {}", record.role.name.to_ascii_uppercase())
+                    };
                     self.launch(
                         record,
                         harness,
                         crate::adapters::launch::LaunchOptions {
                             cwd: args.cwd.canonicalize()?,
-                            role_prompt: String::new(),
+                            role_prompt,
                             executable: std::env::current_exe()?,
                             user_home: std::env::var_os("HOME")
                                 .map(PathBuf::from)
@@ -2309,7 +2314,7 @@ impl Worker {
                 tile: String::new(),
                 icon: String::new(),
                 default_role: crate::registry::Role {
-                    name: "executor".into(),
+                    name: "shell".into(),
                     class: crate::registry::Class::Worker,
                 },
                 wake_method: crate::adapters::WakeMethod::Operator,
@@ -2528,6 +2533,8 @@ impl Worker {
         if record.harness_kind != harness.kind {
             return Err(invalid("seat/harness kind mismatch"));
         }
+        harness.validate()?;
+        crate::adapters::validate_role(&harness.kind, &record.role)?;
         let endpoint = self.ensure_endpoint(record.id, record.generation)?;
         let root = object_dir(&self.config.run_dir, &format!("seat-{}", record.id))?;
         let mut plan = crate::adapters::launch::plan(
@@ -2674,6 +2681,7 @@ impl Worker {
         Ok(())
     }
     fn spawn(&mut self, record: SeatRecord, spec: LaunchSpec) -> Result<SeatInfo> {
+        crate::adapters::validate_role(&record.harness_kind, &record.role)?;
         check_size(spec.size.cols as usize, spec.size.rows as usize)?;
         if record.id != spec.seat || record.generation != spec.generation {
             return Err(invalid("launch and record identity mismatch"));
@@ -3743,10 +3751,12 @@ impl Worker {
                 crate::registry::Location::Cloud { provider, host }
             }
         };
-        record.role = harness.default_role.clone();
-        if let Some(role) = spec.role {
-            record.role.name = role;
-        }
+        record.role = harness.resolve_role(spec.role.as_deref())?;
+        let role_prompt = if record.role.name == "shell" {
+            String::new()
+        } else {
+            format!("ROLE: {}", record.role.name.to_ascii_uppercase())
+        };
         let resume = spec.resume.is_some();
         record.harness_session_id = spec.resume;
         Ok((
@@ -3754,7 +3764,7 @@ impl Worker {
             harness,
             crate::adapters::launch::LaunchOptions {
                 cwd: spec.cwd.into(),
-                role_prompt: String::new(),
+                role_prompt,
                 executable: std::env::current_exe()?,
                 user_home: std::env::var_os("HOME")
                     .map(PathBuf::from)

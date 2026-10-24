@@ -48,7 +48,7 @@ impl Fixture {
         own.tasks.push(task);
         let peer = SeatRecord::new(Ulid::new(), swarm, "Peer", "zsh");
         let mut oracle = SeatRecord::new(Ulid::new(), swarm, "Oracle", "zsh");
-        oracle.role.name = "custom director".into();
+        oracle.role.name = "oracle".into();
         oracle.role.class = Class::Oracle;
         let outside = SeatRecord::new(Ulid::new(), Ulid::new(), "Outside", "zsh");
         for (number, (id, seat, title)) in [
@@ -2864,6 +2864,28 @@ fn mcp_seat_spawn_runs_once_with_isolated_home_and_existing_wiring() {
 }
 
 #[test]
+fn mcp_spawn_refuses_forbidden_and_unknown_presets_before_admitting_a_seat() {
+    let fixture = Fixture::new();
+    let count = fixture.registry().list().unwrap().len();
+    for (kind, role, reason) in [
+        ("codex", "oracle", "codex_oracle_role_forbidden"),
+        ("codex", "architect", "codex_oracle_role_forbidden"),
+        ("zsh", "director", "unknown_role_preset"),
+    ] {
+        refused(
+            fixture.mutate(
+                fixture.oracle.id,
+                Ulid::new(),
+                "seat_spawn",
+                json!({"swarm_id":fixture.own.swarm,"approved_profile":kind,"cwd":fixture._temp.path(),"role":role}),
+            ),
+            reason,
+        );
+        assert_eq!(fixture.registry().list().unwrap().len(), count);
+    }
+}
+
+#[test]
 fn mcp_seat_native_interrupt_is_bounded_audited_and_never_replayed() {
     isolated_seat_fixture("native");
 }
@@ -2893,7 +2915,7 @@ fn seat_spawn_fixture() {
     f.wait_screen(seat, "ISOLATED-SPAWN");
     let record = f.registry().get(seat).unwrap();
     assert_eq!(record.role.name, "oracle");
-    assert_eq!(record.role.class, Class::Worker);
+    assert_eq!(record.role.class, Class::Oracle);
     assert_eq!(record.swarm, f.own.swarm);
     assert_eq!(f.registry().list().unwrap().len(), baseline + 1);
     assert_eq!(f.mutate(f.oracle.id, op, "seat_spawn", args.clone()), first);

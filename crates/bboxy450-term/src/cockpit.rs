@@ -38,6 +38,7 @@ pub enum UiMsg {
         placement: Option<bbt_proto::seat_state::Placement>,
         harness_kind: String,
         name: Option<String>,
+        role: Option<String>,
         location: bbt_proto::Where,
     },
     /// Compatibility for the existing verification and default-shell callers.
