@@ -15,7 +15,7 @@ links:
   - { to: "[[d272-ctl-one-grammar]]", rel: decision }
   - { to: "[[work-items]]", rel: record-type }
 created: "2026-10-24T15:24:41Z"
-updated: "2026-10-24T15:30:19Z"
+updated: "2026-10-24T15:31:48Z"
 ---
 # ctl
 
@@ -62,7 +62,7 @@ Every verb prints JSON lines on stdout, nothing else there (stderr is for `--hum
 
 ## 4. Recipes
 
-A recipe is a **record** (`type: recipe`, numbered, in `.bboxy/recipes/`), not code: a list of steps over the verbs above, with data-driven rules, so a new harness prompt is a new file and never a new subsystem. Steps: `screen` (read), `match` (the screen must match a pattern or an exact list, else the recipe stops and reports), `input` (text or codes), `wait` (state or text, with a timeout), `report` (one line to the run log and the journal). The first recipe is `codex-hook-review`: `screen` → `match` the listed hooks against **exactly** the hooks the launch overlay installed (the list is data generated from `adapters/launch.rs`, not typed into the recipe) → `input` the approval → `report` the approved list (#270's guard, Seraph's addition). `--dry-run` executes every step but `input`. A recipe runs under the same principal, door and audit as its steps; it adds no authority and cannot skip `match`.
+A recipe is a **record** (`type: recipe`, numbered, in `.bboxy/recipes/`), not code: a list of steps over the verbs above, with data-driven rules, so a new harness prompt is a new file and never a new subsystem. Steps: `screen` (read), `match` (the screen must match a pattern or an exact list, else the recipe stops and reports), `input` (text or codes), `wait` (state or text, with a timeout), `report` (one line to the run log and the journal). The first recipe is `codex-hook-review`. Codex 0.163 shows only a count ("N hooks are new or changed", options Review, Trust all and continue, Continue without trusting) and no per-hook list even under Review (Seraph's probe, 2026-10-24), so the match is against what we can verify from the two sides we control: `match` requires the count on screen to equal the number of hooks the launch overlay installed (data generated from `adapters/launch.rs`, never a literal) **and** no other hook source that Codex could have merged: no `.codex/hooks.json` and no `[hooks]` table in `.codex/config.toml` under the seat's working directory; a changed user-level hook would raise the count and fail the first test by itself. Only then `input` chooses Trust all and continue, which is "all ours" by construction; anything else stops with the screen. `report` logs the screen, the expected command list and the choice (#270's guard, Seraph's addition and correction). `--dry-run` executes every step but `input`. A recipe runs under the same principal, door and audit as its steps; it adds no authority and cannot skip `match`.
 
 ## 5. Permission and audit, one story
 
