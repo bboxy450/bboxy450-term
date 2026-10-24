@@ -19,7 +19,7 @@ links:
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
   - { to: "[[c1-live-seats]]", rel: shares-socket }
 created: 2026-10-22T20:09:59Z
-updated: "2026-10-24T07:53:44Z"
+updated: "2026-10-24T08:01:29Z"
 ---
 # W2.5 MCP server and W2.5b seat wiring kit
 
@@ -71,7 +71,7 @@ Everything lives in the per-launch overlay directory (`launch-{ulid}`, mode 0700
 | Harness | Already there | Added by W2.5b |
 |---|---|---|
 | Claude | `--settings <overlay>/claude-settings.json` (hooks, crossSessionInbound), `--append-system-prompt <role prompt>`, `--name`, `--session-id` or `--resume` | `--mcp-config <overlay>/mcp.json` with `{"mcpServers":{"bboxy":{"command":"<exe>","args":["mcp"]}}}`; `--plugin-dir <overlay>/bboxy450` carrying `skills/bboxy450/SKILL.md`. Not `--strict-mcp-config`: the user's own servers stay. |
-| Codex | `-c developer_instructions=<role prompt>`, `-c notify=…`, `-c hooks={…}`, `resume <id>` | `-c mcp_servers.bboxy.command="<exe>"`, `-c mcp_servers.bboxy.args=["mcp"]`. Skill text appended to `developer_instructions` until a per-launch skill path is verified; **Gap:** Codex per-session skill injection without writing `~/.codex`. |
+| Codex | `-c developer_instructions=<role prompt>`, `-c notify=…`, `-c hooks={…}`, `resume <id>` | `-c mcp_servers.bboxy.command="<exe>"`, `-c mcp_servers.bboxy.args=["mcp"]`. Skill text appended to `developer_instructions` until a per-launch skill path is verified; **Gap:** Codex per-session skill injection without writing `~/.codex`. **Trust ([[d265-codex-seat-trust]]):** Codex's native hook review stays; the operator consents once and Codex persists it by the hook definition's hash; a change to our hook content is a new hash and a fresh approval, which the launcher states before the spawn; our `bboxy` MCP server gets the documented per-invocation approval override in the launch argv, scoped to that server only; never `--dangerously-bypass-hook-trust`, never an isolated `CODEX_HOME` with a copied `auth.json`. |
 | zsh, generic | ZDOTDIR overlay exports `BBOXY_*` | nothing; `bboxy450-term mcp` works by hand in that shell |
 
 The skill is one `SKILL.md` generated from a template in the binary (`include_str!`), parameterised by role: the tool order `orient → task_* → message_* → artifact_claim`, **how to reach the operator** ("reply with `reply_to`, or send to `operator/inbox`", [[d264-reply-routes-to-sender]]), DM by default and what the channel is for ([[messaging]]), and the report shape (files changed and mechanism, commands and exit status, evidence per criterion, gaps, worktree state). The role prompt stays what settings say.
