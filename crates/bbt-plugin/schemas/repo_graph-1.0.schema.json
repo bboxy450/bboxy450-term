@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:bboxy450:repo_graph:1.0",
+  "title": "bboxy450 repo_graph 1.0",
+  "description": "App-owned contract. Outer fields are additive; signed payloads stay opaque and strict.",
+  "$defs": {
+    "CommandError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retry_after_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "additionalProperties": true
+    },
+    "ChangesRequest": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        }
+      },
+      "required": [
+        "cursor"
+      ],
+      "additionalProperties": true
+    },
+    "DescribeRequest": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "root"
+      ],
+      "additionalProperties": true
+    },
+    "Repo": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "kind": {
+          "enum": [
+            "cargo",
+            "npm",
+            "nix",
+            "git",
+            "other"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "path",
+        "kind",
+        "name"
+      ],
+      "additionalProperties": true
+    },
+    "Edge": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "minLength": 1
+        },
+        "to": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rel": {
+          "enum": [
+            "depends",
+            "contains",
+            "workspace"
+          ]
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "rel"
+      ],
+      "additionalProperties": true
+    },
+    "DescribeResult": {
+      "type": "object",
+      "properties": {
+        "repos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Repo"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Edge"
+          }
+        }
+      },
+      "required": [
+        "repos",
+        "edges"
+      ],
+      "additionalProperties": true
+    },
+    "Changes": {
+      "type": "object",
+      "properties": {
+        "changed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "next": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "changed",
+        "next"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "x-methods": {
+    "describe": {
+      "request": "#/$defs/DescribeRequest",
+      "result": "#/$defs/DescribeResult"
+    },
+    "changes_since": {
+      "request": "#/$defs/ChangesRequest",
+      "result": "#/$defs/Changes"
+    }
+  }
+}

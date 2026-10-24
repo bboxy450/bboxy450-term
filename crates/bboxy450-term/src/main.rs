@@ -4569,6 +4569,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(result) = stall::private_entry(&hook_args) {
         return result.map_err(Into::into);
     }
+    if hook_args.first().is_some_and(|arg| arg == "plugin") {
+        let code = bbt_mux::plugins::run_cli(&hook_args[1..]);
+        if code != 0 {
+            std::process::exit(code);
+        }
+        return Ok(());
+    }
     // `ctl --help` is ctl's own usage, printed by ctl.
     if hook_args.first().is_none_or(|arg| arg != "ctl")
         && hook_args.iter().any(|arg| arg == "--help" || arg == "-h")

@@ -1,0 +1,27 @@
+P-0 tool-name compatibility — 2026-10-24
+
+The application contract remains ASCII [a-z0-9_-], maximum 64 bytes.
+crates/bbt-plugin/tests/shape.rs exercises exactly 64 bytes and refuses 65.
+
+Official OpenAI documentation, fetched 2026-10-24:
+https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create
+Function-tool names have a 64-character maximum and permit letters, digits,
+underscores and hyphens. This is the API limit, not evidence of a Codex run.
+
+Codex source verification (static; no conversation, credentials or service):
+Installed executable resolves to /opt/homebrew/Caskroom/codex/0.163.0/bin/codex.
+https://github.com/openai/codex/blob/rust-v0.163.0/codex-rs/codex-mcp/src/tools.rs
+https://github.com/openai/codex/blob/970111f6cb62cc02fe36a82ea7d71b37a2889c97/codex-rs/codex-mcp/src/tools.rs#L226
+Both fetched resources identify the same complete Git blob:
+4afc7561f88cc1a63317ecaaf1f37ee27383f680
+Line 226 sets MAX_TOOL_NAME_LENGTH to 128. This bounds model-visible qualified
+names; the module retains raw server/tool identities for protocol routing.
+The HOST-qualified plugin name (plugin_system_provider_method) stays <=64.
+Codex's additional presentation namespace is a different layer: mcp__bboxy +
+__ + that 64-byte tool is at most 76 bytes, within its pinned 128-byte limit.
+This does not admit a 76-byte plugin name; that is refused by the host at trust.
+The common 64-byte contract is deliberately retained; no source was vendored.
+Live harness registration was not run and is not claimed by this source check.
+
+An initial fetch used the retired core/src/mcp_connection_manager.rs location
+and returned 404. The actual module is codex-mcp/src/tools.rs, fetched above.

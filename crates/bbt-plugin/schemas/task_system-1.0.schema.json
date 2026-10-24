@@ -1,0 +1,464 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:bboxy450:task_system:1.0",
+  "title": "bboxy450 task_system 1.0",
+  "description": "App-owned contract. Outer fields are additive; signed payloads stay opaque and strict.",
+  "$defs": {
+    "CommandError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retry_after_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "additionalProperties": true
+    },
+    "ChangesRequest": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        }
+      },
+      "required": [
+        "cursor"
+      ],
+      "additionalProperties": true
+    },
+    "TaskVerification": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "exit_code": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "properties": {
+              "criterion": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "reference": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              }
+            },
+            "required": [
+              "criterion",
+              "reference"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "command",
+        "exit_code"
+      ],
+      "additionalProperties": false
+    },
+    "TaskRecord": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+        },
+        "number": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "external_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "metadata": {
+          "type": "object"
+        },
+        "body": {
+          "type": "string"
+        },
+        "body_truncated": {
+          "type": "boolean"
+        },
+        "etag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "signed_record": {
+          "type": "string",
+          "description": "Opaque app-signed record; preserve its exact bytes."
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "path",
+        "metadata",
+        "body",
+        "etag"
+      ],
+      "additionalProperties": true
+    },
+    "ListRequest": {
+      "type": "object",
+      "properties": {
+        "unassigned": {
+          "type": "boolean"
+        },
+        "swarm_id": {
+          "type": "string",
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+        },
+        "status": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "assignee": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "after": {
+          "type": "string",
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        }
+      },
+      "required": [],
+      "additionalProperties": true
+    },
+    "StatusRequest": {
+      "type": "object",
+      "properties": {
+        "task_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "task_id": {
+          "type": "string",
+          "pattern": "^(?:[0-7][0-9A-HJKMNP-TV-Z]{25}|#[1-9][0-9]*)$"
+        }
+      },
+      "required": [],
+      "additionalProperties": true,
+      "oneOf": [
+        {
+          "required": [
+            "task_path"
+          ]
+        },
+        {
+          "required": [
+            "task_id"
+          ]
+        }
+      ]
+    },
+    "TaskPage": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TaskRecord"
+          }
+        },
+        "next": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items",
+        "next"
+      ],
+      "additionalProperties": true
+    },
+    "Changes": {
+      "type": "object",
+      "properties": {
+        "changed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          }
+        },
+        "next": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "changed",
+        "next"
+      ],
+      "additionalProperties": true
+    },
+    "DelegateRequest": {
+      "type": "object",
+      "properties": {
+        "task_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "etag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "signed_record": {
+          "type": "string",
+          "description": "Opaque signed application record, returned byte for byte."
+        },
+        "seat_id": {
+          "type": "string",
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+        },
+        "role": {
+          "enum": [
+            "executor",
+            "oracle",
+            "creativity"
+          ]
+        }
+      },
+      "required": [
+        "task_path",
+        "etag",
+        "seat_id",
+        "signed_record"
+      ],
+      "additionalProperties": true
+    },
+    "ReassignRequest": {
+      "type": "object",
+      "properties": {
+        "task_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "etag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "signed_record": {
+          "type": "string",
+          "description": "Opaque signed application record, returned byte for byte."
+        },
+        "seat_id": {
+          "type": "string",
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+        }
+      },
+      "required": [
+        "task_path",
+        "etag",
+        "seat_id",
+        "signed_record"
+      ],
+      "additionalProperties": true
+    },
+    "ReportRequest": {
+      "type": "object",
+      "properties": {
+        "task_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "etag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "signed_record": {
+          "type": "string",
+          "description": "Opaque signed application record, returned byte for byte."
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "commit": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "verify_result": {
+          "$ref": "#/$defs/TaskVerification"
+        }
+      },
+      "required": [
+        "task_path",
+        "etag",
+        "summary",
+        "signed_record"
+      ],
+      "additionalProperties": true
+    },
+    "AcceptRequest": {
+      "type": "object",
+      "properties": {
+        "task_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "etag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "signed_record": {
+          "type": "string",
+          "description": "Opaque signed application record, returned byte for byte."
+        }
+      },
+      "required": [
+        "task_path",
+        "etag",
+        "signed_record"
+      ],
+      "additionalProperties": true
+    },
+    "RejectRequest": {
+      "type": "object",
+      "properties": {
+        "task_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "etag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "signed_record": {
+          "type": "string",
+          "description": "Opaque signed application record, returned byte for byte."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      },
+      "required": [
+        "task_path",
+        "etag",
+        "reason",
+        "signed_record"
+      ],
+      "additionalProperties": true
+    },
+    "TaskWriteResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/TaskRecord"
+        },
+        {
+          "type": "object",
+          "required": [
+            "signed_record"
+          ]
+        }
+      ]
+    }
+  },
+  "x-methods": {
+    "list": {
+      "request": "#/$defs/ListRequest",
+      "result": "#/$defs/TaskPage"
+    },
+    "status": {
+      "request": "#/$defs/StatusRequest",
+      "result": "#/$defs/TaskRecord"
+    },
+    "changes_since": {
+      "request": "#/$defs/ChangesRequest",
+      "result": "#/$defs/Changes"
+    },
+    "delegate": {
+      "request": "#/$defs/DelegateRequest",
+      "result": "#/$defs/TaskWriteResult"
+    },
+    "reassign": {
+      "request": "#/$defs/ReassignRequest",
+      "result": "#/$defs/TaskWriteResult"
+    },
+    "report": {
+      "request": "#/$defs/ReportRequest",
+      "result": "#/$defs/TaskWriteResult"
+    },
+    "accept": {
+      "request": "#/$defs/AcceptRequest",
+      "result": "#/$defs/TaskWriteResult"
+    },
+    "reject": {
+      "request": "#/$defs/RejectRequest",
+      "result": "#/$defs/TaskWriteResult"
+    }
+  }
+}
