@@ -1485,3 +1485,205 @@ async fn ctl_never_prints_secrets() {
     }
     session.shutdown().await.unwrap();
 }
+
+/// `record write` (e2e acceptance §2): the operator signs an e2e record into the knowledge
+/// base; another record type and a stale etag are refused with their reasons.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ctl_record_write_signs_e2e_records_only() {
+    let root = tempfile::tempdir().unwrap();
+    let root = root.path().canonicalize().unwrap();
+    let (session, run, _) = noun_verb_fixture(&root).await;
+    let json =
+        |text: &str| -> Value { serde_json::from_str(text.lines().next().unwrap()).unwrap() };
+    let write = |name: &str, args: Value| {
+        let file = root.join(name);
+        std::fs::write(&file, args.to_string()).unwrap();
+        let (code, out, _) = ctl_raw(&run, &root, &["record", "write", file.to_str().unwrap()]);
+        (code, json(&out))
+    };
+
+    let (code, reply) = write(
+        "e2e.json",
+        json!({ "path": "e2e/T9.md", "body": "fixture\n",
+            "frontmatter": { "type": "e2e", "title": "T9 fixture", "function": "T9",
+                "group": "terminal", "status": "untested" } }),
+    );
+    assert_eq!(code, Some(0), "{reply}");
+    assert_eq!(
+        (&reply["noun"], &reply["verb"]),
+        (&json!("record"), &json!("write"))
+    );
+    let record = &reply["data"]["record"];
+    assert!(record["number"].is_u64(), "{reply}");
+    let text = std::fs::read_to_string(root.join("repository/.bboxy/e2e/T9.md")).unwrap();
+    assert!(
+        text.contains("status: untested") && text.contains("sig:"),
+        "{text}"
+    );
+
+    let (code, reply) = write(
+        "note.json",
+        json!({ "path": "notes/x.md", "body": "x\n",
+            "frontmatter": { "type": "note", "title": "x" } }),
+    );
+    assert_eq!(code, Some(1), "{reply}");
+    assert!(
+        reply["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("knowledge_write_denied"),
+        "{reply}"
+    );
+
+    let reference = json!({ "id": record["id"], "number": record["number"], "slug": record["slug"],
+        "path": record["path"], "digest": record["digest"] });
+    let (code, reply) = write(
+        "stale.json",
+        json!({ "ref": reference, "etag": "stale", "body": "fixture\n",
+            "frontmatter": { "type": "e2e", "title": "T9 fixture", "function": "T9",
+                "group": "terminal", "status": "pass" } }),
+    );
+    assert_eq!(code, Some(1), "{reply}");
+    assert!(
+        reply["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("etag_mismatch"),
+        "{reply}"
+    );
+    session.shutdown().await.unwrap();
+}
+
+/// `task create` (#266 addendum): an open, unassigned task under tasks/, delegated by the
+/// operator device; a create without --verify is a usage error.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ctl_task_create_opens_an_unassigned_operator_task() {
+    let root = tempfile::tempdir().unwrap();
+    let root = root.path().canonicalize().unwrap();
+    let (session, run, _) = noun_verb_fixture(&root).await;
+    let (code, out, _) = ctl_raw(
+        &run,
+        &root,
+        &[
+            "task",
+            "create",
+            "Fix the T9 fixture",
+            "--verify",
+            "true",
+            "--brief",
+            "why",
+        ],
+    );
+    let reply: Value = serde_json::from_str(out.lines().next().unwrap()).unwrap();
+    assert_eq!(code, Some(0), "{reply}");
+    let record = &reply["data"]["record"];
+    let path = record["path"].as_str().unwrap();
+    assert!(
+        path.starts_with("tasks/") && path.ends_with("-fix-the-t9-fixture.md"),
+        "{path}"
+    );
+    let front = &record["frontmatter"];
+    assert_eq!(
+        (&front["status"], &front["assignee"]),
+        (&json!("open"), &json!("none"))
+    );
+    assert!(
+        front["delegated_by"]
+            .as_str()
+            .unwrap()
+            .starts_with("operator:"),
+        "{front}"
+    );
+    assert!(record["number"].is_u64(), "{reply}");
+    let (code, _, _) = ctl_raw(&run, &root, &["task", "create", "no verify"]);
+    assert_eq!(code, Some(2));
+    session.shutdown().await.unwrap();
+}
+
+/// `seat restart`: a live zsh seat's process stops and its next generation starts, the
+/// committed screen restored (or its gap marked) and a fresh shell answering.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ctl_seat_restart_starts_the_next_generation() {
+    let root = tempfile::tempdir().unwrap();
+    let root = root.path().canonicalize().unwrap();
+    let (session, run, seat) = noun_verb_fixture(&root).await;
+    let json =
+        |text: &str| -> Value { serde_json::from_str(text.lines().next().unwrap()).unwrap() };
+    let screen = |human: bool| {
+        let args: &[&str] = if human {
+            &["seat", "screen", &seat, "--human"]
+        } else {
+            &["seat", "screen", &seat]
+        };
+        ctl_raw(&run, &root, args).1
+    };
+    let marker = |text: &str, tag: &str| {
+        text.lines()
+            .filter_map(|l| l.strip_prefix(&format!("{tag}-")))
+            .rfind(|pid| pid.chars().all(|c| c.is_ascii_digit()) && !pid.is_empty())
+            .map(str::to_owned)
+    };
+    for line in [
+        vec!["seat", "type", &seat, "echo before-$$"],
+        vec!["seat", "key", &seat, "enter"],
+    ] {
+        assert_eq!(ctl_raw(&run, &root, &line).0, Some(0));
+    }
+    let (code, out, _) = ctl_raw(
+        &run,
+        &root,
+        &[
+            "seat",
+            "wait",
+            &seat,
+            "--text",
+            "(?m)^before-[0-9]+$",
+            "--timeout",
+            "20000",
+        ],
+    );
+    assert_eq!(code, Some(0), "{out}");
+    let before = marker(&screen(true), "before").unwrap();
+    let generation = json(&screen(false))["data"]["generation"].as_u64().unwrap();
+
+    let (code, out, _) = ctl_raw(&run, &root, &["seat", "restart", &seat]);
+    assert_eq!(code, Some(0), "{out}");
+    assert_eq!(json(&out)["data"]["from_generation"], generation);
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while json(&screen(false))["data"]["generation"].as_u64() != Some(generation + 1) {
+        assert!(
+            Instant::now() < deadline,
+            "no generation {}",
+            generation + 1
+        );
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+    let restored = screen(true);
+    assert!(
+        restored.contains(&format!("before-{before}")) || restored.contains("[gap "),
+        "{restored}"
+    );
+    for line in [
+        vec!["seat", "type", &seat, "echo after-$$"],
+        vec!["seat", "key", &seat, "enter"],
+    ] {
+        assert_eq!(ctl_raw(&run, &root, &line).0, Some(0));
+    }
+    let (code, out, _) = ctl_raw(
+        &run,
+        &root,
+        &[
+            "seat",
+            "wait",
+            &seat,
+            "--text",
+            "(?m)^after-[0-9]+$",
+            "--timeout",
+            "20000",
+        ],
+    );
+    assert_eq!(code, Some(0), "{out}");
+    let after = marker(&screen(true), "after").unwrap();
+    assert_ne!(after, before, "a fresh shell answers");
+    session.shutdown().await.unwrap();
+}

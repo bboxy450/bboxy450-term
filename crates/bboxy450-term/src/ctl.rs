@@ -40,6 +40,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   seat screen <seat> --cells | --scrollback FROM..TO   styled runs, or history rows
   seat resize <seat> <cols>x<rows>
   seat rename <seat> <name>
+  seat restart <seat>                     stop the seat's process and start its next generation
   seat focus <seat>                       the window focuses it
   seat watch <seat> [--timeout MS]        state and screen changes as event lines, then done
   message send (<seat|destination> | --reply-to ID) <text> [--swarm ID]
@@ -50,7 +51,12 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   task list [--unassigned | --seat SEAT | --status STATUS]
   task get <#N|path|id>
   task delegate <#N|path|id> <seat>
+  task create <title> --verify CMD [--brief TEXT]
+                                          an open, unassigned task, signed by the operator
   e2e list [--group GROUP]
+  record write <file|->                   an e2e record, signed by the operator device: the
+                                          knowledge_write fields (path or ref, frontmatter,
+                                          body, etag) as one JSON object
   app endpoint                            the run directory, socket path and generation
 Flags on every verb: --json (default) | --human, --op ULID (an idempotent retry), --as LABEL or
 BBOXY_CTL_ISSUER (who issues it, #269), --run-dir DIR or BBOXY_RUN_DIR, --endpoint FILE.
@@ -154,6 +160,10 @@ pub enum Command {
         seat: String,
         name: String,
     },
+    /// `seat restart <seat>`: the seat's next process generation.
+    Restart {
+        seat: String,
+    },
     /// `seat focus <seat>`: the window focuses it.
     Focus {
         seat: String,
@@ -188,6 +198,10 @@ pub enum Command {
     E2e {
         group: Option<String>,
     },
+    /// `record write <file|->`: the knowledge_write JSON from a file or stdin.
+    RecordWrite {
+        source: String,
+    },
     /// `message send (<destination|seat> | --reply-to <id>) <text>` (#264 routing).
     Send {
         to: Option<String>,
@@ -204,6 +218,12 @@ pub enum Command {
         unassigned: bool,
         seat: Option<String>,
         status: Option<String>,
+    },
+    /// `task create <title> --verify CMD [--brief TEXT]`.
+    TaskCreate {
+        title: String,
+        verify: String,
+        brief: Option<String>,
     },
     /// `task get <#N|path|id>`.
     TaskGet {
@@ -227,6 +247,7 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("seat", "watch", "EventsRead"),
     ("seat", "rename", "RenameSeat"),
     ("seat", "focus", "FocusSeat"),
+    ("seat", "restart", "RestartSeat"),
     ("seat", "capture", "Capture"),
     ("message", "send", "Messaging"),
     ("message", "post", "Messaging"),
@@ -236,7 +257,9 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("task", "list", "Task"),
     ("task", "get", "Task"),
     ("task", "delegate", "Task"),
+    ("task", "create", "RecordWrite"),
     ("e2e", "list", "Knowledge"),
+    ("record", "write", "RecordWrite"),
     ("app", "endpoint", "-"),
 ];
 /// The pre-grammar flat commands, kept one release as aliases (ctl-cli rev. 2, C-0).
@@ -395,6 +418,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             name: name.into(),
         },
         ["seat", "focus", seat] => Command::Focus { seat: seat.into() },
+        ["seat", "restart", seat] => Command::Restart { seat: seat.into() },
         ["seat", "watch", seat] => Command::Watch {
             seat: seat.into(),
             timeout: Duration::from_millis(
@@ -517,8 +541,17 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             status: flag("status"),
         },
         ["task", "get", task] => Command::TaskGet { task: task.into() },
+        ["task", "create", title] => Command::TaskCreate {
+            title: title.into(),
+            verify: flag("verify")
+                .ok_or_else(|| format!("{USAGE_PREFIX}task create needs --verify CMD"))?,
+            brief: flag("brief"),
+        },
         ["e2e", "list"] => Command::E2e {
             group: flag("group"),
+        },
+        ["record", "write", source] => Command::RecordWrite {
+            source: source.into(),
         },
         ["app", "endpoint"] => Command::AppEndpoint,
         ["capture", path] => Command::Capture {
@@ -553,6 +586,8 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "reply-to",
             "status",
             "scrollback",
+            "verify",
+            "brief",
         ]
         .contains(&k.as_str())
     }) {
@@ -735,6 +770,22 @@ impl Client {
         match reply {
             GuiReply::Knowledge { response, .. } => serde_json::from_value(response)
                 .map_err(|e| CommandError::new("invalid_provider_result", e.to_string()))?,
+            _ => unreachable!(),
+        }
+    }
+    /// The operator's signed `e2e` record write: the data_source write result.
+    pub fn record_write(&mut self, args: Value) -> Result<Value, String> {
+        let id = self.mint();
+        match self.call(
+            Some(id),
+            GuiAction::RecordWrite { id, args },
+            |r| matches!(r, GuiReply::Knowledge { op, .. } if *op == id),
+        )? {
+            GuiReply::Knowledge { response, .. } => {
+                serde_json::from_value::<bbt_mux::knowledge::data_source::Result<Value>>(response)
+                    .map_err(|e| e.to_string())?
+                    .map_err(|e| format!("{}: {}", e.code, e.message))
+            }
             _ => unreachable!(),
         }
     }
@@ -1116,6 +1167,29 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
             .map_err(|e| format!("seat paste {source}: {e}"))?;
             paste(client, &seat, &text)?
         }
+        Command::TaskCreate {
+            title,
+            verify,
+            brief,
+        } => {
+            let mut row = client.record_write(task_create(&title, &verify, brief.as_deref()))?;
+            row["kind"] = json!("task");
+            vec![row]
+        }
+        Command::RecordWrite { source } => {
+            let mut text = String::new();
+            if source == "-" {
+                std::io::stdin().read_to_string(&mut text)
+            } else {
+                std::fs::File::open(&source).and_then(|mut f| f.read_to_string(&mut text))
+            }
+            .map_err(|e| format!("record write {source}: {e}"))?;
+            let args = serde_json::from_str(&text)
+                .map_err(|e| format!("record write {source}: not JSON: {e}"))?;
+            let mut row = client.record_write(args)?;
+            row["kind"] = json!("record");
+            vec![row]
+        }
         Command::Wait {
             seat,
             state,
@@ -1173,6 +1247,7 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
         }
         Command::Watch { .. }
         | Command::Rename { .. }
+        | Command::Restart { .. }
         | Command::Focus { .. }
         | Command::Send { .. }
         | Command::Ack { .. }
@@ -1479,6 +1554,20 @@ fn run_verb(
                 |r| matches!(r, GuiReply::Ok { op: o } if *o == op),
             )?;
             json!({ "seat": seat, "name": name })
+        }
+        Command::Restart { seat } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.clone();
+            let op = client.mint();
+            client.call(
+                Some(op),
+                GuiAction::RestartSeat {
+                    id: op,
+                    seat: seat.id,
+                    generation: seat.generation,
+                },
+                |r| matches!(r, GuiReply::Ok { op: o } if *o == op),
+            )?;
+            json!({ "seat": seat.id, "from_generation": seat.generation })
         }
         Command::Focus { seat } => {
             let seat = resolve(&client.seats()?, &seat)?.record.id;
@@ -1789,13 +1878,67 @@ fn paste(client: &mut Client, seat: &str, text: &[u8]) -> Result<Vec<Value>, Str
     }
     let mut ops = vec![];
     for chunk in bytes.chunks(PASTE_CHUNK) {
-        ops.push(client.input(seat, screen.generation, chunk.to_vec())?);
+        // The supervisor takes one input at a time and refuses the next while one is in
+        // flight, before applying it: wait the chunk out, never drop or reorder it.
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        ops.push(loop {
+            match client.input(seat, screen.generation, chunk.to_vec()) {
+                Err(e) if e.contains("Busy:") && std::time::Instant::now() < deadline => {
+                    std::thread::sleep(Duration::from_millis(20));
+                }
+                result => break result?,
+            }
+        });
     }
     Ok(vec![
         json!({ "ok": true, "op": ops[0], "noun": "seat", "verb": "paste",
         "data": { "seat": seat, "generation": screen.generation, "bytes": bytes.len(),
             "inputs": ops.len() } }),
     ])
+}
+
+/// The record write of a new task: open and unassigned at `tasks/<date>-<slug>.md`; logic
+/// adds the operator as its delegator and the Index its number.
+pub fn task_create(title: &str, verify: &str, brief: Option<&str>) -> Value {
+    let now = utc_now();
+    let mut slug = String::new();
+    for c in title.to_lowercase().chars() {
+        if c.is_ascii_alphanumeric() {
+            slug.push(c);
+        } else if !slug.is_empty() && !slug.ends_with('-') {
+            slug.push('-');
+        }
+    }
+    let slug: String = slug.trim_end_matches('-').chars().take(48).collect();
+    let slug = slug.trim_end_matches('-');
+    json!({ "path": format!("tasks/{}-{slug}.md", &now[..10]),
+        "frontmatter": { "type": "task", "title": title, "verify": verify, "status": "open",
+            "assignee": "none", "role": "executor" },
+        "body": format!("# {title}\n\n{}\n", brief.unwrap_or("")) })
+}
+
+/// Now as RFC 3339 UTC, whole seconds.
+pub fn utc_now() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    let (days, rem) = ((secs / 86_400) as i64, secs % 86_400);
+    // Civil date from days since 1970-01-01 (Hinnant).
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    format!(
+        "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}Z",
+        rem / 3600,
+        rem / 60 % 60,
+        rem % 60
+    )
 }
 
 /// A paste as the window sends one: bracketed when the program enabled bracketed paste,
@@ -1898,6 +2041,15 @@ mod tests {
                 method: "list".into(),
                 args: json!({}),
             },
+            GuiAction::RecordWrite {
+                id,
+                args: json!({}),
+            },
+            GuiAction::RestartSeat {
+                id,
+                seat: id,
+                generation: 1,
+            },
         ];
         let kinds: Vec<String> = samples
             .iter()
@@ -1932,11 +2084,14 @@ mod tests {
             "task list",
             "task get #1",
             "task delegate #1 s",
+            "task create t --verify true",
             "e2e list",
+            "record write -",
             "app endpoint",
             "seat watch s",
             "seat rename s n",
             "seat focus s",
+            "seat restart s",
             "seat resize s 80x24",
         ] {
             let parsed = parse_full(&args(line)).unwrap_or_else(|e| panic!("{line}: {e}"));
@@ -1945,7 +2100,7 @@ mod tests {
                 .unwrap_or_else(|| panic!("{line}: not a table verb"));
             assert!(line.starts_with(&format!("{noun} {verb}")));
         }
-        assert_eq!(VERBS.len(), 22, "a new verb needs a parse line above");
+        assert_eq!(VERBS.len(), 25, "a new verb needs a parse line above");
     }
     #[test]
     fn errors_name_a_kind_a_hint_and_an_exit() {

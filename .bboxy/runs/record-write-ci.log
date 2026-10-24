@@ -1,0 +1,30 @@
+# record-write + task create gates, 2026-10-24T20:58:30Z
+clippy=0
+ws=0
+passed=1214 failed=0
+inv=0
+invariant ui-never-waits: pass
+invariant watched-replay-priority: pass
+invariants: 22 checks, 0 failures, 9 slow checks skipped
+
+[exited with code 0]
+
+## night proof (two nights, one records repo)
+{"function":"T1","kind":"record","number":2,"path":"e2e/T1.md","tracked_by":"01M5QT95E8ADHVYBJF8VXGQNPY"}
+{"function":"T2","kind":"record","number":3,"path":"e2e/T2.md","tracked_by":null}
+{"function":"T3","kind":"record","number":4,"path":"e2e/T3.md","tracked_by":null}
+{"function":"T4","kind":"record","number":5,"path":"e2e/T4.md","tracked_by":null}
+{"function":"T5","kind":"record","number":8,"path":"e2e/T5.md","tracked_by":"01M5QT95WV8XXMMH4YNRKMP59H"}
+{"function":"T6","kind":"record","number":10,"path":"e2e/T6.md","tracked_by":"01M5QT96276DYRK5G2JNRDREZS"}
+{"function":"T7","kind":"record","number":12,"path":"e2e/T7.md","tracked_by":null}
+{"function":"T8","kind":"record","number":15,"path":"e2e/T8.md","tracked_by":"01M5QT96BWHKACANDP7M59AKJN"}
+{"group":"terminal","kind":"summary","passed":3,"red":["T1","T5","T6","T7","T8"],"state":"red","total":8,"tracked":["T1","T5","T6","T8"],"unwritten":[]}
+{"function":"T1","kind":"record","number":2,"path":"e2e/T1.md","tracked_by":"01M5QT95E8ADHVYBJF8VXGQNPY"}
+{"function":"T2","kind":"record","number":3,"path":"e2e/T2.md","tracked_by":null}
+{"function":"T3","kind":"record","number":4,"path":"e2e/T3.md","tracked_by":null}
+{"function":"T4","kind":"record","number":5,"path":"e2e/T4.md","tracked_by":null}
+{"function":"T5","kind":"record","number":8,"path":"e2e/T5.md","tracked_by":"01M5QT95WV8XXMMH4YNRKMP59H"}
+{"function":"T6","kind":"record","number":10,"path":"e2e/T6.md","tracked_by":"01M5QT96276DYRK5G2JNRDREZS"}
+{"function":"T7","kind":"record","number":12,"path":"e2e/T7.md","tracked_by":null}
+{"function":"T8","kind":"record","number":15,"path":"e2e/T8.md","tracked_by":"01M5QT96BWHKACANDP7M59AKJN"}
+{"group":"terminal","kind":"summary","passed":3,"red":["T1","T5","T6","T7","T8"],"state":"red","total":8,"tracked":["T1","T5","T6","T8"],"unwritten":[]}
