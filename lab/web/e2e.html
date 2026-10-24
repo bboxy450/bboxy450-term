@@ -32,6 +32,6 @@ const RECORDS = {
   'all pass': P.map((p, i) => ({ P1: rec(p, i, 'manual', { reason: 'the hitch meter is judged by eye' }), I1: rec(p, i, 'manual', { reason: 'the Keychain prompt needs the operator' }) })[p.id] || rec(p, i, 'pass')),
 };
 Lab.page({ title: 'e2e checklist', wide: true, note: 'The Graph tab\'s acceptance view (spec #258): the 54 promises of §1, parsed, joined to their e2e records. The band says the night at a glance: red when anything is missing, doubled, untested or a fail is untracked; amber when the only fails are tracked by open tasks; green when every promise passes (manual rows are judged by the Oracle and listed). Blocked counts as a fail. Outlined cells are what keeps it red.',
-  states: [...Object.keys(RECORDS), 'empty catalogue'],
-  render(s, body) { body.append(C.e2eChecklist({ promises: s === 'empty catalogue' ? [] : P, records: RECORDS[s] || [], tasks: s === 'failures tracked' ? TASKS_AMBER : TASKS })); } });
+  states: [...Object.keys(RECORDS), 'empty catalogue', 'provider fault'],
+  render(s, body) { body.append(C.e2eChecklist({ promises: s === 'empty catalogue' ? [] : P, records: s === 'provider fault' ? RECORDS['all pass'] : RECORDS[s] || [], tasks: s === 'failures tracked' ? TASKS_AMBER : TASKS, faults: s === 'provider fault' ? ['Acceptance records unavailable: provider offline'] : [] })); } });
 </script></body></html>

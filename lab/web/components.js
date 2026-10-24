@@ -349,7 +349,9 @@
   const e2eTasks = (r, tasks) => (r.links || []).filter(l => l.rel === 'tracked-by').map(l => { const ref = e2eRef(l.to), t = (tasks || []).find(x => x.ref === ref); return { ref, status: t ? t.status : 'unknown' }; });
   // fail closed: an empty catalogue is refused (throws), and a record whose status is not one of the five is not usable: the promise
   // reads untested with the fault 'invalid status · <s>'
-  function e2eSummary(promises, records, tasks) {
+  // faults: host diagnostics (the provider is offline, a read failed), never fake records; any one makes the summary red, so a stale
+  // set of records can never read green
+  function e2eSummary(promises, records, tasks, faults) {
     if (!promises || !promises.length) throw new Error('the e2e catalogue is empty: no promises parsed from spec #258 §1');
     const by = new Map(); for (const r of records) { if (!by.has(r.function)) by.set(r.function, []); by.get(r.function).push(r); }
     const rows = promises.map(p => { const rs = by.get(p.id) || [];
@@ -361,18 +363,19 @@
     const counts = Object.fromEntries(E2E_ST.map(k => [k, rows.filter(r => r.status === k).length]));
     const missing = rows.filter(r => r.fault === 'no record').map(r => r.id), doubled = rows.filter(r => r.fault && r.fault.startsWith('doubled')).map(r => r.id), invalid = rows.filter(r => r.fault && r.fault.startsWith('invalid')).map(r => r.id);
     const untracked = rows.filter(r => r.failing && !r.tracked).map(r => r.id);
-    const state = missing.length || doubled.length || invalid.length || counts.untested || untracked.length ? 'red' : counts.fail + counts.blocked ? 'amber' : 'green';
-    return { state, rows, counts, missing, doubled, invalid, untracked };
+    faults = faults || [];
+    const state = faults.length || missing.length || doubled.length || invalid.length || counts.untested || untracked.length ? 'red' : counts.fail + counts.blocked ? 'amber' : 'green';
+    return { state, rows, counts, missing, doubled, invalid, untracked, faults };
   }
   const E2E_MARK = { pass: checkMark, fail: crossMark, blocked: slashMark, untested: () => circleMark(0), manual: () => circleMark(.5) };
-  // e2eChecklist({ promises, records, tasks }): the summary band reads from across the room (state word, the owed count, one cell per
+  // e2eChecklist({ promises, records, tasks, faults }): the summary band reads from across the room (state word, the owed count, one cell per
   // promise in group order; manual rows are listed in the headline, never folded into a pass, §4); the groups below carry each promise's status, last run (UTC) and the seat that ran it
   function e2eChecklist(opts) {
-    let S; try { S = e2eSummary(opts.promises, opts.records, opts.tasks); } catch (e) { return el('div', { class: 'e2e-err' }, el('b', {}, 'No checklist: '), e.message); }
+    let S; try { S = e2eSummary(opts.promises, opts.records, opts.tasks, opts.faults); } catch (e) { return el('div', { class: 'e2e-err' }, el('b', {}, 'No checklist: '), e.message); }
     const c = S.counts, n = S.rows.length, faults = S.missing.length + S.doubled.length + S.invalid.length;
     const plural = (k, w) => k + ' ' + w + (k === 1 ? '' : 's');
     const say = S.state === 'green' ? (c.manual ? [c.pass + ' pass', c.manual + ' manual'] : ['all ' + n + ' pass']) : S.state === 'amber' ? [plural(c.fail + c.blocked, 'failure') + ' tracked', c.manual ? c.manual + ' manual' : null].filter(Boolean)
-      : [c.untested - faults ? (c.untested - faults) + ' untested' : null, S.untracked.length ? plural(S.untracked.length, 'fail') + ' untracked' : null,
+      : [S.faults.length ? plural(S.faults.length, 'fault') : null, c.untested - faults ? (c.untested - faults) + ' untested' : null, S.untracked.length ? plural(S.untracked.length, 'fail') + ' untracked' : null,
         S.missing.length ? S.missing.length + ' missing' : null, S.doubled.length ? S.doubled.length + ' doubled' : null, S.invalid.length ? S.invalid.length + ' invalid' : null].filter(Boolean);
     const runs = opts.records.filter(r => r.last_run), last = runs.length ? Math.max(...runs.map(r => Date.parse(r.last_run))) : null, seats = new Set(runs.map(r => r.run_by)).size;
     const groups = [...new Set(S.rows.map(r => r.group))];
@@ -381,7 +384,8 @@
       el('div', { class: 'e2e-top' }, el('span', { class: 'e2e-word' }, S.state), el('span', { class: 'e2e-say' }, el('b', {}, say[0]), ...say.slice(1).map(x => el('span', {}, ' · ' + x))),
         el('span', { class: 'e2e-meta' }, n + ' promises' + (last ? ' · last run ' + hhmm(last) + ' UTC · ' + plural(seats, 'seat') : ' · never run'))),
       el('div', { class: 'e2e-strip' }, ...groups.map(g => el('span', { class: 'e2s', title: g }, ...S.rows.filter(r => r.group === g).map(cell)))),
-      el('div', { class: 'e2e-counts' }, ...E2E_ST.map(k => el('span', { class: 'e2k ' + k + (c[k] ? '' : ' zero') }, el('i', { class: 'e2c ' + k }), c[k] + ' ' + k))));
+      el('div', { class: 'e2e-counts' }, ...E2E_ST.map(k => el('span', { class: 'e2k ' + k + (c[k] ? '' : ' zero') }, el('i', { class: 'e2c ' + k }), c[k] + ' ' + k))),
+      ...S.faults.map(f => el('div', { class: 'e2e-fault', role: 'status' }, el('b', {}, 'fault'), ' · ' + f)));
     const row = r => el('div', { class: 'e2r ' + r.status + (r.failing ? (r.tracked ? ' tracked' : ' untracked') : '') + (r.fault ? ' fault' : ''), title: r.text },
       el('code', { class: 'e2id' }, r.id), el('span', { class: 'e2m' }, E2E_MARK[r.status]()), el('span', { class: 'e2t' }, r.text),
       el('span', { class: 'e2s-word' }, r.fault || r.status), el('span', { class: 'e2when' }, r.last_run ? hhmm(Date.parse(r.last_run)) : '—'), el('span', { class: 'e2by' }, r.run_by ? r.run_by.replace(/^seat:/, '') : ''),
