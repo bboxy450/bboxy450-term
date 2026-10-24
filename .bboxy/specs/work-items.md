@@ -4,7 +4,7 @@ type: "spec"
 number: 105
 title: "Work items — epics, specs, tasks as Markdown with frontmatter"
 created: "2026-10-21T22:23:16Z"
-updated: "2026-10-24T05:32:38Z"
+updated: "2026-10-24T08:56:36Z"
 links:
   - { to: "[[d18-executor-harness-override]]", rel: decision }
   - { to: "[[d28-structured-task-verification]]", rel: decision }
@@ -136,7 +136,7 @@ Every item and every status transition records who did it, from what, and under 
 ## Rules
 
 - The terminal never deletes a work item. `done` and `rejected` are states.
-- Frontmatter is the contract; the body is prose. A seat may edit the body of its own task; only Oracle-class or the operator edit `status`, `assignee`, `allowed_paths`.
+- Frontmatter is the contract; the body is the brief. A seat writes only its report on its own task (`report.summary`, `report.commit`, `verify_result`, through the Report transition) and never edits the brief; only Oracle-class or the operator edit `status`, `assignee`, `allowed_paths`, and the brief itself only while the task is `open` ([[d266-orient-says-what-you-can-do]] addendum to 4; this replaces the earlier "a seat may edit the body of its own task").
 - No database, no sidecar JSON. If git has it, the terminal has it.
 - **The spec signs off, not the agent** (Architect, 2026-10-22). An Executor's report moves a task to `reported`, never further. `accepted` requires a recorded `verify_result = {command, exit_code, evidence: [{criterion, reference}]}` whose `command` equals the task's `verify` and whose `exit_code` is 0, plus one evidence entry per criterion whenever the task's frontmatter lists acceptance criteria; `task_accept` refuses otherwise and names the missing piece (decision [[d28-structured-task-verification|#28]], 2026-10-23). A task's swarm scope: **every present** seat reference among `assignee` and `delegated_by` must resolve to the caller's registry swarm; one alone anchors the scope, two must match each other, none is ambiguous and refuses; never inferred from a path. So a fresh task with `assignee: none` and `delegated_by: seat:<Oracle>` is delegable without a new field.
 - **Hard gates and judgement are separate instruments.** `verify` is deterministic and blocks. `review` is judgement (boundary fidelity, semantic drift, stale assumptions): it advises and escalates in the report, never blocks silently and never substitutes for `verify`.
