@@ -1,0 +1,351 @@
+{
+  "product_source": "e733fe14254a7a1fc9fea68a01781f31a977c748",
+  "verification_tip": "46b5f6689b6764550ec282911d043cc1b0833583",
+  "accepted_base": "e716b26928c6b70ffe4704230174ffac4ab8a246",
+  "accepted_settings_source": "e91906fc30c4305e5b85e69be9b269b253b2778b",
+  "worktree": "/Users/feral/mydev/bboxy450-term-nyx",
+  "branch": "nyx-document-host",
+  "ci": {
+    "source": "e733fe14254a7a1fc9fea68a01781f31a977c748",
+    "signature": "G",
+    "clean_before": true,
+    "worktree": "/Users/feral/mydev/bboxy450-term-nyx/target/ci-doc-e733fe14254a",
+    "target": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-ci-e733fe14254a",
+    "parity": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/parity",
+    "slot_record": "self-service-slot-2-abffcd32",
+    "argv": [
+      "sh",
+      "scripts/ci-local.sh",
+      "--parity"
+    ],
+    "start": "2026-10-24T19:44:39.683946+00:00",
+    "exit_code": 0,
+    "end": "2026-10-24T20:52:17.481995+00:00",
+    "clean_after": true
+  },
+  "workspace": {
+    "passed": 1234,
+    "failed": 0,
+    "ignored": 24
+  },
+  "invariants": {
+    "checks": 23,
+    "failed": 0,
+    "slow_skipped": 8
+  },
+  "native_smoke": {
+    "idle_seconds": 10.007,
+    "frames": 0,
+    "callbacks": 0,
+    "exit": 0
+  },
+  "parity": {
+    "source": "e733fe14254a7a1fc9fea68a01781f31a977c748",
+    "cases": 2144,
+    "required": 2040,
+    "measured": 2040,
+    "unproven": [],
+    "geometry_mismatches": [],
+    "status_counts": {
+      "review pixels": 72,
+      "within policy": 2072
+    },
+    "pixel_reviews": 72,
+    "new_pixel_reviews": [],
+    "removed_review_keys": [],
+    "new_cases": [
+      "documents/link-missing-comfortable-dark.png",
+      "documents/link-missing-comfortable-light.png",
+      "documents/link-missing-compact-dark.png",
+      "documents/link-missing-compact-light.png",
+      "documents/link-missing-cozy-dark.png",
+      "documents/link-missing-cozy-light.png",
+      "documents/link-missing-touch-dark.png",
+      "documents/link-missing-touch-light.png",
+      "documents/link-resolved-comfortable-dark.png",
+      "documents/link-resolved-comfortable-light.png",
+      "documents/link-resolved-compact-dark.png",
+      "documents/link-resolved-compact-light.png",
+      "documents/link-resolved-cozy-dark.png",
+      "documents/link-resolved-cozy-light.png",
+      "documents/link-resolved-touch-dark.png",
+      "documents/link-resolved-touch-light.png"
+    ],
+    "new_case_statuses": {
+      "within policy": 16
+    },
+    "removed_cases": [],
+    "settings_cases": 96,
+    "hashes": {
+      "report.json": "6792e915600977b90b0fc9a18cbac226c6a90059e6e6aecc3671cb151a0e1296",
+      "capture.json": "dec42f2a2a80555ab7033f71569d52394b05d5ae0710d3f3a82ec44291af8626",
+      "cases.json": "578b8d8d4e441c76503a1da6095d40b8e12c113cb207c53ac44d40edb288e5e2"
+    },
+    "baseline_source": "e91906fc30c4305e5b85e69be9b269b253b2778b"
+  },
+  "byte_replay": {
+    "scope": "Exact native PNG byte comparison after rendering the pinned baseline input file; separate from strict geometry parity",
+    "source": "e733fe14254a7a1fc9fea68a01781f31a977c748",
+    "baseline_source": "e91906fc30c4305e5b85e69be9b269b253b2778b",
+    "baseline": "/Users/feral/mydev/bboxy450-term-exec6/target/settings-parity-e91906fc30c4",
+    "replay": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/baseline-replay",
+    "baseline_hash_manifest_sha256": "2a6ed8fc2de2065d7132937ffc7f9eafe8f24d96490aaa6ba8433031b2219399",
+    "verified_baseline_inputs": 2130,
+    "cases_sha256": "44e2e524d959dbb46ff9dc5098b67e7a140041c062fc4b0f14186934c886f6c9",
+    "capture_sha256": "2070f4976ba5485769f7fb90f06eed74bc84fef63f35e245df222f119a2cacbe",
+    "output_manifest_sha256": "79427fec272c095e5313b07735407cc4349599f6b49eee5f3973a1b920546ead",
+    "manifest_roundtrip": {
+      "float32_equivalent": true,
+      "normalized_float_representations": 4612,
+      "max_observed_float64_delta": 1.1368683772161603e-13,
+      "note": "Diagnostic for serde_json parse/serialize float representations; original input-file hash and exact PNG hashes remain authoritative. No pixel or geometry tolerance added."
+    },
+    "count": 2128,
+    "identical": 2128,
+    "changed": []
+  },
+  "byte_comparison": {
+    "exit_code": 0,
+    "operation": "read-only exact PNG hash comparison of completed replay",
+    "source": "e733fe14254a7a1fc9fea68a01781f31a977c748",
+    "helper_sha256": "97bdbc5d24ec221eb290fa5502e808829aec54f43ef7ef6b6894d549c19ee952",
+    "original_comparator_exit": 1,
+    "reason_for_original_failure": "serde_json float parse/serialize changed decimal representations; input-file bytes were unchanged; all differing values map to identical IEEE754 f32 values",
+    "manifest_roundtrip": {
+      "float32_equivalent": true,
+      "normalized_float_representations": 4612,
+      "max_observed_float64_delta": 1.1368683772161603e-13,
+      "note": "Diagnostic for serde_json parse/serialize float representations; original input-file hash and exact PNG hashes remain authoritative. No pixel or geometry tolerance added."
+    },
+    "actual_exit_observed": 0
+  },
+  "native_verdict": {
+    "source": "e733fe14254a7a1fc9fea68a01781f31a977c748",
+    "scope": "Current #44 native document, concurrent terminal IO and ctl capture; focus/scroll/error semantics are asserted by the Rust integration tests",
+    "custody": "fresh generated debug fixture keys in the private run; never login Keychain",
+    "commands": [
+      {
+        "command": [
+          "seat",
+          "ls"
+        ],
+        "exit": 0,
+        "op": "01M5QV79MNG55MWE13N415SGX5"
+      },
+      {
+        "command": [
+          "seat",
+          "spawn"
+        ],
+        "exit": 0,
+        "op": "01M5QV7C687WH9SZ76AD4ZK8CR"
+      },
+      {
+        "command": [
+          "seat",
+          "type"
+        ],
+        "exit": 0,
+        "op": "01M5QV7CB41HM5HM4SE5E1Q6M1"
+      },
+      {
+        "command": [
+          "seat",
+          "wait"
+        ],
+        "exit": 0,
+        "op": "01M5QV7CCHQMDY1ET21R257C9Q"
+      },
+      {
+        "command": [
+          "seat",
+          "capture"
+        ],
+        "exit": 0,
+        "op": "01M5QV7D0T2MAXKFAPTZ9R32WS"
+      },
+      {
+        "command": [
+          "seat",
+          "screen"
+        ],
+        "exit": 0,
+        "op": "01M5QV7D7GDAP3PB71Y10RCN3A"
+      }
+    ],
+    "owned_pid": 61942,
+    "fixture_store": {
+      "generated_keys": 2,
+      "directory_mode": 448,
+      "key_metadata": [
+        {
+          "size": 32,
+          "mode": 384
+        },
+        {
+          "size": 32,
+          "mode": 384
+        }
+      ]
+    },
+    "seat": "01M5QV7C76REN00GQB6F215ZRN",
+    "frame": {
+      "frame_presented_at": 1792875410472,
+      "frame_seq": 21,
+      "occluded": false,
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/native-ctl-v2/document.png",
+      "seat": null,
+      "stale": false
+    },
+    "image": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/native-ctl-v2/document.png",
+      "width": 1600,
+      "height": 960,
+      "sha256": "4d5f18b2c9031c2e7abe6f4b21c324de39f1367de5899138b5e69144ae825206"
+    },
+    "document_loaded": true,
+    "terminal_io_live": true,
+    "process_exit": 0,
+    "pass_": true,
+    "failure": null,
+    "private_account_retired": true
+  },
+  "binaries": {
+    "source": "e733fe14254a7a1fc9fea68a01781f31a977c748",
+    "files": [
+      {
+        "name": "bboxybook",
+        "source": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-ci-e733fe14254a/debug/bboxybook",
+        "retained": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/binaries/bboxybook",
+        "size": 18080768,
+        "sha256": "a2aa70b6f1c9f2a93b091d8257f02a0d0e197affc9e497a0773283683d9639da"
+      },
+      {
+        "name": "bboxy450-term",
+        "source": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-ci-e733fe14254a/debug/bboxy450-term",
+        "retained": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/binaries/bboxy450-term",
+        "size": 45604736,
+        "sha256": "f2b6eb615b40bb397bd26203d3e8ff2a927f6e4a8f1a416f718a6f0f974dd10f"
+      }
+    ]
+  },
+  "gallery_manifest": {
+    "manifest": ".bboxy/runs/document-host-checkpoint2-gallery-hashes.jsonl",
+    "entries": 13804,
+    "bytes": 878117481,
+    "sha256": "59c3286670850b54f602dc2bf2581e73efab604003dc036e543d344d39430416"
+  },
+  "cleanup": {
+    "dev": {
+      "retired": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-dev",
+      "allocated_bytes": 7525126144,
+      "reason": "own inactive dev cache; final strict Clippy finished0; all evidence galleries/logs outside this cache retained",
+      "when": "2026-10-24T19:44:16.896157+00:00"
+    },
+    "gate": {
+      "retired": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-ci-e733fe14254a",
+      "allocated_bytes": 4310331392,
+      "when": "2026-10-24T20:52:56.773634+00:00",
+      "reason": "own private CI cache after exact clean EXIT0; verified binaries and all galleries/logs retained outside cache"
+    },
+    "allocated_bytes_freed": 11835457536
+  },
+  "current_origin_main": "683e6bd1d051fdcf90d5ee1e7fc007a8571dc312",
+  "main_advanced_during_gate": [
+    "683e6bd1d051fdcf90d5ee1e7fc007a8571dc312 lab: split stage follows the native Pane: ratio allocation, the unfocused wash, rounded corners, the alive rim",
+    "001c7d3b273e00de610df220e3d83c6670282869 Merge plugins P-0: contracts, policy, trust and headless plugin check (Kestrel)",
+    "12d14f568e6df9e7eefe8ca029fdb2a482d341fe #313: the test-account label is derived from the verified account root; seat envelopes under a test account carry issued_by only on exact match; grant wire unchanged"
+  ],
+  "not_checked_or_deferred": [
+    "record lookup",
+    "in-document find",
+    "selection/source copy",
+    "feed",
+    "terminal-path semantics",
+    "pinning",
+    "8 inherited slow invariants not run; no 967 load run in this checkpoint"
+  ],
+  "known_existing_limitation": "live.rs656-668 startup custody diagnostic recognizes only exact memory, so it labels fixture custody as native; fixture key metadata proves actual private custody. Reported to Oracle/Kestrel; product log unchanged.",
+  "artifacts": {
+    "ci.log": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/ci.log",
+      "size": 224803,
+      "sha256": "e2eeb7918d11b12fd055a9ac0fd9ebada6a6d2abff442d9abfb3100307f4725b"
+    },
+    "ci-result.json": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/ci-result.json",
+      "size": 613,
+      "sha256": "4513114856ad4269811165c92bd1616a96a7f4b3c2cb7b8ab11d621124324b42"
+    },
+    "parity-verdict.json": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/parity-verdict.json",
+      "size": 1549,
+      "sha256": "4d0c71e8a2ebe552259539ad0c58a85bcddfde0af1b1fc18f4a69e3891409daf"
+    },
+    "catalogue-delta.json": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/catalogue-delta.json",
+      "size": 2289,
+      "sha256": "7c0cd929eea0fd7a699365d7b6edee9a5d51cebc4367e6c645d5b92cf5bdd40c"
+    },
+    "gate-binaries.json": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/gate-binaries.json",
+      "size": 814,
+      "sha256": "1b1c28fb97f6e8c0228741df719de56a49005758a64f3824566032c18a04d808"
+    },
+    "driver-source-binding.json": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/driver-source-binding.json",
+      "size": 484,
+      "sha256": "2c5ea780e32b9284064a45e924bb36dbc697083da3ca3d0cc8df8b9684d3b882"
+    },
+    "native-script-result.json": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/native-script-result.json",
+      "size": 760,
+      "sha256": "7291df5ee0c354e71a7456dc17cc8260fb26aa408502cfe5724d8a120fe27061"
+    },
+    "native-script-v2-result.json": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/native-script-v2-result.json",
+      "size": 763,
+      "sha256": "ee1d95cf0e4537ec19fe674cb18f39f894a878f3ac7bbf601eef8bb8ad36af32"
+    },
+    "byte-replay-launch.json": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/byte-replay-launch.json",
+      "size": 1324,
+      "sha256": "e6147dccc99303a494d8cdd62d2189d6293308cb234a758bb58bda8fb3d7a774"
+    },
+    "byte-replay-result.json": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/byte-replay-result.json",
+      "size": 1403,
+      "sha256": "c846b1fe7f33891c98901e36a7a7f8f6265c44c45e2a6d268df755296bf8059e"
+    },
+    "byte-replay.log": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/byte-replay.log",
+      "size": 970,
+      "sha256": "04b4171010f14ec1d6945f6211bc33f5538b18980060496f15e9b634cfd68d56"
+    },
+    "byte-compare-v2-result.json": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/byte-compare-v2-result.json",
+      "size": 815,
+      "sha256": "61218d54cf235f29016ff29b5dcc6a94e7935c3dedd3d417a290b15e0e735fcd"
+    },
+    "byte-compare-v2.log": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/byte-compare-v2.log",
+      "size": 1267,
+      "sha256": "dca60116ab06149620042d2fb03b29c82980c336ef283d7240d3c86748712153"
+    },
+    "gallery-manifest.json": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/gallery-manifest.json",
+      "size": 201,
+      "sha256": "eead374f5a5d38bf48444b6339ffcc58689dd177132707e99f126c3563e33113"
+    },
+    "target-cleanup.json": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/target-cleanup.json",
+      "size": 292,
+      "sha256": "4f19edc843eb022beba4e92937ba168d6b05f0204823d31d1201f2da479c6722"
+    },
+    "native-ctl-v2/document.png": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/doc-host-final-e733fe14254a/native-ctl-v2/document.png",
+      "size": 275716,
+      "sha256": "4d5f18b2c9031c2e7abe6f4b21c324de39f1367de5899138b5e69144ae825206"
+    }
+  }
+}
