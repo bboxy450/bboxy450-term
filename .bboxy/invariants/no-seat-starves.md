@@ -12,7 +12,7 @@ links:
   - { to: "[[seats-967-frame]]", rel: unblocks }
   - { to: "[[mux-daemon]]", rel: constrains }
 created: "2026-10-24T21:38:02Z"
-updated: "2026-10-24T21:50:28Z"
+updated: "2026-10-24T22:10:31Z"
 ---
 # No seat starves under a full retained-notification queue
 
@@ -36,7 +36,10 @@ test as the gate.
 — exit 0 held. The deterministic fixture uses two pending seats, a one-slot
 channel and exactly one returned credit per pass. The first seat stays hot;
 the second must receive the next credit, and the hot seat's sequences remain
-FIFO. The same test failed on the fixed-order sweep before the rotation fix.
+FIFO. It also returns a credit midway through a sweep, proves the waiting
+seat keeps that credit ahead of the hot seat, and detaches a waiting writer
+to prove its retry turn is cleared. The test failed on the fixed-order sweep;
+the midway-credit case also failed on simple rotation without a retained turn.
 The fully qualified unit-test name and one-passed assertion prevent a zero-test
 run from satisfying the check. The production channel remains 128 slots.
 
@@ -54,7 +57,8 @@ to the Architect the same day; the fair-rotation fix was approved by the Oracle
 on the spot.
 
 Fair rotation and the executable counterexample: signed source
-`f85912a03db8dba69abd8393c789236d4b3b84c7`; the cursor advances only after
-successful admission, and the next sweep starts after that seat.
+`55a5f8905c27522f15bc96c32e87b407fc3fcdc3`; the cursor advances only after successful
+admission. A refused seat keeps the next retry turn, which later hot seats
+cannot bypass; a detached or removed waiter loses that turn on the next sweep.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
