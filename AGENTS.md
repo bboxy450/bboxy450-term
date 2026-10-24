@@ -66,7 +66,7 @@ The operator, 2026-10-24: "the entire app should be automatically testable and s
 - **Harness prompts are answered by `ctl` recipes** under written rules (e.g. Codex hook review: the count matches our own hooks and the repo has no hook source of its own). Anything outside a rule stops and shows the screen.
 - **Automation uses its own identity**, never the operator's login keychain: a dedicated e2e device whose store the harness unlocks itself, and records it signs say so.
 - **Computer use is allowed, narrowly** (operator, 2026-10-24): a Codex session may use computer use only on an explicit Oracle brief, only for an OS step with no programmatic route (System Settings, Keychain Access), and only when the operator is away from the machine. One agent at a time. Our own app is still driven through `ctl`, never by clicking.
-- **Operator secrets** (e.g. the login password the operator stores for unlocking): read them from the file the operator names, feed them on stdin only, and never print, log, commit, or pass them as a command-line argument. Prefer the automation identity, which needs no operator secret.
+- **Operator secrets**: the operator's login password is in `~/feral.txt` (mode 600), for unlocking only. Read it from that file, feed it on stdin only, and never print, log, commit, or pass them as a command-line argument. Prefer the automation identity, which needs no operator secret.
 - **Identity custody is cross-platform**: one facade with per-OS backends (macOS Keychain first; Linux and Windows as named backends), the same shape as the notifications family.
 
 ## CI is local
