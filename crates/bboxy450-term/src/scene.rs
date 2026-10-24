@@ -1805,6 +1805,30 @@ mod launcher_tests {
         );
     }
 
+    #[test]
+    fn repeated_document_publications_keep_the_original_focus_swell_instant() {
+        let record =
+            bbt_proto::SeatRecord::new(bbt_mux::Ulid::new(), bbt_mux::Ulid::new(), "Anchor", "zsh");
+        let seat = SeatId::from_u128(record.id.0);
+        let generation = record.generation;
+        let mut model = bboxy450_term::model::build(
+            &[record],
+            &bboxy450_term::grids::Grids::new(),
+            &Default::default(),
+        );
+        let landed = Instant::now();
+        assert!(model.attention_focus(seat, generation, None, Some(landed)));
+        let mut scene = Scene::live();
+        for _ in 0..3 {
+            model.document_reply = Some(std::sync::Arc::new(bboxy450_term::documents::Reply {
+                id: bbt_mux::Ulid::new(),
+                response: bboxy450_term::documents::Response::Failed("not_found: retained".into()),
+            }));
+            scene.set_model(&model, &model.ui.window.stage);
+            assert_eq!(scene.swells.get(&seat), Some(&landed));
+        }
+    }
+
     /// Captured also on the unchanged accepted source. Compare the complete
     /// bytes between these markers, not a screenshot of a moving live scene.
     #[test]

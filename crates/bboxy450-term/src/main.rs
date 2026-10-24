@@ -2928,6 +2928,7 @@ impl App {
         self.focus_bounds = self.scene.focus_bounds(&layouts);
         if let Some(model) = &self.live_state
             && self.local_tab.is_none()
+            && !self.document.open
         {
             let events = self.focus.layout_ready(&model.ui, &self.focus_bounds);
             self.attention_focus_events(&events, false);

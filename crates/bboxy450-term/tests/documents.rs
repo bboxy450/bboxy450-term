@@ -139,17 +139,29 @@ fn oversize_and_stale_results_refuse_instead_of_clipping_or_picking_another_file
 }
 #[test]
 fn metadata_publications_retain_an_unconsumed_document_reply() {
-    let mut model = bboxy450_term::model::Model::default();
-    let reply = std::sync::Arc::new(Reply {
-        id: Ulid::new(),
-        response: Response::Failed("not_found: retained".into()),
-    });
-    model.document_reply = Some(reply.clone());
-    let next = bboxy450_term::model::build(&[], &bboxy450_term::grids::Grids::new(), &model);
-    assert!(std::sync::Arc::ptr_eq(
-        next.document_reply.as_ref().unwrap(),
-        &reply
-    ));
+    use std::{sync::Arc, time::Instant};
+    let record = bbt_proto::SeatRecord::new(Ulid::new(), Ulid::new(), "Anchor", "zsh");
+    let seat = bbt_ui_model::SeatId::from_u128(record.id.0);
+    let generation = record.generation;
+    let grids = bboxy450_term::grids::Grids::new();
+    let mut model =
+        bboxy450_term::model::build(std::slice::from_ref(&record), &grids, &Default::default());
+    let landed = Instant::now();
+    assert!(model.attention_focus(seat, generation, None, Some(landed)));
+    let mut model = Arc::new(model);
+    for _ in 0..3 {
+        let published = model.clone();
+        let reply = Arc::new(Reply {
+            id: Ulid::new(),
+            response: Response::Failed("not_found: retained".into()),
+        });
+        Arc::make_mut(&mut model).document_reply = Some(reply.clone());
+        let next = bboxy450_term::model::build(std::slice::from_ref(&record), &grids, &model);
+        assert!(Arc::ptr_eq(next.document_reply.as_ref().unwrap(), &reply));
+        assert_eq!(next.focus_swell, Some((seat, landed)));
+        assert_eq!(published.focus_swell, next.focus_swell);
+        model = Arc::new(next);
+    }
 }
 
 #[test]
