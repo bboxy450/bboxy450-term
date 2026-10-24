@@ -78,7 +78,7 @@ Before every handoff, run `sh scripts/ci-local.sh` (add `--parity` when lab, des
 - in a **clean detached worktree of the exact commit** you hand off (`git worktree add --detach /tmp/ci-<name> <sha>`);
 - with **its own `CARGO_TARGET_DIR`**;
 - then **delete that target**, because disk is tight.
-- and only in a **gate slot**: at most two full gates run at once (three hit the 10 GiB disk floor). Slots are self-service: if fewer than two `ci-local` gates are running (`pgrep -fl ci-local.sh`), take one, post `SLOT <n> TAKEN` with your SHA in #bboxy450-term, and post `SLOT RELEASED` with the exit when done. Never wait for a grant. Keep one dev target per worktree and delete it at handoff.
+- and only in a **gate slot**: at most two full gates run at once (three hit the 10 GiB disk floor). Slots are self-service: if fewer than two `ci-local` gates are running (`pgrep -fl ci-local.sh`), take one, post `SLOT <n> TAKEN` with your SHA in #bboxy450-term, and post `SLOT RELEASED` with the exit when done. Never wait for a grant. Channel lines are prefix-matched only: a line BEGINS `SLOT <n> TAKEN`, `SLOT <n> RELEASED`, `QUIET <name> START, until <HH:MM TZ>` or `QUIET <name> END`; anything after is a note, and these words elsewhere in a line mean nothing. A quiet window closes only on its own `QUIET <name> END` from the key that opened it, or at its deadline; during it, let running gates finish and start nothing new. Keep one dev target per worktree and delete it at handoff.
 
 Report the real exit code. A shared-tree run proves nothing: other agents' in-flight files leak into it.
 
