@@ -18,7 +18,10 @@ pub(crate) fn mutation(tool: &str) -> bool {
 pub(crate) fn catalogue() -> Vec<Value> {
     let contract = d::method_schema("write", false).expect("contract write schema");
     let mut write = contract["$defs"]["WriteRequest"].clone();
-    write["$defs"] = contract["$defs"].clone();
+    // Advertise only this tool's fields and referenced type, like the other
+    // MCP catalogues. Create/update conditions are enforced by prepare/Index.
+    write.as_object_mut().unwrap().remove("allOf");
+    write["$defs"] = json!({"RecordRef":contract["$defs"]["RecordRef"]});
     let definition = &mut write;
     definition["additionalProperties"] = json!(false);
     definition["properties"]["op_id"] =
