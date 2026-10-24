@@ -15,7 +15,7 @@ links:
   - { to: "[[gui-components]]", rel: focus-model }
   - { to: "[[c1-live-seats]]", rel: wire }
 created: 2026-10-23T22:28:21Z
-updated: 2026-10-23T23:04:45Z
+updated: "2026-10-24T15:35:31Z"
 ---
 # Attention
 
@@ -46,7 +46,7 @@ The seat state the adapters already produce: `Activity::Waiting(kind)` with `kin
 
 - One notification per waiting episode: title the seat's name and harness, body the first line of the question or the permission being asked, **identifier = the seat id** so a repeat replaces rather than stacks, removed when the seat leaves `waiting`.
 - **Click → `Focus(seat)`**: raise the window, switch space and tab as needed, focus the pane; the same path as a sidebar click, including the landing rule (the swell fires after the switch).
-- **Mechanism.** `UNUserNotificationCenter` with the app as its own delegate, which requires a **bundle**: the build produces `bboxy450-term.app` (Info.plist with `CFBundleIdentifier`, the binary inside) for dev and release runs alike, ad-hoc signed; Developer ID signing stays deferred (decision [[d24-defer-code-signing|#24]]). Without a bundle (a bare `cargo run`), the in-window swell still runs and **no notification is posted**; the app says so once in the log. No `osascript` fallback: `AGENTS.md` bans desktop scripting (Oracle, 2026-10-23).
+- **Mechanism.** `UNUserNotificationCenter` with the app as its own delegate, which requires a **bundle**: the build produces `bboxy450-term.app` (Info.plist with `CFBundleIdentifier`, the binary inside) for dev and release runs alike, identity-signed; Developer ID signing stays deferred (decision [[d24-defer-code-signing|#24]]). Without a bundle (a bare `cargo run`), the in-window swell still runs and **no notification is posted**; the app says so once in the log. No `osascript` fallback: `AGENTS.md` bans desktop scripting (Oracle, 2026-10-23).
 - Settings: notifications on by default; per-harness off; "only when the window is not frontmost" as the one option.
 
 ## 4. Order
