@@ -26,27 +26,34 @@ const FRAME_LIMIT: usize = 1 << 20;
 const TIMEOUT: Duration = Duration::from_secs(15);
 const PAGE: usize = 128;
 
-pub const USAGE: &str = "usage: bboxy450-term ctl [--endpoint FILE] [--as LABEL] <command>
-  spawn <claude|codex|zsh> [--placement new-tab] [--name NAME] [--cwd DIR] [--swarm ID]
-        [--role oracle|architect|creativity|executor|shell]
-  seats
-  dm <seat> <text>        questions and feedback; work goes by delegate
-  post <destination> <text> [--swarm ID]
-  inbox [--since SEQ]
-  receipts <message-id>
-  delegate <#N|path|id> <seat>
-  reports [--since TIME]
-  capture <file.png> [--seat SEAT]
-  seat screen <seat> [--human]    the seat's visible screen, its cursor and title (#270)
-  seat type <seat> <text>         types the text as written
-  seat key <seat> <key>...        enter esc tab backspace space up down left right home end
-                                  pageup pagedown delete shift-tab ctrl-<letter>; Kitty when on
-  seat paste <seat> <file|->      pastes a file or stdin, bracketed when the program asked
-  seat wait <seat> (--state idle|waiting|exited | --text REGEX) [--timeout MS]  default 30000
-  e2e [--group GROUP]
-A <seat> is a seat id or a unique seat name. Output is one JSON object per line.
---as LABEL (or BBOXY_CTL_ISSUER) names who issues the messages, e.g. 'Vesper (Oracle)';
-seats read 'the operator principal, via ctl, issued by LABEL'. It is attribution only.";
+pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]   (ctl-cli rev. 2)
+  seat ls
+  seat spawn <claude|codex|zsh> [--place tab] [--role oracle|architect|creativity|executor|shell]
+             [--name NAME] [--cwd DIR] [--swarm ID]
+  seat screen <seat> [--human]            the visible screen, cursor and title
+  seat type <seat> <text>                 types the text as written
+  seat key <seat> <key>...                enter esc tab backspace space up down left right home end
+                                          pageup pagedown delete shift-tab ctrl-<letter>; Kitty when on
+  seat paste <seat> <file|->              bracketed when the program asked
+  seat wait <seat> (--state idle|waiting|exited | --text REGEX) [--timeout MS]   default 30000
+  seat capture <seat|window> <file.png>   with stale, occluded and frame_presented_at
+  message send (<seat|destination> | --reply-to ID) <text> [--swarm ID]
+  message post <destination> <text> [--swarm ID]
+  message inbox [--since SEQ]
+  message receipts <message-id>
+  message ack <message-id>
+  task list [--unassigned | --seat SEAT | --status STATUS]
+  task get <#N|path|id>
+  task delegate <#N|path|id> <seat>
+  e2e list [--group GROUP]
+  app endpoint                            the run directory, socket path and generation
+Flags on every verb: --json (default) | --human, --op ULID (an idempotent retry), --as LABEL or
+BBOXY_CTL_ISSUER (who issues it, #269), --run-dir DIR or BBOXY_RUN_DIR, --endpoint FILE.
+A <seat> is a seat id or a unique seat name. Each reply is one JSON line
+{ok, op, noun, verb, data}; an error is {ok: false, op, error: {kind, message, hint}} with exit
+1 refused, 2 usage, 3 timeout, 4 endpoint unavailable.
+Deprecated for one release, with their old output: spawn, seats, dm, post, inbox, receipts,
+delegate, reports, capture, e2e.";
 
 /// Where the app's `gui.sock` is and the capability that admits a client.
 #[derive(Debug, Clone)]
@@ -152,30 +159,132 @@ pub enum Command {
     E2e {
         group: Option<String>,
     },
+    /// `message send (<destination|seat> | --reply-to <id>) <text>` (#264 routing).
+    Send {
+        to: Option<String>,
+        text: String,
+        reply_to: Option<Ulid>,
+        swarm: Option<Ulid>,
+    },
+    /// `message ack <id>`: the operator acknowledges a message addressed to it.
+    Ack {
+        message: Ulid,
+    },
+    /// `task list [--unassigned | --seat <s> | --status <st>]`.
+    TaskList {
+        unassigned: bool,
+        seat: Option<String>,
+        status: Option<String>,
+    },
+    /// `task get <#N|path|id>`.
+    TaskGet {
+        task: String,
+    },
+    /// `app endpoint`: the run directory, socket path and generation; never the capability.
+    AppEndpoint,
+}
+
+/// Every noun-verb `ctl` verb and the one window action it issues (ctl-cli §1). The parser
+/// accepts exactly these; `app endpoint` reads the run directory and issues none.
+pub const VERBS: &[(&str, &str, &str)] = &[
+    ("seat", "ls", "ListSeats"),
+    ("seat", "spawn", "Spawn"),
+    ("seat", "screen", "Screen"),
+    ("seat", "type", "Input"),
+    ("seat", "key", "Input"),
+    ("seat", "paste", "Input"),
+    ("seat", "wait", "Screen"),
+    ("seat", "capture", "Capture"),
+    ("message", "send", "Messaging"),
+    ("message", "post", "Messaging"),
+    ("message", "inbox", "Messaging"),
+    ("message", "receipts", "Messaging"),
+    ("message", "ack", "Messaging"),
+    ("task", "list", "Task"),
+    ("task", "get", "Task"),
+    ("task", "delegate", "Task"),
+    ("e2e", "list", "Knowledge"),
+    ("app", "endpoint", "-"),
+];
+/// The pre-grammar flat commands, kept one release as aliases (ctl-cli rev. 2, C-0).
+const LEGACY: &[(&str, &str)] = &[
+    ("spawn", "seat spawn"),
+    ("seats", "seat ls"),
+    ("dm", "message send <seat> <text>"),
+    ("post", "message post"),
+    ("inbox", "message inbox"),
+    ("receipts", "message receipts"),
+    ("delegate", "task delegate"),
+    ("reports", "task list --status reported"),
+    ("capture", "seat capture <seat|window> <path>"),
+    ("e2e", "e2e list"),
+];
+
+/// A parsed command line: the command, and for a noun-verb form its table entry and the
+/// shared flags (ctl-cli §1).
+#[derive(Debug)]
+pub struct Parsed {
+    pub endpoint: Option<PathBuf>,
+    pub command: Command,
+    pub verb: Option<(&'static str, &'static str)>,
+    pub op: Option<Ulid>,
+    pub human: bool,
 }
 
 /// Parses everything after `ctl`; returns the endpoint file override and the command.
 pub fn parse(args: &[String]) -> Result<(Option<PathBuf>, Command), String> {
+    parse_full(args).map(|p| (p.endpoint, p.command))
+}
+
+/// Parses everything after `ctl`, the shared flags included.
+pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
     let mut endpoint = None;
     let mut flags = std::collections::BTreeMap::new();
     let mut words = vec![];
     let mut human_flag = false;
+    let mut unassigned_flag = false;
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         if arg == "--json" {
             // The default reply form (ctl-cli §1).
         } else if arg == "--human" {
             human_flag = true;
+        } else if arg == "--unassigned" {
+            unassigned_flag = true;
         } else if let Some(flag) = arg.strip_prefix("--") {
             let value = it.next().ok_or(format!("--{flag} needs a value"))?;
-            if flag == "endpoint" {
-                endpoint = Some(PathBuf::from(value));
-            } else {
-                flags.insert(flag.to_owned(), value.clone());
+            match flag {
+                "endpoint" => endpoint = Some(PathBuf::from(value)),
+                // --run-dir finds the endpoint as BBOXY_RUN_DIR does (#260).
+                "run-dir" => {
+                    endpoint = Some(PathBuf::from(value).join(bbt_mux::ctl_door::ENDPOINT))
+                }
+                _ => {
+                    flags.insert(flag.to_owned(), value.clone());
+                }
             }
         } else {
             words.push(arg.clone());
         }
+    }
+    let verb = match words.as_slice() {
+        [noun, verb, ..] => VERBS
+            .iter()
+            .find(|(n, v, _)| n == noun && v == verb)
+            .map(|(n, v, _)| (*n, *v)),
+        _ => None,
+    };
+    if verb.is_none()
+        && let Some(noun) = words.first()
+        && VERBS.iter().any(|(n, ..)| n == noun)
+        && !LEGACY.iter().any(|(old, _)| old == noun)
+    {
+        let verbs: Vec<_> = VERBS
+            .iter()
+            .filter(|(n, ..)| n == noun)
+            .map(|(_, v, _)| *v)
+            .collect();
+        return Err(format!("{USAGE_PREFIX}{noun} verbs: {}", verbs.join(", ")));
     }
     let ulid = |v: &String| v.parse::<Ulid>().map_err(|_| format!("not an id: {v}"));
     let flag = |name: &str| flags.get(name).cloned();
@@ -267,11 +376,85 @@ pub fn parse(args: &[String]) -> Result<(Option<PathBuf>, Command), String> {
                 ),
             }
         }
+        ["seat", "ls"] => Command::Seats,
+        ["seat", "spawn", harness] => Command::Spawn {
+            harness: harness.into(),
+            name: flag("name"),
+            cwd: flag("cwd").map(PathBuf::from),
+            swarm,
+            role: flag("role"),
+            new_tab: match flag("place").or(flag("placement")).as_deref() {
+                None => false,
+                Some("tab" | "new-tab") => true,
+                Some(other) => {
+                    return Err(format!(
+                        "{USAGE_PREFIX}--place: only tab is supported yet, not {other}"
+                    ));
+                }
+            },
+        },
+        ["seat", "capture", target, path] => Command::Capture {
+            path: std::path::absolute(path).map_err(|e| format!("capture {path}: {e}"))?,
+            seat: (target != "window").then(|| target.to_string()),
+        },
+        ["message", "send", to, text] => Command::Send {
+            to: Some(to.into()),
+            text: text.into(),
+            reply_to: flag("reply-to").as_ref().map(ulid).transpose()?,
+            swarm,
+        },
+        ["message", "send", text] if flags.contains_key("reply-to") => Command::Send {
+            to: None,
+            text: text.into(),
+            reply_to: flag("reply-to").as_ref().map(ulid).transpose()?,
+            swarm,
+        },
+        ["message", "post", destination, text] => Command::Post {
+            destination: destination.into(),
+            text: text.into(),
+            swarm,
+        },
+        ["message", "inbox"] => Command::Inbox {
+            since: flag("since")
+                .map(|v| {
+                    v.parse()
+                        .map_err(|_| format!("--since: not a sequence: {v}"))
+                })
+                .transpose()?
+                .unwrap_or(0),
+        },
+        ["message", "receipts", message] => Command::Receipts {
+            message: ulid(&message.to_owned())?,
+        },
+        ["message", "ack", message] => Command::Ack {
+            message: ulid(&message.to_owned())?,
+        },
+        ["task", "delegate", task, seat] => Command::Delegate {
+            task: task.into(),
+            seat: seat.into(),
+        },
+        ["task", "list"] => Command::TaskList {
+            unassigned: unassigned_flag,
+            seat: flag("seat"),
+            status: flag("status"),
+        },
+        ["task", "get", task] => Command::TaskGet { task: task.into() },
+        ["e2e", "list"] => Command::E2e {
+            group: flag("group"),
+        },
+        ["app", "endpoint"] => Command::AppEndpoint,
         ["capture", path] => Command::Capture {
             path: std::path::absolute(path).map_err(|e| format!("capture {path}: {e}"))?,
             seat: flag("seat"),
         },
-        _ => return Err(USAGE.into()),
+        _ => {
+            return Err(match verb {
+                Some((noun, v)) => {
+                    format!("{USAGE_PREFIX}wrong arguments for {noun} {v}; see ctl --help")
+                }
+                None => USAGE.into(),
+            });
+        }
     };
     if let Some(unknown) = flags.keys().find(|k| {
         ![
@@ -286,19 +469,35 @@ pub fn parse(args: &[String]) -> Result<(Option<PathBuf>, Command), String> {
             "timeout",
             "state",
             "text",
+            "op",
+            "as",
+            "place",
+            "reply-to",
+            "status",
         ]
         .contains(&k.as_str())
     }) {
-        return Err(format!("unknown flag --{unknown}\n{USAGE}"));
+        return Err(format!("{USAGE_PREFIX}unknown flag --{unknown}"));
     }
-    Ok((endpoint, command))
+    let op = flag("op").as_ref().map(ulid).transpose()?;
+    Ok(Parsed {
+        endpoint,
+        command,
+        verb,
+        op,
+        human: human_flag,
+    })
 }
+/// A usage error (ctl-cli §3, exit 2).
+const USAGE_PREFIX: &str = "usage: ";
 
 /// One admitted connection to `gui.sock`.
 pub struct Client {
     reader: BufReader<UnixStream>,
     writer: UnixStream,
     capability: [u8; 32],
+    /// `--op`: the id the next effect uses, for an idempotent retry (#266 rule 1).
+    pub op: Option<Ulid>,
 }
 impl Client {
     pub fn connect(endpoint: &Endpoint) -> Result<Self, String> {
@@ -314,7 +513,12 @@ impl Client {
             reader: BufReader::new(stream.try_clone().map_err(|e| e.to_string())?),
             writer: stream,
             capability: endpoint.capability,
+            op: None,
         })
+    }
+    /// The id for the next action: `--op` once, then fresh ones.
+    pub fn mint(&mut self) -> Ulid {
+        self.op.take().unwrap_or_else(fresh)
     }
     fn send(&mut self, action: GuiAction) -> Result<(), String> {
         let mut frame = serde_json::to_vec(&GuiRequest {
@@ -386,7 +590,7 @@ impl Client {
         }
     }
     pub fn spawn(&mut self, spec: SpawnSpec) -> Result<Ulid, String> {
-        let id = Ulid::new();
+        let id = self.mint();
         match self.call(
             Some(id),
             GuiAction::Spawn { id, spec },
@@ -399,7 +603,7 @@ impl Client {
     pub fn messaging(&mut self, swarm: Ulid, request: Request) -> Result<Response, String> {
         let id = match &request {
             Request::Send { message } => message.id,
-            _ => Ulid::new(),
+            _ => self.mint(),
         };
         let action = GuiAction::Messaging {
             id,
@@ -421,7 +625,7 @@ impl Client {
         path: &Path,
         seat: Option<Ulid>,
     ) -> Result<(String, bbt_proto::gui::CaptureFrame), String> {
-        let id = Ulid::new();
+        let id = self.mint();
         let path = path.to_str().ok_or("capture path is not UTF-8")?.to_owned();
         match self.call(
             Some(id),
@@ -457,7 +661,7 @@ impl Client {
     }
     /// The seat's screen, with the op id of the read.
     pub fn screen(&mut self, seat: Ulid) -> Result<(Ulid, bbt_proto::gui::SeatScreen), String> {
-        let id = Ulid::new();
+        let id = self.mint();
         match self.call(
             Some(id),
             GuiAction::Screen { id, seat },
@@ -469,7 +673,7 @@ impl Client {
     }
     /// The window's input action, under this connection's door and issuer; returns its op.
     pub fn input(&mut self, seat: Ulid, generation: u64, bytes: Vec<u8>) -> Result<Ulid, String> {
-        let id = Ulid::new();
+        let id = self.mint();
         self.call(
             Some(id),
             GuiAction::Input {
@@ -483,7 +687,7 @@ impl Client {
         .map(|_| id)
     }
     pub fn task(&mut self, request: TaskRequest) -> Result<TaskResponse, String> {
-        let id = Ulid::new();
+        let id = self.mint();
         match self.call(
             Some(id),
             GuiAction::Task { id, request },
@@ -733,13 +937,15 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
             let seat = resolve(&client.seats()?, &seat)?.record.id;
             let pattern = text
                 .as_deref()
-                .map(|p| regex::Regex::new(p).map_err(|e| format!("seat wait --text: {e}")))
+                .map(|p| {
+                    regex::Regex::new(p).map_err(|e| format!("{USAGE_PREFIX}seat wait --text: {e}"))
+                })
                 .transpose()?;
             if let Some(state) = &state
                 && !matches!(state.as_str(), "idle" | "waiting" | "exited")
             {
                 return Err(format!(
-                    "seat wait --state: idle, waiting or exited, not {state}"
+                    "{USAGE_PREFIX}seat wait --state: idle, waiting or exited, not {state}"
                 ));
             }
             let op = Ulid::new();
@@ -776,6 +982,15 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
                 }
                 std::thread::sleep(Duration::from_millis(200));
             }
+        }
+        Command::Send { .. }
+        | Command::Ack { .. }
+        | Command::TaskList { .. }
+        | Command::TaskGet { .. }
+        | Command::AppEndpoint => {
+            return Err(format!(
+                "{USAGE_PREFIX}this verb has no flat form; use the noun-verb grammar"
+            ));
         }
         Command::Reports { since } => {
             let mut cards = vec![];
@@ -852,43 +1067,357 @@ mod erased {
 /// A `seat wait` timeout: printed in the ctl-cli §3 error shape with exit 3.
 const TIMEOUT_PREFIX: &str = "timeout: ";
 
-pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
-    match run_main(args, default_endpoint) {
-        Err(reason) if reason.starts_with(TIMEOUT_PREFIX) => {
-            let (op, message) = reason[TIMEOUT_PREFIX.len()..]
-                .split_once('\n')
-                .unwrap_or(("", &reason));
-            println!(
-                "{}",
-                json!({ "ok": false, "op": op, "error": { "kind": "timeout", "message": message,
-                    "hint": "raise --timeout, or wait for another --state or --text" } })
-            );
-            std::process::exit(3);
-        }
-        result => result,
-    }
+/// A fresh id. Not `Ulid::default()`, which is the nil id.
+fn fresh() -> Ulid {
+    Ulid::new()
 }
-fn run_main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
+
+/// A ctl-cli §3 error: a kind the specs already name, one sentence, what would be valid,
+/// and the exit code.
+#[derive(Debug)]
+pub struct Fail {
+    pub kind: &'static str,
+    pub message: String,
+    pub hint: String,
+    pub exit: i32,
+}
+/// Names a failure by the kinds the specs use (ctl-cli §3); every one carries a hint.
+pub fn classify(reason: &str) -> Fail {
+    let fail = |kind, hint: &str, exit| Fail {
+        kind,
+        message: reason.to_owned(),
+        hint: hint.to_owned(),
+        exit,
+    };
+    if let Some(rest) = reason.strip_prefix(USAGE_PREFIX) {
+        return Fail {
+            kind: "usage",
+            message: rest.to_owned(),
+            hint: "bboxy450-term ctl --help lists every noun and verb".into(),
+            exit: 2,
+        };
+    }
+    if reason == bbt_mux::ctl_door::REFUSAL {
+        return fail(
+            "ancestry_refused",
+            "a seat uses its MCP tools; ctl is the operator's door",
+            1,
+        );
+    }
+    if reason.starts_with("endpoint ") || reason.starts_with("gui.sock ") && !reason.contains(": ")
+    {
+        return fail(
+            "endpoint_unavailable",
+            "start the app with --ctl, or point --run-dir or BBOXY_RUN_DIR at its run directory",
+            4,
+        );
+    }
+    if reason.starts_with("gui.sock") || reason == "GUI socket admission rejected" {
+        return fail(
+            "endpoint_unavailable",
+            "the endpoint is stale or the app stopped: restart it with --ctl, or point --run-dir at the live run",
+            4,
+        );
+    }
+    if let Some((_, hint)) = reason
+        .split_once("unknown destination ")
+        .and_then(|(_, r)| r.split_once(": "))
+    {
+        return Fail {
+            kind: "dangling_destination",
+            message: reason.to_owned(),
+            hint: hint.to_owned(),
+            exit: 1,
+        };
+    }
+    if reason.contains("op_id") || reason.contains("conflict") {
+        return fail(
+            "op_id_reused",
+            "a retry reuses --op with the same arguments; new work takes a new --op",
+            1,
+        );
+    }
+    if reason.starts_with("no seat ") || reason.contains("seats are named") {
+        return fail(
+            "refused",
+            "bboxy450-term ctl seat ls lists the seats by id and name",
+            1,
+        );
+    }
+    fail(
+        "refused",
+        "the message is the app's own reason; correct the request it names",
+        1,
+    )
+}
+
+pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         println!("{USAGE}");
         return Ok(());
     }
+    let parsed = parse_full(args);
+    // The noun-verb grammar answers in the ctl-cli §2 and §3 shapes; the flat names keep
+    // their own output for one release.
+    let noun_verb = parsed
+        .as_ref()
+        .map(|p| p.verb.is_some())
+        .unwrap_or_else(|reason| reason.starts_with(USAGE_PREFIX));
+    if !noun_verb {
+        if let Some(word) = args.iter().find(|a| !a.starts_with("--"))
+            && let Some((_, new)) = LEGACY.iter().find(|(old, _)| old == word)
+        {
+            eprintln!("bboxy450-term ctl {word}: deprecated, use: ctl {new}");
+        }
+        return match run_main(args, default_endpoint) {
+            Err(reason) if reason.starts_with(TIMEOUT_PREFIX) => {
+                let (op, message) = reason[TIMEOUT_PREFIX.len()..]
+                    .split_once('\n')
+                    .unwrap_or(("", &reason));
+                println!(
+                    "{}",
+                    json!({ "ok": false, "op": op, "error": { "kind": "timeout", "message": message,
+                        "hint": "raise --timeout, or wait for another --state or --text" } })
+                );
+                std::process::exit(3);
+            }
+            result => result,
+        };
+    }
+    let mut op = None;
+    let result = parsed.and_then(|parsed| {
+        op = parsed.op;
+        run_verb(args, parsed, default_endpoint, &mut op)
+    });
+    if let Err(reason) = result {
+        let (op, fail) = match reason.strip_prefix(TIMEOUT_PREFIX) {
+            Some(rest) => {
+                let (op, message) = rest.split_once('\n').unwrap_or(("", rest));
+                (
+                    op.parse().ok(),
+                    Fail {
+                        kind: "timeout",
+                        message: message.to_owned(),
+                        hint: "raise --timeout, or wait for another --state or --text".into(),
+                        exit: 3,
+                    },
+                )
+            }
+            None => (op, classify(&reason)),
+        };
+        println!(
+            "{}",
+            json!({ "ok": false, "op": op.unwrap_or_else(fresh), "error": {
+                "kind": fail.kind, "message": fail.message, "hint": fail.hint } })
+        );
+        std::process::exit(fail.exit);
+    }
+    Ok(())
+}
+
+/// One noun-verb verb: connect (unless it only reads the run directory), issue its action,
+/// print its `data` in the §2 envelope, or `--human` as text.
+fn run_verb(
+    args: &[String],
+    parsed: Parsed,
+    default_endpoint: &Path,
+    op: &mut Option<Ulid>,
+) -> Result<(), String> {
+    let (noun, verb) = parsed.verb.expect("a noun-verb form");
+    let endpoint_file = parsed
+        .endpoint
+        .clone()
+        .unwrap_or_else(|| default_endpoint.to_path_buf());
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+    let mut print = |op: Ulid, data: Value, human: bool| -> Result<(), String> {
+        let line = if human {
+            serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?
+        } else {
+            json!({ "ok": true, "op": op, "noun": noun, "verb": verb, "data": data }).to_string()
+        };
+        writeln!(out, "{line}").map_err(|e| e.to_string())
+    };
+    if let Command::AppEndpoint = parsed.command {
+        // The run directory and the generation, never the capability (#275).
+        let text = std::fs::read_to_string(&endpoint_file)
+            .map_err(|e| format!("endpoint {}: {e}", endpoint_file.display()))?;
+        let value: Value = serde_json::from_str(&text).map_err(|e| format!("endpoint: {e}"))?;
+        let id = op.unwrap_or_else(fresh);
+        return print(
+            id,
+            json!({ "run_dir": endpoint_file.parent(), "path": value["path"],
+                "generation": value["generation"] }),
+            parsed.human,
+        );
+    }
+    let mut client = connect(args, &endpoint_file)?;
+    client.op = parsed.op;
+    let id = parsed.op.unwrap_or_else(fresh);
+    *op = Some(id);
+    client.op = Some(id);
+    let human = parsed.human;
+    let data = match parsed.command {
+        Command::Seats => serde_json::to_value(client.seats()?).map_err(|e| e.to_string())?,
+        Command::Screen { .. }
+        | Command::Type { .. }
+        | Command::Key { .. }
+        | Command::Paste { .. }
+        | Command::Wait { .. } => {
+            // Already in the §2 shape (and --human for screen).
+            for line in run(&mut client, parsed.command)? {
+                match line {
+                    Value::String(text) => writeln!(out, "{text}"),
+                    line => writeln!(out, "{line}"),
+                }
+                .map_err(|e| e.to_string())?;
+            }
+            return Ok(());
+        }
+        Command::Send {
+            to,
+            text,
+            reply_to,
+            swarm,
+        } => {
+            let seats = client.seats()?;
+            // A seat name or id addresses its inbox; anything else is a destination path.
+            let (destination, seat_swarm) = match to.as_deref() {
+                Some(to) if !to.contains('/') => {
+                    let seat = resolve(&seats, to)?;
+                    (
+                        format!("seats/{}/inbox", seat.record.id),
+                        Some(seat.record.swarm),
+                    )
+                }
+                Some(path) => (path.to_owned(), None),
+                None => (String::new(), None),
+            };
+            let swarm = swarm
+                .or(seat_swarm)
+                .or_else(|| swarms(&seats).first().copied())
+                .ok_or("no seats: pass --swarm")?;
+            let mut message = SendRequest::text(destination, text);
+            message.id = id;
+            message.reply_to = reply_to;
+            serde_json::to_value(client.messaging(swarm, Request::Send { message })?)
+                .map_err(|e| e.to_string())?
+        }
+        Command::Ack { message } => {
+            let mut last = String::from("no seats, so no swarm to ask");
+            let mut answer = None;
+            for swarm in swarms(&client.seats()?) {
+                match client.messaging(
+                    swarm,
+                    Request::Acknowledge {
+                        message,
+                        agent: None,
+                    },
+                ) {
+                    Ok(response) => {
+                        answer = Some(response);
+                        break;
+                    }
+                    Err(reason) => last = reason,
+                }
+            }
+            serde_json::to_value(answer.ok_or(format!("ack {message}: {last}"))?)
+                .map_err(|e| e.to_string())?
+        }
+        Command::TaskList {
+            unassigned,
+            seat,
+            status,
+        } => {
+            let assignee = match seat {
+                Some(seat) => Some(resolve(&client.seats()?, &seat)?.record.id.to_string()),
+                None => None,
+            };
+            let mut cards = vec![];
+            let mut after = None;
+            loop {
+                let TaskResponse::Items { items, next } = client.task(TaskRequest::List {
+                    unassigned,
+                    swarm_id: None,
+                    status: status.clone(),
+                    assignee: assignee.clone(),
+                    after,
+                    limit: Some(PAGE),
+                })?
+                else {
+                    return Err("task list: unexpected task response".into());
+                };
+                cards.extend(items);
+                match next {
+                    Some(next) if Some(next) != after => after = Some(next),
+                    _ => break,
+                }
+            }
+            serde_json::to_value(cards).map_err(|e| e.to_string())?
+        }
+        Command::TaskGet { task } => {
+            let request = match task.parse::<Ulid>() {
+                Ok(id) => TaskRequest::Status {
+                    task_path: None,
+                    task_id: Some(id),
+                },
+                Err(_) => TaskRequest::Status {
+                    task_path: Some(task),
+                    task_id: None,
+                },
+            };
+            serde_json::to_value(client.task(request)?).map_err(|e| e.to_string())?
+        }
+        command => {
+            // Spawn, post, inbox, receipts, delegate, capture, e2e list: the action's reply
+            // as the flat form already carries it, minus the flat form's own `kind`.
+            let mut rows: Vec<Value> = run(&mut client, command)?
+                .into_iter()
+                .map(|mut row| {
+                    if let Some(object) = row.as_object_mut() {
+                        object.remove("kind");
+                    }
+                    row
+                })
+                .collect();
+            if rows.len() == 1 && !matches!(verb, "inbox" | "receipts" | "list") {
+                rows.remove(0)
+            } else {
+                Value::Array(rows)
+            }
+        }
+    };
+    print(id, data, human)
+}
+
+/// Connects and names the issuer (`--as` or `BBOXY_CTL_ISSUER`, #269).
+fn connect(args: &[String], endpoint_file: &Path) -> Result<Client, String> {
+    let issuer = args
+        .windows(2)
+        .find(|w| w[0] == "--as")
+        .map(|w| w[1].clone())
+        .or_else(|| std::env::var("BBOXY_CTL_ISSUER").ok());
+    let endpoint = Endpoint::read(endpoint_file)?;
+    let mut client = Client::connect(&endpoint)?;
+    if let Some(label) = issuer.filter(|label| !label.is_empty()) {
+        client.issue(label)?;
+    }
+    Ok(client)
+}
+
+fn run_main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
     // --as names the issuer (decision #269); it is not a command flag.
+    let original = args;
     let mut args = args.to_vec();
-    let mut issuer = std::env::var("BBOXY_CTL_ISSUER").ok();
     if let Some(at) = args.iter().position(|arg| arg == "--as") {
         args.remove(at);
         if at >= args.len() {
             return Err("--as needs a value".into());
         }
-        issuer = Some(args.remove(at));
+        args.remove(at);
     }
     let (endpoint, command) = parse(&args)?;
-    let endpoint = Endpoint::read(endpoint.as_deref().unwrap_or(default_endpoint))?;
-    let mut client = Client::connect(&endpoint)?;
-    if let Some(label) = issuer.filter(|label| !label.is_empty()) {
-        client.issue(label)?;
-    }
+    let mut client = connect(original, endpoint.as_deref().unwrap_or(default_endpoint))?;
     let stdout = std::io::stdout();
     let mut out = stdout.lock();
     for line in run(&mut client, command)? {
@@ -955,6 +1484,117 @@ mod tests {
     use super::*;
     fn args(s: &str) -> Vec<String> {
         s.split(' ').map(Into::into).collect()
+    }
+    /// ctl-cli §1: one table, each verb once, each naming one real window action, and every
+    /// verb in it parses.
+    #[test]
+    fn every_verb_maps_to_exactly_one_window_action() {
+        let mut seen = std::collections::BTreeSet::new();
+        for (noun, verb, _) in VERBS {
+            assert!(seen.insert((noun, verb)), "{noun} {verb} twice");
+        }
+        let id = Ulid::new();
+        let seat = bbt_proto::SeatId::from_u128(1);
+        let samples = [
+            GuiAction::ListSeats,
+            GuiAction::Screen { id, seat: id },
+            GuiAction::Input {
+                seat,
+                generation: 1,
+                id,
+                bytes: vec![],
+            },
+            GuiAction::Capture {
+                id,
+                path: "/p".into(),
+                seat: None,
+            },
+            GuiAction::Messaging {
+                id,
+                swarm_id: SwarmId::from_u128(1),
+                request: Request::List {
+                    thread: None,
+                    channel: None,
+                    after: 0,
+                    limit: 1,
+                },
+            },
+            GuiAction::Task {
+                id,
+                request: TaskRequest::Status {
+                    task_path: None,
+                    task_id: Some(id),
+                },
+            },
+            GuiAction::Knowledge {
+                id,
+                method: "list".into(),
+                args: json!({}),
+            },
+        ];
+        let kinds: Vec<String> = samples
+            .iter()
+            .map(|a| {
+                serde_json::to_value(a).unwrap()["kind"]
+                    .as_str()
+                    .unwrap()
+                    .to_owned()
+            })
+            .chain(["Spawn".to_owned()])
+            .collect();
+        for (noun, verb, action) in VERBS {
+            assert!(
+                *action == "-" || kinds.iter().any(|k| k == action),
+                "{noun} {verb}: {action}"
+            );
+        }
+        for line in [
+            "seat ls",
+            "seat spawn zsh",
+            "seat screen s",
+            "seat type s x",
+            "seat key s enter",
+            "seat paste s -",
+            "seat wait s --state idle",
+            "seat capture window /tmp/x.png",
+            "message send s hi",
+            "message post swarms/x hi",
+            "message inbox",
+            "message receipts 01M5Q8A7DQ7EQFKBZH4NXBW3QQ",
+            "message ack 01M5Q8A7DQ7EQFKBZH4NXBW3QQ",
+            "task list",
+            "task get #1",
+            "task delegate #1 s",
+            "e2e list",
+            "app endpoint",
+        ] {
+            let parsed = parse_full(&args(line)).unwrap_or_else(|e| panic!("{line}: {e}"));
+            let (noun, verb) = parsed
+                .verb
+                .unwrap_or_else(|| panic!("{line}: not a table verb"));
+            assert!(line.starts_with(&format!("{noun} {verb}")));
+        }
+        assert_eq!(VERBS.len(), 18, "a new verb needs a parse line above");
+    }
+    #[test]
+    fn errors_name_a_kind_a_hint_and_an_exit() {
+        let usage = classify(&parse_full(&args("seat fly s")).unwrap_err());
+        assert_eq!((usage.kind, usage.exit), ("usage", 2));
+        assert!(usage.message.contains("ls"), "{usage:?}");
+        let gone = classify("endpoint /x/gui.endpoint: No such file or directory (os error 2)");
+        assert_eq!((gone.kind, gone.exit), ("endpoint_unavailable", 4));
+        let seat = classify(bbt_mux::ctl_door::REFUSAL);
+        assert_eq!((seat.kind, seat.exit), ("ancestry_refused", 1));
+        let dangling = classify("unknown destination seats/x/inbox: send to operator/inbox");
+        assert_eq!(dangling.kind, "dangling_destination");
+        assert_eq!(dangling.hint, "send to operator/inbox");
+        for reason in ["no seat x", "stale close operation", "anything"] {
+            let fail = classify(reason);
+            assert!(
+                !fail.hint.is_empty() && fail.exit != 0,
+                "{reason}: {fail:?}"
+            );
+        }
     }
     #[test]
     fn a_paste_is_bracketed_only_when_asked_and_cannot_end_itself() {

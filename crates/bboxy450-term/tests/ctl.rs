@@ -895,7 +895,10 @@ fn ctl_help_prints_its_own_usage() {
     assert!(output.status.success());
     let text = String::from_utf8_lossy(&output.stdout);
     assert!(text.starts_with("usage: bboxy450-term ctl"), "{text}");
-    assert!(text.contains("capture <file.png>"), "{text}");
+    assert!(
+        text.contains("seat capture <seat|window> <file.png>"),
+        "{text}"
+    );
 }
 
 /// Decision #270: the operator reads and types into a seat from outside the app. A real zsh
@@ -1060,7 +1063,7 @@ async fn ctl_screen_input_and_wait_drive_a_seat() {
     );
     assert!(timed["error"]["hint"].is_string());
     let (ok, lines) = ctl(&["seat", "wait", &seat, "--state", "sideways"]);
-    assert!(!ok && lines[0]["kind"] == "error", "{lines:?}");
+    assert!(!ok && lines[0]["error"]["kind"] == "usage", "{lines:?}");
 
     // Each ctl input is journaled under the operator principal through the ctl door.
     let account = bbt_mux::store::sqlite::SqliteStore::open(
@@ -1105,4 +1108,263 @@ fn hook_list_names_the_codex_overlay_from_launch_rs() {
             .unwrap()
             .ends_with("bboxy450-term' hook --agent codex")
     }));
+}
+
+/// Starts a --ctl fixture app with a zsh seat; returns its session, run dir, root and seat.
+async fn noun_verb_fixture(root: &Path) -> (Session, PathBuf, String) {
+    let run = root.join("run");
+    let repository = root.join("repository");
+    std::fs::create_dir_all(&repository).unwrap();
+    std::fs::create_dir_all(root.join("zsh-config")).unwrap();
+    let app = root.join("test-app");
+    executable(
+        &app,
+        &format!(
+            "#!/bin/sh\nBBOXY_TEST_CUSTODY=memory exec {} \"$@\"\n",
+            quote(&PathBuf::from(env!("CARGO_BIN_EXE_bboxy450-term")))
+        ),
+    );
+    let session = Session::start(Config {
+        executable: app,
+        socket: run.join("mux.sock"),
+        run_dir: run.clone(),
+        repository,
+        shell_config: Some(root.join("zsh-config")),
+        ctl: true,
+    })
+    .await
+    .unwrap();
+    let endpoint = run.join("gui.endpoint");
+    until("gui.endpoint", &root.join("none"), || {
+        endpoint.exists().then_some(())
+    });
+    let (ok, lines) = ctl_in(
+        &run,
+        root,
+        &["seat", "spawn", "zsh", "--cwd", root.to_str().unwrap()],
+    );
+    assert!(ok, "{lines:?}");
+    let seat = lines[0]["data"]["seat"].as_str().unwrap().to_owned();
+    (session, run, seat)
+}
+
+/// Runs `ctl ARGS` and returns the exit code, stdout and stderr.
+fn ctl_raw(run: &Path, cwd: &Path, args: &[&str]) -> (Option<i32>, String, String) {
+    let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+        .arg("ctl")
+        .args(args)
+        .env("BBOXY_RUN_DIR", run)
+        .current_dir(cwd)
+        .output()
+        .unwrap();
+    (
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout).into_owned(),
+        String::from_utf8_lossy(&output.stderr).into_owned(),
+    )
+}
+
+/// ctl-cli rev. 2, C-0: the noun-verb grammar answers in the §2 shape, fails in the §3 shape
+/// with a hint and the named exit code, honours --op, and the flat names still work.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ctl_noun_verb_grammar_replies_and_errors() {
+    let root = tempfile::tempdir().unwrap();
+    let root = root.path().canonicalize().unwrap();
+    let (session, run, seat) = noun_verb_fixture(&root).await;
+    let json =
+        |text: &str| -> Value { serde_json::from_str(text.lines().next().unwrap()).unwrap() };
+
+    let (code, out, _) = ctl_raw(&run, &root, &["seat", "ls"]);
+    let reply = json(&out);
+    assert_eq!(code, Some(0));
+    assert_eq!(
+        (&reply["ok"], &reply["noun"], &reply["verb"]),
+        (&json!(true), &json!("seat"), &json!("ls"))
+    );
+    assert!(reply["op"].is_string());
+    assert_eq!(reply["data"][0]["record"]["id"], seat.as_str(), "{reply}");
+
+    // app endpoint: the run directory, socket path and generation, never the capability.
+    let (code, out, _) = ctl_raw(&run, &root, &["app", "endpoint"]);
+    let reply = json(&out);
+    assert_eq!(code, Some(0));
+    let keys: Vec<&String> = reply["data"].as_object().unwrap().keys().collect();
+    assert_eq!(keys, ["generation", "path", "run_dir"], "{reply}");
+
+    // message send to a seat by id; --op makes a retry the same message.
+    let op = bbt_mux::Ulid::new().to_string();
+    let first = json(
+        &ctl_raw(
+            &run,
+            &root,
+            &["message", "send", &seat, "hello", "--op", &op],
+        )
+        .1,
+    );
+    assert_eq!(first["op"], op.as_str());
+    assert_eq!(first["data"]["kind"], "stored", "{first}");
+    let again = json(
+        &ctl_raw(
+            &run,
+            &root,
+            &["message", "send", &seat, "hello", "--op", &op],
+        )
+        .1,
+    );
+    assert_eq!(
+        again["data"]["message"]["envelope"]["id"],
+        first["data"]["message"]["envelope"]["id"]
+    );
+    let (code, out, _) = ctl_raw(&run, &root, &["message", "receipts", &op]);
+    assert_eq!(code, Some(0), "{out}");
+    assert!(json(&out)["data"].is_array());
+    let (code, out, _) = ctl_raw(&run, &root, &["task", "list"]);
+    assert_eq!(code, Some(0), "{out}");
+    assert!(json(&out)["data"].is_array());
+
+    // §3: usage (2), refused (1), endpoint unavailable (4), each with a kind and a hint.
+    for (args, kind, exit) in [
+        (vec!["seat", "fly", "x"], "usage", 2),
+        (vec!["seat", "ls", "--bogus", "1"], "usage", 2),
+        (
+            vec!["message", "ack", "01M5Q8A7DQ7EQFKBZH4NXBW3QQ"],
+            "refused",
+            1,
+        ),
+        (vec!["seat", "screen", "nobody"], "refused", 1),
+        (
+            vec!["--run-dir", "/nonexistent-run", "seat", "ls"],
+            "endpoint_unavailable",
+            4,
+        ),
+    ] {
+        let (code, out, _) = ctl_raw(&run, &root, &args);
+        let reply = json(&out);
+        assert_eq!(code, Some(exit), "{args:?}: {out}");
+        assert_eq!(reply["ok"], false, "{args:?}");
+        assert_eq!(reply["error"]["kind"], kind, "{args:?}: {reply}");
+        assert!(
+            !reply["error"]["hint"].as_str().unwrap().is_empty(),
+            "{args:?}: {reply}"
+        );
+    }
+
+    // A flat name still answers in its old shape, and says what replaces it.
+    let (code, out, err) = ctl_raw(&run, &root, &["seats"]);
+    assert_eq!(code, Some(0));
+    assert_eq!(json(&out)["kind"], "seat");
+    assert!(err.contains("deprecated, use: ctl seat ls"), "{err}");
+    session.shutdown().await.unwrap();
+}
+
+/// Invariant #275: no ctl output, reply, error or hint carries the GUI capability, in any
+/// encoding, for any verb, flat or noun-verb, success or failure.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ctl_never_prints_secrets() {
+    let root = tempfile::tempdir().unwrap();
+    let root = root.path().canonicalize().unwrap();
+    let (session, run, seat) = noun_verb_fixture(&root).await;
+    let endpoint: Value =
+        serde_json::from_slice(&std::fs::read(run.join("gui.endpoint")).unwrap()).unwrap();
+    let hex = endpoint["capability"].as_str().unwrap().to_owned();
+    let bytes: Vec<u8> = (0..32)
+        .map(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap())
+        .collect();
+    let b64 = |alphabet: &[u8], pad: bool| {
+        let mut out = String::new();
+        for chunk in bytes.chunks(3) {
+            let n = chunk
+                .iter()
+                .enumerate()
+                .fold(0u32, |n, (i, b)| n | (u32::from(*b) << (16 - 8 * i)));
+            for i in 0..=chunk.len() {
+                out.push(alphabet[((n >> (18 - 6 * i)) & 63) as usize] as char);
+            }
+            if pad {
+                out.push_str(&"=".repeat(3 - chunk.len()));
+            }
+        }
+        out
+    };
+    let standard = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let url = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    let secrets = [
+        hex.clone(),
+        hex.to_uppercase(),
+        b64(standard, true),
+        b64(standard, false),
+        b64(url, true),
+        b64(url, false),
+        serde_json::to_string(&bytes).unwrap(),
+    ];
+    let pasted = root.join("paste.txt");
+    std::fs::write(&pasted, "echo pasted").unwrap();
+    let message = bbt_mux::Ulid::new().to_string();
+    let paste = pasted.to_str().unwrap();
+    let cwd = root.to_str().unwrap();
+    let runs: Vec<Vec<&str>> = vec![
+        vec!["app", "endpoint"],
+        vec!["app", "endpoint", "--human"],
+        vec!["seat", "ls"],
+        vec!["seat", "ls", "--human"],
+        vec![
+            "seat",
+            "spawn",
+            "zsh",
+            "--cwd",
+            cwd,
+            "--as",
+            "Fixture, Test",
+        ],
+        vec!["seat", "screen", &seat],
+        vec!["seat", "screen", &seat, "--human"],
+        vec!["seat", "type", &seat, "echo x"],
+        vec!["seat", "key", &seat, "enter"],
+        vec!["seat", "paste", &seat, paste],
+        vec!["seat", "wait", &seat, "--text", "x", "--timeout", "5000"],
+        vec![
+            "seat",
+            "wait",
+            &seat,
+            "--text",
+            "never-there",
+            "--timeout",
+            "300",
+        ],
+        vec!["message", "send", &seat, "hello", "--op", &message],
+        vec!["message", "post", "swarms/nowhere", "hi"],
+        vec!["message", "inbox"],
+        vec!["message", "receipts", &message],
+        vec!["message", "ack", &message],
+        vec!["task", "list"],
+        vec!["task", "get", "#9999"],
+        vec!["task", "delegate", "#9999", &seat],
+        vec!["e2e", "list"],
+        vec!["seat", "fly"],
+        vec!["--run-dir", "/nonexistent-run", "seat", "ls"],
+        vec![
+            "--endpoint",
+            "/nonexistent-run/gui.endpoint",
+            "app",
+            "endpoint",
+        ],
+        // The flat names, for their one remaining release.
+        vec!["seats"],
+        vec!["dm", &seat, "hi"],
+        vec!["inbox"],
+        vec!["receipts", &message],
+        vec!["reports"],
+        vec!["e2e"],
+        vec!["--help"],
+    ];
+    for args in runs {
+        let (_, out, err) = ctl_raw(&run, &root, &args);
+        for secret in &secrets {
+            assert!(
+                !out.contains(secret.as_str()) && !err.contains(secret.as_str()),
+                "ctl {args:?} printed the capability ({secret}): {out}{err}"
+            );
+        }
+    }
+    session.shutdown().await.unwrap();
 }

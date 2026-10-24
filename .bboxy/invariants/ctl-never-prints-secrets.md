@@ -4,8 +4,6 @@ type: invariant
 number: 275
 title: "ctl never prints a capability or a Keychain secret"
 status: pending
-slow: true
-gate: pending-c0
 check: cargo test -p bboxy450-term --locked --test ctl ctl_never_prints_secrets -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: a capability in a reply, a log or an error is operator authority copied into every script's output and every pasted transcript; the door stops being a door
 links:
@@ -25,15 +23,19 @@ nothing else ([[ctl-cli]] §5). The same holds for `debug logs` and `debug
 journal`, which redact those fields rather than skip the line.
 
 **Check.** `cargo test -p bboxy450-term --locked --test ctl ctl_never_prints_secrets -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
-— exit 0 held. The test does not exist yet; C-0 creates it (every verb run
-against a fixture app with a known capability, every output byte searched for
-the capability in hex and base64 and for the fixture's key material) and its
-commit removes `slow` and `gate` from this file.
+— exit 0 held. C-0 created it: every noun-verb verb and every flat alias, on
+success and on failure, runs against a fixture app; stdout and stderr are
+searched for the capability as lowercase and uppercase hex, standard and
+URL-safe base64 with and without padding, and serde's byte array.
 
 **Cost of a violation.** A capability in a reply is operator authority copied
 into every script's output and every pasted transcript; the door stops being a
 door.
 
-**Evidence.** None yet (pending C-0).
+**Evidence.** `crates/bboxy450-term/tests/ctl.rs` `ctl_never_prints_secrets`
+(C-0, 2026-10-24, Seraph); `app endpoint` prints `run_dir`, `path` and
+`generation` only (`ctl_noun_verb_grammar_replies_and_errors`). The fixture runs
+on memory custody, so no Keychain material exists to search for; the
+capability is the secret every reply could carry.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
