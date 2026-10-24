@@ -1,0 +1,38 @@
+PROVIDER GUI LOAD FLAKE — Sable Embertail <EXECUTOR>
+Source: 4404b9e582373590f67810a85799af7f0299a2b4, sable-provider-gui-flake, exec3.
+Signed fixture commit: 0ffecbb9b8f6a81e304bf336df1348f1a614cbb8.
+Signed observability commit: 4404b9e582373590f67810a85799af7f0299a2b4.
+Base: 3103ed838f2619f8b1ccd2c41888c86ebf9d96f2. Source stayed frozen during final verification.
+Brief 633a5bec; temporary log approval b90afc20; fixture/permanent-log approval ef989c15; explicit pause release and focused-check waiver c3dc5e6a. No full gate or slot used.
+
+Mechanism and changes:
+- Original source 49460335 reproduced EPIPE at provider_gui.rs:86 on loaded run 19 (18 prior passes), eight bounded C -O0 CPU workers, Rust O0, nice10. The backtrace points to GUI input at original:580.
+- Diagnostic run 5 with TWO workers caught the server's "deadline has elapsed", followed by EPIPE on Spawn(gui-cloud): 3.842429084s since the fixture last read, 8083 unread event bytes, then EOF. The fixture awaited separate Logic snapshots/launch/file conditions without draining its GUI stream; the server's designed two-second write backpressure closed that non-draining client. This differs from ctl:276's admission refusal, although both leave unread buffered frames.
+- crates/bbt-mux/tests/provider_gui.rs:116 — while_waiting drains unused asynchronous metadata while the fixture awaits another condition. Lines::next_line retains partial input across cancellation (Tokio1.54.1 io/util/lines.rs:46-48 documents this). Unexpected terminal replies still fail; received frames retain explicit 1 MiB checks.
+- provider_gui.rs:169 — real Unix socket regression constrains the send buffer, writes 32 notifications of 16 KiB, and splits the following correlated Ok across the wait boundary. The regression proves backpressure drain plus split-reply continuity; it does not instrument how many prefix bytes the reader consumed before cancellation.
+- provider_gui.rs:475 and target test:584 onward — snapshot/spawn/history/file waits pump the GUI. All 15 target-test assert macros remain; its two five-second deadlines and wait_text's five-second deadline remain. The separate event-lane ACK policy remains with gui_events coverage.
+- crates/bbt-mux/src/seat_socket.rs:133 — log one error per failed gui_session with peer door and safe reason metadata. :174 excludes Error Display, rejected JSON values and custom I/O strings. :952 tests deadline naming and redaction. The production two-second send timeout at:847 is unchanged.
+
+Actual verification results (full argv, elapsed time, real exit, log digest in evidence.json):
+- Initial baseline build EXIT 0; worker cc -O0 build EXIT 0; baseline loaded runner EXIT 101,18/1. Original panic/backtrace retained.
+- Failure-only client diagnostic build EXIT 0; diagnostic batch EXIT 1 after 32 passing runs when Oracle ordered the eight workers stopped. This was an intentional interrupted batch, not a completed green repeat run. All workers reaped.
+- Ambient diagnostic run EXIT 0,60 modules / 180 tests passed, no added CPU workers. Temporary session-log build EXIT 0; two-worker causal diagnostic EXIT 101,14 passed/1 failed over five modules.
+- Temporary seat_socket diagnostic restored byte for byte before any production fix: original/restored SHA256 3f663717139d1ca9ca89eb07bdf50e76c97871293860b3dc7ef0faa9fe79d307; git diff --quiet on that file EXIT 0. The diagnostic patch was not committed.
+- Pre-pause fixture suite EXIT 0, 4/0. Final source received two explicit frame checks and the separate production logger afterward, so this is not substituted for final verification.
+- rustfmt --check first EXIT 1 (two line-wrap fixes); rustfmt EXIT 0; final rustfmt --check EXIT 0. Scoped strict cargo clippy --locked -p bbt-mux --all-targets -- -D warnings EXIT 0 on final source (33.605s; earlier pre-format run also EXIT 0).
+- Disabled-drain control: replace only while_waiting with future.await. New regression EXIT 101 at its 30 s watchdog (0/1); blocked peer also reports EPIPE during teardown. Control runner EXIT 0 because that failure was expected. Original fixture SHA256 1777c23c5834c1bbdc9518006b098eed60ee7214858767a5a509450246f0ae53 restored exactly; git diff --quiet EXIT 0.
+- FINAL cargo test --locked -p bbt-mux --test provider_gui -- --nocapture EXIT 0, 4/0 (4.787s including rebuild).
+- FINAL cargo test --locked -p bbt-mux --lib seat_socket::gui_tests -- --nocapture EXIT 0, 6/0 (9.603s including rebuild), including redaction/deadline test.
+- WHOLE-MODULE loaded loop stopped EXIT 101 at run 17:16 modules green, final module 3/1, total 67 passed/1 failed. Assigned routing test passed in ALL17 modules. The different failure is recorded below; no whole-module 50/50 claim.
+- FINAL FOCUSED loaded repeats EXIT 0,50/50 assigned routing tests (200.986s), two bounded C -O0 workers alive before/after every run, Rust O0, nice10. All workers reaped; remaining recorded workers[]. Observed host load, not a quiet or matched eight-worker comparison.
+
+Separate unresolved failure, assigned next by Oracle 0dc91345:
+- fixed/run-17.log: operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch panics at provider_gui.rs:437. Immediately after server.shutdown().unwrap(), Supervisor::start returns AddrInUse: ownership flock EWOULDBLOCK35. The lock holder/cause is UNPROVEN. That restart seam was deliberately left unchanged in this branch; diagnosis follows this handoff.
+- Current main advanced through #266 during verification, including the neighboring provider_gui conflict assertion becoming op_id_reused. Preserve that accepted assertion at merge. No source rebase or repeated gate under verification.
+
+Provenance:
+- Final provider_gui binary SHA256 0a2f1ec2abd2fcd5b9c1f6bb25796d035a23375fd4b73271da23755f7bcf8be0.
+- Final source blobs: fixture 82ff312d907611352270299318fc2625576c4d2c; seat_socket 349955ecd589efc009ac323455736c08d44ebff2.
+- provider-gui-4404b9e5-raw.log SHA256 846aae86018b29449eff14e8c3f856a2dcecc45187fbc87169070a834a7e888f contains actual command outputs, original failures, red control, and every final loaded run.
+- provider-gui-4404b9e5-evidence.json SHA256 8a701fba66dad8900498a7d81bbc755709b00fc2cb6bec81dc9485b9eb83ae65 binds commands, raw log digests, phase manifests, source/binary identities, worker source and cleanup. Private ICQ transcripts are excluded.
+- Own target/sable-provider-gui-vqsxbvhb removed after all checks, 1568587776 allocated file bytes / 4494 files; no active target commands at cleanup. Every load batch reaped its own recorded workers. No desktop driving, real custody, global config edit, ignored/slow tests or timeout increase.

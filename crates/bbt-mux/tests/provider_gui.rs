@@ -17,7 +17,7 @@ use std::{
     },
     time::{Duration, Instant},
 };
-use tokio::io::{AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines};
 
 fn prepare_gui_identity(root: &std::path::Path, key: &ed25519_dalek::SigningKey) {
     // Explicit fixture custody: the supplied key is available at both fixture
@@ -58,7 +58,7 @@ impl ManualClock {
     }
 }
 struct Gui {
-    read: BufReader<tokio::net::unix::OwnedReadHalf>,
+    read: Lines<BufReader<tokio::net::unix::OwnedReadHalf>>,
     write: tokio::net::unix::OwnedWriteHalf,
     capability: [u8; 32],
 }
@@ -70,7 +70,7 @@ impl Gui {
             .unwrap();
         let (read, write) = stream.into_split();
         Self {
-            read: BufReader::new(read),
+            read: BufReader::new(read).lines(),
             write,
             capability: endpoint.capability,
         }
@@ -87,17 +87,15 @@ impl Gui {
     }
     async fn recv(&mut self) -> GuiReply {
         loop {
-            let bytes = tokio::time::timeout(
-                Duration::from_secs(5),
-                bbt_mux::seat_socket::read_line(&mut self.read),
-            )
-            .await
-            .unwrap()
-            .unwrap()
-            .unwrap();
+            let bytes = tokio::time::timeout(Duration::from_secs(5), self.read.next_line())
+                .await
+                .unwrap()
+                .unwrap()
+                .unwrap();
+            assert!(bytes.len() < 1024 * 1024, "GUI frame exceeds 1 MiB");
             // Legacy host/seat assertions consume the lane's typed state. These
             // metadata-only fixtures leave transport ACKs to gui_events coverage.
-            match serde_json::from_slice(&bytes).unwrap() {
+            match serde_json::from_str(&bytes).unwrap() {
                 GuiReply::Event { envelope, .. } => match envelope.payload {
                     bbt_proto::events::GuiEventPayload::Seat { seat } => {
                         return GuiReply::Seat(*seat);
@@ -112,6 +110,29 @@ impl Gui {
                 },
                 GuiReply::EventStatus { .. } | GuiReply::Gap { .. } => continue,
                 reply => return reply,
+            }
+        }
+    }
+    async fn while_waiting<F: std::future::Future>(&mut self, future: F) -> F::Output {
+        // No request is outstanding here. Keep consuming state notifications
+        // while another fixture condition waits, as the real app's IO task does.
+        // Lines retains a partial frame if the other future completes first.
+        tokio::pin!(future);
+        loop {
+            tokio::select! {
+                biased;
+                result = &mut future => return result,
+                line = self.read.next_line() => {
+                    let line = line.unwrap().expect("GUI disconnected during fixture wait");
+                    assert!(line.len() < 1024 * 1024, "GUI frame exceeds 1 MiB");
+                    let reply: GuiReply = serde_json::from_str(&line).unwrap();
+                    assert!(
+                        matches!(reply, GuiReply::Event { .. } | GuiReply::EventStatus { .. }
+                            | GuiReply::Gap { .. } | GuiReply::Identity(_)
+                            | GuiReply::Seat(_) | GuiReply::HostState { .. }),
+                        "unexpected GUI reply during fixture wait: {reply:?}",
+                    );
+                }
             }
         }
     }
@@ -142,6 +163,63 @@ impl Gui {
             }
         }
     }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn fixture_drains_notifications_while_waiting_and_keeps_a_split_reply() {
+    use std::os::fd::AsRawFd;
+
+    let (stream, mut peer) = tokio::net::UnixStream::pair().unwrap();
+    let size: libc::c_int = 4096;
+    // SAFETY: peer is live and the pointer/length describe the local integer.
+    assert_eq!(
+        unsafe {
+            libc::setsockopt(
+                peer.as_raw_fd(),
+                libc::SOL_SOCKET,
+                libc::SO_SNDBUF,
+                std::ptr::from_ref(&size).cast(),
+                std::mem::size_of_val(&size) as libc::socklen_t,
+            )
+        },
+        0,
+    );
+    let (read, write) = stream.into_split();
+    let mut gui = Gui {
+        read: BufReader::new(read).lines(),
+        write,
+        capability: [0; 32],
+    };
+    let op = Ulid::new();
+    let mut notification = serde_json::to_vec(&GuiReply::EventStatus {
+        attached: true,
+        reason: Some("x".repeat(16 * 1024)),
+    })
+    .unwrap();
+    notification.push(b'\n');
+    let mut reply = serde_json::to_vec(&GuiReply::Ok { op }).unwrap();
+    reply.push(b'\n');
+    let (prefix_sent, ready) = tokio::sync::oneshot::channel();
+    let (resume, finish) = tokio::sync::oneshot::channel();
+    let writer = tokio::spawn(async move {
+        // This exceeds the socket's send buffer: completion requires the
+        // fixture to consume notifications while its other work is pending.
+        for _ in 0..32 {
+            peer.write_all(&notification).await.unwrap();
+        }
+        let split = reply.len() / 2;
+        peer.write_all(&reply[..split]).await.unwrap();
+        prefix_sent.send(()).unwrap();
+        finish.await.unwrap();
+        peer.write_all(&reply[split..]).await.unwrap();
+    });
+    tokio::time::timeout(Duration::from_secs(30), gui.while_waiting(ready))
+        .await
+        .expect("fixture did not drain the peer's notifications")
+        .unwrap();
+    resume.send(()).unwrap();
+    assert!(matches!(gui.recv().await, GuiReply::Ok { op: actual } if actual == op));
+    writer.await.unwrap();
 }
 
 #[test]
@@ -398,13 +476,19 @@ fn wait_text(
     rt: &tokio::runtime::Runtime,
     logic: &Logic,
     clock: &ManualClock,
+    mut gui: Option<&mut Gui>,
     seat: Ulid,
     text: &str,
 ) -> bbt_mux::streams::Snapshot {
     let until = Instant::now() + Duration::from_secs(5);
     loop {
         clock.advance(20);
-        if let Ok(snapshot) = rt.block_on(logic.client.snapshot(seat, 1)) {
+        let request = logic.client.snapshot(seat, 1);
+        let snapshot = match gui.as_deref_mut() {
+            Some(gui) => rt.block_on(gui.while_waiting(request)),
+            None => rt.block_on(request),
+        };
+        if let Ok(snapshot) = snapshot {
             let content: String = snapshot
                 .screen
                 .cells
@@ -496,7 +580,11 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
             break;
         }
     }
-    assert!(rt.block_on(logic.client.gui_seats()).unwrap().is_empty());
+    assert!(
+        rt.block_on(gui.while_waiting(logic.client.gui_seats()))
+            .unwrap()
+            .is_empty()
+    );
     clock.set(300);
     let mut connected = false;
     while !connected {
@@ -542,7 +630,14 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
         // The output marker is split across two commands so PTY echo of the
         // input itself cannot satisfy this assertion.
         rt.block_on(gui.input(id, &format!("printf 'echo-'; printf '{name}\\n'\n")));
-        wait_text(&rt, &logic, &clock, id, &format!("echo-{name}"));
+        wait_text(
+            &rt,
+            &logic,
+            &clock,
+            Some(&mut gui),
+            id,
+            &format!("echo-{name}"),
+        );
         gui_spawned.push((id, expected, pid));
     }
     let gate = temp.path().join("release");
@@ -576,27 +671,38 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
         ];
         let mut record = SeatRecord::new(spec.seat, Ulid::from(7), name, "zsh");
         record.location = location.clone();
-        let info = rt.block_on(logic.client.spawn(record, spec)).unwrap();
+        let info = rt
+            .block_on(gui.while_waiting(logic.client.spawn(record, spec)))
+            .unwrap();
         rt.block_on(gui.input(info.seat, &format!("echo-{name}\n")));
-        wait_text(&rt, &logic, &clock, info.seat, &format!("echo-{name}"));
+        wait_text(
+            &rt,
+            &logic,
+            &clock,
+            Some(&mut gui),
+            info.seat,
+            &format!("echo-{name}"),
+        );
         launched.push((info, location));
     }
     let remote = launched[1].0.seat;
     rt.block_on(gui.input(remote, "arm\n"));
-    wait_text(&rt, &logic, &clock, remote, "armed");
+    wait_text(&rt, &logic, &clock, Some(&mut gui), remote, "armed");
     clock.set(12000);
     std::fs::write(&gate, b"go").unwrap();
-    let until = Instant::now() + Duration::from_secs(5);
-    while !ack.exists() {
-        assert!(Instant::now() < until);
-        std::thread::sleep(Duration::from_millis(10));
-    }
+    rt.block_on(gui.while_waiting(async {
+        let until = Instant::now() + Duration::from_secs(5);
+        while !ack.exists() {
+            assert!(Instant::now() < until);
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    }));
     rt.block_on(gui.input(launched[0].0.seat, "local-still-alive\n"));
     // The local link drains shared traffic while the remote link is down.
     let until = Instant::now() + Duration::from_secs(5);
     loop {
         let s = rt
-            .block_on(logic.client.snapshot(launched[0].0.seat, 1))
+            .block_on(gui.while_waiting(logic.client.snapshot(launched[0].0.seat, 1)))
             .unwrap();
         let text: String = s.screen.cells.iter().flatten().map(|c| c.c).collect();
         if text.contains("local-still-alive") {
@@ -605,7 +711,9 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
         assert!(Instant::now() < until);
         std::thread::sleep(Duration::from_millis(10));
     }
-    let remote_held = rt.block_on(logic.client.snapshot(remote, 1)).unwrap();
+    let remote_held = rt
+        .block_on(gui.while_waiting(logic.client.snapshot(remote, 1)))
+        .unwrap();
     assert!(
         !remote_held
             .screen
@@ -617,9 +725,9 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
             .contains("during-drop")
     );
     clock.set(18000);
-    let restored = wait_text(&rt, &logic, &clock, remote, "during-drop");
+    let restored = wait_text(&rt, &logic, &clock, Some(&mut gui), remote, "during-drop");
     assert!(
-        rt.block_on(logic.client.history(remote, 1, 1, restored.sequence))
+        rt.block_on(gui.while_waiting(logic.client.history(remote, 1, 1, restored.sequence)))
             .unwrap()
             .gap
             .is_none()
@@ -642,12 +750,12 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
     .unwrap();
     clock.advance(400);
     for (info, location) in launched {
-        wait_text(&rt, &logic, &clock, info.seat, "ready");
+        wait_text(&rt, &logic, &clock, None, info.seat, "ready");
         let seat = rt.block_on(logic.client.gui_seat(info.seat)).unwrap();
         assert_eq!(seat.record.location, location);
         assert_eq!(seat.state.process, ProcessStatus::Running { pid: info.pid });
     }
-    wait_text(&rt, &logic, &clock, remote, "during-drop");
+    wait_text(&rt, &logic, &clock, None, remote, "during-drop");
     for (id, location, pid) in gui_spawned {
         let seat = rt.block_on(logic.client.gui_seat(id)).unwrap();
         assert_eq!(seat.record.location, location);
