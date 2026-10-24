@@ -1527,24 +1527,45 @@
     // notifications (attention §3, decision #44), in the native field names (attention.rs Notifications): on by default; harnesses
     // listed in disabled_harnesses are silenced; optionally only while the window is not frontmost. A muted seat (⌘M) never notifies.
     notifications: { enabled: true, only_when_not_frontmost: false, disabled_harnesses: [] },
+    // plugins (spec plugins §1 Registry, §1a tiers, §1b hook ceilings; e2e G3): every discovered binary with its trust state and effective
+    // tier, contract compliance, version, auth, health, enable, and the last 60 s of calls and hooks (wall ms; spans when the shape says
+    // trace: true). t is ms before now; a hook names its event. A plugin that provides a knowledge root cannot be disabled.
+    plugins: [
+      { name: 'bboxy450-term-data_source-bboxy', bundled: true, contract: { name: 'data_source', version: '1.0', ok: true }, tier: 'export', local: true, trust: 'trusted', version: '0.1.0', auth: null, health: { state: 'ok' }, enabled: true, root: '.bboxy',
+        calls: [[52000, 'resolve', 3], [44000, 'fetch', 12], [37000, 'search', 41], [30000, 'changes_since', 2], [21000, 'fetch', 9], [12000, 'graph', 28], [4000, 'changes_since', 2]].map(([t, m, ms]) => ({ t, method: m, ms })) },
+      { name: 'bboxy450-term-event_sink-otel', contract: { name: 'event_sink', version: '1.0', ok: true }, tier: 'export', trust: 'trusted', grant: 'hook budget 12 000 ms, granted at trust', version: '0.3.2', auth: 'ok', health: { state: 'degraded', say: 'slow hooks' }, enabled: true,
+        calls: [[58000, 10120, 'after PostToolUse'], [46000, 9980, 'after PostToolUse'], [33000, 10240, 'after PostToolUse'], [20000, 10050, 'after PostToolUse']].map(([t, ms, hook]) => ({ t, method: 'emit', ms, hook })),
+        alerts: ['this plugin takes 10 s on every hook', 'budget at its ceiling: 12 000 ms granted'] },
+      { name: 'bboxy450-term-decision_model-jev', contract: { name: 'decision_model', version: '1.0', ok: true }, tier: 'export', trust: 'trusted', version: '1.4.0', auth: 'ok', health: { state: 'ok' }, enabled: true, trace: true,
+        calls: [{ t: 48000, method: 'decide', ms: 820 }, { t: 9000, method: 'decide', ms: 640, spans: [{ name: 'decide', start: 0, ms: 640, depth: 0 }, { name: 'encode state', start: 10, ms: 120, depth: 1 }, { name: 'POST jev', start: 140, ms: 430, depth: 1 }, { name: 'tls', start: 140, ms: 60, depth: 2 }, { name: 'model', start: 210, ms: 330, depth: 2 }, { name: 'parse', start: 580, ms: 50, depth: 1 }] }] },
+      { name: 'bboxy450-term-task_system-linear', contract: { name: 'task_system', version: '1.0', ok: true }, tier: 'export', trust: 'trusted', version: '0.2.0', auth: 'needs login', health: { state: 'setup', say: 'not logged in' }, enabled: true, calls: [] },
+      { name: 'bboxy450-term-data_source-obsidian', contract: { name: 'data_source', version: '1.0', ok: false, failing: 'resolve #N (no numbers in a vault)' }, tier: 'export', trust: 'trusted', version: '0.0.4', auth: null, health: { state: 'crashed', say: 'exited 139 at 14:02 · the app is fine' }, enabled: false, calls: [{ t: 41000, method: 'search', ms: 1800 }] },
+      { name: 'bboxy450-term-repo_graph-ctags', repo_local: true, contract: { name: 'repo_graph', version: '1.0', ok: null }, tier: 'read', trust: 'untrusted', version: null, auth: null, health: { state: 'never run', say: 'repo-local: listed, never run until trusted' }, enabled: false, calls: [] },
+    ],
+    // knowledge roots (knowledge-base §3 Roots and the swap; e2e G4): each root names its provider; swapping never moves a file, the new
+    // provider reads the same records or refuses with a reason the app shows
+    knowledge: { roots: [{ name: '.bboxy', path: '~/mydev/bboxy450-term/.bboxy', provider: 'bboxy450-term-data_source-bboxy', records: 418, answering: 'logic · in process' }],
+      offered: ['bboxy450-term-data_source-bboxy', 'bboxy450-term-data_source-stub'] },
     appearance: { theme: 'auto', density: 'cozy', rim: TOKENS.glow.rim, glow: true, subtitle: false, opacity: TOKENS.window.opacity, blur: TOKENS.window.blur, blurRadius: TOKENS.window.blur_radius },
     shortcuts: [['New tab', '⌘T'], ['Split right', '⌘D'], ['Split down', '⌘⇧D'], ['Mute seat', '⌘M'], ['Undo close', '⌘Z'], ['Settings', '⌘,'], ['Focus next pane', 'Tab'], ['Focus previous pane', '⇧Tab']],
   };
   const SET = JSON.parse(JSON.stringify(SET_DEF));
   SET.roles.creativity.prompt += ' Name the Censor when it fires.'; SET.harness.pi.role = 'creativity';
-  // settingsPage({ section, onChange, notifications, custody }) — onChange(section, key, value): 'appearance' and 'notifications' per field; 'roles' /
+  // settingsPage({ section, onChange, notifications, custody, plugins, knowledge }) — onChange(section, key, value): 'appearance' and 'notifications' per field; 'roles' /
   // 'harness' with the record, null on delete. notifications: a state's own values instead of SET.notifications
   function settingsPage(opts) {
     opts = opts || {};
     const emit = (s, k, v) => { if (opts.onChange) opts.onChange(s, k, v); };
-    const sections = ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Appearance', 'Notifications', 'Shortcuts'];
-    const NAV_ICON = { Account: 'key', Cloud: 'cloud', Machines: 'ssh', Roles: 'roles', Harnesses: 'gear', Appearance: 'sun', Notifications: 'bell', Shortcuts: 'keys' };
+    const sections = ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Plugins', 'Knowledge', 'Appearance', 'Notifications', 'Shortcuts'];
+    const NAV_ICON = { Account: 'key', Cloud: 'cloud', Machines: 'ssh', Roles: 'roles', Harnesses: 'gear', Plugins: 'plug', Knowledge: 'book', Appearance: 'sun', Notifications: 'bell', Shortcuts: 'keys' };
     const SENDS = ['all channels · all DMs', 'own swarm · operator DM', 'operator DM only'], WAKES = ['socket', 'hook', 'mcp', 'pty'], STATE_FROM = ['osc7501', 'hooks', 'output cadence'];
     const MARKS = ['♔', '♖', '♟', '♝', '♜', '♞', '♚'], ICONS = ['claude', 'codex', 'pi', 'omp', 'zsh'];
     const HUES = [0, 30, 55, 95, 160, 190, 215, 250, 285, 325], hue = i => 'hsl(' + HUES[((i % HUES.length) + HUES.length) % HUES.length] + ' 85% 64%)';
     // marks the settings page alone needs; everything else comes from ICON_SVG
     const SVG = {
       roles: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M5 19h14M5.5 16 3.5 7l5 3.5L12 5l3.5 5.5 5-3.5-2 9z"/></svg>',
+      plug: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></svg>',
+      book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5M8 7h7"/></svg>',
       bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>',
       keys: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7.5 14h9"/></svg>',
       search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15.5 15.5 20 20"/></svg>',
@@ -1556,6 +1577,7 @@
     let cur = opts.section || 'Account', draftRole = null, draftHarness = opts.draftHarness || null;
     const NV = opts.notifications || SET.notifications;   // a reference state can pass its own
     const CU = opts.custody || null;   // Account custody (#280, #315): drawn only when given, so the default Account is unchanged
+    const PL = opts.plugins || SET.plugins, KN = opts.knowledge || SET.knowledge;
     const root = el('div', { class: 'settings' });
     const nav = el('div', { class: 's-nav' });
     const q = el('input', { class: 's-q', placeholder: 'Search settings', type: 'search' });
@@ -1751,6 +1773,40 @@
         ]));
       }
 
+      if (cur === 'Plugins' || needle) {
+        // onChange('plugins', <name>, { enabled }) and ('plugins', <name>, 'setup'); a root's provider shows 'provider of <root>' instead
+        const WIN = 60000, healthDot = h => el('i', { class: 'sdot pl-' + h.state.replace(' ', '-'), title: h.state + (h.say ? ' · ' + h.say : '') });
+        const lane = (calls, hooks) => el('div', { class: 'pl-lane' + (hooks ? ' hooks' : '') }, ...calls.map(k => el('i', { class: 'pl-bar' + (k.ms >= 5000 ? ' slow' : ''), title: (k.hook || k.method) + ' · ' + (k.ms >= 1000 ? (k.ms / 1000).toFixed(1) + ' s' : k.ms + ' ms'),
+          style: 'left:' + ((WIN - k.t) / WIN * 100).toFixed(2) + '%;width:max(2px,' + (Math.min(k.ms, k.t) / WIN * 100).toFixed(2) + '%)' })));
+        const fmt = ms => ms >= 1000 ? (ms / 1000).toFixed(1) + ' s' : ms + ' ms';
+        const timeline = p => { const calls = p.calls.filter(k => !k.hook), hooks = p.calls.filter(k => k.hook), all = p.calls.map(k => k.ms).sort((a, b) => a - b);
+          const flame = p.trace && (p.calls.find(k => k.spans) || {}).spans;
+          return el('div', { class: 'pl-tl' }, el('div', { class: 'pl-axis' }, el('span', {}, 'calls'), el('span', {}, 'hooks'), el('span', { class: 'pl-ago' }, '60 s ago · now')),
+            el('div', { class: 'pl-lanes' }, lane(calls), lane(hooks, true)),
+            el('div', { class: 'pl-sum' }, all.length ? all.length + ' in the last minute · p50 ' + fmt(all[Math.floor(all.length / 2)]) + ' · max ' + fmt(all[all.length - 1]) : 'no calls in the last minute'),
+            flame ? el('div', { class: 'pl-flame', title: 'spans from the plugin, merged under the host call (trace: true)' }, ...flame.map(sp => el('i', { class: 'pl-span d' + sp.depth, style: 'left:' + (sp.start / flame[0].ms * 100).toFixed(2) + '%;width:' + (sp.ms / flame[0].ms * 100).toFixed(2) + '%;top:' + (sp.depth * 18) + 'px' }, sp.name + ' ' + fmt(sp.ms)))) : null); };
+        add('Plugins', card('Plugins', [note('Binaries in plugins/ under the app support directory; repo-local ones in .bboxy/plugins/ are listed and never run until you trust them. Each speaks one contract; the tier is the data that leaves the machine.'),
+          ...PL.map(p => { const sys = p.contract.name, prov = p.name.split('-').pop();
+            const trust = p.trust === 'trusted' ? chip('trusted', 'ok') : chip(p.repo_local ? 'repo-local · not trusted' : 'not trusted', 'warn');
+            const comp = p.contract.ok === true ? chip(sys + ' ' + p.contract.version + ' ✓') : p.contract.ok === false ? chip(sys + ' ' + p.contract.version + ' ✕ ' + p.contract.failing, 'bad') : chip(sys + ' ' + p.contract.version);
+            const ctl = p.root ? el('span', { class: 'pl-root' }, 'provider of ' + p.root) : p.trust !== 'trusted' ? btn('Trust…', null, 'primary') : toggle(p.enabled, x => { p.enabled = x; emit('plugins', p.name, { enabled: x }); draw(); });
+            return el('div', { class: 'pl-card' + (p.alerts ? ' alert' : '') + ' h-' + p.health.state.replace(' ', '-') },
+              el('div', { class: 'pl-h' }, healthDot(p.health), el('b', {}, p.name + (p.bundled ? ' (bundled)' : '')), el('span', { class: 'pl-ver' }, p.version || ''), el('span', { class: 'pl-sp' }), ctl),
+              el('div', { class: 'pl-chips' }, trust, chip('tier ' + p.tier + (p.local ? ' (local)' : '')), comp, p.auth ? chip(p.auth === 'ok' ? 'logged in' : p.auth, p.auth === 'ok' ? '' : 'warn') : null, p.grant ? chip(p.grant) : null, p.trace ? chip('trace') : null,
+                el('span', { class: 'pl-health' }, p.health.state + (p.health.say ? ' · ' + p.health.say : '')), p.auth === 'needs login' || p.health.state === 'crashed' ? btn('Re-run setup', null, 'quiet') : null),
+              ...(p.alerts || []).map(a => el('div', { class: 'pl-alert', role: 'status' }, '⚠ ', a)),
+              p.trust === 'trusted' ? timeline(p) : null); })]));
+      }
+      if (cur === 'Knowledge' || needle) {
+        // onChange('knowledge', <root name>, <provider>): the swap changes which process answers, never where a record lives
+        add('Knowledge', card('Knowledge roots', [note('A root is a place records live; each names the provider that reads it. Swapping the provider moves no file: the new one reads the same records, or refuses with its reason.'),
+          ...KN.roots.map(r => el('div', { class: 'kn-root' + (r.refused ? ' refused' : '') },
+            el('div', { class: 'kn-h' }, icon('book'), el('b', {}, r.name), el('code', {}, r.path), el('span', { class: 'pl-sp' }), el('span', { class: 'kn-n' }, r.records + ' records')),
+            row('Provider', r.provider === KN.offered[0] ? 'bundled, in process' : 'a trusted plugin over stdio', select(KN.offered, r.provider, x => { r.provider = x; emit('knowledge', r.name, x); draw(); }), r.provider !== KN.offered[0], () => { r.provider = KN.offered[0]; emit('knowledge', r.name, r.provider); draw(); }),
+            el('div', { class: 'kn-ans' }, 'answering: ', el('b', {}, r.answering), r.digests ? el('span', {}, ' · ' + r.digests) : null),
+            r.refused ? el('div', { class: 'pl-alert', role: 'status' }, '⚠ ', r.refused) : null)),
+          note('A second provider is offered only after it passes bboxy450-term plugin check and the contract’s conformance fixtures.')]));
+      }
       if (cur === 'Notifications' || needle) {
         // onChange('notifications', 'enabled' | 'only_when_not_frontmost', bool) and ('notifications', 'disabled_harnesses', [ids]) from
         // one toggle per harness; with enabled off the rest stays visible but disabled, so turning it back on restores what was set
