@@ -596,6 +596,41 @@ impl Fixture {
             std::thread::sleep(Duration::from_millis(10));
         }
     }
+    fn wait_input_ready(&self, seat: Ulid) {
+        let mut observed = None;
+        let ready = self.runtime.block_on(async {
+            tokio::time::timeout(Duration::from_secs(5), async {
+                let mut quiet = None::<(u64, Instant)>;
+                loop {
+                    let status = self.client().adapter_status(seat, 1).await.unwrap();
+                    let snapshot = self.client().snapshot(seat, 1).await.unwrap();
+                    let prompt = status.state == bbt_mux::adapters::State::Idle
+                        && status.source == "133"
+                        && status.sequence == snapshot.sequence;
+                    observed = Some((status, snapshot.sequence));
+                    // The banner precedes OSC 133 B. Wait for that actual
+                    // prompt and the guard's 50 ms settled-view condition.
+                    if prompt {
+                        match quiet {
+                            Some((sequence, since))
+                                if sequence == snapshot.sequence
+                                    && since.elapsed() >= Duration::from_millis(50) =>
+                            {
+                                return;
+                            }
+                            Some((sequence, _)) if sequence == snapshot.sequence => {}
+                            _ => quiet = Some((snapshot.sequence, Instant::now())),
+                        }
+                    } else {
+                        quiet = None;
+                    }
+                    tokio::time::sleep(Duration::from_millis(10)).await;
+                }
+            })
+            .await
+        });
+        assert!(ready.is_ok(), "input readiness not observed: {observed:?}");
+    }
     fn input_args(&self, seat: Ulid, text: &str, submit: bool) -> Value {
         let mut args = self.target(seat);
         args["text"] = json!(text);
@@ -744,10 +779,13 @@ const READY_SHELL: &str = "stty icanon echo; printf 'FIXTURE-READY\\n'; while tr
 
 #[test]
 fn mcp_seat_input_consumes_readiness_and_enter_is_explicit() {
+    // A single prompt keeps consumed readiness consumed, and the completed
+    // read stays active until teardown rather than rearming after a sleep.
+    const ONE_INPUT_SHELL: &str = "stty icanon echo; printf 'FIXTURE-READY\\n'; printf '\\033]133;B\\007'; if IFS= read -r line; then printf '\\033]133;C\\007'; printf 'OBSERVED:%s\\n' \"$line\"; fi; while IFS= read -r line; do :; done";
     let mut f = Fixture::new();
-    let target = f.spawn_fixture("zsh", READY_SHELL);
+    let target = f.spawn_fixture("zsh", ONE_INPUT_SHELL);
     f.wait_screen(target.id, "FIXTURE-READY");
-    std::thread::sleep(Duration::from_millis(80));
+    f.wait_input_ready(target.id);
     let op = Ulid::new();
     let args = f.input_args(target.id, "ONE-PASTE", true);
     let first = f.mutate(f.oracle.id, op, "seat_input_text", args.clone());
@@ -780,9 +818,9 @@ fn mcp_seat_input_consumes_readiness_and_enter_is_explicit() {
     assert_eq!(f.screen(target.id).matches("OBSERVED:ONE-PASTE").count(), 1);
     assert!(!f.screen(target.id).contains("BUSY-PASTE"));
 
-    let draft = f.spawn_fixture("zsh", READY_SHELL);
+    let draft = f.spawn_fixture("zsh", ONE_INPUT_SHELL);
     f.wait_screen(draft.id, "FIXTURE-READY");
-    std::thread::sleep(Duration::from_millis(80));
+    f.wait_input_ready(draft.id);
     assert_eq!(
         data(f.mutate(
             f.oracle.id,
