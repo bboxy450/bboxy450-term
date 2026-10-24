@@ -100,6 +100,15 @@ impl IdleQuiescence {
         self.observed = None;
         self.active.take().is_some()
     }
+    fn native_invalidation(&mut self, event: &WindowEvent) -> Result<(), String> {
+        let reason = match event {
+            WindowEvent::Resized(_) => "Resized",
+            WindowEvent::ScaleFactorChanged { .. } => "ScaleFactorChanged",
+            _ => return Ok(()),
+        };
+        self.interrupt();
+        Err(format!("idle probe invalidated by {reason}"))
+    }
     fn finish(&mut self, epoch: u64) -> Option<(Instant, u64, u64)> {
         if epoch != self.epoch {
             return None;
@@ -1596,20 +1605,6 @@ impl App {
             let _ = proxy.send_event(UiEvent::BeginIdle);
         });
     }
-    fn native_idle_invalidation(&mut self, reason: &str) {
-        if self.smoke && !self.cadence_test && self.idle_scheduled {
-            // Native window changes require a real repaint. That interval is
-            // no longer idle; do not count it as the zero-work measurement.
-            let interrupted = self.idle_quiet.interrupt();
-            self.logger.write(format!(
-                "idle probe native invalidation #{}: {reason}; measured_window_interrupted={interrupted}",
-                self.idle_quiet.invalidations
-            ));
-            if interrupted {
-                self.schedule_idle_check();
-            }
-        }
-    }
     fn fail(&mut self, error: String, event_loop: &ActiveEventLoop) {
         self.logger.write(format!("app error: {error}"));
         self.error = Some(error);
@@ -2421,12 +2416,28 @@ impl ApplicationHandler<UiEvent> for App {
         }
     }
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
+        if self.smoke && !self.cadence_test {
+            if let WindowEvent::Occluded(occluded) = &event {
+                // A locked display can toggle occlusion throughout the night.
+                // The smoke fixture keeps draining/rendering its producer, but
+                // occlusion alone must neither repaint nor reset its idle probe.
+                self.logger.write(format!(
+                    "idle probe ignores native occlusion: occluded={occluded}"
+                ));
+                return;
+            }
+            if self.idle_scheduled
+                && let Err(error) = self.idle_quiet.native_invalidation(&event)
+            {
+                self.fail(error, event_loop);
+                return;
+            }
+        }
         match event {
             WindowEvent::CloseRequested => {
                 self.request_close(event_loop);
             }
             WindowEvent::Resized(size) => {
-                self.native_idle_invalidation("Resized");
                 if self.capture.is_some() {
                     self.logger.write(format!(
                         "verification window resize: {}x{} physical pixels",
@@ -2439,15 +2450,9 @@ impl ApplicationHandler<UiEvent> for App {
                 self.request_redraw();
             }
             WindowEvent::ScaleFactorChanged { .. } => {
-                self.native_idle_invalidation("ScaleFactorChanged");
                 self.request_redraw();
             }
             WindowEvent::Occluded(occluded) => {
-                self.native_idle_invalidation(if occluded {
-                    "Occluded(true)"
-                } else {
-                    "Occluded(false)"
-                });
                 self.occluded = occluded;
                 if let Some(pacer) = &mut self.pacer
                     && let Err(error) = pacer.set_active(self.animate && !occluded)
@@ -3751,11 +3756,12 @@ mod verification_tests {
 
 #[cfg(test)]
 mod smoke_tests {
-    use super::IdleQuiescence;
+    use super::{IdleQuiescence, WindowEvent};
     use std::time::{Duration, Instant};
+    use winit::dpi::PhysicalSize;
 
     #[test]
-    fn flapping_native_events_never_pass_and_deadline_has_a_named_reason() {
+    fn interrupted_idle_windows_never_pass_and_deadline_has_a_named_reason() {
         let mut quiet = IdleQuiescence::default();
         assert_eq!(
             quiet.deadline_error(),
@@ -3776,34 +3782,40 @@ mod smoke_tests {
     }
 
     #[test]
-    fn native_invalidation_restarts_settling_and_old_timers_cannot_end_the_new_window() {
+    fn occlusion_keeps_the_full_idle_window_and_old_timers_cannot_end_a_new_one() {
         let mut quiet = IdleQuiescence::default();
         let now = Instant::now();
         assert!(!quiet.ready(true, false, (21, 21)));
         assert!(quiet.ready(true, false, (21, 21)));
         let first = quiet.begin(now, (21, 21));
-        assert!(quiet.interrupt());
-        assert!(
-            !quiet.interrupt(),
-            "only one replacement check is scheduled"
-        );
-        assert!(quiet.finish(first).is_none());
-        // Four legitimate unocclusion repaints occurred. A hidden window or
-        // any pending redraw must not begin the replacement measurement.
-        assert!(!quiet.ready(true, true, (25, 25)));
-        assert!(!quiet.ready(true, false, (25, 25)));
-        assert!(quiet.ready(true, false, (25, 25)));
+        for event in (0..100).map(|n| WindowEvent::Occluded(n % 2 == 0)) {
+            quiet.native_invalidation(&event).unwrap();
+        }
+        assert_eq!(quiet.invalidations, 0);
+        assert_eq!(quiet.finish(first), Some((now, 21, 21)));
         let replacement_start = now + Duration::from_secs(2);
-        let replacement = quiet.begin(replacement_start, (25, 25));
+        let replacement = quiet.begin(replacement_start, (21, 21));
         assert!(
             quiet.finish(first).is_none(),
             "old timer cannot shorten the full ten seconds"
         );
-        assert_eq!(quiet.finish(replacement), Some((replacement_start, 25, 25)));
+        assert_eq!(quiet.finish(replacement), Some((replacement_start, 21, 21)));
         assert!(
             quiet.finish(replacement).is_none(),
             "duplicate timer is harmless"
         );
+    }
+
+    #[test]
+    fn a_real_resize_fails_the_probe_even_without_any_frame_or_callback() {
+        let mut quiet = IdleQuiescence::default();
+        let epoch = quiet.begin(Instant::now(), (21, 21));
+        let error = quiet
+            .native_invalidation(&WindowEvent::Resized(PhysicalSize::new(1600, 960)))
+            .unwrap_err();
+        assert_eq!(error, "idle probe invalidated by Resized");
+        assert_eq!(quiet.invalidations, 1);
+        assert!(quiet.finish(epoch).is_none());
     }
 
     #[test]
