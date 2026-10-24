@@ -1,0 +1,2235 @@
+===== COMMAND 11a70e1622d54955977a15efd2d29dc4 =====
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j CARGO_BUILD_JOBS=2 CARGO_PROFILE_DEV_OPT_LEVEL=0 cargo build --locked -p bbt-supervisor
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T13:47:57.804996+00:00
+OWNED_COMMAND_PID 74371
+   Compiling libc v0.2.191
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling cfg-if v1.0.5
+   Compiling serde_core v1.0.229
+   Compiling jobserver v0.1.35
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.15
+   Compiling cc v1.9.0
+   Compiling version_check v0.9.5
+   Compiling generic-array v0.14.7
+   Compiling syn v3.0.9
+   Compiling serde v1.0.229
+   Compiling pkg-config v0.3.34
+   Compiling getrandom v0.3.4
+   Compiling zerocopy v0.8.63
+   Compiling serde_derive v1.0.229
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling typenum v1.20.1
+   Compiling syn v2.0.119
+   Compiling thiserror v1.0.69
+   Compiling cfg_aliases v0.1.1
+   Compiling parking_lot_core v0.9.12
+   Compiling ppv-lite86 v0.2.21
+   Compiling nix v0.28.0
+   Compiling thiserror-impl v1.0.69
+   Compiling rand_core v0.9.5
+   Compiling bitflags v2.13.2
+   Compiling sha2-asm v0.6.4
+   Compiling zmij v1.0.23
+   Compiling anyhow v1.0.104
+   Compiling zstd-safe v8.2.0
+   Compiling smallvec v1.16.3
+   Compiling scopeguard v1.2.0
+   Compiling log v0.4.34
+   Compiling lock_api v0.4.14
+   Compiling rand_chacha v0.9.0
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling serde_json v1.0.154
+   Compiling memchr v2.8.3
+   Compiling digest v0.10.7
+   Compiling rand v0.9.5
+   Compiling filedescriptor v0.8.3
+   Compiling parking_lot v0.12.5
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling serial2 v0.2.38
+   Compiling cpufeatures v0.2.17
+   Compiling itoa v1.0.18
+   Compiling shell-words v1.1.1
+   Compiling downcast-rs v1.2.1
+   Compiling unicode-width v0.2.2
+   Compiling cursor-icon v1.2.0
+   Compiling base64 v0.22.1
+   Compiling portable-pty v0.9.0
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling sha2 v0.10.9
+   Compiling ulid v1.2.1
+   Compiling zstd v0.14.3
+   Compiling mio v1.2.4
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 19.50s
+EXIT 0 elapsed_seconds=19.554 PID=74371
+
+===== COMMAND d1219854edc244b5bca15359f86817e5 =====
+$ rustc --edition=2024 -Dwarnings -Copt-level=0 -Cdebuginfo=1 -L dependency=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps --extern bbt_supervisor=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/libbbt_supervisor-14951b6730a928f9.rlib --extern libc=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/liblibc-49852bdd3013f4d0.rlib /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/lock_probe.rs -o /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/lock_probe
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T13:50:25.988068+00:00
+OWNED_COMMAND_PID 76957
+EXIT 0 elapsed_seconds=1.078 PID=76957
+
+===== COMMAND 7f34529b7d6f4694ac0c91f5b4a3c38c =====
+$ /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/lock_probe /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/p
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T13:51:00.915777+00:00
+OWNED_COMMAND_PID 77398
+probe_pid=77398 socket=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/p/run/mux.sock
+no_fork iteration=1 original_fd=5 cloexec=true parent_released=true immediate_restart=ok
+no_fork iteration=2 original_fd=5 cloexec=true parent_released=true immediate_restart=ok
+no_fork iteration=3 original_fd=5 cloexec=true parent_released=true immediate_restart=ok
+no_fork iteration=4 original_fd=5 cloexec=true parent_released=true immediate_restart=ok
+no_fork iteration=5 original_fd=5 cloexec=true parent_released=true immediate_restart=ok
+no_fork iteration=6 original_fd=5 cloexec=true parent_released=true immediate_restart=ok
+no_fork iteration=7 original_fd=5 cloexec=true parent_released=true immediate_restart=ok
+no_fork iteration=8 original_fd=5 cloexec=true parent_released=true immediate_restart=ok
+no_fork iteration=9 original_fd=5 cloexec=true parent_released=true immediate_restart=ok
+no_fork iteration=10 original_fd=5 cloexec=true parent_released=true immediate_restart=ok
+fork_child_ready pid=77403 inherited_fd=5 cloexec=true live_owner_refused=another live supervisor owns the control socket: ownership lock Os { code: 35, kind: WouldBlock, message: "Resource temporarily unavailable" }
+after_shutdown original_parent_fd=5 f_getfd=-1 errno=Bad file descriptor (os error 9)
+after_shutdown fork_child_alive=77403 restart_kind=AddrInUse restart_error=another live supervisor owns the control socket: ownership lock Os { code: 35, kind: WouldBlock, message: "Resource temporarily unavailable" }
+lsof_exit=exit status: 0
+COMMAND     PID  USER   FD   TYPE DEVICE SIZE/OFF     NODE NAME
+lock_prob 77403 feral    5u   REG   1,18        0 56529155 /private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/p/run/mux.sock.lock
+
+child_reaped pid=77403 wait_status=0
+after_child_reaped immediate_restart=ok
+EXIT 0 elapsed_seconds=0.270 PID=77398
+
+===== COMMAND 4f5dde95ebac4a20a966e92f36158b7f =====
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j CARGO_BUILD_JOBS=2 cargo test --locked -p bbt-supervisor --lib transport::tests::dropping_owner_releases_flock_while_a_fork_child_keeps_the_descriptor -- --exact --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T14:01:52.077321+00:00
+OWNED_COMMAND_PID 93766
+   Compiling bitflags v2.13.2
+   Compiling rustix v1.1.5
+   Compiling getrandom v0.4.3
+   Compiling errno v0.3.14
+   Compiling nix v0.28.0
+   Compiling once_cell v1.21.4
+   Compiling fastrand v2.5.0
+   Compiling portable-pty v0.9.0
+   Compiling tempfile v3.27.0
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 22.86s
+     Running unittests src/lib.rs (target/sable-lock-lifetime-j6afdt2j/debug/deps/bbt_supervisor-53aadf945d3da050)
+
+running 1 test
+ownership release owned_fork_child_pid=95083
+
+thread 'transport::tests::dropping_owner_releases_flock_while_a_fork_child_keeps_the_descriptor' (26339022) panicked at crates/bbt-supervisor/src/transport.rs:866:39:
+owner drop must release its inherited flock: Custom { kind: AddrInUse, error: "another live supervisor owns the control socket: ownership lock Os { code: 35, kind: WouldBlock, message: \"Resource temporarily unavailable\" }" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test transport::tests::dropping_owner_releases_flock_while_a_fork_child_keeps_the_descriptor ... FAILED
+
+failures:
+
+failures:
+    transport::tests::dropping_owner_releases_flock_while_a_fork_child_keeps_the_descriptor
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 43 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p bbt-supervisor --lib`
+EXIT 101 elapsed_seconds=23.131 PID=93766
+
+===== COMMAND e7cb800f35514a31b4b5f5697648a6e5 =====
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j CARGO_BUILD_JOBS=2 cargo test --locked -p bbt-supervisor -- --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T14:03:36.570044+00:00
+OWNED_COMMAND_PID 98421
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 19.58s
+     Running unittests src/lib.rs (target/sable-lock-lifetime-j6afdt2j/debug/deps/bbt_supervisor-53aadf945d3da050)
+
+running 44 tests
+closed-peer native SO_RCVTIMEO: test client::tests::pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation ... ok
+Err(Os { code: 22, kind: InvalidInput, message: "Invalid argument" })
+test client::tests::a_peer_closed_after_its_final_reply_does_not_hide_buffered_bytes_behind_timeout_setup ... ok
+test client::tests::raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it ... ok
+test ring::journal::tests::bad_crc_and_oversized_header_never_commit_a_later_tick ... ok
+test ring::journal::tests::metadata_only_debt_keeps_the_five_second_full_flush_deadline ... ok
+test ring::checksum_tests::fixed_sha_vectors_and_a_software_written_cold_blob_still_verify ... ok
+test ring::journal::tests::old_segment_waits_for_every_sealed_projection_and_checkpoint ... ok
+test ring::paging_tests::a_full_page_returns_before_decoding_the_following_entry ... ok
+test ring::journal::tests::crash_rebuilds_two_seats_only_through_the_last_tick_and_rejects_torn_suffix ... ok
+test ring::writer::crash_tests::capture_crash_child ... ignored, private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost
+test ring::writer::crash_tests::capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost ... ignored, release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture
+test ring::paging_tests::output_weight_bounds_real_json_for_all_bytes_and_boundary_metadata ... ok
+test ring::journal::tests::legacy_checkpoint_publication_offsets_remain_readable ... ok
+test ring::journal::tests::checkpoint_carries_offset_and_rotated_tail_replays_without_effects ... ok
+checksum CPU features: crc=true sha2=true
+test ring::checksum_tests::crc_matches_the_table_for_all_bytes_unaligned_splits_and_short_tails ... ok
+test ring::writer::tests::ring_and_journal_paging_is_contiguous_wire_bounded_and_does_not_decode_past_full ... ok
+test supervisor::capture_diagnostics::tests::bounded_trace_retains_totals_and_reports_overwrite_and_contention ... ok
+test ring::writer::tests::one_writer_tick_orders_two_trickling_seats_without_full_flushes ... ok
+test ring::writer::tests::undurable_admission_budget_pauses_until_a_full_flush_returns_credit ... ok
+test ring::writer::tests::orderly_shutdown_leaves_a_durable_journal_that_rebuilds_the_projection ... ok
+test supervisor::capture_diagnostics::tests::cursor_generations_and_turn_pages_remain_distinct ... ok
+test supervisor::capture_read_tests::exited_between_spawn_and_registration_emits_exactly_one_exit ... ok
+test supervisor::child_events::tests::a_live_child_cannot_make_the_shutdown_wait_infinite ... ok
+ownership release owned_fork_child_pid=99232
+test supervisor::capture_read_tests::a_full_retained_capture_buffer_is_not_pty_eof ... ok
+socket probe owned_fork_child_pid=99233
+test transport::tests::dropping_owner_releases_flock_while_a_fork_child_keeps_the_descriptor ... ok
+test transport::tests::fragmented_and_coalesced_frames_round_trip ... ok
+inherited listener probe: another live supervisor owns the control socket: ownership lock Os { code: 35, kind: WouldBlock, message: "Resource temporarily unavailable" }
+supervisor: reclaimed stale control socket /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/.tmp8aJj78/run/mux.sock (mtime 1792850636): nothing listened
+saturated live listener: 1 queued clients; connect error Os { code: 61, kind: ConnectionRefused, message: "Connection refused" }
+full backlog: replacement_bound=false same_inode=true original_listener_accepts=true
+test transport::tests::fork_inherited_listener_is_live_until_the_child_releases_it ... ok
+test supervisor::capture_read_tests::an_early_exiting_writer_is_drained_before_reaping_without_blocking_the_actor ... ok
+test transport::tests::full_listener_backlog_is_live_and_never_unlinked ... ok
+test transport::tests::priority_replies_never_interleave_a_partially_written_event ... ok
+supervisor: reclaimed stale control socket /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/.tmps6KnKx/run/mux.sock (mtime 1792850636): nothing listened
+supervisor: reclaimed stale control socket /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/.tmpK8CsaD/run/legacy.sock (mtime 1792850636): nothing listened
+test transport::tests::refused_socket_rebinds_without_replacing_a_live_socket_or_file ... ok
+test transport::tests::rejects_lengths_versions_and_truncated_payloads ... ok
+test transport::tests::replies_pass_unsent_events_with_fifo_order_in_both_lanes ... ok
+test transport::tests::ownership_lock_persists_and_a_lockless_socket_is_probed ... ok
+test transport::tests::stale_and_live_socket_paths_survive_2000_parallel_iterations ... ignored, manual 2000-iteration parallel stale/live socket stress
+test transport::tests::invalid_lock_types_permissions_and_owner_are_rejected_without_changes ... ok
+test supervisor::capture_read_tests::shutdown_closes_a_blocked_staged_pty_and_preserves_capture_and_one_exit ... ok
+test ring::writer::tests::stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte ... ok
+test ring::paging_tests::hot_and_cold_pages_fit_the_wire_and_keep_every_record_in_order ... ok
+test transport::tests::saturated_events_leave_capacity_for_one_maximum_reply_without_growing_the_queue ... ok
+test client::tests::ring_notifications_survive_ten_thousand_requests_without_an_event_receive ... ok
+test client::tests::lifecycle_is_retained_per_generation_and_later_output_follows_resize ... ok
+test client::tests::a_timed_out_request_blocks_new_writes_until_its_late_reply_is_drained ... ok
+unanswered request disconnected after 10.001170417s: supervisor disconnected: request 01M5Q3KBPV5CSQQNQRNY10VAVC stayed unresolved beyond its recovery deadline; outcome remains unknown
+test client::tests::an_unanswered_request_becomes_disconnected_at_the_bounded_recovery_deadline ... ok
+
+test result: ok. 41 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 10.00s
+
+     Running tests/journal_config.rs (target/sable-lock-lifetime-j6afdt2j/debug/deps/journal_config-3d4faa0056876de1)
+
+running 2 tests
+test capture_requires_an_explicit_supervisor_journal_directory ... ok
+test supervisor_shutdown_preserves_every_already_admitted_byte_for_offline_reopen ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/reaping.rs (target/sable-lock-lifetime-j6afdt2j/debug/deps/reaping-1307de4b8c9d5d33)
+
+running 3 tests
+test exit_events_at_machine_scale ... ignored, W1.2e before/after: GATE_SEATS=967 cargo test --release -p bbt-supervisor --test reaping -- --ignored --nocapture
+test stdio_eof_does_not_wait_for_a_still_running_child ... ok
+EXIT_FIXTURE ready=8; releasing all producers
+EXIT_LATENCY seats=8 p50_ms=1.068000 p99_ms=1.318000 max_ms=1.318000 all_exit_zero=true clock=CLOCK_MONOTONIC span=producer_marker_to_client_exit
+test final_output_and_exit_reach_the_owner ... ok
+
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/supervisor.rs (target/sable-lock-lifetime-j6afdt2j/debug/deps/supervisor-8a712fbc3e2c16e1)
+
+running 11 tests
+supervisor: reclaimed stale control socket /tmp/bbt-w2-01M5Q3KP7F8AS0ZE5QKZPXQKCG/mux.sock (mtime 1792850647): nothing listened
+test a_dead_socket_without_a_lock_does_not_stop_the_supervisor ... ok
+test validation_rejects_stale_and_oversized_input ... ok
+test natural_exit_follows_all_final_output ... ok
+test unix_socket_auth_framing_and_live_pty ... ok
+test two_seats_interleave_without_cross_talk ... ok
+test zsh_echo_cwd_environment_and_resize ... ok
+test killed_child_reports_generation_and_fences_replacement ... ok
+test logic_and_writer_replacement_preserve_child_and_deduplicate_input ... ok
+slow subscriber: complete 4 MiB + TAIL recovered with contiguous record sequences
+test slow_reader_backpressures_and_recovers_the_complete_output ... ok
+50 distinct PTY seats echoed under one Supervisor / one mio::Poll
+test fifty_seats_share_one_supervisor_poller ... ok
+blocked write: 1022 of 65536 bytes, PartialUnknown retained across logic replacement
+test blocked_write_survives_fencing_and_becomes_unknown_without_replay ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.05s
+
+   Doc-tests bbt_supervisor
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT 0 elapsed_seconds=32.304 PID=98421
+
+===== COMMAND 427dacf5f48b4f438b7ce2d32464b12d =====
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j CARGO_BUILD_JOBS=2 cargo clippy --locked -p bbt-supervisor --all-targets -- -D warnings
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T14:05:10.752695+00:00
+OWNED_COMMAND_PID 1007
+    Checking libc v0.2.191
+    Checking cfg-if v1.0.5
+    Checking serde_core v1.0.229
+    Checking typenum v1.20.1
+    Checking bitflags v2.13.2
+    Checking serde v1.0.229
+    Checking getrandom v0.3.4
+    Checking zerocopy v0.8.63
+    Checking generic-array v0.14.7
+    Checking rand_core v0.9.5
+    Checking smallvec v1.16.3
+    Checking scopeguard v1.2.0
+    Checking log v0.4.34
+    Checking lock_api v0.4.14
+    Checking parking_lot_core v0.9.12
+    Checking thiserror v1.0.69
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking zstd-sys v2.1.2+zstd.1.5.7
+    Checking memchr v2.8.3
+    Checking zstd-safe v8.2.0
+    Checking digest v0.10.7
+    Checking nix v0.28.0
+    Checking filedescriptor v0.8.3
+    Checking sha2-asm v0.6.4
+    Checking anyhow v1.0.104
+    Checking parking_lot v0.12.5
+    Checking ppv-lite86 v0.2.21
+    Checking zmij v1.0.23
+    Checking rand_chacha v0.9.0
+    Checking arrayvec v0.7.8
+    Checking rand v0.9.5
+    Checking serde-big-array v0.5.1
+    Checking serial2 v0.2.38
+    Checking errno v0.3.14
+    Checking cpufeatures v0.2.17
+    Checking cursor-icon v1.2.0
+    Checking base64 v0.22.1
+    Checking itoa v1.0.18
+    Checking shell-words v1.1.1
+    Checking downcast-rs v1.2.1
+    Checking unicode-width v0.2.2
+    Checking portable-pty v0.9.0
+    Checking serde_json v1.0.154
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+    Checking sha2 v0.10.9
+    Checking rustix v1.1.5
+    Checking ulid v1.2.1
+    Checking zstd v0.14.3
+    Checking getrandom v0.4.3
+    Checking mio v1.2.4
+    Checking fastrand v2.5.0
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+    Checking once_cell v1.21.4
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+    Checking tempfile v3.27.0
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 36.14s
+EXIT 0 elapsed_seconds=36.278 PID=1007
+
+===== COMMAND 61e6857542f246cf814ee58da219f434 =====
+$ rustfmt --check --edition 2024 crates/bbt-supervisor/src/transport.rs
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T14:06:11.794079+00:00
+OWNED_COMMAND_PID 2703
+EXIT 0 elapsed_seconds=0.065 PID=2703
+
+===== COMMAND 4c74898f92e0463e80ff2875b29b1d40 =====
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j CARGO_BUILD_JOBS=2 BBOXY_TEST_CUSTODY=memory cargo test --locked -p bbt-mux --test provider_gui -- --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T14:06:35.587749+00:00
+OWNED_COMMAND_PID 3140
+   Compiling syn v2.0.119
+   Compiling typenum v1.20.1
+   Compiling generic-array v0.14.7
+   Compiling getrandom v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling subtle v2.6.1
+   Compiling serde_core v1.0.229
+   Compiling syn v3.0.9
+   Compiling zeroize_derive v1.5.0
+   Compiling zeroize v1.9.1
+   Compiling crypto-common v0.1.7
+   Compiling const-oid v0.9.6
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling base64ct v1.8.3
+   Compiling pem-rfc7468 v0.7.0
+   Compiling inout v0.1.4
+   Compiling cipher v0.4.4
+   Compiling der v0.7.10
+   Compiling radium v0.7.0
+   Compiling serde_json v1.0.154
+   Compiling spki v0.7.3
+   Compiling bitflags v2.13.2
+   Compiling pkcs8 v0.10.2
+   Compiling tap v1.0.1
+   Compiling wyz v0.5.1
+   Compiling hmac v0.12.1
+   Compiling base16ct v0.2.0
+   Compiling funty v2.0.0
+   Compiling signature v2.2.0
+   Compiling bitvec v1.1.1
+   Compiling semver v1.0.28
+   Compiling bytes v1.12.1
+   Compiling rustc_version v0.4.1
+   Compiling ff v0.13.1
+   Compiling serdect v0.2.0
+   Compiling smallvec v1.16.3
+   Compiling sec1 v0.7.3
+   Compiling group v0.13.0
+   Compiling hkdf v0.12.4
+   Compiling crypto-bigint v0.5.5
+   Compiling hybrid-array v0.4.15
+   Compiling autocfg v1.5.1
+   Compiling libm v0.2.16
+   Compiling num-traits v0.2.19
+   Compiling sha2 v0.10.9
+   Compiling elliptic-curve v0.13.8
+   Compiling winnow v1.0.4
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling rfc6979 v0.4.0
+   Compiling errno v0.3.14
+   Compiling thiserror v2.0.21
+   Compiling winnow v0.7.15
+   Compiling ident_case v1.0.1
+   Compiling const-oid v0.10.2
+   Compiling memchr v2.8.3
+   Compiling foldhash v0.2.0
+   Compiling strsim v0.11.1
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling fnv v1.0.7
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling darling_core v0.20.11
+   Compiling hashbrown v0.17.1
+   Compiling digest v0.11.3
+   Compiling thiserror-impl v2.0.21
+   Compiling rand_core v0.10.1
+   Compiling getrandom v0.4.3
+   Compiling num-integer v0.1.47
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling darling_macro v0.20.11
+   Compiling ecdsa v0.16.9
+   Compiling curve25519-dalek v4.1.3
+   Compiling rand_chacha v0.3.1
+   Compiling cpufeatures v0.3.1
+   Compiling unicode-segmentation v1.13.3
+   Compiling crossbeam-utils v0.8.23
+   Compiling spin v0.9.9
+   Compiling num-bigint-dig v0.8.6
+   Compiling pin-project-lite v0.2.17
+   Compiling lazy_static v1.5.1
+   Compiling rand v0.8.8
+   Compiling darling v0.20.11
+   Compiling num-iter v0.1.46
+   Compiling parking_lot_core v0.9.12
+   Compiling signal-hook-registry v1.4.8
+   Compiling primeorder v0.13.6
+   Compiling aead v0.5.2
+   Compiling ctr v0.9.2
+   Compiling universal-hash v0.5.1
+   Compiling tokio-macros v2.7.2
+   Compiling thiserror-impl v1.0.69
+   Compiling socket2 v0.6.5
+   Compiling vcpkg v0.2.15
+   Compiling equivalent v1.0.3
+   Compiling opaque-debug v0.3.1
+   Compiling httparse v1.10.1
+   Compiling rustversion v1.0.23
+   Compiling libsqlite3-sys v0.38.2
+   Compiling polyval v0.6.2
+   Compiling indexmap v2.14.2
+   Compiling thiserror v1.0.69
+   Compiling tokio v1.54.1
+   Compiling parking_lot v0.12.5
+   Compiling derive_builder_core v0.20.2
+   Compiling convert_case v0.10.0
+   Compiling chacha20 v0.10.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling serde-big-array v0.5.1
+   Compiling arrayvec v0.7.8
+   Compiling aes v0.8.4
+   Compiling keccak v0.1.6
+   Compiling dbl v0.3.2
+   Compiling byteorder v1.5.0
+   Compiling pulldown-cmark v0.13.4
+   Compiling crc24 v0.1.6
+   Compiling core-foundation-sys v0.8.7
+   Compiling heck v0.5.0
+   Compiling unicode-xid v0.2.6
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling derive_more-impl v2.1.1
+   Compiling snafu-derive v0.9.2
+   Compiling cmac v0.7.2
+   Compiling sha3 v0.10.9
+   Compiling rand v0.10.3
+   Compiling crossbeam-queue v0.3.14
+   Compiling nix v0.28.0
+   Compiling derive_builder_macro v0.20.2
+   Compiling ulid v1.2.1
+   Compiling filedescriptor v0.8.3
+   Compiling ghash v0.5.1
+   Compiling sha1 v0.11.0
+   Compiling bitfields-impl v1.0.3
+   Compiling http v1.5.0
+   Compiling ed25519 v2.2.3
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling password-hash v0.5.0
+   Compiling sha1 v0.10.7
+   Compiling blake2 v0.10.6
+   Compiling futures-macro v0.3.34
+   Compiling num_enum_derive v0.7.6
+   Compiling ryu v1.0.23
+   Compiling futures-task v0.3.34
+   Compiling futures-core v0.3.34
+   Compiling foldhash v0.1.5
+   Compiling same-file v1.0.6
+   Compiling futures-sink v0.3.34
+   Compiling zlib-rs v0.6.8
+   Compiling signature v3.0.0
+   Compiling unicase v2.10.0
+   Compiling slab v0.4.12
+   Compiling unsafe-libyaml v0.2.11
+   Compiling data-encoding v2.11.1
+   Compiling tungstenite v0.30.0
+   Compiling portable-pty v0.9.0
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling flate2 v1.1.10
+   Compiling futures-util v0.3.34
+   Compiling ed25519 v3.0.0
+   Compiling walkdir v2.5.0
+   Compiling hashbrown v0.15.5
+   Compiling num_enum v0.7.6
+   Compiling argon2 v0.5.3
+   Compiling sha1-checked v0.10.0
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling ed25519-dalek v2.2.0
+   Compiling bitfields v1.0.3
+   Compiling aes-gcm v0.10.3
+   Compiling derive_builder v0.20.2
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling eax v0.5.0
+   Compiling snafu v0.9.2
+   Compiling derive_more v2.1.1
+   Compiling security-framework-sys v2.17.0
+   Compiling core-foundation v0.10.1
+   Compiling k256 v0.13.4
+   Compiling camellia v0.1.0
+   Compiling blowfish v0.9.1
+   Compiling aes-kw v0.2.1
+   Compiling x25519-dalek v2.0.1
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling dsa v0.6.3
+   Compiling ocb3 v0.1.0
+   Compiling p384 v0.13.1
+   Compiling p256 v0.13.2
+   Compiling p521 v0.13.3
+   Compiling sha2 v0.11.1
+   Compiling hashlink v0.12.2
+   Compiling notify-types v2.1.0
+   Compiling idea v0.5.1
+   Compiling cfb-mode v0.8.2
+   Compiling cast5 v0.11.1
+   Compiling twofish v0.7.1
+   Compiling des v0.8.1
+   Compiling buffer-redux v1.1.0
+   Compiling nom v8.0.0
+   Compiling ripemd v0.1.3
+   Compiling md-5 v0.10.6
+   Compiling block-padding v0.3.3
+   Compiling fsevent-sys v4.1.0
+   Compiling fallible-iterator v0.3.0
+   Compiling fixedbitset v0.5.7
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mermaid)
+   Compiling replace_with v0.1.8
+   Compiling hex v0.4.3
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling rusqlite v0.40.2
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-doc)
+   Compiling pgp v0.21.0
+   Compiling petgraph v0.8.3
+   Compiling notify v8.2.0
+   Compiling ed25519-dalek v3.0.0
+   Compiling security-framework v3.7.0
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling rustix v1.1.5
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-plugin)
+   Compiling tempfile v3.27.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 44s
+     Running tests/provider_gui.rs (target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e)
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.66s
+
+EXIT 0 elapsed_seconds=108.341 PID=3140
+
+===== COMMAND d657d24791c14bb4a3d750b32b8c3298 =====
+$ cc -O0 -std=c11 /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cpu-worker.c -o /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/cpu-worker
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T14:09:22.466225+00:00
+OWNED_COMMAND_PID 10876
+EXIT 0 elapsed_seconds=0.147 PID=10876
+
+===== COMMAND 7b9716eb1fa24a37a66db90822ede0ad =====
+$ env CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j CARGO_BUILD_JOBS=2 BBOXY_TEST_CUSTODY=memory cargo test --locked -p bboxy450-term --test recovery --test lifecycle -- --nocapture
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T14:08:23.976480+00:00
+OWNED_COMMAND_PID 8048
+   Compiling unicode-ident v1.0.27
+   Compiling log v0.4.34
+   Compiling proc-macro2 v1.0.107
+   Compiling zerocopy v0.8.63
+   Compiling quote v1.0.47
+   Compiling objc2-encode v4.1.0
+   Compiling syn v2.0.119
+   Compiling syn v3.0.9
+   Compiling serde_derive v1.0.229
+   Compiling zeroize_derive v1.5.0
+   Compiling zeroize v1.9.1
+   Compiling generic-array v0.14.7
+   Compiling crypto-common v0.1.7
+   Compiling serde v1.0.229
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling zerocopy-derive v0.8.63
+   Compiling arrayvec v0.7.8
+   Compiling smallvec v1.16.3
+   Compiling cfg_aliases v0.2.2
+   Compiling inout v0.1.4
+   Compiling objc2 v0.6.5
+   Compiling hashbrown v0.17.1
+   Compiling cipher v0.4.4
+   Compiling der v0.7.10
+   Compiling thiserror-impl v2.0.21
+   Compiling simd-adler32 v0.3.10
+   Compiling thiserror v2.0.21
+   Compiling spki v0.7.3
+   Compiling adler2 v2.0.1
+   Compiling crc32fast v1.5.3
+   Compiling pkcs8 v0.10.2
+   Compiling indexmap v2.14.2
+   Compiling block2 v0.6.2
+   Compiling dispatch2 v0.3.1
+   Compiling miniz_oxide v0.9.1
+   Compiling hmac v0.12.1
+   Compiling bytemuck_derive v1.12.1
+   Compiling objc2-core-foundation v0.3.2
+   Compiling bytemuck v1.25.2
+   Compiling ppv-lite86 v0.2.21
+   Compiling signature v2.2.0
+   Compiling float-cmp v0.9.0
+   Compiling strict-num v0.1.1
+   Compiling serdect v0.2.0
+   Compiling arrayref v0.3.9
+   Compiling objc2-foundation v0.3.2
+   Compiling sec1 v0.7.3
+   Compiling parking_lot_core v0.9.12
+   Compiling hkdf v0.12.4
+   Compiling crypto-bigint v0.5.5
+   Compiling elliptic-curve v0.13.8
+   Compiling parking_lot v0.12.5
+   Compiling objc2-metal v0.3.2
+   Compiling sha2 v0.10.9
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling rustc-hash v1.1.0
+   Compiling siphasher v1.0.4
+   Compiling naga-types v30.0.1
+   Compiling rfc6979 v0.4.0
+   Compiling naga v30.0.1
+   Compiling raw-window-handle v0.6.2
+   Compiling bit-vec v0.9.1
+   Compiling bit-set v0.10.0
+   Compiling objc2-core-graphics v0.3.2
+   Compiling darling_core v0.20.11
+   Compiling codespan-reporting v0.13.1
+   Compiling half v2.7.1
+   Compiling simplecss v0.2.2
+   Compiling zlib-rs v0.6.8
+   Compiling static_assertions v1.1.0
+   Compiling objc-sys v0.3.5
+   Compiling data-url v0.3.2
+   Compiling pico-args v0.5.0
+   Compiling imagesize v0.15.0
+   Compiling wgpu-types v30.0.1
+   Compiling flate2 v1.1.10
+   Compiling darling_macro v0.20.11
+   Compiling objc2-quartz-core v0.3.2
+   Compiling polycool v0.4.0
+   Compiling ecdsa v0.16.9
+   Compiling rand_chacha v0.3.1
+   Compiling wgpu-hal v30.0.1
+   Compiling kurbo v0.13.1
+   Compiling rand v0.8.8
+   Compiling raw-window-metal v1.1.0
+   Compiling darling v0.20.11
+   Compiling rand_chacha v0.9.0
+   Compiling tiny-skia-path v0.12.0
+   Compiling primeorder v0.13.6
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling aead v0.5.2
+   Compiling ctr v0.9.2
+   Compiling universal-hash v0.5.1
+   Compiling thiserror-impl v1.0.69
+   Compiling tokio-macros v2.7.2
+   Compiling mio v1.2.4
+   Compiling libloading v0.8.9
+   Compiling bitflags v2.13.2
+   Compiling profiling v1.0.18
+   Compiling png v0.18.1
+   Compiling polyval v0.6.2
+   Compiling tokio v1.54.1
+   Compiling thiserror v1.0.69
+   Compiling objc2 v0.5.3
+   Compiling rand v0.9.5
+   Compiling derive_builder_core v0.20.2
+   Compiling curve25519-dalek v4.1.3
+   Compiling num-bigint-dig v0.8.6
+   Compiling svgtypes v0.16.1
+   Compiling aes v0.8.4
+   Compiling aho-corasick v1.1.5
+   Compiling roxmltree v0.21.1
+   Compiling wgpu-core v30.0.1
+   Compiling euclid v0.22.14
+   Compiling serde-big-array v0.5.1
+   Compiling dbl v0.3.2
+   Compiling litrs v1.0.1
+   Compiling regex-syntax v0.8.11
+   Compiling document-features v0.2.12
+   Compiling derive_more-impl v2.1.1
+   Compiling snafu-derive v0.9.2
+   Compiling regex-automata v0.4.18
+   Compiling lyon_geom v1.0.20
+   Compiling cmac v0.7.2
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling sha3 v0.10.9
+   Compiling usvg v0.48.1
+   Compiling derive_builder_macro v0.20.2
+   Compiling ulid v1.2.1
+   Compiling block2 v0.5.1
+   Compiling filedescriptor v0.8.3
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling ghash v0.5.1
+   Compiling tiny-skia v0.12.0
+   Compiling rgb v0.8.53
+   Compiling core-foundation v0.9.4
+   Compiling ed25519 v2.2.3
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling bitfields-impl v1.0.3
+   Compiling wgpu v30.0.1
+   Compiling sha1 v0.10.7
+   Compiling blake2 v0.10.6
+   Compiling num_enum_derive v0.7.6
+   Compiling futures-macro v0.3.34
+   Compiling foreign-types-macros v0.2.4
+   Compiling foreign-types-shared v0.3.1
+   Compiling dispatch v0.2.0
+   Compiling bitflags v1.3.2
+   Compiling futures-util v0.3.34
+   Compiling core-graphics-types v0.1.3
+   Compiling tungstenite v0.30.0
+   Compiling objc2-foundation v0.2.2
+   Compiling portable-pty v0.9.0
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling foreign-types v0.5.0
+   Compiling argon2 v0.5.3
+   Compiling num_enum v0.7.6
+   Compiling sha1-checked v0.10.0
+   Compiling bitfields v1.0.3
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling ed25519-dalek v2.2.0
+   Compiling resvg v0.48.1
+   Compiling aes-gcm v0.10.3
+   Compiling derive_builder v0.20.2
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling curve25519-dalek v5.0.0
+   Compiling regex v1.13.1
+   Compiling eax v0.5.0
+   Compiling lyon_path v1.0.19
+   Compiling snafu v0.9.2
+   Compiling derive_more v2.1.1
+   Compiling blowfish v0.9.1
+   Compiling camellia v0.1.0
+   Compiling aes-kw v0.2.1
+   Compiling dsa v0.6.3
+   Compiling x25519-dalek v2.0.1
+   Compiling ocb3 v0.1.0
+   Compiling p256 v0.13.2
+   Compiling p384 v0.13.1
+   Compiling p521 v0.13.3
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling k256 v0.13.4
+   Compiling idea v0.5.1
+   Compiling cast5 v0.11.1
+   Compiling twofish v0.7.1
+   Compiling des v0.8.1
+   Compiling cfb-mode v0.8.2
+   Compiling hashlink v0.12.2
+   Compiling winit v0.30.13
+   Compiling md-5 v0.10.6
+   Compiling ripemd v0.1.3
+   Compiling block-padding v0.3.3
+   Compiling float_next_after v1.0.0
+   Compiling tracing-core v0.1.36
+   Compiling pgp v0.21.0
+   Compiling tracing v0.1.44
+   Compiling rusqlite v0.40.2
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-doc)
+   Compiling lyon_tessellation v1.0.22
+   Compiling petgraph v0.8.3
+   Compiling notify v8.2.0
+   Compiling ed25519-dalek v3.0.0
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling objc2-app-kit v0.2.2
+   Compiling core-graphics v0.23.2
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling objc2-core-text v0.3.2
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-plugin)
+   Compiling dpi v0.1.2
+   Compiling pollster v0.4.0
+   Compiling smol_str v0.2.2
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling objc2-app-kit v0.3.2
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 25s
+     Running tests/lifecycle.rs (target/sable-lock-lifetime-j6afdt2j/debug/deps/lifecycle-6444a9b0e3d417cc)
+
+running 3 tests
+logic worker exited: supervisor disconnected
+supervisor: reclaimed stale control socket /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/c1c-close-dvpFM0/run/mux.sock (mtime 1792850991): nothing listened
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+history: 13 bounded pages; exact 194560 output bytes; capture sequences1..17, prefix/suffix gaps ordered, resize+exit cursor slots retained, invalid range named without disconnect
+test gui_history_is_lazy_bounded_capture_pages_with_ordered_gaps_and_control_cursors ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+close/undo: default60s, retry stable deadline, unwatched state publication, capture during grace, exact Position, stale/layout conflicts, same PID 11702 and generation for idempotent undo; replaced-generation handle rejected
+test gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position ... ok
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it has been running for over 60 seconds
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+expiry: original60s deadline survived logicSIGKILL, supervisor reaped PID 11701, no new generation/process, retained history and explicit expired undo
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 62.54s
+
+     Running tests/recovery.rs (target/sable-lock-lifetime-j6afdt2j/debug/deps/recovery-6c925725cd15897e)
+
+running 5 tests
+supervisor: reclaimed stale control socket /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/c1c-admit-Fiquzr/run/mux.sock (mtime 1792851052): nothing listened
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+admission: valid previous boundary authorized gen1 -> gen2; old/gap/occupied/unknown/empty/corrupt/conflicting generations rejected; identical gen2 retry returned PID 14927
+test recovered_generation_admission_rejects_unknown_and_conflicting_launches_but_exact_retry_is_idempotent ... ok
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cancelled readiness future retained startup; shutdown reaped recorded replacement PID 14947
+test partial_startup_survives_cancelled_poll_and_shutdown_reaps_its_child ... ok
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test shutdown_during_pending_recovery_reaps_children_without_restarting ... ok
+logic worker exited: supervisor disconnected
+supervisor: reclaimed stale control socket /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/c1c-super-SifcCS/run/mux.sock (mtime 1792851053): nothing listened
+logic recovery: seat=01M5Q402NAXYTZKQ89W0S68F9E pid=14945 generation=1 supervisor=Some(14918) logic Some(14930)->Some(14975); fresh view; 250ms ack hold
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test logic_death_keeps_pty_generation_rewatches_and_preserves_ack_backpressure ... ok
+claude resume argv first read: 2, expected 2
+codex resume argv first read: 1, expected 2
+codex resume argv publication wait was needed: first=Some(1), observed=2
+StaleGeneration: GUI request for seat 01M5Q402NMA69K46NK3X8014VG rejected: displayed generation 1, current 2; dropped=1
+StaleGeneration: GUI request for seat 01M5Q402NMA69K46NK3X8014VG rejected: displayed generation 1, current 2; dropped=2
+supervisor recovery: 3 stable seat IDs, gen1->2, zsh/Claude/Codex new PIDs; 100x30, retained screen, explicit gap, actual resume argv, post-restart echo; stale Input ID preserved, drops1/2 counted, stale input file absent, stale resize rejected at PTY30x100
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.09s
+
+EXIT 0 elapsed_seconds=156.034 PID=8048
+
+===== COMMAND fc30dc8cf1e34f599869a9afbc4b6c43 =====
+$ python3 /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/dependents.py
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T14:06:35.484629+00:00
+OWNED_COMMAND_PID 3138
+COMMAND_ID 4c74898f92e0463e80ff2875b29b1d40 OWNED_COMMAND_PID 3140
+   Compiling syn v2.0.119
+   Compiling typenum v1.20.1
+   Compiling generic-array v0.14.7
+   Compiling getrandom v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling subtle v2.6.1
+   Compiling serde_core v1.0.229
+   Compiling syn v3.0.9
+   Compiling zeroize_derive v1.5.0
+   Compiling zeroize v1.9.1
+   Compiling crypto-common v0.1.7
+   Compiling const-oid v0.9.6
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling base64ct v1.8.3
+   Compiling pem-rfc7468 v0.7.0
+   Compiling inout v0.1.4
+   Compiling cipher v0.4.4
+   Compiling der v0.7.10
+   Compiling radium v0.7.0
+   Compiling serde_json v1.0.154
+   Compiling spki v0.7.3
+   Compiling bitflags v2.13.2
+   Compiling pkcs8 v0.10.2
+   Compiling tap v1.0.1
+   Compiling wyz v0.5.1
+   Compiling hmac v0.12.1
+   Compiling base16ct v0.2.0
+   Compiling funty v2.0.0
+   Compiling signature v2.2.0
+   Compiling bitvec v1.1.1
+   Compiling semver v1.0.28
+   Compiling bytes v1.12.1
+   Compiling rustc_version v0.4.1
+   Compiling ff v0.13.1
+   Compiling serdect v0.2.0
+   Compiling smallvec v1.16.3
+   Compiling sec1 v0.7.3
+   Compiling group v0.13.0
+   Compiling hkdf v0.12.4
+   Compiling crypto-bigint v0.5.5
+   Compiling hybrid-array v0.4.15
+   Compiling autocfg v1.5.1
+   Compiling libm v0.2.16
+   Compiling num-traits v0.2.19
+   Compiling sha2 v0.10.9
+   Compiling elliptic-curve v0.13.8
+   Compiling winnow v1.0.4
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling rfc6979 v0.4.0
+   Compiling errno v0.3.14
+   Compiling thiserror v2.0.21
+   Compiling winnow v0.7.15
+   Compiling ident_case v1.0.1
+   Compiling const-oid v0.10.2
+   Compiling memchr v2.8.3
+   Compiling foldhash v0.2.0
+   Compiling strsim v0.11.1
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling fnv v1.0.7
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling darling_core v0.20.11
+   Compiling hashbrown v0.17.1
+   Compiling digest v0.11.3
+   Compiling thiserror-impl v2.0.21
+   Compiling rand_core v0.10.1
+   Compiling getrandom v0.4.3
+   Compiling num-integer v0.1.47
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui-model)
+   Compiling darling_macro v0.20.11
+   Compiling ecdsa v0.16.9
+   Compiling curve25519-dalek v4.1.3
+   Compiling rand_chacha v0.3.1
+   Compiling cpufeatures v0.3.1
+   Compiling unicode-segmentation v1.13.3
+   Compiling crossbeam-utils v0.8.23
+   Compiling spin v0.9.9
+   Compiling num-bigint-dig v0.8.6
+   Compiling pin-project-lite v0.2.17
+   Compiling lazy_static v1.5.1
+   Compiling rand v0.8.8
+   Compiling darling v0.20.11
+   Compiling num-iter v0.1.46
+   Compiling parking_lot_core v0.9.12
+   Compiling signal-hook-registry v1.4.8
+   Compiling primeorder v0.13.6
+   Compiling aead v0.5.2
+   Compiling ctr v0.9.2
+   Compiling universal-hash v0.5.1
+   Compiling tokio-macros v2.7.2
+   Compiling thiserror-impl v1.0.69
+   Compiling socket2 v0.6.5
+   Compiling vcpkg v0.2.15
+   Compiling equivalent v1.0.3
+   Compiling opaque-debug v0.3.1
+   Compiling httparse v1.10.1
+   Compiling rustversion v1.0.23
+   Compiling libsqlite3-sys v0.38.2
+   Compiling polyval v0.6.2
+   Compiling indexmap v2.14.2
+   Compiling thiserror v1.0.69
+   Compiling tokio v1.54.1
+   Compiling parking_lot v0.12.5
+   Compiling derive_builder_core v0.20.2
+   Compiling convert_case v0.10.0
+   Compiling chacha20 v0.10.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling serde-big-array v0.5.1
+   Compiling arrayvec v0.7.8
+   Compiling aes v0.8.4
+   Compiling keccak v0.1.6
+   Compiling dbl v0.3.2
+   Compiling byteorder v1.5.0
+   Compiling pulldown-cmark v0.13.4
+   Compiling crc24 v0.1.6
+   Compiling core-foundation-sys v0.8.7
+   Compiling heck v0.5.0
+   Compiling unicode-xid v0.2.6
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling derive_more-impl v2.1.1
+   Compiling snafu-derive v0.9.2
+   Compiling cmac v0.7.2
+   Compiling sha3 v0.10.9
+   Compiling rand v0.10.3
+   Compiling crossbeam-queue v0.3.14
+   Compiling nix v0.28.0
+   Compiling derive_builder_macro v0.20.2
+   Compiling ulid v1.2.1
+   Compiling filedescriptor v0.8.3
+   Compiling ghash v0.5.1
+   Compiling sha1 v0.11.0
+   Compiling bitfields-impl v1.0.3
+   Compiling http v1.5.0
+   Compiling ed25519 v2.2.3
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling password-hash v0.5.0
+   Compiling sha1 v0.10.7
+   Compiling blake2 v0.10.6
+   Compiling futures-macro v0.3.34
+   Compiling num_enum_derive v0.7.6
+   Compiling ryu v1.0.23
+   Compiling futures-task v0.3.34
+   Compiling futures-core v0.3.34
+   Compiling foldhash v0.1.5
+   Compiling same-file v1.0.6
+   Compiling futures-sink v0.3.34
+   Compiling zlib-rs v0.6.8
+   Compiling signature v3.0.0
+   Compiling unicase v2.10.0
+   Compiling slab v0.4.12
+   Compiling unsafe-libyaml v0.2.11
+   Compiling data-encoding v2.11.1
+   Compiling tungstenite v0.30.0
+   Compiling portable-pty v0.9.0
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling flate2 v1.1.10
+   Compiling futures-util v0.3.34
+   Compiling ed25519 v3.0.0
+   Compiling walkdir v2.5.0
+   Compiling hashbrown v0.15.5
+   Compiling num_enum v0.7.6
+   Compiling argon2 v0.5.3
+   Compiling sha1-checked v0.10.0
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling ed25519-dalek v2.2.0
+   Compiling bitfields v1.0.3
+   Compiling aes-gcm v0.10.3
+   Compiling derive_builder v0.20.2
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling eax v0.5.0
+   Compiling snafu v0.9.2
+   Compiling derive_more v2.1.1
+   Compiling security-framework-sys v2.17.0
+   Compiling core-foundation v0.10.1
+   Compiling k256 v0.13.4
+   Compiling camellia v0.1.0
+   Compiling blowfish v0.9.1
+   Compiling aes-kw v0.2.1
+   Compiling x25519-dalek v2.0.1
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling dsa v0.6.3
+   Compiling ocb3 v0.1.0
+   Compiling p384 v0.13.1
+   Compiling p256 v0.13.2
+   Compiling p521 v0.13.3
+   Compiling sha2 v0.11.1
+   Compiling hashlink v0.12.2
+   Compiling notify-types v2.1.0
+   Compiling idea v0.5.1
+   Compiling cfb-mode v0.8.2
+   Compiling cast5 v0.11.1
+   Compiling twofish v0.7.1
+   Compiling des v0.8.1
+   Compiling buffer-redux v1.1.0
+   Compiling nom v8.0.0
+   Compiling ripemd v0.1.3
+   Compiling md-5 v0.10.6
+   Compiling block-padding v0.3.3
+   Compiling fsevent-sys v4.1.0
+   Compiling fallible-iterator v0.3.0
+   Compiling fixedbitset v0.5.7
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mermaid)
+   Compiling replace_with v0.1.8
+   Compiling hex v0.4.3
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling rusqlite v0.40.2
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-doc)
+   Compiling pgp v0.21.0
+   Compiling petgraph v0.8.3
+   Compiling notify v8.2.0
+   Compiling ed25519-dalek v3.0.0
+   Compiling security-framework v3.7.0
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling rustix v1.1.5
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-plugin)
+   Compiling tempfile v3.27.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 44s
+     Running tests/provider_gui.rs (target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e)
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.66s
+
+EXIT 0 elapsed_seconds=108.341 PID=3140
+
+COMMAND_ID 7b9716eb1fa24a37a66db90822ede0ad OWNED_COMMAND_PID 8048
+   Compiling unicode-ident v1.0.27
+   Compiling log v0.4.34
+   Compiling proc-macro2 v1.0.107
+   Compiling zerocopy v0.8.63
+   Compiling quote v1.0.47
+   Compiling objc2-encode v4.1.0
+   Compiling syn v2.0.119
+   Compiling syn v3.0.9
+   Compiling serde_derive v1.0.229
+   Compiling zeroize_derive v1.5.0
+   Compiling zeroize v1.9.1
+   Compiling generic-array v0.14.7
+   Compiling crypto-common v0.1.7
+   Compiling serde v1.0.229
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling zerocopy-derive v0.8.63
+   Compiling arrayvec v0.7.8
+   Compiling smallvec v1.16.3
+   Compiling cfg_aliases v0.2.2
+   Compiling inout v0.1.4
+   Compiling objc2 v0.6.5
+   Compiling hashbrown v0.17.1
+   Compiling cipher v0.4.4
+   Compiling der v0.7.10
+   Compiling thiserror-impl v2.0.21
+   Compiling simd-adler32 v0.3.10
+   Compiling thiserror v2.0.21
+   Compiling spki v0.7.3
+   Compiling adler2 v2.0.1
+   Compiling crc32fast v1.5.3
+   Compiling pkcs8 v0.10.2
+   Compiling indexmap v2.14.2
+   Compiling block2 v0.6.2
+   Compiling dispatch2 v0.3.1
+   Compiling miniz_oxide v0.9.1
+   Compiling hmac v0.12.1
+   Compiling bytemuck_derive v1.12.1
+   Compiling objc2-core-foundation v0.3.2
+   Compiling bytemuck v1.25.2
+   Compiling ppv-lite86 v0.2.21
+   Compiling signature v2.2.0
+   Compiling float-cmp v0.9.0
+   Compiling strict-num v0.1.1
+   Compiling serdect v0.2.0
+   Compiling arrayref v0.3.9
+   Compiling objc2-foundation v0.3.2
+   Compiling sec1 v0.7.3
+   Compiling parking_lot_core v0.9.12
+   Compiling hkdf v0.12.4
+   Compiling crypto-bigint v0.5.5
+   Compiling elliptic-curve v0.13.8
+   Compiling parking_lot v0.12.5
+   Compiling objc2-metal v0.3.2
+   Compiling sha2 v0.10.9
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling rustc-hash v1.1.0
+   Compiling siphasher v1.0.4
+   Compiling naga-types v30.0.1
+   Compiling rfc6979 v0.4.0
+   Compiling naga v30.0.1
+   Compiling raw-window-handle v0.6.2
+   Compiling bit-vec v0.9.1
+   Compiling bit-set v0.10.0
+   Compiling objc2-core-graphics v0.3.2
+   Compiling darling_core v0.20.11
+   Compiling codespan-reporting v0.13.1
+   Compiling half v2.7.1
+   Compiling simplecss v0.2.2
+   Compiling zlib-rs v0.6.8
+   Compiling static_assertions v1.1.0
+   Compiling objc-sys v0.3.5
+   Compiling data-url v0.3.2
+   Compiling pico-args v0.5.0
+   Compiling imagesize v0.15.0
+   Compiling wgpu-types v30.0.1
+   Compiling flate2 v1.1.10
+   Compiling darling_macro v0.20.11
+   Compiling objc2-quartz-core v0.3.2
+   Compiling polycool v0.4.0
+   Compiling ecdsa v0.16.9
+   Compiling rand_chacha v0.3.1
+   Compiling wgpu-hal v30.0.1
+   Compiling kurbo v0.13.1
+   Compiling rand v0.8.8
+   Compiling raw-window-metal v1.1.0
+   Compiling darling v0.20.11
+   Compiling rand_chacha v0.9.0
+   Compiling tiny-skia-path v0.12.0
+   Compiling primeorder v0.13.6
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling aead v0.5.2
+   Compiling ctr v0.9.2
+   Compiling universal-hash v0.5.1
+   Compiling thiserror-impl v1.0.69
+   Compiling tokio-macros v2.7.2
+   Compiling mio v1.2.4
+   Compiling libloading v0.8.9
+   Compiling bitflags v2.13.2
+   Compiling profiling v1.0.18
+   Compiling png v0.18.1
+   Compiling polyval v0.6.2
+   Compiling tokio v1.54.1
+   Compiling thiserror v1.0.69
+   Compiling objc2 v0.5.3
+   Compiling rand v0.9.5
+   Compiling derive_builder_core v0.20.2
+   Compiling curve25519-dalek v4.1.3
+   Compiling num-bigint-dig v0.8.6
+   Compiling svgtypes v0.16.1
+   Compiling aes v0.8.4
+   Compiling aho-corasick v1.1.5
+   Compiling roxmltree v0.21.1
+   Compiling wgpu-core v30.0.1
+   Compiling euclid v0.22.14
+   Compiling serde-big-array v0.5.1
+   Compiling dbl v0.3.2
+   Compiling litrs v1.0.1
+   Compiling regex-syntax v0.8.11
+   Compiling document-features v0.2.12
+   Compiling derive_more-impl v2.1.1
+   Compiling snafu-derive v0.9.2
+   Compiling regex-automata v0.4.18
+   Compiling lyon_geom v1.0.20
+   Compiling cmac v0.7.2
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-core)
+   Compiling sha3 v0.10.9
+   Compiling usvg v0.48.1
+   Compiling derive_builder_macro v0.20.2
+   Compiling ulid v1.2.1
+   Compiling block2 v0.5.1
+   Compiling filedescriptor v0.8.3
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling ghash v0.5.1
+   Compiling tiny-skia v0.12.0
+   Compiling rgb v0.8.53
+   Compiling core-foundation v0.9.4
+   Compiling ed25519 v2.2.3
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling bitfields-impl v1.0.3
+   Compiling wgpu v30.0.1
+   Compiling sha1 v0.10.7
+   Compiling blake2 v0.10.6
+   Compiling num_enum_derive v0.7.6
+   Compiling futures-macro v0.3.34
+   Compiling foreign-types-macros v0.2.4
+   Compiling foreign-types-shared v0.3.1
+   Compiling dispatch v0.2.0
+   Compiling bitflags v1.3.2
+   Compiling futures-util v0.3.34
+   Compiling core-graphics-types v0.1.3
+   Compiling tungstenite v0.30.0
+   Compiling objc2-foundation v0.2.2
+   Compiling portable-pty v0.9.0
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling foreign-types v0.5.0
+   Compiling argon2 v0.5.3
+   Compiling num_enum v0.7.6
+   Compiling sha1-checked v0.10.0
+   Compiling bitfields v1.0.3
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling ed25519-dalek v2.2.0
+   Compiling resvg v0.48.1
+   Compiling aes-gcm v0.10.3
+   Compiling derive_builder v0.20.2
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-rt)
+   Compiling curve25519-dalek v5.0.0
+   Compiling regex v1.13.1
+   Compiling eax v0.5.0
+   Compiling lyon_path v1.0.19
+   Compiling snafu v0.9.2
+   Compiling derive_more v2.1.1
+   Compiling blowfish v0.9.1
+   Compiling camellia v0.1.0
+   Compiling aes-kw v0.2.1
+   Compiling dsa v0.6.3
+   Compiling x25519-dalek v2.0.1
+   Compiling ocb3 v0.1.0
+   Compiling p256 v0.13.2
+   Compiling p384 v0.13.1
+   Compiling p521 v0.13.3
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-ui)
+   Compiling k256 v0.13.4
+   Compiling idea v0.5.1
+   Compiling cast5 v0.11.1
+   Compiling twofish v0.7.1
+   Compiling des v0.8.1
+   Compiling cfb-mode v0.8.2
+   Compiling hashlink v0.12.2
+   Compiling winit v0.30.13
+   Compiling md-5 v0.10.6
+   Compiling ripemd v0.1.3
+   Compiling block-padding v0.3.3
+   Compiling float_next_after v1.0.0
+   Compiling tracing-core v0.1.36
+   Compiling pgp v0.21.0
+   Compiling tracing v0.1.44
+   Compiling rusqlite v0.40.2
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-doc)
+   Compiling lyon_tessellation v1.0.22
+   Compiling petgraph v0.8.3
+   Compiling notify v8.2.0
+   Compiling ed25519-dalek v3.0.0
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bboxy450-term)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-supervisor)
+   Compiling objc2-app-kit v0.2.2
+   Compiling core-graphics v0.23.2
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-proto)
+   Compiling objc2-core-text v0.3.2
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-plugin)
+   Compiling dpi v0.1.2
+   Compiling pollster v0.4.0
+   Compiling smol_str v0.2.2
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-mux)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec3/crates/bbt-render)
+   Compiling objc2-app-kit v0.3.2
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 25s
+     Running tests/lifecycle.rs (target/sable-lock-lifetime-j6afdt2j/debug/deps/lifecycle-6444a9b0e3d417cc)
+
+running 3 tests
+logic worker exited: supervisor disconnected
+supervisor: reclaimed stale control socket /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/c1c-close-dvpFM0/run/mux.sock (mtime 1792850991): nothing listened
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+history: 13 bounded pages; exact 194560 output bytes; capture sequences1..17, prefix/suffix gaps ordered, resize+exit cursor slots retained, invalid range named without disconnect
+test gui_history_is_lazy_bounded_capture_pages_with_ordered_gaps_and_control_cursors ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+close/undo: default60s, retry stable deadline, unwatched state publication, capture during grace, exact Position, stale/layout conflicts, same PID 11702 and generation for idempotent undo; replaced-generation handle rejected
+test gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position ... ok
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it has been running for over 60 seconds
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+expiry: original60s deadline survived logicSIGKILL, supervisor reaped PID 11701, no new generation/process, retained history and explicit expired undo
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 62.54s
+
+     Running tests/recovery.rs (target/sable-lock-lifetime-j6afdt2j/debug/deps/recovery-6c925725cd15897e)
+
+running 5 tests
+supervisor: reclaimed stale control socket /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/c1c-admit-Fiquzr/run/mux.sock (mtime 1792851052): nothing listened
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+admission: valid previous boundary authorized gen1 -> gen2; old/gap/occupied/unknown/empty/corrupt/conflicting generations rejected; identical gen2 retry returned PID 14927
+test recovered_generation_admission_rejects_unknown_and_conflicting_launches_but_exact_retry_is_idempotent ... ok
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cancelled readiness future retained startup; shutdown reaped recorded replacement PID 14947
+test partial_startup_survives_cancelled_poll_and_shutdown_reaps_its_child ... ok
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test shutdown_during_pending_recovery_reaps_children_without_restarting ... ok
+logic worker exited: supervisor disconnected
+supervisor: reclaimed stale control socket /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/c1c-super-SifcCS/run/mux.sock (mtime 1792851053): nothing listened
+logic recovery: seat=01M5Q402NAXYTZKQ89W0S68F9E pid=14945 generation=1 supervisor=Some(14918) logic Some(14930)->Some(14975); fresh view; 250ms ack hold
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test logic_death_keeps_pty_generation_rewatches_and_preserves_ack_backpressure ... ok
+claude resume argv first read: 2, expected 2
+codex resume argv first read: 1, expected 2
+codex resume argv publication wait was needed: first=Some(1), observed=2
+StaleGeneration: GUI request for seat 01M5Q402NMA69K46NK3X8014VG rejected: displayed generation 1, current 2; dropped=1
+StaleGeneration: GUI request for seat 01M5Q402NMA69K46NK3X8014VG rejected: displayed generation 1, current 2; dropped=2
+supervisor recovery: 3 stable seat IDs, gen1->2, zsh/Claude/Codex new PIDs; 100x30, retained screen, explicit gap, actual resume argv, post-restart echo; stale Input ID preserved, drops1/2 counted, stale input file absent, stale resize rejected at PTY30x100
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.09s
+
+EXIT 0 elapsed_seconds=156.034 PID=8048
+
+EXIT 0 elapsed_seconds=264.558 PID=3138
+
+===== COMMAND a642cdde2d4f4fcba0d90af4709ae5ce =====
+$ env SABLE_STRESS_CPU_WORKERS=2 python3 /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-lock-lifetime-j6afdt2j/stress.py fixed-all 50 all
+CWD /Users/feral/mydev/bboxy450-term-exec3
+UTC 2026-10-24T14:11:28.180038+00:00
+OWNED_COMMAND_PID 15793
+RUN fixed-all 1 EXIT 0 SECONDS 2.484 LOAD (13.53173828125, 18.57568359375, 17.3779296875)
+RUN fixed-all 2 EXIT 0 SECONDS 2.265 LOAD (13.53173828125, 18.57568359375, 17.3779296875)
+RUN fixed-all 3 EXIT 0 SECONDS 2.509 LOAD (12.92822265625, 18.36669921875, 17.31103515625)
+RUN fixed-all 4 EXIT 0 SECONDS 2.24 LOAD (12.92822265625, 18.36669921875, 17.31103515625)
+RUN fixed-all 5 EXIT 0 SECONDS 2.529 LOAD (12.61328125, 18.2109375, 17.26220703125)
+RUN fixed-all 6 EXIT 0 SECONDS 3.606 LOAD (12.88427734375, 18.173828125, 17.25439453125)
+RUN fixed-all 7 EXIT 0 SECONDS 3.714 LOAD (12.81298828125, 18.0712890625, 17.22314453125)
+RUN fixed-all 8 EXIT 0 SECONDS 3.451 LOAD (12.81298828125, 18.0712890625, 17.22314453125)
+RUN fixed-all 9 EXIT 0 SECONDS 2.535 LOAD (12.50732421875, 17.92041015625, 17.1748046875)
+RUN fixed-all 10 EXIT 0 SECONDS 2.54 LOAD (12.46630859375, 17.82177734375, 17.14404296875)
+RUN fixed-all 11 EXIT 0 SECONDS 2.513 LOAD (12.46630859375, 17.82177734375, 17.14404296875)
+RUN fixed-all 12 EXIT 0 SECONDS 6.173 LOAD (13.7099609375, 17.99072265625, 17.20751953125)
+RUN fixed-all 13 EXIT 0 SECONDS 3.337 LOAD (14.13330078125, 18.00732421875, 17.2177734375)
+RUN fixed-all 14 EXIT 0 SECONDS 3.029 LOAD (14.04248046875, 17.923828125, 17.19287109375)
+RUN fixed-all 15 EXIT 0 SECONDS 2.746 LOAD (13.158203125, 17.67578125, 17.109375)
+RUN fixed-all 16 EXIT 0 SECONDS 3.306 LOAD (13.158203125, 17.67578125, 17.109375)
+RUN fixed-all 17 EXIT 0 SECONDS 4.497 LOAD (13.0654296875, 17.58154296875, 17.0791015625)
+RUN fixed-all 18 EXIT 0 SECONDS 4.999 LOAD (14.90185546875, 17.88720703125, 17.18994140625)
+RUN fixed-all 19 EXIT 0 SECONDS 2.993 LOAD (14.98974609375, 17.85546875, 17.1826171875)
+RUN fixed-all 20 EXIT 0 SECONDS 2.503 LOAD (14.189453125, 17.6416015625, 17.11083984375)
+RUN fixed-all 21 EXIT 0 SECONDS 3.477 LOAD (14.189453125, 17.6416015625, 17.11083984375)
+RUN fixed-all 22 EXIT 0 SECONDS 3.31 LOAD (13.853515625, 17.5146484375, 17.06884765625)
+RUN fixed-all 23 EXIT 0 SECONDS 3.333 LOAD (14.505859375, 17.5888671875, 17.09765625)
+RUN fixed-all 24 EXIT 0 SECONDS 3.065 LOAD (14.46533203125, 17.52880859375, 17.0791015625)
+RUN fixed-all 25 EXIT 0 SECONDS 3.352 LOAD (14.46533203125, 17.52880859375, 17.0791015625)
+RUN fixed-all 26 EXIT 0 SECONDS 2.503 LOAD (16.029296875, 17.80224609375, 17.17822265625)
+RUN fixed-all 27 EXIT 0 SECONDS 3.97 LOAD (17.78857421875, 18.13720703125, 17.2998046875)
+RUN fixed-all 28 EXIT 0 SECONDS 3.015 LOAD (17.16455078125, 18.001953125, 17.2568359375)
+RUN fixed-all 29 EXIT 0 SECONDS 2.744 LOAD (17.16455078125, 18.001953125, 17.2568359375)
+RUN fixed-all 30 EXIT 0 SECONDS 2.716 LOAD (16.4306640625, 17.83544921875, 17.2021484375)
+RUN fixed-all 31 EXIT 0 SECONDS 3.822 LOAD (15.83544921875, 17.6884765625, 17.15380859375)
+RUN fixed-all 32 EXIT 0 SECONDS 3.705 LOAD (15.84814453125, 17.66015625, 17.14697265625)
+RUN fixed-all 33 EXIT 0 SECONDS 4.811 LOAD (18.42236328125, 18.16357421875, 17.32763671875)
+RUN fixed-all 34 EXIT 0 SECONDS 4.552 LOAD (17.50732421875, 17.97802734375, 17.26708984375)
+RUN fixed-all 35 EXIT 0 SECONDS 4.086 LOAD (17.94677734375, 18.06103515625, 17.30029296875)
+RUN fixed-all 36 EXIT 0 SECONDS 2.873 LOAD (17.94677734375, 18.06103515625, 17.30029296875)
+RUN fixed-all 37 EXIT 0 SECONDS 3.519 LOAD (18.91162109375, 18.2587890625, 17.37451171875)
+RUN fixed-all 38 EXIT 0 SECONDS 2.768 LOAD (17.79736328125, 18.03857421875, 17.3017578125)
+RUN fixed-all 39 EXIT 0 SECONDS 2.514 LOAD (17.79736328125, 18.03857421875, 17.3017578125)
+RUN fixed-all 40 EXIT 0 SECONDS 3.244 LOAD (17.4130859375, 17.95458984375, 17.2763671875)
+RUN fixed-all 41 EXIT 0 SECONDS 3.527 LOAD (18.8212890625, 18.2373046875, 17.3798828125)
+RUN fixed-all 42 EXIT 0 SECONDS 3.507 LOAD (19.71630859375, 18.43212890625, 17.45361328125)
+RUN fixed-all 43 EXIT 0 SECONDS 3.235 LOAD (19.71630859375, 18.43212890625, 17.45361328125)
+RUN fixed-all 44 EXIT 0 SECONDS 2.956 LOAD (18.61767578125, 18.2255859375, 17.38623046875)
+RUN fixed-all 45 EXIT 0 SECONDS 2.779 LOAD (18.88818359375, 18.2880859375, 17.4130859375)
+RUN fixed-all 46 EXIT 0 SECONDS 2.991 LOAD (18.88818359375, 18.2880859375, 17.4130859375)
+RUN fixed-all 47 EXIT 0 SECONDS 2.509 LOAD (17.93603515625, 18.1005859375, 17.35205078125)
+RUN fixed-all 48 EXIT 0 SECONDS 3.271 LOAD (17.38037109375, 17.982421875, 17.314453125)
+RUN fixed-all 49 EXIT 0 SECONDS 2.983 LOAD (17.38037109375, 17.982421875, 17.314453125)
+RUN fixed-all 50 EXIT 0 SECONDS 2.778 LOAD (17.109375, 17.916015625, 17.294921875)
+WORKERS_REAPED 2 REMAINING []
+EXIT 0 elapsed_seconds=185.893 PID=15793
+
+===== fixed-all/run-1.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.31s
+
+
+EXIT 0 elapsed_seconds=2.483469
+
+===== fixed-all/run-2.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.19s
+
+
+EXIT 0 elapsed_seconds=2.265123
+
+===== fixed-all/run-3.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.39s
+
+
+EXIT 0 elapsed_seconds=2.509357
+
+===== fixed-all/run-4.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.13s
+
+
+EXIT 0 elapsed_seconds=2.239590
+
+===== fixed-all/run-5.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.48s
+
+
+EXIT 0 elapsed_seconds=2.529099
+
+===== fixed-all/run-6.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.52s
+
+
+EXIT 0 elapsed_seconds=3.606233
+
+===== fixed-all/run-7.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.48s
+
+
+EXIT 0 elapsed_seconds=3.714044
+
+===== fixed-all/run-8.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.41s
+
+
+EXIT 0 elapsed_seconds=3.450455
+
+===== fixed-all/run-9.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.36s
+
+
+EXIT 0 elapsed_seconds=2.535243
+
+===== fixed-all/run-10.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.50s
+
+
+EXIT 0 elapsed_seconds=2.539432
+
+===== fixed-all/run-11.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.46s
+
+
+EXIT 0 elapsed_seconds=2.512875
+
+===== fixed-all/run-12.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.12s
+
+
+EXIT 0 elapsed_seconds=6.172947
+
+===== fixed-all/run-13.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.09s
+
+
+EXIT 0 elapsed_seconds=3.336936
+
+===== fixed-all/run-14.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.86s
+
+
+EXIT 0 elapsed_seconds=3.029177
+
+===== fixed-all/run-15.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.62s
+
+
+EXIT 0 elapsed_seconds=2.744961
+
+===== fixed-all/run-16.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.23s
+
+
+EXIT 0 elapsed_seconds=3.305728
+
+===== fixed-all/run-17.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.18s
+
+
+EXIT 0 elapsed_seconds=4.496559
+
+===== fixed-all/run-18.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.92s
+
+
+EXIT 0 elapsed_seconds=4.994858
+
+===== fixed-all/run-19.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.79s
+
+
+EXIT 0 elapsed_seconds=2.992433
+
+===== fixed-all/run-20.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.35s
+
+
+EXIT 0 elapsed_seconds=2.502790
+
+===== fixed-all/run-21.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.30s
+
+
+EXIT 0 elapsed_seconds=3.476900
+
+===== fixed-all/run-22.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.27s
+
+
+EXIT 0 elapsed_seconds=3.310259
+
+===== fixed-all/run-23.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.30s
+
+
+EXIT 0 elapsed_seconds=3.332728
+
+===== fixed-all/run-24.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.84s
+
+
+EXIT 0 elapsed_seconds=3.064915
+
+===== fixed-all/run-25.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.31s
+
+
+EXIT 0 elapsed_seconds=3.351847
+
+===== fixed-all/run-26.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.33s
+
+
+EXIT 0 elapsed_seconds=2.503011
+
+===== fixed-all/run-27.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.93s
+
+
+EXIT 0 elapsed_seconds=3.969522
+
+===== fixed-all/run-28.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.92s
+
+
+EXIT 0 elapsed_seconds=3.014663
+
+===== fixed-all/run-29.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.70s
+
+
+EXIT 0 elapsed_seconds=2.744084
+
+===== fixed-all/run-30.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.60s
+
+
+EXIT 0 elapsed_seconds=2.715588
+
+===== fixed-all/run-31.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.64s
+
+
+EXIT 0 elapsed_seconds=3.818270
+
+===== fixed-all/run-32.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.50s
+
+
+EXIT 0 elapsed_seconds=3.704987
+
+===== fixed-all/run-33.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.63s
+
+
+EXIT 0 elapsed_seconds=4.810986
+
+===== fixed-all/run-34.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.47s
+
+
+EXIT 0 elapsed_seconds=4.552153
+
+===== fixed-all/run-35.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.93s
+
+
+EXIT 0 elapsed_seconds=4.085597
+
+===== fixed-all/run-36.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.77s
+
+
+EXIT 0 elapsed_seconds=2.873155
+
+===== fixed-all/run-37.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.24s
+
+
+EXIT 0 elapsed_seconds=3.519109
+
+===== fixed-all/run-38.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.66s
+
+
+EXIT 0 elapsed_seconds=2.768209
+
+===== fixed-all/run-39.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.33s
+
+
+EXIT 0 elapsed_seconds=2.513761
+
+===== fixed-all/run-40.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.16s
+
+
+EXIT 0 elapsed_seconds=3.244304
+
+===== fixed-all/run-41.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.29s
+
+
+EXIT 0 elapsed_seconds=3.526760
+
+===== fixed-all/run-42.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.40s
+
+
+EXIT 0 elapsed_seconds=3.506499
+
+===== fixed-all/run-43.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.11s
+
+
+EXIT 0 elapsed_seconds=3.235167
+
+===== fixed-all/run-44.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.82s
+
+
+EXIT 0 elapsed_seconds=2.955766
+
+===== fixed-all/run-45.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.76s
+
+
+EXIT 0 elapsed_seconds=2.778555
+
+===== fixed-all/run-46.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.77s
+
+
+EXIT 0 elapsed_seconds=2.990450
+
+===== fixed-all/run-47.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.44s
+
+
+EXIT 0 elapsed_seconds=2.508394
+
+===== fixed-all/run-48.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.19s
+
+
+EXIT 0 elapsed_seconds=3.271343
+
+===== fixed-all/run-49.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.86s
+
+
+EXIT 0 elapsed_seconds=2.982997
+
+===== fixed-all/run-50.log =====
+$ nice -n 10 /Users/feral/mydev/bboxy450-term-exec3/target/sable-lock-lifetime-j6afdt2j/debug/deps/provider_gui-b717973bfb011a8e --nocapture
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.67s
+
+
+EXIT 0 elapsed_seconds=2.777651
