@@ -22,7 +22,7 @@ links:
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
   - { to: "[[ux-prototype]]", rel: ui }
 created: 2026-10-23T18:28:25Z
-updated: "2026-10-24T11:20:26Z"
+updated: "2026-10-24T19:30:43Z"
 ---
 # L9-M — messaging and tasks in the app
 
@@ -111,3 +111,7 @@ L9-M-a (Nyx): the type move to `bbt-proto::messaging`, the two wrapper variants 
 ## 7. Out of scope
 
 Remote GUIs, operator-to-operator messaging across machines (cloud phase), new message kinds, a second validation path for GUI callers, storing unread anywhere but the consumer cursor.
+
+## 5. A custody hold never holds delivery ([[d285-no-gated-communications]], 2026-10-24)
+
+Signing can be held; delivery cannot. While custody is unavailable, local delivery continues with `signature: pending` and the hold's reason on the envelope, shown as pending in receipts and the native frame, journaled in order and signed in order when custody returns, with the recipients' grade upgraded then; nothing is dropped, nothing carries a placeholder signature; an envelope for a pinned remote receiver waits and says so. `GuiEventsHeld` as a lane-wide stop is retired: the hold is a per-row grade. Invariant [[messaging-never-held]].

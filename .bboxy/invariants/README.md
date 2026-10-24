@@ -43,6 +43,7 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[watched-replay-priority]] watched seats get at least half of the replay pages when both lanes are runnable | `cargo test -p bbt-mux --locked --test logic watched_lane_gets_at_least_half_of_replay_pages -- --exact` | pending R5h (slow, gated) |
 | [[e2e-runs-unattended]] the e2e night runs unattended: no operator input, no login-Keychain access, no window, no build or signature | `BBOXY_UNATTENDED=1 sh scripts/e2e-night.sh` | pending U-3 (slow, gated) |
 | [[never-block-swarm]] never block the swarm: no open task is parked on a person, and no test needs the operator | `sh scripts/never-block.sh` | held at the adding commit |
+| [[messaging-never-held]] a custody hold never holds local delivery | `cargo test -p bbt-mux --locked --test messaging_flow custody_hold_never_holds_local_delivery -- --exact` | pending NG1 (slow, gated) |
 
 A violation halts the work that broke it: the task goes `blocked` with
 `[[invariant|violates]]`, and the halt names the invariant, the evidence and

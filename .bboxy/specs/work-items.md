@@ -4,7 +4,7 @@ type: "spec"
 number: 105
 title: "Work items — epics, specs, tasks as Markdown with frontmatter"
 created: "2026-10-21T22:23:16Z"
-updated: "2026-10-24T15:24:41Z"
+updated: "2026-10-24T19:30:43Z"
 links:
   - { to: "[[d18-executor-harness-override]]", rel: decision }
   - { to: "[[d28-structured-task-verification]]", rel: decision }
@@ -154,3 +154,7 @@ This repository's `.bboxy/` becomes `.bboxy/` in one move (git mv, wikilinks unc
 - **Gap:** items in a remote seat's repository (ssh/cloud): the remote supervisor indexes and streams them, or the GUI reads over the state stream. Decide with phase 2.
 
 Links: [[vision]] [[mcp-control-plane]] [[mux-daemon]] [[ux-prototype]] [[plan]]
+
+## Authorization is the task record ([[d285-no-gated-communications]], 2026-10-24)
+
+An Oracle's brief authorizes an Executor's in-scope work, edits, builds, tests and the records push inside its own worktree and the brief's `allowed_paths`, and nothing else: never work outside the worktree, destructive git, publishing, changes to the user's harness directories, or desktop input. The authorization is the task record itself, signed and numbered in the tree with `allowed_paths` and `verify`, delivered by `Delegate`; a chat line authorizes nothing, and an Executor confirms the task record exists before acting. How a Codex seat acts on it without a pane prompt is the `~/.codex` hooks and rules configuration the Oracle owns.
