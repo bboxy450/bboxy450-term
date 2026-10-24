@@ -146,18 +146,8 @@ fn socket_ownership(path: &Path, uid: libc::uid_t) -> io::Result<File> {
         Err(error) if error.kind() == io::ErrorKind::NotFound => None,
         Err(error) => return Err(error),
     };
-    if previous.is_none() {
-        match fs::symlink_metadata(path) {
-            Ok(_) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::AddrInUse,
-                    "ControlSocketOwnershipUnknown: existing endpoint has no ownership lock",
-                ));
-            }
-            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
-            Err(error) => return Err(error),
-        }
-    }
+    // A socket without a lock (it may predate the lock) is not refused here: the lock is
+    // created and taken first, and the bind's connect probe decides (decision #263).
     let validate = |metadata: &fs::Metadata| {
         if !metadata.is_file() || metadata.uid() != uid || metadata.mode() & 0o7777 != 0o600 {
             Err(io::Error::new(
@@ -219,6 +209,13 @@ fn socket_ownership(path: &Path, uid: libc::uid_t) -> io::Result<File> {
     Ok(file)
 }
 
+/// The pid a lock file names, when its contents are one.
+fn lock_owner(path: &Path) -> Option<u32> {
+    let mut lock_name = path.as_os_str().to_os_string();
+    lock_name.push(".lock");
+    fs::read_to_string(lock_name).ok()?.trim().parse().ok()
+}
+
 pub(crate) struct BoundSocket {
     pub listener: MioListener,
     path: PathBuf,
@@ -257,8 +254,33 @@ impl BoundSocket {
                         "control endpoint exists and is not an owned socket",
                     ));
                 }
-                // Exclusive ownership, rather than connect errno, authorizes
-                // reclamation: a full live backlog can also return refused.
+                // Decision #263: with the lock held, a connect probe decides. A listener
+                // that answers is live (it may predate the lock) and is never touched;
+                // refused or gone means nothing listens, so the path is reclaimed.
+                match std::os::unix::net::UnixStream::connect(path) {
+                    Ok(_) => {
+                        let owner = lock_owner(path)
+                            .map_or_else(String::new, |pid| format!(" (pid {pid})"));
+                        return Err(io::Error::new(
+                            io::ErrorKind::AddrInUse,
+                            format!(
+                                "ControlSocketOwnershipUnknown: a live process{owner} listens on {} without holding its ownership lock",
+                                path.display()
+                            ),
+                        ));
+                    }
+                    Err(error)
+                        if matches!(
+                            error.kind(),
+                            io::ErrorKind::ConnectionRefused | io::ErrorKind::NotFound
+                        ) => {}
+                    Err(error) => {
+                        return Err(io::Error::new(
+                            error.kind(),
+                            format!("control socket probe failed, not reclaimed: {error}"),
+                        ));
+                    }
+                }
                 let current = fs::symlink_metadata(path)?;
                 if current.dev() != previous.dev() || current.ino() != previous.ino() {
                     return Err(io::Error::new(
@@ -267,6 +289,11 @@ impl BoundSocket {
                     ));
                 }
                 fs::remove_file(path)?;
+                eprintln!(
+                    "supervisor: reclaimed stale control socket {} (mtime {}): nothing listened",
+                    path.display(),
+                    previous.mtime()
+                );
                 UnixListener::bind(path)?
             }
             Err(error) => return Err(error),
@@ -557,7 +584,7 @@ mod tests {
     }
 
     #[test]
-    fn ownership_lock_persists_and_legacy_without_one_fails_closed() {
+    fn ownership_lock_persists_and_a_lockless_socket_is_probed() {
         let root = tempfile::tempdir().unwrap();
         let path = root.path().join("run/mux.sock");
         let lock_path = root.path().join("run/mux.sock.lock");
@@ -578,6 +605,8 @@ mod tests {
         assert_eq!(fs::read(&lock_path).unwrap(), b"persistent fixture");
         drop(bound);
 
+        // Decision #263: a live listener that predates the lock is refused and untouched,
+        // with the pid its lock names; once nothing listens, the lockless socket is reclaimed.
         let legacy = root.path().join("run/legacy.sock");
         let legacy_lock = root.path().join("run/legacy.sock.lock");
         let listener = UnixListener::bind(&legacy).unwrap();
@@ -585,18 +614,27 @@ mod tests {
         for _ in 0..2 {
             let error = BoundSocket::bind(&legacy).err().unwrap();
             assert_eq!(error.kind(), io::ErrorKind::AddrInUse);
-            assert!(error.to_string().contains("ControlSocketOwnershipUnknown"));
             assert!(
-                !legacy_lock.exists(),
-                "refusal must not mint legacy authority"
+                error.to_string().contains("a live process listens"),
+                "{error}"
             );
             let after = fs::symlink_metadata(&legacy).unwrap();
             assert_eq!((before.dev(), before.ino()), (after.dev(), after.ino()));
         }
-        drop(listener);
+        fs::write(&legacy_lock, b"4242").unwrap();
         let error = BoundSocket::bind(&legacy).err().unwrap();
-        assert!(error.to_string().contains("ControlSocketOwnershipUnknown"));
-        assert!(!legacy_lock.exists());
+        assert!(error.to_string().contains("(pid 4242)"), "{error}");
+        drop(listener);
+        fs::remove_file(&legacy_lock).unwrap();
+        let bound = BoundSocket::bind(&legacy).expect("a dead lockless socket is reclaimed");
+        let after = fs::symlink_metadata(&legacy).unwrap();
+        assert_ne!((before.dev(), before.ino()), (after.dev(), after.ino()));
+        assert!(
+            legacy_lock.is_file(),
+            "the reclaimer holds a lock from now on"
+        );
+        assert!(std::os::unix::net::UnixStream::connect(&legacy).is_ok());
+        drop(bound);
     }
 
     #[test]
