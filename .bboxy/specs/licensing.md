@@ -16,7 +16,7 @@ links:
   - { to: "[[yarn]]", rel: spec }
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
 created: 2026-10-23T16:26:37Z
-updated: "2026-10-24T15:28:01Z"
+updated: "2026-10-24T19:15:36Z"
 ---
 # Licensing
 
@@ -47,6 +47,7 @@ Ours and clean: `MIT OR Apache-2.0`; the developer takes MIT (one paragraph, GPL
 | `bbt-proto` | internal until decision [[d8-open-source\|#8]]'s plateau | MIT OR Apache-2.0 | ours | none |
 | `bbt-mux` | internal until decision [[d8-open-source\|#8]]'s plateau | MIT OR Apache-2.0 | ours | none |
 | `bboxy-firehose` | internal tool | MIT OR Apache-2.0 | ours | none |
+| `bboxy450-keychain`, `bboxy450-keychain-macos`, `bboxy450-keychain-linux`, `bboxy450-keychain-windows`, `bboxy450-keychain-file` | themselves ([[id1-seat-chain]] §5, decision #281) | MIT OR Apache-2.0 | ours; `security-framework` (MIT OR Apache-2.0) is a dependency of `-macos` only | none |
 | `bboxy450-desktop-notifications`, `bboxy450-desktop-notifications-macos`, `bboxy450-desktop-notifications-windows`, `bboxy450-desktop-notifications-linux` | themselves ([[desktop-notifications]]) | MIT OR Apache-2.0 | ours; `objc2-user-notifications` (Zlib OR Apache-2.0 OR MIT) is a dependency, not vendored | none |
 | `bboxy450-term` (the app) | the distributed binary | MIT OR Apache-2.0 for our code, and **only our code**: anything adapted from an Apache-only source goes into `bbt-core` (decision [[d36-apache-code-placement\|#36]]), so the app never needs a mixed SPDX expression; the binary ships the NOTICE because it links `bbt-core` | the identity image `bboxy.png` is the operator's; fonts and icon sets, when bundled, carry their own license beside them and in NOTICE (none bundled today) |
 

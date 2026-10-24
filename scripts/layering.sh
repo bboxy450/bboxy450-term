@@ -5,7 +5,7 @@
 # HK-0: the wake-up kit follows core; its optional runtime assertion is below core.
 set -eu
 cd "$(dirname "$0")/.."
-ORDER="bboxy450-desktop-notifications-macos bboxy450-desktop-notifications-windows bboxy450-desktop-notifications-linux bboxy450-desktop-notifications bbt-yarn-macros bbt-yarn bbt-rt bbt-core bboxy450-harness-wake-up bbt-mermaid bboxy-firehose bbt-ui-model bbt-render bbt-ui bbt-doc bboxybook bbt-supervisor bbt-plugin bbt-proto bbt-mux bboxy450-term"
+ORDER="bboxy450-keychain-macos bboxy450-keychain-linux bboxy450-keychain-windows bboxy450-keychain-file bboxy450-keychain bboxy450-desktop-notifications-macos bboxy450-desktop-notifications-windows bboxy450-desktop-notifications-linux bboxy450-desktop-notifications bbt-yarn-macros bbt-yarn bbt-rt bbt-core bboxy450-harness-wake-up bbt-mermaid bboxy-firehose bbt-ui-model bbt-render bbt-ui bbt-doc bboxybook bbt-supervisor bbt-plugin bbt-proto bbt-mux bboxy450-term"
 cargo metadata --no-deps --format-version 1 | ORDER="$ORDER" python3 -I -c '
 import json, os, sys
 rank = {n: i for i, n in enumerate(os.environ["ORDER"].split())}

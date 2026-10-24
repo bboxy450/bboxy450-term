@@ -16,7 +16,7 @@ links:
   - { to: "[[2026-10-22-c-cockpit]]", rel: epic }
   - { to: "[[ux-prototype]]", rel: ui }
 created: 2026-10-22T20:12:48Z
-updated: "2026-10-24T19:13:30Z"
+updated: "2026-10-24T19:15:36Z"
 ---
 # ID1 — the GPG seat chain
 
@@ -114,3 +114,9 @@ ID1a root and device: Assuan client, rPGP certification, Keychain device key, bo
 ## 4a. Re-grant after a refusal ([[d280-keychain-regrant]], 2026-10-24)
 
 A Keychain item that refuses the running build puts the app in the hold "Pending: Keychain interaction required; signing held", which is correct and fails closed; the hold now says how to clear it: `ctl identity unlock` or Settings › Identity › Unlock, one action behind two doors, operator only. The act permits **exactly one** interactive Keychain access: the next access runs with interaction enabled, macOS shows its own dialog, and whether the operator allows or cancels, the no-dialog default is restored; the act and its outcome are journaled on `account/control`. **New items carry an ACL keyed to the team-signed designated requirement** (the approved Apple Development identity, team UQB3368A84, with the app identifier), so every build signed with that identity keeps access without a prompt; a legacy item keyed to one build's signature is migrated during the one interactive access, the secret read, a new item written with the keyed ACL and verified, the old item removed only after the new one answers. Nothing ever prompts without the act; nothing is deleted silently.
+
+## 5. Custody facade and the automation identity ([[d281-custody-facade-and-automation-identity]], 2026-10-24)
+
+Operator: "keychain should be also supporting linux, windows and shit, so you know". Custody follows the cross-OS rule (#46), the pattern of the notification family: a facade `bboxy450-keychain` with `open(backend) → Store`, `get(label)`, `put(label, secret, acl)`, `remove(label)`, `acl(label)`, and the one-shot interactive act of §4a; backends `bboxy450-keychain-macos` (the login Keychain, real, items keyed to the team-signed designated requirement), `bboxy450-keychain-linux` (Secret Service and keyring) and `bboxy450-keychain-windows` (Credential Manager) as dummies that answer `Unsupported` by name with the DO-RESEARCH-BEFORE-IMPLEMENTING marker, and `bboxy450-keychain-file`, an encrypted file store (a key file the operator provisions once, mode 0600, under the support directory; authenticated encryption; one file per label) that is real on every OS. The facade chooses the backend by `cfg(target_os)` for the device key and by configuration for the automation identity. The five crates lead the layering order beside the notification family and depend on nothing of ours; the `bbt-mux` exceptions for `core-foundation` and `security-framework` in `scripts/cross-os.sh` retire when `-macos` takes them.
+
+**The automation identity.** For unattended runs (`--unattended`, the e2e nights on a locked display) the app signs with a **separate** device-class key, provisioned by the operator once: the root issues it a `DeviceGrant` whose scope is the e2e writes and `ctl` under the operator principal and nothing else, its secret lives in the `-file` backend, and everything it signs carries `issued_by: automation`, shown in the native frame and the provenance card. It is never the operator's device key and never a copy of it: a store a process can open by itself is a store any same-user process can open, so the key inside is scoped and labelled, and the morning review reads which records the night signed. Revoking it is one root signature, like any grant.
