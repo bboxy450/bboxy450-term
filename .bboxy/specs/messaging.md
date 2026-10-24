@@ -4,7 +4,7 @@ type: "spec"
 number: 71
 title: "Messaging — proposed architecture"
 created: "2026-10-21T18:57:39Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-10-24T06:26:55Z"
 links:
   - { to: "[[d23-recipient-batching]]", rel: decision }
 ---
@@ -123,7 +123,7 @@ The service derives `role` and `priority_class` from the seat grant and signs th
 
 ## Priority without deleting messages
 
-Policy: **Oracle > worker**, with Executor and Creativity sharing the worker class. This preserves the decided Oracle precedence without inventing an ordering between the other roles. FIFO uses receiver-local commit sequence within each class, independent of sender clocks. Per-seat serialization prevents concurrent injections into one harness.
+Policy: **Oracle > worker**, with Executor and Creativity sharing the worker class; the Architect is Oracle class and `shell` is worker class (the full role-to-class table is [[w2-5-mcp-and-seat-wiring]] §3, decision #262). This preserves the decided Oracle precedence without inventing an ordering between the other roles. FIFO uses receiver-local commit sequence within each class, independent of sender clocks. Per-seat serialization prevents concurrent injections into one harness.
 
 Priority applies to pending outbound work, receiver dispatch and message badges. It does not move sidebar seat rows or interrupt an input write that already began. A native harness may impose its own admission order after submission; no adapter can claim to reorder already accepted input. Quinn stream priority is only an outbound optimization, not the receiver scheduler ([Quinn API](https://docs.rs/quinn/0.11.12/quinn/struct.SendStream.html#method.set_priority)).
 

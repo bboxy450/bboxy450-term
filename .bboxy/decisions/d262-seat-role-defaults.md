@@ -12,7 +12,7 @@ links:
   - { to: "[[d18-executor-harness-override]]", rel: builds-on }
   - { to: "[[e2e-acceptance]]", rel: constrains }
 created: "2026-10-24T06:11:54Z"
-updated: "2026-10-24T06:20:51Z"
+updated: "2026-10-24T06:26:55Z"
 ---
 # Decision 262: launcher role defaults
 
@@ -24,6 +24,6 @@ Ruled by the Architect on 2026-10-24 from Aster's launch audit: the launcher lab
 
 **Reason.** The roles are the structure ([[vision]], `AGENTS.md`): Claude supervises, designs and creates; Codex implements; a `ROLE:` header moves Claude between its roles and never makes an Executor an Oracle. A default that contradicts the law on the first screen teaches every new seat the wrong thing, and (a) did exactly that. (c) costs a question on every spawn for an answer the law already gives. The label is the grant's role, so a relabel is a real grant change with an epoch, visible in every envelope ([[messaging]]), never cosmetic.
 
-**Rules.** In [[w2-5-mcp-and-seat-wiring]] §3, Role defaults, including the `shell` shape ruling. Implemented by Nyx or Sable at the Oracle's call; the e2e promise L1 (launcher) is read against it.
+**Rules.** In [[w2-5-mcp-and-seat-wiring]] §3, Role defaults, including the `shell` shape ruling and the role-to-class table: `oracle` and `architect` are `Oracle` class, `creativity`, `executor` and `shell` are `Worker`; the class comes from the table by role name at grant time and from nowhere else. Implemented by Nyx or Sable at the Oracle's call; the e2e promise L1 (launcher) is read against it.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
