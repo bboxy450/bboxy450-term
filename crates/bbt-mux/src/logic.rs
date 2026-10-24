@@ -3449,6 +3449,23 @@ impl Worker {
         Ok(true)
     }
     fn catch_up(&mut self, id: Ulid, through: u64) -> Result<bool> {
+        let result = self.catch_up_page(id, through);
+        // Check every return, including Busy, a held stream, and a page that
+        // made no progress. Parsing is not required for an old byte to age.
+        let view = &self.views[&id];
+        if view.checkpoint_pending.is_none()
+            && view.sequence != view.checkpoint_sequence
+            && (view.byte_end.saturating_sub(view.checkpoint_bytes)
+                >= self.checkpoint_policy.force_bytes
+                || view
+                    .changed_at
+                    .expired(Instant::now(), self.checkpoint_policy))
+        {
+            self.save(id)?;
+        }
+        result
+    }
+    fn catch_up_page(&mut self, id: Ulid, through: u64) -> Result<bool> {
         let current = &self.views[&id];
         if current.sequence >= through {
             return Ok(true);
