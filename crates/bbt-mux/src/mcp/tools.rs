@@ -66,6 +66,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Value {
     tools.extend(super::messaging::catalogue(&super::Actor::from(actor)));
     tools.extend(super::work_items::catalogue(&super::Actor::from(actor)));
     tools.extend(super::seats::catalogue(actor));
+    tools.extend(super::knowledge::catalogue());
     json!({"tools":tools})
 }
 

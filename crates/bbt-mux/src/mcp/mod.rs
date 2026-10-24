@@ -2,13 +2,17 @@
 
 pub mod bridge;
 pub(crate) mod journal;
+pub(crate) mod knowledge;
 pub(crate) mod messaging;
 pub(crate) mod seats;
 pub(crate) mod tools;
 pub(crate) mod work_items;
 
 pub(crate) fn mutation(tool: &str) -> bool {
-    messaging::mutation(tool) || work_items::mutation(tool) || seats::mutation(tool)
+    messaging::mutation(tool)
+        || work_items::mutation(tool)
+        || seats::mutation(tool)
+        || knowledge::mutation(tool)
 }
 
 use serde::{Deserialize, Serialize};
