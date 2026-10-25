@@ -55,7 +55,8 @@ fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
     assert_eq!(verdict("T1"), "pass", "{lines:?}");
     assert_eq!(verdict("T2"), "fail");
     assert!(lines.iter().any(|l| {
-        l["function"] == "T2"
+        l["kind"] == "e2e"
+            && l["function"] == "T2"
             && l["evidence"]
                 .as_str()
                 .unwrap()
@@ -72,6 +73,33 @@ fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
     assert_eq!(summary["partial"], serde_json::json!(["T3"]));
     assert_eq!(summary["total"], 9);
     assert_eq!(summary["unwritten"], serde_json::json!([]), "{lines:?}");
+    // One line per app the night started (invariant #283): each promise with a script, and
+    // the records app; every one on file custody with no window.
+    let apps: Vec<&Value> = lines.iter().filter(|l| l["kind"] == "app").collect();
+    assert_eq!(
+        apps.iter().filter(|a| a["role"] == "promise").count(),
+        3,
+        "{apps:?}"
+    );
+    assert_eq!(
+        apps.iter().filter(|a| a["role"] == "records").count(),
+        1,
+        "{apps:?}"
+    );
+    for app in &apps {
+        assert_eq!(
+            (&app["custody_backend"], &app["windows"]),
+            (&serde_json::json!("file"), &serde_json::json!(0)),
+            "{app}"
+        );
+        assert!(
+            app["issued_by"]
+                .as_str()
+                .unwrap()
+                .starts_with("test-account:"),
+            "{app}"
+        );
+    }
     assert_eq!(output.status.code(), Some(1), "red exits 1");
     let written: Vec<&Value> = lines.iter().filter(|l| l["kind"] == "record").collect();
     assert_eq!(written.len(), 9, "{written:?}");

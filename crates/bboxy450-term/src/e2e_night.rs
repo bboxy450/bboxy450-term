@@ -74,6 +74,12 @@ async fn night(
         .tempdir_in(std::env::var_os("TMPDIR").map_or_else(std::env::temp_dir, PathBuf::from))
         .map_err(|e| e.to_string())?;
     let root = root.path().canonicalize().map_err(|e| e.to_string())?;
+    // First line: the night's private root, so a caller that stops the night at a bound can
+    // stop every app under it by its own endpoint (invariant #283).
+    println!(
+        "{}",
+        json!({ "kind": "night", "group": group, "root": root })
+    );
     let executable = std::env::current_exe().map_err(|e| e.to_string())?;
     let mut red = Vec::new();
     let mut total = 0;
@@ -156,6 +162,7 @@ async fn write_records(
             return (functions, vec![]);
         }
     };
+    println!("{}", app.line("records", None));
     let run = app.run.clone();
     let issued_by = app.issued_by.clone();
     let group = group.to_owned();
@@ -369,6 +376,10 @@ async fn promise(
     executable: &Path,
 ) -> Result<(Option<i32>, String), String> {
     let app = App::start(root, &root.join("repository")).await?;
+    println!(
+        "{}",
+        app.line("promise", root.file_name().and_then(|name| name.to_str()))
+    );
     let result = run_script(
         script,
         executable,
@@ -393,9 +404,19 @@ struct App {
     run: PathBuf,
     pid: u32,
     issued_by: String,
+    /// The owner's readiness at start (`ctl app start`'s reply): mode, custody, windows.
+    status: Value,
 }
 
 impl App {
+    /// One line per app the night starts (invariant #283): the custody it ran on and its
+    /// windows, so the unattended check reads them rather than trusting the runner.
+    fn line(&self, role: &str, function: Option<&str>) -> Value {
+        json!({ "kind": "app", "role": role, "function": function, "pid": self.pid,
+            "run_dir": self.run,
+            "mode": self.status["mode"], "custody_backend": self.status["custody_backend"],
+            "windows": self.status["windows"], "issued_by": self.issued_by })
+    }
     async fn start(root: &Path, repository: &Path) -> Result<Self, String> {
         let run = root.join("run");
         for dir in [&root.join("zsh-config"), &root.join("work"), repository] {
@@ -439,6 +460,7 @@ impl App {
             run,
             pid,
             issued_by: String::new(),
+            status: reply["data"].clone(),
         };
         match label {
             Ok(Some(label)) if label.starts_with("test-account:") => Ok(Self {
