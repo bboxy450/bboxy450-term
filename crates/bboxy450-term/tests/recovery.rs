@@ -523,7 +523,10 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
     .await
     .expect("old Codex fixture did not retire its socket on supervisor death");
     let seats = restarted(&mut session).await;
-    let old_alias_retired = old_alias.path.symlink_metadata().is_err();
+    let old_alias_retired = matches!(
+        old_alias.path.symlink_metadata(),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound
+    );
     assert_eq!(seats.len(), 3);
     for old in [&zsh, &claude, &codex] {
         let new = seats.iter().find(|s| s.record.id == old.record.id).unwrap();
