@@ -76,3 +76,70 @@ fn unconfigured_inputs_always_fence_the_context() {
         before = after;
     }
 }
+
+#[test]
+fn configured_probes_preserve_context_and_still_deliver_once() {
+    let probes = vec![b"\x1b]9000;?\x07".to_vec(), b"\x1b]9000;?\x1b\\".to_vec()];
+    let (_supervisor, client, attachment) = fixture(Config {
+        input_probes: probes.clone(),
+        ..Default::default()
+    });
+    client.input(&attachment, Ulid::new(), b"draft").unwrap();
+    output(&client, attachment.seat, b"draft");
+    let before = context(&client, &attachment);
+    assert!(before.draft);
+    for bytes in &probes {
+        let id = Ulid::new();
+        let receipt = client.input(&attachment, id, bytes).unwrap();
+        assert_eq!(receipt.input_id, id);
+        client.input(&attachment, id, bytes).unwrap();
+        assert_eq!(output(&client, attachment.seat, bytes), *bytes);
+        let after = context(&client, &attachment);
+        assert_eq!(after.epoch, before.epoch);
+        assert_eq!(after.last_input_ms, before.last_input_ms);
+        assert_eq!(after.draft, before.draft);
+    }
+    // A near match is ordinary input; the exact output also fences any
+    // duplicate bytes incorrectly queued by a retried probe above.
+    let near = [probes[0].as_slice(), b"x"].concat();
+    client.input(&attachment, Ulid::new(), &near).unwrap();
+    assert_eq!(output(&client, attachment.seat, &near), near);
+    assert_eq!(context(&client, &attachment).epoch, before.epoch + 1);
+}
+
+#[test]
+fn guarded_inputs_use_the_same_probe_allowlist() {
+    let bytes = b"\x1b]9000;?\x07".to_vec();
+    let (_supervisor, client, attachment) = fixture(Config {
+        input_probes: vec![bytes.clone()],
+        ..Default::default()
+    });
+    let deadline = Instant::now() + Duration::from_secs(15);
+    let before = loop {
+        let before = context(&client, &attachment);
+        if before.settled {
+            break before;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "context never settled: {before:?}"
+        );
+        std::thread::yield_now();
+    };
+    assert!(!before.draft);
+    let id = Ulid::new();
+    assert!(matches!(
+        client.request(Action::GuardedInput {
+            attachment: attachment.clone(),
+            input_id: id,
+            bytes: bytes.clone(),
+            expected: before.clone(),
+        }).unwrap(),
+        Reply::Input { receipt } if receipt.input_id == id
+    ));
+    assert_eq!(output(&client, attachment.seat, &bytes), bytes);
+    let after = context(&client, &attachment);
+    assert_eq!(after.epoch, before.epoch);
+    assert_eq!(after.last_input_ms, before.last_input_ms);
+    assert!(!after.draft);
+}
