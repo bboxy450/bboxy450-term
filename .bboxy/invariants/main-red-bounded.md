@@ -13,7 +13,7 @@ links:
   - { to: "[[no-chokepoints]]", rel: builds-on }
   - { to: "[[never-block-swarm]]", rel: builds-on }
 created: "2026-10-25T16:18:56Z"
-updated: "2026-10-25T23:06:27Z"
+updated: "2026-10-25T23:26:14Z"
 ---
 # Main is red at most until the next revert
 
@@ -34,7 +34,7 @@ interval is visible in the log with its length ([[d321-out-of-integration-hell]]
 commit touching the code paths is a revert (subject begins `Revert` and names
 the culprit sha), and every commit between that red verdict and the next green
 verdict touching the code paths is a revert; it also asserts every code commit
-on `main` older than the newest green verdict is covered. **While red starts at publication, not at the snapshot** (Nyx's binding question, 2026-10-25): a red verdict is computed on a snapshot sha while later landings may already be arriving during its long run, and `land.sh` can refuse only once `main-status` says red. So the interval in which only reverts may land runs from the **publication** of the red verdict (the time `main-status` was written red, the postsubmit line's `ended`) to the next green; a code commit whose landing time in `landings.log` precedes that publication landed legitimately and belongs to the next batch, and is never a violation. "The first later code commit is a revert" reads the same way: the first code commit **landed after publication**. **What it evaluates
+on `main` older than the newest green verdict is covered. **While red starts at publication, not at the snapshot** (Nyx's binding question, 2026-10-25): a red verdict is computed on a snapshot sha while later landings may already be arriving during its long run, and `land.sh` can refuse only once `main-status` says red. So the interval in which only reverts may land runs from the **publication** of the red verdict (the time `main-status` was written red, the postsubmit line's `ended`) to the next green; a code commit whose landing time in `landings.log` precedes that publication landed legitimately and belongs to the next batch, and is never a violation. "The first later code commit is a revert" reads the same way: the first code commit **landed after publication**. **Recording and consequence (Nyx's writer questions, same day).** Publication is the **first** time a red is written to `main-status`, before any bisect or revert, preserved even when the postsubmit line's completion is recorded later; `landings.log` records each landing's base as well as its sha and time, so a multi-commit cut is attributed whole, and older lines without a base are named `unobserved`, never guessed. A violation of this invariant is a fact about the **order things already landed in**, which no revert can undo: it is recorded as a watch failure with a nonzero exit and raised to the Oracle as a finding, and it **never** sets `main-status` red or enters the culprit and revert loop, since blocking every landing over history would be a chokepoint that fixes nothing. **What it evaluates
 and what pending means (Nyx's question, 2026-10-25):** the bound is structural,
 the next code commit, never a wall clock, so the check invents no expiry. When
 `origin/main` is exactly the red sha and no later code commit exists, the state
