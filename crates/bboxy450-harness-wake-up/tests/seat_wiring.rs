@@ -6,6 +6,7 @@ use bboxy450_harness_wake_up::{
 use std::path::Path;
 const PROMPT: &str =
     "ROLE: EXECUTOR\nFollow the assigned settings prompt: \"literal\" \\ path · next line.\n";
+// keeps: spec harness-kits §5
 #[test]
 fn resumed_generation_gets_a_fresh_overlay_and_keeps_the_native_resume_path() {
     let temp = tempfile::tempdir().unwrap();
@@ -85,6 +86,7 @@ fn resumed_generation_gets_a_fresh_overlay_and_keeps_the_native_resume_path() {
 
 /// Independent fixture client inspects the actual argv, JSON/TOML, quoted hook
 /// command and inherited MCP env. The mux keeps the same client's real-PTY test.
+// keeps: spec harness-kits §5
 #[test]
 fn first_launch_fixture_checks_wiring_and_preserves_user_config() {
     use std::{fs, os::unix::fs::PermissionsExt, process::Command};
@@ -111,10 +113,13 @@ fn first_launch_fixture_checks_wiring_and_preserves_user_config() {
         "\"executor\"",
         "\"worker\"",
     );
-    for kind in ["claude", "codex"] {
+    for (kind, pre_released) in [("claude", true), ("codex", true), ("claude", false)] {
         let id = Ulid::new();
-        let output = temp.path().join(format!("{kind}.json"));
-        fs::write(output.with_extension("release"), "exit").unwrap();
+        let output = temp.path().join(format!("{kind}-{pre_released}.json"));
+        let release = output.with_extension("release");
+        if pre_released {
+            fs::write(&release, "exit").unwrap();
+        }
         let mut record = HarnessRecord::builtin(kind).unwrap();
         record.command = vec![
             shim.to_string_lossy().into(),
@@ -162,17 +167,53 @@ fn first_launch_fixture_checks_wiring_and_preserves_user_config() {
                     .unwrap(),
             )
         });
-        let child = Command::new(&plan.program)
+        let mut command = Command::new(&plan.program);
+        command
             .args(&plan.args)
             .envs(&plan.env)
-            .current_dir(&plan.cwd)
-            .output()
-            .unwrap();
-        assert!(
-            child.status.success(),
-            "{kind}: {}",
-            String::from_utf8_lossy(&child.stderr)
-        );
+            .current_dir(&plan.cwd);
+        if pre_released {
+            let child = command.output().unwrap();
+            assert!(
+                child.status.success(),
+                "{kind}: {}",
+                String::from_utf8_lossy(&child.stderr)
+            );
+        } else {
+            use std::io::BufRead;
+            use std::os::fd::AsRawFd;
+            let mut child = Owned(
+                command
+                    .env("BBT_FIXTURE_REPORT_READY", "1")
+                    .stdout(std::process::Stdio::piped())
+                    .spawn()
+                    .unwrap(),
+            );
+            let stdout = child.0.stdout.take().unwrap();
+            let mut descriptor = libc::pollfd {
+                fd: stdout.as_raw_fd(),
+                events: libc::POLLIN,
+                revents: 0,
+            };
+            // SAFETY: stdout belongs to this live private fixture child.
+            assert!(
+                unsafe { libc::poll(&mut descriptor, 1, 30_000) } > 0,
+                "fixture report hung"
+            );
+            let mut line = String::new();
+            std::io::BufReader::new(stdout)
+                .read_line(&mut line)
+                .unwrap();
+            assert_eq!(line, "fixture-report-ready\n");
+            eprintln!("owned fixture killed before release: {}", child.0.id());
+            child.0.kill().unwrap();
+            child.0.wait().unwrap();
+            // A release remains an ordinary parent-created file even if its
+            // receiver has died. A FIFO would leave fs::write waiting forever.
+            assert!(!release.exists(), "release must not be a precreated FIFO");
+            fs::write(&release, "exit").unwrap();
+            assert!(release.is_file());
+        }
         let report: serde_json::Value = serde_json::from_slice(&fs::read(output).unwrap()).unwrap();
         assert_eq!(report["identity"]["seat"], id.to_string());
         assert_eq!(report["identity"]["generation"], "1");

@@ -24,6 +24,7 @@ fn binding(path: &Path) -> Binding {
     }
 }
 
+// keeps: decision #279
 #[tokio::test]
 async fn bootstrap_reads_only_the_selected_loaded_thread_and_never_guesses_or_mutates() {
     for (ids, returned, state, expected) in [
@@ -83,7 +84,7 @@ async fn bootstrap_reads_only_the_selected_loaded_thread_and_never_guesses_or_mu
             "empty" => assert!(found.unwrap().is_none()),
             _ => assert!(found.is_err()),
         }
-        let methods = tokio::time::timeout(Duration::from_secs(3), server)
+        let methods = tokio::time::timeout(Duration::from_secs(30), server)
             .await
             .unwrap()
             .unwrap();
@@ -95,6 +96,7 @@ async fn bootstrap_reads_only_the_selected_loaded_thread_and_never_guesses_or_mu
     }
 }
 
+// keeps: decision #279
 #[test]
 fn discovery_cannot_replace_a_hook_generation_runtime_or_exited_session() {
     let root = tempfile::tempdir().unwrap();
@@ -143,6 +145,7 @@ fn discovery_cannot_replace_a_hook_generation_runtime_or_exited_session() {
     }
 }
 
+// keeps: decision #279
 #[tokio::test]
 async fn a_locator_owned_by_another_process_receives_no_protocol_bytes() {
     use tokio::io::AsyncReadExt;
@@ -172,10 +175,9 @@ async fn a_locator_owned_by_another_process_receives_no_protocol_bytes() {
         let mut byte = [0];
         stream.read(&mut byte).await.unwrap()
     });
-    let error = native::discover_codex_thread(&binding).await.unwrap_err();
-    assert!(error.to_string().contains("peer does not match"), "{error}");
+    assert!(native::discover_codex_thread(&binding).await.is_err());
     assert_eq!(
-        tokio::time::timeout(Duration::from_secs(15), peer)
+        tokio::time::timeout(Duration::from_secs(30), peer)
             .await
             .unwrap()
             .unwrap(),

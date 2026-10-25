@@ -333,6 +333,7 @@ pub fn native_available(attachment: Option<&NativeAttachment>, binding: &Binding
 #[cfg(test)]
 mod availability_tests {
     use super::*;
+    // keeps: spec harness-kits §5
     #[test]
     fn native_availability_is_bound_to_the_exact_live_attachment() {
         let binding = Binding {

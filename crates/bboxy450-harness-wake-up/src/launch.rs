@@ -445,6 +445,20 @@ fn runtime_ready(endpoint: &Path) -> bool {
     })
 }
 
+fn wait_for_runtime(
+    mut ready: impl FnMut() -> bool,
+    mut elapsed: impl FnMut() -> std::time::Duration,
+    mut pause: impl FnMut(std::time::Duration),
+) -> Result<()> {
+    while !ready() {
+        if elapsed() >= std::time::Duration::from_secs(5) {
+            return Err(invalid("seat runtime readiness deadline elapsed"));
+        }
+        pause(std::time::Duration::from_millis(5));
+    }
+    Ok(())
+}
+
 /// Private CLI entry for an already supervisor-owned PTY. Wait only on the
 /// explicitly selected seat socket, then replace this process with its TUI.
 /// Normal CODEX_HOME and authentication stay with Codex; no credential is copied.
@@ -458,16 +472,12 @@ pub fn exec_when_ready(args: &[String]) -> Result<()> {
     if !endpoint.is_absolute() || program.is_empty() {
         return Err(invalid("harness-exec needs an absolute socket and command"));
     }
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-    loop {
-        if runtime_ready(endpoint) {
-            break;
-        }
-        if std::time::Instant::now() >= deadline {
-            return Err(invalid("seat runtime readiness deadline elapsed"));
-        }
-        std::thread::sleep(std::time::Duration::from_millis(5));
-    }
+    let started = std::time::Instant::now();
+    wait_for_runtime(
+        || runtime_ready(endpoint),
+        || started.elapsed(),
+        std::thread::sleep,
+    )?;
     Err(std::process::Command::new(program).args(rest).exec().into())
 }
 
@@ -492,6 +502,41 @@ add-zsh-hook precmd _bbt_precmd
 mod runtime_tests {
     use super::*;
 
+    // keeps: decision #279
+    #[test]
+    fn a_missing_runtime_fails_with_a_named_readiness_result() {
+        use std::cell::Cell;
+        use std::time::Duration;
+        let elapsed = Cell::new(Duration::ZERO);
+        let error = wait_for_runtime(
+            || false,
+            || elapsed.get(),
+            |delay| elapsed.set(elapsed.get() + delay),
+        )
+        .unwrap_err();
+        assert_eq!(
+            error.downcast_ref::<std::io::Error>().unwrap().kind(),
+            std::io::ErrorKind::InvalidData
+        );
+        assert_eq!(elapsed.get(), Duration::from_secs(5));
+    }
+
+    // keeps: decision #279
+    #[test]
+    fn runtime_wait_resumes_when_the_selected_runtime_is_ready() {
+        use std::cell::Cell;
+        use std::time::Duration;
+        let elapsed = Cell::new(Duration::ZERO);
+        wait_for_runtime(
+            || elapsed.get() >= Duration::from_millis(15),
+            || elapsed.get(),
+            |delay| elapsed.set(elapsed.get() + delay),
+        )
+        .unwrap();
+        assert_eq!(elapsed.get(), Duration::from_millis(15));
+    }
+
+    // keeps: decision #279
     #[test]
     fn long_runtime_paths_keep_the_locator_in_the_overlay_and_release_the_alias() {
         let root = tempfile::tempdir().unwrap();
@@ -545,6 +590,7 @@ mod runtime_tests {
         }
     }
 
+    // keeps: decision #279
     #[test]
     fn stale_alias_cleanup_preserves_the_overlay_and_is_idempotent() {
         let fixture = AliasFixture::new();
@@ -556,6 +602,7 @@ mod runtime_tests {
         assert!(!cleanup_stale_runtime_alias(&fixture.overlay, Some(&fixture.endpoint)).unwrap());
     }
 
+    // keeps: decision #279
     #[test]
     fn a_present_socket_keeps_its_alias_until_the_socket_is_gone() {
         let fixture = AliasFixture::new();
@@ -570,6 +617,7 @@ mod runtime_tests {
         assert!(cleanup_stale_runtime_alias(&fixture.overlay, Some(&fixture.endpoint)).unwrap());
     }
 
+    // keeps: decision #279
     #[test]
     fn another_seats_alias_and_a_public_overlay_are_never_removed() {
         use std::os::unix::fs::PermissionsExt;

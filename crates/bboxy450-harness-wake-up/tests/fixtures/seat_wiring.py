@@ -10,7 +10,7 @@ import socket
 import stat
 import subprocess
 import sys
-import time
+import select
 import tomllib
 
 
@@ -24,19 +24,57 @@ def identity():
     }
 
 
+def wait_for_file(path, publish=lambda: None):
+    # Watch the owned directory before publishing the report. The caller keeps
+    # writing an ordinary file, so a dead receiver can never block its writer.
+    if path.exists():
+        publish()
+        return
+    if hasattr(select, "kqueue"):
+        descriptor = os.open(path.parent, os.O_RDONLY)
+        queue = select.kqueue()
+        try:
+            queue.control([select.kevent(
+                descriptor, filter=select.KQ_FILTER_VNODE,
+                flags=select.KQ_EV_ADD | select.KQ_EV_CLEAR,
+                fflags=select.KQ_NOTE_WRITE,
+            )], 0, 0)
+            publish()
+            while not path.exists():
+                if not queue.control(None, 1, 30):
+                    raise TimeoutError("private fixture notification hung")
+        finally:
+            queue.close()
+            os.close(descriptor)
+    else:
+        # Linux's directory notification equivalent; no extra Python package.
+        import ctypes
+        native = ctypes.CDLL(None, use_errno=True)
+        native.inotify_init1.argtypes = [ctypes.c_int]
+        native.inotify_add_watch.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_uint32]
+        descriptor = native.inotify_init1(os.O_CLOEXEC | os.O_NONBLOCK)
+        if descriptor < 0:
+            raise OSError(ctypes.get_errno(), "fixture inotify init failed")
+        try:
+            # IN_CREATE | IN_MOVED_TO | IN_CLOSE_WRITE.
+            if native.inotify_add_watch(descriptor, os.fsencode(path.parent), 0x100 | 0x80 | 0x8) < 0:
+                raise OSError(ctypes.get_errno(), "fixture directory watch failed")
+            poller = select.poll()
+            poller.register(descriptor, select.POLLIN)
+            publish()
+            while not path.exists():
+                if not poller.poll(30_000):
+                    raise TimeoutError("private fixture notification hung")
+                os.read(descriptor, 65536)
+        finally:
+            os.close(descriptor)
+
+
 if sys.argv[1] == "harness-exec":
     endpoint, program = sys.argv[2:4]
-    deadline = time.monotonic() + 5
-    while True:
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
-            client.setblocking(False)
-            try:
-                client.connect(endpoint)
-                break
-            except OSError:
-                pass
-        assert time.monotonic() < deadline, "private fixture runtime not ready"
-        time.sleep(.005)
+    wait_for_file(Path(endpoint + ".ready"))
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+        client.connect(endpoint)
     os.execv(program, sys.argv[3:])
 
 if sys.argv[1] in ("mcp", "hook"):
@@ -51,12 +89,16 @@ if kind == "codex" and args[:2] == ["app-server", "--listen"]:
     endpoint = args[2][len("unix://"):]
     assert "--remote" not in args and "resume" not in args
     assert 'mcp_servers.bboxy.default_tools_approval_mode="approve"' in args
-    Path(output).with_suffix(".runtime.json").write_text(json.dumps({
-        "argv": args, "identity": identity(), "pid": os.getpid(), "endpoint": endpoint,
-    }))
+    ready = Path(endpoint + ".ready")
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as listener:
         listener.bind(endpoint)
         listener.listen()
+        Path(output).with_suffix(".runtime.json").write_text(json.dumps({
+            "argv": args, "identity": identity(), "pid": os.getpid(), "endpoint": endpoint,
+        }))
+        # The readiness marker is published after bind/listen and never waits
+        # for a consumer, including one that exited during startup.
+        ready.write_bytes(b"ready")
         while True:
             stream, _ = listener.accept()
             stream.close()
@@ -75,7 +117,7 @@ def option(name):
 
 
 def run(command):
-    result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=3)
+    result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=30)
     return json.loads(result.stdout)
 
 
@@ -156,12 +198,15 @@ report = {
     "modes": modes, "overrides": overrides,
 }
 path = Path(output)
-temporary = path.with_suffix(".writing")
-temporary.write_text(json.dumps(report, indent=2) + "\n")
-temporary.rename(path)
-# Keep the overlay alive until its owner has inspected it; no desktop input.
-deadline = time.monotonic() + 15
-while not path.with_suffix(".release").exists():
-    if time.monotonic() > deadline:
-        raise TimeoutError("fixture owner did not release the child")
-    time.sleep(0.01)
+release = path.with_suffix(".release")
+
+
+def publish_report():
+    temporary = path.with_suffix(".writing")
+    temporary.write_text(json.dumps(report, indent=2) + "\n")
+    temporary.rename(path)
+    if os.environ.get("BBT_FIXTURE_REPORT_READY") == "1":
+        print("fixture-report-ready", flush=True)
+
+
+wait_for_file(release, publish_report)

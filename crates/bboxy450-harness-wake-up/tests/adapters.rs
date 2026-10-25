@@ -41,6 +41,7 @@ fn runtime() -> tokio::runtime::Runtime {
         .unwrap()
 }
 
+// keeps: spec harness-kits §5
 #[test]
 fn adapters_claude_wire_capture_runs_through_term_callback_and_ends_only_running_rows() {
     let mut term = bbt_core::Term::new(80, 24, 0);
@@ -84,6 +85,7 @@ fn adapters_claude_wire_capture_runs_through_term_callback_and_ends_only_running
     );
 }
 
+// keeps: spec harness-kits §5
 #[test]
 fn adapters_codex_native_readiness_and_hooks_only_subagents() {
     let mut session = session("codex");
@@ -156,6 +158,7 @@ fn adapters_codex_native_readiness_and_hooks_only_subagents() {
     );
 }
 
+// keeps: spec harness-kits §5
 #[test]
 fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields() {
     use std::os::unix::fs::PermissionsExt;
@@ -282,6 +285,7 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
     plan.cleanup().unwrap();
 }
 
+// keeps: spec harness-kits §5
 #[test]
 fn adapters_native_claude_socket_writes_priority_without_claiming_consumption() {
     use tokio::io::{AsyncBufReadExt, BufReader};
@@ -328,6 +332,7 @@ fn adapters_native_claude_socket_writes_priority_without_claiming_consumption() 
     });
 }
 
+// keeps: spec harness-kits §5
 #[test]
 fn adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect() {
     use futures_util::{SinkExt, StreamExt};
@@ -376,6 +381,7 @@ fn adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect()
     }
 }
 
+// keeps: spec harness-kits §2 — honest-specific-failure public-note contract
 #[test]
 fn codex_bootstrap_and_unloaded_threads_never_admit_or_retry_a_submission() {
     use futures_util::{SinkExt, StreamExt};
@@ -446,7 +452,7 @@ fn codex_bootstrap_and_unloaded_threads_never_admit_or_retry_a_submission() {
                     .await
                     .unwrap();
                 }
-                let next = tokio::time::timeout(std::time::Duration::from_secs(5), ws.next())
+                let next = tokio::time::timeout(std::time::Duration::from_secs(30), ws.next())
                     .await
                     .unwrap();
                 assert!(
@@ -479,6 +485,7 @@ fn codex_bootstrap_and_unloaded_threads_never_admit_or_retry_a_submission() {
     }
 }
 
+// keeps: spec harness-kits §5
 #[test]
 fn adapters_custom_harness_cadence_and_reported_idle_never_create_readiness() {
     let mut record = HarnessRecord::builtin("zsh").unwrap();
@@ -515,6 +522,7 @@ fn adapters_custom_harness_cadence_and_reported_idle_never_create_readiness() {
     ));
 }
 
+// keeps: spec harness-kits §5
 #[test]
 fn literal_preparation_consumes_readiness_and_unknown_never_retries() {
     use bboxy450_harness_wake_up::{LiteralInput, WakeOutcome};

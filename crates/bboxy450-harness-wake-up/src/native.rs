@@ -657,6 +657,7 @@ mod registration_tests {
         }
     }
 
+    // keeps: decision #279
     #[test]
     fn retained_socket_requires_the_same_process_generation_and_session() {
         let root = tempfile::tempdir().unwrap();
@@ -686,6 +687,7 @@ mod registration_tests {
         }
     }
 
+    // keeps: decision #279
     #[test]
     fn hook_socket_metadata_requires_the_admitted_native_session_and_owned_socket() {
         let root = tempfile::tempdir().unwrap();
@@ -712,6 +714,7 @@ mod registration_tests {
         assert!(claude_registration(&session, &event).is_err());
     }
 
+    // keeps: spec harness-kits §2 — honest-specific-failure public-note contract
     #[test]
     fn pre_write_failures_preserve_the_specific_cause() {
         let root = tempfile::tempdir().unwrap();

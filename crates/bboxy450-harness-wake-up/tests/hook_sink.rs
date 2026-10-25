@@ -27,6 +27,7 @@ impl HookSink for Sink {
 
 /// Invoked only as an explicitly detached child by the parent below; it cannot
 /// obtain the operator's controlling terminal and mutates no global environment.
+// keeps: spec harness-kits §5
 #[test]
 #[ignore = "private subprocess helper, exercised by hook_cli_uses_the_caller_sink"]
 fn hook_fixture_child() {
@@ -34,6 +35,7 @@ fn hook_fixture_child() {
     hook::run_cli(&["--agent".into(), "claude".into(), raw], &Sink);
 }
 
+// keeps: spec harness-kits §5
 #[test]
 fn hook_cli_uses_the_caller_sink_for_registration_and_tty_fallback() {
     let temp = tempfile::tempdir().unwrap();

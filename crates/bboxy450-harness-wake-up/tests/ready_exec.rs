@@ -1,9 +1,12 @@
 #![allow(clippy::disallowed_methods)] // Private process/socket fixtures, never UI.
 
+use std::io::Read;
+use std::os::fd::AsRawFd;
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
+// keeps: decision #279
 #[test]
 #[ignore = "private hook subprocess, invoked by its parent"]
 fn hook_transport_child() {
@@ -40,11 +43,11 @@ impl Drop for Owned {
     }
 }
 
+// keeps: decision #279
 #[test]
 #[ignore = "private ready-exec subprocess, invoked by its parent"]
 fn ready_exec_child() {
     let root = std::path::PathBuf::from(std::env::var_os("BBT_READY_ROOT").unwrap());
-    std::fs::write(root.join("started"), std::process::id().to_string()).unwrap();
     let error = bboxy450_harness_wake_up::launch::exec_when_ready(&[
         root.join("s").to_string_lossy().into(),
         "/bin/sh".into(),
@@ -64,29 +67,49 @@ fn child(root: &Path) -> Owned {
             .args(["--ignored", "--exact", "ready_exec_child", "--nocapture"])
             .env("BBT_READY_ROOT", root)
             .stdin(Stdio::null())
-            .stdout(Stdio::null())
+            .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()
             .unwrap(),
     )
 }
 
-fn until(mut condition: impl FnMut() -> bool) {
-    let deadline = Instant::now() + Duration::from_secs(15);
-    while !condition() {
-        assert!(Instant::now() < deadline, "private child fixture hung");
-        std::thread::sleep(Duration::from_millis(5));
+fn drain_closed(reader: &mut (impl Read + AsRawFd)) -> Vec<u8> {
+    let mut output = Vec::new();
+    let mut buffer = [0; 4096];
+    loop {
+        let mut descriptor = libc::pollfd {
+            fd: reader.as_raw_fd(),
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        // SAFETY: the descriptor is borrowed from this fixture's live reader.
+        let ready = unsafe { libc::poll(&mut descriptor, 1, 30_000) };
+        if ready < 0 && std::io::Error::last_os_error().kind() == std::io::ErrorKind::Interrupted {
+            continue;
+        }
+        assert!(ready > 0, "private fixture hung or its pipe failed");
+        match reader.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(count) => output.extend_from_slice(&buffer[..count]),
+            Err(error) if error.raw_os_error() == Some(libc::EIO) => break, // PTY EOF.
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(error) => panic!("private fixture read failed: {error}"),
+        }
+        assert!(output.len() <= 64 * 1024, "private fixture output overflow");
     }
+    output
 }
 
+// keeps: decision #279
 #[test]
-fn a_late_runtime_execs_the_client_in_the_same_pty_process() {
+fn a_ready_runtime_execs_the_client_in_the_same_pty_process() {
     let root = tempfile::tempdir().unwrap();
-    let mut child = child(root.path());
-    until(|| root.path().join("started").exists());
-    assert!(!root.path().join("exec-pid").exists());
+    // Delay and deadline behavior are checked with the launch module's fake
+    // clock. This boundary check starts with its own selected listener ready.
     let _listener = std::os::unix::net::UnixListener::bind(root.path().join("s")).unwrap();
-    until(|| child.0.try_wait().unwrap().is_some());
+    let mut child = child(root.path());
+    drain_closed(&mut child.0.stdout.take().unwrap());
     assert!(child.0.wait().unwrap().success());
     let pid: u32 = std::fs::read_to_string(root.path().join("exec-pid"))
         .unwrap()
@@ -96,22 +119,9 @@ fn a_late_runtime_execs_the_client_in_the_same_pty_process() {
     assert!(!root.path().join("error").exists());
 }
 
-#[test]
-fn a_missing_runtime_fails_with_a_named_readiness_result() {
-    let root = tempfile::tempdir().unwrap();
-    let mut child = child(root.path());
-    until(|| child.0.try_wait().unwrap().is_some());
-    assert_eq!(child.0.wait().unwrap().code(), Some(31));
-    assert_eq!(
-        std::fs::read_to_string(root.path().join("error")).unwrap(),
-        "seat runtime readiness deadline elapsed"
-    );
-    assert!(!root.path().join("exec-pid").exists());
-}
-
+// keeps: decision #279
 #[test]
 fn private_runtime_hooks_use_socket_even_with_a_controlling_tty() {
-    use std::io::Read;
     use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
     use std::os::unix::process::CommandExt;
 
@@ -138,10 +148,6 @@ fn private_runtime_hooks_use_socket_even_with_a_controlling_tty() {
         let slave_fd = slave.as_raw_fd();
         // SAFETY: change only this fixture's private master descriptor.
         unsafe {
-            assert_ne!(
-                libc::fcntl(master.as_raw_fd(), libc::F_SETFL, libc::O_NONBLOCK),
-                -1
-            );
             assert_ne!(
                 libc::fcntl(master.as_raw_fd(), libc::F_SETFD, libc::FD_CLOEXEC),
                 -1
@@ -188,13 +194,8 @@ fn private_runtime_hooks_use_socket_even_with_a_controlling_tty() {
         // pending output during exit. Drop the master before child cleanup on
         // panic so that this fixture cannot strand its own child in tty close.
         let mut master = std::fs::File::from(master);
-        let mut bytes = Vec::new();
-        until(|| {
-            let _ = master.read_to_end(&mut bytes);
-            child.0.try_wait().unwrap().is_some()
-        });
+        let bytes = drain_closed(&mut master);
         assert!(child.0.wait().unwrap().success());
-        let _ = master.read_to_end(&mut bytes);
         if socket_only {
             assert!(
                 bytes.is_empty(),
