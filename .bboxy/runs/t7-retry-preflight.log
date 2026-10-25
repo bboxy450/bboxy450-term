@@ -1,0 +1,22 @@
+T7 retry preflight — measured source 5c549dbf
+
+The exact clean gate at 35f7dd6974ef77ff8c4bb369e50c0095fefa017c exited 101. Build and strict Clippy passed; app/CLI 13/0 and headless 7/0 passed. bboxybook failed at gallery.rs:468 because its exact expected-layer set omitted close (actual contains close). Geometry parity was unreached, not passed. Raw log: t7-ci-35f7dd69-failed.log. Own target deleted: 3,957,993,472 allocated bytes; detached worktree removal exit 0.
+
+Correction: add close to the exact layer set, assert 32 close cases and the in-grace-cozy-dark route. No pixel/geometry policy changed. Rebased onto U0/T1 main 6486e6fb. Cockpit keeps the explicit TestAccount store and the existing fixture_hosts/local provider split using the existing store-aware constructors. Main retains accepted test-account argument validation. Headless reports the actual BackendInfo custody label.
+
+A positive headless file-account regression starts with its private test account, checks unattended/file/zero windows, checks status then orderly stop. The missing-account regression checks the accepted refusal and explicitly selects memory as a fail-safe against any future guard regression. No identity implementation edits.
+
+Actual measured checks before the one-line negative-fixture safety selector:
+t7-book-registry-retry: cargo test -p bboxybook --locked --lib -- --nocapture — EXIT 0, 144.332 s; source 5c549dbfcedaed2a6c818e7d26cddbd165fdb5f6; log SHA256 7f90a6be3f6d7f04aa7ee126304da59a073b55c04b1b17f4a4be52db4060a8d5.
+t7-headless-u0-five-1: cargo test -p bboxy450-term --locked --test headless -- --nocapture — EXIT 0, 183.663 s; source 5c549dbfcedaed2a6c818e7d26cddbd165fdb5f6; log SHA256 5d6aeb6544f2be656f6219fb05ce01128a27dd5c2ae04f8bb38f35cacb1f987c.
+t7-headless-u0-five-2: cargo test -p bboxy450-term --locked --test headless -- --nocapture — EXIT 0, 14.268 s; source 5c549dbfcedaed2a6c818e7d26cddbd165fdb5f6; log SHA256 3a6c4d2a2259b4fdae29ea449444ac96523a3caf28b1e621f26011e44d352963.
+t7-headless-u0-five-3: cargo test -p bboxy450-term --locked --test headless -- --nocapture — EXIT 0, 13.832 s; source 5c549dbfcedaed2a6c818e7d26cddbd165fdb5f6; log SHA256 a601457ce0c17189b4aa749412dbe6c167c5bcfa2e67187e81df94e8cd95b0c6.
+t7-headless-u0-five-4: cargo test -p bboxy450-term --locked --test headless -- --nocapture — EXIT 0, 13.876 s; source 5c549dbfcedaed2a6c818e7d26cddbd165fdb5f6; log SHA256 a2f9ff28d0581a0ea47dfac1134a3882628048772d6e9bafe3a653fb0c405ff5.
+t7-headless-u0-five-5: cargo test -p bboxy450-term --locked --test headless -- --nocapture — EXIT 0, 13.844 s; source 5c549dbfcedaed2a6c818e7d26cddbd165fdb5f6; log SHA256 2873fe7f0b1c788b828e095fd776fc52171879357960f07ee2a77d3b62c7a2a7.
+t7-clippy-5c549dbf: cargo clippy --workspace --all-targets --locked -- -D warnings — EXIT 0, 28.716 s; source 5c549dbfcedaed2a6c818e7d26cddbd165fdb5f6; log SHA256 459ac691171058f91cb0301781638a70a2c980c493034e1e832030102f689c92.
+
+bboxybook library: 16 passed / 0 failed. Merged headless: 8 passed / 0 failed in each of five consecutive runs, including the real file-account test; strict workspace/all-target Clippy exit 0. These are historical checks at their measured SHA, not a claim that the next head is fully gated.
+
+Quiet timing: first run was compiling at Rook START 2026-10-25 00:04:33 UTC. The bundled loop launched later runs and Clippy before the notice was read. Last own command finished at 00:07:26.687 UTC. Rook and Oracle received the exact overlap and target/t7-proof/t7-quiet-audit.json. No further test/build/app starts during QUIET.
+
+Oracle f6b3f4da-76fc-4a9e-aa15-2753486a55fc changes the next gate premise: after quiet, run cargo test --workspace --locked and strict workspace Clippy in the dev target first, both exit 0, before claiming the exact full --parity gate. Also consume main atomic slot claim 026a07af and active no-seat-starves 76e89004 before that run. Final parity/review delta remains outstanding.

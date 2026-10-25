@@ -442,6 +442,7 @@ fn unattended_without_a_test_account_is_refused_before_native_custody() {
     let root = tempfile::tempdir().unwrap();
     let out = Command::new(BIN)
         .args(["--headless", "--unattended"])
+        .env("BBOXY_TEST_CUSTODY", "memory")
         .current_dir(root.path())
         .stdin(Stdio::null())
         .output()
