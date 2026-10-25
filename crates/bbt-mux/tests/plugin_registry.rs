@@ -13,7 +13,7 @@ use bbt_mux::{
     Ulid,
     mcp::{Actor, Door, SeatActor},
     messaging::wire::IssuerKind,
-    plugins::{DiscoveryRoots, Registry},
+    plugins::{DiscoveryRoots, Registry, RegistryConfig},
     registry::{Class, Role},
     store::{Store, sqlite::SqliteStore},
 };
@@ -56,7 +56,14 @@ impl Harness {
         fs::create_dir_all(root.path().join("repo/.bboxy/plugins")).unwrap();
         fs::create_dir_all(root.path().join("markers")).unwrap();
         let account = SqliteStore::open(&root.path().join("account")).unwrap();
-        let registry = Registry::new(account.clone(), Self::roots(root.path())).unwrap();
+        let registry = Registry::with_config(
+            account.clone(),
+            Self::roots(root.path()),
+            RegistryConfig {
+                descriptor_timeout: std::time::Duration::from_secs(30),
+            },
+        )
+        .unwrap();
         Self {
             root,
             account,
@@ -724,11 +731,24 @@ async fn deadline_failure_is_named_and_another_plugin_job_remains_independent() 
     let h = Harness::new();
     let slow = "bboxy450-term-data_source-slow";
     let good = "bboxy450-term-data_source-good";
-    h.plugin(Scope::Application, slow, shape(&[Contract::DataSource]), "import signal,time\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\nwhile True: time.sleep(1)");
+    h.plugin(
+        Scope::Application,
+        slow,
+        shape(&[Contract::DataSource]),
+        "import signal\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\nwhile True: signal.pause()",
+    );
     h.plugin(Scope::Repository, good, shape(&[Contract::DataSource]), "");
     let a = h.trust(slow);
     let b = h.trust(good);
-    let slow_job = h.registry.inspection(&a.candidate.id).unwrap().unwrap();
+    let short_deadline = Registry::with_config(
+        h.account.clone(),
+        Harness::roots(h.root.path()),
+        RegistryConfig {
+            descriptor_timeout: std::time::Duration::from_millis(25),
+        },
+    )
+    .unwrap();
+    let slow_job = short_deadline.inspection(&a.candidate.id).unwrap().unwrap();
     let good_job = h.registry.inspection(&b.candidate.id).unwrap().unwrap();
     let (slow_result, good_result) = tokio::join!(slow_job.run(), good_job.run());
     let slow_pid = slow_result.pid().unwrap();

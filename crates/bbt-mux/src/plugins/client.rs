@@ -29,6 +29,7 @@ pub(super) struct Client {
     stderr: Option<JoinHandle<Stderr>>,
     next: u64,
     pub pid: u32,
+    shape_timeout: Duration,
     #[cfg(test)]
     spawned_environment_names: Vec<String>,
 }
@@ -39,6 +40,7 @@ impl Client {
             fixture.executable()?,
             std::path::Path::new(&fixture.record.data_dir),
             shape,
+            HANDSHAKE,
         )
     }
 
@@ -47,6 +49,7 @@ impl Client {
         executable: std::path::PathBuf,
         data_dir: &std::path::Path,
         shape: bool,
+        shape_timeout: Duration,
     ) -> Result<Self, Refusal> {
         let mut command = Command::new(executable);
         command
@@ -97,6 +100,7 @@ impl Client {
             stderr: Some(capture),
             next: 0,
             pid,
+            shape_timeout,
             #[cfg(test)]
             spawned_environment_names,
         })
@@ -135,7 +139,7 @@ impl Client {
             }
             serde_json::from_slice(&bytes).map_err(|e| failure("invalid_shape_json", e))
         };
-        timeout(HANDSHAKE, read)
+        timeout(self.shape_timeout, read)
             .await
             .map_err(|_| failure("deadline_exceeded", "--shape exceeded its fixed deadline"))?
     }

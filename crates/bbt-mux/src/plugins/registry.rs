@@ -10,7 +10,7 @@ use std::{
     io::{Read, Write},
     os::unix::fs::{DirBuilderExt, PermissionsExt},
     path::{Path, PathBuf},
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use bbt_plugin::{
@@ -34,11 +34,26 @@ use crate::{mcp::Actor, store::sqlite::SqliteStore};
 
 const ACTIVATIONS: &str = "plugins/activation/";
 
+/// Host-owned deadlines, never supplied by an untrusted descriptor or wire call.
+#[derive(Debug, Clone, Copy)]
+pub struct RegistryConfig {
+    pub descriptor_timeout: Duration,
+}
+
+impl Default for RegistryConfig {
+    fn default() -> Self {
+        Self {
+            descriptor_timeout: Duration::from_secs(2),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Registry {
     account: SqliteStore,
     root: PathBuf,
     roots: DiscoveryRoots,
+    config: RegistryConfig,
 }
 
 fn activation_key(id: &str) -> String {
@@ -143,7 +158,21 @@ fn private_dir(path: &Path) -> Result<(), Refusal> {
 impl Registry {
     /// The caller is the logic/account owner, not another account opener.
     pub fn new(account: SqliteStore, roots: DiscoveryRoots) -> Result<Self, Refusal> {
+        Self::with_config(account, roots, RegistryConfig::default())
+    }
+
+    pub fn with_config(
+        account: SqliteStore,
+        roots: DiscoveryRoots,
+        config: RegistryConfig,
+    ) -> Result<Self, Refusal> {
         bbt_rt::assert_not_ui_thread();
+        if config.descriptor_timeout.is_zero() {
+            return Err(failure(
+                "invalid_plugin_config",
+                "descriptor timeout must be positive",
+            ));
+        }
         let root = account
             .path
             .parent()
@@ -154,6 +183,7 @@ impl Registry {
             account,
             root,
             roots,
+            config,
         })
     }
 
@@ -702,7 +732,12 @@ impl InspectionJob {
                 ));
             }
             let copy = self.registry.verify_copy(record)?;
-            let mut child = Client::spawn_verified(copy, Path::new(&record.data_dir), true)?;
+            let mut child = Client::spawn_verified(
+                copy,
+                Path::new(&record.data_dir),
+                true,
+                self.registry.config.descriptor_timeout,
+            )?;
             pid = Some(child.pid);
             let value = child.shape().await;
             let output = child.shutdown().await;
