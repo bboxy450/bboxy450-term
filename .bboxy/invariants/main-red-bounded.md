@@ -13,7 +13,7 @@ links:
   - { to: "[[no-chokepoints]]", rel: builds-on }
   - { to: "[[never-block-swarm]]", rel: builds-on }
 created: "2026-10-25T16:18:56Z"
-updated: "2026-10-25T18:25:30Z"
+updated: "2026-10-25T20:16:35Z"
 ---
 # Main is red at most until the next revert
 
@@ -45,7 +45,11 @@ consisting only of reverts, so the revert that clears the red is not refused by
 the red it clears; otherwise it evaluates `origin/main`. A non-revert candidate
 on a red tip is the violation, and `land.sh` refuses it first with
 `main_red`. The length of each red interval is a metric in the postsubmit log,
-never an assertion of this check. **Pending** until the
+never an assertion of this check. **Bootstrap:** before the watcher has
+recorded any green there is no culprit to search; a red that survives the
+flake check then ends by the Oracle's logged hand call (`manual-green` or
+`manual-revert`), which the check accepts as the verdict that closes the red
+interval ([[landing]] §6, 2026-10-25). **Pending** until the
 main watch writes the log; `slow: true` and `gate: pending-postsubmit` keep it
 out of the default run until then, and the commit that lands the watch removes
 both and the Oracle flips `status` on acceptance.
