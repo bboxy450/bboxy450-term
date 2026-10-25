@@ -70,6 +70,22 @@ spec = importlib.util.spec_from_file_location("landing", Path(tools) / "landing.
 landing = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(landing)
 
+# The observer is optional and never part of the invariant verdict.
+ledger_helper = Path(tools) / "resource-ledger.py"
+ledger = landing.ledger_module()
+if ledger is not None and not os.environ.get("BBOXY_LEDGER_SAMPLER"):
+    try:
+        os.environ["BBOXY_LEDGER_SAMPLER"] = str(ledger.start_observer(os.getpid()))
+    except Exception:
+        pass
+
+
+def metered(argv):
+    if ledger_helper.exists():
+        return [sys.executable, "-I", str(ledger_helper), "run", "integration", "--", *argv]
+    return argv
+
+
 
 def fields(path):
     lines = path.read_text().splitlines()
@@ -155,7 +171,7 @@ def run_batch(checks):
     print("invariants: Cargo test batch:", shlex.join(argv), flush=True)
     observed = collections.defaultdict(list)
     try:
-        child = subprocess.Popen(argv, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        child = subprocess.Popen(metered(argv), env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     except OSError as error:
         print("invariants: Cargo test batch unavailable:", error, file=sys.stderr)
         return 127, observed
@@ -231,7 +247,7 @@ try:
             if results != ["ok"]:
                 print(f"invariants: {name} expected one passing {check['test']}; observed {results}", file=sys.stderr)
         else:
-            code = subprocess.run(["sh", "-c", shell_check, "invariant-check", command]).returncode
+            code = subprocess.run(metered(["sh", "-c", shell_check, "invariant-check", command])).returncode
         if code < 0:
             code = 128 - code
         print(f"invariant {name}: " + ("pass" if code == 0 else f"fail (exit {code})"), flush=True)

@@ -71,6 +71,7 @@ sys.exit(1)
 PY
     ); then
         export RUSTC_WRAPPER=sccache
+        (python3 -I "$bboxy_cache_root/scripts/resource-ledger.py" bind-cache "$bboxy_cache_root" "$SCCACHE_SERVER_PORT" </dev/null >/dev/null 2>&1 || :) &
         printf 'cache: on (port %s; shared local cache %s; 50G)\n' "$SCCACHE_SERVER_PORT" "$SCCACHE_DIR" >&2
     else
         printf 'cache: off (%s)\n' "${bboxy_cache_reason:-server check failed}" >&2

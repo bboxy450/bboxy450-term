@@ -38,15 +38,37 @@ export BBOXY_CARGO_TARGET_DIR="$ci_target"
 export CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0
 export CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true
 printf 'ci-local: checkout %s target %s\n' "$(pwd -P)" "$BBOXY_CARGO_TARGET_DIR"
-if [ "$after_tests" = false ]; then
-    sh scripts/layering.sh
-    python3 -I scripts/test-landing.py
-    cargo build --workspace --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
-    cargo clippy --workspace --all-targets --locked --target-dir "$BBOXY_CARGO_TARGET_DIR" -- -D warnings
-    sh scripts/quarantine-test.sh --workspace --locked
+# Resource observation has no cost threshold and is never a readiness gate.
+ledger_helper="$(pwd)/scripts/resource-ledger.py"
+BBOXY_LEDGER_AGENT=${BBOXY_LEDGER_AGENT:-worktree:$(pwd -P)}
+BBOXY_LEDGER_BRANCH=${BBOXY_LEDGER_BRANCH:-$(git branch --show-current)}
+BBOXY_LEDGER_SHA=$gate_sha
+export BBOXY_LEDGER_AGENT BBOXY_LEDGER_BRANCH BBOXY_LEDGER_SHA
+ledger() {
+    ledger_stage=$1
+    shift
+    if [ -f "$ledger_helper" ]; then
+        python3 -I "$ledger_helper" run "$ledger_stage" -- "$@"
+    else
+        "$@"
+    fi
+}
+if [ -f "$ledger_helper" ]; then
+    BBOXY_LEDGER_SAMPLER=$(python3 -I "$ledger_helper" start $$) || BBOXY_LEDGER_SAMPLER=''
+    export BBOXY_LEDGER_SAMPLER
 fi
-sh scripts/ui-lint.sh
-cargo build -p bboxy450-term --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
+if [ "$after_tests" = false ]; then
+    ledger smoke sh scripts/layering.sh
+    ledger integration python3 -I scripts/test-landing.py
+    if [ -f "$ledger_helper" ]; then
+        ledger integration python3 -I scripts/test-resource-ledger.py
+    fi
+    ledger build cargo build --workspace --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
+    ledger build cargo clippy --workspace --all-targets --locked --target-dir "$BBOXY_CARGO_TARGET_DIR" -- -D warnings
+    ledger unit sh scripts/quarantine-test.sh --workspace --locked
+fi
+ledger smoke sh scripts/ui-lint.sh
+ledger build cargo build -p bboxy450-term --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
 smoke_bin="$BBOXY_CARGO_TARGET_DIR/debug/bboxy450-term"
 case "$smoke_bin" in
   /*) ;;
@@ -56,7 +78,7 @@ smoke_run=$(mktemp -d "${TMPDIR:-/tmp}/bboxy-smoke.XXXXXX")
 # The real GUI has its own fixture inputs, as well as its own identity and sockets.
 # Checkout/build provenance events are work, not an idle fixture.
 mkdir "$smoke_run/repository"
-if (cd "$smoke_run/repository" && BBOXY_TEST_CUSTODY=memory "$smoke_bin" --headless --smoke --run-dir "$smoke_run/run"); then
+if (cd "$smoke_run/repository" && BBOXY_TEST_CUSTODY=memory ledger smoke "$smoke_bin" --headless --smoke --run-dir "$smoke_run/run"); then
   rm -rf -- "$smoke_run"
 else
   smoke_status=$?

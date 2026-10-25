@@ -208,6 +208,48 @@ def checked(argv, root):
         raise Refusal(f"check_failed ({code}): {argv[0]}", 1)
 
 
+def ledger_origin(root):
+    # Fixed slot checkouts are shared over time; attribution stays with the
+    # invoking author's worktree and branch, never the slot's directory name.
+    os.environ.setdefault("BBOXY_LEDGER_AGENT", "worktree:" + str(root.resolve()))
+    os.environ.setdefault("BBOXY_LEDGER_BRANCH", git("branch", "--show-current", cwd=root))
+    os.environ["BBOXY_LEDGER_SHA"] = git("rev-parse", "HEAD", cwd=root)
+
+
+def ledger_module():
+    # The optional observer is never a validation prerequisite (including old
+    # private landing fixtures that deliberately omit the helper).
+    import importlib.util
+    path = Path(__file__).with_name("resource-ledger.py")
+    if not path.exists():
+        return None
+    try:
+        sys.dont_write_bytecode = True  # observation must leave the candidate clean
+        spec = importlib.util.spec_from_file_location("bboxy_resource_ledger", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+    except Exception as error:
+        print(f"ledger: unavailable ({type(error).__name__}); continuing", file=sys.stderr)
+        return None
+
+
+def ledger_stage(argv):
+    names = {Path(str(arg)).name for arg in argv}
+    # These drivers meter their leaf stages, so do not double-count a parent.
+    if names & {"invariants.sh", "ci-local.sh"}:
+        return None
+    if argv[0] == "cargo":
+        return "unit" if len(argv) > 1 and argv[1] == "test" else "build"
+    if "quarantine-test.sh" in names:
+        return "unit"
+    if names & {"test-landing.py", "test-resource-ledger.py"}:
+        return "integration"
+    if names & {"bboxybook", "capture-inputs.js"}:
+        return "parity"
+    return "smoke"
+
+
 def measured_command(argv, root, timing_path, *, stream=None, env=None):
     phase = None
     def switch(value):
@@ -221,11 +263,18 @@ def measured_command(argv, root, timing_path, *, stream=None, env=None):
                 os.close(fd)
         phase = value
     cargo = argv[0] == "cargo" or any(Path(arg).name == "quarantine-test.sh" for arg in argv)
-    fixtures = any(Path(arg).name == "test-landing.py" for arg in argv)
+    fixtures = any(Path(arg).name in {"test-landing.py", "test-resource-ledger.py"} for arg in argv)
     switch("compile" if cargo else "test" if fixtures else "other")
     argv, env = cargo_invocation(argv, env)
-    child = subprocess.Popen(argv, cwd=root, env=env, text=True,
-                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    ledger = ledger_module()
+    stage = ledger_stage(argv)
+    accounting = ledger.begin(stage, root) if ledger is not None and stage else None
+    wrapped = ledger.attempt(accounting, "wrap", argv) if ledger is not None else None
+    options = ledger.attempt(accounting, "popen_options") if ledger is not None else None
+    child = subprocess.Popen(wrapped or argv, cwd=root, env=env, text=True,
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **(options or {}))
+    if ledger is not None:
+        ledger.attempt(accounting, "attach", child.pid)
     try:
         for line in child.stdout:
             clean = re.sub(r"\x1b\[[0-9;]*m", "", line)
@@ -247,6 +296,8 @@ def measured_command(argv, root, timing_path, *, stream=None, env=None):
     finally:
         child.stdout.close()
         switch("other")
+        if ledger is not None:
+            ledger.attempt(accounting, "finish", child.returncode)
 
 
 def phase_totals(path, ended):
@@ -386,6 +437,8 @@ def presubmit_worker(base, result_path):
             checked(["cargo", "clippy", "--locked", *packages, "--all-targets", "--", "-D", "warnings"], root)
         if any(p.startswith("scripts/") for p in data["paths"]):
             checked(["python3", "-I", "scripts/test-landing.py", "--all"], root)
+            if (root / "scripts/test-resource-ledger.py").exists():
+                checked(["python3", "-I", "scripts/test-resource-ledger.py"], root)
         checked(["sh", "scripts/invariants.sh", "--affected", " ".join(data["affected"])], root)
         dispatch = any(Path(p).name in ("ctl.rs", "seat_socket.rs", "logic.rs")
                        or "/src/ctl/" in p or "/src/mcp/" in p for p in data["paths"])
@@ -416,6 +469,7 @@ def clean_source(root):
 
 def presubmit(base):
     root = repository()
+    ledger_origin(root)
     sha = git("rev-parse", "HEAD", cwd=root)
     clean_source(root)
     data = affected(base + "..HEAD", root=root)
@@ -853,6 +907,7 @@ def ci_local(arguments):
     if any(arg not in {"--parity", "--slow", "--after-tests"} for arg in arguments):
         raise Refusal("unknown ci-local flag")
     root = repository()
+    ledger_origin(root)
     clean_source(root)
     sha = git("rev-parse", "HEAD", cwd=root)
     with Slot("ci-local"):
@@ -905,6 +960,7 @@ def publishing_identity(root):
 
 def land(gate_log=None):
     root = repository()
+    ledger_origin(root)
     clean_source(root)
     branch = git("symbolic-ref", "--short", "HEAD", cwd=root)
     if branch == "main":
@@ -999,6 +1055,9 @@ def land(gate_log=None):
                 landing[kind] = (sum(row[kind] for row in check_timings)
                                  if all(row[kind] is not None for row in check_timings) else None)
             append_record("landings.log", landing)
+            ledger = ledger_module()
+            if ledger is not None:
+                ledger.attempt(ledger, "landed", landing)
             break
         if landing is None:
             raise Refusal("main_moving: three attempts exhausted", 79)
