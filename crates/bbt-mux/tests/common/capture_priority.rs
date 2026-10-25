@@ -228,11 +228,10 @@ pub fn watched_tail_with_background_backlogs() {
     let swarm = Ulid::new();
     let mut byte_ends = BTreeMap::new();
     for (index, &seat) in seats.iter().enumerate() {
-        let count = if seat == watched {
-            512 * 1024
-        } else {
-            4 * 1024 * 1024
-        };
+        // Equal-size streams still leave every background backlogged at the
+        // watched tail; actual page counts below enforce the same quota proof.
+        // Extra megabytes only repeat capture/parsing work after that proof.
+        let count = 512 * 1024;
         let tail = format!("\r\nSEAT-{index}-VISIBLE-TAIL\r\n");
         byte_ends.insert(seat, count + tail.len());
         let mut spec = LaunchSpec::new("python3", temp.path());
@@ -375,11 +374,6 @@ while True: time.sleep(1)
         "watched source pages={watched_pages}, fixed budget={budget}, watched replay pages={}",
         pages.iter().filter(|&&seat| seat == watched).count()
     );
-    assert_eq!(
-        snapshot.sequence, tails[&watched],
-        "watched tail starved behind background replay"
-    );
-    assert_eq!(snapshot.screen, reference[&watched]);
     // Until its final page, the watched lane and all three backgrounds are
     // runnable. Each sliding eight-page window must satisfy the policy floor.
     let final_watched = pages.iter().rposition(|&seat| seat == watched).unwrap();
@@ -390,6 +384,11 @@ while True: time.sleep(1)
             "watched lane got less than half: {window:?}"
         );
     }
+    assert_eq!(
+        snapshot.sequence, tails[&watched],
+        "watched tail starved behind background replay"
+    );
+    assert_eq!(snapshot.screen, reference[&watched]);
     for &seat in &seats[1..] {
         assert!(
             runtime

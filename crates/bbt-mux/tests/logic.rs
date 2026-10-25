@@ -3,6 +3,7 @@
 mod capture_priority;
 mod common;
 
+// keeps: invariant watched-replay-priority
 #[test]
 fn watched_lane_gets_at_least_half_of_replay_pages() {
     capture_priority::watched_tail_with_background_backlogs();
@@ -591,7 +592,9 @@ fn wait_for_prefix(runtime: &tokio::runtime::Runtime, logic: &Logic, seat: Ulid)
         std::thread::sleep(Duration::from_millis(10));
     }
 }
+// keeps: spec mux-daemon §Gate, real 20 MiB capture/seal/replay and producer latency.
 #[test]
+#[ignore = "#327 B2: real process replay/performance boundary; scripts/night-test-boundaries.sh"]
 fn ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap()
  {
     assert!(sealed_twenty_mib_roundtrip() < 2.0);
@@ -811,6 +814,8 @@ fn ring_live_logic_catches_up_coalesced_notifications_after_a_stall() {
     struct Delayed {
         client: bbt_mux::Client,
         pause: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        entered: std::sync::mpsc::SyncSender<()>,
+        resume: std::sync::mpsc::Receiver<()>,
     }
     impl bbt_mux::logic::SupervisorConnection for Delayed {
         fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
@@ -818,7 +823,8 @@ fn ring_live_logic_catches_up_coalesced_notifications_after_a_stall() {
         }
         fn receive(&mut self, timeout: Duration) -> bbt_mux::store::Result<Option<bbt_mux::Event>> {
             if self.pause.swap(false, std::sync::atomic::Ordering::SeqCst) {
-                std::thread::sleep(Duration::from_millis(750));
+                self.entered.send(()).unwrap();
+                self.resume.recv_timeout(Duration::from_secs(30)).unwrap();
             }
             match self.client.recv_timeout(timeout) {
                 Ok(e) => Ok(Some(e)),
@@ -831,10 +837,23 @@ fn ring_live_logic_catches_up_coalesced_notifications_after_a_stall() {
     let runtime = runtime();
     let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let pause = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let (entered_tx, entered_rx) = std::sync::mpsc::sync_channel(0);
+    let (resume_tx, resume_rx) = std::sync::mpsc::sync_channel(0);
+    use notify::Watcher;
+    let (changed_tx, changed_rx) = std::sync::mpsc::channel();
+    let mut watcher = notify::recommended_watcher(move |event| {
+        let _ = changed_tx.send(event);
+    })
+    .unwrap();
+    watcher
+        .watch(temp.path(), notify::RecursiveMode::NonRecursive)
+        .unwrap();
     let logic = Logic::start(
         Delayed {
             client: supervisor.connect().unwrap(),
             pause: pause.clone(),
+            entered: entered_tx,
+            resume: resume_rx,
         },
         fixture(temp.path()),
         SigningKey::from_bytes(&[28; 32]),
@@ -851,7 +870,18 @@ fn ring_live_logic_catches_up_coalesced_notifications_after_a_stall() {
         .unwrap();
     wait_for_prefix(&runtime, &logic, seat);
     pause.store(true, std::sync::atomic::Ordering::SeqCst);
+    entered_rx.recv_timeout(Duration::from_secs(30)).unwrap();
     std::fs::write(temp.path().join("gate"), b"go").unwrap();
+    // Capture completes while notification consumption is held; a sleep never
+    // establishes this ordering under load. The owned file is the producer's
+    // completion record, and filesystem notifications wake the condition wait.
+    while !temp.path().join("writer.json").exists() {
+        changed_rx
+            .recv_timeout(Duration::from_secs(30))
+            .unwrap()
+            .unwrap();
+    }
+    resume_tx.send(()).unwrap();
     let until = Instant::now() + Duration::from_secs(30);
     loop {
         let snapshot = runtime.block_on(logic.client.snapshot(seat, 1)).unwrap();

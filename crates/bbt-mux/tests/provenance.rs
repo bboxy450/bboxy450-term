@@ -373,7 +373,9 @@ impl bbt_mux::identity::DeviceKeyStore for MemoryCustody {
         Ok(())
     }
 }
+// keeps: spec provenance §W2.6 and id1-seat-chain §4: immutable observer signer during custody hold.
 #[test]
+#[ignore = "#327 B2: real actor custody/projection boundary; scripts/night-test-boundaries.sh"]
 fn custody_hold_keeps_observations_ephemeral_until_legitimate_projection_recovers() {
     use std::sync::{Arc, atomic::Ordering};
     let memory = Arc::new(MemoryCustody::default());
@@ -478,7 +480,9 @@ fn claim_before_detection_survives_missing_rebuildable_mirror() {
     );
 }
 
+// keeps: regression unchanged clipped Git refs; completed-snapshot proof is in detector tests.
 #[test]
+#[ignore = "#327 B2: real Git observer cadence; scripts/night-test-boundaries.sh"]
 fn unchanged_clipped_git_refs_produce_no_activity_for_ten_seconds() {
     use std::{
         io::Write,

@@ -674,9 +674,10 @@ impl Detector {
                     Ok(Some(snapshot)) => {
                         self.git_failed.remove(&root);
                         if snapshot.clipped
-                            && self.git_state.get(&root).is_none_or(|old| {
-                                !old.clipped || old.refs != snapshot.refs
-                            })
+                            && self
+                                .git_state
+                                .get(&root)
+                                .is_none_or(|old| !old.clipped || old.refs != snapshot.refs)
                         {
                             bounded_gap(
                                 &mut self.gaps,
@@ -843,6 +844,67 @@ impl Detector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: regression unchanged_clipped_git_refs_produce_no_activity_for_ten_seconds
+    // Completed scans, rather than elapsed silence, prove unchanged snapshots are quiet.
+    #[tokio::test]
+    async fn unchanged_clipped_snapshots_stay_quiet_until_a_retained_ref_changes() {
+        async fn complete(
+            detector: &mut Detector,
+            snapshot: super::super::git::Snapshot,
+            at: u64,
+        ) -> (Vec<Hashed>, Vec<String>) {
+            let (done, finished) = tokio::sync::oneshot::channel();
+            let task = detector.jobs.spawn(async move {
+                done.send(()).unwrap();
+                Finished::Git(0, Ok(Some(snapshot)), at)
+            });
+            detector.git_job = Some(task.id());
+            // This current-thread task has no suspension after send: its result
+            // is ready when the receiver resumes, with no scheduler-speed race.
+            finished.await.unwrap();
+            detector.poll(&[])
+        }
+        let root = tempfile::tempdir().unwrap();
+        let mut detector = Detector::new(root.path(), tokio::runtime::Handle::current()).unwrap();
+        let mut snapshot = super::super::git::Snapshot {
+            head: Some("a".repeat(40)),
+            digest: Some("sha256:original".into()),
+            trailer: None,
+            refs: (0..128)
+                .map(|n| (format!("refs/tags/bound-{n:03}"), "a".repeat(40)))
+                .collect(),
+            clipped: true,
+        };
+        let (rows, gaps) = complete(&mut detector, snapshot.clone(), 0).await;
+        assert!(rows.is_empty());
+        assert_eq!(gaps, ["git-ref-scan-bound: retained first128 refs"]);
+        for second in 1..=10 {
+            let (rows, gaps) = complete(&mut detector, snapshot.clone(), second * 1000).await;
+            assert!(
+                rows.is_empty(),
+                "unchanged scan emitted activity at {second}"
+            );
+            assert!(
+                gaps.is_empty(),
+                "unchanged scan repeated its gap at {second}"
+            );
+        }
+        snapshot
+            .refs
+            .insert("refs/tags/bound-000".into(), "b".repeat(40));
+        let (rows, gaps) = complete(&mut detector, snapshot, 11000).await;
+        assert_eq!(gaps, ["git-ref-scan-bound: retained first128 refs"]);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].reference, "git:refs/tags/bound-000");
+        assert_eq!(rows[0].source, "git/ref");
+        assert_eq!(rows[0].kind, "modified");
+        assert_eq!(
+            rows[0].commit.as_deref(),
+            Some("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+        );
+        assert_eq!(rows[0].at, 11000);
+    }
+
     fn signal(path: String) -> Signal {
         Signal {
             root: 0,

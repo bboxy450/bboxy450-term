@@ -42,10 +42,9 @@ impl SeatKeys for FirstHeld {
     }
 }
 
+// keeps: invariant messaging-never-held
 #[test]
 fn custody_hold_never_holds_local_delivery() {
-    remote_pending_fixture();
-    gui::exercise_held_startup();
     let root = tempfile::tempdir().unwrap();
     let account = SqliteStore::open(&object_dir(root.path(), "account").unwrap()).unwrap();
     let registry = Registry::new(account);
@@ -192,6 +191,7 @@ fn custody_hold_never_holds_local_delivery() {
     );
 }
 
+// keeps: decision #285, pinned remote delivery and admission-order signatures.
 #[test]
 fn pending_remote_delivery_waits_and_signed_completions_follow_admission_order() {
     remote_pending_fixture();
@@ -268,6 +268,7 @@ fn remote_pending_fixture() {
     }
 }
 
+// keeps: invariant messaging-never-held, delivery beyond 128 rows and bounded signing batches.
 #[test]
 fn local_delivery_outlives_the_old_signing_queue_cap_and_resume_is_bounded() {
     let root = tempfile::tempdir().unwrap();
@@ -329,4 +330,11 @@ fn local_delivery_outlives_the_old_signing_queue_cap_and_resume_is_bounded() {
         assert_eq!(signed.id, ids[index]);
         assert_eq!(signed.sender_sequence, index as u64 + 1);
     }
+}
+
+// keeps: invariant messaging-never-held, actual GUI door and durable event lane.
+#[test]
+#[ignore = "#327 B2: real GUI/PTY/custody retry boundary; scripts/night-test-boundaries.sh"]
+fn custody_hold_gui_boundary() {
+    gui::exercise_held_startup();
 }

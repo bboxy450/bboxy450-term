@@ -115,7 +115,9 @@ async fn apply(
     }
 }
 
+// keeps: spec id1-seat-chain §4 and GUI delivery during a custody hold.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "#327 B2: real GUI/PTY/custody retry boundary; scripts/night-test-boundaries.sh"]
 #[allow(
     clippy::disallowed_methods,
     reason = "headless test entry point creates its own Tokio runtime"

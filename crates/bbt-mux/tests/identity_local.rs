@@ -643,7 +643,9 @@ fn bus_seals_exact_hash_range_before_rekey_and_replays_retained_signed_bytes() {
     );
 }
 
+// keeps: spec id1-seat-chain §4; controlled retry/order proof is in identity_retry_clock_tests.
 #[test]
+#[ignore = "#327 B2: real PTY/custody retry boundary; scripts/night-test-boundaries.sh"]
 fn pending_logic_keeps_pty_live_retries_at_30s_and_releases_durable_sends_in_order() {
     use bbt_mux::{
         LaunchSpec, Supervisor,

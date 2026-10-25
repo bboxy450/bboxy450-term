@@ -5975,6 +5975,24 @@ impl Worker {
         }
         Ok(())
     }
+    fn refresh_identity_due(
+        &mut self,
+        last: &mut Instant,
+        clock: impl Fn() -> Instant,
+    ) -> Result<bool> {
+        const INTERVAL: Duration = Duration::from_secs(30);
+        if clock().duration_since(*last) < INTERVAL {
+            return Ok(false);
+        }
+        let phase =
+            self.client
+                .capture_diagnostics
+                .start(Phase::MaintenanceIdentity, Ulid::nil(), 0, 0, 0);
+        self.refresh_identity()?;
+        phase.finish(Outcome::Ok, 0, 0);
+        *last = clock();
+        Ok(true)
+    }
     fn refresh_identity(&mut self) -> Result<()> {
         let reopening_failed = self.identity.reopening_failed();
         self.identity.retry_custody()?;
@@ -7507,18 +7525,7 @@ impl Worker {
                     phase.finish(Outcome::Ok, 0, 0);
                     adapters_at = Instant::now();
                 }
-                if identity_at.elapsed() >= Duration::from_secs(30) {
-                    let phase = self.client.capture_diagnostics.start(
-                        Phase::MaintenanceIdentity,
-                        Ulid::nil(),
-                        0,
-                        0,
-                        0,
-                    );
-                    self.refresh_identity()?;
-                    phase.finish(Outcome::Ok, 0, 0);
-                    identity_at = Instant::now();
-                }
+                self.refresh_identity_due(&mut identity_at, Instant::now)?;
                 if messages_at.elapsed() >= Duration::from_millis(100) {
                     let phase = self.client.capture_diagnostics.start(
                         Phase::MaintenanceMessages,
@@ -8189,5 +8196,288 @@ mod close_restoration_tests {
         record.generation = 2;
         record.close = None;
         assert!(restored_close_position(&record, 2, 1, 7, true).is_err());
+    }
+}
+
+#[cfg(test)]
+mod identity_retry_clock_tests {
+    #![allow(
+        clippy::disallowed_methods,
+        reason = "private fixture IO and memory custody"
+    )]
+    use super::*;
+    use crate::{
+        identity::{Custody, DeviceKeyStore, IdentityRuntime, IdentityState, PendingReason},
+        messaging::{
+            api::{Request, Response},
+            wire::SendRequest,
+        },
+    };
+    use std::sync::Mutex;
+
+    struct Link;
+    impl SupervisorConnection for Link {
+        fn request(&mut self, action: Action) -> Result<Reply> {
+            match action {
+                Action::ListOwnedSeats => Ok(Reply::Seats { seats: vec![] }),
+                _ => panic!("identity clock fixture must not perform terminal effects"),
+            }
+        }
+        fn receive(&mut self, _: Duration) -> Result<Option<Event>> {
+            Ok(None)
+        }
+    }
+    struct Keys {
+        held: AtomicBool,
+        values: Mutex<BTreeMap<Ulid, SigningKey>>,
+        clock: Arc<Mutex<Instant>>,
+        finished: Instant,
+    }
+    impl DeviceKeyStore for Keys {
+        fn custody(&self) -> Custody {
+            Custody::Memory
+        }
+        fn load(&self, id: Ulid) -> crate::identity::Result<Option<SigningKey>> {
+            if self.held.load(Ordering::Acquire) {
+                return Err(PendingReason::KeychainUnavailable(-25308));
+            }
+            Ok(self.values.lock().unwrap().get(&id).cloned())
+        }
+        fn create(&self, id: Ulid, key: &SigningKey) -> crate::identity::Result<()> {
+            let mut values = self.values.lock().unwrap();
+            let std::collections::btree_map::Entry::Vacant(entry) = values.entry(id) else {
+                return Err(PendingReason::JournalConflict);
+            };
+            entry.insert(key.clone());
+            // A completed refresh takes three logical seconds. Its next interval
+            // must begin after the work, exactly as in the production loop.
+            *self.clock.lock().unwrap() = self.finished;
+            Ok(())
+        }
+    }
+
+    // keeps: spec id1-seat-chain §4 (30-second custody retry, no replacement or replay)
+    #[test]
+    fn thirty_second_identity_retry_releases_held_messages_and_provenance_on_a_controlled_clock() {
+        let root = tempfile::tempdir().unwrap();
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap();
+        let start = Instant::now();
+        let clock = Arc::new(Mutex::new(start));
+        let keys = Arc::new(Keys {
+            held: AtomicBool::new(true),
+            values: Mutex::default(),
+            clock: clock.clone(),
+            finished: start + Duration::from_secs(33),
+        });
+        let config = LogicConfig {
+            run_dir: root.path().join("run"),
+            repository: root.path().join("repository"),
+            ring: Default::default(),
+        };
+        std::fs::create_dir_all(config.repository.join(".bboxy")).unwrap();
+        let identity = IdentityRuntime::open_custodied_with_store(
+            &config.run_dir,
+            keys.clone(),
+            runtime.handle().clone(),
+        )
+        .unwrap();
+        let signing = SigningKey::from_bytes(&[56; 32]);
+        let window = crate::identity::begin_bus_window(&config.run_dir, &signing).unwrap();
+        let mut broker = Broker::open(&config.run_dir, signing.clone()).unwrap();
+        broker.identity_signer(signing, Some(window));
+        let bus = BusHandle::start(runtime.handle(), broker, 128).unwrap();
+        let (tx, _rx) = mpsc::channel(128);
+        let client = LogicClient {
+            tx,
+            bus: bus.clone(),
+            exit_cause: Arc::new(OnceLock::new()),
+            capture_diagnostics: Arc::new(Recorder::default()),
+            gui_peers: Arc::default(),
+            captures: Arc::default(),
+            gui_watch_epoch: Arc::default(),
+        };
+        let mut worker = Worker::open(
+            vec![Box::new(LocalProvider::new(Link))],
+            config,
+            bus.clone(),
+            runtime.handle().clone(),
+            client,
+            identity,
+            Some(window),
+        )
+        .unwrap();
+        let seat = SeatRecord::new(Ulid::new(), Ulid::new(), "clock fixture", "zsh");
+        worker.registry.insert(&seat).unwrap();
+        worker.messaging.sync_seat(&seat).unwrap();
+        let mut ids = Vec::new();
+        for text in ["first held", "second held"] {
+            let request = SendRequest::text(format!("seats/{}/inbox", seat.id), text);
+            ids.push(request.id);
+            let Response::Stored { message } = worker
+                .messaging
+                .request(
+                    seat.id,
+                    1,
+                    Request::Send { message: request },
+                    false,
+                    None,
+                    1,
+                )
+                .unwrap()
+            else {
+                panic!("local delivery was held");
+            };
+            assert!(message.envelope().is_none());
+            assert_eq!(message.view().id, *ids.last().unwrap());
+        }
+        // Feed a completed observation at the public bus boundary. Projection
+        // waits for the same controlled retry; the original signer never changes.
+        use crate::provenance::artifacts::{Attribution, Change};
+        use crate::store::Events;
+        let artifact = Ulid::new();
+        let path = format!("artifacts/{artifact}.md");
+        let observation = Change {
+            artifact_id: artifact,
+            kind: "created".into(),
+            reference: "held.txt".into(),
+            previous_ref: None,
+            digest: Some(format!(
+                "sha256:{:x}",
+                <sha2::Sha256 as sha2::Digest>::digest(b"held-content")
+            )),
+            before_digest: None,
+            bytes: Some(12),
+            attribution: Attribution::inferred(vec![]),
+            source: "filesystem".into(),
+            reason: None,
+            commit: None,
+        };
+        let observed = runtime
+            .block_on(bus.publish(
+                "index",
+                Draft::new(
+                    format!("artifact/{artifact}/created"),
+                    "provenance/filesystem",
+                    serde_json::json!({"observation": observation}),
+                ),
+            ))
+            .unwrap();
+        observed.verify().unwrap();
+        assert!(observed.event.source.starts_with("ephemeral-hold/"));
+        let original = serde_json::to_vec(&observed).unwrap();
+        worker
+            .provenance
+            .step(
+                Arc::make_mut(&mut worker.index),
+                &bus,
+                runtime.handle(),
+                &worker.identity,
+                &[],
+            )
+            .unwrap();
+        assert!(worker.index.current(&path).unwrap().is_none());
+        assert!(
+            worker
+                .index
+                .activity()
+                .after(0, 128)
+                .unwrap()
+                .iter()
+                .any(|row| row.event.payload["reason"] == "artifact-projection-signing-held")
+        );
+        let mut last = start;
+        keys.held.store(false, Ordering::Release);
+        *clock.lock().unwrap() = start + Duration::from_secs(30) - Duration::from_nanos(1);
+        assert!(
+            !worker
+                .refresh_identity_due(&mut last, || *clock.lock().unwrap())
+                .unwrap()
+        );
+        assert_eq!(
+            worker.identity.status().unwrap().state,
+            IdentityState::Pending
+        );
+        *clock.lock().unwrap() = start + Duration::from_secs(30);
+        assert!(
+            worker
+                .refresh_identity_due(&mut last, || *clock.lock().unwrap())
+                .unwrap()
+        );
+        assert_eq!(
+            worker.identity.status().unwrap().state,
+            IdentityState::LocalDev
+        );
+        assert!(
+            worker
+                .provenance
+                .step(
+                    Arc::make_mut(&mut worker.index),
+                    &bus,
+                    runtime.handle(),
+                    &worker.identity,
+                    &[]
+                )
+                .unwrap()
+        );
+        let doc = worker.index.current(&path).unwrap().unwrap();
+        assert_eq!(doc.metadata["authorship"]["kind"], "local-dev");
+        assert!(
+            doc.metadata["history"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|row| row["source"] == observed.event.source)
+        );
+        let restored = worker.index.activity().at(observed.seq).unwrap().unwrap();
+        assert_eq!(serde_json::to_vec(&restored).unwrap(), original);
+        use base64::Engine;
+        let author = base64::engine::general_purpose::STANDARD
+            .decode(doc.metadata["authorship"]["public_key"].as_str().unwrap())
+            .unwrap();
+        assert_ne!(restored.provenance.signer.as_slice(), author);
+        let mut tampered = restored;
+        tampered.event.payload["observation"]["digest"] = serde_json::json!("sha256:forged");
+        assert!(tampered.verify().is_err());
+        let page = worker.messaging.list(seat.id, None, None, 0, 16).unwrap();
+        let envelopes: Vec<_> = page
+            .items
+            .iter()
+            .map(|row| row.envelope().unwrap())
+            .collect();
+        assert_eq!(envelopes.iter().map(|m| m.id).collect::<Vec<_>>(), ids);
+        assert_eq!(
+            envelopes
+                .iter()
+                .map(|m| m.sender_sequence)
+                .collect::<Vec<_>>(),
+            [1, 2]
+        );
+        *clock.lock().unwrap() = start + Duration::from_secs(63) - Duration::from_nanos(1);
+        assert!(
+            !worker
+                .refresh_identity_due(&mut last, || *clock.lock().unwrap())
+                .unwrap()
+        );
+        *clock.lock().unwrap() = start + Duration::from_secs(63);
+        assert!(
+            worker
+                .refresh_identity_due(&mut last, || *clock.lock().unwrap())
+                .unwrap()
+        );
+        assert_eq!(
+            worker
+                .messaging
+                .list(seat.id, None, None, 0, 16)
+                .unwrap()
+                .items
+                .len(),
+            2
+        );
+        drop(worker);
+        runtime.block_on(bus.shutdown()).unwrap();
     }
 }
