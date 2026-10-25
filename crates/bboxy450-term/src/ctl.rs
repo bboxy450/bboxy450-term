@@ -1358,11 +1358,19 @@ fn wait_for_seat(
     elapsed: impl Fn() -> Duration,
 ) -> Result<Vec<Value>, String> {
     let op = fresh();
+    let screen_tail = std::cell::RefCell::new(None::<String>);
     let timed_out = || {
-        format!(
-            "{TIMEOUT_PREFIX}{op}\nwaited {} ms; seat {selector} did not meet the requested predicate",
-            timeout.as_millis()
-        )
+        if let Some(tail) = screen_tail.borrow().as_deref() {
+            format!(
+                "{TIMEOUT_PREFIX}{op}\nwaited {} ms; the screen ends:\n{tail}",
+                timeout.as_millis()
+            )
+        } else {
+            format!(
+                "{TIMEOUT_PREFIX}{op}\nwaited {} ms; seat {selector} did not meet the requested predicate",
+                timeout.as_millis()
+            )
+        }
     };
     let remaining = || {
         timeout
@@ -1404,6 +1412,15 @@ fn wait_for_seat(
             } else {
                 None
             };
+            if let Some(screen) = &screen {
+                let rows: Vec<_> = screen
+                    .rows
+                    .iter()
+                    .filter(|row| !row.is_empty())
+                    .map(String::as_str)
+                    .collect();
+                *screen_tail.borrow_mut() = Some(rows[rows.len().saturating_sub(12)..].join("\n"));
+            }
             remaining()?;
             if predicate.matches(seat, screen.as_ref()) {
                 let mut row = json!({"ok":true,"op":op,"done":true,
@@ -3411,7 +3428,28 @@ mod wait_contract_tests {
         let clock = now.clone();
         let (mut client, task) = peer(move |mut reader, mut writer| {
             assert!(matches!(request(&mut reader), GuiAction::ListSeats));
-            reply(&mut writer, GuiReply::Seats(vec![seat]));
+            reply(&mut writer, GuiReply::Seats(vec![seat.clone()]));
+            let GuiAction::Screen { id, .. } = request(&mut reader) else {
+                panic!("expected screen")
+            };
+            reply(
+                &mut writer,
+                GuiReply::Screen {
+                    op: id,
+                    screen: bbt_proto::gui::SeatScreen {
+                        seat: seat.record.id,
+                        generation: seat.state.generation,
+                        rows: vec!["hello-42".into()],
+                        cursor: (0, 0),
+                        modes: 0,
+                        title: String::new(),
+                        cols: 80,
+                        sequence: 1,
+                        cursor_style: Value::Null,
+                        cells: None,
+                    },
+                },
+            );
             let GuiAction::EventsRead { id, after, .. } = request(&mut reader) else {
                 panic!("expected waiting page")
             };
@@ -3427,10 +3465,11 @@ mod wait_contract_tests {
                 },
             );
         });
+        let predicate = WaitPredicate::new(None, Some("never-there".into()), None, None).unwrap();
         let error = wait_for_seat(
             &mut client,
             &selector,
-            &predicate(None),
+            &predicate,
             Duration::from_secs(30),
             || Duration::from_millis(now.load(Ordering::SeqCst)),
         )
@@ -3438,6 +3477,7 @@ mod wait_contract_tests {
         let (op, failure) = operation_failure(None, &error);
         assert!(op.is_some());
         assert_eq!((failure.kind, failure.exit), ("timeout", 3));
+        assert!(failure.message.contains("hello-42"));
         drop(client);
         task.join().unwrap();
     }
