@@ -24,6 +24,8 @@ pub(super) struct Retry {
     root: PathBuf,
     store: Option<Arc<dyn DeviceKeyStore + Send + Sync>>,
     handle: tokio::runtime::Handle,
+    #[cfg(test)]
+    fail_next_reopen: Arc<std::sync::atomic::AtomicBool>,
 }
 impl Retry {
     pub(super) fn store(
@@ -36,7 +38,18 @@ impl Retry {
             .unwrap_or_else(|| super::io::process_store(Some(custody)))
     }
     pub(super) fn reopen(&self) -> Result<IdentityRuntime> {
-        self.open()
+        #[cfg(test)]
+        if self
+            .fail_next_reopen
+            .swap(false, std::sync::atomic::Ordering::AcqRel)
+        {
+            return Err(rusqlite::Error::SqliteFailure(
+                rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_BUSY),
+                None,
+            )
+            .into());
+        }
+        self.open_mode(true)
     }
     pub(super) fn custody_label(&self, recorded: Option<super::Custody>) -> Option<&'static str> {
         self.store
@@ -51,6 +64,9 @@ impl Retry {
         }
     }
     fn open(&self) -> Result<IdentityRuntime> {
+        self.open_mode(false)
+    }
+    fn open_mode(&self, reopening: bool) -> Result<IdentityRuntime> {
         let account = SqliteStore::open(&object_dir(&self.root, "account")?)?;
         let reason = match self.load() {
             LocalIssuerOutcome::Ready(key) => {
@@ -64,6 +80,7 @@ impl Retry {
                         runtime.retry = Some(self.clone());
                         return Ok(runtime);
                     }
+                    Err(error) if reopening => return Err(error),
                     Err(_) => PendingReason::InvalidProof,
                 }
             }
@@ -85,6 +102,7 @@ impl Retry {
             pending: Some(reason),
             bus_key: None,
             observed_status: Default::default(),
+            reopen_failed: None,
         })
     }
 }
@@ -94,6 +112,8 @@ impl IdentityRuntime {
             root: root.into(),
             store: super::io::process_test_store().map(super::io::bounded_store),
             handle,
+            #[cfg(test)]
+            fail_next_reopen: Default::default(),
         }
         .open()
     }
@@ -108,6 +128,8 @@ impl IdentityRuntime {
             root: root.into(),
             store: Some(super::io::bounded_store(store)),
             handle,
+            #[cfg(test)]
+            fail_next_reopen: Default::default(),
         }
         .open()
     }
@@ -115,12 +137,27 @@ impl IdentityRuntime {
     /// the terminal owner and its public history intact.
     pub fn retry_custody(&mut self) -> Result<()> {
         bbt_rt::assert_not_ui_thread();
-        if self.pending.is_some()
+        if (self.pending.is_some() || self.reopening_failed())
             && let Some(retry) = self.retry.clone()
         {
-            *self = retry.open()?;
+            if self.reopening_failed() {
+                match retry.reopen() {
+                    Ok(runtime) => *self = runtime,
+                    Err(error) => self.note_reopen_failed(super::unlock::reopen_failure(&error)),
+                }
+            } else {
+                *self = retry.open()?;
+            }
         }
         Ok(())
+    }
+    #[cfg(test)]
+    pub(crate) fn fail_next_native_reopen(&self) {
+        self.retry
+            .as_ref()
+            .expect("custodied fixture")
+            .fail_next_reopen
+            .store(true, std::sync::atomic::Ordering::Release);
     }
 }
 struct Unavailable {

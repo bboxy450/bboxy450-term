@@ -1413,6 +1413,7 @@ mod tests {
             clear_actions: vec![],
             outcome: None,
             pending: vec![],
+            reopen_failed: None,
         };
         assert!(
             replies

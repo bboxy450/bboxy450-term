@@ -56,6 +56,8 @@ pub enum PendingReason {
     KeychainSigningIdentityRequired,
     JournalConflict,
     StorageUnavailable,
+    #[serde(rename = "reopen_failed")]
+    ReopenFailed,
     BootstrapInProgress,
     ActivationRequired,
     DeviceGrantExpired,
@@ -87,6 +89,7 @@ impl PendingReason {
             }
             Self::JournalConflict => "identity journal conflict",
             Self::StorageUnavailable => "identity storage unavailable",
+            Self::ReopenFailed => "identity reopen failed; retrying without another native attempt",
             Self::BootstrapInProgress => "bootstrap has not completed",
             Self::ActivationRequired => "restart logic to activate the certified identity",
             Self::DeviceGrantExpired => "device grant expired; operator renewal required",

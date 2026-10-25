@@ -92,6 +92,7 @@ mod tests {
             seats_still_local_dev: 0,
             custody_held_since: None,
             open_ephemeral_holds: 0,
+            reopen_failed: None,
         };
         for state in [IdentityState::LocalDev, IdentityState::Pending] {
             status.state = state;

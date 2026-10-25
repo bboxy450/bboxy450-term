@@ -44,6 +44,8 @@ pub struct IdentityStatus {
     pub custody_held_since: Option<u64>,
     #[serde(default)]
     pub open_ephemeral_holds: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reopen_failed: Option<bbt_proto::identity::ReopenFailure>,
 }
 impl IdentityStatus {
     pub(super) fn hold(&mut self, reason: PendingReason) {
@@ -74,8 +76,26 @@ pub struct IdentityRuntime {
     pub(super) pending: Option<PendingReason>,
     pub(super) bus_key: Option<ed25519_dalek::SigningKey>,
     pub(super) observed_status: std::sync::Mutex<Option<IdentityStatus>>,
+    pub(super) reopen_failed: Option<bbt_proto::identity::ReopenFailure>,
 }
 impl IdentityRuntime {
+    pub(crate) fn note_reopen_failed(&mut self, failure: bbt_proto::identity::ReopenFailure) {
+        self.reopen_failed = Some(failure);
+    }
+    pub(super) fn decorate_reopen_failure(&self, status: &mut IdentityStatus) {
+        if let Some(failure) = &self.reopen_failed {
+            status.hold(PendingReason::ReopenFailed);
+            status.reason_label = Some(format!(
+                "reopen_failed: {}; retrying without another native attempt",
+                failure.reason
+            ));
+            status.reopen_failed = Some(failure.clone());
+            status.device_id = None;
+        }
+    }
+    pub(crate) fn reopening_failed(&self) -> bool {
+        self.reopen_failed.is_some()
+    }
     pub(crate) fn issued_by(&self) -> Option<&str> {
         self.chain.as_ref().and_then(|chain| chain.test_label())
     }
@@ -115,6 +135,7 @@ impl IdentityRuntime {
                 status.device_id = None;
             }
             super::hold::decorate(&self.account, &mut status)?;
+            self.decorate_reopen_failure(&mut status);
             return Ok(status);
         }
         let mut status = read(&self.account, now)?;
@@ -136,9 +157,13 @@ impl IdentityRuntime {
             status.hold(PendingReason::ActivationRequired);
         }
         super::hold::decorate(&self.account, &mut status)?;
+        self.decorate_reopen_failure(&mut status);
         Ok(status)
     }
     pub(crate) fn bus_signer(&self) -> Result<Option<ed25519_dalek::SigningKey>> {
+        if self.reopening_failed() {
+            return Ok(None);
+        }
         if self.keys.signing_hold().is_some() {
             return Ok(None);
         }
@@ -269,6 +294,7 @@ pub(super) fn read(account: &SqliteStore, now: u64) -> Result<IdentityStatus> {
         seats_still_local_dev: local_count(account, state.as_ref())?,
         custody_held_since: None,
         open_ephemeral_holds: 0,
+        reopen_failed: None,
     };
     if state
         .as_ref()
