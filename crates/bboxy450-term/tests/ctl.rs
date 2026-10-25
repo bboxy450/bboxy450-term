@@ -944,8 +944,17 @@ fn ctl_in(run: &Path, cwd: &Path, args: &[&str]) -> (bool, Vec<Value>) {
 
 #[tokio::test]
 async fn real_ctl_keeps_a_refusal_that_interrupts_its_request_write() {
-    use std::os::fd::AsRawFd;
-    use tokio::io::AsyncWriteExt;
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+    struct ResumeOnDrop(Option<libc::pid_t>);
+    impl Drop for ResumeOnDrop {
+        fn drop(&mut self) {
+            if let Some(pid) = self.0 {
+                // SAFETY: this is only the fixture's stopped, unreaped child.
+                unsafe { libc::kill(pid, libc::SIGCONT) };
+            }
+        }
+    }
 
     tokio::time::timeout(Duration::from_secs(10), async {
         let root = tempfile::Builder::new()
@@ -962,58 +971,70 @@ async fn real_ctl_keeps_a_refusal_that_interrupts_its_request_write() {
         .unwrap();
         std::fs::set_permissions(&endpoint, std::fs::Permissions::from_mode(0o600)).unwrap();
 
-        // JSON escapes each control character to six bytes. This is below the
-        // 1 MiB wire cap and argv cap, but cannot fit in the socket send queue.
-        let summary = "\u{1}".repeat(120 * 1024);
-        let (probe, _) = std::os::unix::net::UnixStream::pair().unwrap();
-        let mut send_bytes: libc::c_int = 0;
-        let mut size = std::mem::size_of_val(&send_bytes) as libc::socklen_t;
-        // SAFETY: probe owns the live fd and both output pointers have their
-        // declared writable sizes. No option or system setting is changed.
-        let observed = unsafe {
-            libc::getsockopt(
-                probe.as_raw_fd(),
-                libc::SOL_SOCKET,
-                libc::SO_SNDBUF,
-                (&mut send_bytes as *mut libc::c_int).cast(),
-                &mut size,
-            )
-        };
-        assert_eq!(observed, 0);
-        assert!(send_bytes > 0);
-        assert!(
-            summary.len() * 6 > 2 * send_bytes as usize,
-            "the bounded fixture frame must exceed socket send capacity"
-        );
-        drop(probe);
         let child = tokio::process::Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
             .args(["ctl", "--endpoint"])
             .arg(&endpoint)
-            .args(["task", "report", "#1", "--summary", &summary])
+            .args(["--as", "refusal fixture", "seat", "ls"])
             .env_remove("BBOXY_CTL_ISSUER")
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .kill_on_drop(true)
             .spawn()
             .unwrap();
-        let (mut stream, _) = listener.accept().await.unwrap();
-        // This deliberately uncooperative peer stops accepting the request
-        // before it can finish, then queues the refusal. Keep its fd open until
-        // ctl exits so unread request bytes cannot discard the buffered reply.
-        // SAFETY: this is the accepted, fixture-owned fd; only its read half closes.
-        assert_eq!(
-            unsafe { libc::shutdown(stream.as_raw_fd(), libc::SHUT_RD) },
-            0
+        let pid = child.id().unwrap() as libc::pid_t;
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut stream = BufReader::new(stream);
+        let mut line = String::new();
+        stream.read_line(&mut line).await.unwrap();
+        let request: bbt_proto::GuiRequest = serde_json::from_str(&line).unwrap();
+        assert!(
+            matches!(request.action, GuiAction::Issuer { label } if label == "refusal fixture")
         );
-        let mut refusal = serde_json::to_vec(&GuiReply::Error {
-            op: bbt_mux::Ulid::nil(),
-            reason: bbt_mux::ctl_door::REFUSAL.into(),
-        })
-        .unwrap();
-        refusal.push(b'\n');
-        stream.write_all(&refusal).await.unwrap();
+
+        // Issuer must be acknowledged before ctl can send ListSeats. Stop our
+        // own child at that protocol barrier, close the peer, then resume it:
+        // the next request is guaranteed to encounter an already-closed peer.
+        // SAFETY: pid came directly from our still-owned, unreaped Child.
+        assert_eq!(unsafe { libc::kill(pid, libc::SIGSTOP) }, 0);
+        let mut resume = ResumeOnDrop(Some(pid));
+        loop {
+            let mut status = 0;
+            // SAFETY: status is writable and waitpid targets only our child.
+            let result =
+                unsafe { libc::waitpid(pid, &mut status, libc::WUNTRACED | libc::WNOHANG) };
+            if result == pid {
+                assert!(
+                    libc::WIFSTOPPED(status),
+                    "ctl exited before the barrier: {status}"
+                );
+                break;
+            }
+            if result < 0 {
+                let error = std::io::Error::last_os_error();
+                assert_eq!(error.kind(), std::io::ErrorKind::Interrupted, "{error}");
+            }
+            tokio::task::yield_now().await;
+        }
+        let mut replies = Vec::new();
+        for reply in [
+            GuiReply::Ok {
+                op: bbt_mux::Ulid::nil(),
+            },
+            GuiReply::Error {
+                op: bbt_mux::Ulid::nil(),
+                reason: bbt_mux::ctl_door::REFUSAL.into(),
+            },
+        ] {
+            serde_json::to_writer(&mut replies, &reply).unwrap();
+            replies.push(b'\n');
+        }
+        stream.write_all(&replies).await.unwrap();
         stream.flush().await.unwrap();
         stream.shutdown().await.unwrap();
+        drop(stream);
+        // SAFETY: the fixture still owns this stopped, unreaped child.
+        assert_eq!(unsafe { libc::kill(pid, libc::SIGCONT) }, 0);
+        resume.0 = None;
         let output = child.wait_with_output().await.unwrap();
         assert_eq!(
             output.status.code(),
