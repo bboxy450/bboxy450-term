@@ -613,6 +613,7 @@ async fn gui_session(
     // Knowledge is operation-correlated side work; ordinary controls keep their FIFO.
     // Dropping the session aborts these waiters, not a running provider's permit.
     let mut knowledge_reads = tokio::task::JoinSet::new();
+    let mut debug_reads = tokio::task::JoinSet::new();
     let result:Result<()>=async {
         loop {
             tokio::select! {
@@ -649,6 +650,16 @@ async fn gui_session(
                         } else {
                             let client = client.clone();
                             knowledge_reads.spawn(async move { (id,client.gui_knowledge(method,args).await) });
+                        }
+                        continue;
+                    }
+                    if let GuiAction::Debug {id,request:query} = request.action {
+                        if door != crate::mcp::Door::Ctl || debug_reads.len() >= 2 {
+                            send(&mut write,&GuiReply::Error {op:id,reason:"debug requires the ctl operator door and at most two active reads".into()}).await?;
+                        } else {
+                            let client = client.clone();
+                            let origin = crate::mcp::Origin {door,issued_by:issued_by.clone()};
+                            debug_reads.spawn(async move { (id,client.gui_debug(id,query,origin).await) });
                         }
                         continue;
                     }
@@ -736,6 +747,7 @@ async fn gui_session(
                             GuiAction::Messaging {id,swarm_id,request}=>Ok(GuiReply::Messaging {op:id,response:client.gui_messaging(id,Ulid::from(swarm_id.0.0),request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?}),
                             GuiAction::Task {id,request}=>Ok(GuiReply::Task {op:id,response:client.gui_task(id,request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?}),
                             GuiAction::Knowledge {..}=>unreachable!("knowledge was dispatched independently"),
+                            GuiAction::Debug {..}=>unreachable!("debug was dispatched independently"),
                             GuiAction::RecordWrite {id,args}=>Ok(GuiReply::Knowledge {op:id,response:serde_json::to_value(client.gui_record_write(id,args,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?)?}),
                             GuiAction::Watch {seat,view}=> {
                                 if view.seat!=Ulid::from(seat.0.0) {return Err(invalid("watch seat and view disagree"));}
@@ -872,6 +884,14 @@ async fn gui_session(
                 Some(completed)=knowledge_reads.join_next(),if !knowledge_reads.is_empty()=> {
                     let (op,response)=completed.map_err(|_|invalid("knowledge reply task interrupted"))?;
                     send(&mut write,&gui_knowledge_reply(op,response)?).await?;
+                }
+                Some(completed)=debug_reads.join_next(),if !debug_reads.is_empty()=> {
+                    let (op,result)=completed.map_err(|_|invalid("debug reply task interrupted"))?;
+                    let reply=match result {
+                        Ok(data)=>GuiReply::Debug {op,data},
+                        Err(error)=>GuiReply::Error {op,reason:crate::debug::sanitize(serde_json::json!(error.to_string())).as_str().unwrap_or("debug read refused").into()},
+                    };
+                    send(&mut write,&reply).await?;
                 }
                 ask=async {capture_asks.as_mut().unwrap().recv().await},if admitted&&capture_asks.is_some()=> {
                     match ask {

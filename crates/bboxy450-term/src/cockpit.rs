@@ -810,6 +810,7 @@ impl Session {
                 | GuiReply::OperatorClose { .. }
                 | GuiReply::OperatorUndoClose { .. }
                 | GuiReply::EventsStreams { .. }
+                | GuiReply::Debug { .. }
                 | GuiReply::OperatorFocus { .. }
                 | GuiReply::Focused { .. }
                 | GuiReply::Hosts(_)
@@ -966,8 +967,23 @@ async fn read_replies(read: OwnedReadHalf, sender: mpsc::Sender<Result<GuiReply>
     }
 }
 
+#[allow(
+    clippy::disallowed_methods,
+    reason = "child bootstrap opens its private stderr file on IO, guarded off the UI thread"
+)]
 fn child(config: &Config, entry: &str) -> Result<Child> {
     bbt_rt::assert_not_ui_thread();
+    use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
+    std::fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(&config.run_dir)?;
+    let stderr = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW)
+        .open(config.run_dir.join(format!("{entry}.log")))?;
     let mut command = Command::new(&config.executable);
     if let Some(root) = &config.shell_config {
         command.env("ZDOTDIR", root);
@@ -976,7 +992,7 @@ fn child(config: &Config, entry: &str) -> Result<Child> {
         .arg(entry)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
+        .stderr(Stdio::from(stderr))
         .kill_on_drop(true)
         .spawn()?)
 }

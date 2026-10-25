@@ -1,0 +1,42 @@
+C-4 ctl debug — Aster Cinderwing <EXECUTOR>
+Brief: Vesper fada5a8d-5597-47aa-9257-382c0609582e; grammar/availability ruling 5d7354d4-46da-4216-9dfc-5c5108d4bb51.
+Frozen source: d1097a861cd94d8c4b30c6974e2826ad3413f28e, aster-ctl-debug, on main e327544193cc88ff62da187c94427baddaeacd7d.
+Exact clean normal sh scripts/ci-local.sh: EXIT 0, 1156.018 s, all gates passed. This report and manifest are an evidence-only successor.
+
+Mechanism / acceptance
+crates/bbt-proto/src/gui.rs:187 — fixed DebugProcess and DebugRequest variants; no caller-selected input file or SQL. Additive GuiAction::Debug / GuiReply::Debug; VERSION 2 unchanged.
+crates/bboxy450-term/src/ctl.rs:732 — five noun-verb parser rows, per-verb flags, real action mapping and one parse vector per verb. No debug invariants verb (the existing local script remains separate).
+crates/bbt-mux/src/seat_socket.rs:656 — operator ctl door only; at most two independent correlated diagnostic reads per connection, no events attachment/ACK or second consumer. Ordinary controls and reply draining continue.
+crates/bbt-mux/src/logic.rs:5929 — resolve operator/device and issuer on the worker, copy cached numeric state, then bounded off-worker file/SQLite/process reads. Existing control journal retains results, rejects changed arguments under the same op, and publishes the ordinary ctl audit; no transaction is held across diagnostic IO.
+crates/bbt-mux/src/debug.rs:118 — logs app|logic|supervisor, --since byte offset, next_since; 32 KiB / 256 complete lines per page. Arbitrary mid-line cursors and rotated offsets are refused. Oversize/unfinished lines are omitted with an explicit byte count, never split into fragments of secrets. Missing logs are labelled unavailable.
+crates/bboxy450-term/src/cockpit.rs:970 — private 0600 append sinks for logic.log and supervisor.log, off UI with the existing runtime guard; stdout bootstrap/control/lifetime unchanged. app.log is the existing ctl app start sink.
+crates/bbt-mux/src/debug.rs:206 — journal query account/<op> or seat/<seat-id>/<op> only; one parameterized control/op lookup, existing regular files, no symlinks, mode=ro and PRAGMA query_only=ON, 128 KiB row bound. No Store/Ring open, arbitrary SQL, identity KV or transient audit-outbox dump.
+crates/bbt-mux/src/debug.rs:34 — metrics expose cached view/watch/refusal counts and existing numeric capture data with a basis. Snapshot is a bounded cached R5 cursor/capture table. Recorder state says disabled when off; no instrumentation is enabled. Unavailable cross-process supervisor and GUI/ring observations stay explicitly unknown.
+crates/bbt-mux/src/debug.rs:260 — ps reads only bounded numeric pid/ppid columns, filters to the app family before output, and labels known processes. No argv, environment or unrelated process dump; truncation/omissions are reported.
+crates/bbt-mux/src/debug.rs:356 — diagnostic text and nested journal results redact encoded long tokens, byte arrays and secret-labelled fields before the wire. Result output is bounded to 256 KiB; no key namespace is read. Long hashes/digests may be redacted too.
+crates/bboxy450-term/src/ctl/debug.rs:3 — snapshot is written by the CLI to a new 0600 file; identical --op replay may reuse matching bytes. No overwrite, symlink-following or backend file-write door.
+
+Verification
+Focused backend tests: EXIT 0, 3/0 (read-only single-op projection, source confinement/symlinks/redaction, bounded line cursors).
+Real Session/CLI regression: EXIT 0, 1/0. Real supervisor/logic/seat processes, log resumption, separate stderr sources, device/door/issuer journal fields, equal-op replay/different-args refusal, snapshot file mode/content and disabled tracing; no window.
+Expanded ctl_never_prints_secrets: EXIT 0, 1/0. Every debug verb plus failure paths checked against the actual throwaway GUI capability in lower/upper hex, standard/url base64 with/without padding, and JSON bytes, plus fixture key bytes. Poisoned journal result and neighboring identity KV sentinel remain unchanged; snapshot bytes checked too.
+cargo test --workspace --locked --no-fail-fast: EXIT 0, 1366 passed / 0 failed / 29 ignored, 835.209 s on 7b0d98fb. The sole following source delta is d1097a86's four-line off-UI lint annotation; the exact final gate repeats the full suite.
+cargo clippy --workspace --all-targets --locked -- -D warnings: EXIT 0, 4.457 s after the scoped annotation.
+sh scripts/invariants.sh: EXIT 0, 23 checks / 0 failures / 9 named slow skips, 201.111 s, on d1097a86.
+All Cargo commands clear compiler wrappers; O1 + debug assertions, no debuginfo/incremental, memory default/private file-account fixtures.
+
+Failures retained, then fixed
+Initial focused compile: EXIT 101, fixture JSON macro used Rust repeat-array syntax; corrected to vec!.
+Next focused compile: EXIT 101, SQLite usize ToSql/FromSql unsupported; changed bound/length SQL values to i64.
+First strict Clippy: EXIT 101, new cockpit stderr-file open needed a scoped disallowed-methods allowance. The function already asserts not UI; d1097a86 adds only the annotation. No behavior or test threshold was relaxed.
+One full gate only; no failed gate, waiver, blind rerun or timing-limit change.
+
+Exact gate / limits / retirement
+ci.log — both debug CLI and secret-leak regressions pass again; headless smoke reports LocalDev/memory, idle 0 frames / 0 callbacks / 10.004 s / windows=0; invariants 23/0, all gates passed.
+Raw gate SHA256: edaf30b21f48591d914aa95edd7b2f463574037c610de4b79e43514179723725.
+Raw evidence: /Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/ (per-command logs/statuses and hashes in the manifest).
+Snapshots are sampled cached observations, not a fresh ring query, GUI Applied witness or whole-window timing partition. Disabled/unavailable data is not zero work. Rows/spans/process output are capped with omitted counts; this command does not run or certify R5 load acceptance.
+Raw log text is deliberately redacted. A direct launch without a recorded app.log reports unavailable. Cursor offsets reset with --since 0 after rotation. Journal reads also write their own normal control audit, not the inspected entry.
+No renderer/UI geometry changes; normal gate per brief, no new parity/load run. No operator Keychain, desktop input, publication or merge.
+Clean detached tree verified, recorded process group empty, lsof clear. Own target/worktree and inactive trybuild target removed: 4,168,962,048 allocated cache bytes freed. Historical evidence retained.
+Main remained e3275441 through the gate; no post-gate rebase. Oracle's announced #315 integration is not claimed by this source.

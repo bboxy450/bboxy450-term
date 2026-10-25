@@ -181,6 +181,32 @@ pub struct UiLayoutNode {
     pub children: Vec<UiLayoutNode>,
 }
 
+/// Fixed diagnostic sources; a caller cannot use the debug door to read a path or SQL.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DebugProcess {
+    App,
+    Logic,
+    Supervisor,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum DebugRequest {
+    Logs {
+        process: DebugProcess,
+        since: u64,
+    },
+    /// `account/<op>` or `seat/<seat-id>/<op>`; never an SQL statement.
+    Journal {
+        query: String,
+    },
+    Metrics,
+    /// Destination is part of the journaled arguments; only the CLI writes the file.
+    Snapshot {
+        destination: String,
+    },
+    Ps,
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body")]
 pub enum GuiAction {
@@ -195,6 +221,11 @@ pub enum GuiAction {
     },
     ListHosts,
     ListSeats,
+    /// Bounded, read-only diagnostics, admitted only through the operator ctl door.
+    Debug {
+        id: Ulid,
+        request: DebugRequest,
+    },
     /// Ask the app owner through the same admitted operator endpoint.
     App {
         id: Ulid,
@@ -464,6 +495,10 @@ pub enum GuiReply {
     Ui {
         op: Ulid,
         layout: UiLayout,
+    },
+    Debug {
+        op: Ulid,
+        data: serde_json::Value,
     },
     /// A lifecycle query for the attached GUI owner.
     AppAsk {

@@ -163,6 +163,12 @@ enum Command {
         crate::mcp::Origin,
         oneshot::Sender<crate::knowledge::data_source::Result<serde_json::Value>>,
     ),
+    GuiDebug(
+        Ulid,
+        bbt_proto::gui::DebugRequest,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<serde_json::Value>>,
+    ),
     GuiKnowledge(
         String,
         serde_json::Value,
@@ -321,6 +327,7 @@ impl Command {
                 | Self::Endpoint(..)
                 | Self::Status(..)
                 | Self::GuiWatchInterest { .. }
+                | Self::GuiDebug(..)
         )
     }
 }
@@ -763,6 +770,19 @@ impl LogicClient {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::GuiScreen(seat, cells, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
+    }
+    pub async fn gui_debug(
+        &self,
+        id: Ulid,
+        request: bbt_proto::gui::DebugRequest,
+        origin: crate::mcp::Origin,
+    ) -> Result<serde_json::Value> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiDebug(id, request, origin, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
@@ -1665,6 +1685,7 @@ struct Worker {
     // Scans and provenance updates use copy-on-write while an older read is active.
     index: Arc<Index>,
     knowledge_reads: Arc<tokio::sync::Semaphore>,
+    debug_reads: Arc<tokio::sync::Semaphore>,
     watch: FileWatch,
     bus: BusHandle,
     handle: tokio::runtime::Handle,
@@ -1767,6 +1788,7 @@ impl Worker {
             registry,
             index: Arc::new(index),
             knowledge_reads: Arc::new(tokio::sync::Semaphore::new(2)),
+            debug_reads: Arc::new(tokio::sync::Semaphore::new(2)),
             watch,
             bus,
             handle,
@@ -6239,6 +6261,92 @@ impl Worker {
                     Command::GuiRecordWrite(id, args, origin, reply) => {
                         let result = self.gui_record_write(id, args, origin);
                         let _ = reply.send(result);
+                    }
+                    Command::GuiDebug(id, request, origin, reply) => {
+                        // The worker copies only cached numeric state. Files, SQLite,
+                        // process queries and journal publication run on the read task.
+                        let prepared = (|| -> Result<_> {
+                            if origin.door != crate::mcp::Door::Ctl {
+                                return Err(invalid("debug uses the ctl operator door"));
+                            }
+                            let permit =
+                                self.debug_reads.clone().try_acquire_owned().map_err(|_| {
+                                    invalid("Busy: two debug reads are already active; retry")
+                                })?;
+                            let origin = self.identity.bind_origin(origin);
+                            let device_id = self.identity.status()?.device_id.ok_or_else(|| {
+                                invalid("held: operator device custody is unavailable")
+                            })?;
+                            let actor = crate::mcp::Actor::Operator {
+                                device_id,
+                                door: origin.door,
+                                issued_by: origin.issued_by,
+                            };
+                            let call = crate::mcp::Call {
+                                op_id: id,
+                                tool: "debug_read".into(),
+                                args: serde_json::to_value(&request)?,
+                            };
+                            call.validate()?;
+                            let seats = self.views.iter().take(crate::debug::ROWS).map(|(seat,view)| {
+                                serde_json::json!({"seat":seat,"generation":view.info.generation,
+                                    "logic_current_snapshot":{"sequence":view.sequence,"view_generation":view.view_generation},
+                                    "captured_sequence":view.captured_sequence,
+                                    "checkpoint_sequence":view.checkpoint_sequence,
+                                    "checkpoint_pending":view.checkpoint_pending.is_some(),
+                                    "checkpoint_paused":view.checkpoint_paused,
+                                    "gui_at_timeout":null,"applied_written_to_socket":null,"supervisor_ring_tail":null})
+                            }).collect();
+                            let mut processes = BTreeMap::new();
+                            for view in self
+                                .views
+                                .values()
+                                .filter(|v| v.info.exited.is_none())
+                                .take(2048)
+                            {
+                                processes.insert(view.info.pid, "seat");
+                                if let Some(companion) = &view.info.companion {
+                                    processes.insert(companion.pid, "companion");
+                                }
+                            }
+                            let context = crate::debug::Context {
+                                root: self.config.run_dir.clone(),
+                                peers: self.client.gui_peers(),
+                                seats,
+                                seat_count: self.views.len(),
+                                watched: self.gui_watches.watched().len(),
+                                stale_gui_requests: self.stale_gui_requests,
+                                processes,
+                            };
+                            Ok((permit, actor, call, context))
+                        })();
+                        match prepared {
+                            Err(error) => {
+                                let _ = reply.send(Err(error));
+                            }
+                            Ok((permit, actor, call, context)) => {
+                                let journal = self.operator_journal.clone();
+                                let recorder = self.client.clone();
+                                self.handle.spawn_blocking(move || {
+                                    let _permit = permit;
+                                    if reply.is_closed() {return;}
+                                    let result = (|| -> Result<_> {
+                                        let capture = if matches!(&request,bbt_proto::gui::DebugRequest::Metrics | bbt_proto::gui::DebugRequest::Snapshot {..}) {
+                                            crate::debug::capture(serde_json::to_value(recorder.capture_diagnostics())?,
+                                                matches!(&request,bbt_proto::gui::DebugRequest::Snapshot {..}))
+                                        } else {serde_json::Value::Null};
+                                        let value = match context.read(&request,capture) {
+                                            Ok(data) => crate::mcp::success(id,data),
+                                            Err(error) => crate::mcp::error(id,"refused",
+                                                crate::debug::sanitize(serde_json::json!(error.to_string())).as_str().unwrap_or("debug source unavailable")),
+                                        };
+                                        // Do not hold a journal transaction across diagnostic IO.
+                                        operator_response(journal.checked(&actor,&call,value)?)
+                                    })();
+                                    let _ = reply.send(result);
+                                });
+                            }
+                        }
                     }
                     Command::GuiKnowledge(method, args, reply) => {
                         let Ok(permit) = self.knowledge_reads.clone().try_acquire_owned() else {

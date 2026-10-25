@@ -1456,7 +1456,7 @@ async fn ctl_never_prints_secrets() {
     };
     let standard = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let url = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-    let secrets = [
+    let mut secrets = vec![
         hex.clone(),
         hex.to_uppercase(),
         b64(standard, true),
@@ -1465,6 +1465,35 @@ async fn ctl_never_prints_secrets() {
         b64(url, false),
         serde_json::to_string(&bytes).unwrap(),
     ];
+    // Throwaway key material, deliberately placed both in the selected journal
+    // result and in a neighboring identity KV row that debug must never read.
+    let fixture_key = "e7".repeat(32);
+    secrets.extend([
+        fixture_key.clone(),
+        serde_json::to_string(&vec![231u8; 32]).unwrap(),
+    ]);
+    use bbt_mux::store::{Store, sqlite::SqliteStore};
+    let store = SqliteStore::open(&run.join("account")).unwrap();
+    let retained = bbt_mux::Ulid::new();
+    let journal_entry = serde_json::to_vec(
+        &json!({"actor":{"device_id":bbt_mux::Ulid::new(),"door":"ctl"},
+        "tool":"fixture_debug","args_digest":"fixture-digest",
+        "result":{"private_key":fixture_key,"capability":bytes,"text":secrets.join(" ")}}),
+    )
+    .unwrap();
+    store
+        .put(&format!("control/op/{retained}"), &journal_entry)
+        .unwrap();
+    store
+        .put("identity/private-key-fixture", fixture_key.as_bytes())
+        .unwrap();
+    let journal_query = format!("account/{retained}");
+    std::fs::write(
+        run.join("app.log"),
+        format!("fixture log\n{}\n", secrets.join("\n")),
+    )
+    .unwrap();
+    let snapshot = root.join("debug-snapshot.json");
     let pasted = root.join("paste.txt");
     std::fs::write(&pasted, "echo pasted").unwrap();
     let message = bbt_mux::Ulid::new().to_string();
@@ -1534,6 +1563,16 @@ async fn ctl_never_prints_secrets() {
         vec!["record", "changes", "--since", "0"],
         vec!["events", "streams"],
         vec!["events", "tail", "--stream", "account", "--since", "0"],
+        vec!["debug", "logs", "app"],
+        vec!["debug", "logs", "app", "--since", "1"],
+        vec!["debug", "logs", "logic"],
+        vec!["debug", "logs", "supervisor"],
+        vec!["debug", "journal", &journal_query],
+        vec!["debug", "journal", "SELECT * FROM kv"],
+        vec!["debug", "journal", "identity/private-key-fixture"],
+        vec!["debug", "metrics"],
+        vec!["debug", "snapshot", snapshot.to_str().unwrap()],
+        vec!["debug", "ps"],
         vec!["--help"],
     ];
     for args in runs {
@@ -1545,6 +1584,106 @@ async fn ctl_never_prints_secrets() {
             );
         }
     }
+    let snapshot_bytes = std::fs::read_to_string(snapshot).unwrap();
+    for secret in &secrets {
+        assert!(!snapshot_bytes.contains(secret));
+    }
+    assert_eq!(
+        store.get(&format!("control/op/{retained}")).unwrap(),
+        Some(journal_entry)
+    );
+    assert_eq!(
+        store.get("identity/private-key-fixture").unwrap(),
+        Some(fixture_key.into_bytes())
+    );
+    session.shutdown().await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn debug_reads_real_process_logs_journal_cursors_and_disabled_capture_without_a_window() {
+    let root = tempfile::tempdir().unwrap();
+    let root = root.path().canonicalize().unwrap();
+    let (session, run, seat) = noun_verb_fixture(&root).await;
+    let supervisor = session.supervisor.id().unwrap();
+    let logic = session.logic.id().unwrap();
+    let (code, out, err) = ctl_raw(&run, &root, &["debug", "ps"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    let reply: Value = serde_json::from_str(out.trim()).unwrap();
+    let processes = reply["data"]["processes"].as_array().unwrap();
+    assert!(processes.iter().any(|p| p["pid"] == supervisor));
+    assert!(processes.iter().any(|p| p["pid"] == logic));
+    assert!(processes.iter().any(|p| p["role"] == "seat"));
+    assert!(
+        processes
+            .iter()
+            .all(|p| p.get("argv").is_none() && p.get("env").is_none())
+    );
+    let read = |args: &[&str]| {
+        let (code, out, err) = ctl_raw(&run, &root, args);
+        assert_eq!(code, Some(0), "{args:?}: {out}{err}");
+        serde_json::from_str::<Value>(out.trim()).unwrap()["data"].clone()
+    };
+    let operation = bbt_mux::Ulid::new().to_string();
+    let metrics = read(&[
+        "debug",
+        "metrics",
+        "--op",
+        &operation,
+        "--as",
+        "Debug Fixture",
+    ]);
+    assert_eq!(metrics["views"], 1);
+    assert_eq!(metrics["capture"]["state"], "disabled");
+    assert_eq!(metrics, read(&["debug", "metrics", "--op", &operation]));
+    let (code, out, _) = ctl_raw(&run, &root, &["debug", "ps", "--op", &operation]);
+    assert_eq!(code, Some(1));
+    assert!(out.contains("op_id_reused"));
+    let journal = read(&["debug", "journal", &format!("account/{operation}")]);
+    assert_eq!(journal["mode"], "ro");
+    assert_eq!(journal["query_only"], true);
+    assert_eq!(journal["entry"]["actor"]["door"], "ctl");
+    assert_eq!(journal["entry"]["actor"]["issued_by"], "Debug Fixture");
+    assert_eq!(journal["entry"]["tool"], "debug_read");
+    std::fs::write(run.join("app.log"), "first\n").unwrap();
+    let first = read(&["debug", "logs", "app"]);
+    assert_eq!(first["lines"], json!(["first\n"]));
+    use std::io::Write;
+    std::fs::OpenOptions::new()
+        .append(true)
+        .open(run.join("app.log"))
+        .unwrap()
+        .write_all(b"second\n")
+        .unwrap();
+    let second = read(&[
+        "debug",
+        "logs",
+        "app",
+        "--since",
+        &first["next_since"].to_string(),
+    ]);
+    assert_eq!(second["lines"], json!(["second\n"]));
+    for source in ["logic", "supervisor"] {
+        assert_eq!(read(&["debug", "logs", source])["available"], true);
+    }
+    let destination = root.join("snapshot.json");
+    let snapshot_op = bbt_mux::Ulid::new().to_string();
+    let snapshot_args = [
+        "debug",
+        "snapshot",
+        destination.to_str().unwrap(),
+        "--op",
+        &snapshot_op,
+    ];
+    let saved = read(&snapshot_args);
+    assert_eq!(saved, read(&snapshot_args));
+    let table: Value = serde_json::from_slice(&std::fs::read(&destination).unwrap()).unwrap();
+    assert_eq!(table["seats"][0]["seat"], seat);
+    assert_eq!(table["capture_at_debug"]["logic"]["state"], "disabled");
+    assert!(table["seats"][0]["supervisor_ring_tail"].is_null());
+    assert_eq!(
+        std::fs::metadata(destination).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
     session.shutdown().await.unwrap();
 }
 
