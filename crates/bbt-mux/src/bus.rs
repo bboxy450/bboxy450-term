@@ -1588,6 +1588,14 @@ enum Command {
 #[derive(Clone)]
 pub struct BusHandle {
     tx: mpsc::Sender<Command>,
+    #[cfg(test)]
+    pub(crate) gui_read_faults: std::sync::Arc<GuiReadFaults>,
+}
+#[cfg(test)]
+#[derive(Default)]
+pub(crate) struct GuiReadFaults {
+    pub(crate) poll: std::sync::atomic::AtomicI32,
+    pub(crate) cursor: std::sync::atomic::AtomicI32,
 }
 impl BusHandle {
     /// Uses the R1 handle. No runtime is created or blocked by this constructor.
@@ -1673,7 +1681,11 @@ impl BusHandle {
                 }
             }
         });
-        Ok(Self { tx })
+        Ok(Self {
+            tx,
+            #[cfg(test)]
+            gui_read_faults: Default::default(),
+        })
     }
     pub fn try_publish(
         &self,
@@ -1764,6 +1776,8 @@ impl BusHandle {
         limit: usize,
         bytes: usize,
     ) -> Result<Vec<Delivery>> {
+        #[cfg(test)]
+        self.gui_read_fault(false)?;
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::GuiPoll(lease.clone(), limit, bytes, tx))
@@ -1793,12 +1807,29 @@ impl BusHandle {
         rx.await.map_err(|_| invalid("GUI event router stopped"))?
     }
     pub(crate) async fn gui_cursor(&self, lease: &GuiLease, stream: &str) -> Result<GuiCursor> {
+        #[cfg(test)]
+        self.gui_read_fault(true)?;
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::GuiCursor(lease.clone(), stream.into(), tx))
             .await
             .map_err(|_| invalid("GUI event router stopped"))?;
         rx.await.map_err(|_| invalid("GUI event router stopped"))?
+    }
+    #[cfg(test)]
+    fn gui_read_fault(&self, cursor: bool) -> Result<()> {
+        let fault = if cursor {
+            &self.gui_read_faults.cursor
+        } else {
+            &self.gui_read_faults.poll
+        };
+        let code = fault.swap(0, std::sync::atomic::Ordering::SeqCst);
+        if code != 0 {
+            return Err(
+                rusqlite::Error::SqliteFailure(rusqlite::ffi::Error::new(code), None).into(),
+            );
+        }
+        Ok(())
     }
     pub(crate) async fn gui_read(
         &self,
