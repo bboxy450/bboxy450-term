@@ -14,7 +14,7 @@ links:
   - { to: "[[d325-ci-capacity]]", rel: builds-on }
   - { to: "[[seats-967-frame]]", rel: builds-on }
 created: "2026-10-25T16:43:02Z"
-updated: "2026-10-25T16:43:02Z"
+updated: "2026-10-25T16:51:40Z"
 ---
 # Presubmit tests are fast
 
@@ -28,12 +28,14 @@ duration is tagged for the night tier and never runs in presubmit. A wait in
 a presubmit test is a wait on a condition with a short bound, never a sleep of
 a second or more.
 
-**Check.** `sh scripts/fast-tests.sh` — exit 0 held. It reads the per-binary
-durations the presubmit writes to `presubmit.log` in the landing state
-directory ([[landing]] §0a) for the newest presubmit and fails naming any
-binary over 60 s that is not tagged for the night tier, and greps the
-presubmit-tier tests for `sleep(Duration::from_secs(` with an argument of one
-or more. **Pending** until `presubmit.sh` writes per-binary durations; the
+**Check.** `sh scripts/fast-tests.sh` — exit 0 held. **The hard gate is
+deterministic** (operator, 2026-10-25: a wall-clock bound under parallel tests
+misfires): it greps the presubmit-tier tests for `sleep(Duration::from_secs(`
+with an argument of one or more and for waits on `Instant::now`, and fails
+naming them. The **60-second per-binary bound is measured in the night tier**,
+by the night's `fast-tests` step running each presubmit binary alone, from the
+durations it records; a presubmit binary over 60 s in a loaded slot is
+reported in `presubmit.log`, not failed ([[test-policy]] §4). **Pending** until `presubmit.sh` writes per-binary durations; the
 flags keep it out of the default run until then, and the landing commit
 removes them.
 
