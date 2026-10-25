@@ -8,7 +8,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[d316-pass-means-the-whole-promise]]", rel: decision }
 created: "2026-10-25T01:04:37Z"
-updated: "2026-10-25T04:25:15Z"
+updated: "2026-10-25T11:20:11Z"
 ---
 # e2e script map
 
