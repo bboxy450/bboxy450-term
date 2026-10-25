@@ -14,7 +14,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[seats-967-frame]]", rel: constrains }
 created: "2026-10-25T16:22:41Z"
-updated: "2026-10-25T19:16:18Z"
+updated: "2026-10-25T19:19:08Z"
 ---
 # Landing
 
@@ -44,7 +44,7 @@ Nothing in this flow waits on a person. The Oracle reviews after the landing and
 
 ## 2. The affected set: `scripts/affected.sh BASE..HEAD`
 
-Prints, from `git diff --name-only` and `cargo metadata`: the touched crates; the transitive reverse dependencies; a **tier**, `lab` when only `lab/`, `design/` or `.bboxy/` changed, or `code` otherwise (the lab tier builds no crate of the product; its parity compare reads the native renders the last green postsubmit stored, §3, and builds `bboxybook` alone only when no stored set exists yet); and `parity: yes|no`, yes when `lab/`, `design/`, the UI crates or the renderer changed. Direct dependents are not enough: the app sits behind the mux behind the core. **What is a source and what is an input (Aster's first self-landing, 2026-10-25, stopped by its own bound after mapping `scripts/` as a source and compiling the world):** a crate's Rust sources, its `Cargo.toml` and `build.rs` are sources and affect it and its dependents; the root `Cargo.toml` and `Cargo.lock` affect every crate; everything under `scripts/` is a **validation input**, not a source: a change there compiles no crate by itself and always runs the scripts' own fixture tests plus the default invariants, which are mandatory on every tier.
+Prints, from `git diff --name-only` and `cargo metadata`: the touched crates; the transitive reverse dependencies; a **tier**, `lab` when only `lab/`, `design/` or `.bboxy/` changed, or `code` otherwise (the lab tier builds no crate of the product; its parity compare reads the native renders the last green postsubmit stored, §3, and builds `bboxybook` alone only when no stored set exists yet); and `parity: yes|no`, yes when `lab/`, `design/`, the UI crates or the renderer changed. Direct dependents are not enough: the app sits behind the mux behind the core. **What is a source and what is an input (Aster's first self-landing, 2026-10-25, stopped by its own bound after mapping `scripts/` as a source and compiling the world):** a crate's Rust sources, its `Cargo.toml` and `build.rs` are sources and affect it and its dependents; the root `Cargo.toml`, `Cargo.lock` and `.cargo/` affect every crate; everything under `scripts/` is a **validation input**, not a source: a change there compiles no crate by itself and always runs the scripts' own fixture tests plus the default invariants, which are mandatory on every tier. The accepted risk: a broken gate script is caught by the postsubmit and reverted, not by the presubmit, which is revert-first and a cheap presubmit doing what they are for; the scripts' own fixture tests are the presubmit's cover for the scripts' logic.
 
 ## 3. Presubmit: `scripts/presubmit.sh [BASE]`
 
