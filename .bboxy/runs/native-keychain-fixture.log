@@ -41,3 +41,9 @@ The production Apple-team requirement and Data Protection packaging tier are not
 | `native-keychain-fixture-root-mode-refusal.log` | `1561800b9fa38dd263028b69fb0d14440cf56ec31b4c57163b59113ae6bc233f` |
 | `native-keychain-fixture-first-green.log` | `a61756e60f9a0cc0e7e025758105a2b3a6bd6c37496b95467a3c70bfe5c4fdf0` |
 | `native-keychain-fixture-process-check.json` | `50da08db6bb481b97fdaf3856ea8a8262828ef323ad15b18c3cfe4c36af37c68` |
+
+## First presubmit, refused before push
+
+Candidate `2649a5a6e938cbc9b87126bdfc277011731ddc44`: `sh scripts/land.sh` EXIT 77 after 1656.475 s. Affected crate tests 687 passed / 0 failed / 28 ignored; strict Clippy EXIT 0; landing fixtures 84/0 and recovery fixtures 32/0. Default invariants had one failure: `frontmatter-parses`, whose corpus check reported `.bboxy/runs/native-keychain-fixture.md:1: frontmatter missing number:`. This was this cut's evidence-format error, not an external failure or a native test failure. No push occurred.
+
+The report is now a `.log`, matching the existing run-report format, so it does not pretend to be a numbered Markdown record. The native Rust sources and exact night command are unchanged. The original failed transcript is retained at `/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/native-keychain-fixture/presubmit-failed-2649.log`, SHA-256 `be93e81f9d96d8ab80593acdf5b30a7c5b198210cdc961306233137d2b12be3c`; the canonical presubmit log is `/Users/feral/.local/state/bboxy450-term/landing/presubmits/2649a5a6e938cbc9b87126bdfc277011731ddc44-23a85071/commands.log`.
