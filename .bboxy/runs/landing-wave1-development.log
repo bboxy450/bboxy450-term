@@ -1,0 +1,70 @@
+Command output — development.log
+Initial fixture run:7 tests,6 pass/1 fail. Failure was /tmp vs /private/tmp canonical-path expectation; source resolver correctly canonicalizes the fixture override. Corrected only expected path with Path.resolve. Transitive closure/renamed dependency/leaf/shared input/lab/records checks passed.
+
+Command output — quarantine-watch-fixtures.log
+.......F..
+======================================================================
+FAIL: test_records_only_carries_verdict_but_lab_changes_run_full_postsubmit (__main__.WatchTests.test_records_only_carries_verdict_but_lab_changes_run_full_postsubmit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scripts/test-landing.py", line 555, in test_records_only_carries_verdict_but_lab_changes_run_full_postsubmit
+    self.assertEqual(len((self.repo.state / "ci-calls").read_text().splitlines()), 1)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 1
+
+----------------------------------------------------------------------
+Ran 10 tests in 19.369s
+
+FAILED (failures=1)
+
+Command output — parity-quarantine.log
+.F..presubmit: no catalogued cases for these pages
+......
+======================================================================
+FAIL: test_page_edit_compares_stored_native_without_any_product_build (__main__.ParityTests.test_page_edit_compares_stored_native_without_any_product_build)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scripts/test-landing.py", line 633, in test_page_edit_compares_stored_native_without_any_product_build
+    self.assertTrue(any(c[:2] == [str(store / "bboxybook"), "compare"] for c in self.calls))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 10 tests in 8.348s
+
+FAILED (failures=1)
+
+Command output — watch-corrected.log
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 13.487s
+
+OK
+
+Command output — fixtures-parallel.log
+Ran 39 fixture tests in 14.576s; failures=0
+
+Command output — fixtures-selector.log
+fixture duration: LandTests.test_all_revert_cut_can_land_while_main_is_red 7.070s
+fixture duration: LandTests.test_disjoint_main_movement_rebases_but_does_not_repeat_checks 9.166s
+fixture duration: LandTests.test_notification_failure_can_resume_without_rechecking_or_repush 8.621s
+fixture duration: LandTests.test_presubmit_failure_is_77_and_does_not_push 5.701s
+fixture duration: LandTests.test_reverse_dependency_overlap_rechecks 10.062s
+fixture duration: LandTests.test_signed_cut_pushes_once_logs_and_announces_after_slot_release 6.548s
+fixture duration: LandTests.test_three_moving_attempts_are_79_with_no_candidate_push 12.099s
+Ran 39 fixture tests in 17.062s; failures=0
+
+Command output — fixtures-longest-first.log
+fixture duration: LandTests.test_three_moving_attempts_are_79_with_no_candidate_push 10.788s
+fixture duration: LandTests.test_all_revert_cut_can_land_while_main_is_red 5.840s
+fixture duration: LandTests.test_disjoint_main_movement_rebases_but_does_not_repeat_checks 7.556s
+fixture duration: LandTests.test_notification_failure_can_resume_without_rechecking_or_repush 6.611s
+fixture duration: LandTests.test_reverse_dependency_overlap_rechecks 8.142s
+fixture duration: LandTests.test_signed_cut_pushes_once_logs_and_announces_after_slot_release 5.450s
+Ran 39 fixture tests in 17.451s; failures=0
+
+Command output — fixtures-fast-final.log
+Fast CI fixtures; 4 extended moving-main/retry cases run with --all (presubmit).
+fixture duration: LandTests.test_all_revert_cut_can_land_while_main_is_red 6.078s
+fixture duration: LandTests.test_signed_cut_pushes_once_logs_and_announces_after_slot_release 6.069s
+Ran 36 fixture tests in 14.581s; failures=0

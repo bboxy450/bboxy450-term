@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-25T17:41:53.064342+00:00",
+  "reason": "merged C1/T2/R5 evidence binaries and reproducible PNGs; reports/logs retained",
+  "lsof": "no open files",
+  "retired": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/target/c1b-pane-unicode.png",
+      "sha256": "8ce97e9eafafcbc03a21fa926495e3d5e7faa6fb423ca8c4463517853881be2d",
+      "bytes": 42460,
+      "allocated_bytes": 45056
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/target/c1b-pane-comparison.png",
+      "sha256": "d2dc7c99f9c4c0862224eaeedef9a6140ae7c1a6fe54b33cb9672d2387d020d5",
+      "bytes": 142882,
+      "allocated_bytes": 143360
+    }
+  ],
+  "allocated_bytes": 188416
+}

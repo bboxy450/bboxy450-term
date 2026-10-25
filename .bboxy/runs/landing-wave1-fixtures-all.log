@@ -1,0 +1,7 @@
+fixture duration: LandTests.test_three_moving_attempts_are_79_with_no_candidate_push 10.947s
+fixture duration: LandTests.test_all_revert_cut_can_land_while_main_is_red 5.941s
+fixture duration: LandTests.test_disjoint_main_movement_rebases_but_does_not_repeat_checks 7.402s
+fixture duration: LandTests.test_notification_failure_can_resume_without_rechecking_or_repush 6.508s
+fixture duration: LandTests.test_reverse_dependency_overlap_rechecks 7.613s
+fixture duration: LandTests.test_signed_cut_pushes_once_logs_and_announces_after_slot_release 5.190s
+Ran 40 fixture tests in 17.520s; failures=0

@@ -1,0 +1,107 @@
+[
+  {
+    "name": "development.log",
+    "sha256": "be41631e9c983cb69be7778880964e36589cb964e5106959323e9c4889ef25af",
+    "bytes": 297,
+    "tail": [
+      "Initial fixture run:7 tests,6 pass/1 fail. Failure was /tmp vs /private/tmp canonical-path expectation; source resolver correctly canonicalizes the fixture override. Corrected only expected path with Path.resolve. Transitive closure/renamed dependency/leaf/shared input/lab/records checks passed."
+    ]
+  },
+  {
+    "name": "fixtures-22.log",
+    "sha256": "8c4fc9cd8a4d546709b810dde3bb606080b7798879b8636b8c877eaff81b6f8b",
+    "bytes": 122,
+    "tail": [
+      "",
+      "OK"
+    ]
+  },
+  {
+    "name": "quarantine-watch-fixtures.log",
+    "sha256": "24feb62b83f06558c0e9a0b02ce3905a28c7eb7be040bab9d93fa9c7186e5e27",
+    "bytes": 824,
+    "tail": [
+      "",
+      "FAILED (failures=1)"
+    ]
+  },
+  {
+    "name": "watch-corrected.log",
+    "sha256": "6bdf480f150e7fa7ec61c16dbc14dcb6a09d3d9c92546eb488c83e36783e624c",
+    "bytes": 104,
+    "tail": [
+      "",
+      "OK"
+    ]
+  },
+  {
+    "name": "parity-quarantine.log",
+    "sha256": "c6156c17fa40eaa9f3ef4755ec4a77ee2db59c0f29f7be6576e830555969b264",
+    "bytes": 878,
+    "tail": [
+      "",
+      "FAILED (failures=1)"
+    ]
+  },
+  {
+    "name": "fixtures-parallel.log",
+    "sha256": "e6ace2e9de532f6451d100123b6509f4ddb20f7271846030a3204d2cc2f579d3",
+    "bytes": 44,
+    "tail": [
+      "Ran 39 fixture tests in 14.576s; failures=0"
+    ]
+  },
+  {
+    "name": "fixtures-rebased.log",
+    "sha256": "da712bde20e406ca5d55df9a49dc646d76ae1e630a9fb85f16547329da59c7fc",
+    "bytes": 44,
+    "tail": [
+      "Ran 39 fixture tests in 14.805s; failures=0"
+    ]
+  },
+  {
+    "name": "fixtures-selector.log",
+    "sha256": "ce7532c3b757afb28753149aac392730046b42e5c3e62fd3d5e3e0b919cd007e",
+    "bytes": 678,
+    "tail": [
+      "fixture duration: LandTests.test_three_moving_attempts_are_79_with_no_candidate_push 12.099s",
+      "Ran 39 fixture tests in 17.062s; failures=0"
+    ]
+  },
+  {
+    "name": "fixtures-longest-first.log",
+    "sha256": "9f39de9e228234e77c8d12ebd03464afaf67bf17c7bee7afb412a02e60648f6d",
+    "bytes": 595,
+    "tail": [
+      "fixture duration: LandTests.test_signed_cut_pushes_once_logs_and_announces_after_slot_release 5.450s",
+      "Ran 39 fixture tests in 17.451s; failures=0"
+    ]
+  },
+  {
+    "name": "fixtures-fast-final.log",
+    "sha256": "211b0de48958e72ba6281a74f18f0e324a12614966949524a20828e7e8035a4f",
+    "bytes": 308,
+    "tail": [
+      "fixture duration: LandTests.test_signed_cut_pushes_once_logs_and_announces_after_slot_release 6.069s",
+      "Ran 36 fixture tests in 14.581s; failures=0"
+    ]
+  },
+  {
+    "name": "fixtures-all-final.log",
+    "sha256": "1c7f88faaa03532f9f65b9bdb562b449ab7aced440be3d053432b812bb8ec6f5",
+    "bytes": 595,
+    "tail": [
+      "fixture duration: LandTests.test_signed_cut_pushes_once_logs_and_announces_after_slot_release 5.190s",
+      "Ran 40 fixture tests in 17.520s; failures=0"
+    ]
+  },
+  {
+    "name": "unresolved-batch.log",
+    "sha256": "be35d4b8d0208d654ec4b5b0635f8f7f8edc91fb87dc19b445ab4a02ec98a4c4",
+    "bytes": 98,
+    "tail": [
+      "",
+      "OK"
+    ]
+  }
+]
