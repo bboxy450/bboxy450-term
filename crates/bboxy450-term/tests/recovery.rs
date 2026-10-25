@@ -242,17 +242,37 @@ async fn until_text(session: &mut Session, seat: SeatId, replica: &mut Replica, 
     .unwrap();
 }
 async fn restarted(session: &mut Session) -> Vec<GuiSeat> {
+    restart_catalogue(async || session.event().await)
+        .await
+        .unwrap()
+}
+async fn restart_catalogue(
+    mut event: impl AsyncFnMut() -> bbt_mux::store::Result<Event>,
+) -> bbt_mux::store::Result<Vec<GuiSeat>> {
     tokio::time::timeout(Duration::from_secs(15), async {
         loop {
-            if let Event::Reply(reply) = session.event().await.unwrap()
+            if let Event::Reply(reply) = event().await?
                 && let GuiReply::Seats(seats) = *reply
             {
-                return seats;
+                return Ok(seats);
             }
         }
     })
     .await
-    .unwrap()
+    .map_err(|_| bbt_mux::store::invalid("restart catalogue watchdog elapsed"))?
+}
+
+#[tokio::test(start_paused = true)]
+async fn restart_catalogue_accepts_completion_within_the_sessions_startup_budget() {
+    // Session allows 30 s for recovery startup. A scheduling delay within that
+    // budget must not turn a functional catalogue assertion into a speed test.
+    let seats = restart_catalogue(async || {
+        tokio::time::sleep(Duration::from_secs(16)).await;
+        Ok(Event::Reply(Box::new(GuiReply::Seats(Vec::new()))))
+    })
+    .await
+    .unwrap();
+    assert!(seats.is_empty());
 }
 async fn durable(root: &Path, seat: &GuiSeat, sequence: u64) {
     let path = root.join(format!(
