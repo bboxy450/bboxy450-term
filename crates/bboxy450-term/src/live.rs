@@ -273,13 +273,19 @@ fn publish(
     preparer: &mut PanePreparer,
     updates: &Latest<Arc<Model>>,
 ) -> Result<()> {
+    let _measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::ModelPublish);
     let seats: Vec<_> = seats.values().cloned().collect();
     let records: Vec<_> = seats.iter().map(|seat| seat.record.clone()).collect();
     let mut next = model::build(&records, grids, previous);
     next.apply_seat_states(&seats);
     next.identity = Some(identity.clone());
     preparer.prepare(&mut next)?;
-    *previous = Arc::new(next);
+    let next = Arc::new(next);
+    {
+        let _drop = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::IoOldModelDrop);
+        *previous = next;
+    }
+    let _latest = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::LatestPublish);
     updates.publish(previous.clone());
     Ok(())
 }
@@ -1049,6 +1055,7 @@ async fn run_with_control(
                 },
                 event=session.event()=>match event.unwrap_or_else(|error| cockpit::Event::Disconnected(error.to_string())) {
                     cockpit::Event::Reply(reply)=> {
+                    let _apply = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::GuiApply).work(1, 0);
                     // Classify the raw reply before an async Seat event becomes a state update.
                     let terminal_reply = action_replies.take(&reply);
                       let mut ack=None;

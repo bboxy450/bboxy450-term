@@ -4484,6 +4484,8 @@ impl Worker {
         })
     }
     fn snapshot(&self, id: Ulid, generation: u64) -> Result<Snapshot> {
+        let _publish =
+            bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::LogicViewPublish).work(1, 0);
         let state = self
             .views
             .get(&id)
@@ -4848,6 +4850,9 @@ impl Worker {
         if seq > view.sequence + 1 && !self.catch_up(id, seq - 1)? {
             return Ok(false);
         }
+        if let Event::Output { bytes, .. } = &event {
+            bbt_rt::diagnostics::probe_live_output(id.0, generation, seq, bytes);
+        }
         if !self.allow_record(id, &event)? {
             return Ok(false);
         }
@@ -5005,12 +5010,30 @@ impl Worker {
             from,
             through,
         );
+        let ring_measurement =
+            bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::ReadRingRequest);
         let reply = connection.request(Action::ReadRing {
             attachment: self.attachments[&id].clone(),
             from,
             to: through,
         });
         drop(connection);
+        let ring_bytes = if ring_measurement.enabled() {
+            match &reply {
+                Ok(Reply::RingHistory { history }) => history
+                    .records
+                    .iter()
+                    .map(|record| match &record.event {
+                        Event::Output { bytes, .. } => bytes.len() as u64,
+                        _ => 0,
+                    })
+                    .sum(),
+                _ => 0,
+            }
+        } else {
+            0
+        };
+        ring_measurement.finish(1, ring_bytes);
         rpc.finish(capture_outcome(&reply), 0, 0);
         let reply = match reply {
             Err(error) if is_capture_busy(&error) => {
@@ -5050,6 +5073,14 @@ impl Worker {
             through,
         );
         for record in history.records {
+            if let Event::Output { bytes, .. } = &record.event {
+                bbt_rt::diagnostics::probe_ring_output(
+                    id.0,
+                    generation,
+                    record.event.sequence().unwrap_or(0),
+                    bytes,
+                );
+            }
             if !self.allow_record(id, &record.event)? {
                 break;
             }
@@ -5058,7 +5089,16 @@ impl Worker {
             if matches!(record.event, Event::Resized { .. }) {
                 view.view_generation = Ulid::new();
             }
+            let decode =
+                bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::ReadRingTerminalDecode);
             view.state.apply(&record.event)?;
+            decode.finish(
+                1,
+                match &record.event {
+                    Event::Output { bytes, .. } => bytes.len() as u64,
+                    _ => 0,
+                },
+            );
             if let Event::Output { bytes: output, .. } = &record.event {
                 bytes += output.len() as u64;
             }
@@ -6139,7 +6179,27 @@ impl Worker {
                 .client
                 .capture_diagnostics
                 .start(phase, seat, generation, from, to);
+            let ring = matches!(action, Action::ReadRing { .. })
+                .then(|| bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::ReadRingRequest));
             let result = self.request_for_seat(seat, action.clone());
+            if let Some(ring) = ring {
+                let bytes = if ring.enabled() {
+                    match &result {
+                        Ok(Reply::RingHistory { history }) => history
+                            .records
+                            .iter()
+                            .map(|record| match &record.event {
+                                Event::Output { bytes, .. } => bytes.len() as u64,
+                                _ => 0,
+                            })
+                            .sum(),
+                        _ => 0,
+                    }
+                } else {
+                    0
+                };
+                ring.finish(1, bytes);
+            }
             span.finish(capture_outcome(&result), 0, 0);
             result
         });

@@ -16,6 +16,8 @@ use tokio::runtime::{Builder, Handle, Runtime};
 #[cfg(feature = "runtime")]
 mod commands;
 #[cfg(feature = "runtime")]
+pub mod diagnostics;
+#[cfg(feature = "runtime")]
 pub mod fault;
 mod meter;
 #[cfg(feature = "runtime")]

@@ -3332,6 +3332,7 @@ impl App {
         Ok(())
     }
     fn drain(&mut self) -> Vec<usize> {
+        let _measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::UiDrain);
         if let Some(stall) = &self.stall {
             stall.drain();
         }
@@ -3354,7 +3355,12 @@ impl App {
             self.scene.update(sequence);
             self.last_update = sequence;
         }
-        if let Some(state) = self.live_updates.take() {
+        let latest_measurement =
+            bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::UiLatestTake);
+        let state = self.live_updates.take();
+        drop(latest_measurement);
+        let received_at = bbt_rt::diagnostics::now();
+        if let Some(state) = state {
             self.mute.observe(&state);
             if let Some(reply) = &state.custody_reply {
                 self.custody.observe(reply, Instant::now());
@@ -3398,7 +3404,7 @@ impl App {
                 self.local_page_layout = None;
             }
             if let Some(stall) = &mut self.stall {
-                stall.model_received(&state);
+                stall.model_received_at(&state, received_at);
             }
             self.spawn_results_seen
                 .retain(|op, _| state.spawns.contains_key(op));
@@ -3453,7 +3459,13 @@ impl App {
             }
             self.operation_backlog.extend(follow_up);
             self.composer_notice();
-            self.live_state = Some(state);
+            {
+                let _drop = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::UiOldModelDrop);
+                self.live_state = Some(state);
+            }
+            if let Some(stall) = &self.stall {
+                stall.model_applied();
+            }
             if let Some(seat) = restored {
                 self.focus_action(FocusAction::Activate(seat, FocusOrigin::Keyboard));
             }
@@ -4159,6 +4171,8 @@ impl App {
         }
         let mut phases = Phases::default();
         let start = Instant::now();
+        let projections_before =
+            bbt_rt::diagnostics::calls(bbt_rt::diagnostics::Phase::UiProjection);
         let sources = self.drain();
         // A native redraw can consume data before its queued Wake arrives.
         // If no drawable is pending, preserve that invalidation before the
@@ -4180,6 +4194,14 @@ impl App {
             || (metal && tick.is_none())
             || (self.animate && self.animation_start.is_some() && !fifo && tick.is_none())
         {
+            if metal && tick.is_none() {
+                bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::TicklessRedraw).finish(
+                    bbt_rt::diagnostics::calls(bbt_rt::diagnostics::Phase::UiProjection)
+                        .unwrap_or(0)
+                        .saturating_sub(projections_before.unwrap_or(0)),
+                    0,
+                );
+            }
             return Ok(());
         }
         phases.drain = start.elapsed();
@@ -4438,6 +4460,7 @@ impl App {
 }
 impl ApplicationHandler<UiEvent> for App {
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        let _callback = bbt_rt::diagnostics::callback(bbt_rt::diagnostics::Phase::AboutToWait);
         self.apply_notification_click();
         let pending = self.custody.wake_at();
         if let Some(message) = self.custody.next(Instant::now(), !self.backend_lost) {
@@ -4464,6 +4487,7 @@ impl ApplicationHandler<UiEvent> for App {
         }
     }
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        let _callback = bbt_rt::diagnostics::callback(bbt_rt::diagnostics::Phase::Resumed);
         event_loop.set_control_flow(ControlFlow::Wait);
         if self.window.is_none()
             && let Err(error) = self.init(event_loop)
@@ -4472,6 +4496,11 @@ impl ApplicationHandler<UiEvent> for App {
         }
     }
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: UiEvent) {
+        let _callback = bbt_rt::diagnostics::callback(match &event {
+            UiEvent::Wake => bbt_rt::diagnostics::Phase::UserWake,
+            UiEvent::StallPoll => bbt_rt::diagnostics::Phase::UserStallPoll,
+            _ => bbt_rt::diagnostics::Phase::UserOther,
+        });
         match event {
             UiEvent::CommandsReady(ready) => self.commands_ready(ready),
             UiEvent::Notification(bboxy450_desktop_notifications::Response::Clicked(id)) => {
@@ -4843,6 +4872,16 @@ impl ApplicationHandler<UiEvent> for App {
         }
     }
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
+        let _callback = bbt_rt::diagnostics::callback(match &event {
+            WindowEvent::RedrawRequested => bbt_rt::diagnostics::Phase::WindowRedraw,
+            WindowEvent::KeyboardInput { .. } | WindowEvent::Ime(_) => {
+                bbt_rt::diagnostics::Phase::WindowKeyboard
+            }
+            WindowEvent::MouseInput { .. }
+            | WindowEvent::MouseWheel { .. }
+            | WindowEvent::CursorMoved { .. } => bbt_rt::diagnostics::Phase::WindowPointer,
+            _ => bbt_rt::diagnostics::Phase::WindowOther,
+        });
         if self.smoke && !self.cadence_test {
             if let WindowEvent::Occluded(occluded) = &event {
                 // A locked display can toggle occlusion throughout the night.
