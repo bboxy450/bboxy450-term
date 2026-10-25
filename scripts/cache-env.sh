@@ -24,6 +24,8 @@ bboxy_cache_env() {
     export SCCACHE_SERVER_PORT SCCACHE_DIR SCCACHE_CACHE_SIZE SCCACHE_IGNORE_SERVER_IO_ERROR
     export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}"
     if bboxy_cache_reason=$(python3 - <<'PY'
+import os
+import socket
 import subprocess
 import sys
 import time
@@ -38,6 +40,15 @@ try:
             ["sccache", action], capture_output=True, timeout=remaining,
         )
         if result.returncode == 0:
+            # --show-stats can succeed with zero counters and no running server.
+            try:
+                with socket.create_connection(
+                    ("127.0.0.1", int(os.environ["SCCACHE_SERVER_PORT"])),
+                    timeout=max(0.001, min(0.25, deadline - time.monotonic())),
+                ):
+                    pass
+            except OSError:
+                continue
             sys.exit(0)
     print("server failed to start")
 except subprocess.TimeoutExpired:
