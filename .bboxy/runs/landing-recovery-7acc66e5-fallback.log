@@ -1,0 +1,6 @@
+test_infrastructure_failure_and_zero_tests_are_not_classified (__main__.RecoveryTests.test_infrastructure_failure_and_zero_tests_are_not_classified) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 3.830s
+
+OK

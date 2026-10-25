@@ -1,0 +1,30 @@
+Landing recovery #323 — Nyx Copperwing <EXECUTOR>
+Gated source: 7acc66e50c161321fc201a29fc4d2f98ef9eb0b9
+Base dependency: Aster frozen82c45d92. Own commits0e30ebcb,254838a9,7acc66e5.
+Worktree: /Users/feral/mydev/bboxy450-term-nyx; branch nyx-landing-recovery.
+
+Outcome: exact clean NORMAL ci-local exited0 in3471.666s. Workspace207 result groups,1484 passed/0 failed/29ignored. Strict workspace/all-target Clippy0; UI lint0. Headless idle0frames/0callbacks/10.004s/windows0, memory custody, children reaped. Default invariants26checks/0failures/10slow skipped. Raw CI SHA256 de4f001f8cc16964fd870a21a130c5f035ff5b88696b6a748636451235bf46af.
+
+Mechanisms and acceptance evidence:
+scripts/culprit.sh + landing_recovery.py:177 — three exact Cargo test reruns at red, flake only on three passes; first-parent bisection with three reruns per step. Actual Cargo fixture proves unrelated test does not run; merge fixture names the first-parent landing.
+scripts/revert.sh + landing_recovery.py:242 — signed corrective checkout, merge mainline support, whole-batch newest-first fallback; only land.sh pushes. Local bare-remote fixture proves G signature, reverted content, red exception, unchanged caller branch. No actual-main acceptance push/revert.
+scripts/main-red-bounded.sh + landing_recovery.py:292 — reads canonical JSONL/main-status, permits records while red, rejects non-revert code and wrong culprit, checks all-revert candidate HEAD. Exact-red tip is pending/held so far, exit0; no invented expiry (Corvin0d7bea90).
+scripts/e2e-night.sh --all + landing_recovery.py:377 — pins source and hashes prebuilt BBT, runs every group with stdin closed and a1200s guard, aggregates one JSONL, then scale exactly once last. Stub order/failure fixture proves a failed first group still reaches the last group and scale. Owned announced night roots are stopped through ctl after each group.
+scripts/scale-night.sh + landing_recovery.py:428 — pins and builds the measured main SHA, optimized with debug assertions and memory custody, native967/50 frame gate with existing predicates and diagnostics. Signed evidence branch is created even for red measurements, build errors and missing reports; no actual967 attempt in acceptance. Daily live-log snapshots enter that evidence commit. Publication/scheduling remain caller-owned; no launchd work in this cut.
+landing_recovery.py:548 — unavailable or infrastructure diagnosis carries a validated exact GREEN..RED revert_range. Unsupported invariant:parity fixture exits2/unresolved with that range. Aster82c45d92 main_watch.py:189-193 invokes revert.sh on it; signed whole-batch fixture proves that route. Invalid ranges/fixture authority never instruct a revert.
+scripts/test-landing.py:739 — recovery tests run only in extended --all, preserving the fast CI tier. Pre-import dont_write_bytecode guard prevents candidate pollution; same guard independently fixed by Aster52b85c79.
+
+Commands/results:
+python3 -I scripts/test-landing.py --all:41 landing fixtures0 +15 recovery/night fixtures0 (recovery60.128s under concurrent gates; no speed verdict).
+python3 -I scripts/test-landing.py:36 fast fixtures0 after bytecode guard; no new pyc.
+python3 -I scripts/test-landing-recovery.py RecoveryTests.test_infrastructure_failure_and_zero_tests_are_not_classified -v:1/0,3.830s; exact validated batch-range assertion.
+Private fixture invocation culprit GREEN RED invariant:parity:exit2/unresolved +validated range; recorded JSON.
+shellcheck five entry-point shell scripts:exit0. Initial empty-assignment warnings were corrected.
+git diff --check:exit0. Every source commit has G signature.
+Earlier254838a9 normal CI was deliberately stopped via recorded own group7164 SIGTERM during compile after103.398s, exit143; not a pass. Corrected7acc66e5 ran to completion.
+
+Custody/cleanup: only local throwaway Git remotes and per-run GPG fixture identities in acceptance; no operator identity or real-main mutation. Corrected group17061 empty independently via ps; target lsof exit1/no opens, clean gated checkout verified and removed. Sole warm target retained for immediate author landing, no second dev cache.
+
+Limits/order: non-Cargo predicates currently fall back to whole-batch revert, with collateral explicitly named. Oracle91908b1b/2f481d9b accepts this source as-is; typed invariant/parity narrowing is next, before supervisor/yarn sweeps. Rook night-test-boundaries integration follows its accepted SHA, before scale. Night records the supplied prebuilt BBT hash; scale independently builds its pinned SHA. Actual scale timing and real-main recovery were deliberately not exercised.
+
+Landing: pending Aster bootstrap self-land/mapper correction, then rebase only Nyx's own commits onto accepted main and use land.sh. No hand push or merge.

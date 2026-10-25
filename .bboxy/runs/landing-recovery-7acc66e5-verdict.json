@@ -1,0 +1,19 @@
+{
+  "sha": "7acc66e50c161321fc201a29fc4d2f98ef9eb0b9",
+  "pid": 17061,
+  "process_group": 17061,
+  "tree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-landing-ci-ulmd6tx0/tree",
+  "parent": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-landing-ci-ulmd6tx0",
+  "target": "/Users/feral/mydev/bboxy450-term-nyx/target/landing-recovery-build",
+  "started": "2026-10-25T18:17:41.806342+00:00",
+  "command": [
+    "sh",
+    "scripts/ci-local.sh"
+  ],
+  "custody": "memory",
+  "jobs": 2,
+  "exit": 0,
+  "seconds": 3471.6662004579557,
+  "ended": "2026-10-25T19:15:33.460168+00:00",
+  "log_sha256": "de4f001f8cc16964fd870a21a130c5f035ff5b88696b6a748636451235bf46af"
+}

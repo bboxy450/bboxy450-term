@@ -1,0 +1,7 @@
+{
+  "source": "7acc66e50c161321fc201a29fc4d2f98ef9eb0b9",
+  "group_empty": true,
+  "target_lsof_exit": 1,
+  "checkout_removed": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-landing-ci-ulmd6tx0/tree",
+  "target_retained_for_immediate_landing": "/Users/feral/mydev/bboxy450-term-nyx/target/landing-recovery-build"
+}

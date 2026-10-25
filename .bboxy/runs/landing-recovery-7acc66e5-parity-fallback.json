@@ -1,0 +1,14 @@
+{
+  "source": "7acc66e50c161321fc201a29fc4d2f98ef9eb0b9",
+  "exit": 2,
+  "response": {
+    "culprit": null,
+    "green": "5ee28f306fbf96ecf9fafed5518ebaa130980175",
+    "reason": "failed_test_owner_ambiguous_or_missing",
+    "red": "9f900e6ae271cb2d1f3964c7a709fbf735f55978",
+    "revert_range": "5ee28f306fbf96ecf9fafed5518ebaa130980175..9f900e6ae271cb2d1f3964c7a709fbf735f55978",
+    "test": "invariant:parity",
+    "verdict": "unresolved"
+  },
+  "watcher_contract": "82c45d92 main_watch.py accepts exact validated GREEN..RED and invokes revert.sh"
+}

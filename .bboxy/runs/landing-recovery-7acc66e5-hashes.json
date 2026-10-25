@@ -1,0 +1,15 @@
+{
+  "source": "7acc66e50c161321fc201a29fc4d2f98ef9eb0b9",
+  "agent": "6b4e9bf61a1302b1c8a84c5cd0faf94580025217ad0ae20a68f7d712062130d1",
+  "files": {
+    ".bboxy/runs/landing-recovery-7acc66e5-ci.log": "de4f001f8cc16964fd870a21a130c5f035ff5b88696b6a748636451235bf46af",
+    ".bboxy/runs/landing-recovery-7acc66e5-verdict.json": "8ff56e8463e2b612f9eb990a88c35a4cd635904c286ec631b3a5b5848736a515",
+    ".bboxy/runs/landing-recovery-7acc66e5-fixtures.log": "de4e3f6c6c9f9a98e0d3691d18dfd2b0f2168e2d6241c5b1cdbbe28f7b188a92",
+    ".bboxy/runs/landing-recovery-7acc66e5-fallback.log": "2ec77f6a3204fdc06b794ecdae2b47eb0092673f479dab81c3ee1fbb9bae6d62",
+    ".bboxy/runs/landing-recovery-7acc66e5-parity-fallback.json": "708721dd9e653e5142cf076e62c5e98997dbb0db44eea1534a362535a65124d1",
+    ".bboxy/runs/landing-recovery-7acc66e5-cleanup.json": "b49a3597b3b9f620fae9c0410f8b703cb32df2e25dd62199c95fecf8e3e95cff",
+    ".bboxy/runs/landing-recovery-7acc66e5-stopped-254838a9.log": "156d00d1cb6c3d8472e6d5b1cc775a3a1999e1d05888d4a216cba2db3e348ae7",
+    ".bboxy/runs/landing-recovery-7acc66e5-stopped-254838a9.json": "1339a13982fb4e0e05e4af1c0fb75fe46fdbc29c792668028c74943918c78522",
+    ".bboxy/runs/landing-recovery-7acc66e5-handoff.log": "ea65bd8fa9f52cfac8d9d241d67e85af67391b8ab60949664cf73e0f5b2e2e4b"
+  }
+}
