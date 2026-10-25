@@ -278,6 +278,33 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("app", "stop", "App"),
 ];
 
+/// This noun's `Command` variants, spliced into the flat enum by `commands` in `ctl.rs`.
+macro_rules! app_commands {
+    ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
+        $cb!(@next $rest [$($acc)* "app": [
+            AppEndpoint,
+            /// Start the same app binary and wait for its GUI render-readiness line.
+            AppStart {
+                headless: bool,
+                ctl: bool,
+                unattended: bool,
+                test_account: Option<PathBuf>,
+                record_notifications: bool,
+            },
+            /// Read liveness through the attached GUI owner.
+            AppStatus,
+            /// `app resize <cols>x<rows>`: the window to that grid of cells; the layout sizes panes.
+            AppResize {
+                cols: u16,
+                rows: u16,
+            },
+            /// Stop through the authenticated app relay, never by PID.
+            AppStop,
+        ]] $($head)*);
+    };
+}
+pub(super) use app_commands;
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -119,3 +119,19 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("events", "streams", "EventsStreams"),
     ("events", "tail", "EventsRead"),
 ];
+
+/// This noun's `Command` variants, spliced into the flat enum by `commands` in `ctl.rs`.
+macro_rules! events_commands {
+    ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
+        $cb!(@next $rest [$($acc)* "events": [
+            EventsStreams,
+            EventsTail {
+                stream: String,
+                since: u64,
+                subject: Option<String>,
+                timeout: Duration,
+            },
+        ]] $($head)*);
+    };
+}
+pub(super) use events_commands;

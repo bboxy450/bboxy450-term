@@ -70,3 +70,22 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("debug", "ps", "Debug"),
     ("debug", "notifications", "App"),
 ];
+
+/// This noun's `Command` variants, spliced into the flat enum by `commands` in `ctl.rs`.
+macro_rules! debug_commands {
+    ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
+        $cb!(@next $rest [$($acc)* "debug": [
+            DebugNotifications,
+            DebugFault {
+                seat: String,
+                from: u64,
+                to: u64,
+            },
+            Debug {
+                request: bbt_proto::gui::DebugRequest,
+                snapshot: Option<PathBuf>,
+            },
+        ]] $($head)*);
+    };
+}
+pub(super) use debug_commands;

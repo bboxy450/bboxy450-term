@@ -146,214 +146,60 @@ impl Endpoint {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Command {
-    Ui(bbt_proto::gui::UiRequest),
-    UiFocus(String),
-    UiScroll {
-        seat: String,
-        motion: bbt_proto::gui::UiScroll,
-    },
-    Identity(bbt_proto::identity::IdentityRequest),
-    UiNotificationClick(String),
-    DebugNotifications,
-    Spawn {
-        harness: String,
-        name: Option<String>,
-        cwd: Option<PathBuf>,
-        swarm: Option<Ulid>,
-        /// A fresh tab; without it the backend places the seat as the launcher's default.
-        new_tab: bool,
-        /// A role preset (#262); the backend resolves and guards it as the launcher does.
-        role: Option<String>,
-    },
-    /// An explicit placement is captured by the attached GUI, never guessed here.
-    SpawnAt(Box<bbt_proto::gui::UiSpawn>),
-    Seats,
-    Dm {
-        seat: String,
-        text: String,
-    },
-    Post {
-        destination: String,
-        text: String,
-        swarm: Option<Ulid>,
-    },
-    Inbox {
-        since: u64,
-    },
-    Receipts {
-        message: Ulid,
-    },
-    Delegate {
-        task: String,
-        seat: String,
-    },
-    Reports {
-        since: Option<String>,
-    },
-    Capture {
-        path: PathBuf,
-        seat: Option<String>,
-    },
-    /// `seat screen` (ctl-cli §1, decision #270): what the operator would see in its pane.
-    Screen {
-        seat: String,
-        human: bool,
-        /// `--scrollback A..B`: the history rows of that capture range (#27).
-        scrollback: Option<(u64, u64)>,
-        cells: bool,
-    },
-    /// `seat watch <seat> [--timeout MS]`: its state from the retained stream, its screen when
-    /// the screen's sequence moves; event lines, then a done line.
-    Watch {
-        seat: String,
-        timeout: Duration,
-    },
-    /// `seat rename <seat> <name>`.
-    Rename {
-        seat: String,
-        name: String,
-    },
-    /// `seat restart <seat>`: the seat's next process generation.
-    Restart {
-        seat: String,
-    },
-    /// `seat focus <seat>`: the window focuses it.
-    Focus {
-        seat: String,
-    },
-    /// `seat resize <seat> <cols>x<rows>`.
-    Resize {
-        seat: String,
-        cols: u16,
-        rows: u16,
-    },
-    /// `seat type`, `seat key`, `seat paste` (ctl-cli rev. 2): bytes for the window's one
-    /// input path, from literal text, named keys, or a bracketed paste.
-    Type {
-        seat: String,
-        text: String,
-    },
-    Key {
-        seat: String,
-        keys: Vec<String>,
-    },
-    Paste {
-        seat: String,
-        source: String,
-    },
-    /// `seat wait`: until the seat is in a state or its screen matches, or the timeout.
-    Wait {
-        seat: String,
-        state: Option<String>,
-        text: Option<String>,
-        /// `--on-screen`: the seat has a pane in the window's current frame (ctl-cli §1a).
-        on_screen: bool,
-        /// `--frame-seq N`: the window has produced frame N.
-        frame_seq: Option<u64>,
-        timeout: Duration,
-    },
-    E2e {
-        group: Option<String>,
-    },
-    /// `record write <file|->`: the knowledge_write JSON from a file or stdin.
-    RecordWrite {
-        source: String,
-    },
-    /// Fetch a record through the window's portable knowledge read path.
-    RecordFetch {
-        locator: String,
-    },
-    RecordSearch {
-        query: String,
-        cursor: Option<String>,
-    },
-    RecordChanges {
-        since: String,
-    },
-    EventsStreams,
-    EventsTail {
-        stream: String,
-        since: u64,
-        subject: Option<String>,
-        timeout: Duration,
-    },
-    DebugFault {
-        seat: String,
-        from: u64,
-        to: u64,
-    },
-    Debug {
-        request: bbt_proto::gui::DebugRequest,
-        snapshot: Option<PathBuf>,
-    },
-    /// `message send (<destination|seat> | --reply-to <id>) <text>` (#264 routing).
-    Send {
-        to: Option<String>,
-        text: String,
-        reply_to: Option<Ulid>,
-        swarm: Option<Ulid>,
-    },
-    /// `message ack <id>`: the operator acknowledges a message addressed to it.
-    Ack {
-        message: Ulid,
-    },
-    /// `task list [--unassigned | --seat <s> | --status <st>]`.
-    TaskList {
-        unassigned: bool,
-        seat: Option<String>,
-        status: Option<String>,
-    },
-    /// `task create <title> --verify CMD [--brief TEXT]`.
-    TaskCreate {
-        title: String,
-        verify: String,
-        brief: Option<String>,
-    },
-    /// `task get` and `task status <#N|path|id>` use the same task read.
-    TaskGet {
-        task: String,
-    },
-    /// `task report <#N|path|id> --summary TEXT [--commit SHA] [--verify-result JSON]`.
-    TaskReport {
-        task: String,
-        summary: String,
-        commit: Option<String>,
-        verify_result: Option<TaskVerification>,
-    },
-    TaskAccept {
-        task: String,
-    },
-    TaskReject {
-        task: String,
-        reason: String,
-    },
-    /// `app endpoint`: the run directory, socket path and generation; never the capability.
-    Close {
-        seat: String,
-    },
-    UndoClose {
-        seat: String,
-    },
-    AppEndpoint,
-    /// Start the same app binary and wait for its GUI render-readiness line.
-    AppStart {
-        headless: bool,
-        ctl: bool,
-        unattended: bool,
-        test_account: Option<PathBuf>,
-        record_notifications: bool,
-    },
-    /// Read liveness through the attached GUI owner.
-    AppStatus,
-    /// `app resize <cols>x<rows>`: the window to that grid of cells; the layout sizes panes.
-    AppResize {
-        cols: u16,
-        rows: u16,
-    },
-    /// Stop through the authenticated app relay, never by PID.
-    AppStop,
+/// Splices each noun's `Command` list (decision #320) into the flat enum and generates
+/// `Command::noun`, the one exhaustive match a noun's handlers dispatch from. Each list is a
+/// `macro_rules!` that takes this macro's name, the lists still to run and the variants so far,
+/// appends `"noun": [variants]` and calls back; with no lists left the enum is emitted.
+macro_rules! commands {
+    ($(#[$meta:meta])* pub enum $name:ident from [$($list:ident),* $(,)?]) => {
+        commands!(@next [$($list)*] [] $(#[$meta])* pub enum $name);
+    };
+    (@next [] [$($noun:literal: [$(
+        $(#[$vmeta:meta])* $variant:ident $(($($tuple:tt)*))? $({$($field:tt)*})?
+    ),* $(,)?])*] $(#[$meta:meta])* pub enum $name:ident) => {
+        $(#[$meta])*
+        pub enum $name {
+            $($($(#[$vmeta])* $variant $(($($tuple)*))? $({$($field)*})?,)*)*
+        }
+        impl $name {
+            /// The `ctl` noun whose module owns this command.
+            pub fn noun(&self) -> &'static str {
+                match self {
+                    $($(Self::$variant { .. } => $noun,)*)*
+                }
+            }
+        }
+    };
+    (@next [$list:ident $($rest:ident)*] [$($variants:tt)*] $($head:tt)*) => {
+        $list!(commands, [$($rest)*] [$($variants)*] $($head)*);
+    };
+}
+
+use app::app_commands;
+use debug::debug_commands;
+use e2e::e2e_commands;
+use events::events_commands;
+use identity::identity_commands;
+use message::message_commands;
+use records::record_commands;
+use seat::seat_commands;
+use task::task_commands;
+use ui::ui_commands;
+
+commands! {
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Command from [
+        ui_commands,
+        identity_commands,
+        seat_commands,
+        message_commands,
+        task_commands,
+        e2e_commands,
+        record_commands,
+        events_commands,
+        debug_commands,
+        app_commands,
+    ]
 }
 
 /// One `ctl` verb: noun, verb, and the window action it issues (`-` for none).
@@ -2956,6 +2802,8 @@ mod tests {
                 .verb
                 .unwrap_or_else(|| panic!("{line}: not a table verb"));
             assert!(line.starts_with(&format!("{noun} {verb}")));
+            // #320: the command a verb parses to is listed by that verb's own noun.
+            assert_eq!(parsed.command.noun(), noun, "{line}");
         }
     }
     #[test]

@@ -73,3 +73,27 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("record", "search", "Knowledge"),
     ("record", "changes", "Knowledge"),
 ];
+
+/// This noun's `Command` variants, spliced into the flat enum by `commands` in `ctl.rs`.
+macro_rules! record_commands {
+    ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
+        $cb!(@next $rest [$($acc)* "record": [
+            /// `record write <file|->`: the knowledge_write JSON from a file or stdin.
+            RecordWrite {
+                source: String,
+            },
+            /// Fetch a record through the window's portable knowledge read path.
+            RecordFetch {
+                locator: String,
+            },
+            RecordSearch {
+                query: String,
+                cursor: Option<String>,
+            },
+            RecordChanges {
+                since: String,
+            },
+        ]] $($head)*);
+    };
+}
+pub(super) use record_commands;
