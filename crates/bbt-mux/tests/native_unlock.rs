@@ -502,6 +502,40 @@ fn native_held_gui_requires_the_current_capability_and_refuses_a_supplied_device
     ))
     .unwrap();
     assert!(status.hold.is_some());
+    let ui_op = Ulid::new();
+    let error = f
+        .runtime
+        .block_on(async {
+            tokio::time::timeout(
+                Duration::from_secs(3),
+                f.logic.as_ref().unwrap().client.ctl_ui(
+                    ui_op,
+                    bbt_proto::gui::UiRequest::Layout,
+                    Origin {
+                        door: Door::Ctl,
+                        issued_by: None,
+                    },
+                ),
+            )
+            .await
+            .expect("held UI relay must be refused before reaching the window")
+        })
+        .unwrap_err()
+        .to_string();
+    assert!(error.starts_with("held: "), "{error}");
+    assert_eq!(status.clear_actions.len(), 2);
+    for action in &status.clear_actions {
+        assert!(error.contains(action.as_str()), "{error}");
+    }
+    assert!(
+        SqliteStore::open(&f.root.path().join("account"))
+            .unwrap()
+            .get(&format!("control/op/{ui_op}"))
+            .unwrap()
+            .is_none(),
+        "ordinary UI relay cannot admit an effect under native hold"
+    );
+    assert_eq!(f.store.attempts.load(Ordering::Acquire), 0);
     let op = Ulid::new();
     assert_eq!(
         ask(request(endpoint.capability, op, IdentityRequest::Unlock))
