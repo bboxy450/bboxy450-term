@@ -1,0 +1,149 @@
+{
+  "source": "70436d8a57dd26f9f7e43c36019da937b62e7732",
+  "source_branch": "aster-hk1",
+  "base": "7892d85fdd4a956419248081865ebdc981e3a349",
+  "baseline_source": "ab69ec9bcf7daabd1f563de8f552d916cae16fe0",
+  "baseline_branch": "aster-hk1-regression-before",
+  "source_commits": [
+    "70436d8a57dd26f9f7e43c36019da937b62e7732 G 9B07E849480C68328CA20684844ECC0587DE7AB0 Make host input probes caller-configured",
+    "12162c679c35686c94a1cfd027197c4dd284b4b3 G 9B07E849480C68328CA20684844ECC0587DE7AB0 Test that unconfigured host input always fences context",
+    "e8b5384ee59cb31331c04f3696f4db5d43be36e5 G 9B07E849480C68328CA20684844ECC0587DE7AB0 Report startup signals and crash-report hints in ctl errors"
+  ],
+  "changed_files": [
+    {
+      "path": "crates/bboxy450-term/src/cockpit.rs",
+      "sha256": "824929c045b84ea4c84b3f2586b527401d75d9d3fc5ee760ff7a003bed41b1b0"
+    },
+    {
+      "path": "crates/bboxy450-term/src/ctl/app.rs",
+      "sha256": "574ee2b22c8a3c9cc6abc4b438717158d526c2ea9b2408b34943d15a0cbbf296"
+    },
+    {
+      "path": "crates/bbt-supervisor/src/supervisor.rs",
+      "sha256": "e23fcdbd48b80e9314b333930228e231868c99d9bd02d8c8db25ac6f95abff6b"
+    },
+    {
+      "path": "crates/bbt-supervisor/tests/probes.rs",
+      "sha256": "95a2b79276c13287a12335273b8ed30c98fa883de96d9de2dd46db220dabdee3"
+    },
+    {
+      "path": "crates/bbt-supervisor/tests/vocabulary.rs",
+      "sha256": "67785dc09ade647ede9b24b9b7a20dc368d534c10721cea510f24dc07e5825d3"
+    }
+  ],
+  "ci": {
+    "source": "70436d8a57dd26f9f7e43c36019da937b62e7732",
+    "cwd": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/ci-70436d8a",
+    "target": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/ci-target-70436d8a",
+    "command": [
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "started": "2026-10-25T02:09:49.463842+00:00",
+    "custody": "BBOXY_TEST_CUSTODY=memory; debug assertions enabled by ci-local",
+    "driver_pid": 95447,
+    "pid": 95475,
+    "exit": 0,
+    "elapsed_s": 1278.9912559590302,
+    "finished": "2026-10-25T02:31:08.449062+00:00",
+    "log_sha256": "4c8ebe7fdcb084206488c962fbf870b88cb206a72e4e5e3a220e9088d0435273"
+  },
+  "raw_records": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/before.log",
+      "bytes": 2140,
+      "sha256": "589e42fde5d4dd2721ce86cb2d97ed120de4cc8511e428037b0288ee6b6a5740"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/before.status.json",
+      "bytes": 359,
+      "sha256": "54e7655251bc9a01864d76406d4b57cfd0efc445958b304da91002f8916b2a8c"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/ci-cleanup.json",
+      "bytes": 301,
+      "sha256": "cbb4e5b27c66c40c61f48bb84e8d67b5e87b78faca32e7a53be3308d71cee4c9"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/ci-reap.json",
+      "bytes": 48,
+      "sha256": "f51436f68037290fa037667b1daf0a40c7649a946e954d94c912b9def5a90b03"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/ci.log",
+      "bytes": 234911,
+      "sha256": "4c8ebe7fdcb084206488c962fbf870b88cb206a72e4e5e3a220e9088d0435273"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/ci.process.json",
+      "bytes": 477,
+      "sha256": "00a446b6e5f79c588c9d81c854067deb804ec80bd1ccdf131cdd4b76654cf829"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/ci.status.json",
+      "bytes": 659,
+      "sha256": "721981a7681161669e83153a4b4e952d9c1ae3e0c000647ed2c7c12034dd907f"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/clippy.log",
+      "bytes": 13685,
+      "sha256": "4087d79e629bfbc5cbe6a90de8c049787f69330f229acf4c17b94c1a24d9ccaf"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/clippy.status.json",
+      "bytes": 293,
+      "sha256": "f3b3e3b537889648b27cfbfd1ce98ad3c9d27ae4a86063e629f58a33e1f72017"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/dependents.log",
+      "bytes": 96670,
+      "sha256": "333ca9604b617f92e1ef253cdf268ca96ab9c6256a8c5b639ed21875097367bb"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/dependents.status.json",
+      "bytes": 325,
+      "sha256": "392605f484a14ee2abee300c627789ea938237a3a6f185923ec7f3c54a2da0b7"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/dev-cleanup.json",
+      "bytes": 250,
+      "sha256": "e08fbc074b88ce882b8571622d3c6cd49e981d163b0d45e5435e7b6f5c58741b"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/focused.log",
+      "bytes": 785,
+      "sha256": "5612d2154e254ee0eae62826afcfce67522bd3c37d301934ebd48be7ed62192e"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/focused.status.json",
+      "bytes": 280,
+      "sha256": "bcf781833fb934ba6801473aa89e8dfe97efad329621866d053d19b6daaaa0b6"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/manifest.preflight.json",
+      "bytes": 3777,
+      "sha256": "5f38081d73aa91897b35e2ade29f442b60ea99b728799b12b6a57528af9e6f84"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-diagnostic-20261024T1854/focused.log",
+      "bytes": 13811,
+      "sha256": "1215726897e750a1bfd591c29613fe199f8d099afb9bbd10df985b6f7c13a53b"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-diagnostic-20261024T1854/focused.status.json",
+      "bytes": 259,
+      "sha256": "280a945a5edb668621862566f7ff3f18f2a0157e703b57b450a1b4efccf5dd4b"
+    }
+  ],
+  "current_main_at_handoff": "454c009d30b71b990480ff1fd4712b9ab582691e",
+  "main_changes_since_base": [
+    "AGENTS.md"
+  ],
+  "notes": [
+    "Exact normal gate; no fresh parity or scale claim.",
+    "Publication map already names bboxy450-harness-host; internal Cargo name retained by harness-kits section 4.",
+    "All test runs use debug memory custody or their explicit private file-account fixtures.",
+    "No actual app crash/report was induced; signal preservation uses a disposable shell child, with core status constructed in a unit test.",
+    "No new workload during Rook quiet; pre-existing gate was allowed to finish."
+  ]
+}

@@ -601,6 +601,8 @@ pub struct Config {
     pub max_seats: usize,
     /// A partially written input times out as unknown; it is never resubmitted.
     pub write_timeout: Duration,
+    /// Exact caller-owned probes that preserve the input epoch, time and draft.
+    pub input_probes: Vec<Vec<u8>>,
 }
 
 impl Default for Config {
@@ -610,6 +612,7 @@ impl Default for Config {
             journal_directory: None,
             max_seats: 1024,
             write_timeout: Duration::from_secs(5),
+            input_probes: Vec::new(),
         }
     }
 }
@@ -1354,9 +1357,10 @@ impl Actor {
                 bytes,
             } => {
                 let timeout = self.config.write_timeout;
+                let probe = self.config.input_probes.contains(&bytes);
                 let seat = self.seat_mut(attachment.seat, attachment.generation)?;
                 seat.check_writer(client, &attachment)?;
-                let receipt = seat.accept_input(input_id, bytes, timeout, false)?;
+                let receipt = seat.accept_input(input_id, bytes, timeout, false, probe)?;
                 Ok(Reply::Input { receipt })
             }
             Action::InputContext { attachment } => {
@@ -1375,6 +1379,7 @@ impl Actor {
                 expected,
             } => {
                 let timeout = self.config.write_timeout;
+                let probe = self.config.input_probes.contains(&bytes);
                 let seat = self.seat_mut(attachment.seat, attachment.generation)?;
                 seat.check_writer(client, &attachment)?;
                 seat.check_live()?;
@@ -1390,7 +1395,7 @@ impl Actor {
                         "guard changed before PTY write; no mutation",
                     ));
                 }
-                let receipt = seat.accept_input(input_id, bytes, timeout, true)?;
+                let receipt = seat.accept_input(input_id, bytes, timeout, true, probe)?;
                 Ok(Reply::Input { receipt })
             }
             Action::InputStatus {
@@ -1956,6 +1961,7 @@ impl Seat {
         bytes: Vec<u8>,
         timeout: Duration,
         guarded: bool,
+        probe: bool,
     ) -> Result<InputReceipt, Failure> {
         if id == Ulid::nil() || bytes.is_empty() || bytes.len() > MAX_INPUT_BYTES {
             return Err(Failure::new(
@@ -1992,9 +1998,9 @@ impl Seat {
             bytes_written: 0,
             bytes_total: bytes.len(),
         };
-        // The one protocol-only response cannot be a human draft. Every other
-        // write fences a previously observed composer indication.
-        if bytes != b"\x1b]7501;?\x07" && bytes != b"\x1b]7501;?\x1b\\" {
+        // Only exact caller-configured probes leave the observed input context
+        // intact. Receipt, deduplication and guarded-write rules still apply.
+        if !probe {
             self.input_epoch = self
                 .input_epoch
                 .checked_add(1)

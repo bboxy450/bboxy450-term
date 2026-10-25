@@ -401,6 +401,7 @@ async fn supervisor_main() -> Result<()> {
     let config: Config = serde_json::from_slice(&line)?;
     let supervisor = bbt_mux::Supervisor::start(bbt_mux::Config {
         socket_path: Some(config.socket.clone()),
+        input_probes: vec![b"\x1b]7501;?\x07".to_vec(), b"\x1b]7501;?\x1b\\".to_vec()],
         journal_directory: Some({
             use std::os::unix::fs::DirBuilderExt;
             // Prepare the private socket parent before object_dir can create

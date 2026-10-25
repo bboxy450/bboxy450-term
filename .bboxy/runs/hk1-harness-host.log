@@ -1,0 +1,44 @@
+HK-1 harness host + ctl startup diagnostic — Aster Cinderwing <EXECUTOR>
+Frozen source: 70436d8a57dd26f9f7e43c36019da937b62e7732 (aster-hk1), three signed commits on #279 main 7892d85f.
+Evidence-only successor: this record and hk1-harness-host.manifest.json only.
+
+Mechanism / acceptance
+crates/bbt-supervisor/src/supervisor.rs:605 — Config.input_probes is an owned allowlist, empty by default.
+crates/bbt-supervisor/src/supervisor.rs:1360 — ordinary Input computes exact membership before seat admission.
+crates/bbt-supervisor/src/supervisor.rs:1382 — GuardedInput uses the same membership; writer and context guards remain.
+crates/bbt-supervisor/src/supervisor.rs:2003 — only configured probes preserve epoch/time/draft; receipt, size, dedupe and pending-write rules are unchanged.
+crates/bboxy450-term/src/cockpit.rs:404 — the app supplies its two prior OSC query payloads. No adapter/kit or companion-lifetime code changed.
+crates/bbt-supervisor/tests/probes.rs:57 — default input regression, formerly implicit exceptions included, fences the context.
+crates/bbt-supervisor/tests/probes.rs:81 — configured BEL/ST probes preserve draft/time/epoch, still deliver once on ID retry; a near match fences.
+crates/bbt-supervisor/tests/probes.rs:111 — guarded probe takes the ordinary admission/receipt path and preserves the configured context.
+crates/bbt-supervisor/tests/vocabulary.rs:31 — recursive UTF-8 source audit rejects all four forbidden strings, case-insensitively; target/.git directories and non-text files excluded.
+.bboxy/specs/licensing.md:44 and .bboxy/specs/open-source.md:27 — accepted publication map already says bboxy450-harness-host.
+.bboxy/specs/harness-kits.md:66 — internal bbt-supervisor Cargo name stays until first release. No duplicate metadata or package rename added.
+crates/bboxy450-term/src/ctl/app.rs:98 — readiness failure includes child PID, exit code or signal/core flag, log and macOS crash-report directory; unobserved exits remain unknown/live, never exit None.
+crates/bboxy450-term/src/ctl/app.rs:154 — real disposable shell SIGTERM regression plus exit/core/live/status-error cases.
+
+Commands / actual results
+Before: cargo test -p bbt-supervisor --test probes unconfigured_inputs_always_fence_the_context --locked -- --nocapture — EXIT 101, epoch remained 1 rather than 2.
+Before source ab69ec9bcf7daabd1f563de8f552d916cae16fe0 is retained as aster-hk1-regression-before (pre-#279, no product patch).
+Focused: cargo test -p bbt-supervisor --test probes --test vocabulary --locked -- --nocapture — EXIT 0, 4/0.
+Startup: cargo test -p bboxy450-term --lib startup_diagnostic --locked -- --nocapture — EXIT 0, 3/0; tested blob equals the rebased source.
+After #279 rebase: cargo test -p bbt-supervisor -p bbt-mux -p bboxy450-term --locked --no-fail-fast — EXIT 0, 682.230 s.
+After #279 rebase: cargo clippy --workspace --all-targets --locked -- -D warnings — EXIT 0, 80.840 s.
+rg -n -i 'claude|codex|7501|7502' crates/bbt-supervisor — EXIT 1, no matches (expected no-hit status).
+git diff --check — EXIT 0. Source signatures: G, machine key 9B07E849480C68328CA20684844ECC0587DE7AB0.
+Exact clean detached sh scripts/ci-local.sh — EXIT 0, 1278.991 s, atomic slot 3; all gates passed.
+Raw gate: /Users/feral/mydev/bboxy450-term-exec4/scratchpad/hk1-20261024T1858/ci.log
+Raw gate SHA256: 4c8ebe7fdcb084206488c962fbf870b88cb206a72e4e5e3a220e9088d0435273
+ci.log:968,977,1002 — startup regressions pass in the exact gate.
+ci.log:3220-3222,3255 — probe and vocabulary regressions pass in the exact gate.
+ci.log:4029 — LocalDev, memory custody (debug), no held signing.
+ci.log:4043 — idle passed: frames=0 callbacks=0 seconds=10.005 windows=0 mode=headless.
+ci.log:4138-4139 — 23 invariants / 0 failures, 9 slow skipped; all gates passed.
+
+State / limits
+No wire-schema, adapter, renderer, queue, durability, forced checkpoint or supervisor companion policy edits.
+No publication or merge performed. Release docs/packaging are HK-2; no new installed-client, parity or 967-seat result claimed.
+Crash-report directory is a diagnostic hint; no real app crash or .ips generation was exercised.
+Main advanced only AGENTS.md (454c009d) during the gate; source stayed frozen, no post-gate rebase.
+CI worktree was clean after the run, own process group empty, target/worktree retired. Target cache freed 3,955,539,968 bytes; dev debug cache freed 6,206,291,968 bytes. Sibling historical evidence remains.
+All raw logs/status/source hashes are retained in the manifest; no new workload during the active QUIET r5h-frame.
