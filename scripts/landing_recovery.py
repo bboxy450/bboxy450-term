@@ -117,7 +117,8 @@ def cargo_selector(api, root, name):
     supplied = os.environ.get("BBOXY_FAILED_TEST_SELECTOR")
     if supplied:
         selector = json.loads(Path(supplied).read_text())
-        if name not in (selector.get("name"), selector.get("selector")) or selector.get("source") != "cargo_rerun":
+        values = [v.removeprefix("test:") for v in (selector.get("name"), selector.get("selector")) if isinstance(v, str)]
+        if name not in values or selector.get("source") != "cargo_rerun":
             raise api.Refusal("failed_test_selector_unavailable_or_mismatched")
         name = selector["name"]
         flags = selector.get("cargo_args")
@@ -174,6 +175,60 @@ def cargo_selector(api, root, name):
     return name, flags
 
 
+def predicate(api, root, name, options):
+    fixture_command = options.get("recovery_test")
+    if fixture_command:
+        if not isinstance(fixture_command, list) or not all(isinstance(v, str) for v in fixture_command):
+            raise api.Refusal("invalid_fixture_test_command")
+        return "fixture", fixture_command, name
+    drivers = Path(__file__).resolve().parent
+    if name.startswith("invariant:"):
+        gate = name.removeprefix("invariant:")
+        if not re.fullmatch(r"[a-zA-Z0-9_-]+", gate):
+            raise api.Refusal("invalid_invariant_gate")
+        # Use the frozen driver's selector support even when the candidate
+        # predates it. --root makes every check read/execute the candidate tree.
+        return "invariant", ["sh", str(drivers / "invariants.sh"), "--root", "{tree}", gate], gate
+    if name.startswith("parity:"):
+        value = name.removeprefix("parity:").strip()
+        cases = json.loads(value) if value.startswith("[") else value.split(",")
+        if not isinstance(cases, list) or not cases or any(not isinstance(v, str) or not v or "\0" in v for v in cases):
+            raise api.Refusal("invalid_parity_case_ids")
+        return "parity", ["sh", str(drivers / "parity.sh"), "--root", "{tree}", "--cases", json.dumps(cases)], name
+    if re.match(r"^[a-zA-Z][\w-]*:(?!:)", name) and not name.startswith(("test:", "cargo:")):
+        raise api.Refusal("unknown_predicate_kind: " + name.split(":", 1)[0])
+    exact, flags = cargo_selector(api, root, name.removeprefix("test:"))
+    return "test", ["cargo", "test", "--locked", *flags, exact, "--", "--exact", exact], exact
+
+
+def predicate_observed(kind, exact, command, record, text, environment):
+    if kind == "test":
+        observed = re.findall(r"(?m)^test " + re.escape(exact) + r" \.\.\. (ok|FAILED)$", text)
+        return (len(observed) == 1 and record["exit"] in (0, 101)
+                and ((observed[0] == "ok") == (record["exit"] == 0)))
+    if record["exit"] not in (0, 1):
+        return False
+    if kind == "fixture":
+        return True
+    if kind == "invariant":
+        observed = re.findall(r"(?m)^invariant " + re.escape(exact) + r": (pass|fail)\b", text)
+        return (len(observed) == 1
+                and ((observed[0] == "pass") == (record["exit"] == 0)))
+    try:
+        rows = json.loads((Path(environment["PARITY_OUT"]) / "report.json").read_text())
+        wanted = set(json.loads(command[-1]))
+        if not isinstance(rows, list) or len(rows) != len(wanted) or {r["key"] for r in rows} != wanted:
+            return False
+        statuses = {"within policy", "review pixels", "review geometry", "unproven geometry"}
+        if any(r["status"] not in statuses for r in rows):
+            return False
+        failed = any(not r["policy"]["historical"] and r["status"] in
+                     ("review geometry", "unproven geometry") for r in rows)
+        return failed == (record["exit"] == 1)
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 def diagnose(api, root, green, red, name):
     green, red = resolve(api, root, green), resolve(api, root, red)
     chain = api.git("rev-list", "--first-parent", "--reverse", red, cwd=root).splitlines()
@@ -181,11 +236,7 @@ def diagnose(api, root, green, red, name):
         raise api.Refusal("last_green_must_precede_red_on_first_parent")
     candidates = chain[chain.index(green) + 1:]
     options = fixture(api, root)
-    predicate = options.get("recovery_test")
-    exact, flags = (name, []) if predicate else cargo_selector(api, root, name)
-    if predicate and (not isinstance(predicate, list) or not predicate or
-                      not all(isinstance(v, str) for v in predicate)):
-        raise api.Refusal("invalid_fixture_test_command")
+    kind, command, exact = predicate(api, root, name, options)
     output = output_directory(api, "culprit")
     environment = dict(os.environ, RUSTC_WRAPPER="", RUSTC_WORKSPACE_WRAPPER="",
                        CARGO_BUILD_JOBS="2", BBOXY_TEST_CUSTODY="memory",
@@ -199,20 +250,15 @@ def diagnose(api, root, green, red, name):
             api.git("checkout", "--detach", sha, cwd=tree)
             results = []
             for attempt in range(3):
-                argv = ([v.replace("{sha}", sha) for v in predicate] if predicate else
-                        ["cargo", "test", "--locked", *flags, exact, "--", "--exact", exact])
+                argv = [v.replace("{sha}", sha).replace("{tree}", str(tree)) for v in command]
+                attempt_env = dict(environment, PARITY_OUT=str(output / "parity" / sha / str(attempt + 1)))
                 record, text = run_logged(api, argv, tree, output,
-                                          f"{sha}-{attempt + 1}", environment)
+                                          f"{sha}-{attempt + 1}", attempt_env)
                 record.update(sha=sha, attempt=attempt + 1)
                 trials.append(record)
-                if predicate:
-                    valid = record["exit"] in (0, 1)
-                else:
-                    # A build error, panic before the harness or zero tests is
-                    # not a failing test, and cannot identify a culprit.
-                    observed = re.findall(r"(?m)^test " + re.escape(exact) + r" \.\.\. (ok|FAILED)$", text)
-                    valid = len(observed) == 1 and record["exit"] in (0, 101)
-                    valid &= bool(observed) and ((observed[0] == "ok") == (record["exit"] == 0))
+                # A failed build or missing report is unresolved, not evidence
+                # that the selected test, invariant or geometry predicate failed.
+                valid = predicate_observed(kind, exact, command, record, text, attempt_env)
                 if not valid or record["timed_out"]:
                     raise api.Refusal("test_not_observed_or_infrastructure_failure: " + str(record["log"]))
                 results.append(record["exit"] != 0)
@@ -233,7 +279,7 @@ def diagnose(api, root, green, red, name):
                 else:
                     low = middle + 1
             result = {"verdict": "culprit", "culprit": candidates[low]}
-    result.update(green=green, red=red, test=name, trials=trials, evidence=str(output))
+    result.update(green=green, red=red, test=name, predicate_kind=kind, trials=trials, evidence=str(output))
     api.atomic_write(output / "result.json", json.dumps(result, sort_keys=True) + "\n")
     api.append_record("culprit.log", result)
     return result
@@ -524,7 +570,7 @@ def main():
         root = api.repository()
         if args.command == "culprit":
             if len(args.arguments) != 3:
-                raise api.Refusal("usage: culprit.sh LAST_GREEN RED TEST")
+                raise api.Refusal("usage: culprit.sh LAST_GREEN RED PREDICATE")
             result = diagnose(api, root, *args.arguments)
             code = 2 if result["verdict"] == "unresolved" else 0
         elif args.command == "revert":

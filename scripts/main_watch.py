@@ -44,19 +44,33 @@ def fail_name(text):
     return match.group(1) if match else "exit_or_parity"
 
 
-def test_selector(text):
+def test_selector(text, parity_report=None):
+    gates = re.findall(r"(?m)^invariant ([a-zA-Z0-9_-]+): fail\b", text)
+    if gates:
+        gate = gates[0]
+        if gate == "parity-geometry" and parity_report is not None:
+            try:
+                rows = json.loads(parity_report.read_text())
+                cases = sorted({r["key"] for r in rows if not r["policy"]["historical"]
+                                and r["status"] in ("review geometry", "unproven geometry")})
+                if cases:
+                    return {"name": gate, "selector": "parity:" + json.dumps(cases),
+                            "source": "parity_report"}
+            except (OSError, ValueError, KeyError, TypeError):
+                pass
+        return {"name": gate, "selector": "invariant:" + gate, "source": "invariant_output"}
     name = fail_name(text)
     failure = text.find("test " + name + " ... FAILED")
     rerun = re.search(r"error: test failed, to rerun pass [`']([^`']+)[`']",
                       text[max(0, failure):])
     args = shlex.split(rerun.group(1)) if rerun else None
-    selector = name
+    selector = "test:" + name if name != "exit_or_parity" else "unknown:exit_or_parity"
     if args:
         package = next((args[n + 1] for n, arg in enumerate(args[:-1]) if arg in ("-p", "--package")), None)
         kind = "lib" if "--lib" in args else next(
             (arg[2:] + "/" + args[n + 1] for n, arg in enumerate(args[:-1]) if arg in ("--test", "--bin")), None)
         if package and kind:
-            selector = f"cargo:{package}:{kind}:{name}"
+            selector = f"test:cargo:{package}:{kind}:{name}"
     return {"name": name, "selector": selector, "cargo_args": args,
             "source": "cargo_rerun" if args else "unavailable"}
 
@@ -147,7 +161,8 @@ def one(root, api):
                         child.wait()
                 raise
         text = (output / "ci.log").read_text()
-        failure = fail_name(text) if code else "-"
+        selection = test_selector(text, target / "parity/report.json") if code else None
+        failure = selection["name"] if code else "-"
         culprit = "-"
         verdict = "red" if code else "green"
         if not code:
@@ -155,6 +170,7 @@ def one(root, api):
                 retain_parity(tree, target, sha, api)
             except api.Refusal as error:
                 code, verdict, failure = 1, "red", "parity_store_missing"
+                selection = {"name": failure, "selector": "unknown:" + failure, "source": "unavailable"}
                 api.atomic_write(output / "store-error.log", str(error) + "\n")
         record = {"sha": sha, "verdict": verdict, "started": started, "ended": api.now(),
                   "failing_test": failure, "culprit": culprit, "exit": code,
@@ -166,7 +182,6 @@ def one(root, api):
             green = next((r["sha"] for r in reversed(history) if r["verdict"] == "green"), None)
             if green:
                 selector = output / "test-selector.json"
-                selection = test_selector(text)
                 api.atomic_write(selector, json.dumps(selection) + "\n")
                 record["test_selector"] = selection["selector"]
                 diagnosis = api.command(["sh", "scripts/culprit.sh", green, sha, selection["selector"]],

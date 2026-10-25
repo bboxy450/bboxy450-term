@@ -787,6 +787,13 @@ state=pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR'])
 with (state/'ci-calls').open('a') as f:f.write('ci --parity\\n')
 cfg=json.loads((state/'watch.json').read_text()) if (state/'watch.json').exists() else {}
 if cfg.get('fail'):
+ if cfg.get('invariant'):
+  print('invariant '+cfg['invariant']+': fail (exit 1)')
+  if cfg.get('parity'):
+   report=pathlib.Path(os.environ['CARGO_TARGET_DIR'])/'parity/report.json'
+   report.parent.mkdir(parents=True,exist_ok=True)
+   report.write_text(json.dumps(cfg['parity']))
+  raise SystemExit(1)
  print('test fixture_failed ... FAILED')
  print("error: test failed, to rerun pass '-p c --test fixture'")
  raise SystemExit(101)
@@ -855,7 +862,28 @@ PY
         self.assertEqual(result.returncode, 1, result.stderr)
         self.assertEqual((self.repo.state / "main-status").read_text(), "red " + sha + " fixture_failed\n")
         self.assertEqual((self.repo.state / "reverted").read_text().strip(), "f" * 40)
-        self.assertEqual((self.repo.state / "culprit-selector").read_text().strip(), "cargo:c:test/fixture:fixture_failed")
+        self.assertEqual((self.repo.state / "culprit-selector").read_text().strip(), "test:cargo:c:test/fixture:fixture_failed")
+
+    # keeps: landing.md §6 — postsubmit retains the failing non-Cargo predicate.
+    def test_invariant_failure_selects_the_named_gate(self):
+        self.seed_green()
+        self.publish("scripts/fixture.sh")
+        (self.repo.state / "watch.json").write_text('{"fail":true,"invariant":"fixture-contract"}')
+        self.assertEqual(self.watch().returncode, 1)
+        self.assertEqual((self.repo.state / "culprit-selector").read_text().strip(), "invariant:fixture-contract")
+
+    def test_geometry_failure_selects_only_failing_current_cases(self):
+        self.seed_green()
+        self.publish("lab/web/fixture.html")
+        rows = [{"key": key, "status": status, "policy": {"historical": historical}}
+                for key, status, historical in (("a.png", "review geometry", False),
+                    ("b.png", "review pixels", False), ("c.png", "unproven geometry", False),
+                    ("old.png", "review geometry", True))]
+        (self.repo.state / "watch.json").write_text(json.dumps(
+            {"fail": True, "invariant": "parity-geometry", "parity": rows}))
+        self.assertEqual(self.watch().returncode, 1)
+        selector = (self.repo.state / "culprit-selector").read_text().strip()
+        self.assertEqual(json.loads(selector.removeprefix("parity:")), ["a.png", "c.png"])
 
     def test_three_pass_flake_verdict_reopens_without_revert(self):
         self.seed_green()
@@ -879,6 +907,19 @@ PY
         result = self.watch()
         self.assertEqual(result.returncode, 1, result.stderr)
         self.assertIn("red ", (self.repo.state / "main-status").read_text())
+
+    # keeps: landing.md §6 — missing artifacts use the unresolved recovery path.
+    def test_missing_store_after_green_still_invokes_diagnosis_without_a_test_selector(self):
+        self.seed_green()
+        self.publish("crates/c/src/lib.rs")
+        target = self.repo.root / "scratchpad/landing-watch/target"
+        shutil.rmtree(target / "parity")
+        (target / "debug/bboxybook").unlink()
+        (self.repo.state / "watch.json").write_text('{"missing_store":true,"unresolved":true}')
+        result = self.watch()
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertEqual((self.repo.state / "culprit-selector").read_text().strip(), "unknown:parity_store_missing")
+        self.assertIn("parity_store_missing", (self.repo.state / "main-status").read_text())
 
 
 class ParityTests(unittest.TestCase):

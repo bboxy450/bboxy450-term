@@ -7,6 +7,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shlex
 import subprocess
 import sys
 import unittest
@@ -147,7 +148,7 @@ fn unrelated() { panic!("must not run"); }
         self.repo.write("marker", "bad")
         red = self.repo.commit("Fixture product regression")
         env = dict(self.repo.environment, PATH=os.environ["PATH"])
-        result = self.command("culprit", green, red, "cargo:c:lib:regression", environment=env)
+        result = self.command("culprit", green, red, "test:cargo:c:lib:regression", environment=env)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         answer = json.loads(result.stdout)
         self.assertEqual(answer["culprit"], red)
@@ -327,6 +328,145 @@ raise SystemExit(int(group=='first group' and (s/'fail-group').exists()))
                 self.assertEqual(answer["scale_exit"], 0)
                 order = [json.loads(x) for x in (self.repo.state / "order.jsonl").read_text().splitlines()]
                 self.assertEqual(order, ["first group", "last group", "scale"])
+
+
+class TypedPredicateTests(unittest.TestCase):
+    setUp = RecoveryTests.setUp
+    configure = RecoveryTests.configure
+    command = RecoveryTests.command
+    change = RecoveryTests.change
+
+    def install(self, kind):
+        self.options.clear()
+        self.configure()
+        self.repo.write("scripts/invariants.sh", (SOURCE / "invariants.sh").read_text())
+        self.repo.write("scripts/parity.sh", (SOURCE / "parity.sh").read_text())
+        self.kind = kind
+        self.selector = {"test": "test:cargo:c:lib:regression", "invariant": "invariant:contract",
+                         "parity": 'parity:["fixture/one-compact-dark.png"]'}[kind]
+        if kind == "invariant":
+            check = shlex.join([sys.executable, str(self.predicate)]) + ' "$(git rev-parse HEAD)"'
+            self.repo.write(".bboxy/invariants/contract.md",
+                            "---\ntype: invariant\nslow: true\ncheck: " + check + "\n---\n")
+            self.repo.write(".bboxy/invariants/unrelated.md",
+                            "---\ntype: invariant\ncheck: exit 1\n---\n")
+        runner = '''import os,pathlib,subprocess,sys
+predicate=PREDICATE
+def outcome():
+ sha=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+ return subprocess.run([sys.executable,predicate,sha]).returncode
+'''.replace("PREDICATE", repr(str(self.predicate)))
+        if kind == "test":
+            program = runner + '''code=outcome()
+if code in (0,1):
+ print('test regression ... '+('ok' if code==0 else 'FAILED'))
+raise SystemExit(101 if code==1 else code)
+'''
+            path = self.repo.bin / "cargo"
+            path.write_text("#!/usr/bin/env python3\n" + program)
+            path.chmod(0o700)
+        if kind == "parity":
+            book = self.repo.state / "bboxybook"
+            book.write_text("#!/usr/bin/env python3\nimport json,shutil\n" + runner + '''
+args=sys.argv[1:]
+cases=[{'component':'fixture','slug':slug,'density':'compact','theme':'dark'} for slug in ('one','two')]
+def key(row):return f"{row['component']}/{row['slug']}-{row['density']}-{row['theme']}.png"
+if args[0]=='manifest':
+ print(json.dumps(cases));raise SystemExit(0)
+if args[0]=='render':raise SystemExit(0)
+assert args[0]=='compare' and '--strict-geometry' in args
+selected=json.loads(pathlib.Path(args[args.index('--manifest')+1]).read_text())
+assert list(map(key,selected))==['fixture/one-compact-dark.png'], selected
+code=outcome()
+state=pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR'])
+if code not in (0,1):raise SystemExit(code)
+if (state/'missing-report').exists():raise SystemExit(1)
+rows=[{'key':key(row),'policy':{'historical':False},'status':'review geometry' if code else 'within policy'} for row in selected]
+pathlib.Path(args[args.index('--out')+1],'report.json').write_text(json.dumps(rows))
+raise SystemExit(code)
+''')
+            book.chmod(0o700)
+            cargo = self.repo.bin / "cargo"
+            cargo.write_text('''#!/usr/bin/env python3
+import os,pathlib,shutil,sys
+assert sys.argv[1:]==['build','-p','bboxybook','--locked'], sys.argv
+out=pathlib.Path(os.environ['CARGO_TARGET_DIR'])/'debug';out.mkdir(parents=True,exist_ok=True)
+shutil.copy2(BOOK,out/'bboxybook')
+'''.replace("BOOK", repr(str(book))))
+            cargo.chmod(0o700)
+            node = self.repo.bin / "node"
+            node.write_text('''#!/usr/bin/env python3
+import pathlib,shutil,sys
+shutil.copy2(sys.argv[3],pathlib.Path(sys.argv[2])/'cases.json')
+''')
+            node.chmod(0o700)
+        self.base = self.repo.commit("Fixture typed " + kind + " driver")
+
+    def red(self, kind):
+        self.install(kind)
+        self.change("good landing")
+        culprit = self.change("selected regression", bad=True)
+        for n in range(3):
+            self.change(f"unrelated follow-up {n}")
+        tip = fixtures.run("git", "rev-parse", "HEAD", cwd=self.repo.root)
+        result = self.command("culprit", self.base, tip, self.selector)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual((answer["predicate_kind"], answer["culprit"]), (kind, culprit))
+        counts = {}
+        for trial in answer["trials"]:
+            counts[trial["sha"]] = counts.get(trial["sha"], 0) + 1
+        self.assertEqual(set(counts.values()), {3})
+
+    def flake(self, kind):
+        self.install(kind)
+        red = self.change("originally red landing", bad=True)
+        (self.repo.state / "mode").write_text("pass")
+        result = self.command("culprit", self.base, red, self.selector)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual((answer["predicate_kind"], answer["verdict"]), (kind, "flake"))
+        self.assertEqual([r["sha"] for r in answer["trials"]], [red] * 3)
+
+    # keeps: landing.md §6 — each typed predicate bisects only its selected failure.
+    def test_cargo_red(self): self.red("test")
+    def test_invariant_red(self): self.red("invariant")
+    def test_parity_red(self): self.red("parity")
+
+    # keeps: landing.md §6 — each kind needs three passing reruns to propose quarantine.
+    def test_cargo_flake(self): self.flake("test")
+    def test_invariant_flake(self): self.flake("invariant")
+    def test_parity_flake(self): self.flake("parity")
+
+    # keeps: landing.md §6 — missing observations cannot become a culprit or flake.
+    def test_parity_missing_report_is_unresolved_with_batch_fallback(self):
+        self.install("parity")
+        red = self.change("red landing", bad=True)
+        (self.repo.state / "missing-report").touch()
+        result = self.command("culprit", self.base, red, self.selector)
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual(answer["verdict"], "unresolved")
+        self.assertEqual(answer["revert_range"], self.base + ".." + red)
+
+    def test_missing_gate_or_case_is_unresolved(self):
+        self.install("parity")
+        red = self.change("red landing", bad=True)
+        for selector in ("invariant:absent", 'parity:["fixture/absent-compact-dark.png"]'):
+            with self.subTest(selector=selector):
+                result = self.command("culprit", self.base, red, selector)
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertEqual(json.loads(result.stdout)["verdict"], "unresolved")
+
+    def test_unknown_kind_is_named_and_keeps_validated_fallback(self):
+        self.options.clear()
+        self.configure()
+        red = self.change("red landing", bad=True)
+        result = self.command("culprit", self.base, red, "unknown:fixture")
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertIn("unknown_predicate_kind: unknown", answer["reason"])
+        self.assertEqual(answer["revert_range"], self.base + ".." + red)
 
 
 if __name__ == "__main__":
