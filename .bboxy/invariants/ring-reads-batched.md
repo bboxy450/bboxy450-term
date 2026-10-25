@@ -4,6 +4,8 @@ type: invariant
 number: 318
 title: "ring reads are batched: a catch-up pass over N seats costs a bounded number of supervisor round trips, never one RPC per seat"
 status: pending
+slow: true
+gate: pending-ring-reads-batched
 check: cargo test -p bbt-mux --locked --test logic ring_reads_are_batched -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: with hundreds of seats every catch-up pass serialises hundreds of one-seat round trips through the supervisor, input-to-GPU latency grows with the seat count instead of the page budget, and the watched panes wait behind the unwatched ones' RPCs
 links:
