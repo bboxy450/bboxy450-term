@@ -1,0 +1,50 @@
+T7 close/undo produced-frame receipts — called rebase handoff
+
+Signed checked source: 3e3af599f5d0eeec4d61165267502079832e5e34, branch velvet-t7-close-frame, worktree exec6.
+Called base: 7d4d599edc55e55307b21b952a0128b9cd30f5a5 (Oracle 68741134).
+Original exact clean gate source/evidence: 5861d7b1 / 98c11194, preserved on velvet-t7-close-frame-gated-5861d7b1.
+Earlier called-base workspace checkpoint: 40818fbe on 26a9c718, preserved on velvet-t7-close-frame-checked-26a9c718.
+All seven original commits retain their patch IDs on both rebases; signatures G. One additional explicit union is listed below.
+
+Mechanism at final source
+crates/bbt-mux/src/gui_capture.rs:103 — close/undo shares C3's bounded ui_wait map, oneshot and deadline; no second scheduler.
+crates/bbt-mux/src/gui_capture.rs:262 — lifecycle relay waits for UiLayout and refuses frame_seq 0.
+crates/bbt-mux/src/seat_socket.rs:798 — existing close journal/authority path returns GuiReply::Ui only after the owner answers.
+crates/bboxy450-term/src/close.rs:119 — read-only confirmed operation/generation accessor.
+crates/bboxy450-term/src/close_frame.rs:44 — authoritative operation/generation/lifecycle readiness, then produced visibility/focus; no IO or counter.
+crates/bboxy450-term/src/main.rs:3772 — present_ui checks lifecycle target against the produced frame before the reply.
+crates/bboxy450-term/src/main.rs:3885 — close uses the shared UiWait/UiEffect::Lifecycle owner; await_ui_frame remains common.
+crates/bboxy450-term/src/headless.rs:211 — the rebased close relay uses the owner's current size, preserving upstream app resize.
+crates/bboxy450-term/src/ctl.rs:2119 — applied includes the positive produced frame and layout, never an early relay-only Ok.
+crates/bboxy450-term/tests/headless.rs:215 — supported tab fixture checks resized receipt extents, same process/generation, restored focus, and immediate capture without close/undo polling.
+scripts/e2e/T7.sh:79 — positive frame receipt; close and undo do one capture/read after it. Real expiry retains its bounded wait.
+scripts/e2e/T7.sh:161 — expired undo must be a structured refusal, never applied.
+No new protocol tag/DTO, renderer/shader/pass, layout recipe, frame counter, seat/window sequence comparison, R5 queue/cadence or Position solver change.
+
+Actual commands and source attribution
+40818fbe: cargo test --workspace --locked — EXIT 0 / 1212.554 s; 203 suites, 1395 passed, 0 failed, 29 ignored.
+40818fbe: cargo clippy --workspace --all-targets --locked -- -D warnings — EXIT 0 / 65.425 s.
+40818fbe: sh scripts/invariants.sh — EXIT 0 / 583.323 s; 23 checks, 0 failures, 9 named slow skips.
+3e3af599: cargo test -p bboxy450-term --locked --test ctl --test headless — EXIT 0 / 99.891 s; 15 ctl + 11 headless, 0 failures.
+3e3af599: cargo clippy --workspace --all-targets --locked -- -D warnings — EXIT 0 / 53.544 s.
+3e3af599: sh scripts/invariants.sh — EXIT 0 / 218.832 s; 23 checks, 0 failures, 9 named slow skips.
+3e3af599: autonomous scripts/e2e/T7.sh via private app harness — script EXIT 0, harness EXIT 0 / 62.648 s; real 60 s grace.
+Both rebases — EXIT 0, signed, textually clean. The second adds only current-size close and its resized fixture.
+Optional cargo fmt --all -- --check — EXIT 1, existing workspace drift plus the new assertion wrapping. Own assertion corrected.
+Own rustfmt --check on headless.rs and tests/headless.rs — first EXIT 1 (that wrapping), corrected EXIT 0. No unrelated formatting applied.
+The original gate's failed unsupported-placement fixture and test-only Clippy attempt remain in the original signed evidence; they are not omitted or represented as final-source failures.
+All Cargo checks clear both Rust wrappers; own target, jobs 2, no shared cache. No new full ci-local/parity was requested after the original gate; these are the called quick rebase checks.
+
+Runtime receipts and cleanup
+Run: target/t7r-d554d9e665; binary SHA256 c1011f29794e2e167746cb250979084d57f64cac4f1895b0feeffc56dfd40941.
+Actual ready witness: headless, unattended true, windows 0, file custody, backend/gui ready. The environment selector string is not used as custody provenance.
+First close frame 40: target absent; undo frame 46: target present and focused; second close frame 57: target absent.
+Late undo: ok false, kind refused, ui_frame_refused: there is no window close to undo.
+Script asserts same shell PID/generation, cookie, retained history, saved Position and sidebar/grace/gone state. Before/restored PNGs viewed; both 1278x818, same shell 53179 and cookie 73189. No byte-identity claim.
+App 53098, supervisor 53099 and logic 53100 exited (ps EXIT 1/empty); orderly children-reaped and headless-stopped markers present; private account absent.
+Owned dev target removed after lsof EXIT 1/empty: 3,697,561,600 allocated cache bytes unlinked. Tested binary, control receipts, images, logs and hashes retained in own proof dirs. No peer files touched.
+
+Limits retained honestly
+The T7 script remains partial under #316. No full-promise promotion: nested-split runtime rectangles and visible grace-strip pixels remain outside these new assertions; receipt focus is asserted.
+No new full clean gate or parity on 3e3af599, no OS desktop probe, no 967 timing run. Original exact gate and each later check have separate source/log/hash entries.
+Main advanced after the called base only with 52e730f6, two invariant Markdown records; no code overlap. No further rebase performed while checks ran.

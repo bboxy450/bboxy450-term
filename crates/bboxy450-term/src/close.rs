@@ -115,6 +115,18 @@ struct Entry {
     confirmed: bool,
 }
 impl State {
+    /// The registry-confirmed operation carried by this immutable UI model.
+    pub fn confirmed_close(&self, seat: ui::SeatId) -> Option<(Ulid, u64)> {
+        self.0
+            .get(&seat)
+            .filter(|entry| entry.confirmed)
+            .map(|entry| {
+                (
+                    entry.intent.operation,
+                    entry.intent.view.undo.process_generation,
+                )
+            })
+    }
     pub fn needs_reconcile(&self, records: &[SeatRecord]) -> bool {
         self.0.iter().any(|(id, e)| {
             records.iter().find(|r| r.id.0 == id.0.0).is_some_and(|r| {

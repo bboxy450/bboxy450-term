@@ -1,0 +1,42 @@
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 1m 13s
+     Running tests/headless.rs (target/t7-close-frame-dev/debug/deps/headless-00bec12ba528c165)
+
+running 1 test
+
+thread 't7_headless_close_uses_the_window_intent_and_restores_the_same_split' (34988659) panicked at crates/bboxy450-term/tests/headless.rs:52:9:
+assertion `left == right` failed: ["seat", "spawn", "zsh", "--name", "victim", "--place", "right"]: [Object {"error": Object {"hint": String("bboxy450-term ctl --help lists every noun and verb"), "kind": String("usage"), "message": String("--place: only tab is supported yet, not right")}, "ok": Bool(false), "op": String("01M5RW3FAY8G6N4Z2A66KTY8D5")}]; headless GUI starting: windows=0, real Session, offscreen renderer
+cockpit ready: supervisor=56228 logic=56229
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+GUI operation 01M5RW3EPKASCRKXPN9B6PQ87M accepted
+headless render ready: generation=1 frame=1 windows=0
+GUI operation 01M5RW3ES12J4JAW2B0QFWN078 rejected: unknown GUI stream
+GUI operation 01M5RW3ES6HP8A962A5CVJSN6P accepted
+GUI operation 01M5RW3ESYMHK12KBPDCJRM21J accepted
+GUI operation 01M5RW3ESZF4M319DRFHT7FGN9 accepted
+GUI operation 01M5RW3F0W4TK3497F1WV4ZEMJ accepted
+ui input: Locate { seat: SeatId(Ulid(2167495051277619523615855578840574339)), where_: Both }
+GUI operation 01M5RW3F1A43RJ65HS2ZDACCZP accepted
+ui input: Locate { seat: SeatId(Ulid(2167495051277619523615855578840574339)), where_: Pane }
+GUI operation 01M5RW3F9B91ZR1GX7B9T1R3AE accepted
+GUI operation 01M5RW3F9GEAY0QN04004ZDRRG accepted
+GUI operation 01M5RW3EZXTFQJYXP5QBWXYKC9 accepted
+GUI operation 01M5RW3FAQJE487VPSWHX885NK accepted
+
+  left: 2
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test t7_headless_close_uses_the_window_intent_and_restores_the_same_split ... FAILED
+
+failures:
+
+failures:
+    t7_headless_close_uses_the_window_intent_and_restores_the_same_split
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 10 filtered out; finished in 2.12s
+
+error: test failed, to rerun pass `-p bboxy450-term --test headless`
+
+EXIT 101

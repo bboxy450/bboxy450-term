@@ -1,0 +1,60 @@
+{
+  "authority": "Oracle b620fd19-cc9e-4034-ab41-2a9a81e1e2e3; retire own inactive PNGs, lsof first, keep reports/hashes",
+  "superseded_by": "accepted C3 ff0d7433 / main9287f136 retained current gallery in Nyx tree; old paired proofs merged",
+  "candidate_checks": [
+    {
+      "path": "target/t7-parity-27a79f3b11b3",
+      "revision": "27a79f3b11b35ba79a1261a7c0b8868e9c803af1",
+      "ancestor_exit": 0,
+      "png_count": 13716,
+      "png_bytes": 490537373,
+      "lsof_exit": 1,
+      "lsof_nonempty": false,
+      "report": true
+    },
+    {
+      "path": "target/settings-parity-e91906fc30c4",
+      "revision": "e91906fc30c4305e5b85e69be9b269b253b2778b",
+      "ancestor_exit": 0,
+      "png_count": 13524,
+      "png_bytes": 474366560,
+      "lsof_exit": 1,
+      "lsof_nonempty": false,
+      "report": true
+    },
+    {
+      "path": "target/a3-live-parity-86744957990f",
+      "revision": "86744957990f95033f9e768ae52e495a8c14a7bd",
+      "ancestor_exit": 0,
+      "png_count": 13428,
+      "png_bytes": 467305004,
+      "lsof_exit": 1,
+      "lsof_nonempty": false,
+      "report": true
+    },
+    {
+      "path": "target/e2e-parity-15755436",
+      "revision": "15755436a3d5a9f38fa2fdcbb8e432c2fd292bcf",
+      "ancestor_exit": 0,
+      "png_count": 13268,
+      "png_bytes": 451055081,
+      "lsof_exit": 1,
+      "lsof_nonempty": false,
+      "report": true
+    }
+  ],
+  "retired_pngs": 53936,
+  "logical_bytes_unlinked": 1883264018,
+  "allocated_bytes_unlinked": 1997574144,
+  "hash_manifest": "/Users/feral/mydev/bboxy450-term-exec6/target/retired-evidence-20261025-t7-frame/retired-pngs.jsonl",
+  "hash_manifest_sha256": "f0e1481236d9c1783f0b6a27baac3f3e99a000f53522504ffd76c0fc7a99fe83",
+  "report_sha256_preserved": {
+    "target/t7-parity-27a79f3b11b3": "21b10359bdadbed0bb070a9f866ad9a61896ee4e5fc4e6e5197f9d9d2414b43a",
+    "target/settings-parity-e91906fc30c4": "f0a3964169f464e1e6816c1acf16136a8e59b5b9e05445eb8e5d36753f93d00e",
+    "target/a3-live-parity-86744957990f": "805443592f8bad97822f1a0720b3c1579e1b825ab47ddaa5437918e4cbdd15a8",
+    "target/e2e-parity-15755436": "9acd8ad2edd2102fb6d9bc5c090c778ef31dc7fe1a04a7ab9ae77c4d1bd70b5e"
+  },
+  "free_before": 51685339136,
+  "free_after": 53645225984,
+  "kept": "all non-PNG files, reports, manifests, captures, layouts, hashes, logs; active CI source/target and current receipt proof untouched"
+}

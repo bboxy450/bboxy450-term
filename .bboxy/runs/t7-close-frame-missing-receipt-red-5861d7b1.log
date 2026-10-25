@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "<stdin>", line 7, in <module>
+AssertionError: no produced window frame receipt
+FAIL: close replied before a produced frame

@@ -2099,16 +2099,24 @@ fn run_verb(
             };
             let seat = resolve(&client.seats()?, &seat)?.record.id;
             let op = client.mint();
-            client.call(
+            let reply = client.call(
                 Some(op),
                 if undo {
                     GuiAction::UndoCloseSeat { id: op, seat }
                 } else {
                     GuiAction::CloseSeat { id: op, seat }
                 },
-                |r| matches!(r,GuiReply::Ok {op:o} if *o==op),
+                |r| matches!(r,GuiReply::Ui {op:o,..} if *o==op),
             )?;
-            json!({"seat":seat,"relayed":true,"action":if undo {"undo-close"} else {"close"}})
+            let GuiReply::Ui { layout, .. } = reply else {
+                unreachable!()
+            };
+            if layout.frame_seq == 0 {
+                return Err(
+                    "close_frame_incomplete: the GUI owner returned no produced frame".into(),
+                );
+            }
+            json!({"seat":seat,"relayed":true,"applied":true,"action":if undo {"undo-close"} else {"close"},"frame_seq":layout.frame_seq,"layout":layout})
         }
         Command::Focus { seat } => {
             let seat = resolve(&client.seats()?, &seat)?.record.id;

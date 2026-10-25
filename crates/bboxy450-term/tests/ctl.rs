@@ -843,22 +843,47 @@ async fn ctl_capture_is_answered_by_the_window() {
                 .await
                 .expect("window receives T7 relay")
                 .unwrap();
-            if let Event::Reply(reply) = event {
-                match *reply {
-                    GuiReply::OperatorClose { seat, .. } if !undo => {
-                        assert_eq!(seat.to_string(), spawned);
-                        break;
-                    }
-                    GuiReply::OperatorUndoClose { seat, .. } if undo => {
-                        assert_eq!(seat.to_string(), spawned);
-                        break;
-                    }
-                    _ => (),
-                }
+            if let Event::Reply(reply) = event
+                && let notice
+                @ (GuiReply::OperatorClose { .. } | GuiReply::OperatorUndoClose { .. }) = *reply
+            {
+                assert_eq!(matches!(notice, GuiReply::OperatorUndoClose { .. }), undo);
+                let (op, seat) = match notice {
+                    GuiReply::OperatorClose { op, seat }
+                    | GuiReply::OperatorUndoClose { op, seat } => (op, seat),
+                    _ => unreachable!(),
+                };
+                assert_eq!(seat.to_string(), spawned);
+                assert!(
+                    !close.is_finished(),
+                    "close must wait for the window's produced frame"
+                );
+                let frame_seq = if undo { 9 } else { 8 };
+                session
+                    .send(GuiAction::UiReply {
+                        id: op,
+                        result: Ok(bbt_proto::gui::UiLayout {
+                            frame_seq,
+                            size: [1600., 900.],
+                            swarm: None,
+                            tab: None,
+                            focused: None,
+                            launcher_open: false,
+                            page: None,
+                            document: None,
+                            panes: Vec::new(),
+                            tree: Vec::new(),
+                        }),
+                    })
+                    .await
+                    .unwrap();
+                break;
             }
         }
         let (ok, lines) = close.await.unwrap();
         assert!(ok && lines[0]["data"]["relayed"] == true, "{lines:?}");
+        assert_eq!(lines[0]["data"]["applied"], true);
+        assert_eq!(lines[0]["data"]["frame_seq"], if undo { 9 } else { 8 });
     }
 
     // SIGTERM to logic closes the door: gui.endpoint is removed (invariant #261). The

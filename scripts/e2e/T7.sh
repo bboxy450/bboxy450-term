@@ -12,11 +12,10 @@ case "$generation" in ''|*[!0-9]*) fail 'fixture generation is missing';; esac
 [ -n "$shell" ] && kill -0 "$shell" 2>/dev/null || fail 'fixture PTY is not running'
 name=$(seat_field "$seat" record.name)
 # Read the retained UI used by both hosts, not another registry projection.
-wait_ui() {
-    phase=$1; tries=0
-    while :; do
-        ctl app status > "$E2E_WORK/t7-ui-$phase.json" || fail 'app status refused'
-        if python3 -I - "$E2E_WORK" "$phase" "$seat" "$name" <<'PYUI'
+check_ui() {
+    phase=$1
+    ctl app status > "$E2E_WORK/t7-ui-$phase.json" || fail 'app status refused'
+    python3 -I - "$E2E_WORK" "$phase" "$seat" "$name" <<'PYUI'
 import json,sys
 from pathlib import Path
 root,phase,seat,name=Path(sys.argv[1]),*sys.argv[2:]
@@ -42,11 +41,18 @@ else:
         assert len(notices)==1 and notices[0]['swarm']==owner['swarm']
         assert notices[0]['time'] and not notices[0]['truncated']
 PYUI
-        then return; fi
+}
+wait_ui() {
+    phase=$1; tries=0
+    while :; do
+        if check_ui "$phase"; then return; fi
         tries=$((tries+1)); [ "$tries" -le 100 ] || fail "UI never reached $phase"
         sleep 0.2
     done
 }
+# Focus already has a first-produced-frame acknowledgement; fixture setup does
+# not rely on a spawn reply or a backend screen proving a pane was drawn.
+ctl seat focus "$seat" > "$E2E_WORK/t7-focus.json" || fail 'fixture focus refused'
 wait_ui before
 # A presented pane, not just a live backend record, is required before close.
 ctl seat capture "$seat" "$E2E_WORK/t7-before.png" > "$E2E_WORK/t7-before.json" || fail 'the running pane has no capture'
@@ -70,34 +76,45 @@ assert error.get('kind')=='not_on_screen', f'unrelated capture error: {error}'
 assert error.get('message')==f'not_on_screen: seat {sys.argv[2]} has no pane on screen', 'capture refused for a different seat'
 PYHIDDEN
 }
+receipt_frame() {
+    python3 -I - "$1" "$seat" "$2" <<'PYRECEIPT'
+import json,sys
+row=json.load(open(sys.argv[1]))
+assert row.get('ok') is True, 'window action refused'
+data=row['data']
+assert data['seat']==sys.argv[2] and data['action']==sys.argv[3]
+frame=data.get('frame_seq')
+assert isinstance(frame,int) and not isinstance(frame,bool) and frame>0, 'no produced window frame receipt'
+print(frame)
+PYRECEIPT
+}
 close() {
-    ctl seat close "$seat" > "$E2E_WORK/t7-close.json" || fail 'window close refused'
-    wait_lifecycle closed_grace 100
+    close_receipt="$E2E_WORK/t7-close-$1.json"
+    ctl seat close "$seat" > "$close_receipt" || fail 'window close refused'
+    close_frame=$(receipt_frame "$close_receipt" close) || fail 'close replied before a produced frame'
+    [ "$(seat_field "$seat" record.lifecycle)" = closed_grace ] || fail 'close receipt precedes its lifecycle'
     seat_field "$seat" record.close.position > "$E2E_WORK/t7-position-$1.json"
     [ "$(seat_field "$seat" record.generation)" = "$generation" ] || fail 'close replaced the generation'
     kill -0 "$shell" 2>/dev/null || fail 'close terminated the PTY inside grace'
-    # The registry says grace; require the window to remove the pane too.
-    tries=0
-    while ctl seat capture "$seat" "$E2E_WORK/t7-hidden.png" > "$E2E_WORK/t7-hidden.json" 2>&1; do
-        tries=$((tries+1)); [ "$tries" -le 50 ] || fail 'closed pane is still visible in the window'
-        sleep 0.2
-    done
+    # One capture after the receipt; a retry loop would hide an early reply.
+    ctl seat capture "$seat" "$E2E_WORK/t7-hidden.png" > "$E2E_WORK/t7-hidden.json" 2>&1 || :
     assert_not_on_screen "$E2E_WORK/t7-hidden.json" || fail 'closed pane capture failed for an unrelated reason'
-    wait_ui grace
+    [ ! -e "$E2E_WORK/t7-hidden.png" ] || fail 'a closed pane wrote an image'
+    check_ui grace || fail 'close receipt precedes the retained UI state'
 }
 close first
 ctl seat undo-close "$seat" > "$E2E_WORK/t7-undo.json" || fail 'window undo refused'
-wait_lifecycle open 100
-wait_ui restored
+undo_frame=$(receipt_frame "$E2E_WORK/t7-undo.json" undo-close) || fail 'undo replied before a produced frame'
+[ "$undo_frame" -gt "$close_frame" ] || fail 'undo did not produce a newer window frame'
+[ "$(seat_field "$seat" record.lifecycle)" = open ] || fail 'undo receipt precedes its lifecycle'
+check_ui restored || fail 'undo receipt precedes the retained UI state'
 [ "$(seat_field "$seat" state.process.pid)" = "$shell" ] || fail 'undo spawned another PTY'
 [ "$(seat_field "$seat" record.generation)" = "$generation" ] || fail 'undo replaced the generation'
 run_line "$seat" 'echo T7_PERSIST-$t7_cookie-$$'
 wait_text "$seat" "(?m)^T7_PERSIST-73189-$shell\$"
-tries=0
-until ctl seat capture "$seat" "$E2E_WORK/t7-restored.png" > "$E2E_WORK/t7-restored.json"; do
-    tries=$((tries+1)); [ "$tries" -le 50 ] || fail 'restored pane is not visible'
-    sleep 0.2
- done
+ctl seat capture "$seat" "$E2E_WORK/t7-restored.png" > "$E2E_WORK/t7-restored.json" || fail 'restored pane is not visible after the receipt'
+restored_frame=$(jget data.frame_seq < "$E2E_WORK/t7-restored.json") || fail 'restored capture lacks a window frame'
+[ "$restored_frame" -ge "$undo_frame" ] || fail 'restored image predates undo'
 python3 -I - "$E2E_WORK/t7-before.png" "$E2E_WORK/t7-restored.png" <<'PY'
 import struct,sys
 from pathlib import Path
@@ -140,9 +157,17 @@ while kill -0 "$shell" 2>/dev/null; do
 done
 # The record and ring remain readable; no purge is part of close.
 ctl seat screen "$seat" --scrollback 0..1 > "$E2E_WORK/t7-retained-history.json" || fail 'retained history is inaccessible'
-ctl seat undo-close "$seat" > "$E2E_WORK/t7-expired-undo.json" 2>&1 || :
-sleep 0.3
+if ctl seat undo-close "$seat" > "$E2E_WORK/t7-expired-undo.json" 2>&1; then
+    fail 'expired undo was acknowledged as applied'
+fi
+python3 -I - "$E2E_WORK/t7-expired-undo.json" <<'PYEXPIRED'
+import json,sys
+row=json.load(open(sys.argv[1]))
+assert row.get('ok') is False and row.get('error'), 'expired undo lacks a structured refusal'
+PYEXPIRED
+[ "$?" -eq 0 ] || fail 'expired undo did not refuse honestly'
 [ "$(seat_field "$seat" record.lifecycle)" = closed_retained ] || fail 'expired undo reopened the seat'
-if ctl seat capture "$seat" "$E2E_WORK/t7-gone.png" > "$E2E_WORK/t7-gone.json" 2>&1; then fail 'retained seat still owns a pane'; fi
+ctl seat capture "$seat" "$E2E_WORK/t7-gone.png" > "$E2E_WORK/t7-gone.json" 2>&1 || :
 assert_not_on_screen "$E2E_WORK/t7-gone.json" || fail 'retained pane capture failed for an unrelated reason'
+[ ! -e "$E2E_WORK/t7-gone.png" ] || fail 'a retained pane wrote an image'
 note 'T7 same PID/generation, retained history, position, presented extent, sidebar order/grace/notice, and real grace/expiry held'

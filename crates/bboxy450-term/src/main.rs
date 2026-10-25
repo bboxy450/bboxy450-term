@@ -478,14 +478,17 @@ enum UiEffect {
     Spawn(bbt_mux::Ulid),
     Operation(bbt_mux::Ulid),
     Mute(SeatId, bool),
-    Lifecycle(SeatId, bool),
+    Lifecycle(bboxy450_term::close_frame::Target),
     Document,
     Graph,
     Preferences { saved: bool },
     Refused(String),
 }
 impl UiEffect {
-    fn from_message(message: &live::UiMsg) -> Option<Self> {
+    fn from_message(
+        message: &live::UiMsg,
+        model: Option<&bboxy450_term::model::Model>,
+    ) -> Option<Self> {
         match message {
             live::UiMsg::Spawn { id, .. } => Some(Self::Spawn(*id)),
             live::UiMsg::Messaging {
@@ -495,8 +498,18 @@ impl UiEffect {
             live::UiMsg::Messaging { id, .. } | live::UiMsg::Task { id, .. } => {
                 Some(Self::Operation(*id))
             }
-            live::UiMsg::Close(intent) => Some(Self::Lifecycle(intent.seat, false)),
-            live::UiMsg::UndoClose { seat } => Some(Self::Lifecycle(*seat, true)),
+            live::UiMsg::Close(intent) => Some(Self::Lifecycle(
+                bboxy450_term::close_frame::Target::close(intent),
+            )),
+            live::UiMsg::UndoClose { seat } => Some(
+                model
+                    .ok_or_else(|| "ui_not_ready: no live model".to_owned())
+                    .and_then(|model| {
+                        bboxy450_term::close_frame::Target::undo(model, *seat, Instant::now())
+                    })
+                    .map(Self::Lifecycle)
+                    .unwrap_or_else(Self::Refused),
+            ),
             _ => None,
         }
     }
@@ -2917,15 +2930,26 @@ impl App {
         false
     }
     fn close_seat(&mut self, seat: SeatId, id: bbt_mux::Ulid, undo: bool) {
+        if self.closing || self.live_commands.is_none() {
+            if let Some(effects) = &mut self.ui_collect {
+                effects.push(UiEffect::Refused("ui_not_ready: no command sender".into()));
+            }
+            return;
+        }
         let Some(model) = &self.live_state else {
             return;
         };
         match close_request(&self.scene, model, seat, id, undo, Instant::now()) {
             Ok(message) => self.queue(message),
-            Err(reason) => self.logger.write(format!(
-                "{} {seat} refused: {reason}",
-                if undo { "undo close" } else { "close" }
-            )),
+            Err(reason) => {
+                self.logger.write(format!(
+                    "{} {seat} refused: {reason}",
+                    if undo { "undo close" } else { "close" }
+                ));
+                if let Some(effects) = &mut self.ui_collect {
+                    effects.push(UiEffect::Refused(reason));
+                }
+            }
         }
     }
     fn undo_latest_close(&mut self) {
@@ -2944,7 +2968,7 @@ impl App {
         let effect = self
             .ui_collect
             .as_ref()
-            .and_then(|_| UiEffect::from_message(&message));
+            .and_then(|_| UiEffect::from_message(&message, self.live_state.as_deref()));
         match queue_pending(&mut self.pending_commands, message) {
             Err(kind) => {
                 self.admission_refusals.record(kind);
@@ -3708,15 +3732,7 @@ impl App {
                     Err(format!("ui_frame_refused: mute for {seat} was not applied"))
                 }
             }
-            UiEffect::Lifecycle(seat, open) => Ok(model.ui.seats.get(seat).is_some_and(|record| {
-                if *open {
-                    record.lifecycle == bbt_ui_model::Lifecycle::Open
-                        && model.ui.tab_of(*seat).is_some()
-                } else {
-                    record.lifecycle != bbt_ui_model::Lifecycle::Open
-                        && model.ui.tab_of(*seat).is_none()
-                }
-            })),
+            UiEffect::Lifecycle(target) => target.ready(model),
             UiEffect::Document => {
                 Ok(self.document.prepared.is_some() || self.document.error.is_some())
             }
@@ -3765,6 +3781,19 @@ impl App {
         {
             let wait = self.ui_wait.take().expect("qualifying UI frame");
             let result = layout.and_then(|layout| {
+                for effect in &wait.effects {
+                    if let UiEffect::Lifecycle(target) = effect {
+                        let model = self.live_state.as_ref().ok_or("ui_not_ready: no live model")?;
+                        if !target.ready(model)?
+                            || !target.shown(
+                                layout.focused.map(|seat| SeatId::from_u128(seat.0)),
+                                |seat| layout.panes.iter().any(|pane| pane.seat.0 == seat.0.0),
+                            )
+                        {
+                            return Err("close_superseded: the produced frame does not show the requested lifecycle".into());
+                        }
+                    }
+                }
                 if wait.visible.as_ref() == Some(&UiVisible::from_layout(&layout)) { Ok(layout) }
                 else { Err("ui_frame_refused: a newer UI state superseded this operation before its frame".into()) }
             });
@@ -3848,6 +3877,37 @@ impl App {
             }),
             None => {}
         }
+        self.await_ui_frame(id, effects, submitted);
+        self.request_redraw();
+        true
+    }
+    /// Close relays use the same lifecycle effect and produced-frame waiter as UI keys.
+    fn begin_close(
+        &mut self,
+        id: bbt_mux::Ulid,
+        seat: SeatId,
+        undo: bool,
+        logical: [f32; 2],
+        submitted: u64,
+    ) {
+        self.cancel_ui("ui_frame_refused: a newer UI operation superseded this request");
+        let sources = self.drain();
+        self.dispatch_wake_sources(&sources);
+        if self.closing || self.live_commands.is_none() || self.live_state.is_none() {
+            self.answer_ui(id, Err("ui_not_ready: no live command sender".into()));
+            return;
+        }
+        if let Err(reason) = self.solve_ui(logical) {
+            self.answer_ui(id, Err(reason));
+            return;
+        }
+        self.ui_observe = true;
+        self.ui_collect = Some(Vec::new());
+        self.close_seat(seat, id, undo);
+        let effects = self.ui_collect.take().expect("close command collection");
+        self.await_ui_frame(id, effects, submitted);
+    }
+    fn await_ui_frame(&mut self, id: bbt_mux::Ulid, effects: Vec<UiEffect>, submitted: u64) {
         let proxy = self.proxy.clone();
         let timer = bbt_rt::handle().spawn(async move {
             tokio::time::sleep(bboxy450_term::focus_ack::DEADLINE).await;
@@ -3861,8 +3921,6 @@ impl App {
             timer: timer.abort_handle(),
         });
         self.poll_ui_frame(submitted);
-        self.request_redraw();
-        true
     }
     fn ui_deadline(&mut self, id: bbt_mux::Ulid) {
         if self.ui_wait.as_ref().is_some_and(|wait| wait.id == id) {
@@ -4537,8 +4595,14 @@ impl ApplicationHandler<UiEvent> for App {
                 self.request_redraw();
             }
             UiEvent::CloseFor { id, seat, undo } => {
-                self.close_seat(seat, id, undo);
-                self.request_redraw();
+                if let Some(window) = &self.window {
+                    let scale = window.scale_factor() as f32;
+                    let size = window.inner_size();
+                    let logical = [size.width as f32 / scale, size.height as f32 / scale];
+                    self.begin_close(id, seat, undo, logical, self.meter.total_frames());
+                } else {
+                    self.answer_ui(id, Err("endpoint_unavailable: window is not ready".into()));
+                }
             }
             UiEvent::FocusFor(ask) => {
                 self.begin_focus(ask);
