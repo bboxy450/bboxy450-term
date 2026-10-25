@@ -1,0 +1,161 @@
+ROLE: EXECUTOR — Nyx Copperwing
+Source 194a7cb88fc9dc3f2fdac8368e87493c07176366
+
+{
+  "source": "194a7cb88fc9dc3f2fdac8368e87493c07176366",
+  "commands": [
+    {
+      "label": "scoped-tests",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bbt-proto",
+        "-p",
+        "bbt-rt",
+        "-p",
+        "bbt-supervisor",
+        "-p",
+        "bboxy450-harness-wake-up"
+      ],
+      "exit": 0,
+      "seconds": 1158.076,
+      "log": "/Users/feral/mydev/bboxy450-term-nyx/target/history-debug/precheck-scoped-tests.log"
+    },
+    {
+      "label": "strict",
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--all-targets",
+        "-p",
+        "bboxy450-term",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bbt-proto",
+        "-p",
+        "bbt-rt",
+        "-p",
+        "bbt-supervisor",
+        "-p",
+        "bboxy450-harness-wake-up",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "seconds": 67.737,
+      "log": "/Users/feral/mydev/bboxy450-term-nyx/target/history-debug/precheck-strict.log"
+    },
+    {
+      "label": "python",
+      "command": [
+        "python3",
+        "-B",
+        "-I",
+        "scripts/e2e/test_ui.py"
+      ],
+      "exit": 0,
+      "seconds": 0.199,
+      "log": "/Users/feral/mydev/bboxy450-term-nyx/target/history-debug/precheck-python.log"
+    },
+    {
+      "label": "invariants",
+      "command": [
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "exit": 0,
+      "seconds": 427.22,
+      "log": "/Users/feral/mydev/bboxy450-term-nyx/target/history-debug/precheck-invariants.log"
+    }
+  ]
+}
+
+Targeted/initial checks, failures retained:
+[
+  {
+    "file": "metrics-check.log",
+    "exit": 101,
+    "reason": "initial all-target check: new UiMsg missing in an exhaustive test arm; fixed",
+    "sha256": "0f1e81f3094856abb3b4ed71695e140b23849c0982f5ff1a768dfa2b619f1120"
+  },
+  {
+    "file": "check-2.log",
+    "exit": 101,
+    "reason": "fault branch passed String instead of borrowed error text; fixed",
+    "sha256": "4b3797722b68da8a43d6787c1e8037918443f2e9f1a5e15fbe8c06c36fa0d777"
+  },
+  {
+    "file": "check-3.log",
+    "exit": 0,
+    "reason": "all app targets compile",
+    "sha256": "fdd63f604ef0eb75cd6dff0d7af09b33c97683237b31d48b9cd6fc8010397fb7"
+  },
+  {
+    "file": "fault-unit.log",
+    "exit": 101,
+    "reason": "clipped end cursor retained Some(3); fixed completion clamp",
+    "sha256": "5dbe21abf4f26f53d70277b93a73d952bd3ad239469403997ebf318dd0a265f0"
+  },
+  {
+    "file": "fault-unit-fixed.log",
+    "exit": 0,
+    "reason": "two mask regressions passed; third pagination regression later passed in scoped suite",
+    "sha256": "813c0ed775d85569dc5f8c537c1b427c95084e860c2f57d941b540be7c0ce7dc"
+  },
+  {
+    "file": "fault-headless.log",
+    "exit": 0,
+    "reason": "actual non-test-account spoof refusal and file-account fixture/replay/live preservation",
+    "sha256": "a1b68885dc50612465969ec2dcd562107da1b34ac9c68203b57641054882e1fe"
+  },
+  {
+    "file": "scrollback.log",
+    "exit": 0,
+    "reason": "five scrollback regressions including 50-owner pure budget sample",
+    "sha256": "8b20c887c8d585ab3a8b9be4c8e16ff8b69df25bd3a0db78f5c7ad5b4cfceb17"
+  },
+  {
+    "file": "clippy.log",
+    "exit": 0,
+    "reason": "initial strict six-crate/direct-dependent check",
+    "sha256": "e9e2d4bce286d16b5ec2405564cad58d4caf5b547ed107455cefed678566669e"
+  },
+  {
+    "file": "dev-proof.log",
+    "exit": 1,
+    "reason": "proof wrapper caught bad simultaneous-three-tab fixture assumption; canonical night was AMBER0 with S3 failing",
+    "sha256": "4c9a5bdbd9c426ff19c17cfe3ae065e9a2051ae77515b823407d386884c47091"
+  },
+  {
+    "file": "dev-fixed-proof.log",
+    "exit": 0,
+    "reason": "corrected sequential fixture: S2/S3 partial assertions passed; canonical night AMBER0 with existing S4 fixture limit",
+    "sha256": "2e637c4dd18a7c86d60bc937d630b78e8197c1d90c457d161a0dcd5f41b1ec37"
+  }
+]
+
+Precheck actual driver output:
+START scoped-tests
+END scoped-tests 0 1158.076
+START strict
+END strict 0 67.737
+START python
+END python 0 0.199
+START invariants
+END invariants 0 427.22
+
+Exact proof wrapper exit0:
+S1 pass S1: 20000 row coordinates exactly once/in order in 371 produced pages; top=0, live join and captures; displayed bytes/lazy-page metrics unobserved
+S2 pass S2: test-account retained-read gap once at row5, both surviving sides, original live bytes and input preserved; ring-level gap production not exercised
+S3 pass S3: three sequential actual GUI Playback owners below4MB each/aggregate, bounded page residency/eviction and release on live; 50-watched setup and paging hitch meter unproved
+S4 fail FAIL: S4: S4 fixture_dimensions_unavailable: pane=471x148 Replica=471x69; live grid caps cells at 32768
+{"tree": "/private/tmp/nyx-history-debug-ci-194a7cb88fc9", "head": "194a7cb88fc9dc3f2fdac8368e87493c07176366", "exit": 0, "seconds": 51.175, "binary_sha256": "7e3716dd1fc11aba4a76a4b8c19d7ebb1ce12a259bc406d018d9932e63315ff8", "S2_S3_passed": true, "test_custody_and_windowless": true, "log_sha256": "076546233b9495d8a4209894e17316b014c79347af940140223dc6bce9e32b48", "artifacts": "/Users/feral/mydev/bboxy450-term-nyx/target/history-debug/exact-artifacts"}

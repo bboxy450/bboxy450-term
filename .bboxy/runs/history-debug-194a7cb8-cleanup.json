@@ -1,0 +1,31 @@
+{
+  "target": "/Users/feral/mydev/bboxy450-term-nyx/target/history-debug-gate-build",
+  "allocated_bytes_removed": 5116440576,
+  "lsof_exit": 1,
+  "lsof_rows": "",
+  "gate_group_remaining": [],
+  "seconds": 2.51,
+  "ci_tree_removed": true,
+  "ci_tree": "/private/tmp/nyx-history-debug-ci-194a7cb88fc9",
+  "night_pids": [
+    "36978",
+    "38343",
+    "38597",
+    "39033",
+    "40076"
+  ],
+  "night_ps_exit": 1,
+  "night_ps_rows": "",
+  "records": {
+    "S2": {
+      "run_by": "test-account:01M5SP63JHG8B06J7ZHKM6FCVH",
+      "signed_by_device": true,
+      "path": "target/history-debug/exact-records/.bboxy/e2e/S2.md"
+    },
+    "S3": {
+      "run_by": "test-account:01M5SP63JHG8B06J7ZHKM6FCVH",
+      "signed_by_device": true,
+      "path": "target/history-debug/exact-records/.bboxy/e2e/S3.md"
+    }
+  }
+}
