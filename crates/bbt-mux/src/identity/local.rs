@@ -59,6 +59,7 @@ struct Context {
     epoch: u64,
     expected: Option<String>,
     custody: Option<Custody>,
+    certified: bool,
 }
 
 /// IO-only production construction seam. A pending result must be surfaced as
@@ -280,6 +281,9 @@ fn context(account: &SqliteStore) -> Result<Context> {
         epoch,
         expected,
         custody,
+        certified: state
+            .as_ref()
+            .is_some_and(|state| state.kind == IssuerKind::GpgRoot),
     })
 }
 fn key_id(epoch: u64) -> Ulid {
@@ -357,7 +361,14 @@ fn obtain(
         device_ready: false,
     };
     let device = reserve_device(account, proposed_record)?;
-    ensure_device(account, keys, device)?;
+    // After certification the chain owns device-key validation. Opening it here
+    // would turn its hold into another issuer hold and regrant the wrong item.
+    if !context.certified
+        || !record(account)?
+            .is_some_and(|record| record.device_id == Some(device) && record.device_ready)
+    {
+        ensure_device(account, keys, device)?;
+    }
     complete_device(account, device, true)?;
     Ok(key)
 }
