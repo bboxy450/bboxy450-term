@@ -42,9 +42,16 @@ impl State {
             self.records.pop_front();
             self.omitted_records += 1;
         }
+        let id = id.map(|id| {
+            if id.0.len() <= 128 {
+                id.0.as_str()
+            } else {
+                "[overlong id]"
+            }
+        });
         self.records
             .push_back(json!({"sequence":self.sequence,"operation":operation,
-            "stage":stage,"id":id.map(|id|&id.0),"outcome":outcome}));
+            "stage":stage,"id":id,"outcome":outcome}));
     }
 }
 
@@ -236,5 +243,34 @@ mod tests {
         let snapshot = backend.snapshot().unwrap().to_string();
         assert!(!snapshot.contains(&key));
         assert!(!snapshot.contains(&bytes));
+    }
+
+    #[test]
+    fn refused_ids_and_retained_history_stay_bounded_before_redaction() {
+        let backend = Recorder::new(Arc::new(|_| {}));
+        let id = NotificationId("ü".repeat(2048));
+        assert!(
+            backend
+                .post(&Notification {
+                    id: id.clone(),
+                    title: "fixture".into(),
+                    body: "fixture".into(),
+                })
+                .is_err()
+        );
+        assert!(backend.activate(&id).is_err());
+        for _ in 0..HISTORY {
+            backend.remove(&id).unwrap();
+        }
+        let state = backend.state.try_lock().unwrap();
+        assert_eq!(state.records.len(), HISTORY);
+        assert!(state.omitted_records > 0);
+        assert!(
+            state
+                .records
+                .iter()
+                .all(|row| row["id"].as_str().unwrap().len() <= 128)
+        );
+        assert!(state.outstanding.is_empty());
     }
 }
