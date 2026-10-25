@@ -1,5 +1,7 @@
 //! Durable inbox/outbox, receipt history and receiver-local scheduling.
-pub use bbt_proto::messaging::{BusPosition, Page, Receipt, Recipient, StoredMessage};
+pub use bbt_proto::messaging::{
+    BusPosition, Page, Receipt, Recipient, StoredContent, StoredMessage,
+};
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
@@ -89,6 +91,7 @@ impl Ledger {
             CREATE INDEX IF NOT EXISTS msg_ready ON msg_deliveries(recipient,evidence,class,eligible_ms,message);
             CREATE TABLE IF NOT EXISTS msg_receipts(seq INTEGER PRIMARY KEY AUTOINCREMENT,message INTEGER NOT NULL,recipient TEXT NOT NULL,agent TEXT NOT NULL,data BLOB NOT NULL);
             CREATE TABLE IF NOT EXISTS msg_attempts(id TEXT PRIMARY KEY,recipient TEXT NOT NULL,data BLOB NOT NULL,outcome BLOB);
+            CREATE TABLE IF NOT EXISTS msg_signatures(message INTEGER PRIMARY KEY REFERENCES msg_messages(seq),envelope BLOB NOT NULL,intent_digest TEXT NOT NULL,publication_id TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS msg_scheduler(recipient TEXT PRIMARY KEY,credit INTEGER NOT NULL,at_ms INTEGER NOT NULL,streak INTEGER NOT NULL);")?;
         let ledger = Self {
             store,
@@ -97,6 +100,59 @@ impl Ledger {
         };
         ledger.recover()?;
         Ok(ledger)
+    }
+    /// The original pending blob is immutable; a signed completion is a separate row.
+    fn decode_message(
+        &self,
+        sequence: u64,
+        bytes: &[u8],
+        held_out: Option<String>,
+    ) -> Result<StoredMessage> {
+        let content = if let Ok(envelope) = serde_json::from_slice::<Envelope>(bytes) {
+            envelope.into()
+        } else {
+            #[derive(Deserialize)]
+            #[serde(deny_unknown_fields)]
+            struct PendingRecord {
+                intent: Box<bbt_proto::messaging::PendingIntent>,
+            }
+            let original: PendingRecord = serde_json::from_slice(bytes)?;
+            let binding = super::pending::binding(&original.intent)?;
+            let upgrade: Option<(Vec<u8>, String)> = self
+                .store
+                .connection()?
+                .query_row(
+                    "SELECT envelope,intent_digest FROM msg_signatures WHERE message=?1",
+                    [sqlint(sequence)?],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .optional()?;
+            match upgrade {
+                Some((signed, digest)) => {
+                    let envelope: Envelope = serde_json::from_slice(&signed)?;
+                    if digest != binding.digest {
+                        return Err(invalid("message signature has a different pending intent"));
+                    }
+                    super::pending::check_upgrade_content(&original.intent, &envelope)?;
+                    envelope.verify_signature_in_account(self.test_label.as_deref())?;
+                    StoredContent::Signed {
+                        envelope: Box::new(envelope),
+                        upgrade_of: Some(binding),
+                    }
+                }
+                None => StoredContent::Pending {
+                    intent: original.intent,
+                },
+            }
+        };
+        let mut message = StoredMessage {
+            sequence,
+            content,
+            held_out,
+            bus: None,
+        };
+        message.bus = self.bus_position(message.view().id)?;
+        Ok(message)
     }
     pub fn existing(
         &self,
@@ -115,22 +171,17 @@ impl Ledger {
             )
             .optional()?;
         row.map(|(sequence, original, bytes, author, held_out)| {
-            let envelope: Envelope = serde_json::from_slice(&bytes)?;
+            let stored = self.decode_message(sequence, &bytes, held_out)?;
             let mut original: SendRequest = serde_json::from_slice(&original)?;
             let mut retry = request.clone();
             // Replies may omit the inherited thread on every retry. Compare
             // their effective thread without changing the retained envelope.
-            original.thread_id = Some(original.thread_id.unwrap_or(envelope.thread_id));
-            retry.thread_id = Some(retry.thread_id.unwrap_or(envelope.thread_id));
+            original.thread_id = Some(original.thread_id.unwrap_or(stored.view().thread_id));
+            retry.thread_id = Some(retry.thread_id.unwrap_or(stored.view().thread_id));
             if author != sender.to_string() || original != retry {
                 return Err(invalid("message id conflicts with retained sender/content"));
             }
-            Ok(StoredMessage {
-                sequence,
-                bus: self.bus_position(envelope.id)?,
-                content: envelope.into(),
-                held_out,
-            })
+            Ok(stored)
         })
         .transpose()
     }
@@ -140,13 +191,7 @@ impl Ledger {
             [sqlint(sequence)?],
             |r| Ok((r.get(0)?, r.get(1)?)),
         )?;
-        let envelope: Envelope = serde_json::from_slice(&bytes)?;
-        Ok(StoredMessage {
-            sequence,
-            bus: self.bus_position(envelope.id)?,
-            content: envelope.into(),
-            held_out,
-        })
+        self.decode_message(sequence, &bytes, held_out)
     }
     pub fn by_id(&self, id: Ulid) -> Result<StoredMessage> {
         let sequence: u64 = self.store.connection()?.query_row(
@@ -218,17 +263,80 @@ impl Ledger {
                 serde_json::json!({"message":envelope.id,"sequence":sequence,"held":held}),
             ),
         )?;
-        if held.is_none() {
-            insert_deliveries(&tx, sequence, envelope, routes, now)?;
-            publication(&tx, envelope)?;
-        }
-        tx.commit()?;
-        Ok(StoredMessage {
+        let mut message = StoredMessage {
             sequence,
-            bus: self.bus_position(envelope.id)?,
             content: envelope.clone().into(),
             held_out: held.map(str::to_string),
-        })
+            bus: None,
+        };
+        if held.is_none() {
+            insert_deliveries(&tx, &message, routes, now, None)?;
+            publication(&tx, &message)?;
+        }
+        tx.commit()?;
+        message.bus = self.bus_position(envelope.id)?;
+        Ok(message)
+    }
+    /// Only the local IO owner may admit an inferred intent. Remote admission
+    /// continues to take an Envelope and verify its signature in accept_from.
+    pub(crate) fn accept_pending(
+        &self,
+        intent: &bbt_proto::messaging::PendingIntent,
+        routes: &[Route],
+        same_device: &std::collections::BTreeSet<Recipient>,
+        held: Option<&str>,
+        now: u64,
+        sender: Recipient,
+    ) -> Result<StoredMessage> {
+        super::pending::binding(intent)?;
+        if let Some(old) = self.existing(&intent.request, sender)? {
+            if old.intent().is_some_and(|original| original != intent) {
+                return Err(invalid(
+                    "pending message ID conflicts with its original intent",
+                ));
+            }
+            return Ok(old);
+        }
+        let content = StoredContent::Pending {
+            intent: Box::new(intent.clone()),
+        };
+        let mut db = self.store.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        tx.execute(
+            "INSERT INTO msg_messages(id,sender,request,envelope,held_out) VALUES(?1,?2,?3,?4,?5)",
+            params![
+                intent.id.to_string(),
+                sender.to_string(),
+                serde_json::to_vec(&intent.request)?,
+                serde_json::to_vec(&content)?,
+                held
+            ],
+        )?;
+        let sequence = tx.last_insert_rowid() as u64;
+        let mut message = StoredMessage {
+            sequence,
+            content,
+            held_out: held.map(str::to_owned),
+            bus: None,
+        };
+        tree::queue_event(
+            &tx,
+            &Draft::new(
+                match sender {
+                    Recipient::Seat(seat) => format!("seat/{seat}/sender_stored"),
+                    Recipient::Operator(_) => "operator/inbox/receipt".into(),
+                },
+                "messaging",
+                serde_json::json!({"message":intent.id,"sequence":sequence,"held":held,"signature":"pending","reason":intent.hold_reason}),
+            ),
+        )?;
+        if held.is_none() {
+            insert_deliveries(&tx, &message, routes, now, Some(same_device))?;
+            publication(&tx, &message)?;
+        }
+        tx.commit()?;
+        message.bus = self.bus_position(intent.id)?;
+        Ok(message)
     }
     pub fn held_out(&self, after: u64) -> Result<Vec<StoredMessage>> {
         let db = self.store.connection()?;
@@ -242,13 +350,7 @@ impl Ledger {
         })?;
         rows.map(|r| {
             let (sequence, bytes, held_out) = r?;
-            let envelope: Envelope = serde_json::from_slice(&bytes)?;
-            Ok(StoredMessage {
-                sequence,
-                bus: self.bus_position(envelope.id)?,
-                content: envelope.into(),
-                held_out,
-            })
+            self.decode_message(sequence, &bytes, held_out)
         })
         .collect()
     }
@@ -273,8 +375,8 @@ impl Ledger {
         let envelope = message
             .envelope()
             .ok_or_else(|| invalid("pending release is not yet installed"))?;
-        insert_deliveries(&tx, message.sequence, envelope, routes, now)?;
-        publication(&tx, envelope)?;
+        insert_deliveries(&tx, message, routes, now, None)?;
+        publication(&tx, message)?;
         tx.execute(
             "UPDATE msg_messages SET held_out=NULL WHERE seq=?1",
             [sqlint(message.sequence)?],
@@ -499,18 +601,13 @@ impl Ledger {
                 [sqlint(r.message_sequence)?],
                 |row| row.get(0),
             )?;
-            let envelope: Envelope = serde_json::from_slice(&envelope)?;
-            let size = envelope.body.text().unwrap_or_default().len() + 1024;
+            let message = self.decode_message(r.message_sequence, &envelope, None)?;
+            let size = message.view().body.text().unwrap_or_default().len() + 1024;
             if !messages.is_empty() && bytes + size > 40 * 1024 {
                 break;
             }
             bytes += size;
-            messages.push(StoredMessage {
-                sequence: r.message_sequence,
-                bus: self.bus_position(envelope.id)?,
-                content: envelope.into(),
-                held_out: None,
-            });
+            messages.push(message);
         }
         receipts.truncate(messages.len());
         let work = Work {
@@ -667,12 +764,10 @@ impl Ledger {
         while let Some(row) = rows.next()? {
             let sequence = u64_at(row, 0)?;
             let raw: Vec<u8> = row.get(1)?;
-            let envelope: Envelope = serde_json::from_slice(&raw)?;
+            let message = self.decode_message(sequence, &raw, row.get(2)?)?;
+            let view = message.view();
             let matches_channel = channel.is_none_or(|p| {
-                let context = envelope
-                    .context
-                    .trim_end_matches("/**")
-                    .trim_end_matches("/*");
+                let context = view.context.trim_end_matches("/**").trim_end_matches("/*");
                 let base = p.trim_end_matches("/**").trim_end_matches("/*");
                 context == base
                     || (p.ends_with("/**")
@@ -680,7 +775,7 @@ impl Ledger {
                             .strip_prefix(base)
                             .is_some_and(|rest| rest.starts_with('/')))
             });
-            if thread.is_some_and(|t| t != envelope.thread_id) || !matches_channel {
+            if thread.is_some_and(|t| t != view.thread_id) || !matches_channel {
                 continue;
             }
             if items.len() >= limit || (!items.is_empty() && bytes + raw.len() > 512 * 1024) {
@@ -688,12 +783,7 @@ impl Ledger {
                 break;
             }
             bytes += raw.len();
-            items.push(StoredMessage {
-                sequence,
-                bus: self.bus_position(envelope.id)?,
-                content: envelope.into(),
-                held_out: row.get(2)?,
-            });
+            items.push(message);
         }
         Ok(Page { items, next })
     }
@@ -831,12 +921,15 @@ fn set_rate(receipt: &mut Receipt) {
 }
 fn insert_deliveries(
     tx: &rusqlite::Transaction<'_>,
-    sequence: u64,
-    envelope: &Envelope,
+    message: &StoredMessage,
     routes: &[Route],
     now: u64,
+    same_device: Option<&std::collections::BTreeSet<Recipient>>,
 ) -> Result<()> {
+    let sequence = message.sequence;
+    let envelope = message.view();
     for route in routes {
+        let remote_pending = same_device.is_some_and(|local| !local.contains(&route.recipient));
         let mut receipt = Receipt {
             message_sequence: sequence,
             message: envelope.id,
@@ -844,7 +937,12 @@ fn insert_deliveries(
             recipient: route.recipient,
             agent: route.agent.clone(),
             evidence: Evidence::SenderStored,
-            note: "sender stored signed envelope".into(),
+            note: if message.envelope().is_some() {
+                "sender stored signed envelope"
+            } else {
+                "sender stored local pending intent"
+            }
+            .into(),
             held: None,
             arrivals: route.arrivals.clone(),
             received_ms: now,
@@ -854,11 +952,18 @@ fn insert_deliveries(
             attempt: None,
             native_id: None,
             relayed_via_main: false,
+            signature: envelope.signature,
+            signature_reason: envelope.signature_reason.map(str::to_owned),
         };
         receipt_event(tx, &receipt, now)?;
-        receipt.evidence = Evidence::RecipientStored;
-        receipt.note = "recipient inbox committed before scheduling".into();
-        if receipt.arrivals.iter().all(|a| a.paused) {
+        if remote_pending {
+            receipt.held = Some("signature pending; pinned remote delivery waits".into());
+            receipt.note = "pending intent remains on this device".into();
+        } else {
+            receipt.evidence = Evidence::RecipientStored;
+            receipt.note = "recipient inbox committed before scheduling".into();
+        }
+        if !remote_pending && receipt.arrivals.iter().all(|a| a.paused) {
             receipt.held = Some("subscription paused".into());
         }
         set_rate(&mut receipt);
@@ -868,7 +973,7 @@ fn insert_deliveries(
                 sqlint(sequence)?,
                 route.recipient.to_string(),
                 route.agent.as_deref().unwrap_or(""),
-                "recipient-stored",
+                serde_json::to_value(receipt.evidence)?.as_str().unwrap(),
                 class_int(receipt.class),
                 receipt.held,
                 sqlint(receipt.eligible_ms)?,
@@ -935,7 +1040,22 @@ fn receipt_event(tx: &rusqlite::Transaction<'_>, receipt: &Receipt, now: u64) ->
     }
     Ok(())
 }
-fn publication(tx: &rusqlite::Transaction<'_>, envelope: &Envelope) -> Result<()> {
+fn publication(tx: &rusqlite::Transaction<'_>, message: &StoredMessage) -> Result<()> {
+    let payload = match &message.content {
+        StoredContent::Signed { envelope, .. } => serde_json::to_value(envelope)?,
+        StoredContent::Pending { intent } => {
+            serde_json::json!({"id":intent.id,"signature":"pending","intent":intent})
+        }
+    };
+    publication_payload(tx, message, message.view().id, payload)
+}
+fn publication_payload(
+    tx: &rusqlite::Transaction<'_>,
+    message: &StoredMessage,
+    event: Ulid,
+    payload: serde_json::Value,
+) -> Result<()> {
+    let envelope = message.view();
     let mut draft = Draft::new(
         format!(
             "{}/message",
@@ -945,9 +1065,9 @@ fn publication(tx: &rusqlite::Transaction<'_>, envelope: &Envelope) -> Result<()
                 .trim_end_matches("/*")
         ),
         "messaging",
-        serde_json::to_value(envelope)?,
+        payload.clone(),
     );
-    draft.id = envelope.id;
+    draft.id = event;
     draft.seat = (envelope.seat != Ulid::nil()).then_some(envelope.seat);
     draft.generation = (envelope.process_generation > 0).then_some(envelope.process_generation);
     tree::queue_event(tx, &draft)?;
@@ -957,11 +1077,7 @@ fn publication(tx: &rusqlite::Transaction<'_>, envelope: &Envelope) -> Result<()
         |row| row.get(0),
     )?;
     if operator && envelope.context != "operator/inbox" {
-        let mut mirror = Draft::new(
-            "operator/inbox/message",
-            "messaging",
-            serde_json::to_value(envelope)?,
-        );
+        let mut mirror = Draft::new("operator/inbox/message", "messaging", payload);
         mirror.seat = (envelope.seat != Ulid::nil()).then_some(envelope.seat);
         mirror.generation =
             (envelope.process_generation > 0).then_some(envelope.process_generation);

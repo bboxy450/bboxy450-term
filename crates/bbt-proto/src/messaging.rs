@@ -184,6 +184,8 @@ pub enum PendingSignature {
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum LogicalSender {
     Seat {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        device: Option<Ulid>,
         seat: Ulid,
         #[serde(with = "decimal")]
         process_generation: u64,
@@ -429,6 +431,7 @@ impl StoredMessage {
                     LogicalSender::Seat {
                         seat,
                         process_generation,
+                        ..
                     } => (seat, process_generation),
                     LogicalSender::Operator { .. } => (Ulid::nil(), 0),
                 };
@@ -520,6 +523,10 @@ pub struct Receipt {
     pub attempt: Option<Ulid>,
     pub native_id: Option<String>,
     pub relayed_via_main: bool,
+    #[serde(default, skip_serializing_if = "SignatureState::is_signed")]
+    pub signature: SignatureState,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature_reason: Option<String>,
 }
 
 /// Seat receipts retain their existing ULID string; operator receipts name the device.

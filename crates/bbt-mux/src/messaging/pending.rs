@@ -27,6 +27,7 @@ pub fn binding(intent: &PendingIntent) -> Result<IntentBinding> {
         LogicalSender::Seat {
             seat,
             process_generation,
+            ..
         } if seat == Ulid::nil() || process_generation == 0 => {
             return Err(invalid("invalid pending seat identity"));
         }
@@ -44,6 +45,51 @@ pub fn binding(intent: &PendingIntent) -> Result<IntentBinding> {
         id: intent.id,
         digest: digest(&bytes),
     })
+}
+
+/// Check that a completion signs the admitted content. The caller must separately
+/// verify the signature and its current account/seat authority before admitting it.
+pub fn check_upgrade_content(
+    intent: &PendingIntent,
+    envelope: &bbt_proto::messaging::Envelope,
+) -> Result<()> {
+    binding(intent)?;
+    let (seat, generation, origin) = match &intent.sender {
+        LogicalSender::Seat {
+            seat,
+            process_generation,
+            ..
+        } => (*seat, *process_generation, true),
+        LogicalSender::Operator {
+            door, issued_by, ..
+        } => (
+            Ulid::nil(),
+            0,
+            envelope.door == Some(*door) && envelope.issued_by == *issued_by,
+        ),
+    };
+    if envelope.id != intent.id
+        || envelope.swarm_id != intent.swarm_id
+        || envelope.seat != seat
+        || envelope.process_generation != generation
+        || envelope.role != intent.role
+        || envelope.role_epoch != intent.role_epoch
+        || envelope.priority_class != intent.role.class
+        || envelope.context != intent.request.destination
+        || envelope.kind != intent.request.kind
+        || envelope.body != intent.body
+        || envelope.priority != intent.request.priority
+        || envelope.thread_id != intent.request.thread_id.unwrap_or(intent.id)
+        || envelope.reply_to != intent.request.reply_to
+        || envelope.attachments != intent.request.attachments
+        || envelope.timestamp != intent.admitted_ms / 1000
+        || !origin
+    {
+        return Err(invalid(
+            "signed completion differs from its original pending intent",
+        ));
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -95,6 +141,7 @@ mod tests {
         assert_ne!(binding(&changed).unwrap().digest, original.digest);
         changed = intent.clone();
         changed.sender = LogicalSender::Seat {
+            device: None,
             seat: Ulid::new(),
             process_generation: 1,
         };

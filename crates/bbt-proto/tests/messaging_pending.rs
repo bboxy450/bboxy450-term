@@ -11,6 +11,7 @@ fn first_startup_intent_has_no_author_and_cannot_be_a_signed_envelope() {
         version: 1,
         id: request.id,
         sender: LogicalSender::Seat {
+            device: None,
             seat: Ulid::new(),
             process_generation: 1,
         },
