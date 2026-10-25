@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-25T20:25:05.594148+00:00",
+  "brief": "94c10771-7567-41d7-82eb-7b9177851ede",
+  "ruling": "6a18e55b-61d6-40e8-8664-cf226eb77b88",
+  "checks": [
+    {
+      "command": "python3 -I scripts/test-landing.py --all",
+      "exit": 1,
+      "log": "landing-wide-fixtures-first.log",
+      "finding": "Only the test expected /tmp instead of macOS canonical /private/tmp; corrected."
+    },
+    {
+      "command": "python3 -I scripts/test-landing.py --all",
+      "exit": 0,
+      "tests": 55,
+      "seconds": 26.714,
+      "log": "landing-wide-fixtures.log"
+    },
+    {
+      "command": "python3 -I scripts/test-landing.py GateReceiptTests",
+      "exit": 0,
+      "tests": 1,
+      "log": "landing-wide-ci-receipt.log"
+    },
+    {
+      "command": "sh -n scripts/ci-local.sh scripts/land.sh; ast.parse both changed Python modules; git diff --check",
+      "exit": 0
+    }
+  ],
+  "mechanisms": [
+    "wide is strictly more than half workspace crates, measured by cargo metadata; root manifests already affect every crate",
+    "wide uses full normal CI in the owned slot with no 900-second deadline; narrow deadline unchanged",
+    "--gate-log requires exact SHA and normal source/result lines; rejects failed, incomplete, concatenated, wrong-mode and rebased-candidate logs; landing records raw SHA256",
+    "wide moving-main rebases require a fresh exact candidate proof even for disjoint paths",
+    "ci-local refuses dirty or changed source before certifying SHA",
+    "targets are keyed by canonical checkout path; no warm target may cross checkout paths",
+    "extended scripts fixtures still run only when scripts changed"
+  ],
+  "source_files": {
+    "scripts/landing.py": "d1637cf13eb7c9abc54435a5d794cddecdd37823c8caa5aa53fdc8ff9ede94d9",
+    "scripts/test-landing.py": "53e33e8b0761ccf0e93b69bc89d95e8aa4f8e30ae342ee4be803393bb8d22051",
+    "scripts/land.sh": "eb2907125e963d52b6a2546f1b5ac7df7f62495f25b7114df2351c601ebd2861",
+    "scripts/ci-local.sh": "193c862a376545f596a47401191b95f36348bde2dd6e5d6019dc315a0e528ed4"
+  },
+  "not_checked": [
+    "No real full wide product gate launched by these fixtures; CI route is exercised in private stub fixtures. Narrow author-land presubmit follows.",
+    "Parity dependency checkpoint dbada3f2 and fixed-slot/cache transport union are separate queued cuts."
+  ]
+}

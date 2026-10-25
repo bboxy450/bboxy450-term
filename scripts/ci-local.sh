@@ -5,6 +5,15 @@
 # Usage: sh scripts/ci-local.sh [--parity] [--slow]
 # --parity runs visual parity; --slow also runs the scale gates.
 set -eu
+gate_clean() {
+    [ -z "$(git status --porcelain --untracked-files=no)" ] &&
+    [ -z "$(git ls-files --others --exclude-standard -- crates scripts lab design .cargo Cargo.toml Cargo.lock build.rs)" ]
+}
+if ! gate_clean; then echo 'ci-local: dirty source tree; no exact-SHA proof' >&2; exit 2; fi
+gate_sha=$(git rev-parse HEAD)
+gate_mode=normal
+[ "$#" -eq 0 ] || gate_mode=extended
+printf 'ci-local: source %s %s\n' "$gate_sha" "$gate_mode"
 # shellcheck source=scripts/cache-env.sh
 . "$(dirname "$0")/cache-env.sh"
 # Disk is tight: gates need no incremental cache and no debug info (about half the target size).
@@ -52,4 +61,8 @@ else
   exit "$smoke_status"
 fi
 sh scripts/invariants.sh "$@"
+if ! gate_clean || [ "$(git rev-parse HEAD)" != "$gate_sha" ]; then
+    echo 'ci-local: source changed during gate; no exact-SHA proof' >&2; exit 2
+fi
 echo "ci-local: all gates passed"
+printf 'ci-local: result %s %s 0\n' "$gate_sha" "$gate_mode"

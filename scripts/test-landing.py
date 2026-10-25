@@ -1,6 +1,7 @@
 """Landing contracts exercised only on private throwaway repositories (#323 §12)."""
 import importlib.util
 import atexit
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -117,6 +118,15 @@ class Repository:
             self.write(f"scripts/{name}.sh", shell)
         self.write("scripts/quarantine-test.sh", '#!/bin/sh\nexec cargo test "$@"\n')
         self.write("scripts/test-landing.py", 'print("nested fixture checks")\n')
+        self.write("scripts/ci-local.sh", '''#!/bin/sh
+set -eu
+sha=$(git rev-parse HEAD)
+printf 'ci-local: source %s normal\\n' "$sha"
+printf '%s\\n' "$BBOXY_GATE_SLOT $CARGO_TARGET_DIR" >> "$BBOXY_LANDING_STATE_DIR/wide.log"
+cargo test --workspace --locked
+echo 'ci-local: all gates passed'
+printf 'ci-local: result %s normal 0\\n' "$sha"
+''')
         self.bin = self.state / "bin"
         self.bin.mkdir()
         real_cargo = shutil.which("cargo")
@@ -180,8 +190,8 @@ else:
         run("git", "push", "-q", "origin", "HEAD:main", cwd=self.root)
         run("git", "switch", "-q", "-c", "fixture-cut", cwd=self.root)
 
-    def land(self):
-        return subprocess.run(["sh", "scripts/land.sh"], cwd=self.root, env=self.environment,
+    def land(self, *arguments):
+        return subprocess.run(["sh", "scripts/land.sh", *map(str, arguments)], cwd=self.root, env=self.environment,
                               capture_output=True, text=True, timeout=30)
 
     def remote_head(self):
@@ -219,9 +229,25 @@ class AffectedTests(unittest.TestCase):
         result = self.changed("crates/a/src/lib.rs")
         self.assertEqual(result["touched"], ["a"])
         self.assertEqual(result["affected"], ["a", "b", "c"])
+        self.assertEqual(result["tier"], "wide")
 
     def test_leaf_does_not_retest_its_dependencies(self):
-        self.assertEqual(self.changed("crates/c/src/lib.rs")["affected"], ["c"])
+        result = self.changed("crates/c/src/lib.rs")
+        self.assertEqual(result["affected"], ["c"])
+        self.assertEqual(result["tier"], "code")
+
+    def test_contract_names_do_not_override_the_measured_affected_set(self):
+        manifest = self.repo.root / "crates/c/Cargo.toml"
+        for name in ("bbt-proto", "bbt-core"):
+            with self.subTest(name=name):
+                manifest.write_text('[package]\nname="' + name + '"\nversion="0.1.0"\nedition="2024"\n[dependencies]\nb={path="../b"}\n')
+                run("cargo", "generate-lockfile", "--offline", cwd=self.repo.root)
+                self.repo.base = self.repo.commit("Fixture contract leaf " + name)
+                self.repo.write("crates/c/src/lib.rs", "// changed " + name + "\n")
+                self.repo.commit("Fixture contract leaf change")
+                result = landing.affected(self.repo.base + "..HEAD", root=self.repo.root)
+                self.assertEqual(result["affected"], [name])
+                self.assertEqual(result["tier"], "code")
 
     def test_shared_validation_input_is_checked_without_inventing_rust_dependencies(self):
         result = self.changed("scripts/fixture-gate.sh")
@@ -234,6 +260,18 @@ class AffectedTests(unittest.TestCase):
         self.repo.commit("Fixture workspace manifest")
         result = landing.affected(self.repo.base + "..HEAD", root=self.repo.root)
         self.assertEqual(result["affected"], ["a", "b", "c"])
+        self.assertEqual(result["tier"], "wide")
+
+    def test_exactly_half_the_workspace_remains_narrow(self):
+        self.repo.write("crates/d/Cargo.toml", '[package]\nname="d"\nversion="0.1.0"\nedition="2024"\n')
+        self.repo.write("crates/d/src/lib.rs", "pub fn unrelated() {}\n")
+        manifest = self.repo.root / "Cargo.toml"
+        manifest.write_text(manifest.read_text().replace('"crates/c"', '"crates/c","crates/d"'))
+        run("cargo", "generate-lockfile", "--offline", cwd=self.repo.root)
+        self.repo.base = self.repo.commit("Fixture fourth crate")
+        result = self.changed("crates/b/src/lib.rs")
+        self.assertEqual(result["affected"], ["b", "c"])
+        self.assertEqual(result["tier"], "code")
 
     def test_lab_tier_has_no_product_target_and_shared_parity_is_marked(self):
         result = self.changed("lab/web/components.js")
@@ -251,6 +289,15 @@ class AffectedTests(unittest.TestCase):
 
 
 class StateTests(unittest.TestCase):
+    def test_target_is_keyed_by_checkout_path_and_stable_at_that_path(self):
+        with patch.dict(os.environ, {"CARGO_TARGET_DIR": "/tmp/fixture-warm-target"}, clear=True):
+            first = landing.build_environment(Path("/tmp/fixture-checkout-a"))
+            again = landing.build_environment(Path("/tmp/fixture-checkout-a"))
+            other = landing.build_environment(Path("/tmp/fixture-checkout-b"))
+        self.assertEqual(first["CARGO_TARGET_DIR"], again["CARGO_TARGET_DIR"])
+        self.assertNotEqual(first["CARGO_TARGET_DIR"], other["CARGO_TARGET_DIR"])
+        self.assertEqual(Path(first["CARGO_TARGET_DIR"]).parent, Path("/tmp/fixture-warm-target").resolve())
+
     def test_canonical_state_is_shared_across_worktrees(self):
         with patch.dict(os.environ, {"XDG_STATE_HOME": "/tmp/landing-state-fixture"}, clear=True):
             self.assertEqual(str(landing.state_directory()),
@@ -284,6 +331,20 @@ class PresubmitTests(unittest.TestCase):
         rows = (self.repo.state / "presubmit.log").read_text().splitlines()
         self.assertEqual(len(rows), 1)
         self.assertEqual(json.loads(rows[0])["verdict"], "green")
+        self.assertNotIn("nested fixture checks", result.stdout)
+
+    def test_wide_uses_full_normal_ci_without_the_bounded_deadline(self):
+        self.cut("crates/a/src/lib.rs")
+        (self.repo.state / "fixture.json").write_text('{"timeout_seconds":0.0001}')
+        result = self.repo.presubmit()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = [json.loads(line) for line in (self.repo.state / "cargo.jsonl").read_text().splitlines()]
+        self.assertEqual(calls, [["test", "--workspace", "--locked"]])
+        self.assertTrue((self.repo.state / "wide.log").read_text().startswith("none "))
+        record = json.loads((self.repo.state / "presubmit.log").read_text())
+        self.assertEqual(record["tier"], "wide")
+        self.assertEqual(record["exit"], 0)
+        self.assertEqual(record["gate_log_sha256"], hashlib.sha256(Path(record["gate_log"]).read_bytes()).hexdigest())
 
     def test_absent_cache_adapter_uses_empty_wrapper_fallback(self):
         (self.repo.root / "scripts/cache-env.sh").unlink()
@@ -337,6 +398,41 @@ class PresubmitTests(unittest.TestCase):
         self.assertFalse(landing.cargo_backed("sh scripts/brand.sh"))
 
 
+class GateReceiptTests(unittest.TestCase):
+    def test_real_ci_entrypoint_binds_success_and_does_not_certify_failure(self):
+        repo = Repository()
+        self.addCleanup(repo.close)
+        repo.tooling()
+        shutil.copy2(SOURCE.with_name("ci-local.sh"), repo.root / "scripts/ci-local.sh")
+        repo.write("scripts/ui-lint.sh", "#!/bin/sh\nexit 0\n")
+        binary = Path(repo.environment["CARGO_TARGET_DIR"]) / "debug/bboxy450-term"
+        binary.parent.mkdir(parents=True)
+        binary.write_text("#!/bin/sh\nexit 0\n")
+        binary.chmod(0o700)
+        sha = repo.commit("Fixture actual CI receipt entrypoint")
+        environment = dict(repo.environment, BBOXY_GATE_SLOT="none")
+        result = subprocess.run(["sh", "scripts/ci-local.sh"], cwd=repo.root,
+                                env=environment, text=True, capture_output=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        log = repo.state / "actual-ci.log"
+        log.write_text(result.stdout + result.stderr)
+        self.assertEqual(landing.gate_proof(log, sha)["tested_sha"], sha)
+        repo.write("scripts/layering.sh", "#!/bin/sh\nexit 17\n")
+        failed = repo.commit("Fixture failing actual gate")
+        result = subprocess.run(["sh", "scripts/ci-local.sh"], cwd=repo.root,
+                                env=environment, text=True, capture_output=True, timeout=15)
+        self.assertEqual(result.returncode, 17)
+        log.write_text(result.stdout + result.stderr)
+        with self.assertRaisesRegex(landing.Refusal, "gate_log_not_green"):
+            landing.gate_proof(log, failed)
+        repo.write("crates/c/src/lib.rs", "// dirty source must not certify HEAD\n")
+        result = subprocess.run(["sh", "scripts/ci-local.sh"], cwd=repo.root,
+                                env=environment, text=True, capture_output=True, timeout=15)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("dirty source tree", result.stderr)
+        self.assertNotIn("ci-local: source", result.stdout)
+
+
 class LandTests(unittest.TestCase):
     def setUp(self):
         self.repo = Repository()
@@ -351,6 +447,97 @@ class LandTests(unittest.TestCase):
     def cargo_test_count(self):
         path = self.repo.state / "cargo.jsonl"
         return sum(json.loads(line)[0] == "test" for line in path.read_text().splitlines()) if path.exists() else 0
+
+    def gate_log(self, sha, status=0, mode="normal"):
+        path = self.repo.state / "provided-gate.log"
+        path.write_text(f"ci-local: source {sha} {mode}\n"
+                        + ("ci-local: all gates passed\n" if status == 0 else "fixture failed\n")
+                        + f"ci-local: result {sha} {mode} {status}\n")
+        return path
+
+    def test_wide_exact_green_log_is_reused_and_hashed_without_another_gate(self):
+        sha = self.cut("crates/a/src/lib.rs")
+        proof = self.gate_log(sha)
+        result = self.repo.land("--gate-log", proof)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.repo.remote_head(), sha)
+        self.assertEqual(self.cargo_test_count(), 0)
+        record = json.loads((self.repo.state / "landings.log").read_text())
+        self.assertEqual(record["tier"], "wide")
+        self.assertEqual(record["tested_sha"], sha)
+        self.assertEqual(record["gate_log_sha256"], hashlib.sha256(proof.read_bytes()).hexdigest())
+
+    def test_wide_wrong_sha_log_is_refused_without_push_or_fallback(self):
+        self.cut("crates/a/src/lib.rs")
+        result = self.repo.land("--gate-log", self.gate_log(self.repo.base))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("gate_log_source_mismatch", result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
+        self.assertEqual(self.cargo_test_count(), 0)
+
+    def test_wide_extended_or_concatenated_log_is_not_a_normal_gate_proof(self):
+        sha = self.cut("crates/a/src/lib.rs")
+        proof = self.gate_log(sha, mode="extended")
+        result = self.repo.land("--gate-log", proof)
+        self.assertIn("gate_log_source_mismatch", result.stderr)
+        proof = self.gate_log(sha)
+        proof.write_text(proof.read_text() * 2)
+        result = self.repo.land("--gate-log", proof)
+        self.assertIn("gate_log_source_mismatch", result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
+        self.assertEqual(self.cargo_test_count(), 0)
+
+    def test_wide_failed_or_incomplete_log_is_refused(self):
+        sha = self.cut("crates/a/src/lib.rs")
+        for status in (101, -15):
+            with self.subTest(status=status):
+                result = self.repo.land("--gate-log", self.gate_log(sha, status))
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("gate_log_not_green", result.stderr)
+        incomplete = self.gate_log(sha)
+        incomplete.write_text(incomplete.read_text().split("ci-local: result")[0])
+        result = self.repo.land("--gate-log", incomplete)
+        self.assertIn("gate_log_not_green", result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
+        self.assertEqual(self.cargo_test_count(), 0)
+
+    def test_wide_runs_full_normal_gate_and_records_tier(self):
+        sha = self.cut("crates/a/src/lib.rs")
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.repo.remote_head(), sha)
+        self.assertEqual(self.cargo_test_count(), 1)
+        record = json.loads((self.repo.state / "landings.log").read_text())
+        self.assertEqual(record["tier"], "wide")
+        self.assertIn("gate_log_sha256", record)
+
+    def test_wide_failed_full_gate_never_pushes(self):
+        self.cut("crates/a/src/lib.rs")
+        (self.repo.state / "behavior.json").write_text('{"fail":"test"}')
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 77, result.stdout + result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
+
+    def test_wide_rebase_cannot_reuse_a_green_log_from_the_old_candidate(self):
+        sha = self.cut("crates/a/src/lib.rs")
+        proof = self.gate_log(sha)
+        self.repo.movement(".bboxy/other.md")
+        hook = json.loads((self.repo.state / "behavior.json").read_text())["hook"]
+        run("sh", hook, cwd=self.repo.root)
+        result = self.repo.land("--gate-log", proof)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("gate_log_source_mismatch", result.stderr)
+        self.assertNotEqual(self.repo.remote_head(), sha)
+        self.assertEqual(self.cargo_test_count(), 0)
+
+    def test_wide_moved_main_requires_a_new_exact_candidate_gate_even_when_disjoint(self):
+        self.cut("crates/a/src/lib.rs")
+        self.repo.movement(".bboxy/other.md")
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.cargo_test_count(), 2)
+        record = json.loads((self.repo.state / "landings.log").read_text())
+        self.assertEqual(record["tested_sha"], self.repo.remote_head())
 
     def test_signed_cut_pushes_once_logs_and_announces_after_slot_release(self):
         # keeps: #323 §5 fast-forward/signature/log/communication contract.

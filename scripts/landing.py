@@ -4,6 +4,7 @@ Shell entry points keep the same contract on every worktree. All Git commands
 use argument arrays; fixture runs use their own repository and shared-state dir.
 """
 import argparse
+import hashlib
 import importlib.util
 from datetime import datetime, timezone
 import json
@@ -122,6 +123,8 @@ def affected(range_spec, *, root=None):
         if not more:
             break
         result |= more
+    if len(result) * 2 > len(packages):
+        tier = "wide"
     ui = {"bbt-ui", "bbt-ui-model", "bbt-render", "bboxybook"}
     parity = any(p.startswith(("lab/", "design/")) for p in paths) or bool(touched & ui)
     shared_lab = {"lab/web/lab.css", "lab/web/tokens.js", "lab/web/glow.js",
@@ -296,6 +299,10 @@ def presubmit(base):
     root = repository()
     sha = git("rev-parse", "HEAD", cwd=root)
     clean_source(root)
+    data = affected(base + "..HEAD", root=root)
+    if data["tier"] == "wide":
+        with Slot():
+            return wide_check(root, data)["exit"]
     seconds = float(fixture_options().get("timeout_seconds", 900))
     if not math.isfinite(seconds) or not 0 < seconds <= 900:
         raise Refusal("invalid_presubmit_timeout: maximum is 900 seconds")
@@ -307,7 +314,8 @@ def presubmit(base):
     with (output / "commands.log").open("w") as stream:
         child = subprocess.Popen(["sh", str(root / "scripts/presubmit.sh"), "--worker",
                                   base, str(result_path)], cwd=root, stdout=stream,
-                                 stderr=subprocess.STDOUT, start_new_session=True)
+                                 stderr=subprocess.STDOUT, start_new_session=True,
+                                 env=build_environment(root))
         atomic_write(output / "process.json", json.dumps({"pid": child.pid, "pgid": child.pid,
                                                           "sha": sha, "started": now()}) + "\n")
         try:
@@ -341,6 +349,78 @@ def presubmit(base):
     if timed_out:
         print(f"presubmit_timeout: {seconds:g}s bound enforced (maximum 900s)", file=sys.stderr)
     return code
+
+
+def build_environment(root):
+    # Test executables bake checkout-relative paths in. A caller's warm target
+    # is a parent, never a cache shared between different source locations.
+    environment = dict(os.environ)
+    parent = Path(environment.get("BBOXY_CARGO_TARGET_DIR")
+                  or environment.get("CARGO_TARGET_DIR") or root / "target")
+    if not parent.is_absolute():
+        parent = root / parent
+    key = hashlib.sha256(os.fsencode(root.resolve())).hexdigest()[:20]
+    target = str(parent.resolve() / ("checkout-" + key))
+    environment.update(CARGO_TARGET_DIR=target, BBOXY_CARGO_TARGET_DIR=target,
+                       CARGO_BUILD_JOBS="2")
+    return environment
+
+
+def gate_proof(path, sha):
+    path = Path(path).resolve(strict=True)
+    digest = hashlib.sha256()
+    sources, results = [], []
+    last = ""
+    passed = False
+    with path.open("rb") as stream:
+        for raw in stream:
+            digest.update(raw)
+            line = raw.decode("utf-8", errors="replace").strip()
+            if line.startswith("ci-local: source "):
+                sources.append(line.split()[2:])
+            if line.startswith("ci-local: result "):
+                results.append(line.split()[2:])
+            passed |= line == "ci-local: all gates passed"
+            if line:
+                last = line
+    if sources != [[sha, "normal"]]:
+        raise Refusal("gate_log_source_mismatch: expected exact candidate " + sha)
+    if (results != [[sha, "normal", "0"]] or not passed
+            or last != f"ci-local: result {sha} normal 0"):
+        raise Refusal("gate_log_not_green: full normal gate completion required")
+    return {"gate_log": str(path), "gate_log_sha256": digest.hexdigest(),
+            "tested_sha": sha}
+
+
+def wide_check(root, data, gate_log=None):
+    sha = git("rev-parse", "HEAD", cwd=root)
+    started = time.monotonic()
+    if gate_log is None:
+        output = state_directory() / "presubmits" / (sha + "-" + uuid.uuid4().hex[:8])
+        output.mkdir(parents=True, mode=0o700)
+        gate_log = output / "commands.log"
+        environment = build_environment(root)
+        environment["BBOXY_GATE_SLOT"] = "none"  # land/presubmit already owns it
+        print("land: wide cut; full normal CI, no presubmit deadline", flush=True)
+        with gate_log.open("w") as stream:
+            code = command(["sh", "scripts/ci-local.sh"], cwd=root, env=environment,
+                           stdout=stream, stderr=subprocess.STDOUT, capture=False,
+                           check=False).returncode
+        print(gate_log.read_text(), end="", flush=True)
+        proof = gate_proof(gate_log, sha) if code == 0 else {"gate_log": str(gate_log)}
+    else:
+        proof = gate_proof(gate_log, sha)
+        code = 0
+        print("land: reusing full normal gate on exact candidate " + sha, flush=True)
+    if git("rev-parse", "HEAD", cwd=root) != sha:
+        raise Refusal("candidate_changed_during_gate")
+    clean_source(root)
+    record = {"sha": sha, "tier": "wide", "affected": data["affected"],
+              "seconds": time.monotonic() - started, "verdict": "green" if code == 0 else "red",
+              "exit": code, "binary_durations": binary_durations(Path(gate_log).read_text()),
+              **proof}
+    append_record("presubmit.log", record)
+    return record
 
 
 def binary_durations(transcript):
@@ -503,7 +583,7 @@ def publishing_identity(root):
         raise Refusal("unapproved_github_identity: " + actor)
 
 
-def land():
+def land(gate_log=None):
     root = repository()
     clean_source(root)
     branch = git("symbolic-ref", "--short", "HEAD", cwd=root)
@@ -514,6 +594,7 @@ def land():
     previous_base = None
     spent = 0.
     landing = None
+    proof = {}
     with Slot():
         for retry in range(3):
             git("fetch", "origin", "main", cwd=root)
@@ -538,12 +619,19 @@ def land():
                                       or moved["shared"]
                                       or (any(p.startswith(("lab/", "design/")) for p in data["shared"])
                                           and moved["parity"] == "yes"))
-            if tested is None or intersection:
+            candidate = git("rev-parse", "HEAD", cwd=root)
+            if tested is None or intersection or (data["tier"] == "wide" and tested != candidate):
                 started = time.monotonic()
-                checked_result = command(["sh", "scripts/presubmit.sh", base], cwd=root,
-                                         capture=False, check=False)
+                if data["tier"] == "wide":
+                    proof = wide_check(root, data, gate_log)
+                    code = proof["exit"]
+                else:
+                    if gate_log:
+                        raise Refusal("gate_log_requires_wide_cut")
+                    code = command(["sh", "scripts/presubmit.sh", base], cwd=root,
+                                   capture=False, check=False).returncode
                 spent += time.monotonic() - started
-                if checked_result.returncode:
+                if code:
                     raise Refusal("presubmit_failed", 77)
                 tested = git("rev-parse", "HEAD", cwd=root)
             else:
@@ -569,6 +657,7 @@ def land():
                        "tier": data["tier"], "affected": data["affected"],
                        "presubmit_seconds": spent, "retries": retry, "paths": data["paths"],
                        "tested_sha": tested, "branch": branch}
+            landing.update({k: proof[k] for k in ("gate_log", "gate_log_sha256") if k in proof})
             append_record("landings.log", landing)
             break
         if landing is None:
@@ -602,11 +691,13 @@ def main():
     p = sub.add_parser("presubmit-worker")
     p.add_argument("base")
     p.add_argument("result", type=Path)
-    sub.add_parser("land")
+    p = sub.add_parser("land")
+    p.add_argument("--gate-log", type=Path,
+                   help="reuse a full NORMAL ci-local log on the exact wide candidate SHA")
     args = parser.parse_args()
     if args.verb == "affected":
         result = affected(args.range)
-        print(" ".join(result["affected"]) if args.crates else json.dumps(result, sort_keys=True))
+        print(" ".join(result["affected"]) if args.crates else json.dumps(result))
     elif args.verb == "state-dir":
         print(state_directory())
     elif args.verb == "parity-dir":
@@ -618,7 +709,7 @@ def main():
     elif args.verb == "presubmit-worker":
         return presubmit_worker(args.base, args.result)
     elif args.verb == "land":
-        return land()
+        return land(args.gate_log)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,32 @@
+fixture duration: LandTests.test_three_moving_attempts_are_79_with_no_candidate_push 19.903s
+fixture duration: LandTests.test_all_revert_cut_can_land_while_main_is_red 8.300s
+fixture duration: LandTests.test_disjoint_main_movement_rebases_but_does_not_repeat_checks 11.176s
+fixture duration: LandTests.test_notification_failure_can_resume_without_rechecking_or_repush 9.135s
+fixture duration: LandTests.test_presubmit_failure_is_77_and_does_not_push 5.782s
+fixture duration: LandTests.test_red_main_refuses_before_any_check_or_push 5.237s
+fixture duration: LandTests.test_reverse_dependency_overlap_rechecks 16.283s
+fixture duration: LandTests.test_signed_cut_pushes_once_logs_and_announces_after_slot_release 10.673s
+fixture duration: LandTests.test_unsigned_input_is_refused_before_rebase_can_sign_it 6.354s
+fixture duration: LandTests.test_wide_exact_green_log_is_reused_and_hashed_without_another_gate 7.586s
+fixture duration: LandTests.test_wide_failed_full_gate_never_pushes 7.427s
+fixture duration: LandTests.test_wide_failed_or_incomplete_log_is_refused 10.592s
+fixture duration: LandTests.test_wide_rebase_cannot_reuse_a_green_log_from_the_old_candidate 8.249s
+fixture duration: LandTests.test_wide_runs_full_normal_gate_and_records_tier 8.238s
+fixture duration: LandTests.test_wide_wrong_sha_log_is_refused_without_push_or_fallback 6.188s
+StateTests.test_target_is_keyed_by_checkout_path_and_stable_at_that_path FAILED
+F
+======================================================================
+FAIL: test_target_is_keyed_by_checkout_path_and_stable_at_that_path (__main__.StateTests.test_target_is_keyed_by_checkout_path_and_stable_at_that_path)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/ci-tree/scripts/test-landing.py", line 286, in test_target_is_keyed_by_checkout_path_and_stable_at_that_path
+    self.assertEqual(Path(first["CARGO_TARGET_DIR"]).parent, Path("/tmp/fixture-warm-target"))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: PosixPath('/private/tmp/fixture-warm-target') != PosixPath('/tmp/fixture-warm-target')
+
+----------------------------------------------------------------------
+Ran 1 test in 0.002s
+
+FAILED (failures=1)
+
+Ran 51 fixture tests in 30.052s; failures=1
