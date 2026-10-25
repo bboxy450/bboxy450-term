@@ -24,9 +24,6 @@ import uuid
 # Running a gate must not leave bytecode among a candidate's source paths.
 sys.dont_write_bytecode = True
 
-# Temporary #325 escape for a measured compile-only timeout. The fixed-slot
-# runner follow-up removes this switch and the narrow-cold acceptance path.
-ALLOW_NARROW_COLD = True
 _timing_path = None
 
 
@@ -250,6 +247,43 @@ def phase_totals(path, ended):
     return totals
 
 
+class TwoClocks:
+    """Elapsed build and execution time; observations share the host's clock."""
+    def __init__(self, started):
+        self.at = started
+        self.phase = "compile"  # setup cannot run forever outside either cap
+        self.compile = self.run = self.test = 0.
+        self.tests_started = False
+
+    def event(self, value):
+        at = max(self.at, value["at"])
+        elapsed = at - self.at
+        if self.phase == "compile":
+            self.compile += elapsed
+        else:
+            self.run += elapsed
+            if self.phase == "test":
+                self.test += elapsed
+        self.at, self.phase = at, value["phase"]
+        self.tests_started |= self.phase == "test"
+
+    def totals(self, ended):
+        tail = max(0., ended - self.at)
+        build = self.compile + (tail if self.phase == "compile" else 0.)
+        run = self.run + (tail if self.phase != "compile" else 0.)
+        test = self.test + (tail if self.phase == "test" else 0.)
+        return {"compile_seconds": build, "run_seconds": run, "test_seconds": test,
+                "unclassified_seconds": max(0., run - test), "tests_started": self.tests_started}
+
+    def expired(self, ended, build_cap, run_bound):
+        totals = self.totals(ended)
+        if totals["compile_seconds"] >= build_cap:
+            return "build_cap"
+        if totals["run_seconds"] >= run_bound:
+            return "presubmit_timeout"
+        return None
+
+
 def records_checks(root, paths):
     checked(["cargo", "test", "-p", "bbt-doc", "--locked", "--test", "corpus", "-q"], root)
     checked(["cargo", "test", "-p", "bbt-mermaid", "--locked", "-q"], root)
@@ -369,56 +403,124 @@ def presubmit(base):
     if data["tier"] == "wide":
         with Slot():
             return wide_check(root, data)["exit"]
-    seconds = float(fixture_options().get("timeout_seconds", 900))
-    if not math.isfinite(seconds) or not 0 < seconds <= 900:
+    options = fixture_options()
+    legacy = options.get("timeout_seconds")
+    if legacy is not None and (not math.isfinite(float(legacy)) or not 0 < float(legacy) <= 900):
         raise Refusal("invalid_presubmit_timeout: maximum is 900 seconds")
+    build_cap = float(options.get("build_cap_seconds", legacy if legacy is not None else 1800))
+    run_bound = float(options.get("run_bound_seconds", legacy if legacy is not None else 900))
+    if not math.isfinite(build_cap) or not 0 < build_cap <= 1800:
+        raise Refusal("invalid_build_cap: maximum is 1800 seconds")
+    if not math.isfinite(run_bound) or not 0 < run_bound <= 900:
+        raise Refusal("invalid_run_bound: maximum is 900 seconds")
+    operation = uuid.uuid4().hex
+    for attempt in range(2):
+        clean_source(root)
+        if git("rev-parse", "HEAD", cwd=root) != sha:
+            raise Refusal("candidate_changed_during_presubmit")
+        record = presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, operation)
+        clean_source(root)
+        if git("rev-parse", "HEAD", cwd=root) != sha:
+            raise Refusal("candidate_changed_during_presubmit")
+        if record["error"] != "build_cap":
+            return record["exit"]
+        if attempt == 0:
+            print("build_cap: retrying once warm at the same checkout and target", flush=True)
+        else:
+            print("finding: recurring_build_cap at the same checkout and target", file=sys.stderr)
+    return record["exit"]
+
+
+def stop_worker(child):
+    try:
+        os.killpg(child.pid, signal.SIGTERM)  # recorded, newly-created group only
+    except ProcessLookupError:
+        pass
+    try:
+        child.wait(timeout=1)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(child.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        child.wait()
+
+
+def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, operation):
     output = state_directory() / "presubmits" / (sha + "-" + uuid.uuid4().hex[:8])
     output.mkdir(parents=True, mode=0o700)
     result_path = output / "affected.json"
     started = time.monotonic()
-    timed_out = False
+    clocks = TwoClocks(started)
+    reason = None
+    reader = None
+    def read_events():
+        nonlocal reader
+        path = output / "phases.jsonl"
+        if reader is None and path.exists():
+            reader = path.open()
+        if reader is not None:
+            while True:
+                position = reader.tell()
+                line = reader.readline()
+                if not line.endswith("\n"):
+                    reader.seek(position)
+                    break
+                try:
+                    clocks.event(json.loads(line))
+                except json.JSONDecodeError:
+                    pass
     with (output / "commands.log").open("w") as stream:
         child = subprocess.Popen(["sh", str(root / "scripts/presubmit.sh"), "--worker",
                                   base, str(result_path)], cwd=root, stdout=stream,
                                  stderr=subprocess.STDOUT, start_new_session=True,
                                  env=build_environment(root))
         atomic_write(output / "process.json", json.dumps({"pid": child.pid, "pgid": child.pid,
-                                                          "sha": sha, "started": now()}) + "\n")
+                                                          "sha": sha, "started": now(),
+                                                          "attempt": attempt, "operation": operation}) + "\n")
         try:
-            code = child.wait(timeout=seconds)
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            try:
-                os.killpg(child.pid, signal.SIGTERM)  # our recorded, newly-created group only
-            except ProcessLookupError:
-                pass
-            try:
-                child.wait(timeout=1)
-            except subprocess.TimeoutExpired:
+            while True:
+                read_events()
+                ended = time.monotonic()
+                reason = clocks.expired(ended, build_cap, run_bound)
+                code = child.poll()
+                if code is not None and code != 0:
+                    reason = None  # an observed test failure is never retried as infrastructure
+                    break
+                if reason:
+                    stop_worker(child)
+                    code = 124
+                    break
+                if code is not None:
+                    break
                 try:
-                    os.killpg(child.pid, signal.SIGKILL)
-                except ProcessLookupError:
+                    child.wait(timeout=0.1)
+                except subprocess.TimeoutExpired:
                     pass
-                child.wait()
-            code = 124
-    data = json.loads(result_path.read_text()) if result_path.exists() else {}
+        except BaseException:
+            stop_worker(child)
+            raise
+        finally:
+            if reader is not None:
+                reader.close()
     transcript = (output / "commands.log").read_text()
     record = {"sha": sha, "tier": data.get("tier", "unknown"),
               "affected": data.get("affected", []), "seconds": time.monotonic() - started,
               "verdict": "green" if code == 0 else "red", "exit": code,
-              "error": "presubmit_timeout" if timed_out else None,
+              "error": reason, "build_cap_seconds": build_cap, "run_bound_seconds": run_bound,
+              "attempt": attempt, "operation": operation,
+              "finding": "recurring_build_cap" if reason == "build_cap" and attempt else None,
               "binary_durations": binary_durations(transcript),
               "log": str(output / "commands.log"),
-              "timing_basis": "observed_output_phase_wall",
-              **phase_totals(output / "phases.jsonl", time.monotonic())}
-    record["narrow_cold_eligible"] = (ALLOW_NARROW_COLD and timed_out and not record["tests_started"]
-                                       and record["compile_seconds"] > 0)
+              "timing_basis": "setup_and_visible_compile_build;all_other_execution_run",
+              **clocks.totals(ended)}
     append_record("presubmit.log", record)
     print(transcript, end="")
     print(json.dumps(record, sort_keys=True), flush=True)
-    if timed_out:
-        print(f"presubmit_timeout: {seconds:g}s bound enforced (maximum 900s)", file=sys.stderr)
-    return code
+    if reason:
+        print(f"{reason}: BUILD {record['compile_seconds']:.3f}/{build_cap:g}s; "
+              f"RUN {record['run_seconds']:.3f}/{run_bound:g}s", file=sys.stderr)
+    return record
 
 
 def build_environment(root):
@@ -462,7 +564,7 @@ def gate_proof(path, sha):
             "tested_sha": sha}
 
 
-def wide_check(root, data, gate_log=None, *, tier="wide"):
+def wide_check(root, data, gate_log=None):
     sha = git("rev-parse", "HEAD", cwd=root)
     started = time.monotonic()
     if gate_log is None:
@@ -484,7 +586,7 @@ def wide_check(root, data, gate_log=None, *, tier="wide"):
     if git("rev-parse", "HEAD", cwd=root) != sha:
         raise Refusal("candidate_changed_during_gate")
     clean_source(root)
-    record = {"sha": sha, "tier": tier, "affected": data["affected"],
+    record = {"sha": sha, "tier": "wide", "affected": data["affected"],
               "seconds": time.monotonic() - started, "verdict": "green" if code == 0 else "red",
               "exit": code, "binary_durations": binary_durations(Path(gate_log).read_text()),
               **proof}
@@ -505,14 +607,6 @@ def wide_check(root, data, gate_log=None, *, tier="wide"):
                       timing_basis="provided_log_cargo_and_test_reported_wall")
     append_record("presubmit.log", record)
     return record
-
-
-def narrow_cold(sha):
-    if not ALLOW_NARROW_COLD:
-        return False
-    row = next((r for r in reversed(records("presubmit.log")) if r.get("sha") == sha), {})
-    return (row.get("error") == "presubmit_timeout" and row.get("exit") == 124
-            and row.get("tests_started") is False and row.get("compile_seconds", 0) > 0)
 
 
 def binary_durations(transcript):
@@ -714,24 +808,27 @@ def land(gate_log=None):
                                           and moved["parity"] == "yes"))
             candidate = git("rev-parse", "HEAD", cwd=root)
             if (tested is None or intersection
-                    or ((data["tier"] == "wide" or proof.get("tier") == "narrow-cold") and tested != candidate)):
+                    or (data["tier"] == "wide" and tested != candidate)):
                 started = time.monotonic()
                 if data["tier"] == "wide":
                     proof = wide_check(root, data, gate_log)
                     code = proof["exit"]
-                elif gate_log and narrow_cold(candidate):
-                    proof = wide_check(root, data, gate_log, tier="narrow-cold")
-                    code = proof["exit"]
                 else:
                     if gate_log:
-                        raise Refusal("gate_log_requires_wide_or_measured_narrow_cold_cut")
+                        raise Refusal("gate_log_requires_wide_cut")
                     code = command(["sh", "scripts/presubmit.sh", base], cwd=root,
                                    capture=False, check=False).returncode
                     proof = next((row for row in reversed(records("presubmit.log"))
                                   if row.get("sha") == candidate), {})
+                    if proof.get("operation"):
+                        attempts = [row for row in records("presubmit.log")
+                                    if row.get("operation") == proof["operation"]]
+                        for field in ("compile_seconds", "run_seconds", "test_seconds", "unclassified_seconds"):
+                            proof[field] = sum(row[field] for row in attempts)
+                        proof["build_attempts"] = len(attempts)
                 spent += time.monotonic() - started
                 check_timings.append({k: proof.get(k) for k in
-                                      ("sha", "compile_seconds", "test_seconds", "timing_basis")})
+                                      ("sha", "compile_seconds", "run_seconds", "test_seconds", "unclassified_seconds", "timing_basis")})
                 if code:
                     raise Refusal("presubmit_failed", 77)
                 tested = git("rev-parse", "HEAD", cwd=root)
@@ -759,11 +856,12 @@ def land(gate_log=None):
                        "presubmit_seconds": spent, "retries": retry, "paths": data["paths"],
                        "tested_sha": tested, "branch": branch}
             landing.update({k: proof[k] for k in ("gate_log", "gate_log_sha256", "compile_seconds",
-                                                 "test_seconds", "tests_started", "timing_basis") if k in proof})
+                                                 "run_seconds", "test_seconds", "unclassified_seconds", "build_attempts",
+                                                 "tests_started", "timing_basis") if k in proof})
             landing["check_timings"] = check_timings
             if len(check_timings) > 1:
                 landing["timing_basis"] = "sum_of_check_timings"
-            for kind in ("compile_seconds", "test_seconds"):
+            for kind in ("compile_seconds", "run_seconds", "test_seconds", "unclassified_seconds"):
                 landing[kind] = (sum(row[kind] for row in check_timings)
                                  if all(row[kind] is not None for row in check_timings) else None)
             append_record("landings.log", landing)
@@ -801,7 +899,7 @@ def main():
     p.add_argument("result", type=Path)
     p = sub.add_parser("land")
     p.add_argument("--gate-log", type=Path,
-                   help="reuse full NORMAL CI on the exact wide or measured narrow-cold candidate SHA")
+                   help="reuse full NORMAL CI on the exact wide candidate SHA")
     args = parser.parse_args()
     if args.verb == "affected":
         result = affected(args.range)

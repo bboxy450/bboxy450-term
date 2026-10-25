@@ -1,0 +1,15 @@
+.{"affected": [], "attempt": 0, "binary_durations": [], "build_cap_seconds": 1800, "compile_seconds": 0.015526833012700081, "error": null, "exit": 101, "finding": null, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/landing-failure-cap-9stguz38/state/presubmits/ffffffffffffffffffffffffffffffffffffffff-7852c21e/commands.log", "operation": "fixture", "run_bound_seconds": 900, "run_seconds": 0.0, "seconds": 0.015748625039123, "sha": "ffffffffffffffffffffffffffffffffffffffff", "test_seconds": 0.0, "tests_started": false, "tier": "code", "timing_basis": "setup_and_visible_compile_build;all_other_execution_run", "unclassified_seconds": 0.0, "verdict": "red"}
+........F
+======================================================================
+FAIL: test_build_cap_retries_once_warm_with_the_same_target_and_then_passes (__main__.PresubmitTests.test_build_cap_retries_once_warm_with_the_same_target_and_then_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/ci-tree/scripts/test-landing.py", line 466, in test_build_cap_retries_once_warm_with_the_same_target_and_then_passes
+    self.assertTrue(all(Path(t["CARGO_TARGET_DIR"]).is_relative_to(self.repo.state) for t in targets))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 10 tests in 6.199s
+
+FAILED (failures=1)

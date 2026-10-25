@@ -1,0 +1,6 @@
+.{"affected": [], "attempt": 0, "binary_durations": [], "build_cap_seconds": 1800, "compile_seconds": 0.0012621669447980821, "error": null, "exit": 101, "finding": null, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/landing-failure-cap-h6q5yono/state/presubmits/ffffffffffffffffffffffffffffffffffffffff-3c9db67c/commands.log", "operation": "fixture", "run_bound_seconds": 900, "run_seconds": 0.0, "seconds": 0.001353416999336332, "sha": "ffffffffffffffffffffffffffffffffffffffff", "test_seconds": 0.0, "tests_started": false, "tier": "code", "timing_basis": "setup_and_visible_compile_build;all_other_execution_run", "unclassified_seconds": 0.0, "verdict": "red"}
+........
+----------------------------------------------------------------------
+Ran 9 tests in 0.022s
+
+OK

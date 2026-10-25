@@ -1,5 +1,5 @@
 #!/bin/sh
-# The cache setup and every check execute inside the same 15-minute watchdog.
+# BUILD is capped at 30 minutes; test/invariant RUN time is bounded at 15 minutes.
 set -eu
 dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 if [ "${1:-}" = --worker ]; then

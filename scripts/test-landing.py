@@ -105,7 +105,8 @@ class Repository:
         self.state = self.root / ".git/fixture-state"
         self.state.mkdir()
         self.environment = dict(os.environ, BBOXY_LANDING_STATE_DIR=str(self.state),
-                                CARGO_TARGET_DIR=str(self.state / "target"))
+                                CARGO_TARGET_DIR=str(self.state / "target"),
+                                BBOXY_CARGO_TARGET_DIR=str(self.state / "target"))
         for name in ("landing.py", "presubmit.sh", "land.sh", "quarantine.py", "quarantine.sh",
                      "main_watch.py", "main-watch.sh"):
             target = self.root / "scripts" / name
@@ -137,6 +138,7 @@ args=sys.argv[1:]
 if args[0]=="metadata":
     raise SystemExit(subprocess.run([REAL,*args]).returncode)
 with (state/"cargo.jsonl").open("a") as f:f.write(json.dumps(args)+"\\n")
+with (state/"targets.jsonl").open("a") as f:f.write(json.dumps({k:os.environ.get(k) for k in ("CARGO_TARGET_DIR","BBOXY_CARGO_TARGET_DIR")})+"\\n")
 cfg=json.loads((state/"behavior.json").read_text()) if (state/"behavior.json").exists() else {}
 if args[0]=="test" and cfg.get("quarantine"):
     name=cfg["quarantine"]
@@ -150,7 +152,8 @@ if args[0]=="test" and cfg.get("quarantine"):
         raise SystemExit(0)
     print("test "+name+" ... FAILED\\ntest result: FAILED. 0 passed; 1 failed; 0 ignored")
     raise SystemExit(101)
-if cfg.get("block")==args[0]:
+if cfg.get("block")==args[0] and (not cfg.get("block_once") or not (state/"blocked-once").exists()):
+    (state/"blocked-once").write_text("blocked")
     (state/"blocked.pid").write_text(str(os.getpid()))
     if cfg.get("test_started"):print("Running tests/fixture.rs (fixture-binary)\\nrunning 1 test",flush=True)
     signal.pause()
@@ -299,19 +302,47 @@ class StateTests(unittest.TestCase):
             totals = landing.phase_totals(path, 12.)
         self.assertEqual(totals, {"compile_seconds": 5., "test_seconds": 5., "tests_started": True})
 
-    def test_narrow_cold_expires_with_one_switch_and_uses_the_latest_attempt(self):
-        with tempfile.TemporaryDirectory(prefix="landing-cold-") as temp:
-            path = Path(temp) / "presubmit.log"
-            cold = {"sha": "fixture-sha", "error": "presubmit_timeout", "exit": 124,
-                    "tests_started": False, "compile_seconds": 900.}
-            path.write_text(json.dumps(cold) + '\n')
-            with patch.object(landing, "state_directory", return_value=Path(temp)):
-                self.assertTrue(landing.narrow_cold("fixture-sha"))
-                with patch.object(landing, "ALLOW_NARROW_COLD", False):
-                    self.assertFalse(landing.narrow_cold("fixture-sha"))
-                with path.open("a") as stream:
-                    stream.write(json.dumps({**cold, "tests_started": True}) + '\n')
-                self.assertFalse(landing.narrow_cold("fixture-sha"))
+    def test_twenty_minute_cold_build_then_ten_minute_run_passes(self):
+        # keeps: #323 §3 two clocks, with no real twenty-minute fixture wait.
+        clocks = landing.TwoClocks(0.)
+        clocks.event({"at": 20 * 60., "phase": "test"})
+        self.assertIsNone(clocks.expired(30 * 60., 30 * 60., 15 * 60.))
+        self.assertEqual(clocks.totals(30 * 60.)["compile_seconds"], 20 * 60.)
+        self.assertEqual(clocks.totals(30 * 60.)["run_seconds"], 10 * 60.)
+
+    def test_sixteen_minute_run_fails_independently_of_build(self):
+        clocks = landing.TwoClocks(0.)
+        clocks.event({"at": 0., "phase": "test"})
+        self.assertEqual(clocks.expired(16 * 60., 30 * 60., 15 * 60.), "presubmit_timeout")
+
+    def test_thirty_one_minute_build_hits_infrastructure_cap(self):
+        clocks = landing.TwoClocks(0.)
+        self.assertEqual(clocks.expired(31 * 60., 30 * 60., 15 * 60.), "build_cap")
+        self.assertEqual(clocks.totals(31 * 60.)["run_seconds"], 0)
+
+    def test_later_compilation_pauses_the_execution_clock(self):
+        clocks = landing.TwoClocks(0.)
+        clocks.event({"at": 0., "phase": "test"})
+        clocks.event({"at": 10 * 60., "phase": "compile"})
+        self.assertIsNone(clocks.expired(20 * 60., 30 * 60., 15 * 60.))
+        self.assertEqual(clocks.totals(20 * 60.)["run_seconds"], 10 * 60.)
+        clocks.event({"at": 20 * 60., "phase": "test"})
+        self.assertEqual(clocks.expired(26 * 60., 30 * 60., 15 * 60.), "presubmit_timeout")
+
+    def test_completed_failure_wins_over_a_simultaneously_observed_cap(self):
+        with tempfile.TemporaryDirectory(prefix="landing-failure-cap-") as temp:
+            root = Path(temp)
+            with patch.object(landing, "state_directory", return_value=root / "state"), \
+                 patch.object(landing.subprocess, "Popen") as launch, \
+                 patch.object(landing.TwoClocks, "expired", return_value="build_cap"), \
+                 patch.object(landing, "stop_worker") as stop:
+                launch.return_value.pid = 12345
+                launch.return_value.poll.return_value = 101
+                result = landing.presubmit_attempt(root, "f" * 40, "fixture-base",
+                                                   {"tier": "code", "affected": []}, 1800, 900, 0, "fixture")
+                self.assertEqual(result["exit"], 101)
+                self.assertIsNone(result["error"])
+                stop.assert_not_called()
 
     def test_target_is_keyed_by_checkout_path_and_stable_at_that_path(self):
         with patch.dict(os.environ, {"CARGO_TARGET_DIR": "/tmp/fixture-warm-target"}, clear=True):
@@ -407,16 +438,34 @@ class PresubmitTests(unittest.TestCase):
         try:
             result = self.repo.presubmit()
             self.assertEqual(result.returncode, 124, result.stdout + result.stderr)
-            self.assertIn("presubmit_timeout", result.stderr)
+            self.assertIn("build_cap", result.stderr)
             self.assertIsNone(control.poll())
         finally:
             control.terminate()
             control.wait()
         record = json.loads((self.repo.state / "presubmit.log").read_text().splitlines()[-1])
-        self.assertEqual(record["error"], "presubmit_timeout")
+        self.assertEqual(record["error"], "build_cap")
         self.assertEqual(record["exit"], 124)
+        self.assertEqual(record["finding"], "recurring_build_cap")
+        self.assertEqual(len((self.repo.state / "presubmit.log").read_text().splitlines()), 2)
 
-    def test_timeout_during_a_test_cannot_use_narrow_cold(self):
+    def test_build_cap_retries_once_warm_with_the_same_target_and_then_passes(self):
+        self.cut("crates/c/src/lib.rs")
+        (self.repo.state / "behavior.json").write_text('{"block":"test","block_once":true}')
+        (self.repo.state / "fixture.json").write_text('{"build_cap_seconds":3,"run_bound_seconds":5}')
+        result = self.repo.presubmit()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        rows = [json.loads(line) for line in (self.repo.state / "presubmit.log").read_text().splitlines()]
+        self.assertEqual([r["error"] for r in rows], ["build_cap", None])
+        self.assertEqual([r["attempt"] for r in rows], [0, 1])
+        self.assertEqual(len({r["operation"] for r in rows}), 1)
+        self.assertIn("retrying once warm", result.stdout)
+        targets = [json.loads(line) for line in (self.repo.state / "targets.jsonl").read_text().splitlines()]
+        self.assertEqual(len({t["CARGO_TARGET_DIR"] for t in targets}), 1)
+        self.assertTrue(all(t["CARGO_TARGET_DIR"] == t["BBOXY_CARGO_TARGET_DIR"] for t in targets))
+        self.assertTrue(all(Path(t["CARGO_TARGET_DIR"]).is_relative_to(self.repo.state.resolve()) for t in targets))
+
+    def test_run_timeout_during_a_test_does_not_retry(self):
         self.cut("crates/c/src/lib.rs")
         (self.repo.state / "behavior.json").write_text('{"block":"test","test_started":true}')
         # Leave process/metadata startup outside the assertion: the contract is
@@ -425,9 +474,10 @@ class PresubmitTests(unittest.TestCase):
         result = self.repo.presubmit()
         self.assertEqual(result.returncode, 124, result.stdout + result.stderr)
         record = json.loads((self.repo.state / "presubmit.log").read_text())
+        self.assertEqual(record["error"], "presubmit_timeout")
         self.assertTrue(record["tests_started"])
         self.assertGreater(record["test_seconds"], 0)
-        self.assertFalse(record["narrow_cold_eligible"])
+        self.assertEqual(record["attempt"], 0)
 
     def test_fixture_cannot_raise_the_fifteen_minute_limit(self):
         self.cut("crates/c/src/lib.rs")
@@ -500,22 +550,18 @@ class LandTests(unittest.TestCase):
                         + f"ci-local: result {sha} {mode} {status}\n")
         return path
 
-    def test_narrow_compile_timeout_accepts_only_exact_green_gate_and_records_tier(self):
+    def test_narrow_cold_log_is_no_longer_accepted(self):
         sha = self.cut()
-        (self.repo.state / "behavior.json").write_text('{"block":"test"}')
-        (self.repo.state / "fixture.json").write_text('{"timeout_seconds":3}')
-        result = self.repo.land()
-        self.assertEqual(result.returncode, 77, result.stdout + result.stderr)
-        record = json.loads((self.repo.state / "presubmit.log").read_text())
-        self.assertTrue(record["narrow_cold_eligible"])
+        (self.repo.state / "presubmit.log").write_text(json.dumps({
+            "sha": sha, "error": "presubmit_timeout", "exit": 124,
+            "compile_seconds": 900., "tests_started": False}) + '\n')
         result = self.repo.land("--gate-log", self.gate_log(sha))
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(self.repo.remote_head(), sha)
-        landing_record = json.loads((self.repo.state / "landings.log").read_text())
-        self.assertEqual(landing_record["tier"], "narrow-cold")
-        self.assertEqual(landing_record["tested_sha"], sha)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("gate_log_requires_wide_cut", result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
+        self.assertEqual(self.cargo_test_count(), 0)
 
-    def test_narrow_test_timeout_still_refuses_a_provided_gate(self):
+    def test_run_timeout_does_not_push_or_accept_a_provided_gate(self):
         sha = self.cut()
         (self.repo.state / "behavior.json").write_text('{"block":"test","test_started":true}')
         (self.repo.state / "fixture.json").write_text('{"timeout_seconds":3}')
@@ -523,7 +569,7 @@ class LandTests(unittest.TestCase):
         self.assertEqual(result.returncode, 77, result.stdout + result.stderr)
         result = self.repo.land("--gate-log", self.gate_log(sha))
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("gate_log_requires_wide_or_measured_narrow_cold_cut", result.stderr)
+        self.assertIn("gate_log_requires_wide_cut", result.stderr)
         self.assertEqual(self.repo.remote_head(), self.repo.base)
 
     def test_wide_exact_green_log_is_reused_and_hashed_without_another_gate(self):

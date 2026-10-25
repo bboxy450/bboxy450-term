@@ -1,0 +1,54 @@
+{
+  "brief": "d8bc4ed4-0af6-4152-8ada-d2fade800408",
+  "spec": "3b1087a3 landing \u00a73",
+  "flag_ruling": "9a7d6ca6-c269-4f7f-86a3-6d89947dee3c: current caller in this cut; one-line --affected followup after Nyx lands",
+  "mechanisms": [
+    "BUILD sums setup and visible compile phases, capped at1800s; RUN sums all other test/invariant execution, bounded at900s; observed later compilation pauses RUN",
+    "Unclassified/hidden shell work counts as RUN, never grants an unobserved build allowance; records include compile/run/test/unclassified seconds and basis",
+    "BUILD cap retries once warm at same cwd/target/SHA; recurring cap records a cache finding; RUN cap never retries",
+    "Completed nonzero child exit takes precedence over a simultaneous cap, so assertion failures are not reclassified/retried",
+    "Removed ALLOW_NARROW_COLD, eligibility helper and narrow --gate-log acceptance; wide remains full normal CI with no narrow clocks",
+    "Both fixture target environment variables are isolated to the private fixture state; target equality checked across retry"
+  ],
+  "checks": [
+    {
+      "command": "python3 -I scripts/test-landing.py --all",
+      "exit": 0,
+      "workflow_tests": 65,
+      "workflow_seconds": 54.495,
+      "recovery_tests": 15,
+      "recovery_seconds": 70.925,
+      "log": "landing-two-clocks-fixtures.log"
+    },
+    {
+      "command": "python3 -I scripts/test-landing.py StateTests",
+      "exit": 0,
+      "tests": 9,
+      "log": "landing-two-clocks-state.log",
+      "note": "Expected fixture child exit101 is the failure-precedence assertion, not a suite failure"
+    },
+    {
+      "command": "StateTests + warm-target fixture",
+      "exit": 1,
+      "log": "landing-two-clocks-target-first.log",
+      "finding": "Private path assertion compared macOS /var alias with canonical /private/var; normalized expected path"
+    },
+    {
+      "command": "python3 -I scripts/test-landing.py PresubmitTests.test_build_cap_retries_once_warm_with_the_same_target_and_then_passes",
+      "exit": 0,
+      "tests": 1,
+      "log": "landing-two-clocks-target.log"
+    }
+  ],
+  "source_files": {
+    "scripts/landing.py": "bef86e1bc5efa3e4a4e45063e491328878b0d5a40aac5cdf28daf59e23604339",
+    "scripts/test-landing.py": "0df22f443fb8f595a40753f868fb6cb43ef643ed3c86fda1240638d003df85b6",
+    "scripts/land.sh": "eb2907125e963d52b6a2546f1b5ac7df7f62495f25b7114df2351c601ebd2861",
+    "scripts/presubmit.sh": "3b339745f956fb1389649f2c62b4e4b5743368b42f67287b181754ca0e2f4b31"
+  },
+  "not_changed": [
+    "invariants.sh and invariant -p derivation belong to Nyx",
+    "cache/fixed-slot transport belongs to Velvet; preserve on later rebase",
+    "parity dependency checkpoint remains separate"
+  ]
+}
