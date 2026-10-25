@@ -13,7 +13,7 @@ links:
   - { to: "[[d260-ctl-authority]]", rel: builds-on }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-25T14:17:33Z"
-updated: "2026-10-25T15:22:38Z"
+updated: "2026-10-25T17:39:35Z"
 ---
 # Decision 320: dispatch by noun, one module per verb family
 
@@ -27,6 +27,6 @@ Ruled at the Oracle's ask on the second day of `ctl`. Every cut that adds a verb
 
 **Reason.** The wire does not change: §2 of [[ctl-cli]] still has one reply shape and `data` is still the window action's reply unchanged, because the noun's reply type is what travels. What changes is which file a cut edits, and that is exactly the contention. (c) buys nothing over (b) in a program whose verbs are known at compile time and loses the exhaustiveness the compiler gives a closed enum. The mantra is the one about flexibility: the structure should let ten cuts land without ten rebases.
 
-**Rules.** (1) New verbs land in their noun's module; a cut that adds a variant to a top-level enum or a row to a shared table outside its noun's file is asking for the migration, not around it. (2) The migration itself is one cut per dispatcher, mechanical, no behaviour change, its gate the existing ctl and headless suites unchanged. (3) The order is the Oracle's; the first candidate is the file the most concurrent cuts touch today. (4) **The gate (Oracle, same day):** the golden test of cut 0 asserting byte-identical wire for every action and reply, plus a check that each variant name appears in exactly one noun list; both run from the cut that introduces the lists, and until then whether a cut stayed inside its noun is read at review.
+**Rules.** (1) New verbs land in their noun's module; a cut that adds a variant to a top-level enum or a row to a shared table outside its noun's file is asking for the migration, not around it. (2) The migration itself is one cut per dispatcher, mechanical, no behaviour change, its gate the existing ctl and headless suites unchanged. (3) The order is the Oracle's; the first candidate is the file the most concurrent cuts touch today. (4) **The gate (Oracle, same day):** the golden test of cut 0 asserting byte-identical wire for every action and reply, plus a check that each variant name appears in exactly one noun list; both run from the cut that introduces the lists, and until then whether a cut stayed inside its noun is read at review. **Landed (Seraph, cut 1, 051f7e24):** `crates/bbt-proto/src/gui/` holds one module per noun (`app`, `debug`, `events`, `host`, `identity`, `message`, `record`, `seat`, `task`, `ui`), `gui/mod.rs`'s `flat_enum!` splices their lists into the flat `GuiAction` and `GuiReply`, and the golden is `crates/bbt-proto/tests/gui_wire_golden.rs`. The one-list-per-variant check needs no script: a name in two lists is a duplicate variant in one enum and the build fails. The gate is therefore the build plus the golden, both already in every presubmit.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
