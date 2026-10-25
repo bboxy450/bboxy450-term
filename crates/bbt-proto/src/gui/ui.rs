@@ -38,12 +38,15 @@ pub enum UiRequest {
     },
     /// Deterministic animation time, admitted only for a verified test account.
     Clock(UiClockCommand),
+    /// Send through the window's retained composer, not a direct messaging call.
+    Compose(UiCompose),
 }
 
 impl UiRequest {
     /// Transport bounds; the window decides whether each chrome key is applicable.
     pub fn validate(&self) -> Result<(), &'static str> {
         match self {
+            Self::Compose(compose) => compose.validate(),
             Self::Spawn(pick)
                 if pick.harness.is_empty()
                     || pick.harness.len() > 256
@@ -80,6 +83,51 @@ impl UiRequest {
             _ => Ok(()),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "value", rename_all = "snake_case")]
+pub enum UiComposeTarget {
+    Seat(Ulid),
+    Role(String),
+    Channel(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiCompose {
+    pub to: UiComposeTarget,
+    pub text: String,
+}
+
+impl UiCompose {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        let invalid_target = match &self.to {
+            UiComposeTarget::Seat(id) => *id == Ulid::nil(),
+            UiComposeTarget::Role(name) => {
+                name.trim().is_empty() || name.len() > 128 || name.chars().any(char::is_control)
+            }
+            UiComposeTarget::Channel(name) => {
+                name.trim().is_empty() || name.len() > 512 || name.chars().any(char::is_control)
+            }
+        };
+        if invalid_target {
+            return Err("invalid_ui_compose_target: expected a seat, role or channel");
+        }
+        if self.text.trim().is_empty() || self.text.len() > crate::messaging::MAX_TEXT {
+            return Err("invalid_ui_compose_text: expected nonempty bounded message text");
+        }
+        Ok(())
+    }
+}
+
+/// The sent row in this produced frame, bound to the composer's real message IDs.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UiComposed {
+    pub to: UiComposeTarget,
+    pub text: String,
+    pub messages: Vec<Ulid>,
+    pub label: String,
+    pub rect: [f32; 4],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -222,6 +270,8 @@ pub struct UiLayout {
     pub tree: Vec<UiLayoutNode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spawned: Option<UiSpawned>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub composed: Option<UiComposed>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

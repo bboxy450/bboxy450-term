@@ -867,6 +867,7 @@ async fn ctl_capture_is_answered_by_the_window() {
                             frame_seq,
                             layout_revision: None,
                             spawned: None,
+                            composed: None,
                             size: [1600., 900.],
                             swarm: None,
                             tab: None,

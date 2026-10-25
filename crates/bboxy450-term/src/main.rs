@@ -4495,6 +4495,9 @@ impl App {
     ) -> Result<Option<UiSpawnCapture>, String> {
         use bbt_proto::gui::{UiRequest, UiTarget};
         match request {
+            UiRequest::Compose(_) => {
+                return Err("ui_compose_unavailable: composer relay is not installed".into());
+            }
             UiRequest::Spawn(pick) => {
                 let model = self.live_state.as_deref().ok_or("ui_not_ready: no model")?;
                 let stage = self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage);
@@ -4702,6 +4705,7 @@ impl App {
             panes,
             tree,
             spawned: None,
+            composed: None,
         };
         if serde_json::to_vec(&layout)
             .map_err(|e| e.to_string())?
