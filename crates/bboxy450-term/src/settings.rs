@@ -61,10 +61,10 @@ impl CustodyControl {
         } else {
             bbt_proto::identity::IdentityRequest::Status
         };
-        let op = if unlock {
-            self.retry.unwrap_or_else(bbt_mux::Ulid::new)
-        } else {
-            bbt_mux::Ulid::new()
+        // Ulid::default() is nil; every new act must mint a real operation ID.
+        let op = match (unlock, self.retry) {
+            (true, Some(op)) => op,
+            _ => bbt_mux::Ulid::new(),
         };
         if unlock {
             self.last_unlock = Some(op);
@@ -899,6 +899,8 @@ mod tests {
             panic!("second explicit act must stay available")
         };
         assert_ne!(first, second);
+        assert_ne!(first, bbt_mux::Ulid::nil());
+        assert_ne!(second, bbt_mux::Ulid::nil());
         assert_eq!(request, IdentityRequest::Unlock);
         let mut finished = response;
         finished.hold = None;
