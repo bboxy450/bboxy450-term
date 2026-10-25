@@ -1,0 +1,1699 @@
+Early paired native probe — focused non-reproduction, not a cause/fix verdict
+Oracle assigned main26a vs diagnostic NG17c; both30/0. No diagnostic branch fired. Original NG1 workspace failures remain unresolved evidence. Rook later independently ran the requested newer three cohorts; this packet does not claim to be that experiment.
+One private target reused serially; each run uses a fresh mock native store and throwaway GPG root. No native operator custody. Driver and raw per-process outputs follow, with binary and build/source hashes in the reports.
+
+=== paired-probe.py sha256 ac94414752512e2890b67f4f7ad2323172287ab3c4f7c31dd8ffaabe907a2b7f ===
+import datetime,hashlib,json,os,pathlib,subprocess,sys,time
+s=pathlib.Path(__file__).parent
+label=sys.argv[1]
+log=s/(label+'-build.log')
+artifacts=[]
+for line in log.read_text().splitlines():
+ try: item=json.loads(line)
+ except ValueError: continue
+ if item.get('reason')=='compiler-artifact' and item.get('target',{}).get('name')=='identity' and item.get('executable'): artifacts.append(item['executable'])
+assert len(set(artifacts))==1,artifacts
+binary=pathlib.Path(artifacts[-1]);test='native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order'
+cwd='/Users/feral/mydev/bboxy450-term-exec5'
+env=os.environ.copy();env.update({'BBOXY_TEST_CUSTODY':'memory','RUSTC_WRAPPER':'','RUSTC_WORKSPACE_WRAPPER':''})
+meta={'source':subprocess.check_output(['git','rev-parse','HEAD'],cwd=cwd,text=True).strip(),'binary':str(binary),'binary_sha256':hashlib.sha256(binary.read_bytes()).hexdigest(),'target':cwd+'/target/settings-plugins-dev','utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'load_before':os.getloadavg(),'runs':[]}
+meta_path=s/(label+'-30.json')
+for i in range(1,31):
+ command=[str(binary),'--exact',test,'--nocapture','--test-threads=1'];started=time.time();out=s/(label+'-run-'+str(i).zfill(2)+'.log')
+ with out.open('w') as handle:
+  child=subprocess.Popen(command,cwd=cwd,env=env,stdout=handle,stderr=subprocess.STDOUT,start_new_session=True)
+  record={'run':i,'pid':child.pid,'pgid':child.pid,'log':str(out),'command':command};meta['runs'].append(record);meta_path.write_text(json.dumps(meta,indent=2)+'\n')
+  try: code=child.wait(timeout=45)
+  except subprocess.TimeoutExpired:
+   os.killpg(child.pid,15)
+   try: child.wait(timeout=3)
+   except subprocess.TimeoutExpired: os.killpg(child.pid,9);child.wait()
+   code=124
+ content=out.read_text();passed=code==0 and 'test result: ok. 1 passed; 0 failed;' in content
+ record.update(exit_code=code,passed=passed,elapsed_s=time.time()-started,sha256=hashlib.sha256(out.read_bytes()).hexdigest())
+ meta.update(passed=sum(r.get('passed',False) for r in meta['runs']),failed=sum('exit_code'in r and not r['passed'] for r in meta['runs']))
+ meta_path.write_text(json.dumps(meta,indent=2)+'\n')
+ if not passed or i%5==0: print(json.dumps({'label':label,'run':i,'exit':code,'passed':passed,'counts':[meta['passed'],meta['failed']]}),flush=True)
+meta['load_after']=os.getloadavg();meta['complete']=len(meta['runs'])==30;meta_path.write_text(json.dumps(meta,indent=2)+'\n')
+raise SystemExit(0 if meta['failed']==0 else 1)
+
+
+=== main-probe-build-command.json sha256 bb2c9e5c656f7f3e7d6b92a0844d85f6af7d1e1731acb63742ec5e2c4b23c77d ===
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--test",
+    "identity",
+    "--locked",
+    "--no-run",
+    "--message-format=json-render-diagnostics"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:47:32.186989+00:00",
+  "started": 1792918052.1870909,
+  "source": "0ce9d6445179bca880599aaa8c8e461a81af16de",
+  "pid": 40041,
+  "pgid": 40041,
+  "exit_code": 0,
+  "elapsed_s": 173.78231024742126
+}
+
+
+=== main-probe-30.json sha256 b762fd8d53580a30423e0185c93a445e9a2a0a9902d328e460c11cd9ab6bbd11 ===
+{
+  "source": "0ce9d6445179bca880599aaa8c8e461a81af16de",
+  "binary": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+  "binary_sha256": "710a6ac5ba34449533af8d152c145bc6dace02eec73a4fb6727f35cd11789af1",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:52:09.022620+00:00",
+  "load_before": [
+    6.9150390625,
+    18.6611328125,
+    26.51806640625
+  ],
+  "runs": [
+    {
+      "run": 1,
+      "pid": 54619,
+      "pgid": 54619,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-01.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.6451640129089355,
+      "sha256": "0e6864592ddf7ed0d9cf49faf0f306f4427eaf8095e6f83efc4e2a2be814cd0f"
+    },
+    {
+      "run": 2,
+      "pid": 54668,
+      "pgid": 54668,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-02.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.42763710021972656,
+      "sha256": "329a1c6142d1b6851c0b2a22ee5ec090b5489ff0e0df83ff1f0d9788b6d7be28"
+    },
+    {
+      "run": 3,
+      "pid": 54712,
+      "pgid": 54712,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-03.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.33381009101867676,
+      "sha256": "08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e"
+    },
+    {
+      "run": 4,
+      "pid": 54749,
+      "pgid": 54749,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-04.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.3755660057067871,
+      "sha256": "f064e72dd6743c39fa2f08462ef68e573f5383d69af185267f917b7919fb6ca9"
+    },
+    {
+      "run": 5,
+      "pid": 54811,
+      "pgid": 54811,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-05.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.3545231819152832,
+      "sha256": "3d7c354866eceacfaf196d4c2971f6e4ab58d8be7338a58d30d92c62feb4c4ca"
+    },
+    {
+      "run": 6,
+      "pid": 54867,
+      "pgid": 54867,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-06.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.4236412048339844,
+      "sha256": "7f7bda163f834a7690af0e8598dfee85162e6bcf489464175a4757f683f79f82"
+    },
+    {
+      "run": 7,
+      "pid": 54898,
+      "pgid": 54898,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-07.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.37142181396484375,
+      "sha256": "e8be130f25309b876a7a729631ce87d27c65c84d3b98ab57b46a722c248a39ac"
+    },
+    {
+      "run": 8,
+      "pid": 54941,
+      "pgid": 54941,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-08.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.3407289981842041,
+      "sha256": "08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e"
+    },
+    {
+      "run": 9,
+      "pid": 54982,
+      "pgid": 54982,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-09.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.33518290519714355,
+      "sha256": "08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e"
+    },
+    {
+      "run": 10,
+      "pid": 55022,
+      "pgid": 55022,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-10.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.40177297592163086,
+      "sha256": "a5819e6df6854bed0f707089e48b58c692e959c055c7cd7c405abcb0f7ec0b0e"
+    },
+    {
+      "run": 11,
+      "pid": 55078,
+      "pgid": 55078,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-11.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.5775749683380127,
+      "sha256": "25fe8ca7ebb42da5f3f000c886cc27e151f0d05b3e32ab23c6b0814cdec7af99"
+    },
+    {
+      "run": 12,
+      "pid": 55138,
+      "pgid": 55138,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-12.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.3610067367553711,
+      "sha256": "3d7c354866eceacfaf196d4c2971f6e4ab58d8be7338a58d30d92c62feb4c4ca"
+    },
+    {
+      "run": 13,
+      "pid": 55212,
+      "pgid": 55212,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-13.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.3534548282623291,
+      "sha256": "3d7c354866eceacfaf196d4c2971f6e4ab58d8be7338a58d30d92c62feb4c4ca"
+    },
+    {
+      "run": 14,
+      "pid": 55256,
+      "pgid": 55256,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-14.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.35163426399230957,
+      "sha256": "47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c"
+    },
+    {
+      "run": 15,
+      "pid": 55293,
+      "pgid": 55293,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-15.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.3662259578704834,
+      "sha256": "e8be130f25309b876a7a729631ce87d27c65c84d3b98ab57b46a722c248a39ac"
+    },
+    {
+      "run": 16,
+      "pid": 55347,
+      "pgid": 55347,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-16.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.41408371925354004,
+      "sha256": "7f7bda163f834a7690af0e8598dfee85162e6bcf489464175a4757f683f79f82"
+    },
+    {
+      "run": 17,
+      "pid": 55394,
+      "pgid": 55394,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-17.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.42105531692504883,
+      "sha256": "7f7bda163f834a7690af0e8598dfee85162e6bcf489464175a4757f683f79f82"
+    },
+    {
+      "run": 18,
+      "pid": 55432,
+      "pgid": 55432,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-18.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.415769100189209,
+      "sha256": "a10b240b2c7b39fd546a9e3e02765e7665308df907e25636ad72c024148aded0"
+    },
+    {
+      "run": 19,
+      "pid": 55472,
+      "pgid": 55472,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-19.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.4525482654571533,
+      "sha256": "8ea3813a3931cb276e8b126886588574a9e76fef24d494f8d94b2d3306b5d94d"
+    },
+    {
+      "run": 20,
+      "pid": 55511,
+      "pgid": 55511,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-20.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.5102057456970215,
+      "sha256": "20d7bbd5f1271dfc8880169979a0ea02f4d57c5573a226e4e20318a6a30f28a6"
+    },
+    {
+      "run": 21,
+      "pid": 55554,
+      "pgid": 55554,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-21.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.49602413177490234,
+      "sha256": "c3ef631e6fe300d058458c06237fb896813b3180b636ff4bf7e32da3659914d0"
+    },
+    {
+      "run": 22,
+      "pid": 55592,
+      "pgid": 55592,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-22.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.6123549938201904,
+      "sha256": "b2b5c9e90709136d319360b435e181ec161be015259095f2d5683cc35a197dfe"
+    },
+    {
+      "run": 23,
+      "pid": 55671,
+      "pgid": 55671,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-23.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.5520329475402832,
+      "sha256": "995a6c7b84ee2f27b54b828a9bbdc5f8aa9336346b6bcda424e65cafd3a23c2c"
+    },
+    {
+      "run": 24,
+      "pid": 55715,
+      "pgid": 55715,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-24.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.48697710037231445,
+      "sha256": "c3ef631e6fe300d058458c06237fb896813b3180b636ff4bf7e32da3659914d0"
+    },
+    {
+      "run": 25,
+      "pid": 55759,
+      "pgid": 55759,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-25.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.5605239868164062,
+      "sha256": "995a6c7b84ee2f27b54b828a9bbdc5f8aa9336346b6bcda424e65cafd3a23c2c"
+    },
+    {
+      "run": 26,
+      "pid": 55797,
+      "pgid": 55797,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-26.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.5011811256408691,
+      "sha256": "78383d791b9f92c431fa05663615708f076d6c511d23f7be756393a6d6240ddf"
+    },
+    {
+      "run": 27,
+      "pid": 55853,
+      "pgid": 55853,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-27.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.4898388385772705,
+      "sha256": "c3ef631e6fe300d058458c06237fb896813b3180b636ff4bf7e32da3659914d0"
+    },
+    {
+      "run": 28,
+      "pid": 55911,
+      "pgid": 55911,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-28.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.6190299987792969,
+      "sha256": "b2b5c9e90709136d319360b435e181ec161be015259095f2d5683cc35a197dfe"
+    },
+    {
+      "run": 29,
+      "pid": 55952,
+      "pgid": 55952,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-29.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.5145158767700195,
+      "sha256": "20d7bbd5f1271dfc8880169979a0ea02f4d57c5573a226e4e20318a6a30f28a6"
+    },
+    {
+      "run": 30,
+      "pid": 55993,
+      "pgid": 55993,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/main-probe-run-30.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.6128349304199219,
+      "sha256": "f8b357cc6c2b9ae844ebd71dfcb16c23ef334b2651e33b0d93c95ba10cc88a23"
+    }
+  ],
+  "passed": 30,
+  "failed": 0,
+  "load_after": [
+    12.6328125,
+    19.30810546875,
+    26.6083984375
+  ],
+  "complete": true
+}
+
+
+=== main-probe-run-01.log sha256 0e6864592ddf7ed0d9cf49faf0f306f4427eaf8095e6f83efc4e2a2be814cd0f ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.38s
+
+
+
+=== main-probe-run-02.log sha256 329a1c6142d1b6851c0b2a22ee5ec090b5489ff0e0df83ff1f0d9788b6d7be28 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.42s
+
+
+
+=== main-probe-run-03.log sha256 08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.33s
+
+
+
+=== main-probe-run-04.log sha256 f064e72dd6743c39fa2f08462ef68e573f5383d69af185267f917b7919fb6ca9 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.37s
+
+
+
+=== main-probe-run-05.log sha256 3d7c354866eceacfaf196d4c2971f6e4ab58d8be7338a58d30d92c62feb4c4ca ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.35s
+
+
+
+=== main-probe-run-06.log sha256 7f7bda163f834a7690af0e8598dfee85162e6bcf489464175a4757f683f79f82 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.41s
+
+
+
+=== main-probe-run-07.log sha256 e8be130f25309b876a7a729631ce87d27c65c84d3b98ab57b46a722c248a39ac ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.36s
+
+
+
+=== main-probe-run-08.log sha256 08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.33s
+
+
+
+=== main-probe-run-09.log sha256 08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.33s
+
+
+
+=== main-probe-run-10.log sha256 a5819e6df6854bed0f707089e48b58c692e959c055c7cd7c405abcb0f7ec0b0e ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.39s
+
+
+
+=== main-probe-run-11.log sha256 25fe8ca7ebb42da5f3f000c886cc27e151f0d05b3e32ab23c6b0814cdec7af99 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.57s
+
+
+
+=== main-probe-run-12.log sha256 3d7c354866eceacfaf196d4c2971f6e4ab58d8be7338a58d30d92c62feb4c4ca ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.35s
+
+
+
+=== main-probe-run-13.log sha256 3d7c354866eceacfaf196d4c2971f6e4ab58d8be7338a58d30d92c62feb4c4ca ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.35s
+
+
+
+=== main-probe-run-14.log sha256 47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.34s
+
+
+
+=== main-probe-run-15.log sha256 e8be130f25309b876a7a729631ce87d27c65c84d3b98ab57b46a722c248a39ac ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.36s
+
+
+
+=== main-probe-run-16.log sha256 7f7bda163f834a7690af0e8598dfee85162e6bcf489464175a4757f683f79f82 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.41s
+
+
+
+=== main-probe-run-17.log sha256 7f7bda163f834a7690af0e8598dfee85162e6bcf489464175a4757f683f79f82 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.41s
+
+
+
+=== main-probe-run-18.log sha256 a10b240b2c7b39fd546a9e3e02765e7665308df907e25636ad72c024148aded0 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.40s
+
+
+
+=== main-probe-run-19.log sha256 8ea3813a3931cb276e8b126886588574a9e76fef24d494f8d94b2d3306b5d94d ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.43s
+
+
+
+=== main-probe-run-20.log sha256 20d7bbd5f1271dfc8880169979a0ea02f4d57c5573a226e4e20318a6a30f28a6 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.50s
+
+
+
+=== main-probe-run-21.log sha256 c3ef631e6fe300d058458c06237fb896813b3180b636ff4bf7e32da3659914d0 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.47s
+
+
+
+=== main-probe-run-22.log sha256 b2b5c9e90709136d319360b435e181ec161be015259095f2d5683cc35a197dfe ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.60s
+
+
+
+=== main-probe-run-23.log sha256 995a6c7b84ee2f27b54b828a9bbdc5f8aa9336346b6bcda424e65cafd3a23c2c ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.54s
+
+
+
+=== main-probe-run-24.log sha256 c3ef631e6fe300d058458c06237fb896813b3180b636ff4bf7e32da3659914d0 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.47s
+
+
+
+=== main-probe-run-25.log sha256 995a6c7b84ee2f27b54b828a9bbdc5f8aa9336346b6bcda424e65cafd3a23c2c ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.54s
+
+
+
+=== main-probe-run-26.log sha256 78383d791b9f92c431fa05663615708f076d6c511d23f7be756393a6d6240ddf ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.48s
+
+
+
+=== main-probe-run-27.log sha256 c3ef631e6fe300d058458c06237fb896813b3180b636ff4bf7e32da3659914d0 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.47s
+
+
+
+=== main-probe-run-28.log sha256 b2b5c9e90709136d319360b435e181ec161be015259095f2d5683cc35a197dfe ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.60s
+
+
+
+=== main-probe-run-29.log sha256 20d7bbd5f1271dfc8880169979a0ea02f4d57c5573a226e4e20318a6a30f28a6 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.50s
+
+
+
+=== main-probe-run-30.log sha256 f8b357cc6c2b9ae844ebd71dfcb16c23ef334b2651e33b0d93c95ba10cc88a23 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.58s
+
+
+
+=== ng1-probe-build-command.json sha256 7e292526fa3c431e0a8ca9b17faebddaba04a7c93a2fd0405063e3e0e4e2b126 ===
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--test",
+    "identity",
+    "--locked",
+    "--no-run",
+    "--message-format=json-render-diagnostics"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:56:36.968254+00:00",
+  "started": 1792918596.9683352,
+  "source": "7c376d285c8e095efd63dcbcfeb8f6ef1b23b94c",
+  "pid": 71690,
+  "pgid": 71690,
+  "exit_code": 0,
+  "elapsed_s": 54.03653287887573
+}
+
+
+=== ng1-probe-30.json sha256 8f1b504d4c8388a976e59c6bf0d99becfcf45920a3bcccbeba93ac74c5b267e8 ===
+{
+  "source": "7c376d285c8e095efd63dcbcfeb8f6ef1b23b94c",
+  "binary": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+  "binary_sha256": "4bea9b315757c48a2bf063907d39898b0b0e4f2fc990ee9630eecb9d3ca2c0b1",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:58:32.988285+00:00",
+  "load_before": [
+    7.11572265625,
+    16.12646484375,
+    23.0439453125
+  ],
+  "runs": [
+    {
+      "run": 1,
+      "pid": 78236,
+      "pgid": 78236,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-01.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.6201751232147217,
+      "sha256": "08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e"
+    },
+    {
+      "run": 2,
+      "pid": 78317,
+      "pgid": 78317,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-02.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.3150370121002197,
+      "sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245"
+    },
+    {
+      "run": 3,
+      "pid": 78365,
+      "pgid": 78365,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-03.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.31894612312316895,
+      "sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245"
+    },
+    {
+      "run": 4,
+      "pid": 78414,
+      "pgid": 78414,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-04.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.32234811782836914,
+      "sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89"
+    },
+    {
+      "run": 5,
+      "pid": 78464,
+      "pgid": 78464,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-05.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.30822205543518066,
+      "sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21"
+    },
+    {
+      "run": 6,
+      "pid": 78512,
+      "pgid": 78512,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-06.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.3194911479949951,
+      "sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245"
+    },
+    {
+      "run": 7,
+      "pid": 78561,
+      "pgid": 78561,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-07.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.33393287658691406,
+      "sha256": "08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e"
+    },
+    {
+      "run": 8,
+      "pid": 78612,
+      "pgid": 78612,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-08.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.34314894676208496,
+      "sha256": "47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c"
+    },
+    {
+      "run": 9,
+      "pid": 78661,
+      "pgid": 78661,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-09.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.3487241268157959,
+      "sha256": "47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c"
+    },
+    {
+      "run": 10,
+      "pid": 78712,
+      "pgid": 78712,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-10.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.34572482109069824,
+      "sha256": "47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c"
+    },
+    {
+      "run": 11,
+      "pid": 78766,
+      "pgid": 78766,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-11.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.3263859748840332,
+      "sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89"
+    },
+    {
+      "run": 12,
+      "pid": 78825,
+      "pgid": 78825,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-12.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.36803102493286133,
+      "sha256": "e8be130f25309b876a7a729631ce87d27c65c84d3b98ab57b46a722c248a39ac"
+    },
+    {
+      "run": 13,
+      "pid": 78880,
+      "pgid": 78880,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-13.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.34870004653930664,
+      "sha256": "47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c"
+    },
+    {
+      "run": 14,
+      "pid": 78935,
+      "pgid": 78935,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-14.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.38126492500305176,
+      "sha256": "0e6864592ddf7ed0d9cf49faf0f306f4427eaf8095e6f83efc4e2a2be814cd0f"
+    },
+    {
+      "run": 15,
+      "pid": 78999,
+      "pgid": 78999,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-15.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.32616615295410156,
+      "sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89"
+    },
+    {
+      "run": 16,
+      "pid": 79049,
+      "pgid": 79049,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-16.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.3221466541290283,
+      "sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89"
+    },
+    {
+      "run": 17,
+      "pid": 79100,
+      "pgid": 79100,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-17.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.3033468723297119,
+      "sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21"
+    },
+    {
+      "run": 18,
+      "pid": 79149,
+      "pgid": 79149,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-18.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.3196589946746826,
+      "sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245"
+    },
+    {
+      "run": 19,
+      "pid": 79185,
+      "pgid": 79185,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-19.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.30435895919799805,
+      "sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21"
+    },
+    {
+      "run": 20,
+      "pid": 79251,
+      "pgid": 79251,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-20.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.31401801109313965,
+      "sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245"
+    },
+    {
+      "run": 21,
+      "pid": 79329,
+      "pgid": 79329,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-21.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.3428919315338135,
+      "sha256": "47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c"
+    },
+    {
+      "run": 22,
+      "pid": 79384,
+      "pgid": 79384,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-22.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.373492956161499,
+      "sha256": "f064e72dd6743c39fa2f08462ef68e573f5383d69af185267f917b7919fb6ca9"
+    },
+    {
+      "run": 23,
+      "pid": 79459,
+      "pgid": 79459,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-23.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.44945287704467773,
+      "sha256": "68ef79d7fdf32370400ba5cbe4ad5e12490ead3a79328ca33c5f35b9b724c9f3"
+    },
+    {
+      "run": 24,
+      "pid": 79508,
+      "pgid": 79508,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-24.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.4692192077636719,
+      "sha256": "f0e4271613e1649d9dd182756a2d7aa2a80b1a723136abaed0ccc0a1a7318981"
+    },
+    {
+      "run": 25,
+      "pid": 79563,
+      "pgid": 79563,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-25.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.40740084648132324,
+      "sha256": "a10b240b2c7b39fd546a9e3e02765e7665308df907e25636ad72c024148aded0"
+    },
+    {
+      "run": 26,
+      "pid": 79606,
+      "pgid": 79606,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-26.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.4043409824371338,
+      "sha256": "a10b240b2c7b39fd546a9e3e02765e7665308df907e25636ad72c024148aded0"
+    },
+    {
+      "run": 27,
+      "pid": 79659,
+      "pgid": 79659,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-27.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.3648703098297119,
+      "sha256": "e8be130f25309b876a7a729631ce87d27c65c84d3b98ab57b46a722c248a39ac"
+    },
+    {
+      "run": 28,
+      "pid": 79705,
+      "pgid": 79705,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-28.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.33756589889526367,
+      "sha256": "08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e"
+    },
+    {
+      "run": 29,
+      "pid": 79735,
+      "pgid": 79735,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-29.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.380141019821167,
+      "sha256": "f064e72dd6743c39fa2f08462ef68e573f5383d69af185267f917b7919fb6ca9"
+    },
+    {
+      "run": 30,
+      "pid": 79774,
+      "pgid": 79774,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/ng1-probe-run-30.log",
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev/debug/deps/identity-cd20fe7c9158578c",
+        "--exact",
+        "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "passed": true,
+      "elapsed_s": 0.40667295455932617,
+      "sha256": "a10b240b2c7b39fd546a9e3e02765e7665308df907e25636ad72c024148aded0"
+    }
+  ],
+  "passed": 30,
+  "failed": 0,
+  "load_after": [
+    8.78564453125,
+    16.17431640625,
+    22.97900390625
+  ],
+  "complete": true
+}
+
+
+=== ng1-probe-run-01.log sha256 08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.33s
+
+
+
+=== ng1-probe-run-02.log sha256 3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+
+=== ng1-probe-run-03.log sha256 3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+
+=== ng1-probe-run-04.log sha256 7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+
+=== ng1-probe-run-05.log sha256 2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+
+=== ng1-probe-run-06.log sha256 3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+
+=== ng1-probe-run-07.log sha256 08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.33s
+
+
+
+=== ng1-probe-run-08.log sha256 47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.34s
+
+
+
+=== ng1-probe-run-09.log sha256 47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.34s
+
+
+
+=== ng1-probe-run-10.log sha256 47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.34s
+
+
+
+=== ng1-probe-run-11.log sha256 7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+
+=== ng1-probe-run-12.log sha256 e8be130f25309b876a7a729631ce87d27c65c84d3b98ab57b46a722c248a39ac ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.36s
+
+
+
+=== ng1-probe-run-13.log sha256 47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.34s
+
+
+
+=== ng1-probe-run-14.log sha256 0e6864592ddf7ed0d9cf49faf0f306f4427eaf8095e6f83efc4e2a2be814cd0f ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.38s
+
+
+
+=== ng1-probe-run-15.log sha256 7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+
+=== ng1-probe-run-16.log sha256 7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+
+=== ng1-probe-run-17.log sha256 2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+
+=== ng1-probe-run-18.log sha256 3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+
+=== ng1-probe-run-19.log sha256 2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+
+=== ng1-probe-run-20.log sha256 3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+
+=== ng1-probe-run-21.log sha256 47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.34s
+
+
+
+=== ng1-probe-run-22.log sha256 f064e72dd6743c39fa2f08462ef68e573f5383d69af185267f917b7919fb6ca9 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.37s
+
+
+
+=== ng1-probe-run-23.log sha256 68ef79d7fdf32370400ba5cbe4ad5e12490ead3a79328ca33c5f35b9b724c9f3 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.44s
+
+
+
+=== ng1-probe-run-24.log sha256 f0e4271613e1649d9dd182756a2d7aa2a80b1a723136abaed0ccc0a1a7318981 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.46s
+
+
+
+=== ng1-probe-run-25.log sha256 a10b240b2c7b39fd546a9e3e02765e7665308df907e25636ad72c024148aded0 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.40s
+
+
+
+=== ng1-probe-run-26.log sha256 a10b240b2c7b39fd546a9e3e02765e7665308df907e25636ad72c024148aded0 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.40s
+
+
+
+=== ng1-probe-run-27.log sha256 e8be130f25309b876a7a729631ce87d27c65c84d3b98ab57b46a722c248a39ac ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.36s
+
+
+
+=== ng1-probe-run-28.log sha256 08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.33s
+
+
+
+=== ng1-probe-run-29.log sha256 f064e72dd6743c39fa2f08462ef68e573f5383d69af185267f917b7919fb6ca9 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.37s
+
+
+
+=== ng1-probe-run-30.log sha256 a10b240b2c7b39fd546a9e3e02765e7665308df907e25636ad72c024148aded0 ===
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.40s
+
+

@@ -1,0 +1,203 @@
+Native reopen repair — focused evidence, not a full acceptance packet
+Own source f2691bc2fb4abfe99c50c3cc552e8d6b262ca2f7 on22e596dc; rebased unchanged to4356fc6eea3c7bab3407ed876f9561b26b3a7f41 on0e97dc32.
+The final focused run built the unchanged source committed as f2691bc2 during the run. Broader checks on the rebased source are not yet run: QUIET r5i-frame.
+Initial failures retained: one missing borrow compiler error; metadata read was wrongly treated as maintenance refresh; expected signer wrongly selected first of two fixture keys. Both test errors corrected without changing native authority, assertions on outcomes, or deadlines.
+Final regression checks: Allowed plus typed SQLite DatabaseBusy; public ID hidden; a new Unlock refused; real maintenance refresh retries noninteractive load; one correctly signed completion; exactly one native attempt. All native IO is a mock on a disposable root, no login Keychain.
+
+
+=== reopen-regression-command.json sha256 815fe7fe9211f8d0fef804ca22eece51ce3ba14ab4b325439bd409a6e3d57430 ===
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--lib",
+    "allowed_native_unlock_reports_reopen_busy_then_refresh_recovers_without_another_attempt",
+    "--",
+    "--exact",
+    "logic::native_reopen_tests::allowed_native_unlock_reports_reopen_busy_then_refresh_recovers_without_another_attempt",
+    "--nocapture"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T09:16:02.695662+00:00",
+  "started": 1792919762.6957922,
+  "source": "22e596dc49fd35bd6a2a74fa5d180af4d0142f20",
+  "pid": 37421,
+  "pgid": 37421,
+  "exit_code": 101,
+  "elapsed_s": 16.26724886894226
+}
+
+
+=== reopen-regression.log sha256 7644f53ed38a00147e7c2dc7258b02edace3bb4594af012b8100cceb8a5bb887 ===
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+error[E0308]: mismatched types
+    --> crates/bbt-mux/src/logic.rs:2000:21
+     |
+2000 |                     format!("{}; native access will not be repeated", failure.reason),
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&str`, found `String`
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `bbt-mux` (lib test) due to 1 previous error
+
+
+=== reopen-regression-2-command.json sha256 5f90e8e37a719e9093dfd3c57da66f0e45b64b09ddec07d4683531d17020ecd1 ===
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--lib",
+    "logic::native_reopen_tests",
+    "--",
+    "--nocapture"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T09:16:32.759808+00:00",
+  "started": 1792919792.760164,
+  "source": "22e596dc49fd35bd6a2a74fa5d180af4d0142f20",
+  "pid": 39198,
+  "pgid": 39198,
+  "exit_code": 101,
+  "elapsed_s": 194.23941493034363
+}
+
+
+=== reopen-regression-2.log sha256 c0b24e8f42ce2aecb75759d4fa8a4b7256a544e5f6981904b56206df3b956f64 ===
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 3m 13s
+     Running unittests src/lib.rs (target/settings-plugins-dev/debug/deps/bbt_mux-82629e4831124240)
+
+running 1 test
+
+thread 'logic::native_reopen_tests::allowed_native_unlock_reports_reopen_busy_then_refresh_recovers_without_another_attempt' (36947770) panicked at crates/bbt-mux/src/identity/reopen_tests.rs:155:5:
+assertion failed: refreshed.reopen_failed.is_none()
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test logic::native_reopen_tests::allowed_native_unlock_reports_reopen_busy_then_refresh_recovers_without_another_attempt ... FAILED
+
+failures:
+
+failures:
+    logic::native_reopen_tests::allowed_native_unlock_reports_reopen_busy_then_refresh_recovers_without_another_attempt
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 113 filtered out; finished in 0.22s
+
+error: test failed, to rerun pass `-p bbt-mux --lib`
+
+
+=== reopen-regression-3-command.json sha256 5611e95ceef66e2ce1b5f4184f9a29adcadb8d2da82f76a676841b509ee2f2b7 ===
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--lib",
+    "logic::native_reopen_tests",
+    "--",
+    "--nocapture"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T09:20:53.306355+00:00",
+  "started": 1792920053.3066518,
+  "source": "22e596dc49fd35bd6a2a74fa5d180af4d0142f20",
+  "pid": 50152,
+  "pgid": 50152,
+  "exit_code": 101,
+  "elapsed_s": 339.1746871471405
+}
+
+
+=== reopen-regression-3.log sha256 1c8c3ff500548b3506bf043c521244c80a1f802d2f7bf2987a39bfea44238382 ===
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 5m 38s
+     Running unittests src/lib.rs (target/settings-plugins-dev/debug/deps/bbt_mux-82629e4831124240)
+
+running 1 test
+
+thread 'logic::native_reopen_tests::allowed_native_unlock_reports_reopen_busy_then_refresh_recovers_without_another_attempt' (36998623) panicked at crates/bbt-mux/src/identity/reopen_tests.rs:196:13:
+assertion `left == right` failed
+  left: [54, 145, 108, 101, 20, 94, 56, 184, 83, 49, 37, 139, 127, 160, 24, 86, 214, 15, 213, 173, 48, 217, 59, 172, 94, 56, 2, 95, 6, 106, 234, 42]
+ right: [33, 233, 162, 12, 197, 229, 62, 27, 62, 255, 136, 226, 57, 0, 201, 168, 163, 143, 241, 182, 94, 158, 165, 136, 12, 194, 243, 118, 100, 212, 2, 175]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test logic::native_reopen_tests::allowed_native_unlock_reports_reopen_busy_then_refresh_recovers_without_another_attempt ... FAILED
+
+failures:
+
+failures:
+    logic::native_reopen_tests::allowed_native_unlock_reports_reopen_busy_then_refresh_recovers_without_another_attempt
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 113 filtered out; finished in 0.40s
+
+error: test failed, to rerun pass `-p bbt-mux --lib`
+
+
+=== reopen-regression-4-command.json sha256 21b6c4e53e88914095df287a1d4a51e29d26621388f98b1dca056b95776db501 ===
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-mux",
+    "--locked",
+    "--lib",
+    "logic::native_reopen_tests",
+    "--",
+    "--nocapture"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T09:28:10.145762+00:00",
+  "started": 1792920490.1459599,
+  "source": "22e596dc49fd35bd6a2a74fa5d180af4d0142f20",
+  "pid": 66972,
+  "pgid": 66972,
+  "exit_code": 0,
+  "elapsed_s": 88.73570108413696
+}
+
+
+=== reopen-regression-4.log sha256 d8bc98b7031f4ce1c8c64a815d6d9e5df8c6d5a1de64b9f21e102a28e140a922 ===
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 1m 27s
+     Running unittests src/lib.rs (target/settings-plugins-dev/debug/deps/bbt_mux-82629e4831124240)
+
+running 1 test
+test logic::native_reopen_tests::allowed_native_unlock_reports_reopen_busy_then_refresh_recovers_without_another_attempt ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 113 filtered out; finished in 0.43s
+
+
+
+=== source-commit.log sha256 8e426b7b49437cf1de75261b07fed53d102a41d91f02cb5e1dd6881c4251f87f ===
+[exec5-native-reopen f2691bc2] Report native custody reopen failures and recover noninteractively
+ 11 files changed, 377 insertions(+), 5 deletions(-)
+ create mode 100644 crates/bbt-mux/src/identity/reopen_tests.rs
+
+
+=== source-signature.log sha256 2ad0bfaef088fa2f1459de500a4b6bbb201b157daf9b271683dba20f16b31a0a ===
+gpg: Signature made Sun Oct 25 02:28:41 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+
+
+=== rebase-range-diff.log sha256 2f4dfda4ed97a18b4af43ffc1fe650b5d3ab067bd3e18acdd6f94e879314fc1a ===
+1:  f2691bc2 = 1:  4356fc6e Report native custody reopen failures and recover noninteractively
+
+
+=== rebase-signature.log sha256 9c5c0f02784b788a260dca806a0be1d6363243ba92d5944ac34d2d200e2f3f03 ===
+gpg: Signature made Sun Oct 25 02:30:15 2026 PDT
+gpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0
+gpg: Good signature from "Boxy (bboxy450) <bboxy450@gmail.com>" [ultimate]
+
