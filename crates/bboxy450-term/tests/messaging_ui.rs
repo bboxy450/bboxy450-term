@@ -486,7 +486,16 @@ fn pending_frame_has_no_issuer_and_a_grade_upgrade_keeps_the_message_position() 
     history.row(&signed, None, 101);
     history.row(&pending, None, 100); // An old publication cannot undo a newer grade.
     let entries = history.entries(&model, &Default::default(), &[]);
-    assert_eq!(entries.len(), 2);
+    assert!(
+        entries
+            .iter()
+            .any(|entry| matches!(entry,Entry::Note {text,..} if text=="stream cursor pending"))
+    );
+    let entries: Vec<_> = entries
+        .iter()
+        .filter(|entry| matches!(entry, Entry::Message { .. }))
+        .collect();
+    assert_eq!(entries.len(), 2, "the grade upgrade must not add a message");
     let Entry::Message { data, .. } = &entries[0] else {
         panic!("signed message");
     };

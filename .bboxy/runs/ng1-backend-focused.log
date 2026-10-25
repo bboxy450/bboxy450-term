@@ -50,3 +50,29 @@ reference-unit-2: 3 passed / 0 failed, including first held operator delivery wi
 reference-proto-2: 2 passed / 0 failed, including exact legacy signed-message serialization.
 reference-mux-tests-check-2: EXIT 101, one fixture expected IssuerKind where the new field is Option<IssuerKind>; corrected to Some without changing the assertion. Earlier c8089517 check EXIT 101 found three exhaustive new-recipient matches, now explicitly forwarded. Both failures retained.
 The private pending operator entry point is not wired into the worker yet and produces an expected dead-code warning. It must be used, not lint-suppressed, before the strict final gate. #315 is not accepted yet. Newer edits and native composition regression remain unverified.
+
+## Frozen 06c76e99 compatibility and capacity checks
+
+Source 06c76e99414338c619f4760ed220bbebff93e86b
+Command cargo check -p bbt-mux --locked --tests
+EXIT 0; elapsed 42.052777584 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/reference-mux-tests-check-4.log SHA256 0c6f637e23677d138cf9312367e8eb855c61b6e503c3be7ab9babde01249fe92
+
+Source 06c76e99414338c619f4760ed220bbebff93e86b
+Command cargo test -p bbt-mux --locked --lib messaging::service::reference_tests -- --nocapture
+EXIT 0; elapsed 174.248837833 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/reference-unit-4.log SHA256 03286282e351e3116c416a506b37b565c2525aec6c1124df41679c390f8d22a7
+
+Source 06c76e99414338c619f4760ed220bbebff93e86b
+Command cargo test -p bbt-mux --locked --test messaging_flow -- --nocapture
+EXIT 0; elapsed 78.181248792 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/seat-pending-4.log SHA256 b14d45b875246cfb88adc384f9952190990024fc51705f7b0e2586eecf229683
+
+Source 06c76e99414338c619f4760ed220bbebff93e86b
+Command cargo test -p bboxy450-term --locked --test messaging_ui pending_frame_has_no_issuer_and_a_grade_upgrade_keeps_the_message_position -- --exact --nocapture
+EXIT 101; elapsed 387.676662666 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/pending-frame-4.log SHA256 ae33a79a85052e427e53cc864e31dd7374691b6f49b5dd191f03947dfb89be4b
+
+All mux test targets compile (warning remains for the deliberately unwired pending operator entry point). Operator reference/backend: 3 passed; seat/remote/FIFO/130-message admission: 3 passed.
+pending-frame-4 failed only at the new fixture total-entry assertion: history correctly adds a stream-cursor-pending note, so it returns two messages plus one Note. Pending-grade/inferred/reason and no-placeholder-issuer layout assertions had already passed. The fixture now separately asserts that notice and counts exactly two Message entries; no product or predicate change.
+No full CI/Clippy/parity acceptance is claimed; the live worker, admitted event lane and operator control journal integration still follow accepted #315.

@@ -4,10 +4,9 @@ use bbt_proto::{
 };
 use ulid::Ulid;
 
-#[test]
-fn first_startup_intent_has_no_author_and_cannot_be_a_signed_envelope() {
+fn pending_intent() -> PendingIntent {
     let request = SendRequest::text("operator/inbox", "local before custody");
-    let intent = PendingIntent {
+    PendingIntent {
         version: 1,
         id: request.id,
         sender: LogicalSender::Seat {
@@ -29,7 +28,12 @@ fn first_startup_intent_has_no_author_and_cannot_be_a_signed_envelope() {
         admitted_ms: 1,
         signature: PendingSignature::Pending,
         hold_reason: "fixture custody unavailable".into(),
-    };
+    }
+}
+
+#[test]
+fn first_startup_intent_has_no_author_and_cannot_be_a_signed_envelope() {
+    let intent = pending_intent();
     let value = serde_json::to_value(&intent).unwrap();
     assert_eq!(value["signature"], "pending");
     assert_eq!(
@@ -116,4 +120,42 @@ fn signed_stored_messages_keep_their_legacy_bytes_without_a_new_tag() {
         bbt_proto::messaging::SignatureState::Signed
     );
     assert!(stored.intent().is_none());
+}
+
+#[test]
+fn operator_local_reference_is_not_a_device_and_unknown_epoch_is_not_invented() {
+    use bbt_proto::messaging::{Door, OperatorReference, OperatorReferenceKind, Recipient};
+    let reference = OperatorReference {
+        id: Ulid::from(11u128),
+        kind: OperatorReferenceKind::OperatorLocal,
+    };
+    let mut intent = pending_intent();
+    intent.sender = LogicalSender::OperatorLocal {
+        reference,
+        device: None,
+        door: Door::Gui,
+        issued_by: None,
+    };
+    intent.role = Role {
+        name: "operator".into(),
+        class: Class::Oracle,
+    };
+    intent.role_epoch = None;
+    let bytes = serde_json::to_vec(&intent).unwrap();
+    let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(value["sender"]["kind"], "operator-local");
+    assert!(value["sender"]["device"].is_null());
+    assert!(value["sender"]["reference"].get("device").is_none());
+    assert!(value.get("role_epoch").is_none());
+    assert!(value.get("author").is_none());
+    assert_eq!(
+        serde_json::from_slice::<PendingIntent>(&bytes).unwrap(),
+        intent
+    );
+    let local = reference.recipient();
+    assert_eq!(local, Recipient::OperatorLocal(reference.id));
+    assert_eq!(Recipient::try_from(local.to_string()).unwrap(), local);
+    let legacy = Recipient::Operator(Ulid::from(12u128));
+    assert_eq!(Recipient::try_from(legacy.to_string()).unwrap(), legacy);
+    assert_ne!(local.to_string(), format!("operator:{}", reference.id));
 }
