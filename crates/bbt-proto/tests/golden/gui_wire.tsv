@@ -20,6 +20,7 @@ action	{"kind":"Debug","body":{"id":"01M5SQMFFTTAC2SJECMPXZ73Y0","request":{"kin
 action	{"kind":"Debug","body":{"id":"01M5SQMFN4G2HMKBXK3AMY1EQ8","request":{"kind":"snapshot","destination":"/tmp/.tmpkmsZrW/snapshot.json"}}}
 action	{"kind":"EventAck","body":{"stream":"index","seq":"1"}}
 action	{"kind":"EventsRead","body":{"id":"01M5SQMVJW9GK61F03VC6T3420","stream":"account","after":0,"limit":128}}
+action	{"kind":"EventsRead","body":{"id":"01M5SQMVJW9GK61F03VC6T3420","stream":"account","after":0,"limit":128,"wait_ms":60000}}
 action	{"kind":"EventsStreams","body":{"id":"01M5SQMVHAZBK53FA3T5THP95P"}}
 action	{"kind":"FocusSeat","body":{"id":"01M5SQMEZ7D4GYF7XR1JH16WWN","seat":"01M5SQMEPMTKC494X2BZ0T5BVR"}}
 action	{"kind":"Focused","body":{"id":"01M5SQMEZ7D4GYF7XR1JH16WWN","result":{"Ok":{"seat":"01M5SQMEPMTKC494X2BZ0T5BVR","generation":1,"frame_seq":7}}}}

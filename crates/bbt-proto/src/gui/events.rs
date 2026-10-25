@@ -48,6 +48,9 @@ macro_rules! events_actions {
                 stream: String,
                 after: u64,
                 limit: usize,
+                /// Wait for an append, at most 60 000ms; omission preserves the old wire.
+                #[serde(default, skip_serializing_if = "Option::is_none")]
+                wait_ms: Option<u64>,
             },
             /// Discover retained stream names through the same operator admission.
             /// This creates no consumer; EventsRead still filters every returned event.

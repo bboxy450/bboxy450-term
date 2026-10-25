@@ -1117,6 +1117,7 @@ impl Client {
                 stream: stream.into(),
                 after,
                 limit,
+                wait_ms: None,
             },
             |r| matches!(r, GuiReply::EventsRead { op, .. } if *op == id),
         )? {
@@ -2664,6 +2665,7 @@ mod tests {
                 stream: "s".into(),
                 after: 0,
                 limit: 1,
+                wait_ms: None,
             },
             GuiAction::EventsStreams { id },
             GuiAction::RenameSeat {

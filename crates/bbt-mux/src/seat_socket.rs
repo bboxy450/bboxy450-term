@@ -931,7 +931,7 @@ async fn gui_session(
                                 let frame=client.captures.focus(id,bbt_proto::SeatId::from_u128(seat.0)).await.map_err(invalid)?;
                                 Ok(GuiReply::Focused {op:id,frame})
                             }
-                            GuiAction::EventsRead {id,stream,after,limit}=> {
+                            GuiAction::EventsRead {id,stream,after,limit,wait_ms:_}=> {
                                 let filter=crate::gui_events::filters(client.gui_messaging_subjects().await?);
                                 let (envelopes,next,through)=client.bus.read_page(&stream,filter,after,limit).await?;
                                 let events=envelopes.into_iter().map(|e| bbt_proto::gui::RetainedEvent {seq:e.seq,subject:e.event.subject,source:e.event.source,ts:e.event.ts,payload:e.event.payload}).collect();
