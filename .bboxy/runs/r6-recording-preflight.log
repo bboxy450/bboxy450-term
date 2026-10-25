@@ -1,0 +1,36 @@
+R6 recording notifications — Aster Cinderwing <EXECUTOR>, preflight checkpoint
+Source ff28e03790ef55272f0b679243435475f21b3ace, branch aster-notification-adapter, on accepted main7d4d599e.
+Brief4944503b; CLI ruling2e80d512; night script6832dcd8/259e3bf8; runner integrationfdffe695.
+NOT AN ACCEPTANCE HANDOFF: exact ci-local --parity has not run. Oracle6832dcd8 requires Sable's GUI-store fix to land first. Final rebase/prechecks/gate/evidence successor remain.
+
+Mechanism
+notifications/recording.rs:33 — stable seat IDs, one outstanding entry per seat; repeat replaces. State cap1024, history256, readback64 with omission counts. Refused overlong IDs are bounded before retention. Requests/completions are distinct; activate completion means callback_submitted, not focused or OS-delivered.
+notifications/recording.rs:68 — memory-only try_lock read/click on UI; actual Notifier calls use the existing guarded notification IO worker. C4 sanitizer redacts encoded keys/capabilities before debug output. Explicit backend=recording and os_presentation=false.
+notifications.rs:87 — submitted/processed desired-plan fence makes muted sends0 a functional assertion. Processing is not OS delivery. Existing capacity-one/coalesced desired-state handoff remains.
+main.rs:231 — --notifications record requires debug assertions and an explicit test account before startup; native factory is skipped for recording. headless.rs installs the same recorder/event sink without a window.
+main.rs:2826,2922,3957 — bounded readback plus the facade Response::Clicked callback through the existing focus controller. UI activation waits prior placements, exact pane and completed frame before replying.
+ctl.rs / ctl/app.rs / proto/gui.rs — app start --notifications record, debug notifications, ui notification-click <seat> over existing App/UI relays. No new socket.
+e2e_night.rs:412 — runner selects recording on its existing private headless/file-account app. R6.sh owns no lifecycle or nested app. N1-N4 retain their Knowledge meanings; they are outside this assignment.
+scripts/e2e/R6.sh:1 — first-line-only body, stable-ID replacement, exact tab/pane frame and PNG, muted fresh waiting episode posts0, absent-notification refusal by its actual reason. Header/map agree: partial; missing a waiting seat posts one desktop notification; clicking it raises the window, switches space. No task number invented in the canonical row.
+
+Verified commands (direct compiler, O1/debug assertions, no debuginfo/incremental; private file accounts for recording)
+headless-recording: EXIT0,2/0; focused-notifications: EXIT0,5/0 before the extra bounds case.
+bounded-recording: EXIT0,3/0 including refusal/history bounds before redaction.
+runner-notification-integration on ff28e037: EXIT0,2/0,94.223s (4.11s runtime).
+strict-with-night on pre-runner3fcdd697: EXIT0,18.358s. map-corpus: EXIT0,6/0,2.792s.
+Earlier rebased workspace on c756cce2: EXIT101,1395 passed/1 failed/29 ignored,668.374s; all13 headless passed. Sole failure durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls, gui_events.rs:251 read_line EOF unwrap(None). Oracle149271b5 confirms another baseline sighting and assigns Sable's fix; this report does not infer DatabaseBusy without a child-stderr witness.
+Earlier strict-rebased: EXIT0,33.264s. invariants-rebased: EXIT0,23/0/9 named slow skips,256.033s.
+R6 final script under an equivalent prepared single-app contract: EXIT0,4.678s; file custody/windows0, ordinary app stop0. Capture inspected: intended terminal/producer content present.
+Actual night on ff28e037: e2e night --group 'rim, swell and attention' --scripts scripts/e2e, EXIT1/4.082s. R6 script EXIT0, coverage partial, two exact header gaps, private tracking task created. Overall RED solely R1-R5 untested because scripts are absent; no whole-group green claim. Default throwaway records only; no --records override.
+Actual night log SHA2567dae088e9e0387cde952f2e52593152abb1febe6f2a4cecec801e2e78296af62.
+
+Failures retained, not erased
+Initial old-base workspace: existing generic UI close/undo test got GUI handshake EOF after close; child stderr was deleted by its TempDir. Root cause unknown. A preserved-log focused control on newer accepted C4 passed, with no DatabaseBusy/GUI-store-error witness; that does not prove the original symptom fixed.
+First diagnostic watcher: overly long TMPDIR made supervisor reject SUN_LEN before startup. Corrected the evidence wrapper to a short owned /tmp/ar6-*; no product workaround.
+When removing the superseded nested-app prototype, generated Python fixture indentation was broken. The script failed at R6READY with the actual IndentationError. Corrected indentation and added a producer syntax check; no timeout relaxed. Final R6 script uses only the runner's one app.
+Superseded nested prototype passed but is not the final contract. Corrected/final single-app script and actual runner verdict above are the current proof.
+
+Raw per-command logs, statuses, process metadata, script results and capture:
+/Users/feral/mydev/bboxy450-term-exec4/scratchpad/r6-notifications-20261025T0010/
+No OS notification presentation, native window/space activation, cold launch, photon/scanout, 967-seat load, publication or merge claimed.
+No operator account, login Keychain, desktop input or new socket. One own warmed dev target retained for the required integration/gate; no full gate or slot claimed yet.
