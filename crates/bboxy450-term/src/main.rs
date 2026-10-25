@@ -169,6 +169,30 @@ impl IdleQuiescence {
     }
 }
 
+/// The logical window size that holds `cols`x`rows` terminal cells (`ctl app resize`): the
+/// cell a laid-out pane measures, else the default 8x15, clamped to a usable window.
+fn cell_grid_size(
+    model: &bboxy450_term::model::Model,
+    cols: u16,
+    rows: u16,
+    scale: f32,
+) -> [f32; 2] {
+    let cell = model
+        .frames
+        .iter()
+        .find_map(|(id, frame)| {
+            let screen = model.screens.get(id)?;
+            Some([
+                frame.width as f32 / screen.cols.max(1) as f32 / scale,
+                frame.height as f32 / screen.rows.max(1) as f32 / scale,
+            ])
+        })
+        .unwrap_or([8., 15.]);
+    [
+        (f32::from(cols) * cell[0]).clamp(320., 4096.),
+        (f32::from(rows) * cell[1]).clamp(200., 2304.),
+    ]
+}
 #[allow(
     clippy::too_many_arguments,
     reason = "one readiness DTO shared by both GUI owners"
@@ -4566,8 +4590,15 @@ impl ApplicationHandler<UiEvent> for App {
                     step => self.capture_now(ask, step),
                 }
             }
-            UiEvent::App(live::AppEvent::Ask { id, request: _ }) => {
+            UiEvent::App(live::AppEvent::Ask { id, request }) => {
                 let empty = bboxy450_term::model::Model::default();
+                if let bbt_proto::gui::AppRequest::Resize { cols, rows } = request
+                    && let Some(window) = &self.window
+                {
+                    let model = self.live_state.as_deref().unwrap_or(&empty);
+                    let [w, h] = cell_grid_size(model, cols, rows, window.scale_factor() as f32);
+                    self.pending_resize = Some(LogicalSize::new(f64::from(w), f64::from(h)));
+                }
                 let status = app_status(
                     "window",
                     std::env::args().any(|a| {

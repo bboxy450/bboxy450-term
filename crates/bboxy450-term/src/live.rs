@@ -2481,7 +2481,7 @@ mod tests {
         let promises = knowledge::promises().unwrap();
         for (i, promise) in promises.iter().enumerate() {
             let row = json!({"number":i+2,"type":"e2e","function":promise.id,
-                "status":if promise.id=="T1" {"fail"} else if promise.id=="S3" {"manual"} else {"pass"},
+                "status":if promise.id=="T1" {"fail"} else if promise.id=="S3" {"manual"} else {"pass"},"coverage":"full",
                 "last_run":"2026-10-24T00:00:00Z","run_by":"fixture-seat",
                 "links":if promise.id=="T1" {json!([{"rel":"tracked-by","to":"#1"}])} else {json!([])}});
             let text = format!(

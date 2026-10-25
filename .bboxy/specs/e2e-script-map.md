@@ -20,15 +20,15 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 
 | ID | script | coverage | missing | tracked-by |
 |---|---|---|---|---|
-| T1 | `scripts/e2e/T1.sh` | partial | unstated (no coverage header) | |
-| T2 | `scripts/e2e/T2.sh` | partial | unstated (no coverage header) | |
-| T3 | `scripts/e2e/T3.sh` | partial | unstated (no coverage header) | |
-| T4 | `scripts/e2e/T4.sh` | partial | unstated (no coverage header) | |
-| T5 | `scripts/e2e/T5.sh` | partial | unstated (no coverage header) | |
-| T6 | `scripts/e2e/T6.sh` | partial | unstated (no coverage header) | |
+| T1 | `scripts/e2e/T1.sh` | partial | ⌘T on a Claude or Codex row (only zsh is spawned, by ctl); the seat opens within one frame; placements other than tab | |
+| T2 | `scripts/e2e/T2.sh` | partial | the echo appears within one frame; the 100 kB paste compared in full (the script truncates the received copy, so extra bytes pass) | |
+| T3 | `scripts/e2e/T3.sh` | partial | resizing a pane (only the window is resized); no stale cells after the redraw | |
+| T4 | `scripts/e2e/T4.sh` | partial | wide glyphs and emoji align to the grid (cell widths and continuations are not read); colours other than red | |
+| T5 | `scripts/e2e/T5.sh` | partial | the app is killed and relaunched (only logic is killed); layout, focus and scroll positions are identical | |
+| T6 | `scripts/e2e/T6.sh` | partial | the app says so; resumes by session id (only the zsh respawn is proven) | |
 | T7 | `scripts/e2e/T7.sh` | partial | solved pane rectangle and focus after undo; visible grace strip | |
-| T8 | `scripts/e2e/T8.sh` | partial | unstated (no coverage header) | |
-| T9 | `scripts/e2e/T9.sh` | partial | unstated (no coverage header) | |
+| T8 | `scripts/e2e/T8.sh` | partial | malformed/unapproved report rejection; reported grade drawn in the seat row | |
+| T9 | `scripts/e2e/T9.sh` | partial | a harness resumed by session id (only a zsh seat is restarted) | |
 | L1 | `scripts/e2e/L1.sh` | partial | script not implemented: ⌘T opens the centred launcher over the blurred window with harness rows, search, and role presets; Esc closes it with no spawn | |
 | L2 | `scripts/e2e/L2.sh` | partial | script not implemented: a new seat lands exactly where the operator picked (split right, split down, new tab, new space), never a guessed slot | |
 | L3 | `scripts/e2e/L3.sh` | partial | script not implemented: every launched seat has our MCP server, the hook shim and the bboxy450 skill at launch; the user's own ~/.claude and ~/.codex are byte-identical before and after | |

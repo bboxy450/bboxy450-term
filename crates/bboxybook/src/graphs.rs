@@ -27,6 +27,8 @@ pub const E2E_STATES: &[&str] = &[
     "mixed",
     "failures tracked",
     "all pass",
+    "partial tracked",
+    "partial untracked",
     "empty catalogue",
     "provider fault",
 ];

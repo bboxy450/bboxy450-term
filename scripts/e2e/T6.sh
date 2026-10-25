@@ -1,3 +1,4 @@
+# coverage: partial; missing: the app says so; resumes by session id (only the zsh respawn is proven)
 # T6: the supervisor dies: the seat survives as a seat, the app restarts the supervisor and
 # re-attaches it. A plain zsh seat respawns (d11, c1-live-seats §6 acceptance 2): same seat
 # id, next process generation, the screen recovered (or a gap marked), a fresh shell that

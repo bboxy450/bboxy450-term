@@ -1,3 +1,4 @@
+# coverage: partial; missing: a harness resumed by session id (only a zsh seat is restarted)
 # T9: `ctl seat restart` gives a seat its next process generation: the same seat, generation
 # + 1 live, the old process gone, its screen and history kept (or a gap marked), and a
 # fresh shell that answers.

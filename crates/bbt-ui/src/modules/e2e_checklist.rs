@@ -103,6 +103,10 @@ pub struct Record {
     pub run_by: Option<String>,
     pub reason: Option<String>,
     pub result: Option<String>,
+    /// `full` or `partial` (#316): how much of the promise a pass proves.
+    pub coverage: Option<String>,
+    /// The promise's assertions a partial pass does not make.
+    pub missing: Vec<String>,
     pub links: Vec<Link>,
 }
 
@@ -165,6 +169,15 @@ pub struct Row<'a> {
     pub fault: Option<String>,
     pub tracking: Vec<Task>,
     pub tracked_by: Vec<String>,
+    /// A pass that is not `full` (#316): the assertions it leaves out, `unstated` when the
+    /// record names none. Empty for a full pass and every other status.
+    pub partial: Vec<String>,
+}
+impl Row<'_> {
+    /// A failure or a partial pass: green only once an open task tracks it, else red.
+    pub fn needs_tracking(&self) -> bool {
+        self.status.failure() || !self.partial.is_empty()
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -181,6 +194,9 @@ pub struct Summary {
     pub invalid: usize,
     pub manual: usize,
     pub untracked: usize,
+    /// Passes that prove only part of their promise (#316), and those no open task tracks.
+    pub partial: usize,
+    pub partial_untracked: usize,
     pub faults: Vec<String>,
 }
 
@@ -258,11 +274,20 @@ impl Checklist {
                 fault,
                 tracking: vec![],
                 tracked_by: vec![],
+                partial: vec![],
             };
             if let Some(record) = record {
                 if let Some(status) = Status::parse(&record.status) {
                     row.status = status;
-                    if status.failure() {
+                    if status == Status::Pass && record.coverage.as_deref() != Some("full") {
+                        // Fail closed: a pass that does not say full is partial.
+                        row.partial = if record.missing.is_empty() {
+                            vec!["unstated".into()]
+                        } else {
+                            record.missing.clone()
+                        };
+                    }
+                    if row.needs_tracking() {
                         row.tracking = self.tracking(record);
                         for task in &row.tracking {
                             if task_open(&task.status) && !row.tracked_by.contains(&task.reference)
@@ -309,6 +334,11 @@ impl Checklist {
                 .iter()
                 .filter(|r| r.status.failure() && r.tracked_by.is_empty())
                 .count(),
+            partial: rows.iter().filter(|r| !r.partial.is_empty()).count(),
+            partial_untracked: rows
+                .iter()
+                .filter(|r| !r.partial.is_empty() && r.tracked_by.is_empty())
+                .count(),
             faults: self.faults.clone(),
         };
         if self.promises.is_empty() {
@@ -321,8 +351,12 @@ impl Checklist {
                     .push(format!("unknown function: {}", record.function));
             }
         }
-        if summary.untested == 0 && summary.untracked == 0 && summary.faults.is_empty() {
-            summary.tone = if summary.failures == 0 {
+        if summary.untested == 0
+            && summary.untracked == 0
+            && summary.partial_untracked == 0
+            && summary.faults.is_empty()
+        {
+            summary.tone = if summary.failures == 0 && summary.partial == 0 {
                 Tone::Green
             } else {
                 Tone::Amber
@@ -443,8 +477,16 @@ fn status_color(status: Status) -> ui::Color {
         Status::Untested => ui::Color::Muted,
     }
 }
+/// A row's colour: its status's, amber for a partial pass in every state (#316).
+fn row_color(row: &Row<'_>) -> ui::Color {
+    if row.partial.is_empty() {
+        status_color(row.status)
+    } else {
+        tone_color(Tone::Amber)
+    }
+}
 fn cell(key: &str, row: &Row<'_>, size: [f32; 2], radius: f32) -> c::Element {
-    let outlined = row.fault.is_some() || (row.status.failure() && row.tracked_by.is_empty());
+    let outlined = row.fault.is_some() || (row.needs_tracking() && row.tracked_by.is_empty());
     let alpha = if outlined {
         1.
     } else {
@@ -458,7 +500,7 @@ fn cell(key: &str, row: &Row<'_>, size: [f32; 2], radius: f32) -> c::Element {
     s.overrides.width = Some(ui::Length::Px(size[0]));
     s.overrides.height = Some(ui::Length::Px(size[1]));
     s.overrides.fill = Some(ui::Paint {
-        color: status_color(row.status),
+        color: row_color(row),
         alpha: ui::Alpha::Value(alpha),
     });
     if outlined {
@@ -505,11 +547,19 @@ impl Summary {
                 labels
             }
             Tone::Amber => {
-                let mut labels = vec![format!(
-                    "{} failure{} tracked",
-                    self.failures,
-                    if self.failures == 1 { "" } else { "s" }
-                )];
+                // The failure and partial parts join with ", ", each only when nonzero.
+                let mut tracked = vec![];
+                if self.failures > 0 {
+                    tracked.push(format!(
+                        "{} failure{} tracked",
+                        self.failures,
+                        if self.failures == 1 { "" } else { "s" }
+                    ));
+                }
+                if self.partial > 0 {
+                    tracked.push(format!("{} partial tracked", self.partial));
+                }
+                let mut labels = vec![tracked.join(", ")];
                 if self.manual > 0 {
                     labels.push(format!("{} manual", self.manual));
                 }
@@ -536,6 +586,9 @@ impl Summary {
                         self.untracked,
                         if self.untracked == 1 { "" } else { "s" }
                     ));
+                }
+                if self.partial_untracked > 0 {
+                    labels.push(format!("{} partial untracked", self.partial_untracked));
                 }
                 if self.missing > 0 {
                     labels.push(format!("{} missing", self.missing));
@@ -737,31 +790,56 @@ impl Checklist {
                 })
                 .collect(),
         );
-        let counts = [
-            (Status::Pass, out.summary.passed),
-            (Status::Fail, out.summary.failures - out.summary.blocked),
-            (Status::Blocked, out.summary.blocked),
-            (Status::Untested, out.summary.untested),
-            (Status::Manual, out.summary.manual),
-        ];
+        // Display statuses (#316): a partial pass counts as partial, its chip shown only when any.
+        let mut counts = vec![(
+            "pass",
+            status_color(Status::Pass),
+            1.,
+            out.summary.passed - out.summary.partial,
+        )];
+        if out.summary.partial > 0 {
+            counts.push(("partial", tone_color(Tone::Amber), 1., out.summary.partial));
+        }
+        counts.extend([
+            (
+                "fail",
+                status_color(Status::Fail),
+                1.,
+                out.summary.failures - out.summary.blocked,
+            ),
+            (
+                "blocked",
+                status_color(Status::Blocked),
+                1.,
+                out.summary.blocked,
+            ),
+            (
+                "untested",
+                status_color(Status::Untested),
+                0.28,
+                out.summary.untested,
+            ),
+            (
+                "manual",
+                status_color(Status::Manual),
+                0.85,
+                out.summary.manual,
+            ),
+        ]);
         let count_row = flow(
             "e2e/counts",
             STYLE.spacing.s9 as f32,
             c::Alignment::Center,
             counts
                 .into_iter()
-                .map(|(status, count)| {
-                    let key = format!("e2e/counts/{}", status.as_str());
+                .map(|(status, color, alpha, count)| {
+                    let key = format!("e2e/counts/{status}");
                     let mut swatch = plain([0.; 4], 3.);
                     swatch.overrides.width = Some(ui::Length::Px(8.));
                     swatch.overrides.height = Some(ui::Length::Px(12.));
                     swatch.overrides.fill = Some(ui::Paint {
-                        color: status_color(status),
-                        alpha: ui::Alpha::Value(match status {
-                            Status::Untested => 0.28,
-                            Status::Manual => 0.85,
-                            _ => 1.,
-                        }),
+                        color,
+                        alpha: ui::Alpha::Value(alpha),
                     });
                     let mut s = plain([0.; 4], 0.);
                     if count == 0 {
@@ -792,7 +870,7 @@ impl Checklist {
                             .into(),
                             label(
                                 format!("{key}/label"),
-                                format!("{count} {}", status.as_str()),
+                                format!("{count} {status}"),
                                 font(
                                     STYLE.r#type.row as f32,
                                     400,
@@ -920,7 +998,10 @@ impl Checklist {
         rows: &[&Row<'_>],
     ) -> c::Element {
         let key = format!("e2e/g{index}");
-        let good = rows.iter().filter(|r| r.status == Status::Pass).count();
+        let good = rows
+            .iter()
+            .filter(|r| r.status == Status::Pass && r.partial.is_empty())
+            .count();
         let heading = block(
             format!("{key}/head"),
             Axis::Row,
@@ -976,8 +1057,9 @@ impl Checklist {
         key: &str,
         row: &Row<'_>,
     ) -> c::Element {
-        let color = status_color(row.status);
+        let color = row_color(row);
         let mark = match row.status {
+            Status::Pass if !row.partial.is_empty() => ui::marks::Mark::LeftHalf,
             Status::Pass => ui::marks::Mark::Check,
             Status::Fail => ui::marks::Mark::Cross,
             Status::Blocked => ui::marks::Mark::Blocked,
@@ -1028,7 +1110,11 @@ impl Checklist {
                 fill(label(format!("{key}/text"), &row.promise.text, small, true)),
                 label(
                     format!("{key}/status"),
-                    row.fault.as_deref().unwrap_or(row.status.as_str()),
+                    row.fault.as_deref().unwrap_or(if row.partial.is_empty() {
+                        row.status.as_str()
+                    } else {
+                        "partial"
+                    }),
                     state_style,
                     false,
                 )
@@ -1051,7 +1137,18 @@ impl Checklist {
         );
         let mut children = vec![line.into()];
         let mut notes = vec![];
-        if row.status.failure() {
+        if !row.partial.is_empty() {
+            notes.push(
+                label(
+                    format!("{key}/missing"),
+                    format!("partial · missing: {}", row.partial.join("; ")),
+                    font(STYLE.r#type.small as f32, 400, false, ui::Color::Foreground),
+                    false,
+                )
+                .into(),
+            );
+        }
+        if row.needs_tracking() {
             for (i, task) in row.tracking.iter().enumerate() {
                 let open = task_open(&task.status);
                 let value = format!("{} {}", task.reference, task.status);
@@ -1184,7 +1281,7 @@ impl Checklist {
             [3., STYLE.spacing.s7 as f32, 3., STYLE.spacing.s7 as f32],
             0.,
         );
-        if row.fault.is_some() || (row.status.failure() && row.tracked_by.is_empty()) {
+        if row.fault.is_some() || (row.needs_tracking() && row.tracked_by.is_empty()) {
             s.overrides.fill = Some(ui::Paint {
                 color: tone_color(Tone::Red),
                 alpha: ui::Alpha::Value(0.12),

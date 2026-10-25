@@ -4432,6 +4432,19 @@ impl Worker {
         op: Ulid,
         origin: crate::mcp::Origin,
     ) -> Result<()> {
+        // Under a window owner the layout owns each pane's PTY size (Oracle ruling
+        // 2026-10-24): a seat a window watches is laid out by it, so ctl resizes the window.
+        // A bare Session watches nothing and keeps the direct resize.
+        if self
+            .gui_watches
+            .watched()
+            .iter()
+            .any(|(seat, _)| *seat == id)
+        {
+            return Err(invalid(
+                "layout_owned: a window lays out this seat and owns its PTY size; resize the window with ctl app resize <cols>x<rows>",
+            ));
+        }
         let args = serde_json::json!({"seat":id,"generation":generation,"cols":cols,"rows":rows});
         self.ctl_journaled(op, "gui_resize", args, origin, |this| {
             this.seat_resize(id, generation, cols, rows)

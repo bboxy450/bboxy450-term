@@ -447,7 +447,8 @@ pub fn e2e_lines(checklist: &Checklist, group: Option<&str>) -> Result<Vec<Value
     let mut rows = projection.rows.iter().filter(|r| group.is_none_or(|g| r.promise.group == g)).map(|r| {
         json!({"kind":"e2e","function":r.promise.id,"group":r.promise.group,"status":r.status.as_str(),"fault":r.fault,
             "number":r.record.and_then(|r|r.number),"last_run":r.record.and_then(|r|r.last_run.as_deref()),
-            "run_by":r.record.and_then(|r|r.run_by.as_deref()),"tracked_tasks":r.tracking,"tracked_by":r.tracked_by})
+            "run_by":r.record.and_then(|r|r.run_by.as_deref()),"coverage":r.record.and_then(|r|r.coverage.as_deref()),
+            "partial":r.partial,"tracked_tasks":r.tracking,"tracked_by":r.tracked_by})
     }).collect::<Vec<_>>();
     let mut summary = value(&projection.summary);
     summary["kind"] = json!("summary");

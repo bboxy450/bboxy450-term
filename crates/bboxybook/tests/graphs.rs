@@ -7,7 +7,7 @@ fn graph_matrix_covers_each_live_card_and_the_empty_swarm() {
         cases.len(),
         (graphs::STATES.len() + graphs::E2E_STATES.len()) * 4 * 2
     );
-    assert_eq!(cases.iter().filter(|c| c.page == "e2e.html").count(), 48);
+    assert_eq!(cases.iter().filter(|c| c.page == "e2e.html").count(), 64);
     assert_eq!(graphs::legacy_cases().len(), 72);
     assert!(cases.iter().all(|c| {
         let p = CasePolicy::for_case(c).unwrap();

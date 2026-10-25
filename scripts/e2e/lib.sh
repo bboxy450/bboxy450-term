@@ -1,6 +1,6 @@
 # Shared helpers for the e2e promise scripts (e2e-acceptance §4a, #282). Each script drives
 # a running app through ctl only; its exit code is the verdict. The runner sets BBT (the
-# app binary), BBOXY_RUN_DIR, E2E_WORK (a private directory) and E2E_PIDS.
+# app binary), BBOXY_RUN_DIR, E2E_WORK (a private directory) and E2E_APP (the app's pid).
 set -u
 ctl() { "$BBT" ctl "$@"; }
 fail() { echo "FAIL: $*" >&2; exit 1; }
@@ -44,5 +44,6 @@ for k in sys.argv[2].split("."):
     d = d.get(k, "") if isinstance(d, dict) else ""
 print(d if not isinstance(d, (dict, list)) else json.dumps(d))' "$1" "$2"
 }
-# pid NAME: the app's current logic or supervisor process id, as the runner records it.
-pid() { python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]] or "")' "$E2E_PIDS" "$1"; }
+# pid NAME: the app's current logic or supervisor process id: the app's child running
+# `<binary> NAME`, read live, so a restarted one is found under its new pid.
+pid() { ps -axo pid=,ppid=,command= | awk -v app="$E2E_APP" -v name="$1" '$2 == app && $NF == name { print $1 }' | tail -1; }

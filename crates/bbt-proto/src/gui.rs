@@ -50,6 +50,9 @@ pub enum AppRequest {
     Status,
     /// Acknowledge the request before beginning orderly app shutdown.
     Stop,
+    /// Resize the window (offscreen or real) to this grid of terminal cells; its layout then
+    /// sizes every pane's PTY, as a drag of the window edge does.
+    Resize { cols: u16, rows: u16 },
 }
 
 /// Public app readiness. No process credential or endpoint capability belongs here.

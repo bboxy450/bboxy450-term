@@ -136,6 +136,8 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let mut generation = 0;
     let mut custody = "unknown".to_string();
     let mut dirty = false;
+    // The offscreen window's logical size; `ctl app resize` changes it.
+    let mut size = SIZE;
     let mut ready_sent = false;
     let mut closing = false;
     let mut closing_at: Option<Instant> = None;
@@ -194,7 +196,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         request,
                         prior_spawns,
                     } => {
-                        dirty |= app.begin_ui(id, request, SIZE, submitted, prior_spawns);
+                        dirty |= app.begin_ui(id, request, size, submitted, prior_spawns);
                     }
                     UiEvent::UiDeadline(id) => app.ui_deadline(id),
                     UiEvent::FocusFor(ask) => {
@@ -222,7 +224,12 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             dirty = true;
                         }
                     }
-                    UiEvent::App(live::AppEvent::Ask { id, request: _ }) => {
+                    UiEvent::App(live::AppEvent::Ask { id, request }) => {
+                        if let bbt_proto::gui::AppRequest::Resize { cols, rows } = request {
+                            size = crate::cell_grid_size(&model, cols, rows, 1.);
+                            gpu.resize([size[0] as u32, size[1] as u32]);
+                            dirty = true;
+                        }
                         let mut status = crate::app_status(
                             "headless",
                             unattended,
@@ -347,7 +354,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     }
                 }
                 if dirty && submitted == rendered {
-                    let layouts = app.solve_ui(SIZE)?;
+                    let layouts = app.solve_ui(size)?;
                     let (next, changed) = crate::pane_controls(
                         &model,
                         &app.pane_bounds,
@@ -380,18 +387,18 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     submitted += 1;
                     let wake = thread.clone();
                     let callbacks = callbacks.clone();
-                    let mut base = app.scene.paint(&layouts, SIZE, None, None);
+                    let mut base = app.scene.paint(&layouts, size, None, None);
                     if let Some(page) = &app.local_page_layout {
                         base.extend(page.paint());
                     }
                     let foreground = app.scene.foreground_with_document(
-                        SIZE,
+                        size,
                         app.launcher_layout.as_ref(),
                         None,
                         app.conversation_layout.as_ref(),
                         app.document_layout.as_ref(),
                     );
-                    let layout = app.ui_observe.then(|| app.ui_layout(SIZE, &layouts));
+                    let layout = app.ui_observe.then(|| app.ui_layout(size, &layouts));
                     gpu.draw_layers_notifying(
                         base,
                         foreground,

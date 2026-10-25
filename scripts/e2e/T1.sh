@@ -1,3 +1,4 @@
+# coverage: partial; missing: ⌘T on a Claude or Codex row (only zsh is spawned, by ctl); the seat opens within one frame; placements other than tab
 # T1: a new seat is a real PTY in a pane, named from the furry pool, in the chosen placement.
 # Headless: the launcher's ⌘T and "within one frame" need a window; the spawn is the same
 # GuiAction::Spawn the launcher issues, so placement, the PTY and the name are checked here.

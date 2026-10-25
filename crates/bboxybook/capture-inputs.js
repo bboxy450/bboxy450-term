@@ -282,13 +282,13 @@
           add('e2e/strip',node.querySelector('.e2e-strip'));
           [...node.querySelector('.e2e-strip').children].forEach((g,i)=>{add('e2e/strip/g'+i,g);[...g.children].forEach((n,j)=>add('e2e/strip/g'+i+'/c'+j,n));});
           add('e2e/counts',node.querySelector('.e2e-counts'));
-          [...node.querySelector('.e2e-counts').children].forEach(n=>{const status=['pass','fail','blocked','untested','manual'].find(s=>n.classList.contains(s)),key='e2e/counts/'+status;add(key,n);add(key+'/swatch',n.querySelector('i'));parts.push({...rawTextDiag(n.lastChild),key:key+'/label'});});
+          [...node.querySelector('.e2e-counts').children].forEach(n=>{const status=['pass','partial','fail','blocked','untested','manual'].find(s=>n.classList.contains(s)),key='e2e/counts/'+status;add(key,n);add(key+'/swatch',n.querySelector('i'));parts.push({...rawTextDiag(n.lastChild),key:key+'/label'});});
           [...node.querySelectorAll('.e2e-fault')].forEach((n,i)=>add('e2e/head/fault'+i,n,true));
           add('e2e/groups',node.querySelector('.e2e-groups'));
           [...node.querySelectorAll('.e2g')].forEach((g,i)=>{const k='e2e/g'+i,h=g.querySelector('.e2g-h');add(k,g);add(k+'/head',h);add(k+'/title',h.querySelector('b'),true);add(k+'/count',h.querySelector('.e2g-n'),true);const strip=h.querySelector('.e2s');add(k+'/strip',strip);[...strip.children].forEach((n,j)=>add(k+'/strip/c'+j,n));
             [...g.querySelectorAll('.e2r')].forEach((r,j)=>{const p=k+'/r'+j;add(p,r);for(const [name,cls]of [['id','e2id'],['mark','e2m'],['text','e2t'],['status','e2s-word'],['when','e2when'],['by','e2by']]){const n=r.querySelector('.'+cls);add(p+'/'+name,n,name!=='mark'&&!!n.textContent);}
               [...r.querySelectorAll('.e2task')].forEach((n,t)=>{add(p+'/task'+t,n);const d=textDiag(n),s=getComputedStyle(n),pad=[s.paddingTop,s.paddingRight,s.paddingBottom,s.paddingLeft].map(parseFloat),br=bounds(n);d.rect={x:br.x+pad[3],y:br.y+pad[0],w:br.w-pad[1]-pad[3],h:br.h-pad[0]-pad[2]};d.font_diagnostics.baseline-=pad[0];parts.push({...d,key:p+'/task'+t+'/text'});});
-              if(r.querySelector('.e2untr'))add(p+'/untracked',r.querySelector('.e2untr'),true);if(r.querySelector('.e2why'))add(p+'/reason',r.querySelector('.e2why'),true);
+              if(r.querySelector('.e2miss'))add(p+'/missing',r.querySelector('.e2miss'),true);if(r.querySelector('.e2untr'))add(p+'/untracked',r.querySelector('.e2untr'),true);if(r.querySelector('.e2why'))add(p+'/reason',r.querySelector('.e2why'),true);
             });
           });
         }

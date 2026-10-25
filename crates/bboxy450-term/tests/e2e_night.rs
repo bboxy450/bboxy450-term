@@ -12,10 +12,16 @@ use std::process::Command;
 #[test]
 fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
     let scripts = tempfile::tempdir().unwrap();
-    // T1 passes only if ctl reaches this promise's own app; T2 fails with its reason.
+    // T1 passes in full only if ctl reaches this promise's own app; T2 fails with its reason;
+    // T3 passes but says it proves only part of its promise (#316).
     std::fs::write(
         scripts.path().join("T1.sh"),
-        "\"$BBT\" ctl seat ls >/dev/null && [ -d \"$E2E_WORK\" ] && [ -f \"$E2E_PIDS\" ]\n",
+        "# coverage: full\n\"$BBT\" ctl seat ls >/dev/null && [ -d \"$E2E_WORK\" ] && kill -0 \"$E2E_APP\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        scripts.path().join("T3.sh"),
+        "# coverage: partial; missing: resizing a pane; no stale cells\nexit 0\n",
     )
     .unwrap();
     std::fs::write(
@@ -55,13 +61,15 @@ fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
                 .unwrap()
                 .contains("the fixture says no")
     }));
-    for id in ["T3", "T4", "T5", "T6", "T7", "T8", "T9"] {
+    assert_eq!(verdict("T3"), "pass");
+    for id in ["T4", "T5", "T6", "T7", "T8", "T9"] {
         assert_eq!(verdict(id), "untested", "{id}");
     }
     let summary = lines.last().unwrap();
     assert_eq!(summary["kind"], "summary");
     assert_eq!(summary["state"], "red");
-    assert_eq!(summary["passed"], 1);
+    assert_eq!(summary["passed"], 2);
+    assert_eq!(summary["partial"], serde_json::json!(["T3"]));
     assert_eq!(summary["total"], 9);
     assert_eq!(summary["unwritten"], serde_json::json!([]), "{lines:?}");
     assert_eq!(output.status.code(), Some(1), "red exits 1");
@@ -88,6 +96,17 @@ fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
         "signed: {first}"
     );
     assert!(record("T7").contains("status: untested"));
+    let full = record("T1");
+    assert!(full.contains("coverage: full"), "{full}");
+    let partial = record("T3");
+    for field in [
+        "status: pass",
+        "coverage: partial",
+        "- resizing a pane",
+        "- no stale cells",
+    ] {
+        assert!(partial.contains(field), "{field}: {partial}");
+    }
     // The failure got one fix task, open and unassigned, linked tracked-by; untested rows
     // keep the night red.
     let task = written.iter().find(|l| l["function"] == "T2").unwrap()["tracked_by"].clone();
@@ -96,11 +115,12 @@ fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
         first.contains(&format!("to: '[[{}]]'", task.as_str().unwrap())),
         "{first}"
     );
-    assert_eq!(summary["tracked"], serde_json::json!(["T2"]));
+    // The partial pass got its own task naming the missing assertions.
+    assert_eq!(summary["tracked"], serde_json::json!(["T2", "T3"]));
     assert!(
         written
             .iter()
-            .filter(|l| l["function"] != "T2")
+            .filter(|l| l["function"] != "T2" && l["function"] != "T3")
             .all(|l| l["tracked_by"].is_null())
     );
     // The next night updates the same records under their etag: same numbers, new run.
@@ -119,6 +139,9 @@ fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
     let tasks = std::fs::read_dir(records.path().join(".bboxy/tasks"))
         .unwrap()
         .count();
-    assert_eq!(tasks, 1, "one fix task across both nights");
+    assert_eq!(
+        tasks, 2,
+        "one fix task and one cover task across both nights"
+    );
     assert!(record("T2").contains("updated_by:"), "{}", record("T2"));
 }

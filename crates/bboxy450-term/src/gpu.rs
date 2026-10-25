@@ -666,6 +666,11 @@ impl VerificationFrame {
             adapter_info: self.renderer.context.adapter_info.clone(),
         })
     }
+    /// The offscreen target at a new size (`ctl app resize`); the next draw fills it.
+    pub fn resize(&mut self, size: [u32; 2]) {
+        self.target = texture(&self.renderer.context.device, size);
+        self.backdrop = texture(&self.renderer.context.device, size);
+    }
     pub fn draw(
         &mut self,
         ops: Vec<Paint>,

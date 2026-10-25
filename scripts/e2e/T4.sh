@@ -1,3 +1,4 @@
+# coverage: partial; missing: wide glyphs and emoji align to the grid (cell widths and continuations are not read); colours other than red
 # T4: real cells: colours, bold, italics, underline, wide glyphs and emoji on the grid; the
 # cursor shape follows the program.
 . "$(dirname "$0")/lib.sh"

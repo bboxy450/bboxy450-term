@@ -1,3 +1,4 @@
+# coverage: partial; missing: the app is killed and relaunched (only logic is killed); layout, focus and scroll positions are identical
 # T5: the app is killed and relaunched: every seat is on the same PTY and the program never
 # noticed. Headless: layout, focus and scroll positions are the window's and are not checked.
 . "$(dirname "$0")/lib.sh"

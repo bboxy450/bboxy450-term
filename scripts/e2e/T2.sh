@@ -1,3 +1,4 @@
+# coverage: partial; missing: the echo appears within one frame; the 100 kB paste compared in full (the script truncates the received copy, so extra bytes pass)
 # T2: typing reaches the program and echoes; a 100 kB paste arrives intact.
 . "$(dirname "$0")/lib.sh"
 seat=$(spawn_zsh) || fail "spawn refused"

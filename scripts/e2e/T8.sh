@@ -1,3 +1,4 @@
+# coverage: partial; missing: malformed/unapproved report rejection; reported grade drawn in the seat row
 # T8: OSC 7501 state shows as the reported grade; a silent seat shows idle, never invented.
 . "$(dirname "$0")/lib.sh"
 quiet=$(spawn_zsh) || fail "spawn refused"

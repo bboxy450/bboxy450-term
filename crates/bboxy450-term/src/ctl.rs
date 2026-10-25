@@ -85,6 +85,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   app endpoint                            the run directory, socket path and generation
   app start [--headless] [--ctl] [--run-dir DIR]
   app status                              actual backend, GUI, events and custody readiness
+  app resize <cols>x<rows>                the window (offscreen or real) to that cell grid
   app stop                                orderly shutdown through the admitted app relay
 Flags on every verb: --json (default) | --human, --op ULID (an idempotent retry), --as LABEL or
 BBOXY_CTL_ISSUER (who issues it, #269), --run-dir DIR or BBOXY_RUN_DIR, --endpoint FILE.
@@ -313,6 +314,11 @@ pub enum Command {
     },
     /// Read liveness through the attached GUI owner.
     AppStatus,
+    /// `app resize <cols>x<rows>`: the window to that grid of cells; the layout sizes panes.
+    AppResize {
+        cols: u16,
+        rows: u16,
+    },
     /// Stop through the authenticated app relay, never by PID.
     AppStop,
 }
@@ -369,6 +375,7 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("app", "endpoint", "-"),
     ("app", "start", "-"),
     ("app", "status", "App"),
+    ("app", "resize", "App"),
     ("app", "stop", "App"),
 ];
 /// The pre-grammar flat commands, kept one release as aliases (ctl-cli rev. 2, C-0).
@@ -780,6 +787,16 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             test_account: flag("test-account").map(PathBuf::from),
         },
         ["app", "status"] => Command::AppStatus,
+        ["app", "resize", size] => {
+            let (cols, rows) = size
+                .split_once('x')
+                .and_then(|(c, r)| Some((c.parse::<u16>().ok()?, r.parse::<u16>().ok()?)))
+                .filter(|&(c, r)| (2..=512).contains(&c) && (1..=256).contains(&r))
+                .ok_or(format!(
+                    "{USAGE_PREFIX}app resize: COLSxROWS, 2-512 by 1-256, not {size}"
+                ))?;
+            Command::AppResize { cols, rows }
+        }
         ["app", "stop"] => Command::AppStop,
         ["capture", path] => Command::Capture {
             path: std::path::absolute(path).map_err(|e| format!("capture {path}: {e}"))?,
@@ -896,6 +913,8 @@ pub struct Client {
     capability: [u8; 32],
     /// `--op`: the id the next effect uses, for an idempotent retry (#266 rule 1).
     pub op: Option<Ulid>,
+    /// The identity logic announced on admission (its verified custody label).
+    pub identity: Option<bbt_proto::gui::GuiIdentity>,
 }
 impl Client {
     pub fn connect(endpoint: &Endpoint) -> Result<Self, String> {
@@ -912,6 +931,7 @@ impl Client {
             writer: stream,
             capability: endpoint.capability,
             op: None,
+            identity: None,
         })
     }
     /// The id for the next action: `--op` once, then fresh ones.
@@ -962,6 +982,9 @@ impl Client {
         }
         loop {
             let reply = self.reply()?;
+            if let GuiReply::Identity(identity) = &reply {
+                self.identity = Some(identity.clone());
+            }
             if let GuiReply::Error { op: failed, reason } = &reply
                 && (op == Some(*failed) || failed.is_nil())
             {
@@ -1219,9 +1242,12 @@ impl Client {
                 cols,
                 rows,
             },
-            |r| matches!(r, GuiReply::Ok { .. }),
+            // Resize carries no op id, so the door tags its reply, and a refusal, with an op
+            // of its own: this one-request client takes whichever comes next.
+            |r| matches!(r, GuiReply::Ok { .. } | GuiReply::Error { .. }),
         )? {
             GuiReply::Ok { op } => Ok(op),
+            GuiReply::Error { reason, .. } => Err(reason),
             _ => unreachable!(),
         }
     }
@@ -1640,6 +1666,7 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
         | Command::AppEndpoint
         | Command::AppStart { .. }
         | Command::AppStatus
+        | Command::AppResize { .. }
         | Command::AppStop => {
             return Err(format!(
                 "{USAGE_PREFIX}this verb has no flat form; use the noun-verb grammar"
@@ -1786,6 +1813,13 @@ pub fn classify(reason: &str) -> Fail {
             "endpoint_unavailable",
             "start a native or headless app owner with --ctl",
             4,
+        );
+    }
+    if reason.starts_with("layout_owned") {
+        return fail(
+            "layout_owned",
+            "ctl app resize <cols>x<rows> resizes the window; its layout sizes each pane",
+            1,
         );
     }
     if reason.starts_with("app endpoint unavailable:") {
@@ -2002,6 +2036,10 @@ fn run_verb(
         Command::UiFocus(seat) => {
             let seat = resolve(&client.seats()?, &seat)?.record.id;
             serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::Focus { seat })?)
+                .map_err(|e| e.to_string())?
+        }
+        Command::AppResize { cols, rows } => {
+            serde_json::to_value(client.app(bbt_proto::gui::AppRequest::Resize { cols, rows })?)
                 .map_err(|e| e.to_string())?
         }
         Command::AppStatus => serde_json::to_value(client.app(bbt_proto::gui::AppRequest::Status)?)
@@ -2668,6 +2706,7 @@ mod tests {
             "seat resize s 80x24",
             "app start --headless --ctl",
             "app status",
+            "app resize 100x30",
             "app stop",
         ];
         assert_eq!(

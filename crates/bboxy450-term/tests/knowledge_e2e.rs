@@ -117,7 +117,7 @@ fn one_signed_corpus_drives_the_screen_and_ctl_projection_through_changes() {
     for (i, promise) in canonical.iter().enumerate() {
         fixture.write(&format!("e2e/{}.md", promise.id), json!({
             "id":Ulid(100+i as u128).to_string(),"type":"e2e","function":promise.id,"group":promise.group,
-            "title":promise.text,"status":if promise.id=="T1" {"fail"}else if promise.id=="S3" {"manual"}else{"pass"},
+            "title":promise.text,"status":if promise.id=="T1" {"fail"}else if promise.id=="S3" {"manual"}else{"pass"},"coverage":"full",
             "last_run":"2026-10-24T03:12:00Z","run_by":"seat:fixture",
             "links":if promise.id=="T1" {json!([{"to":"[[#1]]","rel":"tracked-by"}])}else{json!([])}
         }));
@@ -237,7 +237,7 @@ fn observer_coalesces_wakes_stops_when_hidden_and_refuses_previous_epoch_replies
         fixture.write(
             &format!("e2e/{}.md", promise.id),
             json!({
-                "type":"e2e", "function":promise.id, "status":"pass"
+                "type":"e2e", "function":promise.id, "status":"pass", "coverage":"full"
             }),
         );
     }

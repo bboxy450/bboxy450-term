@@ -77,6 +77,7 @@ mod tests {
                 function: p.id.clone(),
                 status: "pass".into(),
                 run_by: Some("seat:fixture".into()),
+                coverage: Some("full".into()),
                 ..Default::default()
             })
             .collect();

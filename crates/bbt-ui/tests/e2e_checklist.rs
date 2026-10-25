@@ -69,6 +69,7 @@ fn checklist(status: &str) -> Checklist {
             status: status.into(),
             last_run: Some("2026-10-24T03:12:00Z".into()),
             run_by: Some("seat:worker".into()),
+            coverage: Some("full".into()),
             ..Default::default()
         }],
         tasks: vec![],
@@ -266,4 +267,33 @@ fn canonical_order_is_preserved_and_duplicate_promises_are_visible() {
     let out = view.project();
     assert_eq!(out.summary.tone, Tone::Red);
     assert_eq!(out.rows[0].fault.as_deref(), Some("duplicate promise T1"));
+}
+
+/// Decision #316: a pass is green only when it covers its whole promise. A pass without
+/// `coverage: full` is partial (`unstated` when it names no gap): amber while an open task
+/// tracks it, red when none does.
+#[test]
+fn a_partial_pass_is_amber_when_tracked_and_red_when_not() {
+    let mut view = checklist("pass");
+    view.records[0].coverage = Some("partial".into());
+    view.records[0].missing = vec!["the one-frame bound".into()];
+    let out = view.project();
+    assert_eq!(out.rows[0].partial, vec!["the one-frame bound".to_owned()]);
+    assert_eq!((out.summary.partial, out.summary.partial_untracked), (1, 1));
+    assert_eq!(out.summary.tone, Tone::Red);
+
+    tracking(&mut view, "open");
+    let out = view.project();
+    assert_eq!(out.summary.tone, Tone::Amber);
+    assert_eq!(out.rows[0].tracked_by, vec!["#312".to_owned()]);
+
+    let mut unstated = checklist("pass");
+    unstated.records[0].coverage = None;
+    let out = unstated.project();
+    assert_eq!(out.rows[0].partial, vec!["unstated".to_owned()]);
+    assert_eq!(
+        out.summary.tone,
+        Tone::Red,
+        "a pass that does not say full is partial"
+    );
 }

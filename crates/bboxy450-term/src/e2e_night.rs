@@ -1,14 +1,13 @@
 //! `bboxy450-term e2e night [--group G]`: the unattended e2e runner (#282, e2e-acceptance
-//! §4a). It starts its own app with no window in a throwaway run directory, so no operator
-//! account, Keychain or display is touched, and runs one deterministic ctl script per
+//! §4a). It starts the headless app (`ctl app start --headless`, on a throwaway test account)
+//! in a throwaway run directory, so no operator account, Keychain or display is touched,
+//! and runs one deterministic ctl script per
 //! promise (`scripts/e2e/<group>/<ID>.sh`); a script's exit code is the verdict, never an
 //! agent's self-report. Exit 0 only when every promise passed, 1 with the red rows named.
 #![allow(
     clippy::disallowed_methods,
     reason = "the runner is its own CLI process; it has no UI thread"
 )]
-use crate::cockpit::{Config, Event, Session};
-use bbt_proto::{GuiAction, GuiReply};
 use serde_json::{Value, json};
 use std::{
     io::Write,
@@ -24,7 +23,7 @@ pub const USAGE: &str =
     "usage: bboxy450-term e2e night [--group GROUP] [--scripts DIR] [--records REPO]
 Starts a windowless app in a throwaway run directory with ctl on and, for every promise of
 the group in e2e-acceptance §1 (default terminal), runs scripts/e2e/<ID>.sh against it (BBT,
-BBOXY_RUN_DIR, E2E_WORK and E2E_PIDS set). Then one more app on REPO (default a throwaway
+BBOXY_RUN_DIR, E2E_WORK and E2E_APP, the app's pid, set). Then one more app on REPO (default a throwaway
 repository) writes each promise's e2e record, .bboxy/e2e/<ID>.md, through `record write`:
 created when missing, its status, last_run, run_by and result updated. Prints one JSON line
 per promise (pass, fail, or untested when it has no script), one per record write and a
@@ -79,10 +78,16 @@ async fn night(
     let mut red = Vec::new();
     let mut total = 0;
     let mut verdicts = Vec::new();
+    let mut partial = Vec::new();
     for (id, script) in scripts {
         total += 1;
         // Each promise gets its own app and run directory: one script's damage (a killed
         // logic, a lost test identity) never decides another's verdict.
+        let cover = if script.is_file() {
+            coverage(script)
+        } else {
+            (false, vec![])
+        };
         let (verdict, exit, tail) = if script.is_file() {
             match promise(&root.join(id), script, &executable).await {
                 Ok((exit, tail)) => (if exit == Some(0) { "pass" } else { "fail" }, exit, tail),
@@ -97,26 +102,31 @@ async fn night(
         };
         if verdict != "pass" {
             red.push(id.clone());
+        } else if !cover.0 {
+            partial.push(id.clone());
         }
         println!(
             "{}",
             json!({ "kind": "e2e", "group": group, "function": id, "verdict": verdict,
-                "exit": exit, "evidence": tail })
+                "exit": exit,
+                "coverage": script.is_file().then_some(if cover.0 { "full" } else { "partial" }),
+                "missing": cover.1, "evidence": tail })
         );
-        verdicts.push((id.clone(), verdict, tail));
+        verdicts.push((id.clone(), verdict, tail, cover));
     }
     // The records app: its own throwaway identity, after every promise's damage is done, so
     // a script that kills logic never costs another promise its record.
     let repository = records.unwrap_or_else(|| root.join("records"));
     let (unwritten, tracked) =
         write_records(&root.join("records-app"), &repository, group, verdicts).await;
-    // Amber (e2e acceptance §4a): every row that did not pass is a failure an open task
-    // tracks. An untested row or an unwritten record stays red.
+    // Green only when every promise passed in full (#316); amber when every other row is a
+    // failure or a partial pass an open task tracks; an untested row, an untracked failure or
+    // partial, or an unwritten record is red.
     let state = if !unwritten.is_empty() {
         "red"
-    } else if red.is_empty() {
+    } else if red.is_empty() && partial.is_empty() {
         "green"
-    } else if red.iter().all(|id| tracked.contains(id)) {
+    } else if red.iter().chain(&partial).all(|id| tracked.contains(id)) {
         "amber"
     } else {
         "red"
@@ -124,8 +134,8 @@ async fn night(
     println!(
         "{}",
         json!({ "kind": "summary", "group": group, "state": state,
-            "passed": total - red.len(), "total": total, "red": red, "tracked": tracked,
-            "unwritten": unwritten })
+            "passed": total - red.len(), "total": total, "red": red, "partial": partial,
+            "tracked": tracked, "unwritten": unwritten })
     );
     Ok(state != "red")
 }
@@ -136,7 +146,7 @@ async fn write_records(
     root: &Path,
     repository: &Path,
     group: &str,
-    verdicts: Vec<(String, &'static str, String)>,
+    verdicts: Vec<Verdict>,
 ) -> (Vec<String>, Vec<String>) {
     let functions: Vec<String> = verdicts.iter().map(|(id, ..)| id.clone()).collect();
     let app = match App::start(root, repository).await {
@@ -155,8 +165,15 @@ async fn write_records(
         let now = crate::ctl::utc_now();
         let mut unwritten = Vec::new();
         let mut tracked = Vec::new();
-        for (id, verdict, tail) in verdicts {
-            let row = match upsert(&mut client, &group, &id, verdict, &tail, &now, &issued_by) {
+        for (id, verdict, tail, cover) in verdicts {
+            let run = Run {
+                verdict,
+                tail: &tail,
+                now: &now,
+                issued_by: &issued_by,
+                cover: &cover,
+            };
+            let row = match upsert(&mut client, &group, &id, &run) {
                 Ok((record, task)) => {
                     if task.is_some() {
                         tracked.push(id.clone());
@@ -201,15 +218,60 @@ async fn write_records(
 /// updated under the fetched etag. The result is the verdict and the evidence's last line.
 /// A failure no open task tracks gets one (`task create`), linked `tracked-by`; returns the
 /// write result and the open task that tracks a failure.
+/// A promise's id, verdict, evidence tail and coverage (full, else the missing assertions).
+type Verdict = (String, &'static str, String, (bool, Vec<String>));
+
+/// One promise's night, as its record is written.
+struct Run<'a> {
+    verdict: &'a str,
+    tail: &'a str,
+    now: &'a str,
+    issued_by: &'a str,
+    /// The script's coverage header: full, else the assertions it leaves out (#316).
+    cover: &'a (bool, Vec<String>),
+}
+
+/// A script's `# coverage:` header (#316): `full`, or `partial; missing: a; b`. No header,
+/// or a partial one that names no gap, is partial with the gap `unstated`: fail closed.
+fn coverage(script: &Path) -> (bool, Vec<String>) {
+    let text = std::fs::read_to_string(script).unwrap_or_default();
+    let header = text
+        .lines()
+        .find_map(|line| line.strip_prefix("# coverage:"))
+        .map(str::trim);
+    if header.is_some_and(|h| h.split_whitespace().next() == Some("full")) {
+        return (true, vec![]);
+    }
+    let missing: Vec<String> = header
+        .and_then(|h| h.split_once("missing:"))
+        .map(|(_, list)| {
+            list.split(';')
+                .map(str::trim)
+                .filter(|item| !item.is_empty())
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_default();
+    if missing.is_empty() {
+        (false, vec!["unstated".into()])
+    } else {
+        (false, missing)
+    }
+}
+
 fn upsert(
     client: &mut crate::ctl::Client,
     group: &str,
     id: &str,
-    verdict: &str,
-    tail: &str,
-    now: &str,
-    issued_by: &str,
+    run: &Run<'_>,
 ) -> Result<(Value, Option<String>), String> {
+    let Run {
+        verdict,
+        tail,
+        now,
+        issued_by,
+        cover: (full, missing),
+    } = *run;
     let path = format!("e2e/{id}.md");
     let last = tail.lines().last().unwrap_or_default();
     let result: String = format!("{verdict}: {last}").chars().take(240).collect();
@@ -237,11 +299,15 @@ fn upsert(
         ("last_run", json!(now)),
         ("run_by", json!(issued_by)),
         ("result", json!(result)),
+        ("coverage", json!(if *full { "full" } else { "partial" })),
+        ("missing", json!(missing)),
     ] {
         frontmatter[key] = value;
     }
     let mut tracked = None;
-    if verdict == "fail" {
+    // A failure, and a pass that proves only part of its promise, each need an open task.
+    let partial = verdict == "pass" && !*full;
+    if verdict == "fail" || partial {
         let links = frontmatter["links"].as_array().cloned().unwrap_or_default();
         for link in links.iter().filter(|l| l["rel"] == "tracked-by") {
             let target = link["to"].as_str().unwrap_or_default();
@@ -259,13 +325,30 @@ fn upsert(
             }
         }
         if tracked.is_none() {
+            let (title, brief) = if partial {
+                (
+                    format!("Cover e2e {id}: missing {}", missing.join("; ")),
+                    format!(
+                        "ROLE: EXECUTOR. scripts/e2e/{id}.sh passes but proves only part of \
+                         promise {id} ([[e2e-acceptance]] §1, decision #316); its record is \
+                         [[{path}]]. Assert the rest, then set its header to `# coverage: full`. \
+                         Missing:\n\n- {}\n",
+                        missing.join("\n- ")
+                    ),
+                )
+            } else {
+                (
+                    format!("Fix e2e {id}: the night failed it"),
+                    format!(
+                        "ROLE: EXECUTOR. The e2e night failed promise {id} \
+                         ([[e2e-acceptance]] §1); its record is [[{path}]].\n\nEvidence:\n\n```\n{tail}\n```"
+                    ),
+                )
+            };
             let task = client.record_write(crate::ctl::task_create(
-                &format!("Fix e2e {id}: the night failed it"),
+                &title,
                 &format!("sh scripts/e2e/{id}.sh"),
-                Some(&format!(
-                    "ROLE: EXECUTOR. The e2e night failed promise {id} \
-                     ([[e2e-acceptance]] §1); its record is [[{path}]].\n\nEvidence:\n\n```\n{tail}\n```"
-                )),
+                Some(&brief),
             ))?;
             let task = task["record"]["id"].as_str().unwrap_or_default().to_owned();
             let mut links = links;
@@ -291,7 +374,7 @@ async fn promise(
         executable,
         &app.run,
         &root.join("work"),
-        &app.pids,
+        app.pid,
         &app.issued_by,
     )
     .await;
@@ -302,13 +385,14 @@ async fn promise(
     Ok((exit, tail))
 }
 
-/// A windowless app with ctl on, its run directory under `root`, kept alive by `pump`.
+/// A windowless app in its own run directory, started as the operator would start one:
+/// `ctl app start --headless --ctl --unattended --test-account` (U1 on U0), so captures,
+/// status and recovery are the real owner's, and stopped through `ctl app stop`, never by
+/// pid. `pid` is the app's own process, the parent of its logic and supervisor.
 struct App {
     run: PathBuf,
-    pids: PathBuf,
+    pid: u32,
     issued_by: String,
-    stop: tokio::sync::oneshot::Sender<()>,
-    pump: tokio::task::JoinHandle<Result<(), String>>,
 }
 
 impl App {
@@ -317,77 +401,91 @@ impl App {
         for dir in [&root.join("zsh-config"), &root.join("work"), repository] {
             std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
         }
-        let session = Session::start(Config {
-            executable: std::env::current_exe().map_err(|e| e.to_string())?,
-            socket: run.join("mux.sock"),
-            run_dir: run.clone(),
-            repository: repository.to_path_buf(),
-            shell_config: Some(root.join("zsh-config")),
-            ctl: true,
-            test_account: Some(root.join("account")),
+        let account = root.join("account");
+        let started = ctl(&run, repository, &root.join("zsh-config"))
+            .args([
+                "app",
+                "start",
+                "--headless",
+                "--ctl",
+                "--unattended",
+                "--test-account",
+            ])
+            .arg(&account)
+            .output()
+            .await
+            .map_err(|e| format!("ctl app start: {e}"))?;
+        let reply: Value = String::from_utf8_lossy(&started.stdout)
+            .lines()
+            .find_map(|line| serde_json::from_str(line).ok())
+            .unwrap_or_default();
+        let Some(pid) = reply["data"]["pid"].as_u64().map(|pid| pid as u32) else {
+            return Err(format!(
+                "the app did not start: {}{}",
+                String::from_utf8_lossy(&started.stdout).trim(),
+                String::from_utf8_lossy(&started.stderr).trim()
+            ));
+        };
+        // The verified label logic announces on admission names the run's test account.
+        let endpoint = run.join(bbt_mux::ctl_door::ENDPOINT);
+        let label = tokio::task::spawn_blocking(move || {
+            let mut client = crate::ctl::Client::connect(&crate::ctl::Endpoint::read(&endpoint)?)?;
+            client.seats()?;
+            Ok::<_, String>(client.identity.and_then(|identity| identity.reason))
         })
         .await
-        .map_err(|e| format!("the app did not start: {e}"))?;
-        let issued_by = session.endpoint.identity.reason.clone().unwrap_or_default();
-        if !issued_by.starts_with("test-account:") {
-            let _ = session.shutdown().await;
-            return Err("the night app has no verified test-account label".into());
-        }
-        let pids = root.join("pids.json");
-        let (stop, stopped) = tokio::sync::oneshot::channel::<()>();
+        .map_err(|e| e.to_string())?;
         let app = Self {
-            pump: tokio::spawn(pump(session, pids.clone(), stopped)),
             run,
-            pids,
-            issued_by,
-            stop,
+            pid,
+            issued_by: String::new(),
         };
-        let deadline = Instant::now() + Duration::from_secs(30);
-        while !app.run.join(bbt_mux::ctl_door::ENDPOINT).exists() {
-            if Instant::now() > deadline {
+        match label {
+            Ok(Some(label)) if label.starts_with("test-account:") => Ok(Self {
+                issued_by: label,
+                ..app
+            }),
+            other => {
                 let _ = app.stop().await;
-                return Err("the app never opened ctl".into());
+                Err(format!(
+                    "the night app has no verified test-account label: {other:?}"
+                ))
             }
-            tokio::time::sleep(Duration::from_millis(100)).await;
         }
-        Ok(app)
     }
 
     async fn stop(self) -> Result<(), String> {
-        let _ = self.stop.send(());
-        self.pump.await.map_err(|e| e.to_string())?
+        let stopped = ctl(&self.run, &self.run, &self.run)
+            .args(["app", "stop"])
+            .output()
+            .await
+            .map_err(|e| format!("ctl app stop: {e}"))?;
+        if stopped.status.success() {
+            Ok(())
+        } else {
+            Err(format!(
+                "ctl app stop: {}{}",
+                String::from_utf8_lossy(&stopped.stdout).trim(),
+                String::from_utf8_lossy(&stopped.stderr).trim()
+            ))
+        }
     }
 }
 
-/// Keeps the windowless app alive: drains its events (so logic and supervisor recovery
-/// run), answers a capture with "no window" at once, and keeps the current process ids in
-/// `pids` for the scripts that kill them (T5, T6).
-async fn pump(
-    mut session: Session,
-    pids: PathBuf,
-    mut stopped: tokio::sync::oneshot::Receiver<()>,
-) -> Result<(), String> {
-    loop {
-        let ids = json!({ "logic": session.logic.id(), "supervisor": session.supervisor.id() });
-        let _ = std::fs::write(&pids, ids.to_string());
-        tokio::select! {
-            _ = &mut stopped => break,
-            event = tokio::time::timeout(Duration::from_millis(500), session.event()) => {
-                if let Ok(Ok(Event::Reply(reply))) = event
-                    && let GuiReply::CaptureAsk { op, .. } = *reply
-                {
-                    let _ = session
-                        .send(GuiAction::Captured {
-                            id: op,
-                            error: Some("the e2e runner is headless: no window to capture".into()),
-                            frame: Default::default(),
-                        })
-                        .await;
-                }
-            }
-        }
-    }
-    session.shutdown().await.map_err(|e| e.to_string())
+/// `bboxy450-term ctl --run-dir RUN …` from `cwd` (the app's repository on start), stdin
+/// closed, with the throwaway zsh configuration the app's seats inherit.
+fn ctl(run: &Path, cwd: &Path, zdotdir: &Path) -> tokio::process::Command {
+    let mut command = tokio::process::Command::new(
+        std::env::current_exe().unwrap_or_else(|_| "bboxy450-term".into()),
+    );
+    command
+        .arg("ctl")
+        .arg("--run-dir")
+        .arg(run)
+        .current_dir(cwd)
+        .env("ZDOTDIR", zdotdir)
+        .stdin(Stdio::null());
+    command
 }
 
 /// Runs one promise's script with stdin closed; returns its exit code (None when it was
@@ -397,7 +495,7 @@ async fn run_script(
     executable: &Path,
     run: &Path,
     work: &Path,
-    pids: &Path,
+    app: u32,
     issued_by: &str,
 ) -> (Option<i32>, String) {
     let log = work.join("output.log");
@@ -412,7 +510,7 @@ async fn run_script(
         .env("BBT", executable)
         .env("BBOXY_RUN_DIR", run)
         .env("E2E_WORK", work)
-        .env("E2E_PIDS", pids)
+        .env("E2E_APP", app.to_string())
         .env("BBOXY_CTL_ISSUER", issued_by)
         .stdin(Stdio::null())
         .stdout(file)
