@@ -19,7 +19,7 @@ macro_rules! phases {
 }
 phases! {
     AboutToWait, Resumed, UserWake, UserStallPoll, UserOther,
-    WindowRedraw, WindowKeyboard, WindowPointer, WindowOther,
+    WindowRedraw, WindowPointer, WindowOther,
     UiDrain, UiLatestTake, UiProjection, UiSeatRows, UiOldModelDrop,
     TicklessRedraw, ModelBuild, PanePrepare, GuiReceive, GuiApply,
     ModelPublish, LatestPublish, IoOldModelDrop,

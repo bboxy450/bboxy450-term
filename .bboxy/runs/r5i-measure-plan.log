@@ -29,3 +29,6 @@ Verification: counter/off-path and marker tests; controlled real GUI socket rece
 proof and the existing synthetic headless fixture with memory custody; strict workspace Clippy;
 workspace tests and default invariants; exact clean normal atomic CI. No 967
 attempt. Rook owns the subsequent measured attempt.
+
+Callback kinds: window redraw, pointer and other; key events remain inside the
+one existing adapter and are covered by the complete WindowOther callback.

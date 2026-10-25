@@ -25,7 +25,6 @@ pub fn window_callback(event: &winit::event::WindowEvent) -> bbt_rt::diagnostics
     use winit::event::WindowEvent;
     callback(match event {
         WindowEvent::RedrawRequested => Phase::WindowRedraw,
-        WindowEvent::KeyboardInput { .. } | WindowEvent::Ime(_) => Phase::WindowKeyboard,
         WindowEvent::MouseInput { .. }
         | WindowEvent::MouseWheel { .. }
         | WindowEvent::CursorMoved { .. } => Phase::WindowPointer,
