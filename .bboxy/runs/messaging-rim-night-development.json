@@ -1,0 +1,777 @@
+{
+  "raw_root": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/messaging-night-20261025T072116",
+  "binary": {
+    "source": "4b21ec34064b81bb62b8ea36dab3849a8cab0ce4",
+    "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/messaging-night-20261025T072116/current-4b21ec34/bin/bboxy450-term",
+    "sha256": "687b5297439c7f896540e3de02a76d4bbcdde2ab7406c75a58601558876377ba"
+  },
+  "checks": {
+    "corrected-rim": {
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec4/target/messaging-night/debug/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "rim, swell and attention",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/messaging-night-20261025T072116/corrected-rim-scripts"
+      ],
+      "exit": 1,
+      "started": "2026-10-25T15:35:54.242368+00:00",
+      "elapsed_s": 12.5262656249688,
+      "log_sha256": "39abeab1aca81ac91efd43c971988b7da54003133414f19fb9515b82d8a346fb"
+    },
+    "current-binary-build": {
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "bboxy450-term",
+        "--locked"
+      ],
+      "exit": 0,
+      "started": "2026-10-25T15:01:39.810065+00:00",
+      "elapsed_s": 79.97327445895644,
+      "log_sha256": "79c8a5b3d37f38f2d751c9003e71a1fa4d81018b83ca40f67c73f552e64f7f8b"
+    },
+    "current-messaging": {
+      "command": [
+        "scratchpad/messaging-night-20261025T072116/current-4b21ec34/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "messaging and tasks",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/messaging-night-20261025T072116/current-4b21ec34/messaging-scripts"
+      ],
+      "exit": 1,
+      "started": "2026-10-25T15:03:20.159304+00:00",
+      "elapsed_s": 16.085149792023003,
+      "log_sha256": "c44a6d10e92348b4c5af46688176c776b5edb7e4be0caeb96ec4cc6fca5f13cc"
+    },
+    "current-rim": {
+      "command": [
+        "scratchpad/messaging-night-20261025T072116/current-4b21ec34/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "rim, swell and attention",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/messaging-night-20261025T072116/current-4b21ec34/rim-scripts"
+      ],
+      "exit": 1,
+      "started": "2026-10-25T15:02:59.932044+00:00",
+      "elapsed_s": 9.967026708996855,
+      "log_sha256": "691bfdbd3e3f843455866503b0abbcfad76e71a4f68ca32333d9fd6e2e2d5976"
+    },
+    "final-binary-build": {
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "bboxy450-term",
+        "--locked"
+      ],
+      "exit": 0,
+      "started": "2026-10-25T15:33:00.434897+00:00",
+      "elapsed_s": 72.45488991698949,
+      "log_sha256": "b7b80d2fbd2cedc63919e5a9be03952cd29130fb2845626c953041e8284c794c"
+    },
+    "final-clippy": {
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "bbt-doc",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "started": "2026-10-25T15:37:13.227999+00:00",
+      "elapsed_s": 3.2453848749864846,
+      "log_sha256": "50ef1d01c01cdf8b12bfa0f274cb03a70b756dd023c7ca38a8b0e39bcf248a81"
+    },
+    "final-corpus": {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-doc",
+        "--locked",
+        "--test",
+        "corpus"
+      ],
+      "exit": 0,
+      "started": "2026-10-25T15:37:11.772588+00:00",
+      "elapsed_s": 1.4219162089866586,
+      "log_sha256": "de4626f4348a2615c4be6c9206ec043d132968b1b9725f51358f0c8975d12389"
+    },
+    "final-invariants": {
+      "command": [
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "exit": 0,
+      "started": "2026-10-25T15:37:16.513072+00:00",
+      "elapsed_s": 336.3887910839985,
+      "log_sha256": "4165a0e02e88bb7390bdacb74db5594fb6901915d08626feda289d19dc4205c0"
+    },
+    "merged-binary-build": {
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "bboxy450-term",
+        "--locked"
+      ],
+      "exit": 0,
+      "started": "2026-10-25T15:35:13.656246+00:00",
+      "elapsed_s": 29.88406958396081,
+      "log_sha256": "8b97b2cb6a7d2571c2a4c91ebb91c8b2acff0cd6cd05a70a0da8a714adb96416"
+    },
+    "precheck-clippy": {
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "bbt-doc",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "started": "2026-10-25T14:50:29.381516+00:00",
+      "elapsed_s": 5.398235208005644,
+      "log_sha256": "e27f497528269afc42469bf09a242620f630fbb31e9d149b75b3e983c689397b"
+    },
+    "precheck-corpus": {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-doc",
+        "--locked",
+        "--test",
+        "corpus"
+      ],
+      "exit": 0,
+      "started": "2026-10-25T14:45:55.676512+00:00",
+      "elapsed_s": 22.81530075002229,
+      "log_sha256": "5411f069c9c5323e2ad86dbd815cd742c9fa78edbce9a52158069d5a75ae3662"
+    },
+    "precheck-invariants": {
+      "command": [
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "exit": 0,
+      "started": "2026-10-25T14:50:46.050854+00:00",
+      "elapsed_s": 620.720260040951,
+      "log_sha256": "cdfd56e337cc73e59480f5ba26d89a460927cba2e762f6ba9ff4ebe77303634f"
+    },
+    "prototype-inbox": {
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "messaging and tasks",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/messaging-night-20261025T072116/scripts"
+      ],
+      "exit": 1,
+      "started": "2026-10-25T14:23:47.165900+00:00",
+      "elapsed_s": 17.710872249968816,
+      "log_sha256": "94a78e836ccf6ac538e46dfe3e3277252f63849ceeaa50823a0e4de807569793"
+    },
+    "prototype-messaging-group": {
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "messaging and tasks",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/messaging-night-20261025T072116/scripts"
+      ],
+      "exit": 1,
+      "started": "2026-10-25T14:22:09.395557+00:00",
+      "elapsed_s": 14.037612333020661,
+      "log_sha256": "82d26daa5ee535cd2f33440318322874a6694113b09410a36ba8d0f4e976eb6a"
+    },
+    "prototype-messaging": {
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "messaging",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/messaging-night-20261025T072116/scripts"
+      ],
+      "exit": 2,
+      "started": "2026-10-25T14:21:29.699672+00:00",
+      "elapsed_s": 0.1389407910173759,
+      "log_sha256": "104cf45fa57aac2578c766a352fd8e2c957584502e781a44b1ad52731568eea4"
+    },
+    "prototype-r2-navigation": {
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "rim, swell and attention",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/messaging-night-20261025T072116/r2-scripts"
+      ],
+      "exit": 1,
+      "started": "2026-10-25T14:39:03.727856+00:00",
+      "elapsed_s": 4.416555707983207,
+      "log_sha256": "6ee572da1239432c627e66a8e66475ca0257c28accdd7de072f57784d7c6c417"
+    },
+    "prototype-r2": {
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "rim, swell and attention",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/messaging-night-20261025T072116/r2-scripts"
+      ],
+      "exit": 1,
+      "started": "2026-10-25T14:36:53.315220+00:00",
+      "elapsed_s": 2.9858960419660434,
+      "log_sha256": "062dcca898d0495baff448c9911c8bea106aba21f1f59aa2243aa1feabe808b7"
+    },
+    "r4-isolated-idle": {
+      "command": [
+        "scratchpad/messaging-night-20261025T072116/current-4b21ec34/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "rim, swell and attention",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/messaging-night-20261025T072116/r4-split-scripts"
+      ],
+      "exit": 1,
+      "started": "2026-10-25T15:08:19.864146+00:00",
+      "elapsed_s": 7.3730003330274485,
+      "log_sha256": "9945832d7967ce456c0b21587de8f69e7baeca181d780053248b3745e4e444dd"
+    },
+    "r4-split-idle": {
+      "command": [
+        "scratchpad/messaging-night-20261025T072116/current-4b21ec34/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "rim, swell and attention",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/messaging-night-20261025T072116/r4-split-scripts"
+      ],
+      "exit": 1,
+      "started": "2026-10-25T15:05:41.014553+00:00",
+      "elapsed_s": 7.550448291993234,
+      "log_sha256": "4bbe2503676835401a3d7f8d34104bfbec32b87c0140caa47c7790c18a455126"
+    },
+    "r4-split": {
+      "command": [
+        "scratchpad/messaging-night-20261025T072116/current-4b21ec34/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "rim, swell and attention",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/messaging-night-20261025T072116/r4-split-scripts"
+      ],
+      "exit": 1,
+      "started": "2026-10-25T15:04:47.663598+00:00",
+      "elapsed_s": 22.107922624971252,
+      "log_sha256": "fd05888d69dace8c14472ef59a0d828507de3360fc63ff5552aa860f045af9d9"
+    }
+  },
+  "artifacts": {
+    "current-4b21ec34/artifacts/M1/01M5SSCWN9188TE04PAJE4WGQ5-mcp.json": {
+      "bytes": 1855,
+      "sha256": "027767791e35f0e2044cfa68461942ea57793bca6b6aad849c4c274101feb375"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCWN9188TE04PAJE4WGQ5-request.json": {
+      "bytes": 509,
+      "sha256": "fbfc6fc6638b4be1e42f68b2a88cd15a0b3431052722d6dab219577f384f9b69"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCX8RC270BY69RZC35DS2.public.der": {
+      "bytes": 44,
+      "sha256": "3faa8d82d98982543b395dfa0547c7dddc2cd883a78b39f23ac3fbc908161dd5"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCX8RC270BY69RZC35DS2.signature": {
+      "bytes": 64,
+      "sha256": "2b79453a1b76555fc1e69187045e5c1c643465d1a7ada05b2f4314bb071f6bdb"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCX8RC270BY69RZC35DS2.signed-bytes": {
+      "bytes": 734,
+      "sha256": "d278f5832417c3d068d848e805e268c28989dfd9d124f2e08e2f8f07957b757c"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCXAAFJ35DA5FKVT4SQJ6.public.der": {
+      "bytes": 44,
+      "sha256": "3faa8d82d98982543b395dfa0547c7dddc2cd883a78b39f23ac3fbc908161dd5"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCXAAFJ35DA5FKVT4SQJ6.signature": {
+      "bytes": 64,
+      "sha256": "7e837272bee8ea243a399eb3b032efb54958b2a0567b665f76d0ea8bc4496164"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCXAAFJ35DA5FKVT4SQJ6.signed-bytes": {
+      "bytes": 715,
+      "sha256": "30540163bedf07cd176fefa0d7cc00151eda69655c7917895b6f4cf1c91f77ed"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCXC6NQ42EWAABNYTBJ89.public.der": {
+      "bytes": 44,
+      "sha256": "3faa8d82d98982543b395dfa0547c7dddc2cd883a78b39f23ac3fbc908161dd5"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCXC6NQ42EWAABNYTBJ89.signature": {
+      "bytes": 64,
+      "sha256": "2de2d125248f8a849c2af93c5d0e4bbae5502caf80d9566d94848c4730ce52fe"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCXC6NQ42EWAABNYTBJ89.signed-bytes": {
+      "bytes": 734,
+      "sha256": "4d8c6339295701f81b530fab410364f060c6ff7f40dbeecf8e8a467d03b0f914"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCXPFVD35QWDN8T2WCV19-mcp.json": {
+      "bytes": 8481,
+      "sha256": "647017d8574fcedb6a1b90b71ee1f32356666f0ed876c11df93bad031017f096"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCXPFVD35QWDN8T2WCV19-request.json": {
+      "bytes": 87,
+      "sha256": "d6236b1771ac646946aa9d3b6f4f4256e06730a6259164fe15ec068b186d3257"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCY1X4EM9FKF01R90J3Q7-mcp.json": {
+      "bytes": 1409,
+      "sha256": "49a16ae6fab2497f531fe9102232f03d5406bc938c768158eb63cf1e4d3cd868"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCY1X4EM9FKF01R90J3Q7-request.json": {
+      "bytes": 225,
+      "sha256": "a12115e9315b8bfacca3962a45cc420821456d165bd6408b62ce4583691f5f6e"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCYDHADBTPN1417D89EJB-mcp.json": {
+      "bytes": 11866,
+      "sha256": "73ce52f543b5c2a4697cb8697cac22726b9fbc9c302957bc196ed79e8bd43361"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCYDHADBTPN1417D89EJB-request.json": {
+      "bytes": 87,
+      "sha256": "a05a7e30d0b1f925dde3db56822dca51e0a7d15942364f9668d19bb2c5f9a830"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCYSKY1PQTCN7Z0E8E4TH-mcp.json": {
+      "bytes": 1855,
+      "sha256": "4eae1a4c85356328b0657dfec49e382cd9d07b8c93562b8ee879459343e2d55d"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCYSKY1PQTCN7Z0E8E4TH-request.json": {
+      "bytes": 337,
+      "sha256": "0f2a6f007286e88ba862c9b8ed4763dc6613c2d39e044a4c35b77187cbc0822b"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCZMAF5DN128N900MS7XY-mcp.json": {
+      "bytes": 5124,
+      "sha256": "1ccef6993bfb91fc1e4d63c3b7829aaae5c837347ac190514cd36e43edf92291"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSCZMAF5DN128N900MS7XY-request.json": {
+      "bytes": 87,
+      "sha256": "42b2a807e593aa25d7d7199835972bd184e022d13b5d2ef6768caa291a010e20"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSD01W2YTQ48FZVDJR4F1Q-mcp.json": {
+      "bytes": 963,
+      "sha256": "0cef36cb2b6e97e33aa89c879dd0fc77fcac0694e6dc35e06c7b761531e32d57"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSD01W2YTQ48FZVDJR4F1Q-request.json": {
+      "bytes": 113,
+      "sha256": "ccef5b468ba17c81b4d27826db314eefdf652c1de77a6e2ac6661a7353f4ef59"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSD0FP0K9RRMYYTPR29T4Q-mcp.json": {
+      "bytes": 1967,
+      "sha256": "035fefd8d4c49d1a6456e10472bd3ea5536d16eddbedb8fdd6eed3e04ac1cf73"
+    },
+    "current-4b21ec34/artifacts/M1/01M5SSD0FP0K9RRMYYTPR29T4Q-request.json": {
+      "bytes": 87,
+      "sha256": "47ed2f6718d86aeca8c3891aa02da15836c0a45f0b6981a6f1d0a026a48732bb"
+    },
+    "current-4b21ec34/artifacts/M1/m1-result.json": {
+      "bytes": 600,
+      "sha256": "c358d63aed0870f97040b4969a7a2ecc15f9dd7055bfdc7f8277c9889841a833"
+    },
+    "current-4b21ec34/artifacts/M1/message-calls.jsonl": {
+      "bytes": 242452,
+      "sha256": "314cafa60e36014a4f07fbe2465857912fcde3343d692ad1027611f44c654fa2"
+    },
+    "current-4b21ec34/artifacts/M1/output.log": {
+      "bytes": 129,
+      "sha256": "8464c04394a13a95e836b039c44990693a6e52be3c2c02d27f04d62f1ea1ef22"
+    },
+    "current-4b21ec34/artifacts/M2/m2-unavailable.json": {
+      "bytes": 286,
+      "sha256": "48485144ec77c6f1d500e09a8dcabbf99cf2302cb68edf3521a100a73f68541b"
+    },
+    "current-4b21ec34/artifacts/M2/message-calls.jsonl": {
+      "bytes": 82224,
+      "sha256": "1dd5e9e974eb902784a2218d0e6992b6605360c0346dcf59713bb25a4fd9baf1"
+    },
+    "current-4b21ec34/artifacts/M2/output.log": {
+      "bytes": 669,
+      "sha256": "9167d948b0e2249e0b1ab5673e5855d0bbc4c38f2d0eb85a9640dab779ed1e60"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD3HB7KVMP2851M6DXH67-mcp.json": {
+      "bytes": 1409,
+      "sha256": "e2004e0af3836806baa1240b053194795d845a67958869056813210dc80a09e7"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD3HB7KVMP2851M6DXH67-request.json": {
+      "bytes": 310,
+      "sha256": "878f66c2d7ae811e101932aad8e9df7c979bf60195dfe7c439f1a47f3b8d70c4"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD4655VRZRNKR91ZNPHE6-mcp.json": {
+      "bytes": 1409,
+      "sha256": "971bd62dc0fdfaba15fed4bc294d62d0877528812e7fbb33e5e68732b5431861"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD4655VRZRNKR91ZNPHE6-request.json": {
+      "bytes": 314,
+      "sha256": "bebec8e228f6cdc0824ea60884e6b0727b4e30ed3edeefa702dc06cf4a3e6255"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD4W7JRJSQ4ED75AA4VD5-mcp.json": {
+      "bytes": 963,
+      "sha256": "abcedd88bb59c9baad646cd9124901005be8fcab5920979eff9f970ee2c61757"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD4W7JRJSQ4ED75AA4VD5-request.json": {
+      "bytes": 157,
+      "sha256": "ecb12f7003e0f4ba9a135fdc4e15b8dc101fcf896fe6640b58821fea93a1cf2e"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD5VZ74ET6BC5TB59N5MC-mcp.json": {
+      "bytes": 3851,
+      "sha256": "250bd41b68fb5b480716983d661848a70cc5a3234c4c9291fa680fd94c83f4f8"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD5VZ74ET6BC5TB59N5MC-request.json": {
+      "bytes": 169,
+      "sha256": "d7e0ad77b95e9ae99650538fd3b9b2e1d3d38ba36918bee1136415bd70db4ec5"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD69MYAQRDDWFHWJCS310-mcp.json": {
+      "bytes": 3851,
+      "sha256": "8823e5100a63daf5f2cea338282032e3e39e39dba69d52bd982786557c6db54c"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD69MYAQRDDWFHWJCS310-request.json": {
+      "bytes": 169,
+      "sha256": "7e4a5c8d2c422b52ddc01b13df630d1006519b9ebf179a0b153f32ecc9c64644"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD6QGA8SVWN80WNZ555BE-mcp.json": {
+      "bytes": 3843,
+      "sha256": "3c25349b6e2636010869e336dda84053eaad170b251e3cc7c17cc6879771d8eb"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD6QGA8SVWN80WNZ555BE-request.json": {
+      "bytes": 169,
+      "sha256": "e31842236c0dbb1c839011bf14c3cbb32d48e1b67f087a5922ac0f6d04e1d6cc"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD76EQANG9F3F5QZWJM2G-mcp.json": {
+      "bytes": 3843,
+      "sha256": "a8edbb3ce25418b0d1716133b1930d7fe0ed4b2293f85cebca0efaef748067f3"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD76EQANG9F3F5QZWJM2G-request.json": {
+      "bytes": 169,
+      "sha256": "5dc88cc3ca06d9af313e462a37981bd5d422ef75b164fd8573eaee5a40078534"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD8BZ6BK2XM9AMCZZQMV1-mcp.json": {
+      "bytes": 28883,
+      "sha256": "03512f4970322004c16f485cbc6dea3325afc6714a4948fbcb6883e10438a40e"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD8BZ6BK2XM9AMCZZQMV1-request.json": {
+      "bytes": 87,
+      "sha256": "ef26caece807f9bfdab56dae7a67ce1485409ad4a529805dbca39f449a0e5525"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD8R9KTRBMC7WQV4KSQ1W-mcp.json": {
+      "bytes": 2301,
+      "sha256": "c68b2277fa6963affb8d1a2b9186e6479c6b8a4ba15fb5e4711cb2b244ddc39a"
+    },
+    "current-4b21ec34/artifacts/M6/01M5SSD8R9KTRBMC7WQV4KSQ1W-request.json": {
+      "bytes": 449,
+      "sha256": "9d93315a56d59f14387d10f469b8f9d2fd2745a2081397ef59930c2b7f9736e4"
+    },
+    "current-4b21ec34/artifacts/M6/m6-result.json": {
+      "bytes": 453,
+      "sha256": "b8000b8056dc3f10460476da4b9a71243470789897c8f1c7f5f62f52f57c4c2b"
+    },
+    "current-4b21ec34/artifacts/M6/message-calls.jsonl": {
+      "bytes": 286450,
+      "sha256": "604c27a467498ed3e39bf12e55ae9ce25ba15aeb77853d6ec6e8b52b59dc1dfb"
+    },
+    "current-4b21ec34/artifacts/M6/output.log": {
+      "bytes": 196,
+      "sha256": "4ab79e21ca49119dd91a151bb4486b84b54a388c0878e5b094cbaeb42735c43e"
+    },
+    "current-4b21ec34/artifacts/R2/output.log": {
+      "bytes": 118,
+      "sha256": "58818472a4ab79ef6b3574986cd9df64157c51a714caf9417b1892e32263c5a2"
+    },
+    "current-4b21ec34/artifacts/R2/r2-layout-2.jsonl": {
+      "bytes": 25342,
+      "sha256": "a33cc0e5413ea7366a90add37d8d7a09488ff6d29cd8285491a48f7fae32bb97"
+    },
+    "current-4b21ec34/artifacts/R2/r2-layout-4.jsonl": {
+      "bytes": 25343,
+      "sha256": "fe6e6320e889a97d7f190fd3a9574a238e6d676492ad2edc793f07b2f019b95a"
+    },
+    "current-4b21ec34/artifacts/R2/r2-layout-8.jsonl": {
+      "bytes": 25343,
+      "sha256": "3db7bbbf17b43f7e38ec865df50e629be5b9ed37f6ae9d08f38403852392ae12"
+    },
+    "current-4b21ec34/artifacts/R2/r2-result.json": {
+      "bytes": 610028,
+      "sha256": "838811efc1aadb8c16713dc96cd0054090b9a41be692b41f659b70f2a38ade65"
+    },
+    "current-4b21ec34/artifacts/R2/r2-rim-2.jsonl": {
+      "bytes": 316,
+      "sha256": "f08768c752c14188d286cab1130bc6b557747957c833d4e97fce19b6dc1dfc6e"
+    },
+    "current-4b21ec34/artifacts/R2/r2-rim-2.png": {
+      "bytes": 107463,
+      "sha256": "e145ca32ee1af70d99c4912cd90e00648b994b7c12cdcfbf7f67860c5b4756c0"
+    },
+    "current-4b21ec34/artifacts/R2/r2-rim-4.jsonl": {
+      "bytes": 317,
+      "sha256": "e84fca31301ea790b362a5ce9f404e98f7390289c438ba5055ed72e403e7aef7"
+    },
+    "current-4b21ec34/artifacts/R2/r2-rim-4.png": {
+      "bytes": 127409,
+      "sha256": "e2b60c1f37ad4829c455680f1d691e376a065376c44e130926b9e3672da94a75"
+    },
+    "current-4b21ec34/artifacts/R2/r2-rim-8.jsonl": {
+      "bytes": 317,
+      "sha256": "1b5edacc7841c236c16c3ff1f0f3bd6bdaf896e547d8712c8261e6204deebc6f"
+    },
+    "current-4b21ec34/artifacts/R2/r2-rim-8.png": {
+      "bytes": 125673,
+      "sha256": "ee1dacc0ee9c2f9f2b52797e4b5d8318c14cf3b95560443539dc825484428a16"
+    },
+    "current-4b21ec34/artifacts/R2/r2-settings-2.jsonl": {
+      "bytes": 32138,
+      "sha256": "93ac16e0e16fd3d6fa0d8e37e1e0b580bda092dd7cd74496d611df2e5b1ed3a7"
+    },
+    "current-4b21ec34/artifacts/R2/r2-settings-4.jsonl": {
+      "bytes": 32138,
+      "sha256": "5dd6f4e7e81f3b999fe71d5fc4b7341d73fa0305fc885829c73a034f871f6294"
+    },
+    "current-4b21ec34/artifacts/R2/r2-settings-8.jsonl": {
+      "bytes": 32139,
+      "sha256": "96a72c7d8c1f6520450823f9c2d31634168c62c84e61b6cc8b206bb635ebd563"
+    },
+    "current-4b21ec34/artifacts/R4/output.log": {
+      "bytes": 505,
+      "sha256": "6d0c2edd8a625da39c9ae3a314c3a0360d3e54b290ddaec4db2874454be2af97"
+    },
+    "current-4b21ec34/artifacts/R4/r4-clock-f3c739fb/commands.json": {
+      "bytes": 1584565,
+      "sha256": "087fd868aa7c12a646e59a43301cc15218c494182cebeb21a915f4c43f5a400a"
+    },
+    "current-4b21ec34/artifacts/R4/r4-clock-f3c739fb/manifest.json": {
+      "bytes": 654,
+      "sha256": "72f6b6a24b6898b85710392e6e36aa797c7b04343217b2668ab37a0dc2f193ed"
+    },
+    "current-4b21ec34/artifacts/R4/r4-clock-f3c739fb/row-tab-alive.png": {
+      "bytes": 91828,
+      "sha256": "cefee48e474c931304f689074c818f209c8aee3d97a7afd2eb5ba8bcefcfe29d"
+    },
+    "current-4b21ec34/artifacts/R4/r4-clock-f3c739fb/row-tab-rest.png": {
+      "bytes": 91763,
+      "sha256": "2db589edd67a765f5c205db6fb1862d550fe3c2d30c43881194905b4182b9503"
+    },
+    "r4-split-not-idle-artifacts/output.log": {
+      "bytes": 1095,
+      "sha256": "a81fa60b25ad696a80f45c3d5969525225541f7ad20da1ff6aecbc155d9f16d3"
+    },
+    "r4-split-not-idle-artifacts/r4-clock-7d3714ec/commands.json": {
+      "bytes": 751603,
+      "sha256": "05de916a591534f362ed175564ba2bf4c67655533c90df04e4bca0049259518f"
+    },
+    "r4-split-not-idle-artifacts/r4-clock-7d3714ec/manifest.json": {
+      "bytes": 375,
+      "sha256": "3a4e3d197b142fa798eeb5edd81a588f7a18c8ffde1288e5a93afb52e891a6ae"
+    },
+    "r4-split-shadow-artifacts/output.log": {
+      "bytes": 513,
+      "sha256": "8c6e53f259930380d18bb086704ad248cc3737fd4f5bc7bd7985be4eaa32e6c9"
+    },
+    "r4-split-shadow-artifacts/r4-clock-00cb8293/commands.json": {
+      "bytes": 2498404,
+      "sha256": "8f57d4bd81692800f5c8ed2765f445f03a168a99c2e558e2df4f81349bfb206f"
+    },
+    "r4-split-shadow-artifacts/r4-clock-00cb8293/manifest.json": {
+      "bytes": 656,
+      "sha256": "1fbe6d32470401592d177f96f4f16ae5037f539ec825f969c1c6caa9fecaa4b0"
+    },
+    "r4-split-shadow-artifacts/r4-clock-00cb8293/row-tab-alive.png": {
+      "bytes": 101426,
+      "sha256": "09bd1ec042e3f054dd1ff92332f5dd096cabd5d86202b3766bc7af9881ca7c98"
+    },
+    "r4-split-shadow-artifacts/r4-clock-00cb8293/row-tab-rest.png": {
+      "bytes": 101241,
+      "sha256": "5128946a54e9bdbbb18f6905a0fe1829e7def57925a1b870f670678863fc62c1"
+    },
+    "r4-unsaved-focus-artifacts/output.log": {
+      "bytes": 513,
+      "sha256": "8c6e53f259930380d18bb086704ad248cc3737fd4f5bc7bd7985be4eaa32e6c9"
+    },
+    "r4-unsaved-focus-artifacts/r4-clock-ce1ee38c/commands.json": {
+      "bytes": 2498404,
+      "sha256": "0c4454371b25345a6b36b1abd27adfe5025cd015f391aafaf9cb03133de09054"
+    },
+    "r4-unsaved-focus-artifacts/r4-clock-ce1ee38c/manifest.json": {
+      "bytes": 656,
+      "sha256": "32c6bcc99a680bf9c4ed173f30d0b46db3ebaada617311ae80a0983779fce064"
+    },
+    "r4-unsaved-focus-artifacts/r4-clock-ce1ee38c/row-tab-alive.png": {
+      "bytes": 100815,
+      "sha256": "9ca783db2147c11b8527b56bc306a3ebd840edf13dfc9f10b47fd5d55a0dfa00"
+    },
+    "r4-unsaved-focus-artifacts/r4-clock-ce1ee38c/row-tab-rest.png": {
+      "bytes": 100476,
+      "sha256": "67c3acd3db2f1b158dc94b1a8dbcfa4b52bc2b49309d82a2ad43464c17e69963"
+    },
+    "corrected-rim-artifacts/R2/output.log": {
+      "bytes": 118,
+      "sha256": "58818472a4ab79ef6b3574986cd9df64157c51a714caf9417b1892e32263c5a2"
+    },
+    "corrected-rim-artifacts/R2/r2-layout-2.jsonl": {
+      "bytes": 25342,
+      "sha256": "658a307b9c37c983323920ecc5d2a1fc18ad2bad75f85b754fcda91ce38516ee"
+    },
+    "corrected-rim-artifacts/R2/r2-layout-4.jsonl": {
+      "bytes": 25343,
+      "sha256": "a4d4f18826fc2ae588dc55011085e97fc54c08503b1aaf637450c3e63eaa893b"
+    },
+    "corrected-rim-artifacts/R2/r2-layout-8.jsonl": {
+      "bytes": 25343,
+      "sha256": "2a42898448852b72c9d5a0c9978548c9e4b783cab8c5958316f8182c03abb3d3"
+    },
+    "corrected-rim-artifacts/R2/r2-result.json": {
+      "bytes": 610160,
+      "sha256": "3801a22b01cbfb07ceb42035d0e7a02c2cedafb27cc4fdb76beb5ef7536021d8"
+    },
+    "corrected-rim-artifacts/R2/r2-rim-2.jsonl": {
+      "bytes": 316,
+      "sha256": "039809a44132313a255c1c540b9a5b450c40957b67fc573ddccda4950deadf89"
+    },
+    "corrected-rim-artifacts/R2/r2-rim-2.png": {
+      "bytes": 110706,
+      "sha256": "1fd25d8812482a60d13b623fb4fb91d73db0d6e7d0d21f25a83846fa4eeebe8d"
+    },
+    "corrected-rim-artifacts/R2/r2-rim-4.jsonl": {
+      "bytes": 317,
+      "sha256": "27d5bd91234b48d6b170406c1c9c5e882030b2774b41650a9bdef642ccf4cd59"
+    },
+    "corrected-rim-artifacts/R2/r2-rim-4.png": {
+      "bytes": 124543,
+      "sha256": "fa885da7791e3b11696f76a1eda12205e72a5f5247bc5be44a3ecc3a9d1d0ee1"
+    },
+    "corrected-rim-artifacts/R2/r2-rim-8.jsonl": {
+      "bytes": 317,
+      "sha256": "4b0f343f6ffe78eafeefa0858b8909e46a9fe920ca4afaf3227555671f63b379"
+    },
+    "corrected-rim-artifacts/R2/r2-rim-8.png": {
+      "bytes": 129958,
+      "sha256": "d56b4bcc2f6603bbc564dc6ea9c72f03f29d4603129945ebe6b0e9377d3e08c4"
+    },
+    "corrected-rim-artifacts/R2/r2-settings-2.jsonl": {
+      "bytes": 32098,
+      "sha256": "2206a3beae39c4445c7bdc1caa562a133ac5a8dcb01526f891fcf19057306011"
+    },
+    "corrected-rim-artifacts/R2/r2-settings-4.jsonl": {
+      "bytes": 32098,
+      "sha256": "594a54121c9530cbf4168399700708907a4e600a358f9ac0d9b9253fd8d9d22a"
+    },
+    "corrected-rim-artifacts/R2/r2-settings-8.jsonl": {
+      "bytes": 32099,
+      "sha256": "91a6e411e691a8468d70daeee708d960afeda8aaca068e5c6f2c28e04378e62f"
+    },
+    "corrected-rim-artifacts/R4/output.log": {
+      "bytes": 128,
+      "sha256": "4f0bf86ab0d16fac0ac62da882bfefdc29c6460a0e39e36b30be87a176aad4d5"
+    },
+    "corrected-rim-artifacts/R4/r4-clock-a48a5b10/commands.json": {
+      "bytes": 3722352,
+      "sha256": "dd4d94f007f3f637ecf5bc3613ea414ec7dd310a5dd7a471716dd98d67171efc"
+    },
+    "corrected-rim-artifacts/R4/r4-clock-a48a5b10/idle-focus-origin.png": {
+      "bytes": 116487,
+      "sha256": "ada7fae693b98aedac3aa098d19d237aa1f21619daec04db47ed284a61168070"
+    },
+    "corrected-rim-artifacts/R4/r4-clock-a48a5b10/idle-focus-peak.png": {
+      "bytes": 167639,
+      "sha256": "f14ac44d72e14f136771508f97eeba967778d74fc074e1cc8361586e52a19a23"
+    },
+    "corrected-rim-artifacts/R4/r4-clock-a48a5b10/idle-focus-settled.png": {
+      "bytes": 114284,
+      "sha256": "a24ec9776d17e17681313ccc7d4ff0730228d8a13c7de575efae3c93cd0ae703"
+    },
+    "corrected-rim-artifacts/R4/r4-clock-a48a5b10/manifest.json": {
+      "bytes": 1087,
+      "sha256": "2827d6d4b2184216adc8c48ed4959af6b46d3c981e5f50626e219d00fed08961"
+    },
+    "corrected-rim-artifacts/R4/r4-clock-a48a5b10/row-tab-alive.png": {
+      "bytes": 126494,
+      "sha256": "44cc4c0417943f668b8d24f5de72f04f9372fab4130617322cf73d3e146e606b"
+    },
+    "corrected-rim-artifacts/R4/r4-clock-a48a5b10/row-tab-rest.png": {
+      "bytes": 127005,
+      "sha256": "fe75fbb87e7e176f62628c0aa7e775b876410c06f04c0a1e4670baece5e78b91"
+    },
+    "corrected-rim-artifacts/R4/r4-clock-a48a5b10/verdict.json": {
+      "bytes": 2038,
+      "sha256": "1c57d6eb409ec15cb4880308358dfab96fd0261d2e7a7d56e8da7f26fe3df832"
+    }
+  },
+  "R4_current": {
+    "script_exit": 0,
+    "coverage": "partial",
+    "missing": [
+      "cards carry the rim and the swell out of the box"
+    ],
+    "active_rim_pixels": [
+      213,
+      225
+    ],
+    "independent_swell_pixels": [
+      832,
+      16
+    ],
+    "geometry_unchanged": true,
+    "settled_at_ms": 900,
+    "verdict": "corrected-rim-artifacts/R4/r4-clock-a48a5b10/verdict.json"
+  },
+  "successful_rim_binary": {
+    "source": "fbc1a50584d68f9770cd83f919abe3b3bfa11c29",
+    "sha256": "1a71f56b587bca8736db6c4e0b39d352a713a175d37e2e5fb2152be2f8211e4a",
+    "build": "merged-binary-build.status.json"
+  },
+  "R2_current": {
+    "script_exit": 0,
+    "coverage": "full",
+    "all_four_insets": true,
+    "rim_sizes": [
+      2,
+      4,
+      8
+    ]
+  },
+  "source_files": {
+    "scripts/e2e/M1.sh": "4ac7d9f3191900a2f84f4c67fb38ac6f0da0915348aee4b2281c2ccc9c4cb0a1",
+    "scripts/e2e/M2.sh": "9d755b3ca9cefbd435b4655f7d4434ca051f1055343d0c840078439bb5daa92f",
+    "scripts/e2e/M6.sh": "9e4903d88a5c1e89ba070a231cece24cbb62fb1008b46191e6e45d2ff2e6e68d",
+    "scripts/e2e/R2.sh": "05ebfcfcf5d88c84421702fdbd0441f6753daff5fe7f2a6fb732969ef8a427a0",
+    "scripts/e2e/R4.sh": "2c6b641e985366c6aa4f819e0dcd25813be99d5465f827753f4c76b5bb5ef616",
+    "scripts/e2e/message_agent.py": "a588c6efa2505a42d92799b44ef3272a4d666528e2cd57f37f1033fd84f872dc",
+    "scripts/e2e/messaging.py": "2a25e17ec011ff8b311921a0a98aca38b75d1fc870a4f0155d79318c2295a190",
+    "scripts/e2e/rim_more.py": "ac46db80757990c1136e88a30973b4f55c6b96858138992b5084c4196e63a2fe",
+    "scripts/e2e/rim_clock.py": "d47df4d6c3f44243a65a188b333756cc28d2591d7b645434b3451077de98a425"
+  },
+  "precheck_summary": {
+    "corpus": "6/0, exit0",
+    "scoped_strict_clippy": "bbt-doc all-targets exit0",
+    "default_invariants": "26checks/0failures/8slow skipped, exit0"
+  }
+}
