@@ -1662,6 +1662,197 @@ async fn ctl_task_create_opens_an_unassigned_operator_task() {
     session.shutdown().await.unwrap();
 }
 
+/// M4 through the real operator door: report evidence is retained, accept preserves the
+/// existing verification refusals, and replaying an operation never repeats its effect.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ctl_task_transitions_preserve_verification_and_operation_identity() {
+    let root = tempfile::tempdir().unwrap();
+    let root = root.path().canonicalize().unwrap();
+    let (session, run, seat) = noun_verb_fixture(&root).await;
+    let call = |args: &[&str], exit: i32| -> Value {
+        let (code, out, err) = ctl_raw(&run, &root, args);
+        let reply: Value = serde_json::from_str(out.trim()).unwrap_or_else(|e| {
+            panic!("ctl {args:?}: invalid JSON: {e}; stdout={out}; stderr={err}")
+        });
+        assert_eq!(code, Some(exit), "ctl {args:?}: {reply}; {err}");
+        assert_eq!(reply["ok"], exit == 0, "{reply}");
+        reply
+    };
+    let create = |title: &str| -> String {
+        let created = call(&["task", "create", title, "--verify", "true"], 0);
+        let number = created["data"]["record"]["number"].as_u64().unwrap();
+        let handle = format!("#{number}");
+        call(&["task", "delegate", &handle, &seat], 0);
+        handle
+    };
+    let status = |handle: &str| -> Value {
+        let reply = call(&["task", "status", handle], 0);
+        assert_eq!(
+            (&reply["noun"], &reply["verb"]),
+            (&json!("task"), &json!("status"))
+        );
+        reply["data"]["item"].clone()
+    };
+    let handle = create("M4 verification fixture");
+    let initial = status(&handle);
+    assert_eq!(initial["metadata"]["status"], "claimed");
+    for locator in [
+        initial["id"].as_str().unwrap(),
+        initial["path"].as_str().unwrap(),
+    ] {
+        assert_eq!(status(locator), initial);
+    }
+    for (command, exit, reason) in [
+        (
+            "different command",
+            0,
+            "verify_result command does not match task verify",
+        ),
+        (
+            "true",
+            9,
+            "verify_result exit_code is 9; acceptance requires 0",
+        ),
+    ] {
+        let verification = json!({"command":command,"exit_code":exit,"evidence":[]}).to_string();
+        let reported = call(
+            &[
+                "task",
+                "report",
+                &handle,
+                "--summary",
+                "invalid proof",
+                "--verify-result",
+                &verification,
+            ],
+            0,
+        );
+        assert_eq!(reported["data"]["kind"], "applied");
+        let before = status(&handle);
+        assert_eq!(before["metadata"]["status"], "reported");
+        let op = bbt_mux::Ulid::new().to_string();
+        let args = ["task", "accept", &handle, "--op", &op];
+        let refused = call(&args, 1);
+        assert_eq!(refused["op"], op);
+        assert_eq!(refused["error"]["kind"], "refused");
+        assert_eq!(refused["error"]["message"], format!("rejected: {reason}"));
+        assert!(!refused["error"]["hint"].as_str().unwrap().is_empty());
+        assert_eq!(call(&args, 1), refused);
+        assert_eq!(status(&handle), before, "a refused accept changed the task");
+    }
+
+    let verification = json!({"command":"true","exit_code":0,"evidence":[
+        {"criterion":"M4","reference":"private fixture: exit 0"}
+    ]})
+    .to_string();
+    let report_op = bbt_mux::Ulid::new().to_string();
+    let report = [
+        "task",
+        "report",
+        &handle,
+        "--summary",
+        "single final proof",
+        "--commit",
+        "0123456789012345678901234567890123456789",
+        "--verify-result",
+        &verification,
+        "--op",
+        &report_op,
+    ];
+    let reported = call(&report, 0);
+    assert_eq!(reported["op"], report_op);
+    let before = status(&handle);
+    assert_eq!(call(&report, 0), reported);
+    assert_eq!(status(&handle), before, "a replay duplicated the report");
+    let metadata = &before["metadata"];
+    assert_eq!(
+        metadata["verify_result"],
+        serde_json::from_str::<Value>(&verification).unwrap()
+    );
+    assert_eq!(metadata["report"]["op_id"], report_op);
+    assert!(
+        metadata["report"]["reported_by"]
+            .as_str()
+            .unwrap()
+            .starts_with("operator:")
+    );
+    assert_eq!(
+        before["body"]
+            .as_str()
+            .unwrap()
+            .matches("single final proof")
+            .count(),
+        1
+    );
+    let conflict = call(
+        &[
+            "task",
+            "report",
+            &handle,
+            "--summary",
+            "changed retry",
+            "--op",
+            &report_op,
+        ],
+        1,
+    );
+    assert_eq!(conflict["error"]["kind"], "op_id_reused");
+    assert_eq!(status(&handle), before);
+
+    let accept_op = bbt_mux::Ulid::new().to_string();
+    let accept = ["task", "accept", &handle, "--op", &accept_op];
+    let accepted = call(&accept, 0);
+    assert_eq!(accepted["data"]["kind"], "applied");
+    let after = status(&handle);
+    assert_eq!(after["metadata"]["status"], "accepted");
+    assert_eq!(call(&accept, 0), accepted);
+    assert_eq!(status(&handle), after);
+    let refused = call(&["task", "accept", &handle], 1);
+    assert_eq!(
+        refused["error"]["message"],
+        "rejected: task must be reported before acceptance"
+    );
+    assert_eq!(
+        status(&handle),
+        after,
+        "accept must take effect exactly once"
+    );
+
+    let rejected_task = create("M4 rejection fixture");
+    call(
+        &[
+            "task",
+            "report",
+            &rejected_task,
+            "--summary",
+            "no verification supplied",
+        ],
+        0,
+    );
+    assert!(
+        status(&rejected_task)["metadata"]
+            .get("verify_result")
+            .is_none()
+    );
+    let reject_op = bbt_mux::Ulid::new().to_string();
+    let reject = [
+        "task",
+        "reject",
+        &rejected_task,
+        "--reason",
+        "missing evidence",
+        "--op",
+        &reject_op,
+    ];
+    let rejected = call(&reject, 0);
+    let after = status(&rejected_task);
+    assert_eq!(after["metadata"]["status"], "rejected");
+    assert_eq!(after["metadata"]["rejection"]["reason"], "missing evidence");
+    assert_eq!(call(&reject, 0), rejected);
+    assert_eq!(status(&rejected_task), after);
+    session.shutdown().await.unwrap();
+}
+
 /// `seat restart`: a live zsh seat's process stops and its next generation starts, the
 /// committed screen restored (or its gap marked) and a fresh shell answering.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
