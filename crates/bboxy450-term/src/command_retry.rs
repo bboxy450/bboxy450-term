@@ -58,6 +58,7 @@ mod tests {
     use std::time::Duration;
 
     #[tokio::test]
+    #[allow(clippy::disallowed_methods)] // The test macro owns a runtime; UI delivery never blocks.
     async fn capacity_is_reserved_once_and_stale_events_release_it() {
         let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
         let (wake, mut wakes) = tokio::sync::mpsc::unbounded_channel();
@@ -98,6 +99,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::disallowed_methods)] // The test macro owns a runtime; UI delivery never blocks.
     async fn a_closed_receiver_wakes_delivery_once_without_polling() {
         let (sender, receiver) = tokio::sync::mpsc::channel(1);
         let (wake, mut wakes) = tokio::sync::mpsc::unbounded_channel();
@@ -116,6 +118,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::disallowed_methods)] // The test macro owns a runtime; UI delivery never blocks.
     async fn busy_delivery_resumes_in_fifo_order_without_a_frame_or_poll() {
         use std::collections::VecDeque;
         let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
