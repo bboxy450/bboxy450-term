@@ -592,6 +592,22 @@ impl Native {
         &mut self,
         frames: u64,
         callbacks: u64,
+        pending: bool,
+        hz: f64,
+    ) -> Result<Option<Report>, String> {
+        // Headless has no native dirty-source producer or UI output queues.
+        self.poll_with_wakes(
+            frames,
+            callbacks,
+            WakeDiagnostics::default().with_pending(pending, false, false),
+            hz,
+        )
+    }
+    /// Native poll with bounded source attribution and separate pending flags.
+    pub fn poll_with_wakes(
+        &mut self,
+        frames: u64,
+        callbacks: u64,
         wakes: WakeDiagnostics,
         hz: f64,
     ) -> Result<Option<Report>, String> {

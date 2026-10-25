@@ -3339,7 +3339,7 @@ impl ApplicationHandler<UiEvent> for App {
                         !self.inbox.messages.is_empty(),
                         !self.inbox.output.is_empty(),
                     );
-                    let result = stall.poll(
+                    let result = stall.poll_with_wakes(
                         self.meter.total_frames(),
                         self.pacer.as_ref().map_or(0, DisplayLink::callbacks),
                         wakes,
