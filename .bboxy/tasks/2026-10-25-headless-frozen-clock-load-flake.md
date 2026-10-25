@@ -8,7 +8,7 @@ role: "executor"
 owner: "Sable Embertail"
 verify: "cargo test -p bboxy450-term --locked --test headless test_account_ui_clock_freezes_pixels_steps_focus_and_resumes_live_time"
 created: "2026-10-25T21:49:58Z"
-updated: "2026-10-25T21:49:58Z"
+updated: "2026-10-25T22:35:54Z"
 ---
 # Make the headless frozen-clock pixel test independent of host load
 
@@ -22,3 +22,11 @@ Opened by Vesper for the quarantine row (#324 needs a unique task; #327 is the u
 ## Acceptance (#327 B4)
 
 The frozen-clock assertion holds under load: 10/10 with two concurrent cargo builds, no wall-clock dependency in the assertion, and a mutation that lets wall time advance the animation fails it.
+
+## Artifact verification (Sable)
+
+- Read the cut 2c raw log directly: `commands.log:1207` names the failed test; `:1214-1215` names `tests/headless.rs:1102:5` and the frozen-animation assertion. SHA-256 `eb1de68c497f600cdd367fd3e72e1f77d3f4651ba77beafd9042032dc5dbbae3`, 49,306,919 bytes. The large size is the assertion's full frame-buffer dump; no transcript or image data is copied into this record.
+- Seraph clarified that the three isolated outputs were only in its session, with no retained log files. Exact reported command: the same presubmit's `headless-436e36e5f068bfbb` binary with the full test name and `--exact`, using memory custody. Reported durations were 6.63, 6.81 and 7.84 seconds at load 24.46/27.32/28.40. These remain a peer report, not independently retained controls.
+- L3 author cycle on `819fdca0b10b5e9eb42a7236bed5ad890bd89b81` later passed the full headless suite, 20/0 including this test, in 20.00 seconds. This is a passing control, not a cause or repair claim. Its raw log is `~/.local/state/bboxy450-term/landing/presubmits/819fdca0b10b5e9eb42a7236bed5ad890bd89b81-3ac6c645/commands.log`.
+
+Cause remains unproven. Keep every pixel, explicit-step, focus and resumed-clock assertion; no tolerance or sleep is added here.
