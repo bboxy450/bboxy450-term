@@ -156,8 +156,15 @@ while kill -0 "$shell" 2>/dev/null; do
 done
 # The record and ring remain readable; no purge is part of close.
 ctl seat screen "$seat" --scrollback 0..1 > "$E2E_WORK/t7-retained-history.json" || fail 'retained history is inaccessible'
-ctl seat undo-close "$seat" > "$E2E_WORK/t7-expired-undo.json" 2>&1 || :
-sleep 0.3
+if ctl seat undo-close "$seat" > "$E2E_WORK/t7-expired-undo.json" 2>&1; then
+    fail 'expired undo was acknowledged as applied'
+fi
+python3 -I - "$E2E_WORK/t7-expired-undo.json" <<'PYEXPIRED'
+import json,sys
+row=json.load(open(sys.argv[1]))
+assert row.get('ok') is False and row.get('error'), 'expired undo lacks a structured refusal'
+PYEXPIRED
+[ "$?" -eq 0 ] || fail 'expired undo did not refuse honestly'
 [ "$(seat_field "$seat" record.lifecycle)" = closed_retained ] || fail 'expired undo reopened the seat'
 ctl seat capture "$seat" "$E2E_WORK/t7-gone.png" > "$E2E_WORK/t7-gone.json" 2>&1 || :
 assert_not_on_screen "$E2E_WORK/t7-gone.json" || fail 'retained pane capture failed for an unrelated reason'
