@@ -1,0 +1,97 @@
+R5j UI lazy projection: exact normal clean CI
+Source 831f371b47ea6a0bebff79e1369fb34e01021cfa
+Command: sh scripts/ci-local.sh
+Environment: private target; two jobs; wrappers clear; dev/test O1 with debug assertions; memory fixture custody.
+{"all_gates_passed": true, "clean_after": true, "elapsed_s": 2435.055429666012, "exit": 0, "log_sha256": "e93eee7f9129c62babb1201eac14c3f9a7867da5d27b8240d7136c1172f2cec7", "pid": 73165, "slot": 1, "source": "831f371b47ea6a0bebff79e1369fb34e01021cfa", "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/ci-target", "tree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/ci-tree"}
+Workspace completed groups: 205; passed 1417; failed 0; ignored 29
+Each sequential stage completed: layering, workspace build, strict all-target workspace Clippy, workspace tests, UI lint, app build, unattended headless smoke, fast invariants.
+No parity or slow scale check claimed by this normal gate. Oracle a8e41fdd explicitly requests normal CI, then ONE967/50 attempt.
+Full raw output: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/ci.log SHA256 e93eee7f9129c62babb1201eac14c3f9a7867da5d27b8240d7136c1172f2cec7
+Final gate output:
+invariant e2e-runs-unattended: skipped (slow)
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling serde_core v1.0.229
+   Compiling syn v3.0.9
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling hashbrown v0.17.1
+   Compiling indexmap v2.14.2
+   Compiling bitflags v2.13.2
+   Compiling pulldown-cmark v0.13.4
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling bbt-ui v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/ci-tree/crates/bbt-ui)
+   Compiling serde_json v1.0.154
+   Compiling bbt-doc v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/ci-tree/crates/bbt-doc)
+    Finished `test` profile [optimized] target(s) in 24.91s
+     Running tests/corpus.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/ci-target/debug/deps/corpus-79736735b68121f5)
+
+running 1 test
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.08s
+
+invariant frontmatter-parses: pass
+invariant glow-never-moves-layout: pass
+invariant idle-swarms-cost-nothing: skipped (slow)
+images: held
+invariant images-resolve: pass
+kill-own-pids: held
+invariant kill-only-own-pids: pass
+invariant kitty-keyboard: pass
+layering: held
+invariant layering: pass
+licenses: 24 workspace crates, SPDX map and required root/crate files present
+invariant licenses-present: pass
+local-first: held
+invariant local-first: pass
+    Finished `test` profile [optimized] target(s) in 0.22s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/ci-target/debug/deps/bbt_mermaid-7c2496a07458bdeb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/fixtures.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/ci-target/debug/deps/fixtures-bb021a3581d5478c)
+
+running 1 test
+test every_bboxy_mermaid_block_has_a_fixture ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.08s
+
+invariant mermaid-fixtures: pass
+invariant messaging-never-held: pass
+   Compiling bbt-ui v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/ci-tree/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 0.81s
+     Running tests/seat_rows.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/ci-target/debug/deps/seat_rows-f51b84d2f0e3093a)
+
+running 1 test
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.01s
+
+invariant modules-through-components: pass
+never-block: held
+invariant never-block-swarm: pass
+never-block: held
+cross-os: held
+invariant no-chokepoints: pass
+deps-licences: held
+invariant no-copyleft-deps: pass
+invariant no-seat-starves: pass
+invariant parity-geometry: skipped (slow)
+invariant restart-keeps-state: skipped (slow)
+invariant rim-never-covers-text: pass
+invariant rim-size-is-layout: pass
+invariant ring-reads-batched: skipped (slow)
+invariant seats-1000-bus: skipped (slow)
+invariant seats-400-memory-idle: skipped (slow)
+invariant seats-967-frame: skipped (slow)
+invariant signed-main: pass
+    Finished `dev` profile [optimized] target(s) in 0.48s
+invariant ui-never-waits: pass
+invariant watched-replay-priority: pass
+invariants: 25 checks, 0 failures, 9 slow checks skipped
+ci-local: all gates passed
+Debug cache retired only after exit and lsof exit1/no open handles: {"allocated_bytes": 4070420480, "exists_after": false, "free_after": 38324740096, "free_before": 34550120448, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/ci-target/debug", "utc": "2026-10-25T11:39:25.747572+00:00"}
+The optimized measurement remains pending; its result is recorded separately.

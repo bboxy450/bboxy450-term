@@ -1,0 +1,109 @@
+R5j UI lazy projection: one967/50 frame attempt
+Exact gated source: 831f371b47ea6a0bebff79e1369fb34e01021cfa
+Command: nice -n 10 cargo build --release --locked -p bboxy450-term --message-format=json-render-diagnostics
+Build environment: two jobs; direct compiler; O3; debug info0; debug assertions true; memory fixture custody.
+{"artifacts_sha256": "0746234c51d800a1fb8de010ac84fabf55b7e1b20a59352fe83786a1d53df7d1", "elapsed_s": 601.7248176250141, "exit": 0, "log_sha256": "2f9616aafc00d30dff3cff182b548bb138ab06bd1193aa43a504cf831fa3260d", "source": "831f371b47ea6a0bebff79e1369fb34e01021cfa"}
+Build raw output: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/build.log SHA256 2f9616aafc00d30dff3cff182b548bb138ab06bd1193aa43a504cf831fa3260d
+Build Cargo artifacts: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/build-artifacts.jsonl SHA256 0746234c51d800a1fb8de010ac84fabf55b7e1b20a59352fe83786a1d53df7d1
+Retained exact binary: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/bboxy450-term SHA256 78586b74446d64457b270bf5dc6341442c3d710c596e6ad46cf1250864268fd2
+The measurement starts only after existing peer gates0/loadavg1<8/free disk>=10GiB, within the bounded own quiet window.
+One actual967 launch only; no policy or fixture assertion changes.
+
+
+Actual single attempt
+Command: GATE_SEATS=967 GATE_WATCHED=50 GATE_SECONDS=10 sh scripts/gates.sh frame
+Inherited O3/debug assertions true/direct compiler/two jobs/memory custody. Optional GATE_BUDGET unset, exactly as baseline. No changed deadlines or fixture assertions.
+Start: 2026-10-25 05:12:01 PDT; app/gate PID70639; peer full gates0; loadavg1 3.47314453125; free56982331392 bytes.
+Exit: 1 in84.545403125s (not the600s outer watchdog). 967real PTYs,50watched. 969recorded PIDs gone, independent ps exit1/no rows. No second attempt.
+Quiet START6c5a0eb2 until05:35, updated per Oracle681b2075 at deeafd74 until05:40; END1261427b posted immediately after verified reap.
+Exact runtime binary unchanged; memory custody positively witnessed. Original retained artifact hash in build result above.
+Measured outcome: {"cpu_p50_ms": 18.518666, "cpu_p99_ms": 485.314417, "frame_work_p50_ms": 16.9485, "frame_work_p99_ms": 28.795374, "frames": 46, "guard_violations": 0, "hz": 75.0, "idle_callbacks": 0, "idle_frames": 0, "input_budget_ms": 26.666666666666668, "input_to_encoded_frame_ms": 8650.042333, "input_to_gpu_complete_ms": 8668.920999999998, "input_to_prepared_model_ms": 8235.441792, "probe_clipped": false}
+Failed predicates: ["ui-cpu-p99-over4ms", "input-to-gpu-over-two-display-intervals"]
+Frame work28.795374ms also exceeds the provisional invariant8.33ms numerically; optional budget was not evaluated by this invocation. Do not call #212 held.
+Bus10007.0756events/s, stdout1000000000bytes, fault-read2000.968541ms;50encoded-change rows min=12 max=18. SETTLE/IDLE reached; idle0frames/0callbacks/guards0; probe not clipped.
+
+MEASURE-only counters (not exclusive CPU; nested wall spans must not be added)
+46encoded measured frames,4431model publications,36scene projections; 53662tickless redraws with0projection work.
+Across all recorded periods there are41projections; do not pair that all-period count with the46MEASURE-only frame count.
+Baseline0e97dc32:4321MEASURE projections/42measured frames and4320tickless projections. Current36/46, tickless0. This establishes observed coalescing, not a controlled causal speedup across intervening NG1/store changes.
+UiProjection {"active": 0, "bytes": 0, "calls": 36, "cpu_errors": 0, "cpu_max_ns": 0, "cpu_ns": 0, "cpu_samples": 0, "phase": "UiProjection", "wall_max_ns": 273750, "wall_ns": 8003126, "work": 34812}
+UiSeatRows {"active": 0, "bytes": 0, "calls": 36, "cpu_errors": 0, "cpu_max_ms": null, "cpu_max_ns": 0, "cpu_ms": null, "cpu_ns": 0, "cpu_samples": 0, "period": 2, "period_name": "measure", "phase": "UiSeatRows", "wall_max_ns": 144792, "wall_mean_ms": 0.11701047222222222, "wall_ms": 4.212377, "wall_ns": 4212377, "work": 34812}
+TicklessRedraw {"active": 0, "bytes": 0, "calls": 53662, "cpu_errors": 0, "cpu_max_ns": 0, "cpu_ns": 0, "cpu_samples": 0, "phase": "TicklessRedraw", "wall_max_ns": 458, "wall_ns": 976590, "work": 0}
+WindowRedraw {"active": 0, "bytes": 0, "calls": 53708, "cpu_errors": 0, "cpu_max_ns": 28782792, "cpu_ns": 1486206424, "cpu_samples": 53708, "phase": "WindowRedraw", "wall_max_ns": 28991042, "wall_ns": 1484167578, "work": 0}
+UiDrain {"active": 0, "bytes": 0, "calls": 53708, "cpu_errors": 0, "cpu_max_ns": 0, "cpu_ns": 0, "cpu_samples": 0, "phase": "UiDrain", "wall_max_ns": 312541, "wall_ns": 540566686, "work": 0}
+UiLatestTake {"active": 0, "bytes": 0, "calls": 53708, "cpu_errors": 0, "cpu_max_ns": 0, "cpu_ns": 0, "cpu_samples": 0, "phase": "UiLatestTake", "wall_max_ns": 2000, "wall_ns": 1235402, "work": 0}
+UiOldModelDrop {"active": 0, "bytes": 0, "calls": 4307, "cpu_errors": 0, "cpu_max_ns": 0, "cpu_ns": 0, "cpu_samples": 0, "phase": "UiOldModelDrop", "wall_max_ns": 172583, "wall_ns": 215351780, "work": 0}
+ModelBuild {"active": 0, "bytes": 0, "calls": 4431, "cpu_errors": 0, "cpu_max_ns": 0, "cpu_ns": 0, "cpu_samples": 0, "phase": "ModelBuild", "wall_max_ns": 3010042, "wall_ns": 1953657588, "work": 4284777}
+PanePrepare {"active": 0, "bytes": 0, "calls": 4431, "cpu_errors": 0, "cpu_max_ns": 0, "cpu_ns": 0, "cpu_samples": 0, "phase": "PanePrepare", "wall_max_ns": 5288709, "wall_ns": 323130791, "work": 221550}
+ModelPublish {"active": 0, "bytes": 0, "calls": 4431, "cpu_errors": 0, "cpu_max_ns": 0, "cpu_ns": 0, "cpu_samples": 0, "phase": "ModelPublish", "wall_max_ns": 5654375, "wall_ns": 2326908810, "work": 0}
+ReadRingRequest {"active": 0, "bytes": 99171600, "calls": 6769, "cpu_errors": 0, "cpu_max_ns": 0, "cpu_ns": 0, "cpu_samples": 0, "phase": "ReadRingRequest", "wall_max_ns": 17034375, "wall_ns": 13801713157, "work": 6769}
+ReadRingTerminalDecode {"active": 0, "bytes": 99164378, "calls": 176724, "cpu_errors": 0, "cpu_max_ns": 0, "cpu_ns": 0, "cpu_samples": 0, "phase": "ReadRingTerminalDecode", "wall_max_ns": 254917, "wall_ns": 788224802, "work": 176724}
+
+Input probe: milliseconds from admitted; same R5i clock; null remains unobserved.
+Admitted 0.0
+ControlReceived 0.02175
+GuiEnqueued 0.025708
+WireEnqueued 0.0305
+WriterDequeued 0.047
+WriteStarted 0.06125
+Written 0.070958
+LogicOutputRead 8209.546375
+GuiReceived 8234.873333
+GuiApplyStarted 8234.874541
+GuiApplied 8234.880083
+ModelBuilt 8235.237
+ModelPrepared 8235.43125
+ModelPublished 8235.432541
+LatestTaken 8235.441333
+ProjectionStarted 8627.487166
+ProjectionFinished 8627.688541
+ModelApplied 8627.688583
+Encoded 8650.042125
+GpuComplete 8668.920958
+94.7009024% of admitted-to-GPU latency occurs before LogicOutputRead:8209.546375ms. Written-to-logic8209.475417ms includes PTY/capture/replay; it does not isolate syscall or writer wait.
+LatestTaken-to-ProjectionStarted392.045833ms; projection itself0.201375ms. This waiting interval is not attributed to any single scheduler/callback mechanism by the trace.
+6769serial ReadRing requests/13.801713157s inclusive MEASURE wall,99171600payload bytes; terminal decode176724records/0.788224802s. Sable owns separately assigned batching; this task edits no protocol/logic/capture scheduling.
+Legacy cpu_p99_ms485.314417 accumulates UI-thread CPU between frame endpoints; MEASURE WindowRedraw callback max28.782792ms and aggregate1486.206424ms are different metrics. Do not relabel485ms as one callback or infer exclusive CPU from nested wall spans.
+
+Capture sidecar intervals (same-owner clocks only, completion-accounted inclusive totals)
+{"measure_to_stop": {"checkpoint_calls": 0, "checkpoint_rpc_s": 0.0, "checkpoint_rpc_wall_ratio": 0.0, "in_flight_checkpoint_at_end": 0, "in_flight_checkpoint_at_start": 0, "missed_delta": 0, "overwritten_at_end": 36472, "overwritten_at_start": 16235, "wall_s": 10.001057042}, "stop_to_settled": {"checkpoint_calls": 93, "checkpoint_rpc_s": 0.482848544, "checkpoint_rpc_wall_ratio": 0.07080498841580266, "in_flight_checkpoint_at_end": 0, "in_flight_checkpoint_at_start": 0, "missed_delta": 1, "overwritten_at_end": 89547, "overwritten_at_start": 36472, "wall_s": 6.819414208}}
+Stop-to-settled6.819414208s;93checkpoint RPCs/0.482848544s =7.08049884% observed. One logic recorder update missed in that interval; spans overwritten36472→89547; checkpoint in-flight0atbothboundaries. This is an observed ratio with telemetry loss, not a claim of exhaustive CPU/barrier attribution.
+Measured-overlap interval10.001057042s/0checkpoint RPCs. Supervisor recorder also has missed/overwritten observations in raw sidecar. No summing nested logic/supervisor totals.
+
+Limits
+one attempt only; completion-accounted inclusive spans; no nested time summation
+only callback CPU instrumented; cpu_samples=0 is unmeasured
+R5i clock independent from capture sidecar; no cross-clock subtraction
+ReadRingRequest includes RPC and transport decoding; syscall-only split unavailable
+null probe stamp remains unobserved; a stage interval is not exclusive CPU
+UI fix is accepted in main4eaa63ce; run uses exact gated831f371b subset before new ui-scroll/store/native-reopen accepted changes.
+Baseline0e97dc32 has intervening accepted NG1/store fixes; these are single observations, not a controlled causal speedup.
+Legacy cpu_p99_ms is CPU accumulated between frame endpoints; callback counter maxima are different observations.
+Capture sidecar samples are sequential/completion-accounted with missed/overwritten/in-flight fields; no causal writer/barrier attribution.
+In-run app-owned window.png is a5s capture, not a final-settle image or physical scan-out proof. No visual parity claim; normal CI only per explicit brief.
+No fresh scale run, policy change, new target, native account interaction, publication or merge performed after this failed timing verdict.
+
+Artifact digests (raw records and retained standalone binary remain local)
+{"bytes": 14145, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/build.log", "sha256": "2f9616aafc00d30dff3cff182b548bb138ab06bd1193aa43a504cf831fa3260d"}
+{"bytes": 458937, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/build-artifacts.jsonl", "sha256": "0746234c51d800a1fb8de010ac84fabf55b7e1b20a59352fe83786a1d53df7d1"}
+{"bytes": 506, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/binary.json", "sha256": "ca63931643771f03eb54af7225152c7521ad744bd8d08d7b9d575835609e94d9"}
+{"bytes": 361, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/run-1/stdout.log", "sha256": "a641c11e7473e96da149d77cc9a1f03c4b8d6a696d2fd4e5393229196fe942af"}
+{"bytes": 141200, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/run-1/stderr.log", "sha256": "6fe3eaab4c6d741006d45442d82c643d20e447f9941f316455b061732fd3fd80"}
+{"bytes": 2680, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/run-1/result.json", "sha256": "7798f634476cacfac5968ca03f3b5b059921fcaa80739e6635e6a7cb539e2b07"}
+{"bytes": 65829, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/run-1/r5-frame.DLvh7w/report.json", "sha256": "1ff08a7c39811b956f3645932a6d985ada033099b55f1c8f0f63fa885e957f71"}
+{"bytes": 27886404, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/run-1/r5-frame.DLvh7w/report.capture.json", "sha256": "8cf44020da7072a4801abbad632f897a3e4d959dc6a0e67c43296a06b085a989"}
+{"bytes": 272133, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/run-1/r5-frame.DLvh7w/window.png", "sha256": "621ccf353261aece22fec4b42208a3b25d415e77042de40d142e0c7060159add"}
+{"bytes": 10719, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/run-1/reaped.json", "sha256": "1f9c38e8744b59139efbe72a1158dd648dfc4a3a1ab88dc5adfaed3b15538254"}
+{"bytes": 54, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/run-1/reap-independent.json", "sha256": "0c09d0a99c43ca3ac680e8c079d753eeeff3aaf141887b84da1eaa3a829b167b"}
+{"bytes": 41582, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/analysis/r5i-snapshot.json", "sha256": "e84cf35feefb3e8474d0deb56bb9817d93c83b4897253b29d5fb44c03386951a"}
+{"bytes": 32469, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/analysis/partition.json", "sha256": "32e49b7db2c801791f288cbabbe3999baebeade95ddc13f7d20072152dd1df0c"}
+{"bytes": 6317, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/analysis/summary.json", "sha256": "d0e7f8e32da1088493d38f3c1e9f2ab1166e3d42960f711226953e7bb77698bb"}
+{"bytes": 8818, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/analysis/counters.csv", "sha256": "e3a612ae3ae37c8b09c0a54f5ea8318344bcee275b85be88ee9149158fc22890"}
+{"bytes": 1229, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/analysis/probe-timeline.csv", "sha256": "44ee03229d92f1ae62ef3574438b7fe257265fa90430ff610dc85828561b67d6"}
+{"bytes": 22354, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/preflight-wait.jsonl", "sha256": "fb40f5baa734ab82bf6f016ae513b8c8f7c60299fa36ab01ea11cd4758237490"}
+{"bytes": 1931, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/manifest.json", "sha256": "f27bb52ce3acb52bd4b9d510f39af943c988dce814cbfa3cc480e61f8204dbd8"}
+{"bytes": 547, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/cleanup.json", "sha256": "1f13cbb1c44de1ea16817c70280f21556fe6351cf7f8fc5d10c807dcfdb12afe"}
+
+Cleanup
+{"allocated_bytes_retired": 1412071424, "at": "2026-10-25T05:17:59.788502-07:00", "free_after": 57804353536, "free_before": 56352948224, "retained_binary": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/bboxy450-term", "retained_binary_sha256": "78586b74446d64457b270bf5dc6341442c3d710c596e6ad46cf1250864268fd2", "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/ci-target", "target_exists_after": false, "worktree_exists_after": false, "worktree_remove_exit": 0}
+Own debug cache was already retired4070420480allocated bytes after CI. Final own release/cache1412071424allocated bytes and detached checkout retired after lsof1/no handles. No peer process or cache touched.
