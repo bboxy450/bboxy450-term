@@ -41,3 +41,15 @@ Own-patch comparison:
 
 
 Combined attempt 1 on 8a605878: presubmit exit124 /900.360 s; 599 s compilation, 849/0/21ignored completed, interrupted before combined clippy/invariants. Full timeout is test-policy-sweep-presubmit-attempt1.log. A warm-target attempt follows with identical source patches and unchanged900 s limit; no incomplete result is called green.
+
+Final exact NORMAL CI on fad8d4c4d513cda60fdf5014b7b37c8cb3762cb7: exit0 /2001.226 s. Workspace1500 passed/0failed/31ignored; strict workspace+UI lint0; idle smoke frames=0 callbacks=0 seconds=10.004 windows=0 mode=headless; invariants26/0/10slow skipped; all gates passed. Raw exact CI: .bboxy/runs/test-policy-sweep-ci.log, SHA256 c80a3e6fc4a91cb384ce7d07a890b18346cfcda2c5c3f63787c0c9d16275d691. All source files remained clean during the gate. No visual parity mode or Linux Python-fixture runtime claim.
+Warm presubmit attempt2: exit124 /900.297 s, tests1121/0/31, strict0, invariants22/0 before timeout; raw evidence .bboxy/runs/test-policy-sweep-presubmit-attempt2.log. Both timed-out attempts remain incomplete, never green. The single exact normal gate follows the Oracle narrow-cold ruling; no third bounded attempt.
+
+Final source-patch comparison (all four =):
+1:  202dcf78 = 1:  649450ca Rewrite core tests against terminal contracts
+
+1:  75a98494 = 1:  3690d439 Mark protocol contract tests as protected
+
+1:  fe87fb8b = 1:  a156f6f3 Drive harness readiness and fixture handoffs without test sleeps
+
+1:  d0d0d15a = 1:  635c2f9f Sweep firehose tests onto virtual pacing and parser contracts
