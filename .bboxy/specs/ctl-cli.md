@@ -15,7 +15,7 @@ links:
   - { to: "[[d272-ctl-one-grammar]]", rel: decision }
   - { to: "[[work-items]]", rel: record-type }
 created: "2026-10-24T15:24:41Z"
-updated: "2026-10-25T14:17:33Z"
+updated: "2026-10-25T15:22:38Z"
 ---
 # ctl
 
@@ -70,7 +70,7 @@ Two kinds of action sit behind the verbs, and the rule is the lens above: the wi
 
 ## 1d. Dispatch by noun ([[d320-dispatch-by-noun]], 2026-10-25)
 
-The nouns of §1 are modules in the code as well as rows in the table: each verb family owns its request and reply types and its `apply`, the top-level enums carry one variant per noun, the `ctl` verb table is the concatenation of the nouns' tables, and the window and the headless client dispatch by noun once. A cut that adds a verb edits its noun's module and nothing a peer is editing. The wire of §2 is unchanged by this; it is about which file a cut touches.
+The nouns of §1 are modules in the code as well as rows in the table: each verb family owns its request and reply types and its `apply`, the top-level enums stay flat and are assembled from the nouns' variant lists by one macro so no call site or wire byte changes, the `ctl` verb table is the concatenation of the nouns' tables, and the window and the headless client dispatch by noun once. A cut that adds a verb edits its noun's module and nothing a peer is editing. The wire of §2 is unchanged by this; it is about which file a cut touches.
 
 ## 2. One reply shape
 
