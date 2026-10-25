@@ -1,0 +1,62 @@
+C-2 ctl record reads and retained event browsing — Aster Cinderwing <EXECUTOR>
+Frozen source: 114ce13d897384d6f83689febd783d73426def5f (aster-ctl-records), three signed commits on main d31e2ff4.
+Exact clean normal CI: EXIT 0, 1262.790 s, all gates passed. Evidence-only successor contains this report and its manifest.
+
+Mechanism / acceptance
+crates/bboxy450-term/src/ctl.rs:635 — record fetch/search/changes grammar; per-verb flags reject misplaced arguments.
+crates/bboxy450-term/src/ctl/records.rs:6 — portable data-source DTOs use the admitted Knowledge wire path, with transport classification preserved.
+crates/bboxy450-term/src/ctl/records.rs:21 — fetch resolves #N, slug or path before fetching the typed reference.
+crates/bbt-mux/src/knowledge/read.rs:35 — read-only search admits the provider method with existing whole-response byte/item limits; writes remain refused here.
+crates/bbt-proto/src/gui.rs:247 — additive EventsStreams action; EventsRead.through is serde-default; wire VERSION remains 2.
+crates/bbt-mux/src/seat_socket.rs:796 — readable retained stream names use current operator admission, bounded to 256 KiB; EventsRead keeps its existing subject grant filter.
+crates/bbt-mux/src/bus.rs:1353 — retained pages retain their physical scan watermark and stop before an unreturned row at the byte limit.
+crates/bbt-mux/src/bus.rs:1654 — stream discovery copies existing registered broker keys without scanning payloads, attaching a consumer or acknowledging.
+crates/bboxy450-term/src/ctl/events.rs:31 — one required stream, client-owned sequence, bounded read budget, JSONL event rows and terminal/error resume cursor; optional subject filtering.
+crates/bboxy450-term/src/cockpit.rs:798 and src/live.rs:1193 — exhaustive unused-reply handling only; no window/GUI lifecycle behavior changed.
+crates/bboxy450-term/tests/ctl_records.rs:19 — actual CLI loses its owner mid-Knowledge request; corrected endpoint_unavailable exit 4, no capability in output.
+crates/bboxy450-term/tests/ctl_records.rs:120 — private file-account fixture proves fetch three ways, 35 distinct notes over cursor pages, type filtering/query-bound cursor refusal and changes after a signed write.
+crates/bboxy450-term/tests/ctl_records.rs:276 — posted messages are read/resumed by cursor; stream discovery/filtering and unknown-stream refusal preserve cursors; retained consumer names and ACK positions are unchanged.
+crates/bbt-mux/src/bus.rs:1924 — short filtered page still advances its physical cursor.
+crates/bbt-mux/src/bus.rs:1949 — large-event byte pages resume without duplicates or loss.
+crates/bboxy450-term/tests/ctl.rs:1431 — extended existing ctl-never-prints-secrets coverage includes all five new verbs.
+
+Checks completed before gate
+Focused actual CLI integration: 3 passed, 0 failed; private file-backed accounts, no NSWindow.
+Socket regression red: EXIT 101, returned refused/exit 1 rather than endpoint_unavailable/exit 4; same test green after mapping fix.
+cargo test --workspace --locked: EXIT 0, 1,340 passed, 0 failed, 29 ignored; 772.868 s.
+cargo clippy --workspace --all-targets --locked -- -D warnings: EXIT 0.
+sh scripts/invariants.sh: EXIT 0, 23 checks, 0 failures, 9 slow skipped.
+Final docs-only rebase changes ctl-cli.md only; crates/Cargo.toml/Cargo.lock/scripts exact equality to the tested d6538ac5 is EXIT 0.
+Post-rebase cargo test -p bbt-doc --test corpus --locked: EXIT 0, 6 passed.
+Scoped rustfmt of records.rs and ctl_records.rs: EXIT 0. Workspace cargo fmt --check found accepted formatting residue; no bulk formatting performed.
+Earlier compile/lint failures and all raw outputs/status files are preserved beside this draft.
+
+Scope / gaps
+No write, ACK, subscription, durable consumer, global event cursor or all-stream mode added.
+Events tail drains retained pages to the observed head or its read budget; it does not create a live subscription.
+No renderer/headless/focus/identity implementation change; existing T7/U0 paths are retained.
+No fresh parity or 967-seat claim. No merge or publication performed.
+Evidence root: /Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/
+
+Exact gate evidence
+ci.log:1024 — extended ctl-never-prints-secrets passes.
+ci.log:1031,1036,1041 — all three actual CLI C-2 regressions pass.
+ci.log:1789,1807 — filtered and byte-bounded retained-page cursor regressions pass.
+ci.log:2010 — oversized provider requests/pages/bodies remain named refusals.
+ci.log:3381 — LocalDev, memory custody (debug), no held reason.
+ci.log:3398 — idle passed: 0 frames, 0 callbacks, 10.002 seconds, windows=0, mode=headless.
+ci.log:3480-3481 — 23 invariants / 0 failures / 9 slow skipped; all gates passed.
+Gate SHA256: 09127a60af6e2997c81a7622791aebe2ffe26aa49eef91260961c60ccffea367.
+
+Earlier failures, preserved
+Initial focused CLI compile: EXIT 101, fixture used private sqlite::open and obsolete EventsReady; corrected to readonly fixture query and correlated Ok. No runtime result claimed from that compile.
+Initial strict Clippy: EXIT 101, nested retained-page tuple type_complexity; fixed by private RetainedPage alias.
+Socket regression red: EXIT 101, captured actual exit1/refused with transport prefix; after correction EXIT0, three CLI tests pass.
+Workspace cargo fmt --all -- --check: EXIT1, accepted formatting residue and the new assertion; only the assertion was formatted, scoped rustfmt EXIT0.
+Subsequent records-only map corpus first failed on a literal numeric-link example; inline-code formatting fixes that separate record, corpus6/0. It is not a C-2 gate failure.
+
+Frozen tree / retirement
+Main advanced to ddf19d06 with Sable alias cleanup and recovery/fairness fixtures while CI ran; changed paths are pinned in the manifest. No C-2 file overlap, no post-gate rebase.
+Detached gate tree was clean; recorded process group empty; lsof found no open cache files. Own target and worktree retired after the immediate records corpus check: 3,977,506,816 allocated bytes freed.
+Additional merged-U1 retirement: 685,703,168 bytes freed, all retired PNG/binary hashes in merged-u1-cleanup.json; logs/manifests/reports retained.
+No merge, push or publication performed. Signed code and evidence are the handoff for Oracle verification.

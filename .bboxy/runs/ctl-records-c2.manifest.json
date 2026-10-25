@@ -1,0 +1,414 @@
+{
+  "source": "114ce13d897384d6f83689febd783d73426def5f",
+  "source_branch": "aster-ctl-records",
+  "base": "d31e2ff4228cd3fa79c953c3a00c7de7703ee72b",
+  "source_commits": [
+    "114ce13d897384d6f83689febd783d73426def5f G 9B07E849480C68328CA20684844ECC0587DE7AB0 Preserve endpoint errors for ctl record reads",
+    "22c59086dfdaec6be8216e9c3c0013e2a020d78a G 9B07E849480C68328CA20684844ECC0587DE7AB0 Bound retained event pages and preserve browse watermarks",
+    "e4fe7c0d9fd51fdba2a57f9e442e4f8cc1dde72f G 9B07E849480C68328CA20684844ECC0587DE7AB0 Add ctl record reads and retained event browsing"
+  ],
+  "changed_files": [
+    {
+      "path": "crates/bboxy450-term/src/cockpit.rs",
+      "sha256": "179a0359fcf7f04d77ade8342479d5d4e23d2aae8955a3b8df5e484f65fc4329"
+    },
+    {
+      "path": "crates/bboxy450-term/src/ctl.rs",
+      "sha256": "8cf05492071be9cab17f520bac7be506b545327cd5e9031b62092712923481fe"
+    },
+    {
+      "path": "crates/bboxy450-term/src/ctl/events.rs",
+      "sha256": "2d2f66f803e8e9b05952fa35b6fc51b3bdd07ed515203e580a649b1a9c369d8a"
+    },
+    {
+      "path": "crates/bboxy450-term/src/ctl/records.rs",
+      "sha256": "f36455ae70ec9e7d31cdfc1f06c1743fdff473b903e9c962c06c1a66ffe90e5c"
+    },
+    {
+      "path": "crates/bboxy450-term/src/live.rs",
+      "sha256": "90138abce6478d4412e4af65782845e3b63184dc67d6c6fee0a0d1972e06056c"
+    },
+    {
+      "path": "crates/bboxy450-term/tests/ctl.rs",
+      "sha256": "c59930d7f8a42b3787548ee4c3b3e06d7af5c8b174aa46eb301719eceb9bd3db"
+    },
+    {
+      "path": "crates/bboxy450-term/tests/ctl_records.rs",
+      "sha256": "33e2eb83c951072fcf2a4fbb1e352cd5794a6b95c0ce8c3fcd9cd133ffc83f7d"
+    },
+    {
+      "path": "crates/bbt-mux/src/bus.rs",
+      "sha256": "f96c30e0c9db7b0ff9e5569055f26909924d5a2cdb1ac773c698d0e02992baef"
+    },
+    {
+      "path": "crates/bbt-mux/src/knowledge/read.rs",
+      "sha256": "244d16d3c4d07dc59a41811e6b8e6b70f39c4afbe03b914e7e46a24823bd1670"
+    },
+    {
+      "path": "crates/bbt-mux/src/seat_socket.rs",
+      "sha256": "a78071fcc5eaf4311dfd025da55c73842ee969565ef9affa6289b813f3ab2b38"
+    },
+    {
+      "path": "crates/bbt-mux/tests/knowledge_gui.rs",
+      "sha256": "d77f1f8789f5ecc3b6b3345c680846f1f5b9a19af7d6052a80e9643bbd3f1f9f"
+    },
+    {
+      "path": "crates/bbt-proto/src/gui.rs",
+      "sha256": "a961f700532a60efdddadba929e12cd000add4cabda9e0c7c029942e821b208f"
+    }
+  ],
+  "ci": {
+    "source": "114ce13d897384d6f83689febd783d73426def5f",
+    "cwd": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/ci-114ce13d",
+    "target": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/ci-target-114ce13d",
+    "command": [
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "started": "2026-10-25T04:05:24.196993+00:00",
+    "custody": "debug memory default; explicit private file-account fixtures",
+    "profiles": "O1 + debug assertions, direct compiler, no debuginfo/incremental",
+    "pid": 33385,
+    "pgid": 33385,
+    "driver_pid": 33369,
+    "exit": 0,
+    "elapsed_s": 1262.789968334022,
+    "finished": "2026-10-25T04:26:26.977576+00:00",
+    "log_sha256": "09127a60af6e2997c81a7622791aebe2ffe26aa49eef91260961c60ccffea367"
+  },
+  "raw_records": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/ci-cleanup.json",
+      "bytes": 617,
+      "sha256": "757e70f3b0a2c32f6db2e2496fa7a949fd6a0b37a1fcb5c830f80047c1c9d0cf"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/ci-reap.json",
+      "bytes": 87,
+      "sha256": "4ca98322003bd270ae14d352d8f5f2ea4c2e6b7b2f7841878d1ff8b7461a20b1"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/ci.log",
+      "bytes": 219038,
+      "sha256": "09127a60af6e2997c81a7622791aebe2ffe26aa49eef91260961c60ccffea367"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/ci.process.json",
+      "bytes": 587,
+      "sha256": "d1fd194ab8c1c19952da884d0716e0fcf22b1dcc4b2dd1478a2668152b837710"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/ci.status.json",
+      "bytes": 768,
+      "sha256": "b93ed6e3e3f4cc1afd857f4f6cdc4e4159af3cbdf77b7fb5fa4456a7a1c57827"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/dev-cache-move.json",
+      "bytes": 350,
+      "sha256": "ea705a910457641e6fc60049cf189bf5bcdf93370b3fb504f11ba0a5fa1da138"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/doc-rebase-source-equality.log",
+      "bytes": 82,
+      "sha256": "ecacea7d22a6a4791921e073b9b2f299d4245ef94212e5fe985fabd14f68834e"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/final-clippy.log",
+      "bytes": 1661,
+      "sha256": "3f409d36f95fe64863fce13d2e24598075b6c41d3b8b2a5ab319c7f6b7a0c9be"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/final-clippy.process.json",
+      "bytes": 419,
+      "sha256": "09a116f7fcceeae2e7fd9572b9bb722050e6ad87df4cd1a8a5ba81c6a72d0164"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/final-clippy.status.json",
+      "bytes": 321,
+      "sha256": "ee16c3ad4629660fbd8d07a71cb93d4826e31a3e97ac55e1754e227cd1288c35"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/final-corpus.log",
+      "bytes": 678,
+      "sha256": "fae3ae934c9cb27b5dec09f5cc8bbf5a2b4342d2d4d7ae51008f79083b93bb98"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/final-corpus.process.json",
+      "bytes": 394,
+      "sha256": "2dd74bcd1779493caa7eeb8aef97398fda0fb42fb5ddb015b7785de329d7d176"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/final-corpus.status.json",
+      "bytes": 297,
+      "sha256": "2d2fc0eeb0e57b3d2eac1bd07fb4f8b655e0b96b12ff56f8a8ac04e5c893782f"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/final-doc-rebase-source-equality.json",
+      "bytes": 356,
+      "sha256": "4dff8b26c59b38fdff4c8c4a61021cf7f0cf8419945656a78bcd13b9dbebf066"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/final-invariants.log",
+      "bytes": 3988,
+      "sha256": "dc47b03c749c32c5d16331e6d9aed8e273b97182be5e953e773fb7a42e4bffec"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/final-invariants.process.json",
+      "bytes": 339,
+      "sha256": "b507c1ba5d5135d38728b00ed33718268ceac764623ee854c01edb988a07ef53"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/final-invariants.status.json",
+      "bytes": 241,
+      "sha256": "d696a304b88c83632a7adfdd47bd0ec620f3f37118224c692bff36d8a774e171"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/final-workspace.log",
+      "bytes": 182713,
+      "sha256": "cd5dccb600bfb97b8dc2b5757ff206d2c0f1b69f7990c7adc3dba2a9cdcdee1f"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/final-workspace.process.json",
+      "bytes": 360,
+      "sha256": "1ef52a1e973e939874f534f2aa908c4314791c3529d5192b0d8d102fa34e499e"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/final-workspace.status.json",
+      "bytes": 262,
+      "sha256": "83d893381d6b592ac84ce40802bb43aca46124985cfedc8a50e06c5cdeed9ca3"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/format-records.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/format-records.process.json",
+      "bytes": 553,
+      "sha256": "b5c813a6401855fbcc820d34c96365eefe759959ce6aee162a2f0cc50d2aa5ad"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/format-records.status.json",
+      "bytes": 359,
+      "sha256": "b2ed98a21cf3b10aefb74399f4e8c2fbb9b11863d45ed809ca6c46868d543045"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/format-workspace.note.json",
+      "bytes": 368,
+      "sha256": "1405e7802a649bc39ee4c1aa3da665a99200bda0ad046ede555b2c496ef4cd04"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/integration-first.log",
+      "bytes": 14434,
+      "sha256": "895055856651279b78e5d184146d801d1c32091585315d8ae9f5aee3d04270cf"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/integration-first.process.json",
+      "bytes": 331,
+      "sha256": "d6f65387a9a83b583490c084f77cef91273bca09448560a7bbc517fa9f9fe95b"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/integration-first.status.json",
+      "bytes": 338,
+      "sha256": "d43020331c4d0e589af9b08da3d01079a80f5f60e963b2ba01ac182c83154358"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/integration-second.log",
+      "bytes": 859,
+      "sha256": "ce0b352e196dad5500f3a38876ffdf3e9370d89c439e79d229d383f4f44a9bba"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/integration-second.process.json",
+      "bytes": 797,
+      "sha256": "10278e70dd3ef233b6de80238ceb592c606ecb234845be1d958172f2f5d1087d"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/integration-second.status.json",
+      "bytes": 336,
+      "sha256": "ef42dcf7e89244362c2805b3bed0b42cf4650c2371a8f9942d804d0c8239695a"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/manifest.preflight.json",
+      "bytes": 8058,
+      "sha256": "b1e7158b0d1c72265e85b38467a92a3af4817d1b416a2f4fe1d3965b9b05c3ad"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/merged-u1-cleanup.json",
+      "bytes": 3269050,
+      "sha256": "4bdf10f3e58566ae2ffba58811b7420c3711a2b468b5d8cf0c534944871367cc"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/precheck-clippy-second.log",
+      "bytes": 239,
+      "sha256": "72ae3975cd77eb1fc360111a44c6e9095545410bd0b699a4897f8979f25a6022"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/precheck-clippy-second.process.json",
+      "bytes": 492,
+      "sha256": "b7bff6cba61e544fb79055f9c658a29865dbe548d1ffd9a1e306cf6516e9eb15"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/precheck-clippy-second.status.json",
+      "bytes": 322,
+      "sha256": "c57829f49a0ea4ce9cf5b7e6b6f89b0fe070825ee2300de993e470f95d606d73"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/precheck-clippy.log",
+      "bytes": 13582,
+      "sha256": "8fee7f48b1e6adb2b39b91911902d15f496238bceaf3141efd42d5aa4ba207c5"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/precheck-clippy.process.json",
+      "bytes": 454,
+      "sha256": "82f8690d1152327a1dda581b8f579521db936bc0c221d1c7ce9101a0e7f768db"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/precheck-clippy.status.json",
+      "bytes": 324,
+      "sha256": "e939fd9b6ca4e3eb13f6426be1503e35c194ff4dfa46589f84269f1b66db324f"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/precheck-invariants-doc-rebase.log",
+      "bytes": 2878,
+      "sha256": "e329d15df7be6dbee6285ea6aae4bc5501bf6afc04ea2a8a8683f95af3a4e964"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/precheck-invariants-doc-rebase.process.json",
+      "bytes": 339,
+      "sha256": "3bd9d054728d0ed7433c1fe87b72e4f843739f3011e983f1b082a39abbba8b6c"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/precheck-invariants-doc-rebase.status.json",
+      "bytes": 242,
+      "sha256": "563476a8f37e910ed8ce507af6d028d7574efa011b6c75ae76646f84c79797b1"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/precheck-invariants.log",
+      "bytes": 5173,
+      "sha256": "33a6ddba62e5d6741e31ad9e318c03e46dea9bbe01d04f6f36508d76416ceb82"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/precheck-invariants.process.json",
+      "bytes": 339,
+      "sha256": "6a70b8bd931a67e928e1cf8daaa442e31d5d9d65e8d962c54dccd68bae08167f"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/precheck-invariants.status.json",
+      "bytes": 241,
+      "sha256": "857f0caa20bf5cf2f7502ec6cb1394a70fde2eecc8257db446fe10f857776915"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/precheck-workspace.log",
+      "bytes": 187148,
+      "sha256": "0eee6498309c1992cd1de0ffacb8778dd36f5f1e8d596e03dd9d8a6f585d8e7f"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/precheck-workspace.process.json",
+      "bytes": 359,
+      "sha256": "440f777d919e8a6d5043106e67d978a9919878378d6d5c279ece264a72644bea"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/precheck-workspace.status.json",
+      "bytes": 262,
+      "sha256": "93eff96ee0d2f3047f902a0cba34936811b488c918e1b01e692711f7b8526d96"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/record-socket-green.log",
+      "bytes": 862,
+      "sha256": "e0072eae1bf45250459af71665798ac94951f9f5ad27834494ad4679fd4129e3"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/record-socket-green.process.json",
+      "bytes": 532,
+      "sha256": "a3145f05ef8339ba869265dc53f6bfdcc4428065c7f29be50388911a426b1358"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/record-socket-green.status.json",
+      "bytes": 336,
+      "sha256": "4e0448950054dd1fef4798d1915b96764015d2cb65109c86250ed3760a109482"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/record-socket-red.log",
+      "bytes": 1251,
+      "sha256": "b7c9f653a31d8e39d0a1cfa020d56890d4e255e9da7252bebfa663a44bcfa837"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/record-socket-red.process.json",
+      "bytes": 532,
+      "sha256": "7c8b53a4cb932ae14c3b8efea5f2eb6e65214a1799b8d26661314702fb747195"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/record-socket-red.status.json",
+      "bytes": 385,
+      "sha256": "76a3d5b74aa097aa949b3145f939e25b98388a18e3202a7c2373cb79422f1fc2"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/script-map-corpus-fixed.log",
+      "bytes": 726,
+      "sha256": "e0973643e0b5ae8bbc755a6ed0bef1256305aff3329406432b91f377ccb6caeb"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/script-map-corpus-fixed.process.json",
+      "bytes": 434,
+      "sha256": "b125c7f901c8e67bdeae1fbddd283b9c1c59cb92a41dc97d6bdd7c8fbe637dbe"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/script-map-corpus-fixed.status.json",
+      "bytes": 296,
+      "sha256": "76caecf0dd9258d106579877f09b135eff76c72e5e24a6f582cfeef9ba401485"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/script-map-corpus.log",
+      "bytes": 1523,
+      "sha256": "7a647681e104c9fb2b3d945656d16326b505114d5104598a5993656badb72c86"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/script-map-corpus.process.json",
+      "bytes": 434,
+      "sha256": "6984d913a3561f8e20c551ae7283fed7a05d55425e7be44a8b5bf3affef76869"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/script-map-corpus.status.json",
+      "bytes": 298,
+      "sha256": "208ee14e74f76eb1978b4cc6dd5a4010f228cc07c189c717a13d616a631a0158"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/script-map-validation.json",
+      "bytes": 289,
+      "sha256": "4a03cc597c0e3f38e8e6513f2c4a498ca8ad921a0f9d884ffc393863c564b228"
+    }
+  ],
+  "current_main_at_handoff": "ddf19d06e6998307a06dcd9c78d6fe27af4942b9",
+  "main_changes_since_base": [
+    ".bboxy/runs/codex-alias-checkpoint.log",
+    ".bboxy/runs/codex-alias-load-final.json",
+    ".bboxy/runs/codex-alias-load-final.log",
+    ".bboxy/runs/codex-alias-load-prechecks.json",
+    ".bboxy/runs/codex-alias-load-prechecks.log",
+    "crates/bboxy450-harness-wake-up/src/launch.rs",
+    "crates/bboxy450-term/tests/recovery.rs",
+    "crates/bbt-mux/src/logic.rs",
+    "crates/bbt-mux/tests/capture_fairness.rs"
+  ],
+  "cleanup": {
+    "time": "2026-10-25T04:29:10.995768+00:00",
+    "target": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/ci-target-114ce13d",
+    "allocated_bytes_freed": 3977506816,
+    "target_exists": false,
+    "worktree": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c2-records-20261024T1955/ci-114ce13d",
+    "worktree_remove_exit": 0,
+    "worktree_exists": false,
+    "worktree_was_clean": true,
+    "lsof_exit": 1,
+    "lsof_stdout": "",
+    "note": "No active compiler; recorded CI process group empty; post-gate record corpus check completed before retirement. Sibling evidence and reports retained."
+  },
+  "notes": [
+    "Exact normal gate; no fresh parity/scale/installed-agent claim.",
+    "New CLI integration uses private file-backed test accounts; default workspace/smoke uses debug memory custody.",
+    "Events tail drains retained pages to observed head or timeout; no subscription/ACK/consumer added.",
+    "Wire VERSION 2 unchanged; EventsRead.through is serde-default additive.",
+    "The later script-map records follow-up is separate from this frozen source.",
+    "Sable alias cleanup/recovery/fairness landed during the gate; no post-gate rebase."
+  ]
+}
