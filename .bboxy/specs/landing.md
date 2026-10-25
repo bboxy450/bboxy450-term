@@ -14,7 +14,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[seats-967-frame]]", rel: constrains }
 created: "2026-10-25T16:22:41Z"
-updated: "2026-10-25T22:41:01Z"
+updated: "2026-10-25T22:48:30Z"
 ---
 # Landing
 
@@ -54,7 +54,7 @@ On the candidate, in the Executor's own target with the wrappers clear and `CARG
 
 ## 3a. Fast tests (the Oracle's gate-time data, 2026-10-25)
 
-Of 36.9 cargo hours across 175 gate logs, compile was 52 % (the dependency cache of [[d325-ci-capacity]] attacks the dependency share of it), test run 36 %, and six test binaries holding 52 to 72 second real-clock waits summed to over eight hours. So the presubmit tier has a **fast-test rule**, invariant [[presubmit-tests-fast]]: no test binary over 60 s, no wall-clock waits; a duration contract is tested through an injected clock or a shortened test duration, or in the night tier. `presubmit.sh` records per-binary durations in `presubmit.log` so the rule is checkable. The post-test 12 % is the invariants' separate `cargo test` invocations; `invariants.sh` runs the default tier's cargo checks as **one** invocation with a filter list where the crate allows it, one link instead of twenty.
+Of 36.9 cargo hours across 175 gate logs, compile was 52 % (the dependency cache of [[d325-ci-capacity]] attacks the dependency share of it), test run 36 %, and six test binaries holding 52 to 72 second real-clock waits summed to over eight hours. So the presubmit tier has a **fast-test rule**, invariant [[presubmit-tests-fast]]: no test binary over 60 s, no wall-clock waits; a duration contract is tested through an injected clock or a shortened test duration, or in the night tier. `presubmit.sh` records per-binary durations in `presubmit.log` so the rule is checkable. The post-test 12 % is the invariants' separate `cargo test` invocations; `invariants.sh` runs the default tier's cargo checks as **one** invocation with a filter list where the crate allows it, one link instead of twenty. Landed by Nyx at cbeb6264: fourteen cargo-backed checks in one cargo test graph, the UI clippy separate, `--affected <crates>` selecting per invariant (an empty set runs only non-cargo checks, an absent flag the full default, an unknown crate exits 2); the same 26 verdicts before and after, the warm invariants run from 226 s to 175 s.
 
 ## 4. Slots
 
