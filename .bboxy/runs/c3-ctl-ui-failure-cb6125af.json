@@ -1,0 +1,35 @@
+{
+  "source": "cb6125af5cd9b98868d6f6aaf07f4d9c8090d37c",
+  "base": "8240d3595a057590831bc808f79139271f53d852",
+  "cut": "/Users/feral/mydev/bboxy450-term-nyx/target/ci-c3-cb6125af",
+  "build": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-build-cb6125af",
+  "run": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-gate-cb6125af",
+  "started": "2026-10-25T01:55:41.073547+00:00",
+  "command": [
+    "sh",
+    "scripts/ci-local.sh",
+    "--parity"
+  ],
+  "runner_pid": 64095,
+  "phase": "finished",
+  "ci_pid": 64131,
+  "process_group": 64131,
+  "exit": 101,
+  "elapsed_seconds": 1706.7841641902924,
+  "binaries": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-gate-cb6125af/bboxybook-cb6125af",
+      "bytes": 18207280,
+      "sha256": "ca1c5bc48cb8bdb42d5e73213b74809fd5d67a82f86f52061c2fdafcc9e0bdc1"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-gate-cb6125af/bboxy450-term-cb6125af",
+      "bytes": 51988800,
+      "sha256": "6bfd55fcba15146e30a51a54adf9e300b9920562277e476b0d56316a126bf7f5"
+    }
+  ],
+  "allocated_bytes_freed": 3057553408,
+  "finished": "2026-10-25T02:24:10.211471+00:00",
+  "ci_log_sha256": "06d3a3195e474714e473b98b79a78e96b350e91c353f5fa6cc98aa5679e3b93b",
+  "verdict": "FAILED; Kitty source guard requires a direct route_input call in the native callback; parity not reached"
+}

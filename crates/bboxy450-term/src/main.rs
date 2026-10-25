@@ -3361,23 +3361,23 @@ impl App {
             let _ = proxy.send_event(UiEvent::DemoFinished);
         });
     }
-    fn route_chrome(&mut self, input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
+    /// Choose a UI command without changing the physical keyboard lifecycle.
+    /// ctl sends logical chords; only the native adapter tracks held keys.
+    fn route_chrome(&self, input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
         if self.document.open {
-            let routed = route_document(input, modes);
-            finish_route(&mut self.keyboard, input, routed)
+            route_document(input, modes)
         } else if self.local_tab.is_some()
             && self.launcher.is_none()
             && !self.composer.view.focus
             && !self.reject_focus
         {
-            let routed = if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
+            if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
                 route_settings(input, modes, self.settings_ime())
             } else {
                 route_local_page(input, modes)
-            };
-            finish_route(&mut self.keyboard, input, routed)
+            }
         } else if self.launcher.is_none() && (self.composer.view.focus || self.reject_focus) {
-            let routed = route_composer(
+            route_composer(
                 input,
                 modes,
                 if self.reject_focus {
@@ -3387,11 +3387,9 @@ impl App {
                 } else {
                     self.composer.view.field
                 },
-            );
-            finish_route(&mut self.keyboard, input, routed)
+            )
         } else {
-            route_input(
-                &mut self.keyboard,
+            route_key(
                 input,
                 modes,
                 self.launcher
@@ -4989,7 +4987,26 @@ impl ApplicationHandler<UiEvent> for App {
                             .get(&seat)
                             .map(|screen| screen.modes)
                     });
-                let routed = self.route_chrome(&input, modes.unwrap_or_default());
+                let routed = if self.document.open
+                    || (self.launcher.is_none()
+                        && (self.local_tab.is_some()
+                            || self.composer.view.focus
+                            || self.reject_focus))
+                {
+                    let routed = self.route_chrome(&input, modes.unwrap_or_default());
+                    finish_route(&mut self.keyboard, &input, routed)
+                } else {
+                    // The live PTY boundary keeps physical repeat/release
+                    // suppression and the focused Screen's actual modes.
+                    route_input(
+                        &mut self.keyboard,
+                        &input,
+                        modes.unwrap_or_default(),
+                        self.launcher
+                            .as_ref()
+                            .map(|launcher| launcher.launcher.query.as_str()),
+                    )
+                };
                 match self.dispatch_chrome(routed) {
                     None => {}
                     Some(RoutedKey::Quit) => self.request_close(event_loop),
@@ -7835,10 +7852,38 @@ mod composer_host_tests {
     }
 }
 
-
 #[cfg(test)]
 mod ctl_ui_key_tests {
     use super::*;
+    #[test]
+    fn virtual_chords_leave_native_pressed_keys_and_releases_alone() {
+        struct QuietWake;
+        impl bbt_rt::Waker for QuietWake {
+            fn wake(&self) {}
+        }
+        let inbox = bbt_rt::init_ui(QuietWake);
+        let updates = Arc::new(Latest::new(inbox.dirty.source(5)));
+        let mut app = App::owner(
+            UiProxy::Headless(Arc::new(|_| {})),
+            inbox,
+            log::Logger::new(),
+            updates,
+            &["--headless".into()],
+            Verify::default(),
+        );
+        let key = PhysicalKey::Code(KeyCode::KeyT);
+        let input = chrome_input("cmd-t").unwrap();
+        // A real local press still owns its later release after a ctl chord.
+        app.keyboard.consumed(key, ElementState::Pressed);
+        let routed = app.route_chrome(&input, 0);
+        assert!(app.dispatch_chrome(routed).is_none());
+        assert!(app.keyboard.suppressed(key, ElementState::Released, false));
+        app.close_launcher();
+        // A ctl chord cannot suppress a release for an earlier PTY press.
+        let routed = app.route_chrome(&input, 0);
+        assert!(app.dispatch_chrome(routed).is_none());
+        assert!(!app.keyboard.suppressed(key, ElementState::Released, false));
+    }
     #[test]
     fn every_advertised_chrome_key_uses_the_native_input_boundary() {
         for key in bbt_proto::gui::UI_KEYS {
