@@ -824,10 +824,20 @@ fn ctl_ui_keys_acknowledge_spawn_mute_and_undo_only_after_their_end_state_frame(
             > spawned["data"]["frame_seq"].as_u64().unwrap()
     );
     f.ok(&["seat", "close", &seat]);
+    fn closed_row(node: &Value, seat: &str) -> bool {
+        node["kind"].as_str().is_some_and(|kind| {
+            kind.starts_with("named:") && kind.ends_with(&format!("closed/{seat}"))
+        }) || node["children"]
+            .as_array()
+            .is_some_and(|children| children.iter().any(|child| closed_row(child, seat)))
+    }
     await_value(&f, || {
         let layout = f.ok(&["ui", "layout"]);
         (layout["data"]["panes"].as_array()?.is_empty()
-            && ui_node(&layout["data"], &format!("closed/{seat}")).is_some())
+            && layout["data"]["tree"]
+                .as_array()?
+                .iter()
+                .any(|root| closed_row(root, &seat)))
         .then_some(layout)
     });
     let restored = f.ok(&["ui", "key", "cmd-z"]);
