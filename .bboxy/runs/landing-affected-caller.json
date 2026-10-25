@@ -1,0 +1,16 @@
+{
+  "prerequisite": "cbeb62648e00e171f750cbbaa7b74a5fb417d3e2",
+  "contract": "invariants --affected receives one space-separated crate argument; empty selects no Cargo checks",
+  "checks": [
+    {
+      "path": ".bboxy/runs/landing-affected-caller-red.log",
+      "sha256": "fad596679d044e99a8fe60f1c3420df1f94f6e77d2b932ed27d592d59d474e16",
+      "result": "old caller: both propagation assertions fail"
+    },
+    {
+      "path": ".bboxy/runs/landing-affected-caller-green.log",
+      "sha256": "e682376432de32e38677aba6e00b938666d637cfcb35bd79c3de251b17cf96a0",
+      "result": "canonical caller: 2 focused tests pass"
+    }
+  ]
+}

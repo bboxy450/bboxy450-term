@@ -1,0 +1,23 @@
+FF
+======================================================================
+FAIL: test_script_only_cut_runs_its_fixtures_and_only_non_cargo_invariants (__main__.PresubmitTests.test_script_only_cut_runs_its_fixtures_and_only_non_cargo_invariants)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/ci-tree/scripts/test-landing.py", line 438, in test_script_only_cut_runs_its_fixtures_and_only_non_cargo_invariants
+    self.assertIn("invariants.sh --affected \n", (self.repo.state / "shell.log").read_text())
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'invariants.sh --affected \n' not found in 'scripts/invariants.sh --no-cargo\n'
+
+======================================================================
+FAIL: test_code_cut_passes_the_affected_crates_to_invariants (__main__.PresubmitTests.test_code_cut_passes_the_affected_crates_to_invariants)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/ci-tree/scripts/test-landing.py", line 445, in test_code_cut_passes_the_affected_crates_to_invariants
+    self.assertIn("invariants.sh --affected c\n", (self.repo.state / "shell.log").read_text())
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'invariants.sh --affected c\n' not found in 'scripts/invariants.sh \n'
+
+----------------------------------------------------------------------
+Ran 2 tests in 6.131s
+
+FAILED (failures=2)

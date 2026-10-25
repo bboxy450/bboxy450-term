@@ -435,8 +435,14 @@ class PresubmitTests(unittest.TestCase):
         result = self.repo.presubmit()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("nested fixture checks", result.stdout)
-        self.assertIn("invariants.sh --no-cargo", (self.repo.state / "shell.log").read_text())
+        self.assertIn("invariants.sh --affected \n", (self.repo.state / "shell.log").read_text())
         self.assertFalse((self.repo.state / "cargo.jsonl").exists())
+
+    def test_code_cut_passes_the_affected_crates_to_invariants(self):
+        self.cut("crates/c/src/lib.rs")
+        result = self.repo.presubmit()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("invariants.sh --affected c\n", (self.repo.state / "shell.log").read_text())
 
     def test_wide_uses_full_normal_ci_without_the_bounded_deadline(self):
         self.cut("crates/a/src/lib.rs")
