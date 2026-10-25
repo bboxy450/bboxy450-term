@@ -15,7 +15,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: decision }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-24T19:32:03Z"
-updated: "2026-10-25T00:03:31Z"
+updated: "2026-10-25T00:05:29Z"
 ---
 # No bottlenecks and no chokepoints
 
@@ -59,13 +59,17 @@ else in a message are prose and close nothing. Cause: Seraph's detector read
 Rook's note "or my earlier QUIET END" inside a release line as an END and
 started a compile inside the 967 window (stopped after ten seconds, cleaned
 up). The grammar is the fix; a detector that matches substrings is the bug.
-**Collisions.** Every TAKEN and RELEASED line names its slot number; a line
-without one claims nothing. When two TAKEN lines name the same slot, the later
-one by message time yields within a minute and re-queues (all agents share one
-clock on this machine, so the comparison is sound); equal times, the
-lexicographically greater key yields. Cause: Seraph and Sable took the third
-slot at once (four gates on the machine); Seraph yielded after a minute of
-compile, which is the rule working by instinct, now written.
+**The claim is atomic, the line is a note (Oracle, 026a07af).** After Seraph
+and Sable took the third slot at once (four gates on the machine; Seraph
+yielded after a minute of compile), the claim moved out of the channel:
+`scripts/ci-local.sh` takes its slot with `mkdir /tmp/bboxy450-gate-slot-<n>`,
+three slots at 25 GiB free or more, else two, dead-owner slots reclaimed,
+exit 75 when all are taken (retry later). The SLOT lines stay as notes for
+humans and detectors and still name their slot number, but a channel line no
+longer grants or loses a slot; the directory does. For a gate started from a
+tree older than 026a07af, which has no lock, the fallback stands: the later
+TAKEN line by message time yields within a minute and re-queues, ties broken
+by the lexicographically greater key yielding.
 
 **Check.** Executable today: `sh scripts/never-block.sh` (no open task parked on
 a person) and `sh scripts/cross-os.sh` (no single OS binding path through
