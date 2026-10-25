@@ -26,7 +26,8 @@ Environment: private target at the same exec5 path, two Cargo jobs, O1 with debu
 - Second version: EXIT 101 at the private-directory permissions guard, before keychain creation. `TempDir` inherited 0755; the parent now explicitly sets 0700 before copying its helper.
 - Intermediate two-entry version: EXIT 0, 1 passed / 0 failed, native run 0.57 s. Folded the helper into the same entry so a night selection does not expose a second standalone child test.
 - `rustfmt --edition 2024 --config skip_children=true --check` on only the native module and fixture: EXIT 0. A crate-wide fmt check also reported existing unrelated formatting differences; those files were not reformatted.
-- `git diff --check`: EXIT 0.
+- `git diff --check` on the three Rust source paths: EXIT 0. The raw successful test outputs retain their final blank line; a whole-evidence whitespace check reports those two final blank lines.
+- `sh -n scripts/night-test-boundaries.sh`: EXIT 0. Registration adds only the exact private lib-test filter after the accepted Cut B night commands.
 - An initial attempt to lease a presubmit slot for the focused development check returned 75 before any build/test. Landing §4 reserves slots for presubmits; the focused native acceptance then ran directly. No false slot or gate verdict was posted.
 
 The production Apple-team requirement and Data Protection packaging tier are not tested by this ad-hoc fixture; spec `id1-seat-chain` §6.4 assigns tier 1 to the signed packaging acceptance. Non-macOS native backends are outside this test.

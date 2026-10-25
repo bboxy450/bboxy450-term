@@ -14,3 +14,4 @@ cargo test -p bbt-mux --locked --test provenance unchanged_clipped_git_refs_prod
 cargo test -p bboxy450-term --locked --test custody custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry -- --ignored --exact --nocapture
 cargo test -p bbt-mux --locked --test logic ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap -- --ignored --exact --nocapture
 cargo test -p bbt-mux --locked --test messaging_flow custody_hold_gui_boundary -- --ignored --exact --nocapture
+cargo test -p bbt-mux --locked --lib identity::native_keychain::fixtures::private_native_keychain_round_trip_and_cleanup -- --ignored --exact --nocapture
