@@ -334,10 +334,10 @@ def presubmit_worker(base, result_path):
             checked(["cargo", "clippy", "--locked", *packages, "--all-targets", "--", "-D", "warnings"], root)
         if any(p.startswith("scripts/") for p in data["paths"]):
             checked(["python3", "-I", "scripts/test-landing.py", "--all"], root)
-        checked(["sh", "scripts/invariants.sh"], root)
+        checked(["sh", "scripts/invariants.sh", *([] if packages else ["--no-cargo"])], root)
         dispatch = any(Path(p).name in ("ctl.rs", "seat_socket.rs", "logic.rs")
                        or "/src/ctl/" in p or "/src/mcp/" in p for p in data["paths"])
-        if dispatch:
+        if dispatch and packages:
             # The dispatch cuts supply their golden tests with the dispatcher.
             # A zero-test filter is not evidence of byte identity.
             output = io.StringIO()

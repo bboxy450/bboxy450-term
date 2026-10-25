@@ -45,6 +45,28 @@
       "exit": 0,
       "tests": 1,
       "log": "landing-wide-timing-rechecks.log"
+    },
+    {
+      "command": "sh scripts/land.sh",
+      "exit": 77,
+      "presubmit_exit": 124,
+      "presubmit_seconds": 900.008363083005,
+      "log": "landing-wide-bootstrap-timeout.log",
+      "finding": "Fresh checkout-keyed target compiled invariant tooling; no assertion failure. Old check spent most wall time in grep-hidden compilation."
+    },
+    {
+      "command": "sh scripts/land.sh (same-path warm target)",
+      "exit": 77,
+      "presubmit_exit": -15,
+      "presubmit_seconds": 302.2430700410041,
+      "log": "landing-wide-obsolete-check.log",
+      "finding": "Intentionally stopped only recorded owned worker group after Corvin 9d4a81f6 replaced the irrelevant Cargo-backed invariant work. Not a timeout or assertion failure."
+    },
+    {
+      "command": "python3 -I scripts/test-landing.py PresubmitTests.test_script_only_cut_runs_its_fixtures_and_only_non_cargo_invariants PresubmitTests.test_code_targets_the_affected_leaf_and_records_one_verdict",
+      "exit": 0,
+      "tests": 2,
+      "log": "landing-wide-rust-empty-fixture.log"
     }
   ],
   "mechanisms": [
@@ -56,11 +78,12 @@
     "targets are keyed by canonical checkout path; no warm target may cross checkout paths",
     "extended scripts fixtures still run only when scripts changed",
     "Compile/test phase events count active intervals at timeout; landing totals include all rechecks and retain per-check timing basis. External gate logs use reported Cargo/libtest durations or explicit unknown.",
-    "Temporary ALLOW_NARROW_COLD switch accepts exact green normal log only after the latest same-SHA timeout/124 before any test started, with positive compile time; a test-phase timeout still refuses. Fixed-slot followup disables this switch."
+    "Temporary ALLOW_NARROW_COLD switch accepts exact green normal log only after the latest same-SHA timeout/124 before any test started, with positive compile time; a test-phase timeout still refuses. Fixed-slot followup disables this switch.",
+    "Rust-empty cuts retain their own script fixtures and non-Cargo invariants; Cargo-backed invariants are postsubmit work. Rust-affected cuts retain their targeted Cargo tests/clippy and full default invariant selection."
   ],
   "source_files": {
-    "scripts/landing.py": "4bd7464781d0be3c336ea3b0add32e119c9b6762f31d58495cca9565471416f2",
-    "scripts/test-landing.py": "975a950be3ce66ca6cd1d13bef696b5275a736d81c2c6e21b6e8e01cf53ede7e",
+    "scripts/landing.py": "0a50ca222f97fe9da780988814c68743ad0c8849b4741228324e9f400c0ef5b1",
+    "scripts/test-landing.py": "ccff9c99a21a0b09b8ecc829234e3b29658242c8ea06ee98ecbf7b5fa478338e",
     "scripts/land.sh": "b6e19127768cfd16b05982006c97df0acc315750dc71a0064e38a5a29ab21a7b",
     "scripts/ci-local.sh": "193c862a376545f596a47401191b95f36348bde2dd6e5d6019dc315a0e528ed4"
   },
@@ -68,5 +91,7 @@
     "No real full wide product gate launched by these fixtures; CI route is exercised in private stub fixtures. Narrow author-land presubmit follows.",
     "Parity dependency checkpoint dbada3f2 and fixed-slot/cache transport union are separate queued cuts."
   ],
-  "binding_addition": "be7185be-26f5-4561-94e7-2ee8c6af3ae9; landing \u00a73 at 11490544"
+  "binding_addition": "be7185be-26f5-4561-94e7-2ee8c6af3ae9; landing \u00a73 at 11490544",
+  "binding_rust_empty": "Corvin 9d4a81f6: no affected Rust crate means invariants --no-cargo; affected code unchanged",
+  "pending_followup": "Per Oracle 8eb24e17, after this lands: narrow-cold uses observed compile >half bound and no observed test failure (tests may have started); explicit unclassified timing remainder. Current candidate intentionally retains the prior conservative rule."
 }

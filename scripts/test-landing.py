@@ -357,6 +357,14 @@ class PresubmitTests(unittest.TestCase):
         self.assertEqual(json.loads(rows[0])["verdict"], "green")
         self.assertNotIn("nested fixture checks", result.stdout)
 
+    def test_script_only_cut_runs_its_fixtures_and_only_non_cargo_invariants(self):
+        self.cut("scripts/fixture-gate.sh")
+        result = self.repo.presubmit()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("nested fixture checks", result.stdout)
+        self.assertIn("invariants.sh --no-cargo", (self.repo.state / "shell.log").read_text())
+        self.assertFalse((self.repo.state / "cargo.jsonl").exists())
+
     def test_wide_uses_full_normal_ci_without_the_bounded_deadline(self):
         self.cut("crates/a/src/lib.rs")
         (self.repo.state / "fixture.json").write_text('{"timeout_seconds":0.0001}')

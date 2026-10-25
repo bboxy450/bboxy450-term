@@ -1,0 +1,83 @@
+land: slot 2 of 3
+Rebasing (1/2)Rebasing (2/2)Successfully rebased and updated refs/heads/aster-landing-wide.
+cache: on (port 5058; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+presubmit: python3 -I scripts/test-landing.py --all
+fixture duration: LandTests.test_three_moving_attempts_are_79_with_no_candidate_push 11.862s
+fixture duration: LandTests.test_all_revert_cut_can_land_while_main_is_red 5.806s
+fixture duration: LandTests.test_disjoint_main_movement_rebases_but_does_not_repeat_checks 7.628s
+fixture duration: LandTests.test_narrow_compile_timeout_accepts_only_exact_green_gate_and_records_tier 9.369s
+fixture duration: LandTests.test_narrow_test_timeout_still_refuses_a_provided_gate 8.380s
+fixture duration: LandTests.test_notification_failure_can_resume_without_rechecking_or_repush 6.460s
+fixture duration: LandTests.test_reverse_dependency_overlap_rechecks 8.668s
+fixture duration: LandTests.test_signed_cut_pushes_once_logs_and_announces_after_slot_release 5.658s
+fixture duration: LandTests.test_wide_failed_or_incomplete_log_is_refused 6.181s
+fixture duration: LandTests.test_wide_moved_main_requires_a_new_exact_candidate_gate_even_when_disjoint 7.492s
+fixture duration: LandTests.test_wide_runs_full_normal_gate_and_records_tier 5.236s
+fixture duration: PresubmitTests.test_timeout_during_a_test_cannot_use_narrow_cold 5.650s
+fixture duration: WatchTests.test_records_only_carries_verdict_but_lab_changes_run_full_postsubmit 5.102s
+Ran 60 fixture tests in 29.209s; failures=0
+...............
+----------------------------------------------------------------------
+Ran 15 tests in 61.530s
+
+OK
+presubmit: sh scripts/invariants.sh
+cache: on (port 5058; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+brand: held
+invariant bboxy450-prefix: pass
+invariant checkpoint-bounded: pass
+invariant clippy-clean: skipped (slow)
+cross-os: held
+invariant cross-os-facade: pass
+invariant ctl-never-prints-secrets: pass
+invariant ctl-opt-in: pass
+invariant e2e-runs-unattended: skipped (slow)
+   Compiling serde v1.0.229
+   Compiling pulldown-cmark v0.13.4
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/ci-tree/crates/bbt-ui)
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling serde_json v1.0.154
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/ci-tree/crates/bbt-doc)
+    Finished `test` profile [optimized] target(s) in 46.85s
+     Running tests/corpus.rs (/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-target/checkout-80ae807f507a3b75a594/debug/deps/corpus-79736735b68121f5)
+
+running 1 test
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.08s
+
+invariant frontmatter-parses: pass
+invariant glow-never-moves-layout: pass
+invariant idle-swarms-cost-nothing: skipped (slow)
+images: held
+invariant images-resolve: pass
+kill-own-pids: held
+invariant kill-only-own-pids: pass
+invariant kitty-keyboard: pass
+layering: held
+invariant layering: pass
+licenses: 24 workspace crates, SPDX map and required root/crate files present
+invariant licenses-present: pass
+local-first: held
+invariant local-first: pass
+invariant main-red-bounded: skipped (slow)
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/ci-tree/crates/bbt-mermaid)
+    Finished `test` profile [optimized] target(s) in 5.30s
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-target/checkout-80ae807f507a3b75a594/debug/deps/bbt_mermaid-7c2496a07458bdeb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/fixtures.rs (/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-target/checkout-80ae807f507a3b75a594/debug/deps/fixtures-bb021a3581d5478c)
+
+running 1 test
+test every_bboxy_mermaid_block_has_a_fixture ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.06s
+
+invariant mermaid-fixtures: pass
+invariant messaging-never-held: pass
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/ci-tree/crates/bbt-ui)
+{"affected": [], "binary_durations": [{"binary": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-target/checkout-80ae807f507a3b75a594/debug/deps/corpus-79736735b68121f5", "over_60s": false, "seconds": 0.08}, {"binary": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-target/checkout-80ae807f507a3b75a594/debug/deps/bbt_mermaid-7c2496a07458bdeb", "over_60s": false, "seconds": 0.0}, {"binary": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-target/checkout-80ae807f507a3b75a594/debug/deps/fixtures-bb021a3581d5478c", "over_60s": false, "seconds": 0.06}], "compile_seconds": 53.83036479196744, "error": null, "exit": -15, "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/7e0ac3e068beb3aba875350d924b65be1399a3f1-f6335f23/commands.log", "narrow_cold_eligible": false, "seconds": 302.2430700410041, "sha": "7e0ac3e068beb3aba875350d924b65be1399a3f1", "test_seconds": 91.90299766691169, "tests_started": true, "tier": "code", "timing_basis": "observed_output_phase_wall", "verdict": "red"}
+landing: presubmit_failed
