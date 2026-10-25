@@ -942,6 +942,95 @@ fn ctl_in(run: &Path, cwd: &Path, args: &[&str]) -> (bool, Vec<Value>) {
     (output.status.success(), lines)
 }
 
+#[tokio::test]
+async fn real_ctl_keeps_a_refusal_that_interrupts_its_request_write() {
+    use std::os::fd::AsRawFd;
+    use tokio::io::AsyncWriteExt;
+
+    tokio::time::timeout(Duration::from_secs(10), async {
+        let root = tempfile::Builder::new()
+            .prefix("ctl-refusal-")
+            .tempdir_in("/tmp")
+            .unwrap();
+        let path = root.path().join("door.sock");
+        let listener = tokio::net::UnixListener::bind(&path).unwrap();
+        let endpoint = root.path().join("endpoint.json");
+        std::fs::write(
+            &endpoint,
+            json!({"path":path,"capability":"00".repeat(32)}).to_string(),
+        )
+        .unwrap();
+        std::fs::set_permissions(&endpoint, std::fs::Permissions::from_mode(0o600)).unwrap();
+
+        // JSON escapes each control character to six bytes. This is below the
+        // 1 MiB wire cap and argv cap, but cannot fit in the socket send queue.
+        let summary = "\u{1}".repeat(120 * 1024);
+        let (probe, _) = std::os::unix::net::UnixStream::pair().unwrap();
+        let mut send_bytes: libc::c_int = 0;
+        let mut size = std::mem::size_of_val(&send_bytes) as libc::socklen_t;
+        // SAFETY: probe owns the live fd and both output pointers have their
+        // declared writable sizes. No option or system setting is changed.
+        let observed = unsafe {
+            libc::getsockopt(
+                probe.as_raw_fd(),
+                libc::SOL_SOCKET,
+                libc::SO_SNDBUF,
+                (&mut send_bytes as *mut libc::c_int).cast(),
+                &mut size,
+            )
+        };
+        assert_eq!(observed, 0);
+        assert!(send_bytes > 0);
+        assert!(
+            summary.len() * 6 > 2 * send_bytes as usize,
+            "the bounded fixture frame must exceed socket send capacity"
+        );
+        drop(probe);
+        let child = tokio::process::Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+            .args(["ctl", "--endpoint"])
+            .arg(&endpoint)
+            .args(["task", "report", "#1", "--summary", &summary])
+            .env_remove("BBOXY_CTL_ISSUER")
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .kill_on_drop(true)
+            .spawn()
+            .unwrap();
+        let (mut stream, _) = listener.accept().await.unwrap();
+        // This deliberately uncooperative peer stops accepting the request
+        // before it can finish, then queues the refusal. Keep its fd open until
+        // ctl exits so unread request bytes cannot discard the buffered reply.
+        // SAFETY: this is the accepted, fixture-owned fd; only its read half closes.
+        assert_eq!(
+            unsafe { libc::shutdown(stream.as_raw_fd(), libc::SHUT_RD) },
+            0
+        );
+        let mut refusal = serde_json::to_vec(&GuiReply::Error {
+            op: bbt_mux::Ulid::nil(),
+            reason: bbt_mux::ctl_door::REFUSAL.into(),
+        })
+        .unwrap();
+        refusal.push(b'\n');
+        stream.write_all(&refusal).await.unwrap();
+        stream.flush().await.unwrap();
+        stream.shutdown().await.unwrap();
+        let output = child.wait_with_output().await.unwrap();
+        assert_eq!(
+            output.status.code(),
+            Some(1),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let reply: Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(reply["error"]["kind"], "ancestry_refused", "{reply}");
+        assert_eq!(reply["error"]["message"], bbt_mux::ctl_door::REFUSAL);
+        assert!(!String::from_utf8_lossy(&output.stdout).contains("Broken pipe"));
+        assert!(!String::from_utf8_lossy(&output.stderr).contains("Broken pipe"));
+    })
+    .await
+    .expect("real ctl must finish with the named refusal, not a write error");
+}
+
 /// A wrong capability is refused with the reason, which ctl prints, not a closed socket.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_wrong_capability_is_refused_with_its_reason() {

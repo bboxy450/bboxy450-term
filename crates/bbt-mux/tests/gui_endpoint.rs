@@ -60,6 +60,100 @@ fn request(capability: [u8; 32], action: GuiAction) -> String {
     .unwrap()
 }
 
+// Admission can write its refusal and close before this peer writes. The write
+// error must not discard that buffered explanation, or hide a missing reply.
+const KNOCK_HELPER: &str = r#"import os, socket, sys
+def knock(s, line):
+    write_error = None
+    try:
+        s.sendall(line.encode() + b"\n")
+    except OSError as error:
+        write_error = error
+    reply = s.makefile("rb").readline()
+    if not reply:
+        if write_error is not None:
+            raise write_error
+        raise EOFError("door closed without a reply")
+    return reply, write_error
+"#;
+
+#[tokio::test]
+async fn a_refusal_queued_before_the_request_survives_a_broken_pipe() {
+    for queued in [true, false] {
+        tokio::time::timeout(Duration::from_secs(10), async {
+            let root = tempfile::Builder::new()
+                .prefix("gui-refusal-")
+                .tempdir_in("/tmp")
+                .unwrap();
+            let path = root.path().join("door.sock");
+            let listener = tokio::net::UnixListener::bind(&path).unwrap();
+            let script = format!(
+                r#"{KNOCK_HELPER}
+s = socket.socket(socket.AF_UNIX)
+s.settimeout(10)
+s.connect(os.environ["SOCK"])
+sys.stdout.write("CONNECTED\n")
+sys.stdout.flush()
+sys.stdin.readline()
+reply, write_error = knock(s, "request")
+assert isinstance(write_error, BrokenPipeError), repr(write_error)
+sys.stdout.buffer.write(reply)
+"#
+            );
+            let mut child = tokio::process::Command::new("python3")
+                .args(["-I", "-c", &script])
+                .env("SOCK", &path)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .kill_on_drop(true)
+                .spawn()
+                .unwrap();
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut reader = BufReader::new(child.stdout.take().unwrap());
+            let ready = bbt_mux::seat_socket::read_line(&mut reader)
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!(ready, b"CONNECTED");
+            if queued {
+                let mut refusal = serde_json::to_vec(&GuiReply::Error {
+                    op: Ulid::nil(),
+                    reason: ctl_door::REFUSAL.into(),
+                })
+                .unwrap();
+                refusal.push(b'\n');
+                stream.write_all(&refusal).await.unwrap();
+            }
+            stream.shutdown().await.unwrap();
+            drop(stream);
+            // The pipe rendezvous forces reply + close before the client's write.
+            child
+                .stdin
+                .take()
+                .unwrap()
+                .write_all(b"go\n")
+                .await
+                .unwrap();
+            let reply = bbt_mux::seat_socket::read_line(&mut reader).await.unwrap();
+            let output = child.wait_with_output().await.unwrap();
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            if queued {
+                assert!(output.status.success(), "{}: {stderr}", output.status);
+                let reply: GuiReply = serde_json::from_slice(&reply.unwrap()).unwrap();
+                assert!(matches!(reply, GuiReply::Error {op, reason}
+                    if op.is_nil() && reason == ctl_door::REFUSAL));
+            } else {
+                assert!(!output.status.success(), "a missing reply must fail");
+                assert!(stderr.contains("BrokenPipeError"), "{stderr}");
+                assert!(reply.is_none(), "no refusal was queued");
+            }
+        })
+        .await
+        .expect("forced-order refusal handshake must complete");
+    }
+}
+
 /// Sends one request as an outside peer (this test process) and returns the reply to `op`.
 async fn ask(path: &std::path::Path, line: &str, op: Ulid) -> GuiReply {
     let (read, mut write) = UnixStream::connect(path).await.unwrap().into_split();
@@ -127,11 +221,14 @@ async fn ctl_endpoint_opt_in_and_ancestry_refusal() {
     std::fs::write(&file, r#"{"path":"/stale","capability":"00"}"#).unwrap();
 
     // A stand-in supervisor: a shell that waits, then starts a child that knocks on the door.
-    let script = r#"import os, socket, sys
+    let script = format!(
+        r#"{KNOCK_HELPER}
 s = socket.socket(socket.AF_UNIX)
+s.settimeout(10)
 s.connect(os.environ["SOCK"])
-s.sendall(os.environ["LINE"].encode() + b"\n")
-sys.stdout.write(s.makefile("rb").readline().decode())"#;
+reply, _ = knock(s, os.environ["LINE"])
+sys.stdout.buffer.write(reply)"#
+    );
     let op = Ulid::new();
     let list = GuiAction::Messaging {
         id: op,
@@ -151,6 +248,7 @@ sys.stdout.write(s.makefile("rb").readline().decode())"#;
         .env("LINE", &line)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .unwrap();
 
@@ -182,6 +280,12 @@ sys.stdout.write(s.makefile("rb").readline().decode())"#;
     // 3. A supervisor-descended child is refused, by name, before any action runs.
     stand_in.stdin.take().unwrap().write_all(b"go\n").unwrap();
     let out = stand_in.wait_with_output().unwrap();
+    assert!(
+        out.status.success(),
+        "stand-in knock exited {}: {}",
+        out.status,
+        String::from_utf8_lossy(&out.stderr)
+    );
     let reply: GuiReply = serde_json::from_slice(&out.stdout).expect("the door explains itself");
     assert!(
         matches!(&reply, GuiReply::Error { op, reason } if op.is_nil() && reason == ctl_door::REFUSAL),
