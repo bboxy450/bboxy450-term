@@ -1,0 +1,63 @@
+# bbt-proto test-policy sweep (#327)
+
+Base: `3081fa92a690da384e74fe36f9c0d46ce2605234`. 37 original inventory entries: all D (§2D; it has no numeric subcategory), all retained. Every body and helper is byte-identical; only `keeps:` comments are inserted. No sleep, clock wait, process or socket occurs in this crate’s tests.
+
+| Test / file | Classification | Disposition | Contract |
+|---|---|---|
+| `crates/bbt-proto/tests/messaging_pending.rs` — `first_startup_intent_has_no_author_and_cannot_be_a_signed_envelope` | D (§2D) | keep | decision #286 — Pending-versus-signed and operator-local wire identities remain distinct; legacy signed bytes and unknown epoch semantics unchanged. |
+| `crates/bbt-proto/tests/messaging_pending.rs` — `signed_stored_messages_keep_their_legacy_bytes_without_a_new_tag` | D (§2D) | keep | decision #286 — Pending-versus-signed and operator-local wire identities remain distinct; legacy signed bytes and unknown epoch semantics unchanged. |
+| `crates/bbt-proto/tests/messaging_pending.rs` — `operator_local_reference_is_not_a_device_and_unknown_epoch_is_not_invented` | D (§2D) | keep | decision #286 — Pending-versus-signed and operator-local wire identities remain distinct; legacy signed bytes and unknown epoch semantics unchanged. |
+| `crates/bbt-proto/tests/plugin_contracts.rs` — `current_envelope_serializes_into_event_sink_without_relaxing_the_native_parser` | D (§2D) | keep | decision #278 — Real JSON schema validation: current opaque Envelope/TaskVerification compatibility, additive outer fields, and rejection of injected authority. No signature-verification claim. |
+| `crates/bbt-proto/tests/plugin_contracts.rs` — `task_verification_uses_the_existing_wire_shape_and_rejects_authority_fields` | D (§2D) | keep | decision #278 — Real JSON schema validation: current opaque Envelope/TaskVerification compatibility, additive outer fields, and rejection of injected authority. No signature-verification claim. |
+| `crates/bbt-proto/tests/gui_wire_golden.rs` — `every_gui_action_kind_keeps_its_exact_bytes` | D (§2D) | keep | decision #320 — Both dynamic variant coverage and exact JSON bytes remain unchanged (#320). The declared-variant decoder is kept with the protected golden. |
+| `crates/bbt-proto/tests/gui_wire_golden.rs` — `every_gui_reply_kind_keeps_its_exact_bytes` | D (§2D) | keep | decision #320 — Both dynamic variant coverage and exact JSON bytes remain unchanged (#320). The declared-variant decoder is kept with the protected golden. |
+| `crates/bbt-proto/tests/messaging.rs` — `existing_messaging_requests_keep_their_tags_and_nested_fields` | D (§2D) | keep | spec l9-messaging-tasks §2 — Messaging/task variants, canonical decimal counters, explicit scope and authority-field refusal remain unchanged. |
+| `crates/bbt-proto/tests/messaging.rs` — `carried_messages_preserve_canonical_decimal_counters` | D (§2D) | keep | spec l9-messaging-tasks §2 — Messaging/task variants, canonical decimal counters, explicit scope and authority-field refusal remain unchanged. |
+| `crates/bbt-proto/tests/messaging.rs` — `existing_stored_message_and_receipt_pages_keep_their_wire_shape` | D (§2D) | keep | spec l9-messaging-tasks §2 — Messaging/task variants, canonical decimal counters, explicit scope and authority-field refusal remain unchanged. |
+| `crates/bbt-proto/tests/messaging.rs` — `gui_messaging_wraps_the_existing_payload_and_correlates_its_reply` | D (§2D) | keep | spec l9-messaging-tasks §2 — Messaging/task variants, canonical decimal counters, explicit scope and authority-field refusal remain unchanged. |
+| `crates/bbt-proto/tests/messaging.rs` — `operator_recipients_are_named_while_legacy_seat_receipts_remain_ulids` | D (§2D) | keep | spec l9-messaging-tasks §2 — Messaging/task variants, canonical decimal counters, explicit scope and authority-field refusal remain unchanged. |
+| `crates/bbt-proto/tests/messaging.rs` — `task_wire_matches_as_built_tools_and_never_accepts_a_spawn_or_authority_override` | D (§2D) | keep | spec l9-messaging-tasks §2 — Messaging/task variants, canonical decimal counters, explicit scope and authority-field refusal remain unchanged. |
+| `crates/bbt-proto/tests/messaging.rs` — `unassigned_inventory_is_optional_and_keeps_existing_task_list_bytes` | D (§2D) | keep | spec l9-messaging-tasks §2 — Messaging/task variants, canonical decimal counters, explicit scope and authority-field refusal remain unchanged. |
+| `crates/bbt-proto/tests/ui_clock.rs` — `clock_actions_round_trip_inside_the_existing_ui_request` | D (§2D) | keep | spec ctl-cli §1 — Clock requests serialize exactly, reject negative/noninteger advances, and keep older layouts clock-free; no real clock is used. |
+| `crates/bbt-proto/tests/ui_clock.rs` — `an_older_layout_does_not_invent_an_animation_clock` | D (§2D) | keep | spec ctl-cli §1 — Clock requests serialize exactly, reject negative/noninteger advances, and keep older layouts clock-free; no real clock is used. |
+| `crates/bbt-proto/src/hosts.rs` — `host_states_and_namespaced_locations_round_trip_without_mux_types` | D (§2D) | keep | spec ctl-cli §1 — Host states and namespaced locations round-trip through actual GUI wire without mux types. |
+| `crates/bbt-proto/src/events.rs` — `positions_keep_every_u64_bit_and_their_stream` | D (§2D) | keep | spec l9-messaging-tasks §3 — Public event wire preserves full-width per-stream positions/proof scope or refuses lossy and ambiguous numeric inputs. |
+| `crates/bbt-proto/src/events.rs` — `numeric_loss_and_ambiguous_positions_are_rejected` | D (§2D) | keep | spec l9-messaging-tasks §3 — Public event wire preserves full-width per-stream positions/proof scope or refuses lossy and ambiguous numeric inputs. |
+| `crates/bbt-proto/src/events.rs` — `projection_metadata_names_the_original_signature_scope` | D (§2D) | keep | spec l9-messaging-tasks §3 — Public event wire preserves full-width per-stream positions/proof scope or refuses lossy and ambiguous numeric inputs. |
+| `crates/bbt-proto/src/events.rs` — `gaps_are_stream_ranges_without_a_signature` | D (§2D) | keep | spec l9-messaging-tasks §3 — Public event wire preserves full-width per-stream positions/proof scope or refuses lossy and ambiguous numeric inputs. |
+| `crates/bbt-proto/src/streams.rs` — `direct_metadata_matches_checkpoint_for_all_firehose_parser_scenes` | D (§2D) | keep | spec terminal-core §D7 — Public Screen output still matches the independent pre-optimization checkpoint oracle across every corpus scene and custom palette/cursor/reset/restore state. |
+| `crates/bbt-proto/src/streams.rs` — `direct_metadata_preserves_custom_palette_cursor_and_resets` | D (§2D) | keep | spec terminal-core §D7 — Public Screen output still matches the independent pre-optimization checkpoint oracle across every corpus scene and custom palette/cursor/reset/restore state. |
+| `crates/bbt-proto/src/seat_state.rs` — `absent_placement_keeps_the_default_lane` | D (§2D) | keep | spec ctl-cli §1 — Wire keeps default placement compatibility, captured tab/anchor/generation and operation/reply correlation. |
+| `crates/bbt-proto/src/seat_state.rs` — `placement_roundtrip_keeps_the_captured_tab_anchor_and_generation` | D (§2D) | keep | spec ctl-cli §1 — Wire keeps default placement compatibility, captured tab/anchor/generation and operation/reply correlation. |
+| `crates/bbt-proto/src/seat_state.rs` — `spawn_and_reply_keep_the_same_operation_id` | D (§2D) | keep | spec ctl-cli §1 — Wire keeps default placement compatibility, captured tab/anchor/generation and operation/reply correlation. |
+| `crates/bbt-proto/src/identity.rs` — `reopen_failure_is_typed_and_absent_from_unchanged_control_responses` | D (§2D) | keep | decision #315 — Public identity control serialization remains compatible and rejects caller identity/key-target fields; fixture reason text is carried data, not a pinned live-error sentence. |
+| `crates/bbt-proto/src/identity.rs` — `native_control_never_accepts_a_caller_identity_or_key_target` | D (§2D) | keep | decision #315 — Public identity control serialization remains compatible and rejects caller identity/key-target fields; fixture reason text is carried data, not a pinned live-error sentence. |
+| `crates/bbt-proto/src/seat_names.rs` — `rust_names_match_the_shared_json_and_are_unique` | D (§2D) | keep | spec e2e-acceptance §1 — The checked Rust pool still matches its canonical JSON, is unique and nonempty; protects T1 shared data rather than testing a self-constructed constant. |
+| `crates/bbt-proto/src/gui/mod.rs` — `identity_status_is_portable_and_contains_only_state_and_reason` | D (§2D) | keep | spec ctl-cli §1 — Portable GUI state/ID compatibility and validated UI/spawn/scroll scope remain unchanged, including malformed/missing or oversized inputs. |
+| `crates/bbt-proto/src/gui/mod.rs` — `gui_state_round_trips_portable_enums_without_a_mux_dependency` | D (§2D) | keep | spec ctl-cli §1 — Portable GUI state/ID compatibility and validated UI/spawn/scroll scope remain unchanged, including malformed/missing or oversized inputs. |
+| `crates/bbt-proto/src/gui/mod.rs` — `close_readback_is_optional_for_older_app_status_replies` | D (§2D) | keep | spec ctl-cli §1 — Portable GUI state/ID compatibility and validated UI/spawn/scroll scope remain unchanged, including malformed/missing or oversized inputs. |
+| `crates/bbt-proto/src/gui/mod.rs` — `gui_ids_keep_canonical_ulid_text_and_reject_malformed_ids` | D (§2D) | keep | spec ctl-cli §1 — Portable GUI state/ID compatibility and validated UI/spawn/scroll scope remain unchanged, including malformed/missing or oversized inputs. |
+| `crates/bbt-proto/src/gui/mod.rs` — `input_and_resize_require_an_explicit_displayed_generation` | D (§2D) | keep | spec ctl-cli §1 — Portable GUI state/ID compatibility and validated UI/spawn/scroll scope remain unchanged, including malformed/missing or oversized inputs. |
+| `crates/bbt-proto/src/gui/mod.rs` — `scroll_rows_stay_unsigned_and_live_positions_can_be_unindexed` | D (§2D) | keep | spec ctl-cli §1 — Portable GUI state/ID compatibility and validated UI/spawn/scroll scope remain unchanged, including malformed/missing or oversized inputs. |
+| `crates/bbt-proto/src/gui/mod.rs` — `ui_requests_keep_their_scope_and_reject_unbounded_input` | D (§2D) | keep | spec ctl-cli §1 — Portable GUI state/ID compatibility and validated UI/spawn/scroll scope remain unchanged, including malformed/missing or oversized inputs. |
+| `crates/bbt-proto/src/gui/mod.rs` — `spawn_pick_wire_is_bounded_and_old_layouts_keep_revision_unknown` | D (§2D) | keep | spec ctl-cli §1 — Portable GUI state/ID compatibility and validated UI/spawn/scroll scope remain unchanged, including malformed/missing or oversized inputs. |
+
+## Coverage map
+
+| Promise | Preserved check |
+|---|---|
+| #320 exact GUI wire and one entry per declared variant | Both `gui_wire_golden` tests and the unmodified TSV. |
+| L9 §2 existing messaging/task API and strict authority boundary | Seven `messaging` wire tests. |
+| L9 §3 per-stream, lossless positions and original-envelope proof scope | Four `events` tests. |
+| #286 pending intent, legacy signed bytes, operator-local identity | Three `messaging_pending` tests. |
+| #278 plugin boundary preserves opaque Envelope/TaskVerification | Two `plugin_contracts` tests. |
+| #315 native identity controls expose status only and reject key/authority overrides | Two `identity` tests. |
+| ctl §1 portable GUI state, scope, placement, IDs, scroll, older layouts and clock | GUI, placement, host and clock tests. |
+| terminal-core D7 complete Screen metadata | Both independent checkpoint-oracle tests. |
+| T1 one checked seat-name pool | `rust_names_match_the_shared_json_and_are_unique`. |
+
+Golden TSV SHA256 before and after: `651762f6210336f2aff2b054f614c53a049019b2bc3f2e25a3408aa02c2e4e76`. No bytes changed.
+
+Skipped peer paths: `crates/bbt-proto/src/gui/events.rs` and `tests/golden/gui_wire.tsv` (Sable active diff). Neither contains an in-scope test body to edit here; TSV is deliberately immutable. A stale peer branch also names removed `src/gui.rs`; current `src/gui/mod.rs` is clear. No peer production hunk is edited.
+
+Sleep calls: 0 → 0. No test deleted, moved or rewritten; no invariant check or acceptance test loses coverage. Report coarse test-run seconds without claiming a 50% reduction. One combined normal gate follows all four assigned crates (Oracle cbda7952).

@@ -99,6 +99,7 @@ flat_enum! {
 mod tests {
     use super::*;
     use crate::{registry::SeatRecord, seat_state::*};
+    // keeps: spec ctl-cli §1
     #[test]
     fn identity_status_is_portable_and_contains_only_state_and_reason() {
         for (state, name) in [
@@ -120,6 +121,7 @@ mod tests {
             assert_eq!(identity, decoded);
         }
     }
+    // keeps: spec ctl-cli §1
     #[test]
     fn gui_state_round_trips_portable_enums_without_a_mux_dependency() {
         for activity in [
@@ -161,6 +163,7 @@ mod tests {
             }
         }
     }
+    // keeps: spec ctl-cli §1
     #[test]
     fn close_readback_is_optional_for_older_app_status_replies() {
         let mut wire = serde_json::json!({
@@ -174,6 +177,7 @@ mod tests {
         let current: AppStatus = serde_json::from_value(wire.clone()).unwrap();
         assert_eq!(serde_json::to_value(current).unwrap(), wire);
     }
+    // keeps: spec ctl-cli §1
     #[test]
     fn gui_ids_keep_canonical_ulid_text_and_reject_malformed_ids() {
         let seat = SeatId::from_u128(42);
@@ -185,6 +189,7 @@ mod tests {
         bad["body"]["seat"] = serde_json::json!("not-a-seat");
         assert!(serde_json::from_value::<GuiAction>(bad).is_err());
     }
+    // keeps: spec ctl-cli §1
     #[test]
     fn input_and_resize_require_an_explicit_displayed_generation() {
         let seat = SeatId::from_u128(42);
@@ -213,6 +218,7 @@ mod tests {
 #[cfg(test)]
 mod ui_tests {
     use super::*;
+    // keeps: spec ctl-cli §1
     #[test]
     fn scroll_rows_stay_unsigned_and_live_positions_can_be_unindexed() {
         let seat = Ulid::new();
@@ -247,6 +253,7 @@ mod ui_tests {
                 .is_err()
         );
     }
+    // keeps: spec ctl-cli §1
     #[test]
     fn ui_requests_keep_their_scope_and_reject_unbounded_input() {
         let request = UiRequest::Key(vec!["cmd-t".into(), "esc".into()]);
@@ -269,6 +276,7 @@ mod ui_tests {
 #[cfg(test)]
 mod spawn_pick_tests {
     use super::*;
+    // keeps: spec ctl-cli §1
     #[test]
     fn spawn_pick_wire_is_bounded_and_old_layouts_keep_revision_unknown() {
         let pick = UiSpawn {

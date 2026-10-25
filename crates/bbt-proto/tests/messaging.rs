@@ -17,6 +17,7 @@ fn envelope() -> Value {
     })
 }
 
+// keeps: spec l9-messaging-tasks §2
 #[test]
 fn existing_messaging_requests_keep_their_tags_and_nested_fields() {
     let node = json!({"path":"channels/render/link","kind":"link","target":"seats/target/inbox",
@@ -49,6 +50,7 @@ fn existing_messaging_requests_keep_their_tags_and_nested_fields() {
     );
 }
 
+// keeps: spec l9-messaging-tasks §2
 #[test]
 fn carried_messages_preserve_canonical_decimal_counters() {
     let value = envelope();
@@ -71,6 +73,7 @@ fn carried_messages_preserve_canonical_decimal_counters() {
     assert!(serde_json::from_value::<Envelope>(value).is_err());
 }
 
+// keeps: spec l9-messaging-tasks §2
 #[test]
 fn existing_stored_message_and_receipt_pages_keep_their_wire_shape() {
     let message = json!({"sequence":3,"envelope":envelope(),"held_out":null});
@@ -94,6 +97,7 @@ fn existing_stored_message_and_receipt_pages_keep_their_wire_shape() {
     }
 }
 
+// keeps: spec l9-messaging-tasks §2
 #[test]
 fn gui_messaging_wraps_the_existing_payload_and_correlates_its_reply() {
     let value = json!({"kind":"Messaging","body":{"id":ID,"swarm_id":ID,
@@ -107,6 +111,7 @@ fn gui_messaging_wraps_the_existing_payload_and_correlates_its_reply() {
     assert_eq!(serde_json::to_value(reply).unwrap(), value);
 }
 
+// keeps: spec l9-messaging-tasks §2
 #[test]
 fn operator_recipients_are_named_while_legacy_seat_receipts_remain_ulids() {
     use bbt_proto::messaging::Recipient;
@@ -124,6 +129,7 @@ fn operator_recipients_are_named_while_legacy_seat_receipts_remain_ulids() {
     }
 }
 
+// keeps: spec l9-messaging-tasks §2
 #[test]
 fn task_wire_matches_as_built_tools_and_never_accepts_a_spawn_or_authority_override() {
     use bbt_proto::messaging::TaskRequest;
@@ -142,6 +148,7 @@ fn task_wire_matches_as_built_tools_and_never_accepts_a_spawn_or_authority_overr
     }
 }
 
+// keeps: spec l9-messaging-tasks §2
 #[test]
 fn unassigned_inventory_is_optional_and_keeps_existing_task_list_bytes() {
     use bbt_proto::messaging::TaskRequest;

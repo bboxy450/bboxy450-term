@@ -127,6 +127,7 @@ mod tests {
         );
     }
 
+    // keeps: spec terminal-core §D7
     #[test]
     fn direct_metadata_matches_checkpoint_for_all_firehose_parser_scenes() {
         let fixtures: &[&[u8]] = &[
@@ -151,6 +152,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D7
     #[test]
     fn direct_metadata_preserves_custom_palette_cursor_and_resets() {
         let mut term = Term::new(38, 57, 0);

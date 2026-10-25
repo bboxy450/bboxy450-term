@@ -30,6 +30,7 @@ pub struct GuiHost {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: spec ctl-cli §1
     #[test]
     fn host_states_and_namespaced_locations_round_trip_without_mux_types() {
         for location in [

@@ -205,6 +205,7 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    // keeps: spec l9-messaging-tasks §3
     #[test]
     fn positions_keep_every_u64_bit_and_their_stream() {
         for sequence in [0, 9_007_199_254_740_993, u64::MAX] {
@@ -228,6 +229,7 @@ mod tests {
         }
     }
 
+    // keeps: spec l9-messaging-tasks §3
     #[test]
     fn numeric_loss_and_ambiguous_positions_are_rejected() {
         for value in [
@@ -248,6 +250,7 @@ mod tests {
         }
     }
 
+    // keeps: spec l9-messaging-tasks §3
     #[test]
     fn projection_metadata_names_the_original_signature_scope() {
         let metadata = EventMetadata {
@@ -290,6 +293,7 @@ mod tests {
         );
     }
 
+    // keeps: spec l9-messaging-tasks §3
     #[test]
     fn gaps_are_stream_ranges_without_a_signature() {
         let gap = EventGap {

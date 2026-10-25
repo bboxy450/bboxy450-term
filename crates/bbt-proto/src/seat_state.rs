@@ -100,6 +100,7 @@ mod placement_tests {
         }
     }
 
+    // keeps: spec ctl-cli §1
     #[test]
     fn absent_placement_keeps_the_default_lane() {
         let expected = spec();
@@ -111,6 +112,7 @@ mod placement_tests {
         );
     }
 
+    // keeps: spec ctl-cli §1
     #[test]
     fn placement_roundtrip_keeps_the_captured_tab_anchor_and_generation() {
         let mut expected = spec();
@@ -138,6 +140,7 @@ mod placement_tests {
         assert!(serde_json::from_value::<SpawnSpec>(invalid).is_err());
     }
 
+    // keeps: spec ctl-cli §1
     #[test]
     fn spawn_and_reply_keep_the_same_operation_id() {
         let op = ulid::Ulid::new();

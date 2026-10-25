@@ -22,6 +22,7 @@ pub const POOL: [&str; 14] = [
 mod tests {
     use super::*;
 
+    // keeps: spec e2e-acceptance §1
     #[test]
     fn rust_names_match_the_shared_json_and_are_unique() {
         let source: serde_json::Value =

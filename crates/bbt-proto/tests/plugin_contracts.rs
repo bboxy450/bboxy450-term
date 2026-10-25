@@ -2,6 +2,7 @@ use bbt_plugin::contracts::Contract;
 use bbt_proto::messaging::{Envelope, TaskEvidence, TaskVerification};
 use serde_json::{Value, json};
 
+// keeps: decision #278
 #[test]
 fn current_envelope_serializes_into_event_sink_without_relaxing_the_native_parser() {
     let id = "00000000000000000000000001";
@@ -25,6 +26,7 @@ fn current_envelope_serializes_into_event_sink_without_relaxing_the_native_parse
     assert!(serde_json::from_value::<Envelope>(request["envelope"].clone()).is_err());
 }
 
+// keeps: decision #278
 #[test]
 fn task_verification_uses_the_existing_wire_shape_and_rejects_authority_fields() {
     let verification = TaskVerification {

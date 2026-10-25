@@ -31,6 +31,7 @@ fn pending_intent() -> PendingIntent {
     }
 }
 
+// keeps: decision #286
 #[test]
 fn first_startup_intent_has_no_author_and_cannot_be_a_signed_envelope() {
     let intent = pending_intent();
@@ -52,6 +53,7 @@ fn first_startup_intent_has_no_author_and_cannot_be_a_signed_envelope() {
     assert!(serde_json::from_value::<PendingIntent>(signed).is_err());
 }
 
+// keeps: decision #286
 #[test]
 fn signed_stored_messages_keep_their_legacy_bytes_without_a_new_tag() {
     use bbt_proto::messaging::{Body, IssuerKind, StoredMessage};
@@ -122,6 +124,7 @@ fn signed_stored_messages_keep_their_legacy_bytes_without_a_new_tag() {
     assert!(stored.intent().is_none());
 }
 
+// keeps: decision #286
 #[test]
 fn operator_local_reference_is_not_a_device_and_unknown_epoch_is_not_invented() {
     use bbt_proto::messaging::{Door, OperatorReference, OperatorReferenceKind, Recipient};

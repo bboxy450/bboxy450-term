@@ -1,6 +1,7 @@
 use bbt_proto::gui::{UiClockCommand, UiLayout, UiRequest};
 use serde_json::json;
 
+// keeps: spec ctl-cli §1
 #[test]
 fn clock_actions_round_trip_inside_the_existing_ui_request() {
     for (command, body) in [
@@ -30,6 +31,7 @@ fn clock_actions_round_trip_inside_the_existing_ui_request() {
     );
 }
 
+// keeps: spec ctl-cli §1
 #[test]
 fn an_older_layout_does_not_invent_an_animation_clock() {
     let wire = json!({"frame_seq":7,"size":[800.,600.],"swarm":null,"tab":null,"focused":null,"launcher_open":false,"page":null,"document":null,"panes":[],"tree":[]});

@@ -48,11 +48,13 @@ fn pinned<T: Serialize + DeserializeOwned>(dir: &str) -> BTreeSet<String> {
     kinds
 }
 
+// keeps: decision #320
 #[test]
 fn every_gui_action_kind_keeps_its_exact_bytes() {
     assert_eq!(pinned::<GuiAction>("action"), declared::<GuiAction>());
 }
 
+// keeps: decision #320
 #[test]
 fn every_gui_reply_kind_keeps_its_exact_bytes() {
     assert_eq!(pinned::<GuiReply>("reply"), declared::<GuiReply>());

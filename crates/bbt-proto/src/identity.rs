@@ -74,6 +74,7 @@ pub struct IdentityControl {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: decision #315
     #[test]
     fn reopen_failure_is_typed_and_absent_from_unchanged_control_responses() {
         let original = serde_json::json!({
@@ -94,6 +95,7 @@ mod tests {
             control
         );
     }
+    // keeps: decision #315
     #[test]
     fn native_control_never_accepts_a_caller_identity_or_key_target() {
         let call = IdentityCall {
