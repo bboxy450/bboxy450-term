@@ -1,0 +1,28 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+    Blocking waiting for file lock on package cache
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+error[E0277]: the trait bound `CFDictionary<CFString, CFType>: ConcreteCFType` is not satisfied
+   --> crates/bbt-mux/src/identity/native_keychain/fixtures.rs:192:21
+    |
+192 |         .downcast::<CFDictionary<CFString, CFType>>()
+    |          --------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `ConcreteCFType` is not implemented for `CFDictionary<CFString, CFType>`
+    |          |
+    |          required by a bound introduced by this call
+    |
+help: the trait `ConcreteCFType` is implemented for `core_foundation::dictionary::CFDictionary`
+   --> /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/core-foundation-0.10.1/src/dictionary.rs:40:1
+    |
+ 40 | unsafe impl ConcreteCFType for CFDictionary<*const c_void, *const c_void> {}
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `core_foundation::base::CFType::downcast`
+   --> /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/core-foundation-0.10.1/src/base.rs:84:24
+    |
+ 84 |     pub fn downcast<T: ConcreteCFType>(&self) -> Option<T> {
+    |                        ^^^^^^^^^^^^^^ required by this bound in `CFType::downcast`
+    = note: the full name for the type has been written to '/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bbt_mux-4cd8452ae9f6e27b.long-type-6204380769531734622.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `bbt-mux` (lib test) due to 1 previous error

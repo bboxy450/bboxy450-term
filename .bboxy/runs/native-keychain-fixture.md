@@ -1,0 +1,42 @@
+# Native Keychain fixture isolation
+
+Brief: `df4fc6f2-def9-4f67-b34a-85c157e54431`; go after the four-crate sweep landed: `3f7d10b9-e621-48ce-a4b6-8eec25dbd13b`. Executor: Kestrel Voidwing. Worktree: `bboxy450-term-exec5`; source base `b11e36a318d9ea8bc55edc5b9663d1c43ff9afb9`.
+
+The ignored `identity_keychain_device_local_item_and_cleanup` selected the default login Keychain. It was removed without running it. Its native item-attribute coverage now has one explicit ignored lib-test entry point, `identity::native_keychain::fixtures::private_native_keychain_round_trip_and_cleanup`.
+
+The parent copies its own test binary into a mode-0700 per-run directory and signs that copy ad hoc with a fixture-only identifier and explicit designated requirement. The child disables Keychain user interaction before creating an owned password-protected keychain. Every native item query names that private handle; a fixture-root guard refuses any attempt to fall through to the default login or implicit Data Protection store. It checks absent/read/add/duplicate/read, service/account attributes, removal, and explicit private-keychain deletion. The parent checks child success and the completion marker, then removes its temporary directory. Subprocess waits have 120-second hang guards, retained child handles, kill-and-reap cleanup, and bounded output.
+
+All fixture routing and requirement substitution are `cfg(test)`. The production team/app requirement is unchanged. There is no operator password, signing identity, account, default Keychain query, or UI interaction in the fixture path.
+
+| Acceptance | Mechanism and evidence |
+|---|---|
+| No test selects the operator's login Keychain | Old ignored integration test removed; new `Native::query` refuses a fixture process without an explicit private handle; the child sets its handle before every item operation. |
+| Native boundary remains covered | New fixture runs the existing `Native` vault methods against real Security.framework storage and checks item attributes and key round-trip by public key. |
+| Create/use/delete within the test | Checked `SecKeychainDelete` on the object returned by this run's `CreateOptions`; parent `TempDir::close` and missing-path assertion; `native-keychain-fixture-native.log` has the exact pass. |
+| Unattended night tier | One ignored entry point, its signed private child uses the same filter, UI disabled for the whole native lifetime. The existing night-boundary script selects the parent exactly. |
+| Application/bootstrap coverage retained | Existing `identity_bootstrap_external_certification_and_custody`, `identity_pending_failure_installs_no_authority_and_retries_same_device`, `identity_locked_keychain_and_wrong_keygrip_install_nothing`, and native unlock/migration fixtures are untouched. |
+| Process cleanup | Recorded Cargo/signing/helper PIDs 69255, 90180, 90192 absent: `ps` exit 1 with no rows, in the process-check file. |
+
+## Commands and outcomes
+
+Environment: private target at the same exec5 path, two Cargo jobs, O1 with debug assertions, explicit memory custody for other tests, offline dependencies, worktree cache helper.
+
+- `. ./scripts/cache-env.sh; cargo test -p bbt-mux --lib --locked --offline identity::native_keychain::fixtures::private_native_keychain_round_trip_and_cleanup -- --ignored --exact --nocapture`: final EXIT 0, 1 passed / 0 failed, native run 0.52 s, build plus run 159.368 s. The single-entry change was followed by this exact rerun.
+- First version: compile EXIT 101, typed CFDictionary did not implement `ConcreteCFType`; corrected to runtime-check the untyped dictionary before its documented typed view.
+- Second version: EXIT 101 at the private-directory permissions guard, before keychain creation. `TempDir` inherited 0755; the parent now explicitly sets 0700 before copying its helper.
+- Intermediate two-entry version: EXIT 0, 1 passed / 0 failed, native run 0.57 s. Folded the helper into the same entry so a night selection does not expose a second standalone child test.
+- `rustfmt --edition 2024 --config skip_children=true --check` on only the native module and fixture: EXIT 0. A crate-wide fmt check also reported existing unrelated formatting differences; those files were not reformatted.
+- `git diff --check`: EXIT 0.
+- An initial attempt to lease a presubmit slot for the focused development check returned 75 before any build/test. Landing §4 reserves slots for presubmits; the focused native acceptance then ran directly. No false slot or gate verdict was posted.
+
+The production Apple-team requirement and Data Protection packaging tier are not tested by this ad-hoc fixture; spec `id1-seat-chain` §6.4 assigns tier 1 to the signed packaging acceptance. Non-macOS native backends are outside this test.
+
+## Raw evidence hashes
+
+| File | SHA-256 |
+|---|---|
+| `native-keychain-fixture-native.log` | `2727c34bed4a70714c0991535b0494fb5d6d28dc8cb7a140c2b7c652c9fc32b9` |
+| `native-keychain-fixture-compile-refusal.log` | `7cf076ddf985c0c10f2bd2bd6fc04ca44c2a6ec9f90a77f2372286318b1f703d` |
+| `native-keychain-fixture-root-mode-refusal.log` | `1561800b9fa38dd263028b69fb0d14440cf56ec31b4c57163b59113ae6bc233f` |
+| `native-keychain-fixture-first-green.log` | `a61756e60f9a0cc0e7e025758105a2b3a6bd6c37496b95467a3c70bfe5c4fdf0` |
+| `native-keychain-fixture-process-check.json` | `50da08db6bb481b97fdaf3856ea8a8262828ef323ad15b18c3cfe4c36af37c68` |

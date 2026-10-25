@@ -17,8 +17,7 @@ use std::{
 
 use bbt_mux::{
     identity::{
-        AccountHead, Bootstrap, BootstrapOutcome, Custody, DeviceKeyStore, KeychainDeviceKeys,
-        PendingReason, Signed,
+        AccountHead, Bootstrap, BootstrapOutcome, Custody, DeviceKeyStore, PendingReason, Signed,
     },
     store::{Store, sqlite::SqliteStore},
 };
@@ -569,89 +568,8 @@ fn identity_locked_keychain_and_wrong_keygrip_install_nothing() {
     assert!(store.list("identity/device/").unwrap().is_empty());
 }
 
-#[test]
-#[cfg(target_os = "macos")]
-#[ignore = "uses the current login Keychain with an isolated, deleted test item; run for ID1a acceptance"]
-fn identity_keychain_device_local_item_and_cleanup() {
-    let service = format!("bboxy450-term.test.{}", Ulid::new());
-    let store = KeychainDeviceKeys::isolated_test(&service).unwrap();
-    let fixture = Fixture::new();
-    let (_directory, account) = account();
-    let outcome = fixture.bootstrap.run(&account, &store, now());
-    let identity = match outcome {
-        BootstrapOutcome::Certified(identity) => identity,
-        pending => {
-            if let Some(bytes) = account.get("identity/pending").unwrap() {
-                let record: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-                let id: Ulid = record["id"].as_str().unwrap().parse().unwrap();
-                store.delete_test_item(id).unwrap();
-            }
-            panic!("{pending:?}");
-        }
-    };
-    let id = identity.grant.payload.device_id;
-    assert_eq!(identity.custody, store.custody());
-    let stored: serde_json::Value = serde_json::from_slice(
-        &account
-            .get(&format!("identity/device/{id}"))
-            .unwrap()
-            .unwrap(),
-    )
-    .unwrap();
-    assert_eq!(
-        stored["custody"],
-        serde_json::to_value(store.custody()).unwrap()
-    );
-    struct Cleanup<'a>(&'a KeychainDeviceKeys, Ulid);
-    impl Drop for Cleanup<'_> {
-        fn drop(&mut self) {
-            self.0.delete_test_item(self.1).unwrap();
-        }
-    }
-    let _cleanup = Cleanup(&store, id);
-    let key = store.load(id).unwrap().unwrap();
-    let public: String = key
-        .verifying_key()
-        .to_bytes()
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect();
-    assert_eq!(public, identity.grant.payload.device_pubkey);
-    use security_framework::item::{ItemClass, ItemSearchOptions, SearchResult};
-    let mut query = ItemSearchOptions::new();
-    query
-        .class(ItemClass::generic_password())
-        .service(&service)
-        .account(&id.to_string())
-        .load_attributes(true);
-    if store.custody() == Custody::DataProtection {
-        query.ignore_legacy_keychains().cloud_sync(Some(false));
-    } else {
-        query
-            .keychains(&[security_framework::os::macos::keychain::SecKeychain::default().unwrap()]);
-    }
-    let attrs = query.search().unwrap();
-    let SearchResult::Dict(attrs) = &attrs[0] else {
-        panic!("missing Keychain attributes")
-    };
-    if store.custody() == Custody::DataProtection {
-        assert!(
-            format!("{attrs:?}").contains("aku"),
-            "device-only unlocked protection missing: {attrs:?}"
-        );
-    } else {
-        assert_eq!(store.custody().label(), "dev custody");
-        println!(
-            "login Keychain: isolated service/account attributes present; dev custody, no sync API"
-        );
-    }
-    store.delete_test_item(id).unwrap();
-    assert!(store.load(id).unwrap().is_none());
-    println!(
-        "Keychain tier {:?}: isolated item created, read, attributes checked and deleted",
-        store.custody()
-    );
-}
+// Native item attributes and cleanup are exercised by the private, ad-hoc-signed
+// night fixture in identity/native_keychain/fixtures.rs, never the login Keychain.
 
 // ID1b uses shared, memory-only test custody. Only public proofs reach SQLite.
 #[derive(Default)]

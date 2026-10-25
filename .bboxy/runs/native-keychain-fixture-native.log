@@ -1,0 +1,12 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 2m 38s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bbt_mux-4cd8452ae9f6e27b)
+
+running 1 test
+native fixture process: ad-hoc-sign pid=90180
+native fixture process: native-keychain pid=90192
+test identity::native_keychain::fixtures::private_native_keychain_round_trip_and_cleanup ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 141 filtered out; finished in 0.52s
+

@@ -71,10 +71,25 @@ fn value(value: CFStringRef) -> CFType {
 pub(super) struct Native<'a> {
     service: &'a str,
     tier: Custody,
+    #[cfg(test)]
+    fixture: Option<FixtureAccess<'a>>,
 }
+#[cfg(test)]
+struct FixtureAccess<'a> {
+    keychain: &'a SecKeychain,
+    requirement: &'a str,
+}
+#[cfg(test)]
+const FIXTURE_ROOT_ENV: &str = "BBOXY_NATIVE_KEYCHAIN_FIXTURE_ROOT";
+
 impl<'a> Native<'a> {
     pub(super) fn new(service: &'a str, tier: Custody) -> Self {
-        Self { service, tier }
+        Self {
+            service,
+            tier,
+            #[cfg(test)]
+            fixture: None,
+        }
     }
     pub(super) fn validate_caller(&self) -> Result<()> {
         self.access().map(drop)
@@ -114,9 +129,17 @@ impl<'a> Native<'a> {
         interactive: bool,
         add: bool,
     ) -> Result<Vec<(CFString, CFType)>> {
+        // A fixture child must never fall through to either operator store,
+        // including the implicit Data Protection store.
+        #[cfg(test)]
+        if std::env::var_os(FIXTURE_ROOT_ENV).is_some()
+            && (self.fixture.is_none() || self.tier != Custody::LoginKeychain)
+        {
+            return Err(E::InvalidProof);
+        }
         let mut pairs = self.common(account, interactive);
         if self.tier == Custody::LoginKeychain {
-            let keychain = SecKeychain::default().map_err(|e| keychain_error(e.code()))?;
+            let keychain = self.legacy_keychain()?;
             // SAFETY: the static attribute chooses this exact login keychain, not DP.
             unsafe {
                 if add {
@@ -130,6 +153,13 @@ impl<'a> Native<'a> {
             }
         }
         Ok(pairs)
+    }
+    fn legacy_keychain(&self) -> Result<SecKeychain> {
+        #[cfg(test)]
+        if let Some(fixture) = &self.fixture {
+            return Ok(fixture.keychain.clone());
+        }
+        SecKeychain::default().map_err(|e| keychain_error(e.code()))
     }
     fn lookup(&self, account: &str, interactive: bool, data: bool) -> Result<Option<CFType>> {
         let mut pairs = self.query(account, interactive, false)?;
@@ -179,7 +209,13 @@ impl<'a> Native<'a> {
         })
     }
     fn access(&self) -> Result<CFType> {
-        let expected: SecRequirement = REQUIREMENT.parse().map_err(|_| E::InvalidProof)?;
+        let requirement = REQUIREMENT;
+        #[cfg(test)]
+        let requirement = self
+            .fixture
+            .as_ref()
+            .map_or(requirement, |fixture| fixture.requirement);
+        let expected: SecRequirement = requirement.parse().map_err(|_| E::InvalidProof)?;
         SecCode::for_self(Flags::NONE)
             .and_then(|code| code.check_validity(Flags::NONE, &expected))
             .map_err(|_| E::KeychainSigningIdentityRequired)?;
@@ -283,6 +319,9 @@ impl Vault for Native<'_> {
         cvt(code)
     }
 }
+
+#[cfg(test)]
+mod fixtures;
 
 #[cfg(test)]
 mod tests {
