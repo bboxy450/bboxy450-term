@@ -1,0 +1,40 @@
+U1 startup diagnostics — Aster Cinderwing <EXECUTOR>
+Brief: Vesper 1f4ea139-4cc4-457f-8ac9-eff27cb03e1e; remaining criteria beyond accepted HK-1.
+Frozen source: 547c5e97961b33440e44315d42c12b5980256e7a, aster-startup-crash-report on current main 4d381430.
+Exact clean normal sh scripts/ci-local.sh: EXIT 0, 1112.432 s, all gates passed. This record/manifest is an evidence-only successor.
+
+Mechanism / acceptance
+crates/bboxy450-term/src/ctl/app.rs:70 — capture wall-clock launch time immediately before spawning the child.
+app.rs:92 — invalid/closed readiness uses the full try_wait result and optional matching report; no death is inferred from JSON parsing alone.
+app.rs:102 — error retains child PID, exit code or terminating signal/core status, app.log and a matching report path when available.
+app.rs:138 — fatal POSIX signal names include SIGBUS, with the numeric signal retained.
+app.rs:167 — macOS report lookup is an error-path diagnostic for an observed child exit. Other platforms retain normal signal/status reporting.
+app.rs:185 — scan bboxy450-term-*.ips regular files after launch, parse the two-value .ips JSON form, require matching PID and procName, select newest by mtime; symlinks, malformed/unreadable and reports above 1 MiB are skipped.
+app.rs:271 — real owned /bin/sh fixture terminates itself with SIGBUS and closes its readiness pipe; status plus private matching report yield SIGBUS, its number and the exact path.
+app.rs:315 — private report fixtures reject pre-launch reports, newer other-PID/app files, malformed/oversize files and symlinks; choose the newest valid match; missing directory is optional.
+app.rs:362,388,398 — SIGTERM, exit-code/core and unobserved/status-error cases remain covered.
+
+Completed checks
+Initial focused startup_diagnostic filter: EXIT 0, 5/0, 416.434 s including fresh compilation.
+Final-source workspace cargo test --workspace --locked: EXIT 0, 1352 passed / 0 failed / 29 ignored, 828.489 s. All five startup cases pass again.
+Strict cargo clippy --workspace --all-targets --locked -- -D warnings: EXIT 0, 70.249 s.
+Default sh scripts/invariants.sh: EXIT 0, 23 checks / 0 failures / 9 slow skipped, 399.544 s.
+Rebase adds docs/lab assets only; crates, Cargo and scripts byte equality to tested 8435332a is EXIT 0.
+After rebase: sh scripts/ui-lint.sh EXIT 0; cargo test -p bbt-doc --test corpus --locked EXIT 0, 6/0.
+Scoped rustfmt and git diff --check: EXIT 0. All commands clear compiler wrappers; O1 + debug assertions, no debuginfo/incremental, debug memory default/private file-account fixtures.
+
+Limits
+No native Metal-cache repair or app retry is claimed. Readiness protocol, 45 s startup budget and lifecycle are unchanged.
+Only already-available matching reports are returned; delayed/missing/unreadable/oversize reports retain the directory hint. No wait for CrashReporter.
+The SIGBUS process is real; .ips correlation tests use private synthetic reports based on the observed metadata+body format, not controlled native ReportCrash generation.
+No operator Keychain, desktop input, publication or merge.
+Raw evidence: /Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/
+
+Exact gate / retirement
+ci.log:252,254,271,274,279 — all five startup diagnostic regressions pass in the exact source, including actual SIGBUS and report matching.
+ci.log:3391 — LocalDev, memory custody (debug), no held reason.
+ci.log:3406 — idle passed, 0 frames / 0 callbacks / 10.000 s / windows=0 / headless.
+ci.log:3489-3490 — 23 invariants / 0 failures / 9 slow skipped; all gates passed.
+Raw gate SHA256: ea0592e544e0070c07e351b640a8385ee29dbff72c3d91a061fb3309e7a992a8.
+Detached tree was clean, recorded process group empty and lsof cache check clear. Own target/worktree retired; 4,009,533,440 allocated cache bytes freed. No inactive dev target remains; sibling historical evidence retained.
+All development/gate commands passed; no failed full gate or waiver used. Main stayed at 4d381430 during the gate; no post-gate rebase. No publication or merge performed.

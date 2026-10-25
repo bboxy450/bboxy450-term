@@ -1,0 +1,196 @@
+{
+  "brief": "1f4ea139-4cc4-457f-8ac9-eff27cb03e1e",
+  "source": "547c5e97961b33440e44315d42c12b5980256e7a",
+  "branch": "aster-startup-crash-report",
+  "base": "4d38143086c048be60524d78cf600882a27bc6db",
+  "source_commits": [
+    "547c5e97961b33440e44315d42c12b5980256e7a G 9B07E849480C68328CA20684844ECC0587DE7AB0 Name startup signals and locate matching macOS crash reports"
+  ],
+  "changed_files": [
+    {
+      "path": "crates/bboxy450-term/src/ctl/app.rs",
+      "sha256": "a3c14512a324bf3d8cdc86e996164a5a7d2b9ef828237dc9005419683033b24d"
+    }
+  ],
+  "ci": {
+    "source": "547c5e97961b33440e44315d42c12b5980256e7a",
+    "cwd": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/ci-547c5e97",
+    "target": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/ci-target-547c5e97",
+    "command": [
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "started": "2026-10-25T05:20:24.677981+00:00",
+    "custody": "debug memory default; explicit private file-account fixtures",
+    "profiles": "O1 + debug assertions, direct compiler, no debuginfo/incremental",
+    "pid": 85164,
+    "pgid": 85164,
+    "driver_pid": 85130,
+    "exit": 0,
+    "elapsed_s": 1112.431837250013,
+    "finished": "2026-10-25T05:38:57.105925+00:00",
+    "log_sha256": "ea0592e544e0070c07e351b640a8385ee29dbff72c3d91a061fb3309e7a992a8"
+  },
+  "raw_records": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/base.json",
+      "bytes": 251,
+      "sha256": "9adb84e1558f1d737990109df351adc68edefea910b1833eb6dfa4acd161d3f7"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/check.py",
+      "bytes": 1516,
+      "sha256": "b60993678d9bca7117914e380bd33e752394aa00a1d0499830aa278ec7a04c1e"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/ci-cleanup.json",
+      "bytes": 594,
+      "sha256": "e8c77f9060a67e3c6d3ed629c256ea70fda721def366515448d35ab98ba2793d"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/ci-reap.json",
+      "bytes": 53,
+      "sha256": "918f48db98d1d3652e365a56cad7efc585fab1bc80e680b1ee0786f1fc6f280a"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/ci.log",
+      "bytes": 221036,
+      "sha256": "ea0592e544e0070c07e351b640a8385ee29dbff72c3d91a061fb3309e7a992a8"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/ci.process.json",
+      "bytes": 595,
+      "sha256": "6736fac53c1de939d2faa535a70b7e4e2a45df9eb871cad917f050255232dd40"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/ci.status.json",
+      "bytes": 776,
+      "sha256": "20c1322b1caf6f1d74421c81f357bd89426be4bd5d8bac402e365c39ab384538"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/clippy.log",
+      "bytes": 12894,
+      "sha256": "394502d2414d1621471df3caed4b04e8d432d76c1734824ed8deb044edfd5765"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/clippy.process.json",
+      "bytes": 419,
+      "sha256": "53f507443967542aa0c4f8399753192bcbb2db3032521e30d6fa1beeeac96939"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/clippy.status.json",
+      "bytes": 321,
+      "sha256": "adcc27c88845e560a99f6c2d8863d45132bf0e8ce506c2de21b11784ee68e830"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/corpus-after-rebase.log",
+      "bytes": 678,
+      "sha256": "57d99521b877e304d6e883cd00d020491cb4db7a85026e3dceba33c00d02feed"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/corpus-after-rebase.process.json",
+      "bytes": 394,
+      "sha256": "0fc619e137f2999dee42e07a3c2b7dff8fdf72fc270faf00b69cb0fcfdcc7b67"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/corpus-after-rebase.status.json",
+      "bytes": 296,
+      "sha256": "1781b96c9ab3b7f351de9faa914409ae87fcd1a0fa53af10380f3516c4612386"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/dev-cache-move.json",
+      "bytes": 389,
+      "sha256": "1f587976c1b3488c2cdbc790f18a6a5f6865ebfc3c01a0f98a2388e2b6de25dd"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/focused.log",
+      "bytes": 13989,
+      "sha256": "3bae98e695fe0ab5544f324dd2d8cc7bdd10e0d896373a09329c07bf86f63efc"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/focused.process.json",
+      "bytes": 440,
+      "sha256": "c6da82f790dec578b369b7dd91aff4cb70f13c63d6c827716e67149646844bab"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/focused.status.json",
+      "bytes": 342,
+      "sha256": "f351099fe2b968ae5e4b4d9a896291120ea8b35e89166b339590b81944236b5f"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/gate.py",
+      "bytes": 1898,
+      "sha256": "b593e904c8f9f5f416797e34299c2104e5258db4ddd903be6b8085f45ced4e8c"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/invariants.log",
+      "bytes": 5173,
+      "sha256": "7ed2a7c6db3ab316e943c6e3c371b972677f6f56db2cc6a6b29921f6d31820a0"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/invariants.process.json",
+      "bytes": 339,
+      "sha256": "4aba57f53e7deb8c6ce2b8a87e703938b4271688d8aa0d1d1908fe1c65f0f550"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/invariants.status.json",
+      "bytes": 242,
+      "sha256": "d4f7edbfda5fef0486778bedd7c1bd8be4b170e580a758fe9f320426317171ad"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/pre-gate-rebase.json",
+      "bytes": 270,
+      "sha256": "97cf40683066660a996f51ff2c7454c0bcf893e709a5e665247049539bc42450"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/ui-lint-after-rebase.log",
+      "bytes": 154,
+      "sha256": "dbf93940ecb512efeb02e257a66e0b61faef0e60c46358e1d0ff1edde431f330"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/ui-lint-after-rebase.process.json",
+      "bytes": 336,
+      "sha256": "31369e9711027ec1b4a12bd449060d1611dc95219a0def5fb2628beae6a7685b"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/ui-lint-after-rebase.status.json",
+      "bytes": 238,
+      "sha256": "8a22ee1dd66ad4da6ddb1bfd55a5d68485a51f61d7e94bdcb2b73ee0d3d6478b"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/workspace.log",
+      "bytes": 187873,
+      "sha256": "b5ad76cded71015af82c3910a7da9cd9142d305b9d4ac69e51eb18b4183457c3"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/workspace.process.json",
+      "bytes": 360,
+      "sha256": "788b40d147ca1f0eaa79875e08b84beef51d20afb6f8dd2345e074882746e27b"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/workspace.status.json",
+      "bytes": 262,
+      "sha256": "d6e0d5217467404fe2a1505f378e4114efbc9f0f6eb4fa8fbf463f110df767d0"
+    }
+  ],
+  "cleanup": {
+    "time": "2026-10-25T05:41:17.675676+00:00",
+    "target": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/ci-target-547c5e97",
+    "allocated_bytes_freed": 4009533440,
+    "target_exists": false,
+    "worktree": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/startup-report-20261024T2140/ci-547c5e97",
+    "worktree_remove_exit": 0,
+    "worktree_exists": false,
+    "worktree_was_clean": true,
+    "lsof_exit": 1,
+    "lsof_stdout": "",
+    "note": "Recorded gate group empty; no active compiler. Only own cache/worktree retired; raw logs and sibling evidence retained."
+  },
+  "current_main_at_handoff": "4d38143086c048be60524d78cf600882a27bc6db",
+  "main_changes_since_base": [],
+  "limits": [
+    "Only reports already available at error formation, <=1 MiB and matching filename/PID/procName/mtime, can be returned. Delayed/missing/unreadable/malformed/oversize reports keep the directory hint.",
+    "Real SIGBUS fixture child; report correlation uses private synthetic .ips data, not deliberate native Metal failure or ReportCrash generation.",
+    "No native crash recovery/cache repair, startup-budget/lifecycle change, parity/scale proof or operator Keychain access."
+  ]
+}
