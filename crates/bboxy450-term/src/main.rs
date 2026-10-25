@@ -2871,7 +2871,8 @@ impl App {
         if self.gpu.is_none() {
             // A producer may wake us before GPU preparation finishes. Drain
             // admission even on an empty frame, or GPU-ready can lose its wake.
-            self.inbox.dirty.drain();
+            let sources = self.inbox.dirty.drain();
+            self.wake_counters.borrow_mut().drained(&sources);
             if self.smoke_wake_seen
                 && let Some(open) = self.smoke_bootstrap.take()
             {
@@ -3246,7 +3247,9 @@ impl App {
                 let mut status = app_status(
                     "window",
                     std::env::args().any(|a| {
-                        a == "--unattended" || a == "--test-account" || a.starts_with("--test-account=")
+                        a == "--unattended"
+                            || a == "--test-account"
+                            || a.starts_with("--test-account=")
                     }),
                     true,
                     true,
@@ -3398,7 +3401,9 @@ impl ApplicationHandler<UiEvent> for App {
                 let status = app_status(
                     "window",
                     std::env::args().any(|a| {
-                        a == "--unattended" || a == "--test-account" || a.starts_with("--test-account=")
+                        a == "--unattended"
+                            || a == "--test-account"
+                            || a.starts_with("--test-account=")
                     }),
                     !self.backend_lost && self.live_state.is_some(),
                     self.meter.total_frames() > 0,
