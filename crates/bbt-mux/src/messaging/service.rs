@@ -1485,7 +1485,7 @@ impl Messaging {
                 }
                 for message in &held {
                     let routes = (|| -> Result<Vec<Route>> {
-                        let (sender, class, direct) = self.validate_message(&message)?;
+                        let (sender, class, direct) = self.validate_message(message)?;
                         if sender.as_ref().is_some_and(|sender| sender.muted) && !direct {
                             return Err(invalid("sender muted"));
                         }
@@ -1500,7 +1500,7 @@ impl Messaging {
                                         class: sender.role.class,
                                     })
                             },
-                            &message.view().context,
+                            message.view().context,
                             message.view().kind,
                             class,
                             message.view().priority,
@@ -1635,7 +1635,7 @@ impl Messaging {
                                     class: sender.role.class,
                                 })
                         },
-                        &message.view().context,
+                        message.view().context,
                         message.view().kind,
                         class,
                         message.view().priority,
