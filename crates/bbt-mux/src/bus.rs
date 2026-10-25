@@ -2052,6 +2052,7 @@ impl BusHandle {
 mod gui_tests {
     use super::*;
 
+    // keeps: spec events
     #[test]
     fn retained_read_cursor_includes_filtered_rows_on_a_short_final_page() {
         let fixture = Fixture::new();
@@ -2077,6 +2078,7 @@ mod gui_tests {
         assert_eq!(through, 2);
     }
 
+    // keeps: spec events
     #[test]
     fn retained_read_byte_pages_resume_without_losing_large_events() {
         let fixture = Fixture::new();
@@ -2138,6 +2140,7 @@ mod gui_tests {
             .collect()
     }
 
+    // keeps: spec events
     #[test]
     fn gui_filter_migration_resumes_after_a_crash_between_streams() {
         let fixture = Fixture::new();
@@ -2184,6 +2187,7 @@ mod gui_tests {
         assert_eq!(broker.streams["account"].log.last_sequence().unwrap(), 1);
     }
 
+    // keeps: spec events
     #[test]
     fn gui_filter_migration_keeps_pending_and_tail_but_new_subjects_start_at_head() {
         let fixture = Fixture::new();
@@ -2264,6 +2268,7 @@ mod gui_tests {
         assert_eq!(broker.catalog.list("consumer/").unwrap().len(), 1);
     }
 
+    // keeps: spec events
     #[test]
     fn gui_deduplicated_publish_wakes_a_retained_append_not_yet_routed() {
         let fixture = Fixture::new();
@@ -2293,6 +2298,7 @@ mod gui_tests {
         );
     }
 
+    // keeps: spec events
     #[test]
     fn gui_defers_a_row_that_fits_a_fresh_quantum_without_emitting_a_gap() {
         let fixture = Fixture::new();
@@ -2328,6 +2334,7 @@ mod gui_tests {
         assert_eq!(next.len(), 1);
     }
 
+    // keeps: spec events
     #[test]
     fn gui_starts_new_but_replays_unpublished_pending_after_logic_restart() {
         let fixture = Fixture::new();
@@ -2368,6 +2375,7 @@ mod gui_tests {
         assert!(broker.gui_ack(&lease, "index", 3).is_err());
     }
 
+    // keeps: spec events
     #[test]
     fn gui_transport_ack_is_not_operator_read_and_read_marks_survive_restart() {
         let fixture = Fixture::new();
@@ -2409,6 +2417,7 @@ mod gui_tests {
         assert_eq!((state.read, state.unread), (1, 1));
     }
 
+    // keeps: spec events
     #[test]
     fn gui_one_attachment_detaches_without_deleting_and_filter_change_versions() {
         let fixture = Fixture::new();
@@ -2439,6 +2448,7 @@ mod gui_tests {
         assert_eq!(broker.streams["index"].log.last_sequence().unwrap(), 1);
     }
 
+    // keeps: spec events
     #[test]
     fn gui_delivery_limit_is_audited_without_discarding_the_original_row() {
         let fixture = Fixture::new();
@@ -2472,6 +2482,7 @@ mod gui_tests {
         broker.gui_ack(&lease, "index", 1).unwrap();
     }
 
+    // keeps: spec events
     #[test]
     fn gui_oversized_rows_have_a_visible_gap_and_retained_original() {
         let fixture = Fixture::new();

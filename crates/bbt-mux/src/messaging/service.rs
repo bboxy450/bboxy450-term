@@ -2666,6 +2666,7 @@ mod reference_tests {
         }
     }
 
+    // keeps: spec messaging
     #[test]
     fn first_held_operator_delivers_an_authorless_intent_but_cannot_mute() {
         use super::super::api::{Request, Response};
@@ -2840,6 +2841,7 @@ mod reference_tests {
         );
     }
 
+    // keeps: spec messaging
     #[test]
     fn operator_reference_survives_enrolment_without_moving_its_recipient() {
         let root = tempfile::tempdir().unwrap();
@@ -2902,6 +2904,7 @@ mod reference_tests {
         );
     }
 
+    // keeps: spec messaging
     #[test]
     fn an_existing_device_keeps_its_original_operator_recipient_encoding() {
         let root = tempfile::tempdir().unwrap();

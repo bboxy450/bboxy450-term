@@ -936,6 +936,7 @@ mod tests {
             None
         );
     }
+    // keeps: spec provenance
     #[test]
     fn root_fd_refuses_symlink_parents_and_preserves_full_digest_semantics() {
         let temp = tempfile::tempdir().unwrap();

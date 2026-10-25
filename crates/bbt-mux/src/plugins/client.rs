@@ -386,6 +386,7 @@ mod tests {
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
 
+    // keeps: spec plugins
     #[tokio::test]
     async fn real_stdio_keeps_opaque_signed_bytes_and_only_allowed_environment_names() {
         let files = tempfile::tempdir().unwrap();

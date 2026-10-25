@@ -290,6 +290,7 @@ pub(super) fn keychain_error(code: i32) -> E {
 #[cfg(test)]
 mod tests {
     #[cfg(target_os = "macos")]
+    // keeps: spec id1-seat-chain
     #[test]
     fn native_recorded_tier_never_falls_back_after_an_entitlement_refusal() {
         use super::{Custody, DeviceKeyStore, E, KeychainDeviceKeys};
@@ -318,6 +319,7 @@ mod tests {
             "only an unrecorded first choice may select dev custody"
         );
     }
+    // keeps: spec id1-seat-chain
     #[test]
     fn denied_or_interactive_keychain_answers_have_a_named_hold() {
         for code in [-128, -25293, -25308, -25315] {

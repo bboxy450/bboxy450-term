@@ -79,6 +79,7 @@ fn identity_status(root: &std::path::Path, keys: Arc<Memory>) -> bbt_mux::identi
     identity.status().unwrap()
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn first_launch_device_is_stable_and_local_or_pending_is_still_uncertified() {
     let root = tempfile::tempdir().unwrap();
@@ -120,6 +121,7 @@ fn first_launch_device_is_stable_and_local_or_pending_is_still_uncertified() {
     assert_eq!(keys.creates.load(Ordering::Relaxed), 2); // issuer plus device
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn legacy_custody_record_upgrades_once_without_changing_the_issuer_or_its_address() {
     let root = tempfile::tempdir().unwrap();
@@ -149,6 +151,7 @@ fn legacy_custody_record_upgrades_once_without_changing_the_issuer_or_its_addres
     assert_eq!(keys.creates.load(Ordering::Relaxed), creates);
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn fresh_memory_custody_gets_a_fresh_device_and_lost_custody_stays_held() {
     let a = tempfile::tempdir().unwrap();
@@ -166,6 +169,7 @@ fn fresh_memory_custody_gets_a_fresh_device_and_lost_custody_stays_held() {
     assert_eq!(lost.creates.load(Ordering::Relaxed), 0);
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn held_device_creation_retains_its_reserved_id_and_releases_on_recovery() {
     struct DeviceHold {
@@ -226,6 +230,7 @@ fn held_device_creation_retains_its_reserved_id_and_releases_on_recovery() {
     assert_eq!(custody_record(root.path())["device_ready"], true);
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn stable_machine_key_survives_logic_relaunch_and_is_shared_across_run_dirs() {
     use bbt_mux::{
@@ -313,6 +318,7 @@ fn stable_machine_key_survives_logic_relaunch_and_is_shared_across_run_dirs() {
     );
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn unavailable_and_missing_custody_hold_without_replacement_or_secret_file() {
     let machine = Memory::default();
@@ -369,6 +375,7 @@ fn unavailable_and_missing_custody_hold_without_replacement_or_secret_file() {
     );
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn old_random_pin_is_not_silently_replaced() {
     use bbt_mux::messaging::{Messaging, keys::LocalSeatKeys};
@@ -401,6 +408,7 @@ fn old_random_pin_is_not_silently_replaced() {
     );
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn concurrent_creators_read_one_atomic_winner() {
     struct Racing {
@@ -446,6 +454,7 @@ fn concurrent_creators_read_one_atomic_winner() {
     );
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn held_queue_survives_reopen_and_refuses_changed_generation_role_epoch_and_routes() {
     use bbt_mux::{
@@ -565,6 +574,7 @@ fn held_queue_survives_reopen_and_refuses_changed_generation_role_epoch_and_rout
     );
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn bus_seals_exact_hash_range_before_rekey_and_replays_retained_signed_bytes() {
     use bbt_mux::{

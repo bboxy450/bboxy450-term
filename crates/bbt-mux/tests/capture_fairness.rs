@@ -146,6 +146,7 @@ impl Gui {
     }
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn four_watched_seats_advance_during_a_large_replay_and_match_serial_screens() {
     let temp = tempfile::tempdir().unwrap();
@@ -466,6 +467,7 @@ impl Provider for OutageProvider {
     }
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn down_host_replay_parks_and_idle_local_polling_stays_bounded_until_reconnect() {
     let temp = tempfile::tempdir().unwrap();

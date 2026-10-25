@@ -24,6 +24,7 @@ fn public(run: &Path) -> (Signed<AccountHead>, DeviceIdentity) {
     (head, device)
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn generated_root_device_and_verified_grants_survive_reopening() {
     let temp = tempfile::tempdir().unwrap();
@@ -76,6 +77,7 @@ fn generated_root_device_and_verified_grants_survive_reopening() {
     }
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn fresh_runs_are_distinct_and_cannot_rebind_an_existing_account() {
     let temp = tempfile::tempdir().unwrap();
@@ -90,6 +92,7 @@ fn fresh_runs_are_distinct_and_cannot_rebind_an_existing_account() {
     assert!(TestAccount::open(&temp.path().join("one"), &temp.path().join("run2")).is_err());
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn a_missing_or_corrupt_root_refuses_without_generating_a_new_identity() {
     let temp = tempfile::tempdir().unwrap();
@@ -119,6 +122,7 @@ fn a_missing_or_corrupt_root_refuses_without_generating_a_new_identity() {
     assert_eq!(serde_json::to_value(public(&run)).unwrap(), before);
 }
 
+// keeps: decision #313
 #[test]
 fn seat_messages_require_the_label_derived_by_the_receiving_account() {
     use bbt_mux::{
@@ -172,6 +176,7 @@ fn seat_messages_require_the_label_derived_by_the_receiving_account() {
     }
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn a_foreign_nonempty_directory_never_becomes_a_test_identity() {
     let temp = tempfile::tempdir().unwrap();
@@ -203,6 +208,7 @@ fn a_foreign_nonempty_directory_never_becomes_a_test_identity() {
     );
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn startup_allows_the_selected_private_run_inside_the_account_directory() {
     let temp = tempfile::tempdir().unwrap();
@@ -225,6 +231,7 @@ fn startup_allows_the_selected_private_run_inside_the_account_directory() {
     assert!(root.join("test_root").is_file());
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn startup_refuses_a_foreign_issuer_before_creating_test_keys_or_context() {
     let temp = tempfile::tempdir().unwrap();

@@ -58,6 +58,7 @@ fn settled(runtime: &tokio::runtime::Runtime, logic: &Logic, seat: Ulid) -> Snap
     }
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn view_stream_coalesces_and_replica_refuses_wrong_baselines_atomically() {
     let mut term = bbt_core::Term::new(10, 2, 0);
@@ -131,6 +132,7 @@ fn view_stream_coalesces_and_replica_refuses_wrong_baselines_atomically() {
     ));
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn logic_reconnect_keeps_same_supervisor_child_and_exact_screen() {
     let temp = tempfile::tempdir().unwrap();
@@ -171,6 +173,7 @@ fn logic_reconnect_keeps_same_supervisor_child_and_exact_screen() {
     assert_eq!(seats[0].pid, info.pid);
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_identity() {
     use bbt_mux::bus::{Consumer, Delivery};
@@ -247,6 +250,7 @@ fn a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_ident
     logic.shutdown().unwrap();
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn supervisor_expires_grace_after_logic_stops_and_undo_preserves_process() {
     let temp = tempfile::tempdir().unwrap();
@@ -333,6 +337,7 @@ async fn socket_request(path: &Path, request: &Request) -> serde_json::Value {
     serde_json::from_slice(&line).unwrap()
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap() {
     let temp = tempfile::tempdir().unwrap();
@@ -399,6 +404,7 @@ fn real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap
     });
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn hard_killed_separate_logic_process_recovers_the_same_zsh_view() {
     let temp = tempfile::tempdir().unwrap();
@@ -495,6 +501,7 @@ fn hard_killed_separate_logic_process_recovers_the_same_zsh_view() {
     assert_eq!(seats[0].pid, info.pid);
 }
 
+// keeps: spec mux-daemon
 #[test]
 #[ignore = "subprocess fixture, invoked by the hard-kill acceptance test"]
 fn external_logic_fixture() {
@@ -600,6 +607,7 @@ fn ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_the
     assert!(sealed_twenty_mib_roundtrip() < 2.0);
 }
 
+// keeps: spec mux-daemon
 #[test]
 #[ignore = "W1.2f O0 cold-start profile; producer latency is separately reported and gated"]
 fn ring_cold_replay_twenty_mib_profile() {
@@ -809,6 +817,7 @@ fn sealed_twenty_mib_roundtrip() -> f64 {
     max_write
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn ring_live_logic_catches_up_coalesced_notifications_after_a_stall() {
     struct Delayed {
@@ -902,6 +911,7 @@ fn ring_live_logic_catches_up_coalesced_notifications_after_a_stall() {
     logic.shutdown().unwrap();
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshold() {
     let temp = tempfile::tempdir().unwrap();
@@ -945,6 +955,7 @@ fn ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshol
 }
 
 /// Explicit 20 MiB baseline: report timings, and assert capture continuity.
+// keeps: spec mux-daemon
 #[test]
 #[ignore = "W1.2f baseline instrumentation: run release ring_capture_twenty_mib_profile --ignored --nocapture"]
 fn ring_capture_twenty_mib_profile_running_and_stopped() {
@@ -1075,6 +1086,7 @@ fn ring_capture_twenty_mib_profile_running_and_stopped() {
 }
 
 /// W1.2c's original 128 MiB gate, retained for comparison.
+// keeps: spec mux-daemon
 #[test]
 #[ignore = "cargo test -p bbt-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1"]
 fn ring_capture_throughput_with_logic_running_and_stopped() {

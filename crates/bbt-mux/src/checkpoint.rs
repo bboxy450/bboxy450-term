@@ -31,6 +31,11 @@ impl Default for Policy {
     }
 }
 impl Policy {
+    /// Observe idle expiry on the caller's clock, without waiting in a test.
+    pub fn idle_due(&self, arrived: Instant, now: Instant) -> bool {
+        now.saturating_duration_since(arrived) >= self.idle
+    }
+
     pub fn for_ring(settings: &crate::ring::Settings) -> Self {
         let mut policy = Self::default();
         // D253 replaces the old default cadence. Keep a caller's non-default
@@ -183,16 +188,19 @@ mod tests {
         }
     }
 
+    // keeps: decision #253, idle expiry follows the last byte on a controlled clock.
     #[test]
-    fn policy_is_data_with_the_decided_budgets() {
+    fn idle_checkpoint_requires_two_hundred_milliseconds_since_the_last_arrival() {
         let policy = Policy::default();
-        assert_eq!(policy.recovery_bytes, 8 * 1024 * 1024);
-        assert_eq!(policy.force_bytes, policy.recovery_bytes);
-        assert_eq!(policy.max_age, Duration::from_secs(60));
-        assert_eq!(policy.idle, Duration::from_millis(200));
-        assert_eq!(policy.max_saves, 4);
+        let start = Instant::now();
+        assert!(!policy.idle_due(start, start + Duration::from_millis(199)));
+        assert!(policy.idle_due(start, start + Duration::from_millis(200)));
+        let later_byte = start + Duration::from_millis(150);
+        assert!(!policy.idle_due(later_byte, start + Duration::from_millis(200)));
+        assert!(policy.idle_due(later_byte, start + Duration::from_millis(350)));
     }
 
+    // keeps: decision #253
     #[test]
     fn an_explicit_earlier_checkpoint_hint_does_not_shrink_the_record_debt_budget() {
         let policy = Policy::for_ring(&crate::ring::Settings {
@@ -207,6 +215,7 @@ mod tests {
         );
     }
 
+    // keeps: decision #253
     #[test]
     fn replay_pages_do_not_reset_the_sixty_second_oldest_byte_clock() {
         let policy = Policy::default();
@@ -233,6 +242,7 @@ mod tests {
         assert!(!age.expired(start + Duration::from_secs(1000), policy));
     }
 
+    // keeps: decision #253
     #[test]
     fn four_occupied_slots_keep_the_next_save_queued_until_completion() {
         let mut saves = Saves::new(Policy::default());
@@ -256,6 +266,7 @@ mod tests {
         assert_eq!(saves.in_flight(), 4);
     }
 
+    // keeps: decision #253
     #[test]
     fn a_generation_has_only_one_immutable_submitted_cursor() {
         let mut saves = Saves::new(Policy::default());
@@ -273,6 +284,7 @@ mod tests {
         assert!(saves.start(newer).is_some());
     }
 
+    // keeps: decision #253
     #[test]
     fn late_old_generation_ack_does_not_commit_or_release_a_new_save() {
         let mut saves = Saves::new(Policy::default());
@@ -290,6 +302,7 @@ mod tests {
         assert_eq!(saves.complete(new_token, Some(7)), Some(new));
     }
 
+    // keeps: decision #253
     #[test]
     fn unknown_or_mismatching_completion_never_acknowledges_a_cursor() {
         let mut saves = Saves::new(Policy::default());

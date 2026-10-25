@@ -35,6 +35,7 @@ fn reaped(pids: &[u32]) {
     }
 }
 
+// keeps: spec plugins
 #[tokio::test]
 async fn reference_uses_one_shape_and_all_eight_methods_then_reaps_its_children() {
     let (_root, path) = fixture(None, "reference");
@@ -52,6 +53,7 @@ async fn reference_uses_one_shape_and_all_eight_methods_then_reaps_its_children(
     reaped(&report.owned_pids);
 }
 
+// keeps: spec plugins
 #[tokio::test]
 async fn six_required_refusals_are_named_and_never_leave_a_child() {
     for (fault, provider, reason) in [
@@ -78,6 +80,7 @@ async fn six_required_refusals_are_named_and_never_leave_a_child() {
     }
 }
 
+// keeps: spec plugins
 #[tokio::test]
 async fn protocol_errors_command_errors_eof_bad_results_and_fixed_deadlines_stay_distinct() {
     for (fault, reason) in [
@@ -96,6 +99,7 @@ async fn protocol_errors_command_errors_eof_bad_results_and_fixed_deadlines_stay
     }
 }
 
+// keeps: spec plugins
 #[tokio::test]
 async fn stderr_is_drained_with_a_bound_and_eof_escalation_reaps_a_term_ignoring_child() {
     for fault in ["stderr_flood", "ignore_shutdown"] {
@@ -109,6 +113,7 @@ async fn stderr_is_drained_with_a_bound_and_eof_escalation_reaps_a_term_ignoring
     }
 }
 
+// keeps: spec plugins
 #[tokio::test]
 async fn directories_symlinks_and_production_copies_do_not_bootstrap_trust() {
     let (root, path) = fixture(None, "reference");
@@ -135,6 +140,7 @@ async fn directories_symlinks_and_production_copies_do_not_bootstrap_trust() {
     assert!(!root.path().join("account").exists());
 }
 
+// keeps: spec plugins
 #[tokio::test]
 async fn task_provider_must_return_every_app_signed_write_byte_for_byte() {
     for (fault, expected) in [
@@ -173,6 +179,7 @@ async fn task_provider_must_return_every_app_signed_write_byte_for_byte() {
     }
 }
 
+// keeps: spec plugins
 #[tokio::test]
 async fn the_other_five_contracts_are_probed_and_cross_field_results_are_checked() {
     for (system, fault, expected) in [

@@ -252,6 +252,7 @@ fn check_disk(root: &Path) {
     );
 }
 
+// keeps: spec mux-daemon
 #[test]
 #[ignore = "owned subprocess of checkpoint_bounded_recovery"]
 fn checkpoint_recovery_child() {
@@ -426,6 +427,7 @@ impl Drop for OwnedChild {
     }
 }
 
+// keeps: decision #253
 #[test]
 fn checkpoint_bounded_recovery() {
     // The full-count invocation is coordinated with the Oracle: two 967-PTY

@@ -169,6 +169,7 @@ mod tests {
             })
             .collect()
     }
+    // keeps: decision #27
     #[test]
     fn mask_is_durable_generation_bound_and_does_not_duplicate_a_cross_page_gap() {
         let root = tempfile::tempdir().unwrap();
@@ -200,6 +201,7 @@ mod tests {
             1
         );
     }
+    // keeps: decision #27
     #[test]
     fn invalid_oversized_overlapping_and_excess_intervals_are_refused() {
         let root = tempfile::tempdir().unwrap();
@@ -224,6 +226,7 @@ mod tests {
         assert_eq!(next, None);
     }
 
+    // keeps: decision #27
     #[test]
     fn paged_masks_preserve_both_sides_and_never_skip_unmasked_records() {
         let masks = [Missing { from: 5, to: 12 }, Missing { from: 23, to: 25 }];

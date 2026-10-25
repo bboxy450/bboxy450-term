@@ -206,6 +206,7 @@ fn exercise_claim(f: &Fixture) -> Document {
     doc
 }
 
+// keeps: spec provenance
 #[test]
 fn live_detection_claim_hook_rename_delete_and_restart_preserve_evidence() {
     let mut f = Fixture::new();
@@ -274,6 +275,7 @@ fn live_detection_claim_hook_rename_delete_and_restart_preserve_evidence() {
     f.wait("renamed.txt", |d| d.metadata["deleted"] == true);
 }
 
+// keeps: spec provenance
 #[test]
 fn symlinks_outside_paths_and_oversized_files_never_leak_content_or_partial_hashes() {
     let f = Fixture::new();
@@ -300,6 +302,7 @@ fn symlinks_outside_paths_and_oversized_files_never_leak_content_or_partial_hash
     assert!(rows.contains("artifact-hook-path-outside-root-or-excluded"));
 }
 
+// keeps: spec provenance
 #[test]
 #[ignore = "explicit corpus driver; caller supplies a disposable output root"]
 fn provenance_corpus_driver() {
@@ -450,6 +453,7 @@ fn base64_public(doc: &Document) -> [u8; 32] {
         .unwrap()
 }
 
+// keeps: spec provenance
 #[test]
 fn claim_before_detection_survives_missing_rebuildable_mirror() {
     let mut f = Fixture::new();

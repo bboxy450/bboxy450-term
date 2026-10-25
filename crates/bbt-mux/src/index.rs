@@ -1002,6 +1002,7 @@ mod tests {
     use super::*;
     use std::time::{Duration, Instant, UNIX_EPOCH};
 
+    // keeps: spec work-items, optimistic writes retain editor bytes and reject path escapes.
     #[test]
     fn checked_writer_keeps_editor_changes_and_refuses_symlink_escapes() {
         let temp = tempfile::tempdir().unwrap();
@@ -1042,8 +1043,9 @@ mod tests {
                     &key
                 )
                 .unwrap_err()
-                .to_string()
-                .contains("changed")
+                .downcast_ref::<std::io::Error>()
+                .unwrap()
+                .kind() == std::io::ErrorKind::InvalidData
         );
         assert_eq!(
             std::fs::read_to_string(root.join(path)).unwrap(),
@@ -1069,6 +1071,7 @@ mod tests {
         assert!(std::fs::read_dir(outside).unwrap().next().is_none());
     }
 
+    // keeps: spec work-items
     #[test]
     fn checked_creation_has_one_winner_and_does_not_overwrite_it() {
         let temp = tempfile::tempdir().unwrap();
@@ -1293,6 +1296,7 @@ mod test_account_attribution {
         identity::{AccountHead, Signed, TestAccount},
         store::Events,
     };
+    // keeps: decision #313
     #[test]
     fn verified_test_context_is_covered_by_document_and_activity_signatures() {
         let root = tempfile::tempdir().unwrap();

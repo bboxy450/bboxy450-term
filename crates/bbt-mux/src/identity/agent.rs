@@ -426,6 +426,7 @@ mod tests {
         assert_eq!(agent.sign(Input::Raw(b"typed request")), Err(E::TimedOut));
         worker.join().unwrap();
     }
+    // keeps: spec id1-seat-chain
     #[test]
     fn malformed_agent_data_is_rejected() {
         for data in [b"%".as_slice(), b"%GG", b"%0"] {

@@ -272,6 +272,7 @@ mod tests {
     use ed25519_dalek::SigningKey;
     use serde_json::json;
 
+    // keeps: spec provenance
     #[test]
     fn jsonl_recovers_partial_and_duplicate_rows_without_resigning_history() {
         let temp = tempfile::tempdir().unwrap();
@@ -339,6 +340,7 @@ mod tests {
         recover(&root, &store, &events).unwrap();
         assert_eq!(std::fs::read_to_string(path).unwrap(), text);
     }
+    // keeps: spec provenance
     #[test]
     fn projection_refuses_symlink_destinations() {
         let temp = tempfile::tempdir().unwrap();

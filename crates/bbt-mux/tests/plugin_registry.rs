@@ -183,6 +183,7 @@ fn reaped(pid: u32) {
     );
 }
 
+// keeps: spec plugins
 #[tokio::test]
 async fn discovery_never_executes_or_consumes_repository_trust_and_seats_cannot_approve() {
     let h = Harness::new();
@@ -247,6 +248,7 @@ async fn discovery_never_executes_or_consumes_repository_trust_and_seats_cannot_
     assert!(!h.marker(name).exists());
 }
 
+// keeps: spec plugins
 #[tokio::test]
 async fn missing_sources_and_unfinished_inspections_remain_disabled_after_restart() {
     let h = Harness::new();
@@ -286,6 +288,7 @@ async fn missing_sources_and_unfinished_inspections_remain_disabled_after_restar
     assert_eq!(h.entry(name).state(), State::NeedsRetrust);
 }
 
+// keeps: spec plugins
 #[tokio::test]
 async fn account_trust_precedes_shape_and_enable_is_separate_persistent_and_pinned() {
     let h = Harness::new();
@@ -366,6 +369,7 @@ async fn account_trust_precedes_shape_and_enable_is_separate_persistent_and_pinn
     );
 }
 
+// keeps: spec plugins
 #[test]
 fn independent_plugins_can_pin_and_approve_concurrently_in_the_same_account() {
     let h = Harness::new();
@@ -421,6 +425,7 @@ fn independent_plugins_can_pin_and_approve_concurrently_in_the_same_account() {
     }
 }
 
+// keeps: spec plugins
 #[tokio::test]
 async fn changed_digest_and_older_hash_restoration_require_explicit_reapproval() {
     let h = Harness::new();
@@ -460,6 +465,7 @@ async fn changed_digest_and_older_hash_restoration_require_explicit_reapproval()
     );
 }
 
+// keeps: spec plugins
 #[tokio::test]
 async fn writable_or_modified_pinned_copies_never_execute() {
     let h = Harness::new();
@@ -491,6 +497,7 @@ async fn writable_or_modified_pinned_copies_never_execute() {
     );
 }
 
+// keeps: spec plugins
 #[tokio::test]
 async fn stale_descriptor_completion_cannot_undo_disable_or_a_source_change() {
     let h = Harness::new();
@@ -528,6 +535,7 @@ async fn stale_descriptor_completion_cannot_undo_disable_or_a_source_change() {
     assert_eq!(h.entry(name).state(), State::NeedsRetrust);
 }
 
+// keeps: spec plugins
 #[test]
 fn refused_entries_and_cross_root_collisions_are_listed_without_precedence_or_execution() {
     let h = Harness::new();
@@ -593,6 +601,7 @@ fn refused_entries_and_cross_root_collisions_are_listed_without_precedence_or_ex
     assert!(h.account.list("plugins/trust/").unwrap().is_empty());
 }
 
+// keeps: spec plugins
 #[tokio::test]
 async fn higher_tier_and_payload_grants_need_explicit_reapproval_and_reuse_observed_shape() {
     for payload in [false, true] {
@@ -675,6 +684,7 @@ async fn higher_tier_and_payload_grants_need_explicit_reapproval_and_reuse_obser
     }
 }
 
+// keeps: spec plugins
 #[tokio::test]
 async fn descriptor_added_contract_collisions_revoke_both_activations() {
     let h = Harness::new();
@@ -726,6 +736,7 @@ async fn descriptor_added_contract_collisions_revoke_both_activations() {
     );
 }
 
+// keeps: spec plugins
 #[tokio::test]
 async fn deadline_failure_is_named_and_another_plugin_job_remains_independent() {
     let h = Harness::new();

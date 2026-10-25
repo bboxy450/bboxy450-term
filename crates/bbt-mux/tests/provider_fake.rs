@@ -54,6 +54,7 @@ fn ssh() -> HostId {
     }
 }
 
+// keeps: spec d1-providers
 #[test]
 fn a_ring_batch_checks_every_logical_host_before_forwarding_any_member() {
     use bbt_supervisor::protocol::{MAX_RING_BATCH_BYTES, RingRead};
@@ -104,6 +105,7 @@ fn a_ring_batch_checks_every_logical_host_before_forwarding_any_member() {
     assert_eq!(spy.lock().unwrap().actions.len(), 1);
 }
 
+// keeps: spec d1-providers
 #[test]
 fn fixture_is_the_host_source_and_invalid_scripts_are_rejected() {
     let clock = Arc::new(ManualClock::default());
@@ -211,6 +213,7 @@ fn actions() -> Vec<Action> {
         },
     ]
 }
+// keeps: spec d1-providers
 #[test]
 fn all_requests_keep_their_reply_and_down_requests_never_execute_while_events_wait_for_rtt() {
     let clock = Arc::new(ManualClock::default());
@@ -380,6 +383,7 @@ fn wait_text(
         std::thread::sleep(Duration::from_millis(10));
     }
 }
+// keeps: spec d1-providers
 #[test]
 fn headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_restart() {
     use bbt_mux::bus::Consumer;

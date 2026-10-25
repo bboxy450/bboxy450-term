@@ -445,6 +445,7 @@ mod tests {
     use super::*;
     use crate::{messaging::wire::IssuerKind, registry::Registry, store::sqlite::SqliteStore};
 
+    // keeps: spec mcp-control-plane
     #[test]
     fn native_attempt_rechecks_canonical_caller_policy_and_target_binding() {
         let temp = tempfile::tempdir().unwrap();

@@ -19,6 +19,7 @@ mod tests {
     use ed25519_dalek::SigningKey;
     use serde_json::json;
 
+    // keeps: spec provenance
     #[test]
     fn index_and_bus_share_one_order_and_keep_each_actual_signer() {
         let temp = tempfile::tempdir().unwrap();

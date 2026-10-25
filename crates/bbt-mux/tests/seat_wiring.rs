@@ -48,6 +48,7 @@ fn config_fixture(root: &Path) {
     }
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn first_logic_launch_wires_both_fixture_clients_without_user_config_writes() {
     let temp = tempfile::tempdir().unwrap();
@@ -180,6 +181,7 @@ fn first_logic_launch_wires_both_fixture_clients_without_user_config_writes() {
     );
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn logic_recovery_defers_a_fork_held_listener_without_losing_the_seat() {
     use std::os::unix::{

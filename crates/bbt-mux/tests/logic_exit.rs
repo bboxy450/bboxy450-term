@@ -41,6 +41,7 @@ impl Drop for Release {
     }
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn queued_and_later_callers_keep_the_worker_error_and_panic_cause() {
     for panic in [false, true] {

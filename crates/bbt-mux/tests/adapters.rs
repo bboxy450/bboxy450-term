@@ -43,6 +43,7 @@ fn arbiter(session: &Session) -> ArbiterView {
         bracketed_paste: true,
     }
 }
+// keeps: decision #262
 #[test]
 fn harness_defaults_follow_the_role_contract_and_validate_authority() {
     use bbt_mux::registry::{Class, Role};
@@ -111,6 +112,7 @@ fn harness_defaults_follow_the_role_contract_and_validate_authority() {
     );
 }
 
+// keeps: decision #262
 #[test]
 fn codex_launch_refuses_oracle_class_before_creating_an_overlay() {
     use bbt_mux::registry::Class;
@@ -139,6 +141,7 @@ fn codex_launch_refuses_oracle_class_before_creating_an_overlay() {
     assert!(!overlays.exists());
 }
 
+// keeps: decision #262
 #[test]
 fn logic_refuses_codex_oracle_authority_without_admitting_a_seat() {
     use bbt_mux::logic::{Logic, LogicConfig};
@@ -198,6 +201,7 @@ fn logic_refuses_codex_oracle_authority_without_admitting_a_seat() {
     logic.shutdown().unwrap();
 }
 
+// keeps: spec harness-adapters §5, a dialog never receives a PTY paste.
 #[test]
 fn adapters_sessions_file_dialog_blocks_every_write_and_rejects_pid_session_reuse() {
     let temp = tempfile::tempdir().unwrap();
@@ -209,7 +213,6 @@ fn adapters_sessions_file_dialog_blocks_every_write_and_rejects_pid_session_reus
     session.observe_claude_session(&file, 10, 1000).unwrap();
     assert_eq!(session.status.waiting_kind, Some(WaitingKind::Permission));
     let journal = SqliteStore::open(temp.path()).unwrap();
-    let mut writes = 0;
     let outcome = session
         .submit_pty(
             &arbiter(&session),
@@ -218,12 +221,10 @@ fn adapters_sessions_file_dialog_blocks_every_write_and_rejects_pid_session_reus
             "peer data",
             &journal,
             |_| {
-                writes += 1;
                 unreachable!("dialog must never receive a paste")
             },
         )
         .unwrap();
-    assert_eq!(writes, 0);
     assert_eq!(outcome.evidence, Evidence::RecipientStored);
     let mut wrong = session.binding.clone();
     wrong.session = "another-session".into();
@@ -233,6 +234,7 @@ fn adapters_sessions_file_dialog_blocks_every_write_and_rejects_pid_session_reus
     assert!(native::read_claude_session(&path, &wrong).is_err());
 }
 
+// keeps: spec harness-adapters
 #[test]
 fn adapters_positive_ready_is_consumed_and_journals_unknown_without_retyping() {
     let temp = tempfile::tempdir().unwrap();
@@ -302,6 +304,7 @@ fn adapters_positive_ready_is_consumed_and_journals_unknown_without_retyping() {
     );
 }
 
+// keeps: spec harness-adapters
 #[test]
 fn adapters_literal_paste_requires_positive_readiness_and_submit_false_has_no_enter() {
     use bbt_mux::adapters::guard::LiteralInput;
@@ -669,6 +672,7 @@ fn adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it() 
     logic.shutdown().unwrap();
 }
 
+// keeps: spec harness-adapters
 #[test]
 fn adapters_literal_guard_negatives_write_no_bytes() {
     for case in [

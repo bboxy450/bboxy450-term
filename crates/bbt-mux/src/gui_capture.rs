@@ -301,6 +301,7 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
+    // keeps: spec ctl-cli
     #[tokio::test]
     async fn focus_waits_for_the_gui_frame_answer_and_keeps_its_correlation() {
         let captures = Arc::new(Captures::default());
@@ -347,6 +348,7 @@ mod tests {
         assert_eq!(task.await.unwrap().unwrap().frame_seq, 9);
     }
 
+    // keeps: spec ctl-cli
     #[tokio::test]
     async fn close_and_undo_share_the_ui_wait_and_do_not_acknowledge_the_relay() {
         use bbt_proto::gui::UiLayout;
@@ -406,6 +408,7 @@ mod tests {
         }
     }
 
+    // keeps: spec ctl-cli
     #[tokio::test]
     async fn lifecycle_uses_the_gui_owner_and_only_commits_stop_after_the_reply() {
         let captures = Arc::new(Captures::default());
@@ -450,6 +453,7 @@ mod tests {
         assert!(matches!(owner.recv().await.unwrap(),Notice::AppStopping {id:seen} if seen==id));
     }
 
+    // keeps: spec ctl-cli
     #[tokio::test]
     async fn ui_asks_are_correlated_and_do_not_invent_an_owner() {
         use bbt_proto::gui::UiRequest;
@@ -479,6 +483,7 @@ mod tests {
         );
         assert!(captures.ui.lock().unwrap().is_empty());
     }
+    // keeps: spec ctl-cli
     #[tokio::test]
     async fn an_ask_completes_with_the_windows_answer() {
         let captures = Arc::new(Captures::default());

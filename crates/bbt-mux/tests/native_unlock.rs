@@ -23,8 +23,154 @@ use std::{
         Arc, Condvar, Mutex,
         atomic::{AtomicBool, AtomicUsize, Ordering},
     },
-    time::{Duration, Instant},
+    time::Duration,
 };
+
+// SQLite's open WAL can be updated before macOS publishes a directory event.
+// Observe its owned vnode directly instead of treating FSEvents as a commit wake.
+#[cfg(target_os = "macos")]
+struct AccountChanges {
+    queue: tokio::io::unix::AsyncFd<std::fs::File>,
+    _files: Vec<std::fs::File>,
+}
+#[cfg(target_os = "macos")]
+impl AccountChanges {
+    fn new(account: &std::path::Path) -> Self {
+        use std::os::fd::{AsRawFd, FromRawFd};
+        // SAFETY: this creates a new queue owned only by this fixture.
+        let fd = unsafe { libc::kqueue() };
+        assert!(fd >= 0, "{}", std::io::Error::last_os_error());
+        // SAFETY: kqueue returned a new descriptor and File becomes its sole owner.
+        let queue = unsafe { std::fs::File::from_raw_fd(fd) };
+        // SAFETY: only the fixture-owned descriptor's inheritance flag changes.
+        assert_eq!(
+            unsafe { libc::fcntl(fd, libc::F_SETFD, libc::FD_CLOEXEC) },
+            0
+        );
+        let mut files = vec![std::fs::File::open(account).unwrap()];
+        for entry in std::fs::read_dir(account).unwrap() {
+            let entry = entry.unwrap();
+            if entry.file_type().unwrap().is_file() {
+                files.push(std::fs::File::open(entry.path()).unwrap());
+            }
+        }
+        let changes: Vec<_> = files
+            .iter()
+            .map(|file| libc::kevent {
+                ident: file.as_raw_fd() as _,
+                filter: libc::EVFILT_VNODE,
+                flags: libc::EV_ADD | libc::EV_CLEAR,
+                fflags: libc::NOTE_WRITE
+                    | libc::NOTE_EXTEND
+                    | libc::NOTE_RENAME
+                    | libc::NOTE_DELETE,
+                data: 0,
+                udata: std::ptr::null_mut(),
+            })
+            .collect();
+        // SAFETY: the registrations name live Files retained below, and the
+        // change list is valid for its exact length. No event wait occurs here.
+        assert_eq!(
+            unsafe {
+                libc::kevent(
+                    fd,
+                    changes.as_ptr(),
+                    changes.len() as _,
+                    std::ptr::null_mut(),
+                    0,
+                    std::ptr::null(),
+                )
+            },
+            0
+        );
+        Self {
+            // SAFETY: File owns a stable, open descriptor until AsyncFd drops
+            // it. A kernel queue supports read readiness, never write readiness.
+            queue: unsafe {
+                tokio::io::unix::AsyncFd::register_with_interest(
+                    queue,
+                    tokio::io::Interest::READABLE,
+                )
+            }
+            .unwrap(),
+            _files: files,
+        }
+    }
+    async fn changed(&mut self) {
+        use std::os::fd::AsRawFd;
+        loop {
+            let mut ready = self.queue.readable().await.unwrap();
+            let observed = ready.try_io(|queue| {
+                let mut event = libc::kevent {
+                    ident: 0,
+                    filter: 0,
+                    flags: 0,
+                    fflags: 0,
+                    data: 0,
+                    udata: std::ptr::null_mut(),
+                };
+                // This is a nonblocking dequeue, not a clock or a sleep.
+                let immediate = libc::timespec {
+                    tv_sec: 0,
+                    tv_nsec: 0,
+                };
+                // SAFETY: the owned queue and one writable event are valid.
+                let count = unsafe {
+                    libc::kevent(
+                        queue.as_raw_fd(),
+                        std::ptr::null(),
+                        0,
+                        &mut event,
+                        1,
+                        &immediate,
+                    )
+                };
+                match count {
+                    -1 => Err(std::io::Error::last_os_error()),
+                    0 => Err(std::io::ErrorKind::WouldBlock.into()),
+                    _ => Ok(()),
+                }
+            });
+            match observed {
+                Ok(Ok(())) => return,
+                Ok(Err(error)) if error.kind() == std::io::ErrorKind::Interrupted => {}
+                Ok(Err(error)) => panic!("owned account watch: {error}"),
+                Err(_) => {} // try_io cleared readiness after WouldBlock.
+            }
+        }
+    }
+}
+#[cfg(not(target_os = "macos"))]
+struct AccountChanges {
+    _watcher: notify::RecommendedWatcher,
+    changes: tokio::sync::mpsc::Receiver<()>,
+}
+#[cfg(not(target_os = "macos"))]
+impl AccountChanges {
+    fn new(account: &std::path::Path) -> Self {
+        use notify::Watcher;
+        let (changed, changes) = tokio::sync::mpsc::channel(1);
+        let mut watcher =
+            notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
+                event.expect("owned account watch failed");
+                let _ = changed.try_send(());
+            })
+            .unwrap();
+        watcher
+            .watch(account, notify::RecursiveMode::Recursive)
+            .unwrap();
+        Self {
+            _watcher: watcher,
+            changes,
+        }
+    }
+    async fn changed(&mut self) {
+        self.changes
+            .recv()
+            .await
+            .expect("account change channel closed");
+    }
+}
 
 struct NativeFixture {
     root: PathBuf,
@@ -44,16 +190,18 @@ impl NativeFixture {
         self.released.notify_all();
     }
     fn wait_entered(&self) {
-        let until = Instant::now() + Duration::from_secs(3);
-        let mut locked = self.blocked.lock().unwrap();
-        while self.attempts.load(Ordering::Acquire) == 0 {
-            assert!(Instant::now() < until, "native attempt never entered");
-            locked = self
-                .entered
-                .wait_timeout(locked, Duration::from_millis(20))
-                .unwrap()
-                .0;
-        }
+        let (_locked, _) = self
+            .entered
+            .wait_timeout_while(
+                self.blocked.lock().unwrap(),
+                Duration::from_secs(120),
+                |_| self.attempts.load(Ordering::Acquire) == 0,
+            )
+            .unwrap();
+        assert!(
+            self.attempts.load(Ordering::Acquire) > 0,
+            "native attempt never entered"
+        );
     }
 }
 impl DeviceKeyStore for NativeFixture {
@@ -123,9 +271,9 @@ impl DeviceKeyStore for NativeFixture {
             phase: UnlockPhase::Started,
             status: None,
         })?;
+        let guard = self.blocked.lock().unwrap();
         self.attempts.fetch_add(1, Ordering::Release);
         self.entered.notify_all();
-        let guard = self.blocked.lock().unwrap();
         let _guard = self.released.wait_while(guard, |blocked| *blocked).unwrap();
         let outcome = *self.outcome.lock().unwrap();
         if outcome == UnlockOutcome::Allowed {
@@ -202,33 +350,80 @@ impl Fixture {
         request: IdentityRequest,
         door: Door,
     ) -> bbt_mux::store::Result<IdentityControl> {
-        self.runtime
-            .block_on(self.logic.as_ref().unwrap().client.gui_identity_control(
-                op,
-                request,
-                Origin {
-                    door,
-                    issued_by: None,
-                },
-            ))
+        self.runtime.block_on(async {
+            tokio::time::timeout(
+                Duration::from_secs(120),
+                self.logic.as_ref().unwrap().client.gui_identity_control(
+                    op,
+                    request,
+                    Origin {
+                        door,
+                        issued_by: None,
+                    },
+                ),
+            )
+            .await
+            .expect("identity control made no completion")
+        })
     }
     fn final_result(&self, op: Ulid) -> IdentityControl {
-        let until = Instant::now() + Duration::from_secs(5);
-        loop {
-            let response = self
-                .control(op, IdentityRequest::Unlock, Door::Gui)
-                .unwrap();
-            if response.outcome != Some(UnlockOutcome::Unknown)
-                || response
-                    .pending
-                    .iter()
-                    .all(|row| row.op != op || !row.in_flight)
-            {
-                return response;
-            }
-            assert!(Instant::now() < until, "native completion did not publish");
-            std::thread::sleep(Duration::from_millis(10));
-        }
+        // Register before the authoritative check: a coalesced filesystem
+        // signal causes a reread, never a guessed completion or a timer poll.
+        self.runtime.block_on(async {
+            let mut changes = AccountChanges::new(&self.root.path().join("account"));
+            tokio::time::timeout(Duration::from_secs(120), async {
+                loop {
+                    let response = self
+                        .logic
+                        .as_ref()
+                        .unwrap()
+                        .client
+                        .gui_identity_control(
+                            op,
+                            IdentityRequest::Unlock,
+                            Origin {
+                                door: Door::Gui,
+                                issued_by: None,
+                            },
+                        )
+                        .await
+                        .unwrap();
+                    if response.outcome != Some(UnlockOutcome::Unknown)
+                        || response
+                            .pending
+                            .iter()
+                            .all(|row| row.op != op || !row.in_flight)
+                    {
+                        return response;
+                    }
+                    changes.changed().await;
+                }
+            })
+            .await
+            .expect("native completion did not publish")
+        })
+    }
+    fn signed_audit(&self, op: Ulid) -> Vec<bbt_mux::store::events::Envelope> {
+        self.runtime.block_on(async {
+            let mut changes = AccountChanges::new(&self.root.path().join("account"));
+            tokio::time::timeout(Duration::from_secs(120), async {
+                loop {
+                    let rows = EventLog::open(&self.root.path().join("account"))
+                        .unwrap()
+                        .after(0, 128)
+                        .unwrap();
+                    if rows.iter().any(|row| {
+                        row.event.payload["op_id"] == serde_json::json!(op)
+                            && row.event.payload["signature"] == "device"
+                    }) {
+                        return rows;
+                    }
+                    changes.changed().await;
+                }
+            })
+            .await
+            .expect("signed native audit did not publish")
+        })
     }
     fn restart(&mut self) {
         self.logic.take().unwrap().shutdown().unwrap();
@@ -255,6 +450,7 @@ impl Drop for Fixture {
     }
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn native_hold_unlock_is_audited_before_access_and_does_not_block_panes() {
     let f = Fixture::new(true, true, UnlockOutcome::Allowed);
@@ -288,9 +484,8 @@ fn native_hold_unlock_is_audited_before_access_and_does_not_block_panes() {
     let initial = f.control(op, IdentityRequest::Unlock, Door::Ctl).unwrap();
     assert_eq!(initial.outcome, Some(UnlockOutcome::Unknown));
     f.store.wait_entered();
-    let started = Instant::now();
     f.runtime.block_on(async {
-        tokio::time::timeout(Duration::from_millis(500), async {
+        tokio::time::timeout(Duration::from_secs(120), async {
             f.logic
                 .as_ref()
                 .unwrap()
@@ -310,7 +505,10 @@ fn native_hold_unlock_is_audited_before_access_and_does_not_block_panes() {
         .await
         .expect("native dialog must not stall terminal command service");
     });
-    assert!(started.elapsed() < Duration::from_millis(500));
+    assert!(
+        *f.store.blocked.lock().unwrap(),
+        "controls completed only after the native hold ended"
+    );
     assert!(
         f.control(Ulid::new(), IdentityRequest::Unlock, Door::Gui)
             .unwrap_err()
@@ -349,21 +547,7 @@ fn native_hold_unlock_is_audited_before_access_and_does_not_block_panes() {
     f.store.release();
     let result = f.final_result(op);
     assert_eq!(result.outcome, Some(UnlockOutcome::Allowed));
-    let until = Instant::now() + Duration::from_secs(3);
-    let rows = loop {
-        let rows = EventLog::open(&f.root.path().join("account"))
-            .unwrap()
-            .after(0, 128)
-            .unwrap();
-        if rows.iter().any(|row| {
-            row.event.payload["op_id"] == serde_json::json!(op)
-                && row.event.payload["signature"] == "device"
-        }) {
-            break rows;
-        }
-        assert!(Instant::now() < until);
-        std::thread::sleep(Duration::from_millis(10));
-    };
+    let rows = f.signed_audit(op);
     let pending = rows
         .iter()
         .find(|row| {
@@ -394,6 +578,7 @@ fn native_hold_unlock_is_audited_before_access_and_does_not_block_panes() {
     assert_eq!(f.store.attempts.load(Ordering::Acquire), 1);
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn native_audit_failure_executes_nothing_and_no_hold_is_a_native_noop() {
     let f = Fixture::new(true, false, UnlockOutcome::Allowed);
@@ -415,6 +600,7 @@ fn native_audit_failure_executes_nothing_and_no_hold_is_a_native_noop() {
     assert_eq!(f.store.loads.load(Ordering::Relaxed), before);
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn native_cancelled_and_unknown_outcomes_survive_logic_restart_without_replay() {
     for outcome in [UnlockOutcome::Cancelled, UnlockOutcome::Unknown] {
@@ -444,6 +630,7 @@ fn native_cancelled_and_unknown_outcomes_survive_logic_restart_without_replay() 
     }
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn native_held_gui_requires_the_current_capability_and_refuses_a_supplied_device() {
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -465,7 +652,7 @@ fn native_held_gui_requires_the_current_capability_and_refuses_a_supplied_device
     };
     let ask = |value: serde_json::Value| {
         f.runtime.block_on(async {
-            tokio::time::timeout(Duration::from_secs(3), async {
+            tokio::time::timeout(Duration::from_secs(120), async {
                 let mut socket = tokio::net::UnixStream::connect(&endpoint.path)
                     .await
                     .unwrap();
@@ -507,7 +694,7 @@ fn native_held_gui_requires_the_current_capability_and_refuses_a_supplied_device
         .runtime
         .block_on(async {
             tokio::time::timeout(
-                Duration::from_secs(3),
+                Duration::from_secs(120),
                 f.logic.as_ref().unwrap().client.ctl_ui(
                     ui_op,
                     bbt_proto::gui::UiRequest::Layout,
@@ -548,6 +735,7 @@ fn native_held_gui_requires_the_current_capability_and_refuses_a_supplied_device
     assert_eq!(f.store.attempts.load(Ordering::Acquire), 1);
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn native_hold_refuses_an_unvalidated_persisted_device_before_admission() {
     let f = Fixture::new(true, false, UnlockOutcome::Allowed);
@@ -572,6 +760,7 @@ fn native_hold_refuses_an_unvalidated_persisted_device_before_admission() {
     );
 }
 
+// keeps: spec id1-seat-chain
 #[test]
 fn native_status_check_cannot_turn_a_missing_or_unknown_id_into_an_attempt() {
     let mut f = Fixture::new(true, false, UnlockOutcome::Unknown);

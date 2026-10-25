@@ -1,5 +1,6 @@
 #![allow(clippy::disallowed_methods)] // Disposable blocking-IO policy fixture.
 
+// keeps: invariant ui-never-waits
 #[test]
 #[cfg(debug_assertions)]
 fn ui_thread_is_rejected_before_creating_a_database_directory() {

@@ -130,6 +130,7 @@ impl SeatKeys for LocalSeatKeys {
 mod tests {
     use super::*;
 
+    // keeps: spec messaging
     #[test]
     fn local_operator_grant_requires_a_key_field_and_canonical_positive_epoch() {
         let bytes = br#"{"public_key":"fixture","epoch":"1","device_id":"retained by ID1d"}"#;

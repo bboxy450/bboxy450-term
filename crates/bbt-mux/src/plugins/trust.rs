@@ -307,6 +307,7 @@ impl FixtureAccount {
 mod tests {
     use super::*;
 
+    // keeps: spec plugins
     #[test]
     fn one_readonly_copy_and_account_record_are_required_before_execution() {
         let files = tempfile::tempdir().unwrap();

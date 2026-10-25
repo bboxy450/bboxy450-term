@@ -47,6 +47,7 @@ fn envelope(keys: &LocalSeatKeys, seat: Ulid, swarm: Ulid) -> Envelope {
         signature: String::new(),
     }
 }
+// keeps: spec messaging
 #[test]
 fn signed_envelope_covers_role_routing_thread_and_rejects_untrusted_issuer_and_noncanonical_counters()
  {
@@ -100,6 +101,7 @@ fn add_sink(tree: &mut Tree, seat: Ulid) {
     tree.put(Actor::Operator, Node::sink(seat)).unwrap();
 }
 
+// keeps: spec messaging
 #[test]
 fn nil_seat_requires_the_local_operator_device_and_reserved_role() {
     use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
@@ -137,6 +139,7 @@ fn nil_seat_requires_the_local_operator_device_and_reserved_role() {
     }
 }
 
+// keeps: spec messaging
 #[test]
 fn message_bus_position_survives_reopen_without_reusing_the_ledger_sequence() {
     use bbt_mux::messaging::ledger::{BusPosition, Ledger};
@@ -180,6 +183,7 @@ fn message_bus_position_survives_reopen_without_reusing_the_ledger_sequence() {
         stored.bus
     );
 }
+// keeps: spec messaging
 #[test]
 fn nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths_after_reopen() {
     let tmp = tempfile::tempdir().unwrap();
@@ -280,6 +284,7 @@ fn nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths
         routes
     );
 }
+// keeps: spec messaging
 #[test]
 fn filter_rate_pause_and_worker_self_subscription_are_bounded_by_folder_grants() {
     let tmp = tempfile::tempdir().unwrap();
@@ -448,6 +453,7 @@ impl Fixture {
             .unwrap();
     }
 }
+// keeps: spec messaging
 #[test]
 fn persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart() {
     let mut f = Fixture::new();
@@ -502,6 +508,7 @@ fn persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart() {
             .is_none()
     );
 }
+// keeps: spec messaging
 #[test]
 fn idle_mute_publishes_a_durable_seat_state_without_an_activity_transition() {
     let mut f = Fixture::new();
@@ -568,6 +575,7 @@ fn idle_mute_publishes_a_durable_seat_state_without_an_activity_transition() {
     assert_eq!(changed.payload["muted"], false);
 }
 
+// keeps: spec messaging
 #[test]
 fn mute_holds_both_directions_reopens_and_releases_only_under_current_grants() {
     let mut f = Fixture::new();
@@ -659,6 +667,7 @@ fn mute_holds_both_directions_reopens_and_releases_only_under_current_grants() {
     );
     assert!(!f.registry.get(f.b.id).unwrap().muted);
 }
+// keeps: decision #23
 #[test]
 fn priority_fifo_four_to_one_and_burst_overflow_are_receiver_local() {
     let mut f = Fixture::new();
@@ -686,6 +695,7 @@ fn priority_fifo_four_to_one_and_burst_overflow_are_receiver_local() {
     assert_eq!(take(&mut f), (Class::Oracle, ids[4..30].to_vec()));
     assert_eq!(take(&mut f), (Class::Worker, ids[30..].to_vec()));
 }
+// keeps: spec messaging
 #[test]
 fn oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects() {
     let mut f = Fixture::new();
@@ -770,6 +780,7 @@ fn oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects() {
     }
 }
 
+// keeps: spec messaging
 #[test]
 fn live_logic_and_capability_socket_deliver_dm_native_written_without_claiming_model_receipt() {
     use bbt_mux::{
@@ -938,6 +949,7 @@ fn live_logic_and_capability_socket_deliver_dm_native_written_without_claiming_m
     supervisor.shutdown().unwrap();
 }
 
+// keeps: spec messaging
 #[test]
 fn ambiguous_guarded_pty_stays_unknown_through_the_delivery_ledger() {
     use bbt_mux::adapters::{ArbiterView, Binding, HarnessRecord, Session, native};
@@ -1004,6 +1016,7 @@ fn ambiguous_guarded_pty_stays_unknown_through_the_delivery_ledger() {
     );
 }
 
+// keeps: spec messaging
 #[test]
 fn supervisor_final_fence_rejects_a_user_draft_without_accepting_any_guarded_bytes() {
     use bbt_mux::{Action, Config, LaunchSpec, Reply, Supervisor};
@@ -1071,6 +1084,7 @@ fn supervisor_final_fence_rejects_a_user_draft_without_accepting_any_guarded_byt
     supervisor.shutdown().unwrap();
 }
 
+// keeps: spec messaging
 #[test]
 fn recipient_cursor_pages_do_not_skip_sinks_and_unsubscribing_survives_reopen() {
     use bbt_mux::messaging::{
@@ -1122,6 +1136,7 @@ fn recipient_cursor_pages_do_not_skip_sinks_and_unsubscribing_survives_reopen() 
     );
 }
 
+// keeps: spec messaging
 #[test]
 fn live_supervisor_admits_fresh_guard_and_rejects_replaced_foreground_evidence() {
     use bbt_mux::{Action, Config, LaunchSpec, Reply, Supervisor};
@@ -1202,6 +1217,7 @@ fn live_supervisor_admits_fresh_guard_and_rejects_replaced_foreground_evidence()
     supervisor.shutdown().unwrap();
 }
 
+// keeps: decision #23
 #[test]
 fn batching_never_jumps_over_an_earlier_eligible_route_in_worker_fifo() {
     let mut f = Fixture::new();
@@ -1247,6 +1263,7 @@ fn batching_never_jumps_over_an_earlier_eligible_route_in_worker_fifo() {
     );
 }
 
+// keeps: spec messaging
 #[test]
 fn muted_peer_cannot_claim_the_authenticated_operator_direct_control_exception() {
     use bbt_mux::messaging::api::{Request, Response};
@@ -1323,6 +1340,7 @@ fn muted_peer_cannot_claim_the_authenticated_operator_direct_control_exception()
     );
 }
 
+// keeps: spec messaging
 #[test]
 fn arrival_path_limit_rejects_instead_of_silently_losing_an_unpaused_route() {
     let tmp = tempfile::tempdir().unwrap();

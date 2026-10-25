@@ -334,6 +334,7 @@ impl Fixture {
     }
 }
 
+// keeps: decision #28
 #[test]
 fn gui_operator_dm_replays_once_and_tasks_share_mcp_verification() {
     use bbt_proto::messaging::{AuthorKind, Request, Response, TaskRequest, TaskResponse};
@@ -718,6 +719,7 @@ fn refused(value: Value, fragment: &str) -> Value {
     value["structuredContent"].clone()
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_seat_controls_enforce_catalogue_scope_generation_and_strict_arguments() {
     let f = Fixture::new();
@@ -832,6 +834,7 @@ fn mcp_seat_controls_enforce_catalogue_scope_generation_and_strict_arguments() {
 
 const READY_SHELL: &str = "stty icanon echo; printf 'FIXTURE-READY\\n'; while true; do printf '\\033]133;B\\007'; if IFS= read -r -t 1 line; then printf '\\033]133;C\\007'; printf 'OBSERVED:%s\\n' \"$line\"; sleep 0.6; fi; done";
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_seat_input_consumes_readiness_and_enter_is_explicit() {
     // A single prompt keeps consumed readiness consumed, and the completed
@@ -904,6 +907,7 @@ fn mcp_seat_input_consumes_readiness_and_enter_is_explicit() {
     assert!(!f.screen(draft.id).contains("SECOND"));
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_seat_input_lost_receipt_is_unknown_and_never_repeated_after_restart() {
     let mut f = Fixture::with_lost_input_receipt(true);
@@ -933,6 +937,7 @@ fn mcp_seat_input_lost_receipt_is_unknown_and_never_repeated_after_restart() {
     );
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_seat_reads_page_real_capture_and_refuse_stale_view_cursors() {
     use base64::Engine;
@@ -1019,6 +1024,7 @@ fn mcp_seat_reads_page_real_capture_and_refuse_stale_view_cursors() {
     assert!(gap["next"].is_null());
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_seat_mute_is_epoch_checked_signed_and_preserves_read_access() {
     let f = Fixture::new();
@@ -1150,6 +1156,7 @@ fn initialize(bridge: &mut Bridge) {
     );
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_result() {
     let fixture = Fixture::new();
@@ -1206,6 +1213,7 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     );
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_role_scope_and_schema_cannot_be_spoofed_and_graph_reads_hide_foreign_items() {
     let fixture = Fixture::new();
@@ -1287,6 +1295,7 @@ fn mcp_role_scope_and_schema_cannot_be_spoofed_and_graph_reads_hide_foreign_item
     );
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_authority() {
     let mut fixture = Fixture::new();
@@ -1354,6 +1363,7 @@ fn mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_a
     );
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn running_mcp_bridge_survives_logic_restart_with_the_same_generation_admission() {
     let mut fixture = Fixture::new();
@@ -1407,6 +1417,7 @@ fn running_mcp_bridge_survives_logic_restart_with_the_same_generation_admission(
     }
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_arguments() {
     let fixture = Fixture::new();
@@ -1500,6 +1511,7 @@ fn mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_
     audit[0].verify().unwrap();
 }
 
+// keeps: decision #266
 #[test]
 fn mcp_orient_unread_has_a_basis_and_acknowledgement_remains_separate() {
     use bbt_mux::messaging::{api, wire::SendRequest};
@@ -1545,6 +1557,7 @@ fn mcp_orient_unread_has_a_basis_and_acknowledgement_remains_separate() {
     assert_eq!(second["structuredContent"]["pending_ack"]["ids"], json!([]));
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_framing_is_bounded_and_protocol_errors_never_echo_input() {
     assert_eq!(
@@ -1614,6 +1627,7 @@ fn mcp_framing_is_bounded_and_protocol_errors_never_echo_input() {
 
 /// Real installed clients under a private HOME need a test credential; unproven.
 /// This driver never inherits the operator's client account or copies a credential.
+// keeps: spec mcp-control-plane
 #[test]
 #[ignore = "real installed clients need a private test credential; unproven; never inherit operator HOME"]
 fn mcp_installed_claude_and_codex_call_orient() {
@@ -1880,6 +1894,7 @@ fn configuration_digests(
     .collect()
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_messages_bind_the_sender_retry_once_reply_list_and_ack_through_w24() {
     let mut f = Fixture::new();
@@ -1979,6 +1994,7 @@ fn mcp_messages_bind_the_sender_retry_once_reply_list_and_ack_through_w24() {
     );
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results() {
     let f = Fixture::new();
@@ -2105,6 +2121,7 @@ fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_r
     );
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_message_visibility_and_receipt_pages_preserve_current_w24_scope() {
     let f = Fixture::new();
@@ -2249,6 +2266,7 @@ fn mcp_message_visibility_and_receipt_pages_preserve_current_w24_scope() {
     );
 }
 
+// keeps: decision #266
 #[test]
 fn mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority() {
     let f = Fixture::new();
@@ -2389,6 +2407,7 @@ fn mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority() 
     );
 }
 
+// keeps: decision #266
 #[test]
 fn mcp_minted_read_ids_are_retryable_and_every_catalogue_explains_optional_ids() {
     let f = Fixture::new();
@@ -2446,6 +2465,7 @@ fn mcp_minted_read_ids_are_retryable_and_every_catalogue_explains_optional_ids()
     }
 }
 
+// keeps: decision #266
 #[test]
 fn mcp_list_and_graph_pages_explain_authenticated_scope_and_empty_views() {
     let f = Fixture::new();
@@ -2540,6 +2560,7 @@ fn mcp_list_and_graph_pages_explain_authenticated_scope_and_empty_views() {
     assert_eq!(folder["empty_reason"], "nothing_yet");
 }
 
+// keeps: decision #266
 #[test]
 fn mcp_counts_have_a_basis_and_ack_ids_without_equating_acknowledgement_with_reading() {
     let f = Fixture::new();
@@ -2613,6 +2634,7 @@ fn mcp_counts_have_a_basis_and_ack_ids_without_equating_acknowledgement_with_rea
     assert!(receipts.get("empty_reason").is_none());
 }
 
+// keeps: decision #266
 #[test]
 fn mcp_destinations_explain_rights_and_write_only_reads_without_expanding_grants() {
     let f = Fixture::new();
@@ -2751,6 +2773,7 @@ fn mcp_destinations_explain_rights_and_write_only_reads_without_expanding_grants
     );
 }
 
+// keeps: decision #266
 #[test]
 fn mcp_orient_cold_start_names_identity_allowed_tools_tasks_counts_and_actions() {
     let f = Fixture::new();
@@ -2888,6 +2911,7 @@ fn assert_item_signature(doc: &bbt_mux::index::Document, seat: Ulid) {
         .unwrap();
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_fixture_first_turn_orients_reports_and_retains_signed_task_receipts() {
     for harness in ["fixture-Claude", "fixture-Codex"] {
@@ -3005,6 +3029,7 @@ fn mcp_fixture_first_turn_orients_reports_and_retains_signed_task_receipts() {
     }
 }
 
+// keeps: decision #28
 #[test]
 fn mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_only() {
     let f = Fixture::new();
@@ -3084,6 +3109,7 @@ fn mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_onl
     assert!(accept().to_string().contains("recorded verify_result"));
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_task_reassignment_reauthorizes_history_and_refuses_foreign_or_ambiguous_scope() {
     let f = Fixture::new();
@@ -3234,6 +3260,7 @@ fn mcp_task_reassignment_reauthorizes_history_and_refuses_foreign_or_ambiguous_s
     );
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_content() {
     let mut f = Fixture::new();
@@ -3294,6 +3321,7 @@ fn mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_conte
     assert!(index_log.verify_chain().unwrap() >= 4);
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_task_partial_wake_stays_unknown_after_restart_and_never_rewrites_the_file() {
     let mut f = Fixture::new();
@@ -3328,6 +3356,7 @@ fn mcp_task_partial_wake_stays_unknown_after_restart_and_never_rewrites_the_file
     );
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 #[ignore = "acceptance driver supplies the prebuilt bbt-doc corpus test binary"]
 fn mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check() {
@@ -3374,6 +3403,7 @@ fn mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check() {
     assert!(String::from_utf8_lossy(&output.stdout).contains("positive unique numbers, 0 errors"));
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_artifact_partial_write_remains_unknown_and_is_not_reexecuted() {
     let mut f = Fixture::new();
@@ -3403,6 +3433,7 @@ fn mcp_artifact_partial_write_remains_unknown_and_is_not_reexecuted() {
     assert_eq!(f.task_document().digest, original.digest);
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_work_item_audit_admission_failure_executes_no_frontmatter_write() {
     let f = Fixture::new();
@@ -3437,6 +3468,7 @@ fn mcp_work_item_audit_admission_failure_executes_no_frontmatter_write() {
         .unwrap();
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_work_item_signing_hold_keeps_the_original_file_and_terminals() {
     struct Denied;
@@ -3513,11 +3545,13 @@ fn isolated_seat_fixture(mode: &str) {
     );
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_seat_spawn_runs_once_with_isolated_home_and_existing_wiring() {
     isolated_seat_fixture("spawn");
 }
 
+// keeps: decision #262
 #[test]
 fn mcp_spawn_refuses_forbidden_and_unknown_presets_before_admitting_a_seat() {
     let fixture = Fixture::new();
@@ -3540,11 +3574,13 @@ fn mcp_spawn_refuses_forbidden_and_unknown_presets_before_admitting_a_seat() {
     }
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_seat_native_interrupt_is_bounded_audited_and_never_replayed() {
     isolated_seat_fixture("native");
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 #[ignore = "subprocess fixture; parent supplies a disposable HOME and no credential environment"]
 fn mcp_seat_isolated_process() {
@@ -3881,6 +3917,7 @@ fn seat_native_fixture() {
     std::fs::remove_file(path).unwrap();
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_record_numbers_resolve_before_the_existing_task_authority_fences() {
     let f = Fixture::new();
@@ -3927,6 +3964,7 @@ fn mcp_record_numbers_resolve_before_the_existing_task_authority_fences() {
     );
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_artifact_number_uses_unindexed_records_of_every_type_and_keeps_retry_bytes() {
     let mut f = Fixture::new();
@@ -3959,6 +3997,7 @@ fn mcp_artifact_number_uses_unindexed_records_of_every_type_and_keeps_retry_byte
     assert_eq!(std::fs::read_to_string(path).unwrap(), source);
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_numeric_selectors_refuse_invalid_missing_and_ambiguous_handles() {
     let f = Fixture::new();
@@ -4064,6 +4103,7 @@ fn verify_knowledge_record(record: &Value) -> [u8; 32] {
     public
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_knowledge_real_bridge_writes_with_the_seat_key_and_replays_without_reallocation() {
     let mut f = Fixture::new();
@@ -4168,6 +4208,7 @@ fn mcp_knowledge_real_bridge_writes_with_the_seat_key_and_replays_without_reallo
     );
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_knowledge_refuses_outside_paths_forged_authority_type_ids_and_stale_etags() {
     use std::os::unix::fs::symlink;
@@ -4292,6 +4333,7 @@ fn mcp_knowledge_refuses_outside_paths_forged_authority_type_ids_and_stale_etags
     assert!(!f.config.repository.join(".bboxy/e2e/no-op.md").exists());
 }
 
+// keeps: spec mcp-control-plane
 #[test]
 fn mcp_knowledge_post_commit_failure_is_unknown_and_never_recreates_a_deleted_file() {
     let mut f = Fixture::new();
@@ -4381,6 +4423,7 @@ fn texts(page: &Value) -> String {
     page["page"]["items"].to_string()
 }
 
+// keeps: decision #264
 #[test]
 fn d264_a_reply_without_destination_goes_to_the_sender() {
     let f = Fixture::new();
@@ -4434,6 +4477,7 @@ fn d264_a_reply_without_destination_goes_to_the_sender() {
     );
 }
 
+// keeps: decision #264
 #[test]
 fn d264_orient_and_the_skill_say_how_to_reach_the_operator() {
     let f = Fixture::new();
@@ -4448,6 +4492,7 @@ fn d264_orient_and_the_skill_say_how_to_reach_the_operator() {
     );
 }
 
+// keeps: decision #264
 #[test]
 fn d264_an_unknown_destination_is_refused_with_the_valid_one() {
     let f = Fixture::new();
@@ -4483,6 +4528,7 @@ fn d264_an_unknown_destination_is_refused_with_the_valid_one() {
     );
 }
 
+// keeps: decision #264
 #[test]
 fn d264_a_refused_send_is_stored_nowhere() {
     let f = Fixture::new();
@@ -4543,6 +4589,7 @@ fn knowledge_search(f: &Fixture, actor: Ulid, args: Value) -> Value {
     response["result"].clone()
 }
 
+// keeps: decision #266
 #[test]
 fn mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_types() {
     let f = Fixture::new();
@@ -4686,6 +4733,7 @@ fn mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_t
     );
 }
 
+// keeps: decision #266
 #[test]
 fn mcp_knowledge266_worker_task_results_use_report_notice_and_acceptance_guards() {
     let mut f = Fixture::new();
@@ -4811,6 +4859,7 @@ fn mcp_knowledge266_worker_task_results_use_report_notice_and_acceptance_guards(
     );
 }
 
+// keeps: decision #266
 #[test]
 fn mcp_knowledge266_oracle_task_creation_and_open_brief_edits_do_not_delegate_or_accept() {
     let f = Fixture::new();
@@ -4885,6 +4934,7 @@ fn mcp_knowledge266_oracle_task_creation_and_open_brief_edits_do_not_delegate_or
     );
 }
 
+// keeps: decision #266
 #[test]
 fn mcp_knowledge266_artifacts_keep_claims_observations_lineage_and_creator_corrections() {
     let f = Fixture::new();
@@ -4984,6 +5034,7 @@ fn mcp_knowledge266_artifacts_keep_claims_observations_lineage_and_creator_corre
     }
 }
 
+// keeps: decision #266
 #[test]
 fn mcp_knowledge266_search_pages_use_shared_root_resolution_and_refuse_stale_cursors() {
     let f = Fixture::new();
@@ -5104,6 +5155,7 @@ fn mcp_knowledge266_search_pages_use_shared_root_resolution_and_refuse_stale_cur
 
 /// Decision #269: an operator envelope sent through ctl carries its door and issuer in the
 /// signed body, the native frame names both, and the window's sends carry door gui.
+// keeps: decision #269
 #[test]
 fn d269_ctl_envelopes_carry_door_and_issuer_signed_and_framed() {
     use bbt_proto::messaging::{Door, Request, Response};

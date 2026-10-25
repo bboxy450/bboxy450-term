@@ -584,6 +584,7 @@ mod tests {
         Arc::new(|_| Ok(()))
     }
 
+    // keeps: decision #280
     #[test]
     fn native_regrant_uses_one_interactive_read_then_prompt_free_verification() {
         let vault = Fake::legacy();
@@ -617,6 +618,7 @@ mod tests {
         );
     }
 
+    // keeps: decision #280
     #[test]
     fn add_verify_or_delete_failure_never_loses_the_legacy_secret() {
         for fault in ["add", "verify", "delete"] {
@@ -633,6 +635,7 @@ mod tests {
         }
     }
 
+    // keeps: decision #280
     #[test]
     fn a_wrong_key_and_a_cancelled_native_read_have_no_writes() {
         let vault = Fake::legacy();
@@ -651,6 +654,7 @@ mod tests {
         assert!(!vault.has("device.dr1"));
     }
 
+    // keeps: decision #280
     #[test]
     fn an_audit_refusal_before_delete_leaves_both_and_restart_cleanup_never_prompts() {
         let vault = Fake::legacy();
@@ -676,6 +680,7 @@ mod tests {
         );
     }
 
+    // keeps: decision #280
     #[test]
     fn an_unreadable_replacement_never_silently_falls_back_to_legacy() {
         let vault = Fake::legacy();

@@ -220,6 +220,7 @@ mod tests {
     use super::*;
     use std::sync::Barrier;
 
+    // keeps: spec storage, migrations preserve retained data and refuse future schemas unchanged.
     #[test]
     fn schema_markers_migrate_legacy_databases_and_preserve_version_refusals() {
         use crate::store::events::EventLog;
@@ -245,25 +246,47 @@ mod tests {
             db.pragma_update(None, "user_version", 2).unwrap();
         }
         assert_eq!(
-            SqliteStore::open(root.path()).unwrap_err().to_string(),
-            "unsupported object schema"
+            SqliteStore::open(root.path())
+                .unwrap_err()
+                .downcast_ref::<std::io::Error>()
+                .unwrap()
+                .kind(),
+            std::io::ErrorKind::InvalidData
         );
         assert_eq!(
-            EventLog::open(root.path()).unwrap_err().to_string(),
-            "unsupported event schema"
+            EventLog::open(root.path())
+                .unwrap_err()
+                .downcast_ref::<std::io::Error>()
+                .unwrap()
+                .kind(),
+            std::io::ErrorKind::InvalidData
         );
+        assert_eq!(store.get("retained").unwrap().unwrap(), b"original");
         for path in [&store.path, &log.path] {
             let db = open(path).unwrap();
+            assert_eq!(
+                db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
+                    .unwrap(),
+                2
+            );
             db.pragma_update(None, "user_version", 0).unwrap();
             db.execute("UPDATE version SET version=2", []).unwrap();
         }
         assert_eq!(
-            SqliteStore::open(root.path()).unwrap_err().to_string(),
-            "unsupported object schema"
+            SqliteStore::open(root.path())
+                .unwrap_err()
+                .downcast_ref::<std::io::Error>()
+                .unwrap()
+                .kind(),
+            std::io::ErrorKind::InvalidData
         );
         assert_eq!(
-            EventLog::open(root.path()).unwrap_err().to_string(),
-            "unsupported event schema"
+            EventLog::open(root.path())
+                .unwrap_err()
+                .downcast_ref::<std::io::Error>()
+                .unwrap()
+                .kind(),
+            std::io::ErrorKind::InvalidData
         );
         for path in [&store.path, &log.path] {
             let db = open(path).unwrap();
@@ -275,6 +298,7 @@ mod tests {
         }
     }
 
+    // keeps: spec storage
     #[test]
     fn fifty_current_schema_opens_do_not_take_either_database_write_lock() {
         use crate::store::events::EventLog;
@@ -325,6 +349,7 @@ mod tests {
         );
     }
 
+    // keeps: spec storage
     #[test]
     fn concurrent_open_and_read_then_write_share_one_database_without_busy() {
         const ROUNDS: usize = 50;

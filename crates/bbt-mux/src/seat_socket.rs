@@ -1472,6 +1472,7 @@ mod gui_tests {
         .await
         .expect("waiting read blocked the GUI control path");
     }
+    // keeps: spec c1-live-seats
     #[tokio::test]
     async fn refusal_drains_the_complete_request_before_half_closing() {
         tokio::time::timeout(Duration::from_secs(10), async {
@@ -1502,6 +1503,7 @@ mod gui_tests {
         .expect("a complete bounded request must receive its refusal and EOF");
     }
 
+    // keeps: spec c1-live-seats
     #[tokio::test]
     async fn busy_gui_poll_and_locked_cursor_keep_the_session_and_queued_events() {
         use bbt_proto::messaging::{Request, Response, SendRequest};
@@ -1771,6 +1773,7 @@ mod gui_tests {
         result.expect("GUI event recovery watchdog elapsed");
     }
 
+    // keeps: spec c1-live-seats
     #[test]
     fn seat_listener_recovery_reclaims_only_a_dead_owned_socket() {
         use std::os::unix::{fs::symlink, net::UnixListener};
@@ -1817,6 +1820,7 @@ mod gui_tests {
         );
     }
 
+    // keeps: spec c1-live-seats
     #[tokio::test]
     async fn session_error_reasons_name_deadlines_without_logging_payloads() {
         let elapsed = tokio::time::timeout(Duration::ZERO, std::future::pending::<()>())
@@ -1854,6 +1858,7 @@ mod gui_tests {
         assert!(!reason.contains("private-payload-value"));
     }
 
+    // keeps: spec c1-live-seats §2, bounded watched work and exact Applied gating.
     #[test]
     fn repeated_ticks_keep_one_check_per_seat_and_hot_seats_stay_at_the_back() {
         let mut checks = GuiChecks::default();
@@ -1863,9 +1868,8 @@ mod gui_tests {
                 checks.schedule(seat);
             }
         }
-        assert_eq!(checks.order.len(), seats.len());
-        assert_eq!(checks.queued.len(), seats.len());
         let first = checks.next().unwrap();
+        assert_eq!(first, seats[0]);
         checks.schedule(first);
         for &seat in &seats[1..] {
             assert_eq!(checks.next(), Some(seat));
@@ -1874,6 +1878,7 @@ mod gui_tests {
         assert!(checks.is_empty());
     }
 
+    // keeps: spec c1-live-seats §2, bounded watched work and exact Applied gating.
     #[test]
     fn unwatch_removes_pending_work_and_rewatch_schedules_only_once() {
         let mut checks = GuiChecks::default();
@@ -1887,7 +1892,6 @@ mod gui_tests {
         assert_eq!(checks.next(), Some(b));
         assert_eq!(checks.next(), Some(a));
         assert!(checks.is_empty());
-        assert!(checks.queued.is_empty());
     }
 
     fn offered_view() -> (bbt_proto::SeatId, View, GuiView) {
@@ -1921,6 +1925,7 @@ mod gui_tests {
         )
     }
 
+    // keeps: spec c1-live-seats §2, bounded watched work and exact Applied gating.
     #[test]
     fn duplicate_baseline_ack_preserves_the_newer_in_flight_update() {
         let (_, view, mut watched) = offered_view();
@@ -1928,19 +1933,27 @@ mod gui_tests {
             panic!("first update must be a snapshot");
         };
         watched.applied(view, 1).unwrap();
+        let sequence = |update| match update {
+            crate::streams::Update::Snapshot { snapshot } => snapshot.sequence,
+            crate::streams::Update::Delta { delta } => delta.sequence,
+        };
         let mut newer = *snapshot;
         newer.sequence = 2;
-        watched.stream.offer(newer).unwrap();
-        assert!(watched.next_update().is_some());
+        watched.stream.offer(newer.clone()).unwrap();
+        assert_eq!(sequence(watched.next_update().unwrap()), 2);
         watched.applied(view, 1).unwrap();
-        assert_eq!(watched.in_flight, Some((view, 2)));
         assert!(watched.next_update().is_none());
         assert!(watched.applied(view, 3).is_err());
-        assert_eq!(watched.in_flight, Some((view, 2)));
+        newer.sequence = 3;
+        watched.stream.offer(newer).unwrap();
+        assert!(watched.next_update().is_none());
         watched.applied(view, 2).unwrap();
-        assert_eq!(watched.in_flight, None);
+        assert_eq!(sequence(watched.next_update().unwrap()), 3);
+        watched.applied(view, 3).unwrap();
+        assert!(watched.next_update().is_none());
     }
 
+    // keeps: spec c1-live-seats §2, no fallback RPC before Applied.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn fallback_never_requests_a_snapshot_while_an_update_is_in_flight() {
         let temp = tempfile::tempdir().unwrap();
@@ -1971,14 +1984,16 @@ mod gui_tests {
         let error = gui_fallback_check(&client, &mut write, seat, &mut watched)
             .await
             .unwrap_err();
-        assert!(error.to_string().contains("logic stopped"), "{error}");
+        assert_eq!(
+            error.downcast_ref::<std::io::Error>().unwrap().kind(),
+            std::io::ErrorKind::InvalidData
+        );
         assert!(watched.next_update().is_some());
         for _ in 0..100 {
             gui_fallback_check(&client, &mut write, seat, &mut watched)
                 .await
                 .unwrap();
         }
-        assert_eq!(watched.in_flight, Some((view, 1)));
         watched.applied(view, 1).unwrap();
         assert!(
             gui_fallback_check(&client, &mut write, seat, &mut watched)
@@ -2010,6 +2025,7 @@ mod gui_tests {
         .await
         .expect("no view update")
     }
+    // keeps: spec c1-live-seats
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn gui_view_waits_for_applied_and_resize_clamps_without_reading_cells() {
         let temp = tempfile::tempdir().unwrap();

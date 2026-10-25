@@ -14,6 +14,7 @@ use ed25519_dalek::SigningKey;
 use serde_json::json;
 use ulid::Ulid;
 
+// keeps: spec storage
 #[test]
 fn sqlite_objects_blobs_and_alarms_round_trip_across_reopen() {
     let temp = tempfile::tempdir().unwrap();
@@ -41,6 +42,7 @@ fn sqlite_objects_blobs_and_alarms_round_trip_across_reopen() {
     assert!(blobs.get(&hash).is_err());
 }
 
+// keeps: spec storage
 #[test]
 fn signed_events_dedupe_forever_reject_conflicts_tampering_and_torn_database() {
     let temp = tempfile::tempdir().unwrap();
@@ -83,6 +85,7 @@ fn signed_events_dedupe_forever_reject_conflicts_tampering_and_torn_database() {
     assert!(EventLog::open(torn.path()).is_err());
 }
 
+// keeps: spec storage
 #[test]
 fn grammar_matches_tokens_and_rejects_mid_path_tail_wildcards() {
     assert!(matches("seat/*/state", "seat/abc/state"));
@@ -95,6 +98,7 @@ fn grammar_matches_tokens_and_rejects_mid_path_tail_wildcards() {
     assert!(validate_subject("doc/*", false).is_err());
 }
 
+// keeps: spec storage
 #[test]
 fn independent_streams_latest_snapshots_queue_gaps_and_nonretained_output() {
     let temp = tempfile::tempdir().unwrap();
@@ -146,6 +150,7 @@ fn independent_streams_latest_snapshots_queue_gaps_and_nonretained_output() {
     assert_eq!(broker.poll(&snap, 8, 100).unwrap().len(), 1);
 }
 
+// keeps: spec storage
 #[test]
 fn explicit_ack_redelivers_original_ids_survives_restart_and_never_redelivers_acked_work() {
     let temp = tempfile::tempdir().unwrap();
@@ -174,6 +179,7 @@ fn explicit_ack_redelivers_original_ids_survives_restart_and_never_redelivers_ac
     assert!(broker.ack(&id, "swarm-a", event.seq + 100).is_err());
 }
 
+// keeps: spec storage
 #[test]
 fn request_reply_has_no_responders_and_fanout_is_not_replayed() {
     let temp = tempfile::tempdir().unwrap();
@@ -319,6 +325,7 @@ fn index_resolves_annotated_links_retains_broken_frontmatter_and_rebuilds_from_s
     assert!(invalid.error.is_some());
 }
 
+// keeps: spec storage
 #[test]
 fn mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_changes() {
     let temp = tempfile::tempdir().unwrap();
@@ -415,6 +422,7 @@ fn mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_chang
     assert!(!watch.failed());
 }
 
+// keeps: spec storage
 #[test]
 fn record_numbers_use_fresh_nested_frontmatter_and_are_immutable() {
     let temp = tempfile::tempdir().unwrap();
@@ -491,6 +499,7 @@ fn record_numbers_use_fresh_nested_frontmatter_and_are_immutable() {
     assert_eq!(updated.metadata["number"], 91);
 }
 
+// keeps: spec storage
 #[test]
 fn invalid_legacy_numbers_remain_visible_and_block_new_writes() {
     for number in [
@@ -547,6 +556,7 @@ fn invalid_legacy_numbers_remain_visible_and_block_new_writes() {
     }
 }
 
+// keeps: spec storage
 #[test]
 fn duplicate_numbers_in_different_types_refuse_allocation() {
     let temp = tempfile::tempdir().unwrap();
@@ -579,6 +589,7 @@ fn duplicate_numbers_in_different_types_refuse_allocation() {
     assert!(!root.join("new.md").exists());
 }
 
+// keeps: spec storage
 #[test]
 #[ignore = "subprocess fixture used by concurrent_processes_allocate_under_one_root_lock"]
 fn number_allocation_child() {
@@ -605,6 +616,7 @@ fn number_allocation_child() {
     }
 }
 
+// keeps: spec storage
 #[test]
 fn concurrent_processes_allocate_under_one_root_lock() {
     struct OwnedChild(std::process::Child);

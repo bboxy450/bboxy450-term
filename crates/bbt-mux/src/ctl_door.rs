@@ -212,6 +212,7 @@ mod tests {
         );
     }
 
+    // keeps: invariant ctl-opt-in
     #[test]
     fn a_chain_that_never_reaches_the_root_is_refused() {
         let peers = Peers {

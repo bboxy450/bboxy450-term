@@ -421,6 +421,7 @@ fn scrub(text: &str) -> String {
 mod tests {
     use super::*;
 
+    // keeps: invariant ctl-never-prints-secrets
     #[test]
     fn journal_selects_one_operation_read_only_without_opening_other_namespaces() {
         let directory = tempfile::tempdir().unwrap();
@@ -470,6 +471,7 @@ mod tests {
         assert!(!directory.path().join(format!("seat-{unknown}")).exists());
     }
 
+    // keeps: invariant ctl-never-prints-secrets
     #[test]
     fn log_cursors_are_bounded_complete_lines_and_cannot_split_secrets() {
         let directory = tempfile::tempdir().unwrap();
@@ -494,6 +496,7 @@ mod tests {
         assert_eq!(oversized["omitted_bytes"], LOG_BYTES * 2);
     }
 
+    // keeps: invariant ctl-never-prints-secrets
     #[test]
     fn debug_sources_refuse_symlinks_and_encoded_key_material() {
         let root = tempfile::tempdir().unwrap();

@@ -79,6 +79,7 @@ mod seat_name_tests {
     use super::*;
     use bbt_proto::seat_names::POOL;
 
+    // keeps: spec mux-daemon
     #[test]
     fn automatic_names_are_unique_in_the_swarm_for_every_harness() {
         let swarm = Ulid::from(1);
@@ -96,6 +97,7 @@ mod seat_name_tests {
         assert_ne!(first_available_seat_name(swarm, &records), POOL[0]);
     }
 
+    // keeps: spec mux-daemon
     #[test]
     fn exhausted_pool_uses_the_first_unused_numbered_name() {
         let swarm = Ulid::from(1);
@@ -5021,7 +5023,9 @@ impl Worker {
                             .expired(Instant::now(), self.checkpoint_policy)));
             let idle = dirty
                 && view.sequence == view.captured_sequence
-                && view.last_arrival_at.elapsed() >= self.checkpoint_policy.idle;
+                && self
+                    .checkpoint_policy
+                    .idle_due(view.last_arrival_at, Instant::now());
             if force || idle {
                 self.prepare_checkpoint(id, !force)?;
             }
@@ -7854,6 +7858,7 @@ mod pending_tests {
             .update(session.id, Arc::downgrade(&session.life), seat, generation)
             .unwrap()
     }
+    // keeps: invariant watched-replay-priority
     #[test]
     fn watch_refcounts_are_idempotent_and_disconnect_releases_only_its_session() {
         let epoch = Arc::new(AtomicU64::new(0));
@@ -7876,6 +7881,7 @@ mod pending_tests {
         assert!(watches.references.is_empty());
         assert!(watches.sessions.is_empty());
     }
+    // keeps: invariant watched-replay-priority
     #[test]
     fn closed_watch_admission_cannot_resurrect_interest_or_change_its_token() {
         let epoch = Arc::new(AtomicU64::new(0));
@@ -7898,6 +7904,7 @@ mod pending_tests {
         assert!(watches.prune_closed());
         assert!(watches.watched().is_empty());
     }
+    // keeps: invariant watched-replay-priority
     #[test]
     fn watched_quota_is_three_to_one_and_each_lane_rotates() {
         let mut pending = PendingSeats::default();
@@ -7934,6 +7941,7 @@ mod pending_tests {
         );
         assert_eq!(background_turn, 32);
     }
+    // keeps: invariant watched-replay-priority
     #[test]
     fn empty_lanes_donate_without_borrowing_the_next_background_turn() {
         let watched = Ulid::from(1);
@@ -7961,6 +7969,7 @@ mod pending_tests {
             pending.finish(key, false);
         }
     }
+    // keeps: invariant watched-replay-priority
     #[test]
     fn ended_interest_demotes_next_round_without_tombstones_or_generation_leaks() {
         let watched = Ulid::from(1);
@@ -7997,6 +8006,7 @@ mod pending_tests {
         assert!(pending.ready_watched.is_empty());
         assert_eq!(pending.ready_background.len(), 2);
     }
+    // keeps: spec mux-daemon
     #[test]
     fn watched_and_background_work_stays_parked_without_a_ready_spin() {
         let mut pending = PendingSeats::default();
@@ -8025,6 +8035,7 @@ mod pending_tests {
             bytes: vec![b'x'],
         }
     }
+    // keeps: spec mux-daemon
     #[test]
     fn pending_seats_rotate_without_changing_an_unfinished_target() {
         let mut pending = PendingSeats::default();
@@ -8146,6 +8157,7 @@ mod pending_tests {
         ));
         assert!(pending.pop_front().is_none());
     }
+    // keeps: spec mux-daemon
     #[test]
     fn replacement_generation_discards_only_the_old_generation_work() {
         let mut pending = PendingSeats::default();
@@ -8172,6 +8184,7 @@ mod pending_tests {
         assert!(pending.is_empty());
         assert_eq!(pending.ready_len(), 0);
     }
+    // keeps: spec mux-daemon
     #[test]
     fn down_host_work_is_parked_until_a_provider_up_transition() {
         let mut pending = PendingSeats::default();

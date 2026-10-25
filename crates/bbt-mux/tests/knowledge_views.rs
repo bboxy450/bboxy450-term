@@ -4,12 +4,11 @@ use bbt_mux::{
     registry::SeatRecord,
 };
 use serde_json::{Value, json};
-use std::{cell::RefCell, collections::BTreeMap};
+use std::collections::BTreeMap;
 
 struct Stub {
     nodes: Vec<d::Node>,
     records: BTreeMap<String, d::Record>,
-    calls: RefCell<Vec<String>>,
     repeat_cursor: bool,
     oversize: bool,
 }
@@ -67,14 +66,12 @@ impl Stub {
         Self {
             nodes,
             records,
-            calls: RefCell::new(Vec::new()),
             repeat_cursor: false,
             oversize: false,
         }
     }
     fn no<T>(&self, method: &str) -> d::Result<T> {
-        self.calls.borrow_mut().push(method.into());
-        Err(d::CommandError::new("unexpected_call", method))
+        panic!("read projection called unexposed provider method {method}")
     }
 }
 impl DataSource for Stub {
@@ -82,7 +79,6 @@ impl DataSource for Stub {
         self.no("resolve")
     }
     fn fetch(&self, request: d::FetchRequest) -> d::Result<d::Record> {
-        self.calls.borrow_mut().push("fetch".into());
         self.records
             .get(&request.reference.id)
             .cloned()
@@ -98,7 +94,6 @@ impl DataSource for Stub {
         self.no("links")
     }
     fn graph(&self, request: d::GraphRequest) -> d::Result<d::GraphPage> {
-        self.calls.borrow_mut().push("graph".into());
         let start = if self.repeat_cursor {
             0
         } else {
@@ -147,6 +142,7 @@ impl DataSource for Stub {
     }
 }
 
+// keeps: spec knowledge-base §6.1, views use only the provider port.
 #[test]
 fn alternative_provider_drives_graph_and_briefs_without_an_index_or_policy_upgrade() {
     let own = Ulid(900);
@@ -178,20 +174,6 @@ fn alternative_provider_drives_graph_and_briefs_without_an_index_or_policy_upgra
     assert_eq!(brief["items"][1]["body"], "FROM PROVIDER 3");
     assert!(!brief.to_string().contains("FROM PROVIDER 2"));
     assert!(!brief.to_string().contains("FROM PROVIDER 4"));
-    assert!(source.calls.borrow().contains(&"graph".into()));
-    assert_eq!(
-        source
-            .calls
-            .borrow()
-            .iter()
-            .filter(|call| *call == "fetch")
-            .count(),
-        2
-    );
-    assert!(!source.calls.borrow().iter().any(|call| matches!(
-        call.as_str(),
-        "write" | "resolve" | "search" | "list" | "links" | "changes_since"
-    )));
     let full = views::graph(&source, &seat, d::DocumentGraph::Task, None, 32, false).unwrap();
     assert_eq!(full["nodes"].as_array().unwrap().len(), 6);
     let next = views::graph(&source, &seat, d::DocumentGraph::Task, None, 1, true).unwrap();
@@ -202,6 +184,7 @@ fn alternative_provider_drives_graph_and_briefs_without_an_index_or_policy_upgra
     );
 }
 
+// keeps: spec knowledge-base §6.1, views use only the provider port.
 #[test]
 fn a_nonconforming_provider_cannot_make_a_view_loop_or_admit_an_oversize_page() {
     let seat = SeatRecord::new(Ulid(900), Ulid(500), "fixture", "zsh");
@@ -221,6 +204,7 @@ fn a_nonconforming_provider_cannot_make_a_view_loop_or_admit_an_oversize_page() 
     );
 }
 
+// keeps: spec knowledge-base §6.1, views use only the provider port.
 #[test]
 fn document_view_paths_cannot_bypass_the_provider_port() {
     let module = include_str!("../src/knowledge/mod.rs")

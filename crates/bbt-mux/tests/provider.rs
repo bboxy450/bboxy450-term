@@ -69,6 +69,7 @@ impl Provider for ProbeProvider {
         vec![]
     }
 }
+// keeps: spec d1-providers
 #[test]
 fn location_namespaces_select_one_link_and_only_the_local_link_waits() {
     let calls = Arc::new(Mutex::new(Calls::default()));
@@ -110,6 +111,7 @@ fn location_namespaces_select_one_link_and_only_the_local_link_waits() {
     assert_eq!(waits.len(), 3);
     assert!(waits[1..].iter().all(|(_, wait)| *wait == Duration::ZERO));
 }
+// keeps: spec d1-providers
 #[test]
 fn local_provider_preserves_the_existing_link_and_rejects_unknown_hosts() {
     let calls = Arc::new(Mutex::new(Calls::default()));
@@ -197,6 +199,7 @@ impl Provider for LinkedProvider {
     }
 }
 
+// keeps: spec d1-providers
 #[test]
 fn logic_routes_real_seats_recovery_history_ownership_and_close_by_location() {
     use bbt_mux::logic::{Logic, LogicConfig};

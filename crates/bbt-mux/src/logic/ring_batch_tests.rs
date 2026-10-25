@@ -270,11 +270,13 @@ fn add_view(worker: &mut Worker, id: Ulid) {
     );
 }
 
+// keeps: invariant ring-reads-batched
 #[test]
 fn ring_reads_are_batched() {
     sweep(false);
 }
 
+// keeps: invariant ring-reads-batched
 #[test]
 fn ring_reads_are_batched_per_host() {
     sweep(true);
@@ -381,6 +383,7 @@ fn sweep(two_hosts: bool) {
     assert_eq!(calls.batches.iter().map(Vec::len).sum::<usize>(), SEATS);
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn indexed_prefetch_order_matches_the_actual_global_lanes() {
     for mask in 0u16..256 {
@@ -442,6 +445,7 @@ fn indexed_prefetch_order_matches_the_actual_global_lanes() {
     }
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn refused_members_keep_their_cursors_while_other_members_finish() {
     use crate::FailureCode::{Busy, Limit, NotFound, StaleGeneration};
@@ -531,6 +535,7 @@ fn refused_members_keep_their_cursors_while_other_members_finish() {
     }
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn cached_page_preserves_unapplied_boundary_rows_and_rejects_other_generations() {
     let id = Ulid::from(1u128);

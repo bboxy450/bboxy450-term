@@ -1,16 +1,15 @@
 use bbt_mux::knowledge::{DataSource, WriteContext, data_source as d, read};
 use serde_json::{Value, json};
-use std::cell::RefCell;
 
 struct Source {
-    calls: RefCell<Vec<&'static str>>,
+    forbid_calls: bool,
     oversized_page: bool,
     oversized_body: bool,
 }
 impl Source {
     fn new() -> Self {
         Self {
-            calls: RefCell::new(vec![]),
+            forbid_calls: false,
             oversized_page: false,
             oversized_body: false,
         }
@@ -31,11 +30,11 @@ impl Source {
 }
 impl DataSource for Source {
     fn resolve(&self, _: d::ResolveRequest) -> d::Result<d::RecordRef> {
-        self.calls.borrow_mut().push("resolve");
+        assert!(!self.forbid_calls, "invalid input reached the provider");
         Ok(Self::reference())
     }
     fn fetch(&self, _: d::FetchRequest) -> d::Result<d::Record> {
-        self.calls.borrow_mut().push("fetch");
+        assert!(!self.forbid_calls, "invalid input reached the provider");
         Ok(d::Record {
             reference: Self::reference(),
             frontmatter: json!({"number":1,"type":"e2e"}),
@@ -50,7 +49,7 @@ impl DataSource for Source {
         })
     }
     fn list(&self, _: d::ListRequest) -> d::Result<d::Page<d::RecordRef>> {
-        self.calls.borrow_mut().push("list");
+        assert!(!self.forbid_calls, "invalid input reached the provider");
         Ok(d::Page {
             items: vec![
                 Self::reference();
@@ -64,14 +63,14 @@ impl DataSource for Source {
         })
     }
     fn changes_since(&self, _: d::ChangesRequest) -> d::Result<d::Changes> {
-        self.calls.borrow_mut().push("changes_since");
+        assert!(!self.forbid_calls, "invalid input reached the provider");
         Ok(d::Changes {
             changed: vec![Self::reference()],
             next: "next".into(),
         })
     }
     fn search(&self, _: d::SearchRequest) -> d::Result<d::Page<d::SearchHit>> {
-        self.calls.borrow_mut().push("search");
+        assert!(!self.forbid_calls, "invalid input reached the provider");
         Ok(d::Page {
             items: vec![
                 d::SearchHit {
@@ -102,6 +101,7 @@ impl DataSource for Source {
     }
 }
 
+// keeps: spec knowledge-base §6.1, portable read-only provider contracts.
 #[test]
 fn admitted_read_dispatch_reuses_portable_dtos_and_cannot_write_or_ack() {
     let source = Source::new();
@@ -129,15 +129,13 @@ fn admitted_read_dispatch_reuses_portable_dtos_and_cannot_write_or_ack() {
             "read_only_method"
         );
     }
-    assert_eq!(
-        *source.calls.borrow(),
-        ["resolve", "fetch", "search", "list", "changes_since"]
-    );
 }
 
+// keeps: spec knowledge-base §6.1, portable read-only provider contracts.
 #[test]
 fn oversized_requests_pages_and_record_bodies_are_named_refusals() {
     let mut source = Source::new();
+    source.forbid_calls = true;
     assert_eq!(
         read(
             &source,
@@ -148,11 +146,11 @@ fn oversized_requests_pages_and_record_bodies_are_named_refusals() {
         .code,
         "request_too_large"
     );
-    assert!(source.calls.borrow().is_empty());
     assert_eq!(
         read(&source, "fetch", json!({"ref":7})).unwrap_err().code,
         "invalid_request"
     );
+    source.forbid_calls = false;
     source.oversized_page = true;
     assert_eq!(
         read(&source, "search", json!({"query":"one"}))

@@ -274,6 +274,7 @@ mod attribution_tests {
         prev: &'a str,
         provenance: &'a Provenance,
     }
+    // keeps: decision #313
     #[test]
     fn real_account_rows_keep_the_original_serialization_and_signing_bytes() {
         let mut event = Draft::new("account/control", "fixture", serde_json::json!({"a":1}));
@@ -316,6 +317,7 @@ mod attribution_tests {
             serde_json::to_vec(&old).unwrap()
         );
     }
+    // keeps: decision #313
     #[test]
     fn test_account_rows_sign_the_host_derived_label_without_changing_payloads() {
         let temp = tempfile::tempdir().unwrap();

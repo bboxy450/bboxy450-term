@@ -860,6 +860,7 @@ mod tests {
         }
     }
 
+    // keeps: spec plugins
     #[test]
     fn task_contract_properties_derive_from_the_current_native_tool_catalogue() {
         let actor = crate::mcp::Actor::Operator {

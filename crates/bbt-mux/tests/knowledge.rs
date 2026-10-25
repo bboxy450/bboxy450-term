@@ -64,6 +64,7 @@ impl Fixture {
     }
 }
 
+// keeps: spec knowledge-base §6
 #[test]
 fn resolution_fetch_and_images_use_one_root_and_the_existing_record_handles() {
     let mut f = Fixture::new();
@@ -123,6 +124,7 @@ fn resolution_fetch_and_images_use_one_root_and_the_existing_record_handles() {
     );
 }
 
+// keeps: spec knowledge-base §6
 #[test]
 fn shared_contract_root_answers_all_eight_methods_for_future_stdio_conformance() {
     let mut f = Fixture::new();
@@ -234,6 +236,7 @@ fn shared_contract_root_answers_all_eight_methods_for_future_stdio_conformance()
     assert_eq!(changes.changed, [written.record.reference]);
 }
 
+// keeps: spec knowledge-base §6
 #[test]
 fn ambiguity_names_candidates_and_fresh_number_checks_do_not_pick_a_first_hit() {
     let mut f = Fixture::new();
@@ -266,6 +269,7 @@ fn ambiguity_names_candidates_and_fresh_number_checks_do_not_pick_a_first_hit() 
     assert!(error.message.contains("notes/same.md") && error.message.contains("tasks/same.md"));
 }
 
+// keeps: spec knowledge-base §6
 #[test]
 fn search_filters_ranking_weighted_links_and_graph_pages_share_index_data() {
     let mut f = Fixture::new();
@@ -374,6 +378,7 @@ fn search_filters_ranking_weighted_links_and_graph_pages_share_index_data() {
     assert_eq!(neighborhood.edges[0].weight, 3.5);
 }
 
+// keeps: spec knowledge-base §6
 #[test]
 fn cursor_is_root_query_and_snapshot_bound_and_reopens_without_restarting_the_page() {
     let mut f = Fixture::new();
@@ -422,6 +427,7 @@ fn cursor_is_root_query_and_snapshot_bound_and_reopens_without_restarting_the_pa
     );
 }
 
+// keeps: spec knowledge-base §6
 #[test]
 fn uneven_search_pages_defer_a_row_that_fits_a_fresh_quantum_without_clipping() {
     let mut f = Fixture::new();
@@ -453,6 +459,7 @@ fn uneven_search_pages_defer_a_row_that_fits_a_fresh_quantum_without_clipping() 
     assert!(second.next.is_none());
 }
 
+// keeps: decision #266
 #[test]
 fn decision_birth_names_the_allocated_number_and_refusal_consumes_nothing() {
     let mut f = Fixture::new();
@@ -512,6 +519,7 @@ fn decision_birth_names_the_allocated_number_and_refusal_consumes_nothing() {
     assert!(f.log.verify_chain().unwrap() > 0);
 }
 
+// keeps: spec knowledge-base §6
 #[test]
 fn checked_signed_write_allocates_once_and_changes_only_after_existing_outbox_publication() {
     let mut f = Fixture::new();
@@ -638,6 +646,7 @@ fn checked_signed_write_allocates_once_and_changes_only_after_existing_outbox_pu
     assert!(!f.root.parent().unwrap().join("escape.md").exists());
 }
 
+// keeps: spec knowledge-base §6
 #[test]
 fn resource_symlinks_escapes_nonfiles_and_oversize_are_refused_without_copies() {
     use std::os::unix::fs::symlink;
@@ -691,6 +700,7 @@ fn resource_symlinks_escapes_nonfiles_and_oversize_are_refused_without_copies() 
     );
 }
 
+// keeps: spec knowledge-base §6
 #[test]
 fn swarm_graph_uses_registry_references_and_refuses_cross_swarm_ambiguity() {
     let mut f = Fixture::new();
@@ -745,6 +755,7 @@ fn swarm_graph_uses_registry_references_and_refuses_cross_swarm_ambiguity() {
     );
 }
 
+// keeps: spec knowledge-base §6
 #[test]
 fn numbered_208_and_1000_record_fixtures_page_on_io_with_stable_unique_results() {
     for count in [208, 1000] {

@@ -71,6 +71,7 @@ mod tests {
     use crate::identity::{IdentityState, IdentityStatus};
     use crate::messaging::wire::IssuerKind;
 
+    // keeps: spec provenance
     #[test]
     fn device_id_is_data_and_does_not_certify_local_or_pending_signers() {
         let key = SigningKey::from_bytes(&[3; 32]);

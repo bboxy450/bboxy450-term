@@ -321,6 +321,7 @@ impl Drop for Fixture {
     }
 }
 
+// keeps: decision #253
 #[test]
 fn a_stale_recorder_row_cannot_hide_authoritative_parser_completion() {
     let fixture = Fixture::new();
@@ -340,6 +341,7 @@ fn a_stale_recorder_row_cannot_hide_authoritative_parser_completion() {
     fixture.finish();
 }
 
+// keeps: decision #253
 #[test]
 fn a_held_checkpoint_does_not_hold_snapshot_or_status_service() {
     let fixture = Fixture::with_other_host(true);
@@ -457,6 +459,7 @@ fn a_held_checkpoint_does_not_hold_snapshot_or_status_service() {
     fixture.finish();
 }
 
+// keeps: decision #253
 #[test]
 fn caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog() {
     let fixture = Fixture::new();
@@ -484,6 +487,7 @@ fn caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog() {
     fixture.finish();
 }
 
+// keeps: decision #253
 #[test]
 fn hundred_mib_partial_replay_forces_r_spaced_checkpoints_and_never_exceeds_two_r_debt() {
     let fixture = Fixture::new();

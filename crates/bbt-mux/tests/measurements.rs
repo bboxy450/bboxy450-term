@@ -15,6 +15,7 @@ use petgraph::{
 };
 use serde_json::json;
 
+// keeps: spec storage
 #[test]
 #[ignore = "finite synthetic 10k-document / 100k-link measurement"]
 fn recursive_cte_vs_petgraph_and_thousand_subscriber_fanout() {
@@ -108,6 +109,7 @@ fn file_count() -> usize {
         .count()
 }
 
+// keeps: spec storage
 #[test]
 #[ignore = "finite 200-live-seat descriptor measurement"]
 fn file_descriptors_at_200_live_seats_and_sqlite_objects() {

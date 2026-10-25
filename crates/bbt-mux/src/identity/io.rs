@@ -324,6 +324,7 @@ mod release_tests {
 
 #[cfg(all(test, debug_assertions))]
 mod debug_tests {
+    // keeps: spec id1-seat-chain
     #[test]
     fn fixture_generates_private_keys_once_and_reopens_without_a_known_key() {
         use std::os::unix::fs::PermissionsExt;
@@ -375,6 +376,7 @@ mod debug_tests {
         assert_ne!(first.verifying_key(), third.verifying_key());
     }
 
+    // keeps: spec id1-seat-chain
     #[test]
     fn fixture_never_overwrites_a_key_or_accepts_a_relative_directory() {
         use super::{DeviceKeyStore, E, FixtureKeys, Ulid};
@@ -396,6 +398,7 @@ mod debug_tests {
         ));
     }
 
+    // keeps: spec id1-seat-chain
     #[test]
     fn labels_describe_the_actual_store_and_survive_the_io_wrapper() {
         use super::{Custody, DeviceKeyStore, E, Result};

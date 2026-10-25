@@ -143,6 +143,7 @@ fn stuck_custody_has_a_two_second_bound_and_retry_does_not_add_workers() {
 }
 
 #[cfg(debug_assertions)]
+// keeps: spec id1-seat-chain
 #[test]
 #[ignore = "spawned-process fixture, invoked by debug_process_override_uses_only_memory_custody"]
 fn memory_custody_process_fixture() {

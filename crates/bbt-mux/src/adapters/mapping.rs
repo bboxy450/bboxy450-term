@@ -181,6 +181,7 @@ pub fn literal_parts(input: kit::guard::LiteralInput<'_>) -> (Ulid, &str, bool) 
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: decision #274
     #[test]
     fn state_round_trip() {
         for value in [
@@ -196,6 +197,7 @@ mod tests {
             );
         }
     }
+    // keeps: decision #274
     #[test]
     fn waiting_kind_round_trip() {
         for value in [
@@ -206,12 +208,14 @@ mod tests {
             assert_eq!(native_waiting(waiting(value)), value);
         }
     }
+    // keeps: decision #274
     #[test]
     fn grade_round_trip() {
         for value in [kit::Grade::Reported, kit::Grade::Shim, kit::Grade::Inferred] {
             assert_eq!(native_grade(grade(value)), value);
         }
     }
+    // keeps: decision #274
     #[test]
     fn evidence_and_outcome_round_trip() {
         for value in [
@@ -236,6 +240,7 @@ mod tests {
         }
         assert!(native_evidence(super::super::Evidence::ApplicationAcknowledged).is_err());
     }
+    // keeps: decision #274
     #[test]
     fn harness_methods_round_trip_through_wire() {
         for method in [
@@ -265,6 +270,7 @@ mod tests {
             }
         }
     }
+    // keeps: decision #274
     #[test]
     fn launch_plan_round_trip_keeps_host_identity_and_default_size() {
         let id = Ulid::new();
@@ -299,6 +305,7 @@ mod tests {
             expected
         );
     }
+    // keeps: decision #274
     #[test]
     fn arbiter_round_trip_keeps_host_only_stamp() {
         let binding = kit::Binding {
@@ -330,6 +337,7 @@ mod tests {
             assert_eq!(input_context(&view, context.clone()), context);
         }
     }
+    // keeps: decision #274
     #[test]
     fn literal_input_round_trip_keeps_explicit_enter_and_identity() {
         assert_eq!(

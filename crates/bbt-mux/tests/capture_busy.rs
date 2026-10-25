@@ -46,6 +46,7 @@ impl SupervisorConnection for Congested {
     }
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint() {
     let temp = tempfile::tempdir().unwrap();
@@ -161,6 +162,7 @@ impl SupervisorConnection for PagedReplay {
     }
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn large_capture_catchup_yields_to_control_between_history_pages() {
     let temp = tempfile::tempdir().unwrap();

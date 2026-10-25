@@ -772,6 +772,7 @@ mod tests {
         (temp, store, actor, call, reference, key)
     }
 
+    // keeps: spec mcp-control-plane
     #[test]
     fn native_admission_failure_rolls_back_every_intent_and_authority_is_not_supplied() {
         let (_temp, store, actor, call, reference, _) = native_fixture();
@@ -797,6 +798,7 @@ mod tests {
         assert!(journal.pending(128).unwrap().is_empty());
     }
 
+    // keeps: spec mcp-control-plane
     #[test]
     fn native_status_of_a_missing_id_never_admits_or_poisons_an_unlock() {
         let (_temp, store, actor, call, reference, _) = native_fixture();
@@ -841,6 +843,7 @@ mod tests {
         assert_eq!(refused["structuredContent"]["error"]["code"], "forbidden");
     }
 
+    // keeps: spec mcp-control-plane
     #[test]
     fn native_unknown_survives_restart_and_gets_one_immutable_device_completion() {
         use crate::store::{Events, events::EventLog};
@@ -953,6 +956,7 @@ mod tests {
         assert_eq!(reopened.retained(&actor, &call).unwrap(), Some(unknown));
     }
 
+    // keeps: spec mcp-control-plane
     #[test]
     fn legacy_seat_actor_entries_replay_without_migration_or_dispatch() {
         let (_temp, store, actor, call) = effect_fixture();
@@ -979,6 +983,7 @@ mod tests {
         assert_eq!(audits[0].seat, Some(actor.seat_id));
     }
 
+    // keeps: spec mcp-control-plane
     #[test]
     fn local_operator_replays_across_doors_without_claiming_native_authority() {
         let (_temp, store, _, mut call) = effect_fixture();
@@ -1028,6 +1033,7 @@ mod tests {
         assert!(journal.native_status(&local, &status, json!({})).is_err());
         assert!(journal.native_pending(128).unwrap().is_empty());
     }
+    // keeps: spec mcp-control-plane
     #[test]
     fn operator_reconnect_replays_the_account_result_and_rejects_another_device() {
         let (temp, _, _, mut call) = effect_fixture();
@@ -1078,6 +1084,7 @@ mod tests {
         );
     }
 
+    // keeps: spec mcp-control-plane
     #[test]
     fn admitted_operator_without_a_result_stays_unknown_after_reopen() {
         let (temp, store, _, mut call) = effect_fixture();
@@ -1101,6 +1108,7 @@ mod tests {
         );
     }
 
+    // keeps: spec mcp-control-plane
     #[test]
     fn mutation_requires_audit_admission_and_releases_the_transaction_before_dispatch() {
         let (_temp, store, actor, call) = effect_fixture();
@@ -1169,6 +1177,7 @@ mod tests {
         );
     }
 
+    // keeps: spec mcp-control-plane
     #[test]
     fn crashed_admitted_mutation_reopens_unknown_without_redispatch() {
         let (temp, store, actor, call) = effect_fixture();
@@ -1197,6 +1206,7 @@ mod tests {
         );
     }
 
+    // keeps: spec mcp-control-plane
     #[test]
     fn outcome_audit_failure_keeps_the_original_unknown_intent() {
         let (_temp, store, actor, call) = effect_fixture();
@@ -1225,6 +1235,7 @@ mod tests {
         assert_eq!(journal.pending(128).unwrap().len(), 2);
     }
 
+    // keeps: spec mcp-control-plane
     #[test]
     fn control_result_and_audit_commit_atomically_and_reopen_without_redispatch() {
         let temp = tempfile::tempdir().unwrap();
@@ -1288,6 +1299,7 @@ mod tests {
         assert_eq!(reopened.pending(128).unwrap().len(), 1);
     }
 
+    // keeps: spec mcp-control-plane
     #[test]
     fn audit_outbox_preserves_call_order_instead_of_random_ulid_order() {
         let temp = tempfile::tempdir().unwrap();

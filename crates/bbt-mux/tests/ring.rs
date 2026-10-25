@@ -41,6 +41,7 @@ fn data(path: &Path) -> std::path::PathBuf {
     path.join(meta["file"].as_str().unwrap())
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn ring_red_sgr_checkpoint_restores_colour_and_replay_matches_every_live_cell() {
     assert_eq!(crc32c(b"123456789"), 0xe3069283);
@@ -64,6 +65,7 @@ fn ring_red_sgr_checkpoint_restores_colour_and_replay_matches_every_live_cell() 
     assert_eq!(screen(&ring.replay().unwrap()), screen(&live));
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn ring_checkpoint_preserves_incomplete_csi_utf8_osc_and_suppresses_replayed_effects() {
     for (before, after) in [
@@ -89,6 +91,7 @@ fn ring_checkpoint_preserves_incomplete_csi_utf8_osc_and_suppresses_replayed_eff
     }
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn ring_rejects_uncommitted_and_torn_suffix_then_can_commit_and_reopen_again() {
     let temp = tempfile::tempdir().unwrap();
@@ -126,6 +129,7 @@ fn ring_rejects_uncommitted_and_torn_suffix_then_can_commit_and_reopen_again() {
     assert_eq!(screen(&ring.replay().unwrap()), screen(&recovered));
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn ring_group_commit_distinguishes_captured_bytes_from_the_durable_cursor() {
     let temp = tempfile::tempdir().unwrap();
@@ -157,6 +161,7 @@ fn ring_group_commit_distinguishes_captured_bytes_from_the_durable_cursor() {
     assert!(ring.history(1, 1).unwrap().gap.is_none());
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn ring_corrupt_sealed_payload_is_an_error_not_a_complete_replay() {
     use bbt_mux::store::{Blobs, blobs::LocalBlobs};
@@ -186,6 +191,7 @@ fn ring_corrupt_sealed_payload_is_an_error_not_a_complete_replay() {
     assert!(ring.replay().is_err());
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn ring_hot_rollover_keeps_crc_cold_history_and_two_checkpoint_references() {
     let temp = tempfile::tempdir().unwrap();
@@ -228,6 +234,7 @@ fn ring_hot_rollover_keeps_crc_cold_history_and_two_checkpoint_references() {
     assert_eq!(screen(&ring.replay().unwrap()), screen(&live));
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn ring_ten_thousand_logical_lines_round_trip_with_paginated_history_and_index() {
     let temp = tempfile::tempdir().unwrap();
@@ -261,6 +268,7 @@ fn ring_ten_thousand_logical_lines_round_trip_with_paginated_history_and_index()
     assert_eq!(screen(&ring.replay().unwrap()), screen(&live));
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn ring_logical_rows_ignore_osc_payload_newlines_and_advance_epochs_without_invented_tail_indexes()
 {
@@ -296,6 +304,7 @@ fn ring_logical_rows_ignore_osc_payload_newlines_and_advance_epochs_without_inve
     assert_eq!(screen(&ring.replay().unwrap()), screen(&live));
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn ring_rejects_wrong_generation_sequence_and_corruption_without_unbounded_allocation() {
     let temp = tempfile::tempdir().unwrap();

@@ -125,6 +125,7 @@ mod tests {
         registry::{Class, Role},
     };
 
+    // keeps: spec messaging
     #[test]
     fn pending_binding_covers_sender_content_and_admission_order_without_an_author() {
         let request = SendRequest::text("operator/inbox", "local pending observation");

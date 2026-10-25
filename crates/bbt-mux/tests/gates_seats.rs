@@ -458,6 +458,7 @@ impl Rig {
 }
 
 /// Gate 1: 1000 headless seats under the firehose, none watched; RSS of supervisor + logic.
+// keeps: spec mux-daemon
 #[test]
 #[ignore = "C1d gate 1: sh scripts/gates.sh memory"]
 fn gate_memory() {
@@ -551,6 +552,7 @@ fn gate_memory() {
     }
 }
 
+// keeps: spec mux-daemon
 #[test]
 fn disk_guard_abort_terminates_owned_children_and_removes_the_run() {
     let rig = Rig::start(2);
@@ -592,6 +594,7 @@ fn disk_guard_abort_terminates_owned_children_and_removes_the_run() {
 /// deliveries, drain the outbox, prepare one batch per target, at most 32 in
 /// flight). Native delivery is instant, so a batch finishes on the next pump;
 /// latency is send to finish. The Oracle's own inbox copy is not counted.
+// keeps: decision #19
 #[test]
 #[ignore = "C1d gate 2: sh scripts/gates.sh bus"]
 fn gate_bus() {
@@ -778,6 +781,7 @@ while True: time.sleep(1)
 /// Gate 3: 1000 PTYs under the firehose with the open-file limit raised; p99 of
 /// PTY record writes, timed by probe seats whose writes block until the
 /// supervisor's poller drains them (as W1.2c measured the writer).
+// keeps: spec mux-daemon
 #[test]
 #[ignore = "C1d gate 3: sh scripts/gates.sh poller"]
 fn gate_poller() {
