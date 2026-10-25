@@ -1477,7 +1477,10 @@ mod gui_tests {
             let Response::Stored { message } = response else {
                 panic!("message was not stored");
             };
-            let message_id = message.envelope.id;
+            let message_id = message
+                .envelope()
+                .expect("ready-custody fixture must produce a signed envelope")
+                .id;
             loop {
                 let line = read_line(&mut read)
                     .await
