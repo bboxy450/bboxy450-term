@@ -1,0 +1,22 @@
+No-seat-starves #314: exact clean normal CI handoff
+Owner Rook Ashwhisker <EXECUTOR>
+Source a53cd4610d8d606edbd800b94ee4f125ad0ffe22
+Writing branch rook-notification-admission; all commits signed with the machine Boxy key.
+Exact command sh scripts/ci-local.sh, clean detached worktree, own target, memory custody, O1/debug assertions, two jobs, both compiler wrappers empty.
+Actual gate EXIT 0; all gates passed. No aggregate unique-test count is inferred across repeated invariant checks.
+Raw log SHA256 4611c2ef69ef8976b0d2012a1ea2a7770278c7f603ed91496112f76737f34437
+Raw log path /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-ci-4qq2ytx7/ci.log
+Elapsed seconds 2616.913105958
+Slot claim ead7e8ba-1d16-4863-b179-090445027d89
+Worktree after ''
+Default invariant footer: ['invariants: 23 checks, 0 failures, 9 slow checks skipped']
+Named regression: ['test supervisor::capture_read_tests::no_seat_starves_under_full_queue ... ok', 'invariant no-seat-starves: pass']
+Cleanup {"allocated_bytes_removed": 3878912000, "free_after": 41013575680, "free_before": 37398212608, "own_target": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-ci-4qq2ytx7/target"}
+Production change: fair rotating retained-notification service, keeping a refused seat retry turn across mid-sweep credits; removed/detached/empty waiters release at the next sweep. Same 128-slot channel, capture, event FIFO/lifecycle/generation and checkpoint rules.
+Deterministic failures-before-fixes and focused/lint results: r5h-notification-focused.log and r5h-notification-late-credit.log.
+The 967/50 frame attempt is separately authorized and is not claimed by this CI handoff. See its subsequent evidence for runtime settlement and checkpoint-share acceptance.
+Main moved during this frozen gate to U0 6ea6b23edd2e7b80c032a6f39d901cbfcc1ebdad. git diff bd29abc..origin/main -- supervisor.rs was empty. Per AGENTS.md:52 no rebase or repeated gate while main moves; Oracle merged-tree verification remains. Smoke statically uses fake fixture (main.rs:4865), skips live::start (:4929), and has no default preferences path (:4951).
+No code merge or main push by Executor.
+Origin/main at evidence export: e68f9df702d5db30af07dac2289f4672c7ef0659
+Main changes during the frozen gate: e68f9df7 no-chokepoints: slot collision rule, every line names its slot, later claim yields, ties by key | 026a07af ci-local claims its gate slot atomically | 6486e6fb Merge T1: one shared seat-name pool for GUI, MCP and the lab (Nyx) | 6ea6b23e Merge U0: file custody for throwaway test accounts, unattended night accounts, provenance ref-gap dedupe (Kestrel) | 8ad3a839 #315/#280 realisation per the Oracle's day rulings: pending record published at act time plus a signed completion bound to op ID and digest; Keychain item under <account>.dr1 with readers preferring it; facade port deferred from this cut | 27cc4522 Clarify unchanged role defaults in T1 handoff | 1a3e0812 #315 corrected: the unlock audit is a durable Draft published once by the device signer, no chain rewrite, no reserved position; #280 migration stages under a fixed internal label | 7bf1bfff Record exact T1 parity gate and signed handoff evidence | 814bc8b9 Record clean U0 parity gate and unattended custody handoff | cd5139de Publish clipped Git-ref diagnostics only when the retained state changes | 75b6b42f Record final-source canonical T5 verdict and exact script digests | 59081aaa Prepare nested test-account runs and refuse foreign issuer state early | c28559c0 Display test-account attribution and record unattended T5 proof | f120e21b Run unattended nights with persistent per-run test accounts | f9be0541 Implement persistent file custody for throwaway test accounts | 780e8193 Record T1 focused checks and unattended file-account night proof | 01e0b3dd fix: read gallery seat names without an upward dependency | 06570e04 lab: poolName's search is bounded by the names taken, never a generic fallback | dda60444 lab: new seats take their names from the product pool (T1), one source with the backend | d3727ee8 feat: allocate shared per-swarm seat names
+Own production path changed on main: ''
