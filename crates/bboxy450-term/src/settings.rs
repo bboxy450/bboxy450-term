@@ -879,6 +879,7 @@ mod tests {
                 "Settings › Identity › Unlock".into(),
             ],
             outcome: Some(UnlockOutcome::Allowed),
+            reopen_failed: None,
             pending: vec![PendingUnlock {
                 op: first,
                 pending_digest: Some("a".repeat(64)),
@@ -961,6 +962,7 @@ mod tests {
             hold: Some("interaction required".into()),
             clear_actions: vec![],
             outcome: Some(UnlockOutcome::Unknown),
+            reopen_failed: None,
             pending: vec![PendingUnlock {
                 op: id,
                 pending_digest: Some("a".repeat(64)),

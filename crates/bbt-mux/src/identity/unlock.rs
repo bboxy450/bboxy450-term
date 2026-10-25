@@ -183,7 +183,11 @@ impl Target {
             .native_acl(self.key)
             .unwrap_or(bbt_proto::identity::CustodyAcl::Unknown);
         // Reopening and signer checks stay on this IO task, not the terminal owner.
-        let runtime = self.retry.as_ref().and_then(|retry| retry.reopen().ok());
+        let (runtime, reopen_failed) = match self.retry.as_ref().map(|retry| retry.reopen()) {
+            Some(Ok(runtime)) => (Some(runtime), None),
+            Some(Err(error)) => (None, Some(reopen_failure(&error))),
+            None => (None, None),
+        };
         let signer = runtime
             .as_ref()
             .and_then(|runtime| runtime.operator_signing().ok())
@@ -193,6 +197,7 @@ impl Target {
             acl,
             runtime,
             signer,
+            reopen_failed,
         })
     }
 }
@@ -201,6 +206,21 @@ pub(crate) struct Finished {
     pub acl: bbt_proto::identity::CustodyAcl,
     pub runtime: Option<super::IdentityRuntime>,
     pub signer: Option<ed25519_dalek::SigningKey>,
+    pub reopen_failed: Option<bbt_proto::identity::ReopenFailure>,
+}
+
+/// Retain a safe cause code, never arbitrary error bodies containing journal data.
+pub(super) fn reopen_failure(error: &crate::store::Error) -> bbt_proto::identity::ReopenFailure {
+    let reason = if let Some(rusqlite::Error::SqliteFailure(code, _)) =
+        error.downcast_ref::<rusqlite::Error>()
+    {
+        format!("SQLite {:?} ({})", code.code, code.extended_code)
+    } else if let Some(error) = error.downcast_ref::<std::io::Error>() {
+        format!("identity IO {:?}", error.kind())
+    } else {
+        "identity journal or proof could not be reopened".into()
+    };
+    bbt_proto::identity::ReopenFailure { reason }
 }
 #[derive(Clone, Copy)]
 pub(crate) enum JobKind {
@@ -210,6 +230,9 @@ pub(crate) enum JobKind {
 }
 impl super::IdentityRuntime {
     pub(crate) fn has_native_custody_hold(&self) -> bool {
+        if self.reopening_failed() {
+            return false;
+        }
         let reason = self.pending.or_else(|| {
             self.observed_status
                 .lock()
@@ -319,6 +342,7 @@ impl super::IdentityRuntime {
         if let Some(reason) = self.pending {
             status.hold(reason);
         }
+        self.decorate_reopen_failure(&mut status);
         let native = matches!(
             status.custody,
             Some(super::Custody::DataProtection | super::Custody::LoginKeychain)
@@ -338,6 +362,7 @@ impl super::IdentityRuntime {
             },
             outcome: None,
             pending: Vec::new(),
+            reopen_failed: status.reopen_failed,
         })
     }
 }

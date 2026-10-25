@@ -3,6 +3,9 @@
 #[cfg(test)]
 #[path = "knowledge/responsiveness_tests.rs"]
 mod knowledge_responsiveness_tests;
+#[cfg(test)]
+#[path = "identity/reopen_tests.rs"]
+mod native_reopen_tests;
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
@@ -310,6 +313,8 @@ enum Command {
     Record(Ulid, oneshot::Sender<Result<SeatRecord>>),
     Endpoint(Ulid, oneshot::Sender<Result<EndpointInfo>>),
     IdentityStatus(oneshot::Sender<Result<crate::identity::IdentityStatus>>),
+    #[cfg(test)]
+    RefreshIdentity(oneshot::Sender<Result<()>>),
 }
 impl Command {
     fn local_while_checkpoint_pending(&self) -> bool {
@@ -1158,6 +1163,8 @@ pub struct Logic {
 enum IdentityMode {
     Explicit(Box<SigningKey>),
     Custodied(Option<Arc<dyn crate::identity::DeviceKeyStore + Send + Sync>>),
+    #[cfg(test)]
+    Prepared(Box<crate::identity::IdentityRuntime>),
 }
 impl Logic {
     /// Production construction: custody may be pending while PTYs, the GUI
@@ -1273,7 +1280,7 @@ impl Logic {
         handle: &tokio::runtime::Handle,
     ) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
-        let custodied = matches!(&identity, IdentityMode::Custodied(_));
+        let custodied = !matches!(&identity, IdentityMode::Explicit(_));
         let identity = match identity {
             IdentityMode::Explicit(local) => {
                 crate::identity::IdentityRuntime::open(&config.run_dir, *local, handle.clone())?
@@ -1288,6 +1295,8 @@ impl Logic {
             IdentityMode::Custodied(None) => {
                 crate::identity::IdentityRuntime::open_custodied(&config.run_dir, handle.clone())?
             }
+            #[cfg(test)]
+            IdentityMode::Prepared(identity) => *identity,
         };
         let ready = if custodied {
             identity.bus_signer()?
@@ -1981,6 +1990,17 @@ impl Worker {
                 crate::mcp::success(op, serde_json::to_value(status).unwrap())
             })?);
         }
+        if let Some(failure) = &status.reopen_failed {
+            return identity_response(journal.checked(
+                &principal,
+                &call,
+                crate::mcp::error(
+                    op,
+                    "reopen_failed",
+                    &format!("{}; native access will not be repeated", failure.reason),
+                ),
+            )?);
+        }
         if !self.identity.has_native_custody_hold() {
             return identity_response(journal.checked(
                 &principal,
@@ -2102,6 +2122,8 @@ impl Worker {
                     self.identity_acl = finished.acl;
                     if let Some(runtime) = finished.runtime {
                         self.identity = runtime;
+                    } else if let Some(failure) = finished.reopen_failed {
+                        self.identity.note_reopen_failed(failure);
                     }
                     (finished.outcome, finished.signer)
                 }
@@ -5531,7 +5553,13 @@ impl Worker {
         Ok(())
     }
     fn refresh_identity(&mut self) -> Result<()> {
+        let reopening_failed = self.identity.reopening_failed();
         self.identity.retry_custody()?;
+        if reopening_failed && !self.identity.reopening_failed() {
+            // The existing completion outbox can now sign; replay only the
+            // noninteractive recovery jobs, never the native attempt.
+            self.identity_seen.clear();
+        }
         if let Some(key) = self.identity.bus_signer()? {
             if let Some(run) = self.bus_window.take() {
                 let ranges = self.handle.block_on(self.bus.identity_signer(key, None))?;
@@ -6320,6 +6348,10 @@ impl Worker {
                     }
                     Command::IdentityStatus(reply) => {
                         let _ = reply.send(self.identity.status());
+                    }
+                    #[cfg(test)]
+                    Command::RefreshIdentity(reply) => {
+                        let _ = reply.send(self.refresh_identity());
                     }
                     Command::OperatorIdentity(op, request, origin, reply) => {
                         let result = self.operator_identity(op, request, origin);
