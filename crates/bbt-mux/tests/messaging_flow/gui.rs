@@ -109,7 +109,17 @@ impl Gui {
             }
         })
         .await
-        .expect("GUI made no matching progress")
+        .unwrap_or_else(|_| {
+            let rows: Vec<_> = self
+                .events
+                .iter()
+                .filter_map(|event| match &event.payload {
+                    GuiEventPayload::Message { row } => Some((row.id, row.signature)),
+                    _ => None,
+                })
+                .collect();
+            panic!("GUI made no matching progress; retained message rows: {rows:?}")
+        })
     }
     async fn request(&mut self, swarm: Ulid, request: Request) -> Response {
         let id = match &request {
@@ -254,7 +264,36 @@ async fn exercise() {
         assert!(message.envelope().is_none());
     }
     let ids: Vec<_> = operator_ids.iter().chain(&seat_ids).copied().collect();
-    for id in &ids {
+    // The operator lane contains its own sends/receipts and inbox, not another
+    // seat's private inbox. Confirm that separate delivery through its owner.
+    let Response::Messages { page } = logic
+        .client
+        .messaging(
+            receiver.id,
+            1,
+            Request::List {
+                thread: None,
+                channel: None,
+                after: 0,
+                limit: 16,
+            },
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("pending recipient inbox missing")
+    };
+    assert_eq!(
+        page.items
+            .iter()
+            .map(|message| message.view().id)
+            .collect::<Vec<_>>(),
+        vec![operator_ids[0], operator_ids[1], seat_ids[0]]
+    );
+    assert!(page.items.iter().all(|message| message.envelope().is_none()
+        && message.view().signature == SignatureState::Pending));
+    let visible_ids: Vec<_> = operator_ids.iter().chain(&seat_ids[1..]).copied().collect();
+    for id in &visible_ids {
         if gui.row(*id, SignatureState::Pending).is_none() {
             gui.until(|r| matches!(r, GuiReply::Event {envelope, ..} if matches!(&envelope.payload, GuiEventPayload::Message {row} if row.id == *id && row.signature == SignatureState::Pending))).await;
         }
@@ -321,7 +360,7 @@ async fn exercise() {
     assert!(page.items[0].sender_device.is_none());
     assert_eq!(page.items[0].sender_operator, Some(reference));
     store.held.store(false, Ordering::Release);
-    for id in &ids {
+    for id in &visible_ids {
         if gui.row(*id, SignatureState::Signed).is_none() {
             gui.until(|r| matches!(r, GuiReply::Event {envelope, ..} if matches!(&envelope.payload, GuiEventPayload::Message {row} if row.id == *id && row.signature == SignatureState::Signed))).await;
         }

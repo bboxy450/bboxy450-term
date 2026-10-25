@@ -107,3 +107,11 @@ Oracle 4dab3d61 authorizes integration on frozen signed #315 source 6fda80994a62
 live-wiring-check-1 EXIT 0; raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/live-wiring-check-1.log SHA256 8e8021a9bd7aadbb9a0ab57e3d76f4d072392c5a273cfc1b7d5c124580de42bb
 gui-wiring-check-1 EXIT 101; raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/gui-wiring-check-1.log SHA256 8acc4fc0dcc51c89ef17b15946a6133d01891c5d37a82af8656f000696eb3733
 live-wiring-check-1 compiled all mux tests. gui-wiring-check-1 found one missing EnvelopeExt test import; corrected before the next check. The native-body comparison against 6fda8099 passed for all selected native/unlock methods: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/native-body-proof.json SHA256 b7688b311b1a9468a9b0622886e4e471ed3d8a66a47685ba1d253e74be3d2ebf. No final CI/parity or #286 activation claimed here.
+
+## First frozen live-GUI attempt
+
+Source 2ebc6ce102ffb88a80d89eb3f9630bd555700480
+Command cargo test -p bbt-mux --locked --test messaging_flow -- --nocapture
+EXIT 101; elapsed 261.3584587079822 s including build; runtime 90.53 s, 2 passed / 1 failed.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/gui-live-1.log SHA256 df76cff67d59f53fb59c9383c69574912ce0d7bdf2046c56373fd5e2a2b4d8f0
+The new GUI fixture incorrectly waited for another seat's private inbox on the operator event lane. operator_subjects intentionally excludes seats/*/inbox; the fixture now proves that seat delivery through its recipient's authoritative message list and awaits only operator-visible events. No product filter, capacity, assertion on delivery/grade/bytes or deadline changed. Added timeout row diagnostics for any distinct remaining failure. Native journal and app custody commands were not run because the first command failed.

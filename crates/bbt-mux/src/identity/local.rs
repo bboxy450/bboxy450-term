@@ -141,9 +141,13 @@ pub(super) fn unlock_target(
 
 /// Read public continuity facts without selecting custody or claiming readiness.
 pub(super) fn observed_device_id(account: &SqliteStore) -> crate::store::Result<Option<Ulid>> {
-    let Some(current) = record(account)? else { return Ok(None); };
-    if !current.device_ready { return Ok(None); }
-    unlock_target(account).map(|(device,_,_,_)| Some(device))
+    let Some(current) = record(account)? else {
+        return Ok(None);
+    };
+    if !current.device_ready {
+        return Ok(None);
+    }
+    unlock_target(account).map(|(device, _, _, _)| Some(device))
 }
 
 /// Public custody metadata only; a hold never masquerades as a ready device.

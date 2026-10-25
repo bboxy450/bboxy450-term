@@ -998,22 +998,36 @@ mod tests {
         call.tool = "gui_messaging".into();
         let journal = Journal::new(store.clone());
         let result = super::super::success(call.op_id, json!({"signature":"pending"}));
-        assert_eq!(journal.effect(&local, &call, || result.clone()).unwrap(), result);
+        assert_eq!(
+            journal.effect(&local, &call, || result.clone()).unwrap(),
+            result
+        );
         let ctl = Principal::OperatorLocal {
             reference,
             door: super::super::Door::Ctl,
             issued_by: Some("fixture".into()),
         };
-        assert_eq!(Journal::new(store).effect(&ctl, &call, || panic!("local intent repeated")).unwrap(), result);
+        assert_eq!(
+            Journal::new(store)
+                .effect(&ctl, &call, || panic!("local intent repeated"))
+                .unwrap(),
+            result
+        );
         let audits = journal.pending(128).unwrap();
         assert!(audits.iter().all(|row| row.subject == "account/control"));
         let (_native_temp, _, _, native_call, native_ref, _) = native_fixture();
-        assert!(journal.admit_native_unlock(&local, &native_call, "held".into(), native_ref, json!({})).is_err());
-        let status = Call { tool: "identity_status".into(), ..native_call };
+        assert!(
+            journal
+                .admit_native_unlock(&local, &native_call, "held".into(), native_ref, json!({}))
+                .is_err()
+        );
+        let status = Call {
+            tool: "identity_status".into(),
+            ..native_call
+        };
         assert!(journal.native_status(&local, &status, json!({})).is_err());
         assert!(journal.native_pending(128).unwrap().is_empty());
     }
-
     #[test]
     fn operator_reconnect_replays_the_account_result_and_rejects_another_device() {
         let (temp, _, _, mut call) = effect_fixture();

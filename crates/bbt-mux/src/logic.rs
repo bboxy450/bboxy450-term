@@ -5548,7 +5548,8 @@ impl Worker {
         })
     }
     fn gui_device(&mut self) -> Result<bbt_proto::messaging::OperatorReference> {
-        self.messaging.operator_reference(self.identity.observed_operator_device()?)
+        self.messaging
+            .operator_reference(self.identity.observed_operator_device()?)
     }
     fn gui_seat(&self, id: Ulid) -> Result<crate::seat_socket::GuiSeat> {
         let view = self
@@ -5642,15 +5643,23 @@ impl Worker {
         origin: crate::mcp::Origin,
     ) -> Result<crate::messaging::api::Response> {
         let origin = self.identity.bind_origin(origin);
-        let reference=self.gui_device()?;
-        let device=self.identity.observed_operator_device()?;
+        let reference = self.gui_device()?;
+        let device = self.identity.observed_operator_device()?;
         let actor = match reference.kind {
-            bbt_proto::messaging::OperatorReferenceKind::DeviceDerived => crate::mcp::Actor::Operator {
-                device_id:reference.id,door:origin.door,issued_by:origin.issued_by.clone(),
-            },
-            bbt_proto::messaging::OperatorReferenceKind::OperatorLocal => crate::mcp::Actor::OperatorLocal {
-                reference,door:origin.door,issued_by:origin.issued_by.clone(),
-            },
+            bbt_proto::messaging::OperatorReferenceKind::DeviceDerived => {
+                crate::mcp::Actor::Operator {
+                    device_id: reference.id,
+                    door: origin.door,
+                    issued_by: origin.issued_by.clone(),
+                }
+            }
+            bbt_proto::messaging::OperatorReferenceKind::OperatorLocal => {
+                crate::mcp::Actor::OperatorLocal {
+                    reference,
+                    door: origin.door,
+                    issued_by: origin.issued_by.clone(),
+                }
+            }
         };
         let call = crate::mcp::Call {
             op_id: id,
@@ -5668,14 +5677,22 @@ impl Worker {
             }
         };
         let mut authority = self.identity.operator_signing().ok();
-        if let Some(authority)=&mut authority {
-            authority.origin=origin.clone();
-            if Some(authority.device_id)!=device {return Err(invalid("held: operator device changed"));}
-        } else if !matches!(&request, crate::messaging::api::Request::Send {..}
-            | crate::messaging::api::Request::List {..} | crate::messaging::api::Request::Receipts {..}
-            | crate::messaging::api::Request::Acknowledge {..} | crate::messaging::api::Request::Ls {..})
-        {
-            return Err(invalid("held: this operator mutation requires signing custody"));
+        if let Some(authority) = &mut authority {
+            authority.origin = origin.clone();
+            if Some(authority.device_id) != device {
+                return Err(invalid("held: operator device changed"));
+            }
+        } else if !matches!(
+            &request,
+            crate::messaging::api::Request::Send { .. }
+                | crate::messaging::api::Request::List { .. }
+                | crate::messaging::api::Request::Receipts { .. }
+                | crate::messaging::api::Request::Acknowledge { .. }
+                | crate::messaging::api::Request::Ls { .. }
+        ) {
+            return Err(invalid(
+                "held: this operator mutation requires signing custody",
+            ));
         }
         let mute_state = match &request {
             crate::messaging::api::Request::Mute { seat, .. } => {
@@ -5690,8 +5707,14 @@ impl Worker {
                 | crate::messaging::api::Request::Ls { .. }
         );
         let dispatch = || match match authority.as_ref() {
-            Some(authority)=>self.messaging.request_operator(authority,swarm,request,mute_state,now_ms()),
-            None=>self.messaging.request_operator_pending(device,&origin,swarm,request,now_ms()),
+            Some(authority) => {
+                self.messaging
+                    .request_operator(authority, swarm, request, mute_state, now_ms())
+            }
+            None => {
+                self.messaging
+                    .request_operator_pending(device, &origin, swarm, request, now_ms())
+            }
         } {
             Ok(response) => match serde_json::to_value(response) {
                 Ok(value) => crate::mcp::success(id, value),
