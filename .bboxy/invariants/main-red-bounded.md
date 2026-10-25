@@ -13,7 +13,7 @@ links:
   - { to: "[[no-chokepoints]]", rel: builds-on }
   - { to: "[[never-block-swarm]]", rel: builds-on }
 created: "2026-10-25T16:18:56Z"
-updated: "2026-10-25T20:16:35Z"
+updated: "2026-10-25T21:24:06Z"
 ---
 # Main is red at most until the next revert
 
@@ -45,7 +45,7 @@ consisting only of reverts, so the revert that clears the red is not refused by
 the red it clears; otherwise it evaluates `origin/main`. A non-revert candidate
 on a red tip is the violation, and `land.sh` refuses it first with
 `main_red`. The length of each red interval is a metric in the postsubmit log,
-never an assertion of this check. **Bootstrap:** before the watcher has
+never an assertion of this check. **A silent watcher is visible, not green** (2026-10-25: the check held over a manual verdict while the watcher's next full run had written nothing for hours): the check reports `uncovered`, the code commits on `main` after `covered_through`, and their count; the hard gate is unchanged, because a missing verdict is not a red, but an `uncovered` count above the batch the watcher was last seen running is a **finding** shown on the board and raised to the Oracle, since a dead or wedged watcher otherwise looks exactly like a green main. **Bootstrap:** before the watcher has
 recorded any green there is no culprit to search; a red that survives the
 flake check then ends by the Oracle's logged hand call (`manual-green` or
 `manual-revert`), which the check accepts as the verdict that closes the red
