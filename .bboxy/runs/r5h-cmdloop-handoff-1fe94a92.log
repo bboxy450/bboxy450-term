@@ -1,0 +1,20 @@
+R5h-cmdloop handoff — source 1fe94a92560461d2ec97c060080cda8b222c877a
+Base d31e2ff4228cd3fa79c953c3a00c7de7703ee72b; exact detached NORMAL gate, BBOXY_TEST_CUSTODY=memory, compiler wrappers cleared.
+Gate exit 0 / 1829.264 s; raw log r5h-cmdloop-ci-1fe94a92.log; sha256 5e1f8779a2da80f9e71f52946f8c57f569706f8e713e93f629a5b884d5c1a9ba.
+Preflight workspace {'passed': 1339, 'failed': 0, 'ignored': 29}; strict workspace/all-target Clippy 0; fast invariants 23/0/9 skipped.
+CI 3349: idle passed: frames=0 callbacks=0 seconds=10.005 windows=0 mode=headless
+CI 3432: invariants: 23 checks, 0 failures, 9 slow checks skipped
+CI 3433: ci-local: all gates passed
+Mechanisms:
+crates/bboxy450-term/src/main.rs:1807/1830/2216/2527/2623/2650/3504/4764 — gate history/task extraction before it consumes demand or allocates pending ids; reject operation admission without a sender. queue flushes IO immediately, Busy delivery arms one CommandsReady event, and pending commands never re-arm the redraw tail. Close/loss cancel the capacity wait; BackendReady resumes retained demand.
+crates/bboxy450-term/src/command_retry.rs:22/35/42 — one async owned mpsc capacity permit, coalesced by owner state; generation rejects stale events, Drop/cancel aborts the wait, and closed channels wake once. No timer, polling loop, GPU work or new pass.
+Tests (main.rs:5615; command_retry.rs:62/103/122) — no-sender model regression fails before the guard; current clean source passes. Capacity-one FIFO preserves input ids/bytes/generation; 120 arm calls coalesce, a cancelled event returns its permit, closed receiver wakes delivery once. Existing disconnect and real IO tests pass.
+Failures retained:
+reads-before exit101 was the expected old-behavior failure. The patch and raw log are committed; the original main hash is retained in target/r5h-cmdloop-proof.
+focused-after exit101: 106 pass, three real-process prerequisites missing the app binary. Built workspace (0); subsequent workspace tests 1339/0, including those three.
+preflight-clippy exit101: tokio test macro expanded block_on. Only the three tests received a scoped lint allowance; strict rerun0 and final clean gate0.
+Scope limits — stall/settle predicate and all timing budgets unchanged; no geometry, renderer, shader or lab edit. Headless smoke0 is not a 967-seat result. Rook owns the single post-merge frame attempt.
+New main while gate ran: 6ff7f975393bb10b64ea0615f7d9715cfa5efbef; no rebase/re-gate after the exact run started. Oracle verifies the union.
+Build cleanup: {"retained_binary": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-proof/bboxy450-term-gated-1fe94a925604", "retained_binary_sha256": "399897653615c323a78e1af13bc0bc0a0fe981c4f11925ef2ab2a04c419ebb72", "target_allocated_bytes_removed": 4014735360, "worktree_remove_exit": 0}
+Merged-gallery cleanup: r5h-cmdloop-cleanup-1fe94a92.json; reports/manifests kept, per-file hashes in target/retired-evidence-20261024-r5h/retired-pngs.jsonl. Named T7 and Settings baselines retained.
+No operator input, real login Keychain, desktop control, publication or merge performed.
