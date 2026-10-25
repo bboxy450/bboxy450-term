@@ -496,7 +496,13 @@ pub struct MessageRow {
     pub id: Ulid,
     pub bus: Option<BusPosition>,
     pub author: AuthorRef,
-    pub issuer_kind: IssuerKind,
+    /// Absent when no cryptographic author exists yet; author is a logical speaker.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub issuer_kind: Option<IssuerKind>,
+    #[serde(default, skip_serializing_if = "SignatureState::is_signed")]
+    pub signature: SignatureState,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature_reason: Option<String>,
     pub kind: MessageKind,
     pub priority_class: Class,
     pub priority: u8,

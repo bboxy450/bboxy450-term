@@ -406,6 +406,7 @@ impl Messaging {
             messaging.sync_seat(&record)?;
         }
         messaging.recover_notices()?;
+        messaging.recover_pending_intents()?;
         Ok(messaging)
     }
     pub fn record(&self, id: Ulid, generation: u64) -> Result<SeatRecord> {
@@ -585,10 +586,9 @@ impl Messaging {
             id,
             bus: message.bus.clone(),
             author,
-            issuer_kind: message
-                .view()
-                .issuer_kind
-                .ok_or_else(|| invalid("pending message projection is not yet installed"))?,
+            issuer_kind: message.view().issuer_kind,
+            signature: message.view().signature,
+            signature_reason: message.view().signature_reason.map(str::to_owned),
             kind: message.view().kind,
             priority_class: message.view().priority_class,
             priority: message.view().priority,
@@ -1125,6 +1125,44 @@ impl Messaging {
             message: Box::new(message),
         })
     }
+    fn recover_pending_intents(&mut self) -> Result<()> {
+        let mut after = 0;
+        loop {
+            let page: Vec<(u64, Vec<u8>)> = {
+                let db = self.account.connection()?;
+                let mut query = db.prepare_cached("SELECT position,data FROM msg_held WHERE state='held' AND position>?1 ORDER BY position LIMIT 128")?;
+                query
+                    .query_map([sqlint(after)?], |row| Ok((u64_at(row, 0)?, row.get(1)?)))?
+                    .collect::<std::result::Result<_, _>>()?
+            };
+            if page.is_empty() {
+                break;
+            }
+            for (position, bytes) in page {
+                after = position;
+                let held: HeldSend = serde_json::from_slice(&bytes)?;
+                let Some(intent) = &held.intent else {
+                    continue;
+                };
+                if let Err(error) = self.store_pending(&held, intent.admitted_ms) {
+                    if !error
+                        .downcast_ref::<std::io::Error>()
+                        .is_some_and(|error| error.kind() == std::io::ErrorKind::InvalidData)
+                    {
+                        return Err(error);
+                    }
+                    self.account.connection()?.execute(
+                        "UPDATE msg_held SET state='refused',reason=?2 WHERE position=?1",
+                        params![
+                            sqlint(position)?,
+                            format!("pending delivery refused: {error}")
+                        ],
+                    )?;
+                }
+            }
+        }
+        Ok(())
+    }
     fn local_recipients(&self, routes: &[Route]) -> Result<BTreeSet<Recipient>> {
         let mut local = BTreeSet::new();
         for route in routes {
@@ -1238,6 +1276,7 @@ impl Messaging {
         self.validate(&envelope)?;
         // A crash between the account transaction and this append reuses the
         // stored envelope, including its sender sequence and signature.
+        self.store_pending(&held, now)?;
         let local = self.local_recipients(&routes)?;
         let message = self
             .swarm(held.swarm)?
@@ -1420,7 +1459,9 @@ impl Messaging {
                 .ledger
                 .receipts(message.view().id)?
                 .iter()
-                .any(|r| r.recipient == seat)
+                .any(|r| {
+                    r.recipient == seat && r.evidence != crate::adapters::Evidence::SenderStored
+                })
         {
             return Ok(());
         }

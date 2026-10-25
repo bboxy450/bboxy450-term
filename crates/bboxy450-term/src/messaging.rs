@@ -157,13 +157,21 @@ pub fn message_view(
             id: row.author.id.clone(),
             name: row.author.name.clone(),
         }),
-        issuer_kind: Some(
-            match row.issuer_kind {
+        issuer_kind: row.issuer_kind.map(|kind| {
+            match kind {
                 wire::IssuerKind::LocalDev => "local-dev",
                 wire::IssuerKind::GpgRoot => "gpg-root",
             }
+            .into()
+        }),
+        signature: Some(
+            match row.signature {
+                wire::SignatureState::Signed => "signed",
+                wire::SignatureState::Pending => "pending",
+            }
             .into(),
         ),
+        signature_reason: row.signature_reason.clone(),
         priority_class: Some(
             match row.priority_class {
                 bbt_proto::registry::Class::Oracle => "oracle",

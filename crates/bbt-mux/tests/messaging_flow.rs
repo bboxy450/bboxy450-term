@@ -186,3 +186,75 @@ fn custody_hold_never_holds_local_delivery() {
         1
     );
 }
+
+#[test]
+fn pending_remote_delivery_waits_and_signed_completions_follow_admission_order() {
+    let root = tempfile::tempdir().unwrap();
+    let account = SqliteStore::open(&object_dir(root.path(), "account").unwrap()).unwrap();
+    let registry = Registry::new(account);
+    let swarm = Ulid::new();
+    let sender = SeatRecord::new(Ulid::new(), swarm, "sender", "zsh");
+    let mut remote = SeatRecord::new(Ulid::new(), swarm, "remote", "zsh");
+    remote.location = bbt_mux::registry::Location::Ssh {
+        host: "fixture-only".into(),
+    };
+    registry.insert(&sender).unwrap();
+    registry.insert(&remote).unwrap();
+    let mut messaging = Messaging::open(root.path(), Arc::new(FirstHeld)).unwrap();
+    let mut ids = vec![];
+    for n in 0..3 {
+        let request = SendRequest::text(
+            format!("seats/{}/inbox", remote.id),
+            format!("held remote {n}"),
+        );
+        ids.push(request.id);
+        let stored = messaging.send(sender.id, 1, request, n + 1000).unwrap();
+        assert!(stored.envelope().is_none());
+        let receipt = messaging
+            .receipts(sender.id, stored.view().id)
+            .unwrap()
+            .remove(0);
+        assert_eq!(receipt.evidence, Evidence::SenderStored);
+        assert_eq!(receipt.signature, SignatureState::Pending);
+        assert_eq!(
+            receipt.held.as_deref(),
+            Some("signature pending; pinned remote delivery waits")
+        );
+    }
+    assert!(messaging.ready(10000).unwrap().is_empty());
+    assert!(
+        messaging
+            .prepare(swarm, remote.id, 10000)
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        messaging
+            .list(remote.id, None, None, 0, 16)
+            .unwrap()
+            .items
+            .is_empty(),
+        "unsigned intents must not enter a pinned remote inbox"
+    );
+    assert_eq!(
+        messaging
+            .resume_signing(
+                Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[43; 32]))),
+                20000
+            )
+            .unwrap(),
+        3
+    );
+    let rows = messaging.list(remote.id, None, None, 0, 16).unwrap().items;
+    assert_eq!(rows.len(), 3);
+    for (index, message) in rows.iter().enumerate() {
+        assert_eq!(message.view().id, ids[index]);
+        let envelope = message.envelope().unwrap();
+        envelope.verify_signature().unwrap();
+        assert_eq!(envelope.sender_sequence, index as u64 + 1);
+        assert_eq!(envelope.timestamp, 1);
+        let receipt = messaging.receipts(sender.id, ids[index]).unwrap().remove(0);
+        assert_eq!(receipt.evidence, Evidence::RecipientStored);
+        assert_eq!(receipt.signature, SignatureState::Signed);
+    }
+}

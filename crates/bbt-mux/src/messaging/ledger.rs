@@ -873,7 +873,7 @@ impl Ledger {
             return Err(invalid("message page limit must be 1..128"));
         }
         let db = self.store.connection()?;
-        let mut q=db.prepare_cached("SELECT seq,envelope,held_out FROM msg_messages m WHERE seq>?1 AND (?2 IS NULL OR sender=?2 OR EXISTS(SELECT 1 FROM msg_deliveries d WHERE d.message=m.seq AND d.recipient=?2)) ORDER BY seq")?;
+        let mut q=db.prepare_cached("SELECT seq,envelope,held_out FROM msg_messages m WHERE seq>?1 AND (?2 IS NULL OR sender=?2 OR EXISTS(SELECT 1 FROM msg_deliveries d WHERE d.message=m.seq AND d.recipient=?2 AND d.evidence!='sender-stored')) ORDER BY seq")?;
         let mut rows = q.query(params![sqlint(after)?, actor.map(|s| s.to_string())])?;
         let mut items = Vec::new();
         let mut bytes = 0;

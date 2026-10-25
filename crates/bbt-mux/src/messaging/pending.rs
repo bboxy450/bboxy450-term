@@ -25,6 +25,12 @@ pub fn binding(intent: &PendingIntent) -> Result<IntentBinding> {
     }
     match intent.sender {
         LogicalSender::Seat {
+            device: Some(device),
+            ..
+        } if device == Ulid::nil() => {
+            return Err(invalid("invalid pending device reference"));
+        }
+        LogicalSender::Seat {
             seat,
             process_generation,
             ..
