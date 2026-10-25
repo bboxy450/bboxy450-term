@@ -2051,12 +2051,20 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
     }
     let mut op = None;
     let mut tail = None;
+    let mut capture_seat = None;
     let result = parsed.and_then(|parsed| {
         op = parsed.op;
         if let Command::EventsTail { stream, since, .. } = &parsed.command {
             tail = Some(events::Progress::new(stream.clone(), *since));
         }
-        run_verb(args, parsed, default_endpoint, &mut op, &mut tail)
+        run_verb(
+            args,
+            parsed,
+            default_endpoint,
+            &mut op,
+            &mut tail,
+            &mut capture_seat,
+        )
     });
     if let Err(reason) = result {
         let (op, fail) = match reason.strip_prefix(TIMEOUT_PREFIX) {
@@ -2076,6 +2084,11 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
         };
         let mut line = json!({ "ok": false, "op": op.unwrap_or_else(fresh), "error": {
             "kind": fail.kind, "message": fail.message, "hint": fail.hint } });
+        if fail.kind == "not_on_screen"
+            && let Some(seat) = capture_seat
+        {
+            line["error"]["seat"] = json!(seat);
+        }
         // not_on_screen names the frame it checked: before a relayed verb's reply that frame
         // means early, after it hidden (ctl-cli §1a).
         if let Some(frame) = fail
@@ -2103,6 +2116,7 @@ fn run_verb(
     default_endpoint: &Path,
     op: &mut Option<Ulid>,
     tail: &mut Option<events::Progress>,
+    capture_seat: &mut Option<Ulid>,
 ) -> Result<(), String> {
     let (noun, verb) = parsed.verb.expect("a noun-verb form");
     let endpoint_file = parsed
@@ -2297,6 +2311,18 @@ fn run_verb(
                 );
             }
             json!({"seat":seat,"relayed":true,"applied":true,"action":if undo {"undo-close"} else {"close"},"frame_seq":layout.frame_seq,"layout":layout})
+        }
+        Command::Capture { path, seat } => {
+            let seat = match seat {
+                Some(seat) => Some(resolve(&client.seats()?, &seat)?.record.id),
+                None => None,
+            };
+            *capture_seat = seat;
+            let (path, frame) = client.capture(&path, seat)?;
+            json!({ "path": path, "seat": seat,
+                "stale": frame.stale, "occluded": frame.occluded,
+                "frame_presented_at": frame.presented_at_ms, "offscreen":frame.offscreen,
+                "frame_seq":frame.frame_seq,"rendered_at_ms":frame.rendered_at_ms })
         }
         Command::Focus { seat } => {
             let seat = resolve(&client.seats()?, &seat)?.record.id;
@@ -2493,7 +2519,7 @@ fn run_verb(
             .map_err(|e| e.to_string())?
         }
         command => {
-            // Spawn, post, inbox, receipts, delegate, capture, e2e list: the action's reply
+            // Spawn, post, inbox, receipts, delegate, e2e list: the action's reply
             // as the flat form already carries it, minus the flat form's own `kind`.
             let mut rows: Vec<Value> = run(&mut client, command)?
                 .into_iter()
