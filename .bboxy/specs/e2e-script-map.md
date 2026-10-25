@@ -30,7 +30,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | T8 | `scripts/e2e/T8.sh` | partial | malformed/unapproved report rejection; reported grade drawn in the seat row | |
 | T9 | `scripts/e2e/T9.sh` | partial | a harness resumed by session id (only a zsh seat is restarted) | |
 | L1 | `scripts/e2e/L1.sh` | partial | script not implemented: ⌘T opens the centred launcher over the blurred window with harness rows, search, and role presets; Esc closes it with no spawn | |
-| L2 | `scripts/e2e/L2.sh` | partial | script not implemented: a new seat lands exactly where the operator picked (split right, split down, new tab, new space), never a guessed slot | |
+| L2 | `scripts/e2e/L2.sh` | partial | never a guessed slot | |
 | L3 | `scripts/e2e/L3.sh` | partial | script not implemented: every launched seat has our MCP server, the hook shim and the bboxy450 skill at launch; the user's own ~/.claude and ~/.codex are byte-identical before and after | |
 | L4 | `scripts/e2e/L4.sh` | partial | script not implemented: a fresh Claude seat and a fresh Codex seat each call orient and task_report on their first turn in a fixture task | |
 | S1 | `scripts/e2e/S1.sh` | partial | script not implemented: scrolling up shows earlier output byte-identical to the ring, paged lazily; the top row of a 20k-line fixture is line 1; the join with live rows is seamless | |

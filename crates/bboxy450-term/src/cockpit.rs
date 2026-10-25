@@ -49,6 +49,11 @@ pub enum UiMsg {
         role: Option<String>,
         location: bbt_proto::Where,
     },
+    /// An operator's full inputs and placement captured by the GUI owner.
+    SpawnSpec {
+        id: bbt_mux::Ulid,
+        spec: Box<bbt_proto::SpawnSpec>,
+    },
     /// Compatibility for the existing verification and default-shell callers.
     SpawnZsh,
     Close(crate::close::Intent),

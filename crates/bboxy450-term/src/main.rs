@@ -491,7 +491,9 @@ impl UiEffect {
         model: Option<&bboxy450_term::model::Model>,
     ) -> Option<Self> {
         match message {
-            live::UiMsg::Spawn { id, .. } => Some(Self::Spawn(*id)),
+            live::UiMsg::Spawn { id, .. } | live::UiMsg::SpawnSpec { id, .. } => {
+                Some(Self::Spawn(*id))
+            }
             live::UiMsg::Messaging {
                 request: bbt_proto::messaging::Request::Mute { seat, muted },
                 ..
@@ -523,7 +525,13 @@ struct UiWait {
     after: Option<u64>,
     visible: Option<UiVisible>,
     effects: Vec<UiEffect>,
+    spawn: Option<UiSpawnCapture>,
     timer: tokio::task::AbortHandle,
+}
+struct UiSpawnCapture {
+    op: bbt_mux::Ulid,
+    captured: bboxy450_term::launcher::CapturedSpawn,
+    seat: Option<SeatId>,
 }
 impl Drop for UiWait {
     fn drop(&mut self) {
@@ -3808,7 +3816,27 @@ impl App {
             Ok(false) => false,
             Ok(true) => {
                 let visible = self.ui_visible();
+                let placed = self
+                    .ui_wait
+                    .as_ref()
+                    .and_then(|wait| wait.spawn.as_ref())
+                    .and_then(|spawn| {
+                        self.spawn_results_seen.get(&spawn.op).or_else(|| {
+                            self.live_state
+                                .as_ref()?
+                                .spawns
+                                .get(&spawn.op)
+                                .map(|s| &s.outcome)
+                        })
+                    })
+                    .and_then(|outcome| match outcome {
+                        bboxy450_term::model::SpawnOutcome::Placed(seat) => Some(*seat),
+                        _ => None,
+                    });
                 let wait = self.ui_wait.as_mut().expect("UI waiter observed");
+                if let Some(spawn) = &mut wait.spawn {
+                    spawn.seat = placed;
+                }
                 wait.after = Some(submitted + 1);
                 wait.visible = Some(visible);
                 self.request_redraw();
@@ -3827,7 +3855,7 @@ impl App {
             .is_some_and(|wait| wait.after.is_some_and(|after| frame >= after))
         {
             let wait = self.ui_wait.take().expect("qualifying UI frame");
-            let result = layout.and_then(|layout| {
+            let result = layout.and_then(|mut layout| {
                 for effect in &wait.effects {
                     if let UiEffect::Lifecycle(target) = effect {
                         let model = self.live_state.as_ref().ok_or("ui_not_ready: no live model")?;
@@ -3848,8 +3876,23 @@ impl App {
                         }
                     }
                 }
-                if wait.visible.as_ref() == Some(&UiVisible::from_layout(&layout)) { Ok(layout) }
-                else { Err("ui_frame_refused: a newer UI state superseded this operation before its frame".into()) }
+                if wait.visible.as_ref() != Some(&UiVisible::from_layout(&layout)) {
+                    return Err("ui_frame_refused: a newer UI state superseded this operation before its frame".into());
+                }
+                if let Some(spawn)=&wait.spawn {
+                    let seat=spawn.seat.ok_or("ui_frame_refused: spawn target was not captured before its frame")?;
+                    let id=bbt_mux::Ulid(seat.0.0);
+                    if layout.focused!=Some(id) || !layout.panes.iter().any(|pane|pane.seat==id) {
+                        return Err("ui_frame_refused: produced frame does not show the spawned pane".into());
+                    }
+                    layout.spawned=Some(bbt_proto::gui::UiSpawned {
+                        seat:id,op:spawn.op,swarm:bbt_mux::Ulid(spawn.captured.spec.swarm.0.0),
+                        placement:spawn.captured.spec.placement.clone().expect("explicit captured placement"),
+                        layout_revision:spawn.captured.layout_revision,
+                        applied_layout_revision:layout.layout_revision.ok_or("ui_frame_refused: frame revision is unavailable")?,
+                    });
+                }
+                Ok(layout)
             });
             self.answer_ui(wait.id, result);
         }
@@ -3917,10 +3960,13 @@ impl App {
                     _ => None,
                 }),
         );
-        if let Err(reason) = result {
-            self.answer_ui(id, Err(reason));
-            return true;
-        }
+        let spawn = match result {
+            Ok(spawn) => spawn,
+            Err(reason) => {
+                self.answer_ui(id, Err(reason));
+                return true;
+            }
+        };
         if self.document.open {
             effects.push(UiEffect::Document);
         }
@@ -3931,7 +3977,7 @@ impl App {
             }),
             None => {}
         }
-        self.await_ui_frame(id, effects, submitted);
+        self.await_ui_frame(id, effects, submitted, spawn);
         self.request_redraw();
         true
     }
@@ -3959,9 +4005,9 @@ impl App {
         self.ui_collect = Some(Vec::new());
         self.close_seat(seat, id, undo);
         let effects = self.ui_collect.take().expect("close command collection");
-        self.await_ui_frame(id, effects, submitted);
+        self.await_ui_frame(id, effects, submitted, None);
     }
-    fn await_ui_frame(&mut self, id: bbt_mux::Ulid, effects: Vec<UiEffect>, submitted: u64) {
+    fn await_ui_frame(&mut self, id: bbt_mux::Ulid, effects: Vec<UiEffect>, submitted: u64, spawn: Option<UiSpawnCapture>) {
         let proxy = self.proxy.clone();
         let timer = bbt_rt::handle().spawn(async move {
             tokio::time::sleep(bboxy450_term::focus_ack::DEADLINE).await;
@@ -3972,6 +4018,7 @@ impl App {
             after: None,
             visible: None,
             effects,
+            spawn,
             timer: timer.abort_handle(),
         });
         self.poll_ui_frame(submitted);
@@ -3995,9 +4042,38 @@ impl App {
         &mut self,
         id: bbt_mux::Ulid,
         request: bbt_proto::gui::UiRequest,
-    ) -> Result<(), String> {
+    ) -> Result<Option<UiSpawnCapture>, String> {
         use bbt_proto::gui::{UiRequest, UiTarget};
         match request {
+            UiRequest::Spawn(pick) => {
+                let model = self.live_state.as_deref().ok_or("ui_not_ready: no model")?;
+                let stage = self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage);
+                let captured = bboxy450_term::launcher::operator_placement(
+                    *pick,
+                    model,
+                    stage,
+                    self.scene.layout_revision(),
+                )?;
+                let op = bbt_mux::Ulid::new();
+                if self.document.open {
+                    self.close_document();
+                }
+                if self.local_tab.is_some() {
+                    self.close_local_tab();
+                }
+                if self.launcher.is_some() {
+                    self.close_launcher();
+                }
+                self.queue(live::UiMsg::SpawnSpec {
+                    id: op,
+                    spec: Box::new(captured.spec.clone()),
+                });
+                return Ok(Some(UiSpawnCapture {
+                    op,
+                    captured,
+                    seat: None,
+                }));
+            }
             UiRequest::Open(UiTarget::Launcher) => self.open_launcher(),
             UiRequest::Open(UiTarget::Graph) => self.open_graph(),
             UiRequest::Open(UiTarget::Settings) => self.open_settings("Account"),
@@ -4064,7 +4140,7 @@ impl App {
                 return Err("UI request uses the frame acknowledgment path".into());
             }
         }
-        Ok(())
+        Ok(None)
     }
     fn ui_layout(
         &self,
@@ -4121,6 +4197,7 @@ impl App {
             .collect::<Result<_, _>>()?;
         let layout = UiLayout {
             frame_seq: 0, // filled only by the actual produced-frame callback
+            layout_revision: Some(self.scene.layout_revision()),
             size,
             swarm: stage.swarm.map(|id| bbt_mux::Ulid::from(id.0.0)),
             tab: stage.tab.map(|id| bbt_mux::Ulid::from(id.0.0)),
@@ -4136,6 +4213,7 @@ impl App {
             document: self.document.open.then(|| self.document.target.clone()),
             panes,
             tree,
+            spawned: None,
         };
         if serde_json::to_vec(&layout)
             .map_err(|e| e.to_string())?
@@ -7202,7 +7280,9 @@ mod input_tests {
                     sizes.insert(seat, (cols, rows));
                 }
                 live::UiMsg::Watched(panes) => watched = panes,
-                live::UiMsg::SpawnZsh | live::UiMsg::Spawn { .. } => spawns += 1,
+                live::UiMsg::SpawnZsh
+                | live::UiMsg::Spawn { .. }
+                | live::UiMsg::SpawnSpec { .. } => spawns += 1,
                 live::UiMsg::ConsumeSpawn { .. }
                 | live::UiMsg::Scroll { .. }
                 | live::UiMsg::DocumentRead { .. }

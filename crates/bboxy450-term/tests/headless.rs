@@ -106,6 +106,175 @@ fn await_value(fixture: &Fixture, mut read: impl FnMut() -> Option<Value>) -> Va
 }
 
 #[test]
+fn explicit_placements_capture_the_anchor_preserve_siblings_and_acknowledge_the_pane_frame() {
+    let mut f = Fixture::new();
+    let account = f.root.path().join("placement-account");
+    f.run = account.join("run");
+    let started = f.ok(&[
+        "app",
+        "start",
+        "--headless",
+        "--ctl",
+        "--test-account",
+        account.to_str().unwrap(),
+    ]);
+    f.pid = started["data"]["pid"].as_u64().map(|n| n as u32);
+    let cwd = f.root.path().join("picked cwd");
+    std::fs::create_dir(&cwd).unwrap();
+    let (code, error) = f.ctl(&["seat", "spawn", "zsh", "--place", "right"]);
+    assert_ne!(code, 0);
+    assert!(
+        error[0]["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("placement_anchor_missing")
+    );
+    assert!(f.ok(&["seat", "ls"])["data"].as_array().unwrap().is_empty());
+    fn spawn(f: &Fixture, place: &str, name: &str, cwd: &std::path::Path, op: &str) -> Value {
+        f.ok(&[
+            "seat",
+            "spawn",
+            "zsh",
+            "--place",
+            place,
+            "--name",
+            name,
+            "--cwd",
+            cwd.to_str().unwrap(),
+            "--op",
+            op,
+        ])
+    }
+    fn id(reply: &Value) -> String {
+        reply["data"]["seat"].as_str().unwrap().to_owned()
+    }
+    fn rect(layout: &Value, seat: &str) -> [f64; 4] {
+        let p = layout["panes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|p| p["seat"] == seat)
+            .unwrap();
+        std::array::from_fn(|i| p["rect"][i].as_f64().unwrap())
+    }
+    fn same(a: [f64; 4], b: [f64; 4]) {
+        for (x, y) in a.into_iter().zip(b) {
+            assert!(
+                (x - y).abs() < 0.01,
+                "sibling rectangle moved: {a:?} -> {b:?}"
+            );
+        }
+    }
+    let a = spawn(&f, "tab", "anchor", &cwd, &bbt_mux::Ulid::new().to_string());
+    let a = id(&a);
+    let original = f.ok(&["ui", "layout"])["data"].clone();
+    let swarm = original["swarm"].clone();
+    let tab = original["tab"].clone();
+    let b = spawn(
+        &f,
+        "right",
+        "outer right",
+        &cwd,
+        &bbt_mux::Ulid::new().to_string(),
+    );
+    let b = id(&b);
+    let focused = f.ok(&["ui", "focus", &a])["data"].clone();
+    let outer = rect(&focused, &b);
+    let op = bbt_mux::Ulid::new().to_string();
+    let c = spawn(&f, "right", "inner right", &cwd, &op);
+    let c_id = id(&c);
+    assert_eq!(c["data"]["placement"]["target"], a);
+    assert_eq!(c["data"]["placement"]["side"], "right");
+    assert_eq!(c["data"]["layout_revision"], focused["layout_revision"]);
+    assert_eq!(
+        c["data"]["applied_layout_revision"],
+        c["data"]["layout"]["layout_revision"]
+    );
+    let right = &c["data"]["layout"];
+    assert_eq!(right["focused"], c_id);
+    assert_eq!(right["tab"], tab);
+    assert!(c["data"]["frame_seq"].as_u64().unwrap() > focused["frame_seq"].as_u64().unwrap());
+    let ra = rect(right, &a);
+    let rc = rect(right, &c_id);
+    assert!(rc[0] > ra[0]);
+    same(outer, rect(right, &b));
+    // Same operator op replays the captured result after focus has moved; it
+    // cannot split the newly focused sibling or launch another process.
+    f.ok(&["ui", "focus", &b]);
+    let retry = spawn(&f, "right", "inner right", &cwd, &op);
+    assert_eq!(retry["data"], c["data"]);
+    assert_eq!(f.ok(&["ui", "layout"])["data"]["focused"], b);
+    assert_eq!(f.ok(&["seat", "ls"])["data"].as_array().unwrap().len(), 3);
+    let before = f.ok(&["ui", "focus", &c_id])["data"].clone();
+    let d = spawn(&f, "down", "below", &cwd, &bbt_mux::Ulid::new().to_string());
+    let d_id = id(&d);
+    assert_eq!(d["data"]["placement"]["target"], c_id);
+    assert_eq!(d["data"]["placement"]["side"], "bottom");
+    let down = &d["data"]["layout"];
+    same(rect(&before, &a), rect(down, &a));
+    same(rect(&before, &b), rect(down, &b));
+    let rc = rect(down, &c_id);
+    let rd = rect(down, &d_id);
+    assert!(rd[1] > rc[1]);
+    assert!((rd[0] - rc[0]).abs() < 0.01);
+    let old = down.clone();
+    let e = spawn(
+        &f,
+        "tab",
+        "separate tab",
+        &cwd,
+        &bbt_mux::Ulid::new().to_string(),
+    );
+    assert_eq!(e["data"]["swarm"], swarm);
+    assert_ne!(e["data"]["layout"]["tab"], tab);
+    assert_eq!(e["data"]["layout"]["panes"].as_array().unwrap().len(), 1);
+    let restored = f.ok(&["ui", "focus", &a])["data"].clone();
+    for seat in [&a, &b, &c_id, &d_id] {
+        same(rect(&old, seat), rect(&restored, seat));
+    }
+    let space = spawn(
+        &f,
+        "space",
+        "new space",
+        &cwd,
+        &bbt_mux::Ulid::new().to_string(),
+    );
+    let s_id = id(&space);
+    assert_ne!(space["data"]["swarm"], swarm);
+    assert_ne!(space["data"]["layout"]["tab"], tab);
+    assert_eq!(space["data"]["layout"]["focused"], s_id);
+    assert_eq!(
+        space["data"]["layout"]["panes"].as_array().unwrap().len(),
+        1
+    );
+    let image = f.root.path().join("placed-space.png");
+    let capture = f.ok(&["seat", "capture", &s_id, image.to_str().unwrap()]);
+    assert!(image.is_file());
+    assert!(
+        capture["data"]["frame_seq"].as_u64().unwrap()
+            >= space["data"]["frame_seq"].as_u64().unwrap()
+    );
+    f.ok(&["seat", "type", &s_id, "printf 'PLACED_CWD:%s\\n' \"$PWD\""]);
+    f.ok(&["seat", "key", &s_id, "enter"]);
+    f.ok(&[
+        "seat",
+        "wait",
+        &s_id,
+        "--text",
+        "PLACED_CWD:.*picked cwd",
+        "--timeout",
+        "20000",
+    ]);
+    let restored = f.ok(&["ui", "focus", &a])["data"].clone();
+    assert_eq!(restored["swarm"], swarm);
+    for seat in [&a, &b, &c_id, &d_id] {
+        same(rect(&old, seat), rect(&restored, seat));
+    }
+    assert_eq!(f.ok(&["seat", "ls"])["data"].as_array().unwrap().len(), 6);
+    f.ok(&["app", "stop"]);
+}
+
+#[test]
 fn headless_cli_starts_real_gui_types_captures_and_stops_without_a_window() {
     let mut f = Fixture::new();
     let started = f.start();

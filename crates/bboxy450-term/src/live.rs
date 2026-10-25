@@ -43,6 +43,9 @@ const COMMAND_CAPACITY: usize = 64;
 /// Pure translation on the IO side. UI inputs never choose argv, cwd, role
 /// authority or a process handle; the existing backend validates the spec.
 fn spawn_spec(message: &UiMsg, swarm: Ulid, cwd: &Path) -> Option<SpawnSpec> {
+    if let UiMsg::SpawnSpec { spec, .. } = message {
+        return Some(spec.as_ref().clone());
+    }
     let (harness_kind, name, role, location, selected_swarm, placement) = match message {
         UiMsg::Spawn {
             harness_kind,
@@ -983,7 +986,7 @@ async fn run_with_control(
                     };
                     in_flight=Some(message);
                     match in_flight.as_ref().unwrap() {
-                    message @ UiMsg::Spawn {id,..}=> {
+                    message @ (UiMsg::Spawn {id,..}|UiMsg::SpawnSpec {id,..})=> {
                         let spec=spawn_spec(message,swarm,&cwd).expect("spawn intent branch");
                         match Arc::make_mut(&mut model).request_spawn(*id,spec.clone()) {
                             Ok(true)=> {

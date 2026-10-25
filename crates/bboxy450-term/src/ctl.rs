@@ -37,7 +37,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   ui scroll <seat> <top|bottom|page-up|page-down|row N>   zero-based GUI history
   ui layout                              solved window tree, pane grids, focus and tab
   seat ls
-  seat spawn <claude|codex|zsh> [--place tab] [--role oracle|architect|creativity|executor|shell]
+  seat spawn <claude|codex|zsh> [--place right|down|tab|space] [--role oracle|architect|creativity|executor|shell]
              [--name NAME] [--cwd DIR] [--swarm ID]
   seat screen <seat> [--human]            the visible screen, cursor and title
   seat type <seat> <text>                 types the text as written
@@ -154,6 +154,8 @@ pub enum Command {
         /// A role preset (#262); the backend resolves and guards it as the launcher does.
         role: Option<String>,
     },
+    /// An explicit placement is captured by the attached GUI, never guessed here.
+    SpawnAt(Box<bbt_proto::gui::UiSpawn>),
     Seats,
     Dm {
         seat: String,
@@ -681,21 +683,29 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             }
         }
         ["seat", "ls"] => Command::Seats,
-        ["seat", "spawn", harness] => Command::Spawn {
-            harness: harness.into(),
-            name: flag("name"),
-            cwd: flag("cwd").map(PathBuf::from),
-            swarm,
-            role: flag("role"),
-            new_tab: match flag("place").or(flag("placement")).as_deref() {
-                None => false,
-                Some("tab" | "new-tab") => true,
-                Some(other) => {
-                    return Err(format!(
-                        "{USAGE_PREFIX}--place: only tab is supported yet, not {other}"
-                    ));
-                }
-            },
+        ["seat", "spawn", harness] => {
+            if let Some(place) = flag("place").or(flag("placement")) {
+                use bbt_proto::gui::{SpawnPlace, UiSpawn};
+                let place = match place.as_str() {
+                    "right" => SpawnPlace::Right,
+                    "down" => SpawnPlace::Down,
+                    "tab" | "new-tab" => SpawnPlace::Tab,
+                    "space" => SpawnPlace::Space,
+                    _ => return Err(format!("{USAGE_PREFIX}--place: expected right|down|tab|space")),
+                };
+                let pick = UiSpawn {
+                    harness: harness.into(), name: flag("name"), role: flag("role"), swarm, place,
+                    cwd: std::path::absolute(flag("cwd").unwrap_or_else(|| ".".into()))
+                        .map_err(|e| format!("{USAGE_PREFIX}--cwd: {e}"))?.to_string_lossy().into_owned(),
+                };
+                let request = bbt_proto::gui::UiRequest::Spawn(Box::new(pick));
+                request.validate().map_err(|e| format!("{USAGE_PREFIX}{e}"))?;
+                let bbt_proto::gui::UiRequest::Spawn(pick) = request else { unreachable!() };
+                Command::SpawnAt(pick)
+            } else {
+                // The no-placement backend lane also serves bare Session callers.
+                Command::Spawn {harness:harness.into(),name:flag("name"),cwd:flag("cwd").map(PathBuf::from),swarm,role:flag("role"),new_tab:false}
+            }
         },
         ["seat", "capture", target, path] => Command::Capture {
             path: std::path::absolute(path).map_err(|e| format!("capture {path}: {e}"))?,
@@ -1735,6 +1745,7 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
         Command::Ui(_)
         | Command::UiFocus(_)
         | Command::UiScroll { .. }
+        | Command::SpawnAt(_)
         | Command::Watch { .. }
         | Command::Rename { .. }
         | Command::Restart { .. }
@@ -2133,6 +2144,18 @@ fn run_verb(
         Command::RecordChanges { since } => records::changes(&mut client, since)?,
         Command::Ui(request) => {
             serde_json::to_value(client.ui(request)?).map_err(|e| e.to_string())?
+        }
+        Command::SpawnAt(pick) => {
+            let harness = pick.harness.clone();
+            let layout = client.ui(bbt_proto::gui::UiRequest::Spawn(pick))?;
+            let placed = layout
+                .spawned
+                .as_ref()
+                .ok_or("ui_frame_refused: spawn reply has no placement receipt")?;
+            json!({"seat":placed.seat,"swarm":placed.swarm,"harness":harness,
+                "spawn_op":placed.op,"placement":placed.placement,"layout_revision":placed.layout_revision,
+                "applied_layout_revision":placed.applied_layout_revision,
+                "frame_seq":layout.frame_seq,"layout":layout})
         }
         Command::UiFocus(seat) => {
             let seat = resolve(&client.seats()?, &seat)?.record.id;
@@ -3058,5 +3081,51 @@ mod tests {
             (back.path, back.capability),
             (endpoint.path, endpoint.capability)
         );
+    }
+}
+
+#[cfg(test)]
+mod placement_parser_tests {
+    use super::*;
+    #[test]
+    fn explicit_placements_relay_intents_without_choosing_an_anchor_in_the_cli() {
+        use bbt_proto::gui::SpawnPlace;
+        for (name, expected) in [
+            ("right", SpawnPlace::Right),
+            ("down", SpawnPlace::Down),
+            ("tab", SpawnPlace::Tab),
+            ("new-tab", SpawnPlace::Tab),
+            ("space", SpawnPlace::Space),
+        ] {
+            let args = [
+                "seat",
+                "spawn",
+                "zsh",
+                "--place",
+                name,
+                "--cwd",
+                "/chosen cwd",
+                "--name",
+                "chosen",
+                "--role",
+                "shell",
+            ]
+            .map(str::to_owned);
+            let Command::SpawnAt(pick) = parse_full(&args).unwrap().command else {
+                panic!("explicit placement bypassed the owner")
+            };
+            assert_eq!(pick.place, expected);
+            assert_eq!(pick.swarm, None);
+            assert_eq!(pick.cwd, "/chosen cwd");
+            assert_eq!(pick.name.as_deref(), Some("chosen"));
+            assert_eq!(pick.role.as_deref(), Some("shell"));
+        }
+        let args = ["seat", "spawn", "zsh", "--place", "diagonal"].map(str::to_owned);
+        assert!(parse_full(&args).unwrap_err().starts_with(USAGE_PREFIX));
+        let args = ["seat", "spawn", "zsh"].map(str::to_owned);
+        assert!(matches!(
+            parse_full(&args).unwrap().command,
+            Command::Spawn { new_tab: false, .. }
+        ));
     }
 }
