@@ -1,0 +1,16 @@
+NG1 static union rebase; no new runtime verification during QUIET rook-cmdloop.
+
+Candidate 2326243546480cec90b1910bf49cf77e3b94c6aa on posted native-unlock union c3d1523cbc1205a28139838068c4727715673826 (parent main ac973701).
+Oracle 4dab3d61 permits integration on the frozen native source or its posted rebase. Kestrel 054e7968 identifies c3d1523c as a signed source checkpoint; its scoped union verification and Oracle acceptance are still pending.
+
+git verify-commit c3d1523c — exit 0, machine key 9B07E849480C68328CA20684844ECC0587DE7AB0.
+Signed rebase of the 21 NG1 commits — exit 0, no conflict, no autostash.
+git range-diff 0e0e9d2e..rook-ng1-before315-union c3d1523c..23262435 — all 21 patches equal.
+Raw range diff /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/range-diff-union-v3.log, SHA256 dd1bdc2724e93f0ab10f779a3dba671ac4af6151692a97b85bea53bf032dcc86.
+All 29 selected journal/native/identity-job production methods byte-equal to c3d1523c, extracted through the method's four-space closing brace; the separate audit function is excluded.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/native-body-proof-union-v3.json, SHA256 2c1af182206a5b8bc4e8a63812b22fab3cb2239e0bc6d0d190799d61fa4778ae.
+git log c3d1523c..23262435 --format='%h %G? %GK' — all 21 G / 844ECC0587DE7AB0.
+git diff --check — exit 0.
+
+Previous runtime preflight remains specifically on aca084ed: strict Clippy 0, workspace 1374/0/29 ignored, invariants 24/0. No runtime equivalence to this merged base is claimed. Rebased prechecks and exact clean ci-local --parity follow the one already-authorized frame attempt and native union acceptance.
+The independent frame binary remains exact 2ad1d733, unchanged by this NG1 rebase.
