@@ -15,7 +15,7 @@ links:
   - { to: "[[gui-components]]", rel: focus-model }
   - { to: "[[c1-live-seats]]", rel: wire }
 created: 2026-10-23T22:28:21Z
-updated: "2026-10-24T15:35:31Z"
+updated: "2026-10-25T09:05:54Z"
 ---
 # Attention
 
@@ -54,6 +54,8 @@ The seat state the adapters already produce: `Activity::Waiting(kind)` with `kin
 G3 (the centred rim, Seraph) → G5 (the kit capability, Seraph) → attention, assigned after W2.6b lands because it rides the events lane (Oracle, 2026-10-23).
 
 ## 5. Acceptance, the spec signs off
+
+**One clock.** Every animation here and in [[rim-glow]] reads a single App clock, never the wall clock directly; under a test account `ctl ui clock freeze | advance <ms> | resume` drives that clock and replies after the frame at the new time, so R1 to R5 are asserted at exact phases of the loop rather than by sleeping ([[ctl-cli]], Oracle's ruling 2026-10-25).
 
 1. A fixture seat entering `Waiting(Question)` shows the row and block loop within one event-lane delivery; leaving `waiting` stops it; focusing it stops it and plays one swell.
 2. Layout and focus unchanged by the loop: [[glow-never-moves-layout]] and [[rim-size-is-layout]] pass; a focus-model test shows focus unchanged until a click or a notification response.
