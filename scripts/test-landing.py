@@ -744,6 +744,13 @@ def fixture_suite(extended=False):
                 failures += 1
                 print(name + " FAILED\n" + result.stdout + result.stderr, flush=True)
     print(f"Ran {len(names)} fixture tests in {time.monotonic() - started:.3f}s; failures={failures}", flush=True)
+    recovery = SOURCE.with_name("test-landing-recovery.py")
+    if extended and recovery.is_file():
+        # Recovery/bisect fixtures are the extended presubmit tier, never the
+        # fast ci-local hook. The shared signer is a throwaway fixture identity.
+        recovered = subprocess.run([sys.executable, "-I", str(recovery)], env=environment,
+                                   timeout=600)
+        failures += bool(recovered.returncode)
     return bool(failures)
 
 

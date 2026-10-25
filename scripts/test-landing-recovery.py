@@ -23,7 +23,7 @@ class RecoveryTests(unittest.TestCase):
         self.repo = fixtures.Repository()
         self.addCleanup(self.repo.close)
         self.repo.tooling()
-        for name in ("landing_recovery.py", "culprit.sh", "revert.sh", "main-red-bounded.sh", "scale-night.sh"):
+        for name in ("landing_recovery.py", "culprit.sh", "revert.sh", "main-red-bounded.sh", "scale-night.sh", "e2e-night.sh"):
             self.repo.write("scripts/" + name, (SOURCE / name).read_text())
         self.repo.write(".bboxy/specs/e2e-acceptance.md", "## 1. Promises\n### terminal\n- **T1** fixture\n")
         self.base = self.repo.commit("Fixture recovery tooling")
@@ -253,6 +253,22 @@ raise SystemExit(1)
         self.assertIn("completed_e2e_night", json.loads(result.stdout)["reason"])
         self.assertFalse((self.repo.state / "scale").exists())
 
+    # keeps: spec landing.md §8 — build errors and missing reports keep evidence.
+    def test_scale_records_build_failure_and_cannot_pass_without_report(self):
+        night = self.repo.state / "night.jsonl"
+        night.write_text('{"kind":"summary","group":"terminal","unwritten":[]}\n')
+        for build_exit in (2, 0):
+            with self.subTest(build_exit=build_exit):
+                self.options.update(scale_build=[sys.executable, "-c", f"raise SystemExit({build_exit})"],
+                                    scale_run=[sys.executable, "-c", "print('no report')"])
+                self.configure()
+                result = self.command("scale-night", "--night-log", str(night))
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                answer = json.loads(result.stdout)
+                self.assertFalse(answer["report_valid"])
+                self.assertEqual(answer["build_exit"], build_exit)
+                self.assertEqual(fixtures.run("git", "show", "-s", "--format=%G?", answer["evidence_commit"], cwd=self.repo.root), "G")
+
     # keeps: invariant main-red-bounded — the correcting candidate can check itself.
     def test_corrective_candidate_is_checked_before_push(self):
         red = self.change("regression")
@@ -268,6 +284,47 @@ raise SystemExit(1)
         self.assertEqual(json.loads(result.stdout)["main"], candidate)
         self.assertEqual(json.loads(result.stdout)["status"], "held")
         self.assertEqual(self.repo.remote_head(), red)
+
+    # keeps: spec landing.md §8 — scale runs once, last, despite a failed group.
+    def test_all_night_pins_source_and_calls_scale_once_after_every_group(self):
+        self.repo.write(".bboxy/specs/e2e-acceptance.md", "## 1. Promises\n### first group\n- **T1** fixture\n### last group\n- **T2** fixture\n")
+        self.repo.write("scripts/scale-night.sh", '''#!/bin/sh
+python3 -I - "$@" <<'PY'
+import json,os,pathlib,sys
+state=pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR'])
+args=sys.argv[1:]; log=pathlib.Path(args[args.index('--night-log')+1])
+sha=args[args.index('--sha')+1];rows=[json.loads(x) for x in log.read_text().splitlines()]
+assert rows[0]['sha']==sha and rows[-1]['kind']=='night-summary'
+assert [r['group'] for r in rows[-1]['groups']]==['first group','last group']
+with (state/'order.jsonl').open('a') as f:f.write(json.dumps('scale')+'\\n')
+print(json.dumps({'exit':0}))
+PY
+''')
+        pinned = self.repo.commit("Fixture whole-night runner")
+        self.publish()
+        binary = self.repo.state / "night-app"
+        binary.write_text('''#!/usr/bin/env python3
+import json,os,pathlib,sys
+s=pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR'])
+group=sys.argv[sys.argv.index('--group')+1]
+with (s/'order.jsonl').open('a') as f:f.write(json.dumps(group)+'\\n')
+print(json.dumps({'kind':'summary','group':group,'unwritten':[]}))
+raise SystemExit(int(group=='first group' and (s/'fail-group').exists()))
+''')
+        binary.chmod(0o700)
+        env = dict(self.repo.environment, BBT=str(binary))
+        for failed in (False, True):
+            with self.subTest(failed=failed):
+                (self.repo.state / "order.jsonl").unlink(missing_ok=True)
+                if failed:
+                    (self.repo.state / "fail-group").touch()
+                result = self.command("e2e-night", "--all", environment=env)
+                self.assertEqual(result.returncode, int(failed), result.stdout + result.stderr)
+                answer = json.loads(result.stdout)
+                self.assertEqual(answer["sha"], pinned)
+                self.assertEqual(answer["scale_exit"], 0)
+                order = [json.loads(x) for x in (self.repo.state / "order.jsonl").read_text().splitlines()]
+                self.assertEqual(order, ["first group", "last group", "scale"])
 
 
 if __name__ == "__main__":

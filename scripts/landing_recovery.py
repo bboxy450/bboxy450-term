@@ -5,6 +5,7 @@ branch or push directly; acceptance runs use local, throwaway repositories.
 """
 import argparse
 from contextlib import contextmanager
+import hashlib
 import importlib.util
 import json
 import os
@@ -339,6 +340,91 @@ def check_main(api, root):
             "pending_red": pending, "violations": violations}
 
 
+def groups_at(api, root, sha):
+    text = api.git("show", sha + ":.bboxy/specs/e2e-acceptance.md", cwd=root)
+    section = re.search(r"(?ms)^## 1\..*?\n(.*?)(?=^## |\Z)", text)
+    groups = re.findall(r"(?m)^### (.+)$", section.group(1)) if section else []
+    if not groups or len(groups) != len(set(groups)):
+        raise api.Refusal("night_groups_missing_or_duplicate")
+    return groups
+
+
+def json_lines(text):
+    rows = []
+    for line in text.splitlines():
+        try:
+            value = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(value, dict):
+            rows.append(value)
+    return rows
+
+
+def stop_night_apps(api, binary, rows, output, label):
+    # A timed-out group may not run its Rust owners' stop path. Only endpoints
+    # underneath roots announced by this invocation are eligible for cleanup.
+    for n, row in enumerate(r for r in rows if r.get("kind") == "night" and r.get("root")):
+        root = Path(row["root"])
+        if not root.is_absolute() or not root.is_dir():
+            continue
+        for k, endpoint in enumerate(root.rglob("gui.endpoint")):
+            if endpoint.resolve().is_relative_to(root.resolve()):
+                run_logged(api, [str(binary), "ctl", "--run-dir", str(endpoint.parent), "app", "stop"],
+                           output, output, f"{label}-stop-{n}-{k}", dict(os.environ), timeout=30)
+
+
+def night_all(api, root, arguments):
+    parser = argparse.ArgumentParser(prog="e2e-night.sh --all")
+    parser.add_argument("--sha", default="origin/main")
+    args = parser.parse_args(arguments)
+    fixture(api, root)
+    sha = resolve(api, root, args.sha)
+    if not ancestor(api, root, sha, resolve(api, root, "origin/main")):
+        raise api.Refusal("night_source_is_not_on_main")
+    binary = Path(os.environ.get("BBT", root / "target/debug/bboxy450-term")).resolve()
+    if not binary.is_file() or not os.access(binary, os.X_OK):
+        raise api.Refusal("night_requires_prebuilt_app: " + str(binary))
+    output = output_directory(api, "nights")
+    combined = output / "night.jsonl"
+    groups = groups_at(api, root, sha)
+    with binary.open("rb") as stream:
+        binary_hash = hashlib.file_digest(stream, "sha256").hexdigest()
+    header = {"kind": "night-source", "sha": sha, "binary": str(binary), "binary_sha256": binary_hash}
+    combined.write_text(json.dumps(header) + "\n")
+    results = []
+    with checkout(api, root, sha, output) as tree:
+        for index, group in enumerate(groups):
+            record, text = run_logged(api, [str(binary), "e2e", "night", "--group", group,
+                                            "--scripts", "scripts/e2e", "--records", str(output / "records")],
+                                       tree, output, f"group-{index + 1}", dict(os.environ), timeout=1200)
+            rows = json_lines(text)
+            summaries = [r for r in rows if r.get("kind") == "summary" and r.get("group") == group]
+            complete = len(summaries) == 1 and not summaries[0].get("unwritten")
+            entry = {"kind": "night-group-result", "group": group, "exit": record["exit"],
+                     "completed_by_verdict": complete and record["exit"] in (0, 1), "log": record["log"]}
+            results.append(entry)
+            with combined.open("a") as stream:
+                for row in rows:
+                    stream.write(json.dumps(row) + "\n")
+                stream.write(json.dumps(entry) + "\n")
+            stop_night_apps(api, binary, rows, output, f"group-{index + 1}")
+        # Completion means every group has ended. Failed/refused groups stay in
+        # the record and must not suppress the independent scale measurement.
+        with combined.open("a") as stream:
+            stream.write(json.dumps({"kind": "night-summary", "sha": sha, "groups": results}) + "\n")
+        measured, _ = run_logged(api, ["sh", str(tree / "scripts/scale-night.sh"), "--night-log", str(combined),
+                                      "--sha", sha], tree, output, "scale", dict(os.environ), timeout=6000)
+    code = measured["exit"]
+    if code == 0 and any(r["exit"] != 0 or not r["completed_by_verdict"] for r in results):
+        code = 1
+    result = {"sha": sha, "exit": code, "groups": results, "scale_exit": measured["exit"],
+              "night_log": str(combined), "evidence": str(output)}
+    api.atomic_write(output / "result.json", json.dumps(result, sort_keys=True) + "\n")
+    api.append_record("nights.log", result)
+    return result
+
+
 def scale_night(api, root, arguments):
     parser = argparse.ArgumentParser(prog="scale-night.sh")
     parser.add_argument("--sha", default="origin/main")
@@ -349,9 +435,15 @@ def scale_night(api, root, arguments):
     sha = resolve(api, root, args.sha)
     if not ancestor(api, root, sha, resolve(api, root, "origin/main")):
         raise api.Refusal("scale_source_is_not_on_main")
-    night = [json.loads(line) for line in args.night_log.read_text().splitlines() if line.startswith("{")]
+    night = json_lines(args.night_log.read_text())
     summaries = [r for r in night if r.get("kind") == "summary"]
-    if not summaries or any(r.get("unwritten") for r in summaries):
+    completed = [r for r in night if r.get("kind") == "night-summary" and r.get("sha") == sha]
+    expected = set(groups_at(api, root, sha))
+    if completed:
+        observed = {r.get("group") for r in completed[-1].get("groups", [])}
+    else:
+        observed = {r.get("group") for r in summaries}
+    if observed != expected:
         raise api.Refusal("scale_requires_completed_e2e_night")
     output = output_directory(api, "scale")
     with checkout(api, root, sha, output) as tree, retiring(output / "target"):
@@ -380,6 +472,8 @@ def scale_night(api, root, arguments):
             report = json.loads(report_path.read_text()) if report_path.is_file() else {}
         except ValueError:
             report = {}  # preserve malformed raw evidence, never turn it green
+        if not isinstance(report, dict):
+            report = {}
         report_valid = (report.get("rows") == 967 and report.get("real_ptys") == 967
                         and report.get("watched") == 50 and report.get("timing_gated") is True
                         and report.get("metrics", {}).get("diagnostics", {}).get("enabled") is True)
@@ -387,7 +481,8 @@ def scale_night(api, root, arguments):
                   "night_log": str(args.night_log.resolve()), "evidence": str(output),
                   "report_present": report_path.is_file(), "report_valid": report_valid,
                   "build_exit": built["exit"], "source_mode": "native_frame_gate"}
-        if not measured["exit"] and (not report_valid or report.get("failures")):
+        if not measured["exit"] and (not report_valid or report.get("failures")
+                                      or report.get("timing_failures") or report.get("unproven")):
             result.update(exit=2, reason="scale_report_unproven_or_inconsistent")
         api.atomic_write(output / "result.json", json.dumps(result, sort_keys=True) + "\n")
         # Commit immutable daily evidence on a separate branch; publication stays
@@ -421,7 +516,7 @@ def main():
     signal.signal(signal.SIGTERM, interrupted)
     api = load_api()
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=("culprit", "revert", "main-red-bounded", "scale-night"))
+    parser.add_argument("command", choices=("culprit", "revert", "main-red-bounded", "scale-night", "night-all"))
     parser.add_argument("arguments", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     try:
@@ -441,6 +536,9 @@ def main():
                 raise api.Refusal("main-red-bounded.sh takes no arguments")
             result = check_main(api, root)
             code = int(bool(result["violations"]))
+        elif args.command == "night-all":
+            result = night_all(api, root, args.arguments)
+            code = result["exit"]
         else:
             result = scale_night(api, root, args.arguments)
             code = result["exit"] or (0 if result["report_present"] else 2)
