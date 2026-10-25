@@ -12,10 +12,10 @@ A GPU-rendered Rust terminal for agent swarms, built by a swarm. Read this first
 | Role | Who decides what |
 |---|---|
 | **Operator** | Direction, taste, priorities. Outranks everyone. |
-| **Oracle** (Vesper Greywind) | Assigns work, writes briefs, verifies every handoff, merges and pushes to main. The only one who pushes **code** to main; the Architect pushes `.bboxy/` specs, decisions and invariants from its own worktree, and Creativity pushes `lab/web/` (each rebased onto origin/main, own commits only; gated on lab-check plus `ci-local --parity` at 0 mismatches in a clean worktree; a lab change that moves parity-checked geometry is handed to the Oracle to land together with its native follow-up, never alone). |
+| **Oracle** (Vesper Greywind) | Assigns work, writes briefs, writes briefs, reviews every landing after the fact and reverts, owns the main watch and the quarantine; lands reverts. Executors land their own code through `scripts/land.sh`; the Architect pushes `.bboxy/` specs, decisions and invariants from its own worktree, and Creativity pushes `lab/web/` (each rebased onto origin/main, own commits only; gated on lab-check plus `ci-local --parity` at 0 mismatches in a clean worktree; a lab change that moves parity-checked geometry is handed to the Oracle to land together with its native follow-up, never alone). |
 | **Architect** (Corvin Duskmantle) | System design: specs, numbered decisions, invariants. Does not assign or implement. Pushes `.bboxy/` records only after the record checks pass in a clean worktree: `cargo test -p bbt-doc --locked --test corpus` and `cargo test -p bbt-mermaid --locked`; a Mermaid edit in `.bboxy` ships with its fixture (`crates/bbt-mermaid/tests/fixtures/bboxy/<spec>-<n>.mmd`) in the same commit. |
 | **Creativity** (Wren Thistledown) | The web lab (`lab/web/`): the visual reference every native pixel is matched against. |
-| **Executors** (Nyx, Rook, Sable, Aster, Kestrel, Velvet, Seraph) | Implement exactly the assigned brief, verify it, and hand off evidence. |
+| **Executors** (Nyx, Rook, Sable, Aster, Kestrel, Velvet, Seraph) | Implement exactly the assigned brief, land it with `scripts/land.sh`, and hand off the landing line and evidence. |
 
 Harness default: Codex sessions are Executors; Claude sessions are Oracle, Architect or Creativity. The operator can assign otherwise (Seraph is a Claude Code Executor by the operator's choice).
 
@@ -49,7 +49,7 @@ Who decides what:
 - **One writing worktree per Executor** (`~/mydev/bboxy450-term-execN`). Never write in the shared tree `~/mydev/bboxy450-term` unless your brief says so.
 - Stage by exact path. Never `git add -A`, `stash`, `reset` or autostash in a tree others use.
 - Every commit is signed with the machine key (already configured). Never `--no-gpg-sign`.
-- **Executors never push main.** Rebase onto `origin/main` before your exact gate. If main moves while the gate runs, do NOT rebase and re-gate: hand off the exact gated commit plus an evidence-only successor, and name what landed on main meanwhile. The Oracle verifies the merged tree, merges and pushes, and asks for a re-gate only when the new main overlaps your files.
+- **Code reaches `main` only through `scripts/land.sh`**, run by the author on their own branch; a hand push to `main` is a violation. Records reach it only through `scripts/records-push.sh`. See **Landing** below and `.bboxy/specs/landing.md`.
 - Work only inside your allowed files. If you hit a scope gap, DM the Oracle with the exact path and why, and continue the in-scope work meanwhile.
 - **Touch only what you own on this machine.** Never `pkill`, `killall` or kill by name or pattern; kill only PIDs you started yourself and recorded. Delete only directories you created. Peers' processes, targets, worktrees and `/tmp` dirs are theirs, even when they look stale: ask the owner. (A broad pkill and a stale-looking target deletion each broke a peer's gate on 2026-10-22.)
 - **Never drive the operator's desktop.** No `osascript`/System Events keystrokes or clicks, no `screencapture` of the screen, no AppleEvents to other apps: focus is the operator's, and injected keys land in whatever they have open (on 2026-10-22 an agent's Cmd+T and a typed shell loop went into the operator's Safari). Drive our app only through its own flags, sockets, `ctl` and `--capture`. A check that seems to need real hands is a design bug (see below), not a request to the operator.
@@ -71,18 +71,17 @@ The operator, 2026-10-24: "the entire app should be automatically testable and s
 - **Operator secrets**: the operator's login password is in `~/feral.txt` (mode 600), for unlocking only. Read it from that file, feed it on stdin only, and never print, log, commit, or pass them as a command-line argument. Prefer the automation identity, which needs no operator secret.
 - **Identity custody is cross-platform**: one facade with per-OS backends (macOS Keychain first; Linux and Windows as named backends), the same shape as the notifications family.
 
-## CI is local
+## Landing
 
-Before every handoff, run `sh scripts/ci-local.sh` (add `--parity` when lab, design, UI or renderer changed):
+Code reaches `main` only through `scripts/land.sh`, run by the author on their branch: it claims a slot (atomic, `/tmp/bboxy450-gate-slot-<n>`, three at 25 GiB free or more, else two, exit 75 when none is free), rebases onto `origin/main`, runs the **presubmit** (the touched crates and their transitive dependents, strict clippy on them, the fast invariants, the golden dispatch tests, the parity cases of touched components; **15 minutes, enforced**), fast-forward pushes your signed commits, appends to `.bboxy/runs/landings.log`, and posts `LANDED <sha>` to `#bboxy450-term`. It refuses while `.bboxy/runs/main-status` says red unless you are landing a revert. If `main` moves under you it re-checks only when the moved crates intersect yours. The pre-check before the slot is retired: presubmit is the check and it runs once, in your own target, wrappers clear, `CARGO_BUILD_JOBS=2`.
 
-- in a **clean detached worktree of the exact commit** you hand off (`git worktree add --detach /tmp/ci-<name> <sha>`);
-- with **its own `CARGO_TARGET_DIR`**;
-- then **delete that target**, because disk is tight.
-- and only in a **gate slot**: at most two full gates run at once, three while `df -g ~` shows at least 25 GiB free (three hit the 10 GiB floor when disk was low). `ci-local.sh` claims the slot itself, atomically (`/tmp/bboxy450-gate-slot-<n>`), and exits 75 when none is free, so retry later. Slots are self-service: if fewer gates than that limit are running (`pgrep -fl ci-local.sh`), take one, post `SLOT <n> TAKEN` with your SHA in #bboxy450-term, and post `SLOT RELEASED` with the exit when done. Never wait for a grant. Channel lines are prefix-matched only: a line BEGINS `SLOT <n> TAKEN`, `SLOT <n> RELEASED`, `QUIET <name> START, until <HH:MM TZ>` or `QUIET <name> END`; anything after is a note, and these words elsewhere in a line mean nothing. A quiet window closes only on its own `QUIET <name> END` from the key that opened it, or at its deadline; during it, let running gates finish and start nothing new. Keep one dev target per worktree and delete it at handoff.
+The **main watch** runs the full `sh scripts/ci-local.sh --parity` on `main` afterwards, in batches, outside the slots, and writes `.bboxy/runs/postsubmit.log` and `main-status`. A red main is **reverted first and fixed after**, never built upon: `culprit.sh` names the landing, `revert.sh` lands the revert. Nothing but a revert lands while main is red (invariant `main-red-bounded`).
 
-**No shared compile cache.** The global `~/.cargo/config.toml` routes rustc through one sccache server that stalls every agent's build; `ci-local.sh` and `invariants.sh` clear it, and every other cargo command here runs with `RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER=`.
+A test that fails under load and passes alone is a bug with an owner and a task, not a flake to retry forever. It may sit in `.bboxy/quarantine.md` for seven days while you fix it (`scripts/quarantine.sh add <test> --owner <you> --task <n>`), still running, still logged; a quarantined test that fails on an isolated retry is a failure. Timing-bound tests run in postsubmit only.
 
-**Pre-check before taking a slot**, in your own dev target with wrappers clear and `CARGO_BUILD_JOBS=2`: `cargo test --locked -p <each crate you touched> -p <its direct dependents>`, strict clippy on those crates, and `sh scripts/invariants.sh`. Not `--workspace`: ten agents each pre-checking the whole workspace drove load past 150 and became the chokepoint; the gate runs the whole workspace. A full gate is the last check, not the first.
+Land the day you claim or split the cut. Contract changes (`bbt-proto`, `ctl` verb tables, the gallery manifest) land alone and first. Before you start, `sh scripts/overlap.sh` shows which other branches touch your files. **No `QUIET` windows for measurement**: the 967-seat scale run is the night's, after the e2e night; the day uses a proxy inside a presubmit slot.
+
+**No shared compile cache.** The global `~/.cargo/config.toml` routes rustc through one sccache server that stalls every agent's build; `ci-local.sh`, `presubmit.sh` and `invariants.sh` clear it, and every other cargo command here runs with `RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER=`.
 
 Report the real exit code. A shared-tree run proves nothing: other agents' in-flight files leak into it.
 
@@ -94,6 +93,8 @@ Report the real exit code. A shared-tree run proves nothing: other agents' in-fl
 4. Evidence per acceptance line of the brief.
 5. What was not checked, and what you deliberately left alone.
 
-An Executor's report is a claim. The task is accepted only when the Oracle has verified it and pushed it.
+6. The `LANDED <sha>` line, or `land.sh`'s exit code and why.
+
+An Executor's report is a claim. A landing is accepted when the postsubmit is green on or after it and the Oracle's review of the landed code raised nothing; the Oracle reverts otherwise.
 
 We are inevitable.

@@ -11,12 +11,13 @@ operator:
 links:
   - { to: "[[no-chokepoints]]", rel: instance-of }
   - { to: "[[main-red-bounded]]", rel: constrains }
+  - { to: "[[landing]]", rel: decides }
   - { to: "[[d320-dispatch-by-noun]]", rel: builds-on }
   - { to: "[[d285-no-gated-communications]]", rel: builds-on }
   - { to: "[[never-block-swarm]]", rel: builds-on }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-25T16:18:56Z"
-updated: "2026-10-25T16:18:56Z"
+updated: "2026-10-25T16:22:41Z"
 ---
 # Decision 321: out of integration hell
 
@@ -50,6 +51,8 @@ Kept from the plan as right: the presubmit and postsubmit split, the 15-minute p
 ## Rules
 
 (1) **Presubmit**, in `land.sh`, on the candidate rebased onto `origin/main`: the affected crates' tests (touched plus transitive dependents), strict clippy on them, the fast invariants, and the golden tests of the dispatchers; bound 15 minutes; the slot is the existing atomic claim. The merged-tree run before landing is retired; the workspace runs once per change. (2) **Landing** is a fast-forward push of signed commits by the author's own key, never a squash the script signs, after presubmit held on that exact base, with the skip rule of point 3 when main moved, and refused while `main-status` is red except for a revert. (3) **Postsubmit** is the full `ci-local.sh --parity` on the newest main, continuous, batched, with culprit finding on red and the culprit's revert landed before anything else; invariant [[main-red-bounded]]. (4) **Quarantine** per point 5, the list a record in the tree with owner, task and date per entry. (5) **Scale measurement** per point 4, scheduled and never a window. (6) **Size**: a cut lands the day it is claimed or is split. (7) The Oracle reviews landed code after the fact and reverts; the Architect records; Executors land their own cuts. `AGENTS.md` changes accordingly, by the Oracle.
+
+**The process, the script contracts and the `AGENTS.md` text** are [[landing]] (#323), written at the operator's word that the Architect leads this one.
 
 **Gaps left open.** The daytime proxy size; the presubmit slot count once the pre-check and gate collapse into one run (more slots at two cargo jobs each is the first guess); the culprit finder's rerun count. Each is set from the first week's `landings.log`, not now.
 
