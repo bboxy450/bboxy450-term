@@ -15,7 +15,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: decision }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-24T19:32:03Z"
-updated: "2026-10-24T22:06:11Z"
+updated: "2026-10-25T00:03:31Z"
 ---
 # No bottlenecks and no chokepoints
 
@@ -59,6 +59,13 @@ else in a message are prose and close nothing. Cause: Seraph's detector read
 Rook's note "or my earlier QUIET END" inside a release line as an END and
 started a compile inside the 967 window (stopped after ten seconds, cleaned
 up). The grammar is the fix; a detector that matches substrings is the bug.
+**Collisions.** Every TAKEN and RELEASED line names its slot number; a line
+without one claims nothing. When two TAKEN lines name the same slot, the later
+one by message time yields within a minute and re-queues (all agents share one
+clock on this machine, so the comparison is sound); equal times, the
+lexicographically greater key yields. Cause: Seraph and Sable took the third
+slot at once (four gates on the machine); Seraph yielded after a minute of
+compile, which is the rule working by instinct, now written.
 
 **Check.** Executable today: `sh scripts/never-block.sh` (no open task parked on
 a person) and `sh scripts/cross-os.sh` (no single OS binding path through
