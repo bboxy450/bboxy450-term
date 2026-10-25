@@ -15,28 +15,39 @@ links:
   - { to: "[[seats-967-frame]]", rel: unblocks }
   - { to: "[[mux-daemon]]", rel: constrains }
 created: "2026-10-25T09:54:49Z"
-updated: "2026-10-25T10:14:41Z"
+updated: "2026-10-25T11:48:44Z"
 ---
 # Ring reads are batched
 
-**Property.** Logic's ring read (`ReadRing`) toward the supervisor is batched or
-pipelined: one catch-up pass over N seats with pending ring data costs a number
-of supervisor round trips bounded by the page budget and the lane quota of
-[[d253-checkpoint-policy]], not by N; a request carries many seats, replies may
-be in flight at once, and no seat's read waits on another seat's reply having
-returned. The 6 824 serial RPCs that motivated this are evidence; the gate is a
+**Property.** Logic's ring read toward the supervisor is batched: one catch-up
+pass over N seats with pending ring data costs at most `ceil(N / 8)` supervisor
+round trips, never N (967 seats: at most 121 requests, zero singleton calls
+from the hot sweep); a request carries up to eight seats, every member is
+admitted before any waiting, a refused member fails alone without blocking or
+advancing the others, and the final cursors and Screens are exactly the ones
+the singleton path produced. The 6 824 serial RPCs that motivated this are evidence; the gate is a
 round-trip count under a fixed fixture, because a count does not depend on the
 machine.
 
-**Protocol shape.** *Open: filled from Sable's design when it is accepted.* The
-request and reply forms, the batch bound, how the watched and background lanes
-of [[watched-replay-priority]] share a batch, and the error form for a seat
-that is gone mid-batch go here, in words, before the test is named final.
+**Protocol shape (Sable's design, the Oracle's ruling, 2026-10-25).** One new
+request and one new reply beside the existing singleton: `ReadRingBatch {
+reads: [(attachment, from, to)], max_bytes }` to the supervisor and
+`RingHistoryBatch { results: [(seat, generation, from, to, Result<History,
+Failure>)] }` back. A batch has at most **8 members** and at most **768 KiB
+encoded**; every member is admitted before any waiting begins; each member
+fails on its own with `Gone`, `Stale`, `Busy` or `Limit`, so a batch never
+carries an oversize frame and never advances a refused member's cursor; a batch
+is charged against the existing 128 pending-IO slots, not a new pool. The
+reply is one aggregate per batch, coupling bounded by the 8; streamed replies
+only if a measurement asks for them. Logic prefetches one bounded group per
+host in the 3 : 1 lane order of [[watched-replay-priority]] and still applies
+one page per turn. The singleton `ReadRing` stays for explicit history and
+recovery reads and leaves the hot sweep.
 
 **Check.** `cargo test -p bbt-mux --locked --test logic ring_reads_are_batched -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
-— exit 0 held. **Pending** until Sable's batched or pipelined `ReadRing` lands
-with that test (a fixture of many seats with pending data asserting the
-round-trip count against the bound); if the landing commit names the test
+— exit 0 held. **Pending** until Sable's batched `ReadRing` lands with that test
+(967 seats with pending data: at most 121 batched requests, zero singleton
+hot-sweep calls, exact final cursors and Screens); if the landing commit names the test
 differently it edits this line and the README row in the same commit, and the
 Oracle flips `status` on acceptance. Until then the gate is listed as pending
 and runs nowhere: `slow: true` and `gate: pending-ring-reads-batched` keep it out of
