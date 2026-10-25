@@ -165,3 +165,18 @@ strict-clippy-3: EXIT101 at service.rs operator reference initializer, unwrap_or
 Rebased native method proof: 29/29 selected production methods byte-equal against 0e0e9d2e, /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/native-body-proof-rebased-v2.json SHA256 4150052c53102c3d070f618f26182c461252bd9f5113a487be7057df43b4a10d. First proof extractor mistakenly included the following free audit function in published; its false failure is retained in native-body-proof-rebased.json. v2 isolates each method through its own closing brace.
 
 strict-clippy-4 on b92af9e1568bf3bfc2f09686355f28034fe52b30 EXIT101 /15.026659792 s, raw strict-clippy-4.log SHA256 60b1715e2807048f90844cadb6a9f7741e67f1df2a700937f96358d27039954a in the same private root. One redundant borrow exposed by the fixture field-to-getter port; removed that borrow and the two identical whole-envelope patterns in identity/mcp fixtures. No product or assertions changed. Subsequent workspace/invariant stages were not started.
+
+## First workspace preflight result
+
+Source 69e81912dce0140a2f359bb64a5ef836bbb6598d
+Command cargo clippy --workspace --all-targets --locked -- -D warnings
+EXIT 0; elapsed 66.1194294160232 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/strict-clippy-5.log SHA256 042a5e52259c1cd07dffbb3c098d89ce8b5b02f88db538a054ae2cdd34fad4c5
+
+Source 69e81912dce0140a2f359bb64a5ef836bbb6598d
+Command cargo test --workspace --locked
+EXIT 101; elapsed 1571.6752715419861 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/workspace-5.log SHA256 65e97c24030124236f378f56e292032c9643c1b0437c10f339fc2d6d744c993d
+
+Strict all-target workspace Clippy passed. Workspace stopped at mcp::gui_operator_dm_replays_once_and_tasks_share_mcp_verification: journal actor.device_id was Null vs the fixture's later-created device ID. Fixture::new starts logic before prepare_operator installs a device, so NG1 correctly minted its immutable OperatorLocal reference first. The fixture now checks that non-device reference in the journal and message row after restart, while the signed envelope, device/grant/signature and task delegation authority assertions remain intact. No product policy, scope, deadline or assertion was removed. The first workspace MCP group was 48 passed / 1 failed / 3 ignored; downstream tests and invariant stage did not run.
+Oracle 47102d24 received: finish NG1 preflight, then one O3/debug-assertions/memory frame attempt on exact merged main 2ad1d73315a27d6280dcc97a2cb44fe47958e1dc in a self-called quiet window after active gates drain; load<8, disk>=10GiB, one attempt only. Frame source/guard scripts are prepared without build or run at /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-cmdloop-frame-21ls51yx.

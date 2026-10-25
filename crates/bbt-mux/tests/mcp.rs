@@ -411,7 +411,15 @@ fn gui_operator_dm_replays_once_and_tasks_share_mcp_verification() {
     let entry: Value =
         serde_json::from_slice(&account.get(&format!("control/op/{id}")).unwrap().unwrap())
             .unwrap();
-    assert_eq!(entry["actor"]["device_id"], json!(device));
+    // This fixture installs the device after Logic::start. Its already-minted
+    // account-local messaging principal survives that later enrolment.
+    let reference: bbt_proto::messaging::OperatorReference = serde_json::from_slice(
+        &account.get("messaging/operator-reference").unwrap().unwrap(),
+    ).unwrap();
+    assert_eq!(reference.kind, bbt_proto::messaging::OperatorReferenceKind::OperatorLocal);
+    assert_ne!(reference.id, device);
+    assert_eq!(entry["actor"]["reference"], json!(reference));
+    assert!(entry["actor"].get("device_id").is_none());
     assert_eq!(entry["tool"], "gui_messaging");
     let inbox = f.call(f.own.id, Ulid::new(), "message_list", json!({"limit":128}));
     assert!(!inbox["isError"].as_bool().unwrap(), "{inbox}");
@@ -460,8 +468,8 @@ fn gui_operator_dm_replays_once_and_tasks_share_mcp_verification() {
         );
         std::thread::sleep(Duration::from_millis(10));
     };
-    assert_eq!(row.author.kind, AuthorKind::Operator);
-    assert_eq!(row.author.id, device.to_string());
+    assert_eq!(row.author.kind, AuthorKind::OperatorLocal);
+    assert_eq!(row.author.id, reference.id.to_string());
     assert_eq!(
         row.issuer_kind,
         Some(bbt_mux::messaging::wire::IssuerKind::LocalDev)
