@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use ulid::Ulid;
 
 use crate::bus::Consumer;
@@ -119,8 +119,11 @@ impl SeatEndpoint {
                                 crate::ctl_door::Admit::Refused(reason)=> {
                                     peers.spawn(async move {
                                         let _permit=permit;
-                                        let (_read,mut write)=stream.into_split();
-                                        let _=send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:reason.into()}).await;
+                                        let (read,mut write)=stream.into_split();
+                                        let mut read=BufReader::new(read);
+                                        if let Err(error)=refuse_gui(&mut read,&mut write,reason).await {
+                                            eprintln!("GUI refusal ended: {}",gui_session_error_reason(&error));
+                                        }
                                     });
                                     continue;
                                 }
@@ -171,6 +174,31 @@ impl SeatEndpoint {
         });
         Ok(Self { task, _file: file })
     }
+}
+
+/// Finish the bounded request before closing its read side, so a refused peer
+/// can finish writing and read the explanation instead of losing it to EPIPE.
+async fn refuse_gui(
+    read: &mut (impl AsyncBufRead + Unpin),
+    write: &mut (impl AsyncWrite + Unpin),
+    reason: &'static str,
+) -> Result<()> {
+    // This is a hang watchdog, not a delay: a complete NDJSON frame drives progress.
+    let frame = tokio::time::timeout(Duration::from_secs(10), read_line(read))
+        .await??
+        .ok_or_else(|| invalid("refused GUI peer closed before its request"))?;
+    drop(frame);
+    send(
+        write,
+        &GuiReply::Error {
+            op: Ulid::nil(),
+            reason: reason.into(),
+        },
+    )
+    .await?;
+    write.flush().await?;
+    write.shutdown().await?;
+    Ok(())
 }
 
 fn gui_session_error_reason(error: &crate::store::Error) -> String {
@@ -1202,7 +1230,7 @@ pub async fn read_line(reader: &mut (impl AsyncBufRead + Unpin)) -> Result<Optio
     }
 }
 
-async fn send(writer: &mut tokio::net::unix::OwnedWriteHalf, value: &impl Serialize) -> Result<()> {
+async fn send(writer: &mut (impl AsyncWrite + Unpin), value: &impl Serialize) -> Result<()> {
     let mut bytes = serde_json::to_vec(value)?;
     if bytes.len() >= MAX_LINE {
         return Err(invalid("response exceeds negotiated frame bound"));
@@ -1311,6 +1339,36 @@ mod gui_tests {
         logic::{Logic, LogicConfig},
         registry::SeatRecord,
     };
+
+    #[tokio::test]
+    async fn refusal_drains_the_complete_request_before_half_closing() {
+        tokio::time::timeout(Duration::from_secs(10), async {
+            // The request cannot fit before the server reads. The refusal can fit.
+            let (client, server) = tokio::io::duplex(512);
+            let (read, mut write) = tokio::io::split(server);
+            let refused = tokio::spawn(async move {
+                refuse_gui(
+                    &mut BufReader::new(read),
+                    &mut write,
+                    crate::ctl_door::REFUSAL,
+                )
+                .await
+            });
+            let (read, mut write) = tokio::io::split(client);
+            let mut request = vec![b' '; 4096];
+            request.extend_from_slice(b"{}\n");
+            write.write_all(&request).await.unwrap();
+            let mut read = BufReader::new(read);
+            let bytes = read_line(&mut read).await.unwrap().unwrap();
+            let reply: GuiReply = serde_json::from_slice(&bytes).unwrap();
+            assert!(matches!(reply, GuiReply::Error {op,reason}
+                if op.is_nil() && reason == crate::ctl_door::REFUSAL));
+            assert!(read_line(&mut read).await.unwrap().is_none());
+            refused.await.unwrap().unwrap();
+        })
+        .await
+        .expect("a complete bounded request must receive its refusal and EOF");
+    }
 
     #[tokio::test]
     async fn busy_gui_poll_and_locked_cursor_keep_the_session_and_queued_events() {

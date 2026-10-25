@@ -109,8 +109,8 @@ impl EventLog {
         let log = Self {
             path: directory.join("events.sqlite"),
         };
-        let db = sqlite::open(&log.path)?;
-        db.execute_batch("CREATE TABLE IF NOT EXISTS version(version INTEGER NOT NULL);
+        let mut db = sqlite::open(&log.path)?;
+        sqlite::ensure_schema(&mut db, "CREATE TABLE IF NOT EXISTS version(version INTEGER NOT NULL);
           INSERT INTO version SELECT 1 WHERE NOT EXISTS(SELECT 1 FROM version);
           CREATE TABLE IF NOT EXISTS events(seq INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE, ts INTEGER NOT NULL,
             subject TEXT NOT NULL, source TEXT NOT NULL, payload BLOB NOT NULL, signer BLOB NOT NULL, sig BLOB NOT NULL, prev TEXT NOT NULL, hash TEXT NOT NULL);
@@ -120,11 +120,7 @@ impl EventLog {
           CREATE TABLE IF NOT EXISTS consumers(name TEXT PRIMARY KEY, filter TEXT NOT NULL, cursor INTEGER NOT NULL, acked INTEGER NOT NULL, deliver TEXT NOT NULL, policy TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS pending(consumer TEXT NOT NULL REFERENCES consumers(name), seq INTEGER NOT NULL REFERENCES events(seq), delivered_at INTEGER NOT NULL, deliveries INTEGER NOT NULL, PRIMARY KEY(consumer,seq));
           CREATE TABLE IF NOT EXISTS stream(first_seq INTEGER NOT NULL,cold TEXT);
-          INSERT INTO stream SELECT 1,NULL WHERE NOT EXISTS(SELECT 1 FROM stream);")?;
-        let version: i64 = db.query_row("SELECT version FROM version", [], |r| r.get(0))?;
-        if version != 1 {
-            return Err(invalid("unsupported event schema"));
-        }
+          INSERT INTO stream SELECT 1,NULL WHERE NOT EXISTS(SELECT 1 FROM stream);", "unsupported event schema")?;
         drop(db);
         log.verify_chain()?;
         Ok(log)

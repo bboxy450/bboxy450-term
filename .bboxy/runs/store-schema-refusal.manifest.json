@@ -1,0 +1,141 @@
+{
+  "source": "c7581271013e532b2f0e8ae43c3b8e713ba18d85",
+  "base": "1f970e11",
+  "gate": {
+    "exit": 0,
+    "elapsed": 1858.1652932080324,
+    "finished": "2026-10-25T11:39:21.704455+00:00"
+  },
+  "command": {
+    "args": [
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "cwd": "/private/tmp/sable-task-night-ym27dc8j/store-final-worktree",
+    "target": "/Users/feral/mydev/bboxy450-term-exec3/target/task-night",
+    "sha": "c7581271013e532b2f0e8ae43c3b8e713ba18d85",
+    "pid": 6130,
+    "started": "2026-10-25T11:08:23.540432+00:00",
+    "custody": "memory",
+    "wrappers": "cleared",
+    "jobs": 2,
+    "stable_target_reused_after_prechecks": true
+  },
+  "artifacts": {
+    "store-ci-2.log": {
+      "bytes": 212141,
+      "sha256": "09a6b04a50f9f5815910f76d38885c0c90550199533ced71e63f8cec38817299"
+    },
+    "store-ci-2.command.json": {
+      "bytes": 426,
+      "sha256": "f25e9b7be639a7e91b5f1696a7c98dafdda92c0f926f1c4d6585fb20ab30a0dc"
+    },
+    "store-ci-2.result.json": {
+      "bytes": 99,
+      "sha256": "c76eb332f4ee51e43fd815d084b061d18dbe9fbb67a21e3fd78619d7507d4c70"
+    },
+    "store-ci-2-workspace-summary.json": {
+      "bytes": 254,
+      "sha256": "861992ad7825f4be28ff548051c66b7746e9eea0adf1efff53acbcaff9bf4894"
+    },
+    "store-refusal-precheck.log": {
+      "bytes": 95576,
+      "sha256": "1f215916f9627409da1154408bcea564fcd15fca668e1804a5225edf8f5bbefb"
+    },
+    "store-refusal-precheck.result.json": {
+      "bytes": 98,
+      "sha256": "23418e866459774a9a9b0ba31bb4ca7b538677b0534c671d6f815d57b0517422"
+    },
+    "store-refusal-precheck-summary.json": {
+      "bytes": 243,
+      "sha256": "49ff58266491f2341f194611edebea44d7b864386de04aff5f56bdcc38d94499"
+    },
+    "store-refusal-clippy.log": {
+      "bytes": 834,
+      "sha256": "ea3277a57229412705537afee0c30fb9b6d61b03a119481d0673fcdb84cf7418"
+    },
+    "store-refusal-clippy.result.json": {
+      "bytes": 98,
+      "sha256": "3ddea9334c998d30b8f07d12a2c3d76a08e2afd308e0d077bfd567bcec3f9131"
+    },
+    "store-refusal-invariants.log": {
+      "bytes": 4677,
+      "sha256": "62f5a32fc28ba5f48f9948f34aaa3817bca5a9541df274829bd38733f4c8721b"
+    },
+    "store-refusal-invariants.result.json": {
+      "bytes": 98,
+      "sha256": "f51fb8d6f20e3681c94e843939f3f1e08874500ce6c82157d3db300793c8887f"
+    },
+    "schema-readonly-red.log": {
+      "bytes": 4878,
+      "sha256": "2b9b6902fd6a8e59bdc84bd2279b614edeaabe1829b2c7fdb82023b02991d621"
+    },
+    "schema-readonly-red.result.json": {
+      "bytes": 100,
+      "sha256": "697abd7f3f1c2795ab2ad4d8e05670cc5e751a558548faa85b00a793ed5ea764"
+    },
+    "schema-readonly-green.log": {
+      "bytes": 655,
+      "sha256": "4a317f7d7697c666438382653c9c2335fe84f1c51bf5b3a16a71d7763bb688a9"
+    },
+    "schema-readonly-green.result.json": {
+      "bytes": 97,
+      "sha256": "822871d9262ddbb5ceab9c34f4ffb05195ec9d89194ce005e89f65bd96c35915"
+    },
+    "real-ctl-barrier-green.log": {
+      "bytes": 756,
+      "sha256": "37606cbd663ce5b91200498543eaaa2e1b5290538ce36ac5e32fcc2316ca3072"
+    },
+    "real-ctl-barrier-green.result.json": {
+      "bytes": 99,
+      "sha256": "b4b611d6a935df2045176385dc52dd19e03cce9942adb0b60609aaa9e8d83551"
+    },
+    "firehose-cache-rebuilt.log": {
+      "bytes": 1065,
+      "sha256": "d54c168e1511a7b856f8a0b7cf99b6ce539ccc5d8149458d9e2e153a625a5e7a"
+    },
+    "firehose-cache-rebuilt.result.json": {
+      "bytes": 98,
+      "sha256": "7dbe891fdf60ae2d1dae537982b48ade16a502a8b3fb5cd15e00a4d3199be5a3"
+    },
+    "workspace-refusal-final.log": {
+      "bytes": 191990,
+      "sha256": "a93b4da7adf3b561769e55e1c7c994751d34620dd669a3d5fa6b2fbd86f8e370"
+    },
+    "workspace-refusal-final.result.json": {
+      "bytes": 101,
+      "sha256": "c22f56d29b2a50387a861a9e934ee3b3ba27d6605ef756eba6c1cd5de8938512"
+    },
+    "cache-relocation-diagnosis.json": {
+      "bytes": 435,
+      "sha256": "5be466c76f412d4c294fb83f6ca19e5756bd90cd74ae1a174357cde12d2a9048"
+    },
+    "store-ci.log": {
+      "bytes": 118518,
+      "sha256": "11f8191eeda67df078c6c09d7b290b25bf77ce312a103ae9f6996b5609f758d2"
+    },
+    "store-ci.result.json": {
+      "bytes": 99,
+      "sha256": "f37b00425c96ae2d68762b54e4ac6535d7b2ff042ffba89dfe98e915cc2a28d2"
+    },
+    "bin/bboxy450-term-store-c7581271": {
+      "bytes": 54557728,
+      "sha256": "4a8a672deef64a05447563976b929b5878bf622bfcb5399d331281ef957b69e8"
+    }
+  },
+  "code": {
+    "crates/bbt-mux/src/seat_socket.rs": "14702d4077b5439b886fd6c2e667a6a2074a463d64884d30357eb6eefa9d0739",
+    "crates/bbt-mux/src/store/sqlite.rs": "f9697ec863795d1c2a23cd9337e886426ab65ce7ac585a48c33b07ddfc228f67",
+    "crates/bbt-mux/src/store/events.rs": "55f22885cb23d404f1e7a7b1b032984d082221794bc9478112f23c6f720ad6da",
+    "crates/bbt-mux/tests/gui_endpoint.rs": "9a2467565c3b338e8ad963e79afe0665f2a702cdeb2bc12f9526b1ef0f450e6a",
+    "crates/bboxy450-term/tests/ctl.rs": "9112c72504fba637675ad3e171074e478ad5431ef704f2b8e7c1cd5ffb001570"
+  },
+  "known_new_main": "ee7a00d8",
+  "cleanup": {
+    "lsof_exit": 1,
+    "allocated_cache_bytes_removed": 5117448192,
+    "target_absent": true,
+    "binary_preserved": "/private/tmp/sable-task-night-ym27dc8j/bin/bboxy450-term-store-c7581271",
+    "at": "2026-10-25T11:39:36.170723+00:00"
+  }
+}

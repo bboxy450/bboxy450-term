@@ -942,6 +942,116 @@ fn ctl_in(run: &Path, cwd: &Path, args: &[&str]) -> (bool, Vec<Value>) {
     (output.status.success(), lines)
 }
 
+#[tokio::test]
+async fn real_ctl_keeps_a_refusal_that_interrupts_its_request_write() {
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+    struct ResumeOnDrop(Option<libc::pid_t>);
+    impl Drop for ResumeOnDrop {
+        fn drop(&mut self) {
+            if let Some(pid) = self.0 {
+                // SAFETY: this is only the fixture's stopped, unreaped child.
+                unsafe { libc::kill(pid, libc::SIGCONT) };
+            }
+        }
+    }
+
+    tokio::time::timeout(Duration::from_secs(10), async {
+        let root = tempfile::Builder::new()
+            .prefix("ctl-refusal-")
+            .tempdir_in("/tmp")
+            .unwrap();
+        let path = root.path().join("door.sock");
+        let listener = tokio::net::UnixListener::bind(&path).unwrap();
+        let endpoint = root.path().join("endpoint.json");
+        std::fs::write(
+            &endpoint,
+            json!({"path":path,"capability":"00".repeat(32)}).to_string(),
+        )
+        .unwrap();
+        std::fs::set_permissions(&endpoint, std::fs::Permissions::from_mode(0o600)).unwrap();
+
+        let child = tokio::process::Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+            .args(["ctl", "--endpoint"])
+            .arg(&endpoint)
+            .args(["--as", "refusal fixture", "seat", "ls"])
+            .env_remove("BBOXY_CTL_ISSUER")
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .kill_on_drop(true)
+            .spawn()
+            .unwrap();
+        let pid = child.id().unwrap() as libc::pid_t;
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut stream = BufReader::new(stream);
+        let mut line = String::new();
+        stream.read_line(&mut line).await.unwrap();
+        let request: bbt_proto::GuiRequest = serde_json::from_str(&line).unwrap();
+        assert!(
+            matches!(request.action, GuiAction::Issuer { label } if label == "refusal fixture")
+        );
+
+        // Issuer must be acknowledged before ctl can send ListSeats. Stop our
+        // own child at that protocol barrier, close the peer, then resume it:
+        // the next request is guaranteed to encounter an already-closed peer.
+        // SAFETY: pid came directly from our still-owned, unreaped Child.
+        assert_eq!(unsafe { libc::kill(pid, libc::SIGSTOP) }, 0);
+        let mut resume = ResumeOnDrop(Some(pid));
+        loop {
+            let mut status = 0;
+            // SAFETY: status is writable and waitpid targets only our child.
+            let result =
+                unsafe { libc::waitpid(pid, &mut status, libc::WUNTRACED | libc::WNOHANG) };
+            if result == pid {
+                assert!(
+                    libc::WIFSTOPPED(status),
+                    "ctl exited before the barrier: {status}"
+                );
+                break;
+            }
+            if result < 0 {
+                let error = std::io::Error::last_os_error();
+                assert_eq!(error.kind(), std::io::ErrorKind::Interrupted, "{error}");
+            }
+            tokio::task::yield_now().await;
+        }
+        let mut replies = Vec::new();
+        for reply in [
+            GuiReply::Ok {
+                op: bbt_mux::Ulid::nil(),
+            },
+            GuiReply::Error {
+                op: bbt_mux::Ulid::nil(),
+                reason: bbt_mux::ctl_door::REFUSAL.into(),
+            },
+        ] {
+            serde_json::to_writer(&mut replies, &reply).unwrap();
+            replies.push(b'\n');
+        }
+        stream.write_all(&replies).await.unwrap();
+        stream.flush().await.unwrap();
+        stream.shutdown().await.unwrap();
+        drop(stream);
+        // SAFETY: the fixture still owns this stopped, unreaped child.
+        assert_eq!(unsafe { libc::kill(pid, libc::SIGCONT) }, 0);
+        resume.0 = None;
+        let output = child.wait_with_output().await.unwrap();
+        assert_eq!(
+            output.status.code(),
+            Some(1),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let reply: Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(reply["error"]["kind"], "ancestry_refused", "{reply}");
+        assert_eq!(reply["error"]["message"], bbt_mux::ctl_door::REFUSAL);
+        assert!(!String::from_utf8_lossy(&output.stdout).contains("Broken pipe"));
+        assert!(!String::from_utf8_lossy(&output.stderr).contains("Broken pipe"));
+    })
+    .await
+    .expect("real ctl must finish with the named refusal, not a write error");
+}
+
 /// A wrong capability is refused with the reason, which ctl prints, not a closed socket.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_wrong_capability_is_refused_with_its_reason() {
