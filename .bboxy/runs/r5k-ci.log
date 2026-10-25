@@ -1,0 +1,39 @@
+R5k wake coalescing — exact normal CI and handoff
+Rook Ashwhisker <EXECUTOR>
+Signed gated source: 53c5d8bc7ac03baeb91c4e1e3726c1b488aae79f
+Branch/worktree: rook-r5k-wake /Users/feral/mydev/bboxy450-term-rook
+Gated base: 774f64a8b1fa70b09f58df0872246c5d6dc89b59
+Task: authenticated Oracle8d54c8d3-2c1b-4333-835c-9631607f1b56 +9ff2211e-7c88-426e-aa9f-7fa6168e7d82; normal CI, no new967 attempt.
+
+Commands and verdicts:
+git rebase origin/main — exit0, automatically preserved Aster placement changes. Rebased signed source53c5d8bc; git verify-commit — exit0, Boxy machine9B07E849480C68328CA20684844ECC0587DE7AB0.
+sh scripts/ci-local.sh — exit0; elapsed_s=1824.929486124951
+Clean detached tree: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5k-wake-2i72fryk/ci-tree
+Own target: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5k-wake-2i72fryk/ci-target
+Cache provenance: own inactive dev cache moved here after lsof1/no rows; clean source worktree; no shared cache
+Environment: {"BBOXY_TEST_CUSTODY": "memory", "CARGO_BUILD_JOBS": "2", "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true", "CARGO_PROFILE_TEST_OPT_LEVEL": "1", "CARGO_TARGET_DIR": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5k-wake-2i72fryk/ci-target", "RUSTC_WRAPPER": ""}
+Atomic slot1; actual sh PID86134; started 2026-10-25T13:48:04Z
+layering: held; cargo build --workspace --locked:0; strict cargo clippy --workspace --all-targets --locked -- -D warnings:0; cargo test --workspace --locked:0 (205 result groups,1447 passed/0 failed/29ignored); scripts/ui-lint.sh:0; app smoke build:0; headless smoke:0; scripts/invariants.sh:0. Stage exit0 follows set -eu reaching ci-local: all gates passed, not a grep-only success claim.
+Headless smoke: windows=0, explicit selector=memory custody (debug); idle passed frames0 callbacks0 seconds10.000; cockpit children reaped, headless GUI stopped Ok. No operator input or keychain prompt.
+invariants:25 checks,0 failures,9 named slow checks skipped. No --parity/--slow; no geometry or967 timing claim.
+Tracked inputs verified unchanged across gate; final gated status empty.
+Full raw log: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5k-wake-2i72fryk/ci.log
+Raw log SHA256: 8d0d7a5cd748cd241459e8b259aec4b27ae09e6642912fc0dc32e9436b7bd68d
+Raw result: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5k-wake-2i72fryk/ci.result.json
+
+Source mechanisms (relative to gated source):
+crates/bboxy450-term/src/main.rs:3343 — logical paint demand persists until an actual draw; :3370 — separate queued bit bounds outstanding native callbacks; :3538 — bounded memory-only raw notice drain re-arms a remaining tail without painting; :3830 — mixed tick/data ordering; :4574 — only queued callback retires at entry, demand survives tickless/missing drawable; successful draw clears demand.
+crates/bboxy450-term/src/main.rs:7104 —1000 publications between2ticks schedule at most2 logical native callbacks, project newest model once, preserve pending at actual redraw entry;1000 raw notices do not paint; GPU-ready and smoke preparation remain serviceable.
+crates/bboxy450-term/src/display_link.rs:36 — raw0/1 drain without paint while mixed tick/model remains visible; headless.rs:299 mirrors the nonpaint split.
+crates/bboxy450-term/src/stall.rs:234 — bounded16-source scheduled/coalesced/tickless counts; :464/:900 — serialized frame CPU endpoints join callback slices with frame IDs.
+crates/bbt-rt/src/diagnostics.rs:259 — opt-in callback tracker at existing CPU clocks; diagnostics/callbacks.rs — fixed16-depth and8-kind exclusive CPU accounting, callback IDs/endpoints/largest slice, explicit outside/error fields, null initial gap. Disabled hooks allocate/read no clock.
+No Cargo dependencies/lock changes; no ring/protocol/ingest/checkpoint/watched-lane/clock edits; unchanged1GB load fixture.
+
+Precheck provenance: .bboxy/runs/r5k-prechecks.log lists every command/log hash. Scoped747/0/29ignored, strict0, default invariants25/0/9slow, callback units3/0. Final strengthened App2/0 and strict0. Intentional old-entry-reset mutation EXIT101 with tickless return retired paint demand; exact fixed main restored, then green. That101 is a local mutation control, not an original-commit baseline.
+
+Main moved during the gate: current origin/main=3282d55834089e8bc7a615eacce15a74b4c8bc19. Includes Settings Plugins/Knowledge0eeabc95 and record3282d558. The main.rs delta is14 added/1 removed lines in Settings/knowledge observation, separate from the redraw hunks; no merged-tree runtime claim. Per AGENTS do not rebase/re-gate a completed exact commit merely because main advanced; Oracle verifies the union. Velvet animation clock remains peer-owned, no borrowed WIP.
+
+Cleanup: recorded gate PID86134 gone (ps1/no rows); lsof +D own target1/no rows; deleted only own inactive target and clean detached tree. Allocated bytes retired=5076131840; free before=44203515904; free after=49165008896. Raw logs, runner/state/hashes retained in /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5k-wake-2i72fryk. No build cache or gate/app owned by R5k remains.
+Slot1 release post: 8acd7b92-742b-4217-9258-3965393e3188 (own room stored/live forwarding scheduled; not model receipt).
+
+Acceptance limits: coalescing/latest-model and callback-CPU join are regression-proven; full normal CI held. No R5k scale attempt, no claimed CPU budget win or controlled speedup. Next967 measurement awaits both this change and Sable batching on accepted main, as briefed. Source task implementation is handed off; acceptance/merge remains the Oracle role.

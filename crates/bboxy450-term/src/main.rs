@@ -1594,6 +1594,7 @@ struct App {
     idle_scheduled: bool,
     idle_quiet: IdleQuiescence,
     redraw_pending: std::cell::Cell<bool>,
+    redraw_queued: std::cell::Cell<bool>,
     last_update: usize,
     error: Option<String>,
     capture: Option<std::path::PathBuf>,
@@ -1747,6 +1748,7 @@ impl App {
             idle_scheduled: false,
             idle_quiet: IdleQuiescence::default(),
             redraw_pending: std::cell::Cell::new(false),
+            redraw_queued: std::cell::Cell::new(false),
             last_update: 0,
             error: None,
             capture,
@@ -3353,14 +3355,38 @@ impl App {
     }
     fn request_redraw_sources(&self, sources: &[usize]) {
         self.wake_counters.borrow_mut().redraw(sources);
-        self.redraw_pending.set(true);
+        let first = !self.redraw_pending.replace(true);
         if !self.occluded
             && let Some(pacer) = &self.pacer
         {
             pacer.request_frame();
         }
+        // Paint demand survives a tickless callback. Only a tick, GPU-ready
+        // notice or direct window action can request its next delivery. FIFO
+        // and inactive CV paths have no future Metal tick to wait for.
+        let explicit = sources.iter().any(|source| {
+            matches!(
+                *source,
+                2 | display_link::TICK_SOURCE | stall::DIRECT_REDRAW_SOURCE
+            )
+        });
+        let unpaced = self
+            .pacer
+            .as_ref()
+            .is_some_and(|pacer| pacer.is_fifo() || (!pacer.is_metal() && !self.animate));
+        if first || explicit || unpaced {
+            self.queue_redraw(sources);
+        } else {
+            self.wake_counters.borrow_mut().coalesced(sources);
+        }
+    }
+    fn queue_redraw(&self, sources: &[usize]) {
+        if self.redraw_queued.replace(true) {
+            self.wake_counters.borrow_mut().coalesced(sources);
+            return;
+        }
+        self.wake_counters.borrow_mut().scheduled(sources);
         if let Some(window) = &self.window {
-            self.redraw_pending.set(true);
             window.request_redraw();
         }
     }
@@ -3522,13 +3548,7 @@ impl App {
         }
         Ok(())
     }
-    fn drain(&mut self) -> Vec<usize> {
-        let _measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::UiDrain);
-        if let Some(stall) = &self.stall {
-            stall.drain();
-        }
-        let sources = self.inbox.dirty.drain();
-        self.wake_counters.borrow_mut().drained(&sources);
+    fn drain_runtime_notices(&self) {
         let start = Instant::now();
         while start.elapsed() < Duration::from_millis(1) {
             let message = self.inbox.messages.try_recv();
@@ -3542,6 +3562,23 @@ impl App {
                     .write(format!("task {} exited {:?}", task.id(), status.code));
             }
         }
+        // A budgeted drain must make progress even if the producer has stopped.
+        // These memory-only queues are not inputs to the visible scene.
+        if !self.inbox.messages.is_empty() {
+            self.inbox.dirty.source(0).mark();
+        }
+        if !self.inbox.output.is_empty() {
+            self.inbox.dirty.source(1).mark();
+        }
+    }
+    fn drain(&mut self) -> Vec<usize> {
+        let _measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::UiDrain);
+        if let Some(stall) = &self.stall {
+            stall.drain();
+        }
+        let sources = self.inbox.dirty.drain();
+        self.wake_counters.borrow_mut().drained(&sources);
+        self.drain_runtime_notices();
         if let Some(sequence) = self.updates.take() {
             self.scene.update(sequence);
             self.last_update = sequence;
@@ -3804,6 +3841,9 @@ impl App {
     }
     /// Both a Wake and a ctl read can consume the coalesced data/tick sources.
     fn dispatch_wake_sources(&self, sources: &[usize]) {
+        if sources.iter().any(|source| matches!(*source, 0 | 1)) {
+            self.drain_runtime_notices();
+        }
         match wake_action(
             sources,
             self.pacer.as_ref().is_some_and(DisplayLink::is_active),
@@ -3818,12 +3858,18 @@ impl App {
                     pacer.clear();
                 }
             }
+            WakeAction::Drain => {
+                // The smoke's first producer releases GPU preparation from a
+                // pre-GPU callback. Keep that one startup handshake, even when
+                // its notice carries no paint change.
+                if self.gpu.is_none() && self.smoke_wake_seen && self.smoke_bootstrap.is_some() {
+                    self.request_redraw();
+                }
+            }
             WakeAction::Tick => {
                 self.wake_counters.borrow_mut().redraw(sources);
-                if let Some(window) = &self.window {
-                    self.redraw_pending.set(true);
-                    window.request_redraw();
-                }
+                self.redraw_pending.set(true);
+                self.queue_redraw(sources);
             }
             WakeAction::Invalidate => self.request_redraw_sources(sources),
         }
@@ -4539,7 +4585,9 @@ impl App {
         }
     }
     fn redraw(&mut self) -> Result<(), String> {
-        self.redraw_pending.set(false);
+        // Delivery retires only the queued callback. Paint remains pending
+        // through a missing tick/drawable until a frame is actually drawn.
+        self.redraw_queued.set(false);
         if self.gpu.is_none() {
             // A producer may wake us before GPU preparation finishes. Drain
             // admission even on an empty frame, or GPU-ready can lose its wake.
@@ -4619,6 +4667,7 @@ impl App {
             || (self.animate && self.animation_start.is_some() && !fifo && tick.is_none())
         {
             if metal && tick.is_none() {
+                self.wake_counters.borrow_mut().tickless();
                 bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::TicklessRedraw).finish(
                     bbt_rt::diagnostics::calls(bbt_rt::diagnostics::Phase::UiProjection)
                         .unwrap_or(0)
@@ -4761,6 +4810,7 @@ impl App {
                 overlay: pane_overlay,
             }),
         )? {
+            self.redraw_pending.set(false);
             self.wake_counters.borrow_mut().frame();
             phases.encode = encode;
             phases.present_wait = wait;
@@ -6923,21 +6973,15 @@ mod lazy_projection_tests {
         })
     }
 
-    #[test]
     #[allow(
         clippy::disallowed_methods,
         reason = "the fixture owns an isolated process-wide UI thread registration"
     )]
-    fn model_publishes_between_frames_do_not_project_during_drain() {
+    fn isolated_ui_case(name: &str) -> bool {
         const CHILD: &str = "BBOXY_R5J_UI_FIXTURE_CHILD";
         if std::env::var_os(CHILD).is_none() {
             let output = std::process::Command::new(std::env::current_exe().unwrap())
-                .args([
-                    "--exact",
-                    "lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain",
-                    "--nocapture",
-                    "--test-threads=1",
-                ])
+                .args(["--exact", name, "--nocapture", "--test-threads=1"])
                 .env(CHILD, "1")
                 .output()
                 .unwrap();
@@ -6949,15 +6993,18 @@ mod lazy_projection_tests {
                 String::from_utf8_lossy(&output.stdout),
                 String::from_utf8_lossy(&output.stderr)
             );
-            return;
+            return true;
         }
+        false
+    }
+    fn fixture() -> (App, Arc<Latest<Arc<bboxy450_term::model::Model>>>) {
         struct QuietWake;
         impl bbt_rt::Waker for QuietWake {
             fn wake(&self) {}
         }
         let inbox = bbt_rt::init_ui(QuietWake);
         let latest = Arc::new(Latest::new(inbox.dirty.source(5)));
-        let mut app = App::owner(
+        let app = App::owner(
             UiProxy::Headless(Arc::new(|_| {})),
             inbox,
             log::Logger::new(),
@@ -6965,6 +7012,16 @@ mod lazy_projection_tests {
             &["--headless".into()],
             Verify::default(),
         );
+        (app, latest)
+    }
+    #[test]
+    fn model_publishes_between_frames_do_not_project_during_drain() {
+        if isolated_ui_case(
+            "lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain",
+        ) {
+            return;
+        }
+        let (mut app, latest) = fixture();
         for revision in 0..64 {
             let model = published_model(revision);
             latest.publish(model.clone());
@@ -7054,6 +7111,94 @@ mod lazy_projection_tests {
         let frame = answer.result.unwrap();
         assert_eq!(frame.seat, target);
         assert_eq!(frame.frame_seq, 11);
+    }
+
+    #[test]
+    fn one_thousand_publications_between_two_ticks_schedule_at_most_two_callbacks() {
+        if isolated_ui_case(
+            "lazy_projection_tests::one_thousand_publications_between_two_ticks_schedule_at_most_two_callbacks",
+        ) {
+            return;
+        }
+        let (mut app, latest) = fixture();
+        let first = published_model(0);
+        latest.publish(first);
+        app.drain();
+        app.project_scene(true);
+        assert_eq!(app.scene.projections(), 1);
+        let mut callbacks = 0;
+        for revision in 1..=1000 {
+            latest.publish(published_model(revision));
+            let sources = app.inbox.dirty.drain();
+            app.dispatch_wake_sources(&sources);
+            if revision == 1 {
+                assert!(app.redraw_queued.get());
+                callbacks += 1;
+                // Deliver the first callback before a tick. Native redraw
+                // retires its queue entry, but must retain the paint demand.
+                app.redraw().unwrap();
+                assert!(!app.redraw_queued.get());
+                app.drain();
+                app.project_scene(false);
+            } else {
+                assert!(
+                    !app.redraw_queued.get(),
+                    "publication {revision} queued another callback"
+                );
+            }
+            assert!(
+                app.redraw_pending.get(),
+                "tickless return retired paint demand"
+            );
+            assert_eq!(app.scene.projections(), 1);
+        }
+        // The tick and final model notification may share one dirty-set wake.
+        app.dispatch_wake_sources(&[display_link::TICK_SOURCE, 5]);
+        assert!(app.redraw_queued.get());
+        app.dispatch_wake_sources(&[display_link::TICK_SOURCE, 5]);
+        assert!(app.redraw_queued.get());
+        app.redraw().unwrap();
+        assert!(!app.redraw_queued.get());
+        callbacks += 1;
+        app.drain();
+        app.project_scene(true);
+        assert_eq!(app.scene.seats[0].title, "revision 1000");
+        assert_eq!(app.scene.projections(), 2);
+        assert_eq!(callbacks, 2);
+
+        app.redraw_pending.set(false);
+        for _ in 0..1000 {
+            app.inbox
+                .sender
+                .try_send(UiMsg::Changed { source: 6 })
+                .unwrap();
+            app.inbox.dirty.source(1).mark();
+            let sources = app.inbox.dirty.drain();
+            app.dispatch_wake_sources(&sources);
+            assert!(
+                !app.redraw_queued.get(),
+                "a non-paint notice queued a frame"
+            );
+            assert!(!app.redraw_pending.get());
+        }
+        assert!(app.inbox.messages.is_empty());
+        // GPU preparation can follow an early, GPU-unready callback.
+        app.redraw_pending.set(true);
+        app.dispatch_wake_sources(&[2]);
+        assert!(
+            app.redraw_queued.get(),
+            "GPU readiness was stranded behind paint demand"
+        );
+        // The unattended smoke deliberately holds preparation until its first
+        // pre-GPU callback has handled a producer notice.
+        app.redraw_queued.set(false);
+        app.smoke_wake_seen = true;
+        let (open, mut ready) = tokio::sync::oneshot::channel();
+        app.smoke_bootstrap = Some(open);
+        app.dispatch_wake_sources(&[0]);
+        assert!(app.redraw_queued.get());
+        app.redraw().unwrap();
+        assert_eq!(ready.try_recv(), Ok(()));
     }
 }
 

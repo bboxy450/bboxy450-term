@@ -1,0 +1,54 @@
+R5k wake coalescing and callback/frame CPU join — prechecks
+Role: Rook Ashwhisker <EXECUTOR>
+Brief: 8d54c8d3-2c1b-4333-835c-9631607f1b56; addition9ff2211e-7c88-426e-aa9f-7fa6168e7d82
+Base: cc7977ef941a73d4ec33145e91a5a10d5fcbf56f
+Raw local root: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5k-wake-2i72fryk
+
+Mechanism: logical paint demand persists until successful GPU draw; a distinct bit bounds outstanding redraw delivery. Runtime notice sources0/1 drain without paint; data is applied before the display tick and lazy scene projection remains at actual frame work. Fixed16-slot wake counts distinguish scheduling/coalescing/tickless delivery. Disabled callback attribution performs no clock read or allocation; enabled fixed-depth/fixed-kind UI-thread tracker joins each frame CPU endpoint with callback identities, exclusive CPU and explicit uncovered/error fields. First unobserved endpoint stays null.
+Scope: six Rust files, new diagnostics/callbacks.rs leaf; no dependency, ring, protocol, ingest, durability, clock or 1GB fixture traffic change.
+
+callback-units: cargo test -p bbt-rt --locked --lib diagnostics::callbacks::tests -- --nocapture
+exit=0 elapsed_s=12.430038499995135 log_sha256=2a3c18b41a112644e25dbc3e7b144e8bf17784170567a197ef3f79883734f846
+patch_sha256=b79163624cb0010084c74432f04f094c11fde0760d3d615fc4bdcc1250a136a9
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+app-focused: cargo test -p bboxy450-term --locked --bin bboxy450-term lazy_projection_tests -- --nocapture
+exit=0 elapsed_s=542.4124446249916 log_sha256=2bd142e7a4cf26364fa7dcc7bd816924e3e4e01a622746acdf8c02249f5a0dd4
+patch_sha256=b79163624cb0010084c74432f04f094c11fde0760d3d615fc4bdcc1250a136a9
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 115 filtered out; finished in 0.02s
+
+scoped-tests: cargo test --locked -p bbt-rt -p bboxy450-term -p bboxy450-harness-wake-up -p bbt-mux -p bbt-supervisor --no-fail-fast
+exit=0 elapsed_s=845.4231817089603 log_sha256=c6eaf6215bba96beda08a7eda19280631dd543374fd98c74d59ea2e66f795d45
+patch_sha256=b79163624cb0010084c74432f04f094c11fde0760d3d615fc4bdcc1250a136a9
+Actual parsed aggregate: (747, 0, 29); groups=76
+
+scoped-strict: cargo clippy --locked -p bbt-rt -p bboxy450-term -p bboxy450-harness-wake-up -p bbt-mux -p bbt-supervisor --all-targets -- -D warnings
+exit=0 elapsed_s=87.82780370803084 log_sha256=ab65a8eb1e2278317ab51aa6b6ef4d14840fdb8c6d27da4e1dc810e4e9407272
+patch_sha256=b79163624cb0010084c74432f04f094c11fde0760d3d615fc4bdcc1250a136a9
+
+invariants: sh scripts/invariants.sh
+exit=0 elapsed_s=426.5546181660029 log_sha256=938f6c48a520912d64fb5df4b29d4656476d56cc537fb0c552cc6d2a1f7bd19a
+patch_sha256=b79163624cb0010084c74432f04f094c11fde0760d3d615fc4bdcc1250a136a9
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.04s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.01s
+invariants: 25 checks, 0 failures, 9 slow checks skipped
+
+entry-reset-negative: cargo test -p bboxy450-term --locked --bin bboxy450-term lazy_projection_tests::one_thousand_publications_between_two_ticks_schedule_at_most_two_callbacks -- --exact --nocapture
+exit=101 elapsed_s=28.43372441700194 log_sha256=6bb130a1576688d26f523a799beed803aaf2d25722e0064c8fd58329f352e94d
+patch_sha256=3760fc3729f1374de1d96c0daf67ebf71707058f9af6723f0c8872a855aac6d3
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 116 filtered out; finished in 0.00s
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 116 filtered out; finished in 0.01s
+
+app-entry-green: cargo test -p bboxy450-term --locked --bin bboxy450-term lazy_projection_tests -- --nocapture
+exit=0 elapsed_s=21.912895208981354 log_sha256=66ba5bea63f7bbee4a4f7d4f607e151534b6d64e9e4578b1beadfda515169c72
+patch_sha256=584f54dff02118ed99e3a075628967bbc3c4ea48b5028a5367d1e3d3a4082c24
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 115 filtered out; finished in 0.01s
+
+app-entry-strict: cargo clippy --locked -p bboxy450-term --all-targets -- -D warnings
+exit=0 elapsed_s=14.883948749979027 log_sha256=d8e502ae93fac091baecbc0c651727006bf4e7ec16bf54d08f22b2f2af060c35
+patch_sha256=584f54dff02118ed99e3a075628967bbc3c4ea48b5028a5367d1e3d3a4082c24
+
+Mutation control: entry-reset-negative intentionally restored the OLD redraw_pending.set(false) at redraw entry; it failed101 with "tickless return retired paint demand". This was a local one-line mutation, not an original-commit baseline. Exact restored main SHA25663171e013750045f847c2907874e44c59eca1a6bab55ca9818174d4fd291c967; app-entry-green2/0 and final strict0. The preceding scoped747/0, strict0 and invariants25/0 precede only this test-strengthening; production bytes are identical.
+Gap: no R5k 967 measurement. Oracle requires Sable batch and R5k to land before one combined scale window. No claim of CPU budget held or controlled speedup.
+Normal clean exact-commit ci-local remains the final gate. No parity requested by the R5k brief; geometry/render content unchanged.

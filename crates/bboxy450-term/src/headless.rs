@@ -297,10 +297,11 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 }
             }
             let sources = app.drain();
-            if !sources.is_empty() {
+            if sources.iter().any(|source| !matches!(*source, 0 | 1)) {
                 dirty = true;
             }
             dirty |= app.redraw_pending.replace(false);
+            app.redraw_queued.set(false);
             if let Some(next) = &app.live_state
                 && !Arc::ptr_eq(next, &model)
             {
