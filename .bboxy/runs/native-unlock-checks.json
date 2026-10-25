@@ -1,8 +1,10 @@
 {
-  "source": "89eaf763eab8dd81f404417af7faf77a4da77a0b",
-  "base": "7892d85fdd4a956419248081865ebdc981e3a349",
-  "role": "Executor",
-  "scope": "#280/#315 native custody unlock; no facade or manifest changes",
+  "source": "0e0e9d2e04a2609eb5513baf30650b73d4b26ebb",
+  "base": "714163f2",
+  "branch": "exec5-native-unlock",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec5",
+  "scope": "#280/#315 native mux custody unlock; no facade-family, manifest or other-OS implementation changes",
+  "status": "exact clean ci-local --parity passed",
   "commands": [
     {
       "argv": [
@@ -100,6 +102,130 @@
     },
     {
       "argv": [
+        "cargo",
+        "clean",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev",
+        "-p",
+        "bboxy450-keychain-windows",
+        "-p",
+        "bboxy450-keychain-file",
+        "-p",
+        "bboxy450-keychain",
+        "-p",
+        "bboxy450-desktop-notifications-macos",
+        "-p",
+        "bboxy450-desktop-notifications-windows",
+        "-p",
+        "bboxy450-desktop-notifications-linux",
+        "-p",
+        "bboxy450-desktop-notifications",
+        "-p",
+        "bbt-plugin",
+        "-p",
+        "bbt-yarn-macros",
+        "-p",
+        "bbt-yarn",
+        "-p",
+        "bbt-core",
+        "-p",
+        "bboxy450-harness-wake-up",
+        "-p",
+        "bbt-rt",
+        "-p",
+        "bbt-mermaid",
+        "-p",
+        "bbt-supervisor",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bbt-doc",
+        "-p",
+        "bbt-ui",
+        "-p",
+        "bbt-ui-model",
+        "-p",
+        "bbt-proto",
+        "-p",
+        "bbt-render",
+        "-p",
+        "bboxy-firehose",
+        "-p",
+        "bboxybook",
+        "-p",
+        "bboxy450-term"
+      ],
+      "source": "0e0e9d2e04a2609eb5513baf30650b73d4b26ebb",
+      "kind": "verification setup correction; own workspace artifacts only",
+      "exit": 101,
+      "seconds": 0.043,
+      "log": ".bboxy/runs/native-unlock-cache-context-clean.log",
+      "sha256": "ed81237de1ab64674ec700d14658bcfd078a29220f5ce39e791cbbe745d7818a"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clean",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev",
+        "-p",
+        "bboxy450-keychain-windows",
+        "-p",
+        "bboxy450-keychain-file",
+        "-p",
+        "bboxy450-keychain",
+        "-p",
+        "bboxy450-desktop-notifications-macos",
+        "-p",
+        "bboxy450-desktop-notifications-windows",
+        "-p",
+        "bboxy450-desktop-notifications-linux",
+        "-p",
+        "bboxy450-desktop-notifications",
+        "-p",
+        "bbt-plugin",
+        "-p",
+        "bbt-yarn-macros",
+        "-p",
+        "bbt-yarn",
+        "-p",
+        "bbt-core",
+        "-p",
+        "bboxy450-harness-wake-up",
+        "-p",
+        "bbt-rt",
+        "-p",
+        "bbt-mermaid",
+        "-p",
+        "bbt-supervisor",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bbt-doc",
+        "-p",
+        "bbt-ui",
+        "-p",
+        "bbt-ui-model",
+        "-p",
+        "bbt-proto",
+        "-p",
+        "bbt-render",
+        "-p",
+        "bboxy-firehose",
+        "-p",
+        "bboxybook",
+        "-p",
+        "bboxy450-term"
+      ],
+      "source": "0e0e9d2e04a2609eb5513baf30650b73d4b26ebb",
+      "kind": "own workspace artifacts only; initialized Cargo tag after ownership validation",
+      "exit": 0,
+      "seconds": 1.729,
+      "log": ".bboxy/runs/native-unlock-cache-context-clean2.log",
+      "sha256": "2b0d6b7421d62259a9581c2a15cbbdfc07aafb01fadfbf36fa2bef8ba855b749"
+    },
+    {
+      "argv": [
         "sh",
         "scripts/ci-local.sh",
         "--parity"
@@ -109,8 +235,36 @@
       "target": "/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev",
       "exit": 75,
       "seconds": 0.045,
-      "log": ".bboxy/runs/native-unlock-ci-capacity1.log",
-      "sha256": "5e54ffbda0e66dcca26fa376c99ccde4d9c9b65b0ff9f6207831e64b3348f176"
+      "log": ".bboxy/runs/native-unlock-ci-parity.log",
+      "sha256": "afca2116375a6d90c9f4c44aae436b05091c9bd1df9d5d6d5616f8d3ecf95e25"
+    },
+    {
+      "argv": [
+        "sh",
+        "scripts/ci-local.sh",
+        "--parity"
+      ],
+      "source": "6fda80994a629c307797e14743dcbaa259473776",
+      "worktree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree",
+      "target": "/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev",
+      "exit": 101,
+      "seconds": 1253.654,
+      "log": ".bboxy/runs/native-unlock-ci-failed1.log",
+      "sha256": "e8705cf9597ec2148984d9cf7f94b587b0aebd61bf5d073f9cd30c969e0234be"
+    },
+    {
+      "argv": [
+        "sh",
+        "scripts/ci-local.sh",
+        "--parity"
+      ],
+      "source": "0e0e9d2e04a2609eb5513baf30650b73d4b26ebb",
+      "worktree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree",
+      "target": "/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev",
+      "exit": 0,
+      "seconds": 3300.927,
+      "log": ".bboxy/runs/native-unlock-ci-parity.log",
+      "sha256": "afca2116375a6d90c9f4c44aae436b05091c9bd1df9d5d6d5616f8d3ecf95e25"
     },
     {
       "argv": [
@@ -145,6 +299,57 @@
       "log": ".bboxy/runs/native-unlock-clippy-final.log",
       "source": "83fb222ae4fe973b5ad425038e32bae542a94a73",
       "sha256": "44cc74f16812528e1d070ff25bce8e6d3c0aae50032a2f9130ef4575f1723f33"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "source": "0e0e9d2e04a2609eb5513baf30650b73d4b26ebb",
+      "exit": 0,
+      "seconds": 73.839,
+      "log": ".bboxy/runs/native-unlock-clippy-preflight.log",
+      "sha256": "987c0e8fbb4447ba18ab726401806ad9d65b66a5da094b407365b80f7e90ef30"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "source": "6fda80994a629c307797e14743dcbaa259473776",
+      "exit": 0,
+      "seconds": 20.793,
+      "log": ".bboxy/runs/native-unlock-clippy-preflight1.log",
+      "sha256": "d6122add88df38f335d9e5a046fd6419bee006c88f310930b504ccbbe1cc7fa3"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "source": "0e0e9d2e04a2609eb5513baf30650b73d4b26ebb",
+      "exit": 0,
+      "seconds": 46.165,
+      "log": ".bboxy/runs/native-unlock-clippy-preflight2.log",
+      "sha256": "ee8e97e21f5b220cba435305ae39dfd47bf22abb689757f99c763a834845fce1"
     },
     {
       "argv": [
@@ -300,6 +505,54 @@
         "cargo",
         "test",
         "-p",
+        "bboxy450-term",
+        "--test",
+        "headless",
+        "--locked"
+      ],
+      "source": "0e0e9d2e04a2609eb5513baf30650b73d4b26ebb",
+      "exit": 0,
+      "seconds": 15.753,
+      "log": ".bboxy/runs/native-unlock-headless-repeat1.log",
+      "sha256": "a429c7e684d8730c5feb8d17b822964dbc00c01ddce6bb83975f8bc0132743f2"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "headless",
+        "--locked"
+      ],
+      "source": "0e0e9d2e04a2609eb5513baf30650b73d4b26ebb",
+      "exit": 0,
+      "seconds": 15.123,
+      "log": ".bboxy/runs/native-unlock-headless-repeat2.log",
+      "sha256": "59191b46dba6e7461426c99de8e1f5a0b51b1538a13590af0226a3c20900e5a4"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "headless",
+        "--locked"
+      ],
+      "source": "0e0e9d2e04a2609eb5513baf30650b73d4b26ebb",
+      "exit": 0,
+      "seconds": 16.438,
+      "log": ".bboxy/runs/native-unlock-headless-repeat3.log",
+      "sha256": "59c8cb8bda1d95634c8fc25d2073d05b93a7e551f349fde3fecc50b34e856aae"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
         "bbt-mux",
         "--test",
         "native_unlock",
@@ -324,6 +577,28 @@
       "seconds": 78.615,
       "log": ".bboxy/runs/native-unlock-integration2.log",
       "sha256": "89121cb2f2f90df23843f758594d68b500727e2a9da5847531c88a900c6b3f5b"
+    },
+    {
+      "argv": [
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "source": "0e0e9d2e04a2609eb5513baf30650b73d4b26ebb",
+      "exit": 0,
+      "seconds": 428.948,
+      "log": ".bboxy/runs/native-unlock-invariants-preflight.log",
+      "sha256": "e9ffb457b45720d4b6ed4db1a7ee49c0bac2590899dfa6dfb2ee2adebdbd1743"
+    },
+    {
+      "argv": [
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "source": "6fda80994a629c307797e14743dcbaa259473776",
+      "exit": 0,
+      "seconds": 537.986,
+      "log": ".bboxy/runs/native-unlock-invariants-preflight1.log",
+      "sha256": "8fb8cc165d61bb30bd5620f40b5063bf0a7358527a9de6886c229508bb5ed120"
     },
     {
       "argv": [
@@ -483,28 +758,67 @@
       "seconds": 582.192,
       "log": ".bboxy/runs/native-unlock-unit.log",
       "sha256": "d0066746d1e2b3f2650ec8778c30e9f0b0e2a0d78bb9c8df0de416cea513288d"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "source": "0e0e9d2e04a2609eb5513baf30650b73d4b26ebb",
+      "exit": 0,
+      "seconds": 1186.721,
+      "log": ".bboxy/runs/native-unlock-workspace-preflight.log",
+      "sha256": "f1cc590f081863d1ec11012c7db8dd6d73bdc8e0d3b28daf4b5529a30db452cb"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "source": "6fda80994a629c307797e14743dcbaa259473776",
+      "exit": 0,
+      "seconds": 1121.296,
+      "log": ".bboxy/runs/native-unlock-workspace-preflight1.log",
+      "sha256": "5540fc8479a6f620ad050e765680d8cdbcf3be8b0ac9e36f7dcf3c22627136c7"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "source": "0e0e9d2e04a2609eb5513baf30650b73d4b26ebb",
+      "exit": 101,
+      "seconds": 973.89,
+      "log": ".bboxy/runs/native-unlock-workspace-preflight2.log",
+      "sha256": "2884630dec1003d536087b03830dd3ecb781b7aa59f0e3fab7918aab8a2d7c31"
     }
   ],
   "source_files": [
     {
       "path": "crates/bboxy450-term/src/cockpit.rs",
-      "sha256": "2c7a478c9b2844baefa32468bb900e01ae58c850a34e84a8803eced00078b8d6"
+      "sha256": "256f1646125c03e2053cff3517d936adce4dcaf1a14f95588d00cfd49a59c8df"
     },
     {
       "path": "crates/bboxy450-term/src/ctl.rs",
-      "sha256": "17091e54568a303c3d274d2a26a172edb0397112cc8a3213311619ef37d3a9d5"
+      "sha256": "c04a5789338c505bf3913ff41f2534be7c8ab951f572351ed6b234086c5ff5b3"
     },
     {
       "path": "crates/bboxy450-term/src/live.rs",
-      "sha256": "1d0515b06697dc95c53cf6f3f583eda92eccb2b1826593c20e94b5aa292bdf72"
+      "sha256": "51ddd7a31b20cbf8b19d1fbd8535d1f21b1c320c450d14f3a3103c38be1a5d01"
     },
     {
       "path": "crates/bboxy450-term/src/main.rs",
-      "sha256": "054fed1b7ebcbd4052300f201ac4772a1b38946976ef7f372a98ba4a9797bd38"
+      "sha256": "bef13891d4b830aa70894358b2d307284b2296a9143fd56c81ea4ea23abe8fc3"
     },
     {
       "path": "crates/bboxy450-term/src/model.rs",
-      "sha256": "595b79ce46482c97789dbcacaee93d02d72bb3997592dd781c8e671dd6bd5adb"
+      "sha256": "d89bb696bfc32acb096502628b6616f4284e4e93c65e1889cdb73a24d81d6888"
     },
     {
       "path": "crates/bboxy450-term/src/settings.rs",
@@ -512,7 +826,7 @@
     },
     {
       "path": "crates/bboxybook/capture-inputs.js",
-      "sha256": "44c47d496354f0f7fda6f46ea085cfd70c36abc35ef48e4de91ea57b4e1ac07c"
+      "sha256": "0ab6a5266316f27f1304ebc2085115f4e0aee15098ad4f2d0af7242ebec92de0"
     },
     {
       "path": "crates/bboxybook/src/settings.rs",
@@ -560,7 +874,7 @@
     },
     {
       "path": "crates/bbt-mux/src/seat_socket.rs",
-      "sha256": "fa9ae1d8763dc60a669740815210daaa2d93513bd3db4e9fc36289c4ef8b3781"
+      "sha256": "af289858fb21fccb5bba5e9c43616f82d02b18cf1fefbe53a1ee0f759d0ca742"
     },
     {
       "path": "crates/bbt-mux/tests/identity.rs",
@@ -568,7 +882,7 @@
     },
     {
       "path": "crates/bbt-proto/src/gui.rs",
-      "sha256": "3b8d43ec9553e76191e3c656f97bd2f62480bdb93f82db909c8035ed834cad61"
+      "sha256": "f61bef7e10dcb65d07a31cea55c9361ca8f4ad93028d45b081da3c967c415fe6"
     },
     {
       "path": "crates/bbt-proto/src/lib.rs",
@@ -611,14 +925,118 @@
       "sha256": "3b01208b7cf105547abec352dfd55309590499f8bcb547a059b3df3ca5c1ec85"
     }
   ],
-  "rebase_logs": [
-    ".bboxy/runs/native-unlock-final-rebase-range-diff.log",
-    ".bboxy/runs/native-unlock-rebase-range-diff.log"
+  "gate": {
+    "argv": [
+      "sh",
+      "scripts/ci-local.sh",
+      "--parity"
+    ],
+    "source": "0e0e9d2e04a2609eb5513baf30650b73d4b26ebb",
+    "worktree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree",
+    "target": "/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev",
+    "exit": 0,
+    "seconds": 3300.927,
+    "log": "native-ci-parity.log",
+    "sha256": "afca2116375a6d90c9f4c44aae436b05091c9bd1df9d5d6d5616f8d3ecf95e25"
+  },
+  "workspace": {
+    "passed": 1361,
+    "failed": 0,
+    "ignored": 29
+  },
+  "headless_repeats": [
+    {
+      "run": 1,
+      "passed": 9,
+      "failed": 0,
+      "exit": 0,
+      "sha256": "a429c7e684d8730c5feb8d17b822964dbc00c01ddce6bb83975f8bc0132743f2"
+    },
+    {
+      "run": 2,
+      "passed": 9,
+      "failed": 0,
+      "exit": 0,
+      "sha256": "59191b46dba6e7461426c99de8e1f5a0b51b1538a13590af0226a3c20900e5a4"
+    },
+    {
+      "run": 3,
+      "passed": 9,
+      "failed": 0,
+      "exit": 0,
+      "sha256": "59c8cb8bda1d95634c8fc25d2073d05b93a7e551f349fde3fecc50b34e856aae"
+    }
   ],
-  "status": "focused checks and Settings144 parity passed; exact gate awaiting resource capacity",
-  "automation": "throwaway custody stores, temporary GPG homes and fake signing executables; no operator input or credential access",
+  "parity": {
+    "source": "0e0e9d2e04a2609eb5513baf30650b73d4b26ebb",
+    "cases": 2224,
+    "geometry": {
+      "required": 2120,
+      "measured": 2120,
+      "unproven": 0,
+      "mismatches": 0
+    },
+    "statuses": {
+      "review pixels": 72,
+      "within policy": 2152
+    },
+    "settings_cases": 144,
+    "settings_statuses": {
+      "within policy": 144
+    },
+    "custody_cases": 48,
+    "custody_statuses": {
+      "within policy": 48
+    },
+    "report_sha256": "aeead503dad0070492d41ef9978181023ab2367b1f230d9af37ef26a42c11b0f",
+    "ci_log_sha256": "afca2116375a6d90c9f4c44aae436b05091c9bd1df9d5d6d5616f8d3ecf95e25"
+  },
+  "invariants": {
+    "checks": 24,
+    "failures": 0,
+    "slow_skipped": 8
+  },
+  "smoke": {
+    "mode": "headless",
+    "windows": 0,
+    "idle_frames": 0,
+    "idle_callbacks": 0,
+    "idle_seconds": 10.003,
+    "children_reaped": true
+  },
+  "cleanup": {
+    "target": "/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev",
+    "lsof_result": "no open files (lsof exit 1, empty stdout)",
+    "allocated_bytes_removed": 4506906624,
+    "target_removed": true,
+    "clean_gate_removed": true,
+    "seconds": 4.129
+  },
+  "automation": "memory custody, controlled native stores, temporary GPG homes and fake signing executables; no operator interaction or credential access",
   "unverified": [
-    "Actual macOS login-Keychain dialog and ACL behavior were not exercised; these are fixture and public-query/requirement parsing proofs. No operator probe is required by this cut."
+    "Actual macOS login-Keychain dialog and ACL behavior were not exercised; the approved cut uses fixtures, public query/requirement parsing and fake signing executables. No physical probe is required to finish this cut."
   ],
-  "signature_semantics": "Pending account/control envelope immutable; completion appended under the legitimate device signer and bound to original op/digest/position; Unknown remains Unknown."
+  "signature_semantics": "Pending account/control envelope is immutable. A completion under the expected legitimate device key is appended once, bound to the real pending op/digest/position. Unknown stays Unknown.",
+  "named_failures": [
+    {
+      "log": "native-unlock-ci-failed1.log",
+      "exit": 101,
+      "cause": "pre-T7 focus acknowledged before the frame; accepted T7 integration fixes the boundary; headless suite subsequently passed three times"
+    },
+    {
+      "log": "native-unlock-workspace-preflight2.log",
+      "exit": 101,
+      "cause": "own verification setup: cached core invariant embedded removed old checkout path; fixed by one permanent exact-source checkout and rebuilding owned workspace artifacts"
+    },
+    {
+      "log": "native-unlock-cache-context-clean.log",
+      "exit": 101,
+      "cause": "missing Cargo CACHEDIR.TAG; no deletion occurred; initialized standard tag only after explicit own-path/marker verification, retry removed 3.0GiB of owned workspace package outputs"
+    },
+    {
+      "log": "native-unlock-settings-parity.log",
+      "exit": 1,
+      "cause": "first new custody layout had 48 mismatches; corrected fonts, chip weight and insets; all 144 Settings cases now within policy"
+    }
+  ]
 }

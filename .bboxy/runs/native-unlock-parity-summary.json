@@ -1,0 +1,24 @@
+{
+  "source": "0e0e9d2e04a2609eb5513baf30650b73d4b26ebb",
+  "cases": 2224,
+  "geometry": {
+    "required": 2120,
+    "measured": 2120,
+    "unproven": 0,
+    "mismatches": 0
+  },
+  "statuses": {
+    "review pixels": 72,
+    "within policy": 2152
+  },
+  "settings_cases": 144,
+  "settings_statuses": {
+    "within policy": 144
+  },
+  "custody_cases": 48,
+  "custody_statuses": {
+    "within policy": 48
+  },
+  "report_sha256": "aeead503dad0070492d41ef9978181023ab2367b1f230d9af37ef26a42c11b0f",
+  "ci_log_sha256": "afca2116375a6d90c9f4c44aae436b05091c9bd1df9d5d6d5616f8d3ecf95e25"
+}
