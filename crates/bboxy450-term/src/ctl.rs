@@ -10,6 +10,7 @@
 )]
 use bbt_mux::Ulid;
 mod app;
+mod debug;
 mod events;
 mod records;
 use bbt_proto::{
@@ -73,6 +74,11 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   record changes --since CURSOR           changes and the cursor for the next read
   events streams                          retained stream names, no consumer attached
   events tail --stream NAME [--since SEQ] [--subject GLOB] [--timeout MS]
+  debug logs <app|logic|supervisor> [--since BYTE_OFFSET]   bounded page, next_since
+  debug journal <account/OP|seat/SEAT/OP>  one retained operation; no SQL or key namespace
+  debug metrics                           existing numeric counters, with availability
+  debug snapshot <file.json>              bounded R5 cursor/capture table; no tracing enabled
+  debug ps                                this app's process tree; no argv or environment
   record write <file|->                   an e2e record, signed by the operator device: the
                                           knowledge_write fields (path or ref, frontmatter,
                                           body, etag) as one JSON object
@@ -244,6 +250,10 @@ pub enum Command {
         subject: Option<String>,
         timeout: Duration,
     },
+    Debug {
+        request: bbt_proto::gui::DebugRequest,
+        snapshot: Option<PathBuf>,
+    },
     /// `message send (<destination|seat> | --reply-to <id>) <text>` (#264 routing).
     Send {
         to: Option<String>,
@@ -348,6 +358,11 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("record", "changes", "Knowledge"),
     ("events", "streams", "EventsStreams"),
     ("events", "tail", "EventsRead"),
+    ("debug", "logs", "Debug"),
+    ("debug", "journal", "Debug"),
+    ("debug", "metrics", "Debug"),
+    ("debug", "snapshot", "Debug"),
+    ("debug", "ps", "Debug"),
     ("app", "endpoint", "-"),
     ("app", "start", "-"),
     ("app", "status", "App"),
@@ -414,7 +429,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
                 // grammar reports malformed flags as its named usage error.
                 let prefix = if words
                     .first()
-                    .is_some_and(|s: &String| matches!(s.as_str(), "record" | "events"))
+                    .is_some_and(|s: &String| matches!(s.as_str(), "record" | "events" | "debug"))
                 {
                     USAGE_PREFIX
                 } else {
@@ -714,6 +729,28 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
                 .ok_or_else(|| format!("{USAGE_PREFIX}record changes requires --since CURSOR"))?,
         },
         ["events", "streams"] => Command::EventsStreams,
+        ["debug", "logs", process] => Command::Debug {
+            request: bbt_proto::gui::DebugRequest::Logs {
+                process: match process {
+                    "app" => bbt_proto::gui::DebugProcess::App,
+                    "logic" => bbt_proto::gui::DebugProcess::Logic,
+                    "supervisor" => bbt_proto::gui::DebugProcess::Supervisor,
+                    _ => return Err(format!("{USAGE_PREFIX}debug logs: app, logic or supervisor")),
+                },
+                since: flag("since").map(|s| s.parse::<u64>().map_err(|_|format!("{USAGE_PREFIX}debug logs --since: byte offset"))).transpose()?.unwrap_or(0),
+            }, snapshot: None,
+        },
+        ["debug", "journal", query] => {
+            bbt_mux::debug::journal_query(query).map_err(|e|format!("{USAGE_PREFIX}{e}"))?;
+            Command::Debug {request:bbt_proto::gui::DebugRequest::Journal {query:query.into()},snapshot:None}
+        },
+        ["debug", "metrics"] => Command::Debug {request:bbt_proto::gui::DebugRequest::Metrics,snapshot:None},
+        ["debug", "ps"] => Command::Debug {request:bbt_proto::gui::DebugRequest::Ps,snapshot:None},
+        ["debug", "snapshot", path] => {
+            let path = std::path::absolute(path).map_err(|_|format!("{USAGE_PREFIX}debug snapshot requires a local file path"))?;
+            let destination = path.to_str().filter(|s|s.len()<=4096).ok_or_else(||format!("{USAGE_PREFIX}debug snapshot path must be UTF-8, at most 4096 bytes"))?.to_owned();
+            Command::Debug {request:bbt_proto::gui::DebugRequest::Snapshot {destination},snapshot:Some(path)}
+        },
         ["events", "tail"] => {
             let stream = flag("stream").filter(|s| !s.is_empty() && s.len() <= 128)
                 .ok_or_else(|| format!("{USAGE_PREFIX}events tail requires --stream NAME (events streams lists names)"))?;
@@ -764,6 +801,11 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
         Command::RecordSearch { .. } => Some(&["type", "cursor"]),
         Command::RecordChanges { .. } => Some(&["since"]),
         Command::EventsTail { .. } => Some(&["stream", "since", "subject", "timeout"]),
+        Command::Debug {
+            request: bbt_proto::gui::DebugRequest::Logs { .. },
+            ..
+        } => Some(&["since"]),
+        Command::Debug { .. } => Some(&[]),
         _ => None,
     };
     if let Some(allowed) = read_flags {
@@ -1007,6 +1049,17 @@ impl Client {
         match reply {
             GuiReply::Knowledge { response, .. } => serde_json::from_value(response)
                 .map_err(|e| CommandError::new("invalid_provider_result", e.to_string()))?,
+            _ => unreachable!(),
+        }
+    }
+    pub fn debug(&mut self, request: bbt_proto::gui::DebugRequest) -> Result<Value, String> {
+        let id = self.mint();
+        match self.call(
+            Some(id),
+            GuiAction::Debug { id, request },
+            |reply| matches!(reply,GuiReply::Debug {op,..} if *op==id),
+        )? {
+            GuiReply::Debug { data, .. } => Ok(data),
             _ => unreachable!(),
         }
     }
@@ -1555,6 +1608,7 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
         | Command::RecordSearch { .. }
         | Command::RecordChanges { .. }
         | Command::EventsStreams
+        | Command::Debug { .. }
         | Command::EventsTail { .. }
         | Command::TaskReport { .. }
         | Command::TaskAccept { .. }
@@ -1899,6 +1953,9 @@ fn run_verb(
     client.op = Some(id);
     let human = parsed.human;
     let data = match parsed.command {
+        Command::Debug { request, snapshot } => {
+            debug::read(&mut client, request, snapshot.as_deref())?
+        }
         Command::EventsStreams => json!({"streams":client.event_streams()?}),
         Command::EventsTail {
             subject, timeout, ..
@@ -2440,6 +2497,10 @@ mod tests {
                 request: bbt_proto::gui::UiRequest::Layout,
             },
             GuiAction::ListSeats,
+            GuiAction::Debug {
+                id,
+                request: bbt_proto::gui::DebugRequest::Metrics,
+            },
             GuiAction::App {
                 id,
                 request: bbt_proto::gui::AppRequest::Status,
@@ -2562,6 +2623,11 @@ mod tests {
             "record changes --since 0",
             "events streams",
             "events tail --stream account",
+            "debug logs app",
+            "debug journal account/01M5Q8A7DQ7EQFKBZH4NXBW3QQ",
+            "debug metrics",
+            "debug snapshot /tmp/debug.json",
+            "debug ps",
             "app endpoint",
             "seat watch s",
             "seat rename s n",
