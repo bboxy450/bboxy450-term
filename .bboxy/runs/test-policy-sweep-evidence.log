@@ -39,3 +39,5 @@ Own-patch comparison:
 
 1:  d0d0d15a = 1:  19461040 Sweep firehose tests onto virtual pacing and parser contracts
 
+
+Combined attempt 1 on 8a605878: presubmit exit124 /900.360 s; 599 s compilation, 849/0/21ignored completed, interrupted before combined clippy/invariants. Full timeout is test-policy-sweep-presubmit-attempt1.log. A warm-target attempt follows with identical source patches and unchanged900 s limit; no incomplete result is called green.
