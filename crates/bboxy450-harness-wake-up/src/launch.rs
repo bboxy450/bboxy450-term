@@ -337,10 +337,14 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
                     args.extend([pair[0].clone(), pair[1].clone()]);
                 }
             }
+            let mut runtime_env = spec.env.clone();
+            // The caller may give this service a private controlling tty solely
+            // for lifetime hangup. Its hooks must use the authenticated sink.
+            runtime_env.insert("BBOXY_HOOK_SOCKET_ONLY".into(), "1".into());
             spec.runtime = Some(RuntimePlan {
                 program: spec.program.clone(),
                 args,
-                env: spec.env.clone(),
+                env: runtime_env,
                 endpoint,
             });
             spec.args

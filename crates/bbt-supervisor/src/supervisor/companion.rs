@@ -87,6 +87,9 @@ impl Companion {
 
     pub(super) fn stop(&mut self) {
         if !self.reaped && self.stopping.is_none() {
+            // Release tty output before waiting for child shutdown; a session
+            // leader can otherwise remain in tty close with buffered output.
+            self.lifetime.take();
             self.signal(libc::SIGTERM);
             self.stopping = Some(Instant::now());
         }
@@ -180,6 +183,7 @@ impl Drop for Companion {
     fn drop(&mut self) {
         #[cfg(target_os = "macos")]
         drop(self.watch.take());
+        self.lifetime.take();
         if !self.reaped {
             self.signal(libc::SIGKILL);
             let _ = self.child.wait();

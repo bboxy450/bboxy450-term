@@ -1,0 +1,19 @@
+#279 lifetime-tty hook transport correction — Sable Embertail <EXECUTOR>
+2026-10-24; Oracle0396ea76-9a1a-4bfa-b042-a0812f0cfa3a.
+
+The hook shim originally accepts an OSC write to any controlling tty as delivery. A service lifetime tty has no output consumer, so that fast path could swallow hooks. RuntimePlan selects BBOXY_HOOK_SOCKET_ONLY=1 only for the side service, and the shim uses its caller-supplied authenticated sink under that flag. Ordinary PTY hooks retain OSC.
+
+The regression uses two actual private tty children: the ordinary child writes an OSC7502 frame; the socket-only child must write no tty bytes and must call the supplied sink with SessionStart/session. It adds no proto/supervisor/mux dependency to the kit. The launcher regression asserts only the server env gets the selector.
+
+The first test fixture waited for the session leader to exit before draining its tty, which could hold the child in tty close. Its owned parent36267 was terminated, freeing the master; both fixture PIDs were then absent. The corrected fixture drains while waiting and drops the master before child cleanup on failure. Supervisor stop/Drop also close their lifetime master before waiting, preventing that buffered-output close dependency.
+
+Commands (private logs retained; no native transcript/credential in this record):
+69d057eb213d4710823e3f1b913b996d — EXIT255, 116.830s, log SHA2561a5e57cf74981ed9f48a212d0f5db550402430e22ef6f8cd2e2fe81f5cbf0bcd — env RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER= BBOXY_TEST_CUSTODY=memory CARGO_BUILD_JOBS=4 CARGO_TARGET_DIR=/private/tmp/sable-codex-runtime-p08q2lv5/ci-967f1731/target sh scripts/ci-local.sh
+ac1cb9c21f7c49118a6a6370fb38a02d — EXIT101, 167.612s, log SHA256b6b1e04d8684a27eb49aede588c74db1ae903cb62335e5ee73f2a8e2b64da614 — env RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER= CARGO_TARGET_DIR=/private/tmp/sable-codex-runtime-p08q2lv5/ci-967f1731/target CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true CARGO_BUILD_JOBS=2 cargo test -p bboxy450-harness-wake-up --test ready_exec private_runtime_hooks_use_socket_even_with_a_controlling_tty --locked -j2 -- --exact --nocapture
+1f1f182390904b58bfb2d66adb540913 — EXIT101, 0.798s, log SHA2567a95a64929264f87f949591eaf90f0bc211149ad94635ded8881d99c184c38f4 — env RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER= CARGO_TARGET_DIR=/private/tmp/sable-codex-runtime-p08q2lv5/ci-967f1731/target CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true CARGO_BUILD_JOBS=2 cargo test -p bboxy450-harness-wake-up --test ready_exec private_runtime_hooks_use_socket_even_with_a_controlling_tty --locked -j2 -- --exact --nocapture
+
+69d057eb was deliberately stopped during clippy after its cargo build passed, upon discovering this routing issue. Only seven exact recorded own descendants were stopped; the logger recorded EXIT255 and released slot1. This is neither a source lint failure nor a passing full gate.
+ac1cb9c2 is the failed initial fixture, not the product regression verdict.
+1f1f1823 is the functional red: old shim wrote191 bytes into the private lifetime tty (0.03s execution).
+
+Pending at this source record: green rerun, full workspace tests and strict clippy, final exact NORMAL gate on current main with atomic slot claims. Builds/apps/tests remain off during QUIET r5h-frame, until matching END or17:49PDT.

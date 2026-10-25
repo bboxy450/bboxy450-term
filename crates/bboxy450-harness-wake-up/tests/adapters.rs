@@ -253,7 +253,10 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
             .windows(3)
             .any(|p| p == ["app-server", "--listen", &url])
     );
-    assert_eq!(service.env, codex.env);
+    let mut server_env = codex.env.clone();
+    server_env.insert("BBOXY_HOOK_SOCKET_ONLY".into(), "1".into());
+    assert_eq!(service.env, server_env);
+    assert!(!codex.env.contains_key("BBOXY_HOOK_SOCKET_ONLY"));
     assert!(
         service
             .args
