@@ -32,16 +32,22 @@ pub const TICK_SOURCE: usize = 4;
 /// Rendering work demanded by one coalesced UI wake.
 pub enum WakeAction {
     Ignore,
+    Drain,
     Tick,
     Invalidate,
 }
 
 /// Decide whether a coalesced wake needs a new display-link request.
 pub fn wake_action(sources: &[usize], active: bool) -> WakeAction {
-    if sources.iter().any(|source| *source != TICK_SOURCE) {
+    if sources
+        .iter()
+        .any(|source| !matches!(*source, 0 | 1 | TICK_SOURCE))
+    {
         WakeAction::Invalidate
-    } else if !sources.is_empty() && active {
+    } else if sources.contains(&TICK_SOURCE) && active {
         WakeAction::Tick
+    } else if sources.iter().any(|source| matches!(*source, 0 | 1)) {
+        WakeAction::Drain
     } else {
         WakeAction::Ignore
     }
@@ -421,6 +427,20 @@ mod tests {
         assert_eq!(wake_action(&[], true), WakeAction::Ignore);
         // Unknown sources remain real invalidations; telemetry never gates work.
         assert_eq!(wake_action(&[999], false), WakeAction::Invalidate);
+    }
+    #[test]
+    fn raw_notices_drain_without_paint_but_never_hide_a_tick_or_model() {
+        for sources in [&[0][..], &[1][..], &[0, 1][..]] {
+            assert_eq!(wake_action(sources, false), WakeAction::Drain);
+            assert_eq!(wake_action(sources, true), WakeAction::Drain);
+        }
+        assert_eq!(wake_action(&[0, 1, TICK_SOURCE], true), WakeAction::Tick);
+        assert_eq!(wake_action(&[0, 1, TICK_SOURCE], false), WakeAction::Drain);
+        assert_eq!(wake_action(&[0, 1, 5], false), WakeAction::Invalidate);
+        assert_eq!(
+            wake_action(&[0, 1, TICK_SOURCE, 5], true),
+            WakeAction::Invalidate
+        );
     }
     #[test]
     fn clock_uses_target_time_and_excludes_paused_time() {

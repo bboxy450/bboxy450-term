@@ -128,10 +128,20 @@ struct WakeSourceCounts {
     frame_drains: u64,
     redraws: u64,
     frames: u64,
+    scheduled: u64,
+    coalesced: u64,
+    tickless_callbacks: u64,
 }
 impl WakeSourceCounts {
     fn used(&self) -> bool {
-        self.wakes | self.frame_drains | self.redraws | self.frames != 0
+        self.wakes
+            | self.frame_drains
+            | self.redraws
+            | self.frames
+            | self.scheduled
+            | self.coalesced
+            | self.tickless_callbacks
+            != 0
     }
 }
 
@@ -224,6 +234,33 @@ impl WakeCounters {
             }
         }
     }
+    /// Attribute a single queued callback; coalesced causes are not additive.
+    pub fn scheduled(&mut self, sources: &[usize]) {
+        for &source in sources {
+            if let Some(slot) = self.slot(source) {
+                let row = &mut self.values.sources[slot];
+                row.scheduled = row.scheduled.saturating_add(1);
+            }
+        }
+    }
+    /// Count invalidations retained without another outstanding callback.
+    pub fn coalesced(&mut self, sources: &[usize]) {
+        for &source in sources {
+            if let Some(slot) = self.slot(source) {
+                let row = &mut self.values.sources[slot];
+                row.coalesced = row.coalesced.saturating_add(1);
+            }
+        }
+    }
+    /// Attribute a tickless delivery to its still-pending paint causes.
+    /// Sixteen fixed slots keep the empty callback path independent of seats.
+    pub fn tickless(&mut self) {
+        for (row, pending) in self.values.sources.iter_mut().zip(self.pending) {
+            if pending {
+                row.tickless_callbacks = row.tickless_callbacks.saturating_add(1);
+            }
+        }
+    }
     /// Attribute a submitted frame, then retire its pending causes.
     pub fn frame(&mut self) {
         for (row, pending) in self.values.sources.iter_mut().zip(&mut self.pending) {
@@ -249,6 +286,9 @@ struct WakeSourceProbe {
     frame_drains: AtomicU64,
     redraws: AtomicU64,
     frames: AtomicU64,
+    scheduled: AtomicU64,
+    coalesced: AtomicU64,
+    tickless_callbacks: AtomicU64,
 }
 
 #[derive(Default)]
@@ -270,6 +310,11 @@ impl WakeProbe {
                 .store(row.frame_drains, Ordering::Relaxed);
             target.redraws.store(row.redraws, Ordering::Relaxed);
             target.frames.store(row.frames, Ordering::Relaxed);
+            target.scheduled.store(row.scheduled, Ordering::Relaxed);
+            target.coalesced.store(row.coalesced, Ordering::Relaxed);
+            target
+                .tickless_callbacks
+                .store(row.tickless_callbacks, Ordering::Relaxed);
         }
         self.wake_events.store(value.wake_events, Ordering::Relaxed);
         self.empty_wakes.store(value.empty_wakes, Ordering::Relaxed);
@@ -294,6 +339,9 @@ impl WakeProbe {
                     frame_drains: row.frame_drains.load(Ordering::Relaxed),
                     redraws: row.redraws.load(Ordering::Relaxed),
                     frames: row.frames.load(Ordering::Relaxed),
+                    scheduled: row.scheduled.load(Ordering::Relaxed),
+                    coalesced: row.coalesced.load(Ordering::Relaxed),
+                    tickless_callbacks: row.tickless_callbacks.load(Ordering::Relaxed),
                 }
             }),
             wake_events: self.wake_events.load(Ordering::Relaxed),
@@ -410,6 +458,45 @@ pub enum Control {
     Finish(Box<Measurements>),
 }
 
+/// A frame endpoint joins its legacy CPU sample to uniquely named callbacks.
+/// Formatting happens with the existing report on IO, not at each callback.
+#[derive(Clone, Serialize)]
+pub struct FrameCallbackCpu {
+    frame_seq: u64,
+    #[serde(serialize_with = "serialize_callback_cpu")]
+    attribution: bbt_rt::diagnostics::CallbackFrameCpu,
+}
+fn serialize_callback_cpu<S: Serializer>(
+    value: &bbt_rt::diagnostics::CallbackFrameCpu,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    let kinds: Vec<_> = value.kinds.iter().map(|row| {
+        let largest = row.largest.map(|slice| serde_json::json!({
+            "callback_id":slice.id,"from_ns":slice.from_ns,"to_ns":slice.to_ns,
+            "from_cpu_ns":slice.from_cpu_ns,"to_cpu_ns":slice.to_cpu_ns,
+            "exclusive_cpu_ns":slice.cpu_ns,"clipped_start":slice.clipped_start,"clipped_end":slice.clipped_end,
+        }));
+        serde_json::json!({"kind":row.phase,"segments":row.segments,"exclusive_cpu_ns":row.cpu_ns,"largest_callback":largest})
+    }).collect();
+    let largest_kind = value.kinds.iter().max_by_key(|row| row.cpu_ns);
+    let dominant = if value.errors != 0 {
+        "incomplete_attribution"
+    } else if value.cpu_ns == 0 {
+        "no_cpu_observed"
+    } else if largest_kind.is_none_or(|row| value.unattributed_ns > row.cpu_ns) {
+        "outside_instrumented_callbacks"
+    } else {
+        largest_kind.expect("nonempty fixed callback kinds").phase
+    };
+    serde_json::json!({
+        "clock":"wall=R5i origin; CPU=same UI thread as the frame endpoint; exclusive callback CPU, not inclusive wall",
+        "from_ns":value.from_ns,"to_ns":value.to_ns,
+        "from_cpu_ns":value.from_cpu_ns,"to_cpu_ns":value.to_cpu_ns,
+        "cpu_ns":value.cpu_ns,"outside_callbacks_cpu_ns":value.unattributed_ns,
+        "attribution_errors":value.errors,"dominant_cpu_kind":dominant,"kinds":kinds,
+    }).serialize(serializer)
+}
+
 #[derive(Serialize, Default)]
 pub struct Measurements {
     pub cpu_p50_ms: f64,
@@ -427,6 +514,8 @@ pub struct Measurements {
     pub idle_callbacks: u64,
     pub guard_violations: u64,
     pub cpu_samples_ms: Vec<f64>,
+    /// Index-aligned with cpu_samples_ms; null means no prior endpoint observed.
+    pub frame_callback_cpu: Vec<Option<FrameCallbackCpu>>,
     pub frame_work_samples_ms: Vec<f64>,
     pub probe_clipped: bool,
     pub diagnostics: serde_json::Value,
@@ -539,6 +628,7 @@ pub struct Native {
     hz: f64,
     finish_sent: bool,
     last_cpu: Option<Duration>,
+    frame_callback_cpu: Vec<Option<FrameCallbackCpu>>,
     paused_frame: Option<u64>,
     completed_frame: u64,
     probe_clipped: bool,
@@ -609,6 +699,7 @@ impl Native {
             hz: 120.,
             finish_sent: false,
             last_cpu: None,
+            frame_callback_cpu: vec![],
             paused_frame: None,
             completed_frame: 0,
             probe_clipped: false,
@@ -683,6 +774,7 @@ impl Native {
             self.phase = phase;
             if phase == MEASURE {
                 self.cpu.clear();
+                self.frame_callback_cpu.clear();
                 self.wall.clear();
                 self.changes.clear();
                 self.previous.clear();
@@ -760,6 +852,7 @@ impl Native {
                 idle_callbacks: callbacks - old_callbacks,
                 guard_violations: bbt_rt::ui_blocking_violations().saturating_sub(self.guards),
                 cpu_samples_ms: self.cpu.clone(),
+                frame_callback_cpu: self.frame_callback_cpu.clone(),
                 frame_work_samples_ms: self.wall.clone(),
                 probe_clipped: self.probe_clipped,
                 diagnostics: diagnostic_report(),
@@ -803,6 +896,11 @@ impl Native {
         cpu: Duration,
         scale: f32,
     ) {
+        let attribution =
+            bbt_rt::diagnostics::callback_frame_cpu(cpu).map(|attribution| FrameCallbackCpu {
+                frame_seq: frame,
+                attribution,
+            });
         let cpu = self
             .last_cpu
             .replace(cpu)
@@ -824,6 +922,7 @@ impl Native {
         }
         if self.cpu.len() < 8192 {
             self.cpu.push(cpu.as_secs_f64() * 1000.);
+            self.frame_callback_cpu.push(attribution);
             self.wall
                 .push((phases.cpu() + phases.present_wait).as_secs_f64() * 1000.);
         }
@@ -929,12 +1028,82 @@ mod tests {
     use super::*;
 
     #[test]
+    fn frame_cpu_join_keeps_callback_identity_and_null_gaps_in_the_report() {
+        use bbt_rt::diagnostics::{CallbackCpuSlice, CallbackFrameCpu, CallbackKindCpu};
+        let metrics = Measurements {
+            cpu_samples_ms: vec![0., 0.000020],
+            frame_callback_cpu: vec![
+                None,
+                Some(FrameCallbackCpu {
+                    frame_seq: 42,
+                    attribution: CallbackFrameCpu {
+                        from_ns: 30,
+                        to_ns: 80,
+                        from_cpu_ns: 10,
+                        to_cpu_ns: 30,
+                        cpu_ns: 20,
+                        unattributed_ns: 4,
+                        errors: 0,
+                        kinds: std::array::from_fn(|kind| CallbackKindCpu {
+                            phase: if kind == 0 {
+                                "WindowRedraw"
+                            } else {
+                                "UserWake"
+                            },
+                            segments: 1,
+                            cpu_ns: if kind == 0 {
+                                12
+                            } else if kind == 1 {
+                                4
+                            } else {
+                                0
+                            },
+                            largest: (kind == 0).then_some(CallbackCpuSlice {
+                                id: 77,
+                                from_ns: 60,
+                                to_ns: 80,
+                                from_cpu_ns: 22,
+                                to_cpu_ns: 30,
+                                cpu_ns: 8,
+                                clipped_start: false,
+                                clipped_end: true,
+                            }),
+                        }),
+                    },
+                }),
+            ],
+            ..Default::default()
+        };
+        let value = serde_json::to_value(metrics).unwrap();
+        let samples = value["frame_callback_cpu"].as_array().unwrap();
+        assert_eq!(
+            samples.len(),
+            value["cpu_samples_ms"].as_array().unwrap().len()
+        );
+        assert!(
+            samples[0].is_null(),
+            "an unobserved join is not a zero-cost callback"
+        );
+        assert_eq!(samples[1]["frame_seq"], 42);
+        let joined = &samples[1]["attribution"];
+        assert_eq!(joined["cpu_ns"], 20);
+        assert_eq!(joined["outside_callbacks_cpu_ns"], 4);
+        assert_eq!(joined["dominant_cpu_kind"], "WindowRedraw");
+        assert_eq!(joined["kinds"][0]["largest_callback"]["callback_id"], 77);
+        assert_eq!(joined["kinds"][0]["largest_callback"]["to_ns"], 80);
+        assert_eq!(joined["kinds"][0]["largest_callback"]["clipped_end"], true);
+    }
+
+    #[test]
     fn wake_sources_and_pending_queues_survive_settle_serialization() {
         let mut counters = WakeCounters::default();
         counters.wake(&[4]);
         counters.ignored_tick();
         counters.wake(&[4, 5]);
         counters.redraw(&[4, 5]);
+        counters.scheduled(&[4, 5]);
+        counters.coalesced(&[5]);
+        counters.tickless();
         counters.frame();
         // A publication consumed by a frame can leave a later, empty Wake.
         counters.drained(&[0]);
@@ -973,6 +1142,10 @@ mod tests {
         assert_eq!(tick["wakes"], 2);
         assert_eq!(tick["redraws"], 1);
         assert_eq!(tick["frames"], 1);
+        assert_eq!(tick["scheduled"], 1);
+        assert_eq!(tick["tickless_callbacks"], 1);
+        let model = sources.iter().find(|row| row["source"] == 5).unwrap();
+        assert_eq!(model["coalesced"], 1);
         let messages = sources.iter().find(|row| row["source"] == 0).unwrap();
         assert_eq!(messages["frame_drains"], 1);
         assert_eq!(messages["wakes"], 0);

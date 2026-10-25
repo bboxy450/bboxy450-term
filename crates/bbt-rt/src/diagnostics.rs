@@ -1,5 +1,7 @@
 //! Opt-in R5 measurements. Disabled hooks do not read a clock or allocate.
 //! Counters are inclusive, process-local observations, never scheduling inputs.
+mod callbacks;
+pub use callbacks::{CALLBACK_KINDS, CallbackCpuSlice, CallbackFrameCpu, CallbackKindCpu};
 use std::sync::{
     OnceLock,
     atomic::{AtomicU8, AtomicU64, Ordering::Relaxed},
@@ -129,6 +131,7 @@ impl Recorder {
             counter,
             start: Instant::now(),
             cpu,
+            callback: None,
             work: 0,
             bytes: 0,
         }))
@@ -187,6 +190,7 @@ struct Measurement<'a> {
     counter: &'a Counter,
     start: Instant,
     cpu: Option<Duration>,
+    callback: Option<(u64, u64)>,
     work: u64,
     bytes: u64,
 }
@@ -219,9 +223,11 @@ impl Drop for Span<'_> {
         m.counter.wall_ns.fetch_add(elapsed, Relaxed);
         m.counter.wall_max_ns.fetch_max(elapsed, Relaxed);
         m.counter.active.fetch_sub(1, Relaxed);
+        let mut callback_end = None;
         if let Some(start) = m.cpu {
             match crate::fault::thread_cpu_time() {
                 Ok(end) => {
+                    callback_end = Some(ns(end));
                     let elapsed = ns(end.saturating_sub(start));
                     m.counter.cpu_samples.fetch_add(1, Relaxed);
                     m.counter.cpu_ns.fetch_add(elapsed, Relaxed);
@@ -231,6 +237,9 @@ impl Drop for Span<'_> {
                     m.counter.cpu_errors.fetch_add(1, Relaxed);
                 }
             }
+        }
+        if let Some((id, started_ns)) = m.callback {
+            callbacks::leave(id, started_ns.saturating_add(elapsed), callback_end);
         }
     }
 }
@@ -248,7 +257,27 @@ pub fn span(phase: Phase) -> Span<'static> {
     RECORDER.span_with(phase, || None)
 }
 pub fn callback(phase: Phase) -> Span<'static> {
-    RECORDER.span_with(phase, || crate::fault::thread_cpu_time().ok())
+    let mut span = RECORDER.span_with(phase, || crate::fault::thread_cpu_time().ok());
+    if let Some(measurement) = &mut span.0 {
+        if let Some(cpu) = measurement.cpu
+            && let Some(started_ns) = at(measurement.start)
+        {
+            measurement.callback =
+                callbacks::enter(phase, started_ns, ns(cpu)).map(|id| (id, started_ns));
+        } else {
+            callbacks::failed();
+        }
+    }
+    span
+}
+/// Cut callback attribution at the supplied UI-thread CPU endpoint. Disabled
+/// diagnostics read no clock and do not initialize the thread-local tracker.
+/// Wall timestamps use the same origin as `now`; they are not capture clocks.
+pub fn callback_frame_cpu(cpu: Duration) -> Option<CallbackFrameCpu> {
+    RECORDER
+        .0
+        .get()
+        .and_then(|state| callbacks::cut(elapsed_ns(state), ns(cpu)))
 }
 pub fn now() -> Option<u64> {
     RECORDER.0.get().map(elapsed_ns)

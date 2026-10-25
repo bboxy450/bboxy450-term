@@ -1,0 +1,18 @@
+R5k producer diagnosis; read-only, no new run
+Brief8d54c8d3 plus addition9ff2211e; measured source831f371b; full raw evidence .bboxy/runs/r5j-ui-frame.log.
+R5j is accepted; do not repeat its measurement. UI lazy projection fixed; input still waits before logic reads, owned by Sable batch.
+Frozen cumulative source attribution at FINISHED (non-additive, not MEASURE-only):
+{"empty_wakes": 8750, "ignored_ticks": 0, "overflow": 0, "pending_messages": false, "pending_output": false, "pending_redraw": false, "sources": [{"frame_drains": 0, "frames": 33, "redraws": 36, "source": 1024, "wakes": 0}, {"frame_drains": 0, "frames": 1, "redraws": 1, "source": 2, "wakes": 1}, {"frame_drains": 0, "frames": 52, "redraws": 52, "source": 4, "wakes": 52}, {"frame_drains": 0, "frames": 41, "redraws": 4348, "source": 5, "wakes": 4348}, {"frame_drains": 5570, "frames": 33, "redraws": 46220, "source": 0, "wakes": 46220}, {"frame_drains": 8069, "frames": 5, "redraws": 42110, "source": 1, "wakes": 42110}], "wake_events": 67136}
+MEASURE callback CPU; every row complete, no cpu_errors:
+{"by_kind": [{"calls": 86659, "cpu_errors": 0, "cpu_max_ns": 10375, "cpu_ns": 14282859, "phase": "AboutToWait"}, {"calls": 67088, "cpu_errors": 0, "cpu_max_ns": 20042, "cpu_ns": 58464336, "phase": "UserWake"}, {"calls": 782, "cpu_errors": 0, "cpu_max_ns": 6208, "cpu_ns": 1681132, "phase": "UserStallPoll"}, {"calls": 1, "cpu_errors": 0, "cpu_max_ns": 3250, "cpu_ns": 3250, "phase": "UserOther"}, {"calls": 53708, "cpu_errors": 0, "cpu_max_ns": 28782792, "cpu_ns": 1486206424, "phase": "WindowRedraw"}], "total_cpu_ns": 1560638001}
+WindowRedraw owns95.2306956% of measured callback CPU,1486.206424ms total,28.782792ms max; no single485ms callback was observed.
+UiOldModelDrop4307UI replacements of4431publications:215.351780ms inclusive wall,0.172583ms max. Hook has no CPU samples; do not claim a destructor CPU percentage or one485ms destructor.
+Legacy CPU p99485.314417ms is UI-thread CPU between successful frame endpoints (stall.rs:806-811 on measured source); aggregate callback counters do not join a particular callback ID to the p99 interval. Gap remains explicit until R5k join lands.
+Producer chain on measured831: stall/load.rs:1458 spawns --r5-stdout; :1565 writes1,000,000,000bytes. bbt-rt/commands.rs:230-234 pushes each chunk to ViewRing and UiMsg::Output; queues.rs:44/113 dirty-mark; lib.rs:103-104 maps those queues0/1. side_loads:1513 also posts Changed{source:6} via message source0.
+main.rs:3355 consumes/discards raw messages/output; display_link.rs:40 treated every non-tick source as a paint invalidation; main request_redraw_sources requested WindowRedraw again, redraw retired pending at entry before tickless return. This names the raw-output wake/redraw storm rather than attributing it to52display ticks or4348live-model wakes alone.
+Fix brief preserves1GBtraffic, all budget/deadline assertions, data-before-tick, actual-frame projection, focus/cmdloop and capture semantics. No runtime queue policy, output loss policy or PTY backpressure change.
+New callback join is separately requested in9ff2211e: bounded UI-thread callback identity/timestamps and exact frame CPU boundary clips, explicit outside-callback bucket; callbacks overlap neither each other nor frame cuts in exclusive accounting. No unique complete owner claimed when clock/nesting errors are recorded.
+Raw numeric probe and CPU data:
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/analysis/partition.json
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/frame/analysis/summary.json
+No new build/test/trace/load produced this diagnosis.
