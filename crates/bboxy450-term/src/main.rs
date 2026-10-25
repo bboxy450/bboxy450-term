@@ -460,16 +460,28 @@ fn ui_layout_node(
     })
 }
 fn chrome_input(name: &str) -> Result<keyboard::Input<'static>, String> {
-    let (command, name) = name
-        .strip_prefix("cmd-")
-        .map_or((false, name), |key| (true, key));
-    let (shift, name) = name
-        .strip_prefix("shift-")
-        .map_or((false, name), |key| (true, key));
+    let mut parts = name.split('-').collect::<Vec<_>>();
+    let name = parts.pop().ok_or("invalid_ui_key: missing key")?;
+    let mut state = ModifiersState::empty();
+    for modifier in parts {
+        state.insert(match modifier {
+            "cmd" => ModifiersState::SUPER,
+            "alt" => ModifiersState::ALT,
+            "shift" => ModifiersState::SHIFT,
+            _ => return Err("invalid_ui_key: unsupported modifier".into()),
+        });
+    }
     let (logical_key, code) = match name {
         "t" => (Key::Character("t".into()), KeyCode::KeyT),
         "g" => (Key::Character("g".into()), KeyCode::KeyG),
         "m" => (Key::Character("m".into()), KeyCode::KeyM),
+        "w" => (Key::Character("w".into()), KeyCode::KeyW),
+        "z" => (Key::Character("z".into()), KeyCode::KeyZ),
+        "r" => (Key::Character("r".into()), KeyCode::KeyR),
+        "pageup" => (Key::Named(NamedKey::PageUp), KeyCode::PageUp),
+        "pagedown" => (Key::Named(NamedKey::PageDown), KeyCode::PageDown),
+        "home" => (Key::Named(NamedKey::Home), KeyCode::Home),
+        "end" => (Key::Named(NamedKey::End), KeyCode::End),
         "comma" => (Key::Character(",".into()), KeyCode::Comma),
         "esc" => (Key::Named(NamedKey::Escape), KeyCode::Escape),
         "enter" => (Key::Named(NamedKey::Enter), KeyCode::Enter),
@@ -481,9 +493,6 @@ fn chrome_input(name: &str) -> Result<keyboard::Input<'static>, String> {
         "right" => (Key::Named(NamedKey::ArrowRight), KeyCode::ArrowRight),
         _ => return Err("invalid_ui_key: unsupported chrome key".into()),
     };
-    let mut state = ModifiersState::empty();
-    state.set(ModifiersState::SUPER, command);
-    state.set(ModifiersState::SHIFT, shift);
     Ok(keyboard::Input {
         unmodified_key: logical_key.clone(),
         logical_key,
@@ -3391,7 +3400,7 @@ impl App {
             )
         }
     }
-    fn dispatch_chrome(&mut self, routed: RoutedKey) -> Result<(), RoutedKey> {
+    fn dispatch_chrome(&mut self, routed: RoutedKey) -> Option<RoutedKey> {
         match routed {
             RoutedKey::OpenLauncher => self.open_launcher(),
             RoutedKey::OpenGraph => self.open_graph(),
@@ -3420,9 +3429,9 @@ impl App {
                 self.composer_move(None, Some(end), extend)
             }
             RoutedKey::Pane(navigation) => self.focus_action(FocusAction::Navigate(navigation)),
-            other => return Err(other),
+            other => return Some(other),
         }
-        Ok(())
+        None
     }
     fn ui_request(
         &mut self,
@@ -3443,7 +3452,7 @@ impl App {
             UiRequest::Open(UiTarget::Settings) => self.open_settings("Account"),
             UiRequest::Open(UiTarget::Docs(path)) => self.open_document(path),
             UiRequest::Key(keys) => {
-                for key in keys {
+                for (applied, key) in keys.into_iter().enumerate() {
                     let input = chrome_input(&key)?;
                     let modes = self
                         .focus
@@ -3467,11 +3476,12 @@ impl App {
                             | RoutedKey::Quit
                     ) {
                         return Err(format!(
-                            "ui_key_not_applicable: {key}; terminal input uses seat key"
+                            "ui_key_not_applicable: {key} after {applied} earlier chrome keys; terminal input uses seat key"
                         ));
                     }
-                    self.dispatch_chrome(routed)
-                        .map_err(|_| "ui_key_not_applicable".to_owned())?;
+                    if self.dispatch_chrome(routed).is_some() {
+                        return Err("ui_key_not_applicable".into());
+                    }
                 }
             }
             UiRequest::Focus { seat } => {
@@ -4971,9 +4981,9 @@ impl ApplicationHandler<UiEvent> for App {
                     });
                 let routed = self.route_chrome(&input, modes.unwrap_or_default());
                 match self.dispatch_chrome(routed) {
-                    Ok(()) => {}
-                    Err(RoutedKey::Quit) => self.request_close(event_loop),
-                    Err(RoutedKey::Scroll(motion)) => {
+                    None => {}
+                    Some(RoutedKey::Quit) => self.request_close(event_loop),
+                    Some(RoutedKey::Scroll(motion)) => {
                         if let Some(seat) = self.focus.stage.as_ref().and_then(|s| s.focused) {
                             let page = self
                                 .live_state
@@ -4990,7 +5000,7 @@ impl ApplicationHandler<UiEvent> for App {
                             self.scroll_pane(seat, request);
                         }
                     }
-                    Err(RoutedKey::Terminal(bytes)) => {
+                    Some(RoutedKey::Terminal(bytes)) => {
                         // No terminal input before the focused live Screen supplies modes.
                         if modes.is_some()
                             && let Some(seat) =
@@ -5009,8 +5019,8 @@ impl ApplicationHandler<UiEvent> for App {
                             });
                         }
                     }
-                    Err(RoutedKey::Local) => {}
-                    Err(_) => unreachable!("chrome routed above"),
+                    Some(RoutedKey::Local) => {}
+                    Some(_) => unreachable!("chrome routed above"),
                 }
             }
             WindowEvent::RedrawRequested => {
@@ -7812,5 +7822,23 @@ mod composer_host_tests {
         );
         assert_ne!(route_settings(&press, 0, true), RoutedKey::UndoClose);
         assert_ne!(route_key(&press, 0, Some("")), RoutedKey::UndoClose);
+    }
+}
+
+
+#[cfg(test)]
+mod ctl_ui_key_tests {
+    use super::*;
+    #[test]
+    fn every_advertised_chrome_key_uses_the_native_input_boundary() {
+        for key in bbt_proto::gui::UI_KEYS {
+            let input = chrome_input(key).unwrap_or_else(|error| panic!("{key}: {error}"));
+            assert_eq!(input.state, ElementState::Pressed);
+            assert!(input.text.is_none());
+        }
+        assert_eq!(route_key(&chrome_input("cmd-t").unwrap(), 0, None), RoutedKey::OpenLauncher);
+        assert_eq!(route_key(&chrome_input("cmd-g").unwrap(), 0, None), RoutedKey::OpenGraph);
+        assert_eq!(route_key(&chrome_input("cmd-m").unwrap(), 0, None), RoutedKey::MuteFocused);
+        assert!(matches!(route_key(&chrome_input("cmd-alt-tab").unwrap(), 0, None), RoutedKey::Pane(_)));
     }
 }

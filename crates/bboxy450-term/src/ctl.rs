@@ -30,6 +30,10 @@ const TIMEOUT: Duration = Duration::from_secs(15);
 const PAGE: usize = 128;
 
 pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]   (ctl-cli rev. 2)
+  ui open <graph|settings|launcher|docs <path>>
+  ui key <named-key>...                  cmd-t cmd-g cmd-m cmd-comma esc enter tab arrows
+  ui focus <seat>                        select its pane through the GUI owner
+  ui layout                              solved window tree, pane grids, focus and tab
   seat ls
   seat spawn <claude|codex|zsh> [--place tab] [--role oracle|architect|creativity|executor|shell]
              [--name NAME] [--cwd DIR] [--swarm ID]
@@ -1631,7 +1635,7 @@ pub fn classify(reason: &str) -> Fail {
             1,
         );
     }
-    if reason.starts_with("ui_refused: timeout:") {
+    if reason.starts_with("unknown: timeout:") {
         return fail(
             "timeout",
             "the GUI owner did not answer; retain --op and inspect app status",
@@ -2523,6 +2527,17 @@ mod tests {
         assert_eq!(
             classify("focus_timeout: no frame completed").kind,
             "focus_timeout"
+        );
+        assert_eq!(
+            (
+                classify("unknown: timeout: GUI owner did not answer").kind,
+                classify("unknown: timeout: GUI owner did not answer").exit
+            ),
+            ("timeout", 3)
+        );
+        assert_eq!(
+            classify("ui_refused: endpoint_unavailable: no GUI owner").exit,
+            4
         );
         let usage = classify(&parse_full(&args("seat fly s")).unwrap_err());
         assert_eq!((usage.kind, usage.exit), ("usage", 2));

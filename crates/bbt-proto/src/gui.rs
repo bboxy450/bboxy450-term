@@ -114,6 +114,9 @@ pub const UI_KEYS: &[&str] = &[
     "cmd-t",
     "cmd-g",
     "cmd-m",
+    "cmd-w",
+    "cmd-z",
+    "cmd-r",
     "cmd-comma",
     "esc",
     "enter",
@@ -129,6 +132,16 @@ pub const UI_KEYS: &[&str] = &[
     "cmd-down",
     "cmd-enter",
     "backspace",
+    "pageup",
+    "pagedown",
+    "home",
+    "end",
+    "cmd-alt-left",
+    "cmd-alt-right",
+    "cmd-alt-up",
+    "cmd-alt-down",
+    "cmd-alt-tab",
+    "cmd-alt-shift-tab",
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "path", rename_all = "snake_case")]

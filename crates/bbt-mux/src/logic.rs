@@ -809,7 +809,15 @@ impl LogicClient {
         }
         let result = match self.captures.ui(op, request).await {
             Ok(layout) => crate::mcp::success(op, serde_json::to_value(layout)?),
-            Err(reason) => crate::mcp::error(op, "ui_refused", &reason),
+            Err(reason) => crate::mcp::error(
+                op,
+                if reason.starts_with("timeout:") {
+                    "unknown"
+                } else {
+                    "ui_refused"
+                },
+                &reason,
+            ),
         };
         operator_response(admission.journal.complete(
             &admission.principal,

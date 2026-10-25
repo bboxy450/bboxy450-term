@@ -655,20 +655,22 @@ fn ctl_ui_relays_real_chrome_layout_focus_and_a_foreground_launcher() {
                     .map(|rows| rows.len() as u64))
         .then_some(layout)
     });
-    // A solid terminal background makes foreground order observable over pane pixels.
-    f.ok(&[
-        "seat",
-        "type",
-        &a,
-        r"printf '\033[41m\033[2J\033[HUI-OVERLAY-READY\n'",
-    ]);
+    // Print every cell's background, rather than relying on erase-display's
+    // background rule. Reversing the layers would leave this area opaque red.
+    let pane = &focused["data"]["panes"][0];
+    let width = pane["cols"].as_u64().unwrap().saturating_sub(1).max(1);
+    let lines = pane["rows"].as_u64().unwrap() + 2;
+    let fill = format!(
+        r"printf '\033[41m'; for i in {{1..{lines}}}; do printf '%{width}s\n' UI-OVERLAY; done; printf '\033[0m\nUI-OVERLAY-DONE\n'"
+    );
+    f.ok(&["seat", "type", &a, &fill]);
     f.ok(&["seat", "key", &a, "enter"]);
     f.ok(&[
         "seat",
         "wait",
         &a,
         "--text",
-        "(?m)^UI-OVERLAY-READY$",
+        "(?m)^UI-OVERLAY-DONE$",
         "--timeout",
         "10000",
     ]);
@@ -694,16 +696,31 @@ fn ctl_ui_relays_real_chrome_layout_focus_and_a_foreground_launcher() {
     let x1 = (rect(pane, 0) + rect(pane, 2)).min(rect(panel, 0) + rect(panel, 2)) as usize - 16;
     let y1 = (rect(pane, 1) + rect(pane, 3)).min(rect(panel, 1) + rect(panel, 3)) as usize - 16;
     assert!(x1 > x0 && y1 > y0, "picker covers the actual pane");
-    let mut changed = 0;
+    let (mut changed, mut red_before, mut red_after) = (0, 0, 0);
     for y in y0..y1 {
         for x in x0..x1 {
             let at = (y * w as usize + x) * 4;
             changed += usize::from(before[at..at + 4] != after[at..at + 4]);
+            let red = |p: &[u8]| {
+                p[0] > 120
+                    && u16::from(p[0]) > u16::from(p[1]) * 2
+                    && u16::from(p[0]) > u16::from(p[2]) * 2
+            };
+            red_before += usize::from(red(&before[at..at + 4]));
+            red_after += usize::from(red(&after[at..at + 4]));
         }
     }
     assert!(
         changed > (x1 - x0) * (y1 - y0) / 3,
         "launcher must paint above the terminal: {changed} changed pixels"
+    );
+    assert!(
+        red_before > (x1 - x0) * (y1 - y0) * 3 / 4,
+        "fixture must print opaque red cells across the covered pane: {red_before}"
+    );
+    assert!(
+        red_after < red_before / 3,
+        "launcher must cover those cells, rather than paint behind them: {red_before}->{red_after}"
     );
     if let Some(dir) = std::env::var_os("BBOXY_C3_EVIDENCE_DIR") {
         let dir = std::path::PathBuf::from(dir);
@@ -723,7 +740,7 @@ fn ctl_ui_relays_real_chrome_layout_focus_and_a_foreground_launcher() {
             serde_json::to_vec_pretty(&opened).unwrap(),
         )
         .unwrap();
-        std::fs::write(dir.join("foreground-verdict.json"), serde_json::to_vec_pretty(&serde_json::json!({"changed":changed,"covered":(x1-x0)*(y1-y0),"custody":"file","windows":0})).unwrap()).unwrap();
+        std::fs::write(dir.join("foreground-verdict.json"), serde_json::to_vec_pretty(&serde_json::json!({"changed":changed,"covered":(x1-x0)*(y1-y0),"red_before":red_before,"red_after":red_after,"custody":"file","windows":0})).unwrap()).unwrap();
     }
     f.ok(&["ui", "key", "esc"]);
     for target in ["graph", "settings"] {

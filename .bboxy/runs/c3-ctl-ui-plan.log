@@ -19,8 +19,12 @@ Paths/mechanisms:
 - gpu.rs: VerificationFrame foreground after pane textures; legacy caller passes empty foreground.
 - tests/headless.rs: isolated file-account integration and launcher-over-pane pixel witness.
 
-Bounds: 1-32 named keys; 4096-char document locator; 64 pending relays; 10s relay wait; layout 4096 nodes/128KiB, named refusal instead of clipping.
+Bounds: 1-32 named keys; 4096-byte document locator; 64 pending relays; 10s relay wait; layout 4096 nodes/128KiB, named refusal instead of clipping.
 Verification: focused DTO/relay/parser/FIFO and headless tests, strict workspace/all-target Clippy, exact clean atomic ci-local --parity (0 geometry mismatches), retained before/launcher PNGs with pixel assertion and crop read.
 UI scroll is explicitly a later cut (Corvin 564b997c / records21b41f88).
 Initial WIP check: cargo check --all-targets EXIT101 at Result alias; corrected to std::result::Result; second check EXIT0.
 A whole-workspace cargo fmt --check EXIT1 found inherited formatting plus WIP; only owned changed files formatted, inherited whitespace-only hunks restored. No unrelated source edited.
+
+Checkpoint ed7320d2: cargo check0; focused headless1/0; full sequential headless9/0 including two unattended idle smokes; proto UI1/0; relay3/0. Strict workspace Clippy initially101 at result_large_err; dispatch now returns Option<RoutedKey>, next strict run0.
+Capture fixture strengthened after image inspection: print opaque red cells before opening the launcher. Focused acceptance1/0; all529984 covered pixels change, red529984->0. Retained target/c3-ui-proof (not a canonical parity baseline).
+Late read: mark a timed-out relay unknown rather than rejected; same op still never redispatches. Named chrome keys include existing page close/reload and pane-navigation chords; UI scroll verb remains deferred.
