@@ -1,0 +1,121 @@
+R5i measured frame: ONE attempt, unchanged timing gate EXIT 1
+Recorded 2026-10-25T02:53:11.028993-07:00
+Executor: Rook Ashwhisker / own worktree; exact measured source 0e97dc326e3fe2e490bef4cae51afa59a2c239dd
+Brief 3fc80f63-5a52-4c4a-a046-1c55a30afa76; quiet timing override450cba7d-e564-48be-b2f4-df229c7b0f2b.
+Scope: measurement/evidence only. No source or scheduling change. No rerun.
+
+Execution and proof
+Build: nice -n10 cargo build --release --locked -p bboxy450-term --message-format=json-render-diagnostics — EXIT0, 920.388140125s.
+Cargo artifact: O3, debug_assertions=true, debuginfo0. Wrappers clear; CARGO_BUILD_JOBS=2; own target only.
+Binary SHA256 44906d9f78490f7ab72e0d54d879d6a6ce398cab1de7116afc5c0fcfc2967665; identical after run.
+Command: sh scripts/gates.sh frame — EXIT1, 78.974396875s; no wrapper timeout.
+Environment: GATE_SEATS=967 GATE_WATCHED=50 GATE_SECONDS=10 BBOXY_TEST_CUSTODY=memory CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true.
+Start 2026-10-25T02:47:24.863889-07:00; app PID94985; no full gates running; loadavg1=2.98779296875; free43275927552 bytes.
+Runtime custody witness: custody=Some(Memory) and label=Some("memory custody (debug)").
+Real PTYs967/watched50; stdout1,000,000,000 bytes; bus10009.5870767/s; deliberate stalled read2000.180ms.
+Timing verdict: ["ui-cpu-p99-over4ms", "input-to-gpu-over-two-display-intervals"]
+UI CPU p99=518.703750ms (target<=4ms); frame-work p99=25.228875ms; frames42; refresh75Hz.
+Input→GPU=8618.472458ms (target<=26.666666667ms); input→prepared-model=8087.989500ms.
+Idle frames0/callbacks0; UI blocking guards0; probe_clipped=false.
+All969 recorded PIDs gone: driver ps EXIT1/no rows; independent post-run recheck EXIT1/no rows.
+QUIET START be46c072-ec5d-4462-9651-37346b97aad8; END12ffe717-90e5-4c8c-80e6-dd108e141e34 after reap; window closed early.
+After run loadavg1=3.2509765625; free43242430464 bytes.
+
+Probe timeline (same R5i clock; milliseconds after Admitted)
+Stage | from admission ms | from previous observed stage ms
+Admitted | 0.000000 | n/a
+ControlReceived | 0.014500 | 0.014500
+GuiEnqueued | 0.016833 | 0.002333
+WireEnqueued | 0.020708 | 0.003875
+WriterDequeued | 0.022542 | 0.001834
+WriteStarted | 0.029083 | 0.006541
+Written | 0.042750 | 0.013667
+LogicOutputRead | 8029.074083 | 8029.031333
+GuiReceived | 8087.390125 | 58.316042
+GuiApplyStarted | 8087.390833 | 0.000708
+GuiApplied | 8087.396958 | 0.006125
+ModelBuilt | 8087.771125 | 0.374167
+ModelPrepared | 8087.976125 | 0.205000
+ModelPublished | 8087.977875 | 0.001750
+LatestTaken | 8087.989083 | 0.011208
+ProjectionStarted | 8087.993417 | 0.004334
+ProjectionFinished | 8088.163625 | 0.170208
+ModelApplied | 8088.211750 | 0.048125
+Encoded | 8594.428750 | 506.217000
+GpuComplete | 8618.472458 | 24.043708
+LogicRingRead is the observed output source at sequence903; LogicLiveEvent is null/unobserved.
+93.161219951% of this probe admission→GPU interval elapsed before LogicOutputRead.
+The 8029.031333ms written→logic-read interval includes PTY execution/capture and ring backlog: no PTY-capture timestamp split is available.
+No 8-second ModelBuild claim: the probe GUI-applied→ModelBuilt interval is0.374167ms, then prepare0.205000ms.
+ModelApplied→Encoded506.217000ms remains distinct from the preceding ring delay.
+
+R5i MEASURE-period counters (completion-accounted spans entered while fixture phase==MEASURE)
+This period lasts through watched PAUSED catch-up, not just the ten-second producer interval; observed_seconds=15.914491625.
+Phase | calls | work | output bytes | inclusive wall ms | max wall ms | active
+ReadRingRequest | 6824 | 6824 | 100238427 | 13485.050949 | 15.560833 | 0
+ReadRingTerminalDecode | 180137 | 180137 | 100253787 | 817.750595 | 0.328583 | 0
+ModelBuild | 4473 | 4325391 | 0 | 1962.511473 | 1.764042 | 0
+PanePrepare | 4473 | 223650 | 0 | 338.950808 | 4.433750 | 0
+ModelPublish | 4473 | 0 | 0 | 2356.666404 | 4.823417 | 0
+UiProjection | 4321 | 4178407 | 0 | 772.971997 | 0.401875 | 0
+UiSeatRows | 4321 | 4178407 | 0 | 449.757905 | 0.242917 | 0
+TicklessRedraw | 56431 | 4320 | 0 | 1.026424 | 0.002958 | 0
+UiOldModelDrop | 4321 | 0 | 0 | 210.974673 | 0.156458 | 0
+IoOldModelDrop | 4473 | 0 | 0 | 0.105986 | 0.002500 | 0
+ReadRingRequest includes serial RPC wait and protocol decoding; syscall-only timing is null/unavailable.
+ReadRingTerminalDecode measures state.apply per replay record (terminal decode), a different scope.
+4320 projections occurred inside tickless redraws; total projections4321, builds4473, encoded frames42.
+main.rs:4232-4265 drains/projected the newest model before take_tick/early-return.
+scene.rs:421-524 projects all967 open seat rows per set_model.
+model.rs:856/1184 records build/prepare separately on IO.
+logic.rs:5013-5036 measures ReadRing request; :5092-5104 measures terminal state.apply.
+
+Per-callback UI CPU, MEASURE (CLOCK_THREAD_CPUTIME_ID)
+Kind | calls/samples | CPU sum ms | max CPU ms | active | CPU errors
+AboutToWait | 90031/90031 | 14.897483 | 0.004417 | 0 | 0
+Resumed | 0/0 | unmeasured | unmeasured | 0 | 0
+UserWake | 71289/71289 | 58.532776 | 0.014334 | 0 | 0
+UserStallPoll | 755/755 | 1.567177 | 0.006000 | 0 | 0
+UserOther | 1/1 | 0.002041 | 0.002041 | 0 | 0
+WindowRedraw | 56473/56473 | 2183.116943 | 25.421917 | 0 | 0
+WindowPointer | 0/0 | unmeasured | unmeasured | 0 | 0
+WindowOther | 0/0 | unmeasured | unmeasured | 0 | 0
+WindowRedraw accounts for96.678670934% of the measured callback CPU total; this is callback CPU attribution, not an exclusive nested wall partition.
+The old frame CPU counter is sampled at successful frame endpoints (main.rs:4409; stall.rs:807-826), so518.704ms is not a single callback duration.
+
+Capture sidecar intervals (separate capture clock; never subtract from R5i timestamps)
+Intervals are sequential non-atomic owner snapshots. Cumulative elapsed/call deltas below are completion-accounted; nested times overlap.
+{"interval": "capture_at_measure->capture_at_stop", "missed_end": 0, "missed_start": 0, "overwritten_spans_end": 35606, "overwritten_spans_start": 15688, "owner": "logic", "phases": {"checkpoint_rpc": {"calls": 0, "seconds": 0.0}, "logic_turn": {"calls": 1960, "seconds": 10.006792873}, "maintenance": {"calls": 1960, "seconds": 0.29200291}, "parse": {"calls": 2006, "seconds": 0.25362671}, "read_ring_rpc": {"calls": 1960, "seconds": 8.657125773}, "replay_page": {"calls": 1960, "seconds": 8.914163983}, "supervisor_query": {"calls": 0, "seconds": 0.0}, "supervisor_sweep": {"calls": 0, "seconds": 0.0}}, "same_pid": true, "untracked_seat_samples_end": 0, "wall_s": 10.003875042}
+{"interval": "capture_at_measure->capture_at_stop", "missed_end": 54, "missed_start": 0, "overwritten_spans_end": 98910, "overwritten_spans_start": 85995, "owner": "supervisor", "phases": {"checkpoint_rpc": {"calls": 0, "seconds": 0.0}, "logic_turn": {"calls": 0, "seconds": 0.0}, "maintenance": {"calls": 0, "seconds": 0.0}, "parse": {"calls": 0, "seconds": 0.0}, "read_ring_rpc": {"calls": 0, "seconds": 0.0}, "replay_page": {"calls": 0, "seconds": 0.0}, "supervisor_query": {"calls": 1960, "seconds": 4.577050618}, "supervisor_sweep": {"calls": 4498, "seconds": 9.56450465}}, "same_pid": true, "untracked_seat_samples_end": 0, "wall_s": 10.003842041}
+{"interval": "capture_at_stop->capture_at_settled", "missed_end": 0, "missed_start": 0, "overwritten_spans_end": 87252, "overwritten_spans_start": 35606, "owner": "logic", "phases": {"checkpoint_rpc": {"calls": 0, "seconds": 0.0}, "logic_turn": {"calls": 5131, "seconds": 6.216981704}, "maintenance": {"calls": 5131, "seconds": 0.257438069}, "parse": {"calls": 5286, "seconds": 0.627710477}, "read_ring_rpc": {"calls": 5131, "seconds": 5.087388711}, "replay_page": {"calls": 5131, "seconds": 5.719248416}, "supervisor_query": {"calls": 0, "seconds": 0.0}, "supervisor_sweep": {"calls": 0, "seconds": 0.0}}, "same_pid": true, "untracked_seat_samples_end": 0, "wall_s": 6.215277708}
+{"interval": "capture_at_stop->capture_at_settled", "missed_end": 102, "missed_start": 54, "overwritten_spans_end": 130454, "overwritten_spans_start": 98910, "owner": "supervisor", "phases": {"checkpoint_rpc": {"calls": 0, "seconds": 0.0}, "logic_turn": {"calls": 0, "seconds": 0.0}, "maintenance": {"calls": 0, "seconds": 0.0}, "parse": {"calls": 0, "seconds": 0.0}, "read_ring_rpc": {"calls": 0, "seconds": 0.0}, "replay_page": {"calls": 0, "seconds": 0.0}, "supervisor_query": {"calls": 5131, "seconds": 3.016869113}, "supervisor_sweep": {"calls": 10641, "seconds": 6.07506165}}, "same_pid": true, "untracked_seat_samples_end": 0, "wall_s": 6.215274167}
+Stop→first-observed-settled logic wall6.215277708s; checkpointRPC0calls/0s=0%; checkpoint in_flight0 at both boundaries.
+Logic missed0/untracked0. Supervisor missed54 at stop and102 at settled; its totals are incomplete/lower bounds. Retained span rings overwrote older entries.
+UI MEASURE counters and ten-second sidecar cuts are not interchangeable intervals.
+
+Limits
+One probe and one run; no throughput improvement or broad non-flakiness claim.
+Counters are completion-accounted, non-atomic and inclusive; do not sum nested wall as CPU.
+No CPU samples for IO/model/ReadRing spans means unmeasured CPU, not zero.
+Probe null stages are unobserved, not zero latency. No system-call vs transport-decode claim.
+The app-owned PNG was inspected:50 small live terminal panes; it is an in-run capture, not a final-settle or physical-scanout proof.
+No operator clicks, desktop control, login-keychain access, or peer process interference.
+NG1 remains parked426dea65; prior NG1 green gate and later native workspace101 remain separate facts.
+
+Retained evidence root /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5i-measured-_ifz9a0i
+Requested partition JSON: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5i-measured-_ifz9a0i/analysis/partition.json
+Capture deltas with in_flight: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5i-measured-_ifz9a0i/analysis/capture-intervals.json
+All exact counters: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5i-measured-_ifz9a0i/analysis/counters.csv
+Raw stderr: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5i-measured-_ifz9a0i/run-1/stderr.log
+Artifact manifest: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5i-measured-_ifz9a0i/analysis/manifest.json
+Selected artifact SHA256s:
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5i-measured-_ifz9a0i/build.log eed56e0cf4abe798e283b1d246112bf8b6e458184cfea97b8914fc094ff171c9
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5i-measured-_ifz9a0i/build-artifacts.jsonl 76a7e6c92a13f4283b74dc479b1bc178c0bb75e5843f92b75d0244b8bb298a9c
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5i-measured-_ifz9a0i/run-1/result.json 6081a931d77a4bc0d4c019ef661bd3f00e8cac8638352d01d5713e47e0f1cdee
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5i-measured-_ifz9a0i/run-1/stderr.log 4c5fb9045c16d3bc3d0df5091acff32fa4b7cdc36504137250a29d30120d31eb
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5i-measured-_ifz9a0i/run-1/reaped.json 1978f581d58dba305b9f0b1a4b2f3db0dfb23b2f69940c43de1cdea0baa9a5a1
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5i-measured-_ifz9a0i/run-1/r5-frame.FUsN3D/report.json 8a80a2d1a84aed075b54aa5fbd4f39a94ab8d301b4a818294002325d45dea9f9
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5i-measured-_ifz9a0i/run-1/r5-frame.FUsN3D/report.capture.json f351a504b9373505b672911310f023f8c9518fbae7ec7f8b8f53b3bdaa41d2ae
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5i-measured-_ifz9a0i/analysis/partition.json 92aafa5dc332f0298cbb50c29248e204c1cc1e03d86bd39e2c9d46ce7cf76d1f
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5i-measured-_ifz9a0i/analysis/capture-intervals.json d66efaf4415ec6525973286f77ea6db818bb3ed3e0c912142beb43039a4fff5f
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5i-measured-_ifz9a0i/analysis/manifest.json 9d5278a54d2337cc5400c0c81a934a3b08ed56f61e75eadcc8ea00c4ed0c254e
