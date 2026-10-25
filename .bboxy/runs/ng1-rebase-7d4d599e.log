@@ -1,0 +1,39 @@
+{
+  "source": "4c55d1b8185667a4e96815957e4c63af1e14f16e",
+  "base": "7d4d599edc55e55307b21b952a0128b9cd30f5a5",
+  "rebase_exit": 0,
+  "range_diff_unchanged": 27,
+  "signature_exit": 0,
+  "tracked_clean": true,
+  "time": "2026-10-25T01:35:13.610872-07:00"
+}
+
+1:  0da8f835 =  1:  5a6005cc Prove first held startup currently gates local messaging
+ 2:  01d4eaad =  2:  896d91e2 Define local pending intents without a cryptographic author claim
+ 3:  c0f403a1 =  3:  b13d3b5c Bind local pending intent records and retain the failing custody control
+ 4:  bc90399b =  4:  cb52b34c Separate stored pending intents from signed envelopes for NG1 integration
+ 5:  ae025912 =  5:  5bacba1d Pass borrowed message metadata directly in resolution
+ 6:  fb0ed706 =  6:  a5326b01 WIP: retain immutable local pending records for NG1 integration
+ 7:  9748261b =  7:  60f8b1e3 WIP: admit local pending seat messages and append signature completions
+ 8:  6ace96aa =  8:  d46520e4 WIP: project pending grades and keep remote inboxes strict
+ 9:  99f99ac1 =  9:  b952dd98 WIP: separate the logical operator reference from device attribution
+10:  231d0beb = 10:  2a3f0817 WIP: retain operator-local pending delivery across signature completion
+11:  3d7f8ac4 = 11:  ebed2229 WIP: bound signing recovery without limiting local pending admission
+12:  8e74465e = 12:  c5d28043 WIP: carry verified device attribution beside the stable message sender
+13:  31571332 = 13:  0c036a49 Check pending operator serialization and preserve history coverage in the grade test
+14:  add36d52 = 14:  cd051dbc Keep admitted GUI messaging and its operator reference live during custody holds
+15:  f8886ca9 = 15:  02968096 Check private seat delivery through its inbox and retain GUI timeout diagnostics
+16:  e1c3f72a = 16:  29ca45e2 Expose stale grade downgrades and missing recovered seat device attribution
+17:  b7436819 = 17:  dfc951b4 Keep confirmed message signatures monotonic and activate the unattended hold invariant
+18:  6e8f20f0 = 18:  edd505ce Allocate first-start operator references explicitly without a default fallback
+19:  c99a33b8 = 19:  9b292bbe Remove redundant borrows from signed-envelope fixture adapters
+20:  c34e2c6d = 20:  a9424080 Assert the permanent messaging reference when a fixture enrols its device after startup
+21:  88c235c0 = 21:  ce4d4bd4 Record successful NG1 workspace, strict lint and active invariant preflight
+22:  2e991a25 = 22:  6bc2d5c5 Record the conflict-free NG1 rebase and preserved native authority bodies
+23:  ef6cc3a3 = 23:  6f745600 Retain native hold refusal evidence and capture failure-only fixture status
+24:  f9e43c19 = 24:  8d7bacec Record the bounded native-hold reproduction without erasing the workspace failure
+25:  d4b44dec = 25:  84774e31 Record green diagnostic prechecks and preserved native C3 authority on rebase
+26:  0596bdc0 = 26:  f69df339 Record exact NG1 parity gate and unchanged patches on C4 rebase
+27:  7c376d28 = 27:  4c55d1b8 Retain the rebased native hold failure and print its final public response
+
+Independent default invariants on exact0596bdc0: EXIT0/369.513775958s,24checks/0failures/8slow skips; raw SHA2564eb25af04fc9f2c09963404669c9bf5135e22dbbd69c7794b5605b8f607ec1ec. Workspace on that same source remains EXIT101/1404passed/1native failure/29ignored. Strict Clippy EXIT0. No source/failure waiver implied by these independent passing checks. Current writing rebase4c55d1b8 is not yet a tested/green source. Native owner paired diagnostic on immutable7c is separate work.
