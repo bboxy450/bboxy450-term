@@ -75,6 +75,11 @@ fn facts(
     kind: TargetKind,
 ) -> crate::store::Result<(Ulid, Ulid, [u8; 32], super::Custody)> {
     let status = super::status::read(account, crate::store::now_ms() / 1000)?;
+    if status.state == super::IdentityState::Held {
+        return Err(invalid(
+            "held: native custody authority is no longer current",
+        ));
+    }
     if kind == TargetKind::Local {
         let (local_device, key, public, custody) = super::local::unlock_target(account)?;
         let device = if status.bootstrapped {
@@ -108,6 +113,11 @@ fn facts(
 }
 fn signer_fact(account: &SqliteStore, local: [u8; 32]) -> crate::store::Result<[u8; 32]> {
     let status = super::status::read(account, crate::store::now_ms() / 1000)?;
+    if status.state == super::IdentityState::Held {
+        return Err(invalid(
+            "held: native completion authority is no longer current",
+        ));
+    }
     if !status.bootstrapped {
         return Ok(local);
     }
