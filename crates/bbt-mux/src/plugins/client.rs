@@ -29,16 +29,31 @@ pub(super) struct Client {
     stderr: Option<JoinHandle<Stderr>>,
     next: u64,
     pub pid: u32,
+    shape_timeout: Duration,
     #[cfg(test)]
     spawned_environment_names: Vec<String>,
 }
 
 impl Client {
     pub fn spawn(fixture: &FixtureAccount, shape: bool) -> Result<Self, Refusal> {
-        let executable = fixture.executable()?;
+        Self::spawn_verified(
+            fixture.executable()?,
+            std::path::Path::new(&fixture.record.data_dir),
+            shape,
+            HANDSHAKE,
+        )
+    }
+
+    // Both callers first reread their account authority and verify its pinned copy.
+    pub(super) fn spawn_verified(
+        executable: std::path::PathBuf,
+        data_dir: &std::path::Path,
+        shape: bool,
+        shape_timeout: Duration,
+    ) -> Result<Self, Refusal> {
         let mut command = Command::new(executable);
         command
-            .current_dir(&fixture.record.data_dir)
+            .current_dir(data_dir)
             .env_clear()
             .envs(std::env::vars_os().filter(|(key, _)| key.to_str().is_some_and(allowed_env_name)))
             .stdin(Stdio::piped())
@@ -85,6 +100,7 @@ impl Client {
             stderr: Some(capture),
             next: 0,
             pid,
+            shape_timeout,
             #[cfg(test)]
             spawned_environment_names,
         })
@@ -123,7 +139,7 @@ impl Client {
             }
             serde_json::from_slice(&bytes).map_err(|e| failure("invalid_shape_json", e))
         };
-        timeout(HANDSHAKE, read)
+        timeout(self.shape_timeout, read)
             .await
             .map_err(|_| failure("deadline_exceeded", "--shape exceeded its fixed deadline"))?
     }

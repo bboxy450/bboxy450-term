@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use bbt_plugin::{
     Refusal,
     contracts::Contract,
-    shape::{SCHEMA, Shape},
+    shape::{PluginName, SCHEMA, Shape},
 };
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -61,15 +61,26 @@ async fn descriptor(account: &mut FixtureAccount, report: &mut CheckReport) -> R
     let stderr = process.shutdown().await;
     report.stderr_truncated |= stderr.truncated;
     let mut value = value?;
+    // The host itself must tolerate minor fields, including nested commands.
+    if let Some(fields) = value.as_object_mut() {
+        fields.insert("p0_future_minor_field".into(), json!(true));
+    }
+    account.cache_shape(parse_descriptor(value, &account.record.name)?)?;
+    report.checks.push(
+        "shape, versions, method names, fixed authority, hook ceilings and tool-name bounds".into(),
+    );
+    Ok(())
+}
+
+/// Pure descriptor checks shared by the fixture checker and production trust.
+pub(super) fn parse_descriptor(value: Value, name: &PluginName) -> Result<Shape, Refusal> {
     validate(
         &serde_json::from_str(SCHEMA).expect("bundled shape schema"),
         &value,
         "invalid_shape",
     )?;
-    // The host itself must tolerate minor fields, including nested commands.
-    value["p0_future_minor_field"] = json!(true);
     let shape: Shape = serde_json::from_value(value).map_err(|e| failure("invalid_shape", e))?;
-    shape.validate(&account.record.name)?;
+    shape.validate(name)?;
     for system in &shape.systems {
         let contract = Contract::named(&system.contract)?;
         for command in &system.commands {
@@ -87,11 +98,7 @@ async fn descriptor(account: &mut FixtureAccount, report: &mut CheckReport) -> R
                 .map_err(|e| failure("invalid_result_schema", e))?;
         }
     }
-    account.cache_shape(shape)?;
-    report.checks.push(
-        "shape, versions, method names, fixed authority, hook ceilings and tool-name bounds".into(),
-    );
-    Ok(())
+    Ok(shape)
 }
 
 async fn tools(client: &mut Client) -> Result<BTreeMap<String, Value>, Refusal> {

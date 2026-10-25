@@ -1,0 +1,37 @@
+P-1 cut 1 evidence
+Source 004ebd85426334709beabbcd2813189c9a8aeadf
+Base 5de8730fc63b762e6e505f838321dd2b5739ac4f
+Branch exec5-plugins-p1; own worktree /Users/feral/mydev/bboxy450-term-exec5
+Both own source commits signed with 9B07E849480C68328CA20684844ECC0587DE7AB0 and verified.
+Loaded source f584df9aedef9b140594bad535dc60f1e365c37c, both own patches equal after rebase; all ten own file blobs byte-identical.
+
+Exact gate: sh scripts/ci-local.sh, NORMAL, clean detached source; exit 0; elapsed 2974.415 s.
+CARGO_BUILD_JOBS=2; RUSTC_WRAPPER=; RUSTC_WORKSPACE_WRAPPER=; CARGO_NET_OFFLINE=true; BBOXY_TEST_CUSTODY=memory.
+Canonical gate profiles O1, debug info 0, incremental 0, debug assertions true.
+Workspace: 1491 passed, 0 failed, 29 ignored, 209 result groups. No FAILED summaries or quarantine retries.
+Workspace strict Clippy and UI lint exit 0.
+Headless smoke: actual memory-custody witness, windows=0, idle 0 frames/0 callbacks/10.003 s; orderly child reap.
+Invariants: 26 checks, 0 failures, 10 slow skipped. No parity/scale run for this kit/mux-only cut.
+CI source stayed frozen while main moved to 0d7bea90b7000f6e43a319d33a6e01822d928e57. Upstream changes to own paths: none.
+CI worktree tracked/untracked status after gate: empty.
+
+Pre-gate commands/results are in plugins-p1-cut1-prechecks.log: kit14/0; registry11/0; existing checker7/0; plugin-unit5/0; strict kit/mux/app0.
+Original development host run: exit101, one runtime macOS environment-name expectation failure; corrected to the existing client's platform exception. Original clippy: exit101, one collapsible-if; fixed. Both raw failures retained.
+Pre-seam fast invariants: exit0,26/0,9slow skipped; exact final gate is the authority above.
+
+Oracle-requested load test: exact named deadline regression10/10 while two own cargo test --no-run builds remained active before/after every invocation, jobs2 each, direct compiler/offline. Both load groups ended empty; targets removed after empty lsof. Their intentional SIGTERM(-15) stops after the experiment are not passing build verdicts.
+Production descriptor deadline remains2s; healthy component fixtures30s hang guard; never-answering fixture25ms injected budget. No wall-clock speed assertion.
+No operator identity, native prompt, desktop, network discovery or production plugin used. Private component-test account stores/fixture actors only, not a claim about the ctl admission door.
+
+Scope: library kit/mux discovery, trust, activation and descriptor jobs. ctor takes the existing account handle; no second production account writer.
+Deferred exactly as approved: admitted ctl/journal/replay wiring (cut2), Settings binding (cut3), setup unavailable (F2), business adapters/hooks/knowledge swap outside this cut.
+
+Retained exact-gate registry test binary /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/retained/plugin-registry-004ebd85
+SHA256 2a783fccd983c57eda310ca9cf94fd5d2836b277c34926afbf8195b2e819e898
+Sole warm gate target retained only for immediately queued #327 test sweep; no active compiler/test/app handles (lsof exit1). Precheck cache already retired,5910491136 allocated bytes.
+
+plugins-p1-cut1-ci.log SHA256 b88a2245ed3197ebdc562f7455b64dc0f77a0c95694be0147e277b4d9a9dc074 bytes 252124
+
+plugins-p1-cut1-loaded.log SHA256 67d9f6f1d6146892f187f32723eac20cc555b07207b28890c9409e81fbb9dd35 bytes 43197
+
+plugins-p1-cut1-prechecks.log SHA256 844044cb81ed0ce54092a1d16c268d43187850a27203671f8534aea9297dd888 bytes 42731
