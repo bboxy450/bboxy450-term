@@ -15,6 +15,12 @@ use std::{collections::BTreeMap, path::Path};
 
 pub const STATES: &[&str] = &[
     "Account",
+    "custody · held",
+    "custody · unlock pending",
+    "custody · cancelled",
+    "custody · unknown",
+    "custody · granted",
+    "custody · signer returned",
     "Cloud",
     "Machines",
     "Roles",

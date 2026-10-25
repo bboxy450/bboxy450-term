@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "cargo",
+    "test",
+    "--workspace",
+    "--locked"
+  ],
+  "source": "8d0a478c4164e50dbc45c885d6eabdd0a01672ef",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/native-c3-dev",
+  "environment": {
+    "RUSTC_WRAPPER": "",
+    "RUSTC_WORKSPACE_WRAPPER": "",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "exit": 0,
+  "seconds": 1075.613,
+  "log": "native-c3-workspace.log",
+  "sha256": "6984a26ecae641515a2b3aea01a0e088791bc15dd93ba660178e415564fd0307"
+}

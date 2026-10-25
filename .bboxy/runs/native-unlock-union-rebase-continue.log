@@ -1,0 +1,20 @@
+[detached HEAD bf2986c1] Implement journaled native identity unlock and operator controls
+ 31 files changed, 4063 insertions(+), 236 deletions(-)
+ create mode 100644 crates/bboxy450-term/tests/native_signing.rs
+ create mode 100644 crates/bbt-mux/src/identity/native_keychain.rs
+ create mode 100644 crates/bbt-mux/src/identity/unlock.rs
+ create mode 100644 crates/bbt-mux/tests/native_unlock.rs
+ create mode 100644 crates/bbt-proto/src/identity.rs
+Recorded resolution for 'crates/bboxy450-term/src/ctl.rs'.
+Recorded resolution for 'crates/bboxy450-term/src/main.rs'.
+Recorded resolution for 'crates/bbt-mux/src/seat_socket.rs'.
+Rebasing (2/10)
+Rebasing (3/10)
+Rebasing (4/10)
+Rebasing (5/10)
+Rebasing (6/10)
+Rebasing (7/10)
+Rebasing (8/10)
+Rebasing (9/10)
+Rebasing (10/10)
+Successfully rebased and updated refs/heads/exec5-native-unlock.

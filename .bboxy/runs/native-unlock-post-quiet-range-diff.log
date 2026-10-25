@@ -1,0 +1,9 @@
+ 1:  a5707cea =  1:  2f38d6a2 Implement journaled native identity unlock and operator controls
+ 2:  cffa97da =  2:  8999c487 Keep native recovery selection in one bounded condition
+ 3:  0c856d3c =  3:  5c0f412b Keep fresh identity operation IDs distinct from nil defaults
+ 4:  9122eb2b =  4:  36efcea0 Enroll the two-item unlock fixture in its actual run account
+ 5:  20c0254f =  5:  3d1bb318 Recover the issuer before checking separate certified device custody
+ 6:  b0ecb270 =  6:  c81cd195 Make unknown native operation checks read-only even before admission
+ 7:  ad713516 =  7:  8a78692b Refuse expired public authority before native custody effects
+ 8:  89eaf763 =  8:  9d45f5c1 Match custody status typography and insets to the paired lab reference
+ 9:  55673e94 =  9:  6fda8099 Record native unlock prechecks and paired Settings parity evidence

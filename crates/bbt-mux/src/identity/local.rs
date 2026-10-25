@@ -59,6 +59,7 @@ struct Context {
     epoch: u64,
     expected: Option<String>,
     custody: Option<Custody>,
+    certified: bool,
 }
 
 /// IO-only production construction seam. A pending result must be surfaced as
@@ -98,6 +99,44 @@ fn record(account: &SqliteStore) -> Result<Option<Record>> {
         .map_err(|_| E::StorageUnavailable)?
         .map(|bytes| serde_json::from_slice::<Record>(&bytes).map_err(|_| E::InvalidProof))
         .transpose()
+}
+
+/// Private admission facts validated against the same epoch, issuer pins and history
+/// as ordinary loading. A hold hides the public ID, not this existing journal fact.
+pub(super) fn unlock_target(
+    account: &SqliteStore,
+) -> crate::store::Result<(Ulid, Ulid, [u8; 32], Custody)> {
+    let context = context(account)?;
+    let current = record(account)?
+        .ok_or_else(|| crate::store::invalid("held: no persisted custody identity"))?;
+    let device = current
+        .device_id
+        .filter(|id| *id != Ulid::nil())
+        .ok_or_else(|| crate::store::invalid("held: no validated persisted device ID"))?;
+    if !current.device_ready
+        || context.epoch.to_string() != current.epoch
+        || context.expected.as_deref() != Some(current.public_key.as_str())
+    {
+        return Err(crate::store::invalid(
+            "held: custody identity journal mismatch",
+        ));
+    }
+    let history: Record = serde_json::from_slice(
+        &account
+            .get(&format!("identity/local-issuer-history/{}", current.epoch))?
+            .ok_or_else(|| crate::store::invalid("held: missing custody identity history"))?,
+    )?;
+    if history != current {
+        return Err(crate::store::invalid(
+            "held: custody identity history mismatch",
+        ));
+    }
+    Ok((
+        device,
+        current.key_id,
+        crate::messaging::wire::parse_public(&current.public_key)?,
+        current.custody,
+    ))
 }
 
 /// Public custody metadata only; a hold never masquerades as a ready device.
@@ -242,6 +281,9 @@ fn context(account: &SqliteStore) -> Result<Context> {
         epoch,
         expected,
         custody,
+        certified: state
+            .as_ref()
+            .is_some_and(|state| state.kind == IssuerKind::GpgRoot),
     })
 }
 fn key_id(epoch: u64) -> Ulid {
@@ -319,7 +361,14 @@ fn obtain(
         device_ready: false,
     };
     let device = reserve_device(account, proposed_record)?;
-    ensure_device(account, keys, device)?;
+    // After certification the chain owns device-key validation. Opening it here
+    // would turn its hold into another issuer hold and regrant the wrong item.
+    if !context.certified
+        || !record(account)?
+            .is_some_and(|record| record.device_id == Some(device) && record.device_ready)
+    {
+        ensure_device(account, keys, device)?;
+    }
     complete_device(account, device, true)?;
     Ok(key)
 }

@@ -1,0 +1,64 @@
+ 1:  2f38d6a2 !  1:  b355a4fe Implement journaled native identity unlock and operator controls
+    @@ crates/bboxy450-term/src/live.rs: async fn run_with_control(
+                              if return_live(&mut history,&mut model,*seat) {
+                                  publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+     @@ crates/bboxy450-term/src/live.rs: async fn run_with_control(
+    -                             logger.write(format!("GUI operation {op} accepted"));
+                              },
+                              GuiReply::Error {op,reason}=> {
+    +                             Arc::make_mut(&mut model).closes.refused(op);
+     +                            if terminal_reply == Some(ActionReply::Identity(op)) { publish_identity_control(&mut model,&updates,op,Err(reason.clone())); }
+                                  if terminal_reply == Some(ActionReply::Knowledge(op)) {
+                                      let result=Err(bbt_mux::knowledge::data_source::CommandError::new("transport",reason.clone()));
+    @@ crates/bboxy450-term/src/main.rs: impl ApplicationHandler<UiEvent> for App {
+                      self.scene.backend_lost();
+                      self.request_redraw();
+                  }
+    -@@ crates/bboxy450-term/src/main.rs: const PENDING_OPERATIONS: usize = 32;
+    - fn is_operation(message: &live::UiMsg) -> bool {
+    -     matches!(
+    -         message,
+    --        live::UiMsg::Messaging { .. } | live::UiMsg::Task { .. }
+    -+        live::UiMsg::Messaging { .. }
+    -+            | live::UiMsg::Task { .. }
+    +@@ crates/bboxy450-term/src/main.rs: fn is_operation(message: &live::UiMsg) -> bool {
+    +             | live::UiMsg::Task { .. }
+    +             | live::UiMsg::Close(_)
+    +             | live::UiMsg::UndoClose { .. }
+     +            | live::UiMsg::IdentityControl { .. }
+          )
+      }
+    @@ crates/bboxy450-term/src/main.rs: fn main() -> Result<(), Box<dyn std::error::Er
+              local_tab: None,
+              local_page_layout: None,
+     @@ crates/bboxy450-term/src/main.rs: mod input_tests {
+    -                 | live::UiMsg::DocumentRead { .. }
+    -                 | live::UiMsg::ConsumeDocument { .. } => {}
+    -                 live::UiMsg::Messaging { .. }
+    +                 live::UiMsg::Close(_)
+    +                 | live::UiMsg::UndoClose { .. }
+    +                 | live::UiMsg::Messaging { .. }
+     +                | live::UiMsg::IdentityControl { .. }
+                      | live::UiMsg::Task { .. }
+                      | live::UiMsg::EventPage { .. }
+    @@ crates/bbt-mux/src/seat_socket.rs
+     @@ crates/bbt-mux/src/seat_socket.rs: async fn gui_session(
+                          let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
+                          let op=match &request.action {
+    -                         GuiAction::App {id,..}|GuiAction::AppReply {id,..}=>*id,
+    --                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}=>*id,
+    -+                        GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}=>*id,
+    +                         GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
+    +-                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
+    ++                        GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
+                              GuiAction::UndoClose {close_id,..}=>*close_id,
+                              _=>Ulid::new(),
+                          };
+ 2:  8999c487 =  2:  ab69332f Keep native recovery selection in one bounded condition
+ 3:  5c0f412b =  3:  43783b77 Keep fresh identity operation IDs distinct from nil defaults
+ 4:  36efcea0 =  4:  d0b327ea Enroll the two-item unlock fixture in its actual run account
+ 5:  3d1bb318 =  5:  8c5759e4 Recover the issuer before checking separate certified device custody
+ 6:  c81cd195 =  6:  36a5de2c Make unknown native operation checks read-only even before admission
+ 7:  8a78692b =  7:  a3de103f Refuse expired public authority before native custody effects
+ 8:  9d45f5c1 =  8:  5a4d405b Match custody status typography and insets to the paired lab reference
+ 9:  6fda8099 =  9:  0e0e9d2e Record native unlock prechecks and paired Settings parity evidence

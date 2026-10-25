@@ -1,0 +1,35 @@
+test identity_hold_range_stays_ephemeral_until_throwaway_device_enrollment_then_closes ... ok
+test identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ack_contracts ... ok
+test identity_cutover_preserves_live_local_generation_and_fences_newer_local_sequences ... ok
+test identity_seat_renewal_never_uses_the_primary_and_roster_keeps_public_history ... ok
+test identity_status_surfaces_renewal_expiry_custody_hold_and_live_legacy_count ... ok
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... FAILED
+test identity_status_reports_no_primary_and_persists_safe_bootstrap_pending_reasons ... ok
+
+failures:
+
+---- native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order stdout ----
+
+thread 'native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order' (35011423) panicked at crates/bbt-mux/tests/identity.rs:273:18:
+called `Result::unwrap()` on an `Err` value: Custom { kind: InvalidData, error: "held: unlock is only available for a native custody hold" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order
+
+test result: FAILED. 14 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 3.31s
+
+error: test failed, to rerun pass `-p bbt-mux --test identity`
+     Running tests/identity_io.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/target/debug/deps/identity_io-c1be5e915dd5e47a)
+
+running 4 tests
+test memory_custody_process_fixture ... ignored, spawned-process fixture, invoked by debug_process_override_uses_only_memory_custody
+test interaction_required_is_pending_without_a_prompt_or_replacement ... ok
+test debug_process_override_uses_only_memory_custody ... ok
+test stuck_custody_has_a_two_second_bound_and_retry_does_not_add_workers ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 4.06s
+
+     Running tests/identity_local.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/target/debug/deps/identity_local-f751dfebe7b2568c)
+

@@ -1,0 +1,185 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling serde_core v1.0.229
+   Compiling syn v3.0.9
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling serde_json v1.0.154
+   Compiling memchr v2.8.3
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 31.38s
+     Running unittests src/lib.rs (target/identity-file-dev/debug/deps/bbt_ui-0644b3a18facbfd5)
+
+running 1 test
+test modules::settings::controller::tests::native_unlock_is_a_consumed_intent_and_never_a_preferences_patch ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+     Running tests/atoms.rs (target/identity-file-dev/debug/deps/atoms-34410ffe61607b24)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+     Running tests/components.rs (target/identity-file-dev/debug/deps/components-f35ca94ede1ccfdd)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 0.00s
+
+     Running tests/composer.rs (target/identity-file-dev/debug/deps/composer-65074aa2ed29cabb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests/document_host.rs (target/identity-file-dev/debug/deps/document_host-79ce90b40d4da9c2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/documents.rs (target/identity-file-dev/debug/deps/documents-fe8f5a4399995136)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/e2e_checklist.rs (target/identity-file-dev/debug/deps/e2e_checklist-87eae404e50c52a1)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/flow.rs (target/identity-file-dev/debug/deps/flow-46fdc9c07f2a93ce)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+     Running tests/graphs.rs (target/identity-file-dev/debug/deps/graphs-c8073ae16a9fc5a1)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/italic.rs (target/identity-file-dev/debug/deps/italic-a722f70a060e04d4)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/launchers.rs (target/identity-file-dev/debug/deps/launchers-54738b092b03a496)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/links.rs (target/identity-file-dev/debug/deps/links-32c2882e8c7956ad)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/masks.rs (target/identity-file-dev/debug/deps/masks-bf4f63ba31d6d68d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/measurement_cache.rs (target/identity-file-dev/debug/deps/measurement_cache-6dbba430a42eedd5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/overlays.rs (target/identity-file-dev/debug/deps/overlays-6b38e66596e17450)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/panes.rs (target/identity-file-dev/debug/deps/panes-45897f057b303bda)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/provider_settings.rs (target/identity-file-dev/debug/deps/provider_settings-f5037942dbcafbcb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/rim.rs (target/identity-file-dev/debug/deps/rim-f9d74b60c8deaf85)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/scroll_windowing.rs (target/identity-file-dev/debug/deps/scroll_windowing-cf35a499cfdd00c7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests/seat_rows.rs (target/identity-file-dev/debug/deps/seat_rows-f51b84d2f0e3093a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests/settings.rs (target/identity-file-dev/debug/deps/settings-19eebafa5af0422e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests/streams.rs (target/identity-file-dev/debug/deps/streams-02557feab34f28f8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.00s
+
+     Running tests/style.rs (target/identity-file-dev/debug/deps/style-39d045cc749398d6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/swarms.rs (target/identity-file-dev/debug/deps/swarms-6c6666f8b6cbf1d3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/tabs.rs (target/identity-file-dev/debug/deps/tabs-d3bef4026ec514a7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/text_area.rs (target/identity-file-dev/debug/deps/text_area-f7f35bbff0675f6e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/text_edit.rs (target/identity-file-dev/debug/deps/text_edit-0882a7fad9aa312e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/title_bars.rs (target/identity-file-dev/debug/deps/title_bars-03d46af349ae324a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/widgets.rs (target/identity-file-dev/debug/deps/widgets-281d56472cd40093)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+

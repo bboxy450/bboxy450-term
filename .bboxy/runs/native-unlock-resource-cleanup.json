@@ -1,0 +1,8 @@
+{
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev",
+  "lsof_result": "no open files (lsof exit 1, empty stdout)",
+  "allocated_bytes_removed": 4506906624,
+  "target_removed": true,
+  "clean_gate_removed": true,
+  "seconds": 4.129
+}

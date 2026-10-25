@@ -205,6 +205,8 @@ pub enum GuiAction {
         id: Ulid,
         status: AppStatus,
     },
+    /// The hold's two operator controls; target identity is derived in logic.
+    Identity(crate::identity::IdentityCall),
     /// Start the one device-bound durable events drain on this connection.
     AttachEvents {
         id: Ulid,
@@ -527,6 +529,11 @@ pub enum GuiReply {
     Task {
         op: Ulid,
         response: crate::messaging::TaskResponse,
+    },
+    /// A correlated control response, separate from the asynchronous identity note.
+    IdentityControl {
+        op: Ulid,
+        response: crate::identity::IdentityControl,
     },
     Ok {
         op: Ulid,

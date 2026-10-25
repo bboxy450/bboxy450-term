@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "cargo",
+    "clippy",
+    "--workspace",
+    "--all-targets",
+    "--locked",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "source": "8d0a478c4164e50dbc45c885d6eabdd0a01672ef",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/native-c3-dev",
+  "environment": {
+    "RUSTC_WRAPPER": "",
+    "RUSTC_WORKSPACE_WRAPPER": "",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "exit": 0,
+  "seconds": 137.035,
+  "log": "native-c3-clippy.log",
+  "sha256": "13838f0d9a70eb72b71fc7b40a81becec7ac44d7b8052ba0e70316e667d5a5a1"
+}

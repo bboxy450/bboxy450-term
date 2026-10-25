@@ -29,6 +29,7 @@ cp "$target_root/$profile/bboxy450-term" "$bundle/Contents/MacOS/bboxy450-term"
 cp NOTICE LICENSE-MIT LICENSE-APACHE "$bundle/Contents/Resources/"
 cp packaging/macos/bboxy.icns "$bundle/Contents/Resources/"
 plutil -lint "$bundle/Contents/Info.plist"
-codesign --force --sign "$identity" --options runtime --timestamp=none "$bundle"
+designated='identifier "com.bboxy450.term" and anchor apple generic and certificate leaf[subject.OU] = "UQB3368A84"'
+codesign --force --sign "$identity" --requirements "=designated => $designated" --options runtime --timestamp=none "$bundle"
 codesign --verify --strict --verbose=2 "$bundle"
 printf '%s\n' "$bundle"

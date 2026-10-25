@@ -34,6 +34,10 @@ pub enum UiMsg {
         id: bbt_mux::Ulid,
         result: std::result::Result<bbt_proto::gui::UiLayout, String>,
     },
+    IdentityControl {
+        id: bbt_mux::Ulid,
+        request: bbt_proto::identity::IdentityRequest,
+    },
     /// Declarative launch inputs only. IO supplies cwd, swarm and backend role
     /// defaults before using the existing GUI Spawn action.
     Spawn {

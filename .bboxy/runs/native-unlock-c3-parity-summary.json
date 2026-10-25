@@ -1,0 +1,16 @@
+{
+  "source": "8d0a478c4164e50dbc45c885d6eabdd0a01672ef",
+  "cases": 144,
+  "geometry": {
+    "required": 144,
+    "measured": 144,
+    "unproven": 0,
+    "mismatches": 0
+  },
+  "pixel_reviews": 0,
+  "custody_cases": 48,
+  "custody_statuses": {
+    "within policy": 48
+  },
+  "report_sha256": "da0bd0c4e42621592372f0ed1325384b414b2dcca43c96e706a118cfd96c7743"
+}

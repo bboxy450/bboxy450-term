@@ -1,0 +1,16 @@
+    Finished `test` profile [optimized] target(s) in 0.87s
+     Running tests/headless.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/headless-00bec12ba528c165)
+
+running 9 tests
+test unattended_without_a_test_account_is_refused_before_native_custody ... ok
+test stopping_an_unavailable_endpoint_is_named_and_never_uses_a_pid ... ok
+test unattended_headless_control_uses_its_own_file_account ... ok
+test headless_cli_starts_real_gui_types_captures_and_stops_without_a_window ... ok
+test t7_headless_close_uses_the_window_intent_and_restores_the_same_split ... ok
+test headless_consumes_launch_results_so_ten_seats_are_placed_and_capturable ... ok
+test headless_smoke_uses_the_idle_probe_with_no_window_or_operator ... ok
+test idle_probe_rejects_an_external_lifecycle_wake ... ok
+test unattended_idle_smoke_keeps_file_custody_without_a_window ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.51s
+

@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "bboxy450-term",
+    "--test",
+    "headless",
+    "--locked"
+  ],
+  "source": "8d0a478c4164e50dbc45c885d6eabdd0a01672ef",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/native-c3-dev",
+  "environment": {
+    "RUSTC_WRAPPER": "",
+    "RUSTC_WORKSPACE_WRAPPER": "",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "exit": 0,
+  "seconds": 17.386,
+  "log": "native-c3-headless.log",
+  "sha256": "75e7876b36f2f0f9549bf32e6d7b0b001c925a315760a7553f10a4371b2035cd"
+}

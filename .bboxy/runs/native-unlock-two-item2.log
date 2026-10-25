@@ -1,0 +1,19 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 6.71s
+     Running tests/identity.rs (target/identity-file-dev/debug/deps/identity-cd20fe7c9158578c)
+
+running 1 test
+
+thread 'native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order' (32258340) panicked at crates/bbt-mux/tests/identity.rs:305:5:
+assertion failed: response.hold.is_none()
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... FAILED
+
+failures:
+
+failures:
+    native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.69s
+
+error: test failed, to rerun pass `-p bbt-mux --test identity`

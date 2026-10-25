@@ -1,0 +1,52 @@
+Kestrel Voidwing <EXECUTOR> — native #280 / #315 unlock handoff
+TESTED SOURCE: 0e0e9d2e04a2609eb5513baf30650b73d4b26ebb
+BASE: 714163f2 (accepted T7 focus/frame acknowledgement included)
+WORKTREE / BRANCH: /Users/feral/mydev/bboxy450-term-exec5 / exec5-native-unlock
+RESULT: exact clean sh scripts/ci-local.sh --parity EXIT 0, 3300.927 s, all gates passed.
+LOG: .bboxy/runs/native-unlock-ci-parity.log
+LOG SHA256: afca2116375a6d90c9f4c44aae436b05091c9bd1df9d5d6d5616f8d3ecf95e25
+
+DELIVERED
+Operator-only ctl identity status/unlock and Settings Account/Custody Unlock. The existing admitted door/window principal plus a private journal-validated device reference admits these two verbs while custody is held; public held status still hides the device ID. Native IO is bounded and off the worker/UI thread. Status/Check result is read-only even for a missing original operation; Unknown never automatically replays an interactive act. Each new explicit Unlock permits at most one interactive native access. A remaining second-item hold keeps Unlock available after Allowed.
+
+The account/control pending envelope is published before native access with signature pending and an honest hold signer. Its chain position is immutable. When the expected legitimate device key returns, one appended completion binds the original op, real digest and stream position; the native outcome is retained, including Unknown. Pending inventory remains visible. No new principal or second operation ledger was added.
+
+Native readers prefer <account>.dr1 and fall back only when it is absent, never after its refusal. Migration verifies the same key noninteractively before deleting the legacy item; restart cleanup never prompts. New login items and both signing recipes use the stable app/team designated requirement. An already-recorded custody tier never silently falls back. Public ACL metadata remains Unknown where the public API cannot prove the full ACL.
+
+MECHANISMS / REGRESSION POINTERS
+crates/bbt-mux/src/logic.rs:1868 — special two-verb admission, publish-before-native start, retained outcome and bounded async delivery; ordinary operator mutations stay held.
+crates/bbt-mux/src/mcp/journal.rs:106 — retained Status lookup never creates or poisons an effect operation.
+crates/bbt-mux/src/mcp/journal.rs:219 — atomic operation/audit admission; audit failure executes nothing.
+crates/bbt-mux/src/mcp/journal.rs:580 — one expected-device completion bound to immutable pending op/hash/position.
+crates/bbt-mux/src/identity/unlock.rs — journal-bound target, one-shot access, safe .dr1 migration and noninteractive recovery.
+crates/bbt-mux/src/identity/native_keychain.rs — per-query UI flag, public Security APIs, exact designated requirement; no global interaction toggle.
+crates/bbt-mux/src/identity/local.rs:317 — issuer recovery can precede the separately held certified device key.
+crates/bbt-mux/tests/native_unlock.rs:259 — pending audit precedes blocked fake native IO while PTY input/snapshot remain responsive.
+crates/bbt-mux/tests/native_unlock.rs:542 — missing/Unknown Status cannot admit an attempt, including a lost pre-admission reply.
+crates/bbt-mux/tests/identity.rs:167 — genuine throwaway GPG root, two native items and ordered completions under the legitimate fixture device key.
+crates/bboxy450-term/src/settings.rs:862 — second-item Unlock and read-only same-op Unknown checks.
+crates/bboxy450-term/src/live.rs — correlated identity FIFO replies, every result revision published, Model rebuilds preserve existing state.
+crates/bbt-ui/src/modules/settings.rs:2265 — pure public custody presentation and host intent, paired Wren reference.
+crates/bboxy450-term/tests/native_signing.rs:15 — functional fake codesign proofs of stable runner/bundle requirements and reuse.
+
+ACTUAL RESULTS ON TESTED SOURCE
+cargo test --workspace --locked — EXIT 0, 1361 passed, 0 failed, 29 ignored.
+cargo clippy --workspace --all-targets --locked -- -D warnings — EXIT 0.
+sh scripts/invariants.sh — EXIT 0, 23 checks, 0 failures, 9 slow skipped.
+cargo test -p bboxy450-term --test headless --locked — three runs, each EXIT 0, 9/0; 27/0 total.
+Exact clean ci-local --parity — EXIT 0; build, strict clippy, workspace tests, UI lint, headless smoke, invariants and fresh parity all reached.
+Smoke — windows=0, idle frames=0, callbacks=0 over 10.003 s; children reaped.
+Current parity — 2224 cases, 2120 required/measured geometry cases, 0 unproven, 0 mismatches; 72 advisory pixel reviews. All 144 Settings cases, including all 48 custody cases, are within policy.
+Final invariants — 24 checks, 0 failures, 8 slow skipped. Historical 1664-case pixel replay is diagnostic only.
+The command inventory, individual log hashes, exact source-file hashes, full current parity report and cleanup evidence are in native-unlock-checks.json and the adjacent native-unlock-* files.
+
+NAMED FAILURES AND THEIR DISPOSITION
+The initial native compile/DTO/clippy/fixture failures remain in the command inventory; subsequent regressions cover their corrections. The first custody parity had 48 mismatches; matching the lab fonts, chip weight and insets produced 144/144 Settings within policy.
+The pre-T7 exact gate at 6fda8099 exited 101 when capture followed an admitted-but-unapplied focus. Oracle confirmed the inherited race. Accepted T7 supplies applied/frame acknowledgement; rebase preserved its logic and added native/close/undo unions only. Three complete headless suites subsequently passed.
+A later workspace run exited 101 because I removed the old checkout while cached core tests embedded its manifest path. This was my verification setup error. I recreated one fixed exact-source checkout, rebuilt only owned workspace artifacts (3.0 GiB) and kept all subsequent prechecks/repeats/CI in it. Cargo initially refused cleanup due to a missing CACHEDIR.TAG; after verifying the own real path and owner marker, I initialized the standard installed-Cargo tag and cleanup succeeded. No production change or test weakening was used.
+
+LIMITS / SCOPE
+Actual macOS login-Keychain dialogs and ACL behavior were not exercised. The approved cut proves fixtures, public query/requirement parsing and fake signing recipes; no operator session, real signing identity or physical probe is required for this cut. Facade-family extraction and other OS backends remain deferred. The 29 ignored tests and 8 skipped slow invariants are named by the raw standard-command logs. The tested source is frozen on the base above; later main changes require the Oracle's merged-tree verification.
+
+RESOURCES / GIT
+After CI exited, lsof found no open files under the owned target. Removed 4506906624 allocated bytes and the own clean gate checkout; source branch and raw logs remain. No publish or merge performed. Final evidence is a signed logs/report-only successor of the tested source.

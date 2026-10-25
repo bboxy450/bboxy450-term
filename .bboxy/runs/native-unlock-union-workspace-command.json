@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "cargo",
+    "test",
+    "--workspace",
+    "--locked"
+  ],
+  "source": "d22d5a6802dae8e9e628c1b7e9b8f1c408d7d5ae",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/native-union-dev",
+  "environment": {
+    "RUSTC_WRAPPER": "",
+    "RUSTC_WORKSPACE_WRAPPER": "",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "exit": 0,
+  "seconds": 1080.069,
+  "log": "native-union-workspace.log",
+  "sha256": "5c99a1b2229f6e242e4ed3b535801d2c8234af010aa9adc08237ca70d46cc21e"
+}

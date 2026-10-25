@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "sh",
+    "scripts/parity.sh"
+  ],
+  "source": "d22d5a6802dae8e9e628c1b7e9b8f1c408d7d5ae",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/native-union-dev",
+  "environment": {
+    "RUSTC_WRAPPER": "",
+    "RUSTC_WORKSPACE_WRAPPER": "",
+    "BBOXY_TEST_CUSTODY": "memory",
+    "BBOXYBOOK_GALLERY": "settings",
+    "PARITY_OUT": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/native-union-settings-parity"
+  },
+  "exit": 0,
+  "seconds": 287.997,
+  "log": "native-union-settings-parity.log",
+  "sha256": "1c4c45cbc9ec61ded02c1221a11e97f98e6c417c903676cc443fcc3b1e9fca0b"
+}

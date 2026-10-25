@@ -19,6 +19,35 @@ struct Entry {
     tool: String,
     args_digest: String,
     result: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_unlock: Option<NativeAttempt>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct PendingPosition {
+    pub stream: String,
+    pub sequence: String,
+    pub digest: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct NativeAttempt {
+    pub reference: crate::identity::unlock::Reference,
+    pub hold: String,
+    pub pending_event: Ulid,
+    pub position: Option<PendingPosition>,
+    pub outcome: bbt_proto::identity::UnlockOutcome,
+    pub finished: bool,
+    #[serde(default)]
+    pub started: bool,
+    pub steps: Vec<crate::identity::unlock::ProgressRow>,
+    pub completion: Option<Draft>,
+}
+
+pub(crate) struct NativePending {
+    pub op: Ulid,
+    pub actor: Principal,
+    pub attempt: NativeAttempt,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -32,6 +61,36 @@ impl Journal {
     pub fn new(store: SqliteStore) -> Self {
         Self { store }
     }
+    /// Probe a retained operator operation before applying an in-flight admission cap.
+    pub(crate) fn retained(&self, actor: &Principal, call: &Call) -> Result<Option<Value>> {
+        let bytes: Option<Vec<u8>> = self
+            .store
+            .connection()?
+            .query_row(
+                "SELECT value FROM kv WHERE key=?1",
+                [format!("control/op/{}", call.op_id)],
+                |row| row.get(0),
+            )
+            .optional()?;
+        let Some(bytes) = bytes else {
+            return Ok(None);
+        };
+        let old: Entry = serde_json::from_slice(&bytes)?;
+        Ok(Some(
+            if old.actor.same_authority(actor)
+                && old.tool == call.tool
+                && old.args_digest == digest(&serde_json::to_vec(&call.args)?)
+            {
+                old.result
+            } else {
+                error(
+                    call.op_id,
+                    "op_id_reused",
+                    "operation ID belongs to different arguments or authority",
+                )
+            },
+        ))
+    }
 
     pub fn call(
         &self,
@@ -39,8 +98,68 @@ impl Journal {
         call: &Call,
         dispatch: impl FnOnce() -> Value,
     ) -> Result<Value> {
-        self.record(&actor.into(), call, dispatch, Mode::Read, |_| true)
+        self.record(&actor.into(), call, dispatch, Mode::Read, |_| true, None)
             .map(|(value, _)| value)
+    }
+
+    /// Read a native result by its operation ID, without creating or admitting an effect.
+    pub(crate) fn native_status(
+        &self,
+        actor: &Principal,
+        call: &Call,
+        current: Value,
+    ) -> Result<Value> {
+        if !matches!(actor, Principal::Operator { .. }) || call.tool != "identity_status" {
+            return Err(crate::store::invalid(
+                "native status requires the admitted operator",
+            ));
+        }
+        let mut db = self.store.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let old: Option<Vec<u8>> = tx
+            .query_row(
+                "SELECT value FROM kv WHERE key=?1",
+                [format!("control/op/{}", call.op_id)],
+                |row| row.get(0),
+            )
+            .optional()?;
+        let old = old
+            .map(|bytes| serde_json::from_slice::<Entry>(&bytes))
+            .transpose()?;
+        let (result, replay) = match old {
+            Some(entry) if entry.tool == "identity_unlock" => {
+                if entry.actor.same_authority(actor) {
+                    (entry.result, true)
+                } else {
+                    (
+                        error(
+                            call.op_id,
+                            "forbidden",
+                            "native result belongs to another operator identity",
+                        ),
+                        false,
+                    )
+                }
+            }
+            _ => (current, false),
+        };
+        let event = audit(
+            actor,
+            call,
+            &digest(&serde_json::to_vec(&call.args)?),
+            &result,
+            replay,
+            false,
+        );
+        tx.execute(
+            "INSERT INTO kv VALUES(?1,?2)",
+            params![
+                format!("control/audit/{}", event.id),
+                serde_json::to_vec(&event)?
+            ],
+        )?;
+        tx.commit()?;
+        Ok(result)
     }
 
     /// Reauthorize reads before consulting an old result. A current denial is
@@ -48,7 +167,7 @@ impl Journal {
     pub fn checked(&self, actor: impl Into<Principal>, call: &Call, value: Value) -> Result<Value> {
         let actor = actor.into();
         if value["isError"] == true {
-            self.record(&actor, call, || value, Mode::Rejected, |_| true)
+            self.record(&actor, call, || value, Mode::Rejected, |_| true, None)
                 .map(|(value, _)| value)
         } else {
             self.call(&actor, call, || value)
@@ -68,7 +187,7 @@ impl Journal {
         if value["isError"] == true {
             return self.checked(&actor, call, value);
         }
-        self.record(&actor, call, || value, Mode::Read, retained_allowed)
+        self.record(&actor, call, || value, Mode::Read, retained_allowed, None)
             .map(|(value, _)| value)
     }
 
@@ -93,7 +212,33 @@ impl Journal {
     pub fn admit(&self, actor: impl Into<Principal>, call: &Call) -> Result<(Value, bool)> {
         self.record(&actor.into(),call,||error(
             call.op_id,"unknown","durable attempt has no recorded outcome; retain the operation ID and check its receipts"
-        ),Mode::Effect,|_|true)
+        ),Mode::Effect,|_|true,None)
+    }
+
+    /// The existing operator journal admits the native act and pending audit atomically.
+    pub(crate) fn admit_native_unlock(
+        &self,
+        actor: &Principal,
+        call: &Call,
+        hold: String,
+        reference: crate::identity::unlock::Reference,
+        initial: Value,
+    ) -> Result<(Value, bool)> {
+        if !matches!(actor, Principal::Operator { device_id, .. } if *device_id == reference.device)
+            || call.tool != "identity_unlock"
+        {
+            return Err(crate::store::invalid(
+                "native unlock requires the persisted operator identity",
+            ));
+        }
+        self.record(
+            actor,
+            call,
+            || initial,
+            Mode::Effect,
+            |_| true,
+            Some((hold, reference)),
+        )
     }
 
     /// Publish the result and outcome audit together after the admitted I/O.
@@ -134,6 +279,7 @@ impl Journal {
             tool: call.tool.clone(),
             args_digest: digest(&serde_json::to_vec(&call.args)?),
             result: result.clone(),
+            native_unlock: admitted.native_unlock,
         };
         if tx.execute(
             "UPDATE kv SET value=?2 WHERE key=?1",
@@ -159,6 +305,10 @@ impl Journal {
         Ok(result)
     }
 
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "one optional native admission shares the existing journal transaction"
+    )]
     fn record(
         &self,
         actor: &Principal,
@@ -166,6 +316,7 @@ impl Journal {
         dispatch: impl FnOnce() -> Value,
         mode: Mode,
         retained_allowed: impl FnOnce(&Value) -> bool,
+        native: Option<(String, crate::identity::unlock::Reference)>,
     ) -> Result<(Value, bool)> {
         let hash = digest(&serde_json::to_vec(&call.args)?);
         let key = format!("control/op/{}", call.op_id);
@@ -218,7 +369,7 @@ impl Journal {
             };
             (value, false)
         };
-        let event = audit(
+        let mut event = audit(
             actor,
             call,
             &hash,
@@ -226,7 +377,40 @@ impl Journal {
             replay,
             fresh && mode == Mode::Effect,
         );
+        let native_unlock = if fresh {
+            native.map(|(hold, reference)| {
+                event.payload["signature"] = json!("pending");
+                event.payload["hold_reason"] = json!(hold);
+                event.payload["outcome"] = json!("unknown");
+                NativeAttempt {
+                    reference,
+                    hold,
+                    pending_event: event.id,
+                    position: None,
+                    outcome: bbt_proto::identity::UnlockOutcome::Unknown,
+                    finished: false,
+                    started: false,
+                    steps: Vec::new(),
+                    completion: None,
+                }
+            })
+        } else {
+            None
+        };
         if fresh {
+            if native_unlock.is_some() {
+                let pending: i64 = tx.query_row("SELECT count(*) FROM (SELECT 1 FROM kv WHERE key >= 'control/unlock/' AND key < 'control/unlock0' LIMIT 128)", [], |row| row.get(0))?;
+                if pending >= 128 {
+                    return Err(crate::store::invalid(
+                        "Busy: 128 native unlock completions remain pending",
+                    ));
+                }
+                // This is a bounded outbox index, not another operation ledger.
+                tx.execute(
+                    "INSERT INTO kv VALUES(?1,?2)",
+                    params![format!("control/unlock/{}", call.op_id), b"1".as_slice()],
+                )?;
+            }
             tx.execute(
                 "INSERT INTO kv VALUES(?1,?2)",
                 params![
@@ -236,6 +420,7 @@ impl Journal {
                         tool: call.tool.clone(),
                         args_digest: hash,
                         result: result.clone(),
+                        native_unlock,
                     })?
                 ],
             )?;
@@ -249,6 +434,231 @@ impl Journal {
         )?;
         tx.commit()?;
         Ok((result, fresh))
+    }
+
+    /// Remember the actual immutable chain position before starting native I/O.
+    pub(crate) fn bind_native_pending(
+        &self,
+        op: Ulid,
+        envelope: &crate::store::events::Envelope,
+    ) -> Result<()> {
+        envelope.verify()?;
+        self.update_native(op, None, |entry| {
+            let native = entry
+                .native_unlock
+                .as_mut()
+                .ok_or_else(|| crate::store::invalid("missing native admission"))?;
+            if native.pending_event != envelope.event.id
+                || envelope.event.subject != "account/control"
+                || envelope.event.payload["op_id"] != json!(op)
+                || envelope.event.payload["signature"] != "pending"
+            {
+                return Err(crate::store::invalid("native pending publication mismatch"));
+            }
+            let position = PendingPosition {
+                stream: "account".into(),
+                sequence: envelope.seq.to_string(),
+                digest: envelope.hash()?,
+            };
+            if native.position.as_ref().is_some_and(|old| {
+                old.digest != position.digest || old.sequence != position.sequence
+            }) {
+                return Err(crate::store::invalid("native pending position changed"));
+            }
+            native.position = Some(position);
+            Ok(())
+        })
+    }
+
+    /// Read only the bounded completion outbox; never scan the operation history.
+    pub(crate) fn native_pending(&self, limit: usize) -> Result<Vec<NativePending>> {
+        let db = self.store.connection()?;
+        let mut query = db.prepare("SELECT key FROM kv WHERE key >= 'control/unlock/' AND key < 'control/unlock0' ORDER BY rowid LIMIT ?1")?;
+        let keys = query
+            .query_map([limit.min(128) as i64], |row| row.get::<_, String>(0))?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        keys.into_iter()
+            .map(|key| {
+                let op: Ulid = key.trim_start_matches("control/unlock/").parse()?;
+                let bytes: Vec<u8> = db.query_row(
+                    "SELECT value FROM kv WHERE key=?1",
+                    [format!("control/op/{op}")],
+                    |row| row.get(0),
+                )?;
+                let entry: Entry = serde_json::from_slice(&bytes)?;
+                let attempt = entry.native_unlock.ok_or_else(|| {
+                    crate::store::invalid("native outbox index has no admitted operation")
+                })?;
+                Ok(NativePending {
+                    op,
+                    actor: entry.actor,
+                    attempt,
+                })
+            })
+            .collect()
+    }
+
+    pub(crate) fn native_progress(
+        &self,
+        op: Ulid,
+        actor: &Principal,
+        row: crate::identity::unlock::ProgressRow,
+    ) -> Result<()> {
+        self.update_native(op, Some(actor), |entry| {
+            let native = entry
+                .native_unlock
+                .as_mut()
+                .ok_or_else(|| crate::store::invalid("missing native admission"))?;
+            if native.finished {
+                return Err(crate::store::invalid(
+                    "native outcome already retained; stop late effects",
+                ));
+            }
+            if !native.started {
+                return Err(crate::store::invalid("native attempt was not submitted"));
+            }
+            if native.steps.len() >= 32 {
+                return Err(crate::store::invalid("native migration progress bound"));
+            }
+            native.steps.push(row);
+            Ok(())
+        })
+    }
+    pub(crate) fn start_native_unlock(&self, op: Ulid, actor: &Principal) -> Result<()> {
+        self.update_native(op, Some(actor), |entry| {
+            let native = entry
+                .native_unlock
+                .as_mut()
+                .ok_or_else(|| crate::store::invalid("missing native admission"))?;
+            if native.started || native.finished || native.position.is_none() {
+                return Err(crate::store::invalid(
+                    "native attempt already submitted or audit not published",
+                ));
+            }
+            native.started = true;
+            Ok(())
+        })
+    }
+    /// Retained polling sees the published admission, without admitting another act.
+    pub(crate) fn native_snapshot(&self, op: Ulid, actor: &Principal, result: Value) -> Result<()> {
+        self.update_native(op, Some(actor), |entry| {
+            if entry
+                .native_unlock
+                .as_ref()
+                .is_some_and(|native| !native.finished)
+            {
+                entry.result = result;
+            }
+            Ok(())
+        })
+    }
+
+    /// Retain only the actual result; it is not yet a device-signed completion.
+    pub(crate) fn finish_native_unlock(
+        &self,
+        op: Ulid,
+        actor: &Principal,
+        outcome: bbt_proto::identity::UnlockOutcome,
+        result: Value,
+    ) -> Result<()> {
+        self.update_native(op, Some(actor), |entry| {
+            let native = entry
+                .native_unlock
+                .as_mut()
+                .ok_or_else(|| crate::store::invalid("missing native admission"))?;
+            if native.finished {
+                return Ok(());
+            }
+            native.finished = true;
+            native.outcome = outcome;
+            entry.result = result;
+            Ok(())
+        })
+    }
+
+    /// Allocate one immutable completion draft, only for the originally expected key.
+    pub(crate) fn native_completion(&self, op: Ulid, signer: [u8; 32]) -> Result<Option<Draft>> {
+        let mut prepared = None;
+        self.update_native(op, None, |entry| {
+            let native = entry.native_unlock.as_mut().ok_or_else(|| crate::store::invalid("missing native admission"))?;
+            if !native.finished || native.reference.signer != signer { return Ok(()); }
+            let Some(position) = &native.position else { return Ok(()); };
+            if native.completion.is_none() {
+                native.completion = Some(Draft::new("account/control", "identity-unlock/device", json!({
+                    "op_id":op,"tool":"identity_unlock","actor":entry.actor,
+                    "signature":"device","pending":position,"outcome":native.outcome,"steps":native.steps,
+                })));
+            }
+            prepared = native.completion.clone();
+            Ok(())
+        })?;
+        Ok(prepared)
+    }
+
+    /// Publication is idempotent; mark the retained reply, never the signed pending row.
+    pub(crate) fn native_completion_published(&self, op: Ulid, event: Ulid) -> Result<()> {
+        let mut db = self.store.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let bytes: Vec<u8> = tx.query_row(
+            "SELECT value FROM kv WHERE key=?1",
+            [format!("control/op/{op}")],
+            |row| row.get(0),
+        )?;
+        let mut entry: Entry = serde_json::from_slice(&bytes)?;
+        if entry
+            .native_unlock
+            .as_ref()
+            .and_then(|native| native.completion.as_ref())
+            .is_none_or(|draft| draft.id != event)
+        {
+            return Err(crate::store::invalid(
+                "native completion publication mismatch",
+            ));
+        }
+        if let Some(rows) = entry.result["structuredContent"]["pending"].as_array_mut() {
+            for row in rows {
+                if row["op"] == json!(op) {
+                    row["signature"] = json!("device");
+                    row["in_flight"] = json!(false);
+                }
+            }
+            entry.result = super::success(op, entry.result["structuredContent"].clone());
+            tx.execute(
+                "UPDATE kv SET value=?2 WHERE key=?1",
+                params![format!("control/op/{op}"), serde_json::to_vec(&entry)?],
+            )?;
+        }
+        tx.execute(
+            "DELETE FROM kv WHERE key=?1",
+            [format!("control/unlock/{op}")],
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    fn update_native(
+        &self,
+        op: Ulid,
+        actor: Option<&Principal>,
+        update: impl FnOnce(&mut Entry) -> Result<()>,
+    ) -> Result<()> {
+        let mut db = self.store.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let key = format!("control/op/{op}");
+        let bytes: Vec<u8> = tx.query_row("SELECT value FROM kv WHERE key=?1", [&key], |row| {
+            row.get(0)
+        })?;
+        let mut entry: Entry = serde_json::from_slice(&bytes)?;
+        if actor.is_some_and(|actor| actor != &entry.actor) {
+            return Err(crate::store::invalid("native completion authority changed"));
+        }
+        update(&mut entry)?;
+        tx.execute(
+            "UPDATE kv SET value=?2 WHERE key=?1",
+            params![key, serde_json::to_vec(&entry)?],
+        )?;
+        tx.commit()?;
+        Ok(())
     }
 
     pub fn pending(&self, limit: usize) -> Result<Vec<Draft>> {
@@ -330,6 +740,213 @@ mod tests {
             args: json!({"folder":"channels/fixture","name":"own"}),
         };
         (temp, store, actor, call)
+    }
+
+    fn native_fixture() -> (
+        tempfile::TempDir,
+        SqliteStore,
+        Principal,
+        Call,
+        crate::identity::unlock::Reference,
+        ed25519_dalek::SigningKey,
+    ) {
+        let temp = tempfile::tempdir().unwrap();
+        let store = SqliteStore::open(temp.path()).unwrap();
+        let device = Ulid::new();
+        let actor = Principal::Operator {
+            device_id: device,
+            door: super::super::Door::Gui,
+            issued_by: None,
+        };
+        let call = Call {
+            op_id: Ulid::new(),
+            tool: "identity_unlock".into(),
+            args: json!({"request":"unlock"}),
+        };
+        let key = ed25519_dalek::SigningKey::from_bytes(&[91; 32]);
+        let reference = serde_json::from_value(json!({"device":device,"key":Ulid::new(),"expected":ed25519_dalek::SigningKey::from_bytes(&[90;32]).verifying_key().to_bytes(),"signer":key.verifying_key().to_bytes(),"custody":"login-keychain","kind":"Local"})).unwrap();
+        (temp, store, actor, call, reference, key)
+    }
+
+    #[test]
+    fn native_admission_failure_rolls_back_every_intent_and_authority_is_not_supplied() {
+        let (_temp, store, actor, call, reference, _) = native_fixture();
+        let journal = Journal::new(store.clone());
+        let other = Principal::Operator {
+            device_id: Ulid::new(),
+            door: super::super::Door::Gui,
+            issued_by: None,
+        };
+        assert!(
+            journal
+                .admit_native_unlock(&other, &call, "held".into(), reference.clone(), json!({}))
+                .is_err()
+        );
+        store.connection().unwrap().execute_batch("CREATE TRIGGER native_audit_failure BEFORE INSERT ON kv WHEN substr(NEW.key,1,14)='control/audit/' BEGIN SELECT RAISE(ABORT,'fixture audit failure'); END;").unwrap();
+        assert!(
+            journal
+                .admit_native_unlock(&actor, &call, "held".into(), reference, json!({}))
+                .is_err()
+        );
+        assert!(journal.native_pending(128).unwrap().is_empty());
+        assert!(journal.retained(&actor, &call).unwrap().is_none());
+        assert!(journal.pending(128).unwrap().is_empty());
+    }
+
+    #[test]
+    fn native_status_of_a_missing_id_never_admits_or_poisons_an_unlock() {
+        let (_temp, store, actor, call, reference, _) = native_fixture();
+        let journal = Journal::new(store.clone());
+        let status = Call {
+            op_id: call.op_id,
+            tool: "identity_status".into(),
+            args: json!({"request":"status"}),
+        };
+        let current = super::super::success(call.op_id, json!({"hold":"fixture","outcome":null}));
+        assert_eq!(
+            journal
+                .native_status(&actor, &status, current.clone())
+                .unwrap(),
+            current
+        );
+        assert!(
+            store
+                .get(&format!("control/op/{}", call.op_id))
+                .unwrap()
+                .is_none()
+        );
+        let admitted = super::super::success(call.op_id, json!({"outcome":"unknown"}));
+        assert!(
+            journal
+                .admit_native_unlock(&actor, &call, "held".into(), reference, admitted.clone())
+                .unwrap()
+                .1
+        );
+        assert_eq!(
+            journal
+                .native_status(&actor, &status, current.clone())
+                .unwrap(),
+            admitted
+        );
+        let other = Principal::Operator {
+            device_id: Ulid::new(),
+            door: super::super::Door::Gui,
+            issued_by: None,
+        };
+        let refused = journal.native_status(&other, &status, current).unwrap();
+        assert_eq!(refused["structuredContent"]["error"]["code"], "forbidden");
+    }
+
+    #[test]
+    fn native_unknown_survives_restart_and_gets_one_immutable_device_completion() {
+        use crate::store::{Events, events::EventLog};
+        use bbt_proto::identity::UnlockOutcome;
+        let (temp, store, actor, call, reference, key) = native_fixture();
+        let journal = Journal::new(store.clone());
+        let unknown = super::super::success(call.op_id, json!({"outcome":"unknown"}));
+        assert!(
+            journal
+                .admit_native_unlock(
+                    &actor,
+                    &call,
+                    "custody interaction required".into(),
+                    reference,
+                    unknown.clone()
+                )
+                .unwrap()
+                .1
+        );
+        assert!(
+            journal.start_native_unlock(call.op_id, &actor).is_err(),
+            "no native attempt before publication"
+        );
+        let draft = journal
+            .pending(128)
+            .unwrap()
+            .into_iter()
+            .find(|draft| draft.payload["signature"] == "pending")
+            .unwrap();
+        assert_eq!(draft.payload["outcome"], "unknown");
+        let log = EventLog::open(&temp.path().join("events")).unwrap();
+        let hold_key = ed25519_dalek::SigningKey::from_bytes(&[92; 32]);
+        let pending = log.append(draft, &hold_key).unwrap();
+        let original = serde_json::to_vec(&pending).unwrap();
+        journal.bind_native_pending(call.op_id, &pending).unwrap();
+        journal.start_native_unlock(call.op_id, &actor).unwrap();
+        let reopened = Journal::new(SqliteStore::open(temp.path()).unwrap());
+        assert!(
+            !reopened
+                .admit_native_unlock(
+                    &actor,
+                    &call,
+                    "held".into(),
+                    reopened.native_pending(1).unwrap()[0]
+                        .attempt
+                        .reference
+                        .clone(),
+                    unknown.clone()
+                )
+                .unwrap()
+                .1
+        );
+        assert!(
+            reopened.start_native_unlock(call.op_id, &actor).is_err(),
+            "unknown must never authorize a second attempt"
+        );
+        assert_eq!(
+            reopened
+                .effect(&actor, &call, || panic!("unknown redispatched"))
+                .unwrap(),
+            unknown
+        );
+        reopened
+            .finish_native_unlock(call.op_id, &actor, UnlockOutcome::Unknown, unknown.clone())
+            .unwrap();
+        assert!(
+            reopened
+                .native_completion(call.op_id, hold_key.verifying_key().to_bytes())
+                .unwrap()
+                .is_none(),
+            "hold key is never a device signer"
+        );
+        let completion = reopened
+            .native_completion(call.op_id, key.verifying_key().to_bytes())
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            completion,
+            reopened
+                .native_completion(call.op_id, key.verifying_key().to_bytes())
+                .unwrap()
+                .unwrap()
+        );
+        assert_eq!(
+            completion.payload["pending"]["digest"],
+            pending.hash().unwrap()
+        );
+        assert_eq!(
+            completion.payload["pending"]["sequence"],
+            pending.seq.to_string()
+        );
+        assert_eq!(completion.payload["op_id"], json!(call.op_id));
+        assert_eq!(completion.payload["outcome"], "unknown");
+        let signed = log.append(completion.clone(), &key).unwrap();
+        assert_eq!(
+            log.append(completion.clone(), &key).unwrap(),
+            signed,
+            "publication is deduplicated by the retained draft ID"
+        );
+        reopened
+            .native_completion_published(call.op_id, completion.id)
+            .unwrap();
+        assert!(reopened.native_pending(128).unwrap().is_empty());
+        assert_eq!(
+            serde_json::to_vec(&log.at(pending.seq).unwrap().unwrap()).unwrap(),
+            original,
+            "signed pending bytes never change"
+        );
+        assert_eq!(log.verify_chain().unwrap(), 2);
+        assert_eq!(reopened.retained(&actor, &call).unwrap(), Some(unknown));
     }
 
     #[test]

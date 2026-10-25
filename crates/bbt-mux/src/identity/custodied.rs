@@ -26,6 +26,18 @@ pub(super) struct Retry {
     handle: tokio::runtime::Handle,
 }
 impl Retry {
+    pub(super) fn store(
+        &self,
+        custody: super::Custody,
+    ) -> super::Result<Arc<dyn DeviceKeyStore + Send + Sync>> {
+        self.store
+            .clone()
+            .map(Ok)
+            .unwrap_or_else(|| super::io::process_store(Some(custody)))
+    }
+    pub(super) fn reopen(&self) -> Result<IdentityRuntime> {
+        self.open()
+    }
     pub(super) fn custody_label(&self, recorded: Option<super::Custody>) -> Option<&'static str> {
         self.store
             .as_ref()
@@ -72,6 +84,7 @@ impl Retry {
             retry: Some(self.clone()),
             pending: Some(reason),
             bus_key: None,
+            observed_status: Default::default(),
         })
     }
 }

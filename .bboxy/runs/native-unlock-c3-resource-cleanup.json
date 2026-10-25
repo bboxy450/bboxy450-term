@@ -1,0 +1,12 @@
+{
+  "source": "8d0a478c4164e50dbc45c885d6eabdd0a01672ef",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/native-c3-dev",
+  "owner_marker": "native-c3-dev 8d0a478c",
+  "lsof_exit": 1,
+  "lsof_no_open_files": true,
+  "allocated_bytes_removed": 4047310848,
+  "target_removed": true,
+  "seconds": 1.181,
+  "utc": "2026-10-25T07:37:18.601193+00:00",
+  "full_gate_slot_claimed": false
+}

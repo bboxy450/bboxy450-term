@@ -13,10 +13,13 @@ mod io;
 mod journal;
 mod keychain;
 mod local;
+#[cfg(target_os = "macos")]
+mod native_keychain;
 mod seats;
 mod status;
 mod test_account;
 mod transition;
+pub(crate) mod unlock;
 
 pub use chain::{ChainSeatKeys, seat_keys};
 pub use hold::{HoldClosure, HoldWindow};
@@ -28,6 +31,10 @@ pub use seats::{KeyStatus, RosterEntry, SeatGrant, SeatProof, SeatRoster};
 pub use status::{IdentityRuntime, IdentityState, IdentityStatus};
 pub use test_account::TestAccount;
 pub use transition::{IssuerState, reset_identity};
+pub use unlock::{
+    Phase as UnlockPhase, Progress as UnlockProgress, ProgressRow as UnlockProgressRow,
+    Step as UnlockStep,
+};
 
 use std::fmt;
 
@@ -46,6 +53,7 @@ pub enum PendingReason {
     KeychainUnavailable(i32),
     KeychainInteractionRequired,
     KeychainTimedOut,
+    KeychainSigningIdentityRequired,
     JournalConflict,
     StorageUnavailable,
     BootstrapInProgress,
@@ -68,8 +76,15 @@ impl PendingReason {
             Self::FingerprintMismatch => "primary fingerprint mismatch",
             Self::InvalidProof => "identity proof invalid",
             Self::KeychainUnavailable(_) => "device Keychain unavailable",
-            Self::KeychainInteractionRequired => "Keychain interaction required; signing held",
-            Self::KeychainTimedOut => "Keychain did not respond within 2 seconds; signing held",
+            Self::KeychainInteractionRequired => {
+                "Keychain interaction required; signing held; run ctl identity unlock or Settings › Identity › Unlock"
+            }
+            Self::KeychainTimedOut => {
+                "Keychain did not respond within 2 seconds; signing held; run ctl identity unlock or Settings › Identity › Unlock"
+            }
+            Self::KeychainSigningIdentityRequired => {
+                "Keychain requires the team-signed app designated requirement; use the signed app or scripts/sign-run.sh"
+            }
             Self::JournalConflict => "identity journal conflict",
             Self::StorageUnavailable => "identity storage unavailable",
             Self::BootstrapInProgress => "bootstrap has not completed",

@@ -1,0 +1,1097 @@
+ci-local: gate slot 1 of 2
+layering: held
+   Compiling bbt-ui-model v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-ui-model)
+   Compiling tokio v1.54.1
+   Compiling bbt-core v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-core)
+   Compiling bbt-ui v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-ui)
+   Compiling bbt-mermaid v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-mermaid)
+   Compiling bbt-doc v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-doc)
+   Compiling bbt-rt v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-rt)
+   Compiling bbt-render v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-render)
+   Compiling tokio-tungstenite v0.30.0
+   Compiling bboxy450-keychain-file v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-keychain-file)
+   Compiling bboxy450-desktop-notifications-macos v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-keychain v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-keychain)
+   Compiling bboxy450-harness-wake-up v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-harness-wake-up)
+   Compiling bbt-supervisor v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-supervisor)
+   Compiling bbt-proto v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-proto)
+   Compiling bboxybook v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-term)
+   Compiling bbt-plugin v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-plugin)
+   Compiling bbt-mux v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-mux)
+   Compiling bboxy450-desktop-notifications v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-desktop-notifications)
+   Compiling bbt-yarn-macros v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-yarn-macros)
+   Compiling tokio-util v0.7.19
+   Compiling bboxy-firehose v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy-firehose)
+   Compiling bbt-yarn v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-yarn)
+   Compiling bboxy450-desktop-notifications-windows v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-desktop-notifications-windows)
+   Compiling bboxy450-keychain-windows v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-keychain-windows)
+   Compiling bboxy450-desktop-notifications-linux v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-desktop-notifications-linux)
+    Finished `dev` profile [optimized] target(s) in 4m 40s
+   Compiling bbt-ui-model v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-ui-model)
+    Checking bbt-mermaid v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-mermaid)
+    Checking bbt-core v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-core)
+    Checking bbt-ui v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-ui)
+    Checking bbt-rt v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-rt)
+    Checking bbt-plugin v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-plugin)
+    Checking bbt-supervisor v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-supervisor)
+    Checking bboxy450-harness-wake-up v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-harness-wake-up)
+    Checking bbt-doc v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-doc)
+    Checking bbt-render v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-render)
+    Checking bboxy450-keychain-file v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-keychain-file)
+    Checking bbt-proto v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-proto)
+    Checking bboxy450-keychain v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-keychain)
+   Compiling bboxybook v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxybook)
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-term v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-term)
+    Checking bbt-mux v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-mux)
+    Checking bboxy450-desktop-notifications v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-desktop-notifications)
+    Checking bboxy-firehose v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy-firehose)
+   Compiling bbt-yarn-macros v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-yarn-macros)
+    Checking bbt-yarn v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-yarn)
+    Checking bboxy450-desktop-notifications-windows v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-desktop-notifications-windows)
+    Checking bboxy450-keychain-windows v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-keychain-windows)
+    Checking bboxy450-desktop-notifications-linux v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-desktop-notifications-linux)
+    Finished `dev` profile [optimized] target(s) in 49.98s
+   Compiling bbt-rt v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-rt)
+   Compiling bbt-yarn v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-yarn)
+   Compiling bbt-yarn-macros v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-yarn-macros)
+   Compiling bbt-supervisor v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-supervisor)
+   Compiling bboxy450-harness-wake-up v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-harness-wake-up)
+   Compiling bbt-mux v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-term)
+   Compiling bbt-render v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-render)
+   Compiling bboxy-firehose v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy-firehose)
+   Compiling bboxy450-desktop-notifications v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-desktop-notifications)
+   Compiling bboxy450-desktop-notifications-macos v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxybook v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxybook)
+   Compiling bbt-proto v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-proto)
+   Compiling bboxy450-keychain-file v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-keychain-file)
+   Compiling bboxy450-keychain v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-keychain)
+   Compiling bbt-plugin v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-plugin)
+   Compiling bbt-ui-model v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-ui-model)
+   Compiling bbt-core v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-core)
+   Compiling bbt-doc v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-doc)
+   Compiling bbt-mermaid v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-mermaid)
+   Compiling bbt-ui v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bbt-ui)
+   Compiling bboxy450-desktop-notifications-windows v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-desktop-notifications-windows)
+   Compiling bboxy450-desktop-notifications-linux v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-desktop-notifications-linux)
+   Compiling bboxy450-keychain-windows v0.0.1 (/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree/crates/bboxy450-keychain-windows)
+    Finished `test` profile [optimized] target(s) in 13m 57s
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/bboxy_firehose-a6fdc17dde3cc31e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/bboxy_firehose-b17ed17b0dd1dd8a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/cli-6db08f53e07a9fe2)
+
+running 10 tests
+test rates_have_explicit_units_and_cumulative_deadlines ... ok
+test named_scene_and_bounded_loops_are_exact_bytes ... ok
+test playback_needs_no_corpus_files_in_its_working_directory ... ok
+test a_closed_downstream_pipe_stops_an_infinite_flood_cleanly ... ok
+test listing_and_checks_never_emit_terminal_control_bytes ... ok
+test seed_is_reproducible_and_reorders_the_complete_corpus ... ok
+test interrupting_slow_playback_restores_modes_without_waiting_for_the_rate ... ok
+test invalid_inputs_fail_before_emitting_ansi ... ok
+test byte_and_line_rate_caps_keep_the_exact_stream ... ok
+test real_pacing_preserves_scene_bytes ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.82s
+
+     Running tests/corpus.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/corpus-4479108e8a6f9aa2)
+
+running 4 tests
+test originals_are_control_only_and_embedded_verbatim ... ok
+test cursor_scenes_are_steady_and_the_next_scene_restores_the_default ... ok
+test scenes_exercise_real_grid_effects_and_leave_modes_balanced ... ok
+test frozen_semantic_screens_survive_arbitrary_pty_chunking ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/bboxy450_desktop_notifications-6e936b97721f78a8)
+
+running 1 test
+test tests::notifier_port_is_send_and_sync ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/bboxy450_desktop_notifications_linux-6f27eff00c292177)
+
+running 1 test
+test tests::research_marker_is_the_runtime_result ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/bboxy450_desktop_notifications_macos-0fa66659a12381e9)
+
+running 2 tests
+test tests::a_panicking_callback_does_not_skip_native_completion ... ok
+test tests::delegate_forwards_the_posted_id_before_completing ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/bboxy450_desktop_notifications_windows-51fd1df14228299b)
+
+running 1 test
+test tests::research_marker_is_the_runtime_result ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/bboxy450_harness_wake_up-257ac7434d8dfc7d)
+
+running 5 tests
+test availability_tests::native_availability_is_bound_to_the_exact_live_attachment ... ok
+test launch::runtime_tests::long_runtime_paths_keep_the_locator_in_the_overlay_and_release_the_alias ... ok
+test native::registration_tests::hook_socket_metadata_requires_the_admitted_native_session_and_owned_socket ... ok
+test native::registration_tests::retained_socket_requires_the_same_process_generation_and_session ... ok
+test native::registration_tests::pre_write_failures_preserve_the_specific_cause ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/adapters.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/adapters-971e755ab4a29299)
+
+running 8 tests
+test adapters_custom_harness_cadence_and_reported_idle_never_create_readiness ... ok
+test adapters_claude_wire_capture_runs_through_term_callback_and_ends_only_running_rows ... ok
+test adapters_codex_native_readiness_and_hooks_only_subagents ... ok
+test adapters_native_claude_socket_writes_priority_without_claiming_consumption ... ok
+test literal_preparation_consumes_readiness_and_unknown_never_retries ... ok
+test adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields ... ok
+test codex_bootstrap_and_unloaded_threads_never_admit_or_retry_a_submission ... ok
+test adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/codex_bootstrap.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/codex_bootstrap-bf76630aa24a24f8)
+
+running 3 tests
+test discovery_cannot_replace_a_hook_generation_runtime_or_exited_session ... ok
+test a_locator_owned_by_another_process_receives_no_protocol_bytes ... ok
+test bootstrap_reads_only_the_selected_loaded_thread_and_never_guesses_or_mutates ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests/hook_sink.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/hook_sink-33c58a4967bebcd8)
+
+running 2 tests
+test hook_fixture_child ... ignored, private subprocess helper, exercised by hook_cli_uses_the_caller_sink
+test hook_cli_uses_the_caller_sink_for_registration_and_tty_fallback ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/ready_exec.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/ready_exec-d4fcb4c2c8194659)
+
+running 5 tests
+test hook_transport_child ... ignored, private hook subprocess, invoked by its parent
+test ready_exec_child ... ignored, private ready-exec subprocess, invoked by its parent
+test a_late_runtime_execs_the_client_in_the_same_pty_process ... ok
+test private_runtime_hooks_use_socket_even_with_a_controlling_tty ... ok
+test a_missing_runtime_fails_with_a_named_readiness_result ... ok
+
+test result: ok. 3 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 5.02s
+
+     Running tests/seat_wiring.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/seat_wiring-7ab7574a1889d3e6)
+
+running 2 tests
+test resumed_generation_gets_a_fresh_overlay_and_keeps_the_native_resume_path ... ok
+test first_launch_fixture_checks_wiring_and_preserves_user_config ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.76s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/bboxy450_keychain-901c2bc05c589394)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/bboxy450_keychain_file-771057a7c3a85320)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/custody.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/custody-013071a42092c4af)
+
+running 4 tests
+test writes_and_reads_have_the_same_fixed_size_bound ... ok
+test independent_store_handles_never_replace_a_concurrent_winner ... ok
+test relative_paths_symlinks_non_regular_files_and_broad_modes_are_refused ... ok
+test private_slots_reopen_and_only_explicit_removal_changes_them ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/bboxy450_keychain_windows-2d7c1b4570c0e8dd)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/bboxy450_term-765769bd208cbb83)
+
+running 48 tests
+test ctl::app::tests::startup_diagnostic_does_not_claim_an_unobserved_exit ... ok
+test ctl::app::tests::startup_diagnostic_preserves_exit_codes_and_core_dump_status ... ok
+test attention::tests::one_episode_loops_until_explicit_focus_or_leaving_and_repeat_keeps_its_key ... ok
+test attention::tests::muted_and_supplied_notification_preferences_never_post_or_change_focus ... ok
+test attention::tests::all_three_wait_reasons_and_generation_are_typed ... ok
+test attention::tests::live_state_updates_preserve_stage_and_handling_survives_model_rebuild ... ok
+test cockpit::gui_io_tests::startup_write_deadline_is_two_seconds_of_controlled_time ... ok
+test ctl::tests::commands_parse_in_the_spec_s_shapes ... ok
+test ctl::tests::errors_name_a_kind_a_hint_and_an_exit ... ok
+test cockpit::gui_io_tests::writer_task_death_is_disconnected_even_while_the_reader_stays_connected ... ok
+test ctl::tests::a_paste_is_bracketed_only_when_asked_and_cannot_end_itself ... ok
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test keyboard_adapter_uses_neutral_core_and_live_modes ... ok
+test ctl::tests::every_verb_maps_to_exactly_one_window_action ... ok
+test ctl::tests::the_endpoint_file_round_trips ... ok
+test ctl::tests::a_refusal_that_beats_the_request_is_still_read ... ok
+test model::event_lane_tests::a_large_newest_live_record_takes_precedence_over_read_page_bytes ... ok
+test model::event_lane_tests::empty_pages_and_refusals_have_distinct_monotonic_completion_revisions ... ok
+test model::event_lane_tests::metadata_rebuild_and_reconnect_preserve_the_published_window ... ok
+test model::event_lane_tests::rows_dedupe_by_canonical_identity_and_keep_per_stream_order ... ok
+test model::event_lane_tests::stale_transport_snapshots_cannot_roll_back_operator_read_state ... ok
+test model::event_lane_tests::sparse_history_pages_keep_next_without_acknowledging_or_marking_read ... ok
+test model::tests::a_second_spawn_and_refresh_preserve_the_first_explicit_split ... ok
+test model::tests::custody_held_spawns_release_in_admission_order_with_the_same_captured_requests ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test model::tests::pending_spawns_are_bounded_and_a_reused_id_never_requeues_an_effect ... ok
+test model::tests::removed_or_replaced_anchor_keeps_the_new_seat_and_names_the_partial_outcome ... ok
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test model::tests::reversed_spawn_replies_use_their_captured_anchors_and_duplicates_are_inert ... ok
+test model::tests::unknown_spawn_and_unrelated_metadata_never_place_or_lose_the_request ... ok
+test cockpit::gui_io_tests::oversized_request_is_rejected_before_enqueue_without_stopping_the_writer ... ok
+test notifications::tests::a_fresh_worker_withdraws_known_inactive_ids_from_an_old_process ... ok
+test notifications::tests::a_mute_admitted_during_authorization_prevents_the_pending_post ... ok
+test settings::tests::busy_configuration_refuses_without_waiting_or_altering_the_file ... ok
+test model::event_lane_tests::byte_budget_is_independent_of_row_count ... ok
+test notifications::tests::replacement_and_removal_use_the_same_id_off_the_caller_thread ... ok
+test model::event_lane_tests::window_eviction_is_visible_and_old_replays_do_not_repopulate_it ... ok
+test settings::tests::native_unknown_checks_the_same_id_and_never_replays_on_disconnect ... ok
+test settings::tests::native_second_item_hold_keeps_unlock_available_after_an_allowed_access ... ok
+test ctl::app::tests::startup_diagnostic_preserves_a_real_terminating_signal ... ok
+test model::event_lane_tests::requested_old_page_survives_a_full_live_window_until_replaced ... ok
+test settings::tests::stale_save_cannot_acknowledge_a_newer_edit ... ok
+test settings::tests::refused_save_keeps_original_bytes_and_read_does_not_create_a_file ... ok
+test settings::tests::atomic_patch_preserves_a_config_symlink ... ok
+test settings::tests::harness_array_patches_preserve_entry_comments_even_when_an_entry_is_removed ... ok
+test settings::tests::patches_survive_restart_and_preserve_comments_and_unmanaged_keys ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+
+test result: ok. 48 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running unittests src/main.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/bboxy450_term-15e9d0470cc67d35)
+
+running 105 tests
+test capture::tests::a_crop_stays_inside_the_frame ... ok
+test budget::tests::hud_gpu_mean_counts_spans_without_a_cpu_row ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+test capture_step_tests::an_occluded_window_answers_from_its_last_frame_or_says_why_not ... ok
+test composer_host_tests::operation_admission_is_bounded_without_consuming_terminal_input_capacity ... ok
+test display_link::tests::clock_uses_target_time_and_excludes_paused_time ... ok
+test display_link::tests::data_racing_a_tick_still_requests_a_frame_after_pause ... ok
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test composer_host_tests::composer_submit_is_focus_local_and_newline_tab_navigation_remain_local ... ok
+test display_link::tests::tick_wake_after_pause_does_not_reopen_link ... ok
+test default_spawn_tests::default_picks_are_keyed_by_id_and_leave_placement_and_navigation_deferred ... ok
+test composer_host_tests::consumed_composer_press_never_leaks_a_kitty_release_after_focus_changes ... ok
+test composer_host_tests::settings_keyboard_routes_edits_and_balances_only_the_prior_pty_release ... ok
+test gpu::backdrop_key_tests::a_frosted_op_after_host_drawing_is_never_keyed ... ok
+test gpu::backdrop_key_tests::keys_follow_prior_content_and_only_timed_content_follows_time ... ok
+test e2e_checklist::tests::a_new_local_graph_has_no_invented_results_or_run_metadata ... ok
+test input_tests::operator_keys_use_pty_bytes_and_keep_command_shortcuts_out_of_the_shell ... ok
+test input_tests::pane_controls_coalesce_to_the_latest_visible_set_and_size ... ok
+test e2e_checklist::tests::the_host_can_replace_its_snapshot_and_scroll_stays_local_and_bounded ... ok
+test composer_host_tests::settings_mute_requires_a_visible_real_focused_seat_and_awaits_metadata ... ok
+test default_spawn_tests::host_picks_preserve_structured_location_without_parsing_labels ... ok
+test input_tests::input_queued_while_backend_is_lost_survives_resume_and_a_full_queue ... ok
+test input_tests::admission_limits_preserve_accepted_bytes_and_allow_merging_at_the_entry_cap ... ok
+test input_tests::text_bursts_keep_byte_order_first_id_and_generation_boundaries ... ok
+test launcher_host_tests::a_graph_press_never_reaches_the_pty_but_an_earlier_pty_press_gets_its_release ... ok
+test launcher_host_tests::ime_preedit_converts_utf8_cursor_bytes_to_utf16_without_committing ... ok
+test launcher_host_tests::cold_notification_waits_for_its_exact_seat_and_never_selects_a_substitute ... ok
+test launcher_host_tests::consumed_local_presses_keep_local_repeats_without_leaking_into_the_pty ... ok
+test launcher_host_tests::document_keys_never_navigate_the_covered_pane_and_balance_prior_pty_releases ... ok
+test launcher_host_tests::document_return_anchor_survives_refresh_and_reconciles_a_removed_seat ... ok
+test launcher_host_tests::graph_navigation_is_local_and_global_shortcuts_still_reach_the_app ... ok
+test launcher_host_tests::actual_controller_filters_picks_climbs_and_preserves_the_named_gaps ... ok
+test launcher_host_tests::modal_input_never_reaches_a_pty_and_picks_do_not_repeat ... ok
+test launcher_host_tests::published_screens_do_not_undo_local_focus_or_create_locate ... ok
+test launcher_host_tests::terminal_keys_stay_byte_exact_while_explicit_chords_move_focus ... ok
+test live::tests::disconnected_mutations_wait_for_explicit_retry_while_pane_controls_survive ... ok
+test launcher_host_tests::terminal_route_uses_live_modes_and_forwards_only_requested_releases ... ok
+test live::tests::empty_page_completions_publish_and_refusals_complete_only_the_matched_stream ... ok
+test launcher_host_tests::stage_switch_waits_for_the_new_outer_pane_before_locate_once ... ok
+test live::tests::event_terminal_replies_release_fifo_while_status_and_gap_pushes_never_do ... ok
+test live::tests::event_ack_follows_shared_model_publication_and_replays_do_not_publish_twice ... ok
+test live::tests::held_and_reordered_knowledge_replies_do_not_block_control_or_history_results ... ok
+test live::tests::knowledge_reply_correlation_cannot_consume_an_unrelated_result ... ok
+test live::tests::controls_obey_logic_size_limits_and_discard_old_generations ... ok
+test live::tests::generic_spawn_preserves_inputs_and_uses_io_defaults ... ok
+test live::tests::messaging_and_task_terminal_wrappers_release_only_their_own_fifo_slots ... ok
+test live::tests::native_retained_results_publish_every_revision_and_survive_metadata_rebuild ... ok
+test live::tests::native_terminal_replies_are_correlated_and_async_identity_never_releases_them ... ok
+test live::tests::queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication ... ok
+test live::tests::refused_watch_retries_stay_bounded_and_coalesce_the_latest_size ... ok
+test live::tests::first_refused_resize_converges_without_another_ui_resize ... ok
+test live::tests::resize_before_a_coalesced_watch_keeps_its_desired_grid ... ok
+test live::tests::scroll_history_errors_are_correlated_behind_operations_and_async_pushes ... ok
+test live::tests::scroll_history_reads_yield_to_already_published_applied_actions ... ok
+test live::tests::sent_control_waits_for_an_observation_or_refusal_before_retrying ... ok
+test placement_tests::new_membership_does_not_focus_without_a_matching_spawn_result ... ok
+test live::tests::waiting_attention_is_published_before_ack_but_history_pages_are_passive ... ok
+test placement_tests::spawn_pick_uses_ui_focus_and_only_known_catalogue_ids ... ok
+test scene::depth_tests::historical_gap_uses_cell_device_origin_and_last_row_scissor_at_both_scales ... ok
+test live::tests::knowledge_demand_survives_a_full_command_queue_and_coalesces ... ok
+test scene::depth_tests::published_attention_drives_both_blocks_without_moving_focus_or_restarting_swell ... ok
+test scene::depth_tests::pane_rects_are_identical_across_activity_states ... ok
+test scene::depth_tests::attention_loops_until_handled_and_a_muted_seat_stays_quiet ... ok
+test scene::identity_note_tests::the_frame_labels_test_accounts_without_changing_real_identity_notes ... ok
+test scene::launcher_tests::assigned_task_uses_its_seat_subtree_and_retained_review_hit_without_moving_panes ... ok
+test scene::depth_tests::local_graph_uses_a_clipped_retained_viewport_and_keeps_the_terminal_stage ... ok
+test scene::depth_tests::the_focus_swell_rises_and_settles_over_swell_ms_and_keeps_frames_until_then ... ok
+test scene::launcher_tests::ime_candidate_area_follows_the_retained_caret_and_pointer_uses_utf16 ... ok
+test scene::launcher_tests::repeated_document_publications_keep_the_original_focus_swell_instant ... ok
+test scene::launcher_tests::document_uses_effective_context_without_moving_panes_and_keeps_hud_last ... ok
+test scene::depth_tests::the_rim_size_moves_the_gutter_and_inset_and_never_the_sidebar ... ok
+test scroll_input_tests::admitted_input_resets_a_queued_scroll_anchor_and_refusal_does_not ... ok
+test scroll_input_tests::scroll_shortcuts_stay_local_for_repeats_and_kitty_releases ... ok
+test scene::launcher_tests::no_launcher_paint_proof ... ok
+test smoke_tests::a_real_resize_fails_the_probe_even_without_any_frame_or_callback ... ok
+test scroll_input_tests::ten_minutes_of_scroll_pressure_keep_one_composed_intent_per_pane ... ok
+test scene::launcher_tests::retained_launcher_hit_regions_and_unwrapped_foreground_order ... ok
+test smoke_tests::idle_waits_for_producer_queued_work_and_late_frames_before_starting ... ok
+test scene::launcher_tests::settings_owns_one_inner_scroller_and_uses_the_effective_theme_density_and_rim ... ok
+test smoke_tests::occlusion_keeps_the_full_idle_window_and_old_timers_cannot_end_a_new_one ... ok
+test smoke_tests::interrupted_idle_windows_never_pass_and_deadline_has_a_named_reason ... ok
+test spawn_admission_tests::claude_presets_reach_spawn_and_only_claude_gets_presets ... ok
+test spawn_admission_tests::existing_oracle_note_uses_the_displayed_swarm_and_never_blocks_the_default ... ok
+test spawn_admission_tests::generic_and_legacy_spawns_share_the_same_cap ... ok
+test stall::load::tests::busy_ring_page_names_its_query_and_stays_unknown ... ok
+test stall::load::tests::failed_tail_keeps_known_ring_cursor_and_does_not_report_marker_absence ... ok
+test stall::load::tests::functional_ci_reports_timing_failures_and_the_slow_switch_enforces_them ... ok
+test stall::load::tests::gui_errors_keep_the_operation_and_identify_the_consumer_path ... ok
+test stall::load::tests::capture_export_keeps_the_first_settled_cut_and_serializes_frozen_boundaries ... ok
+test stall::load::tests::settle_diagnostic_names_the_active_predicates_without_inventing_ui_results ... ok
+test stall::load::tests::probe_row_fits_every_fifteen_and_fifty_pane_fixture ... ok
+test stall::load::tests::ring_probe_follows_pages_and_never_combines_marker_bytes_across_a_gap ... ok
+test stall::tests::extra_wake_sources_are_bounded_and_overflow_is_named ... ok
+test stall::tests::lower_row_echo_does_not_acknowledge_a_probe_or_bypass_the_clip ... ok
+test stall::tests::wake_sources_and_pending_queues_survive_settle_serialization ... ok
+test verification_tests::verification_grid_validation_and_window_fit_use_real_cell_bounds ... ok
+test stall::load::tests::gui_keeps_applying_and_acknowledging_while_side_finish_is_held ... ok
+test verification_tests::live_screen_hash_matches_frozen_palette_unicode_and_link_fixtures ... ok
+test stall::load::tests::timeout_prints_and_saves_each_seat_without_inventing_unobserved_backend_results ... ok
+test input_tests::ten_minute_disconnect_bounds_admission_and_drains_accepted_input_in_order ... ok
+test gpu::clear_fold_tests::a_target_whose_first_op_is_a_material_or_nothing_is_still_cleared ... ok
+test gpu::clear_fold_tests::a_folded_clear_draws_the_scene_byte_identically_in_one_pass_fewer ... ok
+cockpit ready: supervisor=61798 logic=61857
+cockpit ready: supervisor=61797 logic=61860
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+GUI operation 01M5RHZNJMY93YFJB9453HM7ZQ accepted
+GUI operation 01M5RHZNJXSCQZJV612CKFT2WP accepted
+cockpit ready: supervisor=61800 logic=61858
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+GUI operation 01M5RHZNMCP3PGZ3GRE41HH8J1 accepted
+GUI operation 01M5RHZNNMKMFW42ZB3TN5DH9J rejected: unknown GUI stream
+GUI operation 01M5RHZNNM55ZFXPZ7G6T7QQY4 accepted
+GUI operation 01M5RHZNHW13A10R676FB1AJYK rejected: not a built-in harness
+GUI operation 01M5RHZNSEE4G4DM3Z1H3N4FPW accepted
+GUI operation 01M5RHZNSHVT73BQVEXZEHP26S accepted
+GUI operation 01M5RHZNWH9A21BXF6787HTEVK accepted
+GUI operation 01M5RHZNXDFYF2HYX0S55CGAP5 accepted
+GUI operation 01M5RHZP0AHHWNBFFA9E6CA5R9 accepted
+GUI operation 01M5RHZP0MTBW0PKTEHWW4FNYX accepted
+GUI operation 01M5RHZP0RN7013ZE0G14VX88D accepted
+GUI operation 01M5RHZP0QRAQVQ1E2SQ2QMZKJ accepted
+GUI operation 01M5RHZP0V4JRBGZK6QY1AGN5Z accepted
+GUI operation 01M5RHZP0YKTK1H3WFY64WYM66 accepted
+GUI operation 01M5RHZP1255EBAXRJQ8Q7S9N5 accepted
+GUI operation 01M5RHZP187FG4KAVM2NXP629S accepted
+GUI operation 01M5RHZP1BETR9EKDR484X5T4M accepted
+GUI operation 01M5RHZP1F1M8006S4JNNG9VGB accepted
+GUI operation 01M5RHZP0TE2S1G0TW3Q4068PB accepted
+GUI operation 01M5RHZP1KP7XG6YCXRQTFBA4Q accepted
+GUI operation 01M5RHZP1QQMWA38BFPYCNWF8J accepted
+GUI operation 01M5RHZP1RVN4173MS1TN1HSS9 accepted
+GUI operation 01M5RHZP254ENPA3C3K0AWHPG8 accepted
+GUI operation 01M5RHZP2CY7VDW35JNQPPA5R8 accepted
+GUI operation 01M5RHZP247JXMRZ1TXT58YNVG accepted
+GUI operation 01M5RHZP2KQRPM3FXDBRK79Y1F accepted
+GUI operation 01M5RHZP2MCQDTVYVN47Q05ZWK accepted
+GUI operation 01M5RHZP2MS087N63WWYF4X661 accepted
+GUI operation 01M5RHZP2RXGC38TVMH8Y2164H accepted
+GUI operation 01M5RHZP2SER1VZP5JJT5KS6MC accepted
+GUI operation 01M5RHZP2V2Z3KZZQMT6F7QV7F accepted
+GUI operation 01M5RHZP2FVXCWCRADDAC64AZJ accepted
+GUI operation 01M5RHZP3V0WX614CMZ3SM0Y9S accepted
+GUI operation 01M5RHZP3WYFBB14V6F0XC13A9 accepted
+GUI operation 01M5RHZP48FZZV72C6MW2TWB98 accepted
+GUI operation 01M5RHZP3WF1DRM35MW46NP87R accepted
+GUI operation 01M5RHZP85EPNKCKXVYX49BVH9 accepted
+GUI operation 01M5RHZP8K4DF4SNVKAZ1JMN6A accepted
+GUI operation 01M5RHZP91T7T9JM7ZKPMQMW55 accepted
+GUI operation 01M5RHZPAD95E9EKWBQ1XY98RD accepted
+GUI operation 01M5RHZPB098C7FRDY15HDHXFE accepted
+GUI operation 01M5RHZPB0NS9JEP0VR8QVTXJ4 accepted
+GUI operation 01M5RHZPBA5EGWYV3MV1BYE5MW accepted
+GUI operation 01M5RHZPBZB98SAG8SFZCT89FQ accepted
+GUI operation 01M5RHZPBZMBDYS491Y67YJEZS accepted
+GUI operation 01M5RHZPC9YE06F0Q8MEQXJ9X3 accepted
+GUI operation 01M5RHZPCQSX1B4H8D45PXJS8J accepted
+GUI operation 01M5RHZPCX8ZW8QF0R6JAEJNJ8 accepted
+GUI operation 01M5RHZPCYXACNADSX9JFQSMT4 accepted
+GUI operation 01M5RHZPD579KH5JXVYRM3HD8Y accepted
+seat 01M5RHZNP71GXZJD6EFCGV9QAW activity=Idle process=Running { pid: 61898 }
+GUI operation 01M5RHZPDQ21DHAJFWE71F7EBP accepted
+GUI operation 01M5RHZPDXSK8W1F47C9EYPG5J accepted
+GUI operation 01M5RHZPDXNMRB3F39K9KHST95 accepted
+GUI operation 01M5RHZPFC0WN1XAJ9YN2C36XG accepted
+GUI operation 01M5RHZPFESYQYA4G2SAHMX242 accepted
+GUI operation 01M5RHZPK727S7WGXF9ZDCFAGF accepted
+GUI operation 01M5RHZPK7N32CB2BG6QJBCTNA accepted
+seat 01M5RHZNP71GXZJD6EFCGV9QAW activity=Idle process=Running { pid: 61898 }
+GUI operation 01M5RHZPKXDA8C98AGZ23E38X2 accepted
+GUI operation 01M5RHZPMRDCG2P4GATWHADAR2 accepted
+GUI operation 01M5RHZPPN52B34EKAG3ZA0TA3 accepted
+GUI operation 01M5RHZPSJE7QWR2Y5SMHH4QCS accepted
+GUI operation 01M5RHZPVGCTZ5TWYCN1BZQJTQ accepted
+GUI operation 01M5RHZPVH2EWJFAJSNHW200PJ accepted
+seat 01M5RHZNP71GXZJD6EFCGV9QAW activity=Idle process=Running { pid: 61898 }
+GUI operation 01M5RHZPX0T0ZGMPEQ7GKXJYRR accepted
+GUI operation 01M5RHZPY2XB3CMQ2Z8NJT5MHF accepted
+GUI operation 01M5RHZPZG1VW31J78PSS45PPB accepted
+GUI operation 01M5RHZQ0EQQCTPMKBVXJS817Y accepted
+GUI operation 01M5RHZPZYJJ36N1KVGWH4TDNN accepted
+GUI operation 01M5RHZQ0TXTAK7TF94NTQMYJC accepted
+GUI operation 01M5RHZQ1AZ1E6J32E4870665V accepted
+GUI operation 01M5RHZQ1S1M6BMSQTNA8RJE3X accepted
+GUI operation 01M5RHZQ292AG56AAZMZRC4P1J accepted
+GUI operation 01M5RHZQ29H0P60JAWSC0AC818 accepted
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+test live::tests::real_io_scrollback_reaches_first_line_joins_live_and_releases_on_input ... ok
+GUI operation 01M5RHZQ3MBH556J9HG6JNP5JG accepted
+GUI operation 01M5RHZQ4J9Q8M86AD80W5ZA19 accepted
+GUI operation 01M5RHZQ510KVR3575Q7SWJK5B accepted
+GUI operation 01M5RHZQ8R3S94Y5YXQS3J8SYC accepted
+GUI operation 01M5RHZQ965FN0Q10JR5A5J9ZG accepted
+GUI operation 01M5RHZQ9NCBH3MCYDXW3BNT81 accepted
+GUI operation 01M5RHZQA4TP1FJFCZZJR8174P accepted
+GUI operation 01M5RHZQAJBZRG74GPDPWTM52D accepted
+GUI operation 01M5RHZQDRJ5AS22A04GZR79WZ accepted
+GUI operation 01M5RHZQDE6P58HMCYP41HPWR1 accepted
+GUI operation 01M5RHZQEC7PJGP87PDRZ3GVGM accepted
+GUI operation 01M5RHZQEGFSYM325M277H2VJ4 accepted
+GUI operation 01M5RHZQEMW9J31DVKPKD44524 accepted
+GUI operation 01M5RHZQEN94RAMBHSJE2855HJ accepted
+GUI operation 01M5RHZQEN80YNPZ7S7X7QYFD9 accepted
+GUI operation 01M5RHZQEN6TGQAV0X1RX9XBQB accepted
+GUI operation 01M5RHZQF615ZFBF84P85XWMNR accepted
+GUI operation 01M5RHZQEWCCCWDNRH1NEEPS2C accepted
+GUI operation 01M5RHZQEWD9BNT5B9JRNN5GND accepted
+GUI operation 01M5RHZQEWVF47M3M12HRCGXHM accepted
+GUI operation 01M5RHZQEWZZBHJHKQR73TQSRR accepted
+GUI operation 01M5RHZQEWGYQE0MKVFV6CQZJ6 accepted
+GUI operation 01M5RHZQEW0QDA5JR6XHCZT11B accepted
+GUI operation 01M5RHZQEWX04S6GYM9P7T0Q6N accepted
+GUI operation 01M5RHZQEWMN3GQ6C0RY90B2AP accepted
+GUI operation 01M5RHZQEWXHEC1Y45V10GEC2C accepted
+GUI operation 01M5RHZQEW1SPY5XK5M903ADFP accepted
+GUI operation 01M5RHZQEWT0DYQEX7HMYFG9EH accepted
+GUI operation 01M5RHZQEW2MDP1KKQXY1PQB36 accepted
+GUI operation 01M5RHZQEWB2T2WFH9HP0PABTT accepted
+GUI operation 01M5RHZQEW6DGP3ADD46MB609C accepted
+GUI operation 01M5RHZQEWVR3MEDGTT14PJDZ6 accepted
+GUI operation 01M5RHZQEW6E4DZTYBJN9BE6C4 accepted
+GUI operation 01M5RHZQEWAE9YDWCAF32A4QA0 accepted
+GUI operation 01M5RHZQEW79JJX7FCN1DE8BZ6 accepted
+GUI operation 01M5RHZQEW49FK4P5AF28E1WP9 accepted
+GUI operation 01M5RHZQEW0WY54ZCN7WHGG1A7 accepted
+GUI operation 01M5RHZQEW0DVJCMVEQZ0TS0K5 accepted
+GUI operation 01M5RHZQEW8ME36CEJ83BQHQGP accepted
+GUI operation 01M5RHZQEW0J4PD6F2189DFR9X accepted
+GUI operation 01M5RHZQEWETVX2CEH709C4ZJS accepted
+GUI operation 01M5RHZQEWD38BF7EDGX12Y98X accepted
+GUI operation 01M5RHZQEW964SHWXZEPTYKK6A accepted
+GUI operation 01M5RHZQEW1MV8X8E31ZNHGEZF accepted
+GUI operation 01M5RHZQEWVJMZ29157WWA1DW4 accepted
+GUI operation 01M5RHZQEWTMH3HKXACMDN84MM accepted
+GUI operation 01M5RHZQEW1T5PV21D097AX1YQ accepted
+GUI operation 01M5RHZQEWZVAJZ98AS2W77N1Z accepted
+GUI operation 01M5RHZQEWATEW59WFCJZE7JYP accepted
+GUI operation 01M5RHZQEW7G6428H47WH91EBC accepted
+GUI operation 01M5RHZQEW96Q6D2SV60TR802X accepted
+GUI operation 01M5RHZQEWY85G6W5RZ0X984JB accepted
+GUI operation 01M5RHZQEW55QF81VASTT61XCQ accepted
+GUI operation 01M5RHZQEW3X4Q7M4XB7H4X3J3 accepted
+GUI operation 01M5RHZQEWNV2D7TQYNVKHKNRM accepted
+GUI operation 01M5RHZQEW47S2NM1CKTR5VZFS accepted
+GUI operation 01M5RHZQEWHCSACF3A2FYNCA4X accepted
+GUI operation 01M5RHZQEWHWG02ZNH7KH6SV9T accepted
+GUI operation 01M5RHZQEW863W01G84F562DAB accepted
+GUI operation 01M5RHZQEWJ49VKAGJ0KG0NG0H accepted
+GUI operation 01M5RHZQEW2FGMAK3Y6EBW367S accepted
+GUI operation 01M5RHZQEW4ARTHQH4CXPNTJYE accepted
+GUI operation 01M5RHZQEWF4DBE3TQF2PE7GQR accepted
+GUI operation 01M5RHZQEWFK5BNYKZTBSRQR3K accepted
+GUI operation 01M5RHZQEW5141MPJ0PTAZCT5Y accepted
+GUI operation 01M5RHZQEWNQ5J26EF5F9D5XHR accepted
+GUI operation 01M5RHZQEW41BW9VB2S9VSP8SY accepted
+GUI operation 01M5RHZQEWKR3SNEF1QW3CAMTD accepted
+GUI operation 01M5RHZQEW0Y4VW7Q5E3XE9QX4 accepted
+GUI operation 01M5RHZQEW1Z35NEBARYHW19WB accepted
+GUI operation 01M5RHZQEW966DY31R2BYZKYV4 accepted
+GUI operation 01M5RHZQEWACVEKMQN65PB29R5 accepted
+seat 01M5RHZNP71GXZJD6EFCGV9QAW activity=Active process=Running { pid: 61898 }
+GUI operation 01M5RHZQEWYM52368D35EQZMER accepted
+GUI operation 01M5RHZQEWGMAN33X2CJTBRQGC accepted
+GUI operation 01M5RHZQEWS705MBNT6Q31WHDJ accepted
+GUI operation 01M5RHZQEWT7G16RN5YEY0CC48 accepted
+GUI operation 01M5RHZQEW55Y6JDGZHKXKWFYE accepted
+GUI operation 01M5RHZQEWRPBT4JM4XYS33TAX accepted
+GUI operation 01M5RHZQEWE08QNDNW67ANNEE2 accepted
+GUI operation 01M5RHZQEWBHXN0Y0TCCB157MF accepted
+GUI operation 01M5RHZQEWJ8EFFRJZ69GJG8PY accepted
+GUI operation 01M5RHZQEW0RG0C40MDKT59YES accepted
+GUI operation 01M5RHZQEW3VY8A3F2JD57ETC7 accepted
+GUI operation 01M5RHZQEWSHJD0PRW3BHQP0MR accepted
+GUI operation 01M5RHZQEWDEPEKRXMHTD0BRWT accepted
+GUI operation 01M5RHZQEWXBH08HCD94MXGBMJ accepted
+GUI operation 01M5RHZQEWXRYQATQE3GKC59BF accepted
+GUI operation 01M5RHZQEW1C39P0JFN5GHZRF7 accepted
+GUI operation 01M5RHZQEWCF67JDTBQMPJWBGV accepted
+GUI operation 01M5RHZQEW2TCGZZRJ0THN49NE accepted
+GUI operation 01M5RHZQEWG5N6GR5WJJ7EK3SD accepted
+GUI operation 01M5RHZQEWQDBN3RNSHFNEY415 accepted
+GUI operation 01M5RHZQEWS8WP9VNAPDGXMQSV accepted
+GUI operation 01M5RHZQEWN0V3HEY0MQKVNBK3 accepted
+GUI operation 01M5RHZQEWM8D817G4JVFR9K9Q accepted
+GUI operation 01M5RHZQEWF4S2C1T90V87KCW8 accepted
+GUI operation 01M5RHZQEW3ZKFS7RPHMMAKCZY accepted
+GUI operation 01M5RHZQEW0CCSHMV6VK4RN6S4 accepted
+GUI operation 01M5RHZQEWTPH7Z847M1CPDG5N accepted
+GUI operation 01M5RHZQEW5JJ4PNDHZS7SDFNY accepted
+GUI operation 01M5RHZQEWWYJPW7C7VK4GB6WE accepted
+GUI operation 01M5RHZQEW1B0Y7GZJFWJ307V2 accepted
+GUI operation 01M5RHZQEWVES89CKFAZ99JW5J accepted
+GUI operation 01M5RHZQEWA56PX3X4TT18YKNJ accepted
+GUI operation 01M5RHZQEWMX5D6XKXD29XXHD1 accepted
+GUI operation 01M5RHZQEW1NAEPDDXVM3K48XT accepted
+GUI operation 01M5RHZQEWRZM1B6CRKNCEABBE accepted
+GUI operation 01M5RHZQEW7BZFGZSJ72D494MA accepted
+GUI operation 01M5RHZQEWVJZKQ07PRDDGC702 accepted
+GUI operation 01M5RHZQEWVEKJ8FXENS9GYFZ9 accepted
+GUI operation 01M5RHZQEWGCSZ4KR6WPST6GSC accepted
+GUI operation 01M5RHZQEWR8XTVK181WWWDS9X accepted
+GUI operation 01M5RHZQEW7E9ZYATKD44RPB5H accepted
+GUI operation 01M5RHZQEWFPCBZQ33S44E0Q35 accepted
+GUI operation 01M5RHZQEWE07VAJEHJQG155X4 accepted
+GUI operation 01M5RHZQEWH8MPEPVVMHZ186M4 accepted
+GUI operation 01M5RHZQEW27KT68GM21ZSG87M accepted
+GUI operation 01M5RHZQEWKVM4HMRA9MJMC60E accepted
+GUI operation 01M5RHZQEWC3GRF13ZG80FYPAR accepted
+GUI operation 01M5RHZQEWPSC6YWQJVCYYQ6V2 accepted
+GUI operation 01M5RHZQEWKVAP81JQCXNRAT32 accepted
+GUI operation 01M5RHZQEW817TKV569EVJG6MB accepted
+GUI operation 01M5RHZQEW0S6NM8104SNA7FGR accepted
+GUI operation 01M5RHZQEW5EVZJ7DBQNZ4YHTX accepted
+GUI operation 01M5RHZQEWM6R7TG8989X3AJJ6 accepted
+GUI operation 01M5RHZQEWKJM6R09XA4BT9TMK accepted
+GUI operation 01M5RHZQEWBCBNBP3CJR0EHXH6 accepted
+GUI operation 01M5RHZQEWV2M3S866PCDJZF31 accepted
+GUI operation 01M5RHZQEWGXHHN1PAZH1YMV90 accepted
+GUI operation 01M5RHZQEW84N9CDTZ9S668BWZ accepted
+GUI operation 01M5RHZQEWB3QWA9Q2XD64DRQJ accepted
+GUI operation 01M5RHZRETDEWQ7RECZ7AB4S6Z accepted
+GUI operation 01M5RHZQEWJBB0XMMJ338Z9JN9 accepted
+GUI operation 01M5RHZQEWG8E80J210QS1KVMA accepted
+GUI operation 01M5RHZQEWW364R15QD3WRB220 accepted
+GUI operation 01M5RHZQEW2WVPGKRJ3ZACJ7GQ accepted
+GUI operation 01M5RHZQEW870VST5B7EKG97EN accepted
+GUI operation 01M5RHZQEW02HKZTP3T701RKVP accepted
+GUI operation 01M5RHZQEWEDSTZ6B3N1Y6C7S6 accepted
+GUI operation 01M5RHZQEWJ1MEYF86DX8DW3KJ accepted
+GUI operation 01M5RHZQEWJV2RKCB9AP45TQM6 accepted
+GUI operation 01M5RHZQEW0W6WJKNBBQ0438AQ accepted
+GUI operation 01M5RHZQEWWZMG20VZGMFP9RNX accepted
+GUI operation 01M5RHZQEWNZF3QBCTE8XK3G4X accepted
+GUI operation 01M5RHZQEW4KT74XY05SNRCG6S accepted
+GUI operation 01M5RHZQEWH0HD6VXCAV8YJSQ6 accepted
+GUI operation 01M5RHZQEWEDR2QMPQFMB513KZ accepted
+GUI operation 01M5RHZQEWQWC2HBA1HAMZXQ48 accepted
+GUI operation 01M5RHZQEWHXJS1MVJRZ1G4Z8Q accepted
+GUI operation 01M5RHZRMY4NCF2H8TX8Q1Q7F2 accepted
+GUI operation 01M5RHZQEWBJZMBBJJ427W4DRX accepted
+GUI operation 01M5RHZQEWD8F99RWTC0M4P0N4 accepted
+GUI operation 01M5RHZQEWS2H03DABWY4T9V5F accepted
+GUI operation 01M5RHZRP067YM41G0AZ36F5WE accepted
+GUI operation 01M5RHZQEWPWJXHXQ9CCK84H6C accepted
+GUI operation 01M5RHZQEWC2JQMF97WJWB3G16 accepted
+GUI operation 01M5RHZQEW901MCT34G9SBB7VM accepted
+GUI operation 01M5RHZQEW3YYK29SVKJ5MMP07 accepted
+GUI operation 01M5RHZRPTWE4QQE66XVHR3ZP1 accepted
+GUI operation 01M5RHZQEW2MZ6EG2AERRXVEM4 accepted
+GUI operation 01M5RHZRQGVV7356R3Z5SXZ9YG accepted
+GUI operation 01M5RHZRQG2XD6DX6EZ3C4B0S9 accepted
+GUI operation 01M5RHZRQG2T16AHA9XX32VE2T accepted
+GUI operation 01M5RHZQEW1436J1HD7B4E6QAD accepted
+GUI operation 01M5RHZQEW2WVNERV5W10YZ97F accepted
+GUI operation 01M5RHZQEW1372PCGYDY072JHK accepted
+GUI operation 01M5RHZQEWWCMKKTPD7JX689ZD accepted
+GUI operation 01M5RHZQEWGQXF8BNCTWTB7040 accepted
+GUI operation 01M5RHZQEWTJBNSAVVCM0MCV59 accepted
+GUI operation 01M5RHZQEW71Q8Y8XW5WTRJ6QP accepted
+GUI operation 01M5RHZQEWN4SSP2VHHCWBWKY6 accepted
+GUI operation 01M5RHZQEWTYYP2PZXFMQW03HG accepted
+GUI operation 01M5RHZQEW9N9ZDX4F0RSAT68P accepted
+GUI operation 01M5RHZQEWMPTM05V2DH5A6BNQ accepted
+GUI operation 01M5RHZQEWP34Y31MCDCKN8R72 accepted
+GUI operation 01M5RHZQEWVRPVTM55CPWYP60V accepted
+GUI operation 01M5RHZQEWP2K242502GRZNK60 accepted
+GUI operation 01M5RHZQEWJ1MGZFSYZXSNRSH3 accepted
+GUI operation 01M5RHZRW35JQHKKDJ3TWVR840 accepted
+GUI operation 01M5RHZQEW1WJ1Q6RNQ5EC4KS1 accepted
+GUI operation 01M5RHZQEW3H4Q02BYH3QXBDDC accepted
+GUI operation 01M5RHZQEWFTN2959JJZ3E75NM accepted
+GUI operation 01M5RHZQEW6190N3CMEDA5Z1RB accepted
+GUI operation 01M5RHZRWXM4MQ6FE9HCM3SKH1 accepted
+GUI operation 01M5RHZQEWD07C6N1TFWVWTXAX accepted
+GUI operation 01M5RHZQEWYVEDEXDTYQP8HPMD accepted
+GUI operation 01M5RHZQEW2ZP1B0N86RW2GR70 accepted
+GUI operation 01M5RHZQEW0NJ1CE4EYC2WJWEP accepted
+GUI operation 01M5RHZRXQ7WWNY3HPD3XDB52N accepted
+GUI operation 01M5RHZRXRR9WB2XQCR19CVX37 accepted
+GUI operation 01M5RHZRXR33AE24KDN0XRZKYC accepted
+GUI operation 01M5RHZRXSE79RMJFA33RRBRZG accepted
+GUI operation 01M5RHZQEWCWTQSR99GESKXFN1 accepted
+GUI operation 01M5RHZQEWZMXH05C6ARZPAQGB accepted
+GUI operation 01M5RHZQEWF30D3DNYTD18THTC accepted
+GUI operation 01M5RHZQEW9FMW5H67XHD18E8Y accepted
+GUI operation 01M5RHZQEWF92B0NE6VX51ZBR3 accepted
+GUI operation 01M5RHZQEWDQ26GT1G83KKSMK2 accepted
+GUI operation 01M5RHZQEWWJK1FQT4JTJSG73M accepted
+GUI operation 01M5RHZQEW8Q7M119HF97Y4S9G accepted
+GUI operation 01M5RHZQEWXDZ80MRZBFYD89W7 accepted
+GUI operation 01M5RHZQEWR46XKJK6HKVN1W31 accepted
+GUI operation 01M5RHZQEWMNDTXXEAWBRMAHCF accepted
+GUI operation 01M5RHZQEWCV9TFR0S50GJ2C1G accepted
+GUI operation 01M5RHZQEW8VZXWDWY2GDZRHH5 accepted
+GUI operation 01M5RHZQEWXKZADWCNAQCVHHHV accepted
+GUI operation 01M5RHZQEWMYNXKSCKZ8Y5DT6D accepted
+GUI operation 01M5RHZQEWFZ3SXBK5QNE9C2ZJ accepted
+GUI operation 01M5RHZQEW2AQ89H2VBHGK4ZGE accepted
+GUI operation 01M5RHZQFFG9QVP4P7GATDDN0Q accepted
+GUI operation 01M5RHZQFFM9HNBJ9FMR3D8QT4 accepted
+GUI operation 01M5RHZS37J8V8BZAD7FAFCQP5 accepted
+GUI operation 01M5RHZQFF6XED2SMDYYBF1EHM accepted
+GUI operation 01M5RHZQFFGDNS4BH7VHP5GF0T accepted
+GUI operation 01M5RHZQFFZHDJSVW6HN4PC2WS accepted
+GUI operation 01M5RHZQFFB81T1WWQYGMV1BBK accepted
+GUI operation 01M5RHZS40XXGFGRN6ZHEGVJGM accepted
+GUI operation 01M5RHZQFFTC6NSTD41C9VNV5S accepted
+GUI operation 01M5RHZS46H0ZN13YYF2N18H83 accepted
+GUI operation 01M5RHZS47Q7Q8SWK8KYT7DYSY accepted
+GUI operation 01M5RHZS47693ZJVHZT5YGQ0MW accepted
+GUI operation 01M5RHZQFFMNPAHPAKGEEJE2ZN accepted
+GUI operation 01M5RHZQFFNGWFAACYJT29YJFG accepted
+GUI operation 01M5RHZQFFKRAJW2588GXPBA12 accepted
+GUI operation 01M5RHZQFFZJ8TSFHF4Y88GFBK accepted
+GUI operation 01M5RHZQFFZ58QY0KJDR4TA9BA accepted
+GUI operation 01M5RHZQFF3Q3TQ7707A5TPK8K accepted
+GUI operation 01M5RHZQFFT9ANY0RASW6XPGXF accepted
+GUI operation 01M5RHZQFFGPGD200YSC82DFP0 accepted
+GUI operation 01M5RHZQFFPQ6A1SFYM40MF22K accepted
+GUI operation 01M5RHZQFPXYQK59QK3AJM2X7W accepted
+GUI operation 01M5RHZQGRPBRJKMJY9SZB40H6 accepted
+GUI operation 01M5RHZQGYHJJE3A7A3KG1RDX8 accepted
+GUI operation 01M5RHZQH5F9TE65C507YH6D46 accepted
+GUI operation 01M5RHZQK147W3HWQSF9PZMG8C accepted
+GUI operation 01M5RHZQK76G0EKN04XKNSZWGX accepted
+GUI operation 01M5RHZS7504B5G4JRSRVC1QG2 accepted
+GUI operation 01M5RHZQKD9X3EEM6R0FHBDFFE accepted
+GUI operation 01M5RHZQKMV5TNWDEFTC44DRR2 accepted
+GUI operation 01M5RHZQMH0M1XZDTCPF21WGM7 accepted
+GUI operation 01M5RHZQSMXWVDTMFE9WF62J1G accepted
+GUI operation 01M5RHZS7Y7ANJ9M3YPEQAWR6M accepted
+GUI operation 01M5RHZQSM4J4XJ10GA9NHSGHY accepted
+GUI operation 01M5RHZQSMF9S9M9AJ7QVNREZK accepted
+GUI operation 01M5RHZQSMZYDPPWYMH72T4NXA accepted
+GUI operation 01M5RHZQSMXCT0S4PQG6RM39H5 accepted
+GUI operation 01M5RHZS8V56R9ANTTAJJV6CE9 accepted
+GUI operation 01M5RHZQSMCRD80DZDAWADA3JZ accepted
+GUI operation 01M5RHZS91TZ95WXC9Y42XMWXZ accepted
+GUI operation 01M5RHZS9143K88ZXWJKX5RQ81 accepted
+GUI operation 01M5RHZS924NKAZJ38VCZTV9PM accepted
+GUI operation 01M5RHZQSM9RN2DKSFX0V0NM4Z accepted
+GUI operation 01M5RHZQSM0HNQXE1FP4AJFQWE accepted
+GUI operation 01M5RHZQSM091SSPANMWREEM2X accepted
+GUI operation 01M5RHZQSM0ZVX13VMNX711YVT accepted
+GUI operation 01M5RHZQSM9C1CYBWZESFQSVZE accepted
+GUI operation 01M5RHZQSM8PA3422J7SY9TXMR accepted
+GUI operation 01M5RHZQSMQ2W0CYFKVQCCERB9 accepted
+GUI operation 01M5RHZQSMF5JTV0WT76MPGAWY accepted
+GUI operation 01M5RHZQST72SDSRQG21HMXFH2 accepted
+GUI operation 01M5RHZQT83MPCWR8ZJCEVVWVW accepted
+GUI operation 01M5RHZQTE191YBZFSK7ZCXTH2 accepted
+GUI operation 01M5RHZQTNV251JNCRMJBSHCQS accepted
+GUI operation 01M5RHZQTWA6NSTX0QXZE9EX57 accepted
+GUI operation 01M5RHZQV39WZPJJ5J6NV61KEN accepted
+GUI operation 01M5RHZQVABDKZVYVGVR7ZR83A accepted
+GUI operation 01M5RHZSDDKY372PAGC9JTHJ3M accepted
+GUI operation 01M5RHZQVH7HBJJM3G360HJ8NX accepted
+GUI operation 01M5RHZQVH1GEBBJS4GCSEFVHY accepted
+GUI operation 01M5RHZQZZY45JP1JW59JJ1Y1M accepted
+GUI operation 01M5RHZQZZP9MBX8YTHNQE7RS6 accepted
+GUI operation 01M5RHZSEQWX5KKH8HV993FCQF accepted
+GUI operation 01M5RHZQZZVSN2DK64HHN1QFJA accepted
+GUI operation 01M5RHZQZZTDKX3G5361EZBJRX accepted
+GUI operation 01M5RHZQZZGFWEEWCJHD0YJD01 accepted
+GUI operation 01M5RHZQZZJJCJNR70PWW6W9ZA accepted
+GUI operation 01M5RHZQZZZFSZQECR5V7T92KS accepted
+GUI operation 01M5RHZQZZZC7M4DNXBY1HAQRQ accepted
+GUI operation 01M5RHZSH2EKRX22YN404HQT69 accepted
+GUI operation 01M5RHZSHGXNK1DXNGHQ532H3P accepted
+GUI operation 01M5RHZSHGNBE4E5M1RNEK5WRZ accepted
+GUI operation 01M5RHZQZZDQA7RKNRKB0YZ86H accepted
+GUI operation 01M5RHZQZZ8T6XSVGB7AQB33EW accepted
+GUI operation 01M5RHZQZZKVT0VHA2X1G60YWH accepted
+GUI operation 01M5RHZQZZJAYR5KENVGZ0YN8S accepted
+GUI operation 01M5RHZQZZJGBP5FEMZJDFFB8T accepted
+GUI operation 01M5RHZQZZHVEYQ9H8JYV5CXE7 accepted
+GUI operation 01M5RHZR0GCJHY2DB4XM6ZY6DW accepted
+GUI operation 01M5RHZR0Q5JW3XK10128BSPPK accepted
+GUI operation 01M5RHZR0XMSA6ZFFPE9983E2W accepted
+GUI operation 01M5RHZR146M28KDRHRSMBAPGM accepted
+GUI operation 01M5RHZR1A1SYJJAGG3DNDW7HW accepted
+GUI operation 01M5RHZR252CZ3EVF7CXPY1HZ1 accepted
+GUI operation 01M5RHZR2C5P7KJW5VZGVRTEF3 accepted
+GUI operation 01M5RHZR2HP9JNEC3V8NQ3PKZH accepted
+GUI operation 01M5RHZR2JM5ZVHD2DBY24C87G accepted
+GUI operation 01M5RHZR3HH4FY51YC9WJS72TD accepted
+GUI operation 01M5RHZR7BKZXQBF8NJS53EWSP accepted
+GUI operation 01M5RHZSPJM1J2AEPHYS0H2DMQ accepted
+GUI operation 01M5RHZR7B23QMSKDKR6TA7S2M accepted
+GUI operation 01M5RHZR7BJ9DSEPFT9PY5V75N accepted
+GUI operation 01M5RHZR7BFS1S5KEBQB0WWEGR accepted
+GUI operation 01M5RHZR7BGX606TMEC0A9X63Z accepted
+GUI operation 01M5RHZSQVVFY6HB6T579YQKSN accepted
+GUI operation 01M5RHZR7BTK6QTJJEPKQ9HQX4 accepted
+GUI operation 01M5RHZSR1Z0KK8PHAQ3TJ63Z1 accepted
+GUI operation 01M5RHZSR183TY687MT9CG0D3Q accepted
+GUI operation 01M5RHZSR2QPB280N6Y179YA49 accepted
+GUI operation 01M5RHZSR27MT4Z4QQ54JK10Q7 accepted
+GUI operation 01M5RHZSR25ZQR74MXHSFP15T9 accepted
+GUI operation 01M5RHZSR28EYQN2QPAN6D8YEX accepted
+GUI operation 01M5RHZSR2F7PCJECTJECZYF49 accepted
+GUI operation 01M5RHZSR36Y1C2AXHFE149YJ4 accepted
+GUI operation 01M5RHZSR3CEXMK3016MNFQJ0G accepted
+GUI operation 01M5RHZSR9EAZD3CBWW8WHFRGV accepted
+GUI operation 01M5RHZSR91MGSHV2M3FYSAPF0 accepted
+GUI operation 01M5RHZSR9A0DDTMKCWXKV7XTF accepted
+GUI operation 01M5RHZSR9K2DSBX0HWWZTR12C accepted
+GUI operation 01M5RHZSRAQCEWTHG3MF1SCSEN accepted
+GUI operation 01M5RHZSRWHSM76V6E3V03YMSM accepted
+GUI operation 01M5RHZSSGFWPHX6K7ZMHGW047 accepted
+GUI operation 01M5RHZSSJSQB5FZFF4TS3JKTB accepted
+GUI operation 01M5RHZSTCHMTBQQCMPCZEYJR5 accepted
+GUI operation 01M5RHZSTD7NX02MSHX9N2M4K1 accepted
+GUI operation 01M5RHZSTDXCZBQZJDAWAD3CH8 accepted
+GUI operation 01M5RHZSSJJEE0BCCZKHZTM8MB accepted
+seat 01M5RHZNP71GXZJD6EFCGV9QAW activity=Idle process=Running { pid: 61898 }
+GUI operation 01M5RHZSX58EQ1CCTH2NS2KPVF accepted
+GUI operation 01M5RHZSY41J7WR6799KAKVYSC accepted
+GUI operation 01M5RHZSY4EE7HH95XWMHFRZGS accepted
+GUI operation 01M5RHZSY5PEJGDN0G68ZA6NP1 accepted
+GUI operation 01M5RHZSY5DD6JBPRTBS7GE25D accepted
+GUI operation 01M5RHZSY6QB1B33KRCHE9AJE5 accepted
+GUI operation 01M5RHZT0BRQY9TCQSW0EWSEAK accepted
+GUI operation 01M5RHZT18VPVMK5BP4WSHDXWY accepted
+GUI operation 01M5RHZT264577WGAH7S8B0PGX accepted
+GUI operation 01M5RHZT34YAS16E690F80G0RM accepted
+seat 01M5RHZNP71GXZJD6EFCGV9QAW activity=Active process=Running { pid: 61898 }
+GUI operation 01M5RHZT3K3CRYBDW5W3R7HWEF accepted
+seat 01M5RHZNP71GXZJD6EFCGV9QAW activity=Idle process=Running { pid: 61898 }
+GUI operation 01M5RHZT47N3JSGHW18B20QXTP accepted
+GUI operation 01M5RHZT44YQMMG7W8JS0NVAP2 accepted
+GUI operation 01M5RHZT658EQE4SG67CFTWGFC accepted
+seat 01M5RHZNP71GXZJD6EFCGV9QAW activity=Idle process=Running { pid: 61898 }
+GUI operation 01M5RHZT6XCWWBD98V34S5M69P accepted
+GUI operation 01M5RHZT885A1JW06GS53XC3G2 accepted
+GUI operation 01M5RHZT95GC3XJQ4BPT81SXES accepted
+GUI operation 01M5RHZTB3EJAR2SMX4YAFQZCA accepted
+GUI operation 01M5RHZTC1NT4WTH219W8H6QWA accepted
+GUI operation 01M5RHZTG6C6TCD7JKJD2NC1GW accepted
+GUI operation 01M5RHZTH8K4QSDX6FCKHCHRQK accepted
+GUI operation 01M5RHZTHQJEK51K3YN1QQ4BM2 accepted
+GUI operation 01M5RHZTJ6CZWT033D036HVNRZ accepted
+seat 01M5RHZNP71GXZJD6EFCGV9QAW activity=Idle process=Running { pid: 61898 }
+GUI operation 01M5RHZTJC4AYV4Z78KX79YDQ2 accepted
+GUI operation 01M5RHZTJV46G9MB2HMFV7R6N7 accepted
+GUI operation 01M5RHZTJJBAJKG5S0PXKXFX3E accepted
+GUI operation 01M5RHZTN93YHYWTMN4D5TF3GB accepted
+GUI operation 01M5RHZTPN5ZF3VZ1XNXX4EXGE accepted
+GUI operation 01M5RHZTQK2TNNGEQBPGGHT07P accepted
+GUI operation 01M5RHZTRGT2SH0JBQ1SH6A2Z5 accepted
+GUI operation 01M5RHZTSF1966P019STH77QMF accepted
+seat 01M5RHZNP71GXZJD6EFCGV9QAW activity=Idle process=Running { pid: 61898 }
+GUI operation 01M5RHZTTCWAZAYVGRAC582S31 accepted
+GUI operation 01M5RHZTW7FCS7VZHY9FMRTMN3 accepted
+GUI disconnected: GUI connection closed
+logic exited: signal: 9 (SIGKILL)
+GUI disconnected: recovery failed: logic exited during startup
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... ok
+GUI operation 01M5RHZVNWHZ2RRSRTHP9CXFB7 accepted
+GUI operation 01M5RHZVNY715PN36NNNS66B6Z accepted
+GUI operation 01M5RHZVSGJ3D672VM7K7J7VV6 accepted
+GUI operation 01M5RHZVSHXQZHPDZ56KHPWWEK accepted
+GUI operation 01M5RHZVSH8DW5B730E76AT061 accepted
+GUI operation 01M5RHZVSJ6X8065CZKTB3JAVM accepted
+GUI operation 01M5RHZVSJXV8KA48328M0X2XF accepted
+GUI operation 01M5RHZYA41Q62YDHGTG3FV4RJ accepted
+GUI operation 01M5RHZYA5AZ30007HDFRXKS6X accepted
+GUI operation 01M5RHZYDZ43EW3GX20K6TM765 accepted
+GUI operation 01M5RHZYE3WXQG75T4JJ1KFMKP accepted
+GUI operation 01M5RHZYE4PPNWNM3HGH72VVDR accepted
+GUI operation 01M5RHZYE48F3BKSE9P06W0404 accepted
+GUI operation 01M5RHZYE4M3W8R3VKNTC38HDM accepted
+GUI operation 01M5RHZZZ8BDR65TZCTETQMVC2 accepted
+GUI operation 01M5RHZZZ8Y5H7DFMZCSQZJVKF accepted
+GUI operation 01M5RJ002Z0ZG7G8Z0XCADHM46 accepted
+GUI operation 01M5RJ0030NSSAXA4K92BHN9GS accepted
+GUI operation 01M5RJ0031XK4N6230QRJG67YJ accepted
+GUI operation 01M5RJ0031Z2Z8KZA5433WA6D2 accepted
+GUI operation 01M5RJ0031CG53TS8AN7E2JK1Q accepted
+GUI operation 01M5RJ01E6DSKR5Q5GYYQ9KN90 accepted
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+cockpit children reaped after orderly shutdown
+test live::tests::live_e2e_and_ctl_share_one_corpus_and_refresh_from_document_events ... ok
+
+test result: ok. 105 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 13.34s
+
+     Running tests/cockpit.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/cockpit-72cbd1ca9ee6addc)
+
+running 5 tests
+GUI session ended: door=Gui, reason=I/O error (InvalidData, os=None)
+GUI session ended: door=Gui, reason=I/O error (InvalidData, os=None)
+GUI session ended: door=Gui, reason=I/O error (InvalidData, os=None)
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... ok
+test app_io_owner_observes_both_child_process_exits ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test same_run_directory_relaunches_and_spawns_after_orderly_shutdown ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.09s
+
+     Running tests/ctl.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/ctl-716cdfce815122cf)
+
+running 13 tests
+test ctl_help_prints_its_own_usage ... ok
+GUI session ended: door=Ctl, reason=I/O error (InvalidData, os=None)
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test a_wrong_capability_is_refused_with_its_reason ... ok
+test hook_list_names_the_codex_overlay_from_launch_rs ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test without_ctl_the_app_writes_no_endpoint ... ok
+logic: orderly shutdown requested
+logic: orderly shutdown requested
+logic: shutdown completed
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+supervisor: orderly shutdown requested
+logic: SIGTERM
+logic: orderly shutdown requested
+supervisor: shutdown completed
+test ctl_task_create_opens_an_unassigned_operator_task ... ok
+test ctl_record_write_signs_e2e_records_only ... ok
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test ctl_capture_is_answered_by_the_window ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test ctl_noun_verb_grammar_replies_and_errors ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test ctl_seat_restart_starts_the_next_generation ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test first_contact_uses_the_authenticated_hook_socket_and_restores_it_after_logic_restart ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test ctl_drives_a_claude_seat_from_outside_the_app ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test ctl_never_prints_secrets ... ok
+logic: orderly shutdown requested
+logic: shutdown completed
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test ctl_screen_input_and_wait_drive_a_seat ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.94s
+
+     Running tests/custody.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/custody-e285fdd78b9590db)
+
+running 1 test
+test custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.88s
+
+     Running tests/documents.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/documents-296ffbdf2d72c254)
+
+running 12 tests
+test errors_and_disconnect_finish_once_and_retry_only_on_a_new_open ... ok
+test known_backend_loss_is_a_visible_final_outcome_and_late_data_cannot_restart_the_read ... ok
+test composer_wraps_task_paths_once_and_preserves_existing_wire_references ... ok
+test retained_attachment_targets_are_bounded_as_whole_references ... ok
+test reopening_while_pending_drains_the_old_reply_without_replacing_the_new_target ... ok
+test composer_refuses_unknown_attachment_shapes_before_any_send_is_admitted ... ok
+test metadata_publications_retain_an_unconsumed_document_reply ... ok
+test oversize_and_stale_results_refuse_instead_of_clipping_or_picking_another_file ... ok
+test attachment_overflow_is_named_on_the_message_without_changing_its_projection ... ok
+test resolve_fetch_and_numbered_links_use_the_provider_record_without_a_signature_claim ... ok
+test task_delegate_keeps_its_provider_path ... ok
+test the_provenance_card_displays_test_account_attribution_without_certifying_metadata ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/e2e_night.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/e2e_night-592f7d3bac0eac86)
+
+running 1 test
+test the_runner_turns_script_exit_codes_into_verdicts_and_a_summary ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.50s
+
+     Running tests/headless.rs (/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/deps/headless-42317773e6adb8e9)
+
+running 8 tests
+test stopping_an_unavailable_endpoint_is_named_and_never_uses_a_pid ... ok
+test unattended_without_a_test_account_is_refused_before_native_custody ... ok
+test unattended_headless_control_uses_its_own_file_account ... ok
+test headless_cli_starts_real_gui_types_captures_and_stops_without_a_window ... FAILED
+test headless_consumes_launch_results_so_ten_seats_are_placed_and_capturable ... ok
+test headless_smoke_uses_the_idle_probe_with_no_window_or_operator ... ok
+test idle_probe_rejects_an_external_lifecycle_wake ... ok
+test unattended_idle_smoke_keeps_file_custody_without_a_window ... ok
+
+failures:
+
+---- headless_cli_starts_real_gui_types_captures_and_stops_without_a_window stdout ----
+
+thread 'headless_cli_starts_real_gui_types_captures_and_stops_without_a_window' (33362683) panicked at crates/bboxy450-term/tests/headless.rs:52:9:
+assertion `left == right` failed: ["seat", "capture", "01M5RJ1FGPD9D4ZF6JH4YW9GSJ", "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/.tmpU5r6Z3/pane.png"]: [Object {"error": Object {"hint": String("the message is the app's own reason; correct the request it names"), "kind": String("refused"), "message": String("seat 01M5RJ1FGPD9D4ZF6JH4YW9GSJ has no pane on screen")}, "ok": Bool(false), "op": String("01M5RJ1HTANJJ08XCERTN6S8W4")}]; headless GUI starting: windows=0, real Session, offscreen renderer
+cockpit ready: supervisor=64155 logic=64163
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+GUI operation 01M5RJ1F3EAK66GBWXSRBS0NHG accepted
+GUI operation 01M5RJ1FAHE31MAGJBZKTQ0N85 rejected: unknown GUI stream
+GUI operation 01M5RJ1FAHNW61P87ANP6K5V0C accepted
+headless render ready: generation=1 frame=1 windows=0
+GUI operation 01M5RJ1FCCGMVV8HK0K1VNCQQE accepted
+GUI operation 01M5RJ1FD6625309MRDRD7P48A accepted
+GUI operation 01M5RJ1FEFSZE7PJZQC69E3JPP accepted
+headless spawn 01M5RJ1FEWD1JY3TM5KGKD5GN0: Placed(SeatId(Ulid(2167482296424686687200860429397312306)))
+GUI operation 01M5RJ1GC9JTSJHQ1KYM246F67 accepted
+GUI operation 01M5RJ1GHDSZNVDPEMDT9HRE64 accepted
+GUI operation 01M5RJ1GJSAA46VG5EGBGVVWPR accepted
+GUI operation 01M5RJ1GK8Q2ZWX39TVM9S0BYJ accepted
+GUI operation 01M5RJ1GK9C7QCVS73GEVNR7NH accepted
+GUI operation 01M5RJ1GKE0PFECZP8TR7PP4FB accepted
+GUI operation 01M5RJ1GKJYX8YTEH4D1H36EJR accepted
+GUI operation 01M5RJ1GKZPJSDTHWNSGYJRGD2 accepted
+GUI operation 01M5RJ1GM4P6MP891GYMFRGT17 accepted
+seat 01M5RJ1FGPD9D4ZF6JH4YW9GSJ activity=Idle process=Running { pid: 64243 }
+GUI operation 01M5RJ1GT344KQXM4S2B4A6CVN accepted
+GUI operation 01M5RJ1GT5HKX4M3VQCXK89EDX accepted
+GUI operation 01M5RJ1GT6RSXW6BCD7NNV7WAT accepted
+GUI operation 01M5RJ1GTKAWKTEHKD9Y7V1KNT accepted
+GUI operation 01M5RJ1GXWACH30GZCAMD4M03A accepted
+seat 01M5RJ1FGPD9D4ZF6JH4YW9GSJ activity=Idle process=Running { pid: 64243 }
+GUI operation 01M5RJ1H0BR2VNXQH5N18XTMYT accepted
+GUI operation 01M5RJ1H0TWSHGWX75G3RD3ZJF accepted
+GUI operation 01M5RJ1H270WT18VJZS75CT1JZ accepted
+headless spawn 01M5RJ1H1N4B4B1M03FZV44K77: Placed(SeatId(Ulid(2167482298357709623019529843326752343)))
+GUI operation 01M5RJ1HSVZESF7N4ZNK0Q83A4 accepted
+GUI operation 01M5RJ1HN5G190PV4ZNHNTA6Z1 accepted
+GUI operation 01M5RJ1HSWGAPCE42JSK50D6YV accepted
+GUI operation 01M5RJ1HSZGG5T3SYHBQBZ40H5 accepted
+GUI operation 01M5RJ1HTM04XRB2QV5FBJKYKM accepted
+GUI operation 01M5RJ1HTQRNK1N7T2HW9XQA0Z accepted
+GUI operation 01M5RJ1HV33JAQG8346CXM5988 accepted
+GUI operation 01M5RJ1HV4NET9F1C3SVYBPXGC accepted
+GUI operation 01M5RJ1HV59QQ2R5QY0EYW4H1C accepted
+GUI operation 01M5RJ1HVKQHK982HZX5GHHE7W accepted
+GUI operation 01M5RJ1HVK24FGATMBX6M8HCD5 accepted
+GUI operation 01M5RJ1HVKEKXMDGZDDVE0E4R6 accepted
+GUI operation 01M5RJ1HVK2NVG9Y7K4B8PG22D accepted
+GUI operation 01M5RJ1HVMX49X6DDG5XF00979 accepted
+GUI operation 01M5RJ1HVNWB9BZWZYMFCFKMH8 accepted
+GUI operation 01M5RJ1HTANJJ08XCERTN6S8W4 accepted
+GUI operation 01M5RJ1HVS1W0EA59GPFV9BRK0 accepted
+GUI operation 01M5RJ1HVTQ8J2FYP6NDEFJXSK accepted
+
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    headless_cli_starts_real_gui_types_captures_and_stops_without_a_window
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.50s
+
+error: test failed, to rerun pass `-p bboxy450-term --test headless`

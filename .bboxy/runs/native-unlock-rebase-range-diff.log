@@ -1,0 +1,124 @@
+1:  91241d73 ! 1:  8eccfd0a Implement journaled native identity unlock and operator controls
+    @@ crates/bboxy450-term/src/ctl.rs: pub fn parse_full(args: &[String]) -> Result<Pa
+     +        ["identity", "status"] => Command::Identity(bbt_proto::identity::IdentityRequest::Status),
+     +        ["identity", "unlock"] => Command::Identity(bbt_proto::identity::IdentityRequest::Unlock),
+              ["app", "endpoint"] => Command::AppEndpoint,
+    -         ["capture", path] => Command::Capture {
+    -             path: std::path::absolute(path).map_err(|e| format!("capture {path}: {e}"))?,
+    +         ["app", "start"] => Command::AppStart {
+    +             headless,
+     @@ crates/bboxy450-term/src/ctl.rs: impl Client {
+                  _ => unreachable!(),
+              }
+    @@ crates/bboxy450-term/src/ctl.rs: mod tests {
+     +                request: bbt_proto::identity::IdentityRequest::Status,
+     +            }),
+                  GuiAction::ListSeats,
+    -             GuiAction::Screen {
+    +             GuiAction::App {
+                      id,
+     @@ crates/bboxy450-term/src/ctl.rs: mod tests {
+                  );
+              }
+    -         for line in [
+    +         let parse_samples = [
+     +            "identity status",
+     +            "identity unlock",
+                  "seat ls",
+                  "seat spawn zsh",
+                  "seat screen s",
+    -@@ crates/bboxy450-term/src/ctl.rs: mod tests {
+    -                 .unwrap_or_else(|| panic!("{line}: not a table verb"));
+    -             assert!(line.starts_with(&format!("{noun} {verb}")));
+    -         }
+    --        assert_eq!(VERBS.len(), 25, "a new verb needs a parse line above");
+    -+        assert_eq!(VERBS.len(), 27, "a new verb needs a parse line above");
+    -     }
+    -     #[test]
+    -     fn errors_name_a_kind_a_hint_and_an_exit() {
+     
+      ## crates/bboxy450-term/src/live.rs ##
+     @@ crates/bboxy450-term/src/live.rs: enum ActionReply {
+    @@ crates/bboxy450-term/src/live.rs: fn operations_disconnected(model: &mut Arc<Mod
+     +}
+     +
+      #[allow(clippy::too_many_arguments)] // The session, its channels and its two UI callbacks.
+    + #[cfg(test)]
+      async fn run(
+    -     updates: Arc<Latest<Arc<Model>>>,
+    -@@ crates/bboxy450-term/src/live.rs: async fn run(
+    +@@ crates/bboxy450-term/src/live.rs: async fn run_with_control(
+                          },
+                          UiMsg::Messaging {id,swarm_id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Messaging {id:*id,swarm_id:*swarm_id,request:request.clone()}); } },
+                          UiMsg::Task {id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Task {id:*id,request:request.clone()}); } },
+    @@ crates/bboxy450-term/src/live.rs: async fn run(
+                          UiMsg::Input {seat,generation,id,bytes}=> {
+                              if return_live(&mut history,&mut model,*seat) {
+                                  publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+    -@@ crates/bboxy450-term/src/live.rs: async fn run(
+    +@@ crates/bboxy450-term/src/live.rs: async fn run_with_control(
+                                  logger.write(format!("GUI operation {op} accepted"));
+                              },
+                              GuiReply::Error {op,reason}=> {
+    @@ crates/bboxy450-term/src/live.rs: async fn run(
+                                  if terminal_reply == Some(ActionReply::Knowledge(op)) {
+                                      let result=Err(bbt_mux::knowledge::data_source::CommandError::new("transport",reason.clone()));
+                                      if let Some(work)=document_reader.response(op,result.clone()) {
+    -@@ crates/bboxy450-term/src/live.rs: async fn run(
+    +@@ crates/bboxy450-term/src/live.rs: async fn run_with_control(
+                              }
+                              GuiReply::Messaging {op,response}=>operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Messaging(response)),
+                              GuiReply::Task {op,response}=>operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Task(response)),
+    @@ crates/bboxy450-term/src/live.rs: async fn run(
+                              GuiReply::Knowledge {op,response}=> {
+                                  if terminal_reply == Some(ActionReply::Knowledge(op)) {
+                                      let result=serde_json::from_value(response).unwrap_or_else(|error| Err(bbt_mux::knowledge::data_source::CommandError::new("invalid_provider_result",format!("invalid knowledge reply: {error}"))));
+    -@@ crates/bboxy450-term/src/live.rs: async fn run(
+    +@@ crates/bboxy450-term/src/live.rs: async fn run_with_control(
+      mod tests {
+          use super::*;
+      
+    @@ crates/bbt-mux/src/mcp/journal.rs: mod tests {
+     
+      ## crates/bbt-mux/src/seat_socket.rs ##
+     @@ crates/bbt-mux/src/seat_socket.rs: async fn gui_session(
+    -                         continue;
+    -                     }
+    +                     let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
+                          let op=match &request.action {
+    +                         GuiAction::App {id,..}|GuiAction::AppReply {id,..}=>*id,
+     -                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}=>*id,
+     +                        GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}=>*id,
+                              GuiAction::UndoClose {close_id,..}=>*close_id,
+                              _=>Ulid::new(),
+                          };
+     @@ crates/bbt-mux/src/seat_socket.rs: async fn gui_session(
+    -                         match request.action {
+    +                             }
+                                  GuiAction::ListSeats=>Ok(GuiReply::Seats(client.gui_seats().await?)),
+                                  GuiAction::ListHosts=>Ok(GuiReply::Hosts(client.gui_hosts().await?)),
+     +                            GuiAction::Identity(bbt_proto::identity::IdentityCall {id,request})=>Ok(GuiReply::IdentityControl {op:id,response:client.gui_identity_control(id,request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?}),
+    @@ crates/bbt-mux/tests/native_unlock.rs (new)
+     +}
+     
+      ## crates/bbt-proto/src/gui.rs ##
+    -@@ crates/bbt-proto/src/gui.rs: pub struct GuiRequest {
+    - pub enum GuiAction {
+    -     ListHosts,
+    -     ListSeats,
+    +@@ crates/bbt-proto/src/gui.rs: pub enum GuiAction {
+    +         id: Ulid,
+    +         status: AppStatus,
+    +     },
+     +    /// The hold's two operator controls; target identity is derived in logic.
+     +    Identity(crate::identity::IdentityCall),
+          /// Start the one device-bound durable events drain on this connection.
+    @@ crates/bbt-proto/src/lib.rs
+     +pub mod identity;
+      pub mod messaging;
+      pub mod registry;
+    - pub mod seat_state;
+    + pub mod seat_names;
+     
+      ## crates/bbt-ui/src/modules/settings.rs ##
+     @@ crates/bbt-ui/src/modules/settings.rs: pub struct Account {

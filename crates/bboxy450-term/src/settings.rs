@@ -18,6 +18,246 @@ use std::{
 use tokio::sync::watch;
 use toml_edit::{DocumentMut, Item, Value};
 
+/// The latest correlated custody response. Revision advances even for a retained result.
+#[derive(Debug, Clone)]
+pub struct IdentityReply {
+    pub revision: u64,
+    pub op: bbt_mux::Ulid,
+    pub result: Result<bbt_proto::identity::IdentityControl, String>,
+}
+
+/// One correlated native intent. Unknown attempts are checked with their original ID.
+#[derive(Default)]
+pub struct CustodyControl {
+    response: Option<bbt_proto::identity::IdentityControl>,
+    pending: Option<CustodyRequest>,
+    retry: Option<bbt_mux::Ulid>,
+    last_unlock: Option<bbt_mux::Ulid>,
+    last_outcome: Option<bbt_proto::identity::UnlockOutcome>,
+    signing_ready: bool,
+    seen: u64,
+    notice: Option<String>,
+}
+struct CustodyRequest {
+    op: bbt_mux::Ulid,
+    request: bbt_proto::identity::IdentityRequest,
+    deadline: std::time::Instant,
+    next: Option<std::time::Instant>,
+}
+impl CustodyControl {
+    pub fn notice(&self) -> Option<&str> {
+        self.notice.as_deref()
+    }
+    pub fn request(
+        &mut self,
+        unlock: bool,
+        now: std::time::Instant,
+    ) -> Option<crate::cockpit::UiMsg> {
+        if self.pending.is_some() {
+            return None;
+        }
+        let request = if unlock && self.retry.is_none() {
+            bbt_proto::identity::IdentityRequest::Unlock
+        } else {
+            bbt_proto::identity::IdentityRequest::Status
+        };
+        // Ulid::default() is nil; every new act must mint a real operation ID.
+        let op = match (unlock, self.retry) {
+            (true, Some(op)) => op,
+            _ => bbt_mux::Ulid::new(),
+        };
+        if unlock {
+            self.last_unlock = Some(op);
+        }
+        self.pending = Some(CustodyRequest {
+            op,
+            request,
+            deadline: now + std::time::Duration::from_secs(10),
+            next: None,
+        });
+        self.notice = Some(
+            if unlock {
+                "Native outcome pending"
+            } else {
+                "Reading custody status"
+            }
+            .into(),
+        );
+        Some(crate::cockpit::UiMsg::IdentityControl { id: op, request })
+    }
+    pub fn observe(&mut self, reply: &IdentityReply, now: std::time::Instant) {
+        if reply.revision <= self.seen {
+            return;
+        }
+        self.seen = reply.revision;
+        let Some(pending) = &mut self.pending else {
+            return;
+        };
+        if pending.op != reply.op {
+            return;
+        }
+        match &reply.result {
+            Err(reason) => {
+                if Some(pending.op) == self.last_unlock {
+                    self.retry = Some(pending.op);
+                }
+                self.notice = Some(format!("Outcome unavailable: {reason}"));
+                self.pending = None;
+            }
+            Ok(response) => {
+                if Some(pending.op) == self.last_unlock && response.outcome.is_some() {
+                    self.last_outcome = response.outcome;
+                }
+                self.response = Some(response.clone());
+                let admitted = response.pending.iter().any(|row| {
+                    row.op == pending.op && row.pending_digest.is_some() && row.in_flight
+                });
+                if Some(pending.op) == self.last_unlock
+                    && response.outcome == Some(bbt_proto::identity::UnlockOutcome::Unknown)
+                    && admitted
+                {
+                    self.retry = Some(pending.op);
+                    pending.next = Some(now + std::time::Duration::from_millis(250));
+                    self.notice = Some("Native outcome pending".into());
+                } else {
+                    use bbt_proto::identity::UnlockOutcome;
+                    self.notice = response.outcome.map(|outcome| match outcome {
+                        UnlockOutcome::Allowed => "Unlock allowed".into(),
+                        UnlockOutcome::Cancelled => "Unlock cancelled".into(),
+                        UnlockOutcome::Unknown => {
+                            "Unlock outcome unknown; check the retained result".into()
+                        }
+                    });
+                    if Some(pending.op) == self.last_unlock {
+                        self.retry = (response.outcome.is_none()
+                            || response.outcome == Some(UnlockOutcome::Unknown))
+                        .then_some(pending.op);
+                    }
+                    self.pending = None;
+                }
+            }
+        }
+    }
+    /// Only an acknowledged admission may be polled automatically, using the same ID.
+    pub fn next(
+        &mut self,
+        now: std::time::Instant,
+        connected: bool,
+    ) -> Option<crate::cockpit::UiMsg> {
+        let pending = self.pending.as_mut()?;
+        if !connected || now >= pending.deadline {
+            if Some(pending.op) == self.last_unlock {
+                self.retry = Some(pending.op);
+            }
+            self.notice = Some("Outcome unknown; reconnect and check the retained result".into());
+            self.pending = None;
+            return None;
+        }
+        if pending.next.is_some_and(|at| now >= at) {
+            pending.next = None;
+            pending.request = bbt_proto::identity::IdentityRequest::Status;
+            return Some(crate::cockpit::UiMsg::IdentityControl {
+                id: pending.op,
+                request: pending.request,
+            });
+        }
+        None
+    }
+    pub fn wake_at(&self) -> Option<std::time::Instant> {
+        self.pending
+            .as_ref()
+            .map(|pending| pending.next.unwrap_or(pending.deadline))
+    }
+    /// A ready-state transition refreshes public status only, never native access.
+    pub fn signing_changed(
+        &mut self,
+        ready: bool,
+        now: std::time::Instant,
+    ) -> Option<crate::cockpit::UiMsg> {
+        let changed = self.signing_ready != ready;
+        self.signing_ready = ready;
+        if changed
+            && ready
+            && self.last_outcome == Some(bbt_proto::identity::UnlockOutcome::Allowed)
+        {
+            self.request(false, now)
+        } else {
+            None
+        }
+    }
+    pub fn view(&self) -> bbt_ui::modules::settings::Custody {
+        use bbt_proto::identity::{CustodyAcl as A, UnlockOutcome as O};
+        let response = self.response.as_ref();
+        let hold = response
+            .and_then(|value| value.hold.clone())
+            .map(|reason| bbt_ui::modules::settings::CustodyHold { reason });
+        let native = response.is_some_and(|value| value.acl != A::NotNative);
+        let tier = response
+            .and_then(|value| value.custody.as_deref())
+            .map_or("unknown", |label| {
+                if native {
+                    "keychain"
+                } else if label.contains("file") {
+                    "file"
+                } else {
+                    "local-dev"
+                }
+            });
+        let attempt = if self.pending.as_ref().is_some_and(|request| {
+            request.request == bbt_proto::identity::IdentityRequest::Unlock
+                || self.response.as_ref().is_some_and(|response| {
+                    response
+                        .pending
+                        .iter()
+                        .any(|row| row.op == request.op && row.in_flight)
+                })
+        }) {
+            Some("pending")
+        } else if self.retry.is_some() {
+            Some("unknown")
+        } else {
+            response.and_then(|value| {
+                value
+                    .outcome
+                    .or(self.last_outcome)
+                    .map(|outcome| match outcome {
+                        O::Allowed => {
+                            if value.hold.is_none()
+                                && (value.pending.iter().any(|row| {
+                                    Some(row.op) == self.last_unlock && row.signature == "device"
+                                }) || (value.outcome.is_none()
+                                    && self.last_unlock.is_some()
+                                    && value
+                                        .pending
+                                        .iter()
+                                        .all(|row| Some(row.op) != self.last_unlock)))
+                            {
+                                "returned"
+                            } else {
+                                "granted"
+                            }
+                        }
+                        O::Cancelled => "cancelled",
+                        O::Unknown => "unknown",
+                    })
+            })
+        };
+        bbt_ui::modules::settings::Custody {
+            tier: tier.into(),
+            acl: match response.map(|value| value.acl) {
+                Some(A::TeamSigned) => "designated",
+                Some(A::Legacy) => "legacy",
+                _ => "unknown",
+            }
+            .into(),
+            enabled: self.pending.is_none() && ((native && hold.is_some()) || self.retry.is_some()),
+            hold,
+            attempt: attempt.map(str::to_owned),
+            op: self.last_unlock.map(|op| op.to_string()),
+        }
+    }
+}
+
 const MAX_CONFIG: u64 = 1024 * 1024;
 static TEMP_ID: AtomicU64 = AtomicU64::new(0);
 #[derive(Debug, Clone, PartialEq)]
@@ -618,6 +858,146 @@ impl Drop for Io {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_second_item_hold_keeps_unlock_available_after_an_allowed_access() {
+        use bbt_proto::identity::{
+            CustodyAcl, IdentityControl, IdentityRequest, PendingUnlock, UnlockOutcome,
+        };
+        let now = std::time::Instant::now();
+        let mut control = CustodyControl::default();
+        let Some(crate::cockpit::UiMsg::IdentityControl { id: first, .. }) =
+            control.request(true, now)
+        else {
+            panic!("first act")
+        };
+        let response = IdentityControl {
+            custody: Some("dev custody".into()),
+            acl: CustodyAcl::Unknown,
+            hold: Some("second native item still held".into()),
+            clear_actions: vec![
+                "ctl identity unlock".into(),
+                "Settings › Identity › Unlock".into(),
+            ],
+            outcome: Some(UnlockOutcome::Allowed),
+            pending: vec![PendingUnlock {
+                op: first,
+                pending_digest: Some("a".repeat(64)),
+                outcome: UnlockOutcome::Allowed,
+                signature: "pending".into(),
+                in_flight: false,
+            }],
+        };
+        control.observe(
+            &IdentityReply {
+                revision: 1,
+                op: first,
+                result: Ok(response.clone()),
+            },
+            now,
+        );
+        assert!(control.view().enabled);
+        assert_eq!(control.view().attempt.as_deref(), Some("granted"));
+        let Some(crate::cockpit::UiMsg::IdentityControl {
+            id: second,
+            request,
+        }) = control.request(true, now)
+        else {
+            panic!("second explicit act must stay available")
+        };
+        assert_ne!(first, second);
+        assert_ne!(first, bbt_mux::Ulid::nil());
+        assert_ne!(second, bbt_mux::Ulid::nil());
+        assert_eq!(request, IdentityRequest::Unlock);
+        let mut finished = response;
+        finished.hold = None;
+        finished.pending[0].op = second;
+        finished.pending[0].signature = "device".into();
+        control.observe(
+            &IdentityReply {
+                revision: 2,
+                op: second,
+                result: Ok(finished),
+            },
+            now,
+        );
+        assert_eq!(control.view().attempt.as_deref(), Some("returned"));
+        assert!(!control.view().enabled);
+    }
+    #[test]
+    fn native_unknown_checks_the_same_id_and_never_replays_on_disconnect() {
+        use bbt_proto::identity::{
+            CustodyAcl, IdentityControl, IdentityRequest, PendingUnlock, UnlockOutcome,
+        };
+        let now = std::time::Instant::now();
+        let mut control = CustodyControl::default();
+        let Some(crate::cockpit::UiMsg::IdentityControl { id, request }) =
+            control.request(true, now)
+        else {
+            panic!("explicit unlock missing")
+        };
+        assert_eq!(request, IdentityRequest::Unlock);
+        assert!(control.request(true, now).is_none());
+        assert!(
+            control
+                .next(now + std::time::Duration::from_millis(500), true)
+                .is_none(),
+            "no automatic retry before an admission receipt"
+        );
+        assert!(control.next(now, false).is_none());
+        let Some(crate::cockpit::UiMsg::IdentityControl { id: retry, request }) =
+            control.request(true, now)
+        else {
+            panic!("explicit check missing")
+        };
+        assert_eq!(id, retry);
+        assert_eq!(
+            request,
+            IdentityRequest::Status,
+            "checking an unknown result is never an unlock request"
+        );
+        let response = IdentityControl {
+            custody: Some("fixture native".into()),
+            acl: CustodyAcl::Unknown,
+            hold: Some("interaction required".into()),
+            clear_actions: vec![],
+            outcome: Some(UnlockOutcome::Unknown),
+            pending: vec![PendingUnlock {
+                op: id,
+                pending_digest: Some("a".repeat(64)),
+                outcome: UnlockOutcome::Unknown,
+                signature: "pending".into(),
+                in_flight: true,
+            }],
+        };
+        control.observe(
+            &IdentityReply {
+                revision: 1,
+                op: id,
+                result: Ok(response.clone()),
+            },
+            now,
+        );
+        let Some(crate::cockpit::UiMsg::IdentityControl { id: poll, .. }) =
+            control.next(now + std::time::Duration::from_millis(251), true)
+        else {
+            panic!("admitted result check missing")
+        };
+        assert_eq!(poll, id);
+        let mut done = response;
+        done.outcome = Some(UnlockOutcome::Cancelled);
+        done.pending[0].in_flight = false;
+        control.observe(
+            &IdentityReply {
+                revision: 2,
+                op: id,
+                result: Ok(done),
+            },
+            now,
+        );
+        assert!(control.wake_at().is_none());
+        assert_eq!(control.view().attempt.as_deref(), Some("cancelled"));
+        assert!(control.view().enabled);
+    }
     #[test]
     fn patches_survive_restart_and_preserve_comments_and_unmanaged_keys() {
         let dir = tempfile::tempdir().unwrap();

@@ -164,6 +164,191 @@ fn snapshot(home: &Path) -> Vec<Vec<u8>> {
 }
 
 #[test]
+fn native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order() {
+    use bbt_mux::{
+        identity::{UnlockPhase, UnlockProgress, UnlockProgressRow, UnlockStep},
+        logic::{Logic, LogicConfig},
+        mcp::{Door, Origin},
+        store::{Events, events::EventLog},
+    };
+    use bbt_proto::identity::{CustodyAcl, IdentityRequest, UnlockOutcome};
+    use std::sync::{Arc, Mutex};
+    #[derive(Default)]
+    struct Keys {
+        keys: Mutex<BTreeMap<Ulid, SigningKey>>,
+        held: Mutex<std::collections::BTreeSet<Ulid>>,
+        attempts: Mutex<Vec<Ulid>>,
+    }
+    impl DeviceKeyStore for Keys {
+        fn custody(&self) -> Custody {
+            Custody::LoginKeychain
+        }
+        fn load(&self, id: Ulid) -> bbt_mux::identity::Result<Option<SigningKey>> {
+            if self.held.lock().unwrap().contains(&id) {
+                return Err(PendingReason::KeychainInteractionRequired);
+            }
+            Ok(self.keys.lock().unwrap().get(&id).cloned())
+        }
+        fn create(&self, id: Ulid, key: &SigningKey) -> bbt_mux::identity::Result<()> {
+            self.keys.lock().unwrap().insert(id, key.clone());
+            Ok(())
+        }
+        fn native_acl(&self, _: Ulid) -> bbt_mux::identity::Result<CustodyAcl> {
+            Ok(CustodyAcl::Unknown)
+        }
+        fn unlock(
+            &self,
+            id: Ulid,
+            expected: [u8; 32],
+            progress: UnlockProgress,
+        ) -> bbt_mux::identity::Result<UnlockOutcome> {
+            assert_eq!(
+                self.keys.lock().unwrap()[&id].verifying_key().to_bytes(),
+                expected
+            );
+            progress(UnlockProgressRow {
+                step: UnlockStep::ReadCurrent,
+                phase: UnlockPhase::Started,
+                status: None,
+            })?;
+            self.attempts.lock().unwrap().push(id);
+            self.held.lock().unwrap().remove(&id);
+            progress(UnlockProgressRow {
+                step: UnlockStep::ReadCurrent,
+                phase: UnlockPhase::Applied,
+                status: None,
+            })?;
+            Ok(UnlockOutcome::Allowed)
+        }
+    }
+    let root = Fixture::new();
+    let before = snapshot(root.home.path());
+    let directory = tempfile::Builder::new()
+        .prefix("native-two-item-")
+        .tempdir_in("/tmp")
+        .unwrap();
+    let account = SqliteStore::open(&directory.path().join("account")).unwrap();
+    let keys = Arc::new(Keys::default());
+    let BootstrapOutcome::Certified(device) = root.bootstrap.run(&account, keys.as_ref(), now())
+    else {
+        panic!("throwaway root enrollment");
+    };
+    let local: serde_json::Value =
+        serde_json::from_slice(&account.get("identity/local-issuer").unwrap().unwrap()).unwrap();
+    let issuer: Ulid = serde_json::from_value(local["key_id"].clone()).unwrap();
+    let device_id = device.grant.payload.device_id;
+    assert_ne!(issuer, device_id);
+    keys.held.lock().unwrap().extend([issuer, device_id]);
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let supervisor = bbt_mux::Supervisor::start(common::capture_config(directory.path())).unwrap();
+    let repository = directory.path().join("repository");
+    fs::create_dir_all(repository.join(".bboxy")).unwrap();
+    let logic = Logic::start_custodied_with_store(
+        supervisor.connect().unwrap(),
+        LogicConfig {
+            run_dir: directory.path().into(),
+            repository,
+            ring: Default::default(),
+        },
+        keys.clone(),
+        runtime.handle(),
+    )
+    .unwrap();
+    let finish = |op| {
+        let until = std::time::Instant::now() + Duration::from_secs(5);
+        loop {
+            let response = runtime
+                .block_on(logic.client.gui_identity_control(
+                    op,
+                    IdentityRequest::Unlock,
+                    Origin {
+                        door: Door::Ctl,
+                        issued_by: None,
+                    },
+                ))
+                .unwrap();
+            if response.outcome == Some(UnlockOutcome::Allowed) {
+                break response;
+            }
+            assert!(
+                std::time::Instant::now() < until,
+                "native fixture outcome missing"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    };
+    let first = Ulid::new();
+    let response = finish(first);
+    assert!(response.hold.is_some());
+    assert_eq!(response.clear_actions.len(), 2);
+    assert_eq!(*keys.attempts.lock().unwrap(), vec![issuer]);
+    assert!(
+        response
+            .pending
+            .iter()
+            .any(|row| row.op == first && row.signature == "pending")
+    );
+    assert_eq!(
+        runtime
+            .block_on(logic.client.identity_status())
+            .unwrap()
+            .device_id,
+        None,
+        "second item's hold still hides the public ID"
+    );
+    let second = Ulid::new();
+    let response = finish(second);
+    assert!(response.hold.is_none());
+    assert_eq!(*keys.attempts.lock().unwrap(), vec![issuer, device_id]);
+    let until = std::time::Instant::now() + Duration::from_secs(3);
+    let completions = loop {
+        let rows = EventLog::open(&directory.path().join("account"))
+            .unwrap()
+            .after(0, 256)
+            .unwrap();
+        let done: Vec<_> = rows
+            .into_iter()
+            .filter(|row| {
+                row.event.payload["signature"] == "device"
+                    && row.event.payload["tool"] == "identity_unlock"
+            })
+            .collect();
+        if done.len() == 2 {
+            break done;
+        }
+        assert!(
+            std::time::Instant::now() < until,
+            "device completions missing"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    assert_eq!(
+        completions[0].event.payload["op_id"],
+        serde_json::json!(first)
+    );
+    assert_eq!(
+        completions[1].event.payload["op_id"],
+        serde_json::json!(second)
+    );
+    for completion in completions {
+        completion.verify().unwrap();
+        assert_eq!(
+            completion.provenance.signer,
+            keys.keys.lock().unwrap()[&device_id]
+                .verifying_key()
+                .to_bytes()
+        );
+    }
+    logic.shutdown().unwrap();
+    supervisor.shutdown().unwrap();
+    assert_eq!(snapshot(root.home.path()), before);
+}
+
+#[test]
 fn identity_bootstrap_external_certification_and_custody() {
     let fixture = Fixture::new();
     let before = snapshot(fixture.home.path());

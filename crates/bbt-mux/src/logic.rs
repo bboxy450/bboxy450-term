@@ -231,6 +231,12 @@ enum Command {
     GuiSeats(oneshot::Sender<Result<Vec<crate::seat_socket::GuiSeat>>>),
     GuiSeat(Ulid, oneshot::Sender<Result<crate::seat_socket::GuiSeat>>),
     GuiIdentity(oneshot::Sender<Result<bbt_proto::GuiIdentity>>),
+    OperatorIdentity(
+        Ulid,
+        bbt_proto::identity::IdentityRequest,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<bbt_proto::identity::IdentityControl>>,
+    ),
     GuiDevice(oneshot::Sender<Result<Ulid>>),
     GuiWatchInterest {
         session: Ulid,
@@ -308,6 +314,7 @@ impl Command {
                 | Self::GuiSeats(_)
                 | Self::GuiSeat(..)
                 | Self::GuiIdentity(_)
+                | Self::OperatorIdentity(..)
                 | Self::IdentityStatus(_)
                 | Self::Snapshot(..)
                 | Self::Record(..)
@@ -330,6 +337,15 @@ fn operator_response<T: serde::de::DeserializeOwned>(result: serde_json::Value) 
         )));
     }
     Ok(serde_json::from_value(result["structuredContent"].clone())?)
+}
+fn identity_response(
+    mut result: serde_json::Value,
+) -> Result<bbt_proto::identity::IdentityControl> {
+    // MCP's retained result adds this wrapper field; it is not part of the strict DTO.
+    if let Some(data) = result["structuredContent"].as_object_mut() {
+        data.remove("op_id");
+    }
+    operator_response(result)
 }
 
 /// Private discovery result; never include the admission capability in logs.
@@ -563,6 +579,20 @@ impl LogicClient {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::GuiIdentity(tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
+    }
+    /// The admitted operator connection is the authority; the peer supplies no identity.
+    pub async fn gui_identity_control(
+        &self,
+        op: Ulid,
+        request: bbt_proto::identity::IdentityRequest,
+        origin: crate::mcp::Origin,
+    ) -> Result<bbt_proto::identity::IdentityControl> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::OperatorIdentity(op, request, origin, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
@@ -1651,6 +1681,14 @@ struct Worker {
     last_identity: Option<Vec<u8>>,
     deliveries: tokio::task::JoinSet<Delivery>,
     control_deliveries: tokio::task::JoinSet<ControlDelivery>,
+    identity_jobs: tokio::task::JoinSet<(
+        crate::mcp::journal::NativePending,
+        Result<crate::identity::unlock::Finished>,
+    )>,
+    identity_active: Option<Ulid>,
+    identity_seen: BTreeSet<Ulid>,
+    identity_probe_at: Instant,
+    identity_acl: bbt_proto::identity::CustodyAcl,
     control_journals: BTreeMap<Ulid, crate::mcp::journal::Journal>,
     provenance: crate::provenance::engine::Engine,
     operator_journal: crate::mcp::journal::Journal,
@@ -1745,6 +1783,11 @@ impl Worker {
             last_identity: None,
             deliveries: tokio::task::JoinSet::new(),
             control_deliveries: tokio::task::JoinSet::new(),
+            identity_jobs: tokio::task::JoinSet::new(),
+            identity_active: None,
+            identity_seen: BTreeSet::new(),
+            identity_probe_at: Instant::now(),
+            identity_acl: bbt_proto::identity::CustodyAcl::Unknown,
             control_journals: BTreeMap::new(),
             provenance,
             operator_journal: crate::mcp::journal::Journal::new(account),
@@ -1833,7 +1876,18 @@ impl Worker {
     fn publish_control_audits(&self) -> Result<()> {
         for event in self.operator_journal.pending(32)? {
             let event_id = event.id;
-            self.publish("account", event)?;
+            let pending = event.payload["tool"] == "identity_unlock"
+                && event.payload["signature"] == "pending";
+            let op = event.payload["op_id"]
+                .as_str()
+                .and_then(|value| value.parse::<Ulid>().ok());
+            let envelope = self.handle.block_on(self.bus.publish("account", event))?;
+            if pending {
+                self.operator_journal.bind_native_pending(
+                    op.ok_or_else(|| invalid("native audit has no operation ID"))?,
+                    &envelope,
+                )?;
+            }
             self.operator_journal.published(event_id)?;
         }
         for (id, journal) in &self.control_journals {
@@ -1841,6 +1895,283 @@ impl Worker {
                 let event_id = event.id;
                 self.publish(&format!("seat-{id}"), event)?;
                 journal.published(event_id)?;
+            }
+        }
+        Ok(())
+    }
+    fn identity_control_status(&self) -> Result<bbt_proto::identity::IdentityControl> {
+        let mut status = self.identity.custody_control_status()?;
+        if status.acl != bbt_proto::identity::CustodyAcl::NotNative {
+            status.acl = self.identity_acl;
+        }
+        status.pending = self
+            .operator_journal
+            .native_pending(128)?
+            .into_iter()
+            .map(|pending| bbt_proto::identity::PendingUnlock {
+                op: pending.op,
+                pending_digest: pending.attempt.position.map(|position| position.digest),
+                outcome: pending.attempt.outcome,
+                signature: "pending".into(),
+                in_flight: self.identity_active == Some(pending.op),
+            })
+            .collect();
+        Ok(status)
+    }
+    fn operator_identity(
+        &mut self,
+        op: Ulid,
+        request: bbt_proto::identity::IdentityRequest,
+        origin: crate::mcp::Origin,
+    ) -> Result<bbt_proto::identity::IdentityControl> {
+        use bbt_proto::identity::{IdentityRequest as R, UnlockOutcome as O};
+        let origin = self.identity.bind_origin(origin);
+        let principal = crate::mcp::Principal::Operator {
+            device_id: self.identity.custody_operator_device()?,
+            door: origin.door,
+            issued_by: origin.issued_by,
+        };
+        let call = crate::mcp::Call {
+            op_id: op,
+            tool: match request {
+                R::Status => "identity_status",
+                R::Unlock => "identity_unlock",
+            }
+            .into(),
+            args: serde_json::json!({"request":request}),
+        };
+        call.validate()?;
+        let journal = self.operator_journal.clone();
+        if request == R::Status {
+            let status = self.identity_control_status()?;
+            return identity_response(journal.native_status(
+                &principal,
+                &call,
+                crate::mcp::success(op, serde_json::to_value(status)?),
+            )?);
+        }
+        if journal.retained(&principal, &call)?.is_some() {
+            return identity_response(journal.call(&principal, &call, || {
+                crate::mcp::error(op, "unknown", "retained identity result unavailable")
+            })?);
+        }
+        let mut status = self.identity_control_status()?;
+        if status.hold.is_none() {
+            return identity_response(journal.call(&principal, &call, || {
+                crate::mcp::success(op, serde_json::to_value(status).unwrap())
+            })?);
+        }
+        if !self.identity.has_native_custody_hold() {
+            return identity_response(journal.checked(
+                &principal,
+                &call,
+                crate::mcp::error(
+                    op,
+                    "held",
+                    "unlock is only available for a native custody hold",
+                ),
+            )?);
+        }
+        let target = self.identity.native_unlock_target()?;
+        if !self.identity_jobs.is_empty() || target.store.native_busy() {
+            return identity_response(journal.checked(
+                &principal,
+                &call,
+                crate::mcp::error(
+                    op,
+                    "Busy",
+                    "one native custody attempt is already in flight; nothing executed",
+                ),
+            )?);
+        }
+        status.outcome = Some(O::Unknown);
+        status.pending.push(bbt_proto::identity::PendingUnlock {
+            op,
+            pending_digest: None,
+            outcome: O::Unknown,
+            signature: "pending".into(),
+            in_flight: true,
+        });
+        let initial = crate::mcp::success(op, serde_json::to_value(&status)?);
+        let (retained, fresh) = journal.admit_native_unlock(
+            &principal,
+            &call,
+            status.hold.clone().unwrap(),
+            target.reference(),
+            initial,
+        )?;
+        if !fresh {
+            return identity_response(retained);
+        }
+        // Publish in the existing audit order before permitting the native attempt.
+        // A bounded backlog cannot turn into unbounded work on the terminal owner.
+        for _ in 0..4 {
+            self.publish_control_audits()?;
+            if journal
+                .native_pending(128)?
+                .iter()
+                .any(|entry| entry.op == op && entry.attempt.position.is_some())
+            {
+                break;
+            }
+        }
+        let pending = journal
+            .native_pending(128)?
+            .into_iter()
+            .find(|entry| entry.op == op)
+            .ok_or_else(|| invalid("native admission disappeared"))?;
+        if pending.attempt.position.is_none() {
+            return Err(invalid(
+                "Busy: native audit is not yet published; native access did not start; retain the operation ID",
+            ));
+        }
+        journal.start_native_unlock(op, &principal)?;
+        self.start_identity_job(pending, target, crate::identity::unlock::JobKind::Attempt);
+        let mut response = self.identity_control_status()?;
+        response.outcome = Some(O::Unknown);
+        journal.native_snapshot(
+            op,
+            &principal,
+            crate::mcp::success(op, serde_json::to_value(&response)?),
+        )?;
+        Ok(response)
+    }
+    fn start_identity_job(
+        &mut self,
+        pending: crate::mcp::journal::NativePending,
+        target: crate::identity::unlock::Target,
+        kind: crate::identity::unlock::JobKind,
+    ) {
+        let journal = self.operator_journal.clone();
+        let actor = pending.actor.clone();
+        let op = pending.op;
+        self.identity_active = Some(op);
+        self.identity_seen.insert(op);
+        let progress: crate::identity::UnlockProgress = Arc::new(move |row| {
+            journal
+                .native_progress(op, &actor, row)
+                .map_err(|_| crate::identity::PendingReason::StorageUnavailable)
+        });
+        let work = self
+            .handle
+            .spawn_blocking(move || target.run(progress, kind));
+        self.identity_jobs.spawn_on(
+            async move {
+                let result = work
+                    .await
+                    .map_err(|_| invalid("native custody task lost; outcome remains unknown"))
+                    .and_then(|result| result);
+                (pending, result)
+            },
+            &self.handle,
+        );
+    }
+    fn service_identity_jobs(&mut self) -> Result<()> {
+        use bbt_proto::identity::UnlockOutcome as O;
+        while let Some(joined) = self.identity_jobs.try_join_next() {
+            self.identity_active = None;
+            let (pending, result) = match joined {
+                Ok(value) => value,
+                Err(_) => {
+                    eprintln!("native custody task lost; its durable operation remains unknown");
+                    continue;
+                }
+            };
+            let (outcome, signer) = match result {
+                Ok(finished) => {
+                    self.identity_acl = finished.acl;
+                    if let Some(runtime) = finished.runtime {
+                        self.identity = runtime;
+                    }
+                    (finished.outcome, finished.signer)
+                }
+                Err(error) => {
+                    eprintln!("native custody outcome unknown: {error}");
+                    (O::Unknown, None)
+                }
+            };
+            let mut status = self.identity_control_status()?;
+            status.outcome = Some(if pending.attempt.finished {
+                pending.attempt.outcome
+            } else {
+                outcome
+            });
+            for entry in &mut status.pending {
+                if entry.op == pending.op {
+                    entry.outcome = status.outcome.unwrap();
+                    entry.in_flight = false;
+                }
+            }
+            self.operator_journal.finish_native_unlock(
+                pending.op,
+                &pending.actor,
+                outcome,
+                crate::mcp::success(pending.op, serde_json::to_value(status)?),
+            )?;
+            if let Some(key) = signer {
+                let public = key.verifying_key().to_bytes();
+                let ranges = self.handle.block_on(self.bus.identity_signer(key, None))?;
+                if let Some(run) = self.bus_window.take() {
+                    crate::identity::seal_bus_window(&self.config.run_dir, run, ranges)?;
+                }
+                self.messaging
+                    .resume_signing(self.identity.keys(), now_ms())?;
+                // The immutable completion is joined to the original pending position.
+                // One legitimate key can drain a bounded batch of its own completions.
+                let mut completed = 0;
+                for entry in self.operator_journal.native_pending(128)? {
+                    if completed == 32 {
+                        break;
+                    }
+                    if self
+                        .identity
+                        .resume_unlock_target(&entry.attempt.reference)
+                        .is_err()
+                    {
+                        continue;
+                    }
+                    if let Some(completion) =
+                        self.operator_journal.native_completion(entry.op, public)?
+                    {
+                        let envelope = self
+                            .handle
+                            .block_on(self.bus.publish("account", completion.clone()))?;
+                        if envelope.provenance.signer != public {
+                            return Err(invalid("native completion signer mismatch"));
+                        }
+                        self.operator_journal
+                            .native_completion_published(entry.op, completion.id)?;
+                        completed += 1;
+                        self.identity_seen.remove(&entry.op);
+                    }
+                }
+            }
+        }
+        if self.identity_probe_at.elapsed() >= Duration::from_secs(30) {
+            self.identity_seen.clear();
+            self.identity_probe_at = Instant::now();
+        }
+        if self.identity_jobs.is_empty()
+            && let Some(pending) =
+                self.operator_journal
+                    .native_pending(128)?
+                    .into_iter()
+                    .find(|entry| {
+                        entry.attempt.position.is_some() && !self.identity_seen.contains(&entry.op)
+                    })
+        {
+            self.identity_seen.insert(pending.op);
+            if let Ok(target) = self
+                .identity
+                .resume_unlock_target(&pending.attempt.reference)
+            {
+                // Recovery never repeats the interactive access, even for an unknown.
+                let kind = if pending.attempt.started && !pending.attempt.finished {
+                    crate::identity::unlock::JobKind::Cleanup
+                } else {
+                    crate::identity::unlock::JobKind::Sign
+                };
+                self.start_identity_job(pending, target, kind);
             }
         }
         Ok(())
@@ -3688,8 +4019,7 @@ impl Worker {
                 let ring_root = root.join(format!("ring-{previous}"));
                 // The old supervisor is already reaped. Reopening its ring rejects
                 // torn/uncommitted suffixes and replays only durable capture.
-                if !ring_root.join("committed").is_file() && !ring_root.join("previous").is_file()
-                {
+                if !ring_root.join("committed").is_file() && !ring_root.join("previous").is_file() {
                     return Err(invalid(format!(
                         "RecoveryUnavailable: seat {} has no committed predecessor generation {previous}",
                         record.id
@@ -3949,11 +4279,7 @@ impl Worker {
     ) -> Result<UiAdmission> {
         request.validate().map_err(invalid)?;
         let origin = self.identity.bind_origin(origin);
-        let device_id = self
-            .identity
-            .status()?
-            .device_id
-            .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
+        let device_id = self.operator_device_for_effect()?;
         let principal = crate::mcp::Principal::Operator {
             device_id,
             door: origin.door,
@@ -3974,6 +4300,20 @@ impl Worker {
             call,
         })
     }
+    fn operator_device_for_effect(&self) -> Result<Ulid> {
+        let status = self.identity.status()?;
+        status.device_id.ok_or_else(|| {
+            invalid(format!(
+                "held: {}; clear with {} or {}",
+                status
+                    .reason_label
+                    .as_deref()
+                    .unwrap_or("operator device custody is unavailable"),
+                crate::identity::unlock::CLEAR_ACTIONS[0],
+                crate::identity::unlock::CLEAR_ACTIONS[1]
+            ))
+        })
+    }
     /// One `ctl` effect under the operator principal with its door and issuer, journaled
     /// once per op id (a retry replays, never repeats) and audited on `account/control`.
     /// `args` is what the journal keeps: never typed bytes, only their count and digest.
@@ -3986,11 +4326,7 @@ impl Worker {
         effect: impl FnOnce(&mut Self) -> Result<()>,
     ) -> Result<()> {
         let origin = self.identity.bind_origin(origin);
-        let device_id = self
-            .identity
-            .status()?
-            .device_id
-            .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
+        let device_id = self.operator_device_for_effect()?;
         let principal = crate::mcp::Principal::Operator {
             device_id,
             door: origin.door,
@@ -4873,6 +5209,7 @@ impl Worker {
         Ok(())
     }
     fn pump_messages(&mut self) -> Result<()> {
+        self.service_identity_jobs()?;
         use crate::adapters::{Evidence, Priority, WakeMethod, WakeOutcome};
         while let Some(result) = self.control_deliveries.try_join_next() {
             let delivery = match result {
@@ -5275,11 +5612,7 @@ impl Worker {
         origin: crate::mcp::Origin,
     ) -> Result<crate::messaging::api::Response> {
         let origin = self.identity.bind_origin(origin);
-        let device_id = self
-            .identity
-            .status()?
-            .device_id
-            .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
+        let device_id = self.operator_device_for_effect()?;
         let actor = crate::mcp::Actor::Operator {
             device_id,
             door: origin.door,
@@ -5354,11 +5687,7 @@ impl Worker {
         origin: crate::mcp::Origin,
     ) -> Result<bbt_proto::messaging::TaskResponse> {
         let origin = self.identity.bind_origin(origin);
-        let device_id = self
-            .identity
-            .status()?
-            .device_id
-            .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
+        let device_id = self.operator_device_for_effect()?;
         let actor = crate::mcp::Actor::Operator {
             device_id,
             door: origin.door,
@@ -5392,9 +5721,10 @@ impl Worker {
             .identity
             .status()
             .map_err(|e| d::CommandError::new("held", e.to_string()))?
-            .device_id.ok_or_else(|| {
-            d::CommandError::new("held", "held: operator device custody is unavailable")
-        })?;
+            .device_id
+            .ok_or_else(|| {
+                d::CommandError::new("held", "held: operator device custody is unavailable")
+            })?;
         let actor = crate::mcp::Actor::Operator {
             device_id,
             door: origin.door,
@@ -5405,7 +5735,8 @@ impl Worker {
             tool: "knowledge_write".into(),
             args,
         };
-        call.validate().map_err(|e| d::CommandError::new("rejected", e.to_string()))?;
+        call.validate()
+            .map_err(|e| d::CommandError::new("rejected", e.to_string()))?;
         let journal = self.operator_journal.clone();
         let value = match tool::prepare(&call) {
             Ok(tool::Request::Write(request)) => journal.effect(&actor, &call, || {
@@ -5469,7 +5800,12 @@ impl Worker {
                         "an update must retain the current record type",
                     );
                 }
-                Ok(record) if request.etag.as_ref().is_some_and(|etag| etag != &record.etag) => {
+                Ok(record)
+                    if request
+                        .etag
+                        .as_ref()
+                        .is_some_and(|etag| etag != &record.etag) =>
+                {
                     return mcp::error(
                         call.op_id,
                         "etag_mismatch",
@@ -5542,11 +5878,7 @@ impl Worker {
             args: serde_json::to_value(&spec)?,
         };
         call.validate()?;
-        let device_id = self
-            .identity
-            .status()?
-            .device_id
-            .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
+        let device_id = self.operator_device_for_effect()?;
         let principal = crate::mcp::Principal::Operator {
             device_id,
             door,
@@ -5869,6 +6201,10 @@ impl Worker {
                     }
                     Command::IdentityStatus(reply) => {
                         let _ = reply.send(self.identity.status());
+                    }
+                    Command::OperatorIdentity(op, request, origin, reply) => {
+                        let result = self.operator_identity(op, request, origin);
+                        let _ = reply.send(result);
                     }
                     Command::ControlCatalogue(id, generation, reply) => {
                         let result = self

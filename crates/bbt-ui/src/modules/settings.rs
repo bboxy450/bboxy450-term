@@ -27,6 +27,24 @@ pub struct Account {
     pub trust: Vec<String>,
     pub devices: Vec<(String, String, String)>,
     pub sign: Signatures,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub custody: Option<Custody>,
+}
+/// Host-supplied public custody status; activating the button emits an intent only.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Custody {
+    pub tier: String,
+    pub acl: String,
+    pub hold: Option<CustodyHold>,
+    pub attempt: Option<String>,
+    pub op: Option<String>,
+    #[serde(skip)]
+    pub enabled: bool,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CustodyHold {
+    pub reason: String,
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -717,6 +735,16 @@ impl Build<'_> {
         )
     }
     fn button(&self, k: &str, v: &str, ico: Option<&str>, kind: &str) -> c::Element {
+        self.button_sized(k, v, ico, kind, 13.)
+    }
+    fn button_sized(
+        &self,
+        k: &str,
+        v: &str,
+        ico: Option<&str>,
+        kind: &str,
+        size: f32,
+    ) -> c::Element {
         let co = if kind == "primary" {
             ui::Color::OnAccent
         } else if kind == "link" {
@@ -748,7 +776,7 @@ impl Build<'_> {
         if let Some(i) = ico {
             kids.push(icon("", i, 14., co).into());
         }
-        kids.push(txt("", v, font(13., 400, false, co)).into());
+        kids.push(txt("", v, font(size, 400, false, co)).into());
         row(
             k,
             if kind == "ghost" {
@@ -2168,24 +2196,34 @@ impl Settings {
                 fill(c::Element::Spacer),
             ],
         ));
+        let identity = vec![
+            named("account/hero", c::Element::Box(hero)).into(),
+            group.into(),
+            b.grid("account/devices", width - 28., 200., 8., keys)
+                .into(),
+        ];
         let first = b.card(
-            "card0",
+            if a.custody.is_some() {
+                "card1"
+            } else {
+                "card0"
+            },
             "",
-            vec![
-                named("account/hero", c::Element::Box(hero)).into(),
-                group.into(),
-                b.grid("account/devices", width - 28., 200., 8., keys)
-                    .into(),
-            ],
+            identity,
             [4., 14., 14., 14.],
         );
         let note=b.note("account/note","Devices and seats are leaf keys certified by your GPG primary; enrollment is a one-use ticket signed where the primary lives. Expired, revoked or forked authority blocks controls on its own, apart from seat state. Google is a later link for cloud; the primary stays the identity.",false);
+        let sign_key = if a.custody.is_some() {
+            "card2"
+        } else {
+            "card1"
+        };
         let sign = b.card(
-            "card1",
+            sign_key,
             "Signatures",
             vec![
                 b.setting_row(
-                    "card1/r0",
+                    &format!("{sign_key}/r0"),
                     "Sign commits as this key",
                     Some(&format!("git author and committer · Boxy <{}>", a.email)),
                     b.toggle("", a.sign.commits),
@@ -2195,7 +2233,7 @@ impl Settings {
                 )
                 .into(),
                 b.setting_row(
-                    "card1/r1",
+                    &format!("{sign_key}/r1"),
                     "Sign messages and presence with the seat's leaf key",
                     Some("chain verifies to this key"),
                     b.toggle("", a.sign.messages),
@@ -2205,7 +2243,7 @@ impl Settings {
                 )
                 .into(),
                 b.setting_row(
-                    "card1/r2",
+                    &format!("{sign_key}/r2"),
                     "Seats sign commits with their own keys",
                     Some("assumed, not decided"),
                     b.toggle("", a.sign.seat_commits),
@@ -2217,7 +2255,245 @@ impl Settings {
             ],
             [4., 14., 10., 14.],
         );
-        vec![first.into(), note.into(), sign.into()]
+        let mut cards = vec![];
+        if let Some(custody) = &a.custody {
+            cards.push(self.custody(b, custody).into());
+        }
+        cards.extend([first.into(), note.into(), sign.into()]);
+        cards
+    }
+    fn custody(&self, b: &Build, value: &Custody) -> c::Element {
+        let held = value.hold.is_some();
+        let pending = value.attempt.as_deref() == Some("pending");
+        let waiting = color(TOKENS.color.state.waiting);
+        let chip = |value: &str, co| {
+            row(
+                "",
+                surface(
+                    badge(b.ctx, STYLE.tint.badge_alpha as f32),
+                    1.,
+                    6.,
+                    [0., 8., 0., 8.],
+                    Some(20.),
+                ),
+                6.,
+                vec![txt("", value, font(11., 400, false, co)).into()],
+            )
+        };
+        let status_color = |co| mixed(b.ctx, co, b.ctx.theme.palette().fg, 0.7);
+        let tier = match value.tier.as_str() {
+            "keychain" => "login Keychain · native",
+            "file" => "file · test account",
+            "local-dev" => "local-dev issuer",
+            other => other,
+        };
+        let acl = match value.acl.as_str() {
+            "designated" => {
+                "keyed to the team-signed requirement (UQB3368A84), verified · every build keeps access"
+            }
+            "legacy" => "keyed to one build’s signature · migrates during the one unlock",
+            "unknown" => "unknown until verified",
+            other => other,
+        };
+        let mut children = vec![
+            b.setting_row(
+                "card0/r0",
+                "Device key",
+                Some("where the device leaf key lives"),
+                chip(tier, ui::Color::Foreground),
+                false,
+                false,
+                false,
+            )
+            .into(),
+            b.setting_row(
+                "card0/r1",
+                "Access rule",
+                Some("the Keychain item’s ACL"),
+                chip(
+                    acl,
+                    status_color(if value.acl == "designated" {
+                        TOKENS.color.ui.ok
+                    } else {
+                        TOKENS.color.state.waiting
+                    }),
+                ),
+                false,
+                false,
+                false,
+            )
+            .into(),
+            b.setting_row(
+                "card0/r2",
+                "Signing",
+                Some(if held {
+                    "held, fail closed; the terminal keeps running"
+                } else {
+                    "available"
+                }),
+                chip(
+                    if held {
+                        if value.attempt.as_deref() == Some("granted") {
+                            "signature pending"
+                        } else {
+                            "held"
+                        }
+                    } else {
+                        "ready"
+                    },
+                    status_color(if held {
+                        TOKENS.color.state.waiting
+                    } else {
+                        TOKENS.color.ui.ok
+                    }),
+                ),
+                false,
+                !held && value.attempt.is_none(),
+                false,
+            )
+            .into(),
+        ];
+        if let Some(hold) = &value.hold {
+            let mut detail = c::Text::new(
+                "Clear it with Unlock here or ",
+                font(12.5, 400, false, ui::Color::Foreground),
+            );
+            detail.runs.push(c::TextRun {
+                value: "bboxy450-term ctl identity unlock".into(),
+                style: font(10., 400, true, ui::Color::Foreground),
+            });
+            detail.runs.push(c::TextRun{value:": one interactive Keychain access, macOS shows its own dialog, then the no-dialog default returns.".into(),style:font(12.5,400,false,ui::Color::Foreground)});
+            let button = if pending {
+                "Waiting for macOS…"
+            } else if value.attempt.as_deref() == Some("unknown") {
+                "Check result"
+            } else {
+                "Unlock"
+            };
+            children.push(
+                col(
+                    "custody/hold-margin",
+                    plain(
+                        None,
+                        [10., 0., if value.attempt.is_some() { 0. } else { 6. }, 0.],
+                        0.,
+                    ),
+                    0.,
+                    vec![
+                        col(
+                            "custody/hold",
+                            surface(waiting, 0.12, 6., [10., 12., 10., 12.], None),
+                            6.,
+                            vec![
+                                wrap(
+                                    "custody/reason",
+                                    format!("Pending: {}; signing held", hold.reason),
+                                    font(12.5, 600, false, ui::Color::Foreground),
+                                )
+                                .into(),
+                                named("custody/detail", c::Element::Text(detail)).into(),
+                                row(
+                                    "custody/act",
+                                    plain(None, [0.; 4], 0.),
+                                    0.,
+                                    vec![natural(b.button_sized(
+                                        "custody/unlock",
+                                        button,
+                                        Some(if value.attempt.as_deref() == Some("unknown") {
+                                            "open"
+                                        } else {
+                                            "key"
+                                        }),
+                                        if pending { "quiet" } else { "primary" },
+                                        12.5,
+                                    ))],
+                                )
+                                .into(),
+                            ],
+                        )
+                        .into(),
+                    ],
+                )
+                .into(),
+            );
+        }
+        let unknown = format!(
+            "signing still held · the result is kept under op {} · Check result reads it, never reopens the dialog",
+            value.op.as_deref().unwrap_or("—")
+        );
+        let returned = format!(
+            "signing ready · a device-signed completion links to the pending entry {}",
+            value.op.as_deref().unwrap_or("")
+        );
+        let outcome = match value.attempt.as_deref() {
+            Some("pending") => Some((
+                "waiting for the macOS Keychain dialog",
+                "act journaled on account/control · signature pending",
+                ui::Color::Foreground,
+            )),
+            Some("cancelled") => Some((
+                "you cancelled the macOS dialog",
+                "signing still held · the no-dialog default is back · Unlock again to retry",
+                mixed(
+                    b.ctx,
+                    TOKENS.color.state.waiting,
+                    b.ctx.theme.palette().fg,
+                    0.7,
+                ),
+            )),
+            Some("unknown") => Some((
+                "no answer from the Keychain",
+                unknown.as_str(),
+                mixed(
+                    b.ctx,
+                    TOKENS.color.state.waiting,
+                    b.ctx.theme.palette().fg,
+                    0.7,
+                ),
+            )),
+            Some("granted") => Some((
+                "macOS granted access",
+                "signature pending until the device signer returns · the pending entry stays as written",
+                mixed(b.ctx, TOKENS.color.ui.ok, b.ctx.theme.palette().fg, 0.7),
+            )),
+            Some("returned") => Some((
+                "the device signer returned",
+                returned.as_str(),
+                ui::Color::Foreground,
+            )),
+            _ => None,
+        };
+        if let Some((title, detail, co)) = outcome {
+            let mut text = c::Text::new(title, font(10., 600, false, co));
+            text.runs.push(c::TextRun {
+                value: format!(" · {detail}"),
+                style: font(10., 400, false, ui::Color::Muted),
+            });
+            children.push(
+                col(
+                    "custody/out-margin",
+                    plain(None, [6., 0., 6., 0.], 0.),
+                    0.,
+                    vec![
+                        col(
+                            "custody/out",
+                            surface(
+                                badge(b.ctx, STYLE.tint.badge_alpha as f32),
+                                1.,
+                                6.,
+                                [6., 12., 6., 12.],
+                                None,
+                            ),
+                            0.,
+                            vec![named("custody/out/text", c::Element::Text(text)).into()],
+                        )
+                        .into(),
+                    ],
+                )
+                .into(),
+            );
+        }
+        b.card("card0", "Custody", children, [4., 14., 10., 14.])
     }
     fn draft_card(&self, b: &Build, k: &str, d: &DraftHarness) -> c::Element {
         let hue =

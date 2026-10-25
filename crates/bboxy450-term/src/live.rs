@@ -323,6 +323,7 @@ enum ActionReply {
     History(SeatId),
     Messaging(Ulid),
     Task(Ulid),
+    Identity(Ulid),
     Knowledge(Ulid),
     Events { stream: String },
     EventCursor,
@@ -345,6 +346,7 @@ impl ActionReplies {
             GuiAction::GetHistory { seat, .. } => ActionReply::History(*seat),
             GuiAction::Messaging { id, .. } => ActionReply::Messaging(*id),
             GuiAction::Task { id, .. } => ActionReply::Task(*id),
+            GuiAction::Identity(call) => ActionReply::Identity(call.id),
             GuiAction::Knowledge { id, .. } => ActionReply::Knowledge(*id),
             GuiAction::GetEvents { stream, .. } => ActionReply::Events {
                 stream: stream.clone(),
@@ -378,13 +380,15 @@ impl ActionReplies {
                 *expected == ActionReply::Operation
             }
             GuiReply::Error { op, .. } => match expected {
-                ActionReply::Messaging(id) | ActionReply::Task(id) | ActionReply::Knowledge(id) => {
-                    op == id
-                }
+                ActionReply::Messaging(id)
+                | ActionReply::Task(id)
+                | ActionReply::Knowledge(id)
+                | ActionReply::Identity(id) => op == id,
                 _ => *op != Ulid::nil(),
             },
             GuiReply::Messaging { op, .. } => *expected == ActionReply::Messaging(*op),
             GuiReply::Task { op, .. } => *expected == ActionReply::Task(*op),
+            GuiReply::IdentityControl { op, .. } => *expected == ActionReply::Identity(*op),
             GuiReply::Knowledge { op, .. } => *expected == ActionReply::Knowledge(*op),
             GuiReply::Seats(_) => *expected == ActionReply::Seats,
             GuiReply::Hosts(_) => *expected == ActionReply::Hosts,
@@ -498,6 +502,7 @@ fn discard_uncertain_actions(outgoing: &mut VecDeque<GuiAction>) {
             GuiAction::Spawn { .. }
                 | GuiAction::Messaging { .. }
                 | GuiAction::Task { .. }
+                | GuiAction::Identity(_)
                 | GuiAction::Knowledge { .. }
         )
     });
@@ -700,6 +705,24 @@ fn operations_disconnected(model: &mut Arc<Model>, updates: &Latest<Arc<Model>>,
     if Arc::make_mut(&mut Arc::make_mut(model).operation_results).disconnected(reason) {
         updates.publish(model.clone());
     }
+}
+
+fn publish_identity_control(
+    model: &mut Arc<Model>,
+    updates: &Latest<Arc<Model>>,
+    op: Ulid,
+    result: std::result::Result<bbt_proto::identity::IdentityControl, String>,
+) {
+    let revision = model
+        .custody_reply
+        .as_ref()
+        .map_or(1, |reply| reply.revision.saturating_add(1));
+    Arc::make_mut(model).custody_reply = Some(Arc::new(bboxy450_term::settings::IdentityReply {
+        revision,
+        op,
+        result,
+    }));
+    updates.publish(model.clone());
 }
 
 #[allow(clippy::too_many_arguments)] // The session, its channels and its two UI callbacks.
@@ -943,6 +966,7 @@ async fn run_with_control(
                     },
                     UiMsg::Messaging {id,swarm_id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Messaging {id:*id,swarm_id:*swarm_id,request:request.clone()}); } },
                     UiMsg::Task {id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Task {id:*id,request:request.clone()}); } },
+                    UiMsg::IdentityControl {id,request}=>queue_action(&mut outgoing,GuiAction::Identity(bbt_proto::identity::IdentityCall {id:*id,request:*request})),
                     UiMsg::Input {seat,generation,id,bytes}=> {
                         if return_live(&mut history,&mut model,*seat) {
                             publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
@@ -1158,6 +1182,7 @@ async fn run_with_control(
                         },
                         GuiReply::Error {op,reason}=> {
                             Arc::make_mut(&mut model).closes.refused(op);
+                            if terminal_reply == Some(ActionReply::Identity(op)) { publish_identity_control(&mut model,&updates,op,Err(reason.clone())); }
                             if terminal_reply == Some(ActionReply::Knowledge(op)) {
                                 let result=Err(bbt_mux::knowledge::data_source::CommandError::new("transport",reason.clone()));
                                 if let Some(work)=document_reader.response(op,result.clone()) {
@@ -1180,6 +1205,9 @@ async fn run_with_control(
                         }
                         GuiReply::Messaging {op,response}=>operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Messaging(response)),
                         GuiReply::Task {op,response}=>operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Task(response)),
+                        GuiReply::IdentityControl {op,response}=> {
+                            if terminal_reply == Some(ActionReply::Identity(op)) { publish_identity_control(&mut model,&updates,op,Ok(response)); }
+                        },
                         GuiReply::Knowledge {op,response}=> {
                             if terminal_reply == Some(ActionReply::Knowledge(op)) {
                                 let result=serde_json::from_value(response).unwrap_or_else(|error| Err(bbt_mux::knowledge::data_source::CommandError::new("invalid_provider_result",format!("invalid knowledge reply: {error}"))));
@@ -1295,6 +1323,92 @@ async fn run_with_control(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_terminal_replies_are_correlated_and_async_identity_never_releases_them() {
+        let mut replies = ActionReplies::default();
+        let op = Ulid::new();
+        replies.sent(&GuiAction::Identity(bbt_proto::identity::IdentityCall {
+            id: op,
+            request: bbt_proto::identity::IdentityRequest::Status,
+        }));
+        assert!(
+            replies
+                .take(&GuiReply::Identity(bbt_proto::GuiIdentity {
+                    state: bbt_proto::gui::GuiIdentityState::Pending,
+                    reason: Some("held".into())
+                }))
+                .is_none()
+        );
+        assert!(
+            replies
+                .take(&GuiReply::Error {
+                    op: Ulid::new(),
+                    reason: "unrelated".into()
+                })
+                .is_none()
+        );
+        let response = bbt_proto::identity::IdentityControl {
+            custody: None,
+            acl: bbt_proto::identity::CustodyAcl::Unknown,
+            hold: None,
+            clear_actions: vec![],
+            outcome: None,
+            pending: vec![],
+        };
+        assert!(
+            replies
+                .take(&GuiReply::IdentityControl {
+                    op: Ulid::new(),
+                    response: response.clone()
+                })
+                .is_none()
+        );
+        assert_eq!(
+            replies.take(&GuiReply::IdentityControl { op, response }),
+            Some(ActionReply::Identity(op))
+        );
+        assert!(replies.0.is_empty());
+        replies.sent(&GuiAction::Identity(bbt_proto::identity::IdentityCall {
+            id: op,
+            request: bbt_proto::identity::IdentityRequest::Unlock,
+        }));
+        assert_eq!(
+            replies.take(&GuiReply::Error {
+                op,
+                reason: "refused".into()
+            }),
+            Some(ActionReply::Identity(op))
+        );
+    }
+
+    #[test]
+    fn native_retained_results_publish_every_revision_and_survive_metadata_rebuild() {
+        let dirty = bbt_rt::DirtySet::new(1, Arc::new(NoWake));
+        let updates = Latest::new(dirty.source(0));
+        let mut model = Arc::new(Model::default());
+        let op = Ulid::new();
+        for revision in 1..=2 {
+            publish_identity_control(&mut model, &updates, op, Err("unknown".into()));
+            let published = updates.take().unwrap();
+            assert_eq!(published.custody_reply.as_ref().unwrap().revision, revision);
+        }
+        let rebuilt = model::build(&[], &Default::default(), &model);
+        assert!(Arc::ptr_eq(
+            rebuilt.custody_reply.as_ref().unwrap(),
+            model.custody_reply.as_ref().unwrap()
+        ));
+        let mut outgoing =
+            VecDeque::from([GuiAction::Identity(bbt_proto::identity::IdentityCall {
+                id: op,
+                request: bbt_proto::identity::IdentityRequest::Unlock,
+            })]);
+        discard_uncertain_actions(&mut outgoing);
+        assert!(
+            outgoing.is_empty(),
+            "disconnect must never replay native intents"
+        );
+    }
 
     #[allow(
         clippy::disallowed_methods,

@@ -2,6 +2,7 @@
 pub mod events;
 pub mod gui;
 pub mod hosts;
+pub mod identity;
 pub mod messaging;
 pub mod registry;
 pub mod seat_names;

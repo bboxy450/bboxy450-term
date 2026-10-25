@@ -22,6 +22,9 @@ pub(super) struct CustodyIo {
     available: Condvar,
 }
 impl CustodyIo {
+    pub(super) fn busy(&self) -> bool {
+        self.active.lock().map(|value| *value).unwrap_or(true)
+    }
     pub(super) fn run<T: Send + 'static>(
         self: &Arc<Self>,
         job: impl FnOnce() -> Result<T> + Send + 'static,
@@ -91,6 +94,9 @@ impl DeviceKeyStore for BoundedStore {
     fn custody_label(&self) -> &'static str {
         self.store.custody_label()
     }
+    fn native_busy(&self) -> bool {
+        self.io.busy() || self.store.native_busy()
+    }
     fn load(&self, id: Ulid) -> Result<Option<SigningKey>> {
         let store = self.store.clone();
         self.io.run(move || store.load(id))
@@ -99,6 +105,29 @@ impl DeviceKeyStore for BoundedStore {
         let store = self.store.clone();
         let key = key.clone();
         self.io.run(move || store.create(id, &key))
+    }
+    fn native_acl(&self, id: Ulid) -> Result<bbt_proto::identity::CustodyAcl> {
+        let store = self.store.clone();
+        self.io.run(move || store.native_acl(id))
+    }
+    fn unlock(
+        &self,
+        id: Ulid,
+        expected: [u8; 32],
+        progress: super::unlock::Progress,
+    ) -> Result<bbt_proto::identity::UnlockOutcome> {
+        let store = self.store.clone();
+        self.io.run(move || store.unlock(id, expected, progress))
+    }
+    fn finish_unlock(
+        &self,
+        id: Ulid,
+        expected: [u8; 32],
+        progress: super::unlock::Progress,
+    ) -> Result<bool> {
+        let store = self.store.clone();
+        self.io
+            .run(move || store.finish_unlock(id, expected, progress))
     }
 }
 

@@ -1,0 +1,17 @@
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 1m 38s
+     Running unittests src/lib.rs (target/identity-file-dev/debug/deps/bbt_mux-82629e4831124240)
+
+running 9 tests
+test identity::native_keychain::tests::queries_allow_ui_only_when_the_explicit_argument_says_so ... ok
+test identity::keychain::tests::native_recorded_tier_never_falls_back_after_an_entitlement_refusal ... ok
+test identity::unlock::tests::a_wrong_key_and_a_cancelled_native_read_have_no_writes ... ok
+test identity::unlock::tests::native_regrant_uses_one_interactive_read_then_prompt_free_verification ... ok
+test plugins::check::tests::task_contract_properties_derive_from_the_current_native_tool_catalogue ... ok
+test mcp::journal::tests::native_admission_failure_rolls_back_every_intent_and_authority_is_not_supplied ... ok
+test identity::native_keychain::tests::the_team_and_application_requirement_parses_without_accessing_any_keychain ... ok
+test mcp::journal::tests::native_unknown_survives_restart_and_gets_one_immutable_device_completion ... ok
+test mcp::seats::tests::native_attempt_rechecks_canonical_caller_policy_and_target_binding ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 94 filtered out; finished in 0.02s
+

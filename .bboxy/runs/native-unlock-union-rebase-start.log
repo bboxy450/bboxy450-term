@@ -1,0 +1,21 @@
+Auto-merging crates/bboxy450-term/src/cockpit.rs
+Auto-merging crates/bboxy450-term/src/ctl.rs
+CONFLICT (content): Merge conflict in crates/bboxy450-term/src/ctl.rs
+Auto-merging crates/bboxy450-term/src/live.rs
+Auto-merging crates/bboxy450-term/src/main.rs
+CONFLICT (content): Merge conflict in crates/bboxy450-term/src/main.rs
+Auto-merging crates/bbt-mux/src/logic.rs
+Auto-merging crates/bbt-mux/src/seat_socket.rs
+CONFLICT (content): Merge conflict in crates/bbt-mux/src/seat_socket.rs
+Auto-merging crates/bbt-proto/src/gui.rs
+Rebasing (1/10)
+error: could not apply b355a4fe... Implement journaled native identity unlock and operator controls
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Recorded preimage for 'crates/bboxy450-term/src/ctl.rs'
+Recorded preimage for 'crates/bboxy450-term/src/main.rs'
+Recorded preimage for 'crates/bbt-mux/src/seat_socket.rs'
+Could not apply b355a4fe... # (Boxy <bboxy450@gmail.com>) Implement journaled native identity unlock and operator controls
