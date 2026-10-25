@@ -152,6 +152,47 @@ fn two_seats_interleave_without_cross_talk() {
 }
 
 #[test]
+fn spawn_errors_name_the_failed_paths_without_arguments_or_environment() {
+    let root = tempfile::tempdir().unwrap();
+    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let client = supervisor.connect().unwrap();
+    let mut spec = shell();
+    spec.cwd = root.path().to_owned();
+    spec.program = root
+        .path()
+        .join("missing-program")
+        .to_string_lossy()
+        .into_owned();
+    spec.args = vec!["private-argument-sentinel".into()];
+    spec.env.insert(
+        "PRIVATE_SENTINEL".into(),
+        "private-environment-sentinel".into(),
+    );
+    let error = client.spawn(spec.clone()).unwrap_err();
+    assert_eq!(error.code, FailureCode::Io);
+    assert!(error.message.contains("spawn spawn_command:"), "{error}");
+    assert!(
+        error.message.contains(&format!("program={} [", spec.program)),
+        "{error}"
+    );
+    assert!(
+        error
+            .message
+            .contains(&format!("cwd={} [present]", spec.cwd.display())),
+        "{error}"
+    );
+    assert!(error.message.contains("pty=/dev/"), "{error}");
+    assert!(
+        !error.message.contains("private-argument-sentinel"),
+        "{error}"
+    );
+    assert!(
+        !error.message.contains("private-environment-sentinel"),
+        "{error}"
+    );
+}
+
+#[test]
 fn fifty_seats_share_one_supervisor_poller() {
     let supervisor = Supervisor::start(Config::default()).unwrap();
     let client = supervisor.connect().unwrap();

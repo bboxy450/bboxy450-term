@@ -1883,7 +1883,17 @@ impl Actor {
         let token = self.token();
         let mut seat = Seat::spawn(spec, token, self.poll.registry())?;
         let child_token = self.token();
-        if seat.watch_child(self.poll.registry(), child_token)? {
+        let watching = seat
+            .watch_child(self.poll.registry(), child_token)
+            .map_err(|error| {
+                spawn_error(
+                    &seat.spec,
+                    &format!("watch_child pid={}", seat.pid),
+                    seat.master.as_ref().and_then(|master| master.tty_name()).as_deref(),
+                    error,
+                )
+            })?;
+        if watching {
             self.routes
                 .insert(child_token, Route::Child(seat.spec.seat));
         }
@@ -2124,13 +2134,17 @@ impl Seat {
         let companion = companion::Companion::start(&spec)?;
         let pair = native_pty_system()
             .openpty(pty_size(spec.size))
-            .map_err(pty_error)?;
+            .map_err(|error| spawn_error(&spec, "openpty", None, error))?;
+        let tty = pair.master.tty_name();
         let fd = pair
             .master
             .as_raw_fd()
             .ok_or_else(|| Failure::new(FailureCode::Io, "PTY has no raw fd"))?;
-        set_nonblocking(fd)?;
-        registry.register(&mut SourceFd(&fd), token, Interest::READABLE)?;
+        set_nonblocking(fd)
+            .map_err(|error| spawn_error(&spec, "nonblocking", tty.as_deref(), error))?;
+        registry
+            .register(&mut SourceFd(&fd), token, Interest::READABLE)
+            .map_err(|error| spawn_error(&spec, "poll register", tty.as_deref(), error))?;
         let mut command = CommandBuilder::new(&spec.program);
         command.args(&spec.args);
         command.cwd(&spec.cwd);
@@ -2140,7 +2154,10 @@ impl Seat {
         }
         command.env("BBOXY_SEAT_ID", spec.seat.to_string());
         command.env("BBOXY_PROCESS_GENERATION", spec.generation.to_string());
-        let child = pair.slave.spawn_command(command).map_err(pty_error)?;
+        let child = pair
+            .slave
+            .spawn_command(command)
+            .map_err(|error| spawn_error(&spec, "spawn_command", tty.as_deref(), error))?;
         drop(pair.slave);
         let pid = child
             .process_id()
@@ -2746,6 +2763,34 @@ fn capture_error(error: io::Error) -> Failure {
 }
 fn pty_error(error: impl std::fmt::Display) -> Failure {
     Failure::new(FailureCode::Io, error.to_string())
+}
+
+fn spawn_error(
+    spec: &LaunchSpec,
+    stage: &str,
+    tty: Option<&std::path::Path>,
+    error: impl std::fmt::Display,
+) -> Failure {
+    // These observations describe the failed attempt; they are not preflight
+    // admission or a retry. Never include argv or the child environment.
+    let path = |path: &std::path::Path| match std::fs::metadata(path) {
+        Ok(_) => format!("{} [present]", path.display()),
+        Err(error) => format!("{} [{error}]", path.display()),
+    };
+    let program = std::path::Path::new(&spec.program);
+    let program = if program.is_absolute() {
+        path(program)
+    } else {
+        format!("{} [child PATH lookup]", program.display())
+    };
+    Failure::new(
+        FailureCode::Io,
+        format!(
+            "spawn {stage}: program={program}; cwd={}; pty={}: {error:#}",
+            path(&spec.cwd),
+            tty.map_or_else(|| "not allocated".into(), path),
+        ),
+    )
 }
 
 fn disconnected() -> Failure {
