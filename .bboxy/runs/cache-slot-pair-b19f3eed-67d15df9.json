@@ -1,0 +1,121 @@
+{
+  "exit": 0,
+  "gates": [
+    {
+      "pid": 96810,
+      "pgid": 96810,
+      "sha": "b19f3eed3a40811e6bcb2395713e500684b570da",
+      "slot": 1,
+      "tree": "/private/tmp/bboxy450-gate-slot-1/tree",
+      "target": "/private/tmp/bboxy450-gate-slot-1/target",
+      "started_at": "2026-10-25T22:08:38.877913+00:00",
+      "cache_port": "4554",
+      "exit": 0,
+      "elapsed_seconds": 2737.482160084008,
+      "rust_hits": 558,
+      "rust_misses": 394,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/cache-slot-main-b19f3eed-20261025-retry1/gate-1.log",
+      "log_sha256": "0ed4dc5949e43d9ca14e9697e1f1b7187bc335d85c9d4e02bac8363e6833db2e",
+      "rust_hit_rate": 0.5861344537815126,
+      "receipt": {
+        "gate_log": "/Users/feral/mydev/bboxy450-term-exec6/target/cache-slot-main-b19f3eed-20261025-retry1/gate-1.log",
+        "gate_log_sha256": "0ed4dc5949e43d9ca14e9697e1f1b7187bc335d85c9d4e02bac8363e6833db2e",
+        "tested_sha": "b19f3eed3a40811e6bcb2395713e500684b570da"
+      },
+      "workspace": {
+        "passed": 1510,
+        "failed": 0,
+        "ignored": 31
+      },
+      "invariants": {
+        "passed": 26,
+        "failed": 0,
+        "slow_skipped": 11
+      },
+      "idle_seconds": 10.002,
+      "initial_build_profiles": [
+        "6m 23s",
+        "3m 26s",
+        "10m 27s"
+      ],
+      "native_artifact_sha256": {
+        "gate-1-stats-before.json": "b05fe4873743674dcf79b46fd026752127a61f48c61cd126e4fc7870bf9438c2",
+        "gate-1-stats-after.json": "70a490e0cc836d4dee7d8f8b33b82a55f16a1ca1ed269703f5373824309009b0",
+        "gate-1-process.json": "0420e602a8ad262b0443c47ef57d0b6f290074eec5989f9977e20c8e49f3b379",
+        "gate-1-result.json": "f81b577c8f495b7192945a24dc55db09fed8295f412e8478dde51f24889b7b0e"
+      }
+    },
+    {
+      "pid": 1683,
+      "pgid": 1683,
+      "sha": "67d15df9ff7fac331164afa0b71224f570872781",
+      "slot": 1,
+      "tree": "/private/tmp/bboxy450-gate-slot-1/tree",
+      "target": "/private/tmp/bboxy450-gate-slot-1/target",
+      "started_at": "2026-10-25T22:54:19.065618+00:00",
+      "cache_port": "4554",
+      "exit": 0,
+      "elapsed_seconds": 1787.6960977090057,
+      "rust_hits": 858,
+      "rust_misses": 8,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/cache-slot-main-b19f3eed-20261025-retry1/gate-2.log",
+      "log_sha256": "fbd5c9b4338e735b7b47d2122dff6768b630d0f214fe67e4eaf5f8f26b4f36b3",
+      "rust_hit_rate": 0.9907621247113164,
+      "receipt": {
+        "gate_log": "/Users/feral/mydev/bboxy450-term-exec6/target/cache-slot-main-b19f3eed-20261025-retry1/gate-2.log",
+        "gate_log_sha256": "fbd5c9b4338e735b7b47d2122dff6768b630d0f214fe67e4eaf5f8f26b4f36b3",
+        "tested_sha": "67d15df9ff7fac331164afa0b71224f570872781"
+      },
+      "workspace": {
+        "passed": 1509,
+        "failed": 0,
+        "ignored": 37
+      },
+      "invariants": {
+        "passed": 26,
+        "failed": 0,
+        "slow_skipped": 11
+      },
+      "idle_seconds": 10.004,
+      "initial_build_profiles": [
+        "2m 32s",
+        "3m 05s",
+        "10m 06s"
+      ],
+      "native_artifact_sha256": {
+        "gate-2-stats-before.json": "21407c4298561f972630c6c3c476112d008bdf49e847284a97bfab1cf25fba45",
+        "gate-2-stats-after.json": "553d46c9070a94ffdedfc8cea98932227845e2a1563579dd932df28726fa95f0",
+        "gate-2-process.json": "289bf533473e8a68cdb3aff270e91207dd9dd4066d944c14aa89a57e54ac59ef",
+        "gate-2-result.json": "0ca011f8f4a72b702e09188f0ad00f71a63f815704be99beb3da3ab128a340be"
+      }
+    }
+  ],
+  "released_at": "2026-10-25T23:24:09.938436+00:00",
+  "slot_removed": true,
+  "proof_root": "/Users/feral/mydev/bboxy450-term-exec6/target/cache-slot-main-b19f3eed-20261025-retry1",
+  "entry": {
+    "source": "b19f3eed3a40811e6bcb2395713e500684b570da",
+    "path": "/Users/feral/mydev/bboxy450-term-exec6/target/cache-slot-main-b19f3eed-20261025-retry1/landing.py",
+    "sha256": "a8e75ff6e0e4c120849ed018a89f96ef4e1bee407f7d2e2215e1466753e20cca"
+  },
+  "driver_sha256": "1b2fb9898f1fc1e9bf77c6da773b21242a60a6fa6323582479b954f6bcd6b408",
+  "initial_attempt": {
+    "exit": 75,
+    "reason": "all three live slots occupied",
+    "root": "/Users/feral/mydev/bboxy450-term-exec6/target/cache-slot-main-b19f3eed-20261025"
+  },
+  "cleanup": {
+    "lease_pid": 18010,
+    "ci_pids": [
+      96810,
+      1683
+    ],
+    "all_three_exited": true,
+    "slot_removed_at_release": true,
+    "later_observed_owner": 26529,
+    "later_owner_untouched": true,
+    "cache_daemon_stopped": false
+  },
+  "scope": "Two actual normal CI runs, distinct landed main SHAs, one slot and port, empty target for each. Second Rust native hit ratio acceptance >=80%.",
+  "limit": "Main changed between runs (including invariant batching and a CLI refactor); elapsed time is observed, not an isolated causal speedup claim. The Rust hit ratio uses native counter deltas, excluding other compiler languages."
+}

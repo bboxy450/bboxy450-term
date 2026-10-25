@@ -1,0 +1,181 @@
+#325 real same-slot normal-gate proof — Velvet Vulpine <EXECUTOR>
+Code landed on main b19f3eed; second main source67d15df9. Driver and both real CI processes EXIT0. No renderer/style/compiler/rpath/cache-key patch.
+Acceptance: two distinct landed main SHAs, same /private/tmp/bboxy450-gate-slot-1/tree and sibling target, target emptied before each; native port4554 continuous across both runs.
+Actual driver command: python3 -I scratchpad/cache-slot-pair.py b19f3eed3a40811e6bcb2395713e500684b570da --proof target/cache-slot-main-b19f3eed-20261025-retry1 --wait-seconds 1800
+Earlier immediate claim EXIT75 (all live owners), no gate/build/app started then; bounded self-service polling claimed the slot without an operator or grant.
+Runner implementation loaded verbatim from the first landed main SHA (entry.json), never from an uncommitted helper. Child CI stdin=/dev/null and BBOXY_TEST_CUSTODY=memory. Each raw CI log has one exact source header and a final normal0 receipt; validated by gate_proof. No text was appended to those raw logs.
+
+Gate1: b19f3eed3a40811e6bcb2395713e500684b570da (G), EXIT0/2737.482s; workspace {'passed': 1510, 'failed': 0, 'ignored': 31}; strict/UI lint0, idle0frames/0callbacks/10.002s/windows0, invariants26/0/11slow skipped.
+Native Rust: 558 hits / 394 misses = 58.613445%. Raw log sha256 0ed4dc5949e43d9ca14e9697e1f1b7187bc335d85c9d4e02bac8363e6833db2e.
+Raw retained log /Users/feral/mydev/bboxy450-term-exec6/target/cache-slot-main-b19f3eed-20261025-retry1/gate-1.log
+First three build profiles (workspace build, strict, test build): ['6m 23s', '3m 26s', '10m 27s']
+
+Gate2: 67d15df9ff7fac331164afa0b71224f570872781 (G), EXIT0/1787.696s; workspace {'passed': 1509, 'failed': 0, 'ignored': 37}; strict/UI lint0, idle0frames/0callbacks/10.004s/windows0, invariants26/0/11slow skipped.
+Native Rust: 858 hits / 8 misses = 99.076212%. Raw log sha256 fbd5c9b4338e735b7b47d2122dff6768b630d0f214fe67e4eaf5f8f26b4f36b3.
+Raw retained log /Users/feral/mydev/bboxy450-term-exec6/target/cache-slot-main-b19f3eed-20261025-retry1/gate-2.log
+First three build profiles (workspace build, strict, test build): ['2m 32s', '3m 05s', '10m 06s']
+
+Second gate: 858/(858+8)=99.076212%, >=80% HELD. Native gate1 after counters and gate2 before counters both hits558/misses394; continuous native deltas, no counter reset. Data in the signed JSON binds both before/after native snapshots and process manifests.
+Cleanup: parent18010 and children96810/1683 exited; Slot.__exit__ removed the owned source registration/target, result.json witnessed slot_removed=true. Slot1 was subsequently reused by PID26529; its files were left untouched. The selected cache daemon was not stopped (shared slot service, ownership not assumed). Retained raw logs/stats are evidence, not build caches.
+Elapsed comparison is not isolated: main moved through runtime/CLI changes and invariant batching. No arbitrary cross-root90% claim is made; that prior threshold was superseded. This is the required actual same-slot second-gate acceptance.
+Full retained proof root: /Users/feral/mydev/bboxy450-term-exec6/target/cache-slot-main-b19f3eed-20261025-retry1
+JSON evidence sha256 15f7cde491f3e4036044075e01ce31719fcf4a3ee5ef7e7fa6cd2fbcb607c631
+Driver sha256 1b2fb9898f1fc1e9bf77c6da773b21242a60a6fa6323582479b954f6bcd6b408
+
+DRIVER SOURCE (executed; raw log receipts stored separately)
+"""Run the Oracle-requested two real normal gates at one admitted slot path."""
+import argparse
+from contextlib import ExitStack
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import time
+
+sys.dont_write_bytecode = True
+ROOT = Path(__file__).resolve().parent.parent
+os.chdir(ROOT)
+api = None
+
+
+def save(path, value):
+    path.write_text(json.dumps(value, indent=2) + "\n")
+
+
+def git(*args):
+    return subprocess.check_output(["git", *args], text=True).strip()
+
+
+def statistics(environment, path):
+    result = subprocess.run(["sccache", "--show-stats", "--stats-format", "json"],
+                            env=environment, capture_output=True, text=True, timeout=15)
+    path.write_text(result.stdout)
+    path.with_suffix(".stderr").write_text(result.stderr)
+    if result.returncode:
+        raise RuntimeError("native cache statistics failed: " + str(result.returncode))
+    return json.loads(result.stdout)
+
+
+def rust_counts(stats):
+    return [stats.get("stats", {}).get(field, {}).get("counts", {}).get("Rust", 0)
+            for field in ("cache_hits", "cache_misses")]
+
+
+def interrupt(signum, unused):
+    raise InterruptedError("received signal " + str(signum))
+
+
+def gate(number, sha, proof, lease):
+    tree, environment = api.candidate_environment(ROOT, sha)
+    target = Path(environment["BBOXY_CARGO_TARGET_DIR"])
+    assert not list(target.iterdir())
+    checksum = int(subprocess.check_output(["cksum"], input=os.fsencode(tree.resolve())).split()[0])
+    environment.update(BBOXY_GATE_SLOT="none", SCCACHE_SERVER_PORT=str(4300 + checksum % 1000),
+                       SCCACHE_IDLE_TIMEOUT="7200", BBOXY_TEST_CUSTODY="memory")
+    environment.pop("SCCACHE_SERVER_UDS", None)
+    assert "CARGO_TARGET_DIR" not in environment
+    before = statistics(environment, proof / f"gate-{number}-stats-before.json")
+    log = proof / f"gate-{number}.log"
+    started = time.monotonic()
+    with log.open("w") as stream:
+        child = subprocess.Popen(["sh", "scripts/ci-local.sh"], cwd=tree, env=environment,
+                                 stdin=subprocess.DEVNULL, stdout=stream, stderr=subprocess.STDOUT,
+                                 start_new_session=True)
+        process = {"pid": child.pid, "pgid": child.pid, "sha": sha, "slot": lease.number,
+                   "tree": str(tree), "target": str(target), "started_at": api.now(),
+                   "cache_port": environment["SCCACHE_SERVER_PORT"]}
+        save(proof / f"gate-{number}-process.json", process)
+        print(json.dumps({"gate_started": process}), flush=True)
+        try:
+            code = child.wait()
+        finally:
+            if child.poll() is None:
+                os.killpg(child.pid, signal.SIGTERM)
+                try:
+                    child.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    os.killpg(child.pid, signal.SIGKILL)
+                    child.wait()
+    after = statistics(environment, proof / f"gate-{number}-stats-after.json")
+    a, b = rust_counts(before), rust_counts(after)
+    delta = [b[i] - a[i] for i in range(2)]
+    result = dict(process, exit=code, elapsed_seconds=time.monotonic() - started,
+                  rust_hits=delta[0], rust_misses=delta[1], log=str(log),
+                  log_sha256=hashlib.sha256(log.read_bytes()).hexdigest())
+    if min(delta) < 0:
+        result["counter_epoch_changed"] = True
+    else:
+        result["rust_hit_rate"] = delta[0] / sum(delta) if sum(delta) else None
+    if code == 0:
+        result["receipt"] = api.gate_proof(log, sha)
+    save(proof / f"gate-{number}-result.json", result)
+    print(json.dumps({"gate_finished": result}), flush=True)
+    if code:
+        raise RuntimeError("real normal gate failed: " + str(code))
+    return result
+
+
+def main():
+    global api
+    parser = argparse.ArgumentParser()
+    parser.add_argument("first")
+    parser.add_argument("--proof", required=True)
+    parser.add_argument("--preferred", type=int)
+    parser.add_argument("--wait-seconds", type=float, default=0)
+    args = parser.parse_args()
+    proof = Path(args.proof).resolve()
+    proof.mkdir(parents=True, exist_ok=False)
+    first = git("rev-parse", args.first)
+    subprocess.run(["git", "fetch", "origin", "main"], check=True)
+    subprocess.run(["git", "merge-base", "--is-ancestor", first, "origin/main"], check=True)
+    entry = proof / "landing.py"
+    entry.write_text(git("show", first + ":scripts/landing.py") + "\n")
+    spec = importlib.util.spec_from_file_location("landing", entry)
+    api = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(api)
+    save(proof / "entry.json", {"source": first, "path": str(entry),
+                               "sha256": hashlib.sha256(entry.read_bytes()).hexdigest()})
+    signal.signal(signal.SIGTERM, interrupt)
+    signal.signal(signal.SIGINT, interrupt)
+    results = []
+    deadline = time.monotonic() + args.wait_seconds
+    with ExitStack() as stack:
+        while True:
+            try:
+                lease = stack.enter_context(api.Slot("cache-proof", preferred=args.preferred))
+                break
+            except api.Refusal as error:
+                if error.code != 75 or time.monotonic() >= deadline:
+                    raise
+                print(json.dumps({"slots_busy": True, "at": api.now()}), flush=True)
+                time.sleep(min(30, max(0, deadline - time.monotonic())))
+        save(proof / "owner.json", {"pid": os.getpid(), "slot": lease.number, "first": first})
+        results.append(gate(1, first, proof, lease))
+        subprocess.run(["git", "fetch", "origin", "main"], check=True)
+        second = git("rev-parse", "origin/main")
+        if second == first:
+            raise RuntimeError("first gate complete; a distinct landed main SHA is required")
+        results.append(gate(2, second, proof, lease))
+        assert results[0]["tree"] == results[1]["tree"]
+        assert results[0]["target"] == results[1]["target"]
+        assert results[1].get("rust_hit_rate") is not None
+        assert results[1]["rust_hits"] + results[1]["rust_misses"] >= 100
+        assert results[1]["rust_hit_rate"] >= .8, "second normal gate Rust hit rate is below 80%"
+    save(proof / "result.json", {"exit": 0, "gates": results, "released_at": api.now(),
+                               "slot_removed": not lease.path.exists()})
+    print(json.dumps({"proof_passed": True, "proof": str(proof)}), flush=True)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as error:
+        if api is not None and isinstance(error, api.Refusal):
+            print(str(error), file=sys.stderr)
+            raise SystemExit(error.code)
+        raise
+
