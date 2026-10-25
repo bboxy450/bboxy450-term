@@ -72,6 +72,15 @@ pub enum Actor {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         issued_by: Option<String>,
     },
+    /// Only the admitted local messaging door constructs this principal.
+    /// Its reference never claims a device or signing key.
+    OperatorLocal {
+        reference: bbt_proto::messaging::OperatorReference,
+        #[serde(default, skip_serializing_if = "Door::is_gui")]
+        door: Door,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        issued_by: Option<String>,
+    },
 }
 /// The operator's two doors on `gui.sock` (decision #260), told apart on `account/control`.
 pub use bbt_proto::messaging::Door;
@@ -87,12 +96,14 @@ impl Actor {
         match self {
             Self::Seat(actor) => actor.role.class,
             Self::Operator { .. } => crate::registry::Class::Oracle,
+            Self::OperatorLocal { .. } => crate::registry::Class::Oracle,
         }
     }
     pub(crate) fn seat(&self) -> Option<&SeatActor> {
         match self {
             Self::Seat(actor) => Some(actor),
             Self::Operator { .. } => None,
+            Self::OperatorLocal { .. } => None,
         }
     }
     /// The same authority for replay: a seat by its whole actor; the operator by device,
@@ -100,6 +111,7 @@ impl Actor {
     pub(crate) fn same_authority(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Operator { device_id: a, .. }, Self::Operator { device_id: b, .. }) => a == b,
+            (Self::OperatorLocal { reference: a, .. }, Self::OperatorLocal { reference: b, .. }) => a == b,
             _ => self == other,
         }
     }
@@ -107,6 +119,7 @@ impl Actor {
         match self {
             Self::Seat(actor) => format!("seat:{}", actor.seat_id),
             Self::Operator { device_id, .. } => format!("operator:{device_id}"),
+            Self::OperatorLocal { reference, .. } => format!("operator-local:{}", reference.id),
         }
     }
 }

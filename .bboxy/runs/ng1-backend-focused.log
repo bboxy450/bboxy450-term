@@ -76,3 +76,34 @@ Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/pending-f
 All mux test targets compile (warning remains for the deliberately unwired pending operator entry point). Operator reference/backend: 3 passed; seat/remote/FIFO/130-message admission: 3 passed.
 pending-frame-4 failed only at the new fixture total-entry assertion: history correctly adds a stream-cursor-pending note, so it returns two messages plus one Note. Pending-grade/inferred/reason and no-placeholder-issuer layout assertions had already passed. The fixture now separately asserts that notice and counts exactly two Message entries; no product or predicate change.
 No full CI/Clippy/parity acceptance is claimed; the live worker, admitted event lane and operator control journal integration still follow accepted #315.
+
+## Final independent checks before live integration
+
+Source 4fbb22cf41a6b12a398843af645cf6926152a7fc
+Command cargo test -p bbt-proto --locked --test messaging_pending
+EXIT 0; elapsed 9.016327875026036 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/reference-proto-5.log SHA256 ae3b7988ad2a3e03924fd2eb5a96c056daf000566446a2ecc8bc88b556c3e084
+
+Source 4fbb22cf41a6b12a398843af645cf6926152a7fc
+Command cargo test -p bboxy450-term --locked --test messaging_ui -- --nocapture
+EXIT 0; elapsed 3.007833459007088 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/pending-frame-5.log SHA256 65f9c0bd04a6b29ff8c691a5f3027cec8ecb27eb2e8cf5d928d4db4ecbb8fb40
+
+Source 4fbb22cf41a6b12a398843af645cf6926152a7fc
+Command cargo test -p bbt-mux --locked --test messaging --test identity_local -- --nocapture
+EXIT 0; elapsed 45.06338579201838 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/existing-messaging-custody-1.log SHA256 eb123daa0c9087498b04df3c752685df4c00ba5a84d5b9d39d6366a1cb6a73e0
+
+Source 4fbb22cf41a6b12a398843af645cf6926152a7fc
+Command cargo test -p bboxy450-term --locked --test custody -- --nocapture
+EXIT 101; elapsed 6.010791665990837 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/existing-app-custody-1.log SHA256 ec8f94d39dcf9e1c1c1dff3bfc213d7852bb1211abd4b6d5a67d599242a897ee
+
+The native composition suite passed 18/0, with pending/inferred/reason, absent issuer, signed grade upgrade at the same message position and the independent cursor-pending notice. Proto pending serialization passed 3/0. Existing messaging and identity-local passed. Existing app custody failed at its old Response::Held assertion; it is now ported to Stored with explicit pending/absent-author/reason checks. No deadline was changed.
+
+## Live integration in progress
+
+Oracle 4dab3d61 authorizes integration on frozen signed #315 source 6fda80994a629c307797e14743dcbaa259473776 before acceptance, with native actor/journal bodies unchanged. Thirteen NG1 commits rebased cleanly onto it; HEAD 696989fa8d19390532821843a44b9d65c0fe81e0 plus the named integration delta.
+live-wiring-check-1 EXIT 0; raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/live-wiring-check-1.log SHA256 8e8021a9bd7aadbb9a0ab57e3d76f4d072392c5a273cfc1b7d5c124580de42bb
+gui-wiring-check-1 EXIT 101; raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/gui-wiring-check-1.log SHA256 8acc4fc0dcc51c89ef17b15946a6133d01891c5d37a82af8656f000696eb3733
+live-wiring-check-1 compiled all mux tests. gui-wiring-check-1 found one missing EnvelopeExt test import; corrected before the next check. The native-body comparison against 6fda8099 passed for all selected native/unlock methods: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/native-body-proof.json SHA256 b7688b311b1a9468a9b0622886e4e471ed3d8a66a47685ba1d253e74be3d2ebf. No final CI/parity or #286 activation claimed here.

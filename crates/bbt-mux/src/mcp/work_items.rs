@@ -602,6 +602,7 @@ pub(crate) fn authorize(doc: &Document, registry: &Registry, actor: &Actor) -> C
         return Err("task swarm is ambiguous".into());
     }
     let swarm = match actor {
+        Actor::OperatorLocal { .. } => return Err("task authority requires signing custody".into()),
         Actor::Seat(actor) => actor.swarm_id,
         Actor::Operator { .. } => {
             registry

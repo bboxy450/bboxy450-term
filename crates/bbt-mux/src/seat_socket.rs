@@ -510,9 +510,9 @@ impl GuiLane {
     }
 }
 async fn gui_attach_lane(client: &LogicClient) -> Result<(GuiLane, Option<crate::bus::Delivery>)> {
-    let device = client.gui_device().await?;
+    let reference = client.gui_device().await?;
     let filter = crate::gui_events::filters(client.gui_messaging_subjects().await?);
-    let lease = client.bus.gui_attach(device, filter).await?;
+    let lease = client.bus.gui_attach(reference.id, filter).await?;
     let lane = GuiLane {
         bus: client.bus.clone(),
         lease,
@@ -992,8 +992,8 @@ async fn gui_session(
                         refresh_retry=false;
                         filters_at=Instant::now();
                         let filters=async {
-                            if client.gui_device().await?!=active.lease.device {
-                                return Err(invalid("GuiDeviceChanged: reattaching current custody device"));
+                            if client.gui_device().await?.id!=active.lease.reference {
+                                return Err(invalid("GuiOperatorChanged: reattaching current local principal"));
                             }
                             client.gui_messaging_subjects().await
                         }.await;

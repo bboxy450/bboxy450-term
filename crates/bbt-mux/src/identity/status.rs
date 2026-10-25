@@ -147,6 +147,14 @@ impl IdentityRuntime {
         }
         Ok(self.bus_key.clone())
     }
+    /// Public attribution survives a hold; this performs no key-store operation
+    /// and never changes the held/readiness status exposed to the operator.
+    pub(crate) fn observed_operator_device(&self) -> Result<Option<Ulid>> {
+        if let Some(device)=read(&self.account,crate::store::now_ms()/1000)?.device_id {
+            return Ok(Some(device));
+        }
+        super::local::observed_device_id(&self.account)
+    }
     pub(crate) fn operator_signing(&self) -> Result<crate::messaging::keys::OperatorSigning> {
         let device_id = self
             .status()?

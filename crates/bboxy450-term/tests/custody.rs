@@ -285,7 +285,13 @@ async fn custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry() {
             .messaging(record.id, 1, Request::Send { message })
             .await
             .unwrap();
-        assert!(matches!(response, Response::Held {id, ..} if Some(&id)==ids.last()));
+        let Response::Stored { message } = response else {
+            panic!("local delivery was held: {response:?}");
+        };
+        assert_eq!(Some(&message.view().id), ids.last());
+        assert!(message.envelope().is_none());
+        assert_eq!(message.view().signature, bbt_proto::messaging::SignatureState::Pending);
+        assert!(message.view().signature_reason.is_some());
     }
     store.unavailable.store(false, Ordering::Release);
     tokio::time::timeout(Duration::from_secs(35), async {

@@ -16,6 +16,9 @@ use bbt_mux::{
 use bbt_proto::messaging::SignatureState;
 use ed25519_dalek::SigningKey;
 
+#[path = "messaging_flow/gui.rs"]
+mod gui;
+
 /// First startup has neither a public author nor any available signing secret.
 struct FirstHeld;
 impl SeatKeys for FirstHeld {
@@ -41,6 +44,7 @@ impl SeatKeys for FirstHeld {
 
 #[test]
 fn custody_hold_never_holds_local_delivery() {
+    gui::exercise_held_startup();
     let root = tempfile::tempdir().unwrap();
     let account = SqliteStore::open(&object_dir(root.path(), "account").unwrap()).unwrap();
     let registry = Registry::new(account);

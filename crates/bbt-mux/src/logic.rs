@@ -243,7 +243,7 @@ enum Command {
         crate::mcp::Origin,
         oneshot::Sender<Result<bbt_proto::identity::IdentityControl>>,
     ),
-    GuiDevice(oneshot::Sender<Result<Ulid>>),
+    GuiDevice(oneshot::Sender<Result<bbt_proto::messaging::OperatorReference>>),
     GuiWatchInterest {
         session: Ulid,
         life: Weak<GuiWatchLife>,
@@ -604,9 +604,9 @@ impl LogicClient {
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
-    /// Logic resolves the device for the admitted GUI; the peer cannot choose
-    /// another device's durable consumer or substitute an ephemeral identity.
-    pub(crate) async fn gui_device(&self) -> Result<Ulid> {
+    /// Logic resolves the immutable local operator reference for this GUI;
+    /// custody and device attribution cannot move its durable consumer.
+    pub(crate) async fn gui_device(&self) -> Result<bbt_proto::messaging::OperatorReference> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::GuiDevice(tx))
@@ -1765,9 +1765,7 @@ impl Worker {
             .mode(0o700)
             .create(&endpoint_root)?;
         let mut messaging = crate::messaging::Messaging::open(&config.run_dir, identity.keys())?;
-        if let Some(device_id) = identity.status()?.device_id {
-            messaging.set_operator_device(device_id)?;
-        }
+        messaging.operator_reference(identity.observed_operator_device()?)?;
         let mut capability = [0; 32];
         getrandom::fill(&mut capability).map_err(std::io::Error::other)?;
         let gui_info = EndpointInfo {
@@ -2627,6 +2625,7 @@ impl Worker {
         }
         let operator = match actor {
             crate::mcp::Actor::Seat(_) => None,
+            crate::mcp::Actor::OperatorLocal { .. } => return crate::mcp::error(call.op_id, "held", "work-item signing requires custody"),
             crate::mcp::Actor::Operator {
                 device_id,
                 door,
@@ -2645,6 +2644,7 @@ impl Worker {
             },
         };
         let key = match actor {
+            crate::mcp::Actor::OperatorLocal { .. } => return crate::mcp::error(call.op_id, "held", "work-item signing requires custody"),
             crate::mcp::Actor::Seat(actor) => {
                 match keys.leaf(actor.seat_id, actor.process_generation) {
                     Ok(key) if keys.ready_issuer().is_some() => key,
@@ -2663,6 +2663,7 @@ impl Worker {
             },
         };
         let author = match actor {
+            crate::mcp::Actor::OperatorLocal { .. } => return crate::mcp::error(call.op_id, "held", "work-item signing requires custody"),
             crate::mcp::Actor::Seat(actor) => crate::provenance::author::Author::seat(
                 actor.seat_id,
                 Some(actor.process_generation),
@@ -2789,6 +2790,7 @@ impl Worker {
                 summary: wake.summary,
             };
             let sent = match actor {
+                crate::mcp::Actor::OperatorLocal { .. } => Err(invalid("work-item signing requires custody")),
                 crate::mcp::Actor::Seat(actor) => self.messaging.task_event(
                     actor.seat_id,
                     actor.process_generation,
@@ -5508,8 +5510,10 @@ impl Worker {
                 .block_on(self.bus.identity_signer(key, Some(run)))?;
             self.bus_window = Some(run);
         }
-        self.messaging
-            .resume_signing(self.identity.keys(), now_ms())?;
+        let device=self.identity.observed_operator_device()?;
+        self.messaging.operator_reference(device)?;
+        let authority=self.identity.operator_signing().ok();
+        self.messaging.resume_signing_with_operator(self.identity.keys(),authority.as_ref(),now_ms())?;
         let status = self.identity.status()?;
         let bytes = serde_json::to_vec(&status)?;
         if self.last_identity.as_ref() != Some(&bytes) {
@@ -5543,17 +5547,8 @@ impl Worker {
             },
         })
     }
-    fn gui_device(&self) -> Result<Ulid> {
-        let status = self.identity.status()?;
-        status.device_id.ok_or_else(|| {
-            invalid(format!(
-                "GuiEventsHeld: {}",
-                status
-                    .reason_label
-                    .as_deref()
-                    .unwrap_or("device custody unavailable")
-            ))
-        })
+    fn gui_device(&mut self) -> Result<bbt_proto::messaging::OperatorReference> {
+        self.messaging.operator_reference(self.identity.observed_operator_device()?)
     }
     fn gui_seat(&self, id: Ulid) -> Result<crate::seat_socket::GuiSeat> {
         let view = self
@@ -5647,11 +5642,15 @@ impl Worker {
         origin: crate::mcp::Origin,
     ) -> Result<crate::messaging::api::Response> {
         let origin = self.identity.bind_origin(origin);
-        let device_id = self.operator_device_for_effect()?;
-        let actor = crate::mcp::Actor::Operator {
-            device_id,
-            door: origin.door,
-            issued_by: origin.issued_by.clone(),
+        let reference=self.gui_device()?;
+        let device=self.identity.observed_operator_device()?;
+        let actor = match reference.kind {
+            bbt_proto::messaging::OperatorReferenceKind::DeviceDerived => crate::mcp::Actor::Operator {
+                device_id:reference.id,door:origin.door,issued_by:origin.issued_by.clone(),
+            },
+            bbt_proto::messaging::OperatorReferenceKind::OperatorLocal => crate::mcp::Actor::OperatorLocal {
+                reference,door:origin.door,issued_by:origin.issued_by.clone(),
+            },
         };
         let call = crate::mcp::Call {
             op_id: id,
@@ -5668,10 +5667,15 @@ impl Worker {
                 return operator_response(result);
             }
         };
-        let mut authority = self.identity.operator_signing()?;
-        authority.origin = origin;
-        if authority.device_id != device_id {
-            return Err(invalid("held: operator device changed"));
+        let mut authority = self.identity.operator_signing().ok();
+        if let Some(authority)=&mut authority {
+            authority.origin=origin.clone();
+            if Some(authority.device_id)!=device {return Err(invalid("held: operator device changed"));}
+        } else if !matches!(&request, crate::messaging::api::Request::Send {..}
+            | crate::messaging::api::Request::List {..} | crate::messaging::api::Request::Receipts {..}
+            | crate::messaging::api::Request::Acknowledge {..} | crate::messaging::api::Request::Ls {..})
+        {
+            return Err(invalid("held: this operator mutation requires signing custody"));
         }
         let mute_state = match &request {
             crate::messaging::api::Request::Mute { seat, .. } => {
@@ -5685,13 +5689,10 @@ impl Worker {
                 | crate::messaging::api::Request::Receipts { .. }
                 | crate::messaging::api::Request::Ls { .. }
         );
-        let dispatch = || match self.messaging.request_operator(
-            &authority,
-            swarm,
-            request,
-            mute_state,
-            now_ms(),
-        ) {
+        let dispatch = || match match authority.as_ref() {
+            Some(authority)=>self.messaging.request_operator(authority,swarm,request,mute_state,now_ms()),
+            None=>self.messaging.request_operator_pending(device,&origin,swarm,request,now_ms()),
+        } {
             Ok(response) => match serde_json::to_value(response) {
                 Ok(value) => crate::mcp::success(id, value),
                 Err(error) => crate::mcp::error(id, "unknown", &error.to_string()),
@@ -6401,23 +6402,11 @@ impl Worker {
                         let _ = reply.send(());
                     }
                     Command::GuiMessageRow(swarm, message, reply) => {
-                        let result = self.identity.status().and_then(|status| {
-                            let device = status.device_id.ok_or_else(|| {
-                                invalid("held: operator device custody is unavailable")
-                            })?;
-                            self.messaging.set_operator_device(device)?;
-                            self.messaging.operator_message_row(swarm, message)
-                        });
+                        let result = self.gui_device().and_then(|_| self.messaging.operator_message_row(swarm, message));
                         let _ = reply.send(result);
                     }
                     Command::GuiMessagingSubjects(reply) => {
-                        let result = self.identity.status().and_then(|status| {
-                            let device = status.device_id.ok_or_else(|| {
-                                invalid("held: operator device custody is unavailable")
-                            })?;
-                            self.messaging.set_operator_device(device)?;
-                            self.messaging.operator_subjects()
-                        });
+                        let result = self.gui_device().and_then(|_| self.messaging.operator_subjects());
                         let _ = reply.send(result);
                     }
                     Command::GuiInput(id, generation, input_id, bytes, reply) => {

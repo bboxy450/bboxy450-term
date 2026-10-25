@@ -226,12 +226,12 @@ struct GuiStreamPoll {
     undeliverable: Vec<GuiUndeliverable>,
 }
 
-/// One active drain of the device's durable consumer. The token is in-process
+/// One active drain of the local operator's durable consumer. The token is in-process
 /// attachment state, never a second identity or a caller-supplied principal.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct GuiLease {
     pub consumer: String,
-    pub device: Ulid,
+    pub reference: Ulid,
     token: Ulid,
 }
 
@@ -1122,7 +1122,7 @@ impl Broker {
         }
         let lease = GuiLease {
             consumer: name,
-            device,
+            reference: device,
             token: Ulid::new(),
         };
         self.gui_attachments.insert(
@@ -1137,7 +1137,7 @@ impl Broker {
 
     fn gui_attachment(&self, lease: &GuiLease) -> Result<&GuiAttachment> {
         self.gui_attachments
-            .get(&lease.device)
+            .get(&lease.reference)
             .filter(|active| active.lease == *lease)
             .ok_or_else(|| invalid("GuiConsumerDetached: stale GUI attachment"))
     }
@@ -1149,20 +1149,20 @@ impl Broker {
         if self.consumers[&lease.consumer].filter == filters {
             return Ok(lease.clone());
         }
-        let old = self.gui_attachments.remove(&lease.device).unwrap();
-        match self.gui_attach(lease.device, filters) {
+        let old = self.gui_attachments.remove(&lease.reference).unwrap();
+        match self.gui_attach(lease.reference, filters) {
             Ok(next) => Ok(next),
             Err(error) => {
-                self.gui_attachments.insert(lease.device, old);
+                self.gui_attachments.insert(lease.reference, old);
                 Err(error)
             }
         }
     }
 
     fn gui_detach(&mut self, lease: &GuiLease) -> Result<()> {
-        if self.gui_attachments.contains_key(&lease.device) {
+        if self.gui_attachments.contains_key(&lease.reference) {
             self.gui_attachment(lease)?;
-            self.gui_attachments.remove(&lease.device);
+            self.gui_attachments.remove(&lease.reference);
         }
         Ok(())
     }
@@ -1214,7 +1214,7 @@ impl Broker {
             result.extend(batch.deliveries);
             undeliverable.extend(batch.undeliverable);
             self.gui_attachments
-                .get_mut(&lease.device)
+                .get_mut(&lease.reference)
                 .unwrap()
                 .last_stream = Some(name);
         }

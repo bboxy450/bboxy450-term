@@ -697,6 +697,10 @@ fn audit(
                 super::Door::Ctl => "ctl",
             },
         ),
+        Principal::OperatorLocal { door, .. } => (
+            "account/control".into(),
+            match door { super::Door::Gui => "gui", super::Door::Ctl => "ctl" },
+        ),
     };
     let mut event = Draft::new(
         subject,
@@ -973,6 +977,41 @@ mod tests {
         let audits = journal.pending(128).unwrap();
         assert_eq!(audits[0].subject, format!("seat/{}/control", actor.seat_id));
         assert_eq!(audits[0].seat, Some(actor.seat_id));
+    }
+
+    #[test]
+    fn local_operator_replays_across_doors_without_claiming_native_authority() {
+        let (_temp, store, _, mut call) = effect_fixture();
+        let reference = bbt_proto::messaging::OperatorReference {
+            id: Ulid::new(),
+            kind: bbt_proto::messaging::OperatorReferenceKind::OperatorLocal,
+        };
+        let local = Principal::OperatorLocal {
+            reference,
+            door: super::super::Door::Gui,
+            issued_by: None,
+        };
+        let encoded = serde_json::to_value(&local).unwrap();
+        assert!(encoded.get("device_id").is_none());
+        assert!(encoded["reference"].get("device").is_none());
+        assert_eq!(serde_json::from_value::<Principal>(encoded).unwrap(), local);
+        call.tool = "gui_messaging".into();
+        let journal = Journal::new(store.clone());
+        let result = super::super::success(call.op_id, json!({"signature":"pending"}));
+        assert_eq!(journal.effect(&local, &call, || result.clone()).unwrap(), result);
+        let ctl = Principal::OperatorLocal {
+            reference,
+            door: super::super::Door::Ctl,
+            issued_by: Some("fixture".into()),
+        };
+        assert_eq!(Journal::new(store).effect(&ctl, &call, || panic!("local intent repeated")).unwrap(), result);
+        let audits = journal.pending(128).unwrap();
+        assert!(audits.iter().all(|row| row.subject == "account/control"));
+        let (_native_temp, _, _, native_call, native_ref, _) = native_fixture();
+        assert!(journal.admit_native_unlock(&local, &native_call, "held".into(), native_ref, json!({})).is_err());
+        let status = Call { tool: "identity_status".into(), ..native_call };
+        assert!(journal.native_status(&local, &status, json!({})).is_err());
+        assert!(journal.native_pending(128).unwrap().is_empty());
     }
 
     #[test]
