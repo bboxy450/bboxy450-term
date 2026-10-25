@@ -67,6 +67,10 @@ pub enum Field {
     Background,
     Harness(String),
     IdentityUnlock,
+    PluginEnable(String),
+    PluginTrust(String),
+    PluginSetup(String),
+    KnowledgeProvider(String),
 }
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Focus {
@@ -171,6 +175,10 @@ impl Controller {
     }
     fn editable(&self, field: &Field, values: &Records) -> bool {
         match field {
+            Field::PluginEnable(_)
+            | Field::PluginTrust(_)
+            | Field::PluginSetup(_)
+            | Field::KnowledgeProvider(_) => false,
             Field::IdentityUnlock => {
                 (self.section == "Account" || !self.query.trim().is_empty())
                     && values
@@ -216,6 +224,30 @@ impl Controller {
             }
             _ => vec![],
         }
+    }
+    /// G3/G4's current host is a read-only reference. Never optimistically change
+    /// a fixture's enable bit or a root's provider when no runtime can do the act.
+    fn unavailable(&mut self, field: &Field, values: &Records) -> bool {
+        let reason = match field {
+            Field::PluginEnable(name) => values
+                .plugins
+                .iter()
+                .find(|p| p.name == *name)
+                .and_then(|p| p.root.as_ref())
+                .map_or_else(
+                    || "Plugin enable/disable is unavailable in this build".into(),
+                    |root| format!("Cannot disable the provider of {root}"),
+                ),
+            Field::PluginTrust(_) => "Plugin trust is unavailable in this build".into(),
+            Field::PluginSetup(_) => "Plugin setup is unavailable in this build".into(),
+            Field::KnowledgeProvider(_) => {
+                "Provider swap is unavailable: the bundled provider remains active".into()
+            }
+            _ => return false,
+        };
+        self.focus = Focus::Control(field.clone());
+        self.error = Some(reason);
+        true
     }
     pub fn handle(
         &mut self,
@@ -279,6 +311,9 @@ impl Controller {
             }
             Action::Set(patch) => patch,
             Action::Toggle(field) => {
+                if self.unavailable(&field, values) {
+                    return None;
+                }
                 if !self.editable(&field, values) {
                     return None;
                 }
@@ -305,6 +340,9 @@ impl Controller {
                 }
             }
             Action::Reset(field) => {
+                if self.unavailable(&field, values) {
+                    return None;
+                }
                 if !self.editable(&field, values)
                     && !(self.section == "Notifications" || !self.query.trim().is_empty())
                 {
@@ -313,6 +351,10 @@ impl Controller {
                 match field {
                     Field::Theme => Patch::Theme(defaults.appearance.theme.clone()),
                     Field::IdentityUnlock => return None,
+                    Field::PluginEnable(_)
+                    | Field::PluginTrust(_)
+                    | Field::PluginSetup(_)
+                    | Field::KnowledgeProvider(_) => return None,
                     Field::Density => Patch::Density(defaults.appearance.density.clone()),
                     Field::Rim => Patch::Rim(defaults.appearance.rim),
                     Field::Glow => Patch::Glow(defaults.appearance.glow),
@@ -333,6 +375,16 @@ impl Controller {
                 }
             }
             Action::Nudge(delta) => match &self.focus {
+                Focus::Control(
+                    field @ (Field::PluginEnable(_)
+                    | Field::PluginTrust(_)
+                    | Field::PluginSetup(_)
+                    | Field::KnowledgeProvider(_)),
+                ) => {
+                    let field = field.clone();
+                    self.unavailable(&field, values);
+                    return None;
+                }
                 Focus::Navigation => {
                     let at = SECTIONS
                         .iter()
@@ -500,6 +552,39 @@ impl Regions {
         Some(out)
     }
     fn controls(&mut self, layout: &c::Layout, section: &str, view: &super::Settings) {
+        if section == "Plugins" {
+            for (i, plugin) in view.values.plugins.iter().enumerate() {
+                if plugin.root.is_none()
+                    && let Some(node) = find(layout, &format!("card0/plugin{i}/control"))
+                {
+                    let field = if plugin.trust == "trusted" {
+                        Field::PluginEnable(plugin.name.clone())
+                    } else {
+                        Field::PluginTrust(plugin.name.clone())
+                    };
+                    self.hits.push((node.rect, Hit::Toggle(field), true));
+                }
+                if let Some(node) = find(layout, &format!("card0/plugin{i}/setup")) {
+                    self.hits.push((
+                        node.rect,
+                        Hit::Toggle(Field::PluginSetup(plugin.name.clone())),
+                        true,
+                    ));
+                }
+            }
+        }
+        if section == "Knowledge" {
+            for (i, root) in view.values.knowledge.roots.iter().enumerate() {
+                let field = Field::KnowledgeProvider(root.name.clone());
+                if let Some(node) = find(layout, &format!("card0/root{i}/provider")) {
+                    self.hits
+                        .push((node.rect, Hit::Toggle(field.clone()), true));
+                }
+                if let Some(node) = find(layout, &format!("card0/r{i}/diff")) {
+                    self.hits.push((node.rect, Hit::Reset(field), true));
+                }
+            }
+        }
         if section == "Account"
             && view
                 .values

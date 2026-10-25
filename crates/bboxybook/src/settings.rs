@@ -30,6 +30,9 @@ pub const STATES: &[&str] = &[
     "Notifications",
     "notifications · off",
     "notifications · one harness off",
+    "Plugins",
+    "Knowledge",
+    "knowledge · swapped to the stub",
     "Shortcuts",
     "in a tab",
 ];

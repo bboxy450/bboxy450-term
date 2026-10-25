@@ -1,0 +1,235 @@
+[
+  {
+    "name": "bboxy450-term-data_source-bboxy",
+    "bundled": true,
+    "contract": {
+      "name": "data_source",
+      "version": "1.0",
+      "ok": true
+    },
+    "tier": "export",
+    "local": true,
+    "trust": "trusted",
+    "version": "0.1.0",
+    "auth": null,
+    "health": {
+      "state": "ok"
+    },
+    "enabled": true,
+    "root": ".bboxy",
+    "calls": [
+      {
+        "t": 52000,
+        "method": "resolve",
+        "ms": 3
+      },
+      {
+        "t": 44000,
+        "method": "fetch",
+        "ms": 12
+      },
+      {
+        "t": 37000,
+        "method": "search",
+        "ms": 41
+      },
+      {
+        "t": 30000,
+        "method": "changes_since",
+        "ms": 2
+      },
+      {
+        "t": 21000,
+        "method": "fetch",
+        "ms": 9
+      },
+      {
+        "t": 12000,
+        "method": "graph",
+        "ms": 28
+      },
+      {
+        "t": 4000,
+        "method": "changes_since",
+        "ms": 2
+      }
+    ]
+  },
+  {
+    "name": "bboxy450-term-event_sink-otel",
+    "contract": {
+      "name": "event_sink",
+      "version": "1.0",
+      "ok": true
+    },
+    "tier": "export",
+    "trust": "trusted",
+    "grant": "hook budget 12 000 ms, granted at trust",
+    "version": "0.3.2",
+    "auth": "ok",
+    "health": {
+      "state": "degraded",
+      "say": "slow hooks"
+    },
+    "enabled": true,
+    "calls": [
+      {
+        "t": 58000,
+        "method": "emit",
+        "ms": 10120,
+        "hook": "after PostToolUse"
+      },
+      {
+        "t": 46000,
+        "method": "emit",
+        "ms": 9980,
+        "hook": "after PostToolUse"
+      },
+      {
+        "t": 33000,
+        "method": "emit",
+        "ms": 10240,
+        "hook": "after PostToolUse"
+      },
+      {
+        "t": 20000,
+        "method": "emit",
+        "ms": 10050,
+        "hook": "after PostToolUse"
+      }
+    ],
+    "alerts": [
+      "this plugin takes 10 s on every hook",
+      "budget at its ceiling: 12 000 ms granted"
+    ]
+  },
+  {
+    "name": "bboxy450-term-decision_model-jev",
+    "contract": {
+      "name": "decision_model",
+      "version": "1.0",
+      "ok": true
+    },
+    "tier": "export",
+    "trust": "trusted",
+    "version": "1.4.0",
+    "auth": "ok",
+    "health": {
+      "state": "ok"
+    },
+    "enabled": true,
+    "trace": true,
+    "calls": [
+      {
+        "t": 48000,
+        "method": "decide",
+        "ms": 820
+      },
+      {
+        "t": 9000,
+        "method": "decide",
+        "ms": 640,
+        "spans": [
+          {
+            "name": "decide",
+            "start": 0,
+            "ms": 640,
+            "depth": 0
+          },
+          {
+            "name": "encode state",
+            "start": 10,
+            "ms": 120,
+            "depth": 1
+          },
+          {
+            "name": "POST jev",
+            "start": 140,
+            "ms": 430,
+            "depth": 1
+          },
+          {
+            "name": "tls",
+            "start": 140,
+            "ms": 60,
+            "depth": 2
+          },
+          {
+            "name": "model",
+            "start": 210,
+            "ms": 330,
+            "depth": 2
+          },
+          {
+            "name": "parse",
+            "start": 580,
+            "ms": 50,
+            "depth": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "bboxy450-term-task_system-linear",
+    "contract": {
+      "name": "task_system",
+      "version": "1.0",
+      "ok": true
+    },
+    "tier": "export",
+    "trust": "trusted",
+    "version": "0.2.0",
+    "auth": "needs login",
+    "health": {
+      "state": "setup",
+      "say": "not logged in"
+    },
+    "enabled": true,
+    "calls": []
+  },
+  {
+    "name": "bboxy450-term-data_source-obsidian",
+    "contract": {
+      "name": "data_source",
+      "version": "1.0",
+      "ok": false,
+      "failing": "resolve #N (no numbers in a vault)"
+    },
+    "tier": "export",
+    "trust": "trusted",
+    "version": "0.0.4",
+    "auth": null,
+    "health": {
+      "state": "crashed",
+      "say": "exited 139 at 14:02 · the app is fine"
+    },
+    "enabled": false,
+    "calls": [
+      {
+        "t": 41000,
+        "method": "search",
+        "ms": 1800
+      }
+    ]
+  },
+  {
+    "name": "bboxy450-term-repo_graph-ctags",
+    "repo_local": true,
+    "contract": {
+      "name": "repo_graph",
+      "version": "1.0",
+      "ok": null
+    },
+    "tier": "read",
+    "trust": "untrusted",
+    "version": null,
+    "auth": null,
+    "health": {
+      "state": "never run",
+      "say": "repo-local: listed, never run until trusted"
+    },
+    "enabled": false,
+    "calls": []
+  }
+]
