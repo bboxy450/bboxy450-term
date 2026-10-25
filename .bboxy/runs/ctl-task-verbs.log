@@ -1,0 +1,74 @@
+ctl task verbs — Sable Embertail <EXECUTOR>
+SOURCE 15ec5966f6b27d4b01c0f7a0b4f8634c9e61580f (signed), base accepted C-2 main 6ff7f975
+BRANCH sable-ctl-task; worktree /Users/feral/mydev/bboxy450-term-exec3
+BRIEF 32c1518e-8960-4bfe-bf77-d197257fc11d; spec ctl-cli §1; e2e-script-map M4:52, detailed plan:423.
+
+Mechanism / allowed source:
+crates/bboxy450-term/src/ctl.rs:645 — status aliases the existing task get read; report parses the existing typed TaskVerification JSON with required summary; reject requires reason. New flags are scoped to their verbs.
+crates/bboxy450-term/src/ctl.rs:2102 — Report/Accept/Reject each issue the existing TaskRequest through Client::task under the admitted operator principal and original --op. No new backend or wire policy.
+crates/bboxy450-term/src/ctl.rs:2515 — typed evidence/op vectors, malformed JSON and wrong-verb flags; mapping table includes all four new verbs.
+crates/bboxy450-term/tests/ctl.rs:1668 — private real CLI -> Session/Supervisor/Logic fixture; actual generated task numbers, a real zsh assignee, and in-memory test custody.
+
+Grammar:
+ctl task status <#N|path|id>
+ctl task report <#N|path|id> --summary TEXT [--commit SHA] [--verify-result JSON]
+  JSON is {"command":"CMD","exit_code":0,"evidence":[{"criterion":"name","reference":"file:line"}]}.
+ctl task accept <#N|path|id>
+ctl task reject <#N|path|id> --reason TEXT
+
+Acceptance:
+- Reports with mismatched command and matching command/exit 9 are stored as reported; accept returns the exact existing named refusal and leaves the document unchanged.
+  rejected: verify_result command does not match task verify
+  rejected: verify_result exit_code is 9; acceptance requires 0
+- Matching command/exit 0 is accepted once. Same --op replays Applied with the same document; a new-op accept after closure is refused.
+- Report payload (including evidence and operator reported_by) is read back; same-op report/reject replay leaves the document unchanged. Changed report arguments with the original op return op_id_reused.
+- Status reads by number, ID and path; rejection reason retained. These are scripted assertions, not agent statements.
+
+Verification / failures retained:
+- Signed test-only baseline 700347c4: EXIT 101 at task status #1 (usage exit 2; task already created and delegated). Raw log and hash in manifest.
+- Initial product fixture: 1/0; ctl unit suite: 7/0; full ctl integration: 14/0, before the C-2 rebase.
+- C-2 landed during the first workspace compile. Exact own cargo PID 93187 got SIGINT (-2; Python wrapper exit 254) before any test started; recorded compiler PIDs absent. No verdict from that interrupted run.
+- Signed C-2 rebase 15ec5966 retained both sides of three ctl.rs conflicts: read/task flag scopes, allowlist entries and noun-verb-only variants.
+- Combined-source cargo test --workspace --locked: EXIT 0 / 1572.840 s; 201 summaries, 1348 passed, 0 failed, 29 ignored.
+- Combined-source cargo clippy --workspace --all-targets --locked -- -D warnings: EXIT 0 / 114.409 s.
+- Combined-source sh scripts/invariants.sh: EXIT 0 / 769.459 s; 23 checks, 0 failures, 9 slow skipped.
+- Optional pre-C2 cargo fmt --all -- --check: EXIT 1, existing formatting outside task changes. Touched-file rustfmt check at that earlier source: EXIT 0. Accepted C-2 formatting was retained; no final full-workspace format pass claimed.
+- First atomic normal-gate claim: EXIT 75, all three slots live; no stage ran. Retried only after slot 1 became unclaimed.
+
+EXACT NORMAL CI: 879405171c004bdea4ee4c452cbff3d8; EXIT 0 / 1354.597 s.
+Clean detached source, atomic slot 1, sole own warmed target, direct compiler, O1/debug guards, memory default with existing isolated file-account fixtures.
+Workspace: 201 summaries, 1348/0/29 ignored (counted before invariant reruns). Strict Clippy/UI lint passed.
+Headless smoke: idle passed: frames=0 callbacks=0 seconds=10.004 windows=0 mode=headless
+Default invariants: 23 checks, 0 failures, 9 slow checks skipped. Footer: ci-local: all gates passed.
+RAW /private/tmp/sable-ctl-task-p58cqs_l/cmd-879405171c004bdea4ee4c452cbff3d8.log
+SHA256 e249945e20119cf1cc6386b920024648ad573124df8ad0901b91b072049df689
+
+CLEANUP: lsof EXIT 1 / empty output; gate PID absent. Own target and detached checkout removed; 4,002,791,424 allocated bytes retired; no signals used.
+
+Limits / custody:
+- No fresh real-Claude/Codex turn or M4 night script; the map stays partial. This closes the ctl driver gap, not the night-script verdict.
+- No new visual/parity/967 claim; no core, mux, proto, renderer or app-main edits in this task.
+- Main advanced after freeze to ac97370140a0a0cbfbc7ac253920282a857870e3; changed paths are listed in the manifest. No post-gate rebase or source edit.
+- No push or merge. Evidence successor is records only.
+
+Exact command ledger (including expected RED, intentional interruption and slot-75):
+1bbcedfbd00141cebc514c59ec260beb: ["cargo", "test", "-p", "bboxy450-term", "--locked", "--test", "ctl", "ctl_task_transitions_preserve_verification_and_operation_identity", "--", "--exact", "--nocapture"] — exit 101, 582.344 s, source 700347c46d66c8e323a0ab63dbc3e68bb04daae9
+  log /private/tmp/sable-ctl-task-p58cqs_l/cmd-1bbcedfbd00141cebc514c59ec260beb.log; sha256 05ec66a8fe6db76d504d2da4896b93775e2ea2068f983dcb19ca5964b75cba2a
+1a4639f55dc94c11a1cd8195af9df59c: ["cargo", "test", "-p", "bboxy450-term", "--locked", "--test", "ctl", "ctl_task_transitions_preserve_verification_and_operation_identity", "--", "--exact", "--nocapture"] — exit 0, 55.426 s, source 700347c46d66c8e323a0ab63dbc3e68bb04daae9
+  log /private/tmp/sable-ctl-task-p58cqs_l/cmd-1a4639f55dc94c11a1cd8195af9df59c.log; sha256 cd411343f2215ffaae3338592c71e3794a750059a7302895d70e2f20ca6057a8
+12692aeb51004ce68abbd12977012712: ["cargo", "test", "-p", "bboxy450-term", "--locked", "--lib", "ctl::tests", "--", "--nocapture"] — exit 0, 28.315 s, source 2b8ef342e7e586bad1b80d0b42f3d35c57b016b2
+  log /private/tmp/sable-ctl-task-p58cqs_l/cmd-12692aeb51004ce68abbd12977012712.log; sha256 1aade59b29e72a53ad3e5e52688e83da5fe1df116306f53fdab3e50146cce1a7
+86ca4e7766034d9989b7fb3e75bc83e5: ["cargo", "test", "-p", "bboxy450-term", "--locked", "--test", "ctl", "--", "--nocapture"] — exit 0, 14.711 s, source 2b8ef342e7e586bad1b80d0b42f3d35c57b016b2
+  log /private/tmp/sable-ctl-task-p58cqs_l/cmd-86ca4e7766034d9989b7fb3e75bc83e5.log; sha256 17130b8f4fc5de4a557d78682f9b4d671197a5bd43048f948d9423499a3ecf84
+b647385c06fe48e09cd1a44792a3781d: ["cargo", "test", "--workspace", "--locked"] — exit -2, 285.714 s, source 2b8ef342e7e586bad1b80d0b42f3d35c57b016b2
+  log /private/tmp/sable-ctl-task-p58cqs_l/cmd-b647385c06fe48e09cd1a44792a3781d.log; sha256 6438af85b42790549807c61abfd303cb4c77d3e875b601f8a3cb3aca90b1be02
+9f753f50b77845d786ca8c56512d4a29: ["cargo", "test", "--workspace", "--locked"] — exit 0, 1572.840 s, source 15ec5966f6b27d4b01c0f7a0b4f8634c9e61580f
+  log /private/tmp/sable-ctl-task-p58cqs_l/cmd-9f753f50b77845d786ca8c56512d4a29.log; sha256 555553fdbc51d55d16c0cf7353291ca6ad030338ff15ded33cd01ce06494537f
+3427641961e04756bdd308e25faf3c0e: ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"] — exit 0, 114.409 s, source 15ec5966f6b27d4b01c0f7a0b4f8634c9e61580f
+  log /private/tmp/sable-ctl-task-p58cqs_l/cmd-3427641961e04756bdd308e25faf3c0e.log; sha256 1d5b920bedf56702fc451248f4ac91af750ec4136450e6a0c42d9a6459fa95df
+45d00d5db7b44e31928298a6c40edc51: ["sh", "scripts/invariants.sh"] — exit 0, 769.459 s, source 15ec5966f6b27d4b01c0f7a0b4f8634c9e61580f
+  log /private/tmp/sable-ctl-task-p58cqs_l/cmd-45d00d5db7b44e31928298a6c40edc51.log; sha256 e08f5f4471f74af75a483a2e26cab80c2ae94efda138d7f0cc54b905ff657930
+d9df9416e6c44a2e9f4ba76dcf509e00: ["sh", "scripts/ci-local.sh"] — exit 75, 0.042 s, source 15ec5966f6b27d4b01c0f7a0b4f8634c9e61580f
+  log /private/tmp/sable-ctl-task-p58cqs_l/cmd-d9df9416e6c44a2e9f4ba76dcf509e00.log; sha256 5e54ffbda0e66dcca26fa376c99ccde4d9c9b65b0ff9f6207831e64b3348f176
+879405171c004bdea4ee4c452cbff3d8: ["sh", "scripts/ci-local.sh"] — exit 0, 1354.597 s, source 15ec5966f6b27d4b01c0f7a0b4f8634c9e61580f
+  log /private/tmp/sable-ctl-task-p58cqs_l/cmd-879405171c004bdea4ee4c452cbff3d8.log; sha256 e249945e20119cf1cc6386b920024648ad573124df8ad0901b91b072049df689

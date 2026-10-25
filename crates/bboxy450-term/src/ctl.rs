@@ -14,7 +14,7 @@ mod events;
 mod records;
 use bbt_proto::{
     GuiAction, GuiReply, GuiRequest, GuiSeat, SpawnSpec, SwarmId, Where,
-    messaging::{Request, Response, SendRequest, TaskRequest, TaskResponse},
+    messaging::{Request, Response, SendRequest, TaskRequest, TaskResponse, TaskVerification},
 };
 use serde_json::{Value, json};
 use std::{
@@ -55,6 +55,11 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   message ack <message-id>
   task list [--unassigned | --seat SEAT | --status STATUS]
   task get <#N|path|id>
+  task status <#N|path|id>
+  task report <#N|path|id> --summary TEXT [--commit SHA] [--verify-result JSON]
+                                          JSON: command, exit_code, optional evidence entries
+  task accept <#N|path|id>
+  task reject <#N|path|id> --reason TEXT
   task delegate <#N|path|id> <seat>
   task create <title> --verify CMD [--brief TEXT]
                                           an open, unassigned task, signed by the operator
@@ -256,9 +261,23 @@ pub enum Command {
         verify: String,
         brief: Option<String>,
     },
-    /// `task get <#N|path|id>`.
+    /// `task get` and `task status <#N|path|id>` use the same task read.
     TaskGet {
         task: String,
+    },
+    /// `task report <#N|path|id> --summary TEXT [--commit SHA] [--verify-result JSON]`.
+    TaskReport {
+        task: String,
+        summary: String,
+        commit: Option<String>,
+        verify_result: Option<TaskVerification>,
+    },
+    TaskAccept {
+        task: String,
+    },
+    TaskReject {
+        task: String,
+        reason: String,
     },
     /// `app endpoint`: the run directory, socket path and generation; never the capability.
     Close {
@@ -306,6 +325,10 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("message", "ack", "Messaging"),
     ("task", "list", "Task"),
     ("task", "get", "Task"),
+    ("task", "status", "Task"),
+    ("task", "report", "Task"),
+    ("task", "accept", "Task"),
+    ("task", "reject", "Task"),
     ("task", "delegate", "Task"),
     ("task", "create", "RecordWrite"),
     ("e2e", "list", "Knowledge"),
@@ -619,7 +642,24 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             seat: flag("seat"),
             status: flag("status"),
         },
-        ["task", "get", task] => Command::TaskGet { task: task.into() },
+        ["task", "get" | "status", task] => Command::TaskGet { task: task.into() },
+        ["task", "report", task] => Command::TaskReport {
+            task: task.into(),
+            summary: flag("summary")
+                .ok_or_else(|| format!("{USAGE_PREFIX}task report needs --summary TEXT"))?,
+            commit: flag("commit"),
+            verify_result: flag("verify-result")
+                .map(|value| serde_json::from_str(&value).map_err(|e| {
+                    format!("{USAGE_PREFIX}task report --verify-result: {e}")
+                }))
+                .transpose()?,
+        },
+        ["task", "accept", task] => Command::TaskAccept { task: task.into() },
+        ["task", "reject", task] => Command::TaskReject {
+            task: task.into(),
+            reason: flag("reason")
+                .ok_or_else(|| format!("{USAGE_PREFIX}task reject needs --reason TEXT"))?,
+        },
         ["task", "create", title] => Command::TaskCreate {
             title: title.into(),
             verify: flag("verify")
@@ -712,6 +752,20 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             ));
         }
     }
+    if flags
+        .keys()
+        .any(|key| matches!(key.as_str(), "summary" | "commit" | "verify-result"))
+        && !matches!(&command, Command::TaskReport { .. })
+    {
+        return Err(format!(
+            "{USAGE_PREFIX}--summary, --commit and --verify-result apply only to task report"
+        ));
+    }
+    if flags.contains_key("reason") && !matches!(&command, Command::TaskReject { .. }) {
+        return Err(format!(
+            "{USAGE_PREFIX}--reason applies only to task reject"
+        ));
+    }
     if let Some(unknown) = flags.keys().find(|k| {
         ![
             "swarm",
@@ -738,6 +792,10 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "cursor",
             "stream",
             "subject",
+            "summary",
+            "commit",
+            "verify-result",
+            "reason",
         ]
         .contains(&k.as_str())
     }) {
@@ -1452,6 +1510,9 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
         | Command::RecordChanges { .. }
         | Command::EventsStreams
         | Command::EventsTail { .. }
+        | Command::TaskReport { .. }
+        | Command::TaskAccept { .. }
+        | Command::TaskReject { .. }
         | Command::AppEndpoint
         | Command::AppStart { .. }
         | Command::AppStatus
@@ -2033,6 +2094,29 @@ fn run_verb(
             };
             serde_json::to_value(client.task(request)?).map_err(|e| e.to_string())?
         }
+        Command::TaskReport {
+            task,
+            summary,
+            commit,
+            verify_result,
+        } => serde_json::to_value(client.task(TaskRequest::Report {
+            task_path: task,
+            summary,
+            commit,
+            verify_result,
+        })?)
+        .map_err(|e| e.to_string())?,
+        Command::TaskAccept { task } => {
+            serde_json::to_value(client.task(TaskRequest::Accept { task_path: task })?)
+                .map_err(|e| e.to_string())?
+        }
+        Command::TaskReject { task, reason } => {
+            serde_json::to_value(client.task(TaskRequest::Reject {
+                task_path: task,
+                reason,
+            })?)
+            .map_err(|e| e.to_string())?
+        }
         command => {
             // Spawn, post, inbox, receipts, delegate, capture, e2e list: the action's reply
             // as the flat form already carries it, minus the flat form's own `kind`.
@@ -2389,6 +2473,10 @@ mod tests {
             "message ack 01M5Q8A7DQ7EQFKBZH4NXBW3QQ",
             "task list",
             "task get #1",
+            "task status #1",
+            "task report #1 --summary proof",
+            "task accept #1",
+            "task reject #1 --reason incomplete",
             "task delegate #1 s",
             "task create t --verify true",
             "e2e list",
@@ -2421,6 +2509,62 @@ mod tests {
                 .verb
                 .unwrap_or_else(|| panic!("{line}: not a table verb"));
             assert!(line.starts_with(&format!("{noun} {verb}")));
+        }
+    }
+    #[test]
+    fn task_verbs_parse_typed_evidence_and_require_their_own_flags() {
+        let verification = TaskVerification {
+            command: "cargo test --locked".into(),
+            exit_code: 9,
+            evidence: vec![bbt_proto::messaging::TaskEvidence {
+                criterion: "M4".into(),
+                reference: "fixture.log:1".into(),
+            }],
+        };
+        let encoded = serde_json::to_string(&verification).unwrap();
+        let op = Ulid::new();
+        let op_text = op.to_string();
+        let parsed = parse_full(
+            &[
+                "task",
+                "report",
+                "#1",
+                "--summary",
+                "actual output",
+                "--commit",
+                "abc123",
+                "--verify-result",
+                &encoded,
+                "--op",
+                &op_text,
+            ]
+            .map(String::from),
+        )
+        .unwrap();
+        assert_eq!(parsed.op, Some(op));
+        assert_eq!(parsed.verb, Some(("task", "report")));
+        assert_eq!(
+            parsed.command,
+            Command::TaskReport {
+                task: "#1".into(),
+                summary: "actual output".into(),
+                commit: Some("abc123".into()),
+                verify_result: Some(verification),
+            }
+        );
+        for line in [
+            "task status",
+            "task accept",
+            "task report #1",
+            "task reject #1",
+            "task report #1 --summary x --verify-result nope",
+            "task report #1 --summary x --verify-result {}",
+            "task accept #1 --verify-result {}",
+            "task status #1 --reason x",
+            "task reject #1 --reason x --summary unused",
+        ] {
+            let error = parse_full(&args(line)).unwrap_err();
+            assert_eq!(classify(&error).exit, 2, "{line}: {error}");
         }
     }
     #[test]
