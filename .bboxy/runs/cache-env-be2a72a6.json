@@ -1,0 +1,466 @@
+{
+  "code_source": "be2a72a62ecbce7d2e0d8e45bc2946c4aae3f19d",
+  "branch": "velvet-cache-env",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec6",
+  "benchmark": {
+    "source": "e537345b864cfca37427fb7fc1c0856c1e21c068",
+    "target": "/Users/feral/mydev/bboxy450-term-exec6/target/cache-dev",
+    "builds": [
+      {
+        "phase": "cold",
+        "exit": 0,
+        "elapsed_s": 487.99972995801363,
+        "log_sha256": "c0cf58d387546e97e313d83f1f9376f16e1897ab268d4a7ff5d847b6ce831f79",
+        "rust_hits": 0,
+        "rust_misses": 434,
+        "rust_hit_rate": 0.0
+      },
+      {
+        "phase": "warm",
+        "exit": 0,
+        "elapsed_s": 127.47428104199935,
+        "log_sha256": "7ce9aea18e442e0ed5ef70a18c30f42f3390c7c2c808f1a6d2698716fc822ac9",
+        "rust_hits": 434,
+        "rust_misses": 0,
+        "rust_hit_rate": 1.0
+      }
+    ]
+  },
+  "timed_analysis": {
+    "source": "f64059acce6b607fd91ea4f0a3904fcd702c5172",
+    "timed_build_wall_s": 86.95238554198295,
+    "note": "Unit durations overlap; sums are not additive wall time. Original 127.474s run had no per-unit timing. The final-source timed run has the same 434 Rust hits/0misses. Target times include compilation/codegen/linking and cache delivery/Cargo handling, not isolated linker CPU.",
+    "groups": {
+      "build script binary": {
+        "units": 50,
+        "overlapping_unit_seconds": 11.92
+      },
+      "library/cache delivery": {
+        "units": 432,
+        "overlapping_unit_seconds": 81.57
+      },
+      "build script execution": {
+        "units": 53,
+        "overlapping_unit_seconds": 10.26
+      },
+      "proc macro": {
+        "units": 21,
+        "overlapping_unit_seconds": 20.36
+      },
+      "binary target": {
+        "units": 3,
+        "overlapping_unit_seconds": 26.44
+      }
+    },
+    "slowest_units": [
+      {
+        "name": "bboxy450-term",
+        "target": " bboxy450-term \"bin\"",
+        "start": 62.05,
+        "duration": 24.68
+      },
+      {
+        "name": "strum_macros",
+        "target": "",
+        "start": 43.61,
+        "duration": 3.08
+      },
+      {
+        "name": "snafu-derive",
+        "target": "",
+        "start": 43.32,
+        "duration": 2.73
+      },
+      {
+        "name": "objc2-app-kit",
+        "target": "",
+        "start": 41.4,
+        "duration": 2.21
+      },
+      {
+        "name": "objc2-metal",
+        "target": "",
+        "start": 14.94,
+        "duration": 2.1
+      },
+      {
+        "name": "bbt-yarn-macros",
+        "target": "",
+        "start": 63.52,
+        "duration": 2.05
+      },
+      {
+        "name": "pgp",
+        "target": "",
+        "start": 56.02,
+        "duration": 1.95
+      },
+      {
+        "name": "serde_derive",
+        "target": "",
+        "start": 3.25,
+        "duration": 1.72
+      },
+      {
+        "name": "zstd-sys",
+        "target": " build-script (run)",
+        "start": 24.78,
+        "duration": 1.57
+      },
+      {
+        "name": "bboxybook",
+        "target": " bboxybook \"bin\"",
+        "start": 62.12,
+        "duration": 1.4
+      },
+      {
+        "name": "bbt-mux",
+        "target": "",
+        "start": 59.99,
+        "duration": 1.1
+      },
+      {
+        "name": "zerocopy-derive",
+        "target": "",
+        "start": 5.62,
+        "duration": 1.06
+      }
+    ]
+  },
+  "isolation": {
+    "builds": [
+      {
+        "name": "a",
+        "source": "f64059acce6b607fd91ea4f0a3904fcd702c5172",
+        "worktree": "/Users/feral/mydev/bboxy450-term-exec6/scratchpad/cache-ci-a-final",
+        "port": 4979,
+        "owned_server_pid": 98513,
+        "startup_stderr": "cache: on (port 4979; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)\n",
+        "initial_stats_file": "gate-a-initial-stats.json",
+        "clean": true,
+        "build_pid": 98516,
+        "command": [
+          "/bin/sh",
+          "-eu",
+          "-c",
+          ". ./scripts/cache-env.sh; cargo build --locked -p bbt-ui"
+        ],
+        "log": "/Users/feral/mydev/bboxy450-term-exec6/target/cache-proof/isolation-a.log",
+        "start_wall": 1792951947.996808,
+        "exit": 0,
+        "elapsed_s": 50.77008390426636
+      },
+      {
+        "name": "b",
+        "source": "f64059acce6b607fd91ea4f0a3904fcd702c5172",
+        "worktree": "/Users/feral/mydev/bboxy450-term-exec6/scratchpad/cache-ci-b-final",
+        "port": 5061,
+        "owned_server_pid": 98566,
+        "startup_stderr": "cache: on (port 5061; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)\n",
+        "initial_stats_file": "gate-b-initial-stats.json",
+        "clean": true,
+        "build_pid": 98575,
+        "command": [
+          "/bin/sh",
+          "-eu",
+          "-c",
+          ". ./scripts/cache-env.sh; cargo build --locked -p bbt-ui"
+        ],
+        "log": "/Users/feral/mydev/bboxy450-term-exec6/target/cache-proof/isolation-b.log",
+        "start_wall": 1792951948.1905658,
+        "exit": 0,
+        "elapsed_s": 50.58853316307068
+      }
+    ],
+    "fault": {
+      "source": "f64059acce6b607fd91ea4f0a3904fcd702c5172",
+      "killed_owned_pid": 98513,
+      "active_compiler_children": [
+        98935
+      ],
+      "port_a": 4979,
+      "server_b_pid": 98566,
+      "port_b": 5061,
+      "both_builds_running": true,
+      "wall": 1792951949.2503622,
+      "fallback_observed_s": 0.20400625001639128,
+      "warning_lines": [
+        "sccache: warning: The server looks like it shut down unexpectedly, compiling locally instead"
+      ],
+      "server_b_same_pid": true
+    },
+    "other_server_unchanged": true
+  },
+  "fallback": {
+    "source": "f64059acce6b607fd91ea4f0a3904fcd702c5172",
+    "cases": [
+      {
+        "case": "missing",
+        "exit": 0,
+        "elapsed_s": 0.007432541984599084,
+        "stderr": "cache: off (sccache missing)\n"
+      },
+      {
+        "case": "failed",
+        "exit": 0,
+        "elapsed_s": 0.17742575000738725,
+        "stderr": "cache: off (server failed to start)\n"
+      },
+      {
+        "case": "no daemon despite successful stats",
+        "exit": 0,
+        "elapsed_s": 0.1687695830478333,
+        "stderr": "cache: off (server failed to start)\n"
+      },
+      {
+        "case": "hung",
+        "exit": 0,
+        "elapsed_s": 9.62623466696823,
+        "stderr": "cache: off (server startup exceeded 10 s)\n"
+      }
+    ]
+  },
+  "normal_ci": {
+    "source": "be2a72a62ecbce7d2e0d8e45bc2946c4aae3f19d",
+    "worktree": "/Users/feral/mydev/bboxy450-term-exec6/scratchpad/cache-ci-b-final",
+    "target": "/Users/feral/mydev/bboxy450-term-exec6/scratchpad/cache-ci-b-final/target",
+    "pid": 14734,
+    "command": [
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "label": "normal-ci-2",
+    "start_wall": 1792954632.378601,
+    "exit": 0,
+    "elapsed_s": 2171.0020152500365,
+    "first_workspace_build": "7m 17s",
+    "workspace": {
+      "passed": 1498,
+      "failed": 0,
+      "ignored": 29
+    }
+  },
+  "target_flag_experiment": {
+    "experiment": "Registry unicode-ident dependency in two checkout roots with --target-dir and no CARGO_TARGET_DIR environment; data only.",
+    "builds": [
+      {
+        "label": "a",
+        "pid": 51757,
+        "tree": "/Users/feral/mydev/bboxy450-term-exec6",
+        "source": "be2a72a62ecbce7d2e0d8e45bc2946c4aae3f19d",
+        "target": "/Users/feral/mydev/bboxy450-term-exec6/target/cache-flag-a",
+        "command": [
+          "sh",
+          "-eu",
+          "-c",
+          ". ./scripts/cache-env.sh; test \"$RUSTC_WRAPPER\" = sccache; test -z \"${CARGO_TARGET_DIR+x}\"; sccache --zero-stats; cargo build --locked -p unicode-ident --target-dir \"$1\"; sccache --show-stats --stats-format json > \"$2\"",
+          "target-flag",
+          "/Users/feral/mydev/bboxy450-term-exec6/target/cache-flag-a",
+          "/Users/feral/mydev/bboxy450-term-exec6/target/cache-proof/target-flag-a-stats.json"
+        ],
+        "cargo_target_dir_env": null,
+        "exit": 0,
+        "elapsed_s": 1.418608000036329,
+        "log_sha256": "e1716710b87a4b890c0766cf56435a8da82f277f3b3dff40eef87f88fa5ababd",
+        "rust_hits": 0,
+        "rust_misses": 1
+      },
+      {
+        "label": "b",
+        "pid": 51843,
+        "tree": "/Users/feral/mydev/bboxy450-term-exec6/scratchpad/cache-ci-a-final",
+        "source": "f64059acce6b607fd91ea4f0a3904fcd702c5172",
+        "target": "/Users/feral/mydev/bboxy450-term-exec6/target/cache-flag-b",
+        "command": [
+          "sh",
+          "-eu",
+          "-c",
+          ". ./scripts/cache-env.sh; test \"$RUSTC_WRAPPER\" = sccache; test -z \"${CARGO_TARGET_DIR+x}\"; sccache --zero-stats; cargo build --locked -p unicode-ident --target-dir \"$1\"; sccache --show-stats --stats-format json > \"$2\"",
+          "target-flag",
+          "/Users/feral/mydev/bboxy450-term-exec6/target/cache-flag-b",
+          "/Users/feral/mydev/bboxy450-term-exec6/target/cache-proof/target-flag-b-stats.json"
+        ],
+        "cargo_target_dir_env": null,
+        "exit": 0,
+        "elapsed_s": 0.817108332994394,
+        "log_sha256": "62bcc9db70f8ef928f77242e6842392bd17a099e3fd0deca43ef0f1a0f3907e9",
+        "rust_hits": 1,
+        "rust_misses": 0
+      }
+    ],
+    "conclusion": "Positive registry unicode-ident reuse: first0hits/1miss, second1hit/0miss across checkout roots with target passed as a flag. One dependency only; no full-workspace rate inferred."
+  },
+  "cross_worktree_gap": {
+    "source": "be2a72a62ecbce7d2e0d8e45bc2946c4aae3f19d",
+    "normal_ci_first_workspace_build": "7m 17s",
+    "cold_benchmark_seconds": 487.999729958,
+    "same_path_warm_seconds": 127.474281042,
+    "same_path_rust_hits": 434,
+    "same_path_rust_misses": 0,
+    "fresh_path_progress_stats_file": "normal-ci-progress-stats.json",
+    "fresh_path_progress_rust_hits": 0,
+    "fresh_path_progress_rust_misses": 432,
+    "installed_sccache": "sccache 0.18.0",
+    "primary_source_url": "https://github.com/mozilla/sccache/blob/v0.18.0/src/compiler/rust.rs#L1503-L1595",
+    "primary_source_sha256": "8983bb8e593f78a8fbfb9b38c44b4736a68d71ee7c5fe9a543600756c094670f",
+    "mechanism": [
+      "Rust full compiler arguments hashed, with --extern/-L/--out-dir exclusions (1503 onward).",
+      "CARGO_* environment hashed with the named exclusions (1554-1592).",
+      "Absolute compile cwd unconditionally hashed (1594-1595).",
+      "No basedirs reference in this Rust implementation."
+    ],
+    "status": "Same-path reuse demonstrated; arbitrary cross-worktree Rust reuse not satisfied. No normalization workaround applied.",
+    "oracle_report": "3b8afaa9-792e-4c82-bc3d-945905b50466",
+    "runner_owner_report": "bb2f6001-0219-46d4-93db-57a203b82c65",
+    "experiment_correction": {
+      "report": "99e638c2-bf10-4b77-a07d-45c5368cfdc0",
+      "result": "Registry unicode-ident cross-checkout second build1Rusthit/0miss when CARGO_TARGET_DIR absent and --target-dir used; first0hits/1miss.",
+      "scope": "One registry dependency. This disproves a blanket claim that different checkout roots always prevent registry Rust hits. Registry compile cwd can be shared; the global target environment is also hashed. No full-workspace cross-path rate measured.",
+      "raw_record": "target-flag-experiment.json"
+    },
+    "oracle_followup": {
+      "id": "8a61f4a6-86dc-4b34-862f-468a691c91ca",
+      "rule": "Land current helper after green gate; fixed reusable per-slot tree and target paths as separate cut. No sccache patch. Flag experiment data only."
+    },
+    "refined_followup": {
+      "rule": "bd1bf19f-f304-4f39-ad32-545e0b9cf16d",
+      "scope": "997eb4e1-9c47-4d6e-93c7-c89d931c3f56",
+      "transport": "BBOXY_CARGO_TARGET_DIR, explicit --target-dir, CARGO_TARGET_DIR unset; fixed slot roots retained.",
+      "proof": "Two different checkout paths and empty targets; second full workspace build >=90% registry Rust hits, workspace misses reported separately.",
+      "status": "Separate cut, not part of the helper source tested here."
+    }
+  },
+  "raw_inputs": [
+    {
+      "path": "target/cache-proof/benchmark.json",
+      "bytes": 658,
+      "sha256": "88f885d53a0ce9dbbad2ff6ffd2e4f9f8d96abba3a9dc1b759807500ae0ee2b5"
+    },
+    {
+      "path": "target/cache-proof/cold-status.json",
+      "bytes": 153,
+      "sha256": "4912837dab0a9b1a8062621c1ddf291d760fadd7aba0ae4c16f5239acd77543f"
+    },
+    {
+      "path": "target/cache-proof/cold-stats.json",
+      "bytes": 1015,
+      "sha256": "5ff44e3b51f566f42861ef7a2d1a2ea580502b22edced4a3f4b54c86dc412f30"
+    },
+    {
+      "path": "target/cache-proof/warm-status.json",
+      "bytes": 153,
+      "sha256": "d8fa2f62243b9f19b8dc06ac76095893000daf25b9295de4e50b1fadc4b3deae"
+    },
+    {
+      "path": "target/cache-proof/warm-stats.json",
+      "bytes": 1001,
+      "sha256": "6a8dfc5d14159d1a94f132d2276d7ffdd8a1f24d0e7601861dbc7979f4418282"
+    },
+    {
+      "path": "target/cache-proof/warm-stats.txt",
+      "bytes": 1564,
+      "sha256": "00615c3fff86b7d9802735b0613849172c6d2735a88821bb779622c3f988a8f7"
+    },
+    {
+      "path": "target/cache-proof/final-fallback.json",
+      "bytes": 699,
+      "sha256": "119a62e723c154d9bb44b79ad611ec8bed61e33f8410f30c24d541f3c1d4609c"
+    },
+    {
+      "path": "target/cache-proof/final-timed-status.json",
+      "bytes": 544,
+      "sha256": "e9d343687c69578428547db8a040127253a17f0bfd88b46e3cb42f3bdfdcdb7a"
+    },
+    {
+      "path": "target/cache-proof/final-timed-stats.json",
+      "bytes": 1001,
+      "sha256": "81d89dcb0d317f62d8bc02447949bb0f99dc0a30cb574e18353f3baf8fd7d1c2"
+    },
+    {
+      "path": "target/cache-proof/timing-analysis.json",
+      "bytes": 2235,
+      "sha256": "eabcd8801915567f58e946999323d594cdc907592514fe4d80246190cabe02eb"
+    },
+    {
+      "path": "target/cache-proof/isolation-result.json",
+      "bytes": 2125,
+      "sha256": "587c856070fb716ff8ce783231eacbb4976ea1fd43e40cbf216397e65e3b6d0b"
+    },
+    {
+      "path": "target/cache-proof/isolation-fault.json",
+      "bytes": 457,
+      "sha256": "3b3c9f68dbc947b597531aa04168a2e4a704d7ce2103b2da0fdfcc276e7a5abe"
+    },
+    {
+      "path": "target/cache-proof/isolation-processes.json",
+      "bytes": 1386,
+      "sha256": "fa29ff7ed901a138699fb79ca4c8686d6240defb47904922f2e05431854dcfd6"
+    },
+    {
+      "path": "target/cache-proof/normal-ci-1.status.json",
+      "bytes": 413,
+      "sha256": "0bd82c962d7e1481f12a071b643716da91c0f9ef6f7a69c4229d9f3fab4347d5"
+    },
+    {
+      "path": "target/cache-proof/normal-ci-2.status.json",
+      "bytes": 412,
+      "sha256": "4f22d95006906bc792b9363e3348a3ffcd8b75804db408e21ed03232de406af0"
+    },
+    {
+      "path": "target/cache-proof/normal-ci-2.log",
+      "bytes": 235638,
+      "sha256": "0e68ca76e059bb11c66146a962e828df951c996e6874ca2253e63c9c83f893b6"
+    },
+    {
+      "path": "target/cache-proof/target-flag-experiment.json",
+      "bytes": 2321,
+      "sha256": "bfc34e1108ce3cad9bce0e71e4a439f25807ad21cf389dc1d7df3a02b2e0bf0d"
+    },
+    {
+      "path": "target/cache-proof/target-flag-a-stats.json",
+      "bytes": 900,
+      "sha256": "75e21c437e5c3fb1195754718a47c3f984d6faebaa94bd03803e59874a981f4f"
+    },
+    {
+      "path": "target/cache-proof/target-flag-b-stats.json",
+      "bytes": 894,
+      "sha256": "45f65317916ed276206977dae5fc35f5664a991f564387ff9d0b744307618076"
+    },
+    {
+      "path": "target/cache-proof/cross-worktree-gap.json",
+      "bytes": 2485,
+      "sha256": "70902b2d5e14ac574978612633ae72fffb975e324dae6f11e2cc5c56bd7aad99"
+    },
+    {
+      "path": "target/cache-proof/probe-cleanup.json",
+      "bytes": 491,
+      "sha256": "4f7ab6c00316014ff184b8f0e26581b2dd4df9097345d923496e33d5ad02bcaa"
+    },
+    {
+      "path": "target/cache-proof/benchmark-cleanup.json",
+      "bytes": 223,
+      "sha256": "3c283fad5413369387b6e598363f73a3301cdd0ca062fbd2047c3c31dfe3cac0"
+    },
+    {
+      "path": "target/cache-proof/target-flag-cleanup.json",
+      "bytes": 267,
+      "sha256": "a14d6a1db0a48e90dba51a002b3ea168066b238f29928e4dfb6465b611ffcf4d"
+    },
+    {
+      "path": "target/cache-proof/rebased-script-equivalence.json",
+      "bytes": 603,
+      "sha256": "704eabc7e593a6dfd9011ab522aa885c074288be59ddc74b992d1e9ae639826b"
+    },
+    {
+      "path": "target/cache-proof/normal-ci-final-stats.json",
+      "bytes": 1114,
+      "sha256": "dadb5b7676851b0175cd85ef9f51a1710fcd92f9e49d7e632a727ac62134c16c"
+    },
+    {
+      "path": "target/cache-proof/normal-ci-cleanup.json",
+      "bytes": 458,
+      "sha256": "9b1be230811fdd29faa6f3b4798b9fdf964ec9530c4556172759e73a32ca0f67"
+    }
+  ],
+  "remaining": "Fixed per-slot path follow-up under Oracle8a61f4a6; no full-workspace cross-worktree reuse claim."
+}
