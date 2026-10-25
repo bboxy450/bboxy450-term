@@ -1,0 +1,38 @@
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `test` profile [optimized] target(s) in 2m 15s
+     Running tests/native_unlock.rs (target/identity-file-dev/debug/deps/native_unlock-bdff7ea49ce48098)
+
+running 3 tests
+test native_cancelled_and_unknown_outcomes_survive_logic_restart_without_replay ... FAILED
+test native_hold_unlock_is_audited_before_access_and_does_not_block_panes ... FAILED
+test native_audit_failure_executes_nothing_and_no_hold_is_a_native_noop ... FAILED
+
+failures:
+
+---- native_cancelled_and_unknown_outcomes_survive_logic_restart_without_replay stdout ----
+
+thread 'native_cancelled_and_unknown_outcomes_survive_logic_restart_without_replay' (31999214) panicked at crates/bbt-mux/tests/native_unlock.rs:220:18:
+called `Result::unwrap()` on an `Err` value: Error("unknown field `op_id`, expected one of `custody`, `acl`, `hold`, `clear_actions`, `outcome`, `pending`", line: 0, column: 0)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- native_hold_unlock_is_audited_before_access_and_does_not_block_panes stdout ----
+
+thread 'native_hold_unlock_is_audited_before_access_and_does_not_block_panes' (31999215) panicked at crates/bbt-mux/tests/native_unlock.rs:269:10:
+called `Result::unwrap()` on an `Err` value: Error("unknown field `op_id`, expected one of `custody`, `acl`, `hold`, `clear_actions`, `outcome`, `pending`", line: 0, column: 0)
+
+---- native_audit_failure_executes_nothing_and_no_hold_is_a_native_noop stdout ----
+
+thread 'native_audit_failure_executes_nothing_and_no_hold_is_a_native_noop' (31999213) panicked at crates/bbt-mux/tests/native_unlock.rs:412:10:
+called `Result::unwrap()` on an `Err` value: Error("unknown field `op_id`, expected one of `custody`, `acl`, `hold`, `clear_actions`, `outcome`, `pending`", line: 0, column: 0)
+
+
+failures:
+    native_audit_failure_executes_nothing_and_no_hold_is_a_native_noop
+    native_cancelled_and_unknown_outcomes_survive_logic_restart_without_replay
+    native_hold_unlock_is_audited_before_access_and_does_not_block_panes
+
+test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+error: test failed, to rerun pass `-p bbt-mux --test native_unlock`

@@ -1,0 +1,35 @@
+Kestrel Voidwing <EXECUTOR> — native #280 / #315 unlock
+SOURCE: 89eaf763eab8dd81f404417af7faf77a4da77a0b
+BASE: 7892d85f (accepted #279 and R5h-idle)
+WORKTREE: /Users/feral/mydev/bboxy450-term-exec5, exec5-native-unlock
+STATE: scoped verification passed; exact clean ci-local --parity queued after the announced r5h-frame quiet window (no running workload or operator action).
+
+SCOPE
+Existing native mux custody only. No facade-family, Cargo manifest, Linux/Windows or root identity changes. The explicit operator-only ctl identity status/unlock and Settings Account/Custody control use the existing admitted door/window principal and private validated journal device reference. The public held device ID remains hidden.
+
+MECHANISMS / EVIDENCE
+crates/bbt-mux/src/logic.rs:1868 — narrow special admission, pending publication before native access, bounded async IO, ordinary mutations still held. Existing panes continue while the fake native read is held.
+crates/bbt-mux/src/mcp/journal.rs:219 — durable operation admission and audit transaction; failed audit admits nothing.
+crates/bbt-mux/src/mcp/journal.rs:106 — Status reads retained original-op outcomes without creating an effect operation; missing lookups cannot admit or poison an Unlock.
+crates/bbt-mux/src/mcp/journal.rs:580 — one legitimate-device completion bound to the pending envelope op/digest/position; immutable pending row stays unchanged, Unknown stays Unknown.
+crates/bbt-mux/src/identity/unlock.rs — one interactive read only on an explicit Unlock; .dr1 replacement verified noninteractively before deleting legacy; restart cleanup never reopens a dialog. A present .dr1 refusal never falls back to legacy. Expired public authority is refused before effects.
+crates/bbt-mux/src/identity/local.rs:317 — issuer recovery can return while a separately certified device key remains held; the next explicit Unlock is a new op.
+crates/bboxy450-term/src/settings.rs:862 — retained two-item hold keeps Unlock available after Allowed; Unknown exposes a read-only Check result for the original id, including after a lost pre-admission reply.
+crates/bboxy450-term/src/live.rs — typed identity replies release exactly their correlated FIFO slot and publish every revision; asynchronous identity status does not consume slots. Model rebuild preserves the custody result Arc with existing event, history, settings and operation results.
+scripts/sign-run.sh + scripts/bundle-macos.sh — stable team/app designated requirement; functional fake codesign fixtures prove command arguments and stable reuse without accessing real credentials.
+crates/bbt-ui/src/modules/settings.rs:2265 — pure custody status/intent; six public states paired to Wren 5d0dded7 / 70bcc3a5, including remaining hold after Allowed.
+
+VERIFICATION SO FAR
+native-unlock-focused-batch.log — cargo test -p bbt-mux -p bboxy450-term -p bbt-ui -p bbt-proto native_ --locked: EXIT 0, 31 passed / 0 failed, source 83fb222a. The native backend patches are unchanged through the later UI-only correction and clean rebase.
+native-unlock-clippy-rebased.log — cargo clippy --workspace --all-targets --locked -- -D warnings: EXIT 0, source 89eaf763.
+native-unlock-settings-compare2.log — all 144 Settings cases measured; 0 unproven, 0 geometry mismatches, 0 pixel reviews. Captured lab reference is unchanged; corrected native render is source 89eaf763. The final full gate takes fresh captures.
+native-unlock-migration.log — all five migration fault/restart cases passed on the earlier implementation.
+native-unlock-two-item3.log — genuine throwaway GPG-root fixture: two native items, ordered completions under the real fixture device key, retained second hold, no operator keyring use: EXIT 0. Included again in the 31-check batch.
+native-unlock-final-rebase-range-diff.log — all eight own commits compare equal through the rebase onto accepted main.
+native-unlock-ci-capacity1.log — EXIT 75 before checks: all three automatic gate slots occupied, no gate workload started.
+
+DEVELOPMENT FAILURES KEPT
+The command inventory in native-unlock-checks.json retains every recorded exit. Early compile failures were corrected (CF symbols/types, typed reply exhaustiveness, test API migration). An initial integration failure exposed strict DTO handling of journal wrapper op_id; corrected. Two-item failures first exposed a fixture account path and then the separate issuer/certified-device recovery bug; both corrected. Clippy findings were corrected. First Settings parity had 48 new custody geometry mismatches; the 96 existing cases were already clean. Matching the custody-specific fonts, chip weight, padding and margins reduced all 144 to zero geometry and pixel reviews. No tolerance or reference weakening.
+
+LIMITS / DELIBERATE DEFERRALS
+Actual macOS login-Keychain prompts and ACL behavior were not exercised. The approved cut uses controlled stores, public query/requirement parsing, and fake signing executables; no operator session, real signing identity or physical probe is needed to finish its automated acceptance. Native metadata whose public API cannot prove the complete ACL reports Unknown honestly. Facade extraction and other OS backends remain outside this cut. No publishing or merge performed.

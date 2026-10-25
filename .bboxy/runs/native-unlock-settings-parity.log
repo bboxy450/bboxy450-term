@@ -1,0 +1,12 @@
+lab-check: self-test ok (10 checks fire on checks/bad.html)
+lab-check: 40 pages × 4 densities · 0 findings
+    Finished `dev` profile [optimized] target(s) in 0.59s
+captured 100/144
+web: 144/144 captured; 0 failures
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/144
+native/web layout snapshots: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/settings-parity/native/layouts.json
+rendered 144 PNGs to /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/settings-parity/native
+parity: 144 cases, 48 review; /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/settings-parity/index.html
+geometry: 144 required; 144 measured; 0 unproven; 48 mismatches
+bboxybook: parity gate: 48 geometry failures (fail)

@@ -1,0 +1,57 @@
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking rsa v0.9.10
+    Checking tokio-tungstenite v0.30.0
+    Checking dsa v0.6.3
+    Checking pgp v0.21.0
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-harness-wake-up)
+    Checking rusqlite v0.40.2
+    Checking notify v8.2.0
+    Checking objc2-foundation v0.2.2
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking objc2-user-notifications v0.3.2
+   Compiling winit v0.30.13
+    Checking winnow v1.0.4
+    Checking tracing-core v0.1.36
+    Checking tracing v0.1.44
+    Checking toml_parser v1.1.5+spec-1.1.0
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking objc2-app-kit v0.2.2
+    Checking core-graphics v0.23.2
+    Checking toml_datetime v1.1.2+spec-1.1.0
+    Checking smol_str v0.2.2
+    Checking toml_writer v1.1.3+spec-1.1.0
+    Checking dpi v0.1.2
+    Checking toml_edit v0.25.17+spec-1.1.0
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Checking objc2-app-kit v0.3.2
+error[E0004]: non-exhaustive patterns: `bboxy450_term::cockpit::UiMsg::IdentityControl { .. }` not covered
+    --> crates/bboxy450-term/src/main.rs:5499:19
+     |
+5499 |               match receiver
+     |  ___________________^
+5500 | |                 .try_recv()
+5501 | |                 .expect("capacity-one reconnect must make progress")
+     | |____________________________________________________________________^ pattern `bboxy450_term::cockpit::UiMsg::IdentityControl { .. }` not covered
+     |
+note: `bboxy450_term::cockpit::UiMsg` defined here
+    --> crates/bboxy450-term/src/cockpit.rs:32:1
+     |
+  32 | pub enum UiMsg {
+     | ^^^^^^^^^^^^^^
+  33 |     IdentityControl {
+     |     --------------- not covered
+     = note: the matched value is of type `bboxy450_term::cockpit::UiMsg`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+     |
+5528 ~                 },
+5529 +                 bboxy450_term::cockpit::UiMsg::IdentityControl { .. } => todo!()
+     |
+
+For more information about this error, try `rustc --explain E0004`.
+error: could not compile `bboxy450-term` (bin "bboxy450-term" test) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...

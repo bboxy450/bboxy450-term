@@ -1,0 +1,197 @@
+   Compiling zerocopy v0.8.63
+    Checking smallvec v1.16.3
+    Checking log v0.4.34
+   Compiling winnow v1.0.4
+   Compiling toml_parser v1.1.5+spec-1.1.0
+    Checking parking_lot_core v0.9.12
+   Compiling toml v0.9.12+spec-1.1.0
+    Checking parking_lot v0.12.5
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking mio v1.2.4
+    Checking ppv-lite86 v0.2.21
+    Checking tokio v1.54.1
+    Checking rand_chacha v0.3.1
+    Checking rand_chacha v0.9.0
+    Checking rand v0.9.5
+    Checking rand v0.8.8
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking ahash v0.8.12
+    Checking num-bigint-dig v0.8.6
+    Checking ulid v1.2.1
+    Checking futures-core v0.3.34
+    Checking futures-sink v0.3.34
+    Checking futures-util v0.3.34
+    Checking tungstenite v0.30.0
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling libsqlite3-sys v0.38.2
+    Checking ghash v0.5.1
+   Compiling snafu-derive v0.9.2
+    Checking ed25519 v2.2.3
+    Checking serdect v0.3.0
+    Checking pkcs1 v0.7.5
+    Checking password-hash v0.5.0
+    Checking sha1 v0.10.7
+    Checking blake2 v0.10.6
+   Compiling num_enum_derive v0.7.6
+    Checking foldhash v0.1.5
+    Checking signature v3.0.0
+    Checking same-file v1.0.6
+    Checking zlib-rs v0.6.8
+    Checking flate2 v1.1.10
+    Checking jsonschema-value v0.60.1
+    Checking referencing v0.60.1
+    Checking walkdir v2.5.0
+    Checking ed25519 v3.0.0
+    Checking hashbrown v0.15.5
+    Checking portable-pty v0.9.0
+    Checking num_enum v0.7.6
+    Checking argon2 v0.5.3
+    Checking sha1-checked v0.10.0
+    Checking rsa v0.9.10
+    Checking cx448 v0.1.1
+    Checking ed25519-dalek v2.2.0
+    Checking snafu v0.9.2
+    Checking aes-gcm v0.10.3
+    Checking tokio-tungstenite v0.30.0
+    Checking bitfields v1.0.3
+    Checking derive_builder v0.20.2
+    Checking curve25519-dalek v5.0.0
+    Checking eax v0.5.0
+    Checking derive_more v2.1.1
+    Checking dsa v0.6.3
+    Checking crc24 v0.1.6
+    Checking camellia v0.1.0
+    Checking blowfish v0.9.1
+    Checking security-framework-sys v2.17.0
+    Checking core-foundation v0.10.1
+    Checking aes-kw v0.2.1
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking x25519-dalek v2.0.1
+    Checking ocb3 v0.1.0
+    Checking p256 v0.13.2
+    Checking p521 v0.13.3
+    Checking p384 v0.13.1
+    Checking k256 v0.13.4
+    Checking sha2 v0.11.1
+    Checking hashlink v0.12.2
+    Checking bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+    Checking notify-types v2.1.0
+    Checking twofish v0.7.1
+    Checking des v0.8.1
+    Checking cfb-mode v0.8.2
+    Checking cast5 v0.11.1
+    Checking idea v0.5.1
+    Checking nom v8.0.0
+    Checking buffer-redux v1.1.0
+    Checking ripemd v0.1.3
+    Checking md-5 v0.10.6
+    Checking block-padding v0.3.3
+    Checking fsevent-sys v4.1.0
+    Checking fallible-streaming-iterator v0.1.9
+    Checking hex v0.4.3
+    Checking fallible-iterator v0.3.0
+    Checking replace_with v0.1.8
+    Checking fixedbitset v0.5.7
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Checking pgp v0.21.0
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Checking petgraph v0.8.3
+    Checking rusqlite v0.40.2
+    Checking notify v8.2.0
+    Checking jsonschema v0.60.1
+    Checking ed25519-dalek v3.0.0
+    Checking bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain)
+    Checking security-framework v3.7.0
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-harness-wake-up)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+error[E0425]: cannot find value `kSecMatchLimitOne` in this scope
+  --> crates/bbt-mux/src/identity/native_keychain.rs:94:51
+   |
+94 |             pairs.push(pair(kSecMatchLimit, value(kSecMatchLimitOne)));
+   |                                                   ^^^^^^^^^^^^^^^^^
+   |
+  ::: /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/security-framework-sys-2.17.0/src/item.rs:11:5
+   |
+11 |     pub static kSecMatchLimit: CFStringRef;
+   |     -------------------------------------- similarly named static `kSecMatchLimit` defined here
+   |
+help: a static with a similar name exists
+   |
+94 -             pairs.push(pair(kSecMatchLimit, value(kSecMatchLimitOne)));
+94 +             pairs.push(pair(kSecMatchLimit, value(kSecMatchLimit)));
+   |
+
+error[E0603]: module `decimal` is private
+   --> crates/bbt-mux/src/mcp/journal.rs:29:20
+    |
+ 29 |     #[serde(with = "bbt_proto::events::decimal")]
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ private module
+    |
+note: the module `decimal` is defined here
+   --> crates/bbt-proto/src/events.rs:161:1
+    |
+161 | pub(crate) mod decimal {
+    | ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/bbt-mux/src/identity/native_keychain.rs:120:45
+    |
+120 |         let code = SecStaticCode::from_path(&path, Flags::NONE).map_err(|_| E::KeychainSigningIdentityRequired)?;
+    |                    ------------------------ ^^^^^ expected `&CFURL`, found `&PathBuf`
+    |                    |
+    |                    arguments to this function are incorrect
+    |
+    = note: expected reference `&CFURL`
+               found reference `&PathBuf`
+note: associated function defined here
+   --> /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/security-framework-3.7.0/src/os/macos/code_signing.rs:278:12
+    |
+278 |     pub fn from_path(path: &CFURL, flags: Flags) -> Result<Self> {
+    |            ^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/bbt-mux/src/identity/native_keychain.rs:120:45
+    |
+120 |         let code = SecStaticCode::from_path(&path, Flags::NONE).map_err(|_| E::KeychainSigningIdentityRequired)?;
+    |                    ------------------------ ^^^^^ expected `&CFURL`, found `&PathBuf`
+    |                    |
+    |                    arguments to this function are incorrect
+    |
+    = note: expected reference `&CFURL`
+               found reference `&std::path::PathBuf`
+note: associated function defined here
+   --> /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/security-framework-3.7.0/src/os/macos/code_signing.rs:278:12
+    |
+278 |     pub fn from_path(path: &CFURL, flags: Flags) -> Result<Self> {
+    |            ^^^^^^^^^
+
+error[E0277]: the trait bound `usize: FromSql` is not satisfied
+   --> crates/bbt-mux/src/mcp/journal.rs:295:177
+    |
+295 | .../unlock0' LIMIT 128)", [], |row| row.get(0))?;
+    |                                         ^^^ the trait `FromSql` is not implemented for `usize`
+    |
+    = help: the following other types implement trait `FromSql`:
+              f32
+              f64
+              i16
+              i32
+              i64
+              i8
+              isize
+              u16
+            and 2 others
+note: required by a bound in `rusqlite::Row::<'_>::get`
+   --> /Users/feral/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rusqlite-0.40.2/src/row.rs:285:32
+    |
+285 |     pub fn get<I: RowIndex, T: FromSql>(&self, idx: I) -> Result<T> {
+    |                                ^^^^^^^ required by this bound in `Row::<'_>::get`
+
+Some errors have detailed explanations: E0277, E0308, E0425, E0603.
+For more information about an error, try `rustc --explain E0277`.
+error: could not compile `bbt-mux` (lib) due to 4 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `bbt-mux` (lib test) due to 4 previous errors

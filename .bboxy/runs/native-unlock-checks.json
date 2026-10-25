@@ -1,0 +1,624 @@
+{
+  "source": "89eaf763eab8dd81f404417af7faf77a4da77a0b",
+  "base": "7892d85fdd4a956419248081865ebdc981e3a349",
+  "role": "Executor",
+  "scope": "#280/#315 native custody unlock; no facade or manifest changes",
+  "commands": [
+    {
+      "argv": [
+        "cargo",
+        "check",
+        "-p",
+        "bboxy450-term",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bbt-proto",
+        "--all-targets",
+        "--locked"
+      ],
+      "exit": 101,
+      "seconds": 23.403,
+      "log": ".bboxy/runs/native-unlock-app-check.log",
+      "sha256": "50e91993c3e6f25976bdc99af8646afa3ef65ce6cd769749e8d2b4e35c97afd5"
+    },
+    {
+      "argv": [
+        "cargo",
+        "check",
+        "-p",
+        "bboxy450-term",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bbt-proto",
+        "--all-targets",
+        "--locked"
+      ],
+      "exit": 0,
+      "seconds": 17.744,
+      "log": ".bboxy/runs/native-unlock-app-check2.log",
+      "sha256": "f85df7a66d12d60fac7d8131ef4fc1b7ad1670324424511442ef7327f5663276"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "native_",
+        "--locked"
+      ],
+      "exit": 101,
+      "seconds": 392.627,
+      "log": ".bboxy/runs/native-unlock-app.log",
+      "sha256": "2b470a943297046f3b8a338a1639b87dfe08aa3594834d2d450770bcaeba84a4"
+    },
+    {
+      "argv": [
+        "cargo",
+        "build",
+        "-p",
+        "bboxybook",
+        "--locked"
+      ],
+      "exit": 0,
+      "seconds": 28.626,
+      "log": ".bboxy/runs/native-unlock-book-build.log",
+      "source": "83fb222ae4fe973b5ad425038e32bae542a94a73",
+      "sha256": "8b683be2647a9314cfbb60bb9b001a4f222ecab00954f21afbeb3d5069d5a4e1"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxybook",
+        "--test",
+        "settings",
+        "--locked"
+      ],
+      "exit": 0,
+      "seconds": 180.293,
+      "log": ".bboxy/runs/native-unlock-book.log",
+      "source": "4def8ecabcb6ff9191361af390ebbbc90bc8dfca",
+      "sha256": "234620994e96385ad9fc5c59b78939005ae1a1db6c1f6adf2c5da9c256431c4f"
+    },
+    {
+      "argv": [
+        "cargo",
+        "build",
+        "-p",
+        "bboxybook",
+        "--locked"
+      ],
+      "source": "89eaf763eab8dd81f404417af7faf77a4da77a0b",
+      "exit": 0,
+      "seconds": 87.662,
+      "log": ".bboxy/runs/native-unlock-book-rebased.log",
+      "sha256": "c9c01f8fce2bcb8ee511a6f5a1a54597cf2978a181d8a7fe852435aba580ec41"
+    },
+    {
+      "argv": [
+        "sh",
+        "scripts/ci-local.sh",
+        "--parity"
+      ],
+      "source": "89eaf763eab8dd81f404417af7faf77a4da77a0b",
+      "worktree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/gate-tree",
+      "target": "/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev",
+      "exit": 75,
+      "seconds": 0.045,
+      "log": ".bboxy/runs/native-unlock-ci-capacity1.log",
+      "sha256": "5e54ffbda0e66dcca26fa376c99ccde4d9c9b65b0ff9f6207831e64b3348f176"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 101,
+      "seconds": 54.221,
+      "log": ".bboxy/runs/native-unlock-clippy.log",
+      "source": "8eccfd0a0809accd35c373b738351dc523cb23fc",
+      "sha256": "bc9286d596e2eb0a10436da251826a411915831b0c2ecbe59f7550c797586c0c"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "seconds": 65.441,
+      "log": ".bboxy/runs/native-unlock-clippy-final.log",
+      "source": "83fb222ae4fe973b5ad425038e32bae542a94a73",
+      "sha256": "44cc74f16812528e1d070ff25bce8e6d3c0aae50032a2f9130ef4575f1723f33"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "source": "89eaf763eab8dd81f404417af7faf77a4da77a0b",
+      "exit": 0,
+      "seconds": 39.105,
+      "log": ".bboxy/runs/native-unlock-clippy-rebased.log",
+      "sha256": "88bd477f91351c3c1b700df90e4586b7dd7ce926181b74167f618ec37d81ff0f"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 101,
+      "seconds": 12.615,
+      "log": ".bboxy/runs/native-unlock-clippy2.log",
+      "source": "bdb8105a466aec66d416b65b3faa46d1af796669",
+      "sha256": "bcf695c24c86cdfdd72528f431a8c942a52c10151959e51827b6fc69b1099ceb"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "seconds": 26.901,
+      "log": ".bboxy/runs/native-unlock-clippy3.log",
+      "source": "0bf418ec96f028e9e645c367d9f076640b745d33",
+      "sha256": "13bc0e1b4f73c6a892f5a14333a054e0e78ad0d70e79b7fcd8f07926fd6f59fc"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "native_",
+        "--locked"
+      ],
+      "exit": 0,
+      "seconds": 150.639,
+      "log": ".bboxy/runs/native-unlock-final-app.log",
+      "source": "4def8ecabcb6ff9191361af390ebbbc90bc8dfca",
+      "sha256": "f2c794e1e949fa67851aadaf9f079ec73b48e970aa2a9fef65e3df71a086266f"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "native_unlock",
+        "--locked"
+      ],
+      "exit": 0,
+      "seconds": 137.518,
+      "log": ".bboxy/runs/native-unlock-final-integration.log",
+      "source": "0bf418ec96f028e9e645c367d9f076640b745d33",
+      "sha256": "885237844671c105119bd6b3abb7c5d1ba0bdd7b2494d19fd5d5cdbfb6d72e28"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-proto",
+        "native_",
+        "--locked"
+      ],
+      "exit": 0,
+      "seconds": 103.825,
+      "log": ".bboxy/runs/native-unlock-final-proto.log",
+      "source": "4def8ecabcb6ff9191361af390ebbbc90bc8dfca",
+      "sha256": "91d7c0b44ab4d8c70530264bc7ab9353b5edbb8ebb7a08e47c6b9cd895c6cc0e"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-ui",
+        "native_",
+        "--locked"
+      ],
+      "exit": 0,
+      "seconds": 35.959,
+      "log": ".bboxy/runs/native-unlock-final-ui.log",
+      "source": "4def8ecabcb6ff9191361af390ebbbc90bc8dfca",
+      "sha256": "d9eae669f93cb97910bd756f17dd891be53a117380b8a54a318b062ddd491112"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--lib",
+        "native_",
+        "--locked"
+      ],
+      "exit": 0,
+      "seconds": 98.611,
+      "log": ".bboxy/runs/native-unlock-final-unit.log",
+      "source": "4def8ecabcb6ff9191361af390ebbbc90bc8dfca",
+      "sha256": "d22b1498a1c7c4c45020b9534e9b3cf9aed4a45c2db289e6d5eec8eded683f95"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bboxy450-term",
+        "-p",
+        "bbt-ui",
+        "-p",
+        "bbt-proto",
+        "native_",
+        "--locked"
+      ],
+      "exit": 0,
+      "seconds": 730.047,
+      "log": ".bboxy/runs/native-unlock-focused-batch.log",
+      "source": "83fb222ae4fe973b5ad425038e32bae542a94a73",
+      "sha256": "ad990270da019886780f058d9d41df6533158f400f3c7c76bbd2b7abb753ae11"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "native_unlock",
+        "--locked"
+      ],
+      "exit": 101,
+      "seconds": 136.015,
+      "log": ".bboxy/runs/native-unlock-integration.log",
+      "sha256": "faa04a55fa59fcba3d07970a603e530ab8dfb79e12398031750b64078ef3dddd"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "native_unlock",
+        "--locked"
+      ],
+      "exit": 0,
+      "seconds": 78.615,
+      "log": ".bboxy/runs/native-unlock-integration2.log",
+      "sha256": "89121cb2f2f90df23843f758594d68b500727e2a9da5847531c88a900c6b3f5b"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--lib",
+        "identity::unlock::tests",
+        "--locked"
+      ],
+      "exit": 0,
+      "seconds": 92.657,
+      "log": ".bboxy/runs/native-unlock-migration.log",
+      "sha256": "87eb411c50eb929050b5545486511dc94e30cc234482fb0defe33c9a060f14e8"
+    },
+    {
+      "argv": [
+        "cargo",
+        "check",
+        "-p",
+        "bbt-mux",
+        "--all-targets",
+        "--locked"
+      ],
+      "exit": 101,
+      "seconds": 25.56,
+      "log": ".bboxy/runs/native-unlock-mux-check.log",
+      "sha256": "62b40cb76b2c9b086c5a905c219ce465b6eecc465e8106b33576afa55d3ad38b"
+    },
+    {
+      "argv": [
+        "cargo",
+        "check",
+        "-p",
+        "bbt-mux",
+        "--all-targets",
+        "--locked"
+      ],
+      "exit": 101,
+      "seconds": 6.671,
+      "log": ".bboxy/runs/native-unlock-mux-check2.log",
+      "sha256": "d223a9a7f38ac7fd3c080ff1398baca65083faf6be2d9042430b893041666121"
+    },
+    {
+      "argv": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/bboxybook",
+        "compare",
+        "--strict-geometry",
+        "--out",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/settings-parity2",
+        "--manifest",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/settings-parity2/cases.json"
+      ],
+      "source": "89eaf763eab8dd81f404417af7faf77a4da77a0b",
+      "exit": 0,
+      "seconds": 19.601,
+      "log": ".bboxy/runs/native-unlock-settings-compare2.log",
+      "sha256": "a7ad8db14b9925fec67d5de3dbabcc02dbaaf9ac2a126ffe916b270efbe0c5f2"
+    },
+    {
+      "argv": [
+        "sh",
+        "scripts/parity.sh"
+      ],
+      "source": "83fb222ae4fe973b5ad425038e32bae542a94a73",
+      "gallery": "settings",
+      "exit": 1,
+      "seconds": 256.446,
+      "log": ".bboxy/runs/native-unlock-settings-parity.log",
+      "sha256": "a7274610a243e3fb54c276fda99c6a1eb9fb066f363f246cd3f13fcbd6f4c24b"
+    },
+    {
+      "argv": [
+        "/Users/feral/mydev/bboxy450-term-exec5/target/identity-file-dev/debug/bboxybook",
+        "render",
+        "--all",
+        "--out",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/settings-parity2/native",
+        "--manifest",
+        "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/settings-parity2/cases.json"
+      ],
+      "source": "89eaf763eab8dd81f404417af7faf77a4da77a0b",
+      "exit": 0,
+      "seconds": 161.517,
+      "log": ".bboxy/runs/native-unlock-settings-render2.log",
+      "sha256": "303e0aabf077e6322143f165c2a5fd68f7b52fb58baa52322c03bac599705771"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "identity",
+        "native_two_item",
+        "--locked",
+        "--",
+        "--nocapture"
+      ],
+      "exit": 101,
+      "seconds": 6.406,
+      "log": ".bboxy/runs/native-unlock-two-item.log",
+      "source": "0bf418ec96f028e9e645c367d9f076640b745d33",
+      "sha256": "5057c6995f035adb3edcb2c6a9331bebd432f83aacb751f13fcd8d2a0bdf15fa"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "identity",
+        "native_two_item",
+        "--locked",
+        "--",
+        "--nocapture"
+      ],
+      "exit": 101,
+      "seconds": 7.773,
+      "log": ".bboxy/runs/native-unlock-two-item2.log",
+      "source": "1056bab46a74135f3f5c5cd0a7b5a47de912391c",
+      "sha256": "3ee365ec4dd01aec969bd9f6b395c6830b498025ae7e0a508f11033a72ce6c92"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "identity",
+        "native_two_item",
+        "--locked",
+        "--",
+        "--nocapture"
+      ],
+      "exit": 0,
+      "seconds": 70.63,
+      "log": ".bboxy/runs/native-unlock-two-item3.log",
+      "source": "4def8ecabcb6ff9191361af390ebbbc90bc8dfca",
+      "sha256": "09f6389395db053918867c12af94fd5baa2c6659b67c16451d21215cb30a291d"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--lib",
+        "native_",
+        "--locked"
+      ],
+      "exit": 0,
+      "seconds": 582.192,
+      "log": ".bboxy/runs/native-unlock-unit.log",
+      "sha256": "d0066746d1e2b3f2650ec8778c30e9f0b0e2a0d78bb9c8df0de416cea513288d"
+    }
+  ],
+  "source_files": [
+    {
+      "path": "crates/bboxy450-term/src/cockpit.rs",
+      "sha256": "2c7a478c9b2844baefa32468bb900e01ae58c850a34e84a8803eced00078b8d6"
+    },
+    {
+      "path": "crates/bboxy450-term/src/ctl.rs",
+      "sha256": "17091e54568a303c3d274d2a26a172edb0397112cc8a3213311619ef37d3a9d5"
+    },
+    {
+      "path": "crates/bboxy450-term/src/live.rs",
+      "sha256": "1d0515b06697dc95c53cf6f3f583eda92eccb2b1826593c20e94b5aa292bdf72"
+    },
+    {
+      "path": "crates/bboxy450-term/src/main.rs",
+      "sha256": "054fed1b7ebcbd4052300f201ac4772a1b38946976ef7f372a98ba4a9797bd38"
+    },
+    {
+      "path": "crates/bboxy450-term/src/model.rs",
+      "sha256": "595b79ce46482c97789dbcacaee93d02d72bb3997592dd781c8e671dd6bd5adb"
+    },
+    {
+      "path": "crates/bboxy450-term/src/settings.rs",
+      "sha256": "498fc58b44ea52355d99aa33d7573e4b4e61de975419c5a47e6c2fea3da42ce1"
+    },
+    {
+      "path": "crates/bboxybook/capture-inputs.js",
+      "sha256": "44c47d496354f0f7fda6f46ea085cfd70c36abc35ef48e4de91ea57b4e1ac07c"
+    },
+    {
+      "path": "crates/bboxybook/src/settings.rs",
+      "sha256": "8e02c93858233fa0d69898347b36f0f2ad1a15d701db7703ab4613a79118d1d5"
+    },
+    {
+      "path": "crates/bboxybook/tests/settings.rs",
+      "sha256": "32641992fdf66d6d6f04feb04166f49bf3880a31699e0ea110c9cc0632203be1"
+    },
+    {
+      "path": "crates/bbt-mux/src/identity/chain.rs",
+      "sha256": "33d1146a5891dddd79421733a4b31b7a075f0da37adb55feda051192f02e4484"
+    },
+    {
+      "path": "crates/bbt-mux/src/identity/custodied.rs",
+      "sha256": "773b5ef4e52681c820cbc803a3966dca54a246a220709862006eb4108490e877"
+    },
+    {
+      "path": "crates/bbt-mux/src/identity/io.rs",
+      "sha256": "d3ae59eb7f716b35ba9e73349720e4bd518d9adc89aa8dd1f034684a2684e31b"
+    },
+    {
+      "path": "crates/bbt-mux/src/identity/keychain.rs",
+      "sha256": "5b8bd92a4f59214f61c141a42d7c90171cfd57e044ab0c3aeb900cc41b044331"
+    },
+    {
+      "path": "crates/bbt-mux/src/identity/local.rs",
+      "sha256": "901e060dfd8f6609b9a2ffa683b4e8ab4da170d849dc14ca454fd9eb9f516f6c"
+    },
+    {
+      "path": "crates/bbt-mux/src/identity/mod.rs",
+      "sha256": "adba35a060921e5bd23a0e0c19bae342ba35854fb580874465d363b0eea50ea6"
+    },
+    {
+      "path": "crates/bbt-mux/src/identity/status.rs",
+      "sha256": "c8deb71a30201dd38cf2d3b32f93aa2c8dd862b9eed3a1a3790122a2437a3942"
+    },
+    {
+      "path": "crates/bbt-mux/src/logic.rs",
+      "sha256": "d983a9e208dbfd00b1b0ce47aa9c44a9b38fcae27e936fd8dcc4c83f620e5843"
+    },
+    {
+      "path": "crates/bbt-mux/src/mcp/journal.rs",
+      "sha256": "75fb37e4b50b7c40cf6f8b6f4aa21c2694247f42aa7151d7e07f899047909c0f"
+    },
+    {
+      "path": "crates/bbt-mux/src/seat_socket.rs",
+      "sha256": "fa9ae1d8763dc60a669740815210daaa2d93513bd3db4e9fc36289c4ef8b3781"
+    },
+    {
+      "path": "crates/bbt-mux/tests/identity.rs",
+      "sha256": "4ebb2fdd7385e5e3ce0113e5616a1ef32904428704c3200347273a0ea2c781c1"
+    },
+    {
+      "path": "crates/bbt-proto/src/gui.rs",
+      "sha256": "3b8d43ec9553e76191e3c656f97bd2f62480bdb93f82db909c8035ed834cad61"
+    },
+    {
+      "path": "crates/bbt-proto/src/lib.rs",
+      "sha256": "689cf05267e01e052dcaf0ea99e8dd835c9d691cc1624303704d899b251493ee"
+    },
+    {
+      "path": "crates/bbt-ui/src/modules/settings.rs",
+      "sha256": "3a37e7887e4e39a491fbc4c9fcf9c54199e51ec7dfab002fd95e4794b0ddeee0"
+    },
+    {
+      "path": "crates/bbt-ui/src/modules/settings/controller.rs",
+      "sha256": "bf1c07b97d4855405a06a425e97f2120c0ba1e4c8059bb1c6eb88b18a70eaed9"
+    },
+    {
+      "path": "scripts/bundle-macos.sh",
+      "sha256": "9e0eb7a0d6af7257616262197cc200e5f3476be02ac4cb886844440b19670bc3"
+    },
+    {
+      "path": "scripts/sign-run.sh",
+      "sha256": "d1386965fe286de722188cc95f8493187b4e9c39f7e0c995029f387fe7fea798"
+    },
+    {
+      "path": "crates/bbt-mux/src/identity/unlock.rs",
+      "sha256": "51a6e7afb7d2d49a327438c5e0c0fb699d0c28943612b3f04963e21b25075d56"
+    },
+    {
+      "path": "crates/bbt-mux/src/identity/native_keychain.rs",
+      "sha256": "142842e0fb5d648e0c567bd41ca7e4ac55b8e5a67cb9a2d254ebec9a05955932"
+    },
+    {
+      "path": "crates/bbt-mux/tests/native_unlock.rs",
+      "sha256": "55773e91f4a316eb7dfdea1cf505895daa21ef20917dc4222ea2ac817ede238d"
+    },
+    {
+      "path": "crates/bbt-proto/src/identity.rs",
+      "sha256": "de9a93c393b00c3ee3297523edcacb31cbae2f2ef0a7fabc8817938414c974ac"
+    },
+    {
+      "path": "crates/bboxy450-term/tests/native_signing.rs",
+      "sha256": "3b01208b7cf105547abec352dfd55309590499f8bcb547a059b3df3ca5c1ec85"
+    }
+  ],
+  "rebase_logs": [
+    ".bboxy/runs/native-unlock-final-rebase-range-diff.log",
+    ".bboxy/runs/native-unlock-rebase-range-diff.log"
+  ],
+  "status": "focused checks and Settings144 parity passed; exact gate awaiting resource capacity",
+  "automation": "throwaway custody stores, temporary GPG homes and fake signing executables; no operator input or credential access",
+  "unverified": [
+    "Actual macOS login-Keychain dialog and ACL behavior were not exercised; these are fixture and public-query/requirement parsing proofs. No operator probe is required by this cut."
+  ],
+  "signature_semantics": "Pending account/control envelope immutable; completion appended under the legitimate device signer and bound to original op/digest/position; Unknown remains Unknown."
+}
