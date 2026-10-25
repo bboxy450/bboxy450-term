@@ -100,6 +100,71 @@ fn settings_projects_missing_identity_honestly_and_uses_the_backend_role_default
 }
 
 #[test]
+fn settings_registry_is_labelled_reference_and_knowledge_never_invents_a_provider_or_count() {
+    let model = Model::default();
+    let records = settings::records(Some(&model), &Default::default());
+    assert!(
+        records
+            .plugin_notice
+            .as_deref()
+            .unwrap()
+            .contains("Reference fixtures")
+    );
+    assert_eq!(records.plugins.len(), 6);
+    assert!(records.plugins.iter().all(|p| {
+        p.health
+            .say
+            .as_deref()
+            .unwrap()
+            .starts_with("reference fixture")
+    }));
+    assert!(records.plugins.iter().any(|p| {
+        p.alerts
+            .iter()
+            .any(|a| a == "this plugin takes 10 s on every hook")
+    }));
+    assert_eq!(
+        records.knowledge.offered,
+        ["bboxy450-term-data_source-bboxy"]
+    );
+    let root = &records.knowledge.roots[0];
+    assert_eq!(root.provider, records.knowledge.offered[0]);
+    assert_eq!(root.records, None);
+    assert_eq!(root.digests, None);
+    assert!(
+        root.refused
+            .as_deref()
+            .unwrap()
+            .contains("switching is unavailable")
+    );
+    assert!(root.answering.contains("pending"));
+    let mut ready = model;
+    ready.e2e = Some(Arc::new(Default::default()));
+    assert_eq!(
+        settings::records(Some(&ready), &Default::default())
+            .knowledge
+            .roots[0]
+            .answering,
+        "logic · in process"
+    );
+    Arc::make_mut(ready.e2e.as_mut().unwrap())
+        .faults
+        .push("provider refused the retained read".into());
+    let refused = settings::records(Some(&ready), &Default::default());
+    assert_eq!(
+        refused.knowledge.roots[0].answering,
+        "bundled read unavailable"
+    );
+    assert!(
+        refused.knowledge.roots[0]
+            .refused
+            .as_deref()
+            .unwrap()
+            .contains("provider refused the retained read")
+    );
+}
+
+#[test]
 fn settings_mute_refusal_is_visible_and_success_waits_for_authoritative_metadata() {
     use bboxy450_term::{cockpit::UiMsg, messaging::Reply};
     use bbt_proto::messaging::{Request, Response};

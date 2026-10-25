@@ -5,8 +5,8 @@
 <script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script>
 </head><body><script>
 const el = Lab.el;
-Lab.page({ title: 'settings', wide: true, note: 'Opens as a tab (⌘, or Settings in the launcher). Left nav, cards in the design-system material. Account (sign-in, root key, devices), Cloud providers, SSH machines, Roles with default system prompts and send permissions, Harnesses, Appearance, Notifications (on by default, only in the background, per harness; off greys the rest; a muted seat never notifies), Shortcuts. Rows that differ from config.toml get the dot and a reset. Read-mostly: values shown, edits are local to the demo.',
-  states: ['Account', 'custody · held', 'custody · unlock pending', 'custody · cancelled', 'custody · unknown', 'custody · granted', 'custody · signer returned', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'new harness', 'Appearance', 'Notifications', 'notifications · off', 'notifications · one harness off', 'Shortcuts', 'in a tab'],
+Lab.page({ title: 'settings', wide: true, note: 'Opens as a tab (⌘, or Settings in the launcher). Left nav, cards in the design-system material. Account (sign-in, root key, devices), Cloud providers, SSH machines, Roles with default system prompts and send permissions, Harnesses, Plugins (trust, tier, contract, health, the call and hook timeline, the slow-hook warning), Knowledge (roots and their provider, swappable, no file moves), Appearance, Notifications (on by default, only in the background, per harness; off greys the rest; a muted seat never notifies), Shortcuts. Rows that differ from config.toml get the dot and a reset. Read-mostly: values shown, edits are local to the demo.',
+  states: ['Account', 'custody · held', 'custody · unlock pending', 'custody · cancelled', 'custody · unknown', 'custody · granted', 'custody · signer returned', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'new harness', 'Appearance', 'Notifications', 'notifications · off', 'notifications · one harness off', 'Plugins', 'Knowledge', 'knowledge · swapped to the stub', 'Shortcuts', 'in a tab'],
   render(s, body) {
     if (s === 'in a tab') {
       const model = C.makeModel(10, 'phone');
@@ -17,7 +17,7 @@ Lab.page({ title: 'settings', wide: true, note: 'Opens as a tab (⌘, or Setting
       frame.append(C.sidebar(model, { openSpaces: [model.spaces[0].key], focusedKey: 'settings', allSpaces: true }), el('div', { class: 'stage', style: 'display:block' }, pane));
       body.append(frame); return;
     }
-    const frame = el('div', { style: 'height:640px;border:1px solid var(--line);border-radius:var(--r-pill);overflow:hidden' });
+    const frame = el('div', { style: 'height:' + (s === 'Plugins' ? 1180 : 640) + 'px;border:1px solid var(--line);border-radius:var(--r-pill);overflow:hidden' });   // Plugins: every card in view
     const draft = s === 'new harness' ? { name: 'aider', command: 'aider --model sonnet', ci: 7, icon: 'zsh', role: 'executor', wake: 'pty', stateFrom: 'output cadence', hooks: false } : null;
     // notifications states pass their own values, so the page's other states keep the defaults
     const nv = s === 'notifications · off' ? { enabled: false, only_when_not_frontmost: true, disabled_harnesses: ['codex'] } : s === 'notifications · one harness off' ? { enabled: true, only_when_not_frontmost: false, disabled_harnesses: ['codex'] } : null;
@@ -28,6 +28,8 @@ Lab.page({ title: 'settings', wide: true, note: 'Opens as a tab (⌘, or Setting
       'custody · unknown': { tier: 'keychain', acl: 'unknown', hold: { reason: 'Keychain interaction required' }, attempt: 'unknown', op: 'op-7f3a91c2' },
       'custody · granted': { tier: 'keychain', acl: 'unknown', hold: { reason: 'Keychain interaction required' }, attempt: 'granted', op: 'op-7f3a91c2' },
       'custody · signer returned': { tier: 'keychain', acl: 'designated', hold: null, attempt: 'returned', op: 'op-7f3a91c2' } }, cu = CUS[s] || null;
-    frame.append(C.settingsPage({ section: draft ? 'Harnesses' : nv ? 'Notifications' : cu ? 'Account' : s, draftHarness: draft, notifications: nv, custody: cu })); body.append(frame);
+    // knowledge · swapped: the same root read by the stub provider over stdio; every record digest identical, no file moved
+    const kn = s === 'knowledge · swapped to the stub' ? { roots: [{ name: '.bboxy', path: '~/mydev/bboxy450-term/.bboxy', provider: 'bboxy450-term-data_source-stub', records: 418, answering: 'bboxy450-term-data_source-stub · pid 4312, over stdio', digests: '418 of 418 record digests identical, no file moved' }], offered: C.SET.knowledge.offered } : null;
+    frame.append(C.settingsPage({ section: draft ? 'Harnesses' : nv ? 'Notifications' : cu ? 'Account' : kn ? 'Knowledge' : s, draftHarness: draft, notifications: nv, custody: cu, knowledge: kn })); body.append(frame);
   } });
 </script></body></html>

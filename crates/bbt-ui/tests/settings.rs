@@ -142,6 +142,144 @@ fn records_roundtrip_with_ordered_custom_harnesses_and_roles() {
 }
 
 #[test]
+fn plugin_and_provider_controls_refuse_without_editing_the_supplied_snapshot() {
+    use controller::{Action, Controller, Field, Focus, Regions};
+    let mut values = Records {
+        plugins: vec![
+            plugins::Plugin {
+                name: "active-provider".into(),
+                trust: "trusted".into(),
+                root: Some(".bboxy".into()),
+                enabled: true,
+                ..Default::default()
+            },
+            plugins::Plugin {
+                name: "example".into(),
+                trust: "trusted".into(),
+                enabled: true,
+                health: plugins::Health {
+                    state: "crashed".into(),
+                    say: None,
+                },
+                ..Default::default()
+            },
+            plugins::Plugin {
+                name: "never-run".into(),
+                ..Default::default()
+            },
+        ],
+        knowledge: knowledge::Knowledge {
+            roots: vec![knowledge::Root {
+                name: ".bboxy".into(),
+                provider: "bundled".into(),
+                ..Default::default()
+            }],
+            offered: vec!["bundled".into()],
+        },
+        ..Default::default()
+    };
+    let original = serde_json::to_value(&values).unwrap();
+    let mut control = Controller::new("Plugins");
+    let view = Settings {
+        section: "Plugins".into(),
+        values: values.clone(),
+        ..Default::default()
+    };
+    let regions = Regions::new(&layout(&view), &view).unwrap();
+    assert!(
+        !regions
+            .fields()
+            .contains(&Field::PluginEnable("active-provider".into()))
+    );
+    assert!(
+        regions
+            .fields()
+            .contains(&Field::PluginEnable("example".into()))
+    );
+    assert!(
+        regions
+            .fields()
+            .contains(&Field::PluginSetup("example".into()))
+    );
+    assert!(
+        regions
+            .fields()
+            .contains(&Field::PluginTrust("never-run".into()))
+    );
+    for (field, reason) in [
+        (
+            Field::PluginEnable("active-provider".into()),
+            "provider of .bboxy",
+        ),
+        (
+            Field::PluginEnable("example".into()),
+            "enable/disable is unavailable",
+        ),
+        (
+            Field::PluginTrust("never-run".into()),
+            "trust is unavailable",
+        ),
+        (Field::PluginSetup("example".into()), "setup is unavailable"),
+        (
+            Field::KnowledgeProvider(".bboxy".into()),
+            "bundled provider remains active",
+        ),
+    ] {
+        control.focus = Focus::Control(field);
+        assert!(control.activate(&mut values, &Records::default()).is_none());
+        assert!(control.error.as_deref().unwrap().contains(reason));
+        assert_eq!(serde_json::to_value(&values).unwrap(), original);
+    }
+    control.handle(
+        Action::Section("Knowledge".into()),
+        &mut values,
+        &Default::default(),
+    );
+    let view = Settings {
+        section: "Knowledge".into(),
+        values: values.clone(),
+        ..Default::default()
+    };
+    let regions = Regions::new(&layout(&view), &view).unwrap();
+    assert!(
+        regions
+            .fields()
+            .contains(&Field::KnowledgeProvider(".bboxy".into()))
+    );
+}
+
+#[test]
+fn registry_projects_hook_warning_and_only_the_current_minute_and_latest_trace() {
+    let plugin: plugins::Plugin = serde_json::from_value(serde_json::json!({
+        "name":"public fixture", "trust":"trusted", "tier":"export", "enabled":true,
+        "contract":{"name":"decision_model","version":"1.0","ok":false,"failing":"choose"},
+        "health":{"state":"degraded","say":"slow hooks"}, "trace":true,
+        "calls":[
+            {"t":61000,"method":"expired","ms":99000},
+            {"t":20000,"method":"old trace","ms":200,"spans":[{"name":"old trace","start":0,"ms":200,"depth":0}]},
+            {"t":4000,"method":"latest trace","ms":400,"spans":[{"name":"latest trace","start":0,"ms":400,"depth":0}]},
+            {"t":1000,"method":"emit","hook":"after PostToolUse","ms":10000}
+        ],
+        "alerts":["this plugin takes 10 s on every hook"]
+    })).unwrap();
+    let view = Settings {
+        section: "Plugins".into(),
+        values: Records {
+            plugins: vec![plugin],
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let rendered = labels(&layout(&view));
+    assert!(rendered.contains("this plugin takes 10 s on every hook"));
+    assert!(rendered.contains("3 in the last minute · p50 400 ms · max 10.0 s"));
+    assert!(rendered.contains("latest trace"));
+    assert!(!rendered.contains("old trace"));
+    assert!(!rendered.contains("99.0 s"));
+    assert!(rendered.contains("decision_model 1.0 ✕ choose"));
+}
+
+#[test]
 fn role_prompt_grows_to_its_content_then_retains_a_bounded_scroll_view() {
     fn find<'a>(n: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
         if matches!(&n.kind,c::LayoutKind::Named(k)if k==key) {

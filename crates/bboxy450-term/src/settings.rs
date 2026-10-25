@@ -4,6 +4,7 @@
     reason = "bounded preferences IO owner, guarded against UI-thread calls"
 )]
 use bbt_ui::modules::settings::{Appearance, Notifications, controller::Patch};
+mod registry;
 use std::{
     collections::BTreeMap,
     fs::{self, File, OpenOptions},
@@ -389,6 +390,7 @@ pub fn records(
     let mut out = model.map_or_else(Default::default, |m| crate::hosts::settings(&m.hosts));
     out.appearance = preferences.appearance.clone();
     out.notifications = preferences.notifications.clone();
+    registry::project(&mut out, model);
     if let Some(identity) = model.and_then(|m| m.identity.as_ref()) {
         out.account.key_state = format!("{:?}", identity.state);
         out.account.name = identity

@@ -1,6 +1,8 @@
 //! Read-mostly Settings composition. Host-owned records and section selection;
 //! this view never reads config files, unlocks keys, or issues grants.
 pub mod controller;
+pub mod knowledge;
+pub mod plugins;
 use super::link::{Cloud, MachineState};
 use super::{
     seat_row::{named, role_color},
@@ -116,6 +118,9 @@ pub struct Records {
     pub machines: Vec<(String, String, String, String, MachineState)>,
     pub roles: Vec<(String, Role)>,
     pub harness: Vec<(String, Harness)>,
+    pub plugins: Vec<plugins::Plugin>,
+    pub plugin_notice: Option<String>,
+    pub knowledge: knowledge::Knowledge,
     pub appearance: Appearance,
     pub notifications: Notifications,
     pub shortcuts: Vec<(String, String)>,
@@ -150,12 +155,14 @@ pub struct Settings {
     pub draft_harness: Option<DraftHarness>,
     pub launch: Vec<Launch>,
 }
-pub const SECTIONS: [(&str, &str); 8] = [
+pub const SECTIONS: [(&str, &str); 10] = [
     ("Account", "key"),
     ("Cloud", "cloud"),
     ("Machines", "ssh"),
     ("Roles", "roles"),
     ("Harnesses", "gear"),
+    ("Plugins", "plug"),
+    ("Knowledge", "book"),
     ("Appearance", "sun"),
     ("Notifications", "bell"),
     ("Shortcuts", "keys"),
@@ -1350,7 +1357,12 @@ impl Settings {
         width: f32,
         state: &controller::Presentation,
     ) -> Vec<c::Item> {
-        if !state.read_only || matches!(self.section.as_str(), "Appearance" | "Notifications") {
+        if !state.read_only
+            || matches!(
+                self.section.as_str(),
+                "Appearance" | "Notifications" | "Plugins" | "Knowledge"
+            )
+        {
             return self.section_elements_state(b, width, state.window_controls_available);
         }
         let unavailable = "Not exposed by the runtime";
@@ -1566,6 +1578,8 @@ impl Settings {
             "Shortcuts" => vec![self.shortcuts(b, width).into()],
             "Appearance" => vec![self.appearance(b, window_controls_available).into()],
             "Notifications" => vec![self.notifications(b).into()],
+            "Plugins" => vec![self.plugins(b).into()],
+            "Knowledge" => vec![self.knowledge(b).into()],
             _ => self.account(b, width),
         }
     }

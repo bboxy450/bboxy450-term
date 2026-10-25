@@ -1850,7 +1850,8 @@ impl App {
         self.launcher_parent = None;
         self.local_tab = Some(tab);
         if let Some(commands) = &self.live_commands {
-            commands.observe_knowledge(matches!(self.local_tab, Some(LocalTab::Graph(_))));
+            commands.observe_knowledge(matches!(&self.local_tab, Some(LocalTab::Graph(_)))
+                || matches!(&self.local_tab, Some(LocalTab::Settings {controller,..}) if controller.section == "Knowledge"));
         }
         self.local_page_layout = None;
         if let Some(window) = &self.window {
@@ -1899,6 +1900,9 @@ impl App {
                 &mut Default::default(),
                 &Default::default(),
             );
+            if let Some(commands) = &self.live_commands {
+                commands.observe_knowledge(section == "Knowledge");
+            }
             self.close_launcher();
             if let Some(window) = &self.window {
                 window.set_ime_allowed(false);
@@ -1932,6 +1936,10 @@ impl App {
         view.values.account.custody = Some(self.custody.view());
         if self.backend_lost || self.live_commands.is_none() {
             view.values.account.custody.as_mut().unwrap().enabled = false;
+            for root in &mut view.values.knowledge.roots {
+                root.answering = "read connection unavailable".into();
+                root.refused = Some("Knowledge connection is unavailable; the retained view cannot confirm current reads. Provider switching is unavailable in this build.".into());
+            }
         }
         view
     }
@@ -1964,6 +1972,11 @@ impl App {
         let patch = controller
             .handle(action, &mut view.values, &view.defaults)
             .or_else(|| commit_drag.map(settings_controller::Patch::Rim));
+        if let Some(commands) = &self.live_commands {
+            commands.observe_knowledge(
+                controller.section == "Knowledge" || !controller.query.trim().is_empty(),
+            );
+        }
         if controller.take_identity_unlock()
             && let Some(message) = self.custody.request(true, Instant::now())
         {
