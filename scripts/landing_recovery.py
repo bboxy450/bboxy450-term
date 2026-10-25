@@ -237,7 +237,7 @@ def diagnose(api, root, green, red, name):
         chain = api.git("rev-list", "--first-parent", "--reverse", red, cwd=root).splitlines()
         if green not in chain or green == red:
             raise api.Refusal("last_green_must_precede_red_on_first_parent")
-        candidates = chain[chain.index(green) + 1:]
+        candidates = [sha for sha in chain[chain.index(green) + 1:] if code_commit(api, root, sha)]
     options = fixture(api, root)
     kind, command, exact = predicate(api, root, name, options)
     output = output_directory(api, "culprit")
@@ -278,9 +278,13 @@ def diagnose(api, root, green, red, name):
             result = {"verdict": "flake", "culprit": None, "quarantine_proposed": True}
         elif green is None:
             result = {"verdict": "unresolved", "culprit": None, "reason": "no_last_green"}
+        elif not candidates:
+            result = {"verdict": "unresolved", "culprit": None, "reason": "no_code_commits"}
         elif bad(green):
             result = {"verdict": "unresolved", "culprit": None, "reason": "test_fails_at_last_green",
                       "revert_range": green + ".." + red}
+        elif not bad(candidates[-1]):
+            result = {"verdict": "unresolved", "culprit": None, "reason": "no_failing_code_commit"}
         else:
             low, high = 0, len(candidates) - 1
             while low < high:
@@ -298,7 +302,6 @@ def diagnose(api, root, green, red, name):
 
 def corrective_revert(api, root, revision):
     fixture(api, root)
-    api.publishing_identity(root)
     api.git("fetch", "origin", "main", cwd=root)
     main = resolve(api, root, "origin/main")
     if ".." in revision:
@@ -312,8 +315,10 @@ def corrective_revert(api, root, revision):
         commits = [resolve(api, root, revision)]
         if not ancestor(api, root, commits[0], main):
             raise api.Refusal("culprit_not_on_main")
+    commits = [sha for sha in commits if code_commit(api, root, sha)]
     if not commits:
-        raise api.Refusal("empty_revert_range")
+        raise api.Refusal("no_code_commits_to_revert: Oracle hand call required")
+    api.publishing_identity(root)
     output = output_directory(api, "reverts")
     branch = "landing-revert-" + output.name
     # Retain on failure, allowing the watcher to report and retry this exact
@@ -343,7 +348,8 @@ def code_commit(api, root, sha):
     parents = api.git("show", "-s", "--format=%P", sha, cwd=root).split()
     arguments = ["diff", "--name-only", parents[0], sha] if parents else ["diff-tree", "--root", "--no-commit-id", "--name-only", "-r", sha]
     paths = api.git(*arguments, "--", cwd=root).splitlines()
-    return any(p == "Cargo.lock" or p.startswith(("crates/", "scripts/")) for p in paths)
+    # Record pushes are restricted to .bboxy/; every other landing path is code.
+    return any(p != ".bboxy" and not p.startswith(".bboxy/") for p in paths)
 
 
 def check_main(api, root):
@@ -621,7 +627,8 @@ def main():
                 fixture(api, root)
                 green, red = (resolve(api, root, revision) for revision in args.arguments[:2])
                 chain = api.git("rev-list", "--first-parent", red, cwd=root).splitlines()
-                if green in chain and green != red:
+                if green in chain and green != red and any(
+                        code_commit(api, root, sha) for sha in chain[:chain.index(green)]):
                     result.update(green=green, red=red, test=args.arguments[2], revert_range=green + ".." + red)
             except (api.Refusal, OSError, ValueError):
                 pass  # invalid ranges/fixture authority never instruct a revert

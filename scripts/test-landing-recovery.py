@@ -188,6 +188,97 @@ fn unrelated() { panic!("must not run"); }
         self.assertEqual(answer["commits"][0], red)
         self.assertEqual(fixtures.run("git", "diff", self.base, self.repo.remote_head(), "--", "crates", cwd=self.repo.root), "")
 
+    # keeps: spec landing.md §6 — record-only reds are a hand call after three reruns.
+    def test_record_only_failure_never_names_a_record_culprit(self):
+        self.predicate.write_text("from pathlib import Path\nraise SystemExit(int(Path('.bboxy/fixture.md').exists()))\n")
+        red = self.change("record regression", path=".bboxy/fixture.md")
+        result = self.command("culprit", self.base, red, "exact_test")
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual(answer["reason"], "no_code_commits")
+        self.assertIsNone(answer["culprit"])
+        self.assertNotIn("revert_range", answer)
+        self.assertEqual([trial["sha"] for trial in answer["trials"]], [red] * 3)
+        self.options.clear()
+        self.configure()
+        unknown = self.command("culprit", self.base, red, "unknown:fixture")
+        self.assertEqual(unknown.returncode, 2, unknown.stdout + unknown.stderr)
+        self.assertNotIn("revert_range", json.loads(unknown.stdout))
+
+    # keeps: spec landing.md §6 — a failing record cannot implicate preceding passing code.
+    def test_failure_only_after_passing_code_requires_a_hand_call(self):
+        self.predicate.write_text("from pathlib import Path\nraise SystemExit(int(Path('.bboxy/fixture.md').exists()))\n")
+        self.change("innocent code")
+        red = self.change("record regression", path=".bboxy/fixture.md")
+        result = self.command("culprit", self.base, red, "exact_test")
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual(answer["reason"], "no_failing_code_commit")
+        self.assertIsNone(answer["culprit"])
+        self.assertNotIn("revert_range", answer)
+
+    # keeps: spec landing.md §6 — trailing records do not replace the failing code culprit.
+    def test_finder_skips_trailing_records_after_the_real_code_culprit(self):
+        self.change("good landing")
+        culprit = self.change("code regression", bad=True)
+        red = self.change("later record", path=".bboxy/fixture.md")
+        result = self.command("culprit", self.base, red, "exact_test")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual(answer["culprit"], culprit)
+        self.assertNotEqual(answer["culprit"], red)
+
+    # keeps: spec landing.md §6 — only code commits in a mixed range are reverted.
+    def test_mixed_range_keeps_records_and_reverts_code_newest_first(self):
+        first = self.change("first regression")
+        self.change("record between code", path=".bboxy/fixture.md")
+        second = self.change("second code regression", path="scripts/fixture-code.sh")
+        red = self.change("record after code", path=".bboxy/fixture.md")
+        record = (self.repo.root / ".bboxy/fixture.md").read_text()
+        self.publish()
+        (self.repo.state / "main-status").write_text(f"red {red} invariant:fixture\n")
+        result = self.command("revert", self.base + ".." + red)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual(answer["commits"], [second, first])
+        tip = self.repo.remote_head()
+        self.assertEqual(fixtures.run("git", "show", tip + ":.bboxy/fixture.md", cwd=self.repo.root), record.rstrip("\n"))
+        self.assertEqual(fixtures.run("git", "diff", self.base, tip, "--", "crates/c/src/lib.rs", "scripts/fixture-code.sh", cwd=self.repo.root), "")
+        self.assertEqual(fixtures.run("git", "rev-parse", "HEAD", cwd=self.repo.root), red)
+
+    # keeps: spec landing.md §6 — record-only reds require a hand call, never a revert.
+    def test_records_only_range_and_single_commit_do_not_attempt_a_revert(self):
+        self.change("first record", path=".bboxy/fixture.md")
+        red = self.change("second record", path=".bboxy/fixture.md")
+        self.publish()
+        (self.repo.state / "main-status").write_text(f"red {red} parity:fixture\n")
+        for revision in (self.base + ".." + red, red):
+            with self.subTest(revision=revision):
+                result = self.command("revert", revision)
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                answer = json.loads(result.stdout)
+                self.assertEqual(answer["verdict"], "unresolved")
+                self.assertIn("no_code_commits_to_revert", answer["reason"])
+                self.assertIn("hand call", answer["reason"])
+                self.assertEqual(self.repo.remote_head(), red)
+                self.assertEqual(fixtures.run("git", "rev-parse", "HEAD", cwd=self.repo.root), red)
+                self.assertFalse((self.repo.state / "reverts").exists())
+                self.assertFalse((self.repo.state / "landings.log").exists())
+                self.assertEqual(fixtures.run("git", "branch", "--list", "landing-revert-*", cwd=self.repo.root), "")
+                trees = fixtures.run("git", "worktree", "list", "--porcelain", cwd=self.repo.root)
+                self.assertEqual(trees.count("worktree "), 1)
+
+    # keeps: invariant main-red-bounded — a lab-only landing is still code.
+    def test_red_interval_rejects_a_non_revert_lab_landing(self):
+        red = self.change("regression")
+        lab = self.change("lab code", path="lab/web/fixture.js")
+        self.publish()
+        self.logs([{"sha": self.base, "verdict": "green"}, {"sha": red, "verdict": "red", "culprit": red}])
+        result = self.command("main-red-bounded")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)["violations"],
+                         [{"sha": lab, "reason": "non_revert_while_red", "red": red}])
+
     # keeps: invariant main-red-bounded — records may land, ordinary code may not.
     def test_red_interval_allows_records_and_revert_then_rejects_code(self):
         red = self.change("regression")
