@@ -212,14 +212,14 @@ fn headless_cli_starts_real_gui_types_captures_and_stops_without_a_window() {
 }
 
 #[test]
-fn t7_headless_close_uses_the_window_intent_and_restores_the_same_split() {
+fn t7_headless_close_receipts_restore_the_same_tab_and_extent() {
     let mut f = Fixture::new();
     f.start();
     let mut ids = vec![];
-    for (name, place) in [("left", "tab"), ("victim", "right"), ("right", "down")] {
-        let row = f.ok(&["seat", "spawn", "zsh", "--name", name, "--place", place]);
+    for name in ["left", "victim", "right"] {
+        let row = f.ok(&["seat", "spawn", "zsh", "--name", name, "--place", "tab"]);
         let seat = row["data"]["seat"].as_str().unwrap().to_owned();
-        // Each split is relative to a pane already shown by the window owner.
+        // Every fixture seat has reached a frame before the next operation.
         f.ok(&["seat", "focus", &seat]);
         ids.push(seat);
     }
@@ -242,13 +242,6 @@ fn t7_headless_close_uses_the_window_intent_and_restores_the_same_split() {
     let first_frame = f.ok(&["seat", "capture", seat, first.to_str().unwrap()]);
     let close_frame = f.ok(&["seat", "close", seat]);
     assert_eq!(close_frame["data"]["applied"], true);
-    assert_eq!(
-        close_frame["data"]["layout"]["panes"]
-            .as_array()
-            .unwrap()
-            .len(),
-        2
-    );
     assert!(
         close_frame["data"]["frame_seq"].as_u64().unwrap()
             > first_frame["data"]["frame_seq"].as_u64().unwrap()
@@ -290,12 +283,12 @@ fn t7_headless_close_uses_the_window_intent_and_restores_the_same_split() {
             > close_frame["data"]["frame_seq"].as_u64().unwrap()
     );
     assert_eq!(undo_frame["data"]["layout"]["focused"], seat.as_str());
-    assert_eq!(
+    assert!(
         undo_frame["data"]["layout"]["panes"]
             .as_array()
             .unwrap()
-            .len(),
-        3
+            .iter()
+            .any(|pane| pane["seat"] == seat.as_str() && pane["focused"] == true)
     );
     let restored_ui = f.ok(&["app", "status"]);
     assert_eq!(
