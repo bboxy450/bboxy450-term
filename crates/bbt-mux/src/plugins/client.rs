@@ -35,10 +35,22 @@ pub(super) struct Client {
 
 impl Client {
     pub fn spawn(fixture: &FixtureAccount, shape: bool) -> Result<Self, Refusal> {
-        let executable = fixture.executable()?;
+        Self::spawn_verified(
+            fixture.executable()?,
+            std::path::Path::new(&fixture.record.data_dir),
+            shape,
+        )
+    }
+
+    // Both callers first reread their account authority and verify its pinned copy.
+    pub(super) fn spawn_verified(
+        executable: std::path::PathBuf,
+        data_dir: &std::path::Path,
+        shape: bool,
+    ) -> Result<Self, Refusal> {
         let mut command = Command::new(executable);
         command
-            .current_dir(&fixture.record.data_dir)
+            .current_dir(data_dir)
             .env_clear()
             .envs(std::env::vars_os().filter(|(key, _)| key.to_str().is_some_and(allowed_env_name)))
             .stdin(Stdio::piped())

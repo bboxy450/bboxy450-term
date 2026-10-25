@@ -1,0 +1,134 @@
+//! Account activation is separate from trust; discovery never grants either.
+
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    Refusal,
+    policy::Tier,
+    shape::{PluginName, Shape},
+    trust::{Grants, TrustRecord},
+};
+
+/// The only automatically discovered locations. Neither is an authority source.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Scope {
+    Application,
+    Repository,
+}
+
+impl Scope {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Application => "application",
+            Self::Repository => "repository",
+        }
+    }
+}
+
+/// A file observation, including refused entries so the registry explains them.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Candidate {
+    pub id: String,
+    pub source: String,
+    pub scope: Scope,
+    pub name: Option<PluginName>,
+    pub sha256: Option<String>,
+    pub refusal: Option<Refusal>,
+}
+
+/// Explicit approval of policy; a shape can never widen this value itself.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Approval {
+    pub tier: Tier,
+    #[serde(default)]
+    pub grants: Grants,
+}
+
+impl Approval {
+    /// New trust starts at the named contract's fixed minimum, with no extras.
+    pub fn minimum(name: &PluginName) -> Self {
+        Self {
+            tier: name.system.tier(),
+            grants: Grants::default(),
+        }
+    }
+}
+
+/// Actual descriptor inspection, not a production conformance-test claim.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Inspection {
+    pub shape: Option<Shape>,
+    pub refusal: Option<Refusal>,
+    pub elapsed_ms: u64,
+    pub stderr: String,
+    pub stderr_truncated: bool,
+}
+
+/// Persisted in the operator account. A digest alone is never an activation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Activation {
+    pub candidate: String,
+    pub source: String,
+    pub scope: Scope,
+    pub name: PluginName,
+    pub sha256: String,
+    pub generation: u64,
+    pub desired_enabled: bool,
+    pub needs_retrust: bool,
+    /// An admitted inspection without a recorded outcome; never implies health.
+    #[serde(default)]
+    pub inspection_started: bool,
+    pub inspection: Option<Inspection>,
+}
+
+/// A read projection. Hosts must recheck account authority before executing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Entry {
+    pub candidate: Candidate,
+    pub activation: Option<Activation>,
+    pub trust: Option<TrustRecord>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum State {
+    Refused,
+    Untrusted,
+    NeedsRetrust,
+    Unchecked,
+    Disabled,
+    Enabled,
+}
+
+impl Entry {
+    pub fn state(&self) -> State {
+        if self.candidate.refusal.is_some() {
+            return State::Refused;
+        }
+        let Some(activation) = &self.activation else {
+            return State::Untrusted;
+        };
+        if activation.needs_retrust {
+            return State::NeedsRetrust;
+        }
+        let Some(trust) = &self.trust else {
+            return State::Untrusted;
+        };
+        if activation
+            .inspection
+            .as_ref()
+            .is_some_and(|i| i.refusal.is_some())
+        {
+            return State::Refused;
+        }
+        if trust.shape.is_none() {
+            return State::Unchecked;
+        }
+        if activation.desired_enabled {
+            State::Enabled
+        } else {
+            State::Disabled
+        }
+    }
+}

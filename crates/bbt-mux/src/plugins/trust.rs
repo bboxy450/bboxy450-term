@@ -23,10 +23,10 @@ pub(super) struct FixtureAccount {
     pub shape_runs: usize,
 }
 
-fn open_regular(path: &Path) -> Result<File, Refusal> {
+pub(super) fn open_regular(path: &Path) -> Result<File, Refusal> {
     let file = OpenOptions::new()
         .read(true)
-        .custom_flags(libc::O_NOFOLLOW)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
         .open(path)
         .map_err(|e| failure("plugin_file_unavailable", e))?;
     if !file
@@ -42,7 +42,7 @@ fn open_regular(path: &Path) -> Result<File, Refusal> {
     Ok(file)
 }
 
-fn hash_file(path: &Path) -> Result<String, Refusal> {
+pub(super) fn hash_file(path: &Path) -> Result<String, Refusal> {
     let mut file = open_regular(path)?;
     let mut digest = Sha256::new();
     let mut buffer = [0; 64 * 1024];
@@ -63,7 +63,10 @@ fn production_plugin_path(source: &Path) -> bool {
         .components()
         .filter_map(|c| c.as_os_str().to_str())
         .collect();
-    if parts.windows(2).any(|p| p == ["plugins", "bin"]) {
+    if parts
+        .windows(2)
+        .any(|p| p == ["plugins", "bin"] || p == [".bboxy", "plugins"])
+    {
         return true;
     }
     let mut roots = Vec::new();
