@@ -69,6 +69,9 @@ def r4(run):
         run.ctl("seat", "wait", seat, "--text", "(?m)^R4-" + name + "-READY$", "--timeout", "20000")
         seats.append(seat)
     run.ctl("seat", "wait", seats[1], "--state", "idle", "--timeout", "20000")
+    states = {row["record"]["id"]: row["state"]["activity"]["kind"]
+              for row in run.ctl("seat", "ls")}
+    assert [states[seat] for seat in seats] == ["active", "idle", "idle"], "fixture activity differs from the rendered case"
     run.ctl("ui", "focus", seats[2])
     base = run.clock("advance", 900)
     a, ca = run.capture("row-tab-rest")
