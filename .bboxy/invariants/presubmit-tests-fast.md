@@ -14,7 +14,7 @@ links:
   - { to: "[[d325-ci-capacity]]", rel: builds-on }
   - { to: "[[seats-967-frame]]", rel: builds-on }
 created: "2026-10-25T16:43:02Z"
-updated: "2026-10-25T17:47:03Z"
+updated: "2026-10-25T20:44:10Z"
 ---
 # Presubmit tests are fast
 
@@ -54,7 +54,9 @@ invariants and parity builds 12 %, clippy 6 %. The slowest binaries summed:
 `socket_backlog.rs` 2.1 h (one test, 52 to 72 s in every gate),
 `lifecycle.rs` 1.9 h (three tests, about 61 s), `custody` 1.2 h,
 `identity_local` 1.1 h, `logic` 0.8 h, `provenance` 0.75 h. Those are
-real-clock waits. Report at the board's `time.html`; parser
+real-clock waits. Next by the same evidence: `bbt-mux` `tests/messaging_flow.rs`,
+where two narrow presubmits on 2026-10-25 were killed by the bound while running
+with nothing failing (Sable's #328, Kestrel's four-crate sweep). Report at the board's `time.html`; parser
 `tools/gate_time.py` in the board repository.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
