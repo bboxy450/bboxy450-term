@@ -1,0 +1,133 @@
+R5h / #314 fair-notification ONE frame attempt: honest failure and partition
+Owner Rook Ashwhisker <EXECUTOR>; source a53cd4610d8d606edbd800b94ee4f125ad0ffe22
+Signed normal-CI evidence predecessor 8e3cb85bb216c1721ba907c2de801d52be0c9c9b; source accepted on main at 76e89004.
+This record is evidence only. No production source, assertion, readiness rule, deadline, capture policy or UI behaviour changed after the exact normal CI.
+
+Command: sh scripts/gates.sh frame; GATE_SEATS=967 GATE_WATCHED=50 GATE_SECONDS=10, original default frame budget. Clean detached source, release O3/debug assertions, memory custody, direct compiler, two jobs.
+Actual EXIT 1: r5-unsettled-after-producers-stopped. One attempt only; no wrapper timeout or retry. Total launcher elapsed 224.55923987500137 s includes its release rebuild; it is not the native measurement interval.
+All 967 PTYs launched; positive custody=Some(Memory) and label=Some("memory custody (debug)") witness.
+Prepared/runtime binary SHA256 5a2aa1650cb5ce461288ddb42089b04951a238f177a7e0a32e3ac2aa4eb22d6b; before/after equal. The launcher rebuilt the target, but runtime hash matched the retained prepared binary exactly.
+Wrapper started 2026-10-24 17:06:56.246 PDT: actual full gates [], load1 6.54736328125, disk free 41,951,322,112 bytes. App itself logged host start load1 5.15576171875.
+QUIET START 8123fe41-cc09-414c-97c8-9dd98cd399d0 at 2026-10-24T17:04:33.494153-07:00; advertised deadline 2026-10-24T17:49:00-07:00.
+QUIET END ca33b154-cf97-4845-92d2-31d83222e07d at 2026-10-24T17:11:30.647606-07:00; all 969 owned PIDs gone, ps EXIT 1/no rows in reaped.json. No owned app/PTY/build/test remains.
+Own frame target removed 1469399040 allocated bytes; raw data and exact retained binary preserved. Free after cleanup 42503553024 bytes.
+
+Functional observations:
+GUI PAUSED 50/50; later authoritative logic Snapshot PAUSED 50/50; examined ring tails PAUSED 50/50; ring errors/gaps 0.
+Every watched GUI received/applied/applied-queued/applied-written cursor matched (50/50); Applied socket writes all completed. This is a write witness, not server-acceptance proof.
+All 967 comparable supervisor rows recorded positive admission deltas: minimum 8, median 8, maximum 9. Each watched row recorded exactly 8. This removes the earlier recorded zero-admission failure.
+All 50 comparable watched parser rows advanced +795..892 sequences, 53..60 pages. Last parse observations were 1.324..1.505 s old at timeout. Later ring minus later logic snapshot: min/median/max 18/18/20 events (sequential queries, not a simultaneous cut).
+Frozen panes: ready=true paused=true; phase SETTLE (3). Frozen Native last-poll witness: pending=true, has_paused_frame=true, frames=callbacks=1715, paused_frame=1715, completed_frame=1713, gpu_complete=false, stable_counts=false.
+False predicates: ['UI: no pending work', 'UI: paused frame reached GPU completion', 'UI: frame and callback counts match the previous settle poll']
+The first settled boundary was NOT observed. The original full frame gate is NOT accepted.
+
+Partition: producer stop -> timeout only. Logic wall 20.000257959 s; supervisor wall 20.000242458 s.
+No official stop->first-settled checkpoint ratio exists. The available timeout proxy is 12.153494%, ABOVE the 10% target; no budget-pass claim.
+MEASURE-start overlap ratio is unavailable: the failed path exported stop/timeout buffers, not the success-only CaptureStages sidecar. Do not manufacture either interval.
+owner,phase,calls,inclusive_elapsed_seconds,completion_accounted_wall_percent
+logic,logic_turn,9326,19.999738944,99.997405
+logic,commands,9326,0.120109792,0.600541
+logic,receive,9325,0.524349804,2.621715
+logic,event,9326,16.295859030,81.478244
+logic,replay_page,7963,15.544562874,77.721812
+logic,read_ring_rpc,7963,13.843330901,69.215762
+logic,checkpoint_rpc,334,2.430730246,12.153494
+logic,parse,8457,1.676077603,8.380280
+logic,checkpoint,333,2.494311950,12.471399
+logic,maintenance,9325,1.314551282,6.572672
+logic,maintenance_providers,99,0.000149502,0.000748
+logic,maintenance_adapters,99,0.035424377,0.177120
+logic,maintenance_identity,1,0.004063584,0.020318
+logic,maintenance_messages,190,0.519850381,2.599218
+logic,maintenance_provenance,190,0.390005541,1.950003
+logic,checkpoint_service,18652,0.321630241,1.608130
+supervisor,supervisor_turn,18945,19.998287001,99.990223
+supervisor,supervisor_dispatch,8297,0.031737829,0.158687
+supervisor,supervisor_query,8297,9.808541211,49.042112
+supervisor,supervisor_sweep,18945,19.302613841,96.511899
+
+Recorder limits: logic missed delta 3, supervisor 61; overwritten span deltas logic 90,909 / supervisor 54,484; untracked seats 0 each. Only 8192 retained spans per owner. Inclusive times overlap; never add them or call them CPU/disk/barrier cost. Counters are completion-accounted; boundary in-flight spans are in partition.json. Retained clipped fractions are lower bounds. Cumulative maxima/peaks are not differenced.
+Overall watched page fraction 35.426347% (2821/7963). This does not test the both-lanes-runnable quota: empty lanes may donate and this packet does not retain each lane's runnable history. The deterministic quota invariant already passed in the normal CI.
+All ring/head rows are last observations with ages; GUI timeout buffers and later logic/ring RPCs are non-atomic. Repeated R5PAUSED is not a unique fresh final marker.
+
+Read-only UI source findings / precise gaps:
+main.rs:3218-3220 defines pending as redraw_pending OR nonempty UI message/output queues. The capture stores only that OR, not the individual booleans or queue/source counts. Native flags are its last poll; counters can be newer.
+display_link.rs:93-103 — CAMetal delegate increments callbacks, saves a Tick and marks DirtySource 4. main.rs:83-84 maps all DirtySource wakes to generic UiEvent::Wake; :3305-3313 requests redraw; :2446-2454 also requests a display frame; display_link.rs:299-305 unpauses an inactive link. A tick Wake handled after draw pauses the link can therefore rearm it without new model data. This is a source-admitted scheduling cycle / candidate, NOT proof that source 4 was the runtime producer.
+main.rs:2625 discards DirtySet::drain source IDs; stop-boundary frame/callback counters and per-source wake rates are not retained. Gap: the actual source keeping pending true, and its measured interval rate, are unproven by this packet. Log says requested 75/75/75 Hz and final counts 1715, not a measured source rate.
+stall.rs:497-505 replaces paused_frame with every newly encoded all-PAUSED frame; :435-450 requires latest target GPU completion plus no pending and stable counts. Recorded target 1715 vs completed 1713 illustrates the moving target, without proving it is the only cause.
+load.rs:1529-1535 continues PAUSED writes nominally every 100 ms. Watched last-observed ring-head rates (using each row ring_observed_ns) min/median/max 8.884/9.828/10.657 Hz; these intervals may straddle producer stop and are NOT UI publication counts.
+grids.rs:38-44 filters identical Screens; load.rs:1124-1138 only publishes a new fixture model when Grids::apply returns Some. Repeated PAUSED writes alone do not prove redraws. queue/watch_panes skip the product command lane when live_commands is None, so a permanently queued product Watch/Resize is not established here. side_loads finishes before SETTLE, so its continuing bus loop cannot simply be presumed.
+Smallest proposed next proof, under a separate UI brief: deterministic tick-Wake-after-pause/rearm test and split per-source pending/wake counters. No new 967 attempt, no speculative source fix in this task.
+
+Quiet overlap / load attribution:
+Authenticated Velvet report cc7524cf and Oracle a43ea4e7 label its headless/Clippy loop through 2026-10-24 17:07:26.686568 PDT. Copied exact audit from exec6/target/t7-proof/t7-quiet-audit.json, SHA256 2d750105e34c62b16149b0e381ec4ca70bd8cff5955088cd246361611b964f01.
+This overlapped the first ~30.44 s of the launcher. Direct process observation at 17:08:22 still showed sh 40576 -> cargo 40580 -> rustc 41458/41575 with no app stderr; progress at 120 s still had 0 producers/no memory witness. At 150 s, 520 producers and memory witness were present; at 180 s, all 967. Those observations were made during this run; no continuous OS trace was recorded.
+The native/PTY phase therefore began after the declared peer loop ended. App start load was 5.15576; wrapper ended around 17:10:40.806 PDT. The failure persisted minutes beyond peer activity. Residual load/cache effects are not ruled out, but a load-only cause is not established and is not used to waive the gate.
+
+Analysis commands / evidence:
+partition-frame.py <frame-root> EXIT 0. An initial --help invocation EXIT 1 tried to open a nonexistent --help/run-1 path; corrected path invocation succeeded; raw data unchanged.
+Source and packet reads only; no new load, trace, build or test after the attempt. No code merge/push by Executor.
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-frame-yqoc7410/run-1/command.json SHA256 af3bf3ed6d672bbc25eb1435899d9f86357f85bf53f72c126bf3f1e25ada1ea1
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-frame-yqoc7410/run-1/result.json SHA256 0013fd333c2cce066bcbccf47d0001b77dd2cac06b7e6bc81d8cd80cb7f38a60
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-frame-yqoc7410/run-1/reaped.json SHA256 f913551ac551c7c6bb107dd281256ad3402766bf0d4924e55d1793e0c38a0658
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-frame-yqoc7410/run-1/r5-frame.MyrxnK/report.diagnostics.json SHA256 ccf8c8911c1f8c4d9d065b9f2f10f338de52cc46a38355b1c8c6153eb73cc3f3
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-frame-yqoc7410/run-1/stderr.log SHA256 dbc1445c39a03cd34f1ecf5cc8ae830948e34c111298469f1d20a6cb57de5d7f
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-frame-yqoc7410/analysis/partition.json SHA256 cd517edaa67ecd1a1509fcaad9bb2722239a4dbd5cc5072872c094bed443dac8
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-frame-yqoc7410/analysis/summary.json SHA256 fd10b89ba1bb41e07c08b46d509440f1d1eb9c42dd854c9c761fdb4a37fbbccd
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-frame-yqoc7410/analysis/per-seat-summary.csv SHA256 41f75322986a785e3e680b81b263b082f554936fdbd73f60adf7d09b699b6602
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-frame-yqoc7410/analysis/watched-head-rates.json SHA256 f8b045788cabb3b349130c7bd71f3c90cb63fe3f542f47fd621ebedc6c341a85
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-frame-yqoc7410/analysis/velvet-quiet-audit.json SHA256 2d750105e34c62b16149b0e381ec4ca70bd8cff5955088cd246361611b964f01
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-notification-frame-yqoc7410/cleanup.json SHA256 081cbfbb981ba96bcefc6d1b062d9031529c5717c036d96afb237a7248ee90fc
+
+Per-seat table (all cursor-domain and timing caveats above apply):
+index,name,seat,generation,gui_sequence,logic_sequence,ring_sequence,ring_minus_later_logic,gui_all_cursors_equal,applied_socket_written,ring_error,ring_gap,notification_attempts_delta,notification_accepted_delta
+0,r5-pty-0,01M5R67E6E3732HJY2BD3M5PYA,1,1312,1312,1330,18,True,True,,,18695,8
+1,r5-pty-1,01M5R67E7VG8HXSPAMW3ZQZKFQ,1,1313,1313,1331,18,True,True,,,18698,8
+2,r5-pty-2,01M5R67E8PB6AEM804XPHEJQCZ,1,1312,1312,1330,18,True,True,,,18673,8
+3,r5-pty-3,01M5R67E9YFEZ8ANTPTJNAFT8Q,1,1311,1311,1330,19,True,True,,,18734,8
+4,r5-pty-4,01M5R67EB7N0E9ZZKTYMY8E7WZ,1,1312,1312,1330,18,True,True,,,18581,8
+5,r5-pty-5,01M5R67EC3X19D3AMWKCNQ5VKH,1,1304,1304,1322,18,True,True,,,18708,8
+6,r5-pty-6,01M5R67ED8YZ4YZBR4N64T1B56,1,1307,1307,1325,18,True,True,,,18549,8
+7,r5-pty-7,01M5R67EE5V0BGBKD47VZZ5M01,1,1312,1312,1330,18,True,True,,,18715,8
+8,r5-pty-8,01M5R67EF1YMSTNRZCK14T4BP6,1,1310,1310,1328,18,True,True,,,18628,8
+9,r5-pty-9,01M5R67EFYT2KK7DPWE2326Q7G,1,1315,1315,1333,18,True,True,,,18568,8
+10,r5-pty-10,01M5R67EH9ACXVY6SQ7ZQ3QA06,1,1305,1305,1323,18,True,True,,,18564,8
+11,r5-pty-11,01M5R67EJ8DSC86HTPHWXSMY9E,1,1314,1314,1332,18,True,True,,,18571,8
+12,r5-pty-12,01M5R67EK4N8KWX91098CKV17G,1,1311,1311,1329,18,True,True,,,18632,8
+13,r5-pty-13,01M5R67EM3FMWXFGM87CJMKSHG,1,1315,1315,1333,18,True,True,,,18690,8
+14,r5-pty-14,01M5R67ENF68QDD8FXK2REZ9QD,1,1305,1305,1324,19,True,True,,,18768,8
+15,r5-pty-15,01M5R67EPD1786HT4RX88EC2KW,1,1309,1309,1327,18,True,True,,,18747,8
+16,r5-pty-16,01M5R67EQBRBTD1ATRH83X8433,1,1314,1314,1332,18,True,True,,,18507,8
+17,r5-pty-17,01M5R67ER7EYRE5JA6P0FMYJ95,1,1315,1315,1333,18,True,True,,,18682,8
+18,r5-pty-18,01M5R67ESFQ871B2WBY1491GXT,1,1310,1310,1329,19,True,True,,,18708,8
+19,r5-pty-19,01M5R67ETBKS21DXAE6PZ8M9R7,1,1308,1308,1326,18,True,True,,,18587,8
+20,r5-pty-20,01M5R67EV9532RVVWCMG17DM0S,1,1304,1304,1323,19,True,True,,,18805,8
+21,r5-pty-21,01M5R67EW6Z49NDJQJ1YAN3TMG,1,1297,1297,1315,18,True,True,,,18731,8
+22,r5-pty-22,01M5R67EXGTPND514HTVBZNT99,1,1313,1313,1331,18,True,True,,,18567,8
+23,r5-pty-23,01M5R67EYCJCNCSMVKXMD7WFDE,1,1317,1317,1336,19,True,True,,,18767,8
+24,r5-pty-24,01M5R67EZBHQE0ERWNDRR84ZGY,1,1314,1314,1332,18,True,True,,,18626,8
+25,r5-pty-25,01M5R67F0CKVGJ8EBDNDKBTK6R,1,1317,1317,1336,19,True,True,,,18641,8
+26,r5-pty-26,01M5R67F1MRC4HTGG88PTD6PSB,1,1311,1311,1329,18,True,True,,,18610,8
+27,r5-pty-27,01M5R67F2HZ95JRHVX5BESB7MJ,1,1309,1309,1327,18,True,True,,,18643,8
+28,r5-pty-28,01M5R67F3F1AJV5CEKNB294SVW,1,1309,1309,1328,19,True,True,,,18679,8
+29,r5-pty-29,01M5R67F4AJWG5ZYPPH1RMWJ5Y,1,1303,1303,1321,18,True,True,,,18687,8
+30,r5-pty-30,01M5R67F5JAVD90ZHQ0K7QX2RB,1,1304,1304,1322,18,True,True,,,18700,8
+31,r5-pty-31,01M5R67F6HZK6VR0M1YE6H7G9K,1,1309,1309,1327,18,True,True,,,18707,8
+32,r5-pty-32,01M5R67F7G6MJT03QZN77PMMAV,1,1314,1314,1333,19,True,True,,,18746,8
+33,r5-pty-33,01M5R67F8CAMF5J62EVZNVPBG9,1,1304,1304,1322,18,True,True,,,18561,8
+34,r5-pty-34,01M5R67F9K1N0K6GWZD00BRNVC,1,1305,1305,1324,19,True,True,,,18708,8
+35,r5-pty-35,01M5R67FAJVYVWXMCKVE6FB3TV,1,1318,1318,1336,18,True,True,,,18768,8
+36,r5-pty-36,01M5R67FBPR2T71R6KGX6MW69H,1,1302,1302,1321,19,True,True,,,18747,8
+37,r5-pty-37,01M5R67FD0BR79D5Z6G1RDDTK3,1,1315,1315,1334,19,True,True,,,18508,8
+38,r5-pty-38,01M5R67FE4G6TJGA6QDVYJTK36,1,1304,1304,1324,20,True,True,,,18751,8
+39,r5-pty-39,01M5R67FF36X4V9DG1H25Y4P55,1,1287,1287,1306,19,True,True,,,18701,8
+40,r5-pty-40,01M5R67FGAJJBZK1F3Y85KQF4H,1,1296,1296,1316,20,True,True,,,18656,8
+41,r5-pty-41,01M5R67FH9W17ZNXCYHR8XZT3T,1,1294,1294,1313,19,True,True,,,18605,8
+42,r5-pty-42,01M5R67FJ91FYBPNJV7NCDEVYW,1,1312,1312,1332,20,True,True,,,18839,8
+43,r5-pty-43,01M5R67FK67ZYB7Q6C2T28E4NF,1,1296,1296,1316,20,True,True,,,18646,8
+44,r5-pty-44,01M5R67FMFTHZ9HF5WXPVHQGFJ,1,1304,1304,1323,19,True,True,,,18661,8
+45,r5-pty-45,01M5R67FNF0QJXRHR19Z3FZZYC,1,1297,1297,1316,19,True,True,,,18751,8
+46,r5-pty-46,01M5R67FPDKDP72VJBBQWM78ZP,1,1297,1297,1317,20,True,True,,,18632,8
+47,r5-pty-47,01M5R67FQB6CP6SJDFM3KZHH16,1,1304,1304,1323,19,True,True,,,18610,8
+48,r5-pty-48,01M5R67FRK6P84VNJCVGM4DKPH,1,1306,1306,1325,19,True,True,,,18764,8
+49,r5-pty-49,01M5R67FSJB4XYAEHY3FHD9NFE,1,1308,1308,1327,19,True,True,,,18558,8
