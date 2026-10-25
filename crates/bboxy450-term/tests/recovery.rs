@@ -7,13 +7,21 @@
 #[path = "support/events.rs"]
 mod events;
 use bboxy450_term::cockpit::{Config, Event, Session};
-use bbt_mux::{Ulid, streams::Replica};
+use bbt_mux::{
+    Ulid,
+    store::{Store, sqlite::SqliteStore},
+    streams::Replica,
+};
 use bbt_proto::{
     GuiAction, GuiReply, GuiSeat, ProcessStatus, Screen, SeatId, SpawnSpec, SwarmId, Update, View,
     Where,
 };
 use events::StateEvents;
-use std::{os::unix::fs::PermissionsExt, path::Path, time::Duration};
+use std::{
+    os::unix::fs::PermissionsExt,
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 async fn script(path: &Path, text: String) {
     tokio::fs::write(path, text).await.unwrap();
@@ -25,10 +33,38 @@ async fn script(path: &Path, text: String) {
 #[test]
 #[ignore = "private Codex service stand-in, exercised by the recovery tests"]
 fn codex_service_fixture() {
-    let socket = std::env::var_os("BBT_RECOVERY_CODEX_SOCKET").unwrap();
-    let listener = std::os::unix::net::UnixListener::bind(socket).unwrap();
-    for stream in listener.incoming() {
-        drop(stream.unwrap());
+    let socket = PathBuf::from(std::env::var_os("BBT_RECOVERY_CODEX_SOCKET").unwrap());
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+            use tokio::signal::unix::{SignalKind, signal};
+            let mut hangup = signal(SignalKind::hangup()).unwrap();
+            let mut terminate = signal(SignalKind::terminate()).unwrap();
+            let listener = tokio::net::UnixListener::bind(&socket).unwrap();
+            loop {
+                tokio::select! {
+                    _ = hangup.recv() => break,
+                    _ = terminate.recv() => break,
+                    stream = listener.accept() => drop(stream.unwrap()),
+                }
+            }
+            // Like the real Codex server, retire the locator on lifetime HUP.
+            drop(listener);
+            std::fs::remove_file(socket).unwrap();
+        });
+}
+
+struct AliasGuard {
+    path: PathBuf,
+    target: PathBuf,
+}
+impl Drop for AliasGuard {
+    fn drop(&mut self) {
+        if std::fs::read_link(&self.path).ok().as_ref() == Some(&self.target) {
+            let _ = std::fs::remove_file(&self.path);
+        }
     }
 }
 
@@ -368,6 +404,31 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
         Some("fixture-codex-thread"),
     )
     .await;
+    let store =
+        SqliteStore::open(&root.path().join(format!("run/seat-{}", codex.record.id))).unwrap();
+    let old_codex_endpoint: Option<PathBuf> =
+        serde_json::from_slice(&store.get("adapter_runtime_endpoint").unwrap().unwrap()).unwrap();
+    let old_codex_endpoint = old_codex_endpoint.unwrap();
+    let old_alias = AliasGuard {
+        path: old_codex_endpoint.parent().unwrap().into(),
+        target: std::fs::read_link(old_codex_endpoint.parent().unwrap()).unwrap(),
+    };
+    assert_eq!(old_alias.path.parent(), Some(Path::new("/tmp")));
+    assert!(
+        old_alias
+            .path
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .starts_with("bboxy-cx-")
+    );
+    assert!(
+        old_alias.target.starts_with(
+            root.path()
+                .join(format!("run/seat-{}/overlays", codex.record.id))
+        )
+    );
     watch(&mut session, &zsh).await;
     let mut replica = Replica::default();
     input(
@@ -451,7 +512,18 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
     let argv_hold = root.path().join("codex-hold-argv");
     tokio::fs::write(&argv_hold, b"").await.unwrap();
     session.supervisor.start_kill().unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if !old_codex_endpoint.exists() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("old Codex fixture did not retire its socket on supervisor death");
     let seats = restarted(&mut session).await;
+    let old_alias_retired = old_alias.path.symlink_metadata().is_err();
     assert_eq!(seats.len(), 3);
     for old in [&zsh, &claude, &codex] {
         let new = seats.iter().find(|s| s.record.id == old.record.id).unwrap();
@@ -565,6 +637,11 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
         "supervisor recovery: 3 stable seat IDs, gen1->2, zsh/Claude/Codex new PIDs; 100x30, retained screen, explicit gap, actual resume argv, post-restart echo; stale Input ID preserved, drops1/2 counted, stale input file absent, stale resize rejected at PTY30x100"
     );
     session.shutdown().await.unwrap();
+    assert!(
+        old_alias_retired,
+        "old generation runtime alias survived generation 2 start: {}",
+        old_alias.path.display()
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
