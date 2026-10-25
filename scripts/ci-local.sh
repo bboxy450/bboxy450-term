@@ -30,6 +30,7 @@ if [ "${BBOXY_GATE_SLOT:-}" != none ]; then
     echo "ci-local: gate slot $slot of $limit"
 fi
 sh scripts/layering.sh
+python3 -I scripts/test-landing.py
 cargo build --workspace --locked
 cargo clippy --workspace --all-targets --locked -- -D warnings
 sh scripts/quarantine-test.sh --workspace --locked

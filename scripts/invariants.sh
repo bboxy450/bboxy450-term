@@ -16,10 +16,12 @@ frontmatter_field() {
 
 run_slow=false
 run_parity=false
+run_cargo=true
 for flag in "$@"; do
     case "$flag" in
         --slow) run_slow=true ;;
         --parity) run_parity=true ;;
+        --no-cargo) run_cargo=false ;;
         *) printf 'unknown invariant flag: %s\n' "$flag" >&2; exit 2 ;;
     esac
 done
@@ -27,6 +29,7 @@ done
 invariant_checks=0
 invariant_failures=0
 invariant_skipped=0
+invariant_code_skipped=0
 for invariant_file in .bboxy/invariants/*.md; do
     [ -f "$invariant_file" ] || continue
     [ "$(frontmatter_field type "$invariant_file")" = invariant ] || continue
@@ -40,8 +43,18 @@ for invariant_file in .bboxy/invariants/*.md; do
             continue
         fi
     fi
-    invariant_checks=$((invariant_checks + 1))
     check_command=$(frontmatter_field check "$invariant_file")
+    if [ "$run_cargo" = false ]; then
+        if python3 -I scripts/landing.py check-is-cargo "$check_command"; then
+            printf 'invariant %s: skipped (code tier)\n' "$invariant_name"
+            invariant_code_skipped=$((invariant_code_skipped + 1))
+            continue
+        else
+            selector_exit=$?
+            [ "$selector_exit" -eq 1 ] || exit "$selector_exit"
+        fi
+    fi
+    invariant_checks=$((invariant_checks + 1))
     if [ -z "$check_command" ]; then
         printf 'invariant %s: fail (missing check)\n' "$invariant_name"
         invariant_failures=$((invariant_failures + 1))
@@ -54,4 +67,5 @@ for invariant_file in .bboxy/invariants/*.md; do
     fi
 done
 printf 'invariants: %s checks, %s failures, %s slow checks skipped\n' "$invariant_checks" "$invariant_failures" "$invariant_skipped"
+[ "$run_cargo" = true ] || printf 'invariants: %s code-tier checks skipped\n' "$invariant_code_skipped"
 [ "$invariant_failures" -eq 0 ]
