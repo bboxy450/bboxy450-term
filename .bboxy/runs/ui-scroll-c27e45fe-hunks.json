@@ -1,0 +1,77 @@
+[
+  {
+    "path": "crates/bbt-proto/src/gui.rs",
+    "line": 122,
+    "mechanism": "pub enum UiScroll {"
+  },
+  {
+    "path": "crates/bbt-proto/src/gui.rs",
+    "line": 131,
+    "mechanism": "pub struct UiScrollPosition {"
+  },
+  {
+    "path": "crates/bbt-proto/src/gui.rs",
+    "line": 209,
+    "mechanism": "pub scroll: UiScrollPosition,"
+  },
+  {
+    "path": "crates/bboxy450-term/src/ctl.rs",
+    "line": 344,
+    "mechanism": "(\"ui\", \"scroll\", \"Ui\"),"
+  },
+  {
+    "path": "crates/bboxy450-term/src/ctl.rs",
+    "line": 505,
+    "mechanism": "[\"ui\", \"scroll\", seat, motion] => Command::UiScroll {"
+  },
+  {
+    "path": "crates/bboxy450-term/src/scrollback.rs",
+    "line": 149,
+    "mechanism": "pub struct Readback {"
+  },
+  {
+    "path": "crates/bboxy450-term/src/scrollback.rs",
+    "line": 207,
+    "mechanism": "pub struct DisplayPosition {"
+  },
+  {
+    "path": "crates/bboxy450-term/src/scrollback.rs",
+    "line": 632,
+    "mechanism": "pub fn request("
+  },
+  {
+    "path": "crates/bboxy450-term/src/scrollback.rs",
+    "line": 798,
+    "mechanism": "pub fn rejected(&mut self, retry: bool, now: Instant, reason: &str) -> Option<SeatId> {"
+  },
+  {
+    "path": "crates/bboxy450-term/src/live.rs",
+    "line": 314,
+    "mechanism": "fn scroll_readback(history: &mut History, model: &mut Arc<Model>, grids: &Grids) -> bool {"
+  },
+  {
+    "path": "crates/bboxy450-term/src/model.rs",
+    "line": 506,
+    "mechanism": "pub scroll: Arc<crate::scrollback::Readback>,"
+  },
+  {
+    "path": "crates/bboxy450-term/src/main.rs",
+    "line": 3730,
+    "mechanism": "fn ui_scroll_position("
+  },
+  {
+    "path": "crates/bboxy450-term/src/main.rs",
+    "line": 3836,
+    "mechanism": "fn present_ui(&mut self, frame: u64, mut layout: Result<bbt_proto::gui::UiLayout, String>) {"
+  },
+  {
+    "path": "crates/bboxy450-term/src/main.rs",
+    "line": 4055,
+    "mechanism": "UiRequest::Scroll { seat, motion } => {"
+  },
+  {
+    "path": "crates/bboxy450-term/tests/headless.rs",
+    "line": 963,
+    "mechanism": "fn ctl_ui_scroll_reads_the_produced_historical_view_without_changing_focus() {"
+  }
+]
