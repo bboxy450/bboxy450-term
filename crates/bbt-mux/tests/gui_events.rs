@@ -353,7 +353,7 @@ fn durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls()
         let (stream,seq)=match gui.until(|r|matches!(r,GuiReply::Event {subject,envelope,..} if subject.ends_with("/message")&&matches!(&envelope.payload,GuiEventPayload::Message {row} if row.id==message_id))).await {
             GuiReply::Event {stream,seq,envelope,..}=> {
                 let GuiEventPayload::Message {row}=envelope.payload else {unreachable!()};
-                assert_eq!(row.issuer_kind,IssuerKind::LocalDev);
+                assert_eq!(row.issuer_kind,Some(IssuerKind::LocalDev));
                 let position=row.bus.expect("canonical bus publication");assert_eq!(position.stream,stream);assert_eq!(position.seq,seq);
                 (stream,seq)
             },_=>unreachable!(),

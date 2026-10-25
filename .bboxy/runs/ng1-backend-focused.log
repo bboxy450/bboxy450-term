@@ -28,3 +28,25 @@ The first-startup seat test checks author absent, pending receipt/inferred deliv
 The remote test checks unsigned intents absent from the remote inbox and scheduler; three completions verify in original admission order with sender sequences 1/2/3.
 The source-classification test recognises only the broker exact hold/run-id/messaging prefix; original proof/source bytes remain unmodified.
 First-ever operator reference shape approved by Oracle c4809646: immutable {id,kind}, device attribution stored separately; integration follows accepted #315. Newer work-in-progress changes are not covered by the older source checks above.
+
+## Operator backend checkpoint (still not full integration)
+
+Source 282dcde8a9b922b9746c5620bd0e7391ca011070
+Command cargo test -p bbt-mux --locked --lib messaging::service::reference_tests -- --nocapture
+EXIT 0; elapsed 255.399453291 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/reference-unit-2.log SHA256 0b10481119198f3c7cdb666a08a5d0789354e89fee21dd0fe0bce53a14fcf291
+
+Source 282dcde8a9b922b9746c5620bd0e7391ca011070
+Command cargo test -p bbt-proto --locked --test messaging_pending
+EXIT 0; elapsed 9.014566583 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/reference-proto-2.log SHA256 c1d0afbe09189a2ad6a9b9aa791ccd940b867c4c1530a218ea63a898914f8f14
+
+Source 282dcde8a9b922b9746c5620bd0e7391ca011070
+Command cargo check -p bbt-mux --locked --tests
+EXIT 101; elapsed 12.021960458 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/reference-mux-tests-check-2.log SHA256 1bfc52fe8f8e27d36e14a2a2c1813bf67a7922c7108ca68ca11534e0d319d908
+
+reference-unit-2: 3 passed / 0 failed, including first held operator delivery without an author, no mute bypass, restart/enrolment continuity, bound signed completion, original intent retained and native attempt not repeated.
+reference-proto-2: 2 passed / 0 failed, including exact legacy signed-message serialization.
+reference-mux-tests-check-2: EXIT 101, one fixture expected IssuerKind where the new field is Option<IssuerKind>; corrected to Some without changing the assertion. Earlier c8089517 check EXIT 101 found three exhaustive new-recipient matches, now explicitly forwarded. Both failures retained.
+The private pending operator entry point is not wired into the worker yet and produces an expected dead-code warning. It must be used, not lint-suppressed, before the strict final gate. #315 is not accepted yet. Newer edits and native composition regression remain unverified.

@@ -164,13 +164,14 @@ pub fn message_view(
             }
             .into()
         }),
-        signature: Some(
-            match row.signature {
-                wire::SignatureState::Signed => "signed",
-                wire::SignatureState::Pending => "pending",
-            }
-            .into(),
-        ),
+        signature: (row.signature == wire::SignatureState::Pending || row.upgrade_of.is_some())
+            .then_some(
+                match row.signature {
+                    wire::SignatureState::Signed => "signed",
+                    wire::SignatureState::Pending => "pending",
+                }
+                .into(),
+            ),
         signature_reason: row.signature_reason.clone(),
         priority_class: Some(
             match row.priority_class {

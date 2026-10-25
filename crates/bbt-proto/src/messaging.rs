@@ -227,6 +227,7 @@ pub enum LogicalSender {
         process_generation: u64,
     },
     Operator {
+        reference: OperatorReference,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         device: Option<Ulid>,
         door: Door,
@@ -556,6 +557,8 @@ pub struct MessageRow {
     pub signature: SignatureState,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub signature_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub upgrade_of: Option<IntentBinding>,
     pub kind: MessageKind,
     pub priority_class: Class,
     pub priority: u8,

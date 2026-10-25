@@ -1066,6 +1066,11 @@ fn insert_deliveries(
         |row| row.get(0),
     )?;
     let sender = Recipient::try_from(sender).map_err(invalid)?;
+    let observed_device = message.intent().and_then(|intent| match intent.sender {
+        bbt_proto::messaging::LogicalSender::Seat { device, .. }
+        | bbt_proto::messaging::LogicalSender::Operator { device, .. }
+        | bbt_proto::messaging::LogicalSender::OperatorLocal { device, .. } => device,
+    });
     for route in routes {
         let remote_pending = same_device.is_some_and(|local| !local.contains(&route.recipient));
         let mut receipt = Receipt {
@@ -1093,10 +1098,10 @@ fn insert_deliveries(
             signature: envelope.signature,
             signature_reason: envelope.signature_reason.map(str::to_owned),
             sender_operator: bbt_proto::messaging::OperatorReference::from_recipient(sender),
-            sender_device: match sender {
+            sender_device: observed_device.or(match sender {
                 Recipient::Operator(device) => Some(device),
                 _ => None,
-            },
+            }),
             recipient_device: match route.recipient {
                 Recipient::Operator(device) => Some(device),
                 _ => None,

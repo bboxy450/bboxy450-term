@@ -258,3 +258,66 @@ fn pending_remote_delivery_waits_and_signed_completions_follow_admission_order()
         assert_eq!(receipt.signature, SignatureState::Signed);
     }
 }
+
+#[test]
+fn local_delivery_outlives_the_old_signing_queue_cap_and_resume_is_bounded() {
+    let root = tempfile::tempdir().unwrap();
+    let account = SqliteStore::open(&object_dir(root.path(), "account").unwrap()).unwrap();
+    let registry = Registry::new(account.clone());
+    let swarm = Ulid::new();
+    let sender = SeatRecord::new(Ulid::new(), swarm, "sender", "zsh");
+    let recipient = SeatRecord::new(Ulid::new(), swarm, "recipient", "zsh");
+    registry.insert(&sender).unwrap();
+    registry.insert(&recipient).unwrap();
+    let mut messaging = Messaging::open(root.path(), Arc::new(FirstHeld)).unwrap();
+    let mut ids = vec![];
+    for n in 0..130 {
+        let request = SendRequest::text(
+            format!("seats/{}/inbox", recipient.id),
+            format!("local during hold {n}"),
+        );
+        ids.push(request.id);
+        let stored = messaging.send(sender.id, 1, request, 1000 + n).unwrap();
+        assert_eq!(stored.view().signature, SignatureState::Pending);
+    }
+    let first = messaging.list(recipient.id, None, None, 0, 128).unwrap();
+    assert_eq!(first.items.len(), 128);
+    let second = messaging
+        .list(recipient.id, None, None, first.next.unwrap(), 128)
+        .unwrap();
+    assert_eq!(second.items.len(), 2);
+    assert_eq!(
+        first
+            .items
+            .iter()
+            .chain(&second.items)
+            .map(|message| message.view().id)
+            .collect::<Vec<_>>(),
+        ids
+    );
+    assert_eq!(
+        account
+            .connection()
+            .unwrap()
+            .query_row("SELECT count(*) FROM msg_counters", [], |row| row
+                .get::<_, i64>(0))
+            .unwrap(),
+        0,
+        "no placeholder signing sequence while custody is held"
+    );
+    let keys = Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[44; 32])));
+    assert_eq!(messaging.resume_signing(keys.clone(), 20000).unwrap(), 64);
+    assert_eq!(messaging.resume_signing(keys.clone(), 20001).unwrap(), 64);
+    assert_eq!(messaging.resume_signing(keys.clone(), 20002).unwrap(), 2);
+    assert_eq!(messaging.resume_signing(keys, 20003).unwrap(), 0);
+    let first = messaging.list(recipient.id, None, None, 0, 128).unwrap();
+    let second = messaging
+        .list(recipient.id, None, None, first.next.unwrap(), 128)
+        .unwrap();
+    for (index, message) in first.items.iter().chain(&second.items).enumerate() {
+        let signed = message.envelope().unwrap();
+        signed.verify_signature().unwrap();
+        assert_eq!(signed.id, ids[index]);
+        assert_eq!(signed.sender_sequence, index as u64 + 1);
+    }
+}

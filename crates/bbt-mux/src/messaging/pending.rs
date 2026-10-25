@@ -37,6 +37,12 @@ pub fn binding(intent: &PendingIntent) -> Result<IntentBinding> {
         } if seat == Ulid::nil() || process_generation == 0 || intent.role_epoch.is_none() => {
             return Err(invalid("invalid pending seat identity"));
         }
+        LogicalSender::Operator { reference, .. }
+            if reference.id == Ulid::nil()
+                || reference.kind != bbt_proto::messaging::OperatorReferenceKind::DeviceDerived =>
+        {
+            return Err(invalid("invalid device-derived operator reference"));
+        }
         LogicalSender::Operator {
             device: Some(device),
             ..

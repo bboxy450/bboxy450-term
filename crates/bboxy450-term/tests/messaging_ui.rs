@@ -400,6 +400,7 @@ fn projected_message(scope: SwarmId, sequence: u64) -> bbt_proto::messaging::Mes
         issuer_kind: Some(IssuerKind::LocalDev),
         signature: SignatureState::Signed,
         signature_reason: None,
+        upgrade_of: None,
         kind: MessageKind::Decision,
         priority_class: bbt_proto::registry::Class::Worker,
         priority: 8,
@@ -477,6 +478,11 @@ fn pending_frame_has_no_issuer_and_a_grade_upgrade_keeps_the_message_position() 
     signed.issuer_kind = Some(IssuerKind::LocalDev);
     signed.signature = SignatureState::Signed;
     signed.signature_reason = None;
+    signed.upgrade_of = Some(bbt_proto::messaging::IntentBinding {
+        id: signed.id,
+        // Display-only projection fixture; signature verification is tested in mux.
+        digest: "0".repeat(64),
+    });
     history.row(&signed, None, 101);
     history.row(&pending, None, 100); // An old publication cannot undo a newer grade.
     let entries = history.entries(&model, &Default::default(), &[]);

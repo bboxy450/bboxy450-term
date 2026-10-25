@@ -462,7 +462,8 @@ impl Messaging {
             CREATE TABLE IF NOT EXISTS msg_policies(seat TEXT PRIMARY KEY,epoch INTEGER NOT NULL,role BLOB NOT NULL,muted INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS msg_grants(id TEXT PRIMARY KEY,data BLOB NOT NULL);
             CREATE TABLE IF NOT EXISTS msg_notices(id TEXT PRIMARY KEY,envelope BLOB NOT NULL,request BLOB NOT NULL,sent INTEGER NOT NULL DEFAULT 0);
-            CREATE TABLE IF NOT EXISTS msg_held(position INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT UNIQUE NOT NULL,data BLOB NOT NULL,reason TEXT NOT NULL,state TEXT NOT NULL);")?;
+            CREATE TABLE IF NOT EXISTS msg_held(position INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT UNIQUE NOT NULL,data BLOB NOT NULL,reason TEXT NOT NULL,state TEXT NOT NULL);
+            CREATE INDEX IF NOT EXISTS msg_held_fifo ON msg_held(state,position);")?;
         pin_issuer(&account, keys.as_ref())?;
         let registry = Registry::new(account.clone());
         let mut messaging = Self {
@@ -735,6 +736,7 @@ impl Messaging {
             issuer_kind: message.view().issuer_kind,
             signature: message.view().signature,
             signature_reason: message.view().signature_reason.map(str::to_owned),
+            upgrade_of: message.upgrade_of().cloned(),
             kind: message.view().kind,
             priority_class: message.view().priority_class,
             priority: message.view().priority,
@@ -1140,6 +1142,7 @@ impl Messaging {
                 issued_by: source.origin.issued_by.clone(),
             },
             OperatorReferenceKind::DeviceDerived => LogicalSender::Operator {
+                reference: source.reference,
                 device: source.device,
                 door: source.origin.door,
                 issued_by: source.origin.issued_by.clone(),
@@ -1325,8 +1328,8 @@ impl Messaging {
                     reason,
                 });
             }
-            let queued: i64 = tx.query_row(
-                "SELECT count(*) FROM msg_held WHERE state='held'",
+            let queued: bool = tx.query_row(
+                "SELECT EXISTS(SELECT 1 FROM msg_held WHERE state='held')",
                 [],
                 |r| r.get(0),
             )?;
@@ -1339,7 +1342,7 @@ impl Messaging {
                         .is_none()
                         .then(|| "identity pending".into())
                 })
-                .or_else(|| (queued > 0).then(|| "earlier signing work held".into()));
+                .or_else(|| queued.then(|| "earlier signing work held".into()));
             if let Some(reason) = reason {
                 tx.execute(
                     "INSERT INTO msg_held(id,data,reason,state) VALUES(?1,?2,?3,'held')",
@@ -1356,7 +1359,7 @@ impl Messaging {
                     version: 1,
                     id: request.id,
                     sender: bbt_proto::messaging::LogicalSender::Seat {
-                        device: None,
+                        device: self.operator_device_attribution,
                         seat: from,
                         process_generation: generation,
                     },
