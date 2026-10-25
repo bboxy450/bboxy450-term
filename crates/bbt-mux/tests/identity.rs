@@ -1137,7 +1137,7 @@ fn identity_reset_is_explicit_monotonic_and_does_not_rewrite_old_chain_history()
         )
         .unwrap();
     assert_eq!(new_local.envelope().expect("signed fixture envelope").issuer_kind, IssuerKind::LocalDev);
-    historical.verify(&new_local.envelope().expect("signed fixture envelope")).unwrap();
+    historical.verify(new_local.envelope().expect("signed fixture envelope")).unwrap();
     f.account.put("identity/issuer", &saved).unwrap();
     let reopened = ChainSeatKeys::open(
         f.account.clone(),

@@ -5070,7 +5070,7 @@ fn d269_ctl_envelopes_carry_door_and_issuer_signed_and_framed() {
         },
     );
     // In the envelope bytes, and signed: changing or stripping either breaks the signature.
-    let wire = serde_json::to_value(&ctl.envelope().expect("signed fixture envelope")).unwrap();
+    let wire = serde_json::to_value(ctl.envelope().expect("signed fixture envelope")).unwrap();
     assert_eq!(wire["door"], "ctl", "{wire}");
     assert_eq!(wire["issued_by"], "Vesper (Oracle)", "{wire}");
     ctl.envelope().expect("signed fixture envelope").verify_signature().unwrap();

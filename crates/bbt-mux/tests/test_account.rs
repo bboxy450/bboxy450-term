@@ -159,7 +159,7 @@ fn seat_messages_require_the_label_derived_by_the_receiving_account() {
         sent.envelope().expect("signed fixture envelope").issued_by.as_deref(),
         Some(generated.issued_by())
     );
-    keys.verify(&sent.envelope().expect("signed fixture envelope")).unwrap();
+    keys.verify(sent.envelope().expect("signed fixture envelope")).unwrap();
     assert!(sent.envelope().expect("signed fixture envelope").verify_signature().is_err()); // ordinary wire rules remain strict
     for bad_label in [None, Some("test-account:01ARZ3NDEKTSV4RRFFQ69G5FAV")] {
         let mut forged = sent.envelope().expect("signed fixture envelope").clone();
