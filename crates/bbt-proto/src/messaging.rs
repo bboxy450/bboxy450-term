@@ -180,6 +180,42 @@ pub enum PendingSignature {
 }
 
 /// The locally admitted speaker of an unsigned intent, never a public-key claim.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum OperatorReferenceKind {
+    OperatorLocal,
+    DeviceDerived,
+}
+/// Immutable account-local continuity identity. Device attribution lives apart.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OperatorReference {
+    pub id: Ulid,
+    pub kind: OperatorReferenceKind,
+}
+impl OperatorReference {
+    pub fn recipient(self) -> Recipient {
+        match self.kind {
+            OperatorReferenceKind::OperatorLocal => Recipient::OperatorLocal(self.id),
+            OperatorReferenceKind::DeviceDerived => Recipient::Operator(self.id),
+        }
+    }
+    pub fn from_recipient(recipient: Recipient) -> Option<Self> {
+        match recipient {
+            Recipient::Seat(_) => None,
+            Recipient::Operator(id) => Some(Self {
+                id,
+                kind: OperatorReferenceKind::DeviceDerived,
+            }),
+            Recipient::OperatorLocal(id) => Some(Self {
+                id,
+                kind: OperatorReferenceKind::OperatorLocal,
+            }),
+        }
+    }
+}
+
+/// The locally admitted speaker of an unsigned intent, never a public-key claim.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum LogicalSender {
@@ -192,6 +228,14 @@ pub enum LogicalSender {
     },
     Operator {
         #[serde(default, skip_serializing_if = "Option::is_none")]
+        device: Option<Ulid>,
+        door: Door,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        issued_by: Option<String>,
+    },
+    #[serde(rename = "operator-local")]
+    OperatorLocal {
+        reference: OperatorReference,
         device: Option<Ulid>,
         door: Door,
         #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -211,8 +255,13 @@ pub struct PendingIntent {
     pub sender: LogicalSender,
     pub swarm_id: Ulid,
     pub role: Role,
-    #[serde(with = "decimal")]
-    pub role_epoch: u64,
+    /// A first-ever local operator has no signed grant epoch to claim.
+    #[serde(
+        default,
+        with = "optional_decimal",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub role_epoch: Option<u64>,
     pub request: SendRequest,
     pub body: Body,
     #[serde(with = "decimal")]
@@ -370,7 +419,7 @@ pub struct MessageView<'a> {
     pub process_generation: u64,
     pub swarm_id: Ulid,
     pub role: &'a Role,
-    pub role_epoch: u64,
+    pub role_epoch: Option<u64>,
     pub kind: MessageKind,
     pub context: &'a str,
     pub body: &'a Body,
@@ -412,7 +461,7 @@ impl StoredMessage {
                 process_generation: e.process_generation,
                 swarm_id: e.swarm_id,
                 role: &e.role,
-                role_epoch: e.role_epoch,
+                role_epoch: Some(e.role_epoch),
                 kind: e.kind,
                 context: &e.context,
                 body: &e.body,
@@ -433,7 +482,9 @@ impl StoredMessage {
                         process_generation,
                         ..
                     } => (seat, process_generation),
-                    LogicalSender::Operator { .. } => (Ulid::nil(), 0),
+                    LogicalSender::Operator { .. } | LogicalSender::OperatorLocal { .. } => {
+                        (Ulid::nil(), 0)
+                    }
                 };
                 MessageView {
                     id: i.id,
@@ -474,6 +525,8 @@ pub struct BusPosition {
 pub enum AuthorKind {
     Seat,
     Operator,
+    #[serde(rename = "operator-local")]
+    OperatorLocal,
     Observer,
 }
 
@@ -533,6 +586,12 @@ pub struct Receipt {
     pub signature: SignatureState,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub signature_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sender_device: Option<Ulid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub recipient_device: Option<Ulid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sender_operator: Option<OperatorReference>,
 }
 
 /// Seat receipts retain their existing ULID string; operator receipts name the device.
@@ -541,13 +600,17 @@ pub struct Receipt {
 pub enum Recipient {
     Seat(Ulid),
     Operator(Ulid),
+    OperatorLocal(Ulid),
 }
 impl Recipient {
     pub fn seat(self) -> Option<Ulid> {
         match self {
             Self::Seat(id) => Some(id),
-            Self::Operator(_) => None,
+            Self::Operator(_) | Self::OperatorLocal(_) => None,
         }
+    }
+    pub fn is_operator(self) -> bool {
+        matches!(self, Self::Operator(_) | Self::OperatorLocal(_))
     }
 }
 impl From<Ulid> for Recipient {
@@ -560,6 +623,7 @@ impl From<Recipient> for String {
         match value {
             Recipient::Seat(id) => id.to_string(),
             Recipient::Operator(id) => format!("operator:{id}"),
+            Recipient::OperatorLocal(id) => format!("operator-local:{id}"),
         }
     }
 }
@@ -571,18 +635,22 @@ impl std::fmt::Display for Recipient {
 impl TryFrom<String> for Recipient {
     type Error = &'static str;
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        let (operator, id) = value
-            .strip_prefix("operator:")
-            .map_or((false, value.as_str()), |id| (true, id));
+        let (kind, id) = if let Some(id) = value.strip_prefix("operator-local:") {
+            (2, id)
+        } else if let Some(id) = value.strip_prefix("operator:") {
+            (1, id)
+        } else {
+            (0, value.as_str())
+        };
         let id = id
             .parse::<Ulid>()
             .ok()
             .filter(|id| *id != Ulid::nil())
             .ok_or("invalid message recipient reference")?;
-        Ok(if operator {
-            Self::Operator(id)
-        } else {
-            Self::Seat(id)
+        Ok(match kind {
+            2 => Self::OperatorLocal(id),
+            1 => Self::Operator(id),
+            _ => Self::Seat(id),
         })
     }
 }
@@ -798,5 +866,23 @@ mod decimal {
             return Err(serde::de::Error::custom("noncanonical counter"));
         }
         Ok(n)
+    }
+}
+
+mod optional_decimal {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    pub fn serialize<S: Serializer>(value: &Option<u64>, serializer: S) -> Result<S::Ok, S::Error> {
+        value.map(|n| n.to_string()).serialize(serializer)
+    }
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Option<u64>, D::Error> {
+        Option::<String>::deserialize(d)?
+            .map(|value| {
+                let n = value.parse::<u64>().map_err(serde::de::Error::custom)?;
+                if n.to_string() != value {
+                    return Err(serde::de::Error::custom("noncanonical counter"));
+                }
+                Ok(n)
+            })
+            .transpose()
     }
 }

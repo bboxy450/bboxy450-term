@@ -150,7 +150,7 @@ pub fn message_view(
         author: Some(Author {
             kind: match row.author.kind {
                 wire::AuthorKind::Seat => "seat",
-                wire::AuthorKind::Operator => "operator",
+                wire::AuthorKind::Operator | wire::AuthorKind::OperatorLocal => "operator",
                 wire::AuthorKind::Observer => "observer",
             }
             .into(),
@@ -195,7 +195,11 @@ pub fn message_view(
         role,
         // v0.1 has one operator per account; other rows' receipt aggregates are
         // not displayed as the operator's own delivery evidence.
-        receipts: (row.author.kind == wire::AuthorKind::Operator).then_some(Receipts {
+        receipts: matches!(
+            row.author.kind,
+            wire::AuthorKind::Operator | wire::AuthorKind::OperatorLocal
+        )
+        .then_some(Receipts {
             delivered: row.receipts.delivered,
             acked: row.receipts.acked,
             held: row.receipts.held,

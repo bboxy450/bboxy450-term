@@ -20,7 +20,7 @@ fn first_startup_intent_has_no_author_and_cannot_be_a_signed_envelope() {
             name: "Executor".into(),
             class: Class::Worker,
         },
-        role_epoch: 1,
+        role_epoch: Some(1),
         body: bbt_proto::messaging::Body::Text {
             text: request.text.clone(),
         },

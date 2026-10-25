@@ -1,0 +1,30 @@
+# NG1 independent backend focused evidence
+
+Incomplete feature: these checks cover seat pending delivery and projections, not first-ever operator admission, event-lane continuity or final native/parity acceptance. Invariant #286 stays pending.
+All commands used a clean frozen private tree, one private target, direct rustc wrappers, two jobs, O1 with debug assertions and explicit memory custody. No PTY, OS prompt or operator action.
+Original negative control: signed 7dd1d3e6 exact custody_hold_never_holds_local_delivery EXIT 101 at the Held response assertion; raw SHA256 150582061b56c24fdb12a650057f448e7c11a9dced8c27b802d7460e581dcb2d.
+
+Source: 2e2b81605074572ea10492e3bc02e4ef7d01c74c
+Command: cargo test -p bbt-mux --locked --test messaging_flow custody_hold_never_holds_local_delivery -- --exact --nocapture
+EXIT 0; elapsed 132.218467250 s including build; clean tree after = True.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/seat-pending-1.log SHA256 1e3901a8ab310ed4339f8e0e6f811c0ba818b823a78303cad489f278244d5321
+
+Source: 599f18017c1dbb1e33d70578f49422186f2ef188
+Command: cargo test -p bbt-mux --locked --test messaging_flow -- --nocapture
+EXIT 0; elapsed 84.124236917 s including build; clean tree after = True.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/seat-pending-2.log SHA256 a65968f74467e08c4c762a61148053b5754ec1dd95842dcfd24a7ad272cc368f
+
+Source: 599f18017c1dbb1e33d70578f49422186f2ef188
+Command: cargo test -p bbt-mux --locked --lib gui_events::tests::held_messaging_sources_keep_the_typed_projection_without_rewriting_proof -- --exact
+EXIT 0; elapsed 102.185400500 s including build; clean tree after = True.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/pending-projection-1.log SHA256 853d04f19a1bd22dd6308b90698741093f40ff2c9432a4d58758f135f1e67a37
+
+Source: 599f18017c1dbb1e33d70578f49422186f2ef188
+Command: cargo check -p bboxy450-term --locked --lib
+EXIT 0; elapsed 90.133655750 s including build; clean tree after = True.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/pending-app-check-1.log SHA256 c60f4fcabf68c06df1b09556cb98a2a2b92217aadd096b772e272279fd06f14f
+
+The first-startup seat test checks author absent, pending receipt/inferred delivery, restart, signature verification, immutable intent/bus draft, same native attempt/evidence and no second prepare.
+The remote test checks unsigned intents absent from the remote inbox and scheduler; three completions verify in original admission order with sender sequences 1/2/3.
+The source-classification test recognises only the broker exact hold/run-id/messaging prefix; original proof/source bytes remain unmodified.
+First-ever operator reference shape approved by Oracle c4809646: immutable {id,kind}, device attribution stored separately; integration follows accepted #315. Newer work-in-progress changes are not covered by the older source checks above.

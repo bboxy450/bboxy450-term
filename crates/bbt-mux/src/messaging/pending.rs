@@ -14,7 +14,7 @@ pub fn binding(intent: &PendingIntent) -> Result<IntentBinding> {
         || intent.id != intent.request.id
         || intent.swarm_id == Ulid::nil()
         || intent.admission_order == 0
-        || intent.role_epoch == 0
+        || intent.role_epoch == Some(0)
         || intent.role.name.is_empty()
         || intent.role.name.len() > 128
         || intent.role.name.chars().any(char::is_control)
@@ -34,13 +34,21 @@ pub fn binding(intent: &PendingIntent) -> Result<IntentBinding> {
             seat,
             process_generation,
             ..
-        } if seat == Ulid::nil() || process_generation == 0 => {
+        } if seat == Ulid::nil() || process_generation == 0 || intent.role_epoch.is_none() => {
             return Err(invalid("invalid pending seat identity"));
         }
         LogicalSender::Operator {
             device: Some(device),
             ..
         } if device == Ulid::nil() => return Err(invalid("invalid pending operator reference")),
+        LogicalSender::OperatorLocal {
+            reference, device, ..
+        } if reference.id == Ulid::nil()
+            || reference.kind != bbt_proto::messaging::OperatorReferenceKind::OperatorLocal
+            || device == Some(Ulid::nil()) =>
+        {
+            return Err(invalid("invalid local operator reference"));
+        }
         _ => {}
     }
     let bytes = serde_json::to_vec(intent)?;
@@ -68,6 +76,9 @@ pub fn check_upgrade_content(
         } => (*seat, *process_generation, true),
         LogicalSender::Operator {
             door, issued_by, ..
+        }
+        | LogicalSender::OperatorLocal {
+            door, issued_by, ..
         } => (
             Ulid::nil(),
             0,
@@ -79,7 +90,9 @@ pub fn check_upgrade_content(
         || envelope.seat != seat
         || envelope.process_generation != generation
         || envelope.role != intent.role
-        || envelope.role_epoch != intent.role_epoch
+        || intent
+            .role_epoch
+            .is_some_and(|epoch| envelope.role_epoch != epoch)
         || envelope.priority_class != intent.role.class
         || envelope.context != intent.request.destination
         || envelope.kind != intent.request.kind
@@ -112,7 +125,11 @@ mod tests {
         let intent = PendingIntent {
             version: 1,
             id: request.id,
-            sender: LogicalSender::Operator {
+            sender: LogicalSender::OperatorLocal {
+                reference: bbt_proto::messaging::OperatorReference {
+                    id: Ulid::new(),
+                    kind: bbt_proto::messaging::OperatorReferenceKind::OperatorLocal,
+                },
                 device: None,
                 door: Door::Gui,
                 issued_by: None,
@@ -122,7 +139,7 @@ mod tests {
                 name: "operator".into(),
                 class: Class::Oracle,
             },
-            role_epoch: 1,
+            role_epoch: None,
             body: Body::Text {
                 text: request.text.clone(),
             },
@@ -151,6 +168,7 @@ mod tests {
             seat: Ulid::new(),
             process_generation: 1,
         };
+        changed.role_epoch = Some(1);
         assert_ne!(binding(&changed).unwrap().digest, original.digest);
         changed = intent;
         changed.request.id = Ulid::new();

@@ -156,13 +156,13 @@ fn seat_messages_require_the_label_derived_by_the_receiving_account() {
         )
         .unwrap();
     assert_eq!(
-        sent.envelope.issued_by.as_deref(),
+        sent.envelope().expect("signed fixture envelope").issued_by.as_deref(),
         Some(generated.issued_by())
     );
-    keys.verify(&sent.envelope).unwrap();
-    assert!(sent.envelope.verify_signature().is_err()); // ordinary wire rules remain strict
+    keys.verify(&sent.envelope().expect("signed fixture envelope")).unwrap();
+    assert!(sent.envelope().expect("signed fixture envelope").verify_signature().is_err()); // ordinary wire rules remain strict
     for bad_label in [None, Some("test-account:01ARZ3NDEKTSV4RRFFQ69G5FAV")] {
-        let mut forged = sent.envelope.clone();
+        let mut forged = sent.envelope().expect("signed fixture envelope").clone();
         forged.issued_by = bad_label.map(str::to_owned);
         // The fixture owns this leaf. A valid signature cannot invent account context.
         let leaf = keys.leaf(seat.id, 1).unwrap();

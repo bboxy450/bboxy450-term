@@ -365,7 +365,7 @@ fn durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls()
         assert!(matches!(mark,GuiReply::EventCursor {cursor} if cursor.unread==0));
         let Response::Messages {page}=gui.messaging(Request::List {thread:None,channel:None,after:0,limit:1}).await else {panic!("expected inbox page")};
         assert_eq!(page.items.len(),1);let first_message=&page.items[0];
-        assert_eq!(first_message.envelope.id,message_id);
+        assert_eq!(first_message.envelope().expect("signed fixture envelope").id,message_id);
         let position=first_message.bus.as_ref().unwrap();assert_eq!(position.stream,stream);assert_eq!(position.seq,seq);
         assert_ne!(first_message.sequence,seq,"fixture exercises separate ledger and bus domains");
         let ledger_cursor=first_message.sequence;
@@ -376,7 +376,7 @@ fn durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls()
         };
         gui.send(GuiAction::EventAck {stream:stream.clone(),seq:second_sequence}).await;
         let Response::Messages {page}=gui.messaging(Request::List {thread:None,channel:None,after:ledger_cursor,limit:1}).await else {panic!("expected next inbox page")};
-        assert_eq!(page.items.len(),1);assert_eq!(page.items[0].envelope.id,second_id);
+        assert_eq!(page.items.len(),1);assert_eq!(page.items[0].envelope().expect("signed fixture envelope").id,second_id);
         assert_eq!(page.items[0].bus.as_ref().unwrap().seq,second_sequence);
         assert_eq!(gui.cursor(&stream).await.unread,1);
         process.emit(2);

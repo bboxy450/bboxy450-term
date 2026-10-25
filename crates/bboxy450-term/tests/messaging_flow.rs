@@ -362,8 +362,8 @@ async fn composed_decision_and_task_delegation_cross_the_real_gui_boundary() {
     else {
         panic!("native task inbox");
     };
-    assert!(page.items.iter().any(|item| matches!(&item.envelope.body,Body::Task {task_id,event,..} if *task_id==f.task && event=="delegate")));
-    let task_message = page.items.iter().find(|item| matches!(&item.envelope.body, Body::Task { task_id, event, .. } if *task_id == f.task && event == "delegate")).unwrap().envelope.id;
+    assert!(page.items.iter().any(|item| matches!(&item.envelope().expect("signed fixture envelope").body,Body::Task {task_id,event,..} if *task_id==f.task && event=="delegate")));
+    let task_message = page.items.iter().find(|item| matches!(&item.envelope().expect("signed fixture envelope").body, Body::Task { task_id, event, .. } if *task_id == f.task && event == "delegate")).unwrap().envelope().expect("signed fixture envelope").id;
     let receipt = tokio::time::timeout(Duration::from_secs(5), async {
         loop {
             let row = f

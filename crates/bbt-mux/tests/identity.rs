@@ -696,7 +696,7 @@ impl SeatFixture {
                         time * 1000,
                     )
                     .unwrap()
-                    .envelope,
+                    .envelope().expect("signed fixture envelope"),
             )
         } else {
             None
@@ -765,7 +765,7 @@ fn identity_operator_uses_the_current_device_grant_and_refuses_seat_or_local_aut
     };
     use ed25519_dalek::Signer;
     let mut f = SeatFixture::new(false);
-    let mut operator = f.send("device-signed operator").envelope;
+    let mut operator = f.send("device-signed operator").envelope().expect("signed fixture envelope").clone();
     let head: Signed<AccountHead> =
         serde_json::from_slice(&f.account.get("identity/head").unwrap().unwrap()).unwrap();
     let device_id = head.payload.active_devices[0].device_id;
@@ -834,7 +834,7 @@ fn identity_operator_uses_the_current_device_grant_and_refuses_seat_or_local_aut
 fn identity_seat_chain_checks_certificates_scope_expiry_and_revoked_epochs() {
     use bbt_mux::messaging::{keys::SeatKeys, wire::IssuerKind};
     let mut f = SeatFixture::new(false);
-    let message = f.send("root-certified seat").envelope;
+    let message = f.send("root-certified seat").envelope().expect("signed fixture envelope").clone();
     assert_eq!(message.issuer_kind, IssuerKind::GpgRoot);
     assert_ne!(message.device, message.issuer);
     f.chain.verify(&message).unwrap();
@@ -920,7 +920,7 @@ fn identity_seat_chain_checks_certificates_scope_expiry_and_revoked_epochs() {
 fn identity_seat_renewal_never_uses_the_primary_and_roster_keeps_public_history() {
     use bbt_mux::messaging::keys::SeatKeys;
     let mut f = SeatFixture::new(false);
-    let old = f.send("first").envelope;
+    let old = f.send("first").envelope().expect("signed fixture envelope").clone();
     let old_key = f.chain.leaf(f.seat.id, 1).unwrap();
     let stop = Command::new("gpgconf")
         .arg("--homedir")
@@ -937,7 +937,7 @@ fn identity_seat_renewal_never_uses_the_primary_and_roster_keeps_public_history(
         1,
         "idle seat renews before another send"
     );
-    let renewed = f.send("renew at half-life").envelope;
+    let renewed = f.send("renew at half-life").envelope().expect("signed fixture envelope").clone();
     assert_ne!(old.role_grant_id, renewed.role_grant_id);
     assert_eq!(old.author, renewed.author);
     let proof = f.chain.proof(&renewed.role_grant_id).unwrap();
@@ -953,7 +953,7 @@ fn identity_seat_renewal_never_uses_the_primary_and_roster_keeps_public_history(
             Ok(())
         })
         .unwrap();
-    let next = f.send("new process generation").envelope;
+    let next = f.send("new process generation").envelope().expect("signed fixture envelope").clone();
     assert_ne!(old.author, next.author);
     assert!(
         f.chain
@@ -1005,7 +1005,7 @@ fn identity_cutover_preserves_live_local_generation_and_fences_newer_local_seque
     };
     let mut f = SeatFixture::new(true);
     let old = f.prior.clone().unwrap();
-    let current = f.send("same running generation").envelope;
+    let current = f.send("same running generation").envelope().expect("signed fixture envelope").clone();
     assert_eq!(current.issuer_kind, IssuerKind::LocalDev);
     assert_eq!(current.author, old.author);
     f.chain.verify(&old).unwrap();
@@ -1034,7 +1034,7 @@ fn identity_cutover_preserves_live_local_generation_and_fences_newer_local_seque
             .to_string()
             .contains("after cutover")
     );
-    let next = f.send("new generation uses chain").envelope;
+    let next = f.send("new generation uses chain").envelope().expect("signed fixture envelope").clone();
     assert_eq!(next.issuer_kind, IssuerKind::GpgRoot);
     f.chain.verify(&next).unwrap();
     assert_eq!(f.chain.still_local().unwrap(), 1);
@@ -1069,7 +1069,7 @@ fn identity_reset_is_explicit_monotonic_and_does_not_rewrite_old_chain_history()
         },
     };
     let mut f = SeatFixture::new(false);
-    let old = f.send("gpg history").envelope;
+    let old = f.send("gpg history").envelope().expect("signed fixture envelope").clone();
     let saved = f.account.get("identity/issuer").unwrap().unwrap();
     let local = LocalSeatKeys::new(SigningKey::from_bytes(&[43; 32]));
     let reset = reset_identity(&f.account, &local, f.time()).unwrap();
@@ -1136,8 +1136,8 @@ fn identity_reset_is_explicit_monotonic_and_does_not_rewrite_old_chain_history()
             future * 1000,
         )
         .unwrap();
-    assert_eq!(new_local.envelope.issuer_kind, IssuerKind::LocalDev);
-    historical.verify(&new_local.envelope).unwrap();
+    assert_eq!(new_local.envelope().expect("signed fixture envelope").issuer_kind, IssuerKind::LocalDev);
+    historical.verify(&new_local.envelope().expect("signed fixture envelope")).unwrap();
     f.account.put("identity/issuer", &saved).unwrap();
     let reopened = ChainSeatKeys::open(
         f.account.clone(),
@@ -1189,12 +1189,12 @@ fn identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ac
     let mut f = SeatFixture::new(false);
     let first = f.send("parent");
     let mut request = SendRequest::text(format!("seats/{}/inbox", f.peer.id), "reply");
-    request.reply_to = Some(first.envelope.id);
+    request.reply_to = Some(first.envelope().expect("signed fixture envelope").id);
     let reply = f
         .messaging
         .send(f.seat.id, 1, request.clone(), f.time() * 1000)
         .unwrap();
-    assert_eq!(reply.envelope.thread_id, first.envelope.thread_id);
+    assert_eq!(reply.envelope().expect("signed fixture envelope").thread_id, first.envelope().expect("signed fixture envelope").thread_id);
     assert_eq!(
         f.messaging
             .send(f.seat.id, 1, request.clone(), f.time() * 1000)
@@ -1208,7 +1208,7 @@ fn identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ac
             .is_err()
     );
     assert_eq!(
-        f.messaging.receipts(f.seat.id, first.envelope.id).unwrap()[0].evidence,
+        f.messaging.receipts(f.seat.id, first.envelope().expect("signed fixture envelope").id).unwrap()[0].evidence,
         Evidence::RecipientStored
     );
     f.messaging.ready(f.time() * 1000).unwrap();
@@ -1217,9 +1217,9 @@ fn identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ac
         .prepare(f.peer.swarm, f.peer.id, f.time() * 1000)
         .unwrap()
         .unwrap();
-    assert_eq!(work.messages[0].envelope.id, first.envelope.id);
+    assert_eq!(work.messages[0].envelope().expect("signed fixture envelope").id, first.envelope().expect("signed fixture envelope").id);
     f.messaging
-        .acknowledge(f.peer.id, first.envelope.id, None, f.time() * 1000)
+        .acknowledge(f.peer.id, first.envelope().expect("signed fixture envelope").id, None, f.time() * 1000)
         .unwrap();
     f.messaging
         .finish(
@@ -1235,7 +1235,7 @@ fn identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ac
         )
         .unwrap();
     assert_eq!(
-        f.messaging.receipts(f.seat.id, first.envelope.id).unwrap()[0].evidence,
+        f.messaging.receipts(f.seat.id, first.envelope().expect("signed fixture envelope").id).unwrap()[0].evidence,
         Evidence::ApplicationAcknowledged
     );
     println!(
@@ -1287,7 +1287,7 @@ fn identity_status_reports_no_primary_and_persists_safe_bootstrap_pending_reason
             now() * 1000,
         )
         .unwrap()
-        .envelope;
+        .envelope().expect("signed fixture envelope").clone();
     assert_eq!(
         envelope.issuer_kind,
         bbt_mux::messaging::wire::IssuerKind::LocalDev

@@ -264,7 +264,9 @@ impl Ledger {
             &Draft::new(
                 match sender {
                     Recipient::Seat(seat) => format!("seat/{seat}/sender_stored"),
-                    Recipient::Operator(_) => "operator/inbox/receipt".into(),
+                    Recipient::Operator(_) | Recipient::OperatorLocal(_) => {
+                        "operator/inbox/receipt".into()
+                    }
                 },
                 "messaging",
                 serde_json::json!({"message":envelope.id,"sequence":sequence,"held":held}),
@@ -331,7 +333,9 @@ impl Ledger {
             &Draft::new(
                 match sender {
                     Recipient::Seat(seat) => format!("seat/{seat}/sender_stored"),
-                    Recipient::Operator(_) => "operator/inbox/receipt".into(),
+                    Recipient::Operator(_) | Recipient::OperatorLocal(_) => {
+                        "operator/inbox/receipt".into()
+                    }
                 },
                 "messaging",
                 serde_json::json!({"message":intent.id,"sequence":sequence,"held":held,"signature":"pending","reason":intent.hold_reason}),
@@ -613,7 +617,7 @@ impl Ledger {
     }
     pub fn targets(&self, now: u64) -> Result<Vec<Ulid>> {
         let db = self.store.connection()?;
-        let mut q=db.prepare_cached("SELECT DISTINCT recipient FROM msg_deliveries WHERE evidence='recipient-stored' AND recipient NOT LIKE 'operator:%' AND held IS NULL AND eligible_ms<=?1 ORDER BY recipient LIMIT 1024")?;
+        let mut q=db.prepare_cached("SELECT DISTINCT recipient FROM msg_deliveries WHERE evidence='recipient-stored' AND recipient NOT LIKE 'operator:%' AND recipient NOT LIKE 'operator-local:%' AND held IS NULL AND eligible_ms<=?1 ORDER BY recipient LIMIT 1024")?;
         q.query_map([sqlint(now)?], |r| r.get::<_, String>(0))?
             .map(|r| Ok(r?.parse()?))
             .collect()
@@ -1045,6 +1049,12 @@ fn insert_deliveries(
 ) -> Result<()> {
     let sequence = message.sequence;
     let envelope = message.view();
+    let sender: String = tx.query_row(
+        "SELECT sender FROM msg_messages WHERE seq=?1",
+        [sqlint(sequence)?],
+        |row| row.get(0),
+    )?;
+    let sender = Recipient::try_from(sender).map_err(invalid)?;
     for route in routes {
         let remote_pending = same_device.is_some_and(|local| !local.contains(&route.recipient));
         let mut receipt = Receipt {
@@ -1071,6 +1081,15 @@ fn insert_deliveries(
             relayed_via_main: false,
             signature: envelope.signature,
             signature_reason: envelope.signature_reason.map(str::to_owned),
+            sender_operator: bbt_proto::messaging::OperatorReference::from_recipient(sender),
+            sender_device: match sender {
+                Recipient::Operator(device) => Some(device),
+                _ => None,
+            },
+            recipient_device: match route.recipient {
+                Recipient::Operator(device) => Some(device),
+                _ => None,
+            },
         };
         receipt_event(tx, &receipt, now)?;
         if remote_pending {
@@ -1141,7 +1160,9 @@ fn receipt_event(tx: &rusqlite::Transaction<'_>, receipt: &Receipt, now: u64) ->
         &Draft::new(
             match receipt.recipient {
                 Recipient::Seat(seat) => format!("seat/{seat}/receipt"),
-                Recipient::Operator(_) => "operator/inbox/receipt".into(),
+                Recipient::Operator(_) | Recipient::OperatorLocal(_) => {
+                    "operator/inbox/receipt".into()
+                }
             },
             "messaging",
             serde_json::to_value(receipt)?,
@@ -1191,7 +1212,7 @@ fn publication_payload(
     draft.generation = (envelope.process_generation > 0).then_some(envelope.process_generation);
     tree::queue_event(tx, &draft)?;
     let operator: bool = tx.query_row(
-        "SELECT EXISTS(SELECT 1 FROM msg_deliveries d JOIN msg_messages m ON m.seq=d.message WHERE m.id=?1 AND d.recipient LIKE 'operator:%')",
+        "SELECT EXISTS(SELECT 1 FROM msg_deliveries d JOIN msg_messages m ON m.seq=d.message WHERE m.id=?1 AND (d.recipient LIKE 'operator:%' OR d.recipient LIKE 'operator-local:%'))",
         [envelope.id.to_string()],
         |row| row.get(0),
     )?;

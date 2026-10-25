@@ -1,4 +1,5 @@
 //! The logic owner mediates keys, current grants, inboxes and the local bus.
+use bbt_proto::messaging::{OperatorReference, OperatorReferenceKind};
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -171,7 +172,8 @@ pub struct Messaging {
     registry: Registry,
     keys: Arc<dyn SeatKeys>,
     swarms: BTreeMap<Ulid, Swarm>,
-    operator_device: Option<Ulid>,
+    operator_reference: Option<OperatorReference>,
+    operator_device_attribution: Option<Ulid>,
 }
 impl Messaging {
     pub fn request(
@@ -400,7 +402,8 @@ impl Messaging {
             registry,
             keys,
             swarms: BTreeMap::new(),
-            operator_device: None,
+            operator_reference: None,
+            operator_device_attribution: None,
         };
         for record in messaging.registry.list()? {
             messaging.sync_seat(&record)?;
@@ -473,8 +476,8 @@ impl Messaging {
         if !self.swarms.contains_key(&id) {
             let store = SqliteStore::open(&object_dir(&self.root, &format!("swarm-{id}"))?)?;
             let mut tree = Tree::open(store.clone(), id)?;
-            if let Some(device_id) = self.operator_device {
-                tree.set_operator(device_id);
+            if let Some(reference) = self.operator_reference {
+                tree.set_operator_reference(reference);
             }
             self.swarms.insert(
                 id,
@@ -491,22 +494,79 @@ impl Messaging {
         Ok(self.swarms.get_mut(&id).unwrap())
     }
     pub(crate) fn set_operator_device(&mut self, device_id: Ulid) -> Result<()> {
-        if device_id == Ulid::nil() {
+        self.operator_reference(Some(device_id)).map(|_| ())
+    }
+    /// Persist a principal once. Only the admitted IO owner supplies validated
+    /// device facts; no request DTO can choose or change the continuity key.
+    pub(crate) fn operator_reference(&mut self, device: Option<Ulid>) -> Result<OperatorReference> {
+        if device == Some(Ulid::nil()) {
             return Err(invalid("operator device must be non-nil"));
         }
-        if self.operator_device != Some(device_id) {
-            self.operator_device = Some(device_id);
+        let mut db = self.account.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let old: Option<Vec<u8>> = tx
+            .query_row(
+                "SELECT value FROM kv WHERE key='messaging/operator-reference'",
+                [],
+                |r| r.get(0),
+            )
+            .optional()?;
+        let reference = match old {
+            Some(bytes) => serde_json::from_slice::<OperatorReference>(&bytes)?,
+            None => {
+                let reference = OperatorReference {
+                    id: device.unwrap_or_else(Ulid::new),
+                    kind: if device.is_some() {
+                        OperatorReferenceKind::DeviceDerived
+                    } else {
+                        OperatorReferenceKind::OperatorLocal
+                    },
+                };
+                tx.execute(
+                    "INSERT INTO kv VALUES('messaging/operator-reference',?1)",
+                    [serde_json::to_vec(&reference)?],
+                )?;
+                reference
+            }
+        };
+        if reference.id == Ulid::nil() {
+            return Err(invalid("invalid persisted operator reference"));
+        }
+        if let Some(device) = device {
+            let binding = serde_json::json!({"reference":reference,"device":device});
+            tx.execute(
+                "INSERT OR IGNORE INTO kv VALUES(?1,?2)",
+                params![
+                    format!("messaging/operator-bindings/{}/{}", reference.id, device),
+                    serde_json::to_vec(&binding)?
+                ],
+            )?;
+            tx.execute("INSERT INTO kv VALUES('messaging/operator-attribution',?1) ON CONFLICT(key) DO UPDATE SET value=excluded.value",[serde_json::to_vec(&device)?])?;
+        }
+        let attribution: Option<Vec<u8>> = tx
+            .query_row(
+                "SELECT value FROM kv WHERE key='messaging/operator-attribution'",
+                [],
+                |r| r.get(0),
+            )
+            .optional()?;
+        tx.commit()?;
+        self.operator_device_attribution = attribution
+            .map(|bytes| serde_json::from_slice(&bytes))
+            .transpose()?;
+        if self.operator_reference != Some(reference) {
+            self.operator_reference = Some(reference);
             for swarm in self.swarms.values_mut() {
-                swarm.tree.set_operator(device_id);
+                swarm.tree.set_operator_reference(reference);
                 swarm.seen.clear();
                 swarm.resolved.clear();
                 swarm.muted.clear();
             }
         }
-        Ok(())
+        Ok(reference)
     }
     pub(crate) fn operator_subjects(&self) -> Result<Vec<String>> {
-        if self.operator_device.is_none() {
+        if self.operator_reference.is_none() {
             return Err(invalid("held: operator device custody is unavailable"));
         }
         // Enumerate retained subjects from the current tree, rather than a
@@ -563,6 +623,11 @@ impl Messaging {
             Recipient::Operator(device) => AuthorRef {
                 kind: AuthorKind::Operator,
                 id: device.to_string(),
+                name: "operator".into(),
+            },
+            Recipient::OperatorLocal(reference) => AuthorRef {
+                kind: AuthorKind::OperatorLocal,
+                id: reference.to_string(),
                 name: "operator".into(),
             },
         };
@@ -791,7 +856,10 @@ impl Messaging {
         let body = body.unwrap_or_else(|| Body::Text {
             text: request.text.clone(),
         });
-        let sender = Recipient::Operator(authority.device_id);
+        let sender = self
+            .operator_reference
+            .expect("operator reference admitted")
+            .recipient();
         if let Some(old) = self.swarm(swarm)?.ledger.existing(&request, sender)? {
             if old.view().body != &body {
                 return Err(invalid("message ID body conflict"));
@@ -1080,7 +1148,7 @@ impl Messaging {
                     },
                     swarm_id: record.swarm,
                     role: record.role.clone(),
-                    role_epoch: epoch,
+                    role_epoch: Some(epoch),
                     body: Body::Text {
                         text: request.text.clone(),
                     },
@@ -1177,7 +1245,9 @@ impl Messaging {
             Recipient::Seat(seat) => {
                 self.registry.get(seat)?.location == crate::registry::Location::Local
             }
-            Recipient::Operator(device) => self.operator_device == Some(device),
+            recipient @ (Recipient::Operator(_) | Recipient::OperatorLocal(_)) => {
+                self.operator_reference.map(OperatorReference::recipient) == Some(recipient)
+            }
         })
     }
     fn store_pending(&mut self, held: &HeldSend, now: u64) -> Result<super::api::Response> {
@@ -1353,7 +1423,9 @@ impl Messaging {
         for route in routes {
             match route.recipient {
                 Recipient::Seat(seat) if self.registry.get(seat)?.swarm == swarm => {}
-                Recipient::Operator(device) if self.operator_device == Some(device) => {}
+                recipient @ (Recipient::Operator(_) | Recipient::OperatorLocal(_))
+                    if self.operator_reference.map(OperatorReference::recipient)
+                        == Some(recipient) => {}
                 _ => return Err(invalid("destination is outside this account/swarm scope")),
             }
         }
@@ -1903,8 +1975,12 @@ impl Messaging {
                 .get(seat)
                 .map(|t| t.muted)
                 .map_err(|e| e.to_string()),
-            Recipient::Operator(device) if self.operator_device == Some(device) => Ok(false),
-            Recipient::Operator(_) => {
+            recipient @ (Recipient::Operator(_) | Recipient::OperatorLocal(_))
+                if self.operator_reference.map(OperatorReference::recipient) == Some(recipient) =>
+            {
+                Ok(false)
+            }
+            Recipient::Operator(_) | Recipient::OperatorLocal(_) => {
                 Err("operator device is not the active account device".into())
             }
         };
@@ -2130,5 +2206,94 @@ fn sender_inbox(message: &super::ledger::StoredMessage) -> String {
         "operator/inbox".into()
     } else {
         format!("seats/{}/inbox", message.view().seat)
+    }
+}
+
+#[cfg(test)]
+mod reference_tests {
+    use super::super::keys::LocalSeatKeys;
+    use super::*;
+    use ed25519_dalek::SigningKey;
+
+    #[test]
+    fn operator_reference_survives_enrolment_without_moving_its_recipient() {
+        let root = tempfile::tempdir().unwrap();
+        let keys = Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[61; 32])));
+        let mut messaging = Messaging::open(root.path(), keys.clone()).unwrap();
+        let reference = messaging.operator_reference(None).unwrap();
+        assert_eq!(reference.kind, OperatorReferenceKind::OperatorLocal);
+        assert_eq!(messaging.operator_device_attribution, None);
+        assert!(matches!(reference.recipient(),Recipient::OperatorLocal(id) if id==reference.id));
+        let immutable = messaging
+            .account
+            .get("messaging/operator-reference")
+            .unwrap()
+            .unwrap();
+        assert!(
+            serde_json::from_slice::<serde_json::Value>(&immutable)
+                .unwrap()
+                .get("device")
+                .is_none()
+        );
+        drop(messaging);
+
+        let mut messaging = Messaging::open(root.path(), keys).unwrap();
+        let device = Ulid::from(12u128);
+        assert_eq!(
+            messaging.operator_reference(Some(device)).unwrap(),
+            reference
+        );
+        assert_eq!(messaging.operator_reference(None).unwrap(), reference);
+        assert_eq!(messaging.operator_device_attribution, Some(device));
+        assert_eq!(
+            messaging
+                .account
+                .get("messaging/operator-reference")
+                .unwrap()
+                .unwrap(),
+            immutable
+        );
+        let bytes = messaging
+            .account
+            .get(&format!(
+                "messaging/operator-bindings/{}/{}",
+                reference.id, device
+            ))
+            .unwrap()
+            .unwrap();
+        let binding: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(
+            binding["reference"],
+            serde_json::to_value(reference).unwrap()
+        );
+        assert_eq!(binding["device"], serde_json::json!(device));
+        assert_eq!(
+            messaging
+                .account
+                .list("messaging/operator-bindings/")
+                .unwrap()
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn an_existing_device_keeps_its_original_operator_recipient_encoding() {
+        let root = tempfile::tempdir().unwrap();
+        let mut messaging = Messaging::open(
+            root.path(),
+            Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[62; 32]))),
+        )
+        .unwrap();
+        let device = Ulid::from(13u128);
+        let reference = messaging.operator_reference(Some(device)).unwrap();
+        assert_eq!(reference.id, device);
+        assert_eq!(reference.kind, OperatorReferenceKind::DeviceDerived);
+        assert_eq!(
+            reference.recipient().to_string(),
+            format!("operator:{device}")
+        );
+        assert!(messaging.operator_reference(Some(Ulid::nil())).is_err());
+        assert_eq!(messaging.operator_reference(None).unwrap(), reference);
     }
 }

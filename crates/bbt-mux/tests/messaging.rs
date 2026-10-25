@@ -452,7 +452,7 @@ impl Fixture {
 fn persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart() {
     let mut f = Fixture::new();
     let first = f.send(f.a.id, "parent", 1000);
-    let r = f.messaging.receipts(f.a.id, first.envelope.id).unwrap();
+    let r = f.messaging.receipts(f.a.id, first.envelope().expect("signed fixture envelope").id).unwrap();
     assert_eq!(r[0].evidence, Evidence::RecipientStored);
     assert!(r[0].attempt.is_none());
     // One wake carries everything pending (decision #23); the reply below is
@@ -460,9 +460,9 @@ fn persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart() {
     let work = f.take(1010);
     assert_eq!(work.messages, vec![first.clone()]);
     let mut reply = SendRequest::text(format!("seats/{}/inbox", f.b.id), "reply");
-    reply.reply_to = Some(first.envelope.id);
+    reply.reply_to = Some(first.envelope().expect("signed fixture envelope").id);
     let stored = f.messaging.send(f.a.id, 1, reply.clone(), 1001).unwrap();
-    assert_eq!(stored.envelope.thread_id, first.envelope.thread_id);
+    assert_eq!(stored.envelope().expect("signed fixture envelope").thread_id, first.envelope().expect("signed fixture envelope").thread_id);
     assert_eq!(
         f.messaging.send(f.a.id, 1, reply.clone(), 1002).unwrap(),
         stored
@@ -470,18 +470,18 @@ fn persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart() {
     reply.text.push_str(" changed");
     assert!(f.messaging.send(f.a.id, 1, reply, 1003).is_err());
     f.messaging
-        .acknowledge(f.b.id, first.envelope.id, None, 1011)
+        .acknowledge(f.b.id, first.envelope().expect("signed fixture envelope").id, None, 1011)
         .unwrap();
     f.finish(&work, Evidence::NativeWritten, 1012);
     assert_eq!(
-        f.messaging.receipts(f.a.id, first.envelope.id).unwrap()[0].evidence,
+        f.messaging.receipts(f.a.id, first.envelope().expect("signed fixture envelope").id).unwrap()[0].evidence,
         Evidence::ApplicationAcknowledged
     );
     let abandoned = f.take(1020);
-    assert_eq!(abandoned.messages[0].envelope.id, stored.envelope.id);
+    assert_eq!(abandoned.messages[0].envelope().expect("signed fixture envelope").id, stored.envelope().expect("signed fixture envelope").id);
     f.reopen();
     assert_eq!(
-        f.messaging.receipts(f.a.id, stored.envelope.id).unwrap()[0].evidence,
+        f.messaging.receipts(f.a.id, stored.envelope().expect("signed fixture envelope").id).unwrap()[0].evidence,
         Evidence::NativeUnknown
     );
     assert!(
@@ -586,9 +586,9 @@ fn mute_holds_both_directions_reopens_and_releases_only_under_current_grants() {
             128,
         )
         .unwrap();
-    assert!(body.items.iter().any(|m| m.envelope.id == notice
+    assert!(body.items.iter().any(|m| m.envelope().expect("signed fixture envelope").id == notice
         && matches!(
-            m.envelope.body,
+            m.envelope().expect("signed fixture envelope").body,
             Body::Presence {
                 state: bbt_proto::messaging::State::Active,
                 ..
@@ -621,10 +621,10 @@ fn mute_holds_both_directions_reopens_and_releases_only_under_current_grants() {
     f.messaging
         .set_mute(Actor::Operator, f.b.id, false, State::Active, 3000)
         .unwrap();
-    let held = f.messaging.receipts(f.a.id, blocked.envelope.id).unwrap();
+    let held = f.messaging.receipts(f.a.id, blocked.envelope().expect("signed fixture envelope").id).unwrap();
     assert!(held[0].held.as_ref().unwrap().contains("write"));
     assert!(
-        f.messaging.receipts(f.a.id, inbound.envelope.id).unwrap()[0]
+        f.messaging.receipts(f.a.id, inbound.envelope().expect("signed fixture envelope").id).unwrap()[0]
             .held
             .is_some()
     );
@@ -635,7 +635,7 @@ fn mute_holds_both_directions_reopens_and_releases_only_under_current_grants() {
         .prepare(f.a.swarm, f.a.id, 3001)
         .unwrap()
         .unwrap();
-    assert_eq!(work.messages[0].envelope.id, outbound.envelope.id);
+    assert_eq!(work.messages[0].envelope().expect("signed fixture envelope").id, outbound.envelope().expect("signed fixture envelope").id);
     f.messaging
         .tree(f.a.swarm)
         .unwrap()
@@ -648,8 +648,8 @@ fn mute_holds_both_directions_reopens_and_releases_only_under_current_grants() {
         .unwrap();
     // Both released messages travel in one FIFO wake (decision #23).
     let first = f.take(3002);
-    let ids: Vec<_> = first.messages.iter().map(|m| m.envelope.id).collect();
-    assert_eq!(ids, vec![inbound.envelope.id, blocked.envelope.id]);
+    let ids: Vec<_> = first.messages.iter().map(|m| m.envelope().expect("signed fixture envelope").id).collect();
+    assert_eq!(ids, vec![inbound.envelope().expect("signed fixture envelope").id, blocked.envelope().expect("signed fixture envelope").id]);
     f.finish(&first, Evidence::NativeWritten, 3003);
     assert!(
         f.messaging
@@ -665,7 +665,7 @@ fn priority_fifo_four_to_one_and_burst_overflow_are_receiver_local() {
     let worker = f.send(f.a.id, "old worker", 1000);
     let mut ids = Vec::new();
     for _ in 0..32 {
-        ids.push(f.send(f.o.id, "oracle", 1000).envelope.id);
+        ids.push(f.send(f.o.id, "oracle", 1000).envelope().expect("signed fixture envelope").id);
     }
     // Per-recipient wakes (decision #23), still under the fair queue: four
     // Oracle messages, then the waiting worker, then the rest of the Oracle
@@ -677,12 +677,12 @@ fn priority_fifo_four_to_one_and_burst_overflow_are_receiver_local() {
             work.class,
             work.messages
                 .iter()
-                .map(|m| m.envelope.id)
+                .map(|m| m.envelope().expect("signed fixture envelope").id)
                 .collect::<Vec<_>>(),
         )
     };
     assert_eq!(take(&mut f), (Class::Oracle, ids[..4].to_vec()));
-    assert_eq!(take(&mut f), (Class::Worker, vec![worker.envelope.id]));
+    assert_eq!(take(&mut f), (Class::Worker, vec![worker.envelope().expect("signed fixture envelope").id]));
     assert_eq!(take(&mut f), (Class::Oracle, ids[4..30].to_vec()));
     assert_eq!(take(&mut f), (Class::Worker, ids[30..].to_vec()));
 }
@@ -714,7 +714,7 @@ fn oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects() {
     for t in [1000, 1001, 1002] {
         let mut request = SendRequest::text("#updates/*", "chunk");
         request.kind = MessageKind::Chunk;
-        ids.push(f.messaging.send(f.a.id, 1, request, t).unwrap().envelope.id);
+        ids.push(f.messaging.send(f.a.id, 1, request, t).unwrap().envelope().expect("signed fixture envelope").id);
     }
     f.messaging
         .send(
@@ -742,7 +742,7 @@ fn oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects() {
     assert_eq!(
         work.messages
             .iter()
-            .map(|m| m.envelope.id)
+            .map(|m| m.envelope().expect("signed fixture envelope").id)
             .collect::<Vec<_>>(),
         ids
     );
@@ -993,7 +993,7 @@ fn ambiguous_guarded_pty_stays_unknown_through_the_delivery_ledger() {
         .unwrap();
     f.reopen();
     assert_eq!(
-        f.messaging.receipts(f.a.id, message.envelope.id).unwrap()[0].evidence,
+        f.messaging.receipts(f.a.id, message.envelope().expect("signed fixture envelope").id).unwrap()[0].evidence,
         Evidence::NativeUnknown
     );
     assert!(
@@ -1230,13 +1230,13 @@ fn batching_never_jumps_over_an_earlier_eligible_route_in_worker_fifo() {
             f.messaging
                 .send(f.a.id, 1, SendRequest::text(dest, "fifo"), 1000)
                 .unwrap()
-                .envelope
+                .envelope().expect("signed fixture envelope")
                 .id,
         );
     }
     // One wake carries all three across both routes, in FIFO order.
     let work = f.take(1010);
-    let got: Vec<_> = work.messages.iter().map(|m| m.envelope.id).collect();
+    let got: Vec<_> = work.messages.iter().map(|m| m.envelope().expect("signed fixture envelope").id).collect();
     assert_eq!(got, ids);
     f.finish(&work, Evidence::NativeWritten, 1010);
     assert!(
@@ -1256,7 +1256,7 @@ fn muted_peer_cannot_claim_the_authenticated_operator_direct_control_exception()
         .unwrap();
     let ordinary = f.send(f.a.id, "ordinary peer", 1001);
     assert!(
-        f.messaging.receipts(f.a.id, ordinary.envelope.id).unwrap()[0]
+        f.messaging.receipts(f.a.id, ordinary.envelope().expect("signed fixture envelope").id).unwrap()[0]
             .held
             .is_some()
     );
@@ -1274,7 +1274,7 @@ fn muted_peer_cannot_claim_the_authenticated_operator_direct_control_exception()
         .unwrap();
     f.reopen();
     let work = f.take(1003);
-    assert_eq!(work.messages[0].envelope.id, id);
+    assert_eq!(work.messages[0].envelope().expect("signed fixture envelope").id, id);
     f.finish(&work, Evidence::NativeWritten, 1004);
     let Response::Stored { message } = f
         .messaging
@@ -1317,7 +1317,7 @@ fn muted_peer_cannot_claim_the_authenticated_operator_direct_control_exception()
     };
     assert!(message.held_out.is_some());
     assert!(
-        f.messaging.receipts(f.a.id, ordinary.envelope.id).unwrap()[0]
+        f.messaging.receipts(f.a.id, ordinary.envelope().expect("signed fixture envelope").id).unwrap()[0]
             .held
             .is_some()
     );

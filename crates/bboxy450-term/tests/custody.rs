@@ -347,14 +347,14 @@ async fn custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry() {
     assert_eq!(
         page.items
             .iter()
-            .map(|message| message.envelope.id)
+            .map(|message| message.envelope().expect("signed fixture envelope").id)
             .collect::<Vec<_>>(),
         ids
     );
     assert_eq!(
         page.items
             .iter()
-            .map(|message| message.envelope.sender_sequence)
+            .map(|message| message.envelope().expect("signed fixture envelope").sender_sequence)
             .collect::<Vec<_>>(),
         vec![1, 2]
     );

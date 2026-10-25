@@ -78,7 +78,7 @@ pub struct Tree {
     store: SqliteStore,
     swarm: Ulid,
     nodes: BTreeMap<String, Node>,
-    operator_device: Option<Ulid>,
+    operator_recipient: Option<Recipient>,
 }
 pub(crate) fn schema(store: &SqliteStore) -> Result<()> {
     store.connection()?.execute_batch("CREATE TABLE IF NOT EXISTS msg_tree(path TEXT PRIMARY KEY,kind TEXT NOT NULL,target TEXT,filter BLOB NOT NULL,rate BLOB NOT NULL,paused INTEGER NOT NULL,grants BLOB NOT NULL);
@@ -126,7 +126,7 @@ impl Tree {
             store,
             swarm,
             nodes,
-            operator_device: None,
+            operator_recipient: None,
         };
         for path in [
             "", "seats", "channels", "groups", "swarms", "ext", "operator",
@@ -151,7 +151,20 @@ impl Tree {
         Ok(tree)
     }
     pub(crate) fn set_operator(&mut self, device_id: Ulid) {
-        self.operator_device = Some(device_id);
+        self.operator_recipient = Some(Recipient::Operator(device_id));
+    }
+    pub(crate) fn set_operator_reference(
+        &mut self,
+        reference: bbt_proto::messaging::OperatorReference,
+    ) {
+        match reference.kind {
+            bbt_proto::messaging::OperatorReferenceKind::DeviceDerived => {
+                self.set_operator(reference.id)
+            }
+            bbt_proto::messaging::OperatorReferenceKind::OperatorLocal => {
+                self.operator_recipient = Some(reference.recipient())
+            }
+        }
     }
     /// Whether `path` names a node of this swarm's tree.
     pub fn contains(&self, path: &str) -> bool {
@@ -487,9 +500,9 @@ impl Walk<'_> {
                 }
                 let (recipient, agent) = if path == "operator/inbox" {
                     (
-                        Recipient::Operator(self.tree.operator_device.ok_or_else(|| {
+                        self.tree.operator_recipient.ok_or_else(|| {
                             invalid("held: operator device custody is unavailable")
-                        })?),
+                        })?,
                         None,
                     )
                 } else {
