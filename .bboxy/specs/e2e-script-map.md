@@ -746,6 +746,6 @@ No script starts an app outside the runner, reads credentials or attaches a seco
 
 ## Additional rim scripts — 2026-10-25
 
-R2 changes Rim size through the actual Settings keyboard controls and reads the produced stage. At 2/4/8 it asserts gaps 2/4/8, both edge insets 1/2/4, unchanged title/sidebar geometry and unchanged content-padding offsets. It captures the actual window after each setting. The private test-account config path is used; the script never edits the operator's config or bypasses Settings with a direct file write.
+R2 changes Rim size through the actual Settings keyboard controls and reads the produced stage. At 2/4/8 it asserts gaps 2/4/8, all four edge insets 1/2/4, unchanged title/sidebar geometry and unchanged content-padding offsets. It captures the actual window after each setting. The private test-account config path is used; the script never edits the operator's config or bypasses Settings with a direct file write.
 
 R4 uses the shared UI-clock driver for rendered row/tab rim and focus-swell samples, including a resting idle row. Samples must exclude the other surface's 40px reach and the pane's halo before they can prove independent row/tab behaviour. Card focus has no exposed app control path; that clause remains partial (Wren's lab reference09660b51). Runtime verification of this new driver remains required before handoff.

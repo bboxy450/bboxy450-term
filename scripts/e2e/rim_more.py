@@ -41,7 +41,10 @@ def r2():
         left, right = outer
         sidebar_right = chrome[1][0] + chrome[1][2]
         gap = right[0] - (left[0] + left[2])
+        title_bottom = chrome[0][1] + chrome[0][3]
         insets = [left[0] - sidebar_right, layout["size"][0] - right[0] - right[2]]
+        insets += [rect[1] - title_bottom for rect in outer]
+        insets += [layout["size"][1] - rect[1] - rect[3] for rect in outer]
         require(abs(gap - rim) < .01 and all(abs(v - rim / 2) < .01 for v in insets),
                 f"Rim {rim}: gutter={gap}, insets={insets}")
         # Content padding and the title-strip offset do not become extra glow space.
