@@ -1,0 +1,65 @@
+# R5h idle: sole frame attempt and read-only disposition
+
+Source: 8240d3595a057590831bc808f79139271f53d852
+Executor: Rook Ashwhisker; one attempt, no retry. This record does not claim acceptance.
+Normal clean CI source 75c6f6ab4d2f8d33d2dbb686fb5c6c2aa4fdd98b EXIT 0; crates/scripts/Cargo source equality to frame source was verified EXIT 0.
+Normal CI raw SHA256 e92d03fdd2d9f2c00585422be503b865a407ec2a6128e99a7821712c769edb38
+Frame command: sh scripts/gates.sh frame (967 real PTYs, 50 watched, 10-second measured phase).
+Build: release opt-level 3, debug assertions true, debug 0; RUSTC_WRAPPER and RUSTC_WORKSPACE_WRAPPER empty; two Cargo jobs.
+Custody: BBOXY_TEST_CUSTODY=memory; runtime label memory custody (debug) positively witnessed.
+Build EXIT 0; unchanged binary SHA256 043930bc380882314e694ad252bab90c11de6ee39a118a7b123012ceea18a34f
+Build log SHA256 04c35c19eaadc10df325087b44968bed94751e2a9678760f3df9b18d01b9087c
+Quiet START 0560d135-98ed-4ace-8dec-caa3bcb02044 at 2026-10-24T19:24:14.344619-07:00; per-run Oracle override d1e4430f; conservative deadline 2026-10-24T20:33:00-07:00.
+Peer loop crossing START stopped before our frame launch. Existing peer gates drained before our run; preflight peer full gates = 0.
+App PID 49263; start 2026-10-24 19:41:33 PDT; start loadavg1 3.8486328125; free bytes 31091154944 (above 10 GiB).
+Frame EXIT 1 in 103.89614329201868 s; outer wrapper timed_out=False (600 s bound).
+Reason: r5-unsettled-after-producers-stopped. All 50 GUI, later logic and examined ring tails contain PAUSED; phase at timeout = SETTLE.
+False predicates: UI: no pending work; UI: paused frame reached GPU completion; UI: frame and callback counts match the previous settle poll.
+All 969 recorded owned PIDs reaped; ps EXIT 1 with no rows; survivors = [].
+Quiet END 2de00711-9399-473f-8ee1-f057e0bec4c1 at 2026-10-24T19:45:46.602631-07:00. No quiet window remains open.
+Own private target deleted: 1280167936 allocated bytes; free after cleanup 36582871040 bytes. Binary and all raw evidence retained.
+
+## Per-source redraw partition
+
+Counters are cumulative, coalesced and overlapping. Source totals must not be added.
+First recorded SETTLE: frames/callbacks/completed = 1266/1266/1264; native timeout = 1728/1728/1726; final phase-5 poll = 2405/2405/2403.
+First SETTLE -> timeout: 8.430221750 s, frames/callbacks/GPU completions each +462 (54.802828882 per second).
+DIRECT source 1024 redraws +462; display-tick source 4 wakes/redraws/frames +462.
+Messages source 0, output source 1, prepared source 2, live-model source 5: every counter unchanged.
+pending_messages=false, pending_output=false, pending_redraw=true; ignored ticks 0, overflow 0.
+First SETTLE -> final phase-5 poll: 20.891787417 s, direct/tick/frames/completions +1139 (54.519030721 per second); data sources still unchanged.
+GPU completion advances with the moving frame target, two frames behind at each recorded observation. This does not demonstrate a stalled GPU.
+Only one window resize logged. Animate is false in the saved invocation.
+
+## Source-grounded mechanism and proposed next brief
+
+crates/bboxy450-term/src/main.rs:5105 — stall startup sets live_commands=None.
+crates/bboxy450-term/src/main.rs:1687 — scoped model selects task_records and message_history.
+crates/bboxy450-term/src/messaging.rs:1157 — initial task refresh enqueues four backend reads.
+crates/bboxy450-term/src/messaging/history.rs:171 — initial history selection requests List, Cursor and Page; commands/actions produce them at 317/340.
+crates/bboxy450-term/src/main.rs:2823 — model drain admits automatic history/task reads into operation_backlog.
+crates/bboxy450-term/src/main.rs:2125 — flush_operations moves backlog into pending_commands without a sender check.
+crates/bboxy450-term/src/main.rs:2464 — flush_commands can drain pending_commands only when live_commands is Some.
+crates/bboxy450-term/src/main.rs:3280 — nonempty pending_commands re-arms redraw; request_redraw at 2524 records DIRECT source 1024 and requests a display frame.
+The undrainable no-sender fixture queue predicts the observed one DIRECT request per frame. Actual queue depth was not recorded: the specific queue attribution is a static inference, not a dynamic queue trace.
+Proposed smallest next brief: no-sender modes must not admit automatic backend reads or rearm for undeliverable command work. Preserve real live sender/Busy retry, FIFO/order, all settle and GPU predicates.
+Deterministic negative control and fix regression should publish a scoped Model without a sender and exercise the real automatic-read/admission path; a real-sender backpressure control must retain work.
+No producer fix, settle-predicate change, new run or extra load was performed under this read-only brief.
+Oracle disposition sent cb6d774a-3313-4500-b627-e0c5f6791de1; recipient-stored is not model receipt.
+
+## Capture partition limits
+
+Stop -> timeout snapshot wall 20.003082375 s; completion-accounted inclusive checkpoint RPC delta 5.241078667 s (26.201355% proxy).
+Proxy interval is NOT stop-to-first-settled. No first-settled boundary or success sidecar exists; official <=10% acceptance ratio remains unmeasured.
+Best-effort recorder missed rows: 1 -> 3; overwritten spans 25928 -> 110347; nested/in-flight/completion-accounted spans cannot be summed or treated as CPU attribution.
+Repeated PAUSED is not a unique final marker. Later ring/logic diagnostic RPCs are not atomic with the frozen GUI observation.
+
+## Retained raw artifacts
+
+Root: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-idle-frame-bw3i9p2b
+Diagnostics: run-1/r5-frame.KDP7g2/report.diagnostics.json SHA256 baa419c44b48678aab680c8ed1d9429956194db082f98a7e94be55bda5d4d636
+Redraw derivation: redraw-analysis.json SHA256 8c71e7b98e2b41392aa1445a5a4fd92cc7c1fa55b214f858a67072e7c0d1bc85
+run-1/stdout.log SHA256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+run-1/stderr.log SHA256 37c6726d753af9c66ecaf17ce667cb18ecfadc7110f7a43b5e78e8308a643d9a
+run-1/command.json SHA256 8c55c75ac13d1ec78ac4ab0b42a0f5c0ee5ad2d0fb422fe9f0324052fc735985
+run-1/reaped.json SHA256 e3d93b57121e03e87870f60924e0b49175227902b7b11df7266c295e485d0fd7
