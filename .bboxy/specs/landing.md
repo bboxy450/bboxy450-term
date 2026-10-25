@@ -14,7 +14,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[seats-967-frame]]", rel: constrains }
 created: "2026-10-25T16:22:41Z"
-updated: "2026-10-25T16:29:22Z"
+updated: "2026-10-25T16:40:09Z"
 ---
 # Landing
 
@@ -25,6 +25,10 @@ Operator, 2026-10-25, through the Oracle: "we are in integration hell, streamlin
 ## 0. Vocabulary
 
 A **cut** is one Executor's change on one branch, meant to land the day it is claimed. The **candidate** is the cut rebased onto `origin/main`. The **affected set** is the touched crates plus every crate that depends on them, transitively. **Presubmit** is the bounded check `land.sh` runs on the candidate. A **landing** is the fast-forward push of the candidate. **Postsubmit** is the full check on the newest `main`, covering every landing since the last green. **Red** and **green** are postsubmit verdicts on `main`. The **culprit** is the landing a red verdict is traced to. The **quarantine** is the list of tests that do not block while they are being fixed. The **scale run** is the 967-seat frame measurement.
+
+## 0a. Where the landing state lives (Aster's ruling request, 2026-10-25)
+
+The live landing state is **one machine-wide mutable directory, never committed and never per worktree**: `${XDG_STATE_HOME:-$HOME/.local/state}/bboxy450-term/landing/`, holding `main-status`, `landings.log`, `presubmit.log`, `postsubmit.log` and `parity-last-green`; every script reads and writes there, and **`BBOXY_LANDING_STATE_DIR`** overrides it for fixture runs on throwaway repositories, which is the only override. The native render sets the postsubmit stores are cache, not state: `${XDG_CACHE_HOME:-$HOME/.cache}/bboxy450-term/parity/<sha>/`, the pointer in the state directory naming the current green sha. **Evidence enters the record once a day, not per landing:** the night runner copies the day's `landings.log` and `postsubmit.log` into `.bboxy/runs/landing/<date>-landings.log` and `<date>-postsubmit.log` and lands them through `records-push.sh`, so the record carries provenance while `main` never churns on a log line. Wherever this spec names `.bboxy/runs/<file>` for a live file, read the state directory; the committed copies are the daily snapshots. The invariant check `main-red-bounded.sh` reads the live state directory, honouring the override.
 
 ## 1. The flow
 
