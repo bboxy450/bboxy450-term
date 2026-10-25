@@ -1,0 +1,22 @@
+F.
+======================================================================
+FAIL: test_dispatch_cut_selects_real_gui_wire_target_without_a_name_filter (__main__.PresubmitTests.test_dispatch_cut_selects_real_gui_wire_target_without_a_name_filter)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/ci-tree/scripts/test-landing.py", line 417, in test_dispatch_cut_selects_real_gui_wire_target_without_a_name_filter
+    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : presubmit: sh scripts/quarantine-test.sh --locked -p c
+test result: ok. 1 passed; 0 failed; 0 ignored
+presubmit: cargo clippy --locked -p c --all-targets -- -D warnings
+test result: ok. 1 passed; 0 failed; 0 ignored
+presubmit: sh scripts/invariants.sh
+test result: ok. 0 passed; 0 failed; 0 ignored
+landing: golden_dispatch_tests_missing
+{"affected": ["c"], "attempt": 0, "binary_durations": [], "build_cap_seconds": 1800.0, "compile_seconds": 0.6119192918995395, "error": null, "exit": 2, "finding": null, "log": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/landing-fixture-zq4huklq/.git/fixture-state/presubmits/2ad4d2b0ff80a9ad92335ee4462fd8f0fe497ab9-904c2972/commands.log", "operation": "0f01c529d6f94cf0875dc2e9a6343c76", "run_bound_seconds": 900.0, "run_seconds": 0.04730300011578947, "seconds": 0.6595343750086613, "sha": "2ad4d2b0ff80a9ad92335ee4462fd8f0fe497ab9", "test_seconds": 0.0005600420408882201, "tests_started": true, "tier": "code", "timing_basis": "setup_and_visible_compile_build;all_other_execution_run", "unclassified_seconds": 0.04674295807490125, "verdict": "red"}
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 6.431s
+
+FAILED (failures=1)

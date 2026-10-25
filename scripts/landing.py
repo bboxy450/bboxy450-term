@@ -390,10 +390,11 @@ def presubmit_worker(base, result_path):
         dispatch = any(Path(p).name in ("ctl.rs", "seat_socket.rs", "logic.rs")
                        or "/src/ctl/" in p or "/src/mcp/" in p for p in data["paths"])
         if dispatch and packages:
-            # The dispatch cuts supply their golden tests with the dispatcher.
-            # A zero-test filter is not evidence of byte identity.
+            # The wire golden is a target in the protocol crate; its test names
+            # deliberately contain no "golden" name filter.
             output = io.StringIO()
-            code = measured_command(["cargo", "test", "--locked", *packages, "golden"],
+            code = measured_command(["cargo", "test", "--locked", "-p", "bbt-proto",
+                                     "--test", "gui_wire_golden"],
                                     root, _timing_path, stream=output)
             print(output.getvalue(), end="", flush=True)
             if code or not re.search(r"test result: ok\. [1-9][0-9]* passed", output.getvalue()):

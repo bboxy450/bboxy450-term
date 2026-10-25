@@ -1,0 +1,45 @@
+    Blocking waiting for file lock on package cache
+   Compiling syn v3.0.9
+   Compiling num-traits v0.2.19
+   Compiling getrandom v0.3.4
+   Compiling num-integer v0.1.47
+   Compiling serde_json v1.0.154
+   Compiling serde_derive v1.0.229
+   Compiling num-bigint v0.4.8
+   Compiling serde v1.0.229
+   Compiling ref-cast-impl v1.0.27
+   Compiling num-iter v0.1.46
+   Compiling rand_core v0.9.5
+   Compiling num-complex v0.4.6
+   Compiling num-rational v0.4.2
+   Compiling once_cell v1.21.4
+   Compiling ahash v0.8.12
+   Compiling rand_chacha v0.9.0
+   Compiling num v0.4.3
+   Compiling ref-cast v1.0.27
+   Compiling syn v2.0.119
+   Compiling fluent-uri v0.4.1
+   Compiling strum_macros v0.28.0
+   Compiling rand v0.9.5
+   Compiling fraction v0.17.0
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling bitflags v2.13.2
+   Compiling jsonschema-value v0.60.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/ci-tree/crates/bbt-core)
+   Compiling referencing v0.60.1
+   Compiling strum v0.28.0
+   Compiling ulid v1.2.1
+   Compiling email_address v0.2.9
+   Compiling jsonschema v0.60.1
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/ci-tree/crates/bbt-proto)
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/ci-tree/crates/bbt-plugin)
+    Finished `test` profile [optimized] target(s) in 2m 15s
+     Running tests/gui_wire_golden.rs (/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-target/checkout-80ae807f507a3b75a594/debug/deps/gui_wire_golden-4c1c96d27fc5b8ac)
+
+running 2 tests
+test every_gui_action_kind_keeps_its_exact_bytes ... ok
+test every_gui_reply_kind_keeps_its_exact_bytes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

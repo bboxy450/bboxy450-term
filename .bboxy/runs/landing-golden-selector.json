@@ -1,0 +1,22 @@
+{
+  "brief": "f1b4f4cd-83cf-47ab-a8df-34d331945ccd",
+  "base": "609039640fbbec4968f8cfd74002e4de1f5f4a66",
+  "mechanism": "Dispatch cuts select the bbt-proto gui_wire_golden integration target, without a test-name filter, and still require at least one passing test.",
+  "checks": [
+    {
+      "log": ".bboxy/runs/landing-golden-red.log",
+      "sha256": "55659b99a095d8ee64d9d8c61f8befcd89a3871c56986b6b3d5ca333fe520fbc",
+      "result": "old selector: regression fails on zero selected tests"
+    },
+    {
+      "log": ".bboxy/runs/landing-golden-green.log",
+      "sha256": "2a1fd36a5cc8e9a63a278b04a684082881aa606e5a9f31ea37bc2931679406d2",
+      "result": "fixed selector: 2 focused tests pass"
+    },
+    {
+      "log": ".bboxy/runs/landing-golden-real.log",
+      "sha256": "d8da5f9d712a717d2f37a73dfba4371d978041149b40dc133c34a9b64a9a0258",
+      "result": "real gui_wire_golden target: 2 passed, 0 failed; shell exit not separately retained"
+    }
+  ]
+}

@@ -140,6 +140,12 @@ if args[0]=="metadata":
 with (state/"cargo.jsonl").open("a") as f:f.write(json.dumps(args)+"\\n")
 with (state/"targets.jsonl").open("a") as f:f.write(json.dumps({k:os.environ.get(k) for k in ("CARGO_TARGET_DIR","BBOXY_CARGO_TARGET_DIR")})+"\\n")
 cfg=json.loads((state/"behavior.json").read_text()) if (state/"behavior.json").exists() else {}
+if args[0]=="test" and "golden_names" in cfg and ("golden" in args or "gui_wire_golden" in args):
+    names=cfg["golden_names"]
+    if "golden" in args:names=[name for name in names if "golden" in name]
+    for name in names:print("test "+name+" ... ok")
+    print("test result: ok. "+str(len(names))+" passed; 0 failed; 0 ignored")
+    raise SystemExit(0)
 if args[0]=="test" and cfg.get("quarantine"):
     name=cfg["quarantine"]
     if "--exact" in args:
@@ -398,6 +404,31 @@ class PresubmitTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(json.loads(rows[0])["verdict"], "green")
         self.assertNotIn("nested fixture checks", result.stdout)
+
+    def test_dispatch_cut_selects_real_gui_wire_target_without_a_name_filter(self):
+        source = SOURCE.parent.parent / "crates/bbt-proto/tests/gui_wire_golden.rs"
+        import re
+        names = re.findall(r"#\[test\]\s*fn\s+(\w+)", source.read_text())
+        self.assertGreaterEqual(len(names), 1)
+        self.assertFalse(any("golden" in name for name in names))
+        (self.repo.state / "behavior.json").write_text(json.dumps({"golden_names": names}))
+        self.cut("crates/c/src/logic.rs")
+        result = self.repo.presubmit()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = [json.loads(line) for line in (self.repo.state / "cargo.jsonl").read_text().splitlines()]
+        for call in calls:
+            if "--target-dir" in call:
+                index = call.index("--target-dir")
+                del call[index:index + 2]
+        self.assertIn(["test", "--locked", "-p", "bbt-proto", "--test", "gui_wire_golden"], calls)
+        self.assertFalse(any("golden" in call for call in calls))
+
+    def test_dispatch_cut_still_refuses_a_zero_test_gui_wire_target(self):
+        (self.repo.state / "behavior.json").write_text('{"golden_names":[]}')
+        self.cut("crates/c/src/logic.rs")
+        result = self.repo.presubmit()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("golden_dispatch_tests_missing", result.stdout + result.stderr)
 
     def test_script_only_cut_runs_its_fixtures_and_only_non_cargo_invariants(self):
         self.cut("scripts/fixture-gate.sh")
