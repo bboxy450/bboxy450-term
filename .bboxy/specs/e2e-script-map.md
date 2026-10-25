@@ -14,7 +14,7 @@ updated: "2026-10-25T04:25:15Z"
 
 **Lens.** Each promise of [[e2e-acceptance]] §1 has one night script, `scripts/e2e/<ID>.sh`. Decision [[d316-pass-means-the-whole-promise]]: its prefix-matched `# coverage:` header is the source of current coverage; only `full` is green. Whoever changes a header updates its row in the same commit.
 
-The coverage index below reads script presence and headers at `114ce13d897384d6f83689febd783d73426def5f`. There are 55 current promises, including T9. A present script without a coverage header is `partial` with `unstated` missing assertions; an absent script has its whole promise missing. Blank `tracked-by` means no open task number was identified, so the partial is untracked/red, never an implied waiver. This record creates no tasks and claims no script execution.
+The original coverage index read script presence and headers at `114ce13d897384d6f83689febd783d73426def5f`; S1–S4, K2 and L1 now agree with their checked-in night scripts. S2 and S3 return named failures for unavailable observations rather than passing an empty assertion. There are 55 current promises, including T9. A present script without a coverage header is `partial` with `unstated` missing assertions; an absent script has its whole promise missing. Blank `tracked-by` means no open task number was identified, so the partial is untracked/red, never an implied waiver. This record creates no tasks and claims no script execution.
 
 The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their code baseline is `afff4758`, their spec baseline is `e48d6f8f`; their steps, assertions, missing hooks and source lines are a dated plan, not a claim about current implementation. Some hooks have since landed. Current coverage comes from the index, not from that historical gap list. T9 was added later and is indexed from its script; it is outside the archived 54-row plan.
 
@@ -29,16 +29,16 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | T7 | `scripts/e2e/T7.sh` | partial | solved pane rectangle and focus after undo; visible grace strip | |
 | T8 | `scripts/e2e/T8.sh` | partial | malformed/unapproved report rejection; reported grade drawn in the seat row | |
 | T9 | `scripts/e2e/T9.sh` | partial | a harness resumed by session id (only a zsh seat is restarted) | |
-| L1 | `scripts/e2e/L1.sh` | partial | script not implemented: ⌘T opens the centred launcher over the blurred window with harness rows, search, and role presets; Esc closes it with no spawn | |
+| L1 | `scripts/e2e/L1.sh` | partial | approved blur pixels; harness labels and role presets; search results | |
 | L2 | `scripts/e2e/L2.sh` | partial | script not implemented: a new seat lands exactly where the operator picked (split right, split down, new tab, new space), never a guessed slot | |
 | L3 | `scripts/e2e/L3.sh` | partial | script not implemented: every launched seat has our MCP server, the hook shim and the bboxy450 skill at launch; the user's own ~/.claude and ~/.codex are byte-identical before and after | |
 | L4 | `scripts/e2e/L4.sh` | partial | script not implemented: a fresh Claude seat and a fresh Codex seat each call orient and task_report on their first turn in a fixture task | |
-| S1 | `scripts/e2e/S1.sh` | partial | script not implemented: scrolling up shows earlier output byte-identical to the ring, paged lazily; the top row of a 20k-line fixture is line 1; the join with live rows is seamless | |
-| S2 | `scripts/e2e/S2.sh` | partial | script not implemented: a gap in the ring shows the gap marker at the right row, never a silent splice | |
-| S3 | `scripts/e2e/S3.sh` | partial | script not implemented: 50 watched seats scrolled to the top stay under the retained-heap budget; paging shows no hitch on the meter | |
-| S4 | `scripts/e2e/S4.sh` | partial | script not implemented: a pane whose dimensions cannot fit three viewports in the budget refuses history by name, and the live pane is unaffected | |
+| S1 | `scripts/e2e/S1.sh` | partial | displayed historical bytes are not exported by ctl (row-coordinate traversal is not a cell proof); bounded lazy history page metrics | |
+| S2 | `scripts/e2e/S2.sh` | partial | injectable ring-gap fixture; displayed gap row and both surviving sides | |
+| S3 | `scripts/e2e/S3.sh` | partial | 50 watched GUI panes with history; per-Playback and total retained heap bytes; paging hitch meter | |
+| S4 | `scripts/e2e/S4.sh` | partial | history heap allocation accounting is not exported by ctl | |
 | K1 | `scripts/e2e/K1.sh` | partial | script not implemented: every key combination reaches the program under the kitty protocol when the program asks for it; ⌘⌥ navigation stays the app's; plain keys are the terminal's | |
-| K2 | `scripts/e2e/K2.sh` | partial | script not implemented: ⌘M mutes the focused seat: its row stays, the amber muted mark shows, it works one to one with the operator | |
+| K2 | `scripts/e2e/K2.sh` | partial | amber mark pixel colour; operator DM native delivery; non-operator delayed delivery and exactly-once release; mute journal signer | |
 | K3 | `scripts/e2e/K3.sh` | partial | script not implemented: ⌘G opens the Graph tab; ⌘-click on a .md path or a wikilink opens the document modal | |
 | R1 | `scripts/e2e/R1.sh` | partial | script not implemented: every pane and strip carries the alive rim centred on the border, two counter-moving waves, seat colour, pulse by activity, focused ×1.3; text is never covered | |
 | R2 | `scripts/e2e/R2.sh` | partial | script not implemented: Settings › Rim size 2 to 8 moves only the gutter and the stage inset; at 2, 4 and 8 the gaps are 2, 4, 8 and the insets 1, 2, 4 | |
