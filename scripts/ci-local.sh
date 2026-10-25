@@ -34,6 +34,22 @@ cargo build --workspace --locked
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 sh scripts/ui-lint.sh
-cargo run -p bboxy450-term --locked -- --smoke
+cargo build -p bboxy450-term --locked
+smoke_bin="${CARGO_TARGET_DIR:-target}/debug/bboxy450-term"
+case "$smoke_bin" in
+  /*) ;;
+  *) smoke_bin="$(pwd)/$smoke_bin" ;;
+esac
+smoke_run=$(mktemp -d "${TMPDIR:-/tmp}/bboxy-smoke.XXXXXX")
+# The real GUI has its own fixture inputs, as well as its own identity and sockets.
+# Checkout/build provenance events are work, not an idle fixture.
+mkdir "$smoke_run/repository"
+if (cd "$smoke_run/repository" && BBOXY_TEST_CUSTODY=memory "$smoke_bin" --headless --smoke --run-dir "$smoke_run/run"); then
+  rm -rf -- "$smoke_run"
+else
+  smoke_status=$?
+  echo "smoke failed; private run retained at $smoke_run" >&2
+  exit "$smoke_status"
+fi
 sh scripts/invariants.sh "$@"
 echo "ci-local: all gates passed"

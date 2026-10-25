@@ -674,6 +674,19 @@ impl VerificationFrame {
         frame: u64,
         completed: SyncSender<(u64, Instant)>,
     ) -> Result<Duration, String> {
+        self.draw_notifying(ops, model, bounds, frame, completed, || {})
+    }
+
+    /// A windowless submission whose completion wakes its sleeping GUI owner.
+    pub fn draw_notifying(
+        &mut self,
+        ops: Vec<Paint>,
+        model: &Model,
+        bounds: &[(SeatId, Rect)],
+        frame: u64,
+        completed: SyncSender<(u64, Instant)>,
+        wake: impl Fn() + Send + Sync + 'static,
+    ) -> Result<Duration, String> {
         let start = Instant::now();
         self.renderer.begin_frame();
         self.materials.begin_frame();
@@ -723,6 +736,7 @@ impl VerificationFrame {
         let marker = timing_marker(&self.renderer.context.queue)?;
         let handler = RcBlock::new(move |_: NonNull<ProtocolObject<dyn MTLCommandBuffer>>| {
             let _ = completed.try_send((frame, Instant::now()));
+            wake();
         });
         // SAFETY: Metal retains the handler, whose only capture is a bounded
         // thread-safe sender. The marker follows this fixture's submission.
@@ -731,6 +745,25 @@ impl VerificationFrame {
         }
         marker.commit();
         Ok(start.elapsed())
+    }
+
+    /// Read back the actual offscreen composition using the window's PNG path.
+    pub fn capture(
+        &self,
+        path: std::path::PathBuf,
+        crop: Option<crate::capture::Crop>,
+        logger: crate::log::Logger,
+        written: impl FnOnce(Result<(), String>) + Send + 'static,
+    ) {
+        crate::capture::save(
+            &self.renderer.context.device,
+            &self.renderer.context.queue,
+            &self.target,
+            path,
+            crop,
+            logger,
+            written,
+        );
     }
 }
 

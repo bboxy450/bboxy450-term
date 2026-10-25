@@ -34,6 +34,18 @@ impl Logger {
         });
     }
     pub fn finish(&self, text: String, proxy: EventLoopProxy<UiEvent>) {
+        self.finish_with_sink(
+            text,
+            std::sync::Arc::new(move |event| {
+                let _ = proxy.send_event(event);
+            }),
+        );
+    }
+    pub fn finish_with_sink(
+        &self,
+        text: String,
+        events: std::sync::Arc<dyn Fn(UiEvent) + Send + Sync>,
+    ) {
         let sender = self.0.clone();
         bbt_rt::handle().spawn(async move {
             let (done, received) = oneshot::channel();
@@ -44,7 +56,7 @@ impl Logger {
                 })
                 .await;
             let _ = received.await;
-            let _ = proxy.send_event(UiEvent::Quit);
+            events(UiEvent::Quit);
         });
     }
 }

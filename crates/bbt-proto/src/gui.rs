@@ -41,11 +41,46 @@ pub struct GuiRequest {
     pub capability: [u8; 32],
     pub action: GuiAction,
 }
+
+/// Lifecycle operations relayed to the attached GUI owner, including headless.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AppRequest {
+    /// Read the GUI owner's actual readiness, without any capability material.
+    Status,
+    /// Acknowledge the request before beginning orderly app shutdown.
+    Stop,
+}
+
+/// Public app readiness. No process credential or endpoint capability belongs here.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AppStatus {
+    pub running: bool,
+    pub mode: String,
+    pub unattended: bool,
+    pub backend_ready: bool,
+    pub gui_ready: bool,
+    pub events_ready: bool,
+    pub custody_backend: String,
+    pub generation: u64,
+    pub frame_seq: u64,
+    pub windows: usize,
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body")]
 pub enum GuiAction {
     ListHosts,
     ListSeats,
+    /// Ask the app owner through the same admitted operator endpoint.
+    App {
+        id: Ulid,
+        request: AppRequest,
+    },
+    /// Only the GUI owner may answer an app lifecycle relay.
+    AppReply {
+        id: Ulid,
+        status: AppStatus,
+    },
     /// Start the one device-bound durable events drain on this connection.
     AttachEvents {
         id: Ulid,
@@ -223,6 +258,12 @@ pub struct CaptureFrame {
     /// The window's presented-frame count for that frame (ctl-cli §1 `frame_seq`).
     #[serde(default)]
     pub frame_seq: u64,
+    /// Offscreen frames are GPU-completed, never described as window presentations.
+    #[serde(default)]
+    pub offscreen: bool,
+    /// Completion time of an offscreen composition, in Unix milliseconds.
+    #[serde(default)]
+    pub rendered_at_ms: Option<u64>,
 }
 /// The text of one seat's screen, for `ctl screen` and `ctl wait`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -271,6 +312,20 @@ pub struct StyledRun {
     reason = "keep the decided C1 shared API; transport bounds each message"
 )]
 pub enum GuiReply {
+    /// A lifecycle query for the attached GUI owner.
+    AppAsk {
+        op: Ulid,
+        request: AppRequest,
+    },
+    /// The stop request was written back to its requester; shutdown may now begin.
+    AppStopping {
+        op: Ulid,
+    },
+    /// The app owner's public readiness snapshot.
+    App {
+        op: Ulid,
+        status: AppStatus,
+    },
     /// Asynchronous attachment transitions, never a terminal action result.
     EventStatus {
         attached: bool,

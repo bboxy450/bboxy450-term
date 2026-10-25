@@ -697,6 +697,7 @@ async fn ctl_capture_is_answered_by_the_window() {
         occluded: false,
         presented_at_ms: Some(1_792_900_000_000),
         frame_seq: 7,
+        ..Default::default()
     };
     let (path, seat) = answer(&mut session, None, current).await;
     assert_eq!((path.as_str(), seat), (out.to_str().unwrap(), None));
@@ -730,6 +731,7 @@ async fn ctl_capture_is_answered_by_the_window() {
         occluded: true,
         presented_at_ms: Some(1_792_800_000_000),
         frame_seq: 7,
+        ..Default::default()
     };
     answer(&mut session, None, stale).await;
     let (ok, lines) = asked.await.unwrap();

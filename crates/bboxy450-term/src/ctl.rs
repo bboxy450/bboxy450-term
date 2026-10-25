@@ -9,6 +9,7 @@
     reason = "ctl is its own CLI process; it has no UI thread"
 )]
 use bbt_mux::Ulid;
+mod app;
 use bbt_proto::{
     GuiAction, GuiReply, GuiRequest, GuiSeat, SpawnSpec, SwarmId, Where,
     messaging::{Request, Response, SendRequest, TaskRequest, TaskResponse},
@@ -58,6 +59,9 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
                                           knowledge_write fields (path or ref, frontmatter,
                                           body, etag) as one JSON object
   app endpoint                            the run directory, socket path and generation
+  app start [--headless] [--ctl] [--run-dir DIR]
+  app status                              actual backend, GUI, events and custody readiness
+  app stop                                orderly shutdown through the admitted app relay
 Flags on every verb: --json (default) | --human, --op ULID (an idempotent retry), --as LABEL or
 BBOXY_CTL_ISSUER (who issues it, #269), --run-dir DIR or BBOXY_RUN_DIR, --endpoint FILE.
 A <seat> is a seat id or a unique seat name. Each reply is one JSON line
@@ -231,6 +235,17 @@ pub enum Command {
     },
     /// `app endpoint`: the run directory, socket path and generation; never the capability.
     AppEndpoint,
+    /// Start the same app binary and wait for its GUI render-readiness line.
+    AppStart {
+        headless: bool,
+        ctl: bool,
+        unattended: bool,
+        test_account: Option<PathBuf>,
+    },
+    /// Read liveness through the attached GUI owner.
+    AppStatus,
+    /// Stop through the authenticated app relay, never by PID.
+    AppStop,
 }
 
 /// Every noun-verb `ctl` verb and the one window action it issues (ctl-cli §1). The parser
@@ -261,6 +276,9 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("e2e", "list", "Knowledge"),
     ("record", "write", "RecordWrite"),
     ("app", "endpoint", "-"),
+    ("app", "start", "-"),
+    ("app", "status", "App"),
+    ("app", "stop", "App"),
 ];
 /// The pre-grammar flat commands, kept one release as aliases (ctl-cli rev. 2, C-0).
 const LEGACY: &[(&str, &str)] = &[
@@ -300,6 +318,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
     let mut human_flag = false;
     let mut unassigned_flag = false;
     let mut cells_flag = false;
+    let (mut headless, mut ctl, mut unattended) = (false, false, false);
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         if arg == "--json" {
@@ -310,6 +329,12 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             unassigned_flag = true;
         } else if arg == "--cells" {
             cells_flag = true;
+        } else if arg == "--headless" {
+            headless = true;
+        } else if arg == "--ctl" {
+            ctl = true;
+        } else if arg == "--unattended" {
+            unattended = true;
         } else if let Some(flag) = arg.strip_prefix("--") {
             let value = it.next().ok_or(format!("--{flag} needs a value"))?;
             match flag {
@@ -554,6 +579,14 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             source: source.into(),
         },
         ["app", "endpoint"] => Command::AppEndpoint,
+        ["app", "start"] => Command::AppStart {
+            headless,
+            ctl,
+            unattended,
+            test_account: flag("test-account").map(PathBuf::from),
+        },
+        ["app", "status"] => Command::AppStatus,
+        ["app", "stop"] => Command::AppStop,
         ["capture", path] => Command::Capture {
             path: std::path::absolute(path).map_err(|e| format!("capture {path}: {e}"))?,
             seat: flag("seat"),
@@ -567,9 +600,17 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             });
         }
     };
+    if (headless || ctl || unattended || flags.contains_key("test-account"))
+        && !matches!(&command, Command::AppStart { .. })
+    {
+        return Err(format!(
+            "{USAGE_PREFIX}--headless, --ctl, --unattended and --test-account apply only to app start"
+        ));
+    }
     if let Some(unknown) = flags.keys().find(|k| {
         ![
             "swarm",
+            "test-account",
             "name",
             "cwd",
             "since",
@@ -904,6 +945,21 @@ impl Client {
         )
         .map(|_| id)
     }
+    /// Query or stop the attached app owner through the existing admitted endpoint.
+    pub fn app(
+        &mut self,
+        request: bbt_proto::gui::AppRequest,
+    ) -> Result<bbt_proto::gui::AppStatus, String> {
+        let id = self.mint();
+        match self.call(
+            Some(id),
+            GuiAction::App { id, request },
+            |r| matches!(r,GuiReply::App {op,..} if *op==id),
+        )? {
+            GuiReply::App { status, .. } => Ok(status),
+            _ => unreachable!(),
+        }
+    }
     pub fn task(&mut self, request: TaskRequest) -> Result<TaskResponse, String> {
         let id = self.mint();
         match self.call(
@@ -1100,7 +1156,8 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
             let (path, frame) = client.capture(&path, seat)?;
             vec![json!({ "kind": "captured", "path": path, "seat": seat,
                 "stale": frame.stale, "occluded": frame.occluded,
-                "frame_presented_at": frame.presented_at_ms, "frame_seq": frame.frame_seq })]
+                "frame_presented_at": frame.presented_at_ms, "offscreen":frame.offscreen,
+                "frame_seq":frame.frame_seq,"rendered_at_ms":frame.rendered_at_ms })]
         }
         Command::E2e { group } => {
             let mut loader = crate::knowledge::E2eLoader::new(crate::knowledge::promises()?);
@@ -1253,7 +1310,10 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
         | Command::Ack { .. }
         | Command::TaskList { .. }
         | Command::TaskGet { .. }
-        | Command::AppEndpoint => {
+        | Command::AppEndpoint
+        | Command::AppStart { .. }
+        | Command::AppStatus
+        | Command::AppStop => {
             return Err(format!(
                 "{USAGE_PREFIX}this verb has no flat form; use the noun-verb grammar"
             ));
@@ -1368,6 +1428,13 @@ pub fn classify(reason: &str) -> Fail {
             "ancestry_refused",
             "a seat uses its MCP tools; ctl is the operator's door",
             1,
+        );
+    }
+    if reason.starts_with("app endpoint unavailable:") {
+        return fail(
+            "endpoint_unavailable",
+            "inspect ctl debug ps and the run's app.log; no PID-kill fallback is used",
+            4,
         );
     }
     if reason.starts_with("endpoint ") || reason.starts_with("gui.sock ") && !reason.contains(": ")
@@ -1504,6 +1571,22 @@ fn run_verb(
         };
         writeln!(out, "{line}").map_err(|e| e.to_string())
     };
+    if let Command::AppStart {
+        headless,
+        ctl,
+        unattended,
+        test_account,
+    } = &parsed.command
+    {
+        let data = app::start(
+            &endpoint_file,
+            *headless,
+            *ctl,
+            *unattended,
+            test_account.as_deref(),
+        )?;
+        return print(op.unwrap_or_else(fresh), data, parsed.human);
+    }
     if let Command::AppEndpoint = parsed.command {
         // The run directory and the generation, never the capability (#275).
         let text = std::fs::read_to_string(&endpoint_file)
@@ -1517,13 +1600,23 @@ fn run_verb(
             parsed.human,
         );
     }
-    let mut client = connect(args, &endpoint_file)?;
+    let mut client = connect(args, &endpoint_file).map_err(|reason| {
+        if matches!(&parsed.command, Command::AppStop) {
+            format!("app endpoint unavailable: {reason}")
+        } else {
+            reason
+        }
+    })?;
     client.op = parsed.op;
     let id = parsed.op.unwrap_or_else(fresh);
     *op = Some(id);
     client.op = Some(id);
     let human = parsed.human;
     let data = match parsed.command {
+        Command::AppStatus => serde_json::to_value(client.app(bbt_proto::gui::AppRequest::Status)?)
+            .map_err(|e| e.to_string())?,
+        Command::AppStop => serde_json::to_value(app::stop(&mut client, &endpoint_file)?)
+            .map_err(|e| e.to_string())?,
         Command::Seats => serde_json::to_value(client.seats()?).map_err(|e| e.to_string())?,
         Command::Screen { .. }
         | Command::Resize { .. }
@@ -1985,6 +2078,10 @@ mod tests {
         let seat = bbt_proto::SeatId::from_u128(1);
         let samples = [
             GuiAction::ListSeats,
+            GuiAction::App {
+                id,
+                request: bbt_proto::gui::AppRequest::Status,
+            },
             GuiAction::Screen {
                 id,
                 seat: id,
@@ -2067,7 +2164,7 @@ mod tests {
                 "{noun} {verb}: {action}"
             );
         }
-        for line in [
+        let parse_samples = [
             "seat ls",
             "seat spawn zsh",
             "seat screen s",
@@ -2093,14 +2190,22 @@ mod tests {
             "seat focus s",
             "seat restart s",
             "seat resize s 80x24",
-        ] {
+            "app start --headless --ctl",
+            "app status",
+            "app stop",
+        ];
+        assert_eq!(
+            VERBS.len(),
+            parse_samples.len(),
+            "a new verb needs a parse line above"
+        );
+        for line in parse_samples {
             let parsed = parse_full(&args(line)).unwrap_or_else(|e| panic!("{line}: {e}"));
             let (noun, verb) = parsed
                 .verb
                 .unwrap_or_else(|| panic!("{line}: not a table verb"));
             assert!(line.starts_with(&format!("{noun} {verb}")));
         }
-        assert_eq!(VERBS.len(), 25, "a new verb needs a parse line above");
     }
     #[test]
     fn errors_name_a_kind_a_hint_and_an_exit() {

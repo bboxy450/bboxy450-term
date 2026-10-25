@@ -89,6 +89,9 @@ struct KnowledgeDemand {
     notify: tokio::sync::Notify,
 }
 impl CommandSender {
+    pub fn sender_clone(&self) -> mpsc::Sender<UiMsg> {
+        self.sender.clone()
+    }
     pub fn set_context(&self, context: bboxy450_term::settings::ContextUpdate) {
         self.context.send_replace(Some(context));
     }
@@ -141,6 +144,28 @@ pub fn start(
     ctl: bool,
     rendering: oneshot::Receiver<RenderContext>,
 ) -> CommandSender {
+    start_with_sink(
+        updates,
+        Arc::new(move |event| {
+            let _ = proxy.send_event(event);
+        }),
+        logger,
+        run_dir,
+        ctl,
+        rendering,
+    )
+}
+
+/// The same IO owner for a window or an offscreen GUI. Event delivery never
+/// depends on an AppKit event loop or waits for the consumer to draw.
+pub fn start_with_sink(
+    updates: Arc<Latest<Arc<Model>>>,
+    events: Arc<dyn Fn(UiEvent) + Send + Sync>,
+    logger: Logger,
+    run_dir: Option<PathBuf>,
+    ctl: bool,
+    rendering: oneshot::Receiver<RenderContext>,
+) -> CommandSender {
     let (sender, commands) = command_channel();
     bbt_rt::handle().spawn(async move {
         let result = async {
@@ -148,7 +173,12 @@ pub fn start(
             config.ctl = ctl;
             let cwd = config.repository.clone();
             let session = Session::start(config).await?;
-            run(
+            events(UiEvent::BackendInfo {
+                generation: session.endpoint.generation,
+                custody_backend: session.endpoint.custody_backend.clone(),
+            });
+            events(UiEvent::BackendReady);
+            run_with_control(
                 updates,
                 commands,
                 logger.clone(),
@@ -157,16 +187,20 @@ pub fn start(
                 rendering,
                 |reason| {
                     let event = reason.map_or(UiEvent::BackendReady, UiEvent::BackendLost);
-                    let _ = proxy.send_event(event);
+                    events(event);
                 },
                 {
-                    let proxy = proxy.clone();
+                    let events = events.clone();
                     move |ask| {
-                        let _ = proxy.send_event(match ask {
+                        events(match ask {
                             OperatorAsk::Capture(ask) => UiEvent::CaptureFor(ask),
                             OperatorAsk::Focus(seat) => UiEvent::FocusFor(seat),
                         });
                     }
+                },
+                {
+                    let events = events.clone();
+                    move |ask| events(UiEvent::App(ask))
                 },
             )
             .await
@@ -175,7 +209,7 @@ pub fn start(
         if let Err(error) = &result {
             logger.write(format!("cockpit stopped: {error}"));
         }
-        let _ = proxy.send_event(UiEvent::BackendStopped(result.map_err(|e| e.to_string())));
+        events(UiEvent::BackendStopped(result.map_err(|e| e.to_string())));
     });
     sender
 }
@@ -195,6 +229,18 @@ pub struct CaptureAsk {
     pub id: Ulid,
     pub path: PathBuf,
     pub seat: Option<SeatId>,
+}
+
+/// Lifecycle messages sent only by the admitted GUI relay.
+#[derive(Debug)]
+pub enum AppEvent {
+    Ask {
+        id: Ulid,
+        request: bbt_proto::gui::AppRequest,
+    },
+    Stop {
+        id: Ulid,
+    },
 }
 
 fn publish(
@@ -635,7 +681,33 @@ fn operations_disconnected(model: &mut Arc<Model>, updates: &Latest<Arc<Model>>,
 }
 
 #[allow(clippy::too_many_arguments)] // The session, its channels and its two UI callbacks.
+#[cfg(test)]
 async fn run(
+    updates: Arc<Latest<Arc<Model>>>,
+    commands: Commands,
+    logger: Logger,
+    session: Session,
+    cwd: PathBuf,
+    rendering: oneshot::Receiver<RenderContext>,
+    backend_lost: impl Fn(Option<String>),
+    capture: impl Fn(OperatorAsk),
+) -> Result<()> {
+    run_with_control(
+        updates,
+        commands,
+        logger,
+        session,
+        cwd,
+        rendering,
+        backend_lost,
+        capture,
+        |_| {},
+    )
+    .await
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn run_with_control(
     updates: Arc<Latest<Arc<Model>>>,
     mut commands: Commands,
     logger: Logger,
@@ -644,6 +716,7 @@ async fn run(
     rendering: oneshot::Receiver<RenderContext>,
     backend_lost: impl Fn(Option<String>),
     capture: impl Fn(OperatorAsk),
+    app: impl Fn(AppEvent),
 ) -> Result<()> {
     logger.write(format!(
         "cockpit ready: supervisor={} logic={}",
@@ -845,6 +918,12 @@ async fn run(
                     UiMsg::EventPage {stream,after,limit}=>queue_action(&mut outgoing,GuiAction::GetEvents {stream:stream.clone(),after:*after,limit:*limit}),
                     UiMsg::EventCursor {stream}=>queue_action(&mut outgoing,GuiAction::GetEventCursor {stream:stream.clone()}),
                     UiMsg::Captured {id,error,frame}=>queue_action(&mut outgoing,GuiAction::Captured {id:*id,error:error.clone(),frame:*frame}),
+                    UiMsg::AppReply {id,status}=> {
+                        let mut status=status.clone();
+                        status.generation=session.endpoint.generation;
+                        status.custody_backend=session.endpoint.custody_backend.clone();
+                        queue_action(&mut outgoing,GuiAction::AppReply {id:*id,status});
+                    },
                     UiMsg::MarkEventsRead {stream,sequence}=>queue_action(&mut outgoing,GuiAction::MarkEventsRead {stream:stream.clone(),seq:*sequence}),
                     UiMsg::AttentionFocus {seat,generation,episode,landed}=> {
                         if Arc::make_mut(&mut model).attention_focus(*seat,*generation,*episode,*landed) {
@@ -1080,6 +1159,9 @@ async fn run(
                                 if changed {publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;}
                             }
                         },
+                        GuiReply::AppAsk {op,request}=>app(AppEvent::Ask {id:op,request}),
+                        GuiReply::AppStopping {op}=>app(AppEvent::Stop {id:op}),
+                        GuiReply::App {..}=>{},
                         GuiReply::CaptureAsk {op,path,seat}=>capture(OperatorAsk::Capture(CaptureAsk {id:op,path:PathBuf::from(path),seat:seat.map(|seat| SeatId::from_u128(seat.0))})),
                         GuiReply::OperatorFocus {seat,..}=>capture(OperatorAsk::Focus(seat)),
                         GuiReply::Captured {op,path,..}=>logger.write(format!("capture {op} written: {path}")),

@@ -1,0 +1,108 @@
+U-1 HEADLESS APP LIFECYCLE — Aster Cinderwing <EXECUTOR>
+Status: required gates passed; signed source ready for Oracle verification.
+Not an acceptance or merged-main claim.
+Code source: f4a8a17dec1438bc43f72e5471d5be952551d90d; branch aster-headless on76e89004.
+Parity source: a5e5c7ddc82ff3ee22a987baa395c17cb554a04c; pinned aster-u1-gated-a5e5c7dd.
+
+Implemented / acceptance:
+- ctl app start --headless --ctl runs the real Session/GUI consumer and renderer without
+  winit/NSWindow; startup answers after backend and first GPU-completed frame.
+- ctl app status reports actual backend/custody/generation/events/render readiness.
+- ctl app stop acknowledges through the admitted relay, then follows Session::shutdown;
+  logic and supervisor are reaped. Explicit stop ends seats; no PID-kill fallback.
+- A real zsh accepts type/key, wait/screen returns its marker, and fresh offscreen PNGs
+  contain the pane and sidebar. frame_presented_at is null; completion has its own time.
+- Headless observes/consumes completed spawn results through the existing IO command;
+  pending/unknown semantics stay in Model::consume_spawn. All ten seats can be placed/captured.
+- U0 integration retains Config::test_account_from_args, validates selectors before GPU
+  bootstrap, and passes the selected store in both fixture-host and local-only smoke paths.
+  Native/headless status handles the --test-account= form. No production custody fallback.
+- CI smoke has its own repository, run directory and debug memory identity. Both memory
+  and private-file smoke prove ten seconds with zero frames/callbacks/windows.
+
+Mechanisms (paths in this repository):
+- crates/bboxy450-term/src/ctl/app.rs:13,97 — startup readiness pipe; admitted status/stop.
+- crates/bboxy450-term/src/headless.rs:44 — event-driven GUI owner, bounded queues, one
+  GPU frame in flight, shared FocusState and pane/watch/resize projection; no R5 polling.
+- crates/bboxy450-term/src/headless.rs:281 — once-per-outcome ConsumeSpawn, bounded by
+  Model.spawns; requests remain owned by IO until the normal consumption rule resolves them.
+- crates/bboxy450-term/src/live.rs:161 — same run_with_control/Session path behind event sink;
+  writer Busy, loss/recovery, preparation/publication-before-Applied remain in that owner.
+- crates/bboxy450-term/src/cockpit.rs:460,462,492 — selected fixture/local store is preserved;
+  custody_backend comes from actual store status, including file custody.
+- crates/bboxy450-term/src/main.rs:4968 — U0 pure selector validation before headless dispatch.
+- crates/bboxy450-term/src/gpu.rs:681,751 — completion notification/copy use the existing
+  renderer; begin_frame/flush preserved; waits, PNG encoding and file IO stay off UI.
+- crates/bbt-proto/src/gui.rs:48 and bbt-mux gui_capture/seat_socket — additive lifecycle
+  relay, bounded pending replies, ctl stop response written before the stop commit.
+- scripts/ci-local.sh — direct compiler, private headless smoke inputs, atomic gate slot.
+
+Verification:
+- a5e5c7dd exact clean ci-local --parity EXIT0 /3766.842s. All workspace tests, strict
+  Clippy, UI lint, smoke and23 invariants passed;9 slow scale checks skipped.
+  Current2144 cases:2040 required/measured,0 unproven,0 mismatches,72 advisory pixel reviews.
+  Historical1664 cases are separate non-gating diagnostics (851 advisory pixel reviews).
+- f4a8a17d strict workspace/all-target Clippy -D warnings EXIT0 /54.357s.
+- f4a8a17d headless integration EXIT0:8/8 /49.13s test execution. Includes real PTYs,
+  ten sequential pane captures, active-probe rejection, endpoint refusal, private-file
+  start/type/wait/capture/status/stop and private-file idle smoke.
+- f4a8a17d exact clean NORMAL atomic CI EXIT0 /1052.525s. Workspace tests, strict
+  Clippy, UI lint and smoke passed;23 invariants/0 failures,9 slow checks skipped.
+  Smoke again reports0 frames/0 callbacks/10.005s/windows0 with orderly child reaping.
+- Render equivalence: exact own diff over render/ui/scene/gpu/book/lab equals a5e5c7dd;
+  SHA25689b8446865d1b17f26526e4514327956c04d344ef3872b4e8ce98b26505dacd9.
+  Oracle1b0b74d1 explicitly accepts normal atomic CI for this custody/CLI-only integration.
+- Fresh plain-shell proof7 EXIT0: actual custody=file, unattended=true, windows=0,
+  pane frame26/window27, offscreen=true/stale=false; PNG inspected. Own account retired
+  after orderly shutdown, public calls/log/captures/hashes kept. Proof6 also proves memory.
+- Reproduction fbe3043c EXIT101: launches1..8 had real PTY markers/captures; launch9
+  failed spawn_queue_full. Fix48d76b97 EXIT0: all ten markers/captures. Full gate also passes it.
+
+Prior failures and disposition (raw retained):
+1. dc912364 clean CI EXIT101/728.392s, ended21:16:35.069UTC. Sole failure:
+   bbt-supervisor/tests/supervisor.rs:161 fifty_seats... openpty ENXIO/code6.
+   Rook's actual967-PTY interval21:15:04.447882..21:16:57.079 overlapped this test;
+   host ptmx_max999. No supervisor diff in U1. After Rook END/all969 PIDs gone,
+   focused50-seat test EXIT0, all50 echo in0.90s. Rook9a96e7f0 + Oraclea8eb0606.
+2. dc912364 retry CI EXIT1/531.052s: all workspace tests/strict/UI lint pass, then
+   standalone smoke in the real checkout reports12 frames/24 callbacks/10.002s.
+   Instrumented trace identifies successive index activity/provenance/gap records.
+   Identical binary/flags, only cwd changed to private empty repo: EXIT0,0/0/10.005s.
+   CI fixture isolation fixed; thresholds and actual GUI work remain unchanged.
+3. Product finding, reported separately: repository156 refs exceeds detector's128 bound.
+   Read-only SQLite on the stopped test run shows seq579..586 repeatedly contain
+   git-ref-scan-bound: retained first128 refs. detector.rs:676-680 enqueues on every
+   clipped snapshot before comparison; engine.rs:242-248 publishes/pops it every tick.
+   Same diagnostic, new envelopes, no new ref change required. No backend fix in U1.
+4. Old app burst fixture timed out once (app-units-1 EXIT101); isolated and rebased full
+   app suites passed. Initial finite smoke saw a fixture SSH disconnect at12s; only
+   smoke now uses local-only hosts. Initial standalone proof exceeded SUN_LEN112;
+   its run dir moved to short/private /tmp. Intermediate compile/lint fixes are logged.
+5. pre-final-headless was deliberately cancelled after7min of two idle sccache clients,
+   no own rustc. Only owned clients70412/70413 were SIGTERMed; Cargo EXIT101 recorded.
+   Shared daemon/peers untouched. RUSTC_WRAPPER= locally bypassed it; actual Rustc and5/5
+   headless tests then completed. Final gate will clear both wrapper variables per-run.
+6. Whole-workspace fmt check EXIT1 listed legacy formatting including untouched files;
+   new modules formatted, no broad formatting churn. Not a ci-local gate.
+
+7. Ten-seat negative fixture above is an intentional before-fix failure; the after-fix
+   test is green. Report-inspection helper initially assumed an object, returned1;
+   corrected to the report's array schema. It did not mutate source or affect CI.
+
+Known gaps / deliberate limits:
+- T7 owns the asynchronous focus/capture race from Velvet's earlier combined gate;
+  this source does not add its applied-frame acknowledgment. Named and coordinated,
+  never waived as passing. Velvet's successor lands after U1 per Oracle1b0b74d1.
+- Native windowed lifecycle/physical locked-display state not newly exercised here.
+  This proof is the real no-NSWindow mode; no OS desktop injection or tty writes.
+- No 967/50 timing verdict or full agent-behaviour night claim; slow scale tests were skipped.
+- No HK1 edits, release, publish, merge, operator secret read or login-Keychain probe.
+
+Evidence root:
+/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z
+Machine manifest: .bboxy/runs/headless-manifest.json (command exits and artifact hashes).
+Full raw gate: headless-ci-final.log/status.json; integration raw: headless-ci-integration.*.
+Proofs: plain-shell-proof-6 and plain-shell-proof-7-file; account cleanup is recorded.
+Parity: parity-a5e5c7dd/report.json and full gallery retained; per-file hashes in
+parity-a5e5c7dd-files.json. Build cache removed; current binaries in kept-binaries/.
+Cleanup metrics: cleanup.json. The evidence successor changes only this log and manifest.
