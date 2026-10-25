@@ -15,7 +15,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: decision }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-24T19:32:03Z"
-updated: "2026-10-25T14:17:33Z"
+updated: "2026-10-25T14:37:58Z"
 ---
 # No bottlenecks and no chokepoints
 
@@ -49,7 +49,7 @@ an empty `rustc-wrapper` in a repo `.cargo/config.toml` did **not** override
 the global one, tested, so the bypass is the environment, not a config file);
 logic's serial one-seat `ReadRing` RPCs to the supervisor (the measured 967/50
 run on 0e97dc32: 6 824 round trips, 93 % of an 8 618 ms input-to-GPU, decode
-0.8 s; Sable designs the batched or pipelined read, gate [[ring-reads-batched]]);
+0.8 s; fixed at 00fb087c by Sable's `ReadRingBatch`, 121 requests for 967 seats and zero singleton hot reads, gate [[ring-reads-batched]] active);
 the shared dispatchers every `ctl` cut edits (the `UiRequest`, `GuiAction` and
 `GuiReply` enums, the `VERBS` table, `apply_ui` and its headless twin), so each
 landing forced two or three peers to rebase (decision [[d320-dispatch-by-noun]]:
