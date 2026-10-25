@@ -109,6 +109,10 @@ mod seat_name_tests {
     }
 }
 
+struct CodexDiscovery {
+    binding: Binding,
+    result: std::result::Result<(String, serde_json::Value), String>,
+}
 enum Command {
     RecoverSeats(oneshot::Sender<Result<()>>),
     GuiHosts(oneshot::Sender<Result<Vec<bbt_proto::GuiHost>>>),
@@ -246,6 +250,7 @@ enum Command {
         oneshot::Sender<Result<crate::adapters::Status>>,
     ),
     Status(Ulid, u64, oneshot::Sender<Result<crate::adapters::Status>>),
+    CodexDiscovery(Box<CodexDiscovery>, oneshot::Sender<Result<bool>>),
     Native(
         Ulid,
         u64,
@@ -318,6 +323,14 @@ pub struct EndpointInfo {
     pub path: PathBuf,
     pub generation: u64,
     pub capability: [u8; 32],
+}
+
+/// Process-tree admission belongs to a seat generation, not a Logic process.
+/// Never Debug/log this private durable value.
+#[derive(Serialize, Deserialize)]
+struct SeatAdmission {
+    generation: u64,
+    capability: [u8; 32],
 }
 
 struct GuiWatchLife {
@@ -925,6 +938,14 @@ impl LogicClient {
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     /// Called by the bound native reader, never interpreted as a new operation.
+    async fn codex_discovery(&self, discovery: CodexDiscovery) -> Result<bool> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::CodexDiscovery(Box::new(discovery), tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
+    }
     pub async fn native_event(
         &self,
         seat: Ulid,
@@ -3260,6 +3281,14 @@ impl Worker {
                     .and_then(|r| r.harness_session_id.clone())
                     .unwrap_or_else(|| format!("process-{}", info.pid)),
                 attachment_generation: 1,
+                runtime: info.companion.as_ref().map(|c| {
+                    bboxy450_harness_wake_up::RuntimeBinding {
+                        endpoint: c.ready_socket.clone(),
+                        pid: c.pid,
+                        process_start: crate::adapters::native::process_start(c.pid)
+                            .unwrap_or_else(|_| "exited".into()),
+                    }
+                }),
             },
         )?;
         for (sequence, params) in live_frames {
@@ -3374,9 +3403,37 @@ impl Worker {
             return Ok(info.clone());
         }
         self.endpoints.remove(&id);
-        let path = self.endpoint_root.join(format!("{id}.sock"));
-        let mut capability = [0; 32];
-        getrandom::fill(&mut capability).map_err(std::io::Error::other)?;
+        // Surviving harness/MCP processes retain their launch environment.
+        // Keep both the short address and admission across a Logic restart;
+        // a new seat generation gets a new capability and rejects old peers.
+        use std::os::unix::ffi::OsStrExt;
+        let run = std::fs::canonicalize(&self.config.run_dir)?;
+        let digest = crate::store::digest(run.as_os_str().as_bytes());
+        // SAFETY: geteuid has no pointer arguments or side effects.
+        let root = PathBuf::from("/tmp").join(format!(
+            "bbt-seat-{}-{}",
+            unsafe { libc::geteuid() },
+            &digest[..20],
+        ));
+        let path = root.join(format!("{id}.sock"));
+        let directory = object_dir(&self.config.run_dir, &format!("seat-{id}"))?;
+        let store = SqliteStore::open(&directory)?;
+        let saved = store
+            .get("seat_admission")?
+            .map(|bytes| serde_json::from_slice::<SeatAdmission>(&bytes))
+            .transpose()?;
+        let admission = match saved {
+            Some(saved) if saved.generation == generation => saved,
+            _ => {
+                let mut capability = [0; 32];
+                getrandom::fill(&mut capability).map_err(std::io::Error::other)?;
+                SeatAdmission {
+                    generation,
+                    capability,
+                }
+            }
+        };
+        let capability = admission.capability;
         let endpoint = crate::seat_socket::SeatEndpoint::bind(
             &self.handle,
             &path,
@@ -3385,6 +3442,7 @@ impl Worker {
             generation,
             capability,
         )?;
+        store.put("seat_admission", &serde_json::to_vec(&admission)?)?;
         let info = EndpointInfo {
             path,
             generation,
@@ -3405,9 +3463,16 @@ impl Worker {
             }
             let path = root.join("overlays").join(name);
             if path.exists() {
-                std::fs::remove_dir_all(path)?;
+                let endpoint = store
+                    .get("adapter_runtime_endpoint")?
+                    .filter(|b| !b.is_empty())
+                    .map(|b| serde_json::from_slice::<Option<PathBuf>>(&b))
+                    .transpose()?
+                    .flatten();
+                bboxy450_harness_wake_up::launch::cleanup_overlay(&path, endpoint.as_deref())?;
             }
             store.put("adapter_overlay", b"")?;
+            store.put("adapter_runtime_endpoint", b"")?;
         }
         Ok(())
     }
@@ -3516,6 +3581,10 @@ impl Worker {
         store.put(
             "adapter_overlay",
             plan.overlay.file_name().unwrap().as_encoded_bytes(),
+        )?;
+        store.put(
+            "adapter_runtime_endpoint",
+            &serde_json::to_vec(&plan.spec.companion.as_ref().map(|c| &c.ready_socket))?,
         )?;
         // On an ambiguous spawn keep the overlay; deleting it could break a child
         // that actually started. Reconciliation uses the original durable seat ID.
@@ -4628,39 +4697,62 @@ impl Worker {
                     }
                 }
                 if view.adapter.record.kind == "codex"
-                    && !view.adapter.binding.session.starts_with("process-")
-                    && view
-                        .native_reader
-                        .as_ref()
-                        .is_none_or(|r| r.session != view.adapter.binding.session)
+                    && view.adapter.binding.session.starts_with("process-")
+                    && view.native_reader.is_none()
+                    && view.adapter.binding.runtime.is_some()
                 {
-                    let root = std::env::var_os("CODEX_HOME")
-                        .map(PathBuf::from)
-                        .or_else(|| {
-                            std::env::var_os("HOME").map(|p| PathBuf::from(p).join(".codex"))
-                        });
-                    if let Some(root) = root {
-                        let path = root.join("app-server-control/app-server-control.sock");
-                        let session = view.adapter.binding.session.clone();
-                        view.delivery_endpoint = crate::adapters::Endpoint::Codex {
-                            path: path.clone(),
-                            thread: session.clone(),
-                            turn: None,
-                        };
-                        let thread = session.clone();
-                        let generation = view.generation;
-                        let client = self.client.clone();
-                        let task=self.handle.spawn(async move {
-                            loop {
-                                if let Ok(status)=crate::adapters::native::codex_status(&path,&thread).await {
-                                    let event=serde_json::json!({"source":"snapshot","method":"thread/status/changed","params":{"threadId":thread,"status":status}});
-                                    if client.native_event(id,generation,event).await.is_err(){break;}
+                    let binding = view.adapter.binding.clone();
+                    let session = binding.session.clone();
+                    let client = self.client.clone();
+                    let task = self.handle.spawn(async move {
+                        loop {
+                            match crate::adapters::native::discover_codex_thread(&binding).await {
+                                Ok(None) => tokio::time::sleep(Duration::from_millis(200)).await,
+                                result => {
+                                    let result = result
+                                        .and_then(|thread| thread.ok_or_else(|| invalid("native thread not loaded")))
+                                        .map_err(|error| crate::adapters::observe::short(
+                                            &format!("native bootstrap failed: {error}; no mutation attempted"), 512,
+                                        ));
+                                    let _ = client.codex_discovery(CodexDiscovery { binding, result }).await;
+                                    break;
                                 }
-                                tokio::time::sleep(Duration::from_millis(200)).await;
                             }
-                        });
-                        view.native_reader = Some(NativeReader { session, task });
-                    }
+                        }
+                    });
+                    view.native_reader = Some(NativeReader { session, task });
+                }
+                if view.adapter.record.kind == "codex"
+                    && !view.adapter.binding.session.starts_with("process-")
+                    && view.native_reader.as_ref().is_none_or(|r| {
+                        r.session != view.adapter.binding.session || r.task.is_finished()
+                    })
+                    && let Some(runtime) = &view.adapter.binding.runtime
+                {
+                    let path = runtime.endpoint.clone();
+                    let session = view.adapter.binding.session.clone();
+                    view.delivery_endpoint = crate::adapters::Endpoint::Codex {
+                        path: path.clone(),
+                        thread: session.clone(),
+                        turn: None,
+                    };
+                    let thread = session.clone();
+                    let generation = view.generation;
+                    let client = self.client.clone();
+                    let binding = view.adapter.binding.clone();
+                    let task = self.handle.spawn(async move {
+                        if crate::adapters::native::verify_codex_runtime(&binding, &path).is_err() {
+                            return;
+                        }
+                        loop {
+                            if let Ok(status) = crate::adapters::native::codex_owned_status(&binding).await {
+                                let event = serde_json::json!({"source":"snapshot","method":"thread/status/changed","params":{"threadId":thread,"status":status}});
+                                if client.native_event(id, generation, event).await.is_err() { break; }
+                            }
+                            tokio::time::sleep(Duration::from_millis(200)).await;
+                        }
+                    });
+                    view.native_reader = Some(NativeReader { session, task });
                 }
                 view.adapter.tick(view.state.sequence, now);
             }
@@ -5909,6 +6001,43 @@ impl Worker {
                         }
                         let _ = reply.send(result);
                     }
+                    Command::CodexDiscovery(discovery, reply) => {
+                        let id = discovery.binding.seat;
+                        let result = (|| {
+                            let Some(view) = self.views.get_mut(&id) else {
+                                return Ok(false);
+                            };
+                            if view.generation != discovery.binding.generation
+                                || view.adapter.binding != discovery.binding
+                            {
+                                return Ok(false);
+                            }
+                            let (thread, status) = match discovery.result {
+                                Ok(thread) => thread,
+                                Err(reason) => {
+                                    view.delivery_failure = Some(reason);
+                                    return Ok(false);
+                                }
+                            };
+                            let bound = crate::adapters::native::bind_discovered_codex(
+                                &mut view.adapter,
+                                &discovery.binding,
+                                &thread,
+                                status,
+                                view.state.sequence,
+                                now_ms(),
+                            )?;
+                            if bound {
+                                view.delivery_failure = None;
+                            }
+                            Ok(bound)
+                        })();
+                        if matches!(result, Ok(true)) {
+                            self.persist_native_session(id)?;
+                            self.publish_adapter(id, self.views[&id].adapter.status.clone())?;
+                        }
+                        let _ = reply.send(result);
+                    }
                     Command::Native(id, generation, event, reply) => {
                         let before = self.views.get(&id).map(|v| v.adapter.status.clone());
                         let result = self
@@ -6324,7 +6453,15 @@ fn retry_capture(mut request: impl FnMut() -> Result<Reply>) -> Result<Reply> {
 }
 impl Drop for Worker {
     fn drop(&mut self) {
+        let roots: BTreeSet<_> = self
+            .endpoints
+            .values()
+            .filter_map(|(info, _)| info.path.parent().map(|path| path.to_path_buf()))
+            .collect();
         self.endpoints.clear();
+        for root in roots {
+            let _ = std::fs::remove_dir(root);
+        }
         drop(self.gui_endpoint.take());
         let _ = std::fs::remove_dir(&self.endpoint_root);
     }

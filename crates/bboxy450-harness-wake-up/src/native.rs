@@ -44,6 +44,32 @@ pub fn verify_process(binding: &Binding) -> Result<()> {
     }
     Ok(())
 }
+/// Match the transport to the launch-selected runtime, not a user-global locator.
+pub fn verify_codex_runtime(binding: &Binding, path: &Path) -> Result<()> {
+    if binding.session.starts_with("process-") {
+        return Err(invalid("native thread is not yet bound"));
+    }
+    verify_runtime_process(binding, path)
+}
+fn verify_runtime_process(binding: &Binding, path: &Path) -> Result<()> {
+    let runtime = binding
+        .runtime
+        .as_ref()
+        .ok_or_else(|| invalid("native runtime is not bound"))?;
+    if runtime.endpoint != path || process_start(runtime.pid)? != runtime.process_start {
+        return Err(invalid("native runtime endpoint/process changed"));
+    }
+    own_socket(path)
+}
+
+#[derive(Debug)]
+struct UnknownRuntime;
+impl std::fmt::Display for UnknownRuntime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("native thread identity/status unknown; no mutation or automatic retry")
+    }
+}
+impl std::error::Error for UnknownRuntime {}
 fn own_socket(path: &Path) -> Result<()> {
     // Installed Codex publishes an owned symlink locator for its Unix socket.
     let meta = std::fs::metadata(path)?;
@@ -341,10 +367,21 @@ async fn reply(socket: &mut Socket, id: u64) -> Result<Value> {
     }
     Err(invalid("native notification bound exceeded"))
 }
-async fn codex_handshake(path: &Path, thread: &str) -> Result<(Socket, Value)> {
+async fn open_codex(path: &Path, owner: Option<u32>) -> Result<Socket> {
     crate::assert_not_ui_thread();
     own_socket(path)?;
     let stream = UnixStream::connect(path).await?;
+    if let Some(owner) = owner
+        && stream
+            .peer_cred()?
+            .pid()
+            .and_then(|pid| u32::try_from(pid).ok())
+            != Some(owner)
+    {
+        return Err(invalid(
+            "native socket peer does not match the launch-selected runtime",
+        ));
+    }
     let config = WebSocketConfig::default()
         .max_message_size(Some(LIMIT))
         .max_frame_size(Some(LIMIT));
@@ -354,12 +391,20 @@ async fn codex_handshake(path: &Path, thread: &str) -> Result<(Socket, Value)> {
     send(&mut socket,json!({"id":1,"method":"initialize","params":{"clientInfo":{"name":"bboxy450-term","version":env!("CARGO_PKG_VERSION")},"capabilities":{"experimentalApi":true}}})).await?;
     reply(&mut socket, 1).await?;
     send(&mut socket, json!({"method":"initialized"})).await?;
+    Ok(socket)
+}
+async fn read_codex_thread(
+    socket: &mut Socket,
+    path: &Path,
+    thread: &str,
+    request_id: u64,
+) -> Result<Value> {
     send(
-        &mut socket,
-        json!({"id":2,"method":"thread/read","params":{"threadId":thread,"includeTurns":false}}),
+        socket,
+        json!({"id":request_id,"method":"thread/read","params":{"threadId":thread,"includeTurns":false}}),
     )
     .await?;
-    let identity = reply(&mut socket, 2).await?;
+    let identity = reply(socket, request_id).await?;
     // Opt-in observation of the read-only preflight, before a submission can run.
     #[cfg(debug_assertions)]
     if std::env::var_os("BBOXY_CODEX_PREFLIGHT_TRACE").is_some() {
@@ -381,15 +426,121 @@ async fn codex_handshake(path: &Path, thread: &str) -> Result<(Socket, Value)> {
             Some("idle" | "active")
         )
     {
-        return Err(invalid("native thread identity/status mismatch"));
+        return Err(Box::new(UnknownRuntime));
     }
+    Ok(identity)
+}
+async fn codex_handshake(path: &Path, thread: &str, owner: Option<u32>) -> Result<(Socket, Value)> {
+    let mut socket = open_codex(path, owner).await?;
+    let identity = read_codex_thread(&mut socket, path, thread, 2).await?;
     Ok((socket, identity))
 }
+
+/// Read only the threads loaded in the launch-selected runtime. A fresh TUI can
+/// be idle before any SessionStart hook rebinds the caller's bootstrap identity.
+/// Never select from stored/global history, create or load a thread, or guess
+/// among multiple loaded threads. An unknown thread is a terminal error.
+pub async fn discover_codex_thread(binding: &Binding) -> Result<Option<(String, Value)>> {
+    verify_process(binding)?;
+    let runtime = binding
+        .runtime
+        .as_ref()
+        .ok_or_else(|| invalid("native runtime is not bound"))?;
+    if let Err(error) = verify_runtime_process(binding, &runtime.endpoint) {
+        if error
+            .downcast_ref::<std::io::Error>()
+            .is_some_and(|error| error.kind() == std::io::ErrorKind::NotFound)
+        {
+            return Ok(None);
+        }
+        return Err(error);
+    }
+    tokio::time::timeout(DEADLINE, async {
+        let mut socket = open_codex(&runtime.endpoint, Some(runtime.pid)).await?;
+        send(
+            &mut socket,
+            json!({"id":2,"method":"thread/loaded/list","params":{}}),
+        )
+        .await?;
+        let loaded = reply(&mut socket, 2).await?;
+        let ids = loaded["data"]
+            .as_array()
+            .ok_or_else(|| invalid("invalid loaded-thread page"))?;
+        if ids.is_empty() && loaded["nextCursor"].is_null() {
+            return Ok(None);
+        }
+        if ids.len() != 1 || !loaded["nextCursor"].is_null() {
+            return Err(invalid(
+                "private runtime has ambiguous loaded threads; no binding",
+            ));
+        }
+        let id = ids[0]
+            .as_str()
+            .filter(|id| !id.is_empty() && id.len() <= 256)
+            .ok_or_else(|| invalid("invalid native thread ID"))?;
+        let identity = read_codex_thread(&mut socket, &runtime.endpoint, id, 3).await?;
+        Ok(Some((id.to_owned(), identity["thread"]["status"].clone())))
+    })
+    .await?
+}
+
+/// Apply a read-only discovery only while the original launch binding is still
+/// current. A late completion never replaces a hook, generation or runtime.
+pub fn bind_discovered_codex(
+    session: &mut Session,
+    original: &Binding,
+    thread: &str,
+    status: Value,
+    sequence: u64,
+    now_ms: u64,
+) -> Result<bool> {
+    if session.binding != *original
+        || session.record.kind != "codex"
+        || session.status.source == "exit"
+        || !original.session.starts_with("process-")
+        || original.runtime.is_none()
+    {
+        return Ok(false);
+    }
+    if !matches!(status["type"].as_str(), Some("idle" | "active")) {
+        return Err(Box::new(UnknownRuntime));
+    }
+    let mut binding = original.clone();
+    binding.session = thread.to_owned();
+    binding.attachment_generation = binding
+        .attachment_generation
+        .checked_add(1)
+        .ok_or_else(|| invalid("native attachment generation exhausted"))?;
+    session.rebind(binding)?;
+    observe(
+        session,
+        &json!({"source":"snapshot","method":"thread/status/changed","params":{"threadId":thread,"status":status}}),
+        sequence,
+        now_ms,
+    )?;
+    Ok(true)
+}
+
 pub async fn codex_connect(path: &Path, thread: &str) -> Result<Socket> {
-    Ok(codex_handshake(path, thread).await?.0)
+    Ok(codex_handshake(path, thread, None).await?.0)
 }
 pub async fn codex_status(path: &Path, thread: &str) -> Result<Value> {
-    let (_, identity) = tokio::time::timeout(DEADLINE, codex_handshake(path, thread)).await??;
+    let (_, identity) =
+        tokio::time::timeout(DEADLINE, codex_handshake(path, thread, None)).await??;
+    Ok(identity["thread"]["status"].clone())
+}
+/// Poll the exact launch-selected peer. The caller validated the process start
+/// when creating its reader; every connection still checks the kernel peer PID.
+pub async fn codex_owned_status(binding: &Binding) -> Result<Value> {
+    let runtime = binding
+        .runtime
+        .as_ref()
+        .ok_or_else(|| invalid("native runtime is not bound"))?;
+    let (_, identity) = tokio::time::timeout(
+        DEADLINE,
+        codex_handshake(&runtime.endpoint, &binding.session, Some(runtime.pid)),
+    )
+    .await??;
     Ok(identity["thread"]["status"].clone())
 }
 pub async fn next_codex_event(socket: &mut Socket, deadline: Duration) -> Result<Value> {
@@ -448,7 +599,9 @@ pub async fn wake(
             }
             Endpoint::Codex{path,thread,turn}=> {
                 if thread!=&binding.session {return Err(invalid("native thread binding mismatch"));}
-                let mut socket=codex_connect(path,thread).await?;
+                verify_codex_runtime(binding,path)?;
+                let owner=binding.runtime.as_ref().ok_or_else(||invalid("native runtime is not bound"))?.pid;
+                let (mut socket,_)=codex_handshake(path,thread,Some(owner)).await?;
                 let input=json!([{"type":"text","text":text}]);
                 let request=if priority==Priority::Now {
                     let expected=turn.as_ref().ok_or_else(||invalid("interrupt requires a current turn ID"))?;
@@ -472,6 +625,9 @@ pub async fn wake(
     }).await;
     match result {
         Ok(Ok(value)) => value,
+        Ok(Err(error)) if error.downcast_ref::<UnknownRuntime>().is_some() => {
+            WakeOutcome::unknown(error.to_string())
+        }
         Ok(Err(error)) if error.downcast_ref::<Rejected>().is_some() => {
             unavailable("native rejected submission")
         }
@@ -497,6 +653,7 @@ mod registration_tests {
             process_start: process_start(std::process::id()).unwrap(),
             generation: 1,
             attachment_generation: 1,
+            runtime: None,
         }
     }
 

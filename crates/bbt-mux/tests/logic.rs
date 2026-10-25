@@ -460,6 +460,7 @@ fn hard_killed_separate_logic_process_recovers_the_same_zsh_view() {
             serde_json::from_slice(&std::fs::read(&ready).unwrap()).unwrap();
         let capability: [u8; 32] = serde_json::from_value(endpoint["capability"].clone()).unwrap();
         let path = std::path::PathBuf::from(endpoint["path"].as_str().unwrap());
+        let gui_path = std::path::PathBuf::from(endpoint["gui_path"].as_str().unwrap());
         let response = runtime.block_on(socket_request(
             &path,
             &Request {
@@ -477,9 +478,14 @@ fn hard_killed_separate_logic_process_recovers_the_same_zsh_view() {
         // The fixture owner has reaped the exact killed process. Removing its
         // stale test-only endpoint is not production socket takeover policy.
         std::fs::remove_file(&path).unwrap();
-        // C1a's logic also binds gui.sock here.
-        std::fs::remove_file(path.parent().unwrap().join("gui.sock")).unwrap();
-        std::fs::remove_dir(path.parent().unwrap()).unwrap();
+        std::fs::remove_file(&gui_path).unwrap();
+        // Seat admission survives logic restarts in its own namespace. The GUI
+        // endpoint is reported independently; neither path is guessed from the other.
+        for directory in
+            std::collections::BTreeSet::from([path.parent().unwrap(), gui_path.parent().unwrap()])
+        {
+            std::fs::remove_dir(directory).unwrap();
+        }
     }
     let client = supervisor.connect().unwrap();
     let Reply::Seats { seats } = client.request(Action::ListOwnedSeats).unwrap() else {
@@ -515,6 +521,7 @@ fn external_logic_fixture() {
     )
     .unwrap();
     let endpoint = runtime.block_on(logic.client.endpoint(seat)).unwrap();
+    let gui = runtime.block_on(logic.client.gui_endpoint()).unwrap();
     use std::os::unix::fs::OpenOptionsExt;
     let ready = Path::new(input["ready"].as_str().unwrap());
     let pending = ready.with_extension("tmp");
@@ -527,7 +534,7 @@ fn external_logic_fixture() {
     write!(
         file,
         "{}",
-        json!({"path":endpoint.path,"capability":endpoint.capability})
+        json!({"path":endpoint.path,"capability":endpoint.capability,"gui_path":gui.path})
     )
     .unwrap();
     file.sync_all().unwrap();

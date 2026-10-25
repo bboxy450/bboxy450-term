@@ -1,0 +1,523 @@
+{
+  "task": "#279 + T8",
+  "source": "4a3d9e3e5a8ed58bb3ffabb913a07067313b79be",
+  "base": "70bcc3a54e43780600b94a3e05bd4d34f347c07c",
+  "branch": "sable-codex-runtime",
+  "gate": {
+    "utc": "2026-10-25T01:35:42.475713+00:00",
+    "source": "4a3d9e3e5a8ed58bb3ffabb913a07067313b79be",
+    "status": "passed; private target/worktree removed",
+    "slot": 1,
+    "exit": 0,
+    "freed_bytes": 4982489088,
+    "command": {
+      "id": "38fcc9d255344398a48aa537b1defc86",
+      "argv": [
+        "env",
+        "RUSTC_WRAPPER=",
+        "RUSTC_WORKSPACE_WRAPPER=",
+        "BBOXY_TEST_CUSTODY=memory",
+        "BBOXY_GATE_SLOT=",
+        "CARGO_BUILD_JOBS=2",
+        "CARGO_TARGET_DIR=/private/tmp/sable-codex-runtime-p08q2lv5/ci-967f1731/target",
+        "sh",
+        "scripts/ci-local.sh"
+      ],
+      "cwd": "/private/tmp/sable-codex-runtime-p08q2lv5/ci-967f1731",
+      "started_utc": "2026-10-25T01:17:43.389910+00:00",
+      "pid": 73337,
+      "exit": 0,
+      "elapsed_seconds": 1076.6115838330006,
+      "log": "/private/tmp/sable-codex-runtime-p08q2lv5/cmd-38fcc9d255344398a48aa537b1defc86.log",
+      "sha256": "7f537a8a504a24c47826bef96a9dcff8107606523944d2aed317a993b0c757fe"
+    }
+  },
+  "gate_reported_test_results": {
+    "reported_results": 201,
+    "passed": 1312,
+    "failed": 0,
+    "ignored": 29
+  },
+  "final_workspace": {
+    "source": "4a3d9e3e5a8ed58bb3ffabb913a07067313b79be",
+    "command": "38fcc9d255344398a48aa537b1defc86",
+    "workspace": {
+      "reported_results": 197,
+      "passed": 1309,
+      "failed": 0,
+      "ignored": 29
+    },
+    "log": "/private/tmp/sable-codex-runtime-p08q2lv5/cmd-38fcc9d255344398a48aa537b1defc86.log",
+    "prefix_bytes": 177368,
+    "prefix_sha256": "c2684a6999f433157bd3f86039752343b6db8fe090f9a471e846f49b642c2bcc",
+    "stage_evidence": "Script advanced beyond workspace doctests into UI-never-waits clippy; set-e workspace stage succeeded. Later invariant reruns excluded."
+  },
+  "preflight": {
+    "source": "838b3ee8c7d03494a38724ba05979a56d0a0a3e1",
+    "steps": [
+      {
+        "label": "workspace",
+        "command": {
+          "id": "e8f5cd90fca74dba9a7dd7ad273a7590",
+          "argv": [
+            "env",
+            "RUSTC_WRAPPER=",
+            "RUSTC_WORKSPACE_WRAPPER=",
+            "BBOXY_TEST_CUSTODY=memory",
+            "CARGO_TARGET_DIR=/private/tmp/sable-codex-runtime-p08q2lv5/ci-967f1731/target",
+            "CARGO_INCREMENTAL=0",
+            "CARGO_PROFILE_DEV_DEBUG=0",
+            "CARGO_PROFILE_TEST_DEBUG=0",
+            "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+            "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+            "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+            "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+            "CARGO_BUILD_JOBS=2",
+            "cargo",
+            "test",
+            "--workspace",
+            "--locked",
+            "--no-fail-fast",
+            "-j2"
+          ],
+          "cwd": "/private/tmp/sable-codex-runtime-p08q2lv5/ci-967f1731",
+          "started_utc": "2026-10-25T00:44:02.728100+00:00",
+          "pid": 98213,
+          "exit": 0,
+          "elapsed_seconds": 398.4568208749988,
+          "log": "/private/tmp/sable-codex-runtime-p08q2lv5/cmd-e8f5cd90fca74dba9a7dd7ad273a7590.log",
+          "sha256": "2ef7915c9358eb2c2178c43d318029643dc711cffd5d41542f4b7df866e46b07"
+        }
+      },
+      {
+        "label": "clippy",
+        "command": {
+          "id": "0259200a13024dd4b300b1ddf2d07507",
+          "argv": [
+            "env",
+            "RUSTC_WRAPPER=",
+            "RUSTC_WORKSPACE_WRAPPER=",
+            "BBOXY_TEST_CUSTODY=memory",
+            "CARGO_TARGET_DIR=/private/tmp/sable-codex-runtime-p08q2lv5/ci-967f1731/target",
+            "CARGO_INCREMENTAL=0",
+            "CARGO_PROFILE_DEV_DEBUG=0",
+            "CARGO_PROFILE_TEST_DEBUG=0",
+            "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+            "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+            "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+            "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+            "CARGO_BUILD_JOBS=2",
+            "cargo",
+            "clippy",
+            "--workspace",
+            "--all-targets",
+            "--locked",
+            "-j2",
+            "--",
+            "-D",
+            "warnings"
+          ],
+          "cwd": "/private/tmp/sable-codex-runtime-p08q2lv5/ci-967f1731",
+          "started_utc": "2026-10-25T00:50:41.255982+00:00",
+          "pid": 14036,
+          "exit": 0,
+          "elapsed_seconds": 168.3580985830049,
+          "log": "/private/tmp/sable-codex-runtime-p08q2lv5/cmd-0259200a13024dd4b300b1ddf2d07507.log",
+          "sha256": "788b6dd855c7e9aff3df280605dcc5a38ff72c5a03584c243ba72b73f548f69b"
+        }
+      }
+    ],
+    "status": "passed",
+    "exit": 0,
+    "finished_utc": "2026-10-25T00:53:29.625163+00:00"
+  },
+  "native": {
+    "exit": 0,
+    "source": "14ce7b62cf744354b23d5c0f0cf42f945d115c93",
+    "binary_sha256": "79d68edf5304f6a6c4fbb8c5055929a29090031eef590c13debb5c7ccd8191fa",
+    "case": "/private/tmp/sable-codex-runtime-p08q2lv5/live-root-tmgc8f7f",
+    "tasks": [
+      {
+        "number": 1,
+        "seconds": 15.961044709023554,
+        "reported": true,
+        "reply_and_ack": true
+      },
+      {
+        "number": 2,
+        "seconds": 15.726602083013859,
+        "reported": true,
+        "reply_and_ack": true
+      }
+    ],
+    "custody": "fresh --test-account root/device in private file custody, never operator Keychain",
+    "issued_by": "test-account:01M5R7SB6QP6AEH5WHHGSZXNS2",
+    "root_fingerprint": "001B7F8A63B320A0C37833DCF7333612774EFFD7",
+    "same_certified_account_after_restarts": true,
+    "same_native_runtime_after_logic_restart": true,
+    "supervisor_sigkill": {
+      "pid": 88041,
+      "server": 88051,
+      "tui": 88052,
+      "utc": "2026-10-25T00:37:00.411915+00:00",
+      "native_pids_absent": true,
+      "elapsed_seconds": 0.10231791698606685,
+      "replacement_server": 90048,
+      "replacement_tui": 90049,
+      "generation": 2,
+      "resume_argv": true
+    },
+    "close_reaped_both": true,
+    "independently_checked_survivors": [],
+    "verified_event_rows": 44,
+    "applied_audited_reports": 2,
+    "native_reports": 2,
+    "matched_owned_runtime_rows": 171,
+    "control": {
+      "exit": 0,
+      "commands": 105,
+      "key_recipes": [
+        [
+          "down",
+          "enter"
+        ],
+        [
+          "ctrl-c",
+          "ctrl-c"
+        ]
+      ],
+      "review_recipes": 1,
+      "start_nudges": 0,
+      "spawn_count": 1,
+      "delegate_count": 2
+    },
+    "native_call_counts": {
+      "mcp__bboxy__orient": 2,
+      "mcp__bboxy__task_status": 2,
+      "mcp__bboxy__task_report": 2,
+      "mcp__bboxy__message_send": 2,
+      "mcp__bboxy__message_ack": 2,
+      "mcp__bboxy__message_receipts": 2
+    },
+    "wrapper_programs": [
+      {
+        "sha256": "999e18c084afd30f5d777cbcbb669c707d17aeae50a3957c8d68a41df5b450e1",
+        "calls": []
+      },
+      {
+        "sha256": "e066f1724065003b853725068147b88fb02d7dac4e391e8e6588659353413b48",
+        "calls": [
+          "mcp__bboxy__orient"
+        ]
+      },
+      {
+        "sha256": "61e146e58814f6d860d4e4a5818041cbaaa3b5e49511f3c2d0de36750837925d",
+        "calls": [
+          "mcp__bboxy__task_status"
+        ]
+      },
+      {
+        "sha256": "c5dbe0e77751a562020f1dd1f4d7bff7819525068f12c52ef4e8bd623a7648de",
+        "calls": [
+          "mcp__bboxy__task_report"
+        ]
+      },
+      {
+        "sha256": "a07168360772f101df754238120307a28427a7e99212ae044e5f51f083f3100c",
+        "calls": [
+          "mcp__bboxy__message_send"
+        ]
+      },
+      {
+        "sha256": "5fb0f9134e51c084c996dbf64ab21a8b9c9b2e6b190f4f6abc6eb6b239208f89",
+        "calls": [
+          "mcp__bboxy__message_ack"
+        ]
+      },
+      {
+        "sha256": "909eacc947a871becb67992ee364d3213c94e8845a89e5db6f6d414f5df99134",
+        "calls": []
+      },
+      {
+        "sha256": "5396cafe2e502c80b4926c0e9efc55a691c3cd1342c5a2caee708d120030ac03",
+        "calls": [
+          "mcp__bboxy__message_receipts"
+        ]
+      },
+      {
+        "sha256": "9d8ddc2f6bc4f1b18863c542058d38ba97052430a717871556b319b7b264e3ac",
+        "calls": [
+          "mcp__bboxy__orient"
+        ]
+      },
+      {
+        "sha256": "65133f4be6a1ecbcd2faef5b294bae044276e19a9a6d2ab72d169ac92d1a7a08",
+        "calls": [
+          "mcp__bboxy__task_status"
+        ]
+      },
+      {
+        "sha256": "91ed6d976e8fc33c85f8c32a002550c188834866c1546466c9dad44023c132f8",
+        "calls": [
+          "mcp__bboxy__task_report"
+        ]
+      },
+      {
+        "sha256": "924085e8295b29bfdd9198a96f4cf32f77ee072a4dc2c708a8ce9c3c5fbc6bf4",
+        "calls": [
+          "mcp__bboxy__message_send"
+        ]
+      },
+      {
+        "sha256": "d7c7b8a9cd5614f585a0b298f2b027626ff4502f95b4048d43bb5e885ac859da",
+        "calls": [
+          "mcp__bboxy__message_ack"
+        ]
+      },
+      {
+        "sha256": "ac688f946edb71350ce2de7f7700dc02ba3cede960a106dee95aca6367aa2fc1",
+        "calls": [
+          "mcp__bboxy__message_receipts"
+        ]
+      }
+    ],
+    "inspection_limit": "These fourteen frozen programs were read; metadata queries and named bboxy methods only. Not a general JavaScript security parser. Observed timings under host load, no quiet throughput claim.",
+    "artifact_sha256": {
+      "result.json": "c62e4f98a627714d7534deb135043f8a68f56357600982368789a46cfb04c403",
+      "ctl.json": "e4a4437f22c8af7c868ea3f23f898d17865f7844743c3858f6221d9c41ea4c1f",
+      "recipe.json": "07f221a407cbdbcb3b62d42281be5f2449b57c0c8b8f68e0471b28d34b68ed76",
+      "trace.json": "6ef155f684ad873a7135f3c8d6c9c35db29688f324725fe42ab00a80d1f42c21",
+      "app.log": "3541c37b8741ab04edef156441e5d4f50e13d9afef87fb54a1cebb7b6b810a24",
+      "owned-processes.json": "31bf19e39e1bb587ec3372c5a28a2249a43598e268f47089319052f6e9445282",
+      "native-call-programs.json": "db302d0f67d58485fa3e358696d2ad61ec3906f918d8b8162a8e43eb61429705"
+    }
+  },
+  "native_producer_identity": {
+    "native_producer": "14ce7b62cf744354b23d5c0f0cf42f945d115c93",
+    "rebased_source": "4a3d9e3e5a8ed58bb3ffabb913a07067313b79be",
+    "equal_production_files": [
+      {
+        "path": "crates/bboxy450-harness-wake-up/src/launch.rs",
+        "sha256": "2117c3ce6defc8512e7c9b8df1be9eed5ecbfaaf6ca6df5fb32a28461a31480e",
+        "producer_equals_final": true
+      },
+      {
+        "path": "crates/bboxy450-harness-wake-up/src/native.rs",
+        "sha256": "82d28c3edf9e7b52a6ef0b3c4b9580dd930bbde96f43d171275a35282602aa62",
+        "producer_equals_final": true
+      },
+      {
+        "path": "crates/bboxy450-harness-wake-up/src/lib.rs",
+        "sha256": "735cbd7e39141f43750dc45282c26a10d18ad169f443d753f8e8f8ad2ee7a1e4",
+        "producer_equals_final": true
+      },
+      {
+        "path": "crates/bboxy450-harness-wake-up/src/hook.rs",
+        "sha256": "872a605305b90c26c1726619ae708d436a479c8b7ff2994c88d3429647dbdbf9",
+        "producer_equals_final": true
+      },
+      {
+        "path": "crates/bbt-supervisor/src/protocol.rs",
+        "sha256": "83981f11fb44c32406844ea68795bc3b7ed10d49abbf55a3a2e2fdaef4d14c1a",
+        "producer_equals_final": true
+      },
+      {
+        "path": "crates/bbt-supervisor/src/supervisor.rs",
+        "sha256": "041a6b2914cae8e597aced4e32b10d8536522de729078fb9b1940543ac8dc45c",
+        "producer_equals_final": true
+      },
+      {
+        "path": "crates/bbt-supervisor/src/supervisor/companion.rs",
+        "sha256": "06d869c95066f00845efaefbfbb0b2ffc60b61d8df6a846e37a9d814d423c33f",
+        "producer_equals_final": true
+      },
+      {
+        "path": "crates/bbt-mux/src/logic.rs",
+        "sha256": "6d545369e0e75ffa94133e9eee453c57bf90529d90bce538e893556f41470452",
+        "producer_equals_final": true
+      },
+      {
+        "path": "crates/bbt-mux/src/adapters/launch.rs",
+        "sha256": "99d54bed934f3d13471ee7ff4274ae026e3f8fe65df06b59323d516e917dc5ca",
+        "producer_equals_final": true
+      },
+      {
+        "path": "crates/bbt-mux/src/adapters/mapping.rs",
+        "sha256": "60171adb4a89ed94096bd1aa40ff4cbfdbd20faf970d6ee78286c0a7b9841c7c",
+        "producer_equals_final": true
+      }
+    ],
+    "scope_limit": "Byte identity applies to these native runtime, host, binding, hook and Logic producers only. New main GUI lifecycle/IO/headless paths differ and are covered by the final full gate; no native headless or all-app producer-identity claim."
+  },
+  "metal_crash": {
+    "source": "2faf73e19fb4cd5b55e67722de504c7ea5baae72",
+    "gate_command": "c2f04608b5b9400f987d893cbb517fe6",
+    "report": "/Users/feral/Library/Logs/DiagnosticReports/bboxy450-term-2026-10-24-180803.ips",
+    "report_sha256": "5dda3e549323f4414fb4cc9627ba61a6bd391ad9a8e70da4eb8a067207d2c66b",
+    "executable": "/private/tmp/sable-codex-runtime-p08q2lv5/ci-967f1731/target/debug/deps/bboxy450_term-2a2dee8ce204c71d",
+    "executable_sha256": "259e8963f2eb970f18dfa8c23a5f6971ad4df83d2984279279a24e131d6538f9",
+    "dwarfdump": "UUID: 090B1EAA-AE3E-3055-B23B-15F3CA5D1D7E (arm64) /private/tmp/sable-codex-runtime-p08q2lv5/ci-967f1731/target/debug/deps/bboxy450_term-2a2dee8ce204c71d",
+    "pid": 47971,
+    "launch": "2026-10-24 18:07:54.5450 -0700",
+    "capture": "2026-10-24 18:07:55.1192 -0700",
+    "exception": {
+      "codes": "0x000000000000000a, 0x000000010cdb6680",
+      "rawCodes": [
+        10,
+        4510672512
+      ],
+      "type": "EXC_BAD_ACCESS",
+      "signal": "SIGBUS",
+      "subtype": " FS pagein error: 22 Invalid argument"
+    },
+    "termination": {
+      "flags": 0,
+      "code": 10,
+      "namespace": "SIGNAL",
+      "indicator": "Bus error: 10",
+      "byProc": "exc handler",
+      "byPid": 47971
+    },
+    "limits": "Matching UUID, timestamp and binary provenance establish this gate app crash. Trace does not identify why the shared Metal cache mapping failed; no retry, driver/cache deletion or product mechanism fix is justified from this alone.",
+    "artifact_retention": "Matching SHA256 and dwarfdump UUID were read before and after five exact controls. Cargo later removed the old source executable on the next rebase/build; raw crash report and these metadata records remain private. Native acceptance executable remains preserved separately.",
+    "mechanism": "Apple MTLCompilerFSCache::getElementImpl -> SHA256 on mapped cache -> texture blit -> atlas_gpu::sync_glyphs -> first headless frame."
+  },
+  "failed_headless_gate": {
+    "utc": "2026-10-25T01:08:09.247277+00:00",
+    "source": "2faf73e19fb4cd5b55e67722de504c7ea5baae72",
+    "status": "exited",
+    "slot": 1,
+    "exit": 101,
+    "command": {
+      "id": "c2f04608b5b9400f987d893cbb517fe6",
+      "argv": [
+        "env",
+        "RUSTC_WRAPPER=",
+        "RUSTC_WORKSPACE_WRAPPER=",
+        "BBOXY_TEST_CUSTODY=memory",
+        "BBOXY_GATE_SLOT=",
+        "CARGO_BUILD_JOBS=2",
+        "CARGO_TARGET_DIR=/private/tmp/sable-codex-runtime-p08q2lv5/ci-967f1731/target",
+        "sh",
+        "scripts/ci-local.sh"
+      ],
+      "cwd": "/private/tmp/sable-codex-runtime-p08q2lv5/ci-967f1731",
+      "started_utc": "2026-10-25T00:53:51.542544+00:00",
+      "pid": 21249,
+      "exit": 101,
+      "elapsed_seconds": 857.6951042500441,
+      "log": "/private/tmp/sable-codex-runtime-p08q2lv5/cmd-c2f04608b5b9400f987d893cbb517fe6.log",
+      "sha256": "e3f260c2933a22a39c14775e274640c7664005448108ca29d266d1619f119f51"
+    }
+  },
+  "headless_package_controls": {
+    "source": "2faf73e19fb4cd5b55e67722de504c7ea5baae72",
+    "logs": "/private/tmp/sable-codex-runtime-p08q2lv5/headless-before-logs",
+    "runs": [
+      {
+        "id": "5e775203bef64b49897b6961cccb692b",
+        "exit": 0,
+        "elapsed_seconds": 136.47433087503305,
+        "log": "/private/tmp/sable-codex-runtime-p08q2lv5/cmd-5e775203bef64b49897b6961cccb692b.log",
+        "sha256": "10f5cb76c6d54ec212184e84e6ead41be84e495d03aaaff054c1fbfc98551079"
+      },
+      {
+        "id": "25ff78a19f6744c8ae0804f938a9ff3a",
+        "exit": 0,
+        "elapsed_seconds": 15.447790333011653,
+        "log": "/private/tmp/sable-codex-runtime-p08q2lv5/cmd-25ff78a19f6744c8ae0804f938a9ff3a.log",
+        "sha256": "88fc2c10b5ff555d5d7e1d5554cc7145e660346a33fe5cafc823930782d215a8"
+      },
+      {
+        "id": "a01ef1e2064d4ecabe5b4b380388b63f",
+        "exit": 0,
+        "elapsed_seconds": 16.073338916001376,
+        "log": "/private/tmp/sable-codex-runtime-p08q2lv5/cmd-a01ef1e2064d4ecabe5b4b380388b63f.log",
+        "sha256": "762ece50373fe0bf87507e78c9c24db1142c4456829c2c2acdc798c49c2d04df"
+      },
+      {
+        "id": "fddadc0533804a3f8674d6e8b8b3f332",
+        "exit": 0,
+        "elapsed_seconds": 15.21274608396925,
+        "log": "/private/tmp/sable-codex-runtime-p08q2lv5/cmd-fddadc0533804a3f8674d6e8b8b3f332.log",
+        "sha256": "573ca1df6c35ba439daff0ef029e35d743e0a49ce27610889419e16160e0cf5d"
+      },
+      {
+        "id": "4368fc37a94048c8813fdb9ec3e246c4",
+        "exit": 0,
+        "elapsed_seconds": 14.013234374986496,
+        "log": "/private/tmp/sable-codex-runtime-p08q2lv5/cmd-4368fc37a94048c8813fdb9ec3e246c4.log",
+        "sha256": "e8273f0b3cebf01b8935c7e846df811522d2375ca64d97e2cab8019c59bb8f41"
+      }
+    ],
+    "reported_passes": 40
+  },
+  "headless_exact_controls": {
+    "source": "2faf73e19fb4cd5b55e67722de504c7ea5baae72",
+    "archive": "/private/tmp/sable-codex-runtime-p08q2lv5/headless-exact-logs",
+    "test_binary": "/private/tmp/sable-codex-runtime-p08q2lv5/ci-967f1731/target/debug/deps/headless-42317773e6adb8e9",
+    "test_sha256": "fae9b280dce9c99debbcfdb06d05dbd152c6cf09c4faf81fbdb8d444e14f7070",
+    "app_binary": "/private/tmp/sable-codex-runtime-p08q2lv5/ci-967f1731/target/debug/deps/bboxy450_term-2a2dee8ce204c71d",
+    "app_sha256": "259e8963f2eb970f18dfa8c23a5f6971ad4df83d2984279279a24e131d6538f9",
+    "native_uuid": "090B1EAA-AE3E-3055-B23B-15F3CA5D1D7E",
+    "TMPDIR": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/",
+    "runs": [
+      {
+        "id": "03ffd857a7f944d28bd75f548a477633",
+        "exit": 0,
+        "elapsed_seconds": 13.546134417003486,
+        "log": "/private/tmp/sable-codex-runtime-p08q2lv5/cmd-03ffd857a7f944d28bd75f548a477633.log",
+        "sha256": "ed18ece378dc84a05c9bd08578ae3376025285e8595716a515c7280a6d48e01c"
+      },
+      {
+        "id": "953de80406874821bdcbdf96ac693ed6",
+        "exit": 0,
+        "elapsed_seconds": 13.104102250013966,
+        "log": "/private/tmp/sable-codex-runtime-p08q2lv5/cmd-953de80406874821bdcbdf96ac693ed6.log",
+        "sha256": "54caa89d0c965546a3bf7a492900dbe9b0fb657cf734e811434c139c5e6b86d8"
+      },
+      {
+        "id": "9fb788701dff48e2a2b7cc2bf051877f",
+        "exit": 0,
+        "elapsed_seconds": 13.15312608302338,
+        "log": "/private/tmp/sable-codex-runtime-p08q2lv5/cmd-9fb788701dff48e2a2b7cc2bf051877f.log",
+        "sha256": "eb2797d76adfe59aa3516aea422e930d6f203e8739905998205009e91abe3c1d"
+      },
+      {
+        "id": "f9e7638a650b4c95a8c6288930111272",
+        "exit": 0,
+        "elapsed_seconds": 13.078439333010465,
+        "log": "/private/tmp/sable-codex-runtime-p08q2lv5/cmd-f9e7638a650b4c95a8c6288930111272.log",
+        "sha256": "66de1f78c6d097724c24ce5218f6b2a3f77449ed4f26b8c911046565327b2588"
+      },
+      {
+        "id": "a2ee100ebdf2438ba63cd543bea8a05b",
+        "exit": 0,
+        "elapsed_seconds": 13.09302850003587,
+        "log": "/private/tmp/sable-codex-runtime-p08q2lv5/cmd-a2ee100ebdf2438ba63cd543bea8a05b.log",
+        "sha256": "b14e317c875da0ac51c6defe5ca76dd1adbc29e11d347f01a35064e174cf05e9"
+      }
+    ],
+    "reported_passes": 40
+  },
+  "environmental_disposition": "Oracle f148bf63-feba-468d-9f41-514ef9896f52: environmental Metal FS-cache SIGBUS; no catch/retry. Readiness signal/crash-report diagnostic separately assigned to Aster.",
+  "written_utc": "2026-10-25T01:35:47.603055+00:00",
+  "limits": [
+    "Native probe used the GUI ctl path, not U1 headless or physical scanout.",
+    "Normal authorized Codex login retained; no credential copy. Native trust recipe may persist its hash state.",
+    "Old generation short alias remains after supervisor SIGKILL without a socket/listener/process; exact per-seat cleanup is assigned after acceptance (be450427).",
+    "Recovery ListSeats under-load flake is separately assigned (616c2a39); untouched here.",
+    "T8 corrected state script passes but the broader T8 promise is PARTIAL: malformed/unapproved report rejection and UI row grade are unproven (Oracle0cfd752f; Seraph unions the exact partial header). The focused standalone runner intentionally left seven other terminal promises untested, overall runner exit1.",
+    "Timing observations are under host work, not quiet-controlled throughput."
+  ],
+  "smoke": {
+    "frames": 0,
+    "callbacks": 0,
+    "seconds": 10.004,
+    "windows": 0,
+    "mode": "headless",
+    "line": "idle passed: frames=0 callbacks=0 seconds=10.004 windows=0 mode=headless"
+  },
+  "main_after_gate": "8240d3595a057590831bc808f79139271f53d852",
+  "main_after_gate_note": "R5h-idle and records landed during the exact gate. No rebase/re-gate after green, per AGENTS. Oracle verifies merged tree. No native runtime/kit/host file changed by that main work."
+}

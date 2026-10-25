@@ -1,8 +1,8 @@
 #![allow(clippy::disallowed_methods)] // Disposable native/PTY fixtures, never UI.
 mod common;
 use bbt_mux::adapters::{
-    Adapter, ArbiterView, Binding, Evidence, HarnessRecord, OscTap, Readiness, Session,
-    State, WaitingKind,
+    Adapter, ArbiterView, Binding, Evidence, HarnessRecord, OscTap, Readiness, Session, State,
+    WaitingKind,
 };
 use bbt_mux::adapters::{
     hook,
@@ -23,6 +23,7 @@ fn binding() -> Binding {
         process_start: native::process_start(std::process::id()).unwrap(),
         generation: 1,
         attachment_generation: 1,
+        runtime: None,
     }
 }
 fn session(kind: &str) -> Session {

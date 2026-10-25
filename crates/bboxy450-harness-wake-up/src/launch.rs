@@ -30,12 +30,57 @@ pub struct LaunchPlan {
     pub overlay: PathBuf,
     pub harness_session_id: Option<String>,
     pub notes: Vec<&'static str>,
+    /// A seat-owned service the caller starts before the PTY command.
+    pub runtime: Option<RuntimePlan>,
+}
+
+/// Neutral process/socket plan; the caller owns the service for the seat lifetime.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct RuntimePlan {
+    pub program: String,
+    pub args: Vec<String>,
+    pub env: BTreeMap<String, String>,
+    pub endpoint: PathBuf,
+}
+
+/// Release a launch overlay and its optional owned short socket alias.
+pub fn cleanup_overlay(overlay: &Path, endpoint: Option<&Path>) -> Result<()> {
+    if let Some(parent) = endpoint.and_then(Path::parent)
+        && parent != overlay
+    {
+        let name = parent.file_name().and_then(|s| s.to_str()).unwrap_or("");
+        if parent.parent() != Some(Path::new("/tmp"))
+            || !name
+                .strip_prefix("bboxy-cx-")
+                .is_some_and(|id| id.parse::<crate::Ulid>().is_ok())
+            || std::fs::read_link(parent)? != overlay
+        {
+            return Err(invalid("unowned runtime socket alias"));
+        }
+        std::fs::remove_file(parent)?;
+    }
+    std::fs::remove_dir_all(overlay)?;
+    Ok(())
+}
+
+fn runtime_endpoint(overlay: &Path) -> Result<PathBuf> {
+    let endpoint = overlay.join("codex.sock");
+    if endpoint.as_os_str().as_encoded_bytes().len() < 104 {
+        return Ok(endpoint);
+    }
+    // The requested locator stays in the 0700 overlay; Codex can resolve it
+    // to its own socket. A short alias avoids Darwin's sun_path bound.
+    let alias = Path::new("/tmp").join(format!("bboxy-cx-{}", crate::Ulid::new()));
+    std::os::unix::fs::symlink(overlay, &alias)?;
+    Ok(alias.join("codex.sock"))
 }
 impl LaunchPlan {
     /// The owner calls this only after process exit, never at close-grace start.
     pub fn cleanup(self) -> Result<()> {
-        std::fs::remove_dir_all(self.overlay)?;
-        Ok(())
+        cleanup_overlay(
+            &self.overlay,
+            self.runtime.as_ref().map(|r| r.endpoint.as_path()),
+        )
     }
 }
 /// The lifecycle events a Codex seat's inline hook overlay installs, one hook each, all
@@ -128,6 +173,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
         overlay: overlay.clone(),
         harness_session_id: None,
         notes: Vec::new(),
+        runtime: None,
     };
     spec.env
         .insert("BBOXY_SEAT_ID".into(), context.id.to_string());
@@ -281,6 +327,43 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
                     .ok_or_else(|| invalid("Codex resume requires thread ID"))?;
                 spec.args.extend(["resume".into(), id.clone()]);
             }
+            let endpoint = runtime_endpoint(&overlay)?;
+            let url = format!("unix://{}", endpoint.display());
+            let inherited = record.command.len() - 1;
+            let mut args = spec.args[..inherited].to_vec();
+            args.extend(["app-server".into(), "--listen".into(), url.clone()]);
+            for pair in spec.args[inherited..].windows(2) {
+                if pair[0] == "-c" || pair[0] == "--config" {
+                    args.extend([pair[0].clone(), pair[1].clone()]);
+                }
+            }
+            let mut runtime_env = spec.env.clone();
+            // The caller may give this service a private controlling tty solely
+            // for lifetime hangup. Its hooks must use the authenticated sink.
+            runtime_env.insert("BBOXY_HOOK_SOCKET_ONLY".into(), "1".into());
+            spec.runtime = Some(RuntimePlan {
+                program: spec.program.clone(),
+                args,
+                env: runtime_env,
+                endpoint,
+            });
+            spec.args
+                .splice(inherited..inherited, ["--remote".into(), url]);
+            // Only this seat's PTY waits for its runtime. exec preserves its PID;
+            // neither the supervisor actor nor the caller's serial RPC waits.
+            let mut args = vec![
+                "harness-exec".into(),
+                spec.runtime
+                    .as_ref()
+                    .unwrap()
+                    .endpoint
+                    .to_string_lossy()
+                    .into(),
+                spec.program.clone(),
+            ];
+            args.append(&mut spec.args);
+            spec.program = context.executable.to_string_lossy().into();
+            spec.args = args;
         }
         "zsh" => {
             let user = context.user_zdotdir.unwrap_or(context.user_home);
@@ -304,6 +387,39 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
     Ok(spec)
 }
 
+fn runtime_ready(endpoint: &Path) -> bool {
+    // mio connect never blocks on a full Unix accept queue.
+    mio::net::UnixStream::connect(endpoint).is_ok_and(|socket| {
+        socket.take_error().is_ok_and(|error| error.is_none()) && socket.peer_addr().is_ok()
+    })
+}
+
+/// Private CLI entry for an already supervisor-owned PTY. Wait only on the
+/// explicitly selected seat socket, then replace this process with its TUI.
+/// Normal CODEX_HOME and authentication stay with Codex; no credential is copied.
+pub fn exec_when_ready(args: &[String]) -> Result<()> {
+    crate::assert_not_ui_thread();
+    use std::os::unix::process::CommandExt;
+    let [endpoint, program, rest @ ..] = args else {
+        return Err(invalid("harness-exec needs socket and command"));
+    };
+    let endpoint = Path::new(endpoint);
+    if !endpoint.is_absolute() || program.is_empty() {
+        return Err(invalid("harness-exec needs an absolute socket and command"));
+    }
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        if runtime_ready(endpoint) {
+            break;
+        }
+        if std::time::Instant::now() >= deadline {
+            return Err(invalid("seat runtime readiness deadline elapsed"));
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    Err(std::process::Command::new(program).args(rest).exec().into())
+}
+
 const ZSH_RC: &str = r#"ZDOTDIR=$_bbt_user_zdotdir
 [[ -r $ZDOTDIR/.zshrc ]] && source $ZDOTDIR/.zshrc
 ZDOTDIR=$_bbt_overlay
@@ -320,3 +436,29 @@ _bbt_precmd() {
 add-zsh-hook preexec _bbt_preexec
 add-zsh-hook precmd _bbt_precmd
 "#;
+
+#[cfg(test)]
+mod runtime_tests {
+    use super::*;
+
+    #[test]
+    fn long_runtime_paths_keep_the_locator_in_the_overlay_and_release_the_alias() {
+        let root = tempfile::tempdir().unwrap();
+        let overlay = root.path().join("x".repeat(120));
+        std::fs::DirBuilder::new()
+            .mode(0o700)
+            .create(&overlay)
+            .unwrap();
+        let endpoint = runtime_endpoint(&overlay).unwrap();
+        assert!(endpoint.as_os_str().as_encoded_bytes().len() < 104);
+        let alias = endpoint.parent().unwrap().to_owned();
+        assert_eq!(std::fs::read_link(&alias).unwrap(), overlay);
+        let listener = std::os::unix::net::UnixListener::bind(&endpoint).unwrap();
+        assert!(overlay.join("codex.sock").exists());
+        drop(listener);
+        cleanup_overlay(&overlay, Some(&endpoint)).unwrap();
+        assert!(!overlay.exists());
+        assert!(alias.symlink_metadata().is_err());
+        assert!(root.path().exists());
+    }
+}

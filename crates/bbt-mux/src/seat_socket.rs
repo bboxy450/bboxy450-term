@@ -2,7 +2,7 @@
 //! Raw input is unavailable here; messaging uses the common adapter/guard broker.
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};
+use std::os::unix::fs::{DirBuilderExt, FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -151,6 +151,8 @@ impl SeatEndpoint {
         capability: [u8; 32],
     ) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
+        private_parent(path)?;
+        reclaim_stale_seat_socket(path)?;
         let (listener, file) = bind_listener(handle, path)?;
         let task=handle.spawn(async move {
             let slots=Arc::new(tokio::sync::Semaphore::new(32));
@@ -196,10 +198,7 @@ fn gui_session_error_reason(error: &crate::store::Error) -> String {
     }
 }
 
-fn bind_listener(
-    handle: &tokio::runtime::Handle,
-    path: &Path,
-) -> Result<(tokio::net::UnixListener, SocketFile)> {
+fn private_parent(path: &Path) -> Result<()> {
     let parent = path
         .parent()
         .ok_or_else(|| invalid("socket requires a parent"))?;
@@ -212,6 +211,101 @@ fn bind_listener(
     if !meta.is_dir() || meta.uid() != unsafe { libc::geteuid() } || meta.mode() & 0o077 != 0 {
         return Err(invalid("seat socket parent must be private and owned"));
     }
+    Ok(())
+}
+
+/// Logic has exclusive run custody before recovery. An abrupt exit can leave
+/// its socket inode behind; never replace a live listener or another file.
+fn reclaim_stale_seat_socket(path: &Path) -> Result<()> {
+    let meta = match std::fs::symlink_metadata(path) {
+        Ok(meta) => meta,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error.into()),
+    };
+    // SAFETY: geteuid has no pointer arguments or side effects.
+    if !meta.file_type().is_socket() || meta.uid() != unsafe { libc::geteuid() } {
+        return Err(invalid("seat endpoint is not an owned socket"));
+    }
+    match probe_seat_socket(path) {
+        Err(error)
+            if matches!(
+                error.kind(),
+                std::io::ErrorKind::ConnectionRefused | std::io::ErrorKind::NotFound
+            ) => {}
+        _ => {
+            return Err(invalid(
+                "seat endpoint still has a live or unresponsive listener",
+            ));
+        }
+    }
+    let current = std::fs::symlink_metadata(path)?;
+    if current.dev() != meta.dev() || current.ino() != meta.ino() {
+        return Err(invalid("seat endpoint changed during recovery"));
+    }
+    std::fs::remove_file(path)?;
+    Ok(())
+}
+
+/// One nonblocking connect: a busy listener is live, never a reason to wait or
+/// unlink. This probe needs no running async executor during Logic bootstrap.
+fn probe_seat_socket(path: &Path) -> std::io::Result<()> {
+    use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
+
+    // SAFETY: sockaddr_un is a plain C address; all bytes are initialized.
+    let mut address: libc::sockaddr_un = unsafe { std::mem::zeroed() };
+    let bytes = path.as_os_str().as_encoded_bytes();
+    if bytes.len() >= address.sun_path.len() || bytes.contains(&0) {
+        return Err(std::io::Error::other("invalid seat endpoint path"));
+    }
+    address.sun_family = libc::AF_UNIX as libc::sa_family_t;
+    for (slot, byte) in address.sun_path.iter_mut().zip(bytes) {
+        *slot = *byte as libc::c_char;
+    }
+    let length = std::mem::size_of_val(&address) as libc::socklen_t;
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "netbsd",
+        target_os = "dragonfly"
+    ))]
+    {
+        address.sun_len = length as u8;
+    }
+    // SAFETY: socket creates an unconnected owned descriptor, no borrowed pointers.
+    let raw = unsafe { libc::socket(libc::AF_UNIX, libc::SOCK_STREAM, 0) };
+    if raw < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    // SAFETY: raw is a fresh valid descriptor, transferred exactly once.
+    let fd = unsafe { OwnedFd::from_raw_fd(raw) };
+    // SAFETY: fcntl acts only on our live owned descriptor.
+    if unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_SETFL, libc::O_NONBLOCK) } < 0
+        // SAFETY: same private owned descriptor; do not pass the probe to a child.
+        || unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_SETFD, libc::FD_CLOEXEC) } < 0
+    {
+        return Err(std::io::Error::last_os_error());
+    }
+    // SAFETY: address has the initialized sockaddr_un size and remains live;
+    // fd stays owned until this nonblocking connect returns.
+    if unsafe {
+        libc::connect(
+            fd.as_raw_fd(),
+            (&address as *const libc::sockaddr_un).cast(),
+            length,
+        )
+    } < 0
+    {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok(())
+}
+
+fn bind_listener(
+    handle: &tokio::runtime::Handle,
+    path: &Path,
+) -> Result<(tokio::net::UnixListener, SocketFile)> {
+    private_parent(path)?;
     let listener = std::os::unix::net::UnixListener::bind(path)?;
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
     let meta = std::fs::symlink_metadata(path)?;
@@ -1051,6 +1145,37 @@ mod gui_tests {
         logic::{Logic, LogicConfig},
         registry::SeatRecord,
     };
+
+    #[test]
+    fn seat_listener_recovery_reclaims_only_a_dead_owned_socket() {
+        use std::os::unix::{fs::symlink, net::UnixListener};
+
+        let root = tempfile::tempdir().unwrap();
+        std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+        let path = root.path().join("seat.sock");
+        private_parent(&path).unwrap();
+        let listener = UnixListener::bind(&path).unwrap();
+        let inode = std::fs::symlink_metadata(&path).unwrap().ino();
+        assert!(reclaim_stale_seat_socket(&path).is_err());
+        assert_eq!(std::fs::symlink_metadata(&path).unwrap().ino(), inode);
+        drop(listener);
+        assert!(path.exists(), "crash fixture must leave the socket inode");
+        reclaim_stale_seat_socket(&path).unwrap();
+        assert!(!path.exists());
+
+        std::fs::write(&path, b"unrelated file").unwrap();
+        assert!(reclaim_stale_seat_socket(&path).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), b"unrelated file");
+        let link = root.path().join("link.sock");
+        symlink(&path, &link).unwrap();
+        assert!(reclaim_stale_seat_socket(&link).is_err());
+        assert!(
+            std::fs::symlink_metadata(link)
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        );
+    }
 
     #[tokio::test]
     async fn session_error_reasons_name_deadlines_without_logging_payloads() {

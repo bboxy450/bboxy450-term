@@ -1,0 +1,10 @@
+#279 hard-kill fixture namespace migration — Sable Embertail <EXECUTOR>
+2026-10-24; required by the stable per-seat MCP admission address.
+
+The full workspace preflight on14ce7b62 completed all targets: aggregate [1299, 1, 29] passed/failed/ignored across196 suite result lines. The sole failure is bbt-mux tests/logic.rs hard_killed_separate_logic_process_recovers_the_same_zsh_view, ENOENT at481 removing a guessed sibling gui.sock. The persistent seat address and per-Logic GUI address now live independently.
+
+Fixture-only change: the child reports actual gui_endpoint.path with its seat endpoint; the parent removes both exact files after reaping that child and removes their distinct private parent directories once. Both hard kills, the screen equality assertion, original PTY PID check, generation and watchdogs are retained. No production change.
+
+cd2fb1afeb0845939346f05a3bda5080 — EXIT101, 761.319s; log SHA256 8f1e03a04f4f29d3502a11f3ba24dbe9df98dd64dc0e07a2aed6c8b2b7aa2de4; private full log /private/tmp/sable-codex-runtime-p08q2lv5/cmd-cd2fb1afeb0845939346f05a3bda5080.log
+
+The correction is pending its focused rerun and the repeated full workspace/strict-clippy preflight on the next signed tip. The final exact NORMAL gate remains required.

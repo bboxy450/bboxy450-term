@@ -144,6 +144,24 @@ fn first_launch_fixture_checks_wiring_and_preserves_user_config() {
             },
         )
         .unwrap();
+        struct Owned(std::process::Child);
+        impl Drop for Owned {
+            fn drop(&mut self) {
+                let _ = self.0.kill();
+                let _ = self.0.wait();
+            }
+        }
+        let _runtime = plan.runtime.as_ref().map(|runtime| {
+            Owned(
+                Command::new(&runtime.program)
+                    .args(&runtime.args)
+                    .envs(&plan.env)
+                    .envs(&runtime.env)
+                    .current_dir(&plan.cwd)
+                    .spawn()
+                    .unwrap(),
+            )
+        });
         let child = Command::new(&plan.program)
             .args(&plan.args)
             .envs(&plan.env)

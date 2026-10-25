@@ -415,7 +415,8 @@ fn run(args: &[String], sink: &impl HookSink) -> Result<()> {
         }
     }
     let seat = std::env::var("BBOXY_SEAT_ID")?.parse::<Ulid>()?;
-    if native_socket.is_none() && let Some(frame)=osc(seat,&event)?
+    let socket_only = std::env::var_os("BBOXY_HOOK_SOCKET_ONLY").is_some_and(|value| value == "1");
+    if !socket_only && native_socket.is_none() && let Some(frame)=osc(seat,&event)?
         && let Ok(mut tty)=std::fs::OpenOptions::new().write(true).custom_flags(libc::O_NONBLOCK).open("/dev/tty")
         // SAFETY: the open file owns this fd. isatty changes no state.
         && unsafe{libc::isatty(tty.as_raw_fd())}==1

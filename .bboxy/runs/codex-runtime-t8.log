@@ -1,0 +1,25 @@
+T8 fixture correction — Sable Embertail <EXECUTOR>, 2026-10-24
+Oracle ruling5b0e9089-63bc-44d5-812c-88b5b49dcdc7; source scope scripts/e2e/T8.sh only, no parser change.
+
+Mechanism:
+- T8 emitted7501 state=working with id=t8, which names a subagent, then asserted MAIN activity. A completed shell command also emits133 B (main idle).
+- Session::apply/osc/parse_7501 bodies are byte-identical to pre-HK0 source. Current kit observe.rs blob e195f9fcb6fa8b5d27d1e20a81891b206d2d6cd8 is also the accepted HK-0 blob. No extraction regression.
+- Untagged frame now checks reported main active with no invented child. A second tagged frame checks the t8 subagent active/reported. A read holds each command open so a new shell prompt cannot replace the state under test.
+- Silent idle uses the existing ctl condition wait instead of a fixed2s sleep;5s timeout and original25x200ms observation bounds retained. No deadline raising.
+
+Focused real-app/script evidence (same immutable app31ba1923, SHA033a5377b4bce4397cbef414d2b3c7b1c73dfe812c4275c75b77eb3712ecee21):
+- BEFORE:53856c83c5ec40bb8e2b428d93ab8af2 harness EXIT0 verifies the expected T8 RED (script1, main idle/grade reported);11.602s.
+- AFTER:5ec2c5dc18954b938dc02c7f71c6baac harness EXIT0; T8 script0/pass;3.001s.
+- Each focused night runner supplies only T8 and lib.sh. Both whole-runner exits are honestly1 because7 other terminal promises are explicitly UNTESTED; no whole-group pass claim.
+- Both runs create their own in-memory local-dev app identity, make no model calls, use ctl/private PTYs only, and leave no recorded owned survivors.
+- sh -n scripts/e2e/T8.sh EXIT0; git diff --check EXIT0. Full next exact normal ci-local remains pending at this source freeze.
+
+Raw private artifacts:
+/private/tmp/sable-codex-runtime-p08q2lv5/t8-before-fqe8s_l6
+result.json sha256 23ac7cb847bf7e48779f9836f00ee39e0dac47a23fbd980312e6ad3ffdc56825
+runner.log sha256 2c590bee7865caf55674161b45b7d2420a369afc6d2020755517929916089fa2
+owned.json sha256 58d93fa6ffb9891fa1dc60b754e56999f201483144192d2c2b24eb8233d66722
+/private/tmp/sable-codex-runtime-p08q2lv5/t8-after-00mk5sdm
+result.json sha256 41164c3dbe5c1d04ebe1767f9bd5a2b38e8b1f4a1c763fb7613a56ee89c90613
+runner.log sha256 3dd1673e00890db396ca3e40141afec0be76bb458b9555dcc53d00e9a3b3931d
+owned.json sha256 96310e03b433ed87869aeab0164a1f4b73519c986c6f8ea99a19d1f8229e2ae9

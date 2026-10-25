@@ -124,6 +124,17 @@ pub struct Binding {
     pub process_start: String,
     pub generation: u64,
     pub attachment_generation: u64,
+    /// The explicitly selected runtime hosting this native thread.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runtime: Option<RuntimeBinding>,
+}
+
+/// Identity of a seat-owned runtime; no user-global discovery is permitted.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RuntimeBinding {
+    pub endpoint: std::path::PathBuf,
+    pub pid: u32,
+    pub process_start: String,
 }
 impl Binding {
     pub fn validate(&self) -> Result<()> {
@@ -134,6 +145,9 @@ impl Binding {
             || self.process_start.is_empty()
             || self.generation == 0
             || self.attachment_generation == 0
+            || self.runtime.as_ref().is_some_and(|r| {
+                !r.endpoint.is_absolute() || r.pid == 0 || r.process_start.is_empty()
+            })
         {
             return Err(invalid("invalid harness attachment identity"));
         }
@@ -258,7 +272,8 @@ impl Adapter for Session {
                 Endpoint::Codex { path, thread, .. }
                     if self.record.kind == "codex" && thread == &self.binding.session =>
                 {
-                    native::codex_status(path, thread).await?;
+                    native::verify_codex_runtime(&self.binding, path)?;
+                    native::codex_owned_status(&self.binding).await?;
                 }
                 _ => {
                     return Err(invalid(
@@ -327,6 +342,7 @@ mod availability_tests {
             process_start: "start".into(),
             generation: 1,
             attachment_generation: 2,
+            runtime: None,
         };
         let attachment = NativeAttachment {
             binding: binding.clone(),

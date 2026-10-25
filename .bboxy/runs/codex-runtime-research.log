@@ -1,0 +1,206 @@
+{
+  "task": "Decision #279: read-only documented Codex 0.163 runtime research and repair proposal",
+  "executor": "Sable Embertail <EXECUTOR>",
+  "assignments": [
+    "fedbc3da-8f4f-401e-ae90-94eb2321871e",
+    "4f268036-3ff6-4a66-a074-356ce6ea62cb"
+  ],
+  "decision": "00c6ba24, .bboxy/decisions/d279-codex-runtime-per-seat.md and harness-kits section 2",
+  "product_state": "#265 implementation e5851261; signed evidence e7bc1194; normal gate exit 0. This report changes no product code and starts no Codex server or thread.",
+  "source_at_research": "e7bc11941ca68a3ce8734dbd2a9aa984d9ab8cb0",
+  "documented_mechanism": {
+    "selection": "A seat-private app-server and a TUI explicitly attached to the same Unix endpoint",
+    "server_argv": [
+      "codex",
+      "app-server",
+      "--listen",
+      "unix:///SHORT_PRIVATE_OVERLAY/native.sock"
+    ],
+    "tui_argv": [
+      "codex",
+      "--remote",
+      "unix:///SHORT_PRIVATE_OVERLAY/native.sock"
+    ],
+    "official_sources": [
+      "https://learn.chatgpt.com/docs/app-server#connect-the-cli-terminal-ui",
+      "https://learn.chatgpt.com/docs/app-server#protocol",
+      "https://learn.chatgpt.com/docs/cli/reference#codex-interactive",
+      "https://learn.chatgpt.com/docs/cli/reference#codex-app-server"
+    ],
+    "version_evidence": "Official docs are unversioned. The installed exact 0.163.0 executable help independently lists app-server --listen unix://PATH and TUI --remote unix://PATH; binary digest and unmodified help outputs are retained below. This is not a claim that current docs are a frozen 0.163 manual.",
+    "queue_cli_observation": "Installed codex queue --help also accepts --remote, but the proposed repair can keep the existing validated native RPC path rather than replace the protocol."
+  },
+  "authentication": {
+    "sources": [
+      "https://learn.chatgpt.com/docs/auth#login-caching",
+      "https://learn.chatgpt.com/docs/auth#credential-storage"
+    ],
+    "documented_fact": "Codex reuses its cached login; file storage is under normal CODEX_HOME, default ~/.codex, or its configured OS store.",
+    "proposal_inference": "Keep normal CODEX_HOME for Codex-owned authentication. Selecting a private transport does not require duplicating the credential store. The app never opens, copies or writes auth.json and never changes global config or the operator daemon.",
+    "remaining_runtime_proof": "No private server was started during this read-only item. A later own-seat integration probe must confirm account availability through the normal Codex client without a login/Keychain/operator prompt; cached-login documentation is not a new live runtime proof."
+  },
+  "observed_failure_context": {
+    "private_audit": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/approval-live/completed-audit.json",
+    "audit_sha256": "0c3cdcb5ff7460904c03699bc7c801f3cbd40dfaf385ae4c161ad20c5266baad",
+    "tuple": "requested thread equals returned thread; status notLoaded at the user-global daemon, PID 13411, while own TUI PID 94186 completes the task after a scripted start nudge",
+    "read_semantics": "https://learn.chatgpt.com/docs/app-server#read-a-stored-thread-without-resuming documents that thread/read reads stored data without loading/subscribing; an ID match alone is not runtime ownership.",
+    "guard": "Do not accept notLoaded as idle or load/resume the thread on the operator daemon. #279 requires NativeUnknown/no retry."
+  },
+  "proposed_repair_order": [
+    "The kit creates a neutral per-seat runtime descriptor with a short validated Unix socket in its private 0700 overlay and expresses server/TUI argv using the documented flags. Launch carries that chosen endpoint; no user-global discovery.",
+    "The caller hosts the selected server for the PTY seat lifetime, surviving Logic restart and close grace. A Logic-owned background task is insufficient. Keep the kit a library with neutral descriptors, not a new dependency on mux/proto/supervisor.",
+    "Record/reconstruct the selected runtime and endpoint with seat, generation, process start and native thread identity. Refresh and wake use this same endpoint only; initial binding is unavailable until the SessionStart thread rebind. Preserve normal caller hooks and MCP per-invocation overrides on the actual server/thread.",
+    "Preserve exact thread and idle/active admission. A wake with notLoaded/unknown is NativeUnknown, named and stopped without retry or PTY fallback. Keep unrelated seats and messages flowing if this runtime is unavailable."
+  ],
+  "named_source_seams": [
+    "crates/bboxy450-harness-wake-up/src/launch.rs:25 LaunchPlan and :223 Codex overlay: explicit endpoint/runtime descriptor and documented argv; preserve per-server approve and hook commands",
+    "crates/bboxy450-harness-wake-up/src/lib.rs:120 Binding / :144 Endpoint: bind selected runtime identity without wire types",
+    "crates/bboxy450-harness-wake-up/src/native.rs:345 codex_handshake and :410 wake: preserve identity/status guards; return typed unknown outcome for notLoaded under #279",
+    "crates/bbt-mux/src/adapters/{launch,mapping}.rs: map neutral launch/runtime fields; policy and journal remain here",
+    "crates/bbt-mux/src/logic.rs:3974 refresh_adapters, especially :4019-4050: replace CODEX_HOME user-global socket lookup with the retained launch-selected endpoint",
+    "Seat host/launch lifecycle: exact sidecar/helper ownership must preserve the existing supervisor/PTY lifetime across Logic death; select this inside the implementation brief rather than silently making it a Logic task"
+  ],
+  "proposed_scripted_regressions": [
+    "Kit bootstrap fixture starts unbound/process-* and non-idle; no queue mutation until the exact SessionStart bind and selected-runtime idle/active observation.",
+    "A matching stored thread on an unrelated/global endpoint returning notLoaded yields NativeUnknown once, no retry and no queue/add, load/resume, steer or PTY fallback.",
+    "Two seats have distinct sockets/thread bindings; one unavailable runtime does not stall the other. Exercise full failure/refusal outcomes without a single global runtime gate.",
+    "Own runtime remains usable through Logic SIGKILL/restart; the selected endpoint/session is retained, and seat exit reaps its private server.",
+    "Fully scripted fresh real-Codex delegation/DM -> orient -> task_report -> correlated reply/ACK without a ctl start nudge; assertion-based published-screen hook/tool recipe, no human input. Recheck foreign prompt/zero-effect negative boundary."
+  ],
+  "read_only_commands": {
+    "utc": "2026-10-24T19:28:54.844792+00:00",
+    "binary": "/opt/homebrew/Caskroom/codex/0.163.0/bin/codex",
+    "binary_sha256": "8813367285524ac798dd96d1b071aea30d58708c7226fd236cd275cf1cfdee31",
+    "commands": [
+      {
+        "argv": [
+          "/opt/homebrew/Caskroom/codex/0.163.0/bin/codex",
+          "--version"
+        ],
+        "exit": 0,
+        "output": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/runtime-research/version.txt",
+        "sha256": "15c9db57c80035537f94bea647d07608a1fab5148f5482c0a0d1d7422b7fb69e"
+      },
+      {
+        "argv": [
+          "/opt/homebrew/Caskroom/codex/0.163.0/bin/codex",
+          "--help"
+        ],
+        "exit": 0,
+        "output": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/runtime-research/tui-help.txt",
+        "sha256": "4a7f0188d4d6e6d812c5cfbcf82468336b899acd5e437de7450421a403c0071e"
+      },
+      {
+        "argv": [
+          "/opt/homebrew/Caskroom/codex/0.163.0/bin/codex",
+          "app-server",
+          "--help"
+        ],
+        "exit": 0,
+        "output": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/runtime-research/app-server-help.txt",
+        "sha256": "4226dbf080b9d3a620385fba067bd3b8ac3c76654f28c3bd4d92ae20df2b03d2"
+      },
+      {
+        "argv": [
+          "/opt/homebrew/Caskroom/codex/0.163.0/bin/codex",
+          "queue",
+          "--help"
+        ],
+        "exit": 0,
+        "output": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/runtime-research/queue-help.txt",
+        "sha256": "2094bdc72867bd95fa3c1db0306c4813d5a158ef24ec641d080f84212e82c621"
+      }
+    ]
+  },
+  "official_page_artifacts": {
+    "fetched_utc": "2026-10-24T19:30:07.561573+00:00",
+    "pages": [
+      {
+        "url": "https://learn.chatgpt.com/docs/app-server",
+        "saved": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/runtime-research/app-server.html",
+        "sha256": "65b86d67ffd3d3787337e1603651d570d3f235125abe2958419981bcdf93bd80",
+        "anchors": {
+          "connect-the-cli-terminal-ui": true,
+          "protocol": true,
+          "read-a-stored-thread-without-resuming": true
+        }
+      },
+      {
+        "url": "https://learn.chatgpt.com/docs/cli/reference",
+        "saved": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/runtime-research/cli-reference.html",
+        "sha256": "a5c19dca39dc9a7499c4a66a2b674e37ef4475fd16b4aa2e7dc6a335307b56c8",
+        "anchors": {
+          "codex-interactive": true,
+          "codex-app-server": true
+        }
+      },
+      {
+        "url": "https://learn.chatgpt.com/docs/auth",
+        "saved": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/runtime-research/auth.html",
+        "sha256": "6926711810874b86387cc27e3b907e0abb6136af62829b5bad3cd141cdd4f590",
+        "anchors": {
+          "login-caching": true,
+          "credential-storage": true
+        }
+      }
+    ]
+  },
+  "private_artifacts": [
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/runtime-research/app-server-help.txt",
+      "bytes": 3214,
+      "sha256": "4226dbf080b9d3a620385fba067bd3b8ac3c76654f28c3bd4d92ae20df2b03d2"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/runtime-research/app-server.html",
+      "bytes": 981787,
+      "sha256": "65b86d67ffd3d3787337e1603651d570d3f235125abe2958419981bcdf93bd80"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/runtime-research/auth.html",
+      "bytes": 593203,
+      "sha256": "6926711810874b86387cc27e3b907e0abb6136af62829b5bad3cd141cdd4f590"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/runtime-research/cli-reference.html",
+      "bytes": 883685,
+      "sha256": "a5c19dca39dc9a7499c4a66a2b674e37ef4475fd16b4aa2e7dc6a335307b56c8"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/runtime-research/local-help-manifest.json",
+      "bytes": 1627,
+      "sha256": "d02009ab18088ef19f3cf482cb5f47085d2c9e3936d7978c9d71eff83f4a9095"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/runtime-research/official-pages.json",
+      "bytes": 1259,
+      "sha256": "5af203278b84688b2a7de27ddde5ac3fa3b200e1125d0d6b643d3363e7a05ad5"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/runtime-research/queue-help.txt",
+      "bytes": 3020,
+      "sha256": "2094bdc72867bd95fa3c1db0306c4813d5a158ef24ec641d080f84212e82c621"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/runtime-research/tui-help.txt",
+      "bytes": 5849,
+      "sha256": "4a7f0188d4d6e6d812c5cfbcf82468336b899acd5e437de7450421a403c0071e"
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-codex-approve-z_kclvwr/runtime-research/version.txt",
+      "bytes": 18,
+      "sha256": "15c9db57c80035537f94bea647d07608a1fab5148f5482c0a0d1d7422b7fb69e"
+    }
+  ],
+  "main_advanced_during_gate": {
+    "base": "4bd4654b8330685c6c2f572e9a2e305432faef9f",
+    "observed_main": "10f01fd4",
+    "own_kit_files_changed_on_main": [
+      "crates/bboxy450-harness-wake-up/src/launch.rs",
+      "crates/bboxy450-harness-wake-up/src/native.rs",
+      "crates/bboxy450-harness-wake-up/tests/adapters.rs"
+    ],
+    "note": "Main also landed Settings, ctl and watched replay work plus records. The exact gated source was not rebased afterward."
+  },
+  "limits": "Documentation/help research and a proposal, not implemented or live-proven private-runtime ownership. No credentials read/copied, global config mutation, daemon control, new build/test, native approval or publication in this research item."
+}

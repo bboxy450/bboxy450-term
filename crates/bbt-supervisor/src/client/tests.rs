@@ -361,6 +361,7 @@ fn ring_notifications_survive_ten_thousand_requests_without_an_event_receive() {
                         size: SeatSize::default(),
                         next_sequence: 1,
                         exited: None,
+                        companion: None,
                     },
                     first_available_sequence: 1,
                 },
