@@ -449,11 +449,15 @@ impl UiVisible {
         }
     }
 }
+#[derive(Debug)]
 enum UiEffect {
     Spawn(bbt_mux::Ulid),
     Operation(bbt_mux::Ulid),
     Mute(SeatId, bool),
     Lifecycle(SeatId, bool),
+    Document,
+    Graph,
+    Preferences { saved: bool },
     Refused(String),
 }
 impl UiEffect {
@@ -3658,6 +3662,12 @@ impl App {
                         && model.ui.tab_of(*seat).is_none()
                 }
             })),
+            UiEffect::Document => {
+                Ok(self.document.prepared.is_some() || self.document.error.is_some())
+            }
+            UiEffect::Graph => Ok(model.e2e.is_some()),
+            UiEffect::Preferences { saved } => Ok(self.preferences.loaded
+                && (!*saved || self.preferences.saved() || self.preferences.error.is_some())),
             UiEffect::Refused(reason) => Err(format!("ui_frame_refused: {reason}")),
         }
     }
@@ -3753,6 +3763,7 @@ impl App {
                 _ => None,
             })
             .collect();
+        let preference_revision = self.preferences.revision;
         self.ui_collect = Some(Vec::new());
         let result = self.apply_ui(request);
         let mut effects = self.ui_collect.take().expect("UI command collection");
@@ -3772,6 +3783,16 @@ impl App {
             self.answer_ui(id, Err(reason));
             return true;
         }
+        if self.document.open {
+            effects.push(UiEffect::Document);
+        }
+        match &self.local_tab {
+            Some(LocalTab::Graph(_)) => effects.push(UiEffect::Graph),
+            Some(LocalTab::Settings { .. }) => effects.push(UiEffect::Preferences {
+                saved: self.preferences.revision != preference_revision,
+            }),
+            None => {}
+        }
         let proxy = self.proxy.clone();
         let timer = bbt_rt::handle().spawn(async move {
             tokio::time::sleep(bboxy450_term::focus_ack::DEADLINE).await;
@@ -3790,10 +3811,16 @@ impl App {
     }
     fn ui_deadline(&mut self, id: bbt_mux::Ulid) {
         if self.ui_wait.as_ref().is_some_and(|wait| wait.id == id) {
-            self.ui_wait.take();
+            let wait = self.ui_wait.take().expect("UI deadline matched");
+            let effects: Vec<_> = wait
+                .effects
+                .iter()
+                .map(|effect| format!("{effect:?}={:?}", self.ui_effect_ready(effect)))
+                .collect();
             self.answer_ui(
                 id,
-                Err("timeout: no produced frame completed this UI operation".into()),
+                Err(format!("timeout: UI frame incomplete; target={:?}, last={}, pending={}, effects={effects:?}",
+                    wait.after, self.ui_frame.as_ref().map_or(0, |(frame, _)| *frame), self.pending_commands.len())),
             );
         }
     }
