@@ -4,7 +4,7 @@ number: 148
 type: invariant
 title: every .bboxy Mermaid block has a fixture the engine lays out
 status: active
-check: cargo test -p bbt-mermaid --locked every_bboxy_mermaid_block_has_a_fixture -- --exact
+check: cargo test -p bbt-mermaid --locked --test fixtures every_bboxy_mermaid_block_has_a_fixture -- --exact
 cost: a diagram the engine cannot lay out is a blank card in the viewer, and the spec it explains loses its picture
 links:
   - { to: "[[d14-native-document-viewer]]", rel: decision }

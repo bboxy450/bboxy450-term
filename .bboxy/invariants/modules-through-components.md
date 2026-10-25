@@ -4,7 +4,7 @@ number: 139
 type: invariant
 title: L7 modules draw only through components
 status: active
-check: cargo test -p bbt-ui --locked --test seat_rows module_sources_and_legacy_adapter_cannot_hand_draw_rows
+check: cargo test -p bbt-ui --locked --test seat_rows module_sources_and_legacy_adapter_cannot_hand_draw_rows -- --exact
 cost: a module that hand-draws escapes theming and parity, and the layer cake drifts
 links:
   - { to: "[[gui-components]]", rel: constrains }
