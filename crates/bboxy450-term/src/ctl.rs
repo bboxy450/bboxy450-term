@@ -2008,6 +2008,25 @@ pub fn classify(reason: &str) -> Fail {
     )
 }
 
+/// The CLI preserves a wait timeout's operation id before shaping its error.
+fn operation_failure(op: Option<Ulid>, reason: &str) -> (Option<Ulid>, Fail) {
+    match reason.strip_prefix(TIMEOUT_PREFIX) {
+        Some(rest) => {
+            let (op, message) = rest.split_once('\n').unwrap_or(("", rest));
+            (
+                op.parse().ok(),
+                Fail {
+                    kind: "timeout",
+                    message: message.to_owned(),
+                    hint: "raise --timeout, or wait for another --state or --text".into(),
+                    exit: 3,
+                },
+            )
+        }
+        None => (op, classify(reason)),
+    }
+}
+
 pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         println!("{USAGE}");
@@ -2059,21 +2078,7 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
         )
     });
     if let Err(reason) = result {
-        let (op, fail) = match reason.strip_prefix(TIMEOUT_PREFIX) {
-            Some(rest) => {
-                let (op, message) = rest.split_once('\n').unwrap_or(("", rest));
-                (
-                    op.parse().ok(),
-                    Fail {
-                        kind: "timeout",
-                        message: message.to_owned(),
-                        hint: "raise --timeout, or wait for another --state or --text".into(),
-                        exit: 3,
-                    },
-                )
-            }
-            None => (op, classify(&reason)),
-        };
+        let (op, fail) = operation_failure(op, &reason);
         let mut line = json!({ "ok": false, "op": op.unwrap_or_else(fresh), "error": {
             "kind": fail.kind, "message": fail.message, "hint": fail.hint } });
         if fail.kind == "not_on_screen"
@@ -3430,7 +3435,8 @@ mod wait_contract_tests {
             || Duration::from_millis(now.load(Ordering::SeqCst)),
         )
         .unwrap_err();
-        let failure = classify(&error);
+        let (op, failure) = operation_failure(None, &error);
+        assert!(op.is_some());
         assert_eq!((failure.kind, failure.exit), ("timeout", 3));
         drop(client);
         task.join().unwrap();
