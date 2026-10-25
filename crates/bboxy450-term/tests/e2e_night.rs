@@ -9,6 +9,38 @@
 use serde_json::Value;
 use std::{os::unix::fs::PermissionsExt, process::Command};
 
+fn assert_night_apps_stopped(output: &std::process::Output) {
+    for app in String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .filter(|line| line["kind"] == "app")
+    {
+        let run = std::path::Path::new(app["run_dir"].as_str().unwrap());
+        assert!(
+            !run.join(bbt_mux::ctl_door::ENDPOINT).exists(),
+            "night left its control endpoint: {app}"
+        );
+        let pid: libc::pid_t = app["pid"].as_u64().unwrap().try_into().unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        loop {
+            // SAFETY: signal zero only queries this night's recorded app PID;
+            // it neither signals the process nor supplies a PID-kill fallback.
+            if unsafe { libc::kill(pid, 0) } < 0 {
+                assert_eq!(
+                    std::io::Error::last_os_error().raw_os_error(),
+                    Some(libc::ESRCH)
+                );
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "retained evidence kept an app alive: {app}"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+}
+
 #[test]
 fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
     let scripts = tempfile::tempdir().unwrap();
@@ -66,6 +98,7 @@ seat=$("$BBT" ctl seat spawn zsh --place tab --cwd "$E2E_WORK" | python3 -I -c '
             .unwrap()
     };
     let output = night();
+    assert_night_apps_stopped(&output);
     let lines: Vec<Value> = String::from_utf8_lossy(&output.stdout)
         .lines()
         .map(|l| serde_json::from_str(l).unwrap())
@@ -189,6 +222,7 @@ seat=$("$BBT" ctl seat spawn zsh --place tab --cwd "$E2E_WORK" | python3 -I -c '
     );
     // The next night updates the same records under their etag: same numbers, new run.
     let again = night();
+    assert_night_apps_stopped(&again);
     let second: Vec<Value> = String::from_utf8_lossy(&again.stdout)
         .lines()
         .map(|l| serde_json::from_str(l).unwrap())
