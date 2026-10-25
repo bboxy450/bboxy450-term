@@ -15,6 +15,10 @@ use std::{
 
 const AUTH_RECHECK: Duration = Duration::from_secs(30);
 
+/// Explicit debug/e2e backend; never selected by the native notification factory.
+#[cfg(debug_assertions)]
+pub mod recording;
+
 #[derive(Clone, Default, PartialEq, Eq)]
 struct Plan {
     desired: Desired,
