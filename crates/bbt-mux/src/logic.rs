@@ -2143,28 +2143,27 @@ impl Worker {
             self.identity_seen.clear();
             self.identity_probe_at = Instant::now();
         }
-        if self.identity_jobs.is_empty() {
-            if let Some(pending) =
+        if self.identity_jobs.is_empty()
+            && let Some(pending) =
                 self.operator_journal
                     .native_pending(128)?
                     .into_iter()
                     .find(|entry| {
                         entry.attempt.position.is_some() && !self.identity_seen.contains(&entry.op)
                     })
+        {
+            self.identity_seen.insert(pending.op);
+            if let Ok(target) = self
+                .identity
+                .resume_unlock_target(&pending.attempt.reference)
             {
-                self.identity_seen.insert(pending.op);
-                if let Ok(target) = self
-                    .identity
-                    .resume_unlock_target(&pending.attempt.reference)
-                {
-                    // Recovery never repeats the interactive access, even for an unknown.
-                    let kind = if pending.attempt.started && !pending.attempt.finished {
-                        crate::identity::unlock::JobKind::Cleanup
-                    } else {
-                        crate::identity::unlock::JobKind::Sign
-                    };
-                    self.start_identity_job(pending, target, kind);
-                }
+                // Recovery never repeats the interactive access, even for an unknown.
+                let kind = if pending.attempt.started && !pending.attempt.finished {
+                    crate::identity::unlock::JobKind::Cleanup
+                } else {
+                    crate::identity::unlock::JobKind::Sign
+                };
+                self.start_identity_job(pending, target, kind);
             }
         }
         Ok(())
