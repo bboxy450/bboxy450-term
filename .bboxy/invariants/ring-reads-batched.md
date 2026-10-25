@@ -3,7 +3,7 @@ id: 01M5S7QYBHREREW0FAJMZ7FAE2
 type: invariant
 number: 318
 title: "ring reads are batched: a catch-up pass over N seats costs a bounded number of supervisor round trips, never one RPC per seat"
-status: pending
+status: active
 check: cargo test -p bbt-mux --locked --lib logic::ring_batch_tests::ring_reads_are_batched -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: with hundreds of seats every catch-up pass serialises hundreds of one-seat round trips through the supervisor, input-to-GPU latency grows with the seat count instead of the page budget, and the watched panes wait behind the unwatched ones' RPCs
 links:
@@ -13,7 +13,7 @@ links:
   - { to: "[[seats-967-frame]]", rel: unblocks }
   - { to: "[[mux-daemon]]", rel: constrains }
 created: "2026-10-25T09:54:49Z"
-updated: "2026-10-25T11:51:12Z"
+updated: "2026-10-25T14:36:14Z"
 ---
 # Ring reads are batched
 
@@ -51,12 +51,14 @@ one page per turn. The singleton `ReadRing` stays for explicit history and
 recovery reads and leaves the hot sweep.
 
 **Check.** `cargo test -p bbt-mux --locked --lib logic::ring_batch_tests::ring_reads_are_batched -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
-— exit 0 held. **Pending** until Sable's batched `ReadRing` lands with that test
-(967 seats with pending data: at most 121 batched requests, zero singleton
-hot-sweep calls, exact final cursors and Screens); if the landing commit names the test
-differently it edits this line and the README row in the same commit, and the
-Oracle flips `status` on acceptance. The landing commit removes the slow/gate switches, so the
-regression runs in the default invariant suite regardless of pending status.
+— exit 0 held. **Active (Sable, landed 00fb087c, 2026-10-25).** The batched read landed
+with its test at `crates/bbt-mux/src/logic/ring_batch_tests.rs:274`, and a
+per-host companion beside it: 967 seats cost 121 batched requests and zero
+singleton hot-sweep reads, the bound of the property met exactly. The landing
+commit renamed the check to the test's real path and removed the skip flags;
+the Architect flipped the status on the Oracle's landing note, since the
+landing left it pending without flags, which `scripts/pending-flags.sh`
+refuses.
 
 **Cost of a violation.** With hundreds of seats every catch-up pass serialises
 hundreds of one-seat round trips through the supervisor; input-to-GPU latency
