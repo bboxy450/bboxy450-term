@@ -22,7 +22,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[ctl-cli]]", rel: builds-on }
 created: "2026-10-25T18:10:21Z"
-updated: "2026-10-25T18:10:21Z"
+updated: "2026-10-25T18:12:11Z"
 ---
 # Runbook: a Rust software factory run by an agent swarm
 
@@ -149,14 +149,14 @@ Rust's closed enums are the compiler's exhaustiveness and the wire's contract; k
 
 - `--locked` everywhere; `CARGO_INCREMENTAL=0` in gates.
 - **Each agent builds in a private target directory.** A shared target serialises builds on cargo's lock. The cost is disk: four to five gigabytes per warm target, and disk hit its floor three times in a day. Own targets only, `lsof` before deleting anything, and tell the owner; stale profiler scratch and inactive dev caches are what to look for first.
-- **Cache dependencies, never through one daemon.** About 480 dependency crates are most of a cold build; a shared cache server stalled every build at once under nine agents; the fix is one `sccache` server per agent over one shared local disk cache ([[d325-ci-capacity]]). The compile share of gate time was 52 % before the cache.
+- **Cache dependencies, never through one daemon.** About 480 dependency crates are most of a cold build, about eight minutes of every clean gate; a shared cache server stalled every build at once under nine agents; the fix is one `sccache` server per agent over one shared local disk cache ([[d325-ci-capacity]]), measured by Velvet with the tool's own counters: a clean build from 488 s to 127 s, 434 of 434 Rust hits, a 297 MB cache (e537345b). The compile share of gate time was 52 % before the cache. An empty `rustc-wrapper` in a repository `.cargo/config` does not override a global one; only the environment does.
 - **`CARGO_BUILD_JOBS=2` per agent when nine build at once**, and never a `--workspace` pre-check in parallel: ten of those drove load past 150 and became the chokepoint of the hour.
 - **The affected set is transitive**: touched crates plus every reverse dependency from `cargo metadata`. Direct dependents miss the app behind the mux behind the core.
 - Strict clippy (`-D warnings`, all targets) on the affected crates before every handoff; `rustfmt` on a crate root reformats other people's files, so run it narrowly.
 
 ### 16. Tests
 
-The test policy is [[test-policy]]; the numbers that forced it: 884 tests, 35 files calling `sleep`, 13.4 hours of test run and 9.3 of test compile over 175 gates, and six binaries holding sixty-second real-clock waits that summed to over eight hours no hardware could buy back. The rules in one breath: one contract per test; delete the pointless (duplicates, tests of the fixture, assertions of constants, tests that cannot fail); rewrite the dumb (real time onto an injected clock, real processes onto a seam with one real-boundary test kept in the night, polling onto signalled conditions); rewrite the too direct to the contract (observable reply, record, screen or event, never internal state, call order or error prose); keep and tag what the law needs with a `keeps:` line. **No test asserts a wall-clock bound**; test-internal timeouts are hang guards only; tests are independent of each other and of load. Timing is measured in exactly two controlled places: the frame gate and the night.
+The test policy is [[test-policy]]; the numbers that forced it: 884 tests, 35 files calling `sleep`, 13.4 hours of test run and 9.3 of test compile over 175 gates, and six binaries holding sixty-second real-clock waits that summed to over eight hours no hardware could buy back. The rules in one breath: one contract per test; delete the pointless (duplicates, tests of the fixture, assertions of constants, tests that cannot fail); rewrite the dumb (real time onto an injected clock, **never by shrinking a real deadline**, which only makes the race tighter and the test flakier (Kestrel's injected deadline, 30 s for the good path and 25 ms for the hung one, passed 10/10 under load where a 2 s real deadline raced a fixture; the Oracle's lesson, folded into #327 on 2026-10-25), real processes onto a seam with one real-boundary test kept in the night, polling onto signalled conditions); rewrite the too direct to the contract (observable reply, record, screen or event, never internal state, call order or error prose); keep and tag what the law needs with a `keeps:` line. **No test asserts a wall-clock bound**; test-internal timeouts are hang guards only; tests are independent of each other and of load. Timing is measured in exactly two controlled places: the frame gate and the night.
 
 ### 17. The app tests itself, unattended
 
@@ -207,7 +207,7 @@ The whole flow is [[landing]] and the reasoning [[d321-out-of-integration-hell]]
 
 ### 22. CI capacity, priced
 
-One Mac shared by nine agents was the build machine. The cheapest CI that actually runs ([[d325-ci-capacity]]), in cost order: the dependency cache done right at zero cost; one cheap ARM Linux box (about €25 to €50 a month) running the portable tier and the Linux backends over SSH with no hosted CI billing; a second Mac mini bought once (about $600 to $800) as the postsubmit and night machine. Rejected on price: hosted macOS minutes at about $2,200 a month for our volume on a slower core, rented Macs at €160 a month that cost more than the box in four months, a dedicated x86 box with no macOS. Hosted CI becomes free when the public crates publish, and that is where it goes.
+One Mac shared by nine agents was the build machine. The cheapest CI that actually runs ([[d325-ci-capacity]]), in cost order: the dependency cache done right at zero cost (measured: a clean build 488 s to 127 s); one cheap ARM Linux box (about €25 to €50 a month) running the portable tier and the Linux backends over SSH with no hosted CI billing; a second Mac mini bought once (about $600 to $800) as the postsubmit and night machine. Rejected on price: hosted macOS minutes at about $2,200 a month for our volume on a slower core, rented Macs at €160 a month that cost more than the box in four months, a dedicated x86 box with no macOS. Hosted CI becomes free when the public crates publish, and that is where it goes.
 
 ### 23. Disk and load hygiene
 
@@ -269,7 +269,61 @@ Lead time from the claim line to `LANDED`; presubmit seconds and the per-binary 
 
 ## Part VII. The Oracle's section
 
-*Reserved for Vesper Greywind's learnings in their own words, merged when they arrive; the Architect corrects the sections above where the Oracle disagrees, and dates each change.*
+Vesper Greywind, Oracle, 2026-10-25, in their own words and with their evidence; merged by the Architect without rewording beyond punctuation. Where the sections above disagreed with a line here, the line here won and the section was changed and dated.
+
+### What cost the most, and what fixed it
+
+- Compile time, more than test logic: 52 % of 36.9 h of measured gate time across 175 gates is compiling (build 7.6 h, test compile 9.3 h, clippy 2.3 h). Source: `tools/gate_time.py` in the board repository, `time.html`, 2026-10-25.
+- One shared sccache daemon stalled every agent, so we dropped the cache (a29f839d) and every clean gate rebuilt about 480 dependencies for about 8 min. Fix: one server per agent over one shared disk cache (#325, Velvet e537345b): cold 488 s to warm 127 s, 434 of 434 Rust hits, 297 MB cache.
+- An empty `rustc-wrapper` in a repo `.cargo/config` does NOT override the global one. Only environment variables (`RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER=`) do. Wasted a day of "why is sccache still running" (a29f839d).
+- Real-clock tests were 36 % of gate time (13.4 h). Single tests of 52 to 72 s every gate: bbt-mux `socket_backlog.rs` 2.1 h total, bboxy450-term `lifecycle.rs` 1.9 h, then custody 1.2 h, identity_local 1.1 h, logic 0.8 h, provenance 0.75 h. Fix: injected clocks (#326, #327).
+- Real-time deadlines plus parallel gates make flakes (operator: "timeout is problematic coz we might run tests in parallel then everything goes to shit"). Example: `plugin_registry.rs:722` raced a 2 s deadline (`check.rs:17`) with a Python fixture; fixed by an injected deadline, 30 s for the good path, 25 ms for the hung one, 10/10 under load (Kestrel f584df9a).
+- Rule learned from that: never shrink a real deadline to make a test fast; that makes it flakier. Advance a clock instead.
+- Gate collisions: two agents took slot 3 at once. Fix: an atomic `mkdir` slot claim in `ci-local.sh`, with dead-pid reclaim, 3 slots at 25 GiB or more free, else 2, and exit 75 when full (40dafd1b, 026a07af).
+- Disk is a shared resource that silently kills gates: each agent's private target is 1 to 9 GB, and we dropped to 14 GiB free. Fix: a standing cleanup authorisation, `lsof` before every delete, tell the owner; 2026-10-25 freed 6.1 GB across 768 stale dirs, plus Sable 0.96 GB of gallery PNGs.
+- QUIET windows (stopping everyone for a 967-seat scale run) were the largest serialisation. Fix: the scale run moves to the night (#323 §8, `scale-night.sh`).
+- Integration hell = everyone gated against an old main and then re-gated. Fix (#321/#323): presubmit on affected crates including transitive dependents, a fast-forward push, batched postsubmit on main, culprit finding, revert first, flaky quarantine with owner and expiry.
+- Flaky tests blocked unrelated landings. Fix: a quarantine list (`.bboxy/quarantine.md`, #324) where a listed test still runs and gets one isolated rerun; failing alone is still a failure; seven-day expiry; task records #329, #330.
+- My `quarantine-test.sh` passed when the `--exact` rerun matched zero tests; Aster's fixtures caught it. Lesson: every retry and skip path needs a test that it can fail.
+- Pending invariants committed without slow/gate flags broke every gate (#314, #318). Fix: `pending-flags.sh` in records-push. Lesson: land the switch before the load.
+- A records file without frontmatter broke the corpus gate (`quarantine.md`, fixed as #324 at 7ad988a6). Lesson: every `.bboxy` write goes through `records-push.sh`.
+
+### Merging and verification (the Oracle's craft)
+
+- Rebase-merges failed silently and I pushed the wrong tree twice. Fix: after every rebase, `git diff <gated source> HEAD -- crates` must be 0 lines (R5l: 0 lines, landed f221ba48).
+- Merged-tree test of dependents: a change can be green alone and red on main (NUM2 broke app tests). For a bbt-proto change, run workspace strict clippy plus the proto tests on the merged tree (#320 cut 1: 051f7e24).
+- If main moved only by records (`.bboxy`), a re-gate is unnecessary; check `git diff --name-only base origin/main` outside `.bboxy`.
+- The verdict is the raw log, not the message: find the raw `ci.log`, check its sha256 matches the handoff, grep `ci-local: all gates passed`, count `test result: ok` and `FAILED` (R5l 6c0695bc, 211 ok; cut 1 98ee233c, 211 ok / 0 FAILED).
+- Evidence-only successor commits keep provenance without touching code: the code commit is gated, and the next commit adds only `.bboxy/runs` logs (Rook 5e3e80b3).
+- I merged R5i without its evidence commit and had to add it after. The handoff is complete only with both commits.
+- Wrong `--reply-to` ids (I used a reminder id) orphan threads. Reply to the message id you are answering.
+
+### What I would brief differently on day one
+
+- Delegate design to the Architect from minute one; I drafted the landing plan myself and Corvin found eight gaps in it (operator: "you are not the smartest tool, architect is", "delegate thinking").
+- Every brief carries: ROLE header, worktree, allowed files, outcome, verification command, and at least one mutation control (break it, and show the test fails).
+- Name overlaps in the brief: who else touches the file, and who rebases on whom (Seraph #320 cut 2c waits for Sable's #328 in `ctl.rs`).
+- Pre-review the test file before the gate: a 2-minute grep for `sleep`, `Instant::now`, `from_secs`, or fixed ports catches flakes before they cost a 30-minute gate (Kestrel 518bf8b7).
+- Decouple landings: when two in-flight cuts depend on each other, make the dependency optional (`[ -f scripts/cache-env.sh ] && .`) so neither waits (Aster af380bc7).
+- Gates measure time; budgets live in the night. A test duration in a loaded presubmit is reported, never asserted (#327 §4).
+- Ask "does the existing mechanism actually do this?" before approving a seam: I approved a ctl wait over `AttachEvents`, and Sable showed `bus.rs:1014` refuses a second consumer. #328's waiting `EventsRead` replaced it.
+
+### What the Oracle's day looks like when it works
+
+- Slots stay full (three gates at once), and my time goes to reading raw logs and diffs, not writing code.
+- Executors announce SLOT TAKEN / RELEASED / CLAIM / LANDED on the channel; I verify and push within minutes of RELEASED.
+- Questions are routed by kind: mechanism choice is the Oracle's on-the-spot ruling; invariant meaning, authority, and spec go to the Architect, and the Executor keeps working on the independent part meanwhile.
+- The operator gets a few lines per event: what landed, the evidence, what is next, what needs them (money, purchases, publishing).
+
+### What the Executors taught me
+
+- Sable: "a T8.sh-only substitution cannot meet the assertion" and the `bus.rs:1014` single-consumer refusal; read the code before the brief, not after.
+- Aster: fixture tests on throwaway repos caught the zero-test pass and a records-only batching defect; scripts get tests like code.
+- Rook: the precheck log binding every failure and fix by hash (`.bboxy/runs/r5l-prechecks.log`); report false starts, never erase them.
+- Kestrel: "both own patches range-diff =" as proof a rebase changed nothing.
+- Seraph: split a refactor that doesn't fit a day into ordered small landings (2a to 2e), each gated alone.
+- Velvet: measure the claim with the tool's own counters (`sccache --show-stats`), cold vs warm, same target path.
+- Nyx: structural bounds beat wall-clock bounds (main red until the next code commit, not N minutes; #322 at 0d7bea90).
 
 ---
 

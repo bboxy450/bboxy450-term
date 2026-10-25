@@ -12,7 +12,7 @@ links:
   - { to: "[[d316-pass-means-the-whole-promise]]", rel: builds-on }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-25T16:51:40Z"
-updated: "2026-10-25T16:51:40Z"
+updated: "2026-10-25T18:12:11Z"
 ---
 # Test policy
 
@@ -30,7 +30,7 @@ An Executor applies these to one crate's tests, one test at a time, and writes t
 
 **A. Pointless, deleted.** A1 **duplicate coverage**: the same function under test and an assertion set that is a subset of another test's on the same path; keep the one with the stronger assertions. A2 **a test of the fixture**: every assertion is about values the test itself constructed, and the code under test is never called, or is called and its result unused. A3 **asserting prose or constants**: a string literal, a variant name, a default value or a struct layout compared with itself, or a snapshot of a constant. A4 **cannot fail**: no assertion, `assert!(true)`, or `is_ok()` on a path that cannot return an error.
 
-**B. Dumb approach, rewritten.** B1 **real time**: `sleep`, waiting on `Instant::now`, a `timeout` as the assertion; rewrite on an injected clock (the App clock, `tokio::time::pause`, a `Clock` seam), or shorten the duration in the test build, so the behaviour is tested and the seconds are not. B2 **real processes, sockets or PTYs where a seam exists**: in-memory transport, the fake supervisor, the recording backend; rewrite on the seam, and keep **one** real-boundary test per boundary in the night tier so the seam is itself proven honest. B3 **polling and retry loops**: rewrite as a wait on a condition the code signals. B4 **load-dependent**: anything that passes alone and fails under three presubmits; it is a bug, a seam, or the night tier, never a retry.
+**B. Dumb approach, rewritten.** B1 **real time**: `sleep`, waiting on `Instant::now`, a `timeout` as the assertion; rewrite on an injected clock (the App clock, `tokio::time::pause`, a `Clock` seam) so the behaviour is tested and the seconds are not. A shortened duration in the test build is allowed only for a duration that parameterises a behaviour (a 60-second undo configured to two), **never for a deadline that races real work**: shrinking a race deadline makes the test flakier, not faster (the Oracle, 2026-10-25, from Kestrel's `plugin_registry.rs:722`: a 2 s real deadline raced a fixture; an injected deadline, 30 s on the good path and 25 ms on the hung one, passed 10/10 under load). Advance a clock instead. B2 **real processes, sockets or PTYs where a seam exists**: in-memory transport, the fake supervisor, the recording backend; rewrite on the seam, and keep **one** real-boundary test per boundary in the night tier so the seam is itself proven honest. B3 **polling and retry loops**: rewrite as a wait on a condition the code signals. B4 **load-dependent**: anything that passes alone and fails under three presubmits; it is a bug, a seam, or the night tier, never a retry.
 
 **C. Too direct, rewritten to the contract.** C1 **asserting internal state**: a private field, a struct the caller never sees, log text; assert the reply, the record, the screen or the event the contract names. C2 **interaction testing**: asserting the call order or arguments of internals or mocks where an output is observable. C3 **pinned to error prose**: assert the error kind, not the sentence. C4 **goldens of internal structures**; the wire goldens of [[d320-dispatch-by-noun]] and the parity catalogue are contracts and stay.
 
