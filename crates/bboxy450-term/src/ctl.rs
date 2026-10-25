@@ -11,8 +11,14 @@
 use bbt_mux::Ulid;
 mod app;
 mod debug;
+mod e2e;
 mod events;
+mod identity;
+mod message;
 mod records;
+mod seat;
+mod task;
+mod ui;
 use bbt_proto::{
     GuiAction, GuiReply, GuiRequest, GuiSeat, SpawnSpec, SwarmId, Where,
     messaging::{Request, Response, SendRequest, TaskRequest, TaskResponse, TaskVerification},
@@ -350,66 +356,45 @@ pub enum Command {
     AppStop,
 }
 
+/// One `ctl` verb: noun, verb, and the window action it issues (`-` for none).
+pub type Verb = (&'static str, &'static str, &'static str);
+/// Each noun's own table (decision #320): a verb is added in its noun's file only.
+const NOUN_VERBS: &[&[Verb]] = &[
+    ui::VERBS,
+    identity::VERBS,
+    seat::VERBS,
+    message::VERBS,
+    task::VERBS,
+    e2e::VERBS,
+    records::VERBS,
+    events::VERBS,
+    debug::VERBS,
+    app::VERBS,
+];
+const fn verb_count(parts: &[&[Verb]]) -> usize {
+    let (mut n, mut i) = (0, 0);
+    while i < parts.len() {
+        n += parts[i].len();
+        i += 1;
+    }
+    n
+}
+const ALL_VERBS: [Verb; verb_count(NOUN_VERBS)] = {
+    let mut all = [("", "", ""); verb_count(NOUN_VERBS)];
+    let (mut k, mut i) = (0, 0);
+    while i < NOUN_VERBS.len() {
+        let mut j = 0;
+        while j < NOUN_VERBS[i].len() {
+            all[k] = NOUN_VERBS[i][j];
+            (k, j) = (k + 1, j + 1);
+        }
+        i += 1;
+    }
+    all
+};
 /// Every noun-verb `ctl` verb and the one window action it issues (ctl-cli §1). The parser
 /// accepts exactly these; `app endpoint` reads the run directory and issues none.
-pub const VERBS: &[(&str, &str, &str)] = &[
-    ("ui", "open", "Ui"),
-    ("ui", "key", "Ui"),
-    ("ui", "focus", "Ui"),
-    ("ui", "scroll", "Ui"),
-    ("ui", "layout", "Ui"),
-    ("ui", "clock", "Ui"),
-    ("identity", "status", "Identity"),
-    ("identity", "unlock", "Identity"),
-    ("ui", "notification-click", "Ui"),
-    ("seat", "ls", "ListSeats"),
-    ("seat", "spawn", "Spawn"),
-    ("seat", "screen", "Screen"),
-    ("seat", "type", "Input"),
-    ("seat", "key", "Input"),
-    ("seat", "paste", "Input"),
-    ("seat", "wait", "Screen"),
-    ("seat", "resize", "Resize"),
-    ("seat", "watch", "EventsRead"),
-    ("seat", "rename", "RenameSeat"),
-    ("seat", "focus", "FocusSeat"),
-    ("seat", "restart", "RestartSeat"),
-    ("seat", "close", "CloseSeat"),
-    ("seat", "undo-close", "UndoCloseSeat"),
-    ("seat", "capture", "Capture"),
-    ("message", "send", "Messaging"),
-    ("message", "post", "Messaging"),
-    ("message", "inbox", "Messaging"),
-    ("message", "receipts", "Messaging"),
-    ("message", "ack", "Messaging"),
-    ("task", "list", "Task"),
-    ("task", "get", "Task"),
-    ("task", "status", "Task"),
-    ("task", "report", "Task"),
-    ("task", "accept", "Task"),
-    ("task", "reject", "Task"),
-    ("task", "delegate", "Task"),
-    ("task", "create", "RecordWrite"),
-    ("e2e", "list", "Knowledge"),
-    ("record", "write", "RecordWrite"),
-    ("record", "fetch", "Knowledge"),
-    ("record", "search", "Knowledge"),
-    ("record", "changes", "Knowledge"),
-    ("events", "streams", "EventsStreams"),
-    ("events", "tail", "EventsRead"),
-    ("debug", "logs", "Debug"),
-    ("debug", "journal", "Debug"),
-    ("debug", "metrics", "Debug"),
-    ("debug", "fault", "Debug"),
-    ("debug", "snapshot", "Debug"),
-    ("debug", "ps", "Debug"),
-    ("debug", "notifications", "App"),
-    ("app", "endpoint", "-"),
-    ("app", "start", "-"),
-    ("app", "status", "App"),
-    ("app", "resize", "Ui"),
-    ("app", "stop", "App"),
-];
+pub const VERBS: &[(&str, &str, &str)] = &ALL_VERBS;
 /// The pre-grammar flat commands, kept one release as aliases (ctl-cli rev. 2, C-0).
 const LEGACY: &[(&str, &str)] = &[
     ("spawn", "seat spawn"),
@@ -3217,6 +3202,28 @@ mod tests {
             (back.path, back.capability),
             (endpoint.path, endpoint.capability)
         );
+    }
+}
+
+#[cfg(test)]
+mod noun_verb_tests {
+    use super::*;
+
+    /// Decision #320's gate for verbs: every row sits in its own noun's table, and each noun
+    /// and each noun-verb pair is listed exactly once.
+    #[test]
+    fn each_verb_is_listed_once_in_its_own_nouns_table() {
+        let mut nouns = std::collections::BTreeSet::new();
+        let mut pairs = std::collections::BTreeSet::new();
+        for table in NOUN_VERBS {
+            let noun = table[0].0;
+            assert!(nouns.insert(noun), "noun {noun} has two tables");
+            for (n, verb, _) in *table {
+                assert_eq!(*n, noun, "{n} {verb} is listed in the {noun} table");
+                assert!(pairs.insert((*n, *verb)), "{n} {verb} is listed twice");
+            }
+        }
+        assert_eq!(pairs.len(), VERBS.len());
     }
 }
 

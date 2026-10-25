@@ -65,3 +65,11 @@ pub(super) fn changes(client: &mut Client, cursor: String) -> Result<Value, Stri
         },
     )
 }
+
+/// This noun's rows of [`super::VERBS`], in parse order.
+pub(super) const VERBS: &[super::Verb] = &[
+    ("record", "write", "RecordWrite"),
+    ("record", "fetch", "Knowledge"),
+    ("record", "search", "Knowledge"),
+    ("record", "changes", "Knowledge"),
+];

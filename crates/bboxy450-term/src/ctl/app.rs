@@ -269,6 +269,15 @@ pub(super) fn stop(
     Ok(status)
 }
 
+/// This noun's rows of [`super::VERBS`], in parse order.
+pub(super) const VERBS: &[super::Verb] = &[
+    ("app", "endpoint", "-"),
+    ("app", "start", "-"),
+    ("app", "status", "App"),
+    ("app", "resize", "Ui"),
+    ("app", "stop", "App"),
+];
+
 #[cfg(test)]
 mod tests {
     use super::*;

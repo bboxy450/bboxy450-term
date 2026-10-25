@@ -59,3 +59,14 @@ pub(super) fn read(
         "seats":data["seats"].as_array().map_or(0,Vec::len),"omitted_seats":data["omitted_seats"]}),
     )
 }
+
+/// This noun's rows of [`super::VERBS`], in parse order.
+pub(super) const VERBS: &[super::Verb] = &[
+    ("debug", "logs", "Debug"),
+    ("debug", "journal", "Debug"),
+    ("debug", "metrics", "Debug"),
+    ("debug", "fault", "Debug"),
+    ("debug", "snapshot", "Debug"),
+    ("debug", "ps", "Debug"),
+    ("debug", "notifications", "App"),
+];

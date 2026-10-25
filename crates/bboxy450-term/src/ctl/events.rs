@@ -113,3 +113,9 @@ fn budget(client: &Client, deadline: Instant, op: Ulid) -> Result<(), String> {
         .set_write_timeout(Some(remaining))
         .map_err(|e| e.to_string())
 }
+
+/// This noun's rows of [`super::VERBS`], in parse order.
+pub(super) const VERBS: &[super::Verb] = &[
+    ("events", "streams", "EventsStreams"),
+    ("events", "tail", "EventsRead"),
+];
