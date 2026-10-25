@@ -330,7 +330,12 @@ fn native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order(
     );
     let second = Ulid::new();
     let response = finish(second);
-    assert!(response.hold.is_none());
+    assert!(
+        response.hold.is_none(),
+        "native second unlock retained a hold: op={second}; response={response:?}; attempts={:?}; held={:?}",
+        keys.attempts.lock().unwrap(),
+        keys.held.lock().unwrap()
+    );
     assert_eq!(*keys.attempts.lock().unwrap(), vec![issuer, device_id]);
     let until = std::time::Instant::now() + Duration::from_secs(3);
     let completions = loop {
