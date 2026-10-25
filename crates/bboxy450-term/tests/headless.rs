@@ -807,6 +807,9 @@ fn ctl_ui_keys_acknowledge_spawn_mute_and_undo_only_after_their_end_state_frame(
         capture["data"]["frame_seq"].as_u64().unwrap()
             >= spawned["data"]["frame_seq"].as_u64().unwrap()
     );
+    // Mute must refresh metadata without relying on a later process-state
+    // transition: the plain shell has already settled to idle.
+    f.ok(&["seat", "wait", &seat, "--state", "idle"]);
     let muted = f.ok(&["ui", "key", "cmd-m"]);
     let seats = f.ok(&["seat", "ls"]);
     let record = seats["data"]
