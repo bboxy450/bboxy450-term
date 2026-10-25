@@ -1,0 +1,12 @@
+NG1 independent data/binding checks; NOT delivery completion
+Signed source 95c32e0b027d21da13eeeb9b479d49315a7f799a
+Proto tests include pending-without-author and rejection of a signed marker; binding test covers canonical reopen, sender/content/order changes and mismatched IDs.
+Named custody-hold delivery regression remains red until admission/upgrade integration. #286 stays pending.
+Command ["cargo", "test", "-p", "bbt-proto", "--locked"]
+Actual EXIT0; elapsed 186.31253875000402 s; SHA256 56e88d5be858844af0556f123ffef01ac53708a4a14ee0909c5ce0713d5bd568
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/proto.log
+Command ["cargo", "test", "-p", "bbt-mux", "--locked", "--lib", "messaging::pending::tests", "--", "--nocapture"]
+Actual EXIT0; elapsed 108.18553116702242 s; SHA256 344763ad03e19763266e1d2e2b85cc1996e5940e6965784ecdb9adf0b945a5a4
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/binding.log
+All commands use one private dev target, O1/debug assertions, direct compiler/jobs2, memory fixture custody. Original frozen worktree clean after each command.
+Newer StoredContent/getter and legacy-byte compatibility changes are not covered by this source; those focused checks follow.

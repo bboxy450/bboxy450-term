@@ -269,7 +269,7 @@ impl Messaging {
                 }
                 let recipient = match source {
                     Source::Seat { record, .. }
-                        if !actor.controls() && stored.envelope.seat != record.id =>
+                        if !actor.controls() && stored.view().seat != record.id =>
                     {
                         Some(record.id)
                     }
@@ -539,7 +539,7 @@ impl Messaging {
             .ledger
             .by_id(id)
             .map_err(|_| invalid("message is not in the requested swarm"))?;
-        if message.envelope.swarm_id != swarm {
+        if message.view().swarm_id != swarm {
             return Err(invalid("messaging swarm mismatch: retained message"));
         }
         let sender = self.swarm(swarm)?.ledger.sender(id)?;
@@ -577,14 +577,17 @@ impl Messaging {
         };
         Ok(MessageRow {
             id,
-            bus: message.bus,
+            bus: message.bus.clone(),
             author,
-            issuer_kind: message.envelope.issuer_kind,
-            kind: message.envelope.kind,
-            priority_class: message.envelope.priority_class,
-            priority: message.envelope.priority,
-            text: message.envelope.body.text().unwrap_or_default().into(),
-            ts: message.envelope.timestamp,
+            issuer_kind: message
+                .view()
+                .issuer_kind
+                .ok_or_else(|| invalid("pending message projection is not yet installed"))?,
+            kind: message.view().kind,
+            priority_class: message.view().priority_class,
+            priority: message.view().priority,
+            text: message.view().body.text().unwrap_or_default().into(),
+            ts: message.view().timestamp,
             receipts,
         })
     }
@@ -672,7 +675,7 @@ impl Messaging {
         }
         self.sync_seat(&record)?;
         if let Some(old) = self.swarm(record.swarm)?.ledger.existing(&request, from)? {
-            if old.envelope.body != body {
+            if old.view().body != &body {
                 return Err(invalid("task message ID body conflict"));
             }
             return Ok(old);
@@ -784,7 +787,7 @@ impl Messaging {
         });
         let sender = Recipient::Operator(authority.device_id);
         if let Some(old) = self.swarm(swarm)?.ledger.existing(&request, sender)? {
-            if old.envelope.body != body {
+            if old.view().body != &body {
                 return Err(invalid("message ID body conflict"));
             }
             return Ok(super::api::Response::Stored {
@@ -795,11 +798,11 @@ impl Messaging {
             let old = self.swarm(swarm)?.ledger.by_id(reply)?;
             if request
                 .thread_id
-                .is_some_and(|thread| thread != old.envelope.thread_id)
+                .is_some_and(|thread| thread != old.view().thread_id)
             {
                 return Err(invalid("reply thread mismatch"));
             }
-            request.thread_id = Some(old.envelope.thread_id);
+            request.thread_id = Some(old.view().thread_id);
         }
         let routes = self.swarm(swarm)?.tree.resolve(
             Actor::Operator,
@@ -929,11 +932,11 @@ impl Messaging {
             self.can_read(from, &old)?;
             if request
                 .thread_id
-                .is_some_and(|id| id != old.envelope.thread_id)
+                .is_some_and(|id| id != old.view().thread_id)
             {
                 return Err(invalid("reply thread mismatch"));
             }
-            request.thread_id = Some(old.envelope.thread_id);
+            request.thread_id = Some(old.view().thread_id);
         }
         let actor = if operator {
             Actor::Operator
@@ -1164,6 +1167,15 @@ impl Messaging {
         }
         Ok(())
     }
+    fn validate_message(
+        &self,
+        message: &StoredMessage,
+    ) -> Result<(Option<SeatRecord>, Class, bool)> {
+        let envelope = message
+            .envelope()
+            .ok_or_else(|| invalid("pending message validation is not yet installed"))?;
+        self.validate(envelope)
+    }
     fn validate(&self, message: &Envelope) -> Result<(Option<SeatRecord>, Class, bool)> {
         self.keys.verify(message)?;
         if message.seat == Ulid::nil() {
@@ -1222,15 +1234,15 @@ impl Messaging {
     }
     pub fn can_read(&mut self, seat: Ulid, message: &StoredMessage) -> Result<()> {
         let record = self.registry.get(seat)?;
-        if record.swarm != message.envelope.swarm_id {
+        if record.swarm != message.view().swarm_id {
             return Err(invalid("message outside caller swarm"));
         }
-        if seat == message.envelope.seat
+        if seat == message.view().seat
             || record.role.class == Class::Oracle
             || self
                 .swarm(record.swarm)?
                 .ledger
-                .receipts(message.envelope.id)?
+                .receipts(message.view().id)?
                 .iter()
                 .any(|r| r.recipient == seat)
         {
@@ -1244,8 +1256,7 @@ impl Messaging {
         self.can_read(seat, &stored)?;
         let all = self.swarm(swarm)?.ledger.receipts(message)?;
         Ok(
-            if stored.envelope.seat == seat || self.registry.get(seat)?.role.class == Class::Oracle
-            {
+            if stored.view().seat == seat || self.registry.get(seat)?.role.class == Class::Oracle {
                 all
             } else {
                 all.into_iter().filter(|r| r.recipient == seat).collect()
@@ -1474,7 +1485,7 @@ impl Messaging {
                 }
                 for message in &held {
                     let routes = (|| -> Result<Vec<Route>> {
-                        let (sender, class, direct) = self.validate(&message.envelope)?;
+                        let (sender, class, direct) = self.validate_message(&message)?;
                         if sender.as_ref().is_some_and(|sender| sender.muted) && !direct {
                             return Err(invalid("sender muted"));
                         }
@@ -1489,10 +1500,10 @@ impl Messaging {
                                         class: sender.role.class,
                                     })
                             },
-                            &message.envelope.context,
-                            message.envelope.kind,
+                            &message.view().context,
+                            message.view().kind,
                             class,
-                            message.envelope.priority,
+                            message.view().priority,
                         )
                     })();
                     match routes {
@@ -1604,12 +1615,12 @@ impl Messaging {
             return Ok(hit.1);
         }
         let message = self.swarm(swarm_id)?.ledger.message(sequence)?;
-        let entry = if matches!(message.envelope.body, Body::Presence { .. }) {
+        let entry = if matches!(message.view().body, Body::Presence { .. }) {
             None
         } else {
             Some(
                 (|| -> Result<_> {
-                    let (sender, class, direct) = self.validate(&message.envelope)?;
+                    let (sender, class, direct) = self.validate_message(&message)?;
                     if sender.as_ref().is_some_and(|sender| sender.muted) && !direct {
                         return Err(invalid("sender muted"));
                     }
@@ -1624,10 +1635,10 @@ impl Messaging {
                                     class: sender.role.class,
                                 })
                         },
-                        &message.envelope.context,
-                        message.envelope.kind,
+                        &message.view().context,
+                        message.view().kind,
                         class,
-                        message.envelope.priority,
+                        message.view().priority,
                     )?;
                     // First route per (seat, agent), as a linear `find` picks.
                     let mut by = HashMap::new();
@@ -1882,9 +1893,9 @@ fn mint(
 
 /// Where a reply to `message` goes: its seat's inbox, or the operator's (decision #264).
 fn sender_inbox(message: &super::ledger::StoredMessage) -> String {
-    if message.envelope.seat == Ulid::nil() {
+    if message.view().seat == Ulid::nil() {
         "operator/inbox".into()
     } else {
-        format!("seats/{}/inbox", message.envelope.seat)
+        format!("seats/{}/inbox", message.view().seat)
     }
 }

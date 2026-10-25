@@ -332,10 +332,129 @@ pub struct Arrival {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StoredMessage {
     pub sequence: u64,
-    pub envelope: Envelope,
+    #[serde(flatten)]
+    pub content: StoredContent,
     pub held_out: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bus: Option<BusPosition>,
+}
+
+/// Signed records retain their original wire shape; pending records have no envelope.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum StoredContent {
+    Signed {
+        envelope: Box<Envelope>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        upgrade_of: Option<IntentBinding>,
+    },
+    Pending {
+        intent: Box<PendingIntent>,
+    },
+}
+impl From<Envelope> for StoredContent {
+    fn from(envelope: Envelope) -> Self {
+        Self::Signed {
+            envelope: Box::new(envelope),
+            upgrade_of: None,
+        }
+    }
+}
+
+/// Borrowed message content shared by delivery and projection, never signing authority.
+pub struct MessageView<'a> {
+    pub id: Ulid,
+    pub seat: Ulid,
+    pub process_generation: u64,
+    pub swarm_id: Ulid,
+    pub role: &'a Role,
+    pub role_epoch: u64,
+    pub kind: MessageKind,
+    pub context: &'a str,
+    pub body: &'a Body,
+    pub priority_class: Class,
+    pub priority: u8,
+    pub thread_id: Ulid,
+    pub reply_to: Option<Ulid>,
+    pub attachments: &'a [String],
+    pub timestamp: u64,
+    pub issuer_kind: Option<IssuerKind>,
+    pub signature: SignatureState,
+    pub signature_reason: Option<&'a str>,
+}
+
+impl StoredMessage {
+    pub fn envelope(&self) -> Option<&Envelope> {
+        match &self.content {
+            StoredContent::Signed { envelope, .. } => Some(envelope),
+            StoredContent::Pending { .. } => None,
+        }
+    }
+    pub fn intent(&self) -> Option<&PendingIntent> {
+        match &self.content {
+            StoredContent::Pending { intent } => Some(intent),
+            StoredContent::Signed { .. } => None,
+        }
+    }
+    pub fn upgrade_of(&self) -> Option<&IntentBinding> {
+        match &self.content {
+            StoredContent::Signed { upgrade_of, .. } => upgrade_of.as_ref(),
+            StoredContent::Pending { .. } => None,
+        }
+    }
+    pub fn view(&self) -> MessageView<'_> {
+        match &self.content {
+            StoredContent::Signed { envelope: e, .. } => MessageView {
+                id: e.id,
+                seat: e.seat,
+                process_generation: e.process_generation,
+                swarm_id: e.swarm_id,
+                role: &e.role,
+                role_epoch: e.role_epoch,
+                kind: e.kind,
+                context: &e.context,
+                body: &e.body,
+                priority_class: e.priority_class,
+                priority: e.priority,
+                thread_id: e.thread_id,
+                reply_to: e.reply_to,
+                attachments: &e.attachments,
+                timestamp: e.timestamp,
+                issuer_kind: Some(e.issuer_kind),
+                signature: SignatureState::Signed,
+                signature_reason: None,
+            },
+            StoredContent::Pending { intent: i } => {
+                let (seat, process_generation) = match i.sender {
+                    LogicalSender::Seat {
+                        seat,
+                        process_generation,
+                    } => (seat, process_generation),
+                    LogicalSender::Operator { .. } => (Ulid::nil(), 0),
+                };
+                MessageView {
+                    id: i.id,
+                    seat,
+                    process_generation,
+                    swarm_id: i.swarm_id,
+                    role: &i.role,
+                    role_epoch: i.role_epoch,
+                    kind: i.request.kind,
+                    context: &i.request.destination,
+                    body: &i.body,
+                    priority_class: i.role.class,
+                    priority: i.request.priority,
+                    thread_id: i.request.thread_id.unwrap_or(i.id),
+                    reply_to: i.request.reply_to,
+                    attachments: &i.request.attachments,
+                    timestamp: i.admitted_ms / 1000,
+                    issuer_kind: None,
+                    signature: SignatureState::Pending,
+                    signature_reason: Some(&i.hold_reason),
+                }
+            }
+        }
+    }
 }
 
 /// A bus position belongs to one retained object stream, never the inbox ledger.

@@ -400,10 +400,10 @@ impl History {
                     .take(128)
                     .map(|item| {
                         (
-                            item.envelope.id,
+                            item.view().id,
                             item.bus.clone(),
-                            item.envelope.context.clone(),
-                            MessageAttachments::bounded(&item.envelope.attachments),
+                            item.view().context.to_owned(),
+                            MessageAttachments::bounded(item.view().attachments),
                         )
                     })
                     .collect();

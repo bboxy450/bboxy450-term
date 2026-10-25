@@ -2808,7 +2808,7 @@ impl Worker {
                 },
             };
             match sent {
-                Ok(message) => completed.push(message.envelope.id),
+                Ok(message) => completed.push(message.view().id),
                 Err(_) => {
                     return crate::mcp::error(
                         call.op_id,
@@ -5319,7 +5319,7 @@ impl Worker {
                     let binding = view.adapter.binding.clone();
                     let endpoint = view.delivery_endpoint.clone();
                     let delivery_failure = view.delivery_failure.clone();
-                    let priority = if work.messages.iter().all(|m| m.envelope.priority > 0) {
+                    let priority = if work.messages.iter().all(|m| m.view().priority > 0) {
                         Priority::Later
                     } else {
                         Priority::Next
