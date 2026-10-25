@@ -39,3 +39,276 @@ Expected mutation failures: 30s ->31s EXIT101 at the exact retry assertion; disc
 Raw root: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-tests-326b-iwp69qwm. Baseline messaging_flow ran after the behavior-preserving clock extraction, before any change to its file/helper; its start record binds that WIP diff hash. Other five before baselines ran on the unchanged base.
 
 Next checks remain outstanding at this source commit: ten loaded rounds with two independent Cargo test builds, retained exact boundary tests, strict workspace/all-target Clippy and the landing gate. No full #327, #326 activation, native Keychain coverage or controlled performance speedup is claimed. The broader per-test review is still incomplete; provider_gui quarantine is queued after Cut B.
+
+Loaded check update
+
+Source cd4e675a571695904f61cf1fd6d285e68ac616f2, signature verified G /9B07E849480C68328CA20684844ECC0587DE7AB0, tracked source unchanged during all80 commands. Two independent archive copies compiled cargo test -p bbt-mux --locked --lib --no-run with two jobs each, PIDs/PGIDs78847 and79074; both were alive before and after every test command. All ten rounds completed, all80 exits0. Active test assertions total310 passed/0 failed;110 ignored (explicit night helpers/profile fixtures). The app custody binary is0 passed/1 ignored each round: its real proof is the exact night boundary, not a vacuous default pass. File-custody source stayed unchanged.
+
+{
+  "logic": {
+    "commands": 10,
+    "passed": 90,
+    "failed": 0,
+    "ignored": 50,
+    "binary_seconds": [
+      3.66,
+      2.76,
+      2.66,
+      2.86,
+      2.73,
+      2.67,
+      2.66,
+      2.64,
+      2.76,
+      2.66
+    ],
+    "runner_seconds": [
+      5.138426958001219,
+      4.098315541981719,
+      3.7652590409852564,
+      3.48672795802122,
+      3.829135999956634,
+      3.609457582992036,
+      3.6887541249743663,
+      3.7800575419678353,
+      3.568905292020645,
+      3.3399551659822464
+    ],
+    "all_exit_zero": true,
+    "min_binary_seconds": 2.64,
+    "max_binary_seconds": 3.66
+  },
+  "clock": {
+    "commands": 10,
+    "passed": 10,
+    "failed": 0,
+    "ignored": 0,
+    "binary_seconds": [
+      0.15,
+      0.17,
+      0.15,
+      0.14,
+      0.13,
+      0.15,
+      0.11,
+      0.13,
+      0.14,
+      0.24
+    ],
+    "runner_seconds": [
+      1.0039209590177052,
+      1.9347715419717133,
+      1.8901874999864958,
+      1.2826528340228833,
+      0.9976369169889949,
+      1.2051412090077065,
+      1.0321862500277348,
+      0.7712708330363967,
+      1.0368405419867486,
+      1.2730097909807228
+    ],
+    "all_exit_zero": true,
+    "min_binary_seconds": 0.11,
+    "max_binary_seconds": 0.24
+  },
+  "app-custody": {
+    "commands": 10,
+    "passed": 0,
+    "failed": 0,
+    "ignored": 10,
+    "binary_seconds": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "runner_seconds": [
+      1.340635416971054,
+      1.3478025830117986,
+      1.0293160840519704,
+      1.3708297919947654,
+      54.253366374992765,
+      1.2222948330454528,
+      1.2071873749955557,
+      1.3675350830308162,
+      1.0014119999832474,
+      2.219874250004068
+    ],
+    "all_exit_zero": true,
+    "min_binary_seconds": 0.0,
+    "max_binary_seconds": 0.0
+  },
+  "git": {
+    "commands": 10,
+    "passed": 10,
+    "failed": 0,
+    "ignored": 0,
+    "binary_seconds": [
+      0.02,
+      0.01,
+      0.01,
+      0.01,
+      0.01,
+      0.01,
+      0.01,
+      0.02,
+      0.01,
+      0.01
+    ],
+    "runner_seconds": [
+      0.6452697920030914,
+      1.1080836250330321,
+      1.3731667500105686,
+      0.909158208000008,
+      0.8903570830007084,
+      0.9533353750011884,
+      0.7860281250323169,
+      1.690008833014872,
+      0.9880543749895878,
+      1.1157831670134328
+    ],
+    "all_exit_zero": true,
+    "min_binary_seconds": 0.01,
+    "max_binary_seconds": 0.02
+  },
+  "messaging-flow": {
+    "commands": 10,
+    "passed": 30,
+    "failed": 0,
+    "ignored": 10,
+    "binary_seconds": [
+      6.23,
+      12.09,
+      14.5,
+      10.96,
+      11.48,
+      9.27,
+      7.96,
+      19.7,
+      11.22,
+      10.62
+    ],
+    "runner_seconds": [
+      27.65757008298533,
+      12.872768083005212,
+      15.606023249973077,
+      11.744064249971416,
+      12.125523833034094,
+      10.171512917033397,
+      8.938303874980193,
+      20.335811917029787,
+      12.050933749997057,
+      11.695686749997549
+    ],
+    "all_exit_zero": true,
+    "min_binary_seconds": 6.23,
+    "max_binary_seconds": 19.7
+  },
+  "file-custody": {
+    "commands": 10,
+    "passed": 40,
+    "failed": 0,
+    "ignored": 0,
+    "binary_seconds": [
+      0.06,
+      0.05,
+      0.09,
+      0.05,
+      0.12,
+      0.05,
+      0.05,
+      0.08,
+      0.05,
+      0.06
+    ],
+    "runner_seconds": [
+      0.7018044579890557,
+      0.5230585000244901,
+      0.8205168329877779,
+      0.655172707978636,
+      0.6153642080025747,
+      0.4635012919898145,
+      0.44803495798259974,
+      0.6876261669676751,
+      0.5414136670297012,
+      0.6975064589641988
+    ],
+    "all_exit_zero": true,
+    "min_binary_seconds": 0.05,
+    "max_binary_seconds": 0.12
+  },
+  "identity-local": {
+    "commands": 10,
+    "passed": 100,
+    "failed": 0,
+    "ignored": 10,
+    "binary_seconds": [
+      0.1,
+      0.11,
+      0.1,
+      0.08,
+      0.09,
+      0.09,
+      0.11,
+      0.1,
+      0.13,
+      0.13
+    ],
+    "runner_seconds": [
+      1.1368882080423646,
+      1.150940083025489,
+      1.0627029580064118,
+      11.257038875017315,
+      1.5107313329936005,
+      0.7189033749746159,
+      0.795038083975669,
+      0.9720963750150986,
+      0.9293078749906272,
+      1.1622144589782692
+    ],
+    "all_exit_zero": true,
+    "min_binary_seconds": 0.08,
+    "max_binary_seconds": 0.13
+  },
+  "provenance": {
+    "commands": 10,
+    "passed": 30,
+    "failed": 0,
+    "ignored": 30,
+    "binary_seconds": [
+      2.45,
+      2.29,
+      2.21,
+      2.23,
+      2.29,
+      2.16,
+      2.15,
+      2.87,
+      2.11,
+      2.11
+    ],
+    "runner_seconds": [
+      3.511934374982957,
+      3.1893534169648774,
+      2.8937152920407243,
+      3.4096549170208164,
+      3.2486340000177734,
+      3.5960347080253996,
+      3.1543613750254735,
+      4.206571292015724,
+      3.2219519590144046,
+      3.1268603749922477
+    ],
+    "all_exit_zero": true,
+    "min_binary_seconds": 2.11,
+    "max_binary_seconds": 2.87
+  }
+}
+
+Raw per-command metadata, complete logs and hashes: loaded-01-* through loaded-10-* under the raw root above; loaded-progress.json contains both builder-liveness flags for every command. The night script now sources cache-env.sh after entering the worktree and setting its explicit fixture environment, per #325. No Rust source changed after the loaded run. Boundary checks, strict Clippy and landing remain outstanding.
