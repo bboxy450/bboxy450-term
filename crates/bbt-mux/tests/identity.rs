@@ -270,7 +270,35 @@ fn native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order(
                         issued_by: None,
                     },
                 ))
-                .unwrap();
+                .unwrap_or_else(|error| {
+                    // Capture the existing cached hold before refreshing it.
+                    // This runs only after the original request has failed.
+                    let cached = runtime.block_on(async {
+                        tokio::time::timeout(
+                            Duration::from_secs(1),
+                            logic.client.gui_identity_control(
+                                Ulid::new(),
+                                IdentityRequest::Status,
+                                Origin {
+                                    door: Door::Ctl,
+                                    issued_by: None,
+                                },
+                            ),
+                        )
+                        .await
+                    });
+                    let fresh = runtime.block_on(async {
+                        tokio::time::timeout(
+                            Duration::from_secs(1),
+                            logic.client.identity_status(),
+                        )
+                        .await
+                    });
+                    panic!(
+                        "native fixture unlock failed: op={op}; attempts={:?}; cached={cached:?}; fresh={fresh:?}; original={error}",
+                        keys.attempts.lock().unwrap()
+                    );
+                });
             if response.outcome == Some(UnlockOutcome::Allowed) {
                 break response;
             }
