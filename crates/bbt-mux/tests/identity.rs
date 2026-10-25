@@ -223,7 +223,11 @@ fn native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order(
     }
     let root = Fixture::new();
     let before = snapshot(root.home.path());
-    let (directory, account) = account();
+    let directory = tempfile::Builder::new()
+        .prefix("native-two-item-")
+        .tempdir_in("/tmp")
+        .unwrap();
+    let account = SqliteStore::open(&directory.path().join("account")).unwrap();
     let keys = Arc::new(Keys::default());
     let BootstrapOutcome::Certified(device) = root.bootstrap.run(&account, keys.as_ref(), now())
     else {
