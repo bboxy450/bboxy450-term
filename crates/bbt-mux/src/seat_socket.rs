@@ -557,14 +557,23 @@ async fn gui_read_events(
         .bus
         .read_page_wait(&stream, filter, after, limit, wait_ms)
         .await?;
-    let events = envelopes.into_iter().map(|e| bbt_proto::gui::RetainedEvent {
-        seq: e.seq,
-        subject: e.event.subject,
-        source: e.event.source,
-        ts: e.event.ts,
-        payload: e.event.payload,
-    }).collect();
-    Ok(GuiReply::EventsRead { op: id, stream, events, next, through })
+    let events = envelopes
+        .into_iter()
+        .map(|e| bbt_proto::gui::RetainedEvent {
+            seq: e.seq,
+            subject: e.event.subject,
+            source: e.event.source,
+            ts: e.event.ts,
+            payload: e.event.payload,
+        })
+        .collect();
+    Ok(GuiReply::EventsRead {
+        op: id,
+        stream,
+        events,
+        next,
+        through,
+    })
 }
 
 async fn gui_attach_lane(client: &LogicClient) -> Result<(GuiLane, Option<crate::bus::Delivery>)> {
@@ -1385,6 +1394,84 @@ mod gui_tests {
         registry::SeatRecord,
     };
 
+    // keeps: decision #328 (a parked page read cannot hold up the connection's controls)
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_waiting_page_does_not_block_the_next_control_request() {
+        tokio::time::timeout(Duration::from_secs(30), async {
+            let root = tempfile::tempdir().unwrap();
+            let repository = root.path().join("repository");
+            std::fs::create_dir(&repository).unwrap();
+            let supervisor = Supervisor::start(crate::Config {
+                journal_directory: Some(root.path().join("supervisor-journal")),
+                ..Default::default()
+            })
+            .unwrap();
+            let logic = Logic::start(
+                supervisor.connect().unwrap(),
+                LogicConfig {
+                    run_dir: root.path().join("run"),
+                    repository,
+                    ring: Default::default(),
+                },
+                ed25519_dalek::SigningKey::from_bytes(&[92; 32]),
+                &tokio::runtime::Handle::current(),
+            )
+            .unwrap();
+            let capability = [74; 32];
+            let (peer, server) = tokio::net::UnixStream::pair().unwrap();
+            let session = tokio::spawn(gui_session(
+                server,
+                logic.client.clone(),
+                capability,
+                crate::mcp::Door::Ctl,
+            ));
+            let (read, mut write) = peer.into_split();
+            let mut read = BufReader::new(read);
+            let waiting = Ulid::new();
+            for action in [
+                GuiAction::EventsRead {
+                    id: waiting,
+                    stream: "index".into(),
+                    after: i64::MAX as u64,
+                    limit: 1,
+                    wait_ms: Some(60_000),
+                },
+                GuiAction::ListSeats,
+            ] {
+                send(
+                    &mut write,
+                    &GuiRequest {
+                        version: bbt_proto::gui::VERSION,
+                        capability,
+                        action,
+                    },
+                )
+                .await
+                .unwrap();
+            }
+            loop {
+                let line = read_line(&mut read)
+                    .await
+                    .unwrap()
+                    .expect("GUI closed before the control reply");
+                match serde_json::from_slice::<GuiReply>(&line).unwrap() {
+                    GuiReply::Identity(_) => {}
+                    GuiReply::Seats(seats) => {
+                        assert!(seats.is_empty());
+                        break;
+                    }
+                    other => panic!("waiting read overtook the ready control: {other:?}"),
+                }
+            }
+            drop(read);
+            drop(write);
+            session.await.unwrap().unwrap();
+            logic.shutdown().unwrap();
+            supervisor.shutdown().unwrap();
+        })
+        .await
+        .expect("waiting read blocked the GUI control path");
+    }
     #[tokio::test]
     async fn refusal_drains_the_complete_request_before_half_closing() {
         tokio::time::timeout(Duration::from_secs(10), async {

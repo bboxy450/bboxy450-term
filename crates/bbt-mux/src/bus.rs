@@ -2488,3 +2488,124 @@ mod gui_tests {
         broker.gui_ack(&lease, "index", 1).unwrap();
     }
 }
+
+#[cfg(test)]
+mod waiting_page_tests {
+    use super::*;
+    use futures_util::FutureExt;
+    use std::sync::atomic::Ordering;
+    use std::time::Duration;
+
+    async fn registered(signal: &AppendSignal, count: usize) {
+        loop {
+            let ready = signal.registered.notified();
+            tokio::pin!(ready);
+            ready.as_mut().enable();
+            if signal.waiting.load(Ordering::SeqCst) >= count {
+                return;
+            }
+            ready.await;
+        }
+    }
+
+    // keeps: decision #328 (a page recheck after registration closes the wakeup gap)
+    #[tokio::test(start_paused = true)]
+    async fn waiting_page_rechecks_existing_progress_before_parking() {
+        let signal = AppendSignal::default();
+        let page = wait_for_page(&signal, 7, 60_000, || async { Ok((vec![], Some(8), 8)) })
+            .now_or_never()
+            .expect("existing progress must not wait for a second append")
+            .unwrap();
+        assert_eq!((page.1, page.2), (Some(8), 8));
+        assert_eq!(signal.waiting.load(Ordering::SeqCst), 0);
+    }
+
+    // keeps: decision #328 (the deadline returns an empty page and unchanged cursor)
+    #[tokio::test(start_paused = true)]
+    async fn waiting_page_deadline_keeps_the_requested_cursor() {
+        let signal = Arc::new(AppendSignal::default());
+        let task_signal = signal.clone();
+        let task = tokio::spawn(async move {
+            wait_for_page(&task_signal, 37, 60_000, || async {
+                Ok((vec![], None, 37))
+            })
+            .await
+        });
+        registered(&signal, 1).await;
+        tokio::time::advance(Duration::from_secs(60)).await;
+        let page = task.await.unwrap().unwrap();
+        assert!(page.0.is_empty());
+        assert_eq!((page.1, page.2), (None, 37));
+        assert_eq!(signal.waiting.load(Ordering::SeqCst), 0);
+        assert!(
+            wait_for_page(&signal, 37, 60_001, || async { Ok((vec![], None, 37)) })
+                .await
+                .is_err()
+        );
+    }
+
+    // keeps: decision #328 (100 readers hold no bus credit or durable consumer/cursor)
+    #[tokio::test(start_paused = true)]
+    async fn one_append_wakes_one_hundred_readers_without_bus_or_cursor_ownership() {
+        let root = tempfile::tempdir().unwrap();
+        let mut broker = Broker::open(root.path(), SigningKey::from_bytes(&[71; 32])).unwrap();
+        broker.ensure_stream("probe").unwrap();
+        let bus = BusHandle::start(&tokio::runtime::Handle::current(), broker, 4).unwrap();
+        let mut readers = Vec::new();
+        for _ in 0..100 {
+            let bus = bus.clone();
+            readers.push(tokio::spawn(async move {
+                bus.read_page_wait("probe", vec!["seat/*/state".into()], 0, 128, Some(60_000))
+                    .await
+            }));
+        }
+        registered(&bus.appends, 100).await;
+        assert_eq!(
+            bus.tx.capacity(),
+            4,
+            "parked reads retained a router credit"
+        );
+        let catalog = SqliteStore::open(&object_dir(root.path(), "bus").unwrap()).unwrap();
+        assert!(catalog.list("consumer/").unwrap().is_empty());
+        let stream = sqlite::open(
+            &object_dir(root.path(), "probe")
+                .unwrap()
+                .join("events.sqlite"),
+        )
+        .unwrap();
+        let cursor_rows = || {
+            stream
+                .query_row("SELECT count(*) FROM consumers", [], |row| {
+                    row.get::<_, i64>(0)
+                })
+                .unwrap()
+        };
+        assert_eq!(cursor_rows(), 0);
+        let event = bus
+            .publish(
+                "probe",
+                Draft::new(
+                    "seat/test/state",
+                    "wait-test",
+                    serde_json::json!({"state":"active"}),
+                ),
+            )
+            .await
+            .unwrap();
+        for reader in readers {
+            let page = reader.await.unwrap().unwrap();
+            assert_eq!(page.0.len(), 1);
+            assert_eq!((page.0[0].seq, page.2), (event.seq, event.seq));
+            assert_eq!(page.0[0].event.payload["state"], "active");
+        }
+        assert_eq!(
+            bus.appends.broadcasts.load(Ordering::SeqCst),
+            1,
+            "appender notified per reader"
+        );
+        assert_eq!(bus.appends.waiting.load(Ordering::SeqCst), 0);
+        assert!(catalog.list("consumer/").unwrap().is_empty());
+        assert_eq!(cursor_rows(), 0);
+        bus.shutdown().await.unwrap();
+    }
+}

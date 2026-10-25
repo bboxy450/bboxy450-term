@@ -27,7 +27,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | T5 | `scripts/e2e/T5.sh` | partial | the app is killed and relaunched (only logic is killed); layout, focus and scroll positions are identical | |
 | T6 | `scripts/e2e/T6.sh` | partial | the app says so; resumes by session id (only the zsh respawn is proven) | |
 | T7 | `scripts/e2e/T7.sh` | partial | solved pane rectangle and focus after undo; visible grace strip | |
-| T8 | `scripts/e2e/T8.sh` | partial | malformed/unapproved report rejection; reported grade drawn in the seat row | |
+| T8 | `scripts/e2e/T8.sh` | partial | malformed/unapproved report rejection; reported grade drawn in the seat row | #328: bounded waiting page reads check current main/subagent state and reported grade; no sleep loop |
 | T9 | `scripts/e2e/T9.sh` | partial | a harness resumed by session id (only a zsh seat is restarted) | |
 | L1 | `scripts/e2e/L1.sh` | partial | approved blur pixels; harness labels and role presets; search results | |
 | L2 | `scripts/e2e/L2.sh` | partial | never a guessed slot | |

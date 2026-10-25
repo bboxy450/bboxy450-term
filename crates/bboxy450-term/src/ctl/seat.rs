@@ -92,6 +92,8 @@ macro_rules! seat_commands {
                 seat: String,
                 state: Option<String>,
                 text: Option<String>,
+                subagent: Option<String>,
+                grade: Option<String>,
                 /// `--on-screen`: the seat has a pane in the window's current frame (ctl-cli §1a).
                 on_screen: bool,
                 /// `--frame-seq N`: the window has produced frame N.

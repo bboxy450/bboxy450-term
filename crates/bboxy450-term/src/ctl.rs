@@ -51,8 +51,8 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   seat key <seat> <key>...                enter esc tab backspace space up down left right home end
                                           pageup pagedown delete shift-tab ctrl-<letter>; Kitty when on
   seat paste <seat> <file|->              bracketed when the program asked
-  seat wait <seat> (--state idle|waiting|exited | --text REGEX | --on-screen | --frame-seq N)
-                                          [--timeout MS]   default 30000; --on-screen: the seat has a
+  seat wait <seat> (--state idle|active|waiting|exited | --text REGEX | --on-screen | --frame-seq N)
+                                          [--subagent ID] [--grade reported] [--timeout MS]   default 30000; --on-screen: the seat has a
                                           pane in the window's current frame; --frame-seq: the window
                                           has produced frame N (both read the owner's ui layout)
   seat capture <seat|window> <file.png>   with stale, occluded, frame_presented_at, frame_seq
@@ -526,10 +526,18 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
                     "seat wait: one of --state, --text, --on-screen or --frame-seq\n{USAGE}"
                 ));
             }
+            if (flag("subagent").is_some() || flag("grade").is_some()) && state.is_none() {
+                return Err(format!("{USAGE_PREFIX}--subagent and --grade require --state"));
+            }
+            if flag("grade").as_deref().is_some_and(|grade| grade != "reported") {
+                return Err(format!("{USAGE_PREFIX}--grade: reported"));
+            }
             Command::Wait {
                 seat: seat.into(),
                 state,
                 text,
+                subagent: flag("subagent"),
+                grade: flag("grade"),
                 on_screen: on_screen_flag,
                 frame_seq,
                 timeout: Duration::from_millis(
@@ -795,6 +803,11 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "{USAGE_PREFIX}--reason applies only to task reject"
         ));
     }
+    if (flags.contains_key("subagent") || flags.contains_key("grade"))
+        && !matches!(&command, Command::Wait { .. })
+    {
+        return Err(format!("{USAGE_PREFIX}--subagent and --grade apply only to seat wait"));
+    }
     if let Some(unknown) = flags.keys().find(|k| {
         ![
             "swarm",
@@ -810,6 +823,8 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "timeout",
             "state",
             "text",
+            "subagent",
+            "grade",
             "op",
             "as",
             "place",
@@ -1109,6 +1124,15 @@ impl Client {
         after: u64,
         limit: usize,
     ) -> Result<(Vec<bbt_proto::gui::RetainedEvent>, Option<u64>, u64), String> {
+        self.events_page_wait(stream, after, limit, None)
+    }
+    fn events_page_wait(
+        &mut self,
+        stream: &str,
+        after: u64,
+        limit: usize,
+        wait_ms: Option<u64>,
+    ) -> Result<(Vec<bbt_proto::gui::RetainedEvent>, Option<u64>, u64), String> {
         let id = self.mint();
         match self.call(
             Some(id),
@@ -1117,7 +1141,7 @@ impl Client {
                 stream: stream.into(),
                 after,
                 limit,
-                wait_ms: None,
+                wait_ms,
             },
             |r| matches!(r, GuiReply::EventsRead { op, .. } if *op == id),
         )? {
@@ -1259,6 +1283,165 @@ impl Client {
             _ => unreachable!(),
         }
     }
+}
+
+/// The state vocabulary stays in ctl; the bus only waits for a page append.
+struct WaitPredicate {
+    state: Option<String>,
+    pattern: Option<regex::Regex>,
+    subagent: Option<String>,
+    grade: Option<String>,
+}
+impl WaitPredicate {
+    fn new(
+        state: Option<String>,
+        text: Option<String>,
+        subagent: Option<String>,
+        grade: Option<String>,
+    ) -> Result<Self, String> {
+        if let Some(state) = state.as_deref()
+            && !matches!(state, "idle" | "active" | "waiting" | "exited")
+        {
+            return Err(format!(
+                "{USAGE_PREFIX}seat wait --state: idle, active, waiting or exited, not {state}"
+            ));
+        }
+        if subagent.as_deref().is_some_and(str::is_empty)
+            || (subagent.is_some() && state.as_deref() == Some("exited"))
+        {
+            return Err(format!(
+                "{USAGE_PREFIX}--subagent requires a nonempty id and an activity state"
+            ));
+        }
+        let pattern = text
+            .map(|pattern| {
+                regex::Regex::new(&pattern)
+                    .map_err(|error| format!("{USAGE_PREFIX}seat wait --text: {error}"))
+            })
+            .transpose()?;
+        Ok(Self {
+            state,
+            pattern,
+            subagent,
+            grade,
+        })
+    }
+    fn matches(&self, seat: &GuiSeat, screen: Option<&bbt_proto::gui::SeatScreen>) -> bool {
+        if let Some(pattern) = &self.pattern {
+            return screen.is_some_and(|screen| pattern.is_match(&screen.rows.join("\n")));
+        }
+        use bbt_proto::seat_state::{Activity, Grade, ProcessStatus};
+        let (activity, grade) = if let Some(id) = &self.subagent {
+            let Some(row) = seat.state.subagents.iter().find(|row| row.id == *id) else {
+                return false;
+            };
+            (row.activity, row.grade)
+        } else {
+            (seat.state.activity, seat.state.grade)
+        };
+        let met = match self.state.as_deref() {
+            Some("exited") => matches!(seat.state.process, ProcessStatus::Exited { .. }),
+            Some("idle") => activity == Activity::Idle,
+            Some("active") => activity == Activity::Active,
+            Some("waiting") => matches!(activity, Activity::Waiting(_)),
+            _ => false,
+        };
+        met && (self.grade.is_none() || grade == Grade::Reported)
+    }
+}
+
+fn wait_for_seat(
+    client: &mut Client,
+    selector: &str,
+    predicate: &WaitPredicate,
+    timeout: Duration,
+    elapsed: impl Fn() -> Duration,
+) -> Result<Vec<Value>, String> {
+    let op = fresh();
+    let timed_out = || {
+        format!(
+            "{TIMEOUT_PREFIX}{op}\nwaited {} ms; seat {selector} did not meet the requested predicate",
+            timeout.as_millis()
+        )
+    };
+    let remaining = || {
+        timeout
+            .checked_sub(elapsed())
+            .filter(|left| !left.is_zero())
+            .ok_or_else(timed_out)
+    };
+    let set_budget = |client: &Client| -> Result<Duration, String> {
+        let left = remaining()?;
+        client
+            .reader
+            .get_ref()
+            .set_read_timeout(Some(left))
+            .map_err(|error| error.to_string())?;
+        client
+            .writer
+            .set_write_timeout(Some(left))
+            .map_err(|error| error.to_string())?;
+        Ok(left)
+    };
+    let result = (|| {
+        let mut after = 0;
+        loop {
+            set_budget(client)?;
+            let failure = |error| {
+                if elapsed() >= timeout {
+                    timed_out()
+                } else {
+                    error
+                }
+            };
+            // Recheck the current snapshot after every waiting page. Old retained
+            // states must never satisfy a predicate that is false now.
+            let seats = client.seats().map_err(failure)?;
+            let seat = resolve(&seats, selector)?;
+            let screen = if predicate.pattern.is_some() {
+                set_budget(client)?;
+                Some(client.screen(seat.record.id).map_err(failure)?.1)
+            } else {
+                None
+            };
+            remaining()?;
+            if predicate.matches(seat, screen.as_ref()) {
+                let mut row = json!({"ok":true,"op":op,"done":true,
+                    "data":{"seat":seat.record.id,"state":predicate.state.clone(),"text":predicate.pattern.as_ref().map(|pattern|pattern.as_str())}});
+                if let Some(id) = &predicate.subagent {
+                    row["data"]["subagent"] = json!(id);
+                }
+                if let Some(grade) = &predicate.grade {
+                    row["data"]["grade"] = json!(grade);
+                }
+                return Ok(vec![row]);
+            }
+            let left = set_budget(client)?;
+            // No frame notice is guaranteed in the state stream. Text waits use
+            // a named 200ms screen fallback by bounded waiting reads, not sleeps.
+            let cap = if predicate.pattern.is_some() {
+                200
+            } else {
+                60_000
+            };
+            let wait_ms = u64::try_from(left.as_millis().clamp(1, cap)).unwrap();
+            let (_, _, through) = client
+                .events_page_wait(
+                    &format!("seat-{}", seat.record.id),
+                    after,
+                    PAGE,
+                    Some(wait_ms),
+                )
+                .map_err(failure)?;
+            if through < after {
+                return Err("EventsRead cursor moved backwards".into());
+            }
+            after = through;
+        }
+    })();
+    let _ = client.reader.get_ref().set_read_timeout(Some(TIMEOUT));
+    let _ = client.writer.set_write_timeout(Some(TIMEOUT));
+    result
 }
 
 fn seat_line(seat: &GuiSeat) -> Value {
@@ -1581,61 +1764,10 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
                 std::thread::sleep(Duration::from_millis(100));
             }
         }
-        Command::Wait {
-            seat,
-            state,
-            text,
-            timeout,
-            ..
-        } => {
-            let seat = resolve(&client.seats()?, &seat)?.record.id;
-            let pattern = text
-                .as_deref()
-                .map(|p| {
-                    regex::Regex::new(p).map_err(|e| format!("{USAGE_PREFIX}seat wait --text: {e}"))
-                })
-                .transpose()?;
-            if let Some(state) = &state
-                && !matches!(state.as_str(), "idle" | "waiting" | "exited")
-            {
-                return Err(format!(
-                    "{USAGE_PREFIX}seat wait --state: idle, waiting or exited, not {state}"
-                ));
-            }
-            let op = Ulid::new();
-            let deadline = std::time::Instant::now() + timeout;
-            loop {
-                let (_, screen) = client.screen(seat)?;
-                let met = match (&pattern, state.as_deref()) {
-                    (Some(pattern), _) => pattern.is_match(&screen.rows.join("\n")),
-                    (None, Some(state)) => {
-                        let seats = client.seats()?;
-                        let line = seat_line(resolve(&seats, &seat.to_string())?);
-                        match state {
-                            "exited" => line["process"]["kind"] == "exited",
-                            kind => line["activity"]["kind"] == kind,
-                        }
-                    }
-                    (None, None) => unreachable!("parse requires one condition"),
-                };
-                if met {
-                    break vec![json!({ "ok": true, "op": op, "done": true,
-                        "data": { "seat": seat, "state": state, "text": text } })];
-                }
-                if std::time::Instant::now() >= deadline {
-                    let tail: Vec<_> = screen.rows.iter().filter(|r| !r.is_empty()).collect();
-                    let tail = &tail[tail.len().saturating_sub(12)..];
-                    return Err(format!(
-                        "{TIMEOUT_PREFIX}{op}\nwaited {} ms; the screen ends:\n{}",
-                        timeout.as_millis(),
-                        tail.iter()
-                            .map(|r| r.as_str())
-                            .collect::<Vec<_>>()
-                            .join("\n")
-                    ));
-                }
-                std::thread::sleep(Duration::from_millis(200));
-            }
+        Command::Wait { seat, state, text, subagent, grade, timeout, .. } => {
+            let predicate = WaitPredicate::new(state, text, subagent, grade)?;
+            let started = std::time::Instant::now();
+            wait_for_seat(client, &seat, &predicate, timeout, || started.elapsed())?
         }
         Command::Ui(_)
         | Command::UiFocus(_)
@@ -3074,6 +3206,299 @@ mod noun_verb_tests {
             }
         }
         assert_eq!(pairs.len(), VERBS.len());
+    }
+}
+
+#[cfg(test)]
+mod wait_contract_tests {
+    use super::*;
+    use bbt_proto::seat_state::{Activity, Grade, SubagentRow};
+    use std::sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    };
+
+    fn seat() -> GuiSeat {
+        include_str!("../../bbt-proto/tests/golden/gui_wire.tsv")
+            .lines()
+            .filter_map(|line| line.strip_prefix("reply\t"))
+            .filter_map(|line| serde_json::from_str::<GuiReply>(line).ok())
+            .find_map(|reply| match reply {
+                GuiReply::Seats(seats) => seats.into_iter().next(),
+                _ => None,
+            })
+            .expect("the wire fixture has a seat")
+    }
+    fn peer(
+        handler: impl FnOnce(BufReader<UnixStream>, UnixStream) + Send + 'static,
+    ) -> (Client, std::thread::JoinHandle<()>) {
+        let (client, server) = UnixStream::pair().unwrap();
+        server
+            .set_read_timeout(Some(Duration::from_secs(30)))
+            .unwrap();
+        server
+            .set_write_timeout(Some(Duration::from_secs(30)))
+            .unwrap();
+        let reader = BufReader::new(server.try_clone().unwrap());
+        let task = std::thread::spawn(move || handler(reader, server));
+        (
+            Client {
+                reader: BufReader::new(client.try_clone().unwrap()),
+                writer: client,
+                capability: [0; 32],
+                op: None,
+                identity: None,
+            },
+            task,
+        )
+    }
+    fn request(reader: &mut BufReader<UnixStream>) -> GuiAction {
+        let mut line = String::new();
+        assert_ne!(reader.read_line(&mut line).unwrap(), 0, "missing request");
+        serde_json::from_str::<GuiRequest>(&line).unwrap().action
+    }
+    fn reply(writer: &mut UnixStream, reply: GuiReply) {
+        serde_json::to_writer(&mut *writer, &reply).unwrap();
+        writer.write_all(b"\n").unwrap();
+    }
+    fn predicate(subagent: Option<&str>) -> WaitPredicate {
+        WaitPredicate::new(
+            Some("active".into()),
+            None,
+            subagent.map(str::to_owned),
+            Some("reported".into()),
+        )
+        .unwrap()
+    }
+
+    // keeps: decision #328 (subagent and reported-grade qualifiers belong to state waits)
+    #[test]
+    fn wait_qualifiers_require_an_activity_predicate() {
+        let args = |words: &str| {
+            words
+                .split_whitespace()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        };
+        assert!(
+            matches!(parse_full(&args("seat wait fixture --state active --subagent t8 --grade reported")).unwrap().command,
+            Command::Wait {subagent:Some(id),grade:Some(grade),..} if id=="t8" && grade=="reported")
+        );
+        for words in [
+            "seat wait fixture --text marker --grade reported",
+            "seat wait fixture --on-screen --subagent t8",
+            "seat wait fixture --state active --grade inferred",
+            "seat ls --subagent t8",
+        ] {
+            assert!(
+                parse_full(&args(words))
+                    .unwrap_err()
+                    .starts_with(USAGE_PREFIX)
+            );
+        }
+        assert!(matches!(
+            WaitPredicate::new(Some("exited".into()), None, Some("t8".into()), None),
+            Err(error) if error.starts_with(USAGE_PREFIX)
+        ));
+    }
+
+    // keeps: decision #328 (current state satisfies the wait without another append)
+    #[test]
+    fn an_already_matching_state_needs_no_new_page() {
+        let mut seat = seat();
+        seat.state.activity = Activity::Active;
+        seat.state.grade = Grade::Reported;
+        let selector = seat.record.id.to_string();
+        let (mut client, task) = peer(move |mut reader, mut writer| {
+            assert!(matches!(request(&mut reader), GuiAction::ListSeats));
+            reply(&mut writer, GuiReply::Seats(vec![seat]));
+            let mut extra = String::new();
+            assert_eq!(
+                reader.read_line(&mut extra).unwrap(),
+                0,
+                "matched wait requested another page"
+            );
+        });
+        let rows = wait_for_seat(
+            &mut client,
+            &selector,
+            &predicate(None),
+            Duration::from_secs(30),
+            || Duration::ZERO,
+        )
+        .unwrap();
+        assert_eq!(rows[0]["data"]["grade"], "reported");
+        drop(client);
+        task.join().unwrap();
+    }
+
+    // keeps: decision #328 (recheck current state, exact subagent id, activity and grade)
+    #[test]
+    fn page_progress_rechecks_the_exact_current_subagent_predicate() {
+        let mut seat = seat();
+        let selector = seat.record.id.to_string();
+        let (mut client, task) = peer(move |mut reader, mut writer| {
+            for (index, (id, activity, grade)) in [
+                ("other", Activity::Active, Grade::Reported),
+                ("t8", Activity::Active, Grade::Inferred),
+                ("t8", Activity::Idle, Grade::Reported),
+                ("t8", Activity::Active, Grade::Reported),
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                assert!(matches!(request(&mut reader), GuiAction::ListSeats));
+                seat.state.subagents = vec![SubagentRow {
+                    id: id.into(),
+                    title: "worker".into(),
+                    activity,
+                    grade,
+                }];
+                reply(&mut writer, GuiReply::Seats(vec![seat.clone()]));
+                if index == 3 {
+                    break;
+                }
+                let GuiAction::EventsRead {
+                    id,
+                    stream,
+                    after,
+                    wait_ms,
+                    ..
+                } = request(&mut reader)
+                else {
+                    panic!("expected waiting page")
+                };
+                assert_eq!(stream, format!("seat-{}", seat.record.id));
+                assert_eq!(after, index as u64);
+                assert_eq!(wait_ms, Some(30_000));
+                reply(
+                    &mut writer,
+                    GuiReply::EventsRead {
+                        op: id,
+                        events: vec![],
+                        stream,
+                        next: Some(after + 1),
+                        through: after + 1,
+                    },
+                );
+            }
+        });
+        let rows = wait_for_seat(
+            &mut client,
+            &selector,
+            &predicate(Some("t8")),
+            Duration::from_secs(30),
+            || Duration::ZERO,
+        )
+        .unwrap();
+        assert_eq!(rows[0]["data"]["subagent"], "t8");
+        drop(client);
+        task.join().unwrap();
+    }
+
+    // keeps: decision #328 (empty waiting page preserves cursor; seat wait reports timeout)
+    #[test]
+    fn an_empty_page_at_the_injected_deadline_is_a_timeout() {
+        let mut seat = seat();
+        seat.state.activity = Activity::Idle;
+        let selector = seat.record.id.to_string();
+        let now = Arc::new(AtomicU64::new(0));
+        let clock = now.clone();
+        let (mut client, task) = peer(move |mut reader, mut writer| {
+            assert!(matches!(request(&mut reader), GuiAction::ListSeats));
+            reply(&mut writer, GuiReply::Seats(vec![seat]));
+            let GuiAction::EventsRead { id, after, .. } = request(&mut reader) else {
+                panic!("expected waiting page")
+            };
+            clock.store(30_000, Ordering::SeqCst);
+            reply(
+                &mut writer,
+                GuiReply::EventsRead {
+                    op: id,
+                    events: vec![],
+                    stream: String::new(),
+                    next: None,
+                    through: after,
+                },
+            );
+        });
+        let error = wait_for_seat(
+            &mut client,
+            &selector,
+            &predicate(None),
+            Duration::from_secs(30),
+            || Duration::from_millis(now.load(Ordering::SeqCst)),
+        )
+        .unwrap_err();
+        let failure = classify(&error);
+        assert_eq!((failure.kind, failure.exit), ("timeout", 3));
+        drop(client);
+        task.join().unwrap();
+    }
+
+    // keeps: decision #328 (screen fallback uses a bounded page wait when no frame event exists)
+    #[test]
+    fn text_wait_rechecks_the_screen_after_an_empty_fallback_page() {
+        let seat = seat();
+        let selector = seat.record.id.to_string();
+        let (mut client, task) = peer(move |mut reader, mut writer| {
+            for found in [false, true] {
+                assert!(matches!(request(&mut reader), GuiAction::ListSeats));
+                reply(&mut writer, GuiReply::Seats(vec![seat.clone()]));
+                let GuiAction::Screen { id, .. } = request(&mut reader) else {
+                    panic!("expected screen")
+                };
+                reply(
+                    &mut writer,
+                    GuiReply::Screen {
+                        op: id,
+                        screen: bbt_proto::gui::SeatScreen {
+                            seat: seat.record.id,
+                            generation: 1,
+                            rows: vec![if found { "marker" } else { "" }.into()],
+                            cursor: (0, 0),
+                            modes: 0,
+                            title: String::new(),
+                            cols: 80,
+                            sequence: u64::from(found),
+                            cursor_style: Value::Null,
+                            cells: None,
+                        },
+                    },
+                );
+                if found {
+                    break;
+                }
+                let GuiAction::EventsRead {
+                    id, after, wait_ms, ..
+                } = request(&mut reader)
+                else {
+                    panic!("expected waiting page")
+                };
+                assert_eq!(wait_ms, Some(200));
+                reply(
+                    &mut writer,
+                    GuiReply::EventsRead {
+                        op: id,
+                        events: vec![],
+                        stream: String::new(),
+                        next: None,
+                        through: after,
+                    },
+                );
+            }
+        });
+        let predicate = WaitPredicate::new(None, Some("^marker$".into()), None, None).unwrap();
+        wait_for_seat(
+            &mut client,
+            &selector,
+            &predicate,
+            Duration::from_secs(30),
+            || Duration::ZERO,
+        )
+        .unwrap();
+        drop(client);
+        task.join().unwrap();
     }
 }
 
