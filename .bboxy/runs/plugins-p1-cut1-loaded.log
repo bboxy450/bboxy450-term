@@ -1,0 +1,1413 @@
+P-1 cut 1 loaded deadline regression. Source f584df9aedef9b140594bad535dc60f1e365c37c; exact test binary hash and per-invocation process snapshots follow.
+Two cargo test --no-run builds were intentional load generators, stopped only after 10/10 passed; their -15 exits are not build/test verification results.
+
+
+FILE state.json SHA256 91049c7085e3e8e4935df3715c520348b1da4db9d9aed87083381cf6622cd0ad
+{
+  "source": "f584df9aedef9b140594bad535dc60f1e365c37c",
+  "test": "deadline_failure_is_named_and_another_plugin_job_remains_independent",
+  "binary": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/cut1-target/debug/deps/plugin_registry-683514405fee7b39",
+  "binary_sha256": "e39d00aab46d5d2d011d9390376e99c0a4a58668ae43ed6e1f5d49158314a4f6",
+  "driver_pid": 33126,
+  "builds": [
+    {
+      "label": "a",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--lib",
+        "--no-run",
+        "--locked",
+        "--offline"
+      ],
+      "pid": 33142,
+      "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/deadline-load-sa6pctp5/build-a-target",
+      "started": 1792948304.494493,
+      "jobs": 2,
+      "exit": -15,
+      "stop": "intentional load-generator stop after experiment, not a test/build verdict",
+      "lsof_exit": 1,
+      "target_removed": true
+    },
+    {
+      "label": "b",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--tests",
+        "--no-run",
+        "--locked",
+        "--offline"
+      ],
+      "pid": 33143,
+      "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/deadline-load-sa6pctp5/build-b-target",
+      "started": 1792948304.496093,
+      "jobs": 2,
+      "exit": -15,
+      "stop": "intentional load-generator stop after experiment, not a test/build verdict",
+      "lsof_exit": 1,
+      "target_removed": true
+    }
+  ],
+  "runs": [
+    {
+      "n": 1,
+      "builds_before": [
+        null,
+        null
+      ],
+      "members_before": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33168,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "(rustc)"
+        },
+        {
+          "pid": 33169,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "(rustc)"
+        },
+        {
+          "pid": 33171,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33172,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33184,
+          "ppid": 33169,
+          "pgid": 33142,
+          "comm": "(clang)"
+        },
+        {
+          "pid": 33195,
+          "ppid": 33168,
+          "pgid": 33142,
+          "comm": "(clang)"
+        },
+        {
+          "pid": 33196,
+          "ppid": 33184,
+          "pgid": 33142,
+          "comm": "(ld)"
+        },
+        {
+          "pid": 33197,
+          "ppid": 33195,
+          "pgid": 33142,
+          "comm": "(ld)"
+        },
+        {
+          "pid": 33208,
+          "ppid": 33172,
+          "pgid": 33143,
+          "comm": "(xcrun)"
+        }
+      ],
+      "start": 1792948305.4781098,
+      "pid": 33227,
+      "exit": 0,
+      "builds_after": [
+        null,
+        null
+      ],
+      "members_after": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33246,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "(rustc)"
+        },
+        {
+          "pid": 33248,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33250,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33276,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/deadline-load-sa6pctp5/build-a-target/debug/build/libc-70101426781082a8/build-script-build"
+        },
+        {
+          "pid": 33277,
+          "ppid": 33246,
+          "pgid": 33143,
+          "comm": "(rust-objcopy)"
+        }
+      ],
+      "finished": 1792948306.044254
+    },
+    {
+      "n": 2,
+      "builds_before": [
+        null,
+        null
+      ],
+      "members_before": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33248,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33250,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33276,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/deadline-load-sa6pctp5/build-a-target/debug/build/libc-70101426781082a8/build-script-build"
+        },
+        {
+          "pid": 33280,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/deadline-load-sa6pctp5/build-b-target/debug/build/libc-70101426781082a8/build-script-build"
+        }
+      ],
+      "start": 1792948306.095618,
+      "pid": 33282,
+      "exit": 0,
+      "builds_after": [
+        null,
+        null
+      ],
+      "members_after": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33287,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33291,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33292,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33294,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        }
+      ],
+      "finished": 1792948306.686603
+    },
+    {
+      "n": 3,
+      "builds_before": [
+        null,
+        null
+      ],
+      "members_before": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33287,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33291,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33292,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33294,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        }
+      ],
+      "start": 1792948306.743629,
+      "pid": 33303,
+      "exit": 0,
+      "builds_after": [
+        null,
+        null
+      ],
+      "members_after": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33292,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33294,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33311,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33314,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        }
+      ],
+      "finished": 1792948307.371467
+    },
+    {
+      "n": 4,
+      "builds_before": [
+        null,
+        null
+      ],
+      "members_before": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33292,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33294,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33311,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33314,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "(rustc)"
+        },
+        {
+          "pid": 33326,
+          "ppid": 33314,
+          "pgid": 33143,
+          "comm": "(clang)"
+        }
+      ],
+      "start": 1792948307.444195,
+      "pid": 33332,
+      "exit": 0,
+      "builds_after": [
+        null,
+        null
+      ],
+      "members_after": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33292,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33294,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33334,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33338,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        }
+      ],
+      "finished": 1792948307.9215171
+    },
+    {
+      "n": 5,
+      "builds_before": [
+        null,
+        null
+      ],
+      "members_before": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33292,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33294,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33334,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33341,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        }
+      ],
+      "start": 1792948307.9670558,
+      "pid": 33344,
+      "exit": 0,
+      "builds_after": [
+        null,
+        null
+      ],
+      "members_after": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33292,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33294,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33334,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33366,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/deadline-load-sa6pctp5/build-a-target/debug/build/generic-array-f681ee8e3d2f1477/build-script-build"
+        }
+      ],
+      "finished": 1792948308.501832
+    },
+    {
+      "n": 6,
+      "builds_before": [
+        null,
+        null
+      ],
+      "members_before": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33292,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33294,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33334,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33366,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/deadline-load-sa6pctp5/build-a-target/debug/build/generic-array-f681ee8e3d2f1477/build-script-build"
+        }
+      ],
+      "start": 1792948308.560808,
+      "pid": 33372,
+      "exit": 0,
+      "builds_after": [
+        null,
+        null
+      ],
+      "members_after": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33292,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33294,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33334,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33373,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        }
+      ],
+      "finished": 1792948309.076203
+    },
+    {
+      "n": 7,
+      "builds_before": [
+        null,
+        null
+      ],
+      "members_before": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33292,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33294,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33334,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33373,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        }
+      ],
+      "start": 1792948309.1351948,
+      "pid": 33382,
+      "exit": 0,
+      "builds_after": [
+        null,
+        null
+      ],
+      "members_after": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33292,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33294,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33373,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33388,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        }
+      ],
+      "finished": 1792948309.6939971
+    },
+    {
+      "n": 8,
+      "builds_before": [
+        null,
+        null
+      ],
+      "members_before": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33292,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33294,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33373,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33388,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        }
+      ],
+      "start": 1792948309.775774,
+      "pid": 33398,
+      "exit": 0,
+      "builds_after": [
+        null,
+        null
+      ],
+      "members_after": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33373,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33388,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33402,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33424,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        }
+      ],
+      "finished": 1792948310.518736
+    },
+    {
+      "n": 9,
+      "builds_before": [
+        null,
+        null
+      ],
+      "members_before": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33373,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33388,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33402,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33424,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        }
+      ],
+      "start": 1792948310.5825868,
+      "pid": 33429,
+      "exit": 0,
+      "builds_after": [
+        null,
+        null
+      ],
+      "members_after": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33373,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33388,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33433,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33436,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        }
+      ],
+      "finished": 1792948311.132034
+    },
+    {
+      "n": 10,
+      "builds_before": [
+        null,
+        null
+      ],
+      "members_before": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33373,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33388,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33433,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33436,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33451,
+          "ppid": 33436,
+          "pgid": 33143,
+          "comm": "(clang)"
+        },
+        {
+          "pid": 33452,
+          "ppid": 33451,
+          "pgid": 33143,
+          "comm": "(ld)"
+        }
+      ],
+      "start": 1792948311.1903071,
+      "pid": 33458,
+      "exit": 0,
+      "builds_after": [
+        null,
+        null
+      ],
+      "members_after": [
+        {
+          "pid": 33142,
+          "ppid": 33126,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33143,
+          "ppid": 33126,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+        },
+        {
+          "pid": 33388,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        },
+        {
+          "pid": 33467,
+          "ppid": 33143,
+          "pgid": 33143,
+          "comm": "(rustc)"
+        },
+        {
+          "pid": 33483,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "(build-script-bui)"
+        },
+        {
+          "pid": 33485,
+          "ppid": 33142,
+          "pgid": 33142,
+          "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+        }
+      ],
+      "finished": 1792948311.7054121
+    }
+  ],
+  "load_ready": [
+    {
+      "pid": 33142,
+      "ppid": 33126,
+      "pgid": 33142,
+      "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+    },
+    {
+      "pid": 33143,
+      "ppid": 33126,
+      "pgid": 33143,
+      "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+    },
+    {
+      "pid": 33168,
+      "ppid": 33142,
+      "pgid": 33142,
+      "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+    },
+    {
+      "pid": 33169,
+      "ppid": 33142,
+      "pgid": 33142,
+      "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+    },
+    {
+      "pid": 33171,
+      "ppid": 33143,
+      "pgid": 33143,
+      "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+    },
+    {
+      "pid": 33172,
+      "ppid": 33143,
+      "pgid": 33143,
+      "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+    },
+    {
+      "pid": 33182,
+      "ppid": 33169,
+      "pgid": 33142,
+      "comm": "(rustc)"
+    }
+  ],
+  "test_series": "10/10 passed while both cargo builds remained active",
+  "members_before_stop": [
+    {
+      "pid": 33142,
+      "ppid": 33126,
+      "pgid": 33142,
+      "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+    },
+    {
+      "pid": 33143,
+      "ppid": 33126,
+      "pgid": 33143,
+      "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo"
+    },
+    {
+      "pid": 33388,
+      "ppid": 33143,
+      "pgid": 33143,
+      "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+    },
+    {
+      "pid": 33485,
+      "ppid": 33142,
+      "pgid": 33142,
+      "comm": "(rustc)"
+    },
+    {
+      "pid": 33486,
+      "ppid": 33143,
+      "pgid": 33143,
+      "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+    },
+    {
+      "pid": 33488,
+      "ppid": 33142,
+      "pgid": 33142,
+      "comm": "/Users/feral/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+    },
+    {
+      "pid": 33499,
+      "ppid": 33486,
+      "pgid": 33143,
+      "comm": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang"
+    }
+  ],
+  "owned_groups_after": [],
+  "seen_build_pids": [
+    33142,
+    33143,
+    33160,
+    33162,
+    33168,
+    33169,
+    33171,
+    33172,
+    33182,
+    33184,
+    33195,
+    33196,
+    33197,
+    33208,
+    33246,
+    33248,
+    33250,
+    33276,
+    33277,
+    33280,
+    33287,
+    33291,
+    33292,
+    33294,
+    33311,
+    33314,
+    33326,
+    33334,
+    33338,
+    33341,
+    33366,
+    33373,
+    33388,
+    33402,
+    33424,
+    33433,
+    33436,
+    33451,
+    33452,
+    33467,
+    33483,
+    33485,
+    33486,
+    33488,
+    33499
+  ],
+  "logs_sha256": {
+    "test-05.log": "a27303d7caeee40c6e9b9eee33a81f8da06abbb445159ce82a793e845bb55303",
+    "test-10.log": "2ec304bc5d017e8f9c9b3612072c9609e6e7aa14a91958895188142456c98892",
+    "test-04.log": "69928cf2c2f00475699f4d10bbe865404c05f973df5d35ac7087de4183613553",
+    "test-06.log": "639ae5952880d3973db7f68db3b0be3df06a4064d9848623573062825df517be",
+    "test-07.log": "0087c596ab59eaf9b2d16dffde0de41dcf9d6472fc21897acf04ddb73792ffa1",
+    "test-03.log": "f58ba66210349614a3007fc831cdbf4db6e60a583dc09c87946ae1c5e75879d6",
+    "test-02.log": "5c3298a82f731f6613f1241f37ff32163d62027772c2d4589d24f4ba92cbe274",
+    "target-a-lsof.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "test-01.log": "90b3ca199a9cdb233b3e1b0398e817750f89ec4e3b2d229dd87c802d8cc81816",
+    "test-09.log": "2ec304bc5d017e8f9c9b3612072c9609e6e7aa14a91958895188142456c98892",
+    "test-08.log": "a9687049123253f1ca2ea57ef11c228535b6c176cd3f9855699cd68053209d7d",
+    "target-b-lsof.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build-b.log": "1490bf493c3b20755d64618d1b20f35799ea6581a1bd2f7315f31817eaa724a6",
+    "build-a.log": "dd57e333978a6a40b15a9f532a99eb1cc9037d8375bf825a9c726ac676f478f6"
+  },
+  "finished": 1792948312.503895
+}
+
+
+FILE cut1-loaded.py SHA256 4647a5531f47c015108356f518513eb386a44a262e91683f5ff5f99cb832e346
+import hashlib,json,os,re,shutil,signal,subprocess,tempfile,time
+from pathlib import Path
+p=Path(__file__).parent
+repo=Path('/Users/feral/mydev/bboxy450-term-exec5')
+name='deadline_failure_is_named_and_another_plugin_job_remains_independent'
+log=(p/'cut1-host-3.log').read_text()
+binary=Path(re.search(r'Running tests/plugin_registry.rs \(([^)]+)\)',log).group(1))
+assert not subprocess.check_output(['git','diff','HEAD','--name-only'],cwd=repo,text=True).strip()
+run=Path(tempfile.mkdtemp(prefix='deadline-load-',dir=p))
+(p/'cut1-load-current').write_text(str(run)+'\n')
+state={'source':subprocess.check_output(['git','rev-parse','HEAD'],cwd=repo,text=True).strip(),'test':name,'binary':str(binary),'binary_sha256':hashlib.sha256(binary.read_bytes()).hexdigest(),'driver_pid':os.getpid(),'builds':[],'runs':[]}
+workers=[];handles=[];seen=set()
+def save():
+ (run/'state.json').write_text(json.dumps(state,indent=2)+'\n')
+def members():
+ rows=subprocess.check_output(['ps','-axo','pid=,ppid=,pgid=,comm='],text=True).splitlines();out=[]
+ groups={proc.pid for proc in workers}
+ for line in rows:
+  fields=line.strip().split(None,3)
+  if len(fields)==4 and int(fields[2]) in groups:
+   record={'pid':int(fields[0]),'ppid':int(fields[1]),'pgid':int(fields[2]),'comm':fields[3]};out.append(record);seen.add(record['pid'])
+ return out
+try:
+ for label,package,target_kind in [('a','bbt-mux','--lib'),('b','bboxy450-term','--tests')]:
+  target=run/f'build-{label}-target'
+  env=dict(os.environ,RUSTC_WRAPPER='',RUSTC_WORKSPACE_WRAPPER='',CARGO_BUILD_JOBS='2',CARGO_NET_OFFLINE='true',BBOXY_TEST_CUSTODY='memory',CARGO_TARGET_DIR=str(target),CARGO_PROFILE_DEV_DEBUG='0',CARGO_PROFILE_TEST_DEBUG='0')
+  args=['cargo','test','-p',package,target_kind,'--no-run','--locked','--offline']
+  output=(run/f'build-{label}.log').open('w');handles.append(output)
+  child=subprocess.Popen(args,env=env,stdout=output,stderr=subprocess.STDOUT,cwd=repo,start_new_session=True)
+  workers.append(child);state['builds'].append({'label':label,'argv':args,'pid':child.pid,'target':str(target),'started':time.time(),'jobs':2});save()
+  print(f'load {label} PID {child.pid}',flush=True)
+ guard=time.monotonic()+30
+ while True:
+  current=members()
+  ready=all(proc.poll() is None and any(x['pgid']==proc.pid and Path(x['comm']).name=='rustc' for x in current) for proc in workers)
+  if ready:break
+  if any(proc.poll() is not None for proc in workers):raise RuntimeError('load build exited before the test series')
+  if time.monotonic()>guard:raise RuntimeError('30 s load-start hang guard; inspect logs')
+  time.sleep(0.05)
+ state['load_ready']=current;save()
+ for i in range(1,11):
+  before=[proc.poll() for proc in workers]
+  if before != [None,None]:raise RuntimeError('both cargo builds must remain running for every test')
+  state['runs'].append({'n':i,'builds_before':before,'members_before':members(),'start':time.time()});save()
+  args=[str(binary),name,'--exact','--test-threads=1']
+  with (run/f'test-{i:02d}.log').open('w') as output:
+   child=subprocess.Popen(args,cwd=repo,stdout=output,stderr=subprocess.STDOUT,start_new_session=True)
+   state['runs'][-1]['pid']=child.pid;save()
+   try:code=child.wait(timeout=30)
+   except subprocess.TimeoutExpired:
+    os.killpg(child.pid,signal.SIGKILL);child.wait();raise RuntimeError('30 s test hang guard fired')
+  after=[proc.poll() for proc in workers]
+  state['runs'][-1].update(exit=code,builds_after=after,members_after=members(),finished=time.time());save()
+  print(f'exact test {i}/10 EXIT {code}; two builds active={after==[None,None]}',flush=True)
+  if code:raise RuntimeError(f'exact test {i} failed')
+  if after != [None,None]:raise RuntimeError('a load build ended during this invocation')
+ state['test_series']='10/10 passed while both cargo builds remained active'
+ assert hashlib.sha256(binary.read_bytes()).hexdigest()==state['binary_sha256']
+except BaseException as error:
+ state['error']=str(error);raise
+finally:
+ state['members_before_stop']=members();save()
+ for proc in workers:
+  if proc.poll() is None:os.killpg(proc.pid,signal.SIGTERM)
+ for entry,proc in zip(state['builds'],workers):
+  try:entry['exit']=proc.wait(timeout=30)
+  except subprocess.TimeoutExpired:
+   os.killpg(proc.pid,signal.SIGKILL);entry['exit']=proc.wait(timeout=30)
+  entry['stop']='intentional load-generator stop after experiment, not a test/build verdict'
+ for handle in handles:handle.close()
+ guard=time.monotonic()+30
+ while members():
+  if time.monotonic()>guard:raise RuntimeError('owned load process cleanup hang guard')
+  time.sleep(0.05)
+ state['owned_groups_after']=members();state['seen_build_pids']=sorted(seen)
+ for entry in state['builds']:
+  target=Path(entry['target'])
+  check=subprocess.run(['lsof','-nP','+D',str(target)],capture_output=True,text=True)
+  entry['lsof_exit']=check.returncode
+  (run/f"target-{entry['label']}-lsof.log").write_text(check.stdout+check.stderr)
+  if check.returncode!=1:raise RuntimeError('load target still open or lsof failed; retained')
+  shutil.rmtree(target);entry['target_removed']=True
+ state['logs_sha256']={f.name:hashlib.sha256(f.read_bytes()).hexdigest() for f in run.glob('*.log')};state['finished']=time.time();save()
+ print('load experiment ended; own groups empty and both load targets removed',flush=True)
+
+
+FILE build-a.log SHA256 dd57e333978a6a40b15a9f532a99eb1cc9037d8375bf825a9c726ac676f478f6
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling libc v0.2.191
+   Compiling syn v2.0.119
+   Compiling cfg-if v1.0.5
+   Compiling typenum v1.20.1
+   Compiling version_check v0.9.5
+   Compiling generic-array v0.14.7
+   Compiling getrandom v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling syn v3.0.9
+   Compiling zeroize_derive v1.5.0
+   Compiling zeroize v1.9.1
+   Compiling crypto-common v0.1.7
+   Compiling serde_core v1.0.229
+   Compiling subtle v2.6.1
+   Compiling const-oid v0.9.6
+
+
+FILE build-b.log SHA256 1490bf493c3b20755d64618d1b20f35799ea6581a1bd2f7315f31817eaa724a6
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling libc v0.2.191
+   Compiling syn v2.0.119
+   Compiling cfg-if v1.0.5
+   Compiling serde_core v1.0.229
+   Compiling syn v3.0.9
+   Compiling typenum v1.20.1
+   Compiling zeroize_derive v1.5.0
+   Compiling zeroize v1.9.1
+   Compiling version_check v0.9.5
+   Compiling generic-array v0.14.7
+
+
+FILE target-a-lsof.log SHA256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+
+
+FILE target-b-lsof.log SHA256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+
+
+FILE test-01.log SHA256 90b3ca199a9cdb233b3e1b0398e817750f89ec4e3b2d229dd87c802d8cc81816
+
+running 1 test
+test deadline_failure_is_named_and_another_plugin_job_remains_independent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.47s
+
+
+
+FILE test-02.log SHA256 5c3298a82f731f6613f1241f37ff32163d62027772c2d4589d24f4ba92cbe274
+
+running 1 test
+test deadline_failure_is_named_and_another_plugin_job_remains_independent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.52s
+
+
+
+FILE test-03.log SHA256 f58ba66210349614a3007fc831cdbf4db6e60a583dc09c87946ae1c5e75879d6
+
+running 1 test
+test deadline_failure_is_named_and_another_plugin_job_remains_independent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.56s
+
+
+
+FILE test-04.log SHA256 69928cf2c2f00475699f4d10bbe865404c05f973df5d35ac7087de4183613553
+
+running 1 test
+test deadline_failure_is_named_and_another_plugin_job_remains_independent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.41s
+
+
+
+FILE test-05.log SHA256 a27303d7caeee40c6e9b9eee33a81f8da06abbb445159ce82a793e845bb55303
+
+running 1 test
+test deadline_failure_is_named_and_another_plugin_job_remains_independent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.46s
+
+
+
+FILE test-06.log SHA256 639ae5952880d3973db7f68db3b0be3df06a4064d9848623573062825df517be
+
+running 1 test
+test deadline_failure_is_named_and_another_plugin_job_remains_independent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.45s
+
+
+
+FILE test-07.log SHA256 0087c596ab59eaf9b2d16dffde0de41dcf9d6472fc21897acf04ddb73792ffa1
+
+running 1 test
+test deadline_failure_is_named_and_another_plugin_job_remains_independent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.48s
+
+
+
+FILE test-08.log SHA256 a9687049123253f1ca2ea57ef11c228535b6c176cd3f9855699cd68053209d7d
+
+running 1 test
+test deadline_failure_is_named_and_another_plugin_job_remains_independent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.62s
+
+
+
+FILE test-09.log SHA256 2ec304bc5d017e8f9c9b3612072c9609e6e7aa14a91958895188142456c98892
+
+running 1 test
+test deadline_failure_is_named_and_another_plugin_job_remains_independent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.44s
+
+
+
+FILE test-10.log SHA256 2ec304bc5d017e8f9c9b3612072c9609e6e7aa14a91958895188142456c98892
+
+running 1 test
+test deadline_failure_is_named_and_another_plugin_job_remains_independent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.44s
+
+
+
+FILE cut1-range-diff.log SHA256 f848050504b0d1894c12f1e0a48f1e7f7aafd58df82a3b95be9d2781c71c196c
+1:  518bf8b7 = 1:  0f8261d1 Add account-owned plugin discovery, trust and activation
+2:  f584df9a = 2:  004ebd85 Keep production plugin deadlines fixed and inject test budgets
+
+
+FILE cut1-source-comparison.log SHA256 103a14a9b1c0a13626b10135beea3ebd0db1c063de5eb2fccc3a0c5136922ae6
+Upstream comparison uses old base b1887c5a, not the unlanded feature head.
+Upstream changes to own paths: none
+Loaded-source vs gate-source own blobs: git diff --exit-code = 0
