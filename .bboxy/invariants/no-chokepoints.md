@@ -15,7 +15,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: decision }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-24T19:32:03Z"
-updated: "2026-10-25T16:37:17Z"
+updated: "2026-10-25T23:46:08Z"
 ---
 # No bottlenecks and no chokepoints
 
@@ -81,7 +81,9 @@ yielded after a minute of compile), the claim moved out of the channel:
 three slots at 25 GiB free or more, else two, dead-owner slots reclaimed,
 exit 75 when all are taken (retry later). The SLOT lines stay as notes for
 humans and detectors and still name their slot number, but a channel line no
-longer grants or loses a slot; the directory does. For a gate started from a
+longer grants or loses a slot; the directory does, and since 2026-10-25 the
+line is posted by the script that made the claim, never typed by an agent, so
+the channel cannot disagree with the lock ([[landing]] §4). For a gate started from a
 tree older than 026a07af, which has no lock, the fallback stands: the later
 TAKEN line by message time yields within a minute and re-queues, ties broken
 by the lexicographically greater key yielding.

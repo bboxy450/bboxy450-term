@@ -14,7 +14,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[seats-967-frame]]", rel: constrains }
 created: "2026-10-25T16:22:41Z"
-updated: "2026-10-25T22:53:35Z"
+updated: "2026-10-25T23:46:08Z"
 ---
 # Landing
 
@@ -58,7 +58,7 @@ Of 36.9 cargo hours across 175 gate logs, compile was 52 % (the dependency cache
 
 ## 4. Slots
 
-The atomic claim stays as it is (`mkdir /tmp/bboxy450-gate-slot-<n>`, exit 75 when none is free): three at 25 GiB free or more, two below. Slots are for presubmits only; the postsubmit runs outside them. The channel line stays a note. The pre-check before the slot is retired: presubmit **is** the check, and it runs once.
+The atomic claim stays as it is (`mkdir /tmp/bboxy450-gate-slot-<n>`, exit 75 when none is free): three at 25 GiB free or more, two below. Slots are for presubmits only; the postsubmit runs outside them. **The notice comes from the claim, never from a hand** (Creativity, 2026-10-25: hand-typed slot lines disagreed with the claim directories at least three times in a day while the directories were right every time): the code that takes and releases the slot, `ci-local.sh` and `land.sh`, posts `SLOT <n> TAKEN <pid> <sha>` at the `mkdir` and `SLOT <n> RELEASED <pid> <exit>` at its exit trap, the same way `land.sh` posts `LANDED`; agents stop typing slot lines. In the product's own messaging these are the `SlotClaimed` and `SlotReleased` events of [[messaging-attention]]. The pre-check before the slot is retired: presubmit **is** the check, and it runs once.
 
 ## 5. Landing: `scripts/land.sh`
 
