@@ -127,4 +127,3 @@ test store::sqlite::tests::concurrent_open_and_read_then_write_share_one_databas
 test index::tests::sibling_build_writes_do_not_dirty_watch_or_trigger_reconciliation ... ok
 
 test result: ok. 119 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.73s
-
