@@ -32,7 +32,7 @@ fi
 sh scripts/layering.sh
 cargo build --workspace --locked
 cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo test --workspace --locked
+sh scripts/quarantine-test.sh --workspace --locked
 sh scripts/ui-lint.sh
 cargo build -p bboxy450-term --locked
 smoke_bin="${CARGO_TARGET_DIR:-target}/debug/bboxy450-term"
