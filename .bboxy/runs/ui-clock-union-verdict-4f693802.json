@@ -1,0 +1,482 @@
+{
+  "source": "4f6938023fe1c6f088c246a5e227e4868071a372",
+  "base": "0eeabc95ac831aa04328b04c70a057a09b0d8f23",
+  "branch": "velvet-rim-scripts",
+  "authorizations": [
+    "913e1988-6096-4a0d-8771-492c834bddf4",
+    "f8a30f70-e813-42c1-8257-86bbf9134dce"
+  ],
+  "source_inputs": {
+    ".bboxy/specs/e2e-script-map.md": "7d3aa0a1544382763dd99e7c989c961cbb1096f4e8bb684a452aba32ab6d21ba",
+    "crates/bboxy450-term/src/animation_clock.rs": "aa6924f18b9a1723d3f3d94c85da42c1f9d5e81b76fb9acd8837bd52596577c0",
+    "crates/bboxy450-term/src/ctl.rs": "49933d47a3d9e7ba4b9af2f1d11cde9e1220045320f55aaa7c2c468d1c65e3f2",
+    "crates/bboxy450-term/src/display_link.rs": "d0778cb1d0ef6818ad4969926d4610898ec2f8f9f218971745d3c55e2fe9929d",
+    "crates/bboxy450-term/src/gpu.rs": "3b11e77438368f7ccd5e6641fb3d241727a097a04f59f0ea54c093174f444ecb",
+    "crates/bboxy450-term/src/headless.rs": "55efba793e4fd4e6080396b233c1ee7a6ba170c4ae23557fa2d7c752b2d11b76",
+    "crates/bboxy450-term/src/main.rs": "54105cd327e025b743dbbfbb55eb50b8c7f502de75afe91f4d019ff35f2fb082",
+    "crates/bboxy450-term/src/scene.rs": "d57c9f13bb28903c8d80708028e289f17695c9e8438780f76934b3b5258f166d",
+    "crates/bboxy450-term/tests/ctl.rs": "42c947a30e9451a0886726f05d203657fc72db51bbc87559b93f60c1f91fa38e",
+    "crates/bboxy450-term/tests/headless.rs": "7773bc701babb1b61668fbedf335bb138b3c5a3869574a1d1b9dc4273e42dd39",
+    "crates/bbt-mux/src/gui_capture.rs": "5843095a501d1d84115963b5ad40cb56d7da5fca9eb4dce02b7b18948e6086c0",
+    "crates/bbt-mux/src/logic.rs": "a2b63646c806aaef3133ac1bdb5481e496af3373eb114713925ec245572b6e16",
+    "crates/bbt-proto/src/gui.rs": "d11083bb079e8ec4bf586bde1e18238aa12aa23ef8f56afe968b663fc25148ec",
+    "crates/bbt-proto/tests/ui_clock.rs": "99ba58318bc88766a252eb6c93aeac1c270114fafba92e47f4f584053c3a6da4",
+    "scripts/e2e/R1.sh": "6029635f3a82df89436f262fa54ff281d05098d4caacc4cd7f29a126a68c27c4",
+    "scripts/e2e/R3.sh": "8c73f32659a972475b79518ba05d03189d869c9dc4fa619646874e7d9286e4cc",
+    "scripts/e2e/R5.sh": "f238aae7b001ad057c52155d5ef826ad2f62fa7c7459a6f14a3ad6c1b9d50b16",
+    "scripts/e2e/rim_clock.py": "d47df4d6c3f44243a65a188b333756cc28d2591d7b645434b3451077de98a425"
+  },
+  "checks": {
+    "tests": {
+      "exit": 0,
+      "elapsed_s": 928.1516340419766,
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "bbt-proto",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bboxy450-term",
+        "--",
+        "--test-threads=2"
+      ],
+      "source": "4f6938023fe1c6f088c246a5e227e4868071a372",
+      "log": {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-proof/union-0ee-tests.log",
+        "bytes": 102635,
+        "sha256": "447cf04e5b0b50db1bf9c7813aee659ff5b9965e024744200b69459fd6cae8da"
+      },
+      "totals": {
+        "passed": 687,
+        "failed": 0,
+        "ignored": 20
+      }
+    },
+    "clippy": {
+      "exit": 0,
+      "elapsed_s": 68.41142054100055,
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--all-targets",
+        "-p",
+        "bbt-proto",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bboxy450-term",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "source": "4f6938023fe1c6f088c246a5e227e4868071a372",
+      "log": {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-proof/union-0ee-clippy.log",
+        "bytes": 11739,
+        "sha256": "bd6df49dae97372be9078b3a98543650e67bf5101d3002eaf37eba2bcc79a912"
+      }
+    },
+    "invariants": {
+      "exit": 0,
+      "elapsed_s": 316.00826800003415,
+      "command": [
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "source": "4f6938023fe1c6f088c246a5e227e4868071a372",
+      "log": {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-proof/union-0ee-invariants.log",
+        "bytes": 5225,
+        "sha256": "4f88a7689fc550ee6fe89cdea136b88ed71088242e5e53b466c0d54d8bee99c9"
+      },
+      "checks": 25,
+      "failed": 0,
+      "slow_skipped": 9
+    }
+  },
+  "clock_runtime": {
+    "status": {
+      "exit": 0,
+      "directory": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-722cafb186",
+      "binary": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-proof/bboxy450-term-union-4f693802",
+      "binary_sha256": "5b51964b1f326b7969247250aeb420709415067fb69392366ec639fe0804463d",
+      "source": "4f6938023fe1c6f088c246a5e227e4868071a372",
+      "private_account_retired": true
+    },
+    "binary": {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-proof/bboxy450-term-union-4f693802",
+      "bytes": 55192560,
+      "sha256": "5b51964b1f326b7969247250aeb420709415067fb69392366ec639fe0804463d"
+    },
+    "frames": {
+      "frozen": {
+        "clock": {
+          "frozen": true,
+          "revision": 1,
+          "time_ms": 244
+        },
+        "frame_seq": 8
+      },
+      "origin": {
+        "clock": {
+          "frozen": true,
+          "revision": 3,
+          "time_ms": 1144
+        },
+        "frame_seq": 75
+      },
+      "focused": {
+        "clock": {
+          "frozen": true,
+          "revision": 2,
+          "time_ms": 1144
+        },
+        "frame_seq": 71
+      },
+      "peak": {
+        "clock": {
+          "frozen": true,
+          "revision": 4,
+          "time_ms": 1594
+        },
+        "frame_seq": 81
+      },
+      "resumed": {
+        "clock": {
+          "frozen": false,
+          "revision": 5,
+          "time_ms": 1594
+        },
+        "frame_seq": 85
+      },
+      "live": {
+        "clock": {
+          "frozen": false,
+          "revision": 5,
+          "time_ms": 1653
+        },
+        "frame_seq": 88
+      }
+    },
+    "ready": {
+      "custody_backend": "file",
+      "mode": "headless",
+      "unattended": true,
+      "windows": 0
+    },
+    "captures": {
+      "frozen-a": {
+        "frame_presented_at": null,
+        "frame_seq": 76,
+        "occluded": false,
+        "offscreen": true,
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-722cafb186/frozen-a.png",
+        "rendered_at_ms": 1792938066845,
+        "seat": null,
+        "stale": false
+      },
+      "frozen-b": {
+        "frame_presented_at": null,
+        "frame_seq": 79,
+        "occluded": false,
+        "offscreen": true,
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-722cafb186/frozen-b.png",
+        "rendered_at_ms": 1792938066904,
+        "seat": null,
+        "stale": false
+      },
+      "peak-450": {
+        "frame_presented_at": null,
+        "frame_seq": 82,
+        "occluded": false,
+        "offscreen": true,
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-722cafb186/peak-450.png",
+        "rendered_at_ms": 1792938067037,
+        "seat": null,
+        "stale": false
+      },
+      "live": {
+        "frame_presented_at": null,
+        "frame_seq": 86,
+        "occluded": false,
+        "offscreen": true,
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-722cafb186/live.png",
+        "rendered_at_ms": 1792938067335,
+        "seat": null,
+        "stale": false
+      }
+    },
+    "panes_and_grid_unchanged": true,
+    "frozen_pngs_identical": true,
+    "halo": {
+      "roi": [
+        270,
+        437,
+        294,
+        489
+      ],
+      "changed": 1248,
+      "requirement": "450 ms swell paints beyond the 2 px resting outer rim, in the empty sidebar gap"
+    },
+    "peak_image_read": true,
+    "process_reap": {
+      "recorded_pids": [
+        75555,
+        75556,
+        75557,
+        75566,
+        75585
+      ],
+      "remaining": [],
+      "ps_exit": 1
+    },
+    "files": [
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-722cafb186/status.json",
+        "bytes": 376,
+        "sha256": "adff09c4e8aac92eaad4a85c2197736fead7304e6effd0e9705c54f2d1eb79f6"
+      },
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-722cafb186/frames.json",
+        "bytes": 981879,
+        "sha256": "59968babaff95910c01ad39d2a721098b6e4eede30e6eb10205acaaddd055091"
+      },
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-722cafb186/commands.json",
+        "bytes": 1852620,
+        "sha256": "dea3eebc08ca6c2d687208dece5e59d78ec7a698371ba162fbff8149fb530e7b"
+      },
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-722cafb186/halo-verdict.json",
+        "bytes": 172,
+        "sha256": "103b12158302064ffd8e6f77d850bb730a9f09b87ae0bf8055948bfa04cb423b"
+      },
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-722cafb186/owned-reap.json",
+        "bytes": 85,
+        "sha256": "82e7b2ce0cdbdc9252aca71d23d9b5791d9d5f1d6438f7fe5c4fee2e03459c73"
+      },
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-722cafb186/frozen-a.png",
+        "bytes": 99916,
+        "sha256": "d3d5b50ec5eb55d0942d3ea247de94b7e63fcad717e9510183abbeaafe16f6dc"
+      },
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-722cafb186/frozen-b.png",
+        "bytes": 99916,
+        "sha256": "d3d5b50ec5eb55d0942d3ea247de94b7e63fcad717e9510183abbeaafe16f6dc"
+      },
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-722cafb186/peak-450.png",
+        "bytes": 149874,
+        "sha256": "609d89a8f99c56b8d3815d617462bbb15b74580652f2c1a17b1531378d6129ac"
+      },
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-722cafb186/live.png",
+        "bytes": 149154,
+        "sha256": "0f067e6bb41c167d9d2105b56da26bcc04d868b6363e4dec1800be43d050915b"
+      },
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-722cafb186/app.log",
+        "bytes": 6736,
+        "sha256": "da697fcc2ad4c69578d732909a0087236246d9352275c15ac374cbf654e28d1f"
+      }
+    ]
+  },
+  "night": {
+    "pid": 77729,
+    "command": [
+      "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-proof/bboxy450-term-union-4f693802",
+      "e2e",
+      "night",
+      "--group",
+      "rim, swell and attention",
+      "--scripts",
+      "/Users/feral/mydev/bboxy450-term-exec6/scripts/e2e",
+      "--records",
+      "/Users/feral/mydev/bboxy450-term-exec6/target/rim-night-prototype-b3ae300f/records"
+    ],
+    "runtime": "/tmp/vcn-b3ae300f",
+    "binary_sha256": "5b51964b1f326b7969247250aeb420709415067fb69392366ec639fe0804463d",
+    "source": "4f6938023fe1c6f088c246a5e227e4868071a372",
+    "script_source": "4f6938023fe1c6f088c246a5e227e4868071a372",
+    "scripts": {
+      "R1.sh": "6029635f3a82df89436f262fa54ff281d05098d4caacc4cd7f29a126a68c27c4",
+      "R3.sh": "8c73f32659a972475b79518ba05d03189d869c9dc4fa619646874e7d9286e4cc",
+      "R5.sh": "f238aae7b001ad057c52155d5ef826ad2f62fa7c7459a6f14a3ad6c1b9d50b16",
+      "rim_clock.py": "d47df4d6c3f44243a65a188b333756cc28d2591d7b645434b3451077de98a425"
+    },
+    "actual_exit": 1,
+    "elapsed_s": 87.92057704203762,
+    "summary": {
+      "group": "rim, swell and attention",
+      "kind": "summary",
+      "partial": [
+        "R6"
+      ],
+      "passed": 4,
+      "red": [
+        "R2",
+        "R4"
+      ],
+      "state": "red",
+      "total": 6,
+      "tracked": [
+        "R6"
+      ],
+      "unwritten": []
+    },
+    "verdicts": {
+      "R1": {
+        "coverage": "full",
+        "evidence": "{\"promise\": \"R1\", \"verdict\": \"pass\", \"evidence\": \"/private/tmp/vcn-b3ae300f/e2eniVzh3d/R1/work/r1-clock-335645d9/verdict.json\", \"coverage_gaps\": []}",
+        "exit": 0,
+        "function": "R1",
+        "group": "rim, swell and attention",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      "R2": {
+        "coverage": null,
+        "evidence": "no script at /Users/feral/mydev/bboxy450-term-exec6/scripts/e2e/R2.sh",
+        "exit": null,
+        "function": "R2",
+        "group": "rim, swell and attention",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "untested"
+      },
+      "R3": {
+        "coverage": "full",
+        "evidence": "{\"promise\": \"R3\", \"verdict\": \"pass\", \"evidence\": \"/private/tmp/vcn-b3ae300f/e2eniVzh3d/R3/work/r3-clock-7768550e/verdict.json\", \"coverage_gaps\": []}",
+        "exit": 0,
+        "function": "R3",
+        "group": "rim, swell and attention",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      "R4": {
+        "coverage": null,
+        "evidence": "no script at /Users/feral/mydev/bboxy450-term-exec6/scripts/e2e/R4.sh",
+        "exit": null,
+        "function": "R4",
+        "group": "rim, swell and attention",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "untested"
+      },
+      "R5": {
+        "coverage": "full",
+        "evidence": "{\"promise\": \"R5\", \"verdict\": \"pass\", \"evidence\": \"/private/tmp/vcn-b3ae300f/e2eniVzh3d/R5/work/r5-clock-27bc3a52/verdict.json\", \"coverage_gaps\": []}",
+        "exit": 0,
+        "function": "R5",
+        "group": "rim, swell and attention",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      "R6": {
+        "coverage": "partial",
+        "evidence": "R6 recording: first line, one outstanding ID, replacement, muted sends=0, exact tab/pane completed frame; OS presentation unproven",
+        "exit": 0,
+        "function": "R6",
+        "group": "rim, swell and attention",
+        "kind": "e2e",
+        "missing": [
+          "a waiting seat posts one desktop notification",
+          "clicking it raises the window, switches space"
+        ],
+        "verdict": "pass"
+      }
+    },
+    "owned_app_reap": {
+      "pids": [
+        77732,
+        79153,
+        79273,
+        79705,
+        79867
+      ],
+      "ps_exit": 1,
+      "remaining": ""
+    },
+    "runtime_removed": true,
+    "wrapper_assertions_exit": 0,
+    "log": {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/rim-night-prototype-b3ae300f/night.log",
+      "bytes": 3588,
+      "sha256": "8b53b90cbe89e0422443e210839d8a81ca04c2087a16844c60a4931f02dbebdd"
+    },
+    "scope_note": "R1/R3/R5 are full. Accepted R6 is partial and tracked. R2/R4 are outside this brief and remain untested; the actual six-promise night is red/EXIT1.",
+    "ephemeral_note": "The standard night runner removes its temporary apps, private file accounts and per-promise galleries. Standalone diagnostic galleries and the final clock frame gallery remain in exec6; no private signing material is committed."
+  },
+  "superseded_check": {
+    "reason": "source superseded by explicit Oracle f8a30f70; rebase onto accepted 0eeabc95",
+    "source": "75297811f5e66e0a10d82a475a401d16f3b8c94c",
+    "recorded_owned_pids": [
+      145,
+      22153,
+      24051
+    ],
+    "cargo_pid": 145,
+    "signal": "SIGINT to recorded Cargo PID only",
+    "after_stop_ps_exit": 1,
+    "after_stop_rows": "",
+    "actual_result": {
+      "exit": -2,
+      "elapsed_s": 681.4081157080363,
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "bbt-proto",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bboxy450-term",
+        "--",
+        "--test-threads=2"
+      ]
+    },
+    "log": {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-proof/union-75297811-tests.log",
+      "bytes": 13291,
+      "sha256": "dfb9a370c2abb9a4e989cb3ff79d5b1aa720d4fb9811e52fdce75a30ad40afb3"
+    }
+  },
+  "cleanup": {
+    "owner": "Velvet Vulpine <EXECUTOR>",
+    "source": "4f6938023fe1c6f088c246a5e227e4868071a372",
+    "path": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-dev",
+    "allocated_bytes_retired": 2903302144,
+    "logical_bytes_retired": 2878406390,
+    "files_retired": 7430,
+    "deleted": true,
+    "retained_binary": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-proof/bboxy450-term-union-4f693802",
+    "retained_clock_gallery": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-722cafb186",
+    "retained_full_parity_gallery": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-parity-aad79a7abffb-1",
+    "generated_python_cache_removed": true,
+    "when": "2026-10-25T07:29:11-0700"
+  },
+  "original_full_gate": {
+    "source": "aad79a7abffb7bc00d6c1c92732d8e8dba179328",
+    "exit": 0,
+    "current_cases": 2240,
+    "required_geometry": 2136,
+    "geometry_mismatches": 0,
+    "pixel_reviews": 72,
+    "new_review_keys": 0,
+    "removed_review_keys": 0,
+    "log_sha256": "1027fe60527cc68a258952f7936702ae34f1e1c36c5ffe70675602b952bb82b8",
+    "report_sha256": "8e267e7f96828e4ae0f67854c75c3009379ab531fbe9358b367472d6a5b6ebc0",
+    "evidence": ".bboxy/runs/ui-clock-verdict-aad79a7a.json",
+    "attribution": "The full clean --parity gate ran on aad79a7a. Oracle913e1988 authorized a quick union check on current main instead of a second full gate. It was not rerun on 4f693802."
+  }
+}

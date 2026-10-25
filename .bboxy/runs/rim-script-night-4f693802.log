@@ -1,0 +1,20 @@
+ACTUAL NIGHT EXIT1; wrapper consistency assertions EXIT0. Source and installed scripts 4f6938023fe1c6f088c246a5e227e4868071a372; binary SHA256 5b51964b1f326b7969247250aeb420709415067fb69392366ec639fe0804463d
+{"group":"rim, swell and attention","kind":"night","root":"/private/tmp/vcn-b3ae300f/e2eniVzh3d"}
+{"custody_backend":"file","function":"R1","issued_by":"test-account:01M5SQ1VDYK8TKX4WRDHY3279S","kind":"app","mode":"headless","pid":77732,"role":"promise","run_dir":"/private/tmp/vcn-b3ae300f/e2eniVzh3d/R1/run","windows":0}
+{"coverage":"full","evidence":"{\"promise\": \"R1\", \"verdict\": \"pass\", \"evidence\": \"/private/tmp/vcn-b3ae300f/e2eniVzh3d/R1/work/r1-clock-335645d9/verdict.json\", \"coverage_gaps\": []}","exit":0,"function":"R1","group":"rim, swell and attention","kind":"e2e","missing":[],"verdict":"pass"}
+{"coverage":null,"evidence":"no script at /Users/feral/mydev/bboxy450-term-exec6/scripts/e2e/R2.sh","exit":null,"function":"R2","group":"rim, swell and attention","kind":"e2e","missing":[],"verdict":"untested"}
+{"custody_backend":"file","function":"R3","issued_by":"test-account:01M5SQ3SFX8ACF5VTFW6FFCNSM","kind":"app","mode":"headless","pid":79153,"role":"promise","run_dir":"/private/tmp/vcn-b3ae300f/e2eniVzh3d/R3/run","windows":0}
+{"coverage":"full","evidence":"{\"promise\": \"R3\", \"verdict\": \"pass\", \"evidence\": \"/private/tmp/vcn-b3ae300f/e2eniVzh3d/R3/work/r3-clock-7768550e/verdict.json\", \"coverage_gaps\": []}","exit":0,"function":"R3","group":"rim, swell and attention","kind":"e2e","missing":[],"verdict":"pass"}
+{"coverage":null,"evidence":"no script at /Users/feral/mydev/bboxy450-term-exec6/scripts/e2e/R4.sh","exit":null,"function":"R4","group":"rim, swell and attention","kind":"e2e","missing":[],"verdict":"untested"}
+{"custody_backend":"file","function":"R5","issued_by":"test-account:01M5SQ3YQ1WRX1X7YF8QGWKWVW","kind":"app","mode":"headless","pid":79273,"role":"promise","run_dir":"/private/tmp/vcn-b3ae300f/e2eniVzh3d/R5/run","windows":0}
+{"coverage":"full","evidence":"{\"promise\": \"R5\", \"verdict\": \"pass\", \"evidence\": \"/private/tmp/vcn-b3ae300f/e2eniVzh3d/R5/work/r5-clock-27bc3a52/verdict.json\", \"coverage_gaps\": []}","exit":0,"function":"R5","group":"rim, swell and attention","kind":"e2e","missing":[],"verdict":"pass"}
+{"custody_backend":"file","function":"R6","issued_by":"test-account:01M5SQ4CXQ9ZCS00GTX1X1WB7T","kind":"app","mode":"headless","pid":79705,"role":"promise","run_dir":"/private/tmp/vcn-b3ae300f/e2eniVzh3d/R6/run","windows":0}
+{"coverage":"partial","evidence":"R6 recording: first line, one outstanding ID, replacement, muted sends=0, exact tab/pane completed frame; OS presentation unproven","exit":0,"function":"R6","group":"rim, swell and attention","kind":"e2e","missing":["a waiting seat posts one desktop notification","clicking it raises the window, switches space"],"verdict":"pass"}
+{"custody_backend":"file","function":null,"issued_by":"test-account:01M5SQ4GDCQERE1FX7VJXKZD40","kind":"app","mode":"headless","pid":79867,"role":"records","run_dir":"/private/tmp/vcn-b3ae300f/e2eniVzh3d/records-app/run","windows":0}
+{"function":"R1","kind":"record","number":1,"path":"e2e/R1.md","tracked_by":null}
+{"function":"R2","kind":"record","number":2,"path":"e2e/R2.md","tracked_by":null}
+{"function":"R3","kind":"record","number":3,"path":"e2e/R3.md","tracked_by":null}
+{"function":"R4","kind":"record","number":4,"path":"e2e/R4.md","tracked_by":null}
+{"function":"R5","kind":"record","number":5,"path":"e2e/R5.md","tracked_by":null}
+{"function":"R6","kind":"record","number":8,"path":"e2e/R6.md","tracked_by":"01M5SQ4GY769R4D9H83F2R791T"}
+{"group":"rim, swell and attention","kind":"summary","partial":["R6"],"passed":4,"red":["R2","R4"],"state":"red","total":6,"tracked":["R6"],"unwritten":[]}
