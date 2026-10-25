@@ -1601,7 +1601,10 @@
             row('Signing', held ? 'held, fail closed; the terminal keeps running' : 'available', chip(held ? (CU.attempt === 'granted' ? 'signature pending' : 'held') : 'ready', held ? 'warn' : 'ok')),
             held ? el('div', { class: 'cu-hold', role: 'status' }, el('b', {}, 'Pending: ' + CU.hold.reason + '; signing held'),
               el('div', {}, 'Clear it with Unlock here or ', el('code', {}, 'bboxy450-term ctl identity unlock'), ': one interactive Keychain access, macOS shows its own dialog, then the no-dialog default returns.'),
-              el('div', { class: 'cu-act' }, CU.attempt === 'unknown' ? btn('Check result', 'open', 'primary') : CU.attempt === 'granted' ? null : btn(CU.attempt === 'pending' ? 'Waiting for macOS…' : 'Unlock', 'key', CU.attempt === 'pending' ? 'quiet' : 'primary'))) : null,
+              // a hold that remains after a known outcome keeps Unlock (one grant can return the local issuer while a separately
+              // certified device key stays held, Kestrel #280/#315); each click is a new explicit act with at most one interactive attempt.
+              // unknown offers only Check result: it reads the retained result for the same op and never reopens the dialog
+              el('div', { class: 'cu-act' }, CU.attempt === 'unknown' ? btn('Check result', 'open', 'primary') : btn(CU.attempt === 'pending' ? 'Waiting for macOS…' : 'Unlock', 'key', CU.attempt === 'pending' ? 'quiet' : 'primary'))) : null,
             at ? el('div', { class: 'cu-out ' + CU.attempt, role: 'status' }, el('b', {}, at[0]), ' · ' + at[1]) : null,
           ], null, 'custody'));
         }
