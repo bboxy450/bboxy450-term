@@ -931,7 +931,7 @@ if cfg.get('fail') and not after:
  if cfg.get('invariant'):
   print('invariant '+cfg['invariant']+': fail (exit 1)')
   if cfg.get('parity'):
-   report=pathlib.Path(os.environ['CARGO_TARGET_DIR'])/'parity/report.json'
+   report=pathlib.Path(os.environ['BBOXY_CARGO_TARGET_DIR'])/'parity/report.json'
    report.parent.mkdir(parents=True,exist_ok=True)
    report.write_text(json.dumps(cfg['parity']))
   raise SystemExit(1)

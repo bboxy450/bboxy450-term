@@ -573,9 +573,13 @@ with (pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR'])/'phase-calls').open('a
         cargo.write_text('''#!/usr/bin/env python3
 import json,os,pathlib,shutil,sys
 state=pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR']);args=sys.argv[1:]
+assert 'CARGO_TARGET_DIR' not in os.environ
+index=args.index('--target-dir')
+assert args[index+1]==os.environ['BBOXY_CARGO_TARGET_DIR']
+args=args[:index]+args[index+2:]
 with (state/'phase-cargo').open('a') as f:f.write(json.dumps(args)+'\\n')
 if args==['build','-p','bboxy450-term','--locked']:
- out=pathlib.Path(os.environ['CARGO_TARGET_DIR'])/'debug';out.mkdir(parents=True,exist_ok=True)
+ out=pathlib.Path(os.environ['BBOXY_CARGO_TARGET_DIR'])/'debug';out.mkdir(parents=True,exist_ok=True)
  shutil.copy2(state/'app',out/'bboxy450-term')
 ''')
         cargo.chmod(0o700)
