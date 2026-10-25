@@ -1,0 +1,23 @@
+R5h-idle: exact normal atomic CI handoff
+Owner Rook Ashwhisker <EXECUTOR>
+Authorization 5c8b8277-84d9-472d-9ec8-afea51fcd11b
+Exact handed-off/gated source 75c6f6ab4d2f8d33d2dbb686fb5c6c2aa4fdd98b
+Branch rook-r5h-idle; own writing worktree /Users/feral/mydev/bboxy450-term-rook
+Command sh scripts/ci-local.sh; clean detached checkout, one private reused dev cache, jobs2, O1/debug assertions, debug0, direct compiler, memory fixture custody. Atomic slot 2; claim c93719df-3ef7-4cf9-a0ad-0126d97479d3
+Actual gate EXIT 0, all gates passed; elapsed 1607.6485739169875 s
+Raw CI /private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-idle-brn88x88/ci.log SHA256 e92d03fdd2d9f2c00585422be503b865a407ec2a6128e99a7821712c769edb38
+Worktree after ''
+Default invariant footer ['invariants: 23 checks, 0 failures, 9 slow checks skipped']
+No unique-test total inferred across repeated invariant commands.
+Cleanup {"allocated_bytes_removed": 3960242176, "free_after": 30539522048, "own_target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-idle-brn88x88/target"}
+Retained own binary {"path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-idle-brn88x88/ci-app-bboxy450-term", "sha256": "724cfd621b1b6b74dccb980c11fbc9d258e4b7bea3279aceb4976de6d38c93a7"}
+Focused proof r5h-idle-focused.log: red exact stale-tick assertion EXIT101, then final binary suite103/0, strict all-target workspace Clippy0. Compatibility/compiler and missing-app-artifact preparations are disclosed, not waived.
+crates/bboxy450-term/src/display_link.rs:40 and :408 — source-aware wake_action and deterministic stale-tick regression; inactive tick/empty wakes cannot request a display frame. Real/mixed data remains an invalidation; active tick renders without rearming.
+crates/bboxy450-term/src/main.rs:2527/:2934/:3457 — source IDs retained at Wake, bootstrap and frame drain; data consumed before its queued Wake still requests a drawable; source/request/frame attribution is bounded and has no UI IO.
+crates/bboxy450-term/src/stall.rs:161/:241/:607/:847 — atomically exposed source counters and named overflow, independent pending bits and elapsed time; settle line prints these with frame/callback/completed-GPU counts; headless bool API preserved.
+crates/bboxy450-term/src/stall/load.rs:1851 — one test-literal default only. Latest paused-target/GPU rule and every deadline are retained.
+This cut made NO 967 attempt. The previous frame failure remains a failure and its wake source/rate is unproven. New counters do not retroactively prove it or the stop-to-settled checkpoint budget.
+All verification unattended; no operator or login-Keychain interaction. No desktop input, main merge or publication by Executor.
+Origin/main at evidence export 80820cbd562aced9732e59e65b66e52e99743995
+Main changes during the frozen gate 80820cbd #285: first-ever held startup delivers a pending logical intent with no author claim; signed envelope materialised and appended as a grade upgrade bound by id and digest; NG1 fixture includes it | a3681dda e2e-script-map: the header's commit edits the row; Seraph carries T1-T9 with runner-headless | 70bcc3a5 lab: custody keeps Unlock while a hold remains after a known outcome | 21b41f88 ctl ui: scroll is a follow-up cut after C-3 (open, key, focus, layout) | 3cf4021d #316: a night pass means the whole promise, coverage and missing on e2e records from the script header, only full is green; #317 e2e script map; ctl ui scroll and scroll position in layout; I1 realised on an isolated custody test backend
+No source rebase or repeated gate while main moves; Oracle merged-tree verification remains.
