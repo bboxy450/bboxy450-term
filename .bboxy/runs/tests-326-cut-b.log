@@ -380,3 +380,36 @@ Retained night script: all8 exact boundary invocations passed (each1 passed/0 fa
 Only1,731,960,832 allocated bytes of own copies/targets were retired; concurrent host cleanup explains the larger df delta. Own main target is retained for landing, no other agent target touched.
 
 Strict workspace/all-target Clippy EXIT0. sh -n and git diff --check EXIT0. Both mutation controls are expected101, all subsequent restored checks green. The normal landing/presubmit is still outstanding at this evidence commit; full #327 inventory/dispositions and the owned provider_gui quarantine remain follow-up work. #326 is not activated by this cut.
+
+2026-10-25T21:58Z — first actual author landing attempt, selector finding
+
+`sh scripts/land.sh`, candidate 9782a2c3b81daca5253dec244884166aaa398526,
+EXIT77 in 1374.334 s; the presubmit worker exited 2 in 1370.246 s.
+The earlier EXIT75 attempt acquired no slot and ran no presubmit.
+Slot 1 was released, recorded PIDs 54818 and 55163 were gone, and no push occurred.
+The affected-crate tests passed 687/0; strict all-target Clippy passed;
+79 landing-script fixtures passed; invariants reported 26 checks, 0 failures,
+10 named slow skips. Three additional invariant Rust test invocations passed.
+The gate then refused `golden_dispatch_tests_missing` after selecting zero tests.
+Its BUILD clock was 648.511 s and RUN clock 721.734 s; neither cap fired.
+
+Source: scripts/landing.py:372-382 runs `cargo test --locked -p bboxy450-term
+-p bbt-mux golden` when logic.rs is touched. The actual #320 wire corpus is
+bbt-proto's `tests/gui_wire_golden.rs`, whose two test names do not contain
+`golden`. Thus both the package selection and the libtest name filter miss it.
+This is a landing-selector finding, not a product assertion failure. The exact
+finding and logs were sent to Aster (landing owner) and Vesper; the selector was
+not bypassed or edited in this cut.
+
+Raw gate: /Users/feral/.local/state/bboxy450-term/landing/presubmits/9782a2c3b81daca5253dec244884166aaa398526-18da5f54/commands.log
+SHA256 5c6c257f5869d98a2514ef3b70236afa19da2bea63be667b1795eaa3bca0db35
+Outer log: cut-b-land-2.log, SHA256 64e292877c74cb114b198fcc2ff50e289da2c7dc8e507a247d3e91507ea80026
+Central result copied to land2-central-result.json under the artifact root above.
+
+Diagnostic, unchanged candidate: `cargo test -p bbt-proto --locked --test
+gui_wire_golden -- --nocapture` EXIT0; both exact-byte action/reply tests passed
+in 0.00 s (144.217 s including compilation). Raw dispatch-golden-diagnostic.log
+SHA256 61042a445ca9b6621eaf978d10041ab5dc95cff3b336a8d2301956a87899714a.
+The normal author landing remains outstanding; this evidence does not claim green.
+
+2026-10-25T22:04Z — Accepted on origin/main as f19545f76c2f4f8f2f877de778ffce5ade837d8f by Vesper. The Oracle ran the explicit GUI golden 2/0 after rebasing. Own verification: machine signature G, origin/main ancestry exit 0, all 10 Cut B paths byte-identical to tested 9782a2c3 (git diff exit 0); proof accepted-path-proof.json. This does not turn the author land.sh EXIT77 into a green exit. Follow-up landing-selector fix remains Aster’s.
