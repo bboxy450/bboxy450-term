@@ -147,3 +147,19 @@ gui-live-2: 3/0, real held GUI fixture 30.30 s; journal-local-2: 13/0 including 
 stale-grade-red: EXIT101 with actual Some(pending) vs expected Some(signed). A stale projection with an equal or later display timestamp could revoke the visible grade; the History row merge now refuses Signed -> Pending independently of clocks. No grade, debt, clock or ordering assertion loosened.
 seat-device-red is a positive control despite the provisional label: EXIT0, 1/0 in 30.27 s. All four completions already contain the observed actual device, including seat messages, and the named invariant now also runs the remote exclusion/FIFO fixture. The driver expected both probes to fail and exited1 because that device hypothesis was disproved. No device-attribution production change was made.
 Kestrel posted signed rebased #315 successor 0e0e9d2e04a2609eb5513baf30650b73d4b26ebb on accepted T7 714163f2 in f4c85280; Oracle 4dab3d61 explicitly permits consuming that rebase. NG1 will rebase before its workspace preflight; peer gate results are claims, not our validation.
+
+## Rebased preflight and grade regression
+
+Source 0b1264a23d06b612aedf212ed07c94f8e06de2ac
+Command cargo test -p bboxy450-term --locked --test messaging_ui -- --nocapture
+EXIT 0; elapsed 120.19449591595912 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/ui-grade-green-3.log SHA256 fe49558eef57533a88673fb030576b74bb1d3ca8a99facec017db12f511b1162
+
+Source 0b1264a23d06b612aedf212ed07c94f8e06de2ac
+Command cargo clippy --workspace --all-targets --locked -- -D warnings
+EXIT 101; elapsed 18.0313312090002 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/strict-clippy-3.log SHA256 5c234fdeb99269fc5178df46d66b4226a25fd2bfa425718473fe87f2faf43437
+
+ui-grade-green-3: 18/0 including equal/newer stale Pending projections after a confirmed Signed grade. Rebase onto #315 0e0e9d2e changed no NG1 code; one invariant timestamp conflict resolved while retaining the Architect's consumer-continuity paragraph.
+strict-clippy-3: EXIT101 at service.rs operator reference initializer, unwrap_or_default lint. Replaced unwrap_or_else(Ulid::new) with an explicit Some/None allocation; fresh references still use Ulid::new, with no lint allowance or changed pending authority. Workspace and invariant stages did not run after that failure.
+Rebased native method proof: 29/29 selected production methods byte-equal against 0e0e9d2e, /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/native-body-proof-rebased-v2.json SHA256 4150052c53102c3d070f618f26182c461252bd9f5113a487be7057df43b4a10d. First proof extractor mistakenly included the following free audit function in published; its false failure is retained in native-body-proof-rebased.json. v2 isolates each method through its own closing brace.

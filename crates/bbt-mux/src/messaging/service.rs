@@ -597,7 +597,10 @@ impl Messaging {
             Some(bytes) => serde_json::from_slice::<OperatorReference>(&bytes)?,
             None => {
                 let reference = OperatorReference {
-                    id: device.unwrap_or_else(Ulid::new),
+                    id: match device {
+                        Some(device) => device,
+                        None => Ulid::new(),
+                    },
                     kind: if device.is_some() {
                         OperatorReferenceKind::DeviceDerived
                     } else {
