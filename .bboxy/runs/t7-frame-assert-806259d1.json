@@ -1,0 +1,519 @@
+{
+  "source": {
+    "briefs": [
+      "634bb65a-f589-4b6d-a430-b3549b54d1eb",
+      "c0b57c3d-d935-4871-90f2-cc7e96c57039"
+    ],
+    "source": "806259d1ad90429a89237e41ea08fdcabd9a95c5",
+    "base": "89ba8f2b6e7585d19ef9b978eb6bb77328031cab",
+    "branch": "velvet-t7-frame-assert",
+    "inputs": {
+      "crates/bboxy450-term/src/ctl.rs": "2ffa703efd1f0b98c68cbaac3000c6e4f505376d1cea21a1cf98395567ed7c0a",
+      "crates/bboxy450-term/tests/headless.rs": "563b512b882be13d095e4be157b226b87a60ea704b599b4ea8b54391c01ae648",
+      "scripts/e2e/T7.sh": "27409a4df75e85b8a67bbc136b2619ac1c0acf755ab370a10a36d4e793a5516f"
+    },
+    "validation_status": "started after authenticated matching QUIET END",
+    "quiet": {
+      "author": "bfae37c6a294e8103c578f0ea3921f576930c668d18471c5760ca923103b87fa",
+      "start_message": "c5c83142-cc07-4cf9-9b8b-1588fbda9ac0",
+      "deadline_update": "bf891584-f989-48ee-bbae-a52c0bc742c7",
+      "deadline": "2026-10-25T08:57:00-07:00",
+      "end_message": "3bdc236d-d194-4380-8340-5d2539b3d4f3"
+    },
+    "supersedes": "dcf46ee8ef22e01afc10e815166f3e2cbdb50884",
+    "validation_started": "2026-10-25T08:33:53.759894-07:00"
+  },
+  "binary": {
+    "source": "806259d1ad90429a89237e41ea08fdcabd9a95c5",
+    "path": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-frame-assert-proof/bboxy450-term-806259d1",
+    "sha256": "4bc8ec3669afa370ae6d88b4146b8c689d8370da42f5e0dc32f3c2717c5e9892"
+  },
+  "static_checks": [
+    {
+      "command": [
+        "rustfmt",
+        "--edition",
+        "2024",
+        "--check",
+        "--config",
+        "skip_children=true",
+        "crates/bboxy450-term/src/ctl.rs",
+        "crates/bboxy450-term/tests/headless.rs"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "sh",
+        "-n",
+        "scripts/e2e/T7.sh"
+      ],
+      "exit": 0
+    }
+  ],
+  "quickcheck": {
+    "base": "fabf867317a3f8c03099ca2be892d6d3de23a7c5",
+    "source": "806259d1ad90429a89237e41ea08fdcabd9a95c5",
+    "script_sha256": "27409a4df75e85b8a67bbc136b2619ac1c0acf755ab370a10a36d4e793a5516f",
+    "reference_sha256": {
+      "t7-hidden.json": "2c9315f7c007ff4e904d07012f46f97facd0528835bf11265d07eae4427275b9",
+      "t7-close-first.json": "b3cf2750e2537d5e4c7a2ea456c6bced040a861b3537603103906a0b1cf53a0a"
+    },
+    "reference_close_frame": 41,
+    "reference_capture_frame": 47,
+    "checks": [
+      {
+        "case": "retained main failure before patch",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "stderr": "Traceback (most recent call last):\n  File \"<stdin>\", line 9, in <module>\nAssertionError: capture refused for a different seat\n"
+      },
+      {
+        "case": "legacy refusal without structured seat is rejected",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "stderr": "Traceback (most recent call last):\n  File \"<stdin>\", line 9, in <module>\nAssertionError: capture refused for a different seat\n"
+      },
+      {
+        "case": "structured capture after patch",
+        "expected_exit": 0,
+        "actual_exit": 0,
+        "stderr": ""
+      },
+      {
+        "case": "different capture target fails",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "stderr": "Traceback (most recent call last):\n  File \"<stdin>\", line 9, in <module>\nAssertionError: capture refused for a different seat\n"
+      },
+      {
+        "case": "human message is irrelevant",
+        "expected_exit": 0,
+        "actual_exit": 0,
+        "stderr": ""
+      },
+      {
+        "case": "unrelated refusal fails",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "stderr": "Traceback (most recent call last):\n  File \"<stdin>\", line 8, in <module>\nAssertionError: unrelated capture error: {'frame_seq': 47, 'hint': 'ctl seat focus <seat>', 'kind': 'timeout', 'message': 'not_on_screen: seat 01M5SQT34E38F50H06ZF48MSEJ has no pane on screen in frame 47', 'seat': '01M5SQT34E38F50H06ZF48MSEJ'}\n"
+      },
+      {
+        "case": "pre-close frame fails",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "stderr": "Traceback (most recent call last):\n  File \"<stdin>\", line 14, in <module>\nAssertionError: capture refusal predates close\n"
+      },
+      {
+        "case": "different close target fails",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "stderr": "Traceback (most recent call last):\n  File \"<stdin>\", line 11, in <module>\nAssertionError: close receipt names a different seat\n"
+      },
+      {
+        "case": "invalid frame None",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "stderr": "Traceback (most recent call last):\n  File \"<stdin>\", line 13, in <module>\nAssertionError: capture refusal lacks a produced frame\n"
+      },
+      {
+        "case": "invalid frame True",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "stderr": "Traceback (most recent call last):\n  File \"<stdin>\", line 13, in <module>\nAssertionError: capture refusal lacks a produced frame\n"
+      },
+      {
+        "case": "invalid frame '47'",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "stderr": "Traceback (most recent call last):\n  File \"<stdin>\", line 13, in <module>\nAssertionError: capture refusal lacks a produced frame\n"
+      }
+    ],
+    "exit": 0
+  },
+  "headless": {
+    "source": "806259d1ad90429a89237e41ea08fdcabd9a95c5",
+    "pid": 13521,
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "bboxy450-term",
+      "--test",
+      "headless",
+      "seat_wait_reads_produced_frames_and_not_on_screen_names_its_frame",
+      "--",
+      "--exact",
+      "--nocapture"
+    ],
+    "target": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-frame-dev",
+    "cargo_jobs": 2,
+    "wrappers": [],
+    "exit": 0,
+    "elapsed_s": 257.8748757499852
+  },
+  "strict": {
+    "source": "806259d1ad90429a89237e41ea08fdcabd9a95c5",
+    "pid": 23628,
+    "command": [
+      "cargo",
+      "clippy",
+      "--locked",
+      "-p",
+      "bboxy450-term",
+      "--all-targets",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "target": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-frame-dev",
+    "cargo_jobs": 2,
+    "wrappers": [],
+    "exit": 0,
+    "elapsed_s": 53.398848542012274
+  },
+  "night": {
+    "source": "806259d1ad90429a89237e41ea08fdcabd9a95c5",
+    "binary": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-frame-assert-proof/bboxy450-term-806259d1",
+    "binary_sha256": "4bc8ec3669afa370ae6d88b4146b8c689d8370da42f5e0dc32f3c2717c5e9892",
+    "script_sha256": {
+      "T1.sh": "ebdbf910250b3e3bb26815f96f34f45287fca66ddf9051957233d559a0b880b9",
+      "T2.sh": "8de6dd5a24d32ea7d28eda24d92573780da57259dd0c15abdef3d6cd835a5a46",
+      "T3.sh": "05aad8cc0e74ed2269566911d73200f21b0b5acae7201009d327b19e90f51f2e",
+      "T4.sh": "0adc7e883498d7d0a62ecc0781c76c1592f467c6394feb5cbabd71a488a1ed92",
+      "T5.sh": "bc30c2698186e3078e4f01745914bfe49a0e8dac3ffedefe316e5deceeacba20",
+      "T6.sh": "23d85809b236c8ea412415abf605a013703dbacdb62b3f41ad170a3caa4e6f03",
+      "T7.sh": "27409a4df75e85b8a67bbc136b2619ac1c0acf755ab370a10a36d4e793a5516f",
+      "T8.sh": "1a3ee17bf97275ebb01a55afea122ce4d9401420290bb19a2dbed542e617d4c9",
+      "T9.sh": "898b2cdc786098ce399ac99f4f870706840573cd7aac8b290701b3d89b87d70d",
+      "lib.sh": "4ca356f86c0a78927ec6b96f3b49ce91a555a5e3679504859f3bf24a8854b2a5"
+    },
+    "command": [
+      "/Users/feral/mydev/bboxy450-term-exec6/target/t7-frame-assert-proof/bboxy450-term-806259d1",
+      "e2e",
+      "night",
+      "--group",
+      "terminal",
+      "--scripts",
+      "/Users/feral/mydev/bboxy450-term-exec6/scripts/e2e",
+      "--records",
+      "/Users/feral/mydev/bboxy450-term-exec6/target/t7-terminal-night-6d0a0aa9/records"
+    ],
+    "runtime": "/tmp/vt7n-6d0a0aa9",
+    "pid": 23631,
+    "actual_exit": 0,
+    "elapsed_s": 82.42537062498741,
+    "summary": {
+      "group": "terminal",
+      "kept": null,
+      "kind": "summary",
+      "partial": [
+        "T1",
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "T6",
+        "T7",
+        "T8",
+        "T9"
+      ],
+      "passed": 9,
+      "red": [],
+      "state": "amber",
+      "total": 9,
+      "tracked": [
+        "T1",
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "T6",
+        "T7",
+        "T8",
+        "T9"
+      ],
+      "unwritten": []
+    },
+    "verdicts": {
+      "T1": {
+        "coverage": "partial",
+        "evidence": "",
+        "exit": 0,
+        "function": "T1",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [
+          "\u2318T on a Claude or Codex row (only zsh is spawned, by ctl)",
+          "the seat opens within one frame",
+          "placements other than tab"
+        ],
+        "verdict": "pass"
+      },
+      "T2": {
+        "coverage": "partial",
+        "evidence": "",
+        "exit": 0,
+        "function": "T2",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [
+          "the echo appears within one frame",
+          "the 100 kB paste compared in full (the script truncates the received copy, so extra bytes pass)"
+        ],
+        "verdict": "pass"
+      },
+      "T3": {
+        "coverage": "partial",
+        "evidence": "note: app resize 120x40: pane 79x34, stty 34x79\nnote: app resize 80x24: pane 49x18, stty 18x49",
+        "exit": 0,
+        "function": "T3",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [
+          "resizing a pane (only the window is resized)",
+          "no stale cells after the redraw"
+        ],
+        "verdict": "pass"
+      },
+      "T4": {
+        "coverage": "partial",
+        "evidence": "",
+        "exit": 0,
+        "function": "T4",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [
+          "wide glyphs and emoji align to the grid (cell widths and continuations are not read)",
+          "colours other than red"
+        ],
+        "verdict": "pass"
+      },
+      "T5": {
+        "coverage": "partial",
+        "evidence": "\nthread 'main' (40582288) panicked at /rustc/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/std/src/io/stdio.rs:1168:9:\nfailed printing to stdout: Broken pipe (os error 32)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nnote: layout, focus and scroll positions need a window; this run is headless",
+        "exit": 0,
+        "function": "T5",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [
+          "the app is killed and relaunched (only logic is killed)",
+          "layout, focus and scroll positions are identical"
+        ],
+        "verdict": "pass"
+      },
+      "T6": {
+        "coverage": "partial",
+        "evidence": "\nthread 'main' (40582772) panicked at /rustc/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/std/src/io/stdio.rs:1168:9:\nfailed printing to stdout: Broken pipe (os error 32)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nnote: seat 01M5SVFG55SXGXNAEMH38EXMA8 respawned: generation 1 -> 2, shell 24337 -> 24420",
+        "exit": 0,
+        "function": "T6",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [
+          "the app says so",
+          "resumes by session id (only the zsh respawn is proven)"
+        ],
+        "verdict": "pass"
+      },
+      "T7": {
+        "coverage": "partial",
+        "evidence": "Traceback (most recent call last):\n  File \"<stdin>\", line 23, in <module>\nAssertionError\nnote: T7 same PID/generation, retained history, position, presented extent, sidebar order/grace/notice, and real grace/expiry held",
+        "exit": 0,
+        "function": "T7",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [
+          "solved pane rectangle and focus after undo",
+          "visible grace strip"
+        ],
+        "verdict": "pass"
+      },
+      "T8": {
+        "coverage": "partial",
+        "evidence": "",
+        "exit": 0,
+        "function": "T8",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [
+          "malformed/unapproved report rejection",
+          "reported grade drawn in the seat row"
+        ],
+        "verdict": "pass"
+      },
+      "T9": {
+        "coverage": "partial",
+        "evidence": "\nthread 'main' (40597885) panicked at /rustc/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/std/src/io/stdio.rs:1168:9:\nfailed printing to stdout: Broken pipe (os error 32)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nnote: seat 01M5SVHJE665C3DZ9A6TZ7H45D restarted: generation 1 -> 2, shell 28329 -> 28384",
+        "exit": 0,
+        "function": "T9",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [
+          "a harness resumed by session id (only a zsh seat is restarted)"
+        ],
+        "verdict": "pass"
+      }
+    },
+    "owned_app_reap": {
+      "pids": [
+        23644,
+        23779,
+        23923,
+        24111,
+        24199,
+        24314,
+        24466,
+        28207,
+        28307,
+        28414
+      ],
+      "ps_exit": 1,
+      "remaining": ""
+    },
+    "runtime_removed": true,
+    "audit_exit": 0,
+    "transient_poll_note": "The T7 evidence contains one inline Python line23 AssertionError. In unchanged check_ui, line23 is the after-grace notice predicate; wait_ui gone retries it until true. The script then reached its final note and exited0. Receipt-bound close/undo/capture assertions are fail-fast and passed. The raw output is preserved, not edited.",
+    "actual_app_metadata": [
+      {
+        "custody_backend": "file",
+        "function": "T1",
+        "issued_by": "test-account:01M5SVF5EWT47YH40Q2VZ5F2JZ",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 23644,
+        "role": "promise",
+        "run_dir": "/private/tmp/vt7n-6d0a0aa9/e2enFCk2AB/T1/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T2",
+        "issued_by": "test-account:01M5SVF7FD4G4NW69P3D07R67X",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 23779,
+        "role": "promise",
+        "run_dir": "/private/tmp/vt7n-6d0a0aa9/e2enFCk2AB/T2/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T3",
+        "issued_by": "test-account:01M5SVF9ES1Q45P4NYQQ8JXN4X",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 23923,
+        "role": "promise",
+        "run_dir": "/private/tmp/vt7n-6d0a0aa9/e2enFCk2AB/T3/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T4",
+        "issued_by": "test-account:01M5SVFD6QXW12S9N56TN6DZTM",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 24111,
+        "role": "promise",
+        "run_dir": "/private/tmp/vt7n-6d0a0aa9/e2enFCk2AB/T4/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T5",
+        "issued_by": "test-account:01M5SVFEFVMRHW9QFPBQNG15WP",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 24199,
+        "role": "promise",
+        "run_dir": "/private/tmp/vt7n-6d0a0aa9/e2enFCk2AB/T5/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T6",
+        "issued_by": "test-account:01M5SVFFYTSW2413HYMVRQW6AW",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 24314,
+        "role": "promise",
+        "run_dir": "/private/tmp/vt7n-6d0a0aa9/e2enFCk2AB/T6/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T7",
+        "issued_by": "test-account:01M5SVFJ1DW790R3NFRQSQN8T4",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 24466,
+        "role": "promise",
+        "run_dir": "/private/tmp/vt7n-6d0a0aa9/e2enFCk2AB/T7/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T8",
+        "issued_by": "test-account:01M5SVHG5X5Y633F19NXX142MT",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 28207,
+        "role": "promise",
+        "run_dir": "/private/tmp/vt7n-6d0a0aa9/e2enFCk2AB/T8/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T9",
+        "issued_by": "test-account:01M5SVHJ7EH4MH38CVDT1N4DZZ",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 28307,
+        "role": "promise",
+        "run_dir": "/private/tmp/vt7n-6d0a0aa9/e2enFCk2AB/T9/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": null,
+        "issued_by": "test-account:01M5SVHM5Z4TFWBQJ89N7PB8PB",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 28414,
+        "role": "records",
+        "run_dir": "/private/tmp/vt7n-6d0a0aa9/e2enFCk2AB/records-app/run",
+        "windows": 0
+      }
+    ]
+  },
+  "cleanup": {
+    "owner": "Velvet Vulpine <EXECUTOR>",
+    "source": "806259d1ad90429a89237e41ea08fdcabd9a95c5",
+    "path": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-frame-dev",
+    "allocated_file_bytes_retired": 1523924992,
+    "files_retired": 5995,
+    "deleted": true,
+    "retained_binary": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-frame-assert-proof/bboxy450-term-806259d1",
+    "retained_night": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-terminal-night-6d0a0aa9",
+    "at": "2026-10-25T08:42:40-0700"
+  },
+  "logs": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-frame-assert-proof/headless.log",
+      "bytes": 13631,
+      "sha256": "190497a82f6b1c83912155c012005ced20d2c2cf59256f32ccbee093f309f1d2"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-frame-assert-proof/clippy.log",
+      "bytes": 11739,
+      "sha256": "990e3b136c870d6e0650aafcb44013af4c302521693d8c3358cbad60cd77af42"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-terminal-night-6d0a0aa9/night.log",
+      "bytes": 6831,
+      "sha256": "2db601f51067983339535a11609b00a1c2be0def64c7323f00c9326fc74675d0"
+    }
+  ],
+  "scope": "Oracle634bb65a scripts priority fix, extended by c0b57c3d to structured error.seat in ctl.rs; quick check + terminal night, no full CI/parity gate requested."
+}
