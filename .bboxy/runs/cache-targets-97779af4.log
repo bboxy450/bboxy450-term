@@ -1,0 +1,56 @@
+#325 final cache/runner union — Velvet Vulpine <EXECUTOR>
+Source 97779af441f9c588ed9c3e1f4b7d8ef8aabc0c2f (G), branch velvet-cache-targets, based on accepted e17a4e4f. This supersedes the old-base acceptance in cache-targets-4e803f48.log; that file remains historical measurement evidence.
+
+Oracle3e0abea1 requested the rebase after Nyx's typed parity and postsubmit continuation landed. Resolved as a union:
+- scripts/ci-local.sh:14 — shared fixed-slot delegation occurs before --after-tests is consumed; the admitted child preserves it, skips only workspace build/Clippy/tests, runs UI lint/smoke/invariants and reports mode after-tests with post-test checks passed. It never issues a full-normal success receipt for the continuation. All actual compilation uses the same explicit target transport.
+- scripts/landing.py:755 — --after-tests is preserved alongside --parity/--slow through the CI slot delegate. Gate-proof normal/exact-SHA validation is unchanged.
+- scripts/parity.sh:3 — --root/--cases typed selectors retained exactly, including manifest membership refusal and current-only predicates; Cargo uses the transported target and bboxybook is read from that target.
+- scripts/main_watch.py:215 — retained the new run_ci/diagnostic/recovery/manual-verdict implementation; only stable tree/target preparation and canonical environment replace the old UUID/legacy environment.
+- scripts/test-landing.py:889 and scripts/test-landing-recovery.py:576 — fixture writers use the explicit target transport. The phase fixture asserts the legacy environment is absent and --target-dir matches the transport before normalizing argv for the existing stage assertions. Predicate and phase expectations are preserved.
+
+Commands:
+- python3 -I scripts/test-landing.py --all on this exact source, deliberately inherited BBOXY_CARGO_TARGET_DIR: EXIT0/212.613s; 77 main fixtures/0 failures (46.452s), 32 recovery fixtures/0 failures (165.734s). These include normal versus after-tests completion, typed parity, real slot reuse/live/dead ownership, exact receipts, red/flake/manual recovery and private Git/signer fixtures. No product/Rust full gate is claimed here.
+- sh -n separately on all eight touched shell entrypoints; shellcheck across all eight; Python compile() of landing.py, main_watch.py, test-landing.py, test-landing-recovery.py; git diff --check: all EXIT0. The rebase's first continue failed transiently on its own MERGE_RR.lock; it was gone on inspection, nothing was deleted, and the signed rebase completed normally.
+
+Proof files retained in target/cache-target-proof:
+- runner-fixtures-e17-union.log sha256 251d94080dcc377b8e5aa6398b52179d108fab943921dfc20365f9bddaf37fbe
+- runner-fixtures-e17-union.json sha256 36be8573cb39c800f5489b3becc8adcf744a91cca1617a9ed2907fe2d256b718
+- static-e17-union.json sha256 c24e503e0936deb62254feef581f53826833d3748f3113aa7f47da70c955ac3a
+
+The priority landing still precedes the two real same-slot normal gates on main (second Rust hit ratio >=80%). Oracle owns publication and its watcher restart. Existing cold policy stays upstream-owned; Aster replaces it separately. Nyx owns invariant selection/grouping. No compiler, rpath, renderer, style, Cargo config or their policy spans were changed.
+
+RAW MERGED FIXTURE OUTPUT
+fixture duration: LandTests.test_three_moving_attempts_are_79_with_no_candidate_push 14.693s
+fixture duration: LandTests.test_all_revert_cut_can_land_while_main_is_red 6.211s
+fixture duration: LandTests.test_disjoint_main_movement_rebases_but_does_not_repeat_checks 8.291s
+fixture duration: LandTests.test_narrow_compile_timeout_accepts_only_exact_green_gate_and_records_tier 10.375s
+fixture duration: LandTests.test_narrow_test_timeout_still_refuses_a_provided_gate 9.713s
+fixture duration: LandTests.test_notification_failure_can_resume_without_rechecking_or_repush 7.209s
+fixture duration: LandTests.test_presubmit_failure_is_77_and_does_not_push 6.058s
+fixture duration: LandTests.test_reverse_dependency_overlap_rechecks 10.891s
+fixture duration: LandTests.test_signed_cut_pushes_once_logs_and_announces_after_slot_release 7.455s
+fixture duration: LandTests.test_wide_exact_green_log_is_reused_and_hashed_without_another_gate 5.476s
+fixture duration: LandTests.test_wide_extended_or_concatenated_log_is_not_a_normal_gate_proof 5.907s
+fixture duration: LandTests.test_wide_failed_full_gate_never_pushes 5.284s
+fixture duration: LandTests.test_wide_failed_or_incomplete_log_is_refused 7.290s
+fixture duration: LandTests.test_wide_moved_main_requires_a_new_exact_candidate_gate_even_when_disjoint 8.995s
+fixture duration: LandTests.test_wide_rebase_cannot_reuse_a_green_log_from_the_old_candidate 5.181s
+fixture duration: LandTests.test_wide_runs_full_normal_gate_and_records_tier 6.009s
+fixture duration: PresubmitTests.test_timeout_during_a_test_cannot_use_narrow_cold 5.735s
+fixture duration: WatchTests.test_green_without_native_store_cannot_be_published 5.193s
+fixture duration: WatchTests.test_invariant_failure_selects_the_named_gate 7.352s
+fixture duration: WatchTests.test_manual_green_is_logged_then_the_watcher_still_runs_full_ci 6.305s
+fixture duration: WatchTests.test_manual_revert_records_the_landed_corrective_commit 6.392s
+fixture duration: WatchTests.test_missing_store_after_green_still_invokes_diagnosis_without_a_test_selector 7.082s
+fixture duration: WatchTests.test_quarantine_admission_runs_ci_instead_of_carrying_a_previous_verdict 7.384s
+fixture duration: WatchTests.test_records_only_carries_verdict_but_lab_changes_run_full_postsubmit 8.045s
+fixture duration: WatchTests.test_red_closes_main_and_invokes_culprit_then_revert 7.039s
+fixture duration: WatchTests.test_repeated_tail_flakes_stay_green_without_claiming_native_truth 7.596s
+fixture duration: WatchTests.test_three_pass_flake_verdict_reopens_without_revert 6.700s
+fixture duration: WatchTests.test_unresolved_failure_reverts_only_the_exact_failed_batch 7.141s
+Ran 77 fixture tests in 46.452s; failures=0
+................................
+----------------------------------------------------------------------
+Ran 32 tests in 165.734s
+
+OK
