@@ -153,10 +153,16 @@ if args[0]=="test" and cfg.get("quarantine"):
     print("test "+name+" ... FAILED\\ntest result: FAILED. 0 passed; 1 failed; 0 ignored")
     raise SystemExit(101)
 if cfg.get("block")==args[0] and (not cfg.get("block_once") or not (state/"blocked-once").exists()):
+    if cfg.get("block_once"):
+        target=pathlib.Path(os.environ["BBOXY_CARGO_TARGET_DIR"])
+        target.mkdir(parents=True,exist_ok=True)
+        (target/"warm-build-artifact").write_text("first attempt")
     (state/"blocked-once").write_text("blocked")
     (state/"blocked.pid").write_text(str(os.getpid()))
     if cfg.get("test_started"):print("Running tests/fixture.rs (fixture-binary)\\nrunning 1 test",flush=True)
     signal.pause()
+if cfg.get("block_once") and cfg.get("block")==args[0]:
+    assert (pathlib.Path(os.environ["BBOXY_CARGO_TARGET_DIR"])/"warm-build-artifact").read_text()=="first attempt"
 if cfg.get("fail")==args[0]:raise SystemExit(1)
 if args[0]=="test" and cfg.get("hook"):
     done=state/"hook.done"
@@ -455,10 +461,11 @@ class PresubmitTests(unittest.TestCase):
         self.assertEqual(len((self.repo.state / "presubmit.log").read_text().splitlines()), 2)
 
     def test_build_cap_retries_once_warm_with_the_same_target_and_then_passes(self):
+        self.repo.remote()
         self.cut("crates/c/src/lib.rs")
         (self.repo.state / "behavior.json").write_text('{"block":"test","block_once":true}')
         (self.repo.state / "fixture.json").write_text('{"build_cap_seconds":3,"run_bound_seconds":5}')
-        result = self.repo.presubmit()
+        result = self.repo.land()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         rows = [json.loads(line) for line in (self.repo.state / "presubmit.log").read_text().splitlines()]
         self.assertEqual([r["error"] for r in rows], ["build_cap", None])
