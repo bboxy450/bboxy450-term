@@ -1,0 +1,40 @@
+Store/schema/refusal follow-up, Sable Embertail <EXECUTOR>
+Source c7581271013e532b2f0e8ae43c3b8e713ba18d85 on1f970e11. Three signed own commits799372ca/890c0097/c7581271. Earlier GUI transient + Immediate write patches already on main via NG1 27a77a51.
+
+Mechanisms:
+- seat_socket.rs:181 refuse_gui drains one bounded complete frame without executing it, sends named refusal, flushes and half-closes; real bounded backpressure regression at1344. Existing Client::call buffered-reply fallback is unchanged (Seraph98355737 already main).
+- tests/gui_endpoint.rs:65 one Python knock helper reads buffered reason after write failure; forced pipe ordering tests both queued-refusal success and no-reply failure at81.
+- app tests/ctl.rs:946 real CLI regression uses Issuer ACK as a barrier, records its own Child PID, confirms stopped state, queues ACK+refusal and closes peer, resumes only that child.10s watchdog unchanged, all exit/ancestry/refusal/no-BrokenPipe assertions kept.
+- store/sqlite.rs:113 ensure_schema reads PRAGMA user_version first; current1 never reserves writer; missing0 migrates under Immediate, rechecks after admission and validates legacy version; unknown marker/version refused. Object open145 and EventLog open106 share it.
+- sqlite.rs:279 holds both writers across50 concurrent opens; green cannot be a delayed writer success because the locks remain held until all open calls return.224 covers legacy markers/retained data/unknown marker+version refusal.329 exact200 read-write updates retained.
+
+Failures preserved:
+1. First store normal gate4b8f79b6 EXIT101: Python ancestry fixture sendall BrokenPipe before reading already queued refusal, no store attribution.
+2. Later workspace precheck959849ff EXIT101: firehose9 failures all ENOENT from compile-time CARGO_BIN_EXE pointing at my relocated target; package cache artifacts rebuilt at stable absolute path, product untouched. Real CLI oversized-frame fixture also hit10s watchdog; exact blocked phase unproven, replaced with explicit protocol ordering, no deadline increase.
+3. Readonly schema regression RED100 locked errors (50object+50event), GREEN3/0 in0.43s incl version/concurrency assertions.
+4. Earlier root red135 locked errors and recovery60/60 remain in original private raw manifest, not new runtime claims.
+
+Completed on current patch before full checks:
+- Real ctl barrier1/0 in0.59s.
+- Firehose cache repair10/0 in0.90s, no source edits.
+Final verification on exact clean detached c7581271013e532b2f0e8ae43c3b8e713ba18d85:
+- cargo test -p bbt-mux -p bboxy450-term --locked --no-fail-fast: EXIT 0, 626 passed / 0 failed / 20 ignored, 57 reported suite totals, 734.510637 s.
+- cargo clippy -p bbt-mux -p bboxy450-term --all-targets --locked -- -D warnings: EXIT 0, 35.638267 s.
+- sh scripts/invariants.sh: EXIT 0, 25 checks / 0 failures / 9 slow skipped, 340.833900 s.
+- sh scripts/ci-local.sh, NORMAL, atomic slot 2, own stable target, two Cargo jobs, wrappers clear, memory custody: EXIT 0, 1858.165293 s; final line ci-local: all gates passed.
+- Workspace stage: 1421 passed / 0 failed / 29 ignored across 205 reported suite totals (saved before invariants add their focused results). Full strict Clippy and UI lint passed.
+- Headless smoke: frames=0 callbacks=0 seconds=10.005 windows=0; children reaped after orderly shutdown. No physical presentation claim.
+- Final default invariants: 25 checks, 0 failures, 9 slow checks skipped. No --parity: no paint/layout/renderer/lab producer change.
+
+CI log SHA256: 09a6b04a50f9f5815910f76d38885c0c90550199533ced71e63f8cec38817299
+Raw root: /private/tmp/sable-task-night-ym27dc8j
+The command, result, code and raw artifact hashes are in store-schema-refusal.manifest.json. The earlier failed runs remain in the private root and are hashed, not discarded.
+
+Cleanup: lsof +D on the sole owned target returned exit 1 with no open files. Removed 5117448192 allocated cache bytes; target absent. Preserved the exact gate app binary with its hash. Removed no peer resource and signalled no peer process.
+
+Main ee7a00d8 landed while the gate ran. The tested commit stayed frozen; this successor changes evidence files only. Original M3/M4/M5 work remains on sable-task-night-current at 0d957a013d193a1fba1868c275ca36fd5930db98, not included in this source cut.
+
+SQLite mechanism references: https://www.sqlite.org/lang_transaction.html and https://www.sqlite.org/isolation.html — reserve a writer before read-to-write upgrade; up-to-date schema opens now use reads only.
+
+
+Limits: no parity/render change. No effect retries, sleep, timeout raise, pool sizing change, foreign process signal, credentials or desktop input. Scoped signals only to fixture-owned unreaped child, with resume-on-drop cleanup. No extra Night acceptance claim.
