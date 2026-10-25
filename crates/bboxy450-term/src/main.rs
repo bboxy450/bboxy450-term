@@ -1,4 +1,5 @@
 //! R2 app shell: event-driven native scene, memory-only UI drain and hitch meter.
+mod animation_clock;
 mod assets;
 mod budget;
 mod capture;
@@ -35,7 +36,7 @@ use bbt_ui_model::{
     layout::Rect,
     tokens::Theme,
 };
-use display_link::{Clock, DisplayLink, Mode, WakeAction, wake_action};
+use display_link::{DisplayLink, Mode, WakeAction, wake_action};
 use e2e_checklist::{LocalTab, PageCommand};
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
@@ -513,7 +514,13 @@ enum UiEffect {
     Lifecycle(bboxy450_term::close_frame::Target),
     Document,
     Graph,
-    Preferences { saved: bool },
+    Preferences {
+        saved: bool,
+    },
+    Clock {
+        state: bbt_proto::gui::UiClockState,
+        landed: Option<(SeatId, Instant)>,
+    },
     Refused(String),
 }
 impl UiEffect {
@@ -1577,7 +1584,10 @@ struct App {
     window: Option<Arc<Window>>,
     pacer: Option<DisplayLink>,
     pacing: Mode,
-    clock: Clock,
+    clock: animation_clock::Clock,
+    clock_frame: animation_clock::Frame,
+    animation_landing: Option<(SeatId, Instant)>,
+    test_account: bool,
     occluded: bool,
     maximum_hz: f64,
     budget: budget::Budget,
@@ -1612,7 +1622,6 @@ struct App {
     animate: bool,
     cadence_test: bool,
     animation_start: Option<(Instant, u64)>,
-    frozen_ms: f32,
     verify: Verify,
     stall: Option<stall::Native>,
 }
@@ -1639,6 +1648,8 @@ impl App {
             .windows(2)
             .find(|v| v[0] == "--capture")
             .map(|v| std::path::PathBuf::from(&v[1]));
+        let clock = animation_clock::Clock::default();
+        let clock_frame = clock.frame();
         Self {
             proxy,
             inbox,
@@ -1726,7 +1737,11 @@ impl App {
             window: None,
             pacer: None,
             pacing,
-            clock: Clock::default(),
+            clock,
+            clock_frame,
+            animation_landing: None,
+            test_account: bboxy450_term::cockpit::Config::test_account_from_args(args)
+                .is_ok_and(|account| account.is_some()),
             occluded: false,
             maximum_hz: 60.,
             budget: budget::Budget::default(),
@@ -1763,7 +1778,6 @@ impl App {
             animate,
             cadence_test,
             animation_start: None,
-            frozen_ms: 450.,
             verify,
             stall: None,
         }
@@ -2818,7 +2832,7 @@ impl App {
         let Some(model) = &self.live_state else {
             return;
         };
-        let now = Instant::now();
+        let now = self.clock.now();
         let mut landed: BTreeMap<SeatId, Option<Instant>> = BTreeMap::new();
         if explicit && let Some(seat) = self.focus.stage.as_ref().and_then(|stage| stage.focused) {
             landed.insert(seat, None);
@@ -2841,6 +2855,14 @@ impl App {
             })
             .collect();
         for action in actions {
+            if let live::UiMsg::AttentionFocus {
+                seat,
+                landed: Some(at),
+                ..
+            } = &action
+            {
+                self.animation_landing = Some((*seat, *at));
+            }
             self.queue(action);
         }
     }
@@ -2935,6 +2957,20 @@ impl App {
         {
             let _ = seat;
             Err("notification recording needs debug assertions".into())
+        }
+    }
+    /// A switched pane lands only after the driver solves an actual frame.
+    /// Both native and headless use the same focus owner and cover rules.
+    fn focus_layout_ready(&mut self) {
+        if let Some(model) = &self.live_state
+            && self.local_tab.is_none()
+            && !self.document.open
+        {
+            let events = self.focus.layout_ready(&model.ui, &self.focus_bounds);
+            self.attention_focus_events(&events, false);
+            for event in events {
+                self.logger.write(format!("ui input: {event:?}"));
+            }
         }
     }
     fn sync_notifications(&mut self) {
@@ -3955,6 +3991,19 @@ impl App {
             UiEffect::Graph => Ok(model.e2e.is_some()),
             UiEffect::Preferences { saved } => Ok(self.preferences.loaded
                 && (!*saved || self.preferences.saved() || self.preferences.error.is_some())),
+            UiEffect::Clock { state, landed } => {
+                if self.clock.revision() == state.revision {
+                    // A clock step must not outrun the earlier focus episode whose
+                    // phase it is about to render. The model keeps the original
+                    // App-clock landing instant; publication is the completion.
+                    Ok(landed.is_none_or(|target| model.focus_swell == Some(target)))
+                } else {
+                    Err(
+                        "ui_frame_refused: a newer animation clock command superseded this request"
+                            .into(),
+                    )
+                }
+            }
             UiEffect::Refused(reason) => Err(format!("ui_frame_refused: {reason}")),
         }
     }
@@ -4018,6 +4067,16 @@ impl App {
             let wait = self.ui_wait.take().expect("qualifying UI frame");
             let result = layout.and_then(|mut layout| {
                 for effect in &wait.effects {
+                    if let UiEffect::Clock { state: expected, .. } = effect {
+                        let actual = layout.clock.ok_or("ui_frame_refused: frame has no animation clock")?;
+                        if actual.revision != expected.revision
+                            || actual.frozen != expected.frozen
+                            || (expected.frozen && actual.time_ms != expected.time_ms)
+                            || actual.time_ms < expected.time_ms
+                        {
+                            return Err("ui_frame_refused: frame does not show the requested animation time".into());
+                        }
+                    }
                     if let UiEffect::Lifecycle(target) = effect {
                         let model = self.live_state.as_ref().ok_or("ui_not_ready: no live model")?;
                         if !target.ready(model)?
@@ -4270,6 +4329,28 @@ impl App {
                     seat: None,
                 }));
             }
+            UiRequest::Clock(command) => {
+                if !self.test_account {
+                    return Err(
+                        "test_account_required: UI clock control requires a test-account owner"
+                            .into(),
+                    );
+                }
+                let frame = self.clock.apply(command)?;
+                if let Some(effects) = &mut self.ui_collect {
+                    effects.push(UiEffect::Clock {
+                        state: frame.state,
+                        landed: self.animation_landing,
+                    });
+                }
+                if let Some(pacer) = &self.pacer {
+                    pacer.set_active(
+                        !self.clock.is_frozen()
+                            && !self.occluded
+                            && (self.animate || self.scene.animating(self.clock.now())),
+                    )?;
+                }
+            }
             UiRequest::Open(UiTarget::Launcher) => self.open_launcher(),
             UiRequest::Open(UiTarget::Graph) => self.open_graph(),
             UiRequest::Open(UiTarget::Settings) => self.open_settings("Account"),
@@ -4394,6 +4475,7 @@ impl App {
         let layout = UiLayout {
             frame_seq: 0, // filled only by the actual produced-frame callback
             layout_revision: Some(self.scene.layout_revision()),
+            clock: Some(self.clock_frame.state),
             size,
             swarm: stage.swarm.map(|id| bbt_mux::Ulid::from(id.0.0)),
             tab: stage.tab.map(|id| bbt_mux::Ulid::from(id.0.0)),
@@ -4421,6 +4503,7 @@ impl App {
         Ok(layout)
     }
     fn solve_ui(&mut self, logical: [f32; 2]) -> Result<Vec<bbt_ui::components::Layout>, String> {
+        self.clock_frame = self.clock.frame();
         self.conversation_layout = if self.live_state.is_some() || self.compose_startup {
             Some(self.scene.conversation_layout(
                 logical,
@@ -4435,12 +4518,14 @@ impl App {
         };
         let dock = self.conversation_layout.as_ref().map_or(0., |l| l.height);
         let layouts = if self.local_tab.is_some() {
-            self.scene.local_page_chrome(logical, dock)?
+            self.scene
+                .local_page_chrome_at(logical, dock, self.clock_frame.now)?
         } else {
-            self.scene.layout_with_dock(
+            self.scene.layout_docked_at(
                 logical,
                 self.animation_start.is_some() || self.animate,
                 dock,
+                self.clock_frame.now,
             )?
         };
         self.local_page_layout = self
@@ -4529,9 +4614,10 @@ impl App {
         let Some(model) = &self.live_state else {
             return;
         };
-        self.scene.set_model(
+        self.scene.set_model_with_clock(
             model,
             self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage),
+            &self.clock,
         );
         self.scene_dirty = false;
         if let Some(stall) = &self.stall {
@@ -4588,9 +4674,8 @@ impl App {
                 self.inbox.dirty.source(display_link::TICK_SOURCE),
                 self.pacing,
             )?;
-            pacer.set_active(self.animate && !self.occluded)?;
+            pacer.set_active(self.animate && !self.occluded && !self.clock.is_frozen())?;
             self.pacer = Some(pacer);
-            self.clock.pause();
             self.request_redraw();
         }
         let mut phases = Phases::default();
@@ -4649,16 +4734,7 @@ impl App {
         let start = Instant::now();
         let layouts = self.solve_ui(logical)?;
         let bounds = self.pane_bounds.clone();
-        if let Some(model) = &self.live_state
-            && self.local_tab.is_none()
-            && !self.document.open
-        {
-            let events = self.focus.layout_ready(&model.ui, &self.focus_bounds);
-            self.attention_focus_events(&events, false);
-            for event in events {
-                self.logger.write(format!("ui input: {event:?}"));
-            }
-        }
+        self.focus_layout_ready();
         self.fit_verify_grid(&bounds, scale);
         self.watch_panes(&bounds, scale);
         if let Some(launcher) = &self.launcher_layout {
@@ -4736,23 +4812,11 @@ impl App {
             vec![]
         };
         phases.draw = start.elapsed();
-        if self.animate {
-            if fifo {
-                self.frozen_ms = self
-                    .animation_start
-                    .map_or(0., |(start, _)| start.elapsed().as_secs_f32() * 1000.);
-            } else if let Some(time) = tick
-                .as_ref()
-                .and_then(|tick| self.clock.observe(tick.target))
-            {
-                self.frozen_ms = time;
-            }
-        }
         let ui_frame = self.ui_observe.then(|| self.ui_layout(logical, &layouts));
         if let Some((encode, wait)) = self.gpu.as_mut().unwrap().draw(
             ops,
             scale,
-            self.frozen_ms,
+            self.clock_frame.time_ms,
             frame,
             self.meter.total_frames() + 1,
             self.live_state.as_ref().map(|model| gpu::Panes {
@@ -4806,9 +4870,11 @@ impl App {
                         stall.gpu_complete(id, at);
                     }
                 });
-            if !self.animate {
+            if !self.animate || self.clock.is_frozen() {
                 // Idle frames pause the link, except while a swell or attention loop runs.
-                let swelling = self.scene.animating(Instant::now()) && !self.occluded;
+                let swelling = !self.clock.is_frozen()
+                    && self.scene.animating(self.clock_frame.now)
+                    && !self.occluded;
                 self.pacer.as_ref().unwrap().set_active(swelling)?;
             }
             if self.meter.total_frames() == 1 {
@@ -4819,7 +4885,10 @@ impl App {
                 self.demo();
                 if self.animate {
                     self.animation_start = Some((Instant::now(), self.meter.total_frames()));
-                    self.pacer.as_mut().unwrap().set_active(!self.occluded)?;
+                    self.pacer
+                        .as_mut()
+                        .unwrap()
+                        .set_active(!self.occluded && !self.clock.is_frozen())?;
                     if self.cadence_test {
                         let proxy = self.proxy.clone();
                         bbt_rt::handle().spawn(async move {
@@ -5192,7 +5261,6 @@ impl ApplicationHandler<UiEvent> for App {
             }
             UiEvent::EndAnimation => {
                 self.animate = false;
-                self.clock.pause();
                 let pacer = self.pacer.as_mut().expect("pacer installed");
                 if let Err(error) = pacer.set_active(false) {
                     self.fail(error, event_loop);
@@ -5381,12 +5449,12 @@ impl ApplicationHandler<UiEvent> for App {
             WindowEvent::Occluded(occluded) => {
                 self.occluded = occluded;
                 if let Some(pacer) = &mut self.pacer
-                    && let Err(error) = pacer.set_active(self.animate && !occluded)
+                    && let Err(error) =
+                        pacer.set_active(self.animate && !occluded && !self.clock.is_frozen())
                 {
                     self.fail(error, event_loop);
                     return;
                 }
-                self.clock.pause();
                 if !occluded {
                     self.request_redraw();
                 }

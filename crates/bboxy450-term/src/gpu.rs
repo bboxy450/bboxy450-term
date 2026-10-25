@@ -706,7 +706,7 @@ impl VerificationFrame {
         completed: SyncSender<(u64, Instant)>,
         wake: impl Fn() + Send + Sync + 'static,
     ) -> Result<Duration, String> {
-        self.draw_layers_notifying(ops, vec![], model, bounds, frame, completed, wake)
+        self.draw_layers_notifying(ops, vec![], model, bounds, frame, 450., completed, wake)
     }
 
     /// The windowless driver uses the same foreground-after-pane order as winit.
@@ -721,6 +721,7 @@ impl VerificationFrame {
         model: &Model,
         bounds: &[(SeatId, Rect)],
         frame: u64,
+        time_ms: f32,
         completed: SyncSender<(u64, Instant)>,
         wake: impl Fn() + Send + Sync + 'static,
     ) -> Result<Duration, String> {
@@ -741,7 +742,7 @@ impl VerificationFrame {
             ops,
             FrameTime {
                 scale: 1.,
-                time_ms: 450.,
+                time_ms,
                 external_before: false,
                 // R5 keeps its explicit clear above.
                 clear: false,
@@ -776,7 +777,7 @@ impl VerificationFrame {
                 foreground,
                 FrameTime {
                     scale: 1.,
-                    time_ms: 450.,
+                    time_ms,
                     external_before: true,
                     clear: false,
                 },

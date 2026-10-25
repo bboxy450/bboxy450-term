@@ -863,6 +863,7 @@ async fn ctl_capture_is_answered_by_the_window() {
                     .send(GuiAction::UiReply {
                         id: op,
                         result: Ok(bbt_proto::gui::UiLayout {
+                            clock: None,
                             frame_seq,
                             layout_revision: None,
                             spawned: None,

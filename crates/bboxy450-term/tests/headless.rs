@@ -1021,6 +1021,167 @@ fn png_pixels(path: &std::path::Path) -> (u32, u32, Vec<u8>) {
 }
 
 #[test]
+fn ui_clock_refuses_a_non_test_account_even_with_a_forged_issuer() {
+    let mut f = Fixture::new();
+    f.start();
+    for command in [
+        vec!["ui", "clock", "freeze"],
+        vec!["ui", "clock", "freeze", "--as", "test-account:forged"],
+    ] {
+        let (code, rows) = f.ctl(&command);
+        assert_eq!(code, 1, "{rows:?}");
+        assert_eq!(rows[0]["ok"], false);
+        assert!(
+            rows[0]["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("verified test account"),
+            "{rows:?}"
+        );
+    }
+    assert_eq!(f.ok(&["ui", "layout"])["data"]["clock"]["revision"], 0);
+}
+
+#[test]
+fn test_account_ui_clock_freezes_pixels_steps_focus_and_resumes_live_time() {
+    let mut f = Fixture::new();
+    let account = f.root.path().join("c");
+    f.run = account.join("run");
+    let started = f.ok(&[
+        "app",
+        "start",
+        "--headless",
+        "--ctl",
+        "--unattended",
+        "--test-account",
+        account.to_str().unwrap(),
+    ]);
+    f.pid = started["data"]["pid"].as_u64().map(|pid| pid as u32);
+    assert_eq!(started["data"]["custody_backend"], "file");
+    assert_eq!(started["data"]["windows"], 0);
+    let frozen = f.ok(&["ui", "clock", "freeze"]);
+    assert_eq!(frozen["data"]["clock"]["frozen"], true);
+    let mut seats = vec![];
+    for name in ["clock-first", "clock-second"] {
+        let row = f.ok(&["seat", "spawn", "zsh", "--name", name, "--place", "tab"]);
+        let seat = row["data"]["seat"].as_str().unwrap().to_owned();
+        f.ok(&[
+            "seat",
+            "type",
+            &seat,
+            "printf '\\nCLOCK-READY\\n'; exec cat",
+        ]);
+        f.ok(&["seat", "key", &seat, "enter"]);
+        f.ok(&[
+            "seat",
+            "wait",
+            &seat,
+            "--text",
+            "(?m)^CLOCK-READY$",
+            "--timeout",
+            "20000",
+        ]);
+        seats.push(seat);
+    }
+    // Settle the launch swells before beginning the new focus episode.
+    f.ok(&["ui", "focus", &seats[1]]);
+    f.ok(&["ui", "clock", "advance", "900"]);
+    let focus = f.ok(&["ui", "focus", &seats[0]]);
+    let before_step = f.ok(&["ui", "clock", "freeze"]);
+    let capture = |name: &str| {
+        let path = f.root.path().join(name);
+        let reply = f.ok(&["seat", "capture", "window", path.to_str().unwrap()]);
+        assert!(
+            reply["data"]["frame_seq"].as_u64().unwrap()
+                >= before_step["data"]["frame_seq"].as_u64().unwrap()
+        );
+        png_pixels(&path)
+    };
+    let first = capture("clock-first.png");
+    let second = capture("clock-second.png");
+    assert_eq!(
+        first, second,
+        "wall time and capture work cannot advance a frozen animation"
+    );
+    let stepped = f.ok(&["ui", "clock", "advance", "450"]);
+    assert_eq!(
+        stepped["data"]["clock"]["time_ms"].as_u64().unwrap(),
+        before_step["data"]["clock"]["time_ms"].as_u64().unwrap() + 450
+    );
+    assert!(
+        stepped["data"]["frame_seq"].as_u64().unwrap()
+            > before_step["data"]["frame_seq"].as_u64().unwrap()
+    );
+    let geometry = |frame: &Value| {
+        frame["data"]["panes"].as_array().unwrap().iter().map(|pane| {
+            serde_json::json!({"seat": pane["seat"], "rect": pane["rect"], "cols": pane["cols"], "rows": pane["rows"], "focused": pane["focused"]})
+        }).collect::<Vec<_>>()
+    };
+    assert_eq!(
+        geometry(&stepped),
+        geometry(&focus),
+        "the swell is paint only"
+    );
+    let peak = capture("clock-peak.png");
+    assert_eq!((first.0, first.1), (peak.0, peak.1));
+    assert_ne!(
+        first.2, peak.2,
+        "the 450 ms peak must reach the actual GPU image"
+    );
+    let node_rect = |name| {
+        stepped["data"]["tree"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find_map(|node| ui_node(node, name))
+            .unwrap_or_else(|| panic!("missing solved node {name}"))["rect"]
+            .clone()
+    };
+    let pane = node_rect("named:pane");
+    let new_swarm = node_rect("named:new-swarm");
+    let dock = node_rect("named:conversation/rows");
+    // The empty sidebar gap is outside the resting rim and every sidebar
+    // block: moving waves cannot satisfy this assertion in place of a swell.
+    let x0 = (pane[0].as_f64().unwrap() - 32.) as usize;
+    let x1 = (pane[0].as_f64().unwrap() - 8.) as usize;
+    let y0 = (new_swarm[1].as_f64().unwrap() + new_swarm[3].as_f64().unwrap() + 16.) as usize;
+    let y1 = (dock[1].as_f64().unwrap() - 16.) as usize;
+    assert!(x1 > x0 && y1 > y0 && x1 < first.0 as usize && y1 < first.1 as usize);
+    let mut swell_pixels = 0;
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let at = (y * first.0 as usize + x) * 4;
+            swell_pixels += usize::from(first.2[at..at + 4] != peak.2[at..at + 4]);
+        }
+    }
+    assert!(
+        swell_pixels > 0,
+        "the 450 ms frame has no swell beyond the resting rim"
+    );
+    let resumed = f.ok(&["ui", "clock", "resume"]);
+    assert_eq!(resumed["data"]["clock"]["frozen"], false);
+    assert!(
+        resumed["data"]["clock"]["time_ms"].as_u64().unwrap()
+            >= stepped["data"]["clock"]["time_ms"].as_u64().unwrap()
+    );
+    let (code, rows) = f.ctl(&["ui", "clock", "advance", "1"]);
+    assert_eq!(code, 1);
+    assert!(
+        rows[0]["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("clock_not_frozen")
+    );
+    f.ok(&["app", "stop"]);
+    await_value(&f, || {
+        f.log()
+            .contains("headless GUI stopped: Ok(())")
+            .then_some(Value::Bool(true))
+    });
+    f.pid = None;
+}
+
+#[test]
 fn ctl_ui_relays_real_chrome_layout_focus_and_a_foreground_launcher() {
     let mut f = Fixture::new();
     let account = f.root.path().join("ui-account");

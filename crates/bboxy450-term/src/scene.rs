@@ -184,6 +184,7 @@ pub struct Scene {
     swells: HashMap<SeatId, Instant>,
     /// Seats waiting for the operator (attention §2): since when, and whether muted.
     attention: HashMap<SeatId, (Instant, bool)>,
+    attention_origins: HashMap<SeatId, Instant>,
 }
 type FontKey = (u32, u16, bool, bool, u32);
 #[derive(Default)]
@@ -324,6 +325,7 @@ impl Scene {
             subtitle: false,
             swells: HashMap::new(),
             attention: HashMap::new(),
+            attention_origins: HashMap::new(),
         }
         .with_env_rim()
     }
@@ -364,7 +366,13 @@ impl Scene {
     }
     /// A seat waiting for the operator loops the swell in its waiting amber until handled
     /// (attention §2); muted, it keeps the ordinary waiting rim. None: handled.
+    #[cfg(test)]
     pub fn set_attention(&mut self, seat: SeatId, state: Option<(Instant, bool)>) {
+        if let Some((since, _)) = state {
+            self.attention_origins.insert(seat, since);
+        } else {
+            self.attention_origins.remove(&seat);
+        }
         match state {
             Some(state) => self.attention.insert(seat, state),
             None => self.attention.remove(&seat),
@@ -421,10 +429,28 @@ impl Scene {
             subtitle: false,
             swells: HashMap::new(),
             attention: HashMap::new(),
+            attention_origins: HashMap::new(),
         }
         .with_env_rim()
     }
+    /// Uncontrolled fixture projection; the App uses `set_model_with_clock`.
     pub fn set_model(&mut self, model: &bboxy450_term::model::Model, stage: &Stage) {
+        self.set_model_at(model, stage, None);
+    }
+    pub fn set_model_with_clock(
+        &mut self,
+        model: &bboxy450_term::model::Model,
+        stage: &Stage,
+        clock: &crate::animation_clock::Clock,
+    ) {
+        self.set_model_at(model, stage, clock.controlled().then(|| clock.now()));
+    }
+    fn set_model_at(
+        &mut self,
+        model: &bboxy450_term::model::Model,
+        stage: &Stage,
+        animation_now: Option<Instant>,
+    ) {
         #[cfg(test)]
         {
             self.projections += 1;
@@ -437,9 +463,18 @@ impl Scene {
         self.identity = model.identity.clone();
         self.hosts = model.hosts.clone();
         self.swarms = model.ui.window.sidebar.swarms.clone();
-        self.attention.clear();
+        self.attention
+            .retain(|seat, _| model.attention.contains_key(seat));
+        self.attention_origins
+            .retain(|seat, _| model.attention.contains_key(seat));
         for (seat, state) in &model.attention {
-            self.set_attention(*seat, Some((state.since, state.muted)));
+            if self.attention_origins.get(seat) != Some(&state.since) {
+                self.attention_origins.insert(*seat, state.since);
+                self.attention
+                    .insert(*seat, (animation_now.unwrap_or(state.since), state.muted));
+            } else if let Some((_, muted)) = self.attention.get_mut(seat) {
+                *muted = state.muted;
+            }
         }
         self.swells
             .retain(|seat, _| model.ui.seats.contains_key(seat));
@@ -714,9 +749,10 @@ impl Scene {
         }
     }
     pub fn layout(&self, size: [f32; 2], effects: bool) -> Result<Vec<c::Layout>, String> {
-        self.layout_at(size, effects, Instant::now())
+        self.layout_with_dock(size, effects, 0.)
     }
     /// As `layout`, with every seat's swell and attention evaluated at `now`.
+    #[cfg(test)]
     pub fn layout_at(
         &self,
         size: [f32; 2],
@@ -733,14 +769,23 @@ impl Scene {
     ) -> Result<Vec<c::Layout>, String> {
         self.layout_docked_at(size, effects, dock_height, Instant::now())
     }
+    #[cfg(test)]
     pub fn local_page_chrome(
         &self,
         size: [f32; 2],
         dock_height: f32,
     ) -> Result<Vec<c::Layout>, String> {
-        self.layout_contents(size, false, dock_height, Instant::now(), false)
+        self.local_page_chrome_at(size, dock_height, Instant::now())
     }
-    fn layout_docked_at(
+    pub fn local_page_chrome_at(
+        &self,
+        size: [f32; 2],
+        dock_height: f32,
+        now: Instant,
+    ) -> Result<Vec<c::Layout>, String> {
+        self.layout_contents(size, false, dock_height, now, false)
+    }
+    pub fn layout_docked_at(
         &self,
         size: [f32; 2],
         effects: bool,
@@ -1705,6 +1750,84 @@ mod depth_tests {
                 .iter()
                 .all(|r| r.0 == 0.)
         );
+    }
+
+    #[test]
+    fn app_clock_steps_the_actual_focus_rims_to_450_ms_without_moving_layout() {
+        use bbt_proto::gui::UiClockCommand;
+        let mut clock = crate::animation_clock::Clock::default();
+        let frozen = clock.apply(UiClockCommand::Freeze).unwrap();
+        let mut scene = Scene::new();
+        let seat = SeatId::from_u128(3);
+        scene.swell(seat, frozen.now);
+        let bounds = |now| {
+            scene
+                .layout_at([1600., 960.], true, now)
+                .unwrap()
+                .into_iter()
+                .map(|layout| layout.rect)
+                .collect::<Vec<_>>()
+        };
+        let before = bounds(frozen.now);
+        assert!(
+            rims_of(&scene, seat, frozen.now)
+                .iter()
+                .all(|rim| rim.0 == 0.)
+        );
+        let peak = clock.apply(UiClockCommand::Advance { ms: 450 }).unwrap();
+        let rims = rims_of(&scene, seat, peak.now);
+        assert!(rims.len() >= 2, "pane and row must both carry the swell");
+        assert!(
+            rims.iter()
+                .all(|(envelope, attention)| (*envelope - 1.).abs() < 1e-6 && !attention)
+        );
+        assert_eq!(bounds(peak.now), before);
+        let settled = clock.apply(UiClockCommand::Advance { ms: 450 }).unwrap();
+        assert!(
+            rims_of(&scene, seat, settled.now)
+                .iter()
+                .all(|rim| rim.0.abs() < 1e-6)
+        );
+    }
+
+    #[test]
+    fn controlled_attention_keeps_its_logical_phase_across_metadata_publications() {
+        use bbt_proto::gui::UiClockCommand;
+        let record =
+            bbt_proto::SeatRecord::new(bbt_mux::Ulid::new(), bbt_mux::Ulid::new(), "Clock", "zsh");
+        let seat = SeatId::from_u128(record.id.0);
+        let mut model = bboxy450_term::model::build(
+            &[record],
+            &bboxy450_term::grids::Grids::new(),
+            &Default::default(),
+        );
+        let mut clock = crate::animation_clock::Clock::default();
+        clock.apply(UiClockCommand::Freeze).unwrap();
+        clock.apply(UiClockCommand::Advance { ms: 10_000 }).unwrap();
+        let source = Instant::now();
+        model.attention.insert(
+            seat,
+            bboxy450_term::attention::Attention {
+                since: source,
+                muted: false,
+            },
+        );
+        let mut scene = Scene::live();
+        scene.set_model_with_clock(&model, &model.ui.window.stage, &clock);
+        assert_eq!(scene.envelope(seat, clock.now()), (0., true));
+        clock.apply(UiClockCommand::Advance { ms: 450 }).unwrap();
+        for _ in 0..3 {
+            scene.set_model_with_clock(&model, &model.ui.window.stage, &clock);
+            let (phase, attention) = scene.envelope(seat, clock.now());
+            assert!((phase - 1.).abs() < 1e-6 && attention);
+            assert_eq!(model.attention[&seat].since, source);
+        }
+        model.attention.get_mut(&seat).unwrap().muted = true;
+        scene.set_model_with_clock(&model, &model.ui.window.stage, &clock);
+        assert_eq!(scene.envelope(seat, clock.now()), (0., false));
+        model.attention.clear();
+        scene.set_model_with_clock(&model, &model.ui.window.stage, &clock);
+        assert!(!scene.attention_origins.contains_key(&seat));
     }
 
     #[test]

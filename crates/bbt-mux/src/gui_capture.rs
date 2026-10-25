@@ -383,6 +383,7 @@ mod tests {
                     frame_seq,
                     layout_revision: None,
                     spawned: None,
+                    clock: None,
                     size: [1600., 900.],
                     swarm: None,
                     tab: None,
