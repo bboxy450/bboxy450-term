@@ -1,0 +1,13 @@
+{
+  "gate_source": "ff0d74335d25a5d5ea105c69d01b6bdae395fc82",
+  "build_target_deleted": true,
+  "allocated_gate_cache_freed": 4388208640,
+  "merged_gallery_retirement": {
+    "manifest": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-merged-gallery-cleanup-v2.json",
+    "manifest_sha256": "640d988641da26c77f42db8e012e4f47f1cffa087389a3a593f2474ffb542627",
+    "files": 29306,
+    "allocated_bytes": 1180073984,
+    "authorization": "Merged galleries/binaries retirement59db9494 plus current inactive-own-target cleanupa5ba9bb0; documents5e85ef2f and T16486e6fb both on main"
+  },
+  "peer_paths_deleted": []
+}

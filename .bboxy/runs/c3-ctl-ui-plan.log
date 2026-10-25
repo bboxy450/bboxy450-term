@@ -1,0 +1,47 @@
+ROLE: EXECUTOR — Nyx Copperwing
+Brief: e49d5b08-0fe8-4e39-9406-cb35be03f8e5; ctl-cli.md C-3
+Base: f3316827; branch nyx-ctl-ui; worktree bboxy450-term-nyx
+Map approval: 868fdd33-c5a4-4c3d-b4a7-d833c0e6ff6d
+Scene/GPU bridge and parity approval: ecfed3e9-3733-4695-af20-9f3721449a0d
+
+Cut: ctl ui open graph|settings|launcher|docs <locator>, key <named chrome keys>, focus <seat selector>, layout.
+No scroll verb, OS input, logic-side layout, new consumer, renderer algorithm, shader or style change.
+
+Paths/mechanisms:
+- proto/gui.rs: bounded UI requests plus relayed request/result and solved layout DTO.
+- mux/gui_capture.rs: bounded existing GUI-owner broadcast/oneshot relay, correlated completion.
+- mux/logic.rs: account/operator journal admission before relay; retained response replay; wait outside Worker.
+- mux/seat_socket.rs: ctl-only request and GUI-only completion, same admitted endpoint.
+- app ctl.rs: parser, verb mapping, named errors and one Ui action per call.
+- app cockpit.rs/live.rs: request/reply plumbing; unsolicited UiAsk consumes no FIFO slot.
+- app main.rs/headless.rs: shared App controller owner, chrome route/dispatch and pure solve_ui(size); preserve native lifecycle/dirty/GPU servicing.
+- scene.rs: expose the retained LauncherLayout, without rebuilding its geometry.
+- gpu.rs: VerificationFrame foreground after pane textures; legacy caller passes empty foreground.
+- tests/headless.rs: isolated file-account integration and launcher-over-pane pixel witness.
+
+Bounds: 1-32 named keys; 4096-byte document locator; 64 pending relays; 10s relay wait; layout 4096 nodes/128KiB, named refusal instead of clipping.
+Verification: focused DTO/relay/parser/FIFO and headless tests, strict workspace/all-target Clippy, exact clean atomic ci-local --parity (0 geometry mismatches), retained before/launcher PNGs with pixel assertion and crop read.
+UI scroll is explicitly a later cut (Corvin 564b997c / records21b41f88).
+Initial WIP check: cargo check --all-targets EXIT101 at Result alias; corrected to std::result::Result; second check EXIT0.
+A whole-workspace cargo fmt --check EXIT1 found inherited formatting plus WIP; only owned changed files formatted, inherited whitespace-only hunks restored. No unrelated source edited.
+
+Checkpoint ed7320d2: cargo check0; focused headless1/0; full sequential headless9/0 including two unattended idle smokes; proto UI1/0; relay3/0. Strict workspace Clippy initially101 at result_large_err; dispatch now returns Option<RoutedKey>, next strict run0.
+Capture fixture strengthened after image inspection: print opaque red cells before opening the launcher. Focused acceptance1/0; all529984 covered pixels change, red529984->0. Retained target/c3-ui-proof (not a canonical parity baseline).
+Late read: mark a timed-out relay unknown rather than rejected; same op still never redispatches. Named chrome keys include existing page close/reload and pane-navigation chords; UI scroll verb remains deferred.
+
+Rebased onto accepted R5h-idle8240d359. App::owner carries WakeCounters; native startup drain, data-before-take_tick and successful-frame counters are retained. Wake plus ctl UI reads use the same dispatch_wake_sources classification, so layout polling itself does not re-arm a paused link and a consumed data invalidation is preserved. Headless drains through the same owner and uses the returned source vector.
+Post-rebase: binary104/0; ctl initially6/1 because the parse sample list had three extra open-target samples against four new verbs, corrected to one sample per verb; ctl rerun7/0. Workspace/all-target strict Clippy0. Headless full rerun9/0 (79.06s), including both unattended idle smokes and the opaque-pane UI capture.
+
+Exact cb6125af ci-local --parity EXIT101 after1706.784s. Build and strict Clippy passed; app104/0, ctl integration13/0, headless9/0 and GUI close/history suites passed. Core kitty_keyboard_invariant failed: source guard requires route_input( in the actual KeyboardInput callback. Parity was not reached. Raw log/status retained in c3-ctl-ui-ci-cb6125af-failed.log and c3-ctl-ui-failure-cb6125af.json. Private gate target retired3057553408 bytes.
+Fix in progress, edits only during QUIET r5h-frame10878 until20:33PDT/END: retain the direct native route_input path (including launcher queries), use finish_route for native chrome contexts, make shared route_chrome read-only so ctl logical chords cannot change physical held-key/release tracking. Added a regression for a native local press surviving a ctl chord and a native PTY release not being suppressed by one. No core invariant edited or weakened. Regression/prechecks have NOT run yet: quiet forbids workloads. Oracle10909 now requires full workspace tests, strict Clippy and scripts/invariants.sh in a dev target before the next exact gate.
+
+After QUIET END10978: focused Core Kitty invariant1/0. Workspace preflight on clean71df3a98 is running, not yet a verdict. Rebased onto accepted T7 mainbece3308: one App::ctl_focus and begin_focus/poll_focus_frame shared by both drivers, native meter versus actual headless completed/submitted counters; preserve CloseFor, metadata close preparation, close_regions and Cmd-Z. No second Scene/FocusState. Layout reply uses direct bounded admission/flush instead of queue() so a read alone cannot re-arm the native display. T7 close/undo policy unchanged. Full accepted-base preflight and exact gate still owed.
+
+Frozen34d2d449 preflight passed1341/0/29, strict Clippy0, default invariants23/0 (9 slow skipped). The prior8bae run had gui_events EOF at251; exact-binary retry1/0. Oraclef0fc2dcb ordered20x tip/main714163f2: both20/0, raw logs/source/binary hashes retained under target/c3-gui-events-classification-*. Cause remains unclassified; no lane/test/deadline changed.
+Oracle06faf8d4 and Corvin9e822e6e/d31e2ff4 expand C3 acceptance to produced-frame receipts: UiLayout.frame_seq; retained real-layout reads, no re-solve; mutating replies after qualifying native post-draw/headless completion. UI focus reuses T7 Pending/prior-spawn wait. Generic keys collect existing spawn/operation/mute/close/undo controller truth before arming a bounded next-frame waiter; newer operations/physical keys supersede by name, same T7 deadline. Frame/capture sequence domains stay separate; SeatScreen unchanged. Frame code/tests are WIP and not yet checked; former34d green is not proof of this added mechanism.
+
+2026-10-24 c8522979 preflight: workspace EXIT101; headless10/1, new cmd-m UI reply timed out at 3s, other targets passed. Added backend/frame-stage diagnostics and loaded-view barriers before focused reproduction. Full gate not started.
+
+2026-10-24 ae965239 focused headless10/1: CmdM target=None,last60,pending0,Mute(false). Mute transaction updates persisted SeatRecord but presence is not a seat-state event; IO Muted reply had no metadata refresh. Queue one existing ListSeats on successful Muted, and settle shell before the regression. No timeout change.
+
+2026-10-24 Oracle8dba22cf: publish mute metadata from service.change_mute on the existing seat-state bus path, no client ListSeats refresh. Superseded8c804762 focused compile stopped SIGINT(-2), no tests ran. Account-kv pending Draft is atomic with mute, bounded128 indexed read, original ID retained until bus accepts; idle-before-mute UI regression unchanged.

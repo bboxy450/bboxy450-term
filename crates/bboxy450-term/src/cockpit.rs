@@ -30,6 +30,10 @@ const GUI_WRITE_CAPACITY: usize = 64;
 /// App-defined, bounded UI-to-IO messages. A full sender returns ownership to
 /// the UI for retry; no socket or process operation runs in the window handler.
 pub enum UiMsg {
+    UiReply {
+        id: bbt_mux::Ulid,
+        result: std::result::Result<bbt_proto::gui::UiLayout, String>,
+    },
     /// Declarative launch inputs only. IO supplies cwd, swarm and backend role
     /// defaults before using the existing GUI Spawn action.
     Spawn {
@@ -466,7 +470,12 @@ async fn logic_main() -> Result<()> {
         ring: Default::default(),
     };
     let logic = if bootstrap.fixture_hosts {
-        Logic::start_custodied_with_fixture_store(connection, logic_config, store, bbt_rt::handle())?
+        Logic::start_custodied_with_fixture_store(
+            connection,
+            logic_config,
+            store,
+            bbt_rt::handle(),
+        )?
     } else if let Some(store) = store {
         Logic::start_custodied_with_store(connection, logic_config, store, bbt_rt::handle())?
     } else {
@@ -773,6 +782,7 @@ impl Session {
                 | GuiReply::Events { .. }
                 | GuiReply::EventCursor { .. }
                 | GuiReply::EventStatus { .. }
+                | GuiReply::UiAsk { .. }
                 | GuiReply::AppAsk { .. }
                 | GuiReply::AppStopping { .. }) => {
                     bytes += serde_json::to_vec(&reply)?.len();

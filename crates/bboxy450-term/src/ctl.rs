@@ -30,6 +30,10 @@ const TIMEOUT: Duration = Duration::from_secs(15);
 const PAGE: usize = 128;
 
 pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]   (ctl-cli rev. 2)
+  ui open <graph|settings|launcher|docs <path>>
+  ui key <named-key>...                  cmd-t cmd-g cmd-m cmd-comma esc enter tab arrows
+  ui focus <seat>                        select its pane through the GUI owner
+  ui layout                              solved window tree, pane grids, focus and tab
   seat ls
   seat spawn <claude|codex|zsh> [--place tab] [--role oracle|architect|creativity|executor|shell]
              [--name NAME] [--cwd DIR] [--swarm ID]
@@ -122,6 +126,8 @@ impl Endpoint {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
+    Ui(bbt_proto::gui::UiRequest),
+    UiFocus(String),
     Spawn {
         harness: String,
         name: Option<String>,
@@ -303,6 +309,10 @@ pub enum Command {
 /// Every noun-verb `ctl` verb and the one window action it issues (ctl-cli §1). The parser
 /// accepts exactly these; `app endpoint` reads the run directory and issues none.
 pub const VERBS: &[(&str, &str, &str)] = &[
+    ("ui", "open", "Ui"),
+    ("ui", "key", "Ui"),
+    ("ui", "focus", "Ui"),
+    ("ui", "layout", "Ui"),
     ("seat", "ls", "ListSeats"),
     ("seat", "spawn", "Spawn"),
     ("seat", "screen", "Screen"),
@@ -449,6 +459,25 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
     let flag = |name: &str| flags.get(name).cloned();
     let swarm = flag("swarm").as_ref().map(ulid).transpose()?;
     let command = match words.iter().map(String::as_str).collect::<Vec<_>>()[..] {
+        ["ui", "layout"] => Command::Ui(bbt_proto::gui::UiRequest::Layout),
+        ["ui", "focus", seat] => Command::UiFocus(seat.into()),
+        ["ui", "open", target] => Command::Ui(bbt_proto::gui::UiRequest::Open(match target {
+            "graph" => bbt_proto::gui::UiTarget::Graph,
+            "settings" => bbt_proto::gui::UiTarget::Settings,
+            "launcher" => bbt_proto::gui::UiTarget::Launcher,
+            _ => return Err(format!("{USAGE_PREFIX}ui open graph|settings|launcher|docs <path>")),
+        })),
+        ["ui", "open", "docs", path] => {
+            let request = bbt_proto::gui::UiRequest::Open(bbt_proto::gui::UiTarget::Docs(path.into()));
+            request.validate().map_err(|e| format!("{USAGE_PREFIX}{e}"))?;
+            Command::Ui(request)
+        },
+        ["ui", "key", ref keys @ ..] => {
+            let request = bbt_proto::gui::UiRequest::Key(keys.iter().map(|s| s.to_string()).collect());
+            request.validate().map_err(|e| format!("{USAGE_PREFIX}{e}"))?;
+            Command::Ui(request)
+        },
+
         ["spawn", harness] => Command::Spawn {
             harness: harness.into(),
             name: flag("name"),
@@ -1139,6 +1168,21 @@ impl Client {
         .map(|_| id)
     }
     /// Query or stop the attached app owner through the existing admitted endpoint.
+    pub fn ui(
+        &mut self,
+        request: bbt_proto::gui::UiRequest,
+    ) -> Result<bbt_proto::gui::UiLayout, String> {
+        request.validate().map_err(str::to_owned)?;
+        let id = self.mint();
+        match self.call(
+            Some(id),
+            GuiAction::Ui { id, request },
+            |r| matches!(r, GuiReply::Ui { op, .. } if *op == id),
+        )? {
+            GuiReply::Ui { layout, .. } => Ok(layout),
+            _ => unreachable!(),
+        }
+    }
     pub fn app(
         &mut self,
         request: bbt_proto::gui::AppRequest,
@@ -1495,7 +1539,9 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
                 std::thread::sleep(Duration::from_millis(200));
             }
         }
-        Command::Watch { .. }
+        Command::Ui(_)
+        | Command::UiFocus(_)
+        | Command::Watch { .. }
         | Command::Rename { .. }
         | Command::Restart { .. }
         | Command::Close { .. }
@@ -1648,6 +1694,20 @@ pub fn classify(reason: &str) -> Fail {
             "ancestry_refused",
             "a seat uses its MCP tools; ctl is the operator's door",
             1,
+        );
+    }
+    if reason.starts_with("unknown: timeout:") {
+        return fail(
+            "timeout",
+            "the GUI owner did not answer; retain --op and inspect app status",
+            3,
+        );
+    }
+    if reason.starts_with("ui_refused: endpoint_unavailable:") {
+        return fail(
+            "endpoint_unavailable",
+            "start a native or headless app owner with --ctl",
+            4,
         );
     }
     if reason.starts_with("app endpoint unavailable:") {
@@ -1855,6 +1915,14 @@ fn run_verb(
         Command::RecordFetch { locator } => records::fetch(&mut client, locator)?,
         Command::RecordSearch { query, cursor } => records::search(&mut client, query, cursor)?,
         Command::RecordChanges { since } => records::changes(&mut client, since)?,
+        Command::Ui(request) => {
+            serde_json::to_value(client.ui(request)?).map_err(|e| e.to_string())?
+        }
+        Command::UiFocus(seat) => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::Focus { seat })?)
+                .map_err(|e| e.to_string())?
+        }
         Command::AppStatus => serde_json::to_value(client.app(bbt_proto::gui::AppRequest::Status)?)
             .map_err(|e| e.to_string())?,
         Command::AppStop => serde_json::to_value(app::stop(&mut client, &endpoint_file)?)
@@ -2367,6 +2435,10 @@ mod tests {
         let id = Ulid::new();
         let seat = bbt_proto::SeatId::from_u128(1);
         let samples = [
+            GuiAction::Ui {
+                id,
+                request: bbt_proto::gui::UiRequest::Layout,
+            },
             GuiAction::ListSeats,
             GuiAction::App {
                 id,
@@ -2458,6 +2530,10 @@ mod tests {
             );
         }
         let parse_samples = [
+            "ui open graph",
+            "ui key cmd-t esc",
+            "ui focus s",
+            "ui layout",
             "seat ls",
             "seat spawn zsh",
             "seat screen s",
@@ -2568,6 +2644,23 @@ mod tests {
         }
     }
     #[test]
+    fn ui_keys_are_bounded_chrome_names_and_never_terminal_text() {
+        for line in [
+            "ui key",
+            "ui key hello",
+            "ui open docs",
+            "ui open terminal",
+            "ui scroll down",
+        ] {
+            assert!(parse_full(&args(line)).is_err(), "{line}");
+        }
+        let line = format!("ui key {}", vec!["cmd-t"; 33].join(" "));
+        assert!(parse_full(&args(&line)).is_err());
+        assert!(
+            matches!(parse_full(&args("ui key cmd-t esc")).unwrap().command, Command::Ui(bbt_proto::gui::UiRequest::Key(keys)) if keys == ["cmd-t", "esc"])
+        );
+    }
+    #[test]
     fn errors_name_a_kind_a_hint_and_an_exit() {
         let hidden = classify("not_on_screen: seat fixture has no pane on screen");
         assert_eq!(hidden.kind, "not_on_screen");
@@ -2575,6 +2668,17 @@ mod tests {
         assert_eq!(
             classify("focus_timeout: no frame completed").kind,
             "focus_timeout"
+        );
+        assert_eq!(
+            (
+                classify("unknown: timeout: GUI owner did not answer").kind,
+                classify("unknown: timeout: GUI owner did not answer").exit
+            ),
+            ("timeout", 3)
+        );
+        assert_eq!(
+            classify("ui_refused: endpoint_unavailable: no GUI owner").exit,
+            4
         );
         let usage = classify(&parse_full(&args("seat fly s")).unwrap_err());
         assert_eq!((usage.kind, usage.exit), ("usage", 2));

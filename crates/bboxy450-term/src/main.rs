@@ -52,6 +52,12 @@ use winit::{
 
 #[derive(Debug)]
 pub enum UiEvent {
+    UiFor {
+        id: bbt_mux::Ulid,
+        request: bbt_proto::gui::UiRequest,
+        prior_spawns: Vec<bbt_mux::Ulid>,
+    },
+    UiDeadline(bbt_mux::Ulid),
     Wake,
     CommandsReady(command_retry::Ready),
     Settings(Arc<preferences::Snapshot>),
@@ -420,6 +426,150 @@ impl FocusState {
     }
 }
 
+fn rect_array(rect: Rect) -> [f32; 4] {
+    [rect.x, rect.y, rect.w, rect.h]
+}
+
+#[derive(Clone, PartialEq, Eq)]
+struct UiVisible {
+    launcher: bool,
+    page: Option<String>,
+    document: Option<String>,
+    focused: Option<bbt_mux::Ulid>,
+    tab: Option<bbt_mux::Ulid>,
+}
+impl UiVisible {
+    fn from_layout(layout: &bbt_proto::gui::UiLayout) -> Self {
+        Self {
+            launcher: layout.launcher_open,
+            page: layout.page.clone(),
+            document: layout.document.clone(),
+            focused: layout.focused,
+            tab: layout.tab,
+        }
+    }
+}
+#[derive(Debug)]
+enum UiEffect {
+    Spawn(bbt_mux::Ulid),
+    Operation(bbt_mux::Ulid),
+    Mute(SeatId, bool),
+    Lifecycle(SeatId, bool),
+    Document,
+    Graph,
+    Preferences { saved: bool },
+    Refused(String),
+}
+impl UiEffect {
+    fn from_message(message: &live::UiMsg) -> Option<Self> {
+        match message {
+            live::UiMsg::Spawn { id, .. } => Some(Self::Spawn(*id)),
+            live::UiMsg::Messaging {
+                request: bbt_proto::messaging::Request::Mute { seat, muted },
+                ..
+            } => Some(Self::Mute(SeatId::from_u128(seat.0), *muted)),
+            live::UiMsg::Messaging { id, .. } | live::UiMsg::Task { id, .. } => {
+                Some(Self::Operation(*id))
+            }
+            live::UiMsg::Close(intent) => Some(Self::Lifecycle(intent.seat, false)),
+            live::UiMsg::UndoClose { seat } => Some(Self::Lifecycle(*seat, true)),
+            _ => None,
+        }
+    }
+}
+struct UiWait {
+    id: bbt_mux::Ulid,
+    after: Option<u64>,
+    visible: Option<UiVisible>,
+    effects: Vec<UiEffect>,
+    timer: tokio::task::AbortHandle,
+}
+impl Drop for UiWait {
+    fn drop(&mut self) {
+        self.timer.abort();
+    }
+}
+fn ui_layout_node(
+    layout: &bbt_ui::components::Layout,
+    remaining: &mut usize,
+) -> Result<bbt_proto::gui::UiLayoutNode, String> {
+    use bbt_ui::components::LayoutKind as K;
+    *remaining = remaining
+        .checked_sub(1)
+        .ok_or("ui_layout_oversize: more than 4096 nodes")?;
+    let kind = match &layout.kind {
+        K::Named(name) => format!("named:{name}"),
+        K::Filter { .. } => "filter".into(),
+        K::Atom(_) => "atom".into(),
+        K::Box { .. } => "box".into(),
+        K::Text { .. } => "text".into(),
+        K::Stack => "stack".into(),
+        K::ScrollView { .. } => "scroll_view".into(),
+        K::Spacer => "spacer".into(),
+        K::Icon { .. } => "icon".into(),
+        K::Image { .. } => "image".into(),
+        K::Path { .. } => "path".into(),
+        K::Rects { .. } => "rects".into(),
+    };
+    Ok(bbt_proto::gui::UiLayoutNode {
+        kind,
+        rect: rect_array(layout.rect),
+        children: layout
+            .children
+            .iter()
+            .map(|l| ui_layout_node(l, remaining))
+            .collect::<Result<_, _>>()?,
+    })
+}
+fn chrome_input(name: &str) -> Result<keyboard::Input<'static>, String> {
+    let mut parts = name.split('-').collect::<Vec<_>>();
+    let name = parts.pop().ok_or("invalid_ui_key: missing key")?;
+    let mut state = ModifiersState::empty();
+    for modifier in parts {
+        state.insert(match modifier {
+            "cmd" => ModifiersState::SUPER,
+            "alt" => ModifiersState::ALT,
+            "shift" => ModifiersState::SHIFT,
+            _ => return Err("invalid_ui_key: unsupported modifier".into()),
+        });
+    }
+    let (logical_key, code) = match name {
+        "t" => (Key::Character("t".into()), KeyCode::KeyT),
+        "g" => (Key::Character("g".into()), KeyCode::KeyG),
+        "m" => (Key::Character("m".into()), KeyCode::KeyM),
+        "w" => (Key::Character("w".into()), KeyCode::KeyW),
+        "z" => (Key::Character("z".into()), KeyCode::KeyZ),
+        "r" => (Key::Character("r".into()), KeyCode::KeyR),
+        "pageup" => (Key::Named(NamedKey::PageUp), KeyCode::PageUp),
+        "pagedown" => (Key::Named(NamedKey::PageDown), KeyCode::PageDown),
+        "home" => (Key::Named(NamedKey::Home), KeyCode::Home),
+        "end" => (Key::Named(NamedKey::End), KeyCode::End),
+        "comma" => (Key::Character(",".into()), KeyCode::Comma),
+        "esc" => (Key::Named(NamedKey::Escape), KeyCode::Escape),
+        "enter" => (Key::Named(NamedKey::Enter), KeyCode::Enter),
+        "tab" => (Key::Named(NamedKey::Tab), KeyCode::Tab),
+        "backspace" => (Key::Named(NamedKey::Backspace), KeyCode::Backspace),
+        "up" => (Key::Named(NamedKey::ArrowUp), KeyCode::ArrowUp),
+        "down" => (Key::Named(NamedKey::ArrowDown), KeyCode::ArrowDown),
+        "left" => (Key::Named(NamedKey::ArrowLeft), KeyCode::ArrowLeft),
+        "right" => (Key::Named(NamedKey::ArrowRight), KeyCode::ArrowRight),
+        _ => return Err("invalid_ui_key: unsupported chrome key".into()),
+    };
+    Ok(keyboard::Input {
+        unmodified_key: logical_key.clone(),
+        logical_key,
+        physical_key: PhysicalKey::Code(code),
+        text: None,
+        text_all_modifiers: None,
+        location: winit::keyboard::KeyLocation::Standard,
+        state: ElementState::Pressed,
+        repeat: false,
+        modifiers: keyboard::Modifiers {
+            state,
+            locks: Default::default(),
+        },
+    })
+}
 #[derive(Debug, PartialEq, Eq)]
 enum RoutedKey {
     Quit,
@@ -1260,8 +1410,24 @@ fn new_launcher_for(
     )
 }
 
+#[derive(Clone)]
+enum UiProxy {
+    Native(EventLoopProxy<UiEvent>),
+    Headless(Arc<dyn Fn(UiEvent) + Send + Sync>),
+}
+impl UiProxy {
+    fn send_event(&self, event: UiEvent) -> Result<(), ()> {
+        match self {
+            Self::Native(proxy) => proxy.send_event(event).map_err(|_| ()),
+            Self::Headless(send) => {
+                send(event);
+                Ok(())
+            }
+        }
+    }
+}
 struct App {
-    proxy: EventLoopProxy<UiEvent>,
+    proxy: UiProxy,
     inbox: UiInbox,
     wake_counters: std::cell::RefCell<stall::WakeCounters>,
     logger: log::Logger,
@@ -1350,6 +1516,11 @@ struct App {
     /// Operator captures waiting for the next presented frame.
     ctl_captures: Vec<live::CaptureAsk>,
     ctl_focus: bboxy450_term::focus_ack::Pending,
+    ui_observe: bool,
+    ui_frame: Option<(u64, Result<bbt_proto::gui::UiLayout, String>)>,
+    ui_wait: Option<UiWait>,
+    ui_focus: Option<bbt_mux::Ulid>,
+    ui_collect: Option<Vec<UiEffect>>,
     /// When the last frame was presented; a capture of it names this time.
     last_presented: Option<std::time::SystemTime>,
     pending_resize: Option<LogicalSize<f64>>,
@@ -1361,6 +1532,158 @@ struct App {
     stall: Option<stall::Native>,
 }
 impl App {
+    /// The same controller owner is used by winit and the windowless driver.
+    fn owner(
+        proxy: UiProxy,
+        inbox: UiInbox,
+        logger: log::Logger,
+        live_updates: Arc<Latest<Arc<bboxy450_term::model::Model>>>,
+        args: &[String],
+        verify: Verify,
+    ) -> Self {
+        let prepared = Arc::new(Latest::new(inbox.dirty.source(2)));
+        let updates = Arc::new(Latest::new(inbox.dirty.source(3)));
+        let smoke = args.iter().any(|a| a == "--smoke");
+        let fake = !args.iter().any(|a| a == "--headless")
+            && (smoke || args.iter().any(|a| a == "--fake-source"));
+        let overlay = args.iter().any(|a| a == "--meter");
+        let cadence_test = args.iter().any(|a| a == "--cadence-test");
+        let animate = cadence_test || args.iter().any(|a| a == "--animate");
+        let pacing = Mode::Metal;
+        let capture = args
+            .windows(2)
+            .find(|v| v[0] == "--capture")
+            .map(|v| std::path::PathBuf::from(&v[1]));
+        Self {
+            proxy,
+            inbox,
+            wake_counters: Default::default(),
+            logger,
+            prepared,
+            updates,
+            live_updates,
+            live_state: None,
+            live_commands: None,
+            pending_commands: VecDeque::new(),
+            command_retry: Default::default(),
+            admission_refusals: AdmissionRefusals::default(),
+            watched: vec![],
+            pane_sizes: BTreeMap::new(),
+            pane_bounds: vec![],
+            focus_bounds: vec![],
+            scroll_wheel: None,
+            focus: FocusState::default(),
+            notifications: None,
+            frontmost: false,
+            pending_notification: None,
+            spawn_results_seen: BTreeMap::new(),
+            launcher: args
+                .iter()
+                .any(|arg| arg == "--launcher")
+                .then(|| new_launcher(None, 0)),
+            launcher_layout: None,
+            launcher_parent: None,
+            preferences: preferences::State::default(),
+            preferences_io: None,
+            rim_preview: None,
+            mute: preferences::Mute::default(),
+            system_theme: Theme::Dark,
+            local_tab: None,
+            local_page_layout: None,
+            document: {
+                let mut host = documents::Host::default();
+                if let Some(pair) = args.windows(2).find(|p| p[0] == "--document") {
+                    host.show(pair[1].clone());
+                }
+                host
+            },
+            document_return: None,
+            document_layout: None,
+            composer: ComposeController::new(composer::Composer {
+                focus: args.iter().any(|arg| arg == "--compose"),
+                ..Default::default()
+            }),
+            composer_client: messaging::Client::default(),
+            composer_scope: None,
+            task_records: messaging::Records::default(),
+            message_history: messaging::History::default(),
+            events_seen: None,
+            task_regions: Default::default(),
+            close_regions: vec![],
+            reject: None,
+            reject_report: None,
+            reject_focus: false,
+            conversation: bbt_ui::modules::stream_dock::StreamDock {
+                dock: true,
+                framed: false,
+                ..Default::default()
+            },
+            conversation_layout: None,
+            conversation_scroll: 0.,
+            composer_dragging: false,
+            compose_startup: args.iter().any(|arg| arg == "--compose"),
+            operation_backlog: VecDeque::new(),
+            pointer: [0.; 2],
+            query_dragging: false,
+            backend_lost: false,
+            app_generation: 0,
+            app_custody: "unknown".into(),
+            app_ready_sent: false,
+            render_context: None,
+            closing: false,
+            smoke_bootstrap: None,
+            smoke_wake_seen: false,
+            window: None,
+            pacer: None,
+            pacing,
+            clock: Clock::default(),
+            occluded: false,
+            maximum_hz: 60.,
+            budget: budget::Budget::default(),
+            gpu: None,
+            scene: if fake || animate {
+                scene::Scene::new()
+            } else {
+                scene::Scene::live()
+            },
+            meter: HitchMeter::new(120.),
+            modifiers: ModifiersState::empty(),
+            keyboard: keyboard::State::default(),
+            overlay,
+            fake,
+            smoke,
+            demo_started: false,
+            demo_finished: false,
+            idle_scheduled: false,
+            idle_quiet: IdleQuiescence::default(),
+            redraw_pending: std::cell::Cell::new(false),
+            last_update: 0,
+            error: None,
+            capture,
+            capture_pending: true,
+            ctl_captures: Vec::new(),
+            ctl_focus: Default::default(),
+            ui_observe: args.iter().any(|arg| arg == "--ctl"),
+            ui_frame: None,
+            ui_wait: None,
+            ui_focus: None,
+            ui_collect: None,
+            last_presented: None,
+            pending_resize: None,
+            animate,
+            cadence_test,
+            animation_start: None,
+            frozen_ms: 450.,
+            verify,
+            stall: None,
+        }
+    }
+    fn finish_log(&self, text: String) {
+        match &self.proxy {
+            UiProxy::Native(proxy) => self.logger.finish(text, proxy.clone()),
+            UiProxy::Headless(send) => self.logger.finish_with_sink(text, send.clone()),
+        }
+    }
     fn open_document(&mut self, target: String) {
         if !self.document.open {
             self.document_return = self.focus.stage.clone();
@@ -2469,29 +2792,76 @@ impl App {
         }
     }
     fn answer_focus(&mut self, answer: bboxy450_term::focus_ack::Answer) {
+        if self.ui_focus == Some(answer.id) {
+            self.ui_focus = None;
+            let result = answer
+                .result
+                .map_err(|reason| {
+                    if reason.starts_with("focus_timeout:") {
+                        format!("timeout: {reason}")
+                    } else {
+                        format!("ui_frame_refused: {reason}")
+                    }
+                })
+                .and_then(|frame| {
+                    self.last_ui_frame().and_then(|layout| {
+                        if layout.frame_seq >= frame.frame_seq
+                            && layout.focused == Some(bbt_mux::Ulid(frame.seat.0.0))
+                        {
+                            Ok(layout)
+                        } else {
+                            Err(
+                                "ui_frame_refused: no produced layout contains the focused pane"
+                                    .into(),
+                            )
+                        }
+                    })
+                });
+            self.answer_ui(answer.id, result);
+            return;
+        }
         self.queue(live::UiMsg::Focused {
             id: answer.id,
             result: answer.result,
         });
     }
+    fn begin_focus(&mut self, ask: bboxy450_term::focus_ack::Ask) {
+        let id = ask.id;
+        if let Some(answer) = self.ctl_focus.set(ask) {
+            self.answer_focus(answer);
+        }
+        let proxy = self.proxy.clone();
+        let timer = bbt_rt::handle().spawn(async move {
+            tokio::time::sleep(bboxy450_term::focus_ack::DEADLINE).await;
+            let _ = proxy.send_event(UiEvent::FocusDeadline(id));
+        });
+        self.ctl_focus.arm(timer.abort_handle());
+    }
     fn poll_focus(&mut self) {
+        // The headless driver supplies its own submitted/completed counters.
+        if self.window.is_some() {
+            let completed = self.meter.total_frames();
+            self.poll_focus_frame(completed, completed + 1);
+        }
+    }
+    fn poll_focus_frame(&mut self, completed: u64, next_frame: u64) -> bool {
         let Some(model) = self.live_state.as_deref() else {
-            return;
+            return false;
         };
         let effect = self.ctl_focus.poll(
             model,
             self.scene.focused(),
             |seat| self.pane_bounds.iter().any(|(id, _)| *id == seat),
-            self.meter.total_frames(),
+            completed,
         );
         match effect {
             Some(bboxy450_term::focus_ack::Effect::Apply(seat)) => {
                 let generation = model.ui.seats[&seat].process_generation;
                 self.focus_action_applied(FocusAction::Activate(seat, FocusOrigin::Row));
                 if self.scene.focused() == Some(seat) {
-                    self.ctl_focus
-                        .applied(self.meter.total_frames() + 1, generation);
+                    self.ctl_focus.applied(next_frame, generation);
                     self.request_redraw();
+                    return true;
                 } else if let Some(answer) = self
                     .ctl_focus
                     .fail("not_on_screen: focus could not activate the requested pane")
@@ -2502,6 +2872,7 @@ impl App {
             Some(bboxy450_term::focus_ack::Effect::Answer(answer)) => self.answer_focus(answer),
             None => (),
         }
+        false
     }
     fn close_seat(&mut self, seat: SeatId, id: bbt_mux::Ulid, undo: bool) {
         let Some(model) = &self.live_state else {
@@ -2528,9 +2899,23 @@ impl App {
         if self.closing || self.live_commands.is_none() {
             return;
         }
-        if let Err(kind) = queue_pending(&mut self.pending_commands, message) {
-            self.admission_refusals.record(kind);
-            self.logger.write(self.admission_refusals.report());
+        let effect = self
+            .ui_collect
+            .as_ref()
+            .and_then(|_| UiEffect::from_message(&message));
+        match queue_pending(&mut self.pending_commands, message) {
+            Err(kind) => {
+                self.admission_refusals.record(kind);
+                self.logger.write(self.admission_refusals.report());
+                if let Some(effects) = &mut self.ui_collect {
+                    effects.push(UiEffect::Refused("ui_command_queue_full".into()));
+                }
+            }
+            Ok(()) => {
+                if let (Some(effect), Some(effects)) = (effect, &mut self.ui_collect) {
+                    effects.push(effect);
+                }
+            }
         }
         self.flush_commands();
     }
@@ -2729,6 +3114,7 @@ impl App {
     }
     fn request_redraw_sources(&self, sources: &[usize]) {
         self.wake_counters.borrow_mut().redraw(sources);
+        self.redraw_pending.set(true);
         if !self.occluded
             && let Some(pacer) = &self.pacer
         {
@@ -3066,6 +3452,9 @@ impl App {
         }
         self.drive_document();
         self.poll_focus();
+        if self.window.is_some() {
+            self.poll_ui_frame(self.meter.total_frames());
+        }
         self.flush_commands();
         sources
     }
@@ -3088,6 +3477,571 @@ impl App {
             // may not have been posted yet if the producer was descheduled.
             let _ = proxy.send_event(UiEvent::DemoFinished);
         });
+    }
+    /// Choose a UI command without changing the physical keyboard lifecycle.
+    /// ctl sends logical chords; only the native adapter tracks held keys.
+    fn route_chrome(&self, input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
+        if self.document.open {
+            route_document(input, modes)
+        } else if self.local_tab.is_some()
+            && self.launcher.is_none()
+            && !self.composer.view.focus
+            && !self.reject_focus
+        {
+            if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
+                route_settings(input, modes, self.settings_ime())
+            } else {
+                route_local_page(input, modes)
+            }
+        } else if self.launcher.is_none() && (self.composer.view.focus || self.reject_focus) {
+            route_composer(
+                input,
+                modes,
+                if self.reject_focus {
+                    ComposeField::Body
+                } else if self.composer.view.kind_menu || self.composer.view.attach_pick.is_some() {
+                    ComposeField::Address
+                } else {
+                    self.composer.view.field
+                },
+            )
+        } else {
+            route_key(
+                input,
+                modes,
+                self.launcher
+                    .as_ref()
+                    .map(|launcher| launcher.launcher.query.as_str()),
+            )
+        }
+    }
+    fn dispatch_chrome(&mut self, routed: RoutedKey) -> Option<RoutedKey> {
+        match routed {
+            RoutedKey::OpenLauncher => self.open_launcher(),
+            RoutedKey::OpenGraph => self.open_graph(),
+            RoutedKey::OpenSettings => self.open_settings("Account"),
+            RoutedKey::SettingsKey(key) => self.settings_key(key),
+            RoutedKey::MuteFocused => self.mute_focused(),
+            RoutedKey::UndoClose => self.undo_latest_close(),
+            RoutedKey::LocalPage(command) => {
+                if self.document.open {
+                    self.document_command(command);
+                } else {
+                    self.local_page_command(command);
+                }
+            }
+            RoutedKey::ToggleHud => {
+                self.overlay = !self.overlay;
+                self.logger.write(format!("hitch overlay={}", self.overlay));
+                self.request_redraw();
+            }
+            RoutedKey::Launcher(command) => self.launcher_command(command),
+            RoutedKey::Composer(command) => self.composer_command(command),
+            RoutedKey::ComposerVertical { backwards, extend } => {
+                self.composer_move(Some(backwards), None, extend)
+            }
+            RoutedKey::ComposerLineEdge { end, extend } => {
+                self.composer_move(None, Some(end), extend)
+            }
+            RoutedKey::Pane(navigation) => self.focus_action(FocusAction::Navigate(navigation)),
+            other => return Some(other),
+        }
+        None
+    }
+    /// Both a Wake and a ctl read can consume the coalesced data/tick sources.
+    fn dispatch_wake_sources(&self, sources: &[usize]) {
+        match wake_action(
+            sources,
+            self.pacer.as_ref().is_some_and(DisplayLink::is_active),
+        ) {
+            WakeAction::Ignore => {
+                if sources.contains(&display_link::TICK_SOURCE) {
+                    self.wake_counters.borrow_mut().ignored_tick();
+                }
+                if let Some(pacer) = &self.pacer
+                    && !pacer.is_active()
+                {
+                    pacer.clear();
+                }
+            }
+            WakeAction::Tick => {
+                self.wake_counters.borrow_mut().redraw(sources);
+                if let Some(window) = &self.window {
+                    self.redraw_pending.set(true);
+                    window.request_redraw();
+                }
+            }
+            WakeAction::Invalidate => self.request_redraw_sources(sources),
+        }
+    }
+    fn answer_ui(&mut self, id: bbt_mux::Ulid, result: Result<bbt_proto::gui::UiLayout, String>) {
+        if let Err(kind) = queue_pending(
+            &mut self.pending_commands,
+            live::UiMsg::UiReply { id, result },
+        ) {
+            self.admission_refusals.record(kind);
+            self.logger.write(self.admission_refusals.report());
+        }
+        self.flush_commands();
+    }
+    fn last_ui_frame(&self) -> Result<bbt_proto::gui::UiLayout, String> {
+        self.ui_frame
+            .as_ref()
+            .map(|(_, layout)| layout.clone())
+            .unwrap_or_else(|| Err("ui_not_ready: no produced layout frame".into()))
+    }
+    fn ui_visible(&self) -> UiVisible {
+        let stage = self
+            .focus
+            .stage
+            .as_ref()
+            .or_else(|| self.live_state.as_ref().map(|model| &model.ui.window.stage));
+        UiVisible {
+            launcher: self.launcher.is_some(),
+            page: self.local_tab.as_ref().map(|tab| match tab {
+                LocalTab::Graph(_) => "graph".into(),
+                LocalTab::Settings { .. } => "settings".into(),
+            }),
+            document: self.document.open.then(|| self.document.target.clone()),
+            focused: stage
+                .and_then(|stage| stage.focused)
+                .map(|seat| bbt_mux::Ulid(seat.0.0)),
+            tab: stage
+                .and_then(|stage| stage.tab)
+                .map(|tab| bbt_mux::Ulid(tab.0.0)),
+        }
+    }
+    fn cancel_ui(&mut self, reason: &str) {
+        if let Some(wait) = self.ui_wait.take() {
+            self.answer_ui(wait.id, Err(reason.into()));
+        }
+        if self.ui_focus.is_some()
+            && let Some(answer) = self.ctl_focus.fail(reason)
+        {
+            self.answer_focus(answer);
+        }
+    }
+    fn ui_effect_ready(&self, effect: &UiEffect) -> Result<bool, String> {
+        use bboxy450_term::model::SpawnOutcome;
+        let Some(model) = &self.live_state else {
+            return Ok(false);
+        };
+        match effect {
+            UiEffect::Spawn(id) => match self
+                .spawn_results_seen
+                .get(id)
+                .or_else(|| model.spawns.get(id).map(|request| &request.outcome))
+            {
+                Some(SpawnOutcome::Placed(seat)) => Ok(model.ui.tab_of(*seat).is_some()),
+                Some(SpawnOutcome::Pending | SpawnOutcome::AwaitingSeat(_)) | None => Ok(false),
+                Some(outcome) => Err(format!("ui_frame_refused: spawn {id}: {outcome:?}")),
+            },
+            UiEffect::Operation(id) => {
+                Ok(model.operation_results.rows().any(|reply| reply.op == *id))
+            }
+            UiEffect::Mute(seat, muted) => {
+                if model
+                    .ui
+                    .seats
+                    .get(seat)
+                    .is_some_and(|record| record.muted == *muted)
+                {
+                    Ok(true)
+                } else if self.mute.pending() {
+                    Ok(false)
+                } else {
+                    Err(format!("ui_frame_refused: mute for {seat} was not applied"))
+                }
+            }
+            UiEffect::Lifecycle(seat, open) => Ok(model.ui.seats.get(seat).is_some_and(|record| {
+                if *open {
+                    record.lifecycle == bbt_ui_model::Lifecycle::Open
+                        && model.ui.tab_of(*seat).is_some()
+                } else {
+                    record.lifecycle != bbt_ui_model::Lifecycle::Open
+                        && model.ui.tab_of(*seat).is_none()
+                }
+            })),
+            UiEffect::Document => {
+                Ok(self.document.prepared.is_some() || self.document.error.is_some())
+            }
+            UiEffect::Graph => Ok(model.e2e.is_some()),
+            UiEffect::Preferences { saved } => Ok(self.preferences.loaded
+                && (!*saved || self.preferences.saved() || self.preferences.error.is_some())),
+            UiEffect::Refused(reason) => Err(format!("ui_frame_refused: {reason}")),
+        }
+    }
+    fn poll_ui_frame(&mut self, submitted: u64) -> bool {
+        let Some(wait) = &self.ui_wait else {
+            return false;
+        };
+        if wait.after.is_some() {
+            return false;
+        }
+        let ready = wait.effects.iter().try_fold(true, |ready, effect| {
+            self.ui_effect_ready(effect).map(|next| ready && next)
+        });
+        match ready {
+            Err(reason) => {
+                let wait = self.ui_wait.take().expect("UI waiter observed");
+                self.answer_ui(wait.id, Err(reason));
+                false
+            }
+            Ok(false) => false,
+            Ok(true) => {
+                let visible = self.ui_visible();
+                let wait = self.ui_wait.as_mut().expect("UI waiter observed");
+                wait.after = Some(submitted + 1);
+                wait.visible = Some(visible);
+                self.request_redraw();
+                true
+            }
+        }
+    }
+    fn present_ui(&mut self, frame: u64, mut layout: Result<bbt_proto::gui::UiLayout, String>) {
+        if let Ok(layout) = &mut layout {
+            layout.frame_seq = frame;
+        }
+        self.ui_frame = Some((frame, layout.clone()));
+        if self
+            .ui_wait
+            .as_ref()
+            .is_some_and(|wait| wait.after.is_some_and(|after| frame >= after))
+        {
+            let wait = self.ui_wait.take().expect("qualifying UI frame");
+            let result = layout.and_then(|layout| {
+                if wait.visible.as_ref() == Some(&UiVisible::from_layout(&layout)) { Ok(layout) }
+                else { Err("ui_frame_refused: a newer UI state superseded this operation before its frame".into()) }
+            });
+            self.answer_ui(wait.id, result);
+        }
+    }
+    fn begin_ui(
+        &mut self,
+        id: bbt_mux::Ulid,
+        request: bbt_proto::gui::UiRequest,
+        logical: [f32; 2],
+        submitted: u64,
+        prior_spawns: Vec<bbt_mux::Ulid>,
+    ) -> bool {
+        use bbt_proto::gui::UiRequest;
+        if let Err(reason) = request.validate() {
+            self.answer_ui(id, Err(reason.into()));
+            return false;
+        }
+        if matches!(request, UiRequest::Layout) {
+            self.answer_ui(id, self.last_ui_frame());
+            return false;
+        }
+        self.cancel_ui("ui_frame_refused: a newer UI operation superseded this request");
+        let sources = self.drain();
+        self.dispatch_wake_sources(&sources);
+        if self.live_state.is_none() {
+            self.answer_ui(id, Err("ui_not_ready: no live model".into()));
+            return false;
+        }
+        self.ui_observe = true;
+        if let UiRequest::Focus { seat } = request {
+            self.ui_focus = Some(id);
+            self.begin_focus(bboxy450_term::focus_ack::Ask {
+                id,
+                seat: SeatId::from_u128(seat.0),
+                prior_spawns,
+            });
+            self.request_redraw();
+            return true;
+        }
+        if let Err(reason) = self.solve_ui(logical) {
+            self.answer_ui(id, Err(reason));
+            return false;
+        }
+        let previous_ops: std::collections::BTreeSet<_> = self
+            .operation_backlog
+            .iter()
+            .filter_map(|message| match message {
+                live::UiMsg::Messaging { id, .. } | live::UiMsg::Task { id, .. } => Some(*id),
+                _ => None,
+            })
+            .collect();
+        let preference_revision = self.preferences.revision;
+        self.ui_collect = Some(Vec::new());
+        let result = self.apply_ui(request);
+        let mut effects = self.ui_collect.take().expect("UI command collection");
+        effects.extend(
+            self.operation_backlog
+                .iter()
+                .filter_map(|message| match message {
+                    live::UiMsg::Messaging { id, .. } | live::UiMsg::Task { id, .. }
+                        if !previous_ops.contains(id) =>
+                    {
+                        Some(UiEffect::Operation(*id))
+                    }
+                    _ => None,
+                }),
+        );
+        if let Err(reason) = result {
+            self.answer_ui(id, Err(reason));
+            return true;
+        }
+        if self.document.open {
+            effects.push(UiEffect::Document);
+        }
+        match &self.local_tab {
+            Some(LocalTab::Graph(_)) => effects.push(UiEffect::Graph),
+            Some(LocalTab::Settings { .. }) => effects.push(UiEffect::Preferences {
+                saved: self.preferences.revision != preference_revision,
+            }),
+            None => {}
+        }
+        let proxy = self.proxy.clone();
+        let timer = bbt_rt::handle().spawn(async move {
+            tokio::time::sleep(bboxy450_term::focus_ack::DEADLINE).await;
+            let _ = proxy.send_event(UiEvent::UiDeadline(id));
+        });
+        self.ui_wait = Some(UiWait {
+            id,
+            after: None,
+            visible: None,
+            effects,
+            timer: timer.abort_handle(),
+        });
+        self.poll_ui_frame(submitted);
+        self.request_redraw();
+        true
+    }
+    fn ui_deadline(&mut self, id: bbt_mux::Ulid) {
+        if self.ui_wait.as_ref().is_some_and(|wait| wait.id == id) {
+            let wait = self.ui_wait.take().expect("UI deadline matched");
+            let effects: Vec<_> = wait
+                .effects
+                .iter()
+                .map(|effect| format!("{effect:?}={:?}", self.ui_effect_ready(effect)))
+                .collect();
+            self.answer_ui(
+                id,
+                Err(format!("timeout: UI frame incomplete; target={:?}, last={}, pending={}, effects={effects:?}",
+                    wait.after, self.ui_frame.as_ref().map_or(0, |(frame, _)| *frame), self.pending_commands.len())),
+            );
+        }
+    }
+    fn apply_ui(&mut self, request: bbt_proto::gui::UiRequest) -> Result<(), String> {
+        use bbt_proto::gui::{UiRequest, UiTarget};
+        match request {
+            UiRequest::Open(UiTarget::Launcher) => self.open_launcher(),
+            UiRequest::Open(UiTarget::Graph) => self.open_graph(),
+            UiRequest::Open(UiTarget::Settings) => self.open_settings("Account"),
+            UiRequest::Open(UiTarget::Docs(path)) => self.open_document(path),
+            UiRequest::Key(keys) => {
+                for (applied, key) in keys.into_iter().enumerate() {
+                    let input = chrome_input(&key)?;
+                    let modes = self
+                        .focus
+                        .stage
+                        .as_ref()
+                        .and_then(|s| s.focused)
+                        .and_then(|seat| {
+                            self.live_state
+                                .as_ref()?
+                                .screens
+                                .get(&seat)
+                                .map(|s| s.modes)
+                        })
+                        .unwrap_or_default();
+                    let routed = self.route_chrome(&input, modes);
+                    if matches!(
+                        routed,
+                        RoutedKey::Terminal(_)
+                            | RoutedKey::Scroll(_)
+                            | RoutedKey::Local
+                            | RoutedKey::Quit
+                    ) {
+                        return Err(format!(
+                            "ui_key_not_applicable: {key} after {applied} earlier chrome keys; terminal input uses seat key"
+                        ));
+                    }
+                    if self.dispatch_chrome(routed).is_some() {
+                        return Err("ui_key_not_applicable".into());
+                    }
+                }
+            }
+            UiRequest::Focus { .. } | UiRequest::Layout => {
+                return Err("UI request uses the frame acknowledgment path".into());
+            }
+        }
+        Ok(())
+    }
+    fn ui_layout(
+        &self,
+        size: [f32; 2],
+        layouts: &[bbt_ui::components::Layout],
+    ) -> Result<bbt_proto::gui::UiLayout, String> {
+        use bbt_proto::gui::{UiLayout, UiPane};
+        let model = self.live_state.as_ref().ok_or("ui_not_ready: no model")?;
+        let stage = self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage);
+        let scale = self.window.as_ref().map_or(1., |w| w.scale_factor() as f32);
+        let (_, sizes) = pane_controls(
+            model,
+            &self.pane_bounds,
+            &self.watched,
+            &BTreeMap::new(),
+            stage.focused,
+            scale,
+            self.verify.grid_size,
+        );
+        let panes = self
+            .pane_bounds
+            .iter()
+            .filter_map(|(seat, rect)| {
+                let (_, (_, cols, rows)) = sizes.iter().find(|(id, _)| id == seat)?;
+                Some(UiPane {
+                    seat: bbt_mux::Ulid::from(seat.0.0),
+                    rect: rect_array(*rect),
+                    cols: *cols,
+                    rows: *rows,
+                    focused: stage.focused == Some(*seat),
+                })
+            })
+            .collect();
+        let mut roots: Vec<_> = layouts.iter().collect();
+        if let Some(page) = &self.local_page_layout {
+            roots.push(&page.layout);
+        }
+        if let Some(dock) = &self.conversation_layout {
+            roots.push(&dock.layout);
+        }
+        if let Some(launcher) = &self.launcher_layout {
+            roots.push(launcher.solved());
+        }
+        if let Some(document) = &self.document_layout {
+            roots.push(&document.layout);
+        }
+        let mut remaining = 4096;
+        let tree = roots
+            .into_iter()
+            .map(|l| ui_layout_node(l, &mut remaining))
+            .collect::<Result<_, _>>()?;
+        let layout = UiLayout {
+            frame_seq: 0, // filled only by the actual produced-frame callback
+            size,
+            swarm: stage.swarm.map(|id| bbt_mux::Ulid::from(id.0.0)),
+            tab: stage.tab.map(|id| bbt_mux::Ulid::from(id.0.0)),
+            focused: stage.focused.map(|id| bbt_mux::Ulid::from(id.0.0)),
+            launcher_open: self.launcher.is_some(),
+            page: self.local_tab.as_ref().map(|tab| {
+                match tab {
+                    LocalTab::Graph(_) => "graph",
+                    LocalTab::Settings { .. } => "settings",
+                }
+                .to_owned()
+            }),
+            document: self.document.open.then(|| self.document.target.clone()),
+            panes,
+            tree,
+        };
+        if serde_json::to_vec(&layout)
+            .map_err(|e| e.to_string())?
+            .len()
+            > 128 * 1024
+        {
+            return Err("ui_layout_oversize: solved layout exceeds 128 KiB".into());
+        }
+        Ok(layout)
+    }
+    fn solve_ui(&mut self, logical: [f32; 2]) -> Result<Vec<bbt_ui::components::Layout>, String> {
+        self.conversation_layout = if self.live_state.is_some() || self.compose_startup {
+            Some(self.scene.conversation_layout(
+                logical,
+                &composer::Conversation {
+                    stream: self.conversation.clone(),
+                    composer: self.composer.view.clone(),
+                    scroll: self.conversation_scroll,
+                },
+            )?)
+        } else {
+            None
+        };
+        let dock = self.conversation_layout.as_ref().map_or(0., |l| l.height);
+        let layouts = if self.local_tab.is_some() {
+            self.scene.local_page_chrome(logical, dock)?
+        } else {
+            self.scene.layout_with_dock(
+                logical,
+                self.animation_start.is_some() || self.animate,
+                dock,
+            )?
+        };
+        self.local_page_layout = self
+            .local_tab
+            .as_ref()
+            .map(|tab| match tab {
+                LocalTab::Graph(graph) => {
+                    self.scene
+                        .graph_page_layout(logical, dock, &graph.checklist, graph.scroll)
+                }
+                LocalTab::Settings { controller, swarm } => {
+                    let view = self.settings_view(&controller.section);
+                    let issue = self
+                        .preferences
+                        .error
+                        .as_deref()
+                        .or(controller.error.as_deref());
+                    let status = issue.unwrap_or(if self.preferences.saved() {
+                        "saved"
+                    } else if !self.preferences.loaded {
+                        "loading"
+                    } else {
+                        "saving"
+                    });
+                    let status = if self.focus.stage.as_ref().and_then(|s| s.swarm) != *swarm {
+                        format!("{status} · local to original swarm")
+                    } else {
+                        status.into()
+                    };
+                    self.scene.settings_page_layout(
+                        logical,
+                        dock,
+                        &view,
+                        &controller.presentation(),
+                        &status,
+                    )
+                }
+            })
+            .transpose()?;
+        if let (Some(LocalTab::Graph(graph)), Some(layout)) =
+            (&mut self.local_tab, &self.local_page_layout)
+        {
+            graph.scroll = graph.scroll.min(layout.max_scroll);
+        }
+        if let (Some(LocalTab::Settings { controller, .. }), Some(layout)) =
+            (&mut self.local_tab, &self.local_page_layout)
+        {
+            controller.scroll = controller.scroll.min(layout.max_scroll);
+        }
+        let bounds = self.scene.pane_bounds(&layouts);
+        self.task_regions = self.scene.task_regions(&layouts);
+        self.close_regions = self.scene.close_regions(&layouts);
+        self.focus_bounds = self.scene.focus_bounds(&layouts);
+        self.pane_bounds = bounds;
+        self.launcher_layout = self
+            .launcher
+            .as_ref()
+            .map(|launcher| self.scene.launcher_layout(logical, &launcher.launcher))
+            .transpose()?;
+        if self.document.open {
+            let context = self.scene.ui_context();
+            if self
+                .document_layout
+                .as_ref()
+                .is_none_or(|layout| !layout.matches(logical, context))
+            {
+                let layout = self.scene.document_layout(logical, &self.document)?;
+                self.document.scroll.scroll([0.; 2], layout.regions.extent);
+                self.document_layout = Some(layout);
+            }
+        } else {
+            self.document_layout = None;
+        }
+        Ok(layouts)
     }
     fn redraw(&mut self) -> Result<(), String> {
         self.redraw_pending.set(false);
@@ -3173,79 +4127,8 @@ impl App {
         let scale = self.window.as_ref().unwrap().scale_factor() as f32;
         let logical = [size.width as f32 / scale, size.height as f32 / scale];
         let start = Instant::now();
-        self.conversation_layout = if self.live_state.is_some() || self.compose_startup {
-            Some(self.scene.conversation_layout(
-                logical,
-                &composer::Conversation {
-                    stream: self.conversation.clone(),
-                    composer: self.composer.view.clone(),
-                    scroll: self.conversation_scroll,
-                },
-            )?)
-        } else {
-            None
-        };
-        let dock = self.conversation_layout.as_ref().map_or(0., |l| l.height);
-        let layouts = if self.local_tab.is_some() {
-            self.scene.local_page_chrome(logical, dock)?
-        } else {
-            self.scene.layout_with_dock(
-                logical,
-                self.animation_start.is_some() || self.animate,
-                dock,
-            )?
-        };
-        self.local_page_layout = self
-            .local_tab
-            .as_ref()
-            .map(|tab| match tab {
-                LocalTab::Graph(graph) => {
-                    self.scene
-                        .graph_page_layout(logical, dock, &graph.checklist, graph.scroll)
-                }
-                LocalTab::Settings { controller, swarm } => {
-                    let view = self.settings_view(&controller.section);
-                    let issue = self
-                        .preferences
-                        .error
-                        .as_deref()
-                        .or(controller.error.as_deref());
-                    let status = issue.unwrap_or(if self.preferences.saved() {
-                        "saved"
-                    } else if !self.preferences.loaded {
-                        "loading"
-                    } else {
-                        "saving"
-                    });
-                    let status = if self.focus.stage.as_ref().and_then(|s| s.swarm) != *swarm {
-                        format!("{status} · local to original swarm")
-                    } else {
-                        status.into()
-                    };
-                    self.scene.settings_page_layout(
-                        logical,
-                        dock,
-                        &view,
-                        &controller.presentation(),
-                        &status,
-                    )
-                }
-            })
-            .transpose()?;
-        if let (Some(LocalTab::Graph(graph)), Some(layout)) =
-            (&mut self.local_tab, &self.local_page_layout)
-        {
-            graph.scroll = graph.scroll.min(layout.max_scroll);
-        }
-        if let (Some(LocalTab::Settings { controller, .. }), Some(layout)) =
-            (&mut self.local_tab, &self.local_page_layout)
-        {
-            controller.scroll = controller.scroll.min(layout.max_scroll);
-        }
-        let bounds = self.scene.pane_bounds(&layouts);
-        self.task_regions = self.scene.task_regions(&layouts);
-        self.close_regions = self.scene.close_regions(&layouts);
-        self.focus_bounds = self.scene.focus_bounds(&layouts);
+        let layouts = self.solve_ui(logical)?;
+        let bounds = self.pane_bounds.clone();
         if let Some(model) = &self.live_state
             && self.local_tab.is_none()
             && !self.document.open
@@ -3258,12 +4141,6 @@ impl App {
         }
         self.fit_verify_grid(&bounds, scale);
         self.watch_panes(&bounds, scale);
-        self.pane_bounds = bounds;
-        self.launcher_layout = self
-            .launcher
-            .as_ref()
-            .map(|launcher| self.scene.launcher_layout(logical, &launcher.launcher))
-            .transpose()?;
         if let Some(launcher) = &self.launcher_layout {
             let caret = launcher.candidate_area();
             self.window.as_ref().unwrap().set_ime_cursor_area(
@@ -3300,20 +4177,6 @@ impl App {
                 winit::dpi::LogicalPosition::new(caret.x, caret.y),
                 winit::dpi::LogicalSize::new(caret.w, caret.h),
             );
-        }
-        if self.document.open {
-            let context = self.scene.ui_context();
-            if self
-                .document_layout
-                .as_ref()
-                .is_none_or(|layout| !layout.matches(logical, context))
-            {
-                let layout = self.scene.document_layout(logical, &self.document)?;
-                self.document.scroll.scroll([0.; 2], layout.regions.extent);
-                self.document_layout = Some(layout);
-            }
-        } else {
-            self.document_layout = None;
         }
         phases.layout = start.elapsed();
         let overlay = self.overlay.then(|| {
@@ -3365,6 +4228,7 @@ impl App {
                 self.frozen_ms = time;
             }
         }
+        let ui_frame = self.ui_observe.then(|| self.ui_layout(logical, &layouts));
         if let Some((encode, wait)) = self.gpu.as_mut().unwrap().draw(
             ops,
             scale,
@@ -3461,6 +4325,9 @@ impl App {
                 }
             }
             self.last_presented = Some(std::time::SystemTime::now());
+            if let Some(layout) = ui_frame {
+                self.present_ui(self.meter.total_frames(), layout);
+            }
             if !self.app_ready_sent
                 && !self.backend_lost
                 && self.live_state.is_some()
@@ -3603,19 +4470,32 @@ impl ApplicationHandler<UiEvent> for App {
                 self.request_redraw();
             }
             UiEvent::FocusFor(ask) => {
-                let id = ask.id;
-                if let Some(answer) = self.ctl_focus.set(ask) {
-                    self.answer_focus(answer);
-                }
-                let proxy = self.proxy.clone();
-                let timer = bbt_rt::handle().spawn(async move {
-                    tokio::time::sleep(bboxy450_term::focus_ack::DEADLINE).await;
-                    let _ = proxy.send_event(UiEvent::FocusDeadline(id));
-                });
-                self.ctl_focus.arm(timer.abort_handle());
+                self.begin_focus(ask);
                 self.drain();
                 self.request_redraw();
             }
+            UiEvent::UiFor {
+                id,
+                request,
+                prior_spawns,
+            } => {
+                let size = self
+                    .window
+                    .as_ref()
+                    .map(|window| {
+                        let scale = window.scale_factor() as f32;
+                        let size = window.inner_size();
+                        [size.width as f32 / scale, size.height as f32 / scale]
+                    })
+                    .ok_or_else(|| "endpoint_unavailable: window is not ready".to_owned());
+                match size {
+                    Ok(size) => {
+                        self.begin_ui(id, request, size, self.meter.total_frames(), prior_spawns);
+                    }
+                    Err(reason) => self.answer_ui(id, Err(reason)),
+                }
+            }
+            UiEvent::UiDeadline(id) => self.ui_deadline(id),
             UiEvent::FocusDeadline(id) => {
                 if let Some(answer) = self.ctl_focus.expire(id) {
                     self.answer_focus(answer);
@@ -3705,29 +4585,7 @@ impl ApplicationHandler<UiEvent> for App {
                     self.fail(error, event_loop);
                     return;
                 }
-                match wake_action(
-                    &sources,
-                    self.pacer.as_ref().is_some_and(DisplayLink::is_active),
-                ) {
-                    WakeAction::Ignore => {
-                        if sources.contains(&display_link::TICK_SOURCE) {
-                            self.wake_counters.borrow_mut().ignored_tick();
-                        }
-                        if let Some(pacer) = &self.pacer
-                            && !pacer.is_active()
-                        {
-                            pacer.clear();
-                        }
-                    }
-                    WakeAction::Tick => {
-                        self.wake_counters.borrow_mut().redraw(&sources);
-                        if let Some(window) = &self.window {
-                            self.redraw_pending.set(true);
-                            window.request_redraw();
-                        }
-                    }
-                    WakeAction::Invalidate => self.request_redraw_sources(&sources),
-                }
+                self.dispatch_wake_sources(&sources);
             }
             UiEvent::BeginIdle => {
                 let counts = (
@@ -3854,7 +4712,7 @@ impl ApplicationHandler<UiEvent> for App {
                     self.error = Some("R2 idle/update probe failed".into());
                 }
                 if self.smoke || self.cadence_test {
-                    self.logger.finish(text, self.proxy.clone());
+                    self.finish_log(text);
                 } else {
                     self.logger.write(text);
                 }
@@ -3870,7 +4728,7 @@ impl ApplicationHandler<UiEvent> for App {
                     }
                     // Unlike best-effort per-event diagnostics, this final
                     // cumulative count is flushed on IO before Quit is sent.
-                    self.logger.finish(report, self.proxy.clone());
+                    self.finish_log(report);
                 } else {
                     match result {
                         Ok(()) => event_loop.exit(),
@@ -4428,6 +5286,11 @@ impl ApplicationHandler<UiEvent> for App {
                 }
             }
             WindowEvent::KeyboardInput { event, .. } => {
+                if event.state == ElementState::Pressed {
+                    self.cancel_ui(
+                        "ui_frame_refused: physical keyboard input superseded this request",
+                    );
+                }
                 let input = self.keyboard.event(&event, self.modifiers);
                 if event.state.is_pressed() {
                     self.focus.controller.key_pressed(Instant::now());
@@ -4479,37 +5342,17 @@ impl ApplicationHandler<UiEvent> for App {
                             .get(&seat)
                             .map(|screen| screen.modes)
                     });
-                let routed = if self.document.open {
-                    let routed = route_document(&input, modes.unwrap_or_default());
-                    finish_route(&mut self.keyboard, &input, routed)
-                } else if self.local_tab.is_some()
-                    && self.launcher.is_none()
-                    && !self.composer.view.focus
-                    && !self.reject_focus
+                let routed = if self.document.open
+                    || (self.launcher.is_none()
+                        && (self.local_tab.is_some()
+                            || self.composer.view.focus
+                            || self.reject_focus))
                 {
-                    let routed = if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
-                        route_settings(&input, modes.unwrap_or_default(), self.settings_ime())
-                    } else {
-                        route_local_page(&input, modes.unwrap_or_default())
-                    };
-                    finish_route(&mut self.keyboard, &input, routed)
-                } else if self.launcher.is_none() && (self.composer.view.focus || self.reject_focus)
-                {
-                    let routed = route_composer(
-                        &input,
-                        modes.unwrap_or_default(),
-                        if self.reject_focus {
-                            ComposeField::Body
-                        } else if self.composer.view.kind_menu
-                            || self.composer.view.attach_pick.is_some()
-                        {
-                            ComposeField::Address
-                        } else {
-                            self.composer.view.field
-                        },
-                    );
+                    let routed = self.route_chrome(&input, modes.unwrap_or_default());
                     finish_route(&mut self.keyboard, &input, routed)
                 } else {
+                    // The live PTY boundary keeps physical repeat/release
+                    // suppression and the focused Screen's actual modes.
                     route_input(
                         &mut self.keyboard,
                         &input,
@@ -4519,38 +5362,10 @@ impl ApplicationHandler<UiEvent> for App {
                             .map(|launcher| launcher.launcher.query.as_str()),
                     )
                 };
-                match routed {
-                    RoutedKey::Quit => self.request_close(event_loop),
-                    RoutedKey::OpenLauncher => self.open_launcher(),
-                    RoutedKey::OpenGraph => self.open_graph(),
-                    RoutedKey::OpenSettings => self.open_settings("Account"),
-                    RoutedKey::SettingsKey(key) => self.settings_key(key),
-                    RoutedKey::MuteFocused => self.mute_focused(),
-                    RoutedKey::UndoClose => self.undo_latest_close(),
-                    RoutedKey::LocalPage(command) => {
-                        if self.document.open {
-                            self.document_command(command);
-                        } else {
-                            self.local_page_command(command);
-                        }
-                    }
-                    RoutedKey::ToggleHud => {
-                        self.overlay = !self.overlay;
-                        self.logger.write(format!("hitch overlay={}", self.overlay));
-                        self.request_redraw();
-                    }
-                    RoutedKey::Launcher(command) => self.launcher_command(command),
-                    RoutedKey::Composer(command) => self.composer_command(command),
-                    RoutedKey::ComposerVertical { backwards, extend } => {
-                        self.composer_move(Some(backwards), None, extend)
-                    }
-                    RoutedKey::ComposerLineEdge { end, extend } => {
-                        self.composer_move(None, Some(end), extend)
-                    }
-                    RoutedKey::Pane(navigation) => {
-                        self.focus_action(FocusAction::Navigate(navigation))
-                    }
-                    RoutedKey::Scroll(motion) => {
+                match self.dispatch_chrome(routed) {
+                    None => {}
+                    Some(RoutedKey::Quit) => self.request_close(event_loop),
+                    Some(RoutedKey::Scroll(motion)) => {
                         if let Some(seat) = self.focus.stage.as_ref().and_then(|s| s.focused) {
                             let page = self
                                 .live_state
@@ -4567,7 +5382,7 @@ impl ApplicationHandler<UiEvent> for App {
                             self.scroll_pane(seat, request);
                         }
                     }
-                    RoutedKey::Terminal(bytes) => {
+                    Some(RoutedKey::Terminal(bytes)) => {
                         // No terminal input before the focused live Screen supplies modes.
                         if modes.is_some()
                             && let Some(seat) =
@@ -4586,7 +5401,8 @@ impl ApplicationHandler<UiEvent> for App {
                             });
                         }
                     }
-                    RoutedKey::Local => {}
+                    Some(RoutedKey::Local) => {}
+                    Some(_) => unreachable!("chrome routed above"),
                 }
             }
             WindowEvent::RedrawRequested => {
@@ -5329,7 +6145,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
     let fake = smoke || std::env::args().any(|arg| arg == "--fake-source");
-    let overlay = std::env::args().any(|arg| arg == "--meter");
     let args: Vec<_> = std::env::args().collect();
     let cadence_test = args.iter().any(|arg| arg == "--cadence-test");
     let animate = cadence_test || args.iter().any(|arg| arg == "--animate");
@@ -5341,10 +6156,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .find(|pair| pair[0] == "--pacing")
             .map_or("metal", |pair| pair[1].as_str()),
     )?;
-    let capture = args
-        .windows(2)
-        .find(|pair| pair[0] == "--capture")
-        .map(|pair| std::path::PathBuf::from(&pair[1]));
     let logger = log::Logger::new();
     // The delegate is installed before run_app finishes application launch.
     // Authorization and native completion waits run only on the bounded worker.
@@ -5432,124 +6243,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ..Default::default()
         });
     }
-    let mut app = App {
-        proxy,
+    let mut app = App::owner(
+        UiProxy::Native(proxy),
         inbox,
-        wake_counters: Default::default(),
         logger,
-        prepared,
-        updates,
         live_updates,
-        live_state: None,
-        live_commands,
-        pending_commands: VecDeque::new(),
-        command_retry: Default::default(),
-        admission_refusals: AdmissionRefusals::default(),
-        watched: vec![],
-        pane_sizes: BTreeMap::new(),
-        pane_bounds: vec![],
-        focus_bounds: vec![],
-        scroll_wheel: None,
-        focus: FocusState::default(),
-        notifications,
-        frontmost: false,
-        pending_notification: None,
-        spawn_results_seen: BTreeMap::new(),
-        launcher: args
-            .iter()
-            .any(|arg| arg == "--launcher")
-            .then(|| new_launcher(None, 0)),
-        launcher_layout: None,
-        launcher_parent: None,
-        preferences: preference_state,
-        preferences_io,
-        rim_preview: None,
-        mute: preferences::Mute::default(),
-        system_theme: Theme::Dark,
-        local_tab: None,
-        local_page_layout: None,
-        document: {
-            let mut host = documents::Host::default();
-            if let Some(pair) = args.windows(2).find(|p| p[0] == "--document") {
-                host.show(pair[1].clone());
-            }
-            host
-        },
-        document_return: None,
-        document_layout: None,
-        composer: ComposeController::new(composer::Composer {
-            focus: args.iter().any(|arg| arg == "--compose"),
-            ..Default::default()
-        }),
-        composer_client: messaging::Client::default(),
-        composer_scope: None,
-        task_records: messaging::Records::default(),
-        message_history: messaging::History::default(),
-        events_seen: None,
-        task_regions: Default::default(),
-        close_regions: vec![],
-        reject: None,
-        reject_report: None,
-        reject_focus: false,
-        conversation: bbt_ui::modules::stream_dock::StreamDock {
-            dock: true,
-            framed: false,
-            ..Default::default()
-        },
-        conversation_layout: None,
-        conversation_scroll: 0.,
-        composer_dragging: false,
-        compose_startup: args.iter().any(|arg| arg == "--compose"),
-        operation_backlog: VecDeque::new(),
-        pointer: [0.; 2],
-        query_dragging: false,
-        backend_lost: false,
-        app_generation: 0,
-        app_custody: "unknown".into(),
-        app_ready_sent: false,
-        render_context: (!fake && !animate).then_some(render_context),
-        closing: false,
-        smoke_bootstrap: None,
-        smoke_wake_seen: false,
-        window: None,
-        pacer: None,
-        pacing,
-        clock: Clock::default(),
-        occluded: false,
-        maximum_hz: 60.,
-        budget: budget::Budget::default(),
-        gpu: None,
-        scene: if fake || animate {
-            scene::Scene::new()
-        } else {
-            scene::Scene::live()
-        },
-        meter: HitchMeter::new(120.),
-        modifiers: ModifiersState::empty(),
-        keyboard: keyboard::State::default(),
-        overlay,
-        fake,
-        smoke,
-        demo_started: false,
-        demo_finished: false,
-        idle_scheduled: false,
-        idle_quiet: IdleQuiescence::default(),
-        redraw_pending: std::cell::Cell::new(false),
-        last_update: 0,
-        error: None,
-        capture,
-        capture_pending: true,
-        ctl_captures: Vec::new(),
-        ctl_focus: Default::default(),
-        last_presented: None,
-        pending_resize: None,
-        animate,
-        cadence_test,
-        animation_start: None,
-        frozen_ms: 450.,
+        &args,
         verify,
-        stall,
-    };
+    );
+    app.prepared = prepared;
+    app.updates = updates;
+    app.live_commands = live_commands;
+    app.notifications = notifications;
+    app.preferences = preference_state;
+    app.preferences_io = preferences_io;
+    app.pacing = pacing;
+    app.render_context = (!fake && !animate).then_some(render_context);
+    app.stall = stall;
     if let Some(pair) = args.windows(2).find(|pair| pair[0] == "--settings") {
         app.open_settings(&pair[1]);
     }
@@ -6053,6 +6763,7 @@ mod input_tests {
                 | live::UiMsg::AttentionFocus { .. }
                 | live::UiMsg::MarkEventsRead { .. }
                 | live::UiMsg::Focused { .. }
+                | live::UiMsg::UiReply { .. }
                 | live::UiMsg::AppReply { .. }
                 | live::UiMsg::Captured { .. } => {
                     panic!("pane admission fixture produced a messaging intent")
@@ -7493,5 +8204,63 @@ mod composer_host_tests {
         );
         assert_ne!(route_settings(&press, 0, true), RoutedKey::UndoClose);
         assert_ne!(route_key(&press, 0, Some("")), RoutedKey::UndoClose);
+    }
+}
+
+#[cfg(test)]
+mod ctl_ui_key_tests {
+    use super::*;
+    #[test]
+    fn virtual_chords_leave_native_pressed_keys_and_releases_alone() {
+        struct QuietWake;
+        impl bbt_rt::Waker for QuietWake {
+            fn wake(&self) {}
+        }
+        let inbox = bbt_rt::init_ui(QuietWake);
+        let updates = Arc::new(Latest::new(inbox.dirty.source(5)));
+        let mut app = App::owner(
+            UiProxy::Headless(Arc::new(|_| {})),
+            inbox,
+            log::Logger::new(),
+            updates,
+            &["--headless".into()],
+            Verify::default(),
+        );
+        let key = PhysicalKey::Code(KeyCode::KeyT);
+        let input = chrome_input("cmd-t").unwrap();
+        // A real local press still owns its later release after a ctl chord.
+        app.keyboard.consumed(key, ElementState::Pressed);
+        let routed = app.route_chrome(&input, 0);
+        assert!(app.dispatch_chrome(routed).is_none());
+        assert!(app.keyboard.suppressed(key, ElementState::Released, false));
+        app.close_launcher();
+        // A ctl chord cannot suppress a release for an earlier PTY press.
+        let routed = app.route_chrome(&input, 0);
+        assert!(app.dispatch_chrome(routed).is_none());
+        assert!(!app.keyboard.suppressed(key, ElementState::Released, false));
+    }
+    #[test]
+    fn every_advertised_chrome_key_uses_the_native_input_boundary() {
+        for key in bbt_proto::gui::UI_KEYS {
+            let input = chrome_input(key).unwrap_or_else(|error| panic!("{key}: {error}"));
+            assert_eq!(input.state, ElementState::Pressed);
+            assert!(input.text.is_none());
+        }
+        assert_eq!(
+            route_key(&chrome_input("cmd-t").unwrap(), 0, None),
+            RoutedKey::OpenLauncher
+        );
+        assert_eq!(
+            route_key(&chrome_input("cmd-g").unwrap(), 0, None),
+            RoutedKey::OpenGraph
+        );
+        assert_eq!(
+            route_key(&chrome_input("cmd-m").unwrap(), 0, None),
+            RoutedKey::MuteFocused
+        );
+        assert!(matches!(
+            route_key(&chrome_input("cmd-alt-tab").unwrap(), 0, None),
+            RoutedKey::Pane(_)
+        ));
     }
 }

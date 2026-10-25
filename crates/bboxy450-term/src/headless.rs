@@ -1,12 +1,10 @@
 //! The real GUI consumer and renderer without winit, AppKit or an NSWindow.
 //! Only a model change, app request or GPU completion wakes this owner.
-use crate::{UiEvent, gpu::VerificationFrame, live, log::Logger, scene::Scene};
+use crate::{UiEvent, gpu::VerificationFrame, live, log::Logger};
 use bboxy450_term::model::Model;
-use bbt_proto::{SeatId, View};
 use bbt_rt::Latest;
-use bbt_ui_model::layout::Rect;
 use std::{
-    collections::{BTreeMap, VecDeque},
+    collections::VecDeque,
     sync::{
         Arc,
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -47,9 +45,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let smoke = args.iter().any(|v| v == "--smoke");
     let ready_line = args.iter().any(|v| v == "--app-ready");
     let capture_path = value("--capture").map(std::path::PathBuf::from);
-    let unattended = bboxy450_term::cockpit::Config::test_account_from_args(args)
-        .map_err(|error| error.to_string())?
-        .is_some();
+    let test_account = bboxy450_term::cockpit::Config::test_account_from_args(args)
+        .map_err(|error| error.to_string())?;
+    let unattended = test_account.is_some();
     let verify = crate::Verify::from_args(args)?;
     let mut gpu = bootstrap()?;
     let thread = std::thread::current();
@@ -82,14 +80,14 @@ pub fn run(args: &[String]) -> Result<(), String> {
             theme: verify.theme.unwrap_or(bbt_ui_model::tokens::Theme::Dark),
         })
         .map_err(|_| "headless render context closed")?;
-    let mut commands = Some(live::start_with_sink(
+    let commands = live::start_with_sink(
         updates.clone(),
         sink.clone(),
         logger.clone(),
         run_dir,
         args.iter().any(|v| v == "--ctl"),
         rendering,
-    ));
+    );
     let signals = sink.clone();
     bbt_rt::handle().spawn(async move {
         use tokio::signal::unix::{SignalKind, signal};
@@ -104,19 +102,35 @@ pub fn run(args: &[String]) -> Result<(), String> {
             id: bbt_mux::Ulid::nil(),
         }));
     });
+    let mut app = crate::App::owner(
+        crate::UiProxy::Headless(sink.clone()),
+        inbox,
+        logger.clone(),
+        updates.clone(),
+        args,
+        verify,
+    );
+    app.live_commands = Some(commands);
+    let settings_path = value("--settings-config")
+        .map(std::path::PathBuf::from)
+        .or_else(|| {
+            test_account
+                .as_ref()
+                .map(|account| account.join("config.toml"))
+        })
+        .map_or_else(bboxy450_term::settings::default_path, Ok)?;
+    let settings_events = sink.clone();
+    app.preferences_io = Some(bboxy450_term::settings::Io::start(
+        settings_path,
+        bbt_rt::handle(),
+        move |snapshot| settings_events(UiEvent::Settings(snapshot)),
+    ));
     let (completed, completions) = mpsc::sync_channel::<(u64, Instant)>(64);
-    let mut scene = Scene::live();
-    let mut focus = crate::FocusState::default();
     let mut model = Arc::new(Model::default());
-    let mut spawn_results_seen = BTreeMap::new();
-    let mut watched = Vec::<(SeatId, View)>::new();
-    let mut sizes = BTreeMap::new();
-    let mut bounds = Vec::<(SeatId, Rect)>::new();
-    let mut pending = VecDeque::new();
     let mut captures = VecDeque::new();
-    let mut focus_ack = bboxy450_term::focus_ack::Pending::default();
     let mut submitted = 0;
     let mut rendered = 0;
+    let mut ui_frame = None;
     let mut rendered_at = None;
     let mut backend = false;
     let mut generation = 0;
@@ -137,12 +151,13 @@ pub fn run(args: &[String]) -> Result<(), String> {
         loop {
             if overflow.swap(false, Ordering::AcqRel) && !closing {
                 result = Err("headless event queue full".into());
-                commands.take();
+                app.live_commands.take();
                 closing = true;
             }
             while let Ok(event) = events.try_recv() {
                 match event {
                     UiEvent::Wake => capacity_wait = false,
+                    UiEvent::CommandsReady(ready) => app.commands_ready(ready),
                     UiEvent::BackendInfo {
                         generation: value,
                         custody_backend,
@@ -164,52 +179,35 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             dirty = true;
                         } else {
                             result = Err("headless capture queue full".into());
-                            commands.take();
+                            app.live_commands.take();
                             closing = true;
                         }
                     }
-                    UiEvent::FocusFor(ask) => {
-                        let id = ask.id;
-                        if let Some(answer) = focus_ack.set(ask) {
-                            crate::queue_pending(
-                                &mut pending,
-                                live::UiMsg::Focused {
-                                    id: answer.id,
-                                    result: answer.result,
-                                },
-                            )
-                            .map_err(|_| "headless focus admission full")?;
+                    UiEvent::Settings(snapshot) => {
+                        if app.preferences.accept(&snapshot) {
+                            app.apply_preferences();
+                            dirty = true;
                         }
-                        let wake = sink.clone();
-                        let timer = bbt_rt::handle().spawn(async move {
-                            tokio::time::sleep(bboxy450_term::focus_ack::DEADLINE).await;
-                            wake(UiEvent::FocusDeadline(id));
-                        });
-                        focus_ack.arm(timer.abort_handle());
+                    }
+                    UiEvent::UiFor {
+                        id,
+                        request,
+                        prior_spawns,
+                    } => {
+                        dirty |= app.begin_ui(id, request, SIZE, submitted, prior_spawns);
+                    }
+                    UiEvent::UiDeadline(id) => app.ui_deadline(id),
+                    UiEvent::FocusFor(ask) => {
+                        app.begin_focus(ask);
                     }
                     UiEvent::FocusDeadline(id) => {
-                        if let Some(answer) = focus_ack.expire(id) {
-                            crate::queue_pending(
-                                &mut pending,
-                                live::UiMsg::Focused {
-                                    id: answer.id,
-                                    result: answer.result,
-                                },
-                            )
-                            .map_err(|_| "headless focus admission full")?;
+                        if let Some(answer) = app.ctl_focus.expire(id) {
+                            app.answer_focus(answer);
                         }
                     }
                     UiEvent::CloseFor { id, seat, undo } => {
-                        match crate::close_request(&scene, &model, seat, id, undo, Instant::now()) {
-                            Ok(message) => {
-                                crate::queue_pending(&mut pending, message)
-                                    .map_err(|_| "headless close admission full")?;
-                            }
-                            Err(reason) => logger.write(format!(
-                                "{} {seat} refused: {reason}",
-                                if undo { "undo close" } else { "close" }
-                            )),
-                        }
+                        app.close_seat(seat, id, undo);
+                        dirty = true;
                     }
                     UiEvent::Capture => {
                         if let Some(path) = &capture_path {
@@ -236,13 +234,16 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             0,
                         );
                         status.custody_backend = custody.clone();
-                        crate::queue_pending(&mut pending, live::UiMsg::AppReply { id, status })
-                            .map_err(|_| "headless lifecycle admission full")?;
+                        crate::queue_pending(
+                            &mut app.pending_commands,
+                            live::UiMsg::AppReply { id, status },
+                        )
+                        .map_err(|_| "headless lifecycle admission full")?;
                     }
                     UiEvent::App(live::AppEvent::Stop { id }) => {
                         logger.write(format!("headless stop {id}: orderly Session shutdown"));
-                        pending.clear();
-                        commands.take();
+                        app.pending_commands.clear();
+                        app.live_commands.take();
                         closing = true;
                     }
                     UiEvent::BackendStopped(stopped) => {
@@ -265,130 +266,37 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     crate::now_ms()
                         .saturating_sub(at.elapsed().as_millis().try_into().unwrap_or(u64::MAX)),
                 );
+                if ui_frame.as_ref().is_some_and(|(id, _)| *id <= frame) {
+                    let (id, layout) = ui_frame.take().expect("completed UI frame");
+                    app.present_ui(id, layout);
+                }
             }
-            let sources = inbox.dirty.drain();
+            let sources = app.drain();
             if !sources.is_empty() {
                 dirty = true;
             }
-            if let Some(next) = updates.take() {
-                if smoke {
-                    let last = next
-                        .events
-                        .records()
-                        .back()
-                        .map(|record| match record.as_ref() {
-                            bbt_proto::events::GuiEventRecord::Event(row) => format!(
-                                "{}:{}:{}:{:?}",
-                                row.metadata.reference.position.stream,
-                                row.metadata.reference.position.sequence,
-                                row.metadata.subject,
-                                match &row.payload {
-                                    bbt_proto::events::GuiEventPayload::Activity { summary } =>
-                                        summary.reason.as_ref().map(|reason| reason
-                                            .chars()
-                                            .take(256)
-                                            .collect::<String>()),
-                                    _ => None,
-                                }
-                            ),
-                            bbt_proto::events::GuiEventRecord::Gap(gap) => {
-                                format!("gap:{}:{}..{}", gap.stream, gap.first, gap.last)
-                            }
-                        });
-                    logger.write(format!(
-                        "smoke model: events={:?} rows={} last={last:?} cursors_changed={} hosts_changed={} seats={} screens={} e2e={} settings={}",
-                        next.events.state(), next.events.records().len(),
-                        next.events.cursors() != model.events.cursors(),
-                        next.hosts != model.hosts, next.ui.seats.len(), next.screens.len(),
-                        next.e2e.is_some(), next.settings.is_some(),
-                    ));
-                }
-                // The IO model retains a bounded launch request until its GUI
-                // consumer observes the outcome. Acknowledge once per result,
-                // as the window does; IO owns pending/unknown retention rules.
-                spawn_results_seen.retain(|op, _| next.spawns.contains_key(op));
-                for (&op, request) in &next.spawns {
-                    if !request.consumed
-                        && request.outcome.is_result()
-                        && spawn_results_seen.get(&op) != Some(&request.outcome)
-                    {
-                        crate::queue_pending(&mut pending, live::UiMsg::ConsumeSpawn { id: op })
-                            .map_err(|_| "headless spawn-result admission full")?;
-                        logger.write(format!("headless spawn {op}: {:?}", request.outcome));
-                        spawn_results_seen.insert(op, request.outcome.clone());
-                    }
-                }
-                if next.ui.window.stage != model.ui.window.stage {
-                    // Correlated launch/close changes the IO model's stage;
-                    // ordinary screen publications preserve explicit GUI focus.
-                    focus.stage = Some(next.ui.window.stage.clone());
-                }
-                model = next;
-                focus.reconcile(None, &model.ui);
-                scene.set_model(&model, focus.stage.as_ref().expect("reconciled stage"));
+            dirty |= app.redraw_pending.replace(false);
+            if let Some(next) = &app.live_state
+                && !Arc::ptr_eq(next, &model)
+            {
+                model = next.clone();
                 dirty = true;
             }
             if !closing {
-                match focus_ack.poll(
-                    &model,
-                    scene.focused(),
-                    |seat| bounds.iter().any(|(id, _)| *id == seat),
-                    rendered,
-                ) {
-                    Some(bboxy450_term::focus_ack::Effect::Apply(seat)) => {
-                        match focus.apply(
-                            &model.ui,
-                            crate::FocusAction::Activate(seat, crate::FocusOrigin::Row),
-                            &bounds,
-                            Instant::now(),
-                        ) {
-                            Ok(_) => {
-                                scene.set_model(&model, focus.stage.as_ref().expect("focus stage"));
-                                focus_ack.applied(
-                                    submitted + 1,
-                                    model.ui.seats[&seat].process_generation,
-                                );
-                                dirty = true;
-                            }
-                            Err(error) => {
-                                if let Some(answer) =
-                                    focus_ack.fail(&format!("not_on_screen: {error}"))
-                                {
-                                    crate::queue_pending(
-                                        &mut pending,
-                                        live::UiMsg::Focused {
-                                            id: answer.id,
-                                            result: answer.result,
-                                        },
-                                    )
-                                    .map_err(|_| "headless focus admission full")?;
-                                }
-                            }
-                        }
-                    }
-                    Some(bboxy450_term::focus_ack::Effect::Answer(answer)) => {
-                        crate::queue_pending(
-                            &mut pending,
-                            live::UiMsg::Focused {
-                                id: answer.id,
-                                result: answer.result,
-                            },
-                        )
-                        .map_err(|_| "headless focus admission full")?;
-                    }
-                    None => (),
-                }
+                dirty |= app.poll_focus_frame(rendered, submitted + 1);
+                dirty |= app.poll_ui_frame(submitted);
                 // A copy is submitted before any later draw, so its metadata names
                 // the exact completed texture being read back, even under a flood.
                 if submitted == rendered && rendered > 0 {
                     while captures
                         .front()
-                        .is_some_and(|pending| pending.after <= rendered)
+                        .is_some_and(|queued| queued.after <= rendered)
                     {
                         let ask = captures.pop_front().expect("capture front checked").ask;
                         let crop = match ask.seat {
                             None => Ok(None),
-                            Some(seat) => bounds
+                            Some(seat) => app
+                                .pane_bounds
                                 .iter()
                                 .find(|(id, _)| *id == seat)
                                 .map(|(_, r)| {
@@ -403,7 +311,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                                     format!("not_on_screen: seat {seat} has no pane on screen")
                                 }),
                         };
-                        let send = commands.as_ref().unwrap().sender_clone();
+                        let send = app.live_commands.as_ref().unwrap().sender_clone();
                         let frame = bbt_proto::gui::CaptureFrame {
                             offscreen: true,
                             frame_seq: rendered,
@@ -426,7 +334,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             }
                             Err(error) => {
                                 crate::queue_pending(
-                                    &mut pending,
+                                    &mut app.pending_commands,
                                     live::UiMsg::Captured {
                                         id: ask.id,
                                         error: Some(error),
@@ -439,27 +347,27 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     }
                 }
                 if dirty && submitted == rendered {
-                    let layouts = scene.layout(SIZE, false)?;
-                    bounds = scene.pane_bounds(&layouts);
+                    let layouts = app.solve_ui(SIZE)?;
                     let (next, changed) = crate::pane_controls(
                         &model,
-                        &bounds,
-                        &watched,
-                        &sizes,
-                        scene.focused(),
+                        &app.pane_bounds,
+                        &app.watched,
+                        &app.pane_sizes,
+                        app.scene.focused(),
                         1.,
-                        verify.grid_size,
+                        app.verify.grid_size,
                     );
-                    if next != watched {
-                        watched = next.clone();
-                        crate::queue_pending(&mut pending, live::UiMsg::Watched(next))
+                    if next != app.watched {
+                        app.watched = next.clone();
+                        crate::queue_pending(&mut app.pending_commands, live::UiMsg::Watched(next))
                             .map_err(|_| "headless watch admission full")?;
                     }
-                    sizes.retain(|seat, _| bounds.iter().any(|(id, _)| id == seat));
+                    app.pane_sizes
+                        .retain(|seat, _| app.pane_bounds.iter().any(|(id, _)| id == seat));
                     for (seat, (generation, cols, rows)) in changed {
-                        sizes.insert(seat, (generation, cols, rows));
+                        app.pane_sizes.insert(seat, (generation, cols, rows));
                         crate::queue_pending(
-                            &mut pending,
+                            &mut app.pending_commands,
                             live::UiMsg::Resize {
                                 seat,
                                 generation,
@@ -472,10 +380,23 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     submitted += 1;
                     let wake = thread.clone();
                     let callbacks = callbacks.clone();
-                    gpu.draw_notifying(
-                        scene.paint(&layouts, SIZE, None, None),
+                    let mut base = app.scene.paint(&layouts, SIZE, None, None);
+                    if let Some(page) = &app.local_page_layout {
+                        base.extend(page.paint());
+                    }
+                    let foreground = app.scene.foreground_with_document(
+                        SIZE,
+                        app.launcher_layout.as_ref(),
+                        None,
+                        app.conversation_layout.as_ref(),
+                        app.document_layout.as_ref(),
+                    );
+                    let layout = app.ui_observe.then(|| app.ui_layout(SIZE, &layouts));
+                    gpu.draw_layers_notifying(
+                        base,
+                        foreground,
                         &model,
-                        &bounds,
+                        &app.pane_bounds,
                         submitted,
                         completed.clone(),
                         move || {
@@ -483,14 +404,15 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             wake.unpark();
                         },
                     )?;
+                    ui_frame = layout.map(|layout| (submitted, layout));
                     dirty = false;
                 }
-                if let Some(send) = &commands {
-                    while let Some(message) = pending.pop_front() {
+                if let Some(send) = &app.live_commands {
+                    while let Some(message) = app.pending_commands.pop_front() {
                         match send.try_send(message) {
                             Ok(()) => {}
                             Err(tokio::sync::mpsc::error::TrySendError::Full(message)) => {
-                                pending.push_front(message);
+                                app.pending_commands.push_front(message);
                                 break;
                             }
                             Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
@@ -501,7 +423,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         }
                     }
                 }
-                if rendered > 0 && backend && !ready_sent {
+                if rendered > 0 && backend && app.live_state.is_some() && !ready_sent {
                     ready_sent = true;
                     let mut status = crate::app_status(
                         "headless", unattended, backend, true, &model, generation, rendered, 0,
@@ -515,7 +437,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     }
                     if capture_path.is_some() {
                         let wake = sink.clone();
-                        let delay = verify.capture_after.unwrap_or(Duration::ZERO);
+                        let delay = app.verify.capture_after.unwrap_or(Duration::ZERO);
                         bbt_rt::handle().spawn(async move {
                             tokio::time::sleep(delay).await;
                             wake(UiEvent::Capture);
@@ -524,12 +446,12 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 }
                 if !ready_sent && started.elapsed() >= STARTUP {
                     result = Err("headless render readiness timed out".into());
-                    commands.take();
+                    app.live_commands.take();
                     closing = true;
                 }
                 if smoke && started.elapsed() >= STARTUP && !closing {
                     result = Err(idle.deadline_error());
-                    commands.take();
+                    app.live_commands.take();
                     closing = true;
                 }
                 if smoke && Instant::now() >= next_idle && ready_sent {
@@ -547,13 +469,13 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         if !passed {
                             result = Err("headless idle probe produced work".into());
                         }
-                        commands.take();
+                        app.live_commands.take();
                         closing = true;
                     } else if idle.ready(
                         true,
                         dirty
                             || submitted != rendered
-                            || !pending.is_empty()
+                            || !app.pending_commands.is_empty()
                             || !captures.is_empty(),
                         counts,
                     ) {
@@ -565,10 +487,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     }
                 }
             }
-            if !pending.is_empty() && !closing && !capacity_wait {
+            if !app.pending_commands.is_empty() && !closing && !capacity_wait {
                 // Capacity is signalled by IO, not polled. Keep replies and controls
                 // in their original bounded admission order.
-                let send = commands.as_ref().unwrap().sender_clone();
+                let send = app.live_commands.as_ref().unwrap().sender_clone();
                 let wake = sink.clone();
                 capacity_wait = true;
                 bbt_rt::handle().spawn(async move {
@@ -603,7 +525,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     // Rendering/admission errors also close through the IO owner. Returning
     // directly here would strand the two children after a GUI-side failure.
     if !finished {
-        commands.take();
+        app.live_commands.take();
         let deadline = closing_at.unwrap_or_else(Instant::now) + Duration::from_secs(30);
         loop {
             while let Ok(event) = events.try_recv() {

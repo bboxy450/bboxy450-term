@@ -1,0 +1,124 @@
+{
+  "source": "ff0d74335d25a5d5ea105c69d01b6bdae395fc82",
+  "phase": "passed",
+  "cut": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-verify",
+  "target": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-dev",
+  "runner_pid": 94717,
+  "started": "2026-10-25T05:23:18.998905+00:00",
+  "steps": [
+    {
+      "name": "workspace",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "--no-fail-fast"
+      ],
+      "pid": 32321,
+      "state": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1061.527046918869,
+      "source": "dd002910ba1652d25239db1e6abaa70766c5efe0",
+      "reused_for_identical_code": true
+    },
+    {
+      "name": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "pid": 66365,
+      "state": "finished",
+      "exit": 0,
+      "elapsed_seconds": 52.98712086677551,
+      "source": "dd002910ba1652d25239db1e6abaa70766c5efe0",
+      "reused_for_identical_code": true
+    },
+    {
+      "name": "invariants",
+      "command": [
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "pid": 68491,
+      "state": "finished",
+      "exit": 0,
+      "elapsed_seconds": 536.0251359939575,
+      "source": "dd002910ba1652d25239db1e6abaa70766c5efe0",
+      "reused_for_identical_code": true
+    },
+    {
+      "name": "ui-lint",
+      "command": [
+        "sh",
+        "scripts/ui-lint.sh"
+      ],
+      "source": "ff0d74335d25a5d5ea105c69d01b6bdae395fc82",
+      "pid": 94769,
+      "state": "finished",
+      "exit": 0,
+      "elapsed_seconds": 14.030586957931519
+    },
+    {
+      "name": "corpus",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-doc",
+        "--locked",
+        "--test",
+        "corpus"
+      ],
+      "source": "ff0d74335d25a5d5ea105c69d01b6bdae395fc82",
+      "pid": 95219,
+      "state": "finished",
+      "exit": 0,
+      "elapsed_seconds": 2.886577844619751
+    },
+    {
+      "name": "lab-check",
+      "command": [
+        "sh",
+        "scripts/lab-check.sh"
+      ],
+      "source": "ff0d74335d25a5d5ea105c69d01b6bdae395fc82",
+      "pid": 95460,
+      "state": "finished",
+      "exit": 0,
+      "elapsed_seconds": 72.52930092811584
+    }
+  ],
+  "reuse": {
+    "original_status": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-preflight-dd002910/status.json",
+    "original_status_sha256": "85afb48c1777886c2888a828449239bf3a671ab1b76639e373515ea78135e66b",
+    "identity": {
+      "from": "dd002910ba1652d25239db1e6abaa70766c5efe0",
+      "to": "ff0d74335d25a5d5ea105c69d01b6bdae395fc82",
+      "changed_paths": [
+        ".bboxy/specs/ctl-cli.md",
+        "lab/web/components.js",
+        "lab/web/e2e.html",
+        "lab/web/lab.css"
+      ],
+      "tree_oids": {
+        "crates": "f681b39f403e88ef2076e04be81703801a7f88f6",
+        "scripts": "3cfbeffe6b52facaaba5ba2598617cd4174eec46",
+        "design": "74f900b678a120ce8897ad41252c5ed4875aeb6f",
+        "Cargo.toml": "163390b60fe0162de433298b9378ddb58c464c8c",
+        "Cargo.lock": "d7f0ddeb95197243b621853b68ba93e3c96a1433",
+        ".bboxy/invariants": "05585e2e50b4c66506dc5fa0b6f0b2f0c1dd7344"
+      }
+    },
+    "note": "Commands above ran on original_source, never claimed rerun on rebased source. Only lab and one spec changed; reference checks below run on the rebased source. Exact ci-local --parity will rerun every gate there."
+  },
+  "exit": 0,
+  "finished": "2026-10-25T05:24:48.447650+00:00"
+}

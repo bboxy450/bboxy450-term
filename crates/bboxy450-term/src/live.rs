@@ -193,6 +193,15 @@ pub fn start_with_sink(
                     let events = events.clone();
                     move |ask| {
                         events(match ask {
+                            OperatorAsk::Ui {
+                                id,
+                                request,
+                                prior_spawns,
+                            } => UiEvent::UiFor {
+                                id,
+                                request,
+                                prior_spawns,
+                            },
                             OperatorAsk::Capture(ask) => UiEvent::CaptureFor(ask),
                             OperatorAsk::Focus(ask) => UiEvent::FocusFor(ask),
                             OperatorAsk::Close { id, seat, undo } => {
@@ -220,6 +229,11 @@ pub fn start_with_sink(
 /// What another operator door asks of the window, relayed by logic.
 #[derive(Debug)]
 pub enum OperatorAsk {
+    Ui {
+        id: Ulid,
+        request: bbt_proto::gui::UiRequest,
+        prior_spawns: Vec<Ulid>,
+    },
     Capture(CaptureAsk),
     /// Focus this seat, as the window's own row click does (`ctl seat focus`).
     Focus(bboxy450_term::focus_ack::Ask),
@@ -939,6 +953,7 @@ async fn run_with_control(
                     UiMsg::EventCursor {stream}=>queue_action(&mut outgoing,GuiAction::GetEventCursor {stream:stream.clone()}),
                     UiMsg::Captured {id,error,frame}=>queue_action(&mut outgoing,GuiAction::Captured {id:*id,error:error.clone(),frame:*frame}),
                     UiMsg::Focused {id,result}=>queue_action(&mut outgoing,GuiAction::Focused {id:*id,result:result.clone()}),
+                    UiMsg::UiReply {id,result}=>queue_action(&mut outgoing,GuiAction::UiReply {id:*id,result:result.clone()}),
                     UiMsg::AppReply {id,status}=> {
                         let mut status=status.clone();
                         status.generation=session.endpoint.generation;
@@ -1181,6 +1196,8 @@ async fn run_with_control(
                                 if changed {publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;}
                             }
                         },
+                        GuiReply::UiAsk {op,request}=>capture(OperatorAsk::Ui {id:op,request,prior_spawns:model.spawns.keys().copied().collect()}),
+                        GuiReply::Ui {..}=>{},
                         GuiReply::AppAsk {op,request}=>app(AppEvent::Ask {id:op,request}),
                         GuiReply::AppStopping {op}=>app(AppEvent::Stop {id:op}),
                         GuiReply::App {..}=>{},
@@ -1479,6 +1496,13 @@ mod tests {
             replies.sent(action);
         }
         for (_, terminal, expected) in &cases {
+            assert_eq!(
+                replies.take(&GuiReply::UiAsk {
+                    op: Ulid::new(),
+                    request: bbt_proto::gui::UiRequest::Layout
+                }),
+                None
+            );
             for attached in [false, true] {
                 assert_eq!(
                     replies.take(&GuiReply::EventStatus {

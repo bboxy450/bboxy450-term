@@ -1,0 +1,37 @@
+{
+  "source": "ff0d74335d25a5d5ea105c69d01b6bdae395fc82",
+  "base": "4d38143086c048be60524d78cf600882a27bc6db",
+  "origin_main_at_start": "4d38143086c048be60524d78cf600882a27bc6db",
+  "base_approval": null,
+  "cut": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-verify",
+  "build": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-dev",
+  "run": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-gate-ff0d7433",
+  "preflight": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-preflight-ff0d7433/status.json",
+  "preflight_sha256": "b552e76e9d585e871a118a493dfb131a28d952b08d81310b42d375352eb10713",
+  "started": "2026-10-25T05:25:41.443193+00:00",
+  "command": [
+    "sh",
+    "scripts/ci-local.sh",
+    "--parity"
+  ],
+  "runner_pid": 98463,
+  "phase": "finished",
+  "ci_pid": 98498,
+  "process_group": 98498,
+  "exit": 0,
+  "elapsed_seconds": 2109.5977380275726,
+  "binaries": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-gate-ff0d7433/bboxybook-ff0d7433",
+      "bytes": 18283056,
+      "sha256": "f8352b88faa87c731c1b0ecb23383340a96e9c150556f1960c1355df92cfe96e"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-gate-ff0d7433/bboxy450-term-ff0d7433",
+      "bytes": 52922016,
+      "sha256": "ed4fbf8958901534c86ecd49a426446534797b5292f93e8e8f56a007ff314ca6"
+    }
+  ],
+  "allocated_bytes_freed": 4388208640,
+  "finished": "2026-10-25T06:00:52.701137+00:00"
+}
