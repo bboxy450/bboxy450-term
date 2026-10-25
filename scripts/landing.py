@@ -99,9 +99,10 @@ def affected(range_spec, *, root=None):
                 dependencies[name].add(dep["name"])
     tier = "lab" if paths and all(p.startswith(("lab/", "design/", ".bboxy/"))
                                  for p in paths) else "code"
-    broad = [p for p in paths if p in ("Cargo.toml", "Cargo.lock")
-             or p.startswith(".cargo/")
-             or (p.startswith("scripts/") and not p.startswith("scripts/e2e/"))]
+    broad = [p for p in paths if p in ("Cargo.toml", "Cargo.lock") or p.startswith(".cargo/")]
+    # Validation tools are shared for retry decisions, but are not Rust source
+    # dependencies. Their fixture suite and the fast invariants check them.
+    tooling = [p for p in paths if p.startswith("scripts/") and not p.startswith("scripts/e2e/")]
     touched = set()
     for path in paths:
         absolute = root / path
@@ -125,7 +126,7 @@ def affected(range_spec, *, root=None):
     parity = any(p.startswith(("lab/", "design/")) for p in paths) or bool(touched & ui)
     shared_lab = {"lab/web/lab.css", "lab/web/tokens.js", "lab/web/glow.js",
                   "lab/web/components.js"}
-    shared = sorted(set(broad) | (set(paths) & shared_lab)
+    shared = sorted(set(broad) | set(tooling) | (set(paths) & shared_lab)
                     | {p for p in paths if p.startswith("design/")})
     return {"tier": tier, "touched": sorted(touched), "affected": sorted(result),
             "parity": "yes" if parity else "no", "paths": paths, "shared": shared}

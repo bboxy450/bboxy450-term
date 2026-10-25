@@ -223,10 +223,17 @@ class AffectedTests(unittest.TestCase):
     def test_leaf_does_not_retest_its_dependencies(self):
         self.assertEqual(self.changed("crates/c/src/lib.rs")["affected"], ["c"])
 
-    def test_shared_gate_input_affects_all_crates(self):
+    def test_shared_validation_input_is_checked_without_inventing_rust_dependencies(self):
         result = self.changed("scripts/fixture-gate.sh")
-        self.assertEqual(result["affected"], ["a", "b", "c"])
+        self.assertEqual(result["affected"], [])
+        self.assertEqual(result["parity"], "no")
         self.assertEqual(result["shared"], ["scripts/fixture-gate.sh"])
+
+    def test_root_cargo_input_still_affects_the_entire_workspace(self):
+        self.repo.write("Cargo.toml", (self.repo.root / "Cargo.toml").read_text() + "# shared workspace input\n")
+        self.repo.commit("Fixture workspace manifest")
+        result = landing.affected(self.repo.base + "..HEAD", root=self.repo.root)
+        self.assertEqual(result["affected"], ["a", "b", "c"])
 
     def test_lab_tier_has_no_product_target_and_shared_parity_is_marked(self):
         result = self.changed("lab/web/components.js")
@@ -280,6 +287,7 @@ class PresubmitTests(unittest.TestCase):
 
     def test_absent_cache_adapter_uses_empty_wrapper_fallback(self):
         (self.repo.root / "scripts/cache-env.sh").unlink()
+        self.repo.write("scripts/invariants.sh", '#!/bin/sh\n[ -z "${RUSTC_WRAPPER:-}" ] && [ -z "${RUSTC_WORKSPACE_WRAPPER:-}" ]\n')
         self.repo.commit("Fixture without optional cache adapter")
         self.repo.environment["RUSTC_WRAPPER"] = "/unavailable-fixture-wrapper"
         self.repo.environment["RUSTC_WORKSPACE_WRAPPER"] = "/unavailable-fixture-wrapper"

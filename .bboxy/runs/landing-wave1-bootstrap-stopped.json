@@ -1,0 +1,7 @@
+{
+  "reason": "correct affected graph: scripts are shared validation inputs, not Rust source crates; first presubmit stopped during changed-dependency compilation",
+  "pid": 24677,
+  "pgid": 24677,
+  "timestamp": 1792955509.598121,
+  "no_push": "presubmit had not succeeded; land has not reached push"
+}
