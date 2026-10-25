@@ -128,6 +128,7 @@ impl Endpoint {
 pub enum Command {
     Ui(bbt_proto::gui::UiRequest),
     UiFocus(String),
+    Identity(bbt_proto::identity::IdentityRequest),
     Spawn {
         harness: String,
         name: Option<String>,
@@ -313,6 +314,8 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("ui", "key", "Ui"),
     ("ui", "focus", "Ui"),
     ("ui", "layout", "Ui"),
+    ("identity", "status", "Identity"),
+    ("identity", "unlock", "Identity"),
     ("seat", "ls", "ListSeats"),
     ("seat", "spawn", "Spawn"),
     ("seat", "screen", "Screen"),
@@ -730,6 +733,8 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
                 .transpose()?.unwrap_or(30_000);
             Command::EventsTail {stream,since,subject,timeout:Duration::from_millis(timeout)}
         },
+        ["identity", "status"] => Command::Identity(bbt_proto::identity::IdentityRequest::Status),
+        ["identity", "unlock"] => Command::Identity(bbt_proto::identity::IdentityRequest::Unlock),
         ["app", "endpoint"] => Command::AppEndpoint,
         ["app", "start"] => Command::AppStart {
             headless,
@@ -1010,6 +1015,21 @@ impl Client {
             _ => unreachable!(),
         }
     }
+    /// Read custody or admit one unlock through the same private operator connection.
+    pub fn identity(
+        &mut self,
+        request: bbt_proto::identity::IdentityRequest,
+    ) -> Result<(Ulid, bbt_proto::identity::IdentityControl), String> {
+        let id = self.mint();
+        match self.call(
+            Some(id),
+            GuiAction::Identity(bbt_proto::identity::IdentityCall { id, request }),
+            |reply| matches!(reply, GuiReply::IdentityControl { op, .. } if *op == id),
+        )? {
+            GuiReply::IdentityControl { response, .. } => Ok((id, response)),
+            _ => unreachable!(),
+        }
+    }
     /// The operator's signed `e2e` record write: the data_source write result.
     pub fn record_write(&mut self, args: Value) -> Result<Value, String> {
         let id = self.mint();
@@ -1258,6 +1278,10 @@ fn swarms(seats: &[GuiSeat]) -> Vec<Ulid> {
 pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> {
     let to_value = |v: &dyn erased::Serialize| v.to_json();
     Ok(match command {
+        Command::Identity(request) => {
+            let (op, response) = client.identity(request)?;
+            vec![json!({"kind":"identity", "op":op, "response":response})]
+        }
         Command::Spawn {
             harness,
             name,
@@ -2439,6 +2463,10 @@ mod tests {
                 id,
                 request: bbt_proto::gui::UiRequest::Layout,
             },
+            GuiAction::Identity(bbt_proto::identity::IdentityCall {
+                id,
+                request: bbt_proto::identity::IdentityRequest::Status,
+            }),
             GuiAction::ListSeats,
             GuiAction::App {
                 id,
@@ -2534,6 +2562,8 @@ mod tests {
             "ui key cmd-t esc",
             "ui focus s",
             "ui layout",
+            "identity status",
+            "identity unlock",
             "seat ls",
             "seat spawn zsh",
             "seat screen s",

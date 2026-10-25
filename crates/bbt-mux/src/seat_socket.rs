@@ -655,7 +655,7 @@ async fn gui_session(
                     let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
                     let op=match &request.action {
                         GuiAction::Ui {id,..}|GuiAction::UiReply {id,..}|GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
-                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
+                        GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
@@ -688,6 +688,7 @@ async fn gui_session(
                             }
                             GuiAction::ListSeats=>Ok(GuiReply::Seats(client.gui_seats().await?)),
                             GuiAction::ListHosts=>Ok(GuiReply::Hosts(client.gui_hosts().await?)),
+                            GuiAction::Identity(bbt_proto::identity::IdentityCall {id,request})=>Ok(GuiReply::IdentityControl {op:id,response:client.gui_identity_control(id,request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?}),
                             GuiAction::AttachEvents {id}=> {
                                 want_events=Some(id);
                                 if lane.is_none() {

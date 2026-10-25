@@ -73,6 +73,7 @@ pub struct IdentityRuntime {
     pub(super) retry: Option<super::custodied::Retry>,
     pub(super) pending: Option<PendingReason>,
     pub(super) bus_key: Option<ed25519_dalek::SigningKey>,
+    pub(super) observed_status: std::sync::Mutex<Option<IdentityStatus>>,
 }
 impl IdentityRuntime {
     pub(crate) fn issued_by(&self) -> Option<&str> {
@@ -90,13 +91,29 @@ impl IdentityRuntime {
     }
     pub fn status(&self) -> Result<IdentityStatus> {
         bbt_rt::assert_not_ui_thread();
-        self.status_at(crate::store::now_ms() / 1000)
+        let status = self.status_at(crate::store::now_ms() / 1000)?;
+        *self
+            .observed_status
+            .lock()
+            .map_err(|_| invalid("identity status cache poisoned"))? = Some(status.clone());
+        Ok(status)
     }
     /// IO clock seam; timestamps use the same seconds as signed grants.
     pub fn status_at(&self, now: u64) -> Result<IdentityStatus> {
         bbt_rt::assert_not_ui_thread();
         if let Some(chain) = &self.chain {
             let mut status = chain.status_at(now)?;
+            if matches!(
+                status.pending_reason,
+                Some(
+                    PendingReason::KeychainUnavailable(_)
+                        | PendingReason::KeychainInteractionRequired
+                        | PendingReason::KeychainTimedOut
+                        | PendingReason::KeychainSigningIdentityRequired
+                )
+            ) {
+                status.device_id = None;
+            }
             super::hold::decorate(&self.account, &mut status)?;
             return Ok(status);
         }

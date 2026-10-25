@@ -16,10 +16,16 @@ case "$suffix" in
         ;;
 esac
 identifier=com.bboxy450.$stem
+case "$stem" in
+    bboxy450-term) identifier=com.bboxy450.term ;;
+esac
+designated="identifier \"$identifier\" and anchor apple generic and certificate leaf[subject.OU] = \"UQB3368A84\""
 
 # A matching signature needs neither private-key lookup nor re-signing.
 requirement="=identifier \"$identifier\" and certificate leaf = H\"$identity\""
-if /usr/bin/codesign --verify --strict --test-requirement "$requirement" "$binary" >/dev/null 2>&1; then
+actual=$(/usr/bin/codesign -d -r- "$binary" 2>&1 | sed -n 's/^designated => //p' | tr -d '"')
+expected=$(printf '%s' "$designated" | tr -d '"')
+if [ "$actual" = "$expected" ] && /usr/bin/codesign --verify --strict --test-requirement "$requirement" "$binary" >/dev/null 2>&1; then
     exec "$binary" "$@"
 fi
 
@@ -32,5 +38,5 @@ case "$identities" in
         ;;
 esac
 
-/usr/bin/codesign --force --sign "$identity" --identifier "$identifier" --timestamp=none "$binary"
+/usr/bin/codesign --force --sign "$identity" --identifier "$identifier" --requirements "=designated => $designated" --timestamp=none "$binary"
 exec "$binary" "$@"

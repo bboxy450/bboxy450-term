@@ -34,15 +34,43 @@ pub trait DeviceKeyStore {
     }
     fn load(&self, device: Ulid) -> Result<Option<SigningKey>>;
     fn create(&self, device: Ulid, key: &SigningKey) -> Result<()>;
+    /// A still-running native access cannot admit another interactive attempt.
+    fn native_busy(&self) -> bool {
+        false
+    }
+    /// Native policy metadata without reading a secret or opening a dialog.
+    fn native_acl(&self, _device: Ulid) -> Result<bbt_proto::identity::CustodyAcl> {
+        Ok(bbt_proto::identity::CustodyAcl::NotNative)
+    }
+    /// A caller must journal the explicit act before permitting one native access.
+    fn unlock(
+        &self,
+        _device: Ulid,
+        _expected_public: [u8; 32],
+        _progress: super::unlock::Progress,
+    ) -> Result<bbt_proto::identity::UnlockOutcome> {
+        Err(E::KeychainUnavailable(-4))
+    }
+    /// Resume only verified replacement cleanup; this port never permits interaction.
+    fn finish_unlock(
+        &self,
+        _device: Ulid,
+        _expected_public: [u8; 32],
+        _progress: super::unlock::Progress,
+    ) -> Result<bool> {
+        Err(E::KeychainUnavailable(-4))
+    }
 }
 
 /// Data Protection Keychain, or explicit dev custody after -34018 (#17).
-/// The production service is fixed; acceptance tests use an isolated service.
+/// Normal queries forbid UI; only the explicit unlock port permits one read.
 #[derive(Clone)]
 pub struct KeychainDeviceKeys {
     service: String,
     tier: Arc<AtomicU8>,
     io: Arc<super::io::CustodyIo>,
+    #[cfg(target_os = "macos")]
+    allow_fallback: bool,
 }
 impl Default for KeychainDeviceKeys {
     fn default() -> Self {
@@ -50,11 +78,13 @@ impl Default for KeychainDeviceKeys {
             service: "bboxy450-term".into(),
             tier: Arc::new(AtomicU8::new(0)),
             io: super::io::keychain_io(),
+            #[cfg(target_os = "macos")]
+            allow_fallback: true,
         }
     }
 }
 impl KeychainDeviceKeys {
-    /// Separate test service; cannot select another production service.
+    /// A separate service for explicit native fixtures; never selected at normal startup.
     pub fn isolated_test(service: &str) -> Result<Self> {
         if !service.starts_with("bboxy450-term.test.") || service.len() > 128 {
             return Err(E::InvalidProof);
@@ -63,81 +93,11 @@ impl KeychainDeviceKeys {
             service: service.into(),
             tier: Arc::new(AtomicU8::new(0)),
             io: super::io::keychain_io(),
+            #[cfg(target_os = "macos")]
+            allow_fallback: true,
         })
     }
-    #[cfg(target_os = "macos")]
-    fn options(
-        &self,
-        device: Ulid,
-        custody: Custody,
-    ) -> security_framework::passwords::PasswordOptions {
-        let mut options = security_framework::passwords::PasswordOptions::new_generic_password(
-            &self.service,
-            &device.to_string(),
-        );
-        if custody == Custody::DataProtection {
-            options.use_protected_keychain();
-        }
-        options.set_access_synchronized(Some(false));
-        options
-    }
-    #[cfg(target_os = "macos")]
-    fn add_protected(&self, device: Ulid, seed: &[u8]) -> security_framework::base::Result<()> {
-        use core_foundation::{
-            base::TCFType, boolean::CFBoolean, data::CFData, dictionary::CFDictionary,
-            string::CFString,
-        };
-        use security_framework::access_control::{ProtectionMode, SecAccessControl};
-        use security_framework_sys::{item::*, keychain_item::SecItemAdd};
-        let access = SecAccessControl::create_with_protection(
-            Some(ProtectionMode::AccessibleWhenUnlockedThisDeviceOnly),
-            0,
-        )?;
-        // SAFETY: Security.framework's CFString attribute constants live for the
-        // process. The owned CF values remain alive throughout SecItemAdd.
-        let pairs = unsafe {
-            vec![
-                (
-                    CFString::wrap_under_get_rule(kSecClass),
-                    CFString::wrap_under_get_rule(kSecClassGenericPassword).as_CFType(),
-                ),
-                (
-                    CFString::wrap_under_get_rule(kSecAttrService),
-                    CFString::new(&self.service).as_CFType(),
-                ),
-                (
-                    CFString::wrap_under_get_rule(kSecAttrAccount),
-                    CFString::new(&device.to_string()).as_CFType(),
-                ),
-                (
-                    CFString::wrap_under_get_rule(kSecUseDataProtectionKeychain),
-                    CFBoolean::true_value().as_CFType(),
-                ),
-                (
-                    CFString::wrap_under_get_rule(kSecAttrSynchronizable),
-                    CFBoolean::false_value().as_CFType(),
-                ),
-                (
-                    CFString::wrap_under_get_rule(kSecAttrAccessControl),
-                    access.as_CFType(),
-                ),
-                (
-                    CFString::wrap_under_get_rule(kSecValueData),
-                    CFData::from_buffer(seed).as_CFType(),
-                ),
-            ]
-        };
-        let attributes = CFDictionary::from_CFType_pairs(&pairs);
-        // SAFETY: attributes owns a valid dictionary; no result object is requested.
-        let status = unsafe { SecItemAdd(attributes.as_concrete_TypeRef(), std::ptr::null_mut()) };
-        if status == 0 {
-            Ok(())
-        } else {
-            Err(security_framework::base::Error::from_code(status))
-        }
-    }
-    /// Reopen the recorded tier after restart; never migrate an existing key
-    /// implicitly when app signing/entitlements change.
+    /// Reopen the recorded tier; never substitute file or memory custody on a failure.
     pub fn resume(custody: Custody) -> Result<Self> {
         if custody == Custody::File {
             return Err(E::FileCustodyUnavailable);
@@ -149,99 +109,32 @@ impl KeychainDeviceKeys {
             service: "bboxy450-term".into(),
             tier: Arc::new(AtomicU8::new(u8::from(custody == Custody::LoginKeychain))),
             io: super::io::keychain_io(),
+            #[cfg(target_os = "macos")]
+            allow_fallback: false,
         })
     }
     #[cfg(target_os = "macos")]
-    fn operation<T>(
-        &self,
-        run: impl Fn(Custody) -> security_framework::base::Result<T>,
-    ) -> Result<T> {
-        // This is process-wide and intentionally never restored: identity
-        // custody never opens an access/unlock dialog, on either native path.
-        // SAFETY: this Security.framework call takes a Boolean and owns no pointers.
-        let status =
-            unsafe { security_framework_sys::keychain::SecKeychainSetUserInteractionAllowed(0) };
-        if status != 0 {
-            return Err(keychain_error(status));
-        }
+    fn operation<T>(&self, run: impl Fn(Custody) -> Result<T>) -> Result<T> {
         let tier = self.custody();
         match run(tier) {
-            Err(e) if tier == Custody::DataProtection && e.code() == -34018 => {
+            Err(E::KeychainUnavailable(-34018))
+                if self.allow_fallback && tier == Custody::DataProtection =>
+            {
                 self.tier.store(1, Ordering::Relaxed);
-                run(Custody::LoginKeychain).map_err(|e| keychain_error(e.code()))
+                run(Custody::LoginKeychain)
             }
-            result => result.map_err(|e| keychain_error(e.code())),
+            value => value,
         }
     }
-    /// Only test items can be removed by this interface; production revocation
-    /// retains custody and its historical attribution.
-    pub fn delete_test_item(&self, device: Ulid) -> Result<()> {
-        let keys = self.clone();
-        self.io.run(move || keys.delete_test_item_inner(device))
-    }
-    fn delete_test_item_inner(&self, device: Ulid) -> Result<()> {
-        if !self.service.starts_with("bboxy450-term.test.") {
-            return Err(E::InvalidProof);
-        }
-        #[cfg(target_os = "macos")]
-        return self
-            .operation(|tier| {
-                if tier == Custody::LoginKeychain {
-                    let chain = security_framework::os::macos::keychain::SecKeychain::default()?;
-                    let (_, item) =
-                        chain.find_generic_password(&self.service, &device.to_string())?;
-                    item.delete();
-                    return match chain.find_generic_password(&self.service, &device.to_string()) {
-                        Err(e) if e.code() == -25300 => Ok(()),
-                        Err(e) => Err(e),
-                        Ok(_) => Err(security_framework::base::Error::from_code(-25299)),
-                    };
-                }
-                security_framework::passwords::delete_generic_password_options(
-                    self.options(device, tier),
-                )
-            })
-            .or_else(|e| {
-                if e == E::KeychainUnavailable(-25300) {
-                    Ok(())
-                } else {
-                    Err(e)
-                }
-            });
-        #[cfg(not(target_os = "macos"))]
-        {
-            let _ = device;
-            Err(E::KeychainUnavailable(-4))
-        }
-    }
-}
-impl KeychainDeviceKeys {
     fn load_inner(&self, device: Ulid) -> Result<Option<SigningKey>> {
         bbt_rt::assert_not_ui_thread();
         #[cfg(target_os = "macos")]
-        {
-            match self.operation(|tier| {
-                if tier == Custody::LoginKeychain {
-                    let chain = security_framework::os::macos::keychain::SecKeychain::default()?;
-                    let (password, _) =
-                        chain.find_generic_password(&self.service, &device.to_string())?;
-                    return Ok(password.as_ref().to_vec());
-                }
-                security_framework::passwords::generic_password(self.options(device, tier))
-            }) {
-                Ok(mut bytes) => {
-                    let key = <[u8; 32]>::try_from(bytes.as_slice()).map(|mut seed| {
-                        let key = SigningKey::from_bytes(&seed);
-                        seed.fill(0);
-                        key
-                    });
-                    bytes.fill(0);
-                    key.map(Some).map_err(|_| E::InvalidProof)
-                }
-                Err(E::KeychainUnavailable(-25300)) => Ok(None),
-                Err(e) => Err(e),
-            }
-        }
+        return self.operation(|tier| {
+            super::unlock::read_preferred(
+                &super::native_keychain::Native::new(&self.service, tier),
+                &device.to_string(),
+            )
+        });
         #[cfg(not(target_os = "macos"))]
         {
             let _ = device;
@@ -255,19 +148,11 @@ impl KeychainDeviceKeys {
         }
         #[cfg(target_os = "macos")]
         {
-            let mut seed = key.to_bytes();
-            let result = self.operation(|tier| {
-                if tier == Custody::LoginKeychain {
-                    // The legacy API explicitly selects the login keychain;
-                    // adding synchronizable/DP-only SecItem attributes would
-                    // route unsigned executables back to the protected store.
-                    return security_framework::os::macos::keychain::SecKeychain::default()?
-                        .add_generic_password(&self.service, &device.to_string(), &seed);
-                }
-                self.add_protected(device, &seed)
-            });
-            seed.fill(0);
-            result
+            use super::unlock::Vault;
+            self.operation(|tier| {
+                super::native_keychain::Native::new(&self.service, tier)
+                    .add(&format!("{device}.dr1"), key)
+            })
         }
         #[cfg(not(target_os = "macos"))]
         {
@@ -275,8 +160,30 @@ impl KeychainDeviceKeys {
             Err(E::KeychainUnavailable(-4))
         }
     }
+    /// Only explicit test service items may be removed through this legacy helper.
+    pub fn delete_test_item(&self, device: Ulid) -> Result<()> {
+        if !self.service.starts_with("bboxy450-term.test.") {
+            return Err(E::InvalidProof);
+        }
+        let keys = self.clone();
+        self.io.run(move || {
+            #[cfg(target_os = "macos")]
+            {
+                use super::unlock::Vault;
+                keys.operation(|tier| {
+                    let native = super::native_keychain::Native::new(&keys.service, tier);
+                    native.remove(&format!("{device}.dr1"))?;
+                    native.remove(&device.to_string())
+                })
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                let _ = (device, keys);
+                Err(E::KeychainUnavailable(-4))
+            }
+        })
+    }
 }
-
 impl DeviceKeyStore for KeychainDeviceKeys {
     fn custody(&self) -> Custody {
         if self.tier.load(Ordering::Relaxed) == 0 {
@@ -294,10 +201,86 @@ impl DeviceKeyStore for KeychainDeviceKeys {
         let key = key.clone();
         self.io.run(move || keys.create_inner(device, &key))
     }
+    fn native_busy(&self) -> bool {
+        self.io.busy()
+    }
+    fn native_acl(&self, device: Ulid) -> Result<bbt_proto::identity::CustodyAcl> {
+        let keys = self.clone();
+        self.io.run(move || {
+            #[cfg(target_os = "macos")]
+            return keys.operation(|tier| {
+                super::native_keychain::Native::new(&keys.service, tier).acl(&device.to_string())
+            });
+            #[cfg(not(target_os = "macos"))]
+            {
+                let _ = (keys, device);
+                Err(E::KeychainUnavailable(-4))
+            }
+        })
+    }
+    fn unlock(
+        &self,
+        device: Ulid,
+        expected: [u8; 32],
+        progress: super::unlock::Progress,
+    ) -> Result<bbt_proto::identity::UnlockOutcome> {
+        let keys = self.clone();
+        self.io.run(move || {
+            #[cfg(target_os = "macos")]
+            {
+                super::native_keychain::Native::new(&keys.service, keys.custody())
+                    .validate_caller()?;
+                // Settle entitlement fallback with a noninteractive metadata probe FIRST.
+                // Never replay an interactive read across tiers.
+                match keys.operation(|tier| {
+                    super::native_keychain::Native::new(&keys.service, tier)
+                        .acl(&device.to_string())
+                }) {
+                    Ok(_) | Err(E::KeychainInteractionRequired) => {}
+                    Err(error) => return Err(error),
+                }
+                super::unlock::migrate(
+                    &super::native_keychain::Native::new(&keys.service, keys.custody()),
+                    &device.to_string(),
+                    &expected,
+                    &progress,
+                )
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                let _ = (keys, device, expected, progress);
+                Err(E::KeychainUnavailable(-4))
+            }
+        })
+    }
+    fn finish_unlock(
+        &self,
+        device: Ulid,
+        expected: [u8; 32],
+        progress: super::unlock::Progress,
+    ) -> Result<bool> {
+        let keys = self.clone();
+        self.io.run(move || {
+            #[cfg(target_os = "macos")]
+            return keys.operation(|tier| {
+                super::unlock::finish_migration(
+                    &super::native_keychain::Native::new(&keys.service, tier),
+                    &device.to_string(),
+                    &expected,
+                    &progress,
+                )
+            });
+            #[cfg(not(target_os = "macos"))]
+            {
+                let _ = (keys, device, expected, progress);
+                Err(E::KeychainUnavailable(-4))
+            }
+        })
+    }
 }
 
 #[cfg(any(target_os = "macos", test))]
-fn keychain_error(code: i32) -> E {
+pub(super) fn keychain_error(code: i32) -> E {
     match code {
         -128 | -25293 | -25308 | -25315 => E::KeychainInteractionRequired,
         _ => E::KeychainUnavailable(code),
@@ -306,6 +289,35 @@ fn keychain_error(code: i32) -> E {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn native_recorded_tier_never_falls_back_after_an_entitlement_refusal() {
+        use super::{Custody, DeviceKeyStore, E, KeychainDeviceKeys};
+        let resumed = KeychainDeviceKeys::resume(Custody::DataProtection).unwrap();
+        let calls = std::cell::Cell::new(0);
+        let result: super::Result<()> = resumed.operation(|_| {
+            calls.set(calls.get() + 1);
+            Err(E::KeychainUnavailable(-34018))
+        });
+        assert_eq!(result, Err(E::KeychainUnavailable(-34018)));
+        assert_eq!(calls.get(), 1);
+        assert_eq!(resumed.custody(), Custody::DataProtection);
+        let fresh = KeychainDeviceKeys::default();
+        fresh
+            .operation(|tier| {
+                if tier == Custody::DataProtection {
+                    Err(E::KeychainUnavailable(-34018))
+                } else {
+                    Ok(())
+                }
+            })
+            .unwrap();
+        assert_eq!(
+            fresh.custody(),
+            Custody::LoginKeychain,
+            "only an unrecorded first choice may select dev custody"
+        );
+    }
     #[test]
     fn denied_or_interactive_keychain_answers_have_a_named_hold() {
         for code in [-128, -25293, -25308, -25315] {

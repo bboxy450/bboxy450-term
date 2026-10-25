@@ -3,7 +3,7 @@ use serde_json::json;
 #[test]
 fn settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme() {
     let cases = settings::cases();
-    assert_eq!(cases.len(), 96);
+    assert_eq!(cases.len(), 144);
     assert_eq!(settings::legacy_cases().len(), 72);
     assert!(cases.iter().all(|c| {
         let p = CasePolicy::for_case(c).unwrap();

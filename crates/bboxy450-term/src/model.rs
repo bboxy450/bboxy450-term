@@ -507,6 +507,7 @@ pub struct Model {
     pub states: BTreeMap<SeatId, SeatState>,
     /// Signing holds affect messaging, never whether terminal panes stay live.
     pub identity: Option<bbt_proto::GuiIdentity>,
+    pub custody_reply: Option<Arc<crate::settings::IdentityReply>>,
     /// Correlation survives Latest replacing an intermediate publication.
     pub spawns: BTreeMap<Ulid, SpawnRequest>,
     pub operation_results: Arc<crate::messaging::Results>,
@@ -533,6 +534,7 @@ impl Default for Model {
             frames: BTreeMap::new(),
             states: BTreeMap::new(),
             identity: None,
+            custody_reply: None,
             hosts: vec![],
             spawns: BTreeMap::new(),
             operation_results: Arc::default(),
@@ -1109,6 +1111,7 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
         frames,
         states,
         identity: previous.identity.clone(),
+        custody_reply: previous.custody_reply.clone(),
         spawns: previous.spawns.clone(),
         operation_results: previous.operation_results.clone(),
         metadata_initialized: true,

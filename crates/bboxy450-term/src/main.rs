@@ -1456,6 +1456,7 @@ struct App {
     preferences_io: Option<preferences::Io>,
     rim_preview: Option<f32>,
     mute: preferences::Mute,
+    custody: preferences::CustodyControl,
     system_theme: Theme,
     local_tab: Option<LocalTab>,
     local_page_layout: Option<scene::LocalPageLayout>,
@@ -1587,6 +1588,7 @@ impl App {
             preferences_io: None,
             rim_preview: None,
             mute: preferences::Mute::default(),
+            custody: preferences::CustodyControl::default(),
             system_theme: Theme::Dark,
             local_tab: None,
             local_page_layout: None,
@@ -1795,6 +1797,12 @@ impl App {
         }
     }
     fn open_settings(&mut self, section: &str) {
+        if self.live_commands.is_some()
+            && !self.backend_lost
+            && let Some(message) = self.custody.request(false, Instant::now())
+        {
+            self.queue(message);
+        }
         let section = bbt_ui::modules::settings::SECTIONS
             .iter()
             .find(|(name, _)| name.eq_ignore_ascii_case(section))
@@ -1826,7 +1834,7 @@ impl App {
         values
     }
     fn settings_view(&self, section: &str) -> Settings {
-        Settings {
+        let mut view = Settings {
             section: section.into(),
             values: preferences::records(self.live_state.as_deref(), &self.preferences.preferences),
             defaults: preferences::records(
@@ -1834,7 +1842,12 @@ impl App {
                 &preferences::Preferences::default(),
             ),
             ..Default::default()
+        };
+        view.values.account.custody = Some(self.custody.view());
+        if self.backend_lost || self.live_commands.is_none() {
+            view.values.account.custody.as_mut().unwrap().enabled = false;
         }
+        view
     }
     fn settings_ime(&self) -> bool {
         matches!(&self.local_tab,Some(LocalTab::Settings {controller,..}) if controller.editing())
@@ -1865,6 +1878,11 @@ impl App {
         let patch = controller
             .handle(action, &mut view.values, &view.defaults)
             .or_else(|| commit_drag.map(settings_controller::Patch::Rim));
+        if controller.take_identity_unlock()
+            && let Some(message) = self.custody.request(true, Instant::now())
+        {
+            self.queue(message);
+        }
         if pointer_drag {
             if let Some(settings_controller::Patch::Rim(rim)) = patch {
                 self.rim_preview = Some(rim);
@@ -3314,6 +3332,19 @@ impl App {
         }
         if let Some(state) = self.live_updates.take() {
             self.mute.observe(&state);
+            if let Some(reply) = &state.custody_reply {
+                self.custody.observe(reply, Instant::now());
+            }
+            let signing_ready = state.identity.as_ref().is_some_and(|identity| {
+                matches!(
+                    identity.state,
+                    bbt_proto::gui::GuiIdentityState::LocalDev
+                        | bbt_proto::gui::GuiIdentityState::Certified
+                )
+            });
+            if let Some(message) = self.custody.signing_changed(signing_ready, Instant::now()) {
+                self.queue(message);
+            }
             self.composer_notice();
             if let Some(reply) = &state.document_reply
                 && self.document.apply(reply)
@@ -3980,11 +4011,15 @@ impl App {
                 }
                 LocalTab::Settings { controller, swarm } => {
                     let view = self.settings_view(&controller.section);
+                    let custody_notice = (controller.section == "Account")
+                        .then(|| self.custody.notice())
+                        .flatten();
                     let issue = self
                         .preferences
                         .error
                         .as_deref()
-                        .or(controller.error.as_deref());
+                        .or(controller.error.as_deref())
+                        .or(custody_notice);
                     let status = issue.unwrap_or(if self.preferences.saved() {
                         "saved"
                     } else if !self.preferences.loaded {
@@ -4380,11 +4415,23 @@ impl App {
 impl ApplicationHandler<UiEvent> for App {
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         self.apply_notification_click();
+        let pending = self.custody.wake_at();
+        if let Some(message) = self.custody.next(Instant::now(), !self.backend_lost) {
+            self.queue(message);
+        }
+        if pending.is_some() && self.custody.wake_at().is_none() {
+            self.pending_commands
+                .retain(|message| !matches!(message, live::UiMsg::IdentityControl { .. }));
+            self.local_page_layout = None;
+            self.request_redraw();
+        }
         event_loop.set_control_flow(
             self.pending_notification
-                .map_or(ControlFlow::Wait, |(_, at)| {
-                    ControlFlow::WaitUntil(at + Duration::from_secs(30))
-                }),
+                .map(|(_, at)| at + Duration::from_secs(30))
+                .into_iter()
+                .chain(self.custody.wake_at())
+                .min()
+                .map_or(ControlFlow::Wait, ControlFlow::WaitUntil),
         );
         if let Some(size) = self.pending_resize.take()
             && let Some(window) = &self.window
@@ -4741,6 +4788,9 @@ impl ApplicationHandler<UiEvent> for App {
                     .write(format!("backend lost; retaining last pane frame: {reason}"));
                 self.backend_lost = true;
                 self.command_retry.cancel();
+                self.custody.next(Instant::now(), false);
+                self.pending_commands
+                    .retain(|message| !matches!(message, live::UiMsg::IdentityControl { .. }));
                 self.scene.backend_lost();
                 self.request_redraw();
             }
@@ -5425,6 +5475,7 @@ fn is_operation(message: &live::UiMsg) -> bool {
             | live::UiMsg::Task { .. }
             | live::UiMsg::Close(_)
             | live::UiMsg::UndoClose { .. }
+            | live::UiMsg::IdentityControl { .. }
     )
 }
 
@@ -6757,6 +6808,7 @@ mod input_tests {
                 live::UiMsg::Close(_)
                 | live::UiMsg::UndoClose { .. }
                 | live::UiMsg::Messaging { .. }
+                | live::UiMsg::IdentityControl { .. }
                 | live::UiMsg::Task { .. }
                 | live::UiMsg::EventPage { .. }
                 | live::UiMsg::EventCursor { .. }

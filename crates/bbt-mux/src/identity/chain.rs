@@ -962,6 +962,7 @@ impl super::IdentityRuntime {
                 retry: None,
                 pending: None,
                 bus_key: Some(local),
+                observed_status: Default::default(),
             });
         }
         let state = state.ok_or_else(|| invalid("missing issuer state"))?;
@@ -1015,6 +1016,7 @@ impl super::IdentityRuntime {
             retry: None,
             pending: None,
             bus_key: None,
+            observed_status: Default::default(),
         })
     }
 }

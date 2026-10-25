@@ -66,6 +66,7 @@ pub enum Field {
     Enabled,
     Background,
     Harness(String),
+    IdentityUnlock,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Focus {
@@ -98,6 +99,7 @@ pub struct Controller {
     pub error: Option<String>,
     editor: Editor,
     dragging: bool,
+    identity_unlock: bool,
 }
 impl Default for Controller {
     fn default() -> Self {
@@ -109,6 +111,7 @@ impl Default for Controller {
             error: None,
             editor: Editor::default(),
             dragging: false,
+            identity_unlock: false,
         }
     }
 }
@@ -168,6 +171,14 @@ impl Controller {
     }
     fn editable(&self, field: &Field, values: &Records) -> bool {
         match field {
+            Field::IdentityUnlock => {
+                (self.section == "Account" || !self.query.trim().is_empty())
+                    && values
+                        .account
+                        .custody
+                        .as_ref()
+                        .is_some_and(|value| value.enabled)
+            }
             Field::Theme | Field::Density | Field::Rim | Field::Glow | Field::Subtitle => {
                 self.section == "Appearance" || !self.query.trim().is_empty()
             }
@@ -180,6 +191,9 @@ impl Controller {
     }
     fn fields(&self, values: &Records) -> Vec<Field> {
         match self.section.as_str() {
+            "Account" if self.editable(&Field::IdentityUnlock, values) => {
+                vec![Field::IdentityUnlock]
+            }
             "Appearance" => vec![
                 Field::Theme,
                 Field::Density,
@@ -269,6 +283,10 @@ impl Controller {
                     return None;
                 }
                 self.focus = Focus::Control(field.clone());
+                if field == Field::IdentityUnlock {
+                    self.identity_unlock = true;
+                    return None;
+                }
                 match field {
                     Field::Glow => Patch::Glow(!values.appearance.glow),
                     Field::Subtitle => Patch::Subtitle(!values.appearance.subtitle),
@@ -294,6 +312,7 @@ impl Controller {
                 }
                 match field {
                     Field::Theme => Patch::Theme(defaults.appearance.theme.clone()),
+                    Field::IdentityUnlock => return None,
                     Field::Density => Patch::Density(defaults.appearance.density.clone()),
                     Field::Rim => Patch::Rim(defaults.appearance.rim),
                     Field::Glow => Patch::Glow(defaults.appearance.glow),
@@ -387,6 +406,10 @@ impl Controller {
     pub fn dragging(&self) -> bool {
         self.dragging
     }
+    /// Consuming the native intent never mutates or persists preferences.
+    pub fn take_identity_unlock(&mut self) -> bool {
+        std::mem::take(&mut self.identity_unlock)
+    }
     pub fn activate(&mut self, values: &mut Records, defaults: &Records) -> Option<Patch> {
         match self.focus.clone() {
             Focus::Control(field) => self.handle(Action::Toggle(field), values, defaults),
@@ -477,6 +500,18 @@ impl Regions {
         Some(out)
     }
     fn controls(&mut self, layout: &c::Layout, section: &str, view: &super::Settings) {
+        if section == "Account"
+            && view
+                .values
+                .account
+                .custody
+                .as_ref()
+                .is_some_and(|value| value.enabled)
+            && let Some(node) = find(layout, "custody/unlock")
+        {
+            self.hits
+                .push((node.rect, Hit::Toggle(Field::IdentityUnlock), true));
+        }
         if section == "Appearance" {
             for (row, choices, field, theme) in [
                 (0, vec!["auto", "dark", "light"], Field::Theme, true),
@@ -603,6 +638,37 @@ impl Regions {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_unlock_is_a_consumed_intent_and_never_a_preferences_patch() {
+        let mut values = Records::default();
+        values.account.custody = Some(super::super::Custody {
+            tier: "keychain".into(),
+            hold: Some(super::super::CustodyHold {
+                reason: "held".into(),
+            }),
+            enabled: true,
+            ..Default::default()
+        });
+        let defaults = values.clone();
+        let before = serde_json::to_value(&values).unwrap();
+        let mut controller = Controller::new("Account");
+        controller.handle(
+            Action::Focus(Focus::Control(Field::IdentityUnlock)),
+            &mut values,
+            &defaults,
+        );
+        assert!(controller.activate(&mut values, &defaults).is_none());
+        assert!(controller.take_identity_unlock());
+        assert!(!controller.take_identity_unlock());
+        assert_eq!(serde_json::to_value(&values).unwrap(), before);
+        values.account.custody.as_mut().unwrap().enabled = false;
+        controller.handle(
+            Action::Toggle(Field::IdentityUnlock),
+            &mut values,
+            &defaults,
+        );
+        assert!(!controller.take_identity_unlock());
+    }
     #[test]
     fn notification_master_preserves_subordinates_and_harness_membership() {
         let mut records = Records::default();
