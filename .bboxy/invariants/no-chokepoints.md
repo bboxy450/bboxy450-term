@@ -15,7 +15,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: decision }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-24T19:32:03Z"
-updated: "2026-10-25T16:18:56Z"
+updated: "2026-10-25T16:37:17Z"
 ---
 # No bottlenecks and no chokepoints
 
@@ -46,7 +46,10 @@ saw clients idle at 0 % CPU for three to seven minutes, 2,649 hits against
 a29f839d: `scripts/ci-local.sh` and `scripts/invariants.sh` export
 `RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER=`, the global config untouched;
 an empty `rustc-wrapper` in a repo `.cargo/config.toml` did **not** override
-the global one, tested, so the bypass is the environment, not a config file);
+the global one, tested, so the bypass is the environment, not a config file;
+amended by [[d325-ci-capacity]]: the fault was the single server, not the
+cache, so the cache returns with one `sccache` server per agent over one shared
+local disk cache, and no shared daemon ever again);
 logic's serial one-seat `ReadRing` RPCs to the supervisor (the measured 967/50
 run on 0e97dc32: 6 824 round trips, 93 % of an 8 618 ms input-to-GPU, decode
 0.8 s; fixed at 00fb087c by Sable's `ReadRingBatch`, 121 requests for 967 seats and zero singleton hot reads, gate [[ring-reads-batched]] active);
