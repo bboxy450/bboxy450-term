@@ -43,3 +43,5 @@ Oracle06faf8d4 and Corvin9e822e6e/d31e2ff4 expand C3 acceptance to produced-fram
 2026-10-24 c8522979 preflight: workspace EXIT101; headless10/1, new cmd-m UI reply timed out at 3s, other targets passed. Added backend/frame-stage diagnostics and loaded-view barriers before focused reproduction. Full gate not started.
 
 2026-10-24 ae965239 focused headless10/1: CmdM target=None,last60,pending0,Mute(false). Mute transaction updates persisted SeatRecord but presence is not a seat-state event; IO Muted reply had no metadata refresh. Queue one existing ListSeats on successful Muted, and settle shell before the regression. No timeout change.
+
+2026-10-24 Oracle8dba22cf: publish mute metadata from service.change_mute on the existing seat-state bus path, no client ListSeats refresh. Superseded8c804762 focused compile stopped SIGINT(-2), no tests ran. Account-kv pending Draft is atomic with mute, bounded128 indexed read, original ID retained until bus accepts; idle-before-mute UI regression unchanged.

@@ -1178,15 +1178,7 @@ async fn run_with_control(
                              }
                             logger.write(format!("GUI operation {op} rejected: {reason}"));
                         }
-                        GuiReply::Messaging {op,response}=> {
-                            // Mute commits seat metadata but emits a presence message,
-                            // not a process-state transition. Refresh the authoritative
-                            // records even when the target is already idle.
-                            if matches!(&response,bbt_proto::messaging::Response::Muted {..}) {
-                                queue_action(&mut outgoing,GuiAction::ListSeats);
-                            }
-                            operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Messaging(response));
-                        },
+                        GuiReply::Messaging {op,response}=>operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Messaging(response)),
                         GuiReply::Task {op,response}=>operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Task(response)),
                         GuiReply::Knowledge {op,response}=> {
                             if terminal_reply == Some(ActionReply::Knowledge(op)) {

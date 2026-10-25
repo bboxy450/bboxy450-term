@@ -503,6 +503,72 @@ fn persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart() {
     );
 }
 #[test]
+fn idle_mute_publishes_a_durable_seat_state_without_an_activity_transition() {
+    let mut f = Fixture::new();
+    f.messaging
+        .set_mute(Actor::Operator, f.b.id, true, State::Idle, 1000)
+        .unwrap();
+    assert!(f.registry.get(f.b.id).unwrap().muted);
+    let stream = format!("seat-{}", f.b.id);
+    let subject = format!("seat/{}/state", f.b.id);
+    let event = f
+        .messaging
+        .events()
+        .unwrap()
+        .into_iter()
+        .find(|(s, draft)| s == &stream && draft.subject == subject)
+        .unwrap()
+        .1;
+    assert_eq!(event.payload["muted"], true);
+    assert_eq!(event.generation, Some(f.b.generation));
+    f.reopen();
+    let replay = f
+        .messaging
+        .events()
+        .unwrap()
+        .into_iter()
+        .find(|(s, _)| s == &stream)
+        .unwrap()
+        .1;
+    assert_eq!(
+        event, replay,
+        "an unpublished metadata event survives restart with its original ID"
+    );
+    f.messaging.event_published(&stream, event.id, 42).unwrap();
+    assert!(
+        f.messaging
+            .events()
+            .unwrap()
+            .iter()
+            .all(|(s, _)| s != &stream)
+    );
+    f.messaging
+        .set_mute(Actor::Operator, f.b.id, true, State::Idle, 1100)
+        .unwrap();
+    assert!(
+        f.messaging
+            .events()
+            .unwrap()
+            .iter()
+            .all(|(s, _)| s != &stream),
+        "replaying the same policy creates no second state change"
+    );
+    f.messaging
+        .set_mute(Actor::Operator, f.b.id, false, State::Idle, 1200)
+        .unwrap();
+    let changed = f
+        .messaging
+        .events()
+        .unwrap()
+        .into_iter()
+        .find(|(s, _)| s == &stream)
+        .unwrap()
+        .1;
+    assert_ne!(changed.id, event.id);
+    assert_eq!(changed.payload["muted"], false);
+}
+
+#[test]
 fn mute_holds_both_directions_reopens_and_releases_only_under_current_grants() {
     let mut f = Fixture::new();
     let notice = f

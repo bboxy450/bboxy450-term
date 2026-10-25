@@ -1404,6 +1404,25 @@ impl Messaging {
                 serde_json::to_vec(&request)?
             ],
         )?;
+        // Metadata changes are visible on the same seat-state lane as rename
+        // and adapter changes, even if the process remains idle. Persist the
+        // draft with the policy transaction; the existing bus pump signs and
+        // publishes it, then removes this outbox entry only after acceptance.
+        let mut changed = Draft::new(
+            format!("seat/{seat}/state"),
+            "mute",
+            serde_json::json!({"muted":muted,"policy_epoch":epoch.to_string()}),
+        );
+        changed.seat = Some(seat);
+        changed.generation = Some(record.generation);
+        changed.ts = now;
+        tx.execute(
+            "INSERT INTO kv(key,value) VALUES(?1,?2)",
+            params![
+                format!("messaging/seat-state/{}", changed.id),
+                serde_json::to_vec(&changed)?
+            ],
+        )?;
         tx.commit()?;
         self.recover_notices()?;
         self.reconcile(now)?;
@@ -1691,6 +1710,21 @@ impl Messaging {
     }
     pub fn events(&self) -> Result<Vec<(String, Draft)>> {
         let mut events = Vec::new();
+        {
+            let db = self.account.connection()?;
+            // A bounded indexed range over pending policy events, not a scan of
+            // historical messaging/control audit records.
+            let mut query = db.prepare_cached(
+                "SELECT value FROM kv WHERE key >= 'messaging/seat-state/' AND key < 'messaging/seat-state0' ORDER BY key LIMIT 128",
+            )?;
+            for bytes in query.query_map([], |row| row.get::<_, Vec<u8>>(0))? {
+                let draft: Draft = serde_json::from_slice(&bytes?)?;
+                let seat = draft
+                    .seat
+                    .ok_or_else(|| invalid("mute state event has no seat"))?;
+                events.push((format!("seat-{seat}"), draft));
+            }
+        }
         for (&swarm, s) in &self.swarms {
             for draft in s.ledger.bus_outbox()? {
                 events.push((format!("swarm-{swarm}"), draft));
@@ -1699,6 +1733,16 @@ impl Messaging {
         Ok(events)
     }
     pub fn event_sent(&self, stream: &str, id: Ulid) -> Result<()> {
+        if stream
+            .strip_prefix("seat-")
+            .is_some_and(|seat| seat.parse::<Ulid>().is_ok())
+        {
+            self.account.connection()?.execute(
+                "DELETE FROM kv WHERE key=?1",
+                [format!("messaging/seat-state/{id}")],
+            )?;
+            return Ok(());
+        }
         let swarm = stream
             .strip_prefix("swarm-")
             .ok_or_else(|| invalid("invalid messaging stream"))?
@@ -1710,6 +1754,9 @@ impl Messaging {
             .bus_sent(id)
     }
     pub fn event_published(&self, stream: &str, id: Ulid, sequence: u64) -> Result<()> {
+        if stream.starts_with("seat-") {
+            return self.event_sent(stream, id);
+        }
         let swarm = stream
             .strip_prefix("swarm-")
             .ok_or_else(|| invalid("invalid messaging stream"))?
