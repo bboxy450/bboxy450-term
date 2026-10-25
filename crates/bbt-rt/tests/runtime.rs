@@ -79,6 +79,113 @@ fn ten_thousand_dirty_sets_wake_once_until_drained() {
 }
 
 #[test]
+fn hundred_thousand_concurrent_notices_keep_all_data_and_the_latest_value() {
+    const COUNT: usize = 100_000;
+    let waker = Arc::new(CountWakes::default());
+    let dirty = DirtySet::new(3, waker.clone());
+    let (sender, receiver) = ui_channel(COUNT, dirty.source(0));
+    let latest = Latest::new(dirty.source(1));
+    assert!(dirty.drain().is_empty());
+    std::thread::scope(|scope| {
+        for producer in 0..4 {
+            let sender = sender.clone();
+            scope.spawn(move || {
+                for sequence in 0..COUNT / 4 {
+                    sender
+                        .try_send(UiMsg::Changed {
+                            source: producer * (COUNT / 4) + sequence,
+                        })
+                        .unwrap();
+                }
+            });
+        }
+    });
+    latest.publish(COUNT);
+    assert_eq!(waker.0.load(Ordering::SeqCst), 1);
+    assert_eq!(dirty.drain(), vec![0, 1]);
+    let mut seen = vec![false; COUNT];
+    while let Some(message) = receiver.try_recv() {
+        let UiMsg::Changed { source } = message else {
+            panic!("unexpected message");
+        };
+        assert!(!std::mem::replace(&mut seen[source], true));
+    }
+    assert!(seen.into_iter().all(|value| value));
+    assert_eq!(latest.take(), Some(COUNT));
+    assert!(latest.take().is_none());
+    dirty.source(2).mark();
+    assert_eq!(waker.0.load(Ordering::SeqCst), 2);
+    assert_eq!(dirty.drain(), vec![2]);
+}
+
+#[test]
+fn paint_publications_stay_latched_until_a_draw_and_recheck_its_tail() {
+    let waker = Arc::new(CountWakes::default());
+    let dirty = DirtySet::new(66, waker.clone());
+    let latest = Latest::new(dirty.paint_source(65));
+    for revision in 0..100_000 {
+        latest.publish(revision);
+        assert_eq!(dirty.drain(), vec![65]);
+    }
+    assert_eq!(waker.0.load(Ordering::SeqCst), 1);
+    assert_eq!(latest.take(), Some(99_999));
+    // Publication between taking the drawn value and retiring the draw must
+    // retain the newest value and arrange a new wake, even without another writer.
+    latest.publish(100_000);
+    assert_eq!(waker.0.load(Ordering::SeqCst), 1);
+    latest.complete_drain();
+    assert_eq!(waker.0.load(Ordering::SeqCst), 2);
+    assert_eq!(dirty.drain(), vec![65]);
+    assert_eq!(latest.take(), Some(100_000));
+    latest.complete_drain();
+    assert!(dirty.drain().is_empty());
+}
+
+#[test]
+fn a_tick_can_wake_while_paint_is_latched() {
+    let waker = Arc::new(CountWakes::default());
+    let dirty = DirtySet::new(6, waker.clone());
+    let latest = Latest::new(dirty.paint_source(5));
+    latest.publish(7);
+    assert_eq!(dirty.drain(), vec![5]);
+    dirty.source(4).mark();
+    assert_eq!(waker.0.load(Ordering::SeqCst), 2);
+    assert_eq!(dirty.drain(), vec![4, 5]);
+    assert_eq!(latest.take(), Some(7));
+    latest.complete_drain();
+    assert!(dirty.drain().is_empty());
+}
+
+#[test]
+fn a_budgeted_deferred_drain_rearms_its_tail_without_another_producer() {
+    let waker = Arc::new(CountWakes::default());
+    let dirty = DirtySet::new(2, waker.clone());
+    let (sender, receiver) = ui_channel(4, dirty.deferred_source(0));
+    let ring = ViewRing::new(4, dirty.deferred_source(1));
+    for source in 0..4 {
+        sender.try_send(UiMsg::Changed { source }).unwrap();
+        ring.push(source);
+    }
+    assert_eq!(dirty.drain(), vec![0, 1]);
+    assert!(receiver.try_recv().is_some());
+    assert_eq!(ring.pop(), Some(0));
+    let before = waker.0.load(Ordering::SeqCst);
+    receiver.complete_drain();
+    ring.complete_drain();
+    assert_eq!(waker.0.load(Ordering::SeqCst), before + 2);
+    assert_eq!(dirty.drain(), vec![0, 1]);
+    for expected in 1..4 {
+        assert!(
+            matches!(receiver.try_recv(), Some(UiMsg::Changed { source }) if source == expected)
+        );
+        assert_eq!(ring.pop(), Some(expected));
+    }
+    receiver.complete_drain();
+    ring.complete_drain();
+    assert!(dirty.drain().is_empty());
+}
+
+#[test]
 fn latest_and_view_ring_replace_old_values() {
     let dirty = DirtySet::new(2, Arc::new(CountWakes::default()));
     let latest = Latest::new(dirty.source(0));

@@ -68,7 +68,11 @@ pub fn run(config: Config) -> Result<(), String> {
         }
         let mut phases = Phases::default();
         let drain = Instant::now();
-        let dirty = !inbox.dirty.drain().is_empty();
+        let dirty = inbox
+            .dirty
+            .drain()
+            .iter()
+            .any(|source| !matches!(*source, 0 | 1));
         wake.store(false, Ordering::Release);
         controller.drain();
         while drain.elapsed() < Duration::from_millis(1) {
@@ -78,6 +82,8 @@ pub fn run(config: Config) -> Result<(), String> {
                 break;
             }
         }
+        inbox.messages.complete_drain();
+        inbox.output.complete_drain();
         let changed = if let Some(next) = updates.take() {
             controller.model_received(&next);
             model = next;

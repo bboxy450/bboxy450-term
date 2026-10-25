@@ -27,6 +27,7 @@ fn bootstrap() -> Result<VerificationFrame, String> {
 struct Wake {
     thread: std::thread::Thread,
     callbacks: Arc<AtomicU64>,
+    deferred: Arc<AtomicBool>,
 }
 struct PendingCapture {
     ask: live::CaptureAsk,
@@ -36,6 +37,14 @@ impl bbt_rt::Waker for Wake {
     fn wake(&self) {
         self.callbacks.fetch_add(1, Ordering::Relaxed);
         self.thread.unpark();
+    }
+    fn wake_deferred(&self) {
+        let thread = self.thread.clone();
+        let callbacks = self.callbacks.clone();
+        crate::defer_wake(self.deferred.clone(), bbt_rt::handle(), move || {
+            callbacks.fetch_add(1, Ordering::Relaxed);
+            thread.unpark();
+        });
     }
 }
 
@@ -57,8 +66,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let inbox = bbt_rt::init_ui(Wake {
         thread: thread.clone(),
         callbacks: callbacks.clone(),
+        deferred: Arc::new(AtomicBool::new(false)),
     });
-    let updates = Arc::new(Latest::new(inbox.dirty.source(5)));
+    let updates = Arc::new(Latest::new(inbox.dirty.paint_source(5)));
     let (sender, events) = mpsc::sync_channel(64);
     let sink: Arc<dyn Fn(UiEvent) + Send + Sync> = {
         let thread = thread.clone();
@@ -440,6 +450,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             wake.unpark();
                         },
                     )?;
+                    app.complete_paint_sources();
                     ui_frame = layout.map(|layout| (submitted, layout));
                     dirty = false;
                 }

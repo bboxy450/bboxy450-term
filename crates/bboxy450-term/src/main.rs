@@ -39,7 +39,10 @@ use bbt_ui_model::{
 use display_link::{DisplayLink, Mode, WakeAction, wake_action};
 use e2e_checklist::{LocalTab, PageCommand};
 use std::collections::{BTreeMap, VecDeque};
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering as AtomicOrdering},
+};
 use std::time::{Duration, Instant};
 use winit::platform::macos::MonitorHandleExtMacOS;
 use winit::{
@@ -98,10 +101,148 @@ pub enum UiEvent {
     NotificationReady,
     NotificationError(String),
 }
-struct Wake(EventLoopProxy<UiEvent>);
+const NONVISUAL_WAKE_INTERVAL: Duration = Duration::from_millis(8);
+
+fn defer_wake(
+    pending: Arc<AtomicBool>,
+    runtime: &tokio::runtime::Handle,
+    wake: impl FnOnce() + Send + 'static,
+) {
+    if pending.swap(true, AtomicOrdering::AcqRel) {
+        return;
+    }
+    runtime.spawn(async move {
+        tokio::time::sleep(NONVISUAL_WAKE_INTERVAL).await;
+        pending.store(false, AtomicOrdering::Release);
+        wake();
+    });
+}
+
+struct Wake {
+    proxy: UiProxy,
+    deferred: Arc<AtomicBool>,
+    runtime: tokio::runtime::Handle,
+}
+impl Wake {
+    fn new(proxy: UiProxy, runtime: tokio::runtime::Handle) -> Self {
+        Self {
+            proxy,
+            deferred: Arc::new(AtomicBool::new(false)),
+            runtime,
+        }
+    }
+}
 impl bbt_rt::Waker for Wake {
     fn wake(&self) {
-        let _ = self.0.send_event(UiEvent::Wake);
+        let _ = self.proxy.send_event(UiEvent::Wake);
+    }
+    fn wake_deferred(&self) {
+        let proxy = self.proxy.clone();
+        defer_wake(self.deferred.clone(), &self.runtime, move || {
+            let _ = proxy.send_event(UiEvent::Wake);
+        });
+    }
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "paused-clock test drivers run outside the app UI thread"
+)]
+mod wake_post_tests {
+    use super::*;
+    use std::sync::atomic::AtomicUsize;
+
+    #[tokio::test(start_paused = true)]
+    async fn a_visual_frame_services_raw_work_before_its_deadline_and_keeps_the_newest_model() {
+        let posts = Arc::new(AtomicUsize::new(0));
+        let posted = posts.clone();
+        let waker = Wake::new(
+            UiProxy::Headless(Arc::new(move |event| {
+                assert!(matches!(event, UiEvent::Wake));
+                posted.fetch_add(1, AtomicOrdering::SeqCst);
+            })),
+            tokio::runtime::Handle::current(),
+        );
+        let dirty = bbt_rt::DirtySet::new(6, Arc::new(waker));
+        let (sender, receiver) = bbt_rt::ui_channel(2, dirty.deferred_source(0));
+        let latest = Latest::new(dirty.paint_source(5));
+        sender.try_send(UiMsg::Changed { source: 7 }).unwrap();
+        latest.publish(7);
+        assert_eq!(posts.load(AtomicOrdering::SeqCst), 1);
+        assert_eq!(dirty.drain(), vec![0, 5]);
+        assert!(matches!(
+            receiver.try_recv(),
+            Some(UiMsg::Changed { source: 7 })
+        ));
+        receiver.complete_drain();
+        assert_eq!(latest.take(), Some(7));
+        latest.publish(8);
+        assert_eq!(posts.load(AtomicOrdering::SeqCst), 1);
+        latest.complete_drain();
+        assert_eq!(posts.load(AtomicOrdering::SeqCst), 2);
+        assert_eq!(dirty.drain(), vec![5]);
+        assert_eq!(latest.take(), Some(8));
+        latest.complete_drain();
+        tokio::task::yield_now().await;
+        tokio::time::advance(NONVISUAL_WAKE_INTERVAL).await;
+        tokio::task::yield_now().await;
+        assert_eq!(posts.load(AtomicOrdering::SeqCst), 3);
+        assert!(
+            dirty.drain().is_empty(),
+            "the old deadline has no work left"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn sustained_output_is_deadline_bounded_without_ticks_or_paint() {
+        let posts = Arc::new(AtomicUsize::new(0));
+        let posted = posts.clone();
+        let waker = Wake::new(
+            UiProxy::Headless(Arc::new(move |event| {
+                assert!(matches!(event, UiEvent::Wake));
+                posted.fetch_add(1, AtomicOrdering::SeqCst);
+            })),
+            tokio::runtime::Handle::current(),
+        );
+        let dirty = bbt_rt::DirtySet::new(2, Arc::new(waker));
+        let (sender, receiver) = bbt_rt::ui_channel(128, dirty.deferred_source(0));
+        let mut seen = vec![false; 10_000];
+        let mut serviced = 0;
+        let mut received = 0;
+        for millisecond in 0..=1008 {
+            if millisecond < 1000 {
+                for offset in 0..10 {
+                    sender
+                        .try_send(UiMsg::Changed {
+                            source: millisecond * 10 + offset,
+                        })
+                        .unwrap();
+                }
+            }
+            tokio::task::yield_now().await;
+            tokio::time::advance(Duration::from_millis(1)).await;
+            tokio::task::yield_now().await;
+            let posted = posts.load(AtomicOrdering::SeqCst);
+            if posted != serviced {
+                assert!(matches!(
+                    wake_action(&dirty.drain(), false),
+                    WakeAction::Drain
+                ));
+                while let Some(UiMsg::Changed { source }) = receiver.try_recv() {
+                    assert!(!std::mem::replace(&mut seen[source], true));
+                    received += 1;
+                }
+                receiver.complete_drain();
+                serviced = posted;
+            }
+        }
+        assert_eq!(received, 10_000);
+        assert!(seen.into_iter().all(|value| value));
+        assert!(
+            posts.load(AtomicOrdering::SeqCst)
+                <= 1000 / NONVISUAL_WAKE_INTERVAL.as_millis() as usize + 3
+        );
     }
 }
 use bboxy450_term::settings as preferences;
@@ -1644,7 +1785,7 @@ impl App {
         verify: Verify,
     ) -> Self {
         let prepared = Arc::new(Latest::new(inbox.dirty.source(2)));
-        let updates = Arc::new(Latest::new(inbox.dirty.source(3)));
+        let updates = Arc::new(Latest::new(inbox.dirty.paint_source(3)));
         let smoke = args.iter().any(|a| a == "--smoke");
         let fake = !args.iter().any(|a| a == "--headless")
             && (smoke || args.iter().any(|a| a == "--fake-source"));
@@ -3546,7 +3687,7 @@ impl App {
         if self.smoke {
             // Force an early producer wake before GPU bootstrap. This catches
             // the live-seat startup race in the real native CI probe.
-            self.inbox.dirty.source(5).mark();
+            self.inbox.dirty.paint_source(5).mark();
         }
         Ok(())
     }
@@ -3609,12 +3750,8 @@ impl App {
         }
         // A budgeted drain must make progress even if the producer has stopped.
         // These memory-only queues are not inputs to the visible scene.
-        if !self.inbox.messages.is_empty() {
-            self.inbox.dirty.source(0).mark();
-        }
-        if !self.inbox.output.is_empty() {
-            self.inbox.dirty.source(1).mark();
-        }
+        self.inbox.messages.complete_drain();
+        self.inbox.output.complete_drain();
     }
     fn drain(&mut self) -> Vec<usize> {
         let _measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::UiDrain);
@@ -4698,6 +4835,10 @@ impl App {
             stall.model_applied();
         }
     }
+    fn complete_paint_sources(&self) {
+        self.updates.complete_drain();
+        self.live_updates.complete_drain();
+    }
     fn redraw(&mut self) -> Result<(), String> {
         // Delivery retires only the queued callback. Paint remains pending
         // through a missing tick/drawable until a frame is actually drawn.
@@ -4903,6 +5044,7 @@ impl App {
             }),
         )? {
             self.redraw_pending.set(false);
+            self.complete_paint_sources();
             self.wake_counters.borrow_mut().frame();
             phases.encode = encode;
             phases.present_wait = wait;
@@ -6836,10 +6978,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let event_loop = event_loop_builder.build()?;
     let proxy = event_loop.create_proxy();
-    let inbox = bbt_rt::init_ui(Wake(proxy.clone()));
+    let inbox = bbt_rt::init_ui(Wake::new(
+        UiProxy::Native(proxy.clone()),
+        bbt_rt::handle().clone(),
+    ));
     let prepared = Arc::new(Latest::new(inbox.dirty.source(2)));
-    let updates = Arc::new(Latest::new(inbox.dirty.source(3)));
-    let live_updates = Arc::new(Latest::new(inbox.dirty.source(5)));
+    let updates = Arc::new(Latest::new(inbox.dirty.paint_source(3)));
+    let live_updates = Arc::new(Latest::new(inbox.dirty.paint_source(5)));
     let smoke = std::env::args().any(|arg| arg == "--smoke");
     if smoke {
         let timeout_proxy = proxy.clone();
@@ -7096,7 +7241,7 @@ mod lazy_projection_tests {
             fn wake(&self) {}
         }
         let inbox = bbt_rt::init_ui(QuietWake);
-        let latest = Arc::new(Latest::new(inbox.dirty.source(5)));
+        let latest = Arc::new(Latest::new(inbox.dirty.paint_source(5)));
         let app = App::owner(
             UiProxy::Headless(Arc::new(|_| {})),
             inbox,
@@ -7130,6 +7275,7 @@ mod lazy_projection_tests {
             assert_eq!(app.scene.projections(), 0, "a missing drawable projected");
         }
         app.project_scene(true);
+        app.complete_paint_sources();
         assert_eq!(app.scene.projections(), 1);
         assert_eq!(app.scene.seats[0].title, "revision 63");
         for revision in 64..128 {
@@ -7141,6 +7287,7 @@ mod lazy_projection_tests {
             assert_eq!(app.scene.projections(), 1);
         }
         app.project_scene(true);
+        app.complete_paint_sources();
         assert_eq!(
             app.scene.projections(),
             2,
@@ -7148,6 +7295,7 @@ mod lazy_projection_tests {
         );
         assert_eq!(app.scene.seats[0].title, "revision 127");
         app.project_scene(true);
+        app.complete_paint_sources();
         assert_eq!(
             app.scene.projections(),
             2,
@@ -7172,6 +7320,7 @@ mod lazy_projection_tests {
         app.project_scene(false);
         assert_eq!(app.scene.projections(), 2);
         app.project_scene(true);
+        app.complete_paint_sources();
         assert_eq!(app.scene.projections(), 3);
         assert_eq!(app.scene.focused(), Some(SeatId::from_u128(4)));
 
@@ -7194,6 +7343,7 @@ mod lazy_projection_tests {
         app.project_scene(false);
         assert_eq!(app.scene.projections(), 3);
         app.project_scene(true);
+        app.complete_paint_sources();
         assert_eq!(app.scene.projections(), 4);
         let Some(bboxy450_term::focus_ack::Effect::Answer(answer)) =
             app.ctl_focus
@@ -7218,6 +7368,7 @@ mod lazy_projection_tests {
         latest.publish(first);
         app.drain();
         app.project_scene(true);
+        app.complete_paint_sources();
         assert_eq!(app.scene.projections(), 1);
         let mut callbacks = 0;
         for revision in 1..=1000 {
@@ -7255,6 +7406,7 @@ mod lazy_projection_tests {
         callbacks += 1;
         app.drain();
         app.project_scene(true);
+        app.complete_paint_sources();
         assert_eq!(app.scene.seats[0].title, "revision 1000");
         assert_eq!(app.scene.projections(), 2);
         assert_eq!(callbacks, 2);
@@ -9220,7 +9372,7 @@ mod ctl_ui_key_tests {
             fn wake(&self) {}
         }
         let inbox = bbt_rt::init_ui(QuietWake);
-        let updates = Arc::new(Latest::new(inbox.dirty.source(5)));
+        let updates = Arc::new(Latest::new(inbox.dirty.paint_source(5)));
         let mut app = App::owner(
             UiProxy::Headless(Arc::new(|_| {})),
             inbox,

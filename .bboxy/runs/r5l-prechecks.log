@@ -1,0 +1,61 @@
+R5l wake-post implementation and prechecks
+Brief18dfdb13 + service policybfd94183. Base7bb2d99e.
+Scope: RT source/queue ownership plus native/offscreen/synthetic consumer drain. No protocol, ring, Cargo/lock, display frame-rate or gate budget changes.
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5l-wake-post-hk5qcvi9
+
+Mechanism:
+Paint/model source bits remain retained through successful draw; notification admission is separate, and immediate tick/prepared sources can still wake. Queue/Latest completion clears the latch then rechecks unread data so a racing final publication or budgeted tail is rearmed. Native/offscreen raw runtime notices share one8ms deadline on the existing IO runtime; a frame can consume them earlier, and raw-only notices do not request paint.
+crates/bbt-rt/src/wake.rs:11 fn wake_deferred(&self) {
+crates/bbt-rt/src/wake.rs:76 pub fn paint_source(&self, index: usize) -> DirtySource {
+crates/bbt-rt/src/wake.rs:81 pub fn deferred_source(&self, index: usize) -> DirtySource {
+crates/bbt-rt/src/wake.rs:102 pub fn drain(&self) -> Vec<usize> {
+crates/bbt-rt/src/wake.rs:123 pub fn mark(&self) {
+crates/bbt-rt/src/wake.rs:139 pub(crate) fn complete_drain(&self) {
+crates/bbt-rt/src/queues.rs:62 pub fn complete_drain(&self) {
+crates/bbt-rt/src/queues.rs:93 pub fn complete_drain(&self) {
+crates/bbt-rt/src/queues.rs:147 pub fn complete_drain(&self) {
+crates/bbt-rt/src/lib.rs:103 let (sender, messages) = ui_channel(256, dirty.deferred_source(0));
+crates/bbt-rt/src/lib.rs:104 let output = ViewRing::new(256, dirty.deferred_source(1));
+crates/bboxy450-term/src/main.rs:104 const NONVISUAL_WAKE_INTERVAL: Duration = Duration::from_millis(8);
+crates/bboxy450-term/src/main.rs:106 fn defer_wake(
+crates/bboxy450-term/src/main.rs:115 tokio::time::sleep(NONVISUAL_WAKE_INTERVAL).await;
+crates/bboxy450-term/src/main.rs:152 mod wake_post_tests {
+crates/bboxy450-term/src/main.rs:188 tokio::time::advance(NONVISUAL_WAKE_INTERVAL).await;
+crates/bboxy450-term/src/main.rs:244 <= 1000 / NONVISUAL_WAKE_INTERVAL.as_millis() as usize + 3
+crates/bboxy450-term/src/main.rs:3752 self.inbox.messages.complete_drain();
+crates/bboxy450-term/src/main.rs:4837 fn complete_paint_sources(&self) {
+crates/bboxy450-term/src/main.rs:5046 self.complete_paint_sources();
+crates/bboxy450-term/src/headless.rs:41 fn wake_deferred(&self) {
+crates/bboxy450-term/src/headless.rs:449 app.complete_paint_sources();
+crates/bboxy450-term/src/stall/headless.rs:75 .any(|source| !matches!(*source, 0 | 1));
+crates/bboxy450-term/src/stall/headless.rs:85 inbox.messages.complete_drain();
+crates/bbt-rt/tests/runtime.rs:82 fn hundred_thousand_concurrent_notices_keep_all_data_and_the_latest_value() {
+crates/bbt-rt/tests/runtime.rs:122 fn paint_publications_stay_latched_until_a_draw_and_recheck_its_tail() {
+crates/bbt-rt/tests/runtime.rs:145 fn a_tick_can_wake_while_paint_is_latched() {
+crates/bbt-rt/tests/runtime.rs:160 fn a_budgeted_deferred_drain_rearms_its_tail_without_another_producer() {
+
+Baseline: existing10k and added100k four-thread burst both passed on unchanged product. Existing pending0to1 was already present; no false failing-before claim.
+Red controls: direct timer bypass fails sustained10k/s paused-clock post bound; Immediate paint source fails100k-publication latch bound (100000 vs1). Both exact source hashes restored before checks.
+Failures retained: app-units initial101 (120/3) missing standalone app binary; building product then same suite0 (123/0). Original scoped101 (783/1/29ignored) caught synthetic_headless consumer not retiring raw latches; counterpart corrected, exact synthetic-fixed0. No assertion, traffic, timeout or GPU predicate loosened.
+Strict lint first failed101 because paused Tokio tests expand to block_on under the app UI lint; a cfg(test)-only module allowance names the off-UI virtual-clock driver. No production allowance. strict-fixed passes.
+All checks below used own target,2jobs, wrappersclear, memory custody, O1+debug assertions; no shared cache.
+Default invariant verdict:26 checks,0 failures,8 named slow skips. The counts below sum Rust test suites only, not named invariant verdicts.
+Results (actual complete runs; summed suite counts are pass/fail/ignored):
+app-prerequisite-build: command=["cargo", "build", "-p", "bboxy450-term", "--locked"] exit=0 elapsed_s=105.3242334999959 counts=[0, 0, 0] log_sha256=3d85102c0247274332e0b2c58ca179d034f1bcba33d55b80e8c569a4c4db4dac source_unchanged=True
+app-units-ready: command=["cargo", "test", "-p", "bboxy450-term", "--locked", "--bin", "bboxy450-term"] exit=0 elapsed_s=12.56126183300512 counts=[123, 0, 0] log_sha256=69e3cc0910cf82f395cb02819df6eb358de91ad84177baea8c540d3a4b632b2d source_unchanged=True
+app-units: command=["cargo", "test", "-p", "bboxy450-term", "--locked", "--bin", "bboxy450-term", "--", "--nocapture"] exit=101 elapsed_s=408.6527918330394 counts=[120, 3, 0] log_sha256=e68a1249cb248e16bcfda970d678911ce12c256d3eb9242c0cc20cd8e619ce91 source_unchanged=True
+deadline-bypass-negative: command=["cargo", "test", "-p", "bboxy450-term", "--locked", "--bin", "bboxy450-term", "wake_post_tests::sustained_output_is_deadline_bounded_without_ticks_or_paint", "--", "--exact"] exit=101 elapsed_s=27.340828708023764 counts=[0, 1, 0] log_sha256=461990c0b820be6d81ac8f0d1154898eb427ceaf460cc20d9f476739d6173755 source_unchanged=True
+existing-admission: command=["cargo", "test", "-p", "bbt-rt", "--locked", "--test", "runtime", "ten_thousand_dirty_sets_wake_once_until_drained", "--", "--exact", "--nocapture"] exit=0 elapsed_s=9.406011249986477 counts=[1, 0, 0] log_sha256=e0342049b33f8e296bef6be0d6af9bad13edadbf0af4c3cabb538e33a458fa39 source_unchanged=None
+invariants: command=["sh", "scripts/invariants.sh"] exit=0 elapsed_s=797.1137860420276 counts=[3, 0, 0] log_sha256=70c7a10369a8729d7261893ff820dab0b7311268987a63649cf23906c4e213f7 source_unchanged=True
+paint-latch-negative: command=["cargo", "test", "-p", "bbt-rt", "--locked", "--test", "runtime", "paint_publications_stay_latched_until_a_draw_and_recheck_its_tail", "--", "--exact"] exit=101 elapsed_s=3.0896132920170203 counts=[0, 1, 0] log_sha256=dad990780ebfe4d723b9b0983d103e2a10489275abd1c944cd1ccb24250052a3 source_unchanged=True
+requested-burst-baseline: command=["cargo", "test", "-p", "bbt-rt", "--locked", "--test", "runtime", "hundred_thousand_concurrent_notices_keep_all_data_and_the_latest_value", "--", "--exact", "--nocapture"] exit=0 elapsed_s=0.9642842910252512 counts=[1, 0, 0] log_sha256=4841e29f848fc28100f05f00604a4dfeaade31393f25fb8a34e64f3072784eca source_unchanged=None
+rt-runtime: command=["cargo", "test", "-p", "bbt-rt", "--locked", "--test", "runtime", "--", "--nocapture"] exit=0 elapsed_s=4.322044666972943 counts=[12, 0, 0] log_sha256=a543fdf4cab59ec4dc43e56aa40b5f6e1dae8308901924705226ea995dc000f5 source_unchanged=True
+scoped-fixed: command=["cargo", "test", "--locked", "-p", "bbt-rt", "-p", "bboxy450-term", "-p", "bboxy450-harness-wake-up", "-p", "bbt-mux", "-p", "bbt-supervisor", "--no-fail-fast"] exit=0 elapsed_s=439.1159872499993 counts=[784, 0, 29] log_sha256=327f6e8d446bc6ecc967d5f1d92ebded1fd368c4124b0cfd43fd9bbf1272d6b9 source_unchanged=True
+scoped-strict: command=["cargo", "clippy", "--locked", "-p", "bbt-rt", "-p", "bboxy450-term", "-p", "bboxy450-harness-wake-up", "-p", "bbt-mux", "-p", "bbt-supervisor", "--all-targets", "--", "-D", "warnings"] exit=101 elapsed_s=52.62178774998756 counts=[0, 0, 0] log_sha256=1997d30398e8ffd6adf439022ef8f260feff0dc562bc25d886095bf58fad881a source_unchanged=True
+scoped-tests: command=["cargo", "test", "--locked", "-p", "bbt-rt", "-p", "bboxy450-term", "-p", "bboxy450-harness-wake-up", "-p", "bbt-mux", "-p", "bbt-supervisor", "--no-fail-fast"] exit=101 elapsed_s=827.3239241249976 counts=[783, 1, 29] log_sha256=a85ab46a00978c8c4de6bb11890b2d3b1778e4b7c896d65fc9ee45b85ca19333 source_unchanged=True
+strict-fixed: command=["cargo", "clippy", "--locked", "-p", "bbt-rt", "-p", "bboxy450-term", "-p", "bboxy450-harness-wake-up", "-p", "bbt-mux", "-p", "bbt-supervisor", "--all-targets", "--", "-D", "warnings"] exit=0 elapsed_s=10.626067792007234 counts=[0, 0, 0] log_sha256=fde5676c5603b8e3e55ffedb499aa97f748786fba03d3c2800099d6c9104e31f source_unchanged=True
+synthetic-fixed: command=["cargo", "test", "-p", "bboxy450-term", "--locked", "--test", "r5_stall", "synthetic_runtime_contract_keeps_fifteen_encoded_panes_live_under_mixed_io", "--", "--exact"] exit=0 elapsed_s=26.848058000032324 counts=[1, 0, 0] log_sha256=87fddb36452d69182da60d21d969a3c31c8f5495e2985a7fcf4584b0dac43c23 source_unchanged=True
+wake-post-green: command=["cargo", "test", "-p", "bboxy450-term", "--locked", "--bin", "bboxy450-term", "wake_post_tests", "--", "--nocapture"] exit=0 elapsed_s=26.546018333989196 counts=[2, 0, 0] log_sha256=66ac8c91ee03de8852ad12821f10860f5faef22bddccd65f9dc944f822832a22 source_unchanged=True
+
+No967 run in this change: superseding Oracle77e374b9 moves scale to night and forbids new quiet windows. No new scale/OS-dispatch performance claim. Normal clean exact-source CI follows separately.
+Raw command/result/logs and temporary red-control patches: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5l-wake-post-hk5qcvi9

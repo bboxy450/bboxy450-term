@@ -26,16 +26,16 @@ pub struct UiSender {
     dirty: DirtySource,
 }
 
-pub struct UiReceiver(Arc<ArrayQueue<UiMsg>>);
+pub struct UiReceiver(Arc<ArrayQueue<UiMsg>>, DirtySource);
 
 pub fn ui_channel(capacity: usize, dirty: DirtySource) -> (UiSender, UiReceiver) {
     let queue = Arc::new(ArrayQueue::new(capacity));
     (
         UiSender {
             queue: queue.clone(),
-            dirty,
+            dirty: dirty.clone(),
         },
-        UiReceiver(queue),
+        UiReceiver(queue, dirty),
     )
 }
 
@@ -57,6 +57,13 @@ impl UiReceiver {
     }
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+    /// Retire the consumed burst, then re-check for a racing publication.
+    pub fn complete_drain(&self) {
+        self.1.complete_drain();
+        if !self.is_empty() {
+            self.1.mark();
+        }
     }
 }
 
@@ -80,6 +87,14 @@ impl<T> Latest<T> {
     }
     pub fn take(&self) -> Option<T> {
         self.value.pop()
+    }
+    /// A draw consumed the retained value. A newer unread value gets its own
+    /// wake even if its publication raced the just-completed draw.
+    pub fn complete_drain(&self) {
+        self.dirty.complete_drain();
+        if !self.value.is_empty() {
+            self.dirty.mark();
+        }
     }
 }
 
@@ -127,6 +142,13 @@ impl<T> ViewRing<T> {
     }
     pub fn dropped(&self) -> u64 {
         self.0.dropped.load(Ordering::Relaxed)
+    }
+    /// Retire a budgeted drain without stranding its unconsumed tail.
+    pub fn complete_drain(&self) {
+        self.0.dirty.complete_drain();
+        if !self.is_empty() {
+            self.0.dirty.mark();
+        }
     }
     pub(crate) fn mark_dirty(&self) {
         self.0.dirty.mark();

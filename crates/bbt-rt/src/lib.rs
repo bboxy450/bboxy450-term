@@ -100,8 +100,8 @@ pub fn init_ui(waker: impl Waker) -> UiInbox {
     register_ui_thread();
     handle();
     let dirty = DirtySet::new(1024, Arc::new(waker));
-    let (sender, messages) = ui_channel(256, dirty.source(0));
-    let output = ViewRing::new(256, dirty.source(1));
+    let (sender, messages) = ui_channel(256, dirty.deferred_source(0));
+    let output = ViewRing::new(256, dirty.deferred_source(1));
     assert!(
         COMMANDS
             .set(CommandRunner::new(sender.clone(), output.clone()))
