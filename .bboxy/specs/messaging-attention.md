@@ -16,7 +16,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: builds-on }
   - { to: "[[mcp-control-plane]]", rel: builds-on }
 created: "2026-10-25T21:45:27Z"
-updated: "2026-10-25T22:07:26Z"
+updated: "2026-10-25T22:47:12Z"
 ---
 # Messaging attention
 
@@ -41,7 +41,18 @@ Every `MessageKind` belongs to one **class**, derived from the kind and signed w
 - **Conversation**: DMs, briefs and delegations, questions, replies, rulings asked, decisions, reports. Text for a model or a person.
 - **Event**: typed status with structured fields and no prose a model must parse: slot claimed and released, cut claimed, landed, gate passed or failed, task transitions, presence, mute and unmute notices. An event's fields are its content; a projection of them into text is for people, and a detector reads the fields.
 
-Events are first-class rows: stored, ordered, signed, receipted like conversation, readable by `events tail`, the board and the ledger. What differs is the default wake (§3).
+**The event kinds, pinned for MA-1** (Kestrel's question, the same day). `MessageKind::class()` derives the class from the signed kind; no sender sets a class. Existing kinds keep their bytes: `Presence` and the mute and unmute notices it carries are events; `Task` stays conversation. New event kinds, each with exactly these fields:
+
+| Kind | Fields |
+|---|---|
+| `SlotClaimed` | `slot: u8`, `sha` |
+| `SlotReleased` | `slot: u8`, `sha`, `exit: i32` |
+| `CutClaimed` | `branch`, `paths: [string]` |
+| `Landed` | `sha`, `tier: lab \| narrow \| wide`, `presubmit_seconds: u32` |
+| `GateResult` | `sha`, `stage: presubmit \| postsubmit`, `verdict: green \| red \| flake \| manual-green \| manual-revert`, `predicate: string?` |
+| `TaskTransition` | `task: u32` (the record number), `from`, `to` |
+
+The receipt's wake is one optional field, omitted on rows written before MA-1: `"wake": "now"`, `"wake": "none"`, or `"wake": "deferred", "until": "<RFC 3339>"`. Events are first-class rows: stored, ordered, signed, receipted like conversation, readable by `events tail`, the board and the ledger. What differs is the default wake (§3).
 
 ## 3. Wake policy, owned by the receiver
 
