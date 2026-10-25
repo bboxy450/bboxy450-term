@@ -1,0 +1,35 @@
+{
+  "source": "d4b44decfdbbd0007185860a151b0dd32bcd53f3",
+  "base": "26a9c718efdc4ecef1a2dc8ae35bd1231e63927e",
+  "range_diff": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/range-diff-c4.log",
+  "tracked_clean": true,
+  "signature_exit": 0,
+  "rebase_exit": 0,
+  "checked_at": "2026-10-25T01:08:03.852837-07:00"
+}
+
+1:  d77c1205 =  1:  0da8f835 Prove first held startup currently gates local messaging
+ 2:  df745791 =  2:  01d4eaad Define local pending intents without a cryptographic author claim
+ 3:  af5fa59a =  3:  c0f403a1 Bind local pending intent records and retain the failing custody control
+ 4:  9739ae35 =  4:  bc90399b Separate stored pending intents from signed envelopes for NG1 integration
+ 5:  81a32e95 =  5:  ae025912 Pass borrowed message metadata directly in resolution
+ 6:  b6d6da79 =  6:  fb0ed706 WIP: retain immutable local pending records for NG1 integration
+ 7:  6a6b4b38 =  7:  9748261b WIP: admit local pending seat messages and append signature completions
+ 8:  708480ff =  8:  6ace96aa WIP: project pending grades and keep remote inboxes strict
+ 9:  93ad2989 =  9:  99f99ac1 WIP: separate the logical operator reference from device attribution
+10:  15b257a8 = 10:  231d0beb WIP: retain operator-local pending delivery across signature completion
+11:  8014966f = 11:  3d7f8ac4 WIP: bound signing recovery without limiting local pending admission
+12:  cb34a6cc = 12:  8e74465e WIP: carry verified device attribution beside the stable message sender
+13:  a943c9bf = 13:  31571332 Check pending operator serialization and preserve history coverage in the grade test
+14:  a98b37eb = 14:  add36d52 Keep admitted GUI messaging and its operator reference live during custody holds
+15:  6fb556c9 = 15:  f8886ca9 Check private seat delivery through its inbox and retain GUI timeout diagnostics
+16:  c1b326e3 = 16:  e1c3f72a Expose stale grade downgrades and missing recovered seat device attribution
+17:  9bbdf1fa = 17:  b7436819 Keep confirmed message signatures monotonic and activate the unattended hold invariant
+18:  6fc25bd1 = 18:  6e8f20f0 Allocate first-start operator references explicitly without a default fallback
+19:  a3b357e6 = 19:  c99a33b8 Remove redundant borrows from signed-envelope fixture adapters
+20:  84625f79 = 20:  c34e2c6d Assert the permanent messaging reference when a fixture enrols its device after startup
+21:  5d628148 = 21:  88c235c0 Record successful NG1 workspace, strict lint and active invariant preflight
+22:  479fef84 = 22:  2e991a25 Record the conflict-free NG1 rebase and preserved native authority bodies
+23:  6b753fac = 23:  ef6cc3a3 Retain native hold refusal evidence and capture failure-only fixture status
+24:  90064bd8 = 24:  f9e43c19 Record the bounded native-hold reproduction without erasing the workspace failure
+25:  98923ba1 = 25:  d4b44dec Record green diagnostic prechecks and preserved native C3 authority on rebase
