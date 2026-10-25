@@ -1,0 +1,70 @@
+T7 final source 27a79f3b11b35ba79a1261a7c0b8868e9c803af1
+Runtime uses the pinned app built inside the exact clean CI; final app is a separate Cargo test-profile artifact. No binary identity is claimed. Oracle d52c42a1 accepts the profile distinction.
+PINNED {"source": "27a79f3b11b35ba79a1261a7c0b8868e9c803af1", "binary": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/bboxy450-term-runtime-27a79f3b11b3", "sha256": "5ef95f607211cc7cadb0a18692fc94d5729b4975ba0b083180649bfb243d1773", "copied_from": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-ci-build-27a79f3b11b3/debug/bboxy450-term", "purpose": "final T7 proof while the exact gate continues; compare final retained binary hash before attributing identical artifact"}
+RUNTIME {"source": "27a79f3b11b35ba79a1261a7c0b8868e9c803af1", "runtimes": [{"fixture": "/Users/feral/mydev/bboxy450-term-exec6/target/t7h-64470dcb5d", "owned_app_pid": 3956, "app_exited": true, "private_account_retired": true, "orderly_children_reaped": true}, {"fixture": "/Users/feral/mydev/bboxy450-term-exec6/target/t7w-77757c61a5", "owned_app_pid": 7522, "app_exited": true, "private_account_retired": true, "orderly_children_reaped": true}], "file_t7": {"exit": 0, "elapsed_s": 63.99555233295541, "fixture": "/Users/feral/mydev/bboxy450-term-exec6/target/t7h-64470dcb5d", "account_mode": "file", "private_test_account_retired": true}, "window": {"source": "27a79f3b11b35ba79a1261a7c0b8868e9c803af1", "exit": 0, "directory": "/Users/feral/mydev/bboxy450-term-exec6/target/t7w-77757c61a5", "custody": "private file test account", "private_test_account_retired": true, "png_sha256": {"before.png": "b782f883bad2e2871fe018011c7aae8c00476ca942ce4963b9eea412ce480f44", "grace.png": "d14d0ae174161aaa87925aa0b1a15b6b6608874325a6208627c68dc22cacd17c", "restored.png": "a100a6c4a373d7e4ad6781a4aa7d94e97888bcd6daa1f63fb146101dad33de60"}}, "old_startup_failure": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/headless-1792894413413227000/status.json"}
+T7 SCRIPT SHA256 4a02292e14309e37f83fb49c24751d4c817da67ecc75f0a1623a37378930b27f
+
+final file-account fixture
+{"data":{"backend_ready":true,"close":null,"custody_backend":"file","events_ready":true,"frame_seq":1,"generation":1,"gui_ready":true,"mode":"headless","pid":3956,"run_dir":"/Users/feral/mydev/bboxy450-term-exec6/target/t7h-64470dcb5d/account/run","running":true,"unattended":true,"windows":0},"noun":"app","ok":true,"op":"01M5RDE5AYW7Z27222F1E0A4CD","verb":"start"}
+note: T7 same PID/generation, retained history, position, presented extent, sidebar order/grace/notice, and real grace/expiry held
+{"data":{"backend_ready":false,"close":{"complete":true,"grace":[],"notices":[{"swarm":"01M5RDE5D6N2WWPFWQMFH0JGT4","text":"T7 retained fixture closed; its history is kept","time":"02:16","truncated":false}],"omitted":{"grace":0,"notices":0,"slots":0,"truncated_notices":0},"slots":[]},"custody_backend":"file","events_ready":false,"frame_seq":57,"generation":1,"gui_ready":false,"mode":"headless","running":false,"unattended":true,"windows":0},"noun":"app","ok":true,"op":"01M5RDG3CGMMQ5190YF1AHQMD1","verb":"stop"}
+STOP EXIT 0
+EXIT 0
+
+{
+  "exit": 0,
+  "elapsed_s": 63.99555233295541,
+  "fixture": "/Users/feral/mydev/bboxy450-term-exec6/target/t7h-64470dcb5d",
+  "account_mode": "file",
+  "private_test_account_retired": true
+}
+
+historical memory fixture on 35f7dd69; not final-source evidence
+{"data":{"backend_ready":true,"close":null,"custody_backend":"memory","events_ready":false,"frame_seq":1,"generation":1,"gui_ready":true,"mode":"headless","pid":21979,"run_dir":"/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/headless-1792883386362943000/run","running":true,"unattended":false,"windows":0},"noun":"app","ok":true,"op":"01M5R2TTNV4EDB6ZV1CS4QCEG3","verb":"start"}
+note: T7 same PID/generation, retained history, position, presented extent, sidebar order/grace/notice, and real grace/expiry held
+{"data":{"backend_ready":false,"close":{"complete":true,"grace":[],"notices":[{"swarm":"01M5R2TTR5V8ZG7BNZXFR4RM6Z","text":"T7 retained fixture closed; its history is kept","time":"23:10","truncated":false}],"omitted":{"grace":0,"notices":0,"slots":0,"truncated_notices":0},"slots":[]},"custody_backend":"memory","events_ready":false,"frame_seq":48,"generation":1,"gui_ready":false,"mode":"headless","running":false,"unattended":false,"windows":0},"noun":"app","ok":true,"op":"01M5R2WRH3W0RZEE0PH19H54ST","verb":"stop"}
+STOP EXIT 0
+EXIT 0
+
+{
+  "exit": 0,
+  "elapsed_s": 64.09890350000933,
+  "fixture": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/headless-1792883386362943000"
+}
+
+failed long Unix socket path fixture; exited1 before readiness, retired
+{"error":{"hint":"inspect ctl debug ps and the run's app.log; no PID-kill fallback is used","kind":"endpoint_unavailable","message":"app endpoint unavailable: app exited before render readiness (exit Some(1)); inspect /Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/headless-1792894413413227000/account/run/app.log and debug ps"},"ok":false,"op":"01M5RDBBS40MRRQW8RCDZFAWAY"}
+app start exit 4
+{"error":{"hint":"inspect ctl debug ps and the run's app.log; no PID-kill fallback is used","kind":"endpoint_unavailable","message":"app endpoint unavailable: endpoint /Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/headless-1792894413413227000/account/run/gui.endpoint: No such file or directory (os error 2)"},"ok":false,"op":"01M5RDBBSK1PYPJY47DNG640AZ"}
+STOP EXIT 4
+EXIT 1
+
+{
+  "exit": 1,
+  "elapsed_s": 1.1473621249897406,
+  "fixture": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/headless-1792894413413227000",
+  "account_mode": "file",
+  "private_test_account_retired": false
+}
+headless GUI starting: windows=0, real Session, offscreen renderer
+Error: Error { kind: InvalidInput, message: "path must be shorter than SUN_LEN" }
+cockpit stopped: supervisor exited during startup
+headless GUI stopped: Err("supervisor exited during startup")
+Error: "supervisor exited during startup"
+
+
+Final whole-window triplet: inspected before/grace/restored. Three panes become two with a visible sidebar grace strip, then return to three. This is a separate image inspection, not a solved-rectangle/focus assertion in T7.sh. Initial right PTY resize was still settling; no PNG-identity claim.
+{
+  "source": "27a79f3b11b35ba79a1261a7c0b8868e9c803af1",
+  "exit": 0,
+  "directory": "/Users/feral/mydev/bboxy450-term-exec6/target/t7w-77757c61a5",
+  "custody": "private file test account",
+  "private_test_account_retired": true,
+  "png_sha256": {
+    "before.png": "b782f883bad2e2871fe018011c7aae8c00476ca942ce4963b9eea412ce480f44",
+    "grace.png": "d14d0ae174161aaa87925aa0b1a15b6b6608874325a6208627c68dc22cacd17c",
+    "restored.png": "a100a6c4a373d7e4ad6781a4aa7d94e97888bcd6daa1f63fb146101dad33de60"
+  }
+}
+
+T7.sh coverage remains partial: solved pane rectangle and focus after undo; visible grace strip. Typed not_on_screen and exact seat message are required at grace and gone.

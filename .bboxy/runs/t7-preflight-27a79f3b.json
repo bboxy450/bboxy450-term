@@ -1,0 +1,231 @@
+{
+  "source": "27a79f3b11b35ba79a1261a7c0b8868e9c803af1",
+  "accepted_base": "8240d3595a057590831bc808f79139271f53d852",
+  "workspace": {
+    "source": "87a254771a7d2cadef6cc827ce8525ffd5c956f6",
+    "command": [
+      "cargo",
+      "test",
+      "--workspace",
+      "--locked"
+    ],
+    "exit": 0,
+    "elapsed_s": 1015.616467875021,
+    "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/t7-workspace-precheck-87a25477.log",
+    "log_sha256": "64f8cdf7487b5d3828d1e69c11c34a44ff6953f5c91ca7872b4e2570151c15f5",
+    "passed": 1310,
+    "failed": 0,
+    "ignored": 24
+  },
+  "clippy": {
+    "source": "27a79f3b11b35ba79a1261a7c0b8868e9c803af1",
+    "command": [
+      "cargo",
+      "clippy",
+      "--workspace",
+      "--all-targets",
+      "--locked",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "exit": 0,
+    "elapsed_s": 26.17310237500351,
+    "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/t7-clippy-27a79f3b.log",
+    "log_sha256": "04dec999dfd8b42c7d32b69d702a83002da679aed65afe7c88891298642ddada"
+  },
+  "headless_repetitions": [
+    {
+      "source": "88554466cf7cdff9d852b50c7cbed8a36071c88a",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--test",
+        "headless"
+      ],
+      "exit": 0,
+      "elapsed_s": 164.33611470798496,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/t7-headless-final-1.log",
+      "log_sha256": "f9b6cabb04b3815bf2401616be35ef94b7da56f0c0df260599a8f42933f7e329"
+    },
+    {
+      "source": "88554466cf7cdff9d852b50c7cbed8a36071c88a",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--test",
+        "headless"
+      ],
+      "exit": 0,
+      "elapsed_s": 15.77410704200156,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/t7-headless-final-2.log",
+      "log_sha256": "a7ef812df62673e275f0ea129349ff4c2c49fd1a2e57d76184a2796cbce8c638"
+    },
+    {
+      "source": "88554466cf7cdff9d852b50c7cbed8a36071c88a",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--test",
+        "headless"
+      ],
+      "exit": 0,
+      "elapsed_s": 15.155833832977805,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/t7-headless-final-3.log",
+      "log_sha256": "a4d4de1c62ceb9a48dd9bc1ec0ef5b48650f42c3b7ea25c4bfa73d8e45eedf42"
+    },
+    {
+      "source": "88554466cf7cdff9d852b50c7cbed8a36071c88a",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--test",
+        "headless"
+      ],
+      "exit": 0,
+      "elapsed_s": 14.02585029200418,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/t7-headless-final-4.log",
+      "log_sha256": "dd5aae4f2ecca6ce80d9f3f3e41a95acd7dbe817eb30ec8a2d1be0a22329f166"
+    },
+    {
+      "source": "88554466cf7cdff9d852b50c7cbed8a36071c88a",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--test",
+        "headless"
+      ],
+      "exit": 0,
+      "elapsed_s": 14.053359124984127,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/t7-headless-final-5.log",
+      "log_sha256": "fd07cfca86dd797be018f8a9142a41a87ab855cb0ad327b910c36cff447bfa92"
+    }
+  ],
+  "headless_tests_per_run": 9,
+  "scoped_close": {
+    "source": "88554466cf7cdff9d852b50c7cbed8a36071c88a",
+    "command": [
+      "env",
+      "BBOXYBOOK_GALLERY=close",
+      "PARITY_OUT=/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-88554466",
+      "sh",
+      "scripts/parity.sh"
+    ],
+    "exit": 0,
+    "elapsed_s": 128.74957949999953,
+    "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/t7-close-parity-88554466.log",
+    "log_sha256": "6c0926c6771efb00c2a0b37632293a984a1fd29788bb46b4f43e846b30d25b99"
+  },
+  "affected_reference_checks": [
+    {
+      "source": "736851cdab9c62a3e5d68ef4a24ccf390ad5a010",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-ui",
+        "--locked",
+        "--test",
+        "e2e_checklist"
+      ],
+      "exit": 0,
+      "elapsed_s": 17.75939933297923,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/t7-ui-e2e-736851cd.log",
+      "log_sha256": "3aa99735d02db50f5082138d9adbb90fd5a94f9b6ef6e3a433ae76d5e54c914f"
+    },
+    {
+      "source": "736851cdab9c62a3e5d68ef4a24ccf390ad5a010",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--test",
+        "knowledge_e2e"
+      ],
+      "exit": 0,
+      "elapsed_s": 146.0565661250148,
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/t7-knowledge-e2e-736851cd.log",
+      "log_sha256": "06355a4024c80672aa607b60f672dd9acdebbd6c9f3ba021d3a966ee4993b593"
+    }
+  ],
+  "core_equivalence": {
+    "crates/bboxy450-term/src/close.rs": {
+      "unchanged_from_88554466": true,
+      "sha256": "e638a69de0d7e6516c1948b26232e5a0ee89203de4d89a6e6f630536ba6f410e"
+    },
+    "crates/bboxy450-term/src/focus_ack.rs": {
+      "unchanged_from_88554466": true,
+      "sha256": "34e38823d25563b0765cfa3f1e722a1f1e7aa00044053f8d49560f2a255cb1f0"
+    },
+    "crates/bboxy450-term/src/headless.rs": {
+      "unchanged_from_88554466": true,
+      "sha256": "9e160f56bfd76574fede99bc758a0364279ab2e9c79eb45776ee8e8833726e5b"
+    },
+    "crates/bbt-ui/src/modules/closed_strip.rs": {
+      "unchanged_from_88554466": true,
+      "sha256": "fdaa43b63e2e404927f245cc903a6f4a8a3924fb8e3940fa467970615ba6b080"
+    },
+    "crates/bboxybook/src/close.rs": {
+      "unchanged_from_88554466": true,
+      "sha256": "a06a38201c0f3a1ef7c50acab85749211a7383967627ec4cb4c652d566cdede7"
+    },
+    "scripts/e2e/T7.sh": {
+      "unchanged_from_88554466": true,
+      "sha256": "4a02292e14309e37f83fb49c24751d4c817da67ecc75f0a1623a37378930b27f"
+    }
+  },
+  "capture_error_guard": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/t7-capture-error-guard/results.json",
+  "coverage": {
+    "classification": "partial",
+    "missing": [
+      "solved pane rectangle and focus after undo",
+      "visible grace strip"
+    ],
+    "header": "# coverage: partial; missing: solved pane rectangle and focus after undo; visible grace strip",
+    "map": ".bboxy/specs/e2e-script-map.md"
+  },
+  "stopped_precheck": {
+    "exit": -2,
+    "elapsed_s": 597.5437667079968,
+    "command": [
+      "cargo",
+      "test",
+      "--workspace",
+      "--locked"
+    ]
+  },
+  "stopped_preflight_gate": {
+    "source": "88554466cf7cdff9d852b50c7cbed8a36071c88a",
+    "cache_seed": {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-dev",
+      "source": "88554466cf7cdff9d852b50c7cbed8a36071c88a",
+      "method": "APFS copy-on-write snapshot of inactive own dev cache; isolated target, normal Cargo source fingerprints"
+    },
+    "exit": 143,
+    "elapsed_s": 39.091517959022895,
+    "gallery": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-parity-88554466cf7c",
+    "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/t7-ci-88554466cf7c.log",
+    "cleanup": {
+      "target_allocated_bytes": 4380676096,
+      "worktree_remove_exit": 0
+    }
+  },
+  "full_gate_state": "running; no verdict yet"
+}

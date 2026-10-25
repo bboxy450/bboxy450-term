@@ -1,0 +1,213 @@
+{
+  "source": "27a79f3b11b35ba79a1261a7c0b8868e9c803af1",
+  "ci_exit": 0,
+  "ci_log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/t7-ci-27a79f3b11b3.log",
+  "gallery": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-parity-27a79f3b11b3",
+  "cases": 2176,
+  "required": 2072,
+  "measured": 2072,
+  "unproven": [],
+  "geometry_mismatches": [],
+  "pixel_reviews": 72,
+  "new_review_keys": [],
+  "removed_review_keys": [],
+  "reviews_by_module": {
+    "harness-icon": 48,
+    "documents": 16,
+    "materials": 8
+  },
+  "t7": {
+    "cases": 32,
+    "measured": 32,
+    "reviews": 0,
+    "max_rect_error": 0.0625,
+    "max_baseline_error": 0.0078125
+  },
+  "baseline": {
+    "source": "e733fe14254a7a1fc9fea68a01781f31a977c748",
+    "report": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/baseline-doc-e733fe14-report.json",
+    "sha256": "6792e915600977b90b0fc9a18cbac226c6a90059e6e6aecc3671cb151a0e1296",
+    "reviews": 72
+  },
+  "legacy": {
+    "label": "historical diagnostic pixels only, non-gating",
+    "cases": 1664,
+    "reviews": 851
+  },
+  "hashes": {
+    "report.json": "21b10359bdadbed0bb070a9f866ad9a61896ee4e5fc4e6e5197f9d9d2414b43a",
+    "capture.json": "d92274cba858371c8dd2df0c423a88dcbdc45e39eb97e49b4fecca993dcc7c42",
+    "cases.json": "b3460afe09cb0c18129269f48a93fd6bded0b1336f2f27aa940efc496b9b39ab",
+    "requested.json": "8d06db80f47a315a138ff9a0642508d36591e6f9eb14904651af62a3b656ab31"
+  },
+  "cleanup": {
+    "source": "27a79f3b11b35ba79a1261a7c0b8868e9c803af1",
+    "full_gate_exit": 0,
+    "ci_target_removed": true,
+    "ci_target_allocated_bytes": 5041389568,
+    "dev_target_removed": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-dev",
+    "dev_target_allocated_bytes": 4404400128,
+    "ci_source_worktree_removed": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-ci-source-27a79f3b11b3",
+    "source_worktree_clean_after_ci": true,
+    "runtime_apps_stopped": true,
+    "private_runtime_accounts_retired": true,
+    "binary_identity_claim": false,
+    "oracle_disposition": "d52c42a1: expected Cargo dev/test profile rebuild; retain both hashes, no further investigation",
+    "retained_gallery": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-parity-27a79f3b11b3",
+    "retained_binaries": [
+      "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/bboxy450-term-runtime-27a79f3b11b3",
+      "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/bboxy450-term-gated-27a79f3b11b3"
+    ],
+    "named_settings_baselines_preserved": true,
+    "disk_after": "Filesystem   1G-blocks Used Available Capacity iused     ifree %iused  Mounted on\n/dev/disk3s1       460  397        32    93% 5384123 345816040    2%   /System/Volumes/Data\n"
+  },
+  "workspace": {
+    "passed": 1314,
+    "failed": 0,
+    "ignored": 24,
+    "source": "27a79f3b11b35ba79a1261a7c0b8868e9c803af1"
+  },
+  "invariants": {
+    "checks": 24,
+    "failed": 0,
+    "slow_skipped": 8
+  },
+  "ci_elapsed_s": 3791.441368,
+  "ci_log_sha256": "c89d82594e8bd7a8b1a656156396828358138ea8b6e217de18c5480c68320ea5",
+  "runtime": {
+    "source": "27a79f3b11b35ba79a1261a7c0b8868e9c803af1",
+    "runtimes": [
+      {
+        "fixture": "/Users/feral/mydev/bboxy450-term-exec6/target/t7h-64470dcb5d",
+        "owned_app_pid": 3956,
+        "app_exited": true,
+        "private_account_retired": true,
+        "orderly_children_reaped": true
+      },
+      {
+        "fixture": "/Users/feral/mydev/bboxy450-term-exec6/target/t7w-77757c61a5",
+        "owned_app_pid": 7522,
+        "app_exited": true,
+        "private_account_retired": true,
+        "orderly_children_reaped": true
+      }
+    ],
+    "file_t7": {
+      "exit": 0,
+      "elapsed_s": 63.99555233295541,
+      "fixture": "/Users/feral/mydev/bboxy450-term-exec6/target/t7h-64470dcb5d",
+      "account_mode": "file",
+      "private_test_account_retired": true
+    },
+    "window": {
+      "source": "27a79f3b11b35ba79a1261a7c0b8868e9c803af1",
+      "exit": 0,
+      "directory": "/Users/feral/mydev/bboxy450-term-exec6/target/t7w-77757c61a5",
+      "custody": "private file test account",
+      "private_test_account_retired": true,
+      "png_sha256": {
+        "before.png": "b782f883bad2e2871fe018011c7aae8c00476ca942ce4963b9eea412ce480f44",
+        "grace.png": "d14d0ae174161aaa87925aa0b1a15b6b6608874325a6208627c68dc22cacd17c",
+        "restored.png": "a100a6c4a373d7e4ad6781a4aa7d94e97888bcd6daa1f63fb146101dad33de60"
+      }
+    },
+    "old_startup_failure": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/headless-1792894413413227000/status.json"
+  },
+  "runtime_artifacts": {
+    "pinned": {
+      "source": "27a79f3b11b35ba79a1261a7c0b8868e9c803af1",
+      "binary": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/bboxy450-term-runtime-27a79f3b11b3",
+      "sha256": "5ef95f607211cc7cadb0a18692fc94d5729b4975ba0b083180649bfb243d1773",
+      "copied_from": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-ci-build-27a79f3b11b3/debug/bboxy450-term",
+      "purpose": "final T7 proof while the exact gate continues; compare final retained binary hash before attributing identical artifact"
+    },
+    "final_retained": {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-proof/bboxy450-term-gated-27a79f3b11b3",
+      "sha256": "bcfc7a305c0e23ae9e9d7e794d7aa155a1e12777a9120d1ce5d1c11235d7e2de"
+    },
+    "binary_identity_claim": false,
+    "oracle_disposition": "d52c42a1-61d2-48ab-b149-571742a670be: expected Cargo dev/test profile rebuild; retain both hashes; stop investigating"
+  },
+  "coverage": {
+    "classification": "partial",
+    "missing": [
+      "solved pane rectangle and focus after undo",
+      "visible grace strip"
+    ],
+    "header": "# coverage: partial; missing: solved pane rectangle and focus after undo; visible grace strip",
+    "map": ".bboxy/specs/e2e-script-map.md",
+    "tracking_cell": "unassigned; no task invented"
+  },
+  "image_hash_manifest": {
+    "path": ".bboxy/runs/t7-parity-hashes-27a79f3b.jsonl",
+    "files": 13716,
+    "bytes": 490537373,
+    "sha256": "e233f90ac641956b0cf0c081cf1ee62a599532de05d279ebe44427efd78d1ed6"
+  },
+  "main_at_handoff": {
+    "sha": "cb0b48c5d066c4913e0c456b25eac2621400dfe5",
+    "accepted_base": "8240d3595a057590831bc808f79139271f53d852",
+    "commits_since_base": [
+      "cb0b48c5d066c4913e0c456b25eac2621400dfe5 G Merge HK-1: supervisor input probes are caller config (harness-host prep), and ctl app start reports the child's exit/signal (Aster)",
+      "44d0da0809839a1e165c2d9ab16cc4e85431315a G Record exact HK-1 host and startup diagnostic gate",
+      "454c009d30b71b990480ff1fd4712b9ab582691e G AGENTS.md: pre-check tests, clippy and invariants before taking a gate slot",
+      "70436d8a57dd26f9f7e43c36019da937b62e7732 G Make host input probes caller-configured",
+      "12162c679c35686c94a1cfd027197c4dd284b4b3 G Test that unconfigured host input always fences context",
+      "e8b5384ee59cb31331c04f3696f4db5d43be36e5 G Report startup signals and crash-report hints in ctl errors",
+      "7892d85fdd4a956419248081865ebdc981e3a349 G Merge #279 Codex runtime (private app-server + remote TUI, lifetime PTY, socket-only service hooks) and T8 fixture fix (Sable)",
+      "91fb5670628f3e11a30ed8e15e1ea7e118128438 G Record Codex runtime ownership, autonomous wake and exact gate proof",
+      "4a3d9e3e5a8ed58bb3ffabb913a07067313b79be G Clean up the reported GUI endpoint in the hard-kill fixture",
+      "b0f118ea787b3c75c4523b76331ec9565ad63532 G Route private runtime hooks through the authenticated seat socket",
+      "ba580708598749ca2f074221c3e21d3697f39cff G Tie private services to the supervisor process lifetime",
+      "0d392fa3f38b034b113acb7f0a8895939f3e138f G Check OSC main and subagent states in their own fixture rows",
+      "101da48fabcd3343f77400ee2605cbdcc3615b92 G Preserve seat MCP admission across Logic process restarts",
+      "bfb0d861775e882b06a0df649224f5ee99a4adce G Bind a fresh Codex thread from its selected private runtime",
+      "16138abd786f809e4bbd55cd25fddfc7ed89452e G Bind Codex seats to supervisor-owned private runtimes"
+    ],
+    "paths_since_base": [
+      ".bboxy/runs/codex-runtime-final.log",
+      ".bboxy/runs/codex-runtime-fixtures.log",
+      ".bboxy/runs/codex-runtime-hooks.log",
+      ".bboxy/runs/codex-runtime-lifetime.log",
+      ".bboxy/runs/codex-runtime-native-proof.json",
+      ".bboxy/runs/codex-runtime-plan.log",
+      ".bboxy/runs/codex-runtime-prechecks.log",
+      ".bboxy/runs/codex-runtime-research.log",
+      ".bboxy/runs/codex-runtime-t8.log",
+      ".bboxy/runs/hk1-harness-host.log",
+      ".bboxy/runs/hk1-harness-host.manifest.json",
+      "AGENTS.md",
+      "crates/bboxy450-harness-wake-up/src/hook.rs",
+      "crates/bboxy450-harness-wake-up/src/launch.rs",
+      "crates/bboxy450-harness-wake-up/src/lib.rs",
+      "crates/bboxy450-harness-wake-up/src/native.rs",
+      "crates/bboxy450-harness-wake-up/tests/adapters.rs",
+      "crates/bboxy450-harness-wake-up/tests/codex_bootstrap.rs",
+      "crates/bboxy450-harness-wake-up/tests/fixtures/seat_wiring.py",
+      "crates/bboxy450-harness-wake-up/tests/ready_exec.rs",
+      "crates/bboxy450-harness-wake-up/tests/seat_wiring.rs",
+      "crates/bboxy450-term/src/cockpit.rs",
+      "crates/bboxy450-term/src/ctl/app.rs",
+      "crates/bboxy450-term/src/main.rs",
+      "crates/bboxy450-term/src/stall/load.rs",
+      "crates/bboxy450-term/tests/recovery.rs",
+      "crates/bbt-mux/src/adapters/launch.rs",
+      "crates/bbt-mux/src/adapters/mapping.rs",
+      "crates/bbt-mux/src/logic.rs",
+      "crates/bbt-mux/src/seat_socket.rs",
+      "crates/bbt-mux/tests/adapters.rs",
+      "crates/bbt-mux/tests/logic.rs",
+      "crates/bbt-mux/tests/mcp.rs",
+      "crates/bbt-mux/tests/messaging.rs",
+      "crates/bbt-supervisor/src/client/tests.rs",
+      "crates/bbt-supervisor/src/protocol.rs",
+      "crates/bbt-supervisor/src/supervisor.rs",
+      "crates/bbt-supervisor/src/supervisor/companion.rs",
+      "crates/bbt-supervisor/tests/companions.rs",
+      "crates/bbt-supervisor/tests/probes.rs",
+      "crates/bbt-supervisor/tests/vocabulary.rs",
+      "scripts/e2e/T8.sh"
+    ],
+    "disposition": "Oracle merges #279/HK-1 overlap in main.rs and cockpit.rs; merged-tree tests after Rook END"
+  }
+}
