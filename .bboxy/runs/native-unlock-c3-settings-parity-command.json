@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "sh",
+    "scripts/parity.sh"
+  ],
+  "source": "8d0a478c4164e50dbc45c885d6eabdd0a01672ef",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/native-c3-dev",
+  "environment": {
+    "RUSTC_WRAPPER": "",
+    "RUSTC_WORKSPACE_WRAPPER": "",
+    "BBOXY_TEST_CUSTODY": "memory",
+    "BBOXYBOOK_GALLERY": "settings",
+    "PARITY_OUT": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-unlock-6ocdl4gd/native-c3-settings-parity"
+  },
+  "exit": 0,
+  "seconds": 287.118,
+  "log": "native-c3-settings-parity.log",
+  "sha256": "a17b4ff1f7387871617f1a445e4e01111cc1def797aa73565c57e883beefb241"
+}

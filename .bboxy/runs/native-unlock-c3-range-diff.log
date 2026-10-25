@@ -1,0 +1,176 @@
+ 1:  f8c12a76 !  1:  04ff476d Implement journaled native identity unlock and operator controls
+    @@ Commit message
+         Implement journaled native identity unlock and operator controls
+     
+      ## crates/bboxy450-term/src/cockpit.rs ##
+    -@@ crates/bboxy450-term/src/cockpit.rs: const GUI_WRITE_CAPACITY: usize = 64;
+    - /// App-defined, bounded UI-to-IO messages. A full sender returns ownership to
+    - /// the UI for retry; no socket or process operation runs in the window handler.
+    - pub enum UiMsg {
+    +@@ crates/bboxy450-term/src/cockpit.rs: pub enum UiMsg {
+    +         id: bbt_mux::Ulid,
+    +         result: std::result::Result<bbt_proto::gui::UiLayout, String>,
+    +     },
+     +    IdentityControl {
+     +        id: bbt_mux::Ulid,
+     +        request: bbt_proto::identity::IdentityRequest,
+    @@ crates/bboxy450-term/src/cockpit.rs: const GUI_WRITE_CAPACITY: usize = 64;
+     
+      ## crates/bboxy450-term/src/ctl.rs ##
+     @@ crates/bboxy450-term/src/ctl.rs: impl Endpoint {
+    - 
+    - #[derive(Debug, Clone, PartialEq, Eq)]
+      pub enum Command {
+    +     Ui(bbt_proto::gui::UiRequest),
+    +     UiFocus(String),
+     +    Identity(bbt_proto::identity::IdentityRequest),
+          Spawn {
+              harness: String,
+              name: Option<String>,
+    -@@ crates/bboxy450-term/src/ctl.rs: pub enum Command {
+    - /// Every noun-verb `ctl` verb and the one window action it issues (ctl-cli §1). The parser
+    - /// accepts exactly these; `app endpoint` reads the run directory and issues none.
+    - pub const VERBS: &[(&str, &str, &str)] = &[
+    +@@ crates/bboxy450-term/src/ctl.rs: pub const VERBS: &[(&str, &str, &str)] = &[
+    +     ("ui", "key", "Ui"),
+    +     ("ui", "focus", "Ui"),
+    +     ("ui", "layout", "Ui"),
+     +    ("identity", "status", "Identity"),
+     +    ("identity", "unlock", "Identity"),
+          ("seat", "ls", "ListSeats"),
+    @@ crates/bboxy450-term/src/ctl.rs: fn swarms(seats: &[GuiSeat]) -> Vec<Ulid> {
+                  harness,
+                  name,
+     @@ crates/bboxy450-term/src/ctl.rs: mod tests {
+    -         let id = Ulid::new();
+    -         let seat = bbt_proto::SeatId::from_u128(1);
+    -         let samples = [
+    +                 id,
+    +                 request: bbt_proto::gui::UiRequest::Layout,
+    +             },
+     +            GuiAction::Identity(bbt_proto::identity::IdentityCall {
+     +                id,
+     +                request: bbt_proto::identity::IdentityRequest::Status,
+    @@ crates/bboxy450-term/src/ctl.rs: mod tests {
+                  GuiAction::App {
+                      id,
+     @@ crates/bboxy450-term/src/ctl.rs: mod tests {
+    -             );
+    -         }
+    -         let parse_samples = [
+    +             "ui key cmd-t esc",
+    +             "ui focus s",
+    +             "ui layout",
+     +            "identity status",
+     +            "identity unlock",
+                  "seat ls",
+    @@ crates/bboxy450-term/src/main.rs: struct App {
+          system_theme: Theme,
+          local_tab: Option<LocalTab>,
+          local_page_layout: Option<scene::LocalPageLayout>,
+    +@@ crates/bboxy450-term/src/main.rs: impl App {
+    +             preferences_io: None,
+    +             rim_preview: None,
+    +             mute: preferences::Mute::default(),
+    ++            custody: preferences::CustodyControl::default(),
+    +             system_theme: Theme::Dark,
+    +             local_tab: None,
+    +             local_page_layout: None,
+     @@ crates/bboxy450-term/src/main.rs: impl App {
+              }
+          }
+    @@ crates/bboxy450-term/src/main.rs: fn is_operation(message: &live::UiMsg) -> bool
+          )
+      }
+      
+    -@@ crates/bboxy450-term/src/main.rs: fn main() -> Result<(), Box<dyn std::error::Error>> {
+    -         preferences_io,
+    -         rim_preview: None,
+    -         mute: preferences::Mute::default(),
+    -+        custody: preferences::CustodyControl::default(),
+    -         system_theme: Theme::Dark,
+    -         local_tab: None,
+    -         local_page_layout: None,
+     @@ crates/bboxy450-term/src/main.rs: mod input_tests {
+                      live::UiMsg::Close(_)
+                      | live::UiMsg::UndoClose { .. }
+    @@ crates/bbt-mux/src/logic.rs: impl Worker {
+                              "RecoveryUnavailable: seat {} has no committed predecessor generation {previous}",
+                              record.id
+     @@ crates/bbt-mux/src/logic.rs: impl Worker {
+    -             _ => Err(invalid("resize receipt mismatch")),
+    -         }
+    +     ) -> Result<UiAdmission> {
+    +         request.validate().map_err(invalid)?;
+    +         let origin = self.identity.bind_origin(origin);
+    +-        let device_id = self
+    +-            .identity
+    +-            .status()?
+    +-            .device_id
+    +-            .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
+    ++        let device_id = self.operator_device_for_effect()?;
+    +         let principal = crate::mcp::Principal::Operator {
+    +             device_id,
+    +             door: origin.door,
+    +@@ crates/bbt-mux/src/logic.rs: impl Worker {
+    +             call,
+    +         })
+          }
+     +    fn operator_device_for_effect(&self) -> Result<Ulid> {
+     +        let status = self.identity.status()?;
+    @@ crates/bbt-mux/src/logic.rs: impl Worker {
+     +            .map_err(|e| d::CommandError::new("rejected", e.to_string()))?;
+              let journal = self.operator_journal.clone();
+              let value = match tool::prepare(&call) {
+    --            Ok(tool::Request::Write(request)) => {
+    --                journal.effect(&actor, &call, || self.operator_record_write(&call, *request))
+    --            }
+    -+            Ok(tool::Request::Write(request)) => journal.effect(&actor, &call, || {
+    -+                self.operator_record_write(&call, *request)
+    -+            }),
+    -             Ok(_) => unreachable!("knowledge_write prepares a write"),
+    -             Err(reason) => journal.checked(&actor, &call, mcp::error(id, "rejected", &reason)),
+    -         }
+    +             Ok(tool::Request::Write(request)) => journal.effect(&actor, &call, || {
+     @@ crates/bbt-mux/src/logic.rs: impl Worker {
+                              "an update must retain the current record type",
+                          );
+    @@ crates/bbt-mux/src/seat_socket.rs
+     @@ crates/bbt-mux/src/seat_socket.rs: async fn gui_session(
+                          let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
+                          let op=match &request.action {
+    -                         GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
+    +                         GuiAction::Ui {id,..}|GuiAction::UiReply {id,..}|GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
+     -                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
+     +                        GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
+                              GuiAction::UndoClose {close_id,..}=>*close_id,
+ 2:  05099d7e !  2:  9f4c1b3b Keep native recovery selection in one bounded condition
+    @@ crates/bbt-mux/src/logic.rs: impl Worker {
+                  }
+              }
+              Ok(())
+    -@@ crates/bbt-mux/src/logic.rs: impl Worker {
+    -             Some(name) => name,
+    -             None => self.default_seat_name(swarm)?,
+    -         };
+    --        let mut record = SeatRecord::new(
+    --            Ulid::new(),
+    --            swarm,
+    --            name,
+    --            harness.kind.clone(),
+    --        );
+    -+        let mut record = SeatRecord::new(Ulid::new(), swarm, name, harness.kind.clone());
+    -         record.location = match spec.location {
+    -             bbt_proto::Where::Local => crate::registry::Location::Local,
+    -             bbt_proto::Where::Ssh { host } => crate::registry::Location::Ssh { host },
+ 3:  2c1bcaf7 =  3:  559db9f6 Keep fresh identity operation IDs distinct from nil defaults
+ 4:  1d92e7c4 =  4:  753ebe21 Enroll the two-item unlock fixture in its actual run account
+ 5:  525279ca =  5:  07801928 Recover the issuer before checking separate certified device custody
+ 6:  365b7591 =  6:  248af153 Make unknown native operation checks read-only even before admission
+ 7:  4457ff7b =  7:  885e8d9d Refuse expired public authority before native custody effects
+ 8:  fe75a658 =  8:  a2bfd4f1 Match custody status typography and insets to the paired lab reference
+ 9:  106abd02 =  9:  b5a64387 Record native unlock prechecks and paired Settings parity evidence
+10:  d22d5a68 = 10:  0f98a60e Record native unlock exact gate, headless repeats and honest failure evidence
+11:  e44eb695 = 11:  344eb8c6 Record native unlock union verification and original gate evidence
+12:  65798f29 = 12:  3b5e1d04 Record native two-item pass and open NG1 integration failure
+ -:  -------- > 13:  8d0a478c Cover C-3 UI refusal while native custody is held

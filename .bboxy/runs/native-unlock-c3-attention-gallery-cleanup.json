@@ -1,0 +1,12 @@
+{
+  "owner": "Kestrel Voidwing",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec5",
+  "source": "568aa522fdcee8e65eb2d1d7e304efd1a57c2e2a",
+  "root": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-attention-followup-n24qzjws/parity",
+  "utc": "2026-10-25T07:35:48.615818+00:00",
+  "lsof_exit": 1,
+  "lsof_no_open_files": true,
+  "allocated_bytes_retired": 496607232,
+  "reports_preserved": true,
+  "probe_and_app_bundles_untouched": true
+}

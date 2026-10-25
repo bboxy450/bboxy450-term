@@ -1,0 +1,32 @@
+Kestrel Voidwing <EXECUTOR> — final native #280/#315 / C-3 union handoff
+TESTED SOURCE: 8d0a478c4164e50dbc45c885d6eabdd0a01672ef
+PINNED BASE: e327544193cc88ff62da187c94427baddaeacd7d
+WORKTREE / BRANCH: /Users/feral/mydev/bboxy450-term-exec5 / exec5-native-unlock
+BRIEF: 3d3d4ed6-981f-41d5-98d3-15df112e47ed; one final union with C-3, same scoped checks, no second full gate.
+
+UNION / MECHANISM
+Five textual conflicts resolved as unions: cockpit.rs UiReply plus IdentityControl; ctl.rs both command/verb/action/sample sets; main.rs keeps C-3 App::owner and solve_ui, moving the native custody default and Account notice to those shared helpers; logic.rs retains C-3 ctl_ui_admit and the native ordinary-effect hold helper; seat_socket.rs retains every UI/app/native/action operation ID alternative. Live/gui auto-merges reviewed.
+The C-3 ordinary UI admission uses operator_device_for_effect, preserving the named hold plus both clear actions before any journal/window effect. The existing held-GUI regression now checks this C-3 boundary, including no control/op row and zero native attempts. No assertion or timeout in the two-item fixture changed; identity.rs is byte-identical to d22d5a68. No native hold classifier, runtime or identity-job body change. Twenty-three of the original 31 source files remain byte-identical; changed files are the seven upstream-shared files plus the held-UI regression. Source-only diff-check 0; all 13 source-stack commits have good signatures; range-diffs and hashes adjacent.
+
+ALL REQUESTED SCOPED COMMANDS ON THE EXACT SOURCE
+cargo test --workspace --locked — EXIT 0 / 1075.613 s; 1388 passed, 0 failed, 29 ignored.
+cargo clippy --workspace --all-targets --locked -- -D warnings — EXIT 0 / 137.035 s.
+sh scripts/invariants.sh — EXIT 0 / 377.760 s; 23 checks, 0 failures, 9 slow skipped.
+BBOXYBOOK_GALLERY=settings PARITY_OUT=<private output> sh scripts/parity.sh — EXIT 0 / 287.118 s; fresh web 144/144, native 144/144, geometry 144 required/measured, 0 unproven/mismatches, 0 pixel reviews. All 48 custody cases within policy.
+cargo test -p bboxy450-term --test headless --locked — EXIT 0 / 17.386 s; 11 passed, 0 failed, including both C-3 UI frame cases. One explicit rerun after workspace, as requested.
+Both compiler wrappers empty; one private target, debug assertions and memory test custody. Every argv/environment/exit/log SHA256 is in native-unlock-c3-checks.json. No failed scoped command or waived failure. Git rebase's expected conflict exit 1 and successful continue 0 are retained separately.
+
+EXPLICIT TWO-ITEM RESULT
+native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order — PASSED at native-unlock-c3-workspace.log:2331. Identity group 15 passed / 0 failed / 1 ignored in 0.74 s. Workspace log SHA256 6984a26ecae641515a2b3aea01a0e088791bc15dd93ba660178e415564fd0307.
+The held-GUI/C-3 boundary passed at line 2518; native_unlock group 6/0.
+Rook's original NG1 failure remains recorded in native-unlock-two-item-observation.json/log and the raw excerpt. These independent passing samples do not establish its cause or a fix. Rook owns that investigation per the Oracle. No failure-only diagnostics, success-path probes, assertion change or timeout relaxation was imported into identity.rs.
+
+ORIGINAL FULL GATE / LIMITS
+Original full gate 0e0e9d2e remains the accepted gate: clean ci-local --parity EXIT 0 / 3300.927 s, native-unlock-ci-parity.log SHA256 afca2116375a6d90c9f4c44aae436b05091c9bd1df9d5d6d5616f8d3ecf95e25. No full gate repeated for either union. Earlier mechanisms/failure dispositions remain in native-unlock-handoff.log and native-unlock-union-handoff.log.
+Actual macOS login-Keychain dialogs/ACL behavior remains unverified; the approved fixture/public-query/fake-signing cut is unchanged and requires no operator session. Facade/other-OS extraction remains deferred. The 29 ignored tests and 9 skipped slow checks are named in raw logs.
+Observed origin/main after checks: 92107d4274b1e816dcd05a9f9a32f4ca2fc7edb7 G ctl: app start --notifications record (test accounts), debug notifications, ui notification-click; the recording backend named in the notifications spec. Source stayed frozen throughout verification.
+
+RESOURCES
+lsof found no open files under the exact owned native-c3-dev target; removed 4047310848 allocated bytes. No full-gate slot claimed.
+Per Oracle cleanup request b620fd19, also retired 13428 unused PNGs from the owned Attention parity output after lsof: 496607232 allocated bytes, reports and per-PNG hashes retained in png-retirement.json, probe/app bundles untouched. The /var alias was canonicalized before deletion; the initial ownership guard stopped before any deletion.
+No workload, publish or merge. Final evidence commit changes run files only.
