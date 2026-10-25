@@ -14,7 +14,7 @@ links:
   - { to: "[[cross-os-facade]]", rel: invariant }
   - { to: "[[d39-suite-is-the-product]]", rel: direction }
 created: "2026-10-24T15:28:01Z"
-updated: "2026-10-24T19:10:06Z"
+updated: "2026-10-25T02:37:46Z"
 ---
 # Harness kits
 
@@ -80,5 +80,7 @@ Not a process wrapper. A library that knows, per harness, how to launch it wired
 ## 6. Order (the Oracle's briefs), then publishing
 
 HK-0 the wake-up crate: move the six files, the skill mechanism, the tests and fixtures; define the crate's own vocabulary; the shim's sink trait; the mapping functions in `bbt-mux`; ORDER and the licensing rows in the same commit. HK-1 the host: the probe allowlist in `Config`, the grep test, the publish name. HK-2 docs on both, `cargo package --list` dry runs, the two rows in [[open-source]]. Then the operator's "start publishing crates": the release order follows the layering order, leaves first, each by the checklist in `AGENTS.md` (package, detached signature, signed tag, `cargo publish` as bboxy450, release with the `.asc`, the announcement on `#bboxy450-crates`), the Oracle publishing and an Executor preparing ([[open-source]] §3): `bboxy450-yarn-macros`, `bboxy450-yarn`, `bboxy450-rt`, `bboxy450-term-core`, `bboxy450-harness-wake-up`, `bboxy450-mermaid`, then the GUI kit after the O2 split (`bboxy450-ui-core`, `bboxy450-render`, `bboxy450-ui`, `bboxy450-doc`, `bboxy450-book`, with `bboxy450-frontmatter` as the umbrella), `bboxy450-plugin`, the `bboxy450-desktop-notifications` family, `bboxy450-harness-host`. `bbt-proto` and `bbt-mux` stay private until their plateau (#8). A crate publishes only when its docs pass §5.6 and its `cargo package` reads nothing outside it; nothing publishes from the build loop.
+
+**Landed (HK-1, cb0b48c5).** The supervisor's input probes are caller configuration rather than a built-in list: the first seam of the host kit, the probe allowlist of #274, in the tree.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
