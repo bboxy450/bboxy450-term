@@ -13,7 +13,7 @@ links:
   - { to: "[[no-chokepoints]]", rel: builds-on }
   - { to: "[[never-block-swarm]]", rel: builds-on }
 created: "2026-10-25T16:18:56Z"
-updated: "2026-10-25T17:52:31Z"
+updated: "2026-10-25T18:25:30Z"
 ---
 # Main is red at most until the next revert
 
@@ -29,7 +29,7 @@ interval is visible in the log with its length ([[d321-out-of-integration-hell]]
 
 **Check.** `sh scripts/main-red-bounded.sh` — exit 0 held. The script reads
 `.bboxy/runs/postsubmit.log` (one line per postsubmit: `<sha> <green|red>
-<started> <ended> <failing-test-or-dash> <culprit-or-dash>`) and `git log
+<started> <ended> <predicate-or-dash> <culprit-or-dash>`, the predicate typed `test:`, `invariant:` or `parity:` per [[landing]] §6 so a parity or invariant red is bisected and reverted like a test red) and `git log
 --first-parent origin/main`, and asserts, for every red line: the first later
 commit touching the code paths is a revert (subject begins `Revert` and names
 the culprit sha), and every commit between that red verdict and the next green
