@@ -14,7 +14,7 @@ links:
   - { to: "[[id1-seat-chain]]", rel: constrains }
   - { to: "[[never-block-swarm]]", rel: sibling }
 created: "2026-10-24T19:30:43Z"
-updated: "2026-10-25T01:31:30Z"
+updated: "2026-10-25T03:10:58Z"
 ---
 # A custody hold never holds local delivery
 
@@ -29,7 +29,10 @@ pinned remote receiver waits and says so ([[d285-no-gated-communications]]).
 The fixture includes a **first-ever held startup** with no public issuer hint:
 the rows are delivered as pending logical intents with no author claim, and on
 custody return each gains one appended grade-upgrade event bound to its id and
-digest, with the delivered bytes unchanged and no second delivery.
+digest, with the delivered bytes unchanged and no second delivery; the
+`operator/inbox` consumer is the same consumer before and after custody return
+(one logical operator reference, the device bound to it on enrolment), so no
+recipient identity moves and no second consumer appears.
 
 **Check.** `cargo test -p bbt-mux --locked --test messaging_flow custody_hold_never_holds_local_delivery -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
 — exit 0 held. The test does not exist yet; NG1 creates it (a fixture holds
