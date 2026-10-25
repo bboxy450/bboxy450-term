@@ -184,13 +184,14 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         }
                     }
                     UiEvent::UiFor { id, request } => {
+                        let repaint = !matches!(request, bbt_proto::gui::UiRequest::Layout);
                         let result = app.ui_request(request, SIZE);
                         crate::queue_pending(
                             &mut app.pending_commands,
                             live::UiMsg::UiReply { id, result },
                         )
                         .map_err(|_| "headless UI reply admission full")?;
-                        dirty = true;
+                        dirty |= repaint;
                     }
                     UiEvent::FocusFor(ask) => {
                         app.begin_focus(ask);

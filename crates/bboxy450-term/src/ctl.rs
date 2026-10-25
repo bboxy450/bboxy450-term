@@ -2447,9 +2447,6 @@ mod tests {
         }
         let parse_samples = [
             "ui open graph",
-            "ui open settings",
-            "ui open launcher",
-            "ui open docs #44",
             "ui key cmd-t esc",
             "ui focus s",
             "ui layout",

@@ -3433,6 +3433,32 @@ impl App {
         }
         None
     }
+    /// Both a Wake and a ctl read can consume the coalesced data/tick sources.
+    fn dispatch_wake_sources(&self, sources: &[usize]) {
+        match wake_action(
+            sources,
+            self.pacer.as_ref().is_some_and(DisplayLink::is_active),
+        ) {
+            WakeAction::Ignore => {
+                if sources.contains(&display_link::TICK_SOURCE) {
+                    self.wake_counters.borrow_mut().ignored_tick();
+                }
+                if let Some(pacer) = &self.pacer
+                    && !pacer.is_active()
+                {
+                    pacer.clear();
+                }
+            }
+            WakeAction::Tick => {
+                self.wake_counters.borrow_mut().redraw(sources);
+                if let Some(window) = &self.window {
+                    self.redraw_pending.set(true);
+                    window.request_redraw();
+                }
+            }
+            WakeAction::Invalidate => self.request_redraw_sources(sources),
+        }
+    }
     fn ui_request(
         &mut self,
         request: bbt_proto::gui::UiRequest,
@@ -3440,7 +3466,10 @@ impl App {
     ) -> Result<bbt_proto::gui::UiLayout, String> {
         use bbt_proto::gui::{UiRequest, UiTarget};
         request.validate().map_err(str::to_owned)?;
-        self.drain();
+        let sources = self.drain();
+        // A layout read may consume data before its queued Wake. Keep that
+        // invalidation, without treating the read itself as a repaint reason.
+        self.dispatch_wake_sources(&sources);
         if self.live_state.is_none() {
             return Err("ui_not_ready: no live model".into());
         }
@@ -3542,11 +3571,11 @@ impl App {
         if let Some(dock) = &self.conversation_layout {
             roots.push(&dock.layout);
         }
-        if let Some(document) = &self.document_layout {
-            roots.push(&document.layout);
-        }
         if let Some(launcher) = &self.launcher_layout {
             roots.push(launcher.solved());
+        }
+        if let Some(document) = &self.document_layout {
+            roots.push(&document.layout);
         }
         let mut remaining = 4096;
         let tree = roots
@@ -4103,6 +4132,7 @@ impl ApplicationHandler<UiEvent> for App {
                 self.request_redraw();
             }
             UiEvent::UiFor { id, request } => {
+                let repaint = !matches!(request, bbt_proto::gui::UiRequest::Layout);
                 let result = self
                     .window
                     .as_ref()
@@ -4114,7 +4144,9 @@ impl ApplicationHandler<UiEvent> for App {
                     .ok_or_else(|| "endpoint_unavailable: window is not ready".to_owned())
                     .and_then(|size| self.ui_request(request, size));
                 self.queue(live::UiMsg::UiReply { id, result });
-                self.request_redraw();
+                if repaint {
+                    self.request_redraw();
+                }
             }
             UiEvent::FocusDeadline(id) => {
                 if let Some(answer) = self.ctl_focus.expire(id) {
@@ -4205,29 +4237,7 @@ impl ApplicationHandler<UiEvent> for App {
                     self.fail(error, event_loop);
                     return;
                 }
-                match wake_action(
-                    &sources,
-                    self.pacer.as_ref().is_some_and(DisplayLink::is_active),
-                ) {
-                    WakeAction::Ignore => {
-                        if sources.contains(&display_link::TICK_SOURCE) {
-                            self.wake_counters.borrow_mut().ignored_tick();
-                        }
-                        if let Some(pacer) = &self.pacer
-                            && !pacer.is_active()
-                        {
-                            pacer.clear();
-                        }
-                    }
-                    WakeAction::Tick => {
-                        self.wake_counters.borrow_mut().redraw(&sources);
-                        if let Some(window) = &self.window {
-                            self.redraw_pending.set(true);
-                            window.request_redraw();
-                        }
-                    }
-                    WakeAction::Invalidate => self.request_redraw_sources(&sources),
-                }
+                self.dispatch_wake_sources(&sources);
             }
             UiEvent::BeginIdle => {
                 let counts = (
@@ -7836,9 +7846,21 @@ mod ctl_ui_key_tests {
             assert_eq!(input.state, ElementState::Pressed);
             assert!(input.text.is_none());
         }
-        assert_eq!(route_key(&chrome_input("cmd-t").unwrap(), 0, None), RoutedKey::OpenLauncher);
-        assert_eq!(route_key(&chrome_input("cmd-g").unwrap(), 0, None), RoutedKey::OpenGraph);
-        assert_eq!(route_key(&chrome_input("cmd-m").unwrap(), 0, None), RoutedKey::MuteFocused);
-        assert!(matches!(route_key(&chrome_input("cmd-alt-tab").unwrap(), 0, None), RoutedKey::Pane(_)));
+        assert_eq!(
+            route_key(&chrome_input("cmd-t").unwrap(), 0, None),
+            RoutedKey::OpenLauncher
+        );
+        assert_eq!(
+            route_key(&chrome_input("cmd-g").unwrap(), 0, None),
+            RoutedKey::OpenGraph
+        );
+        assert_eq!(
+            route_key(&chrome_input("cmd-m").unwrap(), 0, None),
+            RoutedKey::MuteFocused
+        );
+        assert!(matches!(
+            route_key(&chrome_input("cmd-alt-tab").unwrap(), 0, None),
+            RoutedKey::Pane(_)
+        ));
     }
 }
