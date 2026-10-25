@@ -912,3 +912,49 @@ fn ctl_ui_keys_acknowledge_spawn_mute_and_undo_only_after_their_end_state_frame(
     f.ok(&["app", "stop"]);
     f.pid = None;
 }
+
+/// ctl-cli §1a: `seat wait --on-screen` and `--frame-seq` read the owner's produced layout,
+/// and a capture refused `not_on_screen` names the frame it checked.
+#[test]
+fn seat_wait_reads_produced_frames_and_not_on_screen_names_its_frame() {
+    let mut f = Fixture::new();
+    f.start();
+    let spawn = |name: &str, place: Option<&str>| {
+        let mut args = vec!["seat", "spawn", "zsh", "--name", name];
+        if let Some(place) = place {
+            args.extend(["--place", place]);
+        }
+        f.ok(&args)["data"]["seat"].as_str().unwrap().to_owned()
+    };
+    let first = spawn("first", None);
+    let on = f.ok(&["seat", "wait", &first, "--on-screen", "--timeout", "15000"]);
+    let frame = on["data"]["frame_seq"].as_u64().unwrap();
+    assert!(on["data"]["pane"]["cols"].as_u64().unwrap() > 0, "{on}");
+    // An idle window draws nothing; output in the pane produces the next frame.
+    f.ok(&["seat", "type", &first, "echo next-frame"]);
+    f.ok(&["seat", "key", &first, "enter"]);
+    let next = (frame + 1).to_string();
+    let later = f.ok(&[
+        "seat",
+        "wait",
+        &first,
+        "--frame-seq",
+        &next,
+        "--timeout",
+        "15000",
+    ]);
+    assert!(
+        later["data"]["frame_seq"].as_u64().unwrap() > frame,
+        "{later}"
+    );
+
+    // A new tab takes the window; the first seat's pane leaves the screen.
+    let second = spawn("second", Some("tab"));
+    f.ok(&["seat", "wait", &second, "--on-screen", "--timeout", "15000"]);
+    let shot = f.root.path().join("hidden.png");
+    let (code, rows) = f.ctl(&["seat", "capture", &first, shot.to_str().unwrap()]);
+    assert_eq!(code, 1, "{rows:?}");
+    assert_eq!(rows[0]["error"]["kind"], "not_on_screen", "{rows:?}");
+    assert!(rows[0]["error"]["frame_seq"].is_u64(), "{rows:?}");
+    assert!(!shot.exists());
+}

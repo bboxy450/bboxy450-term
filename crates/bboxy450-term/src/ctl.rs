@@ -43,7 +43,10 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   seat key <seat> <key>...                enter esc tab backspace space up down left right home end
                                           pageup pagedown delete shift-tab ctrl-<letter>; Kitty when on
   seat paste <seat> <file|->              bracketed when the program asked
-  seat wait <seat> (--state idle|waiting|exited | --text REGEX) [--timeout MS]   default 30000
+  seat wait <seat> (--state idle|waiting|exited | --text REGEX | --on-screen | --frame-seq N)
+                                          [--timeout MS]   default 30000; --on-screen: the seat has a
+                                          pane in the window's current frame; --frame-seq: the window
+                                          has produced frame N (both read the owner's ui layout)
   seat capture <seat|window> <file.png>   with stale, occluded, frame_presented_at, frame_seq
   seat screen <seat> --cells | --scrollback FROM..TO   styled runs, or history rows
   seat resize <seat> <cols>x<rows>
@@ -225,6 +228,10 @@ pub enum Command {
         seat: String,
         state: Option<String>,
         text: Option<String>,
+        /// `--on-screen`: the seat has a pane in the window's current frame (ctl-cli §1a).
+        on_screen: bool,
+        /// `--frame-seq N`: the window has produced frame N.
+        frame_seq: Option<u64>,
         timeout: Duration,
     },
     E2e {
@@ -415,6 +422,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
     let mut words = vec![];
     let mut human_flag = false;
     let mut unassigned_flag = false;
+    let mut on_screen_flag = false;
     let mut cells_flag = false;
     let (mut headless, mut ctl, mut unattended) = (false, false, false);
     let mut it = args.iter();
@@ -425,6 +433,8 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             human_flag = true;
         } else if arg == "--unassigned" {
             unassigned_flag = true;
+        } else if arg == "--on-screen" {
+            on_screen_flag = true;
         } else if arg == "--cells" {
             cells_flag = true;
         } else if arg == "--headless" {
@@ -614,13 +624,29 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
         },
         ["seat", "wait", seat] => {
             let (state, text) = (flag("state"), flag("text"));
-            if state.is_some() == text.is_some() {
-                return Err(format!("seat wait: one of --state or --text\n{USAGE}"));
+            let frame_seq = flag("frame-seq")
+                .map(|v| {
+                    v.parse::<u64>()
+                        .map_err(|_| format!("{USAGE_PREFIX}--frame-seq: a frame number, not {v}"))
+                })
+                .transpose()?;
+            let conditions = [
+                state.is_some(),
+                text.is_some(),
+                on_screen_flag,
+                frame_seq.is_some(),
+            ];
+            if conditions.iter().filter(|set| **set).count() != 1 {
+                return Err(format!(
+                    "seat wait: one of --state, --text, --on-screen or --frame-seq\n{USAGE}"
+                ));
             }
             Command::Wait {
                 seat: seat.into(),
                 state,
                 text,
+                on_screen: on_screen_flag,
+                frame_seq,
                 timeout: Duration::from_millis(
                     flag("timeout")
                         .map(|v| {
@@ -879,6 +905,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "reply-to",
             "status",
             "scrollback",
+            "frame-seq",
             "verify",
             "brief",
             "type",
@@ -1589,9 +1616,52 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
         }
         Command::Wait {
             seat,
+            on_screen,
+            frame_seq,
+            timeout,
+            ..
+        } if on_screen || frame_seq.is_some() => {
+            // Window truth, not the model: the owner's latest produced layout (ctl-cli §1a).
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let op = Ulid::new();
+            let deadline = std::time::Instant::now() + timeout;
+            loop {
+                let layout = match client.ui(bbt_proto::gui::UiRequest::Layout) {
+                    Ok(layout) => Some(layout),
+                    Err(reason) if reason.starts_with("ui_not_ready") => None,
+                    Err(reason) => return Err(reason),
+                };
+                if let Some(layout) = &layout {
+                    let pane = layout.panes.iter().find(|pane| pane.seat == seat);
+                    let met = match frame_seq {
+                        Some(n) => layout.frame_seq >= n,
+                        None => pane.is_some(),
+                    };
+                    if met {
+                        break vec![json!({ "ok": true, "op": op, "done": true,
+                            "data": { "seat": seat, "frame_seq": layout.frame_seq,
+                                "pane": pane.map(|p| json!({ "rect": p.rect, "cols": p.cols,
+                                    "rows": p.rows, "focused": p.focused })) } })];
+                    }
+                }
+                if std::time::Instant::now() >= deadline {
+                    let seen = layout.map_or("no produced frame yet".into(), |l| {
+                        format!("the window is at frame {}", l.frame_seq)
+                    });
+                    return Err(format!(
+                        "{TIMEOUT_PREFIX}{op}\nwaited {} ms; {seen}",
+                        timeout.as_millis()
+                    ));
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+        }
+        Command::Wait {
+            seat,
             state,
             text,
             timeout,
+            ..
         } => {
             let seat = resolve(&client.seats()?, &seat)?.record.id;
             let pattern = text
@@ -1936,6 +2006,16 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
         };
         let mut line = json!({ "ok": false, "op": op.unwrap_or_else(fresh), "error": {
             "kind": fail.kind, "message": fail.message, "hint": fail.hint } });
+        // not_on_screen names the frame it checked: before a relayed verb's reply that frame
+        // means early, after it hidden (ctl-cli §1a).
+        if let Some(frame) = fail
+            .message
+            .split_once(" in frame ")
+            .and_then(|(_, n)| n.split_whitespace().next()?.parse::<u64>().ok())
+            .filter(|_| fail.kind == "not_on_screen")
+        {
+            line["error"]["frame_seq"] = json!(frame);
+        }
         if let Some(tail) = tail {
             tail.error(&mut line);
         }

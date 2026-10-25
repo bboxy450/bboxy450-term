@@ -314,7 +314,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
                                     })
                                 })
                                 .ok_or_else(|| {
-                                    format!("not_on_screen: seat {seat} has no pane on screen")
+                                    format!(
+                                        "not_on_screen: seat {seat} has no pane on screen in frame {rendered}"
+                                    )
                                 }),
                         };
                         let send = app.live_commands.as_ref().unwrap().sender_clone();

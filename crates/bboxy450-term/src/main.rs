@@ -3014,7 +3014,10 @@ impl App {
                 None => {
                     self.answer_capture(
                         ask.id,
-                        Err(format!("not_on_screen: seat {seat} has no pane on screen")),
+                        Err(format!(
+                            "not_on_screen: seat {seat} has no pane on screen in frame {}",
+                            frame.frame_seq
+                        )),
                     );
                     return;
                 }
