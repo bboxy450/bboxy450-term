@@ -59,6 +59,12 @@ struct HeldSend {
     request: SendRequest,
     operator: bool,
     routes: Vec<Route>,
+    /// An admitted local observation, retained before any recipient delivery.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    intent: Option<bbt_proto::messaging::PendingIntent>,
+    /// Persist the exact completion with its sequence before the cross-store append.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    completion: Option<Envelope>,
 }
 /// The target policy/version observed by an admitted operator-side control.
 pub(crate) struct MuteGuard {
@@ -981,7 +987,7 @@ impl Messaging {
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         let epoch = policy(&tx, &record)?;
         let operator_direct = operator && super::tree::sink(&request.destination).is_ok();
-        let pending = HeldSend {
+        let mut pending = HeldSend {
             seat: from,
             generation,
             swarm: record.swarm,
@@ -997,6 +1003,8 @@ impl Messaging {
             request: request.clone(),
             operator,
             routes: routes.clone(),
+            intent: None,
+            completion: None,
         };
         if let Some(original) = releasing {
             if original.swarm != pending.swarm
@@ -1026,6 +1034,10 @@ impl Messaging {
                         "held send id reused with different content or authority",
                     ));
                 }
+                if old.intent.is_some() {
+                    tx.commit()?;
+                    return self.store_pending(&old, now);
+                }
                 return Ok(super::api::Response::Held {
                     id: request.id,
                     reason,
@@ -1047,9 +1059,6 @@ impl Messaging {
                 })
                 .or_else(|| (queued > 0).then(|| "earlier signing work held".into()));
             if let Some(reason) = reason {
-                if queued >= 128 {
-                    return Err(invalid("held signing queue is full"));
-                }
                 tx.execute(
                     "INSERT INTO msg_held(id,data,reason,state) VALUES(?1,?2,?3,'held')",
                     params![
@@ -1058,11 +1067,36 @@ impl Messaging {
                         reason
                     ],
                 )?;
-                tx.commit()?;
-                return Ok(super::api::Response::Held {
+                // The durable admission order is independent of a signing key.
+                // A custody outage must not turn a signing queue bound into a
+                // local-delivery gate. Resume drains a bounded page instead.
+                pending.intent = Some(bbt_proto::messaging::PendingIntent {
+                    version: 1,
                     id: request.id,
-                    reason,
+                    sender: bbt_proto::messaging::LogicalSender::Seat {
+                        device: None,
+                        seat: from,
+                        process_generation: generation,
+                    },
+                    swarm_id: record.swarm,
+                    role: record.role.clone(),
+                    role_epoch: epoch,
+                    body: Body::Text {
+                        text: request.text.clone(),
+                    },
+                    request: request.clone(),
+                    admission_order: tx.last_insert_rowid() as u64,
+                    admitted_ms: now,
+                    signature: bbt_proto::messaging::PendingSignature::Pending,
+                    hold_reason: reason,
                 });
+                super::pending::binding(pending.intent.as_ref().unwrap())?;
+                tx.execute(
+                    "UPDATE msg_held SET data=?2 WHERE id=?1",
+                    params![request.id.to_string(), serde_json::to_vec(&pending)?],
+                )?;
+                tx.commit()?;
+                return self.store_pending(&pending, now);
             }
         }
         let envelope = mint(
@@ -1091,6 +1125,132 @@ impl Messaging {
             message: Box::new(message),
         })
     }
+    fn local_recipients(&self, routes: &[Route]) -> Result<BTreeSet<Recipient>> {
+        let mut local = BTreeSet::new();
+        for route in routes {
+            if self.recipient_is_local(route.recipient)? {
+                local.insert(route.recipient);
+            }
+        }
+        Ok(local)
+    }
+    fn recipient_is_local(&self, recipient: Recipient) -> Result<bool> {
+        Ok(match recipient {
+            Recipient::Seat(seat) => {
+                self.registry.get(seat)?.location == crate::registry::Location::Local
+            }
+            Recipient::Operator(device) => self.operator_device == Some(device),
+        })
+    }
+    fn store_pending(&mut self, held: &HeldSend, now: u64) -> Result<super::api::Response> {
+        let intent = held
+            .intent
+            .as_ref()
+            .ok_or_else(|| invalid("missing pending intent"))?;
+        let record = self.record(held.seat, held.generation)?;
+        let local = self.local_recipients(&held.routes)?;
+        let sender_muted = (record.muted && !held.operator).then_some("sender muted");
+        let message = self.swarm(held.swarm)?.ledger.accept_pending(
+            intent,
+            &held.routes,
+            &local,
+            sender_muted,
+            now,
+            Recipient::Seat(held.seat),
+        )?;
+        self.reconcile(now)?;
+        Ok(super::api::Response::Stored {
+            message: Box::new(message),
+        })
+    }
+    fn release_held_send(&mut self, mut held: HeldSend, now: u64) -> Result<super::api::Response> {
+        let Some(intent) = held.intent.clone() else {
+            return self.send_inner(
+                held.seat,
+                held.generation,
+                held.request.clone(),
+                now,
+                held.operator,
+                Some(&held),
+            );
+        };
+        let record = self.record(held.seat, held.generation)?;
+        let actor = if held.operator {
+            Actor::Operator
+        } else {
+            Actor::Seat {
+                seat: record.id,
+                class: record.role.class,
+            }
+        };
+        let routes = self.swarm(held.swarm)?.tree.resolve(
+            actor,
+            &held.request.destination,
+            held.request.kind,
+            record.role.class,
+            held.request.priority,
+        )?;
+        self.check_recipients(held.swarm, &routes)?;
+        let mut db = self.account.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let epoch = policy(&tx, &record)?;
+        let issuer: Option<Vec<u8>> = tx
+            .query_row(
+                "SELECT value FROM kv WHERE key='identity/issuer'",
+                [],
+                |r| r.get(0),
+            )
+            .optional()?;
+        if record.swarm != held.swarm
+            || record.role != held.role
+            || epoch != held.epoch
+            || held
+                .issuer_state
+                .as_ref()
+                .is_some_and(|old| Some(old) != issuer.as_ref())
+            || routes != held.routes
+        {
+            return Err(invalid("held send authority changed; resubmit explicitly"));
+        }
+        let envelope = match &held.completion {
+            Some(envelope) => envelope.clone(),
+            None => mint(
+                &tx,
+                self.keys.as_ref(),
+                &record,
+                &held.request,
+                intent.body.clone(),
+                Issue {
+                    epoch,
+                    now: intent.admitted_ms,
+                    operator_direct: held.operator
+                        && super::tree::sink(&held.request.destination).is_ok(),
+                },
+            )?,
+        };
+        super::pending::check_upgrade_content(&intent, &envelope)?;
+        held.completion = Some(envelope.clone());
+        tx.execute(
+            "UPDATE msg_held SET data=?2 WHERE id=?1",
+            params![held.request.id.to_string(), serde_json::to_vec(&held)?],
+        )?;
+        tx.commit()?;
+        self.validate(&envelope)?;
+        // A crash between the account transaction and this append reuses the
+        // stored envelope, including its sender sequence and signature.
+        let local = self.local_recipients(&routes)?;
+        let message = self
+            .swarm(held.swarm)?
+            .ledger
+            .upgrade_pending(&intent, &envelope, &routes, &local, now)?;
+        if let Some(swarm) = self.swarms.get_mut(&held.swarm) {
+            swarm.seen.clear();
+            swarm.resolved.clear();
+        }
+        Ok(super::api::Response::Stored {
+            message: Box::new(message),
+        })
+    }
     /// Install a verified ready provider, then consume durable unsigned work in
     /// admission order. Changed authority is refused by name, never upgraded.
     pub fn resume_signing(&mut self, keys: Arc<dyn SeatKeys>, now: u64) -> Result<usize> {
@@ -1108,7 +1268,7 @@ impl Messaging {
             return Ok(0);
         }
         let mut released = 0;
-        loop {
+        for _ in 0..64 {
             let next: Option<(String, Vec<u8>)> = self
                 .account
                 .connection()?
@@ -1122,14 +1282,7 @@ impl Messaging {
                 break;
             };
             let queued: HeldSend = serde_json::from_slice(&bytes)?;
-            let result = self.send_inner(
-                queued.seat,
-                queued.generation,
-                queued.request.clone(),
-                now,
-                queued.operator,
-                Some(&queued),
-            );
+            let result = self.release_held_send(queued, now);
             let (state, reason) = match result {
                 Ok(super::api::Response::Stored { .. }) => {
                     released += 1;
@@ -1171,10 +1324,33 @@ impl Messaging {
         &self,
         message: &StoredMessage,
     ) -> Result<(Option<SeatRecord>, Class, bool)> {
-        let envelope = message
-            .envelope()
-            .ok_or_else(|| invalid("pending message validation is not yet installed"))?;
-        self.validate(envelope)
+        if let Some(envelope) = message.envelope() {
+            return self.validate(envelope);
+        }
+        let intent = message
+            .intent()
+            .ok_or_else(|| invalid("missing pending content"))?;
+        let bytes: Vec<u8> = self.account.connection()?.query_row(
+            "SELECT data FROM msg_held WHERE id=?1",
+            [intent.id.to_string()],
+            |r| r.get(0),
+        )?;
+        let admitted: HeldSend = serde_json::from_slice(&bytes)?;
+        if admitted.intent.as_ref() != Some(intent) {
+            return Err(invalid(
+                "pending intent does not match its local admission journal",
+            ));
+        }
+        super::pending::binding(intent)?;
+        let record = self.record(admitted.seat, admitted.generation)?;
+        if record.swarm != admitted.swarm || record.role != admitted.role {
+            return Err(invalid("pending sender authority changed"));
+        }
+        Ok((
+            Some(record),
+            admitted.role.class,
+            admitted.operator && super::tree::sink(&intent.request.destination).is_ok(),
+        ))
     }
     fn validate(&self, message: &Envelope) -> Result<(Option<SeatRecord>, Class, bool)> {
         self.keys.verify(message)?;
@@ -1507,10 +1683,18 @@ impl Messaging {
                         )
                     })();
                     match routes {
-                        Ok(routes) => self
-                            .swarm(swarm_id)?
-                            .ledger
-                            .release_out(message, &routes, now)?,
+                        Ok(routes) => {
+                            let local = message
+                                .intent()
+                                .map(|_| self.local_recipients(&routes))
+                                .transpose()?;
+                            self.swarm(swarm_id)?.ledger.release_out(
+                                message,
+                                &routes,
+                                now,
+                                local.as_ref(),
+                            )?;
+                        }
                         Err(e) => self
                             .swarm(swarm_id)?
                             .ledger
@@ -1556,6 +1740,9 @@ impl Messaging {
                     let Some(resolved) = &messages[&receipt.message_sequence].0 else {
                         continue;
                     };
+                    let remote_pending = receipt.signature
+                        == bbt_proto::messaging::SignatureState::Pending
+                        && !self.recipient_is_local(receipt.recipient)?;
                     let resolved = match resolved {
                         Err(e) => Err(e.clone()),
                         Ok((class, direct, by)) => match by
@@ -1566,7 +1753,12 @@ impl Messaging {
                                 .muted_once(swarm_id, receipt.recipient, &mut targets)
                                 .0
                                 .map(|muted| {
-                                    let held = if muted && !*direct {
+                                    let held = if remote_pending {
+                                        Some(
+                                            "signature pending; pinned remote delivery waits"
+                                                .into(),
+                                        )
+                                    } else if muted && !*direct {
                                         Some("recipient muted".into())
                                     } else if route.arrivals.iter().all(|a| a.paused) {
                                         Some("subscription paused".into())

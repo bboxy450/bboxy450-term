@@ -22,6 +22,13 @@ pub struct ReceiptEvent {
     pub at_ms: u64,
     pub evidence: Evidence,
     pub note: String,
+    #[serde(
+        default,
+        skip_serializing_if = "bbt_proto::messaging::SignatureState::is_signed"
+    )]
+    pub signature: bbt_proto::messaging::SignatureState,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -354,6 +361,108 @@ impl Ledger {
         })
         .collect()
     }
+    /// Append a grade completion without changing the original intent blob or
+    /// scheduling a second local delivery. Pinned remote inboxes open only now.
+    pub(crate) fn upgrade_pending(
+        &self,
+        intent: &bbt_proto::messaging::PendingIntent,
+        envelope: &Envelope,
+        _routes: &[Route],
+        same_device: &std::collections::BTreeSet<Recipient>,
+        now: u64,
+    ) -> Result<StoredMessage> {
+        let binding = super::pending::binding(intent)?;
+        super::pending::check_upgrade_content(intent, envelope)?;
+        envelope.verify_signature_in_account(self.test_label.as_deref())?;
+        let mut db = self.store.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let (sequence, original, held_out): (u64, Vec<u8>, Option<String>) = tx.query_row(
+            "SELECT seq,envelope,held_out FROM msg_messages WHERE id=?1",
+            [intent.id.to_string()],
+            |r| Ok((u64_at(r, 0)?, r.get(1)?, r.get(2)?)),
+        )?;
+        let original: StoredContent = serde_json::from_slice(&original)?;
+        if !matches!(original, StoredContent::Pending { intent: old } if *old == *intent) {
+            return Err(invalid("completion has no matching original local intent"));
+        }
+        let signed = serde_json::to_vec(envelope)?;
+        let existing: Option<(Vec<u8>, String)> = tx
+            .query_row(
+                "SELECT envelope,intent_digest FROM msg_signatures WHERE message=?1",
+                [sqlint(sequence)?],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .optional()?;
+        let message = StoredMessage {
+            sequence,
+            content: StoredContent::Signed {
+                envelope: Box::new(envelope.clone()),
+                upgrade_of: Some(binding.clone()),
+            },
+            held_out,
+            bus: None,
+        };
+        if let Some((bytes, digest)) = existing {
+            if bytes != signed || digest != binding.digest {
+                return Err(invalid("intent already has a different signed completion"));
+            }
+        } else {
+            let publication_id = Ulid::new();
+            tx.execute(
+                "INSERT INTO msg_signatures VALUES(?1,?2,?3,?4)",
+                params![
+                    sqlint(sequence)?,
+                    signed,
+                    binding.digest,
+                    publication_id.to_string()
+                ],
+            )?;
+            let receipts: Vec<Receipt> = {
+                let mut query = tx.prepare_cached(
+                    "SELECT data FROM msg_deliveries WHERE message=?1 ORDER BY recipient,agent",
+                )?;
+                query
+                    .query_map([sqlint(sequence)?], |r| r.get::<_, Vec<u8>>(0))?
+                    .map(|row| Ok(serde_json::from_slice(&row?)?))
+                    .collect::<Result<_>>()?
+            };
+            for mut receipt in receipts {
+                receipt.signature = bbt_proto::messaging::SignatureState::Signed;
+                receipt.signature_reason = None;
+                receipt.note = "signature confirmed for the original local intent".into();
+                if !same_device.contains(&receipt.recipient)
+                    && receipt.evidence == Evidence::SenderStored
+                    && receipt.held.as_deref()
+                        == Some("signature pending; pinned remote delivery waits")
+                {
+                    receipt.evidence = Evidence::RecipientStored;
+                    receipt.note =
+                        "signed envelope admitted for the pinned remote recipient".into();
+                    receipt.held = receipt
+                        .arrivals
+                        .iter()
+                        .all(|a| a.paused)
+                        .then(|| "subscription paused".into());
+                    set_rate(&mut receipt);
+                }
+                save_receipt(&tx, &receipt)?;
+                receipt_event(&tx, &receipt, now)?;
+            }
+            publication_payload(
+                &tx,
+                &message,
+                publication_id,
+                serde_json::json!({
+                    "id":intent.id,"signature":"signed","upgrade_of":binding,"envelope":envelope,
+                }),
+            )?;
+        }
+        tx.commit()?;
+        Ok(StoredMessage {
+            bus: self.bus_position(intent.id)?,
+            ..message
+        })
+    }
     pub fn hold_out(&self, sequence: u64, reason: &str) -> Result<()> {
         self.store.connection()?.execute(
             "UPDATE msg_messages SET held_out=?2 WHERE seq=?1 AND held_out IS NOT ?2",
@@ -361,7 +470,13 @@ impl Ledger {
         )?;
         Ok(())
     }
-    pub fn release_out(&self, message: &StoredMessage, routes: &[Route], now: u64) -> Result<()> {
+    pub fn release_out(
+        &self,
+        message: &StoredMessage,
+        routes: &[Route],
+        now: u64,
+        same_device: Option<&std::collections::BTreeSet<Recipient>>,
+    ) -> Result<()> {
         let mut db = self.store.connection()?;
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         let held: Option<String> = tx.query_row(
@@ -372,10 +487,12 @@ impl Ledger {
         if held.is_none() {
             return Ok(());
         }
-        let envelope = message
-            .envelope()
-            .ok_or_else(|| invalid("pending release is not yet installed"))?;
-        insert_deliveries(&tx, message, routes, now, None)?;
+        if message.envelope().is_none() && same_device.is_none() {
+            return Err(invalid(
+                "pending release requires its local recipient scope",
+            ));
+        }
+        insert_deliveries(&tx, message, routes, now, same_device)?;
         publication(&tx, message)?;
         tx.execute(
             "UPDATE msg_messages SET held_out=NULL WHERE seq=?1",
@@ -1001,6 +1118,8 @@ fn receipt_event(tx: &rusqlite::Transaction<'_>, receipt: &Receipt, now: u64) ->
         at_ms: now,
         evidence: receipt.evidence,
         note: receipt.note.clone(),
+        signature: receipt.signature,
+        signature_reason: receipt.signature_reason.clone(),
     };
     tx.execute(
         "INSERT INTO msg_receipts(message,recipient,agent,data) VALUES(?1,?2,?3,?4)",
