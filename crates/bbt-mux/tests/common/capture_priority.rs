@@ -26,6 +26,60 @@ struct HeldCapture {
 }
 impl SupervisorConnection for HeldCapture {
     fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
+        if let Action::ReadRingBatch { reads, max_bytes } = action {
+            let available = {
+                let state = self.shared.lock().unwrap();
+                if state.release {
+                    state.limit.saturating_sub(state.pages.len())
+                } else {
+                    usize::MAX
+                }
+            };
+            let admitted = reads.len().min(available);
+            let mut results = if admitted == 0 {
+                vec![]
+            } else {
+                let Reply::RingHistoryBatch { results } =
+                    self.client.request(Action::ReadRingBatch {
+                        reads: reads[..admitted].to_vec(),
+                        max_bytes,
+                    })?
+                else {
+                    panic!("batch reply required")
+                };
+                results
+            };
+            results.extend(reads[admitted..].iter().map(|read| {
+                bbt_supervisor::protocol::RingReadResult {
+                    seat: read.attachment.seat,
+                    generation: read.attachment.generation,
+                    from: read.from,
+                    to: read.to,
+                    result: Err(bbt_mux::Failure {
+                        code: bbt_mux::FailureCode::Busy,
+                        message: "fixture replay page budget exhausted".into(),
+                    }),
+                }
+            }));
+            let mut state = self.shared.lock().unwrap();
+            if state.release {
+                state.pages.extend(
+                    results
+                        .iter()
+                        .filter(|row| {
+                            row.result
+                                .as_ref()
+                                .is_ok_and(|history| !history.records.is_empty())
+                        })
+                        .map(|row| row.seat),
+                );
+                assert!(
+                    state.pages.len() <= state.limit,
+                    "batch exceeded the leaf page budget"
+                );
+            }
+            return Ok(Reply::RingHistoryBatch { results });
+        }
         let seat = match &action {
             Action::ReadRing { attachment, .. } => Some(attachment.seat),
             _ => None,

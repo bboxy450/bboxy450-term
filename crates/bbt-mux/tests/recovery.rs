@@ -100,16 +100,21 @@ impl SupervisorConnection for CrashLink {
                 self.side_saves.fetch_add(1, Ordering::Relaxed);
             }
         }
-        let burst_read = matches!(&action, Action::ReadRing { attachment, .. }
-            if attachment.seat == self.burst_seat && !self.held.load(Ordering::Acquire));
-        let parsed_end = match &action {
-            Action::ReadRing { from, .. } => self
-                .byte_ends
-                .get(&from.saturating_sub(1))
-                .copied()
-                .unwrap_or(0),
-            _ => 0,
+        let burst_from = match &action {
+            Action::ReadRing {
+                attachment, from, ..
+            } if attachment.seat == self.burst_seat => Some(*from),
+            Action::ReadRingBatch { reads, .. } => reads
+                .iter()
+                .find(|read| read.attachment.seat == self.burst_seat)
+                .map(|read| read.from),
+            _ => None,
         };
+        let burst_read = burst_from.is_some() && !self.held.load(Ordering::Acquire);
+        let parsed_end = burst_from
+            .and_then(|from| self.byte_ends.get(&from.saturating_sub(1)))
+            .copied()
+            .unwrap_or(0);
         if burst_read && parsed_end >= R + R / 2 {
             // The previous page has returned to Worker and its cursor/accounting
             // has been published. This thread cannot parse another byte. No
@@ -122,15 +127,28 @@ impl SupervisorConnection for CrashLink {
         }
         let reply = self.inner.request(action)?;
         self.observe_client();
-        if burst_read && let Reply::RingHistory { history } = &reply {
-            for record in &history.records {
-                let seq = record.event.sequence().unwrap();
-                let previous = self.byte_ends[&(seq - 1)];
-                let bytes = match &record.event {
-                    Event::Output { bytes, .. } => bytes.len() as u64,
-                    _ => 0,
-                };
-                self.byte_ends.insert(seq, previous + bytes);
+        if burst_read {
+            let histories: Vec<_> = match &reply {
+                Reply::RingHistory { history } => vec![history.as_ref()],
+                Reply::RingHistoryBatch { results } => results
+                    .iter()
+                    .filter_map(|row| row.result.as_deref().ok())
+                    .collect(),
+                _ => vec![],
+            };
+            for history in histories {
+                for record in &history.records {
+                    if record.event.seat() != self.burst_seat {
+                        continue;
+                    }
+                    let seq = record.event.sequence().unwrap();
+                    let previous = self.byte_ends[&(seq - 1)];
+                    let bytes = match &record.event {
+                        Event::Output { bytes, .. } => bytes.len() as u64,
+                        _ => 0,
+                    };
+                    self.byte_ends.insert(seq, previous + bytes);
+                }
             }
         }
         Ok(reply)

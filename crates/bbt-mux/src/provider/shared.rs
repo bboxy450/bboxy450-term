@@ -50,7 +50,7 @@ struct LogicalLink {
 }
 fn action_seat(action: &Action) -> Option<Ulid> {
     match action {
-        Action::AcquireLogic { .. } | Action::ListOwnedSeats => None,
+        Action::AcquireLogic { .. } | Action::ListOwnedSeats | Action::ReadRingBatch { .. } => None,
         Action::Spawn { spec } => Some(spec.seat),
         Action::Attach { seat, .. }
         | Action::AttachRing { seat, .. }
@@ -83,6 +83,17 @@ impl SupervisorConnection for LogicalLink {
         };
         if matches!(action, Action::AcquireLogic { .. }) {
             return Err(invalid("logical host links are already admitted"));
+        }
+        if let Action::ReadRingBatch { reads, .. } = &action
+            && reads.iter().any(|read| {
+                let owner = shared.owners.get(&read.attachment.seat);
+                owner.is_some_and(|owner| owner != &self.host)
+                    || (owner.is_none() && self.host != HostId::Local)
+            })
+        {
+            // Logic groups by host. A mixed group is a routing bug, not a
+            // capture-member refusal; forward none of it across the boundary.
+            return Err(invalid("ring batch crosses supervisor host boundary"));
         }
         if let Some(seat) = action_seat(&action) {
             let owner = shared.owners.get(&seat);

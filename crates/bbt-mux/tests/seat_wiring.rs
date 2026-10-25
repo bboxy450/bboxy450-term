@@ -6,10 +6,7 @@ mod common;
 
 use bbt_mux::{
     Supervisor, Ulid,
-    adapters::{
-        HarnessRecord,
-        launch::LaunchOptions,
-    },
+    adapters::{HarnessRecord, launch::LaunchOptions},
     logic::{Logic, LogicConfig},
     registry::SeatRecord,
 };
@@ -181,4 +178,98 @@ fn first_logic_launch_wires_both_fixture_clients_without_user_config_writes() {
     println!(
         "real-harness orient/task_report UNPROVEN; fixture clients invoke no services or credentials"
     );
+}
+
+#[test]
+fn logic_recovery_defers_a_fork_held_listener_without_losing_the_seat() {
+    use std::os::unix::{
+        fs::{DirBuilderExt, MetadataExt},
+        net::UnixListener,
+    };
+
+    let root = tempfile::tempdir().unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let supervisor = Supervisor::start(common::capture_config(root.path())).unwrap();
+    let config = LogicConfig {
+        run_dir: root.path().join("run"),
+        repository: root.path().join("repo"),
+        ring: Default::default(),
+    };
+    fs::create_dir_all(config.repository.join(".bboxy")).unwrap();
+    let start = || {
+        Logic::start(
+            supervisor.connect().unwrap(),
+            config.clone(),
+            ed25519_dalek::SigningKey::from_bytes(&[83; 32]),
+            runtime.handle(),
+        )
+        .unwrap()
+    };
+    let logic = start();
+    let mut spec = bbt_mux::LaunchSpec::new("/bin/zsh", root.path());
+    spec.args = vec!["-f".into(), "-c".into(), "read -r ignored".into()];
+    let record = SeatRecord::new(spec.seat, Ulid::new(), "listener recovery", "zsh");
+    let seat = record.id;
+    runtime.block_on(logic.client.spawn(record, spec)).unwrap();
+    let old = runtime.block_on(logic.client.endpoint(seat)).unwrap();
+    logic.shutdown().unwrap();
+
+    // A duplicate has exactly the same listening socket lifetime as a fork's
+    // inherited fd, without making this test fork alongside Tokio's threads.
+    fs::DirBuilder::new()
+        .mode(0o700)
+        .create(old.path.parent().unwrap())
+        .unwrap();
+    let parent = UnixListener::bind(&old.path).unwrap();
+    let inherited = parent.try_clone().unwrap();
+    let inode = fs::symlink_metadata(&old.path).unwrap().ino();
+    drop(parent);
+    let logic = start();
+    let error = runtime
+        .block_on(logic.client.endpoint(seat))
+        .err()
+        .expect("inherited listener must defer recovery");
+    assert!(
+        error.to_string().starts_with("SeatListenerPending:"),
+        "{error}"
+    );
+    assert_eq!(fs::symlink_metadata(&old.path).unwrap().ino(), inode);
+    assert_eq!(
+        runtime
+            .block_on(logic.client.snapshot(seat, 1))
+            .unwrap()
+            .view
+            .seat,
+        seat
+    );
+    drop(inherited);
+
+    let endpoint = runtime.block_on(async {
+        tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                match logic.client.endpoint(seat).await {
+                    Ok(endpoint) => break endpoint,
+                    Err(error) => {
+                        assert!(
+                            error.to_string().starts_with("SeatListenerPending:"),
+                            "{error}"
+                        );
+                        tokio::task::yield_now().await;
+                    }
+                }
+            }
+        })
+        .await
+        .expect("listener did not rebind after inherited fd closed")
+    });
+    assert_eq!(endpoint.path, old.path);
+    assert_eq!(endpoint.capability, old.capability);
+    assert_eq!(endpoint.generation, old.generation);
+    assert_ne!(fs::symlink_metadata(&endpoint.path).unwrap().ino(), inode);
+    logic.shutdown().unwrap();
+    supervisor.shutdown().unwrap();
 }

@@ -7,6 +7,10 @@ mod knowledge_responsiveness_tests;
 #[path = "identity/reopen_tests.rs"]
 mod native_reopen_tests;
 
+#[cfg(test)]
+#[path = "logic/ring_batch_tests.rs"]
+mod ring_batch_tests;
+
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::{
@@ -1440,6 +1444,7 @@ struct ViewState {
     adapter: Session,
     delivery_endpoint: crate::adapters::Endpoint,
     delivery_failure: Option<String>,
+    ring_refusal: Option<crate::Failure>,
     tap: OscTap,
     replies: VecDeque<(Ulid, Vec<u8>)>,
     native_reader: Option<NativeReader>,
@@ -1483,13 +1488,74 @@ struct PendingSeats {
     watched: BTreeSet<(Ulid, u64)>,
     watched_streak: usize,
     parked: BTreeSet<HostId>,
+    watched_index: ReadyIndex,
+    background_index: ReadyIndex,
 }
+
+#[derive(Default)]
+struct HostReady {
+    order: VecDeque<(u128, Ulid)>,
+    ring: BTreeMap<u128, Ulid>,
+}
+
+#[derive(Default)]
+struct ReadyIndex {
+    hosts: BTreeMap<HostId, HostReady>,
+    head: u128,
+    tail: u128,
+}
+
+impl ReadyIndex {
+    fn runnable_len(&self, total: usize, parked: &BTreeSet<HostId>) -> usize {
+        total
+            - parked
+                .iter()
+                .filter_map(|host| self.hosts.get(host))
+                .map(|host| host.order.len())
+                .sum::<usize>()
+    }
+    fn runnable_rank(&self, ticket: u128, parked: &BTreeSet<HostId>) -> usize {
+        let skipped: usize = parked
+            .iter()
+            .filter_map(|host| self.hosts.get(host))
+            .map(|host| host.order.partition_point(|(t, _)| *t < ticket))
+            .sum();
+        (ticket - self.head) as usize - skipped
+    }
+    fn push(&mut self, key: &(HostId, Ulid), needs_ring: bool) {
+        let host = self.hosts.entry(key.0.clone()).or_default();
+        host.order.push_back((self.tail, key.1));
+        if needs_ring {
+            host.ring.insert(self.tail, key.1);
+        }
+        self.tail += 1;
+    }
+    fn pop(&mut self, key: &(HostId, Ulid)) {
+        let host = self.hosts.get_mut(&key.0).expect("ready host indexed");
+        let (ticket, seat) = host.order.pop_front().expect("ready seat indexed");
+        debug_assert_eq!(seat, key.1);
+        debug_assert_eq!(ticket, self.head);
+        host.ring.remove(&ticket);
+        self.head += 1;
+        if host.order.is_empty() {
+            self.hosts.remove(&key.0);
+        }
+    }
+}
+
 struct PendingSeat {
     active: Event,
     generation: u64,
     latest: u64,
     exited: bool,
     queued: bbt_supervisor::client::PendingEvents,
+    first_unparsed: u64,
+    ring_blocked: bool,
+}
+impl PendingSeat {
+    fn needs_ring(&self) -> bool {
+        !self.ring_blocked && self.active.sequence().unwrap() > self.first_unparsed
+    }
 }
 impl PendingSeats {
     const WATCHED_QUANTA: usize = 3;
@@ -1513,9 +1579,12 @@ impl PendingSeats {
             .is_some_and(|slot| self.watched.contains(&(key.1, slot.generation)))
     }
     fn enqueue(&mut self, key: (HostId, Ulid)) {
+        let needs_ring = self.seats[&key].needs_ring();
         if self.is_watched(&key) {
+            self.watched_index.push(&key, needs_ring);
             self.ready_watched.push_back(key);
         } else {
+            self.background_index.push(&key, needs_ring);
             self.ready_background.push_back(key);
         }
         // Each pending seat has one queue entry, apart from the page currently
@@ -1549,6 +1618,65 @@ impl PendingSeats {
         // quota: repeated Watch/Unwatch cannot reset background service.
         self.ready_watched.extend(promoted);
         self.ready_background.extend(demoted);
+        self.rebuild_ready_indices();
+    }
+    fn rebuild_ready_indices(&mut self) {
+        // Interest/generation changes already rebuild the ready lanes. Hot
+        // prefetches use the per-host indices, never this full-lane walk.
+        self.watched_index = ReadyIndex::default();
+        self.background_index = ReadyIndex::default();
+        for key in &self.ready_watched {
+            self.watched_index.push(key, self.seats[key].needs_ring());
+        }
+        for key in &self.ready_background {
+            self.background_index
+                .push(key, self.seats[key].needs_ring());
+        }
+    }
+
+    fn parsed(&mut self, key: &(HostId, Ulid), sequence: u64) {
+        if let Some(slot) = self.seats.get_mut(key) {
+            slot.first_unparsed = sequence.saturating_add(1);
+        }
+    }
+
+    fn ring_candidates(&self, host: &HostId, limit: usize) -> Vec<Ulid> {
+        // Tickets are contiguous within each lane; subtraction gives its rank
+        // without scanning other hosts. Merge at most 2*limit indexed rows in
+        // the exact future global 3:1 order, with empty-lane donation intact.
+        if self.parked.contains(host) {
+            return vec![];
+        }
+        let remaining = Self::WATCHED_QUANTA.saturating_sub(self.watched_streak);
+        let watched = self
+            .watched_index
+            .runnable_len(self.ready_watched.len(), &self.parked);
+        let background = self
+            .background_index
+            .runnable_len(self.ready_background.len(), &self.parked);
+        let mut rows = Vec::with_capacity(limit * 2);
+        if let Some(index) = self.watched_index.hosts.get(host) {
+            for (&ticket, &seat) in index.ring.iter().take(limit) {
+                let rank = self.watched_index.runnable_rank(ticket, &self.parked);
+                let before = if rank < remaining {
+                    0
+                } else {
+                    1 + (rank - remaining) / Self::WATCHED_QUANTA
+                };
+                rows.push((rank + before.min(background), seat));
+            }
+        }
+        if let Some(index) = self.background_index.hosts.get(host) {
+            for (&ticket, &seat) in index.ring.iter().take(limit) {
+                let rank = self.background_index.runnable_rank(ticket, &self.parked);
+                let before = remaining
+                    .saturating_add(Self::WATCHED_QUANTA * rank)
+                    .min(watched);
+                rows.push((rank + before, seat));
+            }
+        }
+        rows.sort_unstable_by_key(|row| row.0);
+        rows.into_iter().take(limit).map(|row| row.1).collect()
     }
     fn park(&mut self, host: &HostId) {
         self.parked.insert(host.clone());
@@ -1588,6 +1716,8 @@ impl PendingSeats {
                 latest: sequence,
                 exited,
                 queued,
+                first_unparsed: first,
+                ring_blocked: false,
             },
         );
         if replaced.is_none() {
@@ -1597,20 +1727,27 @@ impl PendingSeats {
             self.ready_watched.retain(|queued| queued != &key);
             self.ready_background.retain(|queued| queued != &key);
             if self.ready_len() < before {
+                self.rebuild_ready_indices();
                 self.enqueue(key);
             }
+        } else {
+            // A replacement generation can change ring eligibility while its
+            // priority and position stay the same. This is a cold rebuild.
+            self.rebuild_ready_indices();
         }
         Ok(())
     }
     fn pop_lane(&mut self, watched: bool) -> Option<(HostId, Ulid)> {
-        let ready = if watched {
-            &mut self.ready_watched
+        let (ready, index) = if watched {
+            (&mut self.ready_watched, &mut self.watched_index)
         } else {
-            &mut self.ready_background
+            (&mut self.ready_background, &mut self.background_index)
         };
         for _ in 0..ready.len() {
             let key = ready.pop_front()?;
+            index.pop(&key);
             if self.parked.contains(&key.0) {
+                index.push(&key, self.seats[&key].needs_ring());
                 ready.push_back(key);
             } else {
                 return Some(key);
@@ -1686,6 +1823,59 @@ struct ControlDelivery {
     outcome: Option<crate::adapters::WakeOutcome>,
     result: serde_json::Value,
 }
+#[derive(Clone)]
+struct RingPage {
+    read: bbt_supervisor::protocol::RingRead,
+    result: std::result::Result<Box<crate::ring::History>, crate::Failure>,
+}
+impl RingPage {
+    fn can_serve(&self, read: &bbt_supervisor::protocol::RingRead) -> bool {
+        self.read.attachment == read.attachment
+            && self.read.from <= read.from
+            && match &self.result {
+                Err(_) => self.read.from == read.from,
+                Ok(history) => history
+                    .records
+                    .iter()
+                    .any(|r| r.event.sequence() == Some(read.from)),
+            }
+    }
+    fn page(
+        &self,
+        read: &bbt_supervisor::protocol::RingRead,
+    ) -> Option<std::result::Result<Box<crate::ring::History>, crate::Failure>> {
+        if !self.can_serve(read) {
+            return None;
+        }
+        match &self.result {
+            Err(error) if self.read.from == read.from => Some(Err(error.clone())),
+            Err(_) => None,
+            Ok(history) => {
+                if !history
+                    .records
+                    .iter()
+                    .any(|r| r.event.sequence() == Some(read.from))
+                {
+                    return None;
+                }
+                let mut page = history.clone();
+                page.records.retain(|r| {
+                    r.event
+                        .sequence()
+                        .is_some_and(|n| n >= read.from && n <= read.to)
+                });
+                page.next = page
+                    .records
+                    .last()
+                    .and_then(|r| r.event.sequence())
+                    .filter(|last| *last < read.to)
+                    .map(|last| last + 1);
+                Some(Ok(page))
+            }
+        }
+    }
+}
+
 struct Worker {
     connections: Connections,
     config: LogicConfig,
@@ -1702,6 +1892,7 @@ struct Worker {
     attachments: BTreeMap<Ulid, Attachment>,
     client: LogicClient,
     endpoints: BTreeMap<Ulid, (EndpointInfo, crate::seat_socket::SeatEndpoint)>,
+    pending_endpoints: VecDeque<(Ulid, u64)>,
     endpoint_root: PathBuf,
     gui_info: EndpointInfo,
     gui_endpoint: Option<crate::seat_socket::SeatEndpoint>,
@@ -1735,6 +1926,7 @@ struct Worker {
     checkpoint_progress: u64,
     gui_watches: GuiWatchInterests,
     gui_watch_epoch_seen: u64,
+    ring_pages: BTreeMap<HostId, BTreeMap<Ulid, RingPage>>,
 }
 impl Worker {
     fn open(
@@ -1803,6 +1995,7 @@ impl Worker {
             attachments: BTreeMap::new(),
             client,
             endpoints: BTreeMap::new(),
+            pending_endpoints: VecDeque::new(),
             endpoint_root,
             gui_info,
             gui_endpoint: Some(gui_endpoint),
@@ -1832,6 +2025,7 @@ impl Worker {
             checkpoint_progress: 0,
             gui_watches: GuiWatchInterests::default(),
             gui_watch_epoch_seen: 0,
+            ring_pages: BTreeMap::new(),
         };
         for (host, info) in worker.connections.owned_seats()? {
             // Several fixture links can wrap one local supervisor. Recover a
@@ -2647,7 +2841,9 @@ impl Worker {
         }
         let operator = match actor {
             crate::mcp::Actor::Seat(_) => None,
-            crate::mcp::Actor::OperatorLocal { .. } => return crate::mcp::error(call.op_id, "held", "work-item signing requires custody"),
+            crate::mcp::Actor::OperatorLocal { .. } => {
+                return crate::mcp::error(call.op_id, "held", "work-item signing requires custody");
+            }
             crate::mcp::Actor::Operator {
                 device_id,
                 door,
@@ -2666,7 +2862,9 @@ impl Worker {
             },
         };
         let key = match actor {
-            crate::mcp::Actor::OperatorLocal { .. } => return crate::mcp::error(call.op_id, "held", "work-item signing requires custody"),
+            crate::mcp::Actor::OperatorLocal { .. } => {
+                return crate::mcp::error(call.op_id, "held", "work-item signing requires custody");
+            }
             crate::mcp::Actor::Seat(actor) => {
                 match keys.leaf(actor.seat_id, actor.process_generation) {
                     Ok(key) if keys.ready_issuer().is_some() => key,
@@ -2685,7 +2883,9 @@ impl Worker {
             },
         };
         let author = match actor {
-            crate::mcp::Actor::OperatorLocal { .. } => return crate::mcp::error(call.op_id, "held", "work-item signing requires custody"),
+            crate::mcp::Actor::OperatorLocal { .. } => {
+                return crate::mcp::error(call.op_id, "held", "work-item signing requires custody");
+            }
             crate::mcp::Actor::Seat(actor) => crate::provenance::author::Author::seat(
                 actor.seat_id,
                 Some(actor.process_generation),
@@ -2746,7 +2946,8 @@ impl Worker {
                         );
                     }
                 },
-                bbt_proto::messaging::Recipient::Operator(_) | bbt_proto::messaging::Recipient::OperatorLocal(_) => match task_swarm {
+                bbt_proto::messaging::Recipient::Operator(_)
+                | bbt_proto::messaging::Recipient::OperatorLocal(_) => match task_swarm {
                     Some(swarm) => swarm,
                     None => {
                         return crate::mcp::error(
@@ -2798,7 +2999,8 @@ impl Worker {
             let mut request = crate::messaging::wire::SendRequest::text(
                 match wake.to {
                     bbt_proto::messaging::Recipient::Seat(seat) => format!("seats/{seat}/inbox"),
-                    bbt_proto::messaging::Recipient::Operator(_) | bbt_proto::messaging::Recipient::OperatorLocal(_) => "operator/inbox".into(),
+                    bbt_proto::messaging::Recipient::Operator(_)
+                    | bbt_proto::messaging::Recipient::OperatorLocal(_) => "operator/inbox".into(),
                 },
                 wake.summary.clone(),
             );
@@ -2812,7 +3014,9 @@ impl Worker {
                 summary: wake.summary,
             };
             let sent = match actor {
-                crate::mcp::Actor::OperatorLocal { .. } => Err(invalid("work-item signing requires custody")),
+                crate::mcp::Actor::OperatorLocal { .. } => {
+                    Err(invalid("work-item signing requires custody"))
+                }
                 crate::mcp::Actor::Seat(actor) => self.messaging.task_event(
                     actor.seat_id,
                     actor.process_generation,
@@ -3528,6 +3732,10 @@ impl Worker {
     }
     fn attach(&mut self, info: SeatInfo, live_start: bool) -> Result<()> {
         check_size(info.size.cols as usize, info.size.rows as usize)?;
+        let host = self.host_for_seat(info.seat)?;
+        if let Some(pages) = self.ring_pages.get_mut(&host) {
+            pages.remove(&info.seat);
+        }
         let directory = object_dir(&self.config.run_dir, &format!("seat-{}", info.seat))?;
         if let (Ok(record), Some(bytes)) = (
             self.registry.get(info.seat),
@@ -3768,6 +3976,7 @@ impl Worker {
                 adapter,
                 delivery_endpoint,
                 delivery_failure,
+                ring_refusal: None,
                 tap,
                 replies,
                 native_reader: None,
@@ -3800,7 +4009,15 @@ impl Worker {
         // publish one recovered tail instead of syncing every replay page.
         self.flush_protocol_replies(info.seat)?;
         self.save(info.seat)?;
-        self.ensure_endpoint(info.seat, info.generation)?;
+        if let Err(error) = self.ensure_endpoint(info.seat, info.generation) {
+            if !error.is::<crate::seat_socket::SeatListenerPending>() {
+                return Err(error);
+            }
+            // A child forked before the old logic died can retain its listener
+            // until exec. Keep the recovered view live; retry only the bind.
+            self.pending_endpoints
+                .push_back((info.seat, info.generation));
+        }
         if let Ok(record) = self.registry.get(info.seat) {
             if record.generation != info.generation {
                 self.registry.update(info.seat, |r| {
@@ -3880,6 +4097,25 @@ impl Worker {
         };
         self.endpoints.insert(id, (info.clone(), endpoint));
         Ok(info)
+    }
+    fn retry_endpoint(&mut self) -> Result<()> {
+        let Some((id, generation)) = self.pending_endpoints.pop_front() else {
+            return Ok(());
+        };
+        if self
+            .views
+            .get(&id)
+            .is_none_or(|view| view.generation != generation)
+        {
+            return Ok(());
+        }
+        if let Err(error) = self.ensure_endpoint(id, generation) {
+            if !error.is::<crate::seat_socket::SeatListenerPending>() {
+                return Err(error);
+            }
+            self.pending_endpoints.push_back((id, generation));
+        }
+        Ok(())
     }
     fn cleanup_overlay(&self, id: Ulid) -> Result<()> {
         let root = object_dir(&self.config.run_dir, &format!("seat-{id}"))?;
@@ -5000,6 +5236,206 @@ impl Worker {
         }
         result
     }
+    fn ring_read(&self, id: Ulid, through: u64) -> Option<bbt_supervisor::protocol::RingRead> {
+        let view = self.views.get(&id)?;
+        if view.sequence >= through
+            || view.ring_refusal.is_some()
+            || (view.checkpoint_paused
+                && view.checkpoint_requested
+                && view.checkpoint_pending.is_none())
+        {
+            return None;
+        }
+        Some(bbt_supervisor::protocol::RingRead {
+            attachment: self.attachments.get(&id)?.clone(),
+            from: view.sequence + 1,
+            to: through,
+        })
+    }
+    fn prefetch_ring(
+        &mut self,
+        key: &(HostId, Ulid),
+        event: &Event,
+        pending: &PendingSeats,
+    ) -> Result<()> {
+        use bbt_supervisor::protocol::{
+            MAX_RING_BATCH_BYTES, MAX_RING_BATCH_MEMBERS, RingReadResult,
+        };
+        let through = event.sequence().unwrap().saturating_sub(1);
+        let Some(selected) = self.ring_read(key.1, through) else {
+            return Ok(());
+        };
+        if self
+            .ring_pages
+            .get(&key.0)
+            .and_then(|pages| pages.get(&key.1))
+            .is_some_and(|page| page.can_serve(&selected))
+        {
+            return Ok(());
+        }
+        let mut reads = Vec::with_capacity(MAX_RING_BATCH_MEMBERS);
+        let mut retained = BTreeMap::new();
+        let ids = std::iter::once(key.1)
+            .chain(pending.ring_candidates(&key.0, MAX_RING_BATCH_MEMBERS - 1));
+        for id in ids {
+            let Some(slot) = pending.seats.get(&(key.0.clone(), id)) else {
+                continue;
+            };
+            let Some(view) = self.views.get(&id) else {
+                continue;
+            };
+            if view.generation != slot.generation {
+                continue;
+            }
+            let Some(read) = self.ring_read(id, slot.active.sequence().unwrap().saturating_sub(1))
+            else {
+                continue;
+            };
+            if let Some(old) = self.ring_pages.get(&key.0).and_then(|pages| pages.get(&id))
+                && old.can_serve(&read)
+            {
+                retained.insert(id, old.clone());
+            } else {
+                reads.push(read);
+            }
+        }
+        if reads.is_empty() {
+            self.ring_pages.insert(key.0.clone(), retained);
+            return Ok(());
+        }
+        let link = self.connections.link(&key.0)?;
+        let mut connection = match link.try_lock() {
+            Ok(connection) => connection,
+            Err(std::sync::TryLockError::WouldBlock) => return Ok(()),
+            Err(std::sync::TryLockError::Poisoned(_)) => {
+                return Err(invalid("supervisor link owner stopped"));
+            }
+        };
+        let rpc = self.client.capture_diagnostics.start(
+            Phase::ReadRingRpc,
+            key.1,
+            selected.attachment.generation,
+            selected.from,
+            selected.to,
+        );
+        let measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::ReadRingRequest);
+        let reply = connection.request(Action::ReadRingBatch {
+            reads: reads.clone(),
+            max_bytes: MAX_RING_BATCH_BYTES as u32,
+        });
+        drop(connection);
+        rpc.finish(capture_outcome(&reply), 0, 0);
+        let reply = match reply {
+            Err(error) if is_capture_busy(&error) => {
+                measurement.finish(1, 0);
+                return Ok(());
+            }
+            reply => reply?,
+        };
+        let Reply::RingHistoryBatch { results } = reply else {
+            return Err(invalid("ring batch reply mismatch"));
+        };
+        if results.len() != reads.len() {
+            return Err(invalid("ring batch member count mismatch"));
+        }
+        let mut expected: BTreeMap<_, _> = reads
+            .into_iter()
+            .map(|read| {
+                (
+                    (
+                        read.attachment.seat,
+                        read.attachment.generation,
+                        read.from,
+                        read.to,
+                    ),
+                    read,
+                )
+            })
+            .collect();
+        let mut bytes = 0;
+        for RingReadResult {
+            seat,
+            generation,
+            from,
+            to,
+            mut result,
+        } in results
+        {
+            let Some(read) = expected.remove(&(seat, generation, from, to)) else {
+                return Err(invalid("ring batch member identity mismatch"));
+            };
+            if let Ok(history) = &result {
+                let mut next = from;
+                let valid = history.status.generation == generation
+                    && history.gap.is_none()
+                    && !history.records.is_empty()
+                    && history.records.iter().all(|record| {
+                        let current = record.event.sequence();
+                        let record_generation = match &record.event {
+                            Event::Output { generation, .. }
+                            | Event::Resized { generation, .. }
+                            | Event::Exited { generation, .. } => *generation,
+                        };
+                        let okay = record.event.seat() == seat
+                            && record_generation == generation
+                            && current == Some(next)
+                            && next <= to
+                            && next <= history.status.captured_sequence;
+                        next = next.saturating_add(1);
+                        okay
+                    });
+                if !valid {
+                    result = Err(crate::Failure {
+                        code: crate::FailureCode::Invalid,
+                        message: "ring batch history continuity mismatch".into(),
+                    });
+                }
+            }
+            if let Ok(history) = &result {
+                bytes += history
+                    .records
+                    .iter()
+                    .map(|r| match &r.event {
+                        Event::Output { bytes, .. } => bytes.len() as u64,
+                        _ => 0,
+                    })
+                    .sum::<u64>();
+            }
+            retained.insert(seat, RingPage { read, result });
+        }
+        measurement.finish(1, bytes);
+        self.ring_pages.insert(key.0.clone(), retained);
+        Ok(())
+    }
+    fn replay_page(&mut self, id: Ulid, through: u64) -> Result<Option<Box<crate::ring::History>>> {
+        let Some(read) = self.ring_read(id, through) else {
+            return Ok(None);
+        };
+        let host = self.host_for_seat(id)?;
+        let result = self
+            .ring_pages
+            .get(&host)
+            .and_then(|pages| pages.get(&id))
+            .and_then(|page| page.page(&read));
+        match result {
+            None => Ok(None),
+            Some(Ok(history)) => Ok(Some(history)),
+            Some(Err(error)) => {
+                if let Some(pages) = self.ring_pages.get_mut(&host) {
+                    pages.remove(&id);
+                }
+                if error.code != crate::FailureCode::Busy {
+                    eprintln!(
+                        "ring read refused: seat={id} generation={} code={:?}",
+                        read.attachment.generation, error.code
+                    );
+                    self.views.get_mut(&id).unwrap().ring_refusal = Some(error);
+                }
+                Ok(None)
+            }
+        }
+    }
+
     fn catch_up_page(&mut self, id: Ulid, through: u64) -> Result<bool> {
         let current = &self.views[&id];
         if current.sequence >= through {
@@ -5013,61 +5449,13 @@ impl Worker {
         {
             return Ok(false);
         }
-        let link = self.connections.link(&self.host_for_seat(id)?)?;
-        // The checkpoint side task may own this leased stream. Never wait for
-        // it in ingest, or park unrelated seats: retain this target and rotate.
-        let mut connection = match link.try_lock() {
-            Ok(connection) => connection,
-            Err(std::sync::TryLockError::WouldBlock) => return Ok(false),
-            Err(std::sync::TryLockError::Poisoned(_)) => {
-                return Err(invalid("supervisor link owner stopped"));
-            }
-        };
         let page =
             self.client
                 .capture_diagnostics
                 .start(Phase::ReplayPage, id, generation, from, through);
-        let rpc = self.client.capture_diagnostics.start(
-            Phase::ReadRingRpc,
-            id,
-            generation,
-            from,
-            through,
-        );
-        let ring_measurement =
-            bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::ReadRingRequest);
-        let reply = connection.request(Action::ReadRing {
-            attachment: self.attachments[&id].clone(),
-            from,
-            to: through,
-        });
-        drop(connection);
-        let ring_bytes = if ring_measurement.enabled() {
-            match &reply {
-                Ok(Reply::RingHistory { history }) => history
-                    .records
-                    .iter()
-                    .map(|record| match &record.event {
-                        Event::Output { bytes, .. } => bytes.len() as u64,
-                        _ => 0,
-                    })
-                    .sum(),
-                _ => 0,
-            }
-        } else {
-            0
-        };
-        ring_measurement.finish(1, ring_bytes);
-        rpc.finish(capture_outcome(&reply), 0, 0);
-        let reply = match reply {
-            Err(error) if is_capture_busy(&error) => {
-                page.finish(Outcome::Busy, 0, 0);
-                return Ok(false);
-            }
-            result => result?,
-        };
-        let Reply::RingHistory { history } = reply else {
-            return Err(invalid("replay history reply mismatch"));
+        let Some(history) = self.replay_page(id, through)? else {
+            page.finish(Outcome::Busy, 0, 0);
+            return Ok(false);
         };
         let view = self.views.get_mut(&id).unwrap();
         if history.status.captured_sequence > view.captured_sequence
@@ -5578,10 +5966,14 @@ impl Worker {
                 .block_on(self.bus.identity_signer(key, Some(run)))?;
             self.bus_window = Some(run);
         }
-        let device=self.identity.observed_operator_device()?;
+        let device = self.identity.observed_operator_device()?;
         self.messaging.operator_reference(device)?;
-        let authority=self.identity.operator_signing().ok();
-        self.messaging.resume_signing_with_operator(self.identity.keys(),authority.as_ref(),now_ms())?;
+        let authority = self.identity.operator_signing().ok();
+        self.messaging.resume_signing_with_operator(
+            self.identity.keys(),
+            authority.as_ref(),
+            now_ms(),
+        )?;
         let status = self.identity.status()?;
         let bytes = serde_json::to_vec(&status)?;
         if self.last_identity.as_ref() != Some(&bytes) {
@@ -6268,6 +6660,47 @@ impl Worker {
         }
     }
 
+    fn ingest_one(
+        &mut self,
+        pending_events: &mut PendingSeats,
+        made_progress: &mut bool,
+    ) -> Result<()> {
+        let Some((key, event)) = pending_events.next() else {
+            return Ok(());
+        };
+        let before = self.views.get(&key.1).map(|view| view.sequence);
+        if let Some(view) = self.views.get(&key.1) {
+            self.client
+                .capture_diagnostics
+                .seat(key.1, view.generation, |row, _| {
+                    row.target_sequence = event.sequence().unwrap();
+                });
+        }
+        let result = self
+            .prefetch_ring(&key, &event, pending_events)
+            .and_then(|()| self.event(event));
+        let complete = match result {
+            Ok(complete) => {
+                *made_progress =
+                    complete || self.views.get(&key.1).map(|view| view.sequence) != before;
+                complete
+            }
+            Err(error) if crate::provider::fake::is_link_down(&error) => {
+                pending_events.park(&key.0);
+                self.ring_pages.remove(&key.0);
+                false
+            }
+            Err(error) if is_capture_busy(&error) => false,
+            Err(error) => return Err(error),
+        };
+        if let Some(view) = self.views.get(&key.1) {
+            pending_events.parsed(&key, view.sequence);
+            pending_events.seats.get_mut(&key).unwrap().ring_blocked = view.ring_refusal.is_some();
+        }
+        pending_events.finish(key, complete);
+        Ok(())
+    }
+
     fn run(&mut self, commands: &mut mpsc::Receiver<Command>, stop: Arc<AtomicBool>) -> Result<()> {
         let mut scan_at = Instant::now();
         let mut adapters_at = Instant::now();
@@ -6279,6 +6712,9 @@ impl Worker {
         let mut made_progress = false;
         let mut deferred_commands = VecDeque::new();
         while !stop.load(Ordering::Acquire) {
+            // One pending bind per turn, rotating on refusal. No sleep, replay
+            // of attachment effects, global seat scan, or idle redraw wake.
+            self.retry_endpoint()?;
             let mut turn =
                 self.client
                     .capture_diagnostics
@@ -6458,19 +6894,41 @@ impl Worker {
                                 let recorder = self.client.clone();
                                 self.handle.spawn_blocking(move || {
                                     let _permit = permit;
-                                    if reply.is_closed() {return;}
+                                    if reply.is_closed() {
+                                        return;
+                                    }
                                     let result = (|| -> Result<_> {
-                                        let capture = if matches!(&request,bbt_proto::gui::DebugRequest::Metrics | bbt_proto::gui::DebugRequest::Snapshot {..}) {
-                                            crate::debug::capture(serde_json::to_value(recorder.capture_diagnostics())?,
-                                                matches!(&request,bbt_proto::gui::DebugRequest::Snapshot {..}))
-                                        } else {serde_json::Value::Null};
-                                        let value = match context.read(&request,capture) {
-                                            Ok(data) => crate::mcp::success(id,data),
-                                            Err(error) => crate::mcp::error(id,"refused",
-                                                crate::debug::sanitize(serde_json::json!(error.to_string())).as_str().unwrap_or("debug source unavailable")),
+                                        let capture = if matches!(
+                                            &request,
+                                            bbt_proto::gui::DebugRequest::Metrics
+                                                | bbt_proto::gui::DebugRequest::Snapshot { .. }
+                                        ) {
+                                            crate::debug::capture(
+                                                serde_json::to_value(
+                                                    recorder.capture_diagnostics(),
+                                                )?,
+                                                matches!(
+                                                    &request,
+                                                    bbt_proto::gui::DebugRequest::Snapshot { .. }
+                                                ),
+                                            )
+                                        } else {
+                                            serde_json::Value::Null
+                                        };
+                                        let value = match context.read(&request, capture) {
+                                            Ok(data) => crate::mcp::success(id, data),
+                                            Err(error) => crate::mcp::error(
+                                                id,
+                                                "refused",
+                                                crate::debug::sanitize(serde_json::json!(
+                                                    error.to_string()
+                                                ))
+                                                .as_str()
+                                                .unwrap_or("debug source unavailable"),
+                                            ),
                                         };
                                         // Do not hold a journal transaction across diagnostic IO.
-                                        operator_response(journal.checked(&actor,&call,value)?)
+                                        operator_response(journal.checked(&actor, &call, value)?)
                                     })();
                                     let _ = reply.send(result);
                                 });
@@ -6517,11 +6975,15 @@ impl Worker {
                         let _ = reply.send(());
                     }
                     Command::GuiMessageRow(swarm, message, reply) => {
-                        let result = self.gui_device().and_then(|_| self.messaging.operator_message_row(swarm, message));
+                        let result = self
+                            .gui_device()
+                            .and_then(|_| self.messaging.operator_message_row(swarm, message));
                         let _ = reply.send(result);
                     }
                     Command::GuiMessagingSubjects(reply) => {
-                        let result = self.gui_device().and_then(|_| self.messaging.operator_subjects());
+                        let result = self
+                            .gui_device()
+                            .and_then(|_| self.messaging.operator_subjects());
                         let _ = reply.send(result);
                     }
                     Command::GuiInput(id, generation, input_id, bytes, reply) => {
@@ -6743,7 +7205,13 @@ impl Worker {
                             self.endpoints
                                 .get(&id)
                                 .map(|(info, _)| info.clone())
-                                .ok_or_else(|| invalid("seat endpoint unavailable")),
+                                .ok_or_else(|| {
+                                    if self.pending_endpoints.iter().any(|(seat, _)| *seat == id) {
+                                        crate::seat_socket::SeatListenerPending.into()
+                                    } else {
+                                        invalid("seat endpoint unavailable")
+                                    }
+                                }),
                         );
                     }
                     Command::Close(id, generation, operation, position, grace, target, reply) => {
@@ -6902,32 +7370,8 @@ impl Worker {
                 }
             }
             receive.finish(Outcome::Ok, 0, 0);
-            if let Some((key, event)) = pending_events.next() {
-                let before = self.views.get(&key.1).map(|view| view.sequence);
-                if let Some(view) = self.views.get(&key.1) {
-                    self.client
-                        .capture_diagnostics
-                        .seat(key.1, view.generation, |row, _| {
-                            row.target_sequence = event.sequence().unwrap();
-                        });
-                }
-                let complete = match self.event(event) {
-                    Ok(complete) => {
-                        made_progress =
-                            complete || self.views.get(&key.1).map(|view| view.sequence) != before;
-                        complete
-                    }
-                    Err(error) if crate::provider::fake::is_link_down(&error) => {
-                        pending_events.park(&key.0);
-                        false
-                    }
-                    Err(error) if is_capture_busy(&error) => false,
-                    Err(error) => return Err(error),
-                };
-                // One page per seat per round, with command service and fresh
-                // notifications between pages. A long gap cannot hold a host.
-                pending_events.finish(key, complete);
-            }
+            // One parsed page per turn, with fresh commands/notifications between.
+            self.ingest_one(&mut pending_events, &mut made_progress)?;
             let maintenance =
                 self.client
                     .capture_diagnostics

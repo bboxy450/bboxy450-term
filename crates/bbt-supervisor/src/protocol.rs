@@ -10,6 +10,9 @@ use ulid::Ulid;
 pub const VERSION: u16 = 1;
 pub const MAX_INPUT_BYTES: usize = 64 * 1024;
 pub const OUTPUT_CHUNK_BYTES: usize = 16 * 1024;
+/// One replay prefetch stays below the private socket's single-frame reserve.
+pub const MAX_RING_BATCH_MEMBERS: usize = 8;
+pub const MAX_RING_BATCH_BYTES: usize = 768 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -226,6 +229,11 @@ pub enum Action {
         from: u64,
         to: u64,
     },
+    /// All members are admitted before waiting; the reply is one bounded group.
+    ReadRingBatch {
+        reads: Vec<RingRead>,
+        max_bytes: u32,
+    },
     PublishCheckpoint {
         attachment: Attachment,
         checkpoint: Vec<u8>,
@@ -273,6 +281,24 @@ pub struct Attachment {
     pub seat: Ulid,
     pub generation: u64,
     pub writer_lease: Ulid,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RingRead {
+    pub attachment: Attachment,
+    pub from: u64,
+    pub to: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RingReadResult {
+    pub seat: Ulid,
+    pub generation: u64,
+    pub from: u64,
+    pub to: u64,
+    pub result: Result<Box<crate::ring::History>, Failure>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -357,6 +383,9 @@ pub enum Reply {
     },
     RingHistory {
         history: Box<crate::ring::History>,
+    },
+    RingHistoryBatch {
+        results: Vec<RingReadResult>,
     },
     CheckpointCommitted {
         sequence: u64,

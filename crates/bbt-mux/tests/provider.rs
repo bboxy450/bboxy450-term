@@ -141,6 +141,14 @@ struct RecordingLink {
 }
 impl SupervisorConnection for RecordingLink {
     fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
+        if let Action::ReadRingBatch { reads, .. } = &action {
+            self.trace.lock().unwrap().extend(
+                reads
+                    .iter()
+                    .map(|read| (self.host.clone(), Some(read.attachment.seat), "history")),
+            );
+            return self.inner.request(action);
+        }
         let (seat, kind) = match &action {
             Action::Spawn { spec } => (Some(spec.seat), "spawn"),
             Action::AttachRing { seat, .. } => (Some(*seat), "attach"),

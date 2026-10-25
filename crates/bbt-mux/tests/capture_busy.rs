@@ -24,6 +24,7 @@ impl SupervisorConnection for Congested {
                 action,
                 Action::RingRecovery { .. }
                     | Action::ReadRing { .. }
+                    | Action::ReadRingBatch { .. }
                     | Action::PublishCheckpoint { .. }
             )
         {
@@ -132,12 +133,13 @@ impl SupervisorConnection for PagedReplay {
         if let Reply::CheckpointCommitted { sequence } = &reply {
             self.checkpoint.store(*sequence, Ordering::Release);
         }
-        if self.delay.load(Ordering::Acquire)
-            && let Reply::RingHistory { history } = &reply
-            && !history.records.is_empty()
-        {
-            self.pages.fetch_add(1, Ordering::Release);
-            std::thread::sleep(Duration::from_millis(100));
+        if self.delay.load(Ordering::Acquire) {
+            for history in common::ring_histories(&reply) {
+                if !history.records.is_empty() {
+                    self.pages.fetch_add(1, Ordering::Release);
+                    std::thread::sleep(Duration::from_millis(100));
+                }
+            }
         }
         Ok(reply)
     }
