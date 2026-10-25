@@ -230,17 +230,21 @@ def predicate_observed(kind, exact, command, record, text, environment):
 
 
 def diagnose(api, root, green, red, name):
-    green, red = resolve(api, root, green), resolve(api, root, red)
-    chain = api.git("rev-list", "--first-parent", "--reverse", red, cwd=root).splitlines()
-    if green not in chain or green == red:
-        raise api.Refusal("last_green_must_precede_red_on_first_parent")
-    candidates = chain[chain.index(green) + 1:]
+    red = resolve(api, root, red)
+    green = None if green == "-" else resolve(api, root, green)
+    candidates = []
+    if green is not None:
+        chain = api.git("rev-list", "--first-parent", "--reverse", red, cwd=root).splitlines()
+        if green not in chain or green == red:
+            raise api.Refusal("last_green_must_precede_red_on_first_parent")
+        candidates = chain[chain.index(green) + 1:]
     options = fixture(api, root)
     kind, command, exact = predicate(api, root, name, options)
     output = output_directory(api, "culprit")
     environment = dict(os.environ, RUSTC_WRAPPER="", RUSTC_WORKSPACE_WRAPPER="",
                        CARGO_BUILD_JOBS="2", BBOXY_TEST_CUSTODY="memory",
                        CARGO_TARGET_DIR=str(output / "target"))
+    environment.pop("BBOXY_POSTSUBMIT_ISOLATE", None)
     trials = []
     cache = {}
     with checkout(api, root, red, output) as tree, retiring(output / "target"):
@@ -265,8 +269,15 @@ def diagnose(api, root, green, red, name):
             cache[sha] = any(results)
             return cache[sha]
 
-        if not bad(red):
+        red_failed = bad(red)
+        if red_failed and os.environ.get("BBOXY_POSTSUBMIT_ISOLATE") == "1":
+            # The watcher opts into closing main only after the three isolated
+            # reruns survive, before this same process starts its cached bisect.
+            api.atomic_write(api.state_directory() / "main-status", f"red {red} {name}\n")
+        if not red_failed:
             result = {"verdict": "flake", "culprit": None, "quarantine_proposed": True}
+        elif green is None:
+            result = {"verdict": "unresolved", "culprit": None, "reason": "no_last_green"}
         elif bad(green):
             result = {"verdict": "unresolved", "culprit": None, "reason": "test_fails_at_last_green",
                       "revert_range": green + ".." + red}
@@ -337,15 +348,18 @@ def code_commit(api, root, sha):
 
 def check_main(api, root):
     fixture(api, root)
-    records = api.records("postsubmit.log")
+    spec = importlib.util.spec_from_file_location("postsubmit_history", Path(__file__).with_name("main_watch.py"))
+    history = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(history)
+    records = history.history_rows(api.records("postsubmit.log"))
     status = api.state_directory() / "main-status"
-    fields = status.read_text().split() if status.exists() else []
+    fields = status.read_text().split(maxsplit=2) if status.exists() else []
     if fields and fields[0] == "red":
         if len(fields) < 3:
             raise api.Refusal("invalid_red_main_status")
         if not any(r.get("sha") == fields[1] and r.get("verdict") == "red" for r in records):
             records.append({"sha": fields[1], "verdict": "red", "culprit": None,
-                            "failing_test": fields[2], "in_flight": True})
+                            "effective_verdict": "red", "failing_test": fields[2], "in_flight": True})
     if not records:
         return {"status": "pending", "reason": "no_postsubmit_yet", "violations": []}
     main = resolve(api, root, "origin/main")
@@ -358,17 +372,18 @@ def check_main(api, root):
     positions = {sha: n for n, sha in enumerate(chain)}
     violations, pending = [], []
     for row in records:
-        if row.get("sha") not in positions or row.get("verdict") not in ("green", "red"):
+        if row.get("sha") not in positions:
             raise api.Refusal("postsubmit_not_on_main_or_invalid_verdict")
     for index, row in enumerate(records):
-        if row["verdict"] != "red":
+        if row["effective_verdict"] != "red":
             continue
-        following = next((r for r in records[index + 1:] if r["verdict"] == "green"), None)
+        following = next((r for r in records[index + 1:] if r["effective_verdict"] == "green"), None)
         start = positions[row["sha"]] + 1
         stop = positions[following["sha"]] + 1 if following else len(chain)
         later = [sha for sha in chain[start:stop] if code_commit(api, root, sha)]
         if not later:
-            pending.append(row["sha"])
+            if following is None:
+                pending.append(row["sha"])
             continue
         culprit = row.get("revert_range") or row.get("culprit")
         for n, sha in enumerate(later):
@@ -380,7 +395,7 @@ def check_main(api, root):
                 named = culprit.split("..")[-1]
                 if named not in body:
                     violations.append({"sha": sha, "reason": "first_revert_does_not_name_culprit", "culprit": culprit})
-    greens = [positions[r["sha"]] for r in records if r["verdict"] == "green"]
+    greens = [positions[r["sha"]] for r in records if r["effective_verdict"] == "green"]
     return {"status": "violated" if violations else ("pending" if pending else "held"), "main": main,
             "covered_through": chain[max(greens)] if greens else None,
             "pending_red": pending, "violations": violations}
@@ -455,6 +470,11 @@ def night_all(api, root, arguments):
                     stream.write(json.dumps(row) + "\n")
                 stream.write(json.dumps(entry) + "\n")
             stop_night_apps(api, binary, rows, output, f"group-{index + 1}")
+        boundary, _ = run_logged(api, ["sh", str(tree / "scripts/night-test-boundaries.sh")],
+                                 tree, output, "test-boundaries", dict(os.environ), timeout=1200)
+        with combined.open("a") as stream:
+            stream.write(json.dumps({"kind": "night-test-boundaries", "exit": boundary["exit"],
+                                     "log": boundary["log"]}) + "\n")
         # Completion means every group has ended. Failed/refused groups stay in
         # the record and must not suppress the independent scale measurement.
         with combined.open("a") as stream:
@@ -462,9 +482,9 @@ def night_all(api, root, arguments):
         measured, _ = run_logged(api, ["sh", str(tree / "scripts/scale-night.sh"), "--night-log", str(combined),
                                       "--sha", sha], tree, output, "scale", dict(os.environ), timeout=6000)
     code = measured["exit"]
-    if code == 0 and any(r["exit"] != 0 or not r["completed_by_verdict"] for r in results):
+    if code == 0 and (boundary["exit"] != 0 or any(r["exit"] != 0 or not r["completed_by_verdict"] for r in results)):
         code = 1
-    result = {"sha": sha, "exit": code, "groups": results, "scale_exit": measured["exit"],
+    result = {"sha": sha, "exit": code, "groups": results, "boundary_exit": boundary["exit"], "scale_exit": measured["exit"],
               "night_log": str(combined), "evidence": str(output)}
     api.atomic_write(output / "result.json", json.dumps(result, sort_keys=True) + "\n")
     api.append_record("nights.log", result)
@@ -570,7 +590,7 @@ def main():
         root = api.repository()
         if args.command == "culprit":
             if len(args.arguments) != 3:
-                raise api.Refusal("usage: culprit.sh LAST_GREEN RED PREDICATE")
+                raise api.Refusal("usage: culprit.sh LAST_GREEN_OR_- RED PREDICATE")
             result = diagnose(api, root, *args.arguments)
             code = 2 if result["verdict"] == "unresolved" else 0
         elif args.command == "revert":

@@ -291,6 +291,14 @@ raise SystemExit(1)
     # keeps: spec landing.md §8 — scale runs once, last, despite a failed group.
     def test_all_night_pins_source_and_calls_scale_once_after_every_group(self):
         self.repo.write(".bboxy/specs/e2e-acceptance.md", "## 1. Promises\n### first group\n- **T1** fixture\n### last group\n- **T2** fixture\n")
+        self.repo.write("scripts/night-test-boundaries.sh", '''#!/bin/sh
+python3 -I - <<'PY'
+import json,os,pathlib
+state=pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR'])
+with (state/'order.jsonl').open('a') as f:f.write(json.dumps('test-boundaries')+'\\n')
+raise SystemExit(int((state/'fail-boundary').exists()))
+PY
+''')
         self.repo.write("scripts/scale-night.sh", '''#!/bin/sh
 python3 -I - "$@" <<'PY'
 import json,os,pathlib,sys
@@ -316,18 +324,43 @@ raise SystemExit(int(group=='first group' and (s/'fail-group').exists()))
 ''')
         binary.chmod(0o700)
         env = dict(self.repo.environment, BBT=str(binary))
-        for failed in (False, True):
-            with self.subTest(failed=failed):
+        for failed, boundary_failed in ((False, False), (True, False), (False, True)):
+            with self.subTest(failed=failed, boundary_failed=boundary_failed):
                 (self.repo.state / "order.jsonl").unlink(missing_ok=True)
-                if failed:
-                    (self.repo.state / "fail-group").touch()
+                for name, active in (("fail-group", failed), ("fail-boundary", boundary_failed)):
+                    flag = self.repo.state / name
+                    flag.touch() if active else flag.unlink(missing_ok=True)
                 result = self.command("e2e-night", "--all", environment=env)
-                self.assertEqual(result.returncode, int(failed), result.stdout + result.stderr)
+                self.assertEqual(result.returncode, int(failed or boundary_failed), result.stdout + result.stderr)
                 answer = json.loads(result.stdout)
                 self.assertEqual(answer["sha"], pinned)
                 self.assertEqual(answer["scale_exit"], 0)
+                self.assertEqual(answer["boundary_exit"], int(boundary_failed))
                 order = [json.loads(x) for x in (self.repo.state / "order.jsonl").read_text().splitlines()]
-                self.assertEqual(order, ["first group", "last group", "scale"])
+                self.assertEqual(order, ["first group", "last group", "test-boundaries", "scale"])
+
+
+    # keeps: invariant main-red-bounded — hand calls close red intervals by their named verdict.
+    def test_manual_green_and_legacy_correction_close_the_same_sha_interval(self):
+        red = self.change("first red")
+        self.publish()
+        self.logs([{"sha": red, "verdict": "red"},
+                   {"sha": red, "verdict": "manual-green", "evidence": "three isolated passes"},
+                   {"sha": red, "correction": "tests only; full watcher still required"}])
+        result = self.command("main-red-bounded")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)["status"], "held")
+
+    def test_manual_revert_is_a_revert_boundary_not_an_ordinary_code_exception(self):
+        red = self.change("first red")
+        fixtures.run("git", "revert", "--no-edit", red, cwd=self.repo.root)
+        reverted = fixtures.run("git", "rev-parse", "HEAD", cwd=self.repo.root)
+        self.publish()
+        self.logs([{"sha": red, "verdict": "red", "culprit": red},
+                   {"sha": reverted, "verdict": "manual-revert", "evidence": "landed corrective commit"}])
+        result = self.command("main-red-bounded")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)["status"], "held")
 
 
 class TypedPredicateTests(unittest.TestCase):
@@ -467,6 +500,109 @@ shutil.copy2(sys.argv[3],pathlib.Path(sys.argv[2])/'cases.json')
         answer = json.loads(result.stdout)
         self.assertIn("unknown_predicate_kind: unknown", answer["reason"])
         self.assertEqual(answer["revert_range"], self.base + ".." + red)
+
+    # keeps: landing.md §6 — first-run diagnosis still executes all three red reruns.
+    def test_no_baseline_can_classify_three_passing_reruns(self):
+        self.install("test")
+        red = self.change("first red landing", bad=True)
+        (self.repo.state / "mode").write_text("pass")
+        result = self.command("culprit", "-", red, self.selector)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual(answer["verdict"], "flake")
+        self.assertIsNone(answer["green"])
+        self.assertEqual([r["sha"] for r in answer["trials"]], [red] * 3)
+
+    def test_no_baseline_does_not_invent_a_culprit_or_revert_range(self):
+        self.install("test")
+        red = self.change("first red landing", bad=True)
+        result = self.command("culprit", "-", red, self.selector)
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual(answer["reason"], "no_last_green")
+        self.assertEqual([r["sha"] for r in answer["trials"]], [red] * 3)
+        self.assertNotIn("revert_range", answer)
+        self.assertIsNone(answer["culprit"])
+
+    # keeps: landing.md §6 — red admission follows the three reruns and precedes bisect.
+    def test_postsubmit_closes_main_only_after_the_isolated_reruns_survive(self):
+        self.install("test")
+        red = self.change("red landing", bad=True)
+        self.predicate.write_text('''import json,os,pathlib,sys
+state=pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR']); status=state/'main-status'
+with (state/'status-observations').open('a') as f:
+ f.write(json.dumps({'sha':sys.argv[1],'status':status.read_text() if status.exists() else None})+'\\n')
+raise SystemExit(int(pathlib.Path('bad').exists()))
+''')
+        env = dict(self.repo.environment, BBOXY_POSTSUBMIT_ISOLATE="1")
+        result = self.command("culprit", self.base, red, self.selector, environment=env)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        rows = [json.loads(line) for line in (self.repo.state / "status-observations").read_text().splitlines()]
+        self.assertEqual([r["status"] for r in rows[:3]], [None] * 3)
+        self.assertTrue(all(r["status"].startswith("red " + red + " ") for r in rows[3:]))
+
+    def test_postsubmit_flake_does_not_close_main(self):
+        self.install("test")
+        red = self.change("red landing", bad=True)
+        (self.repo.state / "mode").write_text("pass")
+        status = self.repo.state / "main-status"
+        status.write_text("green " + self.base + "\n")
+        env = dict(self.repo.environment, BBOXY_POSTSUBMIT_ISOLATE="1")
+        result = self.command("culprit", self.base, red, self.selector, environment=env)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(status.read_text(), "green " + self.base + "\n")
+
+
+class CiPhaseTests(unittest.TestCase):
+    setUp = RecoveryTests.setUp
+    configure = RecoveryTests.configure
+    command = RecoveryTests.command
+
+    def phase(self, after_tests):
+        self.repo.write("scripts/ci-local.sh", (SOURCE / "ci-local.sh").read_text())
+        self.repo.write("scripts/ui-lint.sh", '#!/bin/sh\nprintf "ui-lint\\n" >> "$BBOXY_LANDING_STATE_DIR/phase-calls"\n')
+        app = self.repo.state / "app"
+        app.write_text('''#!/usr/bin/env python3
+import os,pathlib,sys
+assert os.environ['BBOXY_TEST_CUSTODY']=='memory'
+assert sys.argv[1:3]==['--headless','--smoke']
+with (pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR'])/'phase-calls').open('a') as f:f.write('smoke\\n')
+''')
+        app.chmod(0o700)
+        cargo = self.repo.bin / "cargo"
+        cargo.write_text('''#!/usr/bin/env python3
+import json,os,pathlib,shutil,sys
+state=pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR']);args=sys.argv[1:]
+with (state/'phase-cargo').open('a') as f:f.write(json.dumps(args)+'\\n')
+if args==['build','-p','bboxy450-term','--locked']:
+ out=pathlib.Path(os.environ['CARGO_TARGET_DIR'])/'debug';out.mkdir(parents=True,exist_ok=True)
+ shutil.copy2(state/'app',out/'bboxy450-term')
+''')
+        cargo.chmod(0o700)
+        env = dict(self.repo.environment, BBOXY_GATE_SLOT="none")
+        args = ["--after-tests", "--parity"] if after_tests else ["--parity"]
+        self.repo.commit("Fixture exact CI phase inputs")
+        result = self.command("ci-local", *args, environment=env)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = [json.loads(line) for line in (self.repo.state / "phase-cargo").read_text().splitlines()]
+        self.assertEqual((self.repo.state / "phase-calls").read_text().splitlines(), ["ui-lint", "smoke"])
+        self.assertIn("scripts/invariants.sh --parity", (self.repo.state / "shell.log").read_text())
+        return result.stdout, calls
+
+    # keeps: landing.md §6 — continuation runs real CI tail and claims only tail completion.
+    def test_after_tests_runs_the_remaining_gates_without_repeating_workspace_tests(self):
+        output, calls = self.phase(True)
+        self.assertEqual(calls, [["build", "-p", "bboxy450-term", "--locked"]])
+        self.assertIn("post-test checks passed", output)
+        self.assertNotIn("all gates passed", output)
+        self.assertIn(" after-tests 0", output)
+
+    def test_normal_ci_keeps_workspace_build_clippy_and_tests(self):
+        output, calls = self.phase(False)
+        self.assertEqual([c[0] for c in calls], ["build", "clippy", "test", "build"])
+        self.assertIn("--workspace", calls[0])
+        self.assertIn("--workspace", calls[2])
+        self.assertIn("all gates passed", output)
 
 
 if __name__ == "__main__":

@@ -13,8 +13,30 @@ import uuid
 
 
 def relevant(paths):
-    return any(p in ("Cargo.lock", "Cargo.toml") or p.startswith(
+    return any(p in ("Cargo.lock", "Cargo.toml", ".bboxy/quarantine.md") or p.startswith(
         ("crates/", "scripts/", "lab/", "design/", ".cargo/")) for p in paths)
+
+
+def history_rows(rows):
+    result = []
+    kinds = {"green": "green", "red": "red", "manual-green": "green", "manual-revert": "green"}
+    for value in rows:
+        row = dict(value)
+        if "verdict" not in row and "correction" in row:
+            prior = next((r for r in reversed(result) if r["sha"] == row["sha"]), None)
+            if prior is None:
+                raise ValueError("postsubmit_correction_without_a_prior_verdict")
+            prior.update(correction=row["correction"], full_checks_passed=False)
+            continue
+        if row.get("verdict") == "green" and row.get("manual"):
+            row["verdict"] = "manual-green"
+        if row.get("verdict") not in kinds:
+            raise ValueError("invalid_postsubmit_verdict")
+        row["effective_verdict"] = kinds[row["verdict"]]
+        if row["verdict"].startswith("manual-"):
+            row["full_checks_passed"] = False
+        result.append(row)
+    return result
 
 
 def retain_parity(tree, target, sha, api):
@@ -114,24 +136,80 @@ class Lease:
             self.path.rmdir()
 
 
+def run_ci(api, tree, output, environment, sha, label="ci", after_tests=False):
+    log = output / (label + ".log")
+    argv = ["sh", "scripts/ci-local.sh"]
+    if after_tests:
+        argv.append("--after-tests")
+    argv.append("--parity")
+    with log.open("w") as stream:
+        child = subprocess.Popen(argv, cwd=tree, env=environment, stdout=stream,
+                                 stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
+        process = "process.json" if label == "ci" else label + "-process.json"
+        api.atomic_write(output / process, json.dumps(
+            {"pid": child.pid, "pgid": child.pid, "sha": sha, "argv": argv}) + "\n")
+        try:
+            code = child.wait()
+        except BaseException:
+            if child.poll() is None:
+                os.killpg(child.pid, signal.SIGTERM)
+                try:
+                    child.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    os.killpg(child.pid, signal.SIGKILL)
+                    child.wait()
+            raise
+    return code, log.read_text()
+
+
+def failure_selections(text, report):
+    gates = list(dict.fromkeys(re.findall(r"(?m)^invariant ([a-zA-Z0-9_-]+): fail\b", text)))
+    if gates:
+        return [test_selector("invariant " + gate + ": fail", report) for gate in gates]
+    names = list(dict.fromkeys(re.findall(r"(?m)^test (.+) \.\.\. FAILED$", text)))
+    if names:
+        return [test_selector(text[text.index("test " + name + " ... FAILED"):], report) for name in names]
+    return [test_selector(text, report)]
+
+
+def diagnose_predicate(api, tree, output, green, sha, selection, label):
+    selector = output / (label + "-selector.json")
+    api.atomic_write(selector, json.dumps(selection) + "\n")
+    diagnosis = api.command(["sh", "scripts/culprit.sh", green or "-", sha, selection["selector"]],
+                            cwd=tree, check=False,
+                            env=dict(os.environ, BBOXY_FAILED_TEST_SELECTOR=str(selector),
+                                     BBOXY_POSTSUBMIT_ISOLATE="1"))
+    raw = diagnosis.stdout + diagnosis.stderr
+    api.atomic_write(output / (label + ".log"), raw)
+    with (output / "culprit.log").open("a") as stream:
+        stream.write(raw)
+    try:
+        answer = json.loads(diagnosis.stdout)
+        if not isinstance(answer, dict):
+            raise ValueError("not an object")
+    except ValueError:
+        answer = {"verdict": "unresolved", "reason": "invalid_culprit_json"}
+    return diagnosis.returncode, answer
+
+
 def one(root, api):
     api.git("fetch", "origin", "main", cwd=root)
     sha = api.git("rev-parse", "origin/main", cwd=root)
-    history = api.records("postsubmit.log")
+    history = history_rows(api.records("postsubmit.log"))
     last = history[-1]["sha"] if history else None
-    if last == sha:
-        return 0 if history[-1]["verdict"] == "green" else 1
+    if last == sha and not history[-1]["verdict"].startswith("manual-"):
+        return 0 if history[-1]["effective_verdict"] == "green" else 1
     paths = api.changed_paths(last + ".." + sha, cwd=root) if last else ["crates/"]
-    if last and not relevant(paths):
+    if last and not history[-1]["verdict"].startswith("manual-") and not relevant(paths):
         previous = history[-1]
         record = dict(previous, sha=sha, started=api.now(), ended=api.now(),
                       carried_from=last, skipped="records_only")
         api.append_record("postsubmit.log", record)
-        status = f'{record["verdict"]} {sha}'
-        if record["verdict"] == "red":
+        status = f'{record["effective_verdict"]} {sha}'
+        if record["effective_verdict"] == "red":
             status += " " + record["failing_test"]
         api.atomic_write(api.state_directory() / "main-status", status + "\n")
-        return 0 if record["verdict"] == "green" else 1
+        return 0 if record["effective_verdict"] == "green" else 1
     work = root / "scratchpad/landing-watch"
     work.mkdir(parents=True, exist_ok=True)
     tree = work / ("tree-" + uuid.uuid4().hex)
@@ -144,23 +222,7 @@ def one(root, api):
     try:
         environment = dict(os.environ, CARGO_TARGET_DIR=str(target), CARGO_BUILD_JOBS="2",
                            BBOXY_GATE_SLOT="none", PARITY_OUT=str(target / "parity"))
-        with (output / "ci.log").open("w") as stream:
-            child = subprocess.Popen(["sh", "scripts/ci-local.sh", "--parity"], cwd=tree,
-                                     env=environment, stdout=stream, stderr=subprocess.STDOUT,
-                                     start_new_session=True)
-            api.atomic_write(output / "process.json", json.dumps({"pid": child.pid, "pgid": child.pid, "sha": sha}) + "\n")
-            try:
-                code = child.wait()
-            except BaseException:
-                if child.poll() is None:
-                    os.killpg(child.pid, signal.SIGTERM)  # our recorded child group only
-                    try:
-                        child.wait(timeout=10)
-                    except subprocess.TimeoutExpired:
-                        os.killpg(child.pid, signal.SIGKILL)
-                        child.wait()
-                raise
-        text = (output / "ci.log").read_text()
+        code, text = run_ci(api, tree, output, environment, sha)
         selection = test_selector(text, target / "parity/report.json") if code else None
         failure = selection["name"] if code else "-"
         culprit = "-"
@@ -174,44 +236,81 @@ def one(root, api):
                 api.atomic_write(output / "store-error.log", str(error) + "\n")
         record = {"sha": sha, "verdict": verdict, "started": started, "ended": api.now(),
                   "failing_test": failure, "culprit": culprit, "exit": code,
-                  "log": str(output / "ci.log")}
-        # Close the tree before diagnosis; no new code lands on a known red main.
-        api.atomic_write(api.state_directory() / "main-status",
-                         f"{verdict} {sha}" + (" " + failure if code else "") + "\n")
+                  "full_checks_passed": not code, "log": str(output / "ci.log")}
+        green = next((r["sha"] for r in reversed(history)
+                      if r["verdict"] == "green" and r.get("full_checks_passed", True)), None)
         if code:
-            green = next((r["sha"] for r in reversed(history) if r["verdict"] == "green"), None)
-            if green:
-                selector = output / "test-selector.json"
-                api.atomic_write(selector, json.dumps(selection) + "\n")
-                record["test_selector"] = selection["selector"]
-                diagnosis = api.command(["sh", "scripts/culprit.sh", green, sha, selection["selector"]],
-                                        cwd=tree, check=False,
-                                        env=dict(os.environ, BBOXY_FAILED_TEST_SELECTOR=str(selector)))
-                api.atomic_write(output / "culprit.log", diagnosis.stdout + diagnosis.stderr)
-                try:
-                    answer = json.loads(diagnosis.stdout)
-                    if not isinstance(answer, dict):
-                        raise ValueError("not an object")
-                except ValueError:
-                    answer = {}
-                    record["diagnostic_error"] = "invalid_culprit_json"
-                if diagnosis.returncode:
-                    record["diagnostic_exit"] = diagnosis.returncode
-                target = None
-                if diagnosis.returncode == 0 and answer.get("verdict") == "flake":
-                    verdict = record["verdict"] = "green"
-                    record["flake"] = True
-                    api.atomic_write(api.state_directory() / "main-status", f"green {sha}\n")
-                elif diagnosis.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}", answer.get("culprit") or ""):
-                    target = record["culprit"] = answer["culprit"]
-                elif answer.get("verdict") == "unresolved" and answer.get("revert_range") == green + ".." + sha:
-                    target = record["revert_range"] = answer["revert_range"]
-                if target:
-                    reverted = api.command(["sh", "scripts/revert.sh", target], cwd=tree, check=False)
-                    api.atomic_write(output / "revert.log", reverted.stdout + reverted.stderr)
-                    record["revert_exit"] = reverted.returncode
-            else:
-                record["diagnostic_error"] = "no_last_green"
+            # Every failing predicate gets isolated reruns before main closes.
+            # A flake is not a full CI verdict: complete the remaining checks.
+            for resume in range(4):
+                pending = ([selection] if failure == "parity_store_missing" else
+                           failure_selections(text, target / "parity/report.json"))
+                survivor = None
+                for index, selected in enumerate(pending):
+                    record.update(test_selector=selected["selector"], predicate=selected["selector"])
+                    label = f"rerun-{resume}-{index}"
+                    diagnostic_exit, answer = diagnose_predicate(
+                        api, tree, output, green, sha, selected, label)
+                    if diagnostic_exit == 0 and answer.get("verdict") == "flake":
+                        proposal = {"sha": sha, "predicate": selected["selector"], "timestamp": api.now(),
+                                    "evidence": str(output / (label + ".log")),
+                                    "log": str(output / (label + ".log")),
+                                    "reruns": answer.get("trials", []),
+                                    "owner_and_task_required": True}
+                        api.append_record("quarantine-proposals.log", proposal)
+                        record.setdefault("flaky_predicates", []).append(proposal)
+                        record["flake"] = True
+                    else:
+                        survivor = selected
+                        break
+                if survivor is not None:
+                    selection, failure = survivor, survivor["name"]
+                    record.update(failing_test=failure, test_selector=selection["selector"])
+                    api.atomic_write(api.state_directory() / "main-status", f"red {sha} {failure}\n")
+                    if not green:
+                        record["diagnostic_error"] = "no_last_green"
+                        break
+                    if diagnostic_exit:
+                        record["diagnostic_exit"] = diagnostic_exit
+                    remedy = None
+                    if diagnostic_exit == 0 and re.fullmatch(r"[0-9a-f]{40}", answer.get("culprit") or ""):
+                        remedy = record["culprit"] = answer["culprit"]
+                    elif answer.get("verdict") == "unresolved" and answer.get("revert_range") == green + ".." + sha:
+                        remedy = record["revert_range"] = answer["revert_range"]
+                    if remedy:
+                        reverted = api.command(["sh", "scripts/revert.sh", remedy], cwd=tree, check=False)
+                        api.atomic_write(output / "revert.log", reverted.stdout + reverted.stderr)
+                        record["revert_exit"] = reverted.returncode
+                    break
+                if resume == 3:
+                    # All remaining failures were classified as flakes. Keep
+                    # admission open, without claiming a fresh native truth.
+                    verdict = "green"
+                    record.update(full_checks_passed=False,
+                                  incomplete_reason="full_checks_not_green_after_three_resumes")
+                    break
+                label = "after-flake-" + str(resume + 1)
+                code, text = run_ci(api, tree, output, environment, sha, label, after_tests=True)
+                record.setdefault("resumes", []).append({"exit": code, "log": str(output / (label + ".log"))})
+                if not code:
+                    try:
+                        retain_parity(tree, target, sha, api)
+                    except api.Refusal as error:
+                        code, failure = 1, "parity_store_missing"
+                        selection = {"name": failure, "selector": "unknown:" + failure, "source": "unavailable"}
+                        api.atomic_write(output / "store-error.log", str(error) + "\n")
+                    else:
+                        verdict = "green"
+                        record["full_checks_passed"] = True
+                        break
+                else:
+                    selection = test_selector(text, target / "parity/report.json")
+                    failure = selection["name"]
+            record.update(verdict=verdict, initial_exit=record["exit"], exit=code,
+                          ended=api.now(), failing_test=failure)
+        record["native_retained"] = record["full_checks_passed"]
+        api.atomic_write(api.state_directory() / "main-status",
+                         f"{verdict} {sha}" + (" " + failure if verdict == "red" else "") + "\n")
         api.append_record("postsubmit.log", record)
         print(json.dumps(record, sort_keys=True), flush=True)
         return 0 if verdict == "green" else 1
@@ -224,11 +323,32 @@ def one(root, api):
 def run(arguments, api):
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true")
+    manual = parser.add_mutually_exclusive_group()
+    manual.add_argument("--manual-green", metavar="SHA", help="log the Oracle's evidenced hand call")
+    manual.add_argument("--manual-revert", metavar="SHA", help="log the landed corrective Revert commit")
+    parser.add_argument("--evidence")
     args = parser.parse_args(arguments)
     def terminate(signum, frame):
         raise KeyboardInterrupt
     signal.signal(signal.SIGTERM, terminate)
     root = api.repository()
+    if args.manual_green or args.manual_revert:
+        if not args.evidence or not args.evidence.strip():
+            raise api.Refusal("manual_postsubmit_requires_evidence")
+        api.git("fetch", "origin", "main", cwd=root)
+        sha = api.git("rev-parse", "--verify", "--end-of-options",
+                      (args.manual_green or args.manual_revert) + "^{commit}", cwd=root)
+        if api.command(["git", "merge-base", "--is-ancestor", sha, "origin/main"],
+                       cwd=root, check=False).returncode:
+            raise api.Refusal("manual_postsubmit_sha_not_on_main")
+        if args.manual_revert and not api.git("show", "-s", "--format=%s", sha, cwd=root).startswith("Revert"):
+            raise api.Refusal("manual_revert_requires_a_landed_revert")
+        row = {"sha": sha, "verdict": "manual-green" if args.manual_green else "manual-revert",
+               "manual": True, "evidence": args.evidence, "ended": api.now(), "full_checks_passed": False}
+        api.append_record("postsubmit.log", row)
+        api.atomic_write(api.state_directory() / "main-status", "green " + sha + "\n")
+        print(json.dumps(row, sort_keys=True))
+        return 0
     with Lease(api):
         while True:
             code = one(root, api)

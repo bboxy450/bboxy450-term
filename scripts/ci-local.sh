@@ -3,8 +3,14 @@
 # Run it in a clean worktree of the commit being handed off, never in the shared tree:
 #   git worktree add --detach /tmp/ci-<name> <sha>; cd there; CARGO_TARGET_DIR=<own dir> sh scripts/ci-local.sh
 # Usage: sh scripts/ci-local.sh [--parity] [--slow]
+# The watcher's --after-tests continuation reports post-test checks only.
 # --parity runs visual parity; --slow also runs the scale gates.
 set -eu
+after_tests=false
+if [ "${1:-}" = --after-tests ]; then
+    after_tests=true
+    shift
+fi
 gate_clean() {
     [ -z "$(git status --porcelain --untracked-files=no)" ] &&
     [ -z "$(git ls-files --others --exclude-standard -- crates scripts lab design .cargo Cargo.toml Cargo.lock build.rs)" ]
@@ -13,6 +19,7 @@ if ! gate_clean; then echo 'ci-local: dirty source tree; no exact-SHA proof' >&2
 gate_sha=$(git rev-parse HEAD)
 gate_mode=normal
 [ "$#" -eq 0 ] || gate_mode=extended
+[ "$after_tests" = false ] || gate_mode=after-tests
 printf 'ci-local: source %s %s\n' "$gate_sha" "$gate_mode"
 # shellcheck source=scripts/cache-env.sh
 . "$(dirname "$0")/cache-env.sh"
@@ -37,11 +44,13 @@ if [ "${BBOXY_GATE_SLOT:-}" != none ]; then
     trap 'rm -rf "/tmp/bboxy450-gate-slot-$slot"' EXIT INT TERM
     echo "ci-local: gate slot $slot of $limit"
 fi
-sh scripts/layering.sh
-python3 -I scripts/test-landing.py
-cargo build --workspace --locked
-cargo clippy --workspace --all-targets --locked -- -D warnings
-sh scripts/quarantine-test.sh --workspace --locked
+if [ "$after_tests" = false ]; then
+    sh scripts/layering.sh
+    python3 -I scripts/test-landing.py
+    cargo build --workspace --locked
+    cargo clippy --workspace --all-targets --locked -- -D warnings
+    sh scripts/quarantine-test.sh --workspace --locked
+fi
 sh scripts/ui-lint.sh
 cargo build -p bboxy450-term --locked
 smoke_bin="${CARGO_TARGET_DIR:-target}/debug/bboxy450-term"
@@ -64,5 +73,9 @@ sh scripts/invariants.sh "$@"
 if ! gate_clean || [ "$(git rev-parse HEAD)" != "$gate_sha" ]; then
     echo 'ci-local: source changed during gate; no exact-SHA proof' >&2; exit 2
 fi
-echo "ci-local: all gates passed"
+if [ "$after_tests" = true ]; then
+    echo "ci-local: post-test checks passed"
+else
+    echo "ci-local: all gates passed"
+fi
 printf 'ci-local: result %s %s 0\n' "$gate_sha" "$gate_mode"

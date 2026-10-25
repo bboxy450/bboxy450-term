@@ -781,12 +781,16 @@ class WatchTests(unittest.TestCase):
 set -eu
 [ "$BBOXY_GATE_SLOT" = none ]
 [ "$CARGO_BUILD_JOBS" = 2 ]
-python3 - <<'PY'
+python3 - "$@" <<'PY'
 import json,os,pathlib,sys
 state=pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR'])
-with (state/'ci-calls').open('a') as f:f.write('ci --parity\\n')
+after='--after-tests' in sys.argv
+with (state/'ci-calls').open('a') as f:f.write(('tail' if after else 'full')+'\\n')
 cfg=json.loads((state/'watch.json').read_text()) if (state/'watch.json').exists() else {}
-if cfg.get('fail'):
+if after and cfg.get('tail_failure'):
+ print('invariant '+cfg['tail_failure']+': fail (exit 1)')
+ raise SystemExit(1)
+if cfg.get('fail') and not after:
  if cfg.get('invariant'):
   print('invariant '+cfg['invariant']+': fail (exit 1)')
   if cfg.get('parity'):
@@ -795,12 +799,13 @@ if cfg.get('fail'):
    report.write_text(json.dumps(cfg['parity']))
   raise SystemExit(1)
  print('test fixture_failed ... FAILED')
+ if cfg.get('additional_failure'):print('test '+cfg['additional_failure']+' ... FAILED')
  print("error: test failed, to rerun pass '-p c --test fixture'")
  raise SystemExit(101)
 if not cfg.get('missing_store'):
  target=pathlib.Path(os.environ['CARGO_TARGET_DIR'])
  (target/'parity/native').mkdir(parents=True,exist_ok=True)
- (target/'parity/native/fixture.png').write_bytes(b'fixture native pixels')
+ (target/'parity/native/fixture.png').write_bytes(b'fixture native pixels'+(b' after tests' if after else b''))
  (target/'parity/cases.json').write_text('[]')
  (target/'debug').mkdir(exist_ok=True)
  (target/'debug/bboxybook').write_bytes(b'fixture binary')
@@ -813,10 +818,18 @@ python3 - "$1" "$2" <<'PY'
 import json,os,pathlib,sys
 s=pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR'])
 c=json.loads((s/'watch.json').read_text())
+selector=(s/'culprit-selector').read_text().strip()
+with (s/'culprit-calls').open('a') as f:f.write(selector+'\\n')
+if c.get('assert_not_red'):
+ status=s/'main-status'
+ assert not status.exists() or not status.read_text().startswith('red '), 'first-run main closed before reruns'
 if c.get('unresolved'):
  print(json.dumps({'verdict':'unresolved','revert_range':sys.argv[1]+'..'+sys.argv[2]}))
  raise SystemExit(2)
-print(json.dumps(c.get('diagnosis',{'verdict':'culprit','culprit':'f'*40})))
+answer=c.get('diagnoses',{}).get(selector,c.get('diagnosis',{'verdict':'culprit','culprit':'f'*40}))
+if answer.get('verdict')=='flake':
+ answer.setdefault('trials',[{'sha':sys.argv[2],'attempt':n,'exit':0} for n in (1,2,3)])
+print(json.dumps(answer))
 PY
 ''')
         self.repo.write("scripts/revert.sh", '#!/bin/sh\nprintf "%s\\n" "$1" > "$BBOXY_LANDING_STATE_DIR/reverted"\n')
@@ -893,6 +906,117 @@ PY
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.repo.state / "main-status").read_text(), "green " + sha + "\n")
         self.assertFalse((self.repo.state / "reverted").exists())
+
+    # keeps: landing.md §6 — a first postsubmit can classify a flake without a green baseline.
+    def test_first_red_runs_flake_diagnosis_before_publishing_red(self):
+        (self.repo.state / "watch.json").write_text(json.dumps(
+            {"fail": True, "assert_not_red": True, "diagnosis": {"verdict": "flake"}}))
+        result = self.watch()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.repo.state / "main-status").read_text(), "green " + self.repo.base + "\n")
+        self.assertTrue((self.repo.state / "culprit-selector").exists())
+        self.assertFalse((self.repo.state / "reverted").exists())
+
+    def test_first_red_without_a_baseline_cannot_revert_a_claimed_culprit(self):
+        (self.repo.state / "watch.json").write_text('{"fail":true,"assert_not_red":true}')
+        result = self.watch()
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)["diagnostic_error"], "no_last_green")
+        self.assertTrue((self.repo.state / "culprit-selector").exists())
+        self.assertFalse((self.repo.state / "reverted").exists())
+
+    # keeps: landing.md §6 — isolated flake passes never replace the remaining CI/native truth.
+    def test_flake_runs_remaining_checks_before_storing_the_new_native_set(self):
+        self.seed_green()
+        sha = self.publish("crates/c/src/lib.rs")
+        (self.repo.state / "watch.json").write_text('{"fail":true,"diagnosis":{"verdict":"flake"}}')
+        result = self.watch()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        pointer = Path((self.repo.state / "parity-last-green").read_text().strip())
+        self.assertEqual(pointer.name, sha)
+        self.assertEqual((pointer / "native/fixture.png").read_bytes(), b"fixture native pixels after tests")
+        self.assertEqual((self.repo.state / "ci-calls").read_text().splitlines(), ["full", "full", "tail"])
+        self.assertEqual(json.loads(result.stdout)["resumes"][0]["exit"], 0)
+        proposals = [json.loads(line) for line in (self.repo.state / "quarantine-proposals.log").read_text().splitlines()]
+        self.assertEqual([r["exit"] for r in proposals[0]["reruns"]], [0, 0, 0])
+        self.assertTrue(Path(proposals[0]["log"]).is_file())
+
+    def test_a_later_ci_failure_cannot_publish_green_after_an_earlier_flake(self):
+        self.seed_green()
+        pointer = (self.repo.state / "parity-last-green").read_text()
+        self.publish("crates/c/src/lib.rs")
+        (self.repo.state / "watch.json").write_text(json.dumps({"fail": True, "tail_failure": "late",
+            "diagnosis": {"verdict": "flake"}, "diagnoses": {"invariant:late":
+                {"verdict": "culprit", "culprit": "f" * 40}}}))
+        result = self.watch()
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual((self.repo.state / "parity-last-green").read_text(), pointer)
+        self.assertTrue((self.repo.state / "main-status").read_text().endswith(" late\n"))
+
+    def test_a_second_failing_test_is_diagnosed_before_resuming_ci(self):
+        self.seed_green()
+        self.publish("crates/c/src/lib.rs")
+        (self.repo.state / "watch.json").write_text(json.dumps({"fail": True, "additional_failure": "second_failed",
+            "diagnosis": {"verdict": "flake"}, "diagnoses": {"test:cargo:c:test/fixture:second_failed":
+                {"verdict": "culprit", "culprit": "f" * 40}}}))
+        result = self.watch()
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual((self.repo.state / "ci-calls").read_text().splitlines(), ["full", "full"])
+        calls = (self.repo.state / "culprit-calls").read_text().splitlines()
+        self.assertEqual(len(calls), 2)
+        self.assertTrue(calls[-1].endswith(":second_failed"))
+
+    def test_repeated_tail_flakes_stay_green_without_claiming_native_truth(self):
+        self.seed_green()
+        pointer = (self.repo.state / "parity-last-green").read_text()
+        self.publish("crates/c/src/lib.rs")
+        (self.repo.state / "watch.json").write_text(json.dumps(
+            {"fail": True, "tail_failure": "late", "diagnosis": {"verdict": "flake"}}))
+        result = self.watch()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        record = json.loads(result.stdout)
+        self.assertFalse(record["full_checks_passed"])
+        self.assertFalse(record["native_retained"])
+        self.assertTrue((self.repo.state / "main-status").read_text().startswith("green "))
+        self.assertEqual((self.repo.state / "parity-last-green").read_text(), pointer)
+
+    # keeps: landing.md §6 — explicit hand calls do not substitute for a full watcher verdict.
+    def test_manual_green_is_logged_then_the_watcher_still_runs_full_ci(self):
+        result = self.repo.cli("main-watch", "--manual-green", self.repo.base,
+                               "--evidence", "fixture isolated reruns")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)["verdict"], "manual-green")
+        self.assertFalse((self.repo.state / "parity-last-green").exists())
+        full = self.watch()
+        self.assertEqual(full.returncode, 0, full.stdout + full.stderr)
+        self.assertTrue(json.loads(full.stdout)["full_checks_passed"])
+        self.assertEqual((self.repo.state / "ci-calls").read_text().splitlines(), ["full"])
+
+    def test_manual_call_requires_evidence_and_a_real_landed_revert(self):
+        for args in (("--manual-green", self.repo.base),
+                     ("--manual-revert", self.repo.base, "--evidence", "not a revert")):
+            with self.subTest(args=args):
+                result = self.repo.cli("main-watch", *args)
+                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse((self.repo.state / "main-status").exists())
+
+    def test_manual_revert_records_the_landed_corrective_commit(self):
+        red = self.publish("crates/c/src/lib.rs")
+        run("git", "revert", "--no-edit", red, cwd=self.repo.root)
+        reverted = run("git", "rev-parse", "HEAD", cwd=self.repo.root)
+        run("git", "push", "-q", "origin", "HEAD:main", cwd=self.repo.root)
+        result = self.repo.cli("main-watch", "--manual-revert", reverted,
+                               "--evidence", "fixture corrective revert")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)["verdict"], "manual-revert")
+        self.assertEqual((self.repo.state / "main-status").read_text(), "green " + reverted + "\n")
+
+    def test_quarantine_admission_runs_ci_instead_of_carrying_a_previous_verdict(self):
+        self.seed_green()
+        self.publish(".bboxy/quarantine.md")
+        result = self.watch()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.repo.state / "ci-calls").read_text().splitlines(), ["full", "full"])
 
     def test_unresolved_failure_reverts_only_the_exact_failed_batch(self):
         self.seed_green()
