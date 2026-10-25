@@ -1,0 +1,17 @@
+{
+  "brief": "7a5914a2-8d02-4995-9fc9-04bcdd95b843",
+  "guard_ms": 60000,
+  "clock": "performance.now monotonic deadline",
+  "checks": [
+    {
+      "log": ".bboxy/runs/chrome-startup-red.log",
+      "sha256": "d0467709e3380678c5666e0de0780864ef03d94a2b1f2849f1245a107d5b7794",
+      "result": "old six-second loop: ten-second fake Chrome fails"
+    },
+    {
+      "log": ".bboxy/runs/chrome-startup-green.log",
+      "sha256": "73d520222dd65ea557d24deeed44349819eb3e6a19396d9422754bf4b06d60ee",
+      "result": "deadline guard: slow fake Chrome and stderr error test both pass"
+    }
+  ]
+}

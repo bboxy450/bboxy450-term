@@ -1,0 +1,10 @@
+✔ capture accepts a Chrome process that publishes its port after ten seconds (10970.569667ms)
+✔ startup guard preserves Chrome stderr in the failure (0.847375ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12180.629541

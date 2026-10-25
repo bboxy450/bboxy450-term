@@ -1,0 +1,19 @@
+✖ capture accepts a Chrome process that publishes its port after ten seconds (6415.836833ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7448.297833
+
+✖ failing tests:
+
+test at crates/bboxybook/capture-startup.test.mjs:10:1
+✖ capture accepts a Chrome process that publishes its port after ten seconds (6415.836833ms)
+  Error: Chrome did not start: 
+      at waitForDevToolsPort (file:///Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/ci-tree/crates/bboxybook/capture-startup.mjs:14:9)
+      at async TestContext.<anonymous> (file:///Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/ci-tree/crates/bboxybook/capture-startup.test.mjs:17:18)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
