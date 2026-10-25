@@ -7,21 +7,78 @@
 //! is green only when all passed, and the exit code follows it. Every promise's e2e record
 //! is written through `record write`: created on the first night, updated on the next.
 use serde_json::Value;
-use std::process::Command;
+use std::{os::unix::fs::PermissionsExt, process::Command};
+
+fn assert_night_apps_stopped(output: &std::process::Output) {
+    for app in String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .filter(|line| line["kind"] == "app")
+    {
+        let run = std::path::Path::new(app["run_dir"].as_str().unwrap());
+        assert!(
+            !run.join(bbt_mux::ctl_door::ENDPOINT).exists(),
+            "night left its control endpoint: {app}"
+        );
+        let pid: libc::pid_t = app["pid"].as_u64().unwrap().try_into().unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        loop {
+            // SAFETY: signal zero only queries this night's recorded app PID;
+            // it neither signals the process nor supplies a PID-kill fallback.
+            if unsafe { libc::kill(pid, 0) } < 0 {
+                assert_eq!(
+                    std::io::Error::last_os_error().raw_os_error(),
+                    Some(libc::ESRCH)
+                );
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "retained evidence kept an app alive: {app}"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+}
 
 #[test]
 fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
     let scripts = tempfile::tempdir().unwrap();
+    let bin = scripts.path().join("T1.fixture-bin");
+    std::fs::create_dir(&bin).unwrap();
+    for (name, body) in [
+        (
+            "claude",
+            "#!/bin/sh\ne2e_private_probe\nwhile read -r line; do :; done\n",
+        ),
+        ("e2e_private_probe", "#!/bin/sh\necho E2E_FIXTURE_ONLY\n"),
+    ] {
+        let path = bin.join(name);
+        std::fs::write(&path, body).unwrap();
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o700)).unwrap();
+    }
     // T1 passes in full only if ctl reaches this promise's own app; T2 fails with its reason;
     // T3 passes but says it proves only part of its promise (#316).
     std::fs::write(
         scripts.path().join("T1.sh"),
-        "# coverage: full\n\"$BBT\" ctl seat ls >/dev/null && [ -d \"$E2E_WORK\" ] && kill -0 \"$E2E_APP\"\n",
+        r#"# coverage: full
+set -eu
+"$BBT" ctl seat ls >/dev/null
+[ -d "$E2E_WORK" ] && kill -0 "$E2E_APP"
+seat=$("$BBT" ctl seat spawn claude --role executor --place tab --cwd "$E2E_WORK" | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["data"]["seat"])')
+"$BBT" ctl seat wait "$seat" --text '(?m)^E2E_FIXTURE_ONLY$' --timeout 20000
+"#,
     )
     .unwrap();
     std::fs::write(
         scripts.path().join("T3.sh"),
-        "# coverage: partial; missing: resizing a pane; no stale cells\nexit 0\n",
+        r#"# coverage: partial; missing: resizing a pane; no stale cells
+set -eu
+seat=$("$BBT" ctl seat spawn zsh --place tab --cwd "$E2E_WORK" | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["data"]["seat"])')
+"$BBT" ctl seat type "$seat" 'command -v e2e_private_probe >/dev/null && echo E2E_FIXTURE_LEAKED || echo E2E_FIXTURE_ABSENT'
+"$BBT" ctl seat key "$seat" enter
+"$BBT" ctl seat wait "$seat" --text '(?m)^E2E_FIXTURE_ABSENT$' --timeout 20000
+"#,
     )
     .unwrap();
     std::fs::write(
@@ -41,6 +98,7 @@ fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
             .unwrap()
     };
     let output = night();
+    assert_night_apps_stopped(&output);
     let lines: Vec<Value> = String::from_utf8_lossy(&output.stdout)
         .lines()
         .map(|l| serde_json::from_str(l).unwrap())
@@ -67,6 +125,17 @@ fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
         assert_eq!(verdict(id), "untested", "{id}");
     }
     let summary = lines.last().unwrap();
+    let kept = std::path::PathBuf::from(summary["kept"].as_str().expect("failed run retained"));
+    assert_eq!(
+        std::fs::metadata(&kept).unwrap().permissions().mode() & 0o077,
+        0,
+        "retained root is private: {kept:?}"
+    );
+    assert!(
+        std::fs::read_to_string(kept.join("T2/work/output.log"))
+            .unwrap()
+            .contains("FAIL: the fixture says no")
+    );
     assert_eq!(summary["kind"], "summary");
     assert_eq!(summary["state"], "red");
     assert_eq!(summary["passed"], 2);
@@ -153,6 +222,7 @@ fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
     );
     // The next night updates the same records under their etag: same numbers, new run.
     let again = night();
+    assert_night_apps_stopped(&again);
     let second: Vec<Value> = String::from_utf8_lossy(&again.stdout)
         .lines()
         .map(|l| serde_json::from_str(l).unwrap())
@@ -172,4 +242,21 @@ fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
         "one fix task and one cover task across both nights"
     );
     assert!(record("T2").contains("updated_by:"), "{}", record("T2"));
+    let kept_again = String::from_utf8_lossy(&again.stdout)
+        .lines()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .find(|line| line["kind"] == "summary")
+        .unwrap()["kept"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert_ne!(kept, std::path::Path::new(&kept_again));
+    assert!(
+        std::path::Path::new(&kept_again)
+            .join("T2/work/output.log")
+            .is_file()
+    );
+    // These are the two roots the test's own child nights retained, not shared state.
+    std::fs::remove_dir_all(kept).unwrap();
+    std::fs::remove_dir_all(kept_again).unwrap();
 }
