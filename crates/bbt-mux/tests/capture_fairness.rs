@@ -36,11 +36,22 @@ struct HeldSeats {
 }
 impl SupervisorConnection for HeldSeats {
     fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
-        let huge = matches!(&action,Action::ReadRing {attachment,..} if attachment.seat==self.huge);
+        let huge = match &action {
+            Action::ReadRing { attachment, .. } => attachment.seat == self.huge,
+            Action::ReadRingBatch { reads, .. } => {
+                reads.iter().any(|read| read.attachment.seat == self.huge)
+            }
+            _ => false,
+        };
         let reply = self.client.request(action)?;
         if huge
             && self.delay.load(Ordering::Acquire)
-            && matches!(&reply,Reply::RingHistory {history} if !history.records.is_empty())
+            && common::ring_histories(&reply).iter().any(|history| {
+                history
+                    .records
+                    .first()
+                    .is_some_and(|record| record.event.seat() == self.huge)
+            })
         {
             self.pages.fetch_add(1, Ordering::Release);
             std::thread::sleep(Duration::from_millis(30));
@@ -393,7 +404,11 @@ fn outage_state(up: bool) -> LinkState {
 }
 impl SupervisorConnection for OutageLink {
     fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
-        if matches!(action, Action::ReadRing { .. }) && self.cut.swap(false, Ordering::AcqRel) {
+        if matches!(
+            action,
+            Action::ReadRing { .. } | Action::ReadRingBatch { .. }
+        ) && self.cut.swap(false, Ordering::AcqRel)
+        {
             self.up.store(false, Ordering::Release);
         }
         if !self.up.load(Ordering::Acquire) {

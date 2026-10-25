@@ -1444,6 +1444,7 @@ struct ViewState {
     adapter: Session,
     delivery_endpoint: crate::adapters::Endpoint,
     delivery_failure: Option<String>,
+    ring_refusal: Option<crate::Failure>,
     tap: OscTap,
     replies: VecDeque<(Ulid, Vec<u8>)>,
     native_reader: Option<NativeReader>,
@@ -1505,6 +1506,22 @@ struct ReadyIndex {
 }
 
 impl ReadyIndex {
+    fn runnable_len(&self, total: usize, parked: &BTreeSet<HostId>) -> usize {
+        total
+            - parked
+                .iter()
+                .filter_map(|host| self.hosts.get(host))
+                .map(|host| host.order.len())
+                .sum::<usize>()
+    }
+    fn runnable_rank(&self, ticket: u128, parked: &BTreeSet<HostId>) -> usize {
+        let skipped: usize = parked
+            .iter()
+            .filter_map(|host| self.hosts.get(host))
+            .map(|host| host.order.partition_point(|(t, _)| *t < ticket))
+            .sum();
+        (ticket - self.head) as usize - skipped
+    }
     fn push(&mut self, key: &(HostId, Ulid), needs_ring: bool) {
         let host = self.hosts.entry(key.0.clone()).or_default();
         host.order.push_back((self.tail, key.1));
@@ -1533,6 +1550,12 @@ struct PendingSeat {
     exited: bool,
     queued: bbt_supervisor::client::PendingEvents,
     first_unparsed: u64,
+    ring_blocked: bool,
+}
+impl PendingSeat {
+    fn needs_ring(&self) -> bool {
+        !self.ring_blocked && self.active.sequence().unwrap() > self.first_unparsed
+    }
 }
 impl PendingSeats {
     const WATCHED_QUANTA: usize = 3;
@@ -1556,8 +1579,7 @@ impl PendingSeats {
             .is_some_and(|slot| self.watched.contains(&(key.1, slot.generation)))
     }
     fn enqueue(&mut self, key: (HostId, Ulid)) {
-        let needs_ring =
-            self.seats[&key].active.sequence().unwrap() > self.seats[&key].first_unparsed;
+        let needs_ring = self.seats[&key].needs_ring();
         if self.is_watched(&key) {
             self.watched_index.push(&key, needs_ring);
             self.ready_watched.push_back(key);
@@ -1604,16 +1626,11 @@ impl PendingSeats {
         self.watched_index = ReadyIndex::default();
         self.background_index = ReadyIndex::default();
         for key in &self.ready_watched {
-            self.watched_index.push(
-                key,
-                self.seats[key].active.sequence().unwrap() > self.seats[key].first_unparsed,
-            );
+            self.watched_index.push(key, self.seats[key].needs_ring());
         }
         for key in &self.ready_background {
-            self.background_index.push(
-                key,
-                self.seats[key].active.sequence().unwrap() > self.seats[key].first_unparsed,
-            );
+            self.background_index
+                .push(key, self.seats[key].needs_ring());
         }
     }
 
@@ -1627,25 +1644,34 @@ impl PendingSeats {
         // Tickets are contiguous within each lane; subtraction gives its rank
         // without scanning other hosts. Merge at most 2*limit indexed rows in
         // the exact future global 3:1 order, with empty-lane donation intact.
+        if self.parked.contains(host) {
+            return vec![];
+        }
         let remaining = Self::WATCHED_QUANTA.saturating_sub(self.watched_streak);
+        let watched = self
+            .watched_index
+            .runnable_len(self.ready_watched.len(), &self.parked);
+        let background = self
+            .background_index
+            .runnable_len(self.ready_background.len(), &self.parked);
         let mut rows = Vec::with_capacity(limit * 2);
         if let Some(index) = self.watched_index.hosts.get(host) {
             for (&ticket, &seat) in index.ring.iter().take(limit) {
-                let rank = (ticket - self.watched_index.head) as usize;
+                let rank = self.watched_index.runnable_rank(ticket, &self.parked);
                 let before = if rank < remaining {
                     0
                 } else {
                     1 + (rank - remaining) / Self::WATCHED_QUANTA
                 };
-                rows.push((rank + before.min(self.ready_background.len()), seat));
+                rows.push((rank + before.min(background), seat));
             }
         }
         if let Some(index) = self.background_index.hosts.get(host) {
             for (&ticket, &seat) in index.ring.iter().take(limit) {
-                let rank = (ticket - self.background_index.head) as usize;
+                let rank = self.background_index.runnable_rank(ticket, &self.parked);
                 let before = remaining
                     .saturating_add(Self::WATCHED_QUANTA * rank)
-                    .min(self.ready_watched.len());
+                    .min(watched);
                 rows.push((rank + before, seat));
             }
         }
@@ -1691,6 +1717,7 @@ impl PendingSeats {
                 exited,
                 queued,
                 first_unparsed: first,
+                ring_blocked: false,
             },
         );
         if replaced.is_none() {
@@ -1720,10 +1747,7 @@ impl PendingSeats {
             let key = ready.pop_front()?;
             index.pop(&key);
             if self.parked.contains(&key.0) {
-                index.push(
-                    &key,
-                    self.seats[&key].active.sequence().unwrap() > self.seats[&key].first_unparsed,
-                );
+                index.push(&key, self.seats[&key].needs_ring());
                 ready.push_back(key);
             } else {
                 return Some(key);
@@ -1799,6 +1823,59 @@ struct ControlDelivery {
     outcome: Option<crate::adapters::WakeOutcome>,
     result: serde_json::Value,
 }
+#[derive(Clone)]
+struct RingPage {
+    read: bbt_supervisor::protocol::RingRead,
+    result: std::result::Result<Box<crate::ring::History>, crate::Failure>,
+}
+impl RingPage {
+    fn can_serve(&self, read: &bbt_supervisor::protocol::RingRead) -> bool {
+        self.read.attachment == read.attachment
+            && self.read.from <= read.from
+            && match &self.result {
+                Err(_) => self.read.from == read.from,
+                Ok(history) => history
+                    .records
+                    .iter()
+                    .any(|r| r.event.sequence() == Some(read.from)),
+            }
+    }
+    fn page(
+        &self,
+        read: &bbt_supervisor::protocol::RingRead,
+    ) -> Option<std::result::Result<Box<crate::ring::History>, crate::Failure>> {
+        if !self.can_serve(read) {
+            return None;
+        }
+        match &self.result {
+            Err(error) if self.read.from == read.from => Some(Err(error.clone())),
+            Err(_) => None,
+            Ok(history) => {
+                if !history
+                    .records
+                    .iter()
+                    .any(|r| r.event.sequence() == Some(read.from))
+                {
+                    return None;
+                }
+                let mut page = history.clone();
+                page.records.retain(|r| {
+                    r.event
+                        .sequence()
+                        .is_some_and(|n| n >= read.from && n <= read.to)
+                });
+                page.next = page
+                    .records
+                    .last()
+                    .and_then(|r| r.event.sequence())
+                    .filter(|last| *last < read.to)
+                    .map(|last| last + 1);
+                Some(Ok(page))
+            }
+        }
+    }
+}
+
 struct Worker {
     connections: Connections,
     config: LogicConfig,
@@ -1849,6 +1926,7 @@ struct Worker {
     checkpoint_progress: u64,
     gui_watches: GuiWatchInterests,
     gui_watch_epoch_seen: u64,
+    ring_pages: BTreeMap<HostId, BTreeMap<Ulid, RingPage>>,
 }
 impl Worker {
     fn open(
@@ -1947,6 +2025,7 @@ impl Worker {
             checkpoint_progress: 0,
             gui_watches: GuiWatchInterests::default(),
             gui_watch_epoch_seen: 0,
+            ring_pages: BTreeMap::new(),
         };
         for (host, info) in worker.connections.owned_seats()? {
             // Several fixture links can wrap one local supervisor. Recover a
@@ -3653,6 +3732,10 @@ impl Worker {
     }
     fn attach(&mut self, info: SeatInfo, live_start: bool) -> Result<()> {
         check_size(info.size.cols as usize, info.size.rows as usize)?;
+        let host = self.host_for_seat(info.seat)?;
+        if let Some(pages) = self.ring_pages.get_mut(&host) {
+            pages.remove(&info.seat);
+        }
         let directory = object_dir(&self.config.run_dir, &format!("seat-{}", info.seat))?;
         if let (Ok(record), Some(bytes)) = (
             self.registry.get(info.seat),
@@ -3893,6 +3976,7 @@ impl Worker {
                 adapter,
                 delivery_endpoint,
                 delivery_failure,
+                ring_refusal: None,
                 tap,
                 replies,
                 native_reader: None,
@@ -5152,6 +5236,206 @@ impl Worker {
         }
         result
     }
+    fn ring_read(&self, id: Ulid, through: u64) -> Option<bbt_supervisor::protocol::RingRead> {
+        let view = self.views.get(&id)?;
+        if view.sequence >= through
+            || view.ring_refusal.is_some()
+            || (view.checkpoint_paused
+                && view.checkpoint_requested
+                && view.checkpoint_pending.is_none())
+        {
+            return None;
+        }
+        Some(bbt_supervisor::protocol::RingRead {
+            attachment: self.attachments.get(&id)?.clone(),
+            from: view.sequence + 1,
+            to: through,
+        })
+    }
+    fn prefetch_ring(
+        &mut self,
+        key: &(HostId, Ulid),
+        event: &Event,
+        pending: &PendingSeats,
+    ) -> Result<()> {
+        use bbt_supervisor::protocol::{
+            MAX_RING_BATCH_BYTES, MAX_RING_BATCH_MEMBERS, RingReadResult,
+        };
+        let through = event.sequence().unwrap().saturating_sub(1);
+        let Some(selected) = self.ring_read(key.1, through) else {
+            return Ok(());
+        };
+        if self
+            .ring_pages
+            .get(&key.0)
+            .and_then(|pages| pages.get(&key.1))
+            .is_some_and(|page| page.can_serve(&selected))
+        {
+            return Ok(());
+        }
+        let mut reads = Vec::with_capacity(MAX_RING_BATCH_MEMBERS);
+        let mut retained = BTreeMap::new();
+        let ids = std::iter::once(key.1)
+            .chain(pending.ring_candidates(&key.0, MAX_RING_BATCH_MEMBERS - 1));
+        for id in ids {
+            let Some(slot) = pending.seats.get(&(key.0.clone(), id)) else {
+                continue;
+            };
+            let Some(view) = self.views.get(&id) else {
+                continue;
+            };
+            if view.generation != slot.generation {
+                continue;
+            }
+            let Some(read) = self.ring_read(id, slot.active.sequence().unwrap().saturating_sub(1))
+            else {
+                continue;
+            };
+            if let Some(old) = self.ring_pages.get(&key.0).and_then(|pages| pages.get(&id))
+                && old.can_serve(&read)
+            {
+                retained.insert(id, old.clone());
+            } else {
+                reads.push(read);
+            }
+        }
+        if reads.is_empty() {
+            self.ring_pages.insert(key.0.clone(), retained);
+            return Ok(());
+        }
+        let link = self.connections.link(&key.0)?;
+        let mut connection = match link.try_lock() {
+            Ok(connection) => connection,
+            Err(std::sync::TryLockError::WouldBlock) => return Ok(()),
+            Err(std::sync::TryLockError::Poisoned(_)) => {
+                return Err(invalid("supervisor link owner stopped"));
+            }
+        };
+        let rpc = self.client.capture_diagnostics.start(
+            Phase::ReadRingRpc,
+            key.1,
+            selected.attachment.generation,
+            selected.from,
+            selected.to,
+        );
+        let measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::ReadRingRequest);
+        let reply = connection.request(Action::ReadRingBatch {
+            reads: reads.clone(),
+            max_bytes: MAX_RING_BATCH_BYTES as u32,
+        });
+        drop(connection);
+        rpc.finish(capture_outcome(&reply), 0, 0);
+        let reply = match reply {
+            Err(error) if is_capture_busy(&error) => {
+                measurement.finish(1, 0);
+                return Ok(());
+            }
+            reply => reply?,
+        };
+        let Reply::RingHistoryBatch { results } = reply else {
+            return Err(invalid("ring batch reply mismatch"));
+        };
+        if results.len() != reads.len() {
+            return Err(invalid("ring batch member count mismatch"));
+        }
+        let mut expected: BTreeMap<_, _> = reads
+            .into_iter()
+            .map(|read| {
+                (
+                    (
+                        read.attachment.seat,
+                        read.attachment.generation,
+                        read.from,
+                        read.to,
+                    ),
+                    read,
+                )
+            })
+            .collect();
+        let mut bytes = 0;
+        for RingReadResult {
+            seat,
+            generation,
+            from,
+            to,
+            mut result,
+        } in results
+        {
+            let Some(read) = expected.remove(&(seat, generation, from, to)) else {
+                return Err(invalid("ring batch member identity mismatch"));
+            };
+            if let Ok(history) = &result {
+                let mut next = from;
+                let valid = history.status.generation == generation
+                    && history.gap.is_none()
+                    && !history.records.is_empty()
+                    && history.records.iter().all(|record| {
+                        let current = record.event.sequence();
+                        let record_generation = match &record.event {
+                            Event::Output { generation, .. }
+                            | Event::Resized { generation, .. }
+                            | Event::Exited { generation, .. } => *generation,
+                        };
+                        let okay = record.event.seat() == seat
+                            && record_generation == generation
+                            && current == Some(next)
+                            && next <= to
+                            && next <= history.status.captured_sequence;
+                        next = next.saturating_add(1);
+                        okay
+                    });
+                if !valid {
+                    result = Err(crate::Failure {
+                        code: crate::FailureCode::Invalid,
+                        message: "ring batch history continuity mismatch".into(),
+                    });
+                }
+            }
+            if let Ok(history) = &result {
+                bytes += history
+                    .records
+                    .iter()
+                    .map(|r| match &r.event {
+                        Event::Output { bytes, .. } => bytes.len() as u64,
+                        _ => 0,
+                    })
+                    .sum::<u64>();
+            }
+            retained.insert(seat, RingPage { read, result });
+        }
+        measurement.finish(1, bytes);
+        self.ring_pages.insert(key.0.clone(), retained);
+        Ok(())
+    }
+    fn replay_page(&mut self, id: Ulid, through: u64) -> Result<Option<Box<crate::ring::History>>> {
+        let Some(read) = self.ring_read(id, through) else {
+            return Ok(None);
+        };
+        let host = self.host_for_seat(id)?;
+        let result = self
+            .ring_pages
+            .get(&host)
+            .and_then(|pages| pages.get(&id))
+            .and_then(|page| page.page(&read));
+        match result {
+            None => Ok(None),
+            Some(Ok(history)) => Ok(Some(history)),
+            Some(Err(error)) => {
+                if let Some(pages) = self.ring_pages.get_mut(&host) {
+                    pages.remove(&id);
+                }
+                if error.code != crate::FailureCode::Busy {
+                    eprintln!(
+                        "ring read refused: seat={id} generation={} code={:?}",
+                        read.attachment.generation, error.code
+                    );
+                    self.views.get_mut(&id).unwrap().ring_refusal = Some(error);
+                }
+                Ok(None)
+            }
+        }
+    }
+
     fn catch_up_page(&mut self, id: Ulid, through: u64) -> Result<bool> {
         let current = &self.views[&id];
         if current.sequence >= through {
@@ -5165,61 +5449,13 @@ impl Worker {
         {
             return Ok(false);
         }
-        let link = self.connections.link(&self.host_for_seat(id)?)?;
-        // The checkpoint side task may own this leased stream. Never wait for
-        // it in ingest, or park unrelated seats: retain this target and rotate.
-        let mut connection = match link.try_lock() {
-            Ok(connection) => connection,
-            Err(std::sync::TryLockError::WouldBlock) => return Ok(false),
-            Err(std::sync::TryLockError::Poisoned(_)) => {
-                return Err(invalid("supervisor link owner stopped"));
-            }
-        };
         let page =
             self.client
                 .capture_diagnostics
                 .start(Phase::ReplayPage, id, generation, from, through);
-        let rpc = self.client.capture_diagnostics.start(
-            Phase::ReadRingRpc,
-            id,
-            generation,
-            from,
-            through,
-        );
-        let ring_measurement =
-            bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::ReadRingRequest);
-        let reply = connection.request(Action::ReadRing {
-            attachment: self.attachments[&id].clone(),
-            from,
-            to: through,
-        });
-        drop(connection);
-        let ring_bytes = if ring_measurement.enabled() {
-            match &reply {
-                Ok(Reply::RingHistory { history }) => history
-                    .records
-                    .iter()
-                    .map(|record| match &record.event {
-                        Event::Output { bytes, .. } => bytes.len() as u64,
-                        _ => 0,
-                    })
-                    .sum(),
-                _ => 0,
-            }
-        } else {
-            0
-        };
-        ring_measurement.finish(1, ring_bytes);
-        rpc.finish(capture_outcome(&reply), 0, 0);
-        let reply = match reply {
-            Err(error) if is_capture_busy(&error) => {
-                page.finish(Outcome::Busy, 0, 0);
-                return Ok(false);
-            }
-            result => result?,
-        };
-        let Reply::RingHistory { history } = reply else {
-            return Err(invalid("replay history reply mismatch"));
+        let Some(history) = self.replay_page(id, through)? else {
+            page.finish(Outcome::Busy, 0, 0);
+            return Ok(false);
         };
         let view = self.views.get_mut(&id).unwrap();
         if history.status.captured_sequence > view.captured_sequence
@@ -6440,7 +6676,10 @@ impl Worker {
                     row.target_sequence = event.sequence().unwrap();
                 });
         }
-        let complete = match self.event(event) {
+        let result = self
+            .prefetch_ring(&key, &event, pending_events)
+            .and_then(|()| self.event(event));
+        let complete = match result {
             Ok(complete) => {
                 *made_progress =
                     complete || self.views.get(&key.1).map(|view| view.sequence) != before;
@@ -6448,6 +6687,7 @@ impl Worker {
             }
             Err(error) if crate::provider::fake::is_link_down(&error) => {
                 pending_events.park(&key.0);
+                self.ring_pages.remove(&key.0);
                 false
             }
             Err(error) if is_capture_busy(&error) => false,
@@ -6455,6 +6695,7 @@ impl Worker {
         };
         if let Some(view) = self.views.get(&key.1) {
             pending_events.parsed(&key, view.sequence);
+            pending_events.seats.get_mut(&key).unwrap().ring_blocked = view.ring_refusal.is_some();
         }
         pending_events.finish(key, complete);
         Ok(())

@@ -45,7 +45,7 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[e2e-runs-unattended]] the e2e night runs unattended: no operator input, no login-Keychain access, no window, no build or signature | `sh scripts/e2e-unattended.sh` | active (U-3, 6dfbf569; slow tier, gate night) |
 | [[never-block-swarm]] never block the swarm: no open task is parked on a person, and no test needs the operator | `sh scripts/never-block.sh` | held at the adding commit |
 | [[messaging-never-held]] a custody hold never holds local delivery | `cargo test -p bbt-mux --locked --test messaging_flow custody_hold_never_holds_local_delivery -- --exact` | active (NG1, 27a77a51) |
-| [[ring-reads-batched]] a catch-up pass over N seats costs a bounded number of supervisor round trips, never one RPC per seat | `cargo test -p bbt-mux --locked --test logic ring_reads_are_batched -- --exact` | pending Sable's batched ReadRing (slow, gated) |
+| [[ring-reads-batched]] a catch-up pass over N seats costs a bounded number of supervisor round trips, never one RPC per seat | `cargo test -p bbt-mux --locked --lib logic::ring_batch_tests::ring_reads_are_batched -- --exact` | landing check enabled; acceptance pending |
 | [[kill-only-own-pids]] a cleanup kills only PIDs it recorded as its own children, never by name or pattern | `sh scripts/kill-own-pids.sh` | active |
 | [[no-chokepoints]] no bottlenecks and no chokepoints, in the swarm and in the product | `sh scripts/never-block.sh && sh scripts/cross-os.sh` | held at the adding commit; product instances gated by #268 and #276 |
 

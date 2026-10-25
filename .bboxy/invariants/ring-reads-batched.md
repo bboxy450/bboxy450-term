@@ -4,9 +4,7 @@ type: invariant
 number: 318
 title: "ring reads are batched: a catch-up pass over N seats costs a bounded number of supervisor round trips, never one RPC per seat"
 status: pending
-slow: true
-gate: pending-ring-reads-batched
-check: cargo test -p bbt-mux --locked --test logic ring_reads_are_batched -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
+check: cargo test -p bbt-mux --locked --lib logic::ring_batch_tests::ring_reads_are_batched -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: with hundreds of seats every catch-up pass serialises hundreds of one-seat round trips through the supervisor, input-to-GPU latency grows with the seat count instead of the page budget, and the watched panes wait behind the unwatched ones' RPCs
 links:
   - { to: "[[no-chokepoints]]", rel: instance-of }
@@ -52,16 +50,13 @@ host in the 3 : 1 lane order of [[watched-replay-priority]] and still applies
 one page per turn. The singleton `ReadRing` stays for explicit history and
 recovery reads and leaves the hot sweep.
 
-**Check.** `cargo test -p bbt-mux --locked --test logic ring_reads_are_batched -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
+**Check.** `cargo test -p bbt-mux --locked --lib logic::ring_batch_tests::ring_reads_are_batched -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
 — exit 0 held. **Pending** until Sable's batched `ReadRing` lands with that test
 (967 seats with pending data: at most 121 batched requests, zero singleton
 hot-sweep calls, exact final cursors and Screens); if the landing commit names the test
 differently it edits this line and the README row in the same commit, and the
-Oracle flips `status` on acceptance. Until then the gate is listed as pending
-and runs nowhere: `slow: true` and `gate: pending-ring-reads-batched` keep it out of
-the default run (`scripts/invariants.sh` runs every file regardless of `status`;
-the flags are the switch, Nyx and Sable, 2026-10-25); the landing commit removes
-both.
+Oracle flips `status` on acceptance. The landing commit removes the slow/gate switches, so the
+regression runs in the default invariant suite regardless of pending status.
 
 **Cost of a violation.** With hundreds of seats every catch-up pass serialises
 hundreds of one-seat round trips through the supervisor; input-to-GPU latency

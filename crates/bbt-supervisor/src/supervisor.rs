@@ -2998,6 +2998,75 @@ mod capture_read_tests {
         assert_eq!(actor.pending_capture_slots(), 0);
     }
 
+    #[test]
+    fn ring_batch_shares_the_existing_128_leaf_limit_with_singleton_io() {
+        let root = tempfile::tempdir().unwrap();
+        let mut actor = fixture_actor(root.path());
+        let client = Ulid::new();
+        let lease = Ulid::new();
+        let (tx, _rx) = mpsc::sync_channel(1);
+        actor.clients.insert(client, Target::Local(tx));
+        actor.active = Some((client, lease));
+        let (_held, response) = mpsc::sync_channel(1);
+        actor.pending_io.push(PendingIo {
+            client,
+            request_id: Ulid::new(),
+            reply: None,
+            response,
+            diagnostic: actor.capture_diagnostics.start(
+                capture_diagnostics::Phase::SupervisorQuery,
+                Ulid::nil(),
+                0,
+                0,
+                0,
+            ),
+        });
+        let frame = |count| {
+            Frame::new(Request::new(
+                Some(lease),
+                Action::ReadRingBatch {
+                    reads: (0..count)
+                        .map(|n| RingRead {
+                            attachment: Attachment {
+                                seat: Ulid::from(n as u128 + 1),
+                                generation: 1,
+                                writer_lease: Ulid::new(),
+                            },
+                            from: 1,
+                            to: 2,
+                        })
+                        .collect(),
+                    max_bytes: MAX_RING_BATCH_BYTES as u32,
+                },
+            ))
+        };
+        while actor.pending_capture_slots() < CHANNEL_CAPACITY {
+            let count =
+                (CHANNEL_CAPACITY - actor.pending_capture_slots()).min(MAX_RING_BATCH_MEMBERS);
+            let batch = actor.dispatch_ring_batch(client, frame(count)).unwrap();
+            actor.pending_batches.push(batch);
+        }
+        assert_eq!(actor.pending_capture_slots(), 128);
+        let failure = actor.dispatch_ring_batch(client, frame(1)).err().unwrap();
+        assert_eq!(failure.code, FailureCode::Busy);
+        assert_eq!(
+            actor.pending_capture_slots(),
+            128,
+            "refusal reserved no extra slots"
+        );
+        actor.pending_batches.pop();
+        assert!(actor.dispatch_ring_batch(client, frame(1)).is_ok());
+        actor.disconnect(client);
+        assert_eq!(
+            actor.pending_capture_slots(),
+            1,
+            "ordinary capture IO retains its existing completion semantics"
+        );
+        drop(_held);
+        actor.complete_io();
+        assert_eq!(actor.pending_capture_slots(), 0);
+    }
+
     fn fixture_actor(root: &std::path::Path) -> Actor {
         let journal = root.join("journal");
         let poll = Poll::new().unwrap();

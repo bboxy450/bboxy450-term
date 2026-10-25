@@ -10,6 +10,8 @@ use std::sync::Mutex;
 struct Calls {
     singleton: usize,
     batches: Vec<Vec<Ulid>>,
+    refusals: BTreeMap<Ulid, crate::FailureCode>,
+    reads: Vec<RingRead>,
 }
 
 struct Synthetic(Arc<Mutex<Calls>>);
@@ -81,6 +83,7 @@ impl SupervisorConnection for Synthetic {
                     .unwrap()
                     .batches
                     .push(reads.iter().map(|r| r.attachment.seat).collect());
+                self.0.lock().unwrap().reads.extend(reads.iter().cloned());
                 Ok(Reply::RingHistoryBatch {
                     results: reads
                         .into_iter()
@@ -89,7 +92,20 @@ impl SupervisorConnection for Synthetic {
                             generation: read.attachment.generation,
                             from: read.from,
                             to: read.to,
-                            result: Ok(history(&read)),
+                            result: match self
+                                .0
+                                .lock()
+                                .unwrap()
+                                .refusals
+                                .get(&read.attachment.seat)
+                                .copied()
+                            {
+                                Some(code) => Err(crate::Failure {
+                                    code,
+                                    message: "synthetic member refusal".into(),
+                                }),
+                                None => Ok(history(&read)),
+                            },
                         })
                         .collect(),
                 })
@@ -102,6 +118,37 @@ impl SupervisorConnection for Synthetic {
     }
     fn receive(&mut self, _: Duration) -> Result<Option<Event>> {
         Ok(None)
+    }
+}
+
+fn remote() -> HostId {
+    HostId::Ssh {
+        host: "synthetic-remote".into(),
+    }
+}
+struct Remote(Arc<Mutex<Calls>>);
+impl Provider for Remote {
+    fn id(&self) -> String {
+        "synthetic-remote".into()
+    }
+    fn kind(&self) -> crate::provider::ProviderKind {
+        crate::provider::ProviderKind::Ssh
+    }
+    fn hosts(&self) -> Vec<crate::provider::Host> {
+        vec![crate::provider::Host {
+            id: remote(),
+            provider: self.id(),
+            label: "synthetic remote".into(),
+            region: None,
+            state: crate::provider::LinkState::Connected { rtt_ms: 0 },
+        }]
+    }
+    fn link(&mut self, host: HostId) -> Result<Box<dyn SupervisorConnection>> {
+        assert_eq!(host, remote());
+        Ok(Box::new(Synthetic(self.0.clone())))
+    }
+    fn poll(&mut self) -> Vec<crate::provider::ProviderEvent> {
+        vec![]
     }
 }
 
@@ -140,7 +187,10 @@ fn worker(
         gui_watch_epoch: Arc::default(),
     };
     Worker::open(
-        vec![Box::new(LocalProvider::new(Synthetic(calls)))],
+        vec![
+            Box::new(LocalProvider::new(Synthetic(calls.clone()))),
+            Box::new(Remote(calls)),
+        ],
         config,
         bus,
         runtime.handle().clone(),
@@ -197,6 +247,7 @@ fn add_view(worker: &mut Worker, id: Ulid) {
             adapter,
             delivery_endpoint: crate::adapters::Endpoint::None,
             delivery_failure: None,
+            ring_refusal: None,
             tap,
             replies: VecDeque::new(),
             native_reader: None,
@@ -221,6 +272,15 @@ fn add_view(worker: &mut Worker, id: Ulid) {
 
 #[test]
 fn ring_reads_are_batched() {
+    sweep(false);
+}
+
+#[test]
+fn ring_reads_are_batched_per_host() {
+    sweep(true);
+}
+
+fn sweep(two_hosts: bool) {
     const SEATS: usize = 967;
     let root = tempfile::tempdir().unwrap();
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -234,7 +294,21 @@ fn ring_reads_are_batched() {
     for n in 1..=SEATS {
         let id = Ulid::from(n as u128);
         add_view(&mut worker, id);
-        pending.push(HostId::Local, notification(id), 1, 1).unwrap();
+        let host = if two_hosts && n % 2 == 0 {
+            worker
+                .registry
+                .update(id, |r| {
+                    r.location = crate::registry::Location::Ssh {
+                        host: "synthetic-remote".into(),
+                    };
+                    Ok(())
+                })
+                .unwrap();
+            remote()
+        } else {
+            HostId::Local
+        };
+        pending.push(host, notification(id), 1, 1).unwrap();
     }
     pending.set_watched((1..=50).map(|n| (Ulid::from(n as u128), 1)).collect());
     for _ in 0..SEATS * 2 {
@@ -278,8 +352,29 @@ fn ring_reads_are_batched() {
         calls.singleton, 0,
         "hot sweep must not issue singleton ReadRing"
     );
+    let bound = if two_hosts {
+        (SEATS / 2).div_ceil(MAX_RING_BATCH_MEMBERS)
+            + SEATS.div_ceil(2).div_ceil(MAX_RING_BATCH_MEMBERS)
+    } else {
+        SEATS.div_ceil(MAX_RING_BATCH_MEMBERS)
+    };
+    if two_hosts {
+        assert!(
+            calls
+                .batches
+                .iter()
+                .all(|batch| batch.iter().all(|id| id.0 % 2 == batch[0].0 % 2)),
+            "batch crossed host boundary"
+        );
+    }
+    println!(
+        "seats={SEATS} hosts={} rpc={} bound={bound} singleton={}",
+        if two_hosts { 2 } else { 1 },
+        calls.batches.len(),
+        calls.singleton
+    );
     assert!(
-        calls.batches.len() <= SEATS.div_ceil(MAX_RING_BATCH_MEMBERS),
+        calls.batches.len() <= bound,
         "{} batch requests",
         calls.batches.len()
     );
@@ -290,48 +385,196 @@ fn ring_reads_are_batched() {
 fn indexed_prefetch_order_matches_the_actual_global_lanes() {
     for mask in 0u16..256 {
         for streak in 0..=PendingSeats::WATCHED_QUANTA {
-            let make = || {
-                let mut p = PendingSeats::default();
-                for n in 0..8 {
-                    let id = Ulid::from(n as u128 + 1);
-                    let host = if n % 2 == 0 {
-                        HostId::Local
-                    } else {
-                        HostId::Ssh {
-                            host: "remote".into(),
-                        }
-                    };
-                    p.push(host, notification(id), 1, 1).unwrap();
-                }
-                p.set_watched(
-                    (0..8)
-                        .filter(|n| mask & (1 << n) != 0)
-                        .map(|n| (Ulid::from(n as u128 + 1), 1))
-                        .collect(),
-                );
-                p.watched_streak = streak;
-                p
-            };
-            for host in [
-                HostId::Local,
-                HostId::Ssh {
-                    host: "remote".into(),
-                },
-            ] {
-                let actual = make().ring_candidates(&host, MAX_RING_BATCH_MEMBERS);
-                let mut reference = make();
-                let mut expected = Vec::new();
-                while let Some((key, _)) = reference.next() {
-                    if key.0 == host {
-                        expected.push(key.1);
+            for parked in 0..3 {
+                let make = || {
+                    let mut p = PendingSeats::default();
+                    for n in 0..8 {
+                        let id = Ulid::from(n as u128 + 1);
+                        let host = if n % 2 == 0 {
+                            HostId::Local
+                        } else {
+                            HostId::Ssh {
+                                host: "remote".into(),
+                            }
+                        };
+                        p.push(host, notification(id), 1, if n % 3 == 0 { 2 } else { 1 })
+                            .unwrap();
                     }
-                    reference.finish(key, true);
+                    p.set_watched(
+                        (0..8)
+                            .filter(|n| mask & (1 << n) != 0)
+                            .map(|n| (Ulid::from(n as u128 + 1), 1))
+                            .collect(),
+                    );
+                    p.watched_streak = streak;
+                    if parked == 1 {
+                        p.park(&HostId::Local);
+                    }
+                    if parked == 2 {
+                        p.park(&HostId::Ssh {
+                            host: "remote".into(),
+                        });
+                    }
+                    p
+                };
+                for host in [
+                    HostId::Local,
+                    HostId::Ssh {
+                        host: "remote".into(),
+                    },
+                ] {
+                    let actual = make().ring_candidates(&host, MAX_RING_BATCH_MEMBERS);
+                    let mut reference = make();
+                    let mut expected = Vec::new();
+                    while let Some((key, _)) = reference.next() {
+                        if key.0 == host && reference.seats[&key].needs_ring() {
+                            expected.push(key.1);
+                        }
+                        reference.finish(key, true);
+                    }
+                    assert_eq!(
+                        actual, expected,
+                        "mask={mask} streak={streak} host={host:?}"
+                    );
                 }
-                assert_eq!(
-                    actual, expected,
-                    "mask={mask} streak={streak} host={host:?}"
-                );
             }
         }
     }
+}
+
+#[test]
+fn refused_members_keep_their_cursors_while_other_members_finish() {
+    use crate::FailureCode::{Busy, Limit, NotFound, StaleGeneration};
+    let root = tempfile::tempdir().unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let calls = Arc::new(Mutex::new(Calls::default()));
+    let mut worker = worker(root.path(), &runtime, calls.clone());
+    let failures = [
+        (1u128, Busy),
+        (2, NotFound),
+        (3, StaleGeneration),
+        (4, Limit),
+    ];
+    calls
+        .lock()
+        .unwrap()
+        .refusals
+        .extend(failures.map(|(n, code)| (Ulid::from(n), code)));
+    let mut pending = PendingSeats::default();
+    for n in 1u128..=16 {
+        let id = Ulid::from(n);
+        add_view(&mut worker, id);
+        pending.push(HostId::Local, notification(id), 1, 1).unwrap();
+    }
+    for _ in 0..64 {
+        worker.ingest_one(&mut pending, &mut false).unwrap();
+    }
+    for n in 5u128..=16 {
+        assert_eq!(worker.views[&Ulid::from(n)].sequence, 2);
+    }
+    for (n, code) in failures {
+        let view = &worker.views[&Ulid::from(n)];
+        assert_eq!(view.sequence, 0, "refused cursor moved: {code:?}");
+        assert_eq!(
+            view.ring_refusal.as_ref().map(|f| f.code),
+            if code == Busy { None } else { Some(code) }
+        );
+    }
+    let refused_reads: Vec<_> = (2u128..=4)
+        .map(|n| {
+            calls
+                .lock()
+                .unwrap()
+                .reads
+                .iter()
+                .filter(|r| r.attachment.seat == Ulid::from(n))
+                .count()
+        })
+        .collect();
+    assert_eq!(
+        refused_reads,
+        vec![1; 3],
+        "definitive refusals were retried"
+    );
+    calls.lock().unwrap().refusals.remove(&Ulid::from(1u128));
+    for _ in 0..16 {
+        worker.ingest_one(&mut pending, &mut false).unwrap();
+    }
+    assert_eq!(
+        worker.views[&Ulid::from(1u128)].sequence,
+        2,
+        "Busy did not recover"
+    );
+    let calls = calls.lock().unwrap();
+    assert!(
+        calls
+            .reads
+            .iter()
+            .filter(|r| r.attachment.seat == Ulid::from(1u128))
+            .all(|r| (r.from, r.to) == (1, 1)),
+        "retry changed the pending target"
+    );
+    for n in 2u128..=4 {
+        assert_eq!(worker.views[&Ulid::from(n)].sequence, 0);
+        assert_eq!(
+            calls
+                .reads
+                .iter()
+                .filter(|r| r.attachment.seat == Ulid::from(n))
+                .count(),
+            1
+        );
+    }
+}
+
+#[test]
+fn cached_page_preserves_unapplied_boundary_rows_and_rejects_other_generations() {
+    let id = Ulid::from(1u128);
+    let read = RingRead {
+        attachment: Attachment {
+            seat: id,
+            generation: 1,
+            writer_lease: Ulid::from(7u128),
+        },
+        from: 1,
+        to: 2,
+    };
+    let mut data = history(&RingRead {
+        to: 1,
+        ..read.clone()
+    });
+    data.records.push(crate::ring::IndexedEvent {
+        event: notification(id),
+        row: None,
+    });
+    let cached = RingPage {
+        read: read.clone(),
+        result: Ok(data),
+    };
+    let first = cached
+        .page(&RingRead {
+            to: 1,
+            ..read.clone()
+        })
+        .unwrap()
+        .unwrap();
+    assert_eq!(first.records.len(), 1);
+    let tail = cached
+        .page(&RingRead {
+            from: 2,
+            ..read.clone()
+        })
+        .unwrap()
+        .unwrap();
+    assert_eq!(tail.records[0].event, notification(id));
+    let mut stale = read.clone();
+    stale.attachment.generation += 1;
+    assert!(cached.page(&stale).is_none());
+    let mut writer = read;
+    writer.attachment.writer_lease = Ulid::from(8u128);
+    assert!(cached.page(&writer).is_none());
 }
