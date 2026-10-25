@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import time
 
 
 def require(condition, reason):
@@ -55,7 +56,7 @@ class App:
         reply = rows[0]
         if refused:
             require(result.returncode != 0 and reply.get("ok") is False,
-                    f"{args}: expected a structured refusal, got {reply}")
+                    f"{args}: expected a structured refusal, got ok={reply.get('ok')} frame={reply.get('data', {}).get('frame_seq')}")
             return reply["error"]
         require(result.returncode == 0 and reply.get("ok") is not False,
                 f"{args}: {result.returncode}: {result.stdout[:1500]} {result.stderr[:500]}")
@@ -146,7 +147,17 @@ def s4(app):
     # bypass: the window owns the grid and its live program sees these dimensions.
     require(2 <= view["cols"] <= 768 and 1 <= view["rows"] <= 300,
             "fixture is outside supported live dimensions")
-    app.line(seat, "printf 'S4_BEFORE\\n'")
+    # Resize setup must reach the terminal Replica too. A solved pane rectangle
+    # alone does not prove that the queued PTY/GUI resize has been applied.
+    for _ in range(100):
+        screen = app.ctl("seat", "screen", seat)
+        if screen["cols"] == view["cols"] and len(screen["rows"]) == view["rows"]:
+            break
+        time.sleep(0.1)
+    else:
+        raise AssertionError(f"S4 fixture_dimensions_unavailable: pane={view['cols']}x{view['rows']} "
+                             f"Replica={screen['cols']}x{len(screen['rows'])}; live grid caps cells at 32768")
+    app.line(seat, "for i in {1..1000}; do printf 'S4_%04d\\n' $i; done; printf 'S4_BEFORE\\n'")
     app.wait(seat, "(?m)^S4_BEFORE$")
     generation = app.ctl("seat", "screen", seat)["generation"]
     error = app.ctl("ui", "scroll", seat, "top", label="s4-refusal", refused=True)
@@ -184,7 +195,7 @@ def k2(app):
             "produced sidebar lacks its muted mark")
     app.capture("window", "k2-muted", frame(muted))
     sent = app.ctl("message", "send", first, "K2_OPERATOR_DM", label="k2-operator-dm")
-    require(sent.get("type") == "stored", f"operator DM was not stored while muted: {sent}")
+    require(sent.get("kind") == "stored", f"operator DM was not stored while muted: {sent.get('kind')}")
     unmuted = app.ctl("ui", "key", "cmd-m", label="k2-unmuted")
     require(frame(unmuted) > frame(muted), "unmute reused the mute frame")
     require(not registry(app.ctl("seat", "ls"))[first]["muted"], "unmute did not publish")
