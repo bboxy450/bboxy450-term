@@ -1,0 +1,4701 @@
+Native Settings Plugins G3 / Knowledge G4 — scoped development evidence
+Scope: Oracle08cea5ef and clarification944d271b. Actual bundled DataSource read state; plugin cards are explicit public P-0 reference fixtures. Enable/trust/setup/provider-swap effects are refused by name; production registry/trust/provider-host work remains later and G3/G4 night coverage remains partial.
+Lab authorship preserved: Wren4edc61ba + signed duplicate-plug fix1a3e44d3, rebased as5005be35/8092deb8. Native84306b17 ->6baf362e ->242f67da, all own patch range-diff =. Declared native-reopen dependency4356fc6e + evidence09905618 is pending acceptance, no backend copy.
+Commands below ran against UI development files above recorded HEAD4edc61ba, before freezing native source. Final current-base workspace/strict/invariants/exact --parity checks are not yet run. QUIET r5i-frame currently permits source/evidence only.
+Failures preserved: duplicate SVG plug atlas asset, fixed by consuming Wren1a3e44d3; two empty-version-label baseline mismatches, fixed by measuring empty spans as boxes (rectangles retained, tolerances unchanged). Complete Settings rerun followed both corrections. The unreferenced duplicate SVG removal has no painted geometry effect; final exact gate will capture accepted union.
+Automated scoped summary: {"cases": 168, "max_baseline_error": 0.0078125, "max_rect_error": 0.04736328125, "measured": 168, "statuses": {"within policy": 168}}
+
+=== ui-settings-command.json sha256 fa471285ece3193bfc9db062d784501ab42eae46b5f438043d4b77d8d54e017f ===
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-ui",
+    "--test",
+    "settings",
+    "--locked"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:12:09.215471+00:00",
+  "started": 1792915929.215761,
+  "source": "4edc61baecaa878438909a7176a1d10764f6c31c",
+  "pid": 32719,
+  "pgid": 32719,
+  "exit_code": 0,
+  "elapsed_s": 44.808675050735474
+}
+
+
+=== ui-settings.log sha256 f21e8bea0d833f81142c7e8693fd05babf3cf70d01a2671a53c314abc85871d5 ===
+   Compiling serde_core v1.0.229
+   Compiling zmij v1.0.23
+   Compiling serde_json v1.0.154
+   Compiling proc-macro2 v1.0.107
+   Compiling winnow v1.0.4
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.2
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling memchr v2.8.3
+   Compiling winnow v0.7.15
+   Compiling itoa v1.0.18
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling syn v3.0.9
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+warning: unused variable: `b`
+   --> crates/bbt-ui/src/modules/settings/plugins.rs:118:11
+    |
+118 | fn health(b: &Build, key: &str, state: &str) -> c::Element {
+    |           ^ help: if this is intentional, prefix it with an underscore: `_b`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `b`
+   --> crates/bbt-ui/src/modules/settings/plugins.rs:135:21
+    |
+135 | pub(super) fn alert(b: &Build, key: &str, text: &str) -> c::Element {
+    |                     ^ help: if this is intentional, prefix it with an underscore: `_b`
+
+warning: `bbt-ui` (lib) generated 2 warnings (run `cargo fix --lib -p bbt-ui` to apply 2 suggestions)
+    Finished `test` profile [optimized] target(s) in 44.58s
+     Running tests/settings.rs (target/settings-plugins-dev/debug/deps/settings-19eebafa5af0422e)
+
+running 10 tests
+test changed_notification_harness_rows_keep_the_icon_and_inline_label_inside_diff_layers ... ok
+test account_projects_the_pinned_identity_and_recovery_limits_without_actions ... ok
+test custom_role_order_and_defaults_drive_the_changed_marker ... ok
+test hosted_notification_master_off_retains_values_and_visible_resets_still_work ... ok
+test draft_harness_never_claims_an_inferred_ready_state_can_submit ... ok
+test plugin_and_provider_controls_refuse_without_editing_the_supplied_snapshot ... ok
+test records_roundtrip_with_ordered_custom_harnesses_and_roles ... ok
+test registry_projects_hook_warning_and_only_the_current_minute_and_latest_trace ... ok
+test hosted_settings_search_keeps_retained_control_regions_and_unavailable_fields_honest ... ok
+test role_prompt_grows_to_its_content_then_retains_a_bounded_scroll_view ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+
+=== focused-settings-command.json sha256 dfb675a108efd60687856f37012ad564ac89db04b79e807406d2e086de653964 ===
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-ui",
+    "-p",
+    "bboxy450-term",
+    "-p",
+    "bboxybook",
+    "--test",
+    "settings",
+    "--locked"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:15:07.626977+00:00",
+  "started": 1792916107.62717,
+  "source": "4edc61baecaa878438909a7176a1d10764f6c31c",
+  "pid": 40723,
+  "pgid": 40723,
+  "exit_code": 0,
+  "elapsed_s": 365.4001519680023
+}
+
+
+=== focused-settings.log sha256 8b21049f09bf56699f4b5fdb985209baceb2cc2ffe9d5be7db5a9a4c15b7c775 ===
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling libc v0.2.191
+   Compiling syn v2.0.119
+   Compiling cfg-if v1.0.5
+   Compiling serde_core v1.0.229
+   Compiling syn v3.0.9
+   Compiling typenum v1.20.1
+   Compiling zeroize_derive v1.5.0
+   Compiling zeroize v1.9.1
+   Compiling version_check v0.9.5
+   Compiling generic-array v0.14.7
+   Compiling getrandom v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling crypto-common v0.1.7
+   Compiling bitflags v2.13.2
+   Compiling subtle v2.6.1
+   Compiling const-oid v0.9.6
+   Compiling memchr v2.8.3
+   Compiling block-buffer v0.10.4
+   Compiling libm v0.2.16
+   Compiling autocfg v1.5.1
+   Compiling num-traits v0.2.19
+   Compiling digest v0.10.7
+   Compiling zerocopy v0.8.63
+   Compiling zerocopy-derive v0.8.63
+   Compiling log v0.4.34
+   Compiling objc2-encode v4.1.0
+   Compiling smallvec v1.16.3
+   Compiling jobserver v0.1.35
+   Compiling arrayvec v0.7.8
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.15
+   Compiling cc v1.9.0
+   Compiling allocator-api2 v0.2.21
+   Compiling serde_json v1.0.154
+   Compiling foldhash v0.2.0
+   Compiling objc2 v0.6.5
+   Compiling equivalent v1.0.3
+   Compiling thiserror v2.0.21
+   Compiling hashbrown v0.17.1
+   Compiling crc32fast v1.5.3
+   Compiling thiserror-impl v2.0.21
+   Compiling cfg_aliases v0.2.2
+   Compiling cpufeatures v0.2.17
+   Compiling base64ct v1.8.3
+   Compiling dispatch2 v0.3.1
+   Compiling block2 v0.6.2
+   Compiling objc2-core-foundation v0.3.2
+   Compiling parking_lot_core v0.9.12
+   Compiling once_cell v1.21.4
+   Compiling pem-rfc7468 v0.7.0
+   Compiling indexmap v2.14.2
+   Compiling inout v0.1.4
+   Compiling scopeguard v1.2.0
+   Compiling lock_api v0.4.14
+   Compiling objc2-foundation v0.3.2
+   Compiling cipher v0.4.4
+   Compiling der v0.7.10
+   Compiling bytemuck_derive v1.12.1
+   Compiling getrandom v0.3.4
+   Compiling unicode-width v0.2.2
+   Compiling bytemuck v1.25.2
+   Compiling parking_lot v0.12.5
+   Compiling spki v0.7.3
+   Compiling radium v0.7.0
+   Compiling pkcs8 v0.10.2
+   Compiling simd-adler32 v0.3.10
+   Compiling tap v1.0.1
+   Compiling wyz v0.5.1
+   Compiling ppv-lite86 v0.2.21
+   Compiling hmac v0.12.1
+   Compiling base16ct v0.2.0
+   Compiling bytes v1.12.1
+   Compiling adler2 v2.0.1
+   Compiling funty v2.0.0
+   Compiling bitvec v1.1.1
+   Compiling objc2-metal v0.3.2
+   Compiling sha2-asm v0.6.4
+   Compiling num-integer v0.1.47
+   Compiling signature v2.2.0
+   Compiling semver v1.0.28
+   Compiling pin-project-lite v0.2.17
+   Compiling rustc-hash v1.1.0
+   Compiling float-cmp v0.9.0
+   Compiling pkg-config v0.3.34
+   Compiling strict-num v0.1.1
+   Compiling naga-types v30.0.1
+   Compiling rustc_version v0.4.1
+   Compiling ff v0.13.1
+   Compiling miniz_oxide v0.9.1
+   Compiling objc2-core-graphics v0.3.2
+   Compiling serdect v0.2.0
+   Compiling polycool v0.4.0
+   Compiling naga v30.0.1
+   Compiling hybrid-array v0.4.15
+   Compiling core-foundation-sys v0.8.7
+   Compiling raw-window-handle v0.6.2
+   Compiling arrayref v0.3.9
+   Compiling bit-vec v0.9.1
+   Compiling kurbo v0.13.1
+   Compiling bit-set v0.10.0
+   Compiling tiny-skia-path v0.12.0
+   Compiling sec1 v0.7.3
+   Compiling flate2 v1.1.10
+   Compiling group v0.13.0
+   Compiling miniz_oxide v0.8.9
+   Compiling hkdf v0.12.4
+   Compiling fdeflate v0.3.7
+   Compiling codespan-reporting v0.13.1
+   Compiling half v2.7.1
+   Compiling crypto-bigint v0.5.5
+   Compiling unicode-ident v1.0.27
+   Compiling siphasher v1.0.4
+   Compiling objc-sys v0.3.5
+   Compiling static_assertions v1.1.0
+   Compiling zlib-rs v0.6.8
+   Compiling elliptic-curve v0.13.8
+   Compiling wgpu-types v30.0.1
+   Compiling svgtypes v0.16.1
+   Compiling png v0.18.1
+   Compiling sha2 v0.10.9
+   Compiling simplecss v0.2.2
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling objc2-quartz-core v0.3.2
+   Compiling num-iter v0.1.46
+   Compiling wgpu-hal v30.0.1
+   Compiling aho-corasick v1.1.5
+   Compiling roxmltree v0.21.1
+   Compiling errno v0.3.14
+   Compiling imagesize v0.15.0
+   Compiling regex-syntax v0.8.11
+   Compiling data-url v0.3.2
+   Compiling cursor-icon v1.2.0
+   Compiling pico-args v0.5.0
+   Compiling const-oid v0.10.2
+   Compiling digest v0.11.3
+   Compiling usvg v0.48.1
+   Compiling regex-automata v0.4.18
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling raw-window-metal v1.1.0
+   Compiling tiny-skia v0.12.0
+   Compiling rgb v0.8.53
+   Compiling rfc6979 v0.4.0
+   Compiling libloading v0.8.9
+   Compiling getrandom v0.4.3
+   Compiling ident_case v1.0.1
+   Compiling fnv v1.0.7
+   Compiling rand_core v0.10.1
+   Compiling strsim v0.11.1
+   Compiling profiling v1.0.18
+   Compiling darling_core v0.20.11
+   Compiling resvg v0.48.1
+   Compiling objc2 v0.5.3
+   Compiling regex v1.13.1
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling rand_core v0.9.5
+   Compiling wgpu-core v30.0.1
+   Compiling euclid v0.22.14
+   Compiling cpufeatures v0.3.1
+   Compiling crossbeam-utils v0.8.23
+   Compiling heck v0.5.0
+   Compiling pulldown-cmark v0.13.4
+   Compiling litrs v1.0.1
+   Compiling document-features v0.2.12
+   Compiling lyon_geom v1.0.20
+   Compiling rand_chacha v0.9.0
+   Compiling block2 v0.5.1
+   Compiling darling_macro v0.20.11
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling ecdsa v0.16.9
+   Compiling signal-hook-registry v1.4.8
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling core-foundation v0.9.4
+   Compiling curve25519-dalek v4.1.3
+   Compiling num-bigint v0.4.8
+   Compiling rand_chacha v0.3.1
+   Compiling wgpu v30.0.1
+   Compiling mio v1.2.4
+   Compiling tokio-macros v2.7.2
+   Compiling foreign-types-macros v0.2.4
+   Compiling ahash v0.8.12
+   Compiling socket2 v0.6.5
+   Compiling spin v0.9.9
+   Compiling num-bigint-dig v0.8.6
+   Compiling base64 v0.22.1
+   Compiling foreign-types-shared v0.3.1
+   Compiling unsafe-libyaml v0.2.11
+   Compiling ref-cast v1.0.27
+   Compiling cfg_aliases v0.1.1
+   Compiling dispatch v0.2.0
+   Compiling bitflags v1.3.2
+   Compiling httparse v1.10.1
+   Compiling thiserror v1.0.69
+   Compiling ryu v1.0.23
+   Compiling unicase v2.10.0
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling core-graphics-types v0.1.3
+   Compiling objc2-foundation v0.2.2
+   Compiling nix v0.28.0
+   Compiling foreign-types v0.5.0
+   Compiling lazy_static v1.5.1
+   Compiling tokio v1.54.1
+   Compiling rand v0.8.8
+   Compiling num-rational v0.4.2
+   Compiling darling v0.20.11
+   Compiling rand v0.9.5
+   Compiling lyon_path v1.0.19
+   Compiling chacha20 v0.10.2
+   Compiling primeorder v0.13.6
+   Compiling aead v0.5.2
+   Compiling ctr v0.9.2
+   Compiling winit v0.30.13
+   Compiling num-complex v0.4.6
+   Compiling serde-big-array v0.5.1
+   Compiling universal-hash v0.5.1
+   Compiling ref-cast-impl v1.0.27
+   Compiling thiserror-impl v1.0.69
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+   Compiling unicode-segmentation v1.13.3
+   Compiling anyhow v1.0.104
+   Compiling zstd-safe v8.2.0
+   Compiling tracing-core v0.1.36
+   Compiling float_next_after v1.0.0
+   Compiling opaque-debug v0.3.1
+   Compiling vcpkg v0.2.15
+   Compiling rustversion v1.0.23
+   Compiling data-encoding v2.11.1
+   Compiling convert_case v0.10.0
+   Compiling libsqlite3-sys v0.38.2
+   Compiling polyval v0.6.2
+   Compiling lyon_tessellation v1.0.22
+   Compiling tracing v0.1.44
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling num v0.4.3
+   Compiling rand v0.10.3
+   Compiling crossbeam-queue v0.3.14
+   Compiling ulid v1.2.1
+   Compiling derive_builder_core v0.20.2
+   Compiling core-graphics v0.23.2
+   Compiling objc2-app-kit v0.2.2
+   Compiling sha1 v0.11.0
+   Compiling objc2-core-text v0.3.2
+   Compiling curve25519-dalek v5.0.0
+   Compiling http v1.5.0
+   Compiling aes v0.8.4
+   Compiling keccak v0.1.6
+   Compiling dbl v0.3.2
+   Compiling futures-macro v0.3.34
+   Compiling byteorder v1.5.0
+   Compiling unicode-general-category v1.1.0
+   Compiling slab v0.4.12
+   Compiling rustix v1.1.5
+   Compiling unicode-xid v0.2.6
+   Compiling dpi v0.1.2
+   Compiling futures-core v0.3.34
+   Compiling futures-sink v0.3.34
+   Compiling crc24 v0.1.6
+   Compiling bit-vec v0.8.0
+   Compiling borrow-or-share v0.2.4
+   Compiling smol_str v0.2.2
+   Compiling pollster v0.4.0
+   Compiling jsonschema-value v0.60.1
+   Compiling futures-task v0.3.34
+   Compiling futures-util v0.3.34
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+   Compiling fluent-uri v0.4.1
+   Compiling bit-set v0.8.0
+   Compiling derive_more-impl v2.1.1
+   Compiling cmac v0.7.2
+   Compiling sha3 v0.10.9
+   Compiling tungstenite v0.30.0
+   Compiling derive_builder_macro v0.20.2
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+   Compiling bitfields-impl v1.0.3
+   Compiling fraction v0.17.0
+   Compiling filedescriptor v0.8.3
+   Compiling ghash v0.5.1
+   Compiling snafu-derive v0.9.2
+   Compiling strum_macros v0.28.0
+   Compiling ed25519 v2.2.3
+   Compiling serdect v0.3.0
+   Compiling pkcs1 v0.7.5
+   Compiling password-hash v0.5.0
+   Compiling sha1 v0.10.7
+   Compiling blake2 v0.10.6
+   Compiling num_enum_derive v0.7.6
+   Compiling serial2 v0.2.38
+   Compiling outref v0.5.2
+   Compiling downcast-rs v1.2.1
+   Compiling percent-encoding v2.3.2
+   Compiling same-file v1.0.6
+   Compiling vsimd v0.8.0
+   Compiling num-cmp v0.1.0
+   Compiling micromap v0.3.0
+   Compiling shell-words v1.1.1
+   Compiling signature v3.0.0
+   Compiling foldhash v0.1.5
+   Compiling bytecount v0.6.9
+   Compiling hashbrown v0.15.5
+   Compiling ed25519 v3.0.0
+   Compiling portable-pty v0.9.0
+   Compiling referencing v0.60.1
+   Compiling uuid-simd v0.8.0
+   Compiling walkdir v2.5.0
+   Compiling num_enum v0.7.6
+   Compiling argon2 v0.5.3
+   Compiling sha1-checked v0.10.0
+   Compiling rsa v0.9.10
+   Compiling cx448 v0.1.1
+   Compiling ed25519-dalek v2.2.0
+   Compiling strum v0.28.0
+   Compiling snafu v0.9.2
+   Compiling aes-gcm v0.10.3
+   Compiling bitfields v1.0.3
+   Compiling derive_builder v0.20.2
+   Compiling tokio-tungstenite v0.30.0
+   Compiling zstd v0.14.3
+   Compiling derive_more v2.1.1
+   Compiling eax v0.5.0
+   Compiling fancy-regex v0.19.2
+   Compiling camellia v0.1.0
+   Compiling blowfish v0.9.1
+   Compiling aes-kw v0.2.1
+   Compiling dsa v0.6.3
+   Compiling x25519-dalek v2.0.1
+   Compiling ocb3 v0.1.0
+   Compiling p521 v0.13.3
+   Compiling p256 v0.13.2
+   Compiling p384 v0.13.1
+   Compiling jsonschema-regex v0.60.1
+   Compiling k256 v0.13.4
+   Compiling sha2 v0.11.1
+   Compiling core-foundation v0.10.1
+   Compiling security-framework-sys v2.17.0
+   Compiling bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+   Compiling objc2-user-notifications v0.3.2
+   Compiling cast5 v0.11.1
+   Compiling des v0.8.1
+   Compiling cfb-mode v0.8.2
+   Compiling twofish v0.7.1
+   Compiling idea v0.5.1
+   Compiling hashlink v0.12.2
+   Compiling email_address v0.2.9
+   Compiling md-5 v0.10.6
+   Compiling ripemd v0.1.3
+   Compiling nom v8.0.0
+   Compiling buffer-redux v1.1.0
+   Compiling notify-types v2.1.0
+   Compiling block-padding v0.3.3
+   Compiling fsevent-sys v4.1.0
+   Compiling fallible-iterator v0.3.0
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling fixedbitset v0.5.7
+   Compiling fastrand v2.5.0
+   Compiling replace_with v0.1.8
+   Compiling hex v0.4.3
+   Compiling winnow v1.0.4
+   Compiling pgp v0.21.0
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling tempfile v3.27.0
+   Compiling petgraph v0.8.3
+   Compiling rusqlite v0.40.2
+   Compiling notify v8.2.0
+   Compiling jsonschema v0.60.1
+   Compiling bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain)
+   Compiling security-framework v3.7.0
+   Compiling ed25519-dalek v3.0.0
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+   Compiling bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-harness-wake-up)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+   Compiling toml_datetime v1.1.2+spec-1.1.0
+   Compiling toml_writer v1.1.3+spec-1.1.0
+   Compiling toml_edit v0.25.17+spec-1.1.0
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+   Compiling bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+   Compiling objc2-app-kit v0.3.2
+    Finished `test` profile [optimized] target(s) in 6m 04s
+     Running tests/settings.rs (target/settings-plugins-dev/debug/deps/settings-37f73124497ed2b5)
+
+running 6 tests
+test settings_metadata_rebuild_preserves_context_and_the_preferences_snapshot ... ok
+test settings_mute_refusal_is_visible_and_success_waits_for_authoritative_metadata ... ok
+test settings_registry_is_labelled_reference_and_knowledge_never_invents_a_provider_or_count ... ok
+test settings_projects_missing_identity_honestly_and_uses_the_backend_role_defaults ... ok
+test settings_io_coalesces_edits_without_losing_other_fields_and_survives_restart ... ok
+test settings_persisted_policy_drives_attention_and_keeps_focus_and_mute_suppression ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/settings.rs (target/settings-plugins-dev/debug/deps/settings-8726351e707dd66f)
+
+running 3 tests
+test placeholder_settings_hand_painter_is_removed ... ok
+test settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme ... ok
+test settings_uses_public_records_and_viewport_not_diagnostic_geometry_or_css ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/settings.rs (target/settings-plugins-dev/debug/deps/settings-b995e755e87ecad8)
+
+running 10 tests
+test hosted_notification_master_off_retains_values_and_visible_resets_still_work ... ok
+test changed_notification_harness_rows_keep_the_icon_and_inline_label_inside_diff_layers ... ok
+test role_prompt_grows_to_its_content_then_retains_a_bounded_scroll_view ... ok
+test draft_harness_never_claims_an_inferred_ready_state_can_submit ... ok
+test custom_role_order_and_defaults_drive_the_changed_marker ... ok
+test plugin_and_provider_controls_refuse_without_editing_the_supplied_snapshot ... ok
+test registry_projects_hook_warning_and_only_the_current_minute_and_latest_trace ... ok
+test account_projects_the_pinned_identity_and_recovery_limits_without_actions ... ok
+test records_roundtrip_with_ordered_custom_harnesses_and_roles ... ok
+test hosted_settings_search_keeps_retained_control_regions_and_unavailable_fields_honest ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+
+=== ui-clippy-command.json sha256 b05d302eab961eab562e7a22b0b458920062c6f009e0310a5c5bfa68f641a644 ===
+{
+  "command": [
+    "cargo",
+    "clippy",
+    "-p",
+    "bbt-ui",
+    "--all-targets",
+    "--locked",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:26:09.833020+00:00",
+  "started": 1792916769.833133,
+  "source": "4edc61baecaa878438909a7176a1d10764f6c31c",
+  "pid": 67841,
+  "pgid": 67841,
+  "exit_code": 0,
+  "elapsed_s": 4.457442998886108
+}
+
+
+=== ui-clippy.log sha256 c5a98d71dcfa2497ed2c684f4d86b3088715e7d2a0512e93465b12d1cd3bb658 ===
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking serde_core v1.0.229
+    Checking zmij v1.0.23
+    Checking serde v1.0.229
+    Checking memchr v2.8.3
+    Checking itoa v1.0.18
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking serde_json v1.0.154
+    Finished `dev` profile [optimized] target(s) in 4.38s
+
+
+=== lab-settings-command.json sha256 af78ce1cc9ef9e0500973871fa5a4a97e07c66fc3bdd82444a5a887eb93c8976 ===
+{
+  "command": [
+    "sh",
+    "scripts/lab-check.sh",
+    "settings.html"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:17:36.035059+00:00",
+  "started": 1792916256.035212,
+  "source": "4edc61baecaa878438909a7176a1d10764f6c31c",
+  "pid": 49094,
+  "pgid": 49094,
+  "exit_code": 0,
+  "elapsed_s": 8.974495887756348
+}
+
+
+=== lab-settings.log sha256 36b2708300e29160f0981bf4b5e84f187b557c5ba485f146a426790fa008c818 ===
+lab-check: self-test ok (10 checks fire on checks/bad.html)
+lab-check: 1 pages × 4 densities · 0 findings
+
+
+=== book-build-command.json sha256 9089a99ea3ada27d12a7ee9d8bf94210befa108d080339b785b3553a18e63742 ===
+{
+  "command": [
+    "cargo",
+    "build",
+    "-p",
+    "bboxybook",
+    "--locked"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:21:30.729884+00:00",
+  "started": 1792916490.730176,
+  "source": "4edc61baecaa878438909a7176a1d10764f6c31c",
+  "pid": 56172,
+  "pgid": 56172,
+  "exit_code": 0,
+  "elapsed_s": 108.79220604896545
+}
+
+
+=== book-build.log sha256 95bb61fa73e1733163f0d91a29bde977e4fd7c6d3abc046ad0cdd65e9ec77008 ===
+   Compiling bitflags v2.13.2
+   Compiling libc v0.2.191
+   Compiling arrayvec v0.7.8
+   Compiling num-traits v0.2.19
+   Compiling hashbrown v0.17.1
+   Compiling dispatch2 v0.3.1
+   Compiling indexmap v2.14.2
+   Compiling objc2-core-foundation v0.3.2
+   Compiling smallvec v1.16.3
+   Compiling thiserror v2.0.21
+   Compiling syn v2.0.119
+   Compiling objc2-foundation v0.3.2
+   Compiling zerocopy-derive v0.8.63
+   Compiling objc2-metal v0.3.2
+   Compiling naga-types v30.0.1
+   Compiling zerocopy v0.8.63
+   Compiling objc2-core-graphics v0.3.2
+   Compiling half v2.7.1
+   Compiling naga v30.0.1
+   Compiling objc2-quartz-core v0.3.2
+   Compiling wgpu-types v30.0.1
+   Compiling parking_lot_core v0.9.12
+   Compiling parking_lot v0.12.5
+   Compiling raw-window-metal v1.1.0
+   Compiling polycool v0.4.0
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-hal v30.0.1
+   Compiling kurbo v0.13.1
+   Compiling flate2 v1.1.10
+   Compiling euclid v0.22.14
+   Compiling core-foundation-sys v0.8.7
+   Compiling svgtypes v0.16.1
+   Compiling core-foundation v0.9.4
+   Compiling serde v1.0.229
+   Compiling lyon_geom v1.0.20
+   Compiling png v0.18.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling core-graphics-types v0.1.3
+   Compiling usvg v0.48.1
+   Compiling objc2-foundation v0.2.2
+   Compiling wgpu-core v30.0.1
+   Compiling tiny-skia v0.12.0
+   Compiling lyon_path v1.0.19
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling wgpu v30.0.1
+   Compiling lyon_tessellation v1.0.22
+   Compiling pulldown-cmark v0.13.4
+   Compiling resvg v0.48.1
+   Compiling objc2-app-kit v0.2.2
+   Compiling core-graphics v0.23.2
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling objc2-core-text v0.3.2
+   Compiling winit v0.30.13
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+   Compiling serde_json v1.0.154
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Finished `dev` profile [optimized] target(s) in 1m 48s
+
+
+=== native-new1-command.json sha256 d9278d5f884570f468a8fcd897b3830bcf161abb914280b985c8dd0d40879dd2 ===
+{
+  "command": [
+    "target/settings-plugins-dev/debug/bboxybook",
+    "render",
+    "--all",
+    "--out",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity/native",
+    "--manifest",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity/cases.json"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:23:39.722823+00:00",
+  "started": 1792916619.722943,
+  "source": "4edc61baecaa878438909a7176a1d10764f6c31c",
+  "pid": 62215,
+  "pgid": 62215,
+  "exit_code": 1,
+  "elapsed_s": 0.3853931427001953
+}
+
+
+=== native-new1.log sha256 982e9d5376b4b5a7ca33f084787c2a34dd7c1b79f51281bad6948b4417bbe67b ===
+bboxybook: duplicate icon asset: plug
+
+
+=== book-build-icon-fix-command.json sha256 33a91a4886feff07b26baf94d84a84ea77827ed52715f0ecad16ef8444129d51 ===
+{
+  "command": [
+    "cargo",
+    "build",
+    "-p",
+    "bboxybook",
+    "--locked"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:28:03.996277+00:00",
+  "started": 1792916883.996446,
+  "source": "4edc61baecaa878438909a7176a1d10764f6c31c",
+  "pid": 74465,
+  "pgid": 74465,
+  "exit_code": 0,
+  "elapsed_s": 51.884052991867065
+}
+
+
+=== book-build-icon-fix.log sha256 594fcd9bbd4a058b45661149deb4da2f47fb2fc01c3ac8c4987c37071154c44a ===
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxybook)
+    Finished `dev` profile [optimized] target(s) in 51.76s
+
+
+=== native-new2-command.json sha256 859a1f4653688781372fe92b1a54f6c4619d0c2031ffc77f642e2a031f731400 ===
+{
+  "command": [
+    "target/settings-plugins-dev/debug/bboxybook",
+    "render",
+    "--all",
+    "--out",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity/native",
+    "--manifest",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity/cases.json"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:29:20.461473+00:00",
+  "started": 1792916960.461792,
+  "source": "4edc61baecaa878438909a7176a1d10764f6c31c",
+  "pid": 78188,
+  "pgid": 78188,
+  "exit_code": 0,
+  "elapsed_s": 6.569597005844116
+}
+
+
+=== native-new2.log sha256 578151330e1cd7fb8974058e9a63655ec8aa19522ea3ec283be2c0e33205650b ===
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity/native/layouts.json
+rendered 6 PNGs to /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity/native
+
+
+=== capture-new-command.json sha256 481894c76abfb30a9d0b6ad5558c7281c351aa1168d5f1b1a664f8003abe0dc9 ===
+{
+  "command": [
+    "node",
+    "crates/bboxybook/capture.mjs",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity/requested.json"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:18:59.840425+00:00",
+  "started": 1792916339.8407402,
+  "source": "4edc61baecaa878438909a7176a1d10764f6c31c",
+  "pid": 51761,
+  "pgid": 51761,
+  "exit_code": 0,
+  "elapsed_s": 8.952535629272461
+}
+
+
+=== capture-new.log sha256 aadd83b8e44b2a7581821090647768accd1f8b7cc6897caeedf447807d07df24 ===
+web: 6/6 captured; 0 failures
+
+
+=== recapture-new-command.json sha256 1b51e001935af62ff985dfbf3b6cb3cba4695b1d4a5942bda9b5e996fbab1757 ===
+{
+  "command": [
+    "node",
+    "crates/bboxybook/capture.mjs",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity/requested.json"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:30:51.510025+00:00",
+  "started": 1792917051.510099,
+  "source": "4edc61baecaa878438909a7176a1d10764f6c31c",
+  "pid": 83787,
+  "pgid": 83787,
+  "exit_code": 0,
+  "elapsed_s": 5.783246040344238
+}
+
+
+=== recapture-new.log sha256 aadd83b8e44b2a7581821090647768accd1f8b7cc6897caeedf447807d07df24 ===
+web: 6/6 captured; 0 failures
+
+
+=== compare-new2-command.json sha256 bdc27a3ce6f287adbc597caf0eaed8836f74fa24f2bdca6fc81b9a64d8371350 ===
+{
+  "command": [
+    "target/settings-plugins-dev/debug/bboxybook",
+    "compare",
+    "--strict-geometry",
+    "--out",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity",
+    "--manifest",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity/cases.json"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:29:55.296233+00:00",
+  "started": 1792916995.296566,
+  "source": "4edc61baecaa878438909a7176a1d10764f6c31c",
+  "pid": 79122,
+  "pgid": 79122,
+  "exit_code": 1,
+  "elapsed_s": 0.2578911781311035
+}
+
+
+=== compare-new2.log sha256 ef49b5f5ae77bbedfc6b92bc9ac553bf221e35301d19433cfd96490dfbd6ec5e ===
+parity: 6 cases, 2 review; /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity/index.html
+geometry: 6 required; 6 measured; 0 unproven; 2 mismatches
+bboxybook: parity gate: 2 geometry failures (fail)
+
+
+=== native-new3-command.json sha256 55864d85ced72aabcf5cc52df5a7e39eb5529398e931a561b2e4d2eee54c35b2 ===
+{
+  "command": [
+    "target/settings-plugins-dev/debug/bboxybook",
+    "render",
+    "--all",
+    "--out",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity/native",
+    "--manifest",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity/cases.json"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:32:06.985860+00:00",
+  "started": 1792917126.985989,
+  "source": "4edc61baecaa878438909a7176a1d10764f6c31c",
+  "pid": 88266,
+  "pgid": 88266,
+  "exit_code": 0,
+  "elapsed_s": 3.203495979309082
+}
+
+
+=== native-new3.log sha256 578151330e1cd7fb8974058e9a63655ec8aa19522ea3ec283be2c0e33205650b ===
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+native/web layout snapshots: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity/native/layouts.json
+rendered 6 PNGs to /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity/native
+
+
+=== compare-new3-command.json sha256 cda1e089e33908a97dace4d365cca72fb01a46489c3db0f4c16cf2e3d95e94b6 ===
+{
+  "command": [
+    "target/settings-plugins-dev/debug/bboxybook",
+    "compare",
+    "--strict-geometry",
+    "--out",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity",
+    "--manifest",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity/cases.json"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:33:18.644933+00:00",
+  "started": 1792917198.645531,
+  "source": "4edc61baecaa878438909a7176a1d10764f6c31c",
+  "pid": 90573,
+  "pgid": 90573,
+  "exit_code": 0,
+  "elapsed_s": 0.40702104568481445
+}
+
+
+=== compare-new3.log sha256 cbdc3d9fb8f0f26788af72f4dd6242b98e0b8ee0461fe50e3ac3b63c411a33eb ===
+parity: 6 cases, 0 review; /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/new-page-parity/index.html
+geometry: 6 required; 6 measured; 0 unproven; 0 mismatches
+parity gate: pass (0 pixel reviews advisory)
+
+
+=== manifest-settings-command.json sha256 d52c742db2a82ec5a79dbb4c175ab04cc363651f36a316913ff2f603b4145887 ===
+{
+  "command": [
+    "target/settings-plugins-dev/debug/bboxybook",
+    "manifest"
+  ],
+  "gallery": "settings",
+  "exit": 0,
+  "stderr": ""
+}
+
+
+=== capture-settings-command.json sha256 1546519ec28f87538e81b9b0d87bdcf9f154cc868d11601d2a331bfedfaf1345 ===
+{
+  "command": [
+    "node",
+    "crates/bboxybook/capture.mjs",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/settings-parity",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/settings-parity/requested.json"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:32:13.004835+00:00",
+  "started": 1792917133.0049798,
+  "source": "4edc61baecaa878438909a7176a1d10764f6c31c",
+  "pid": 88397,
+  "pgid": 88397,
+  "exit_code": 0,
+  "elapsed_s": 50.045565128326416
+}
+
+
+=== capture-settings.log sha256 4f002fe3c0d9da6ac2cb38c5ab072d3de4fe54db171fd31e4dd2aef2e4a5096b ===
+captured 100/168
+web: 168/168 captured; 0 failures
+
+
+=== native-settings-command.json sha256 f8ec2052a267801dadcd12fde85fed8655283eca6663ebdd387cfbe38553eb6b ===
+{
+  "command": [
+    "target/settings-plugins-dev/debug/bboxybook",
+    "render",
+    "--all",
+    "--out",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/settings-parity/native",
+    "--manifest",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/settings-parity/cases.json"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:33:24.583282+00:00",
+  "started": 1792917204.583955,
+  "source": "4edc61baecaa878438909a7176a1d10764f6c31c",
+  "pid": 91502,
+  "pgid": 91502,
+  "exit_code": 0,
+  "elapsed_s": 123.26950001716614
+}
+
+
+=== native-settings.log sha256 0606767c5d2b1a2659b9ddb3531e0dc2b174e79baadff8f2f473c46457dd7a25 ===
+adapter: AdapterInfo { name: "Apple M4", vendor: 0, device: 0, device_type: IntegratedGpu, device_pci_bus_id: "", driver: "", driver_info: "", backend: Metal, subgroup_min_size: 4, subgroup_max_size: 64, transient_saves_memory: Some(true), limit_bucket: None }
+rendered 100/168
+native/web layout snapshots: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/settings-parity/native/layouts.json
+rendered 168 PNGs to /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/settings-parity/native
+
+
+=== compare-settings-command.json sha256 5f50cff173d5fe0cc48e700ad0306a63f3da01584a71e9d809e2ea56b67de6c0 ===
+{
+  "command": [
+    "target/settings-plugins-dev/debug/bboxybook",
+    "compare",
+    "--strict-geometry",
+    "--out",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/settings-parity",
+    "--manifest",
+    "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/settings-parity/cases.json"
+  ],
+  "cwd": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/settings-plugins-dev",
+  "utc": "2026-10-25T08:35:47.018595+00:00",
+  "started": 1792917347.018872,
+  "source": "4edc61baecaa878438909a7176a1d10764f6c31c",
+  "pid": 99654,
+  "pgid": 99654,
+  "exit_code": 0,
+  "elapsed_s": 19.70011281967163
+}
+
+
+=== compare-settings.log sha256 1de9e5942c565c374279a18c9326b41728b0dfb5c344d9e4855948ebb80680f4 ===
+parity: 168 cases, 0 review; /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/settings-parity/index.html
+geometry: 168 required; 168 measured; 0 unproven; 0 mismatches
+parity gate: pass (0 pixel reviews advisory)
+
+
+=== rebase-native-range-diff.log sha256 6a1f8da66dde0a23ea086dcf2b196cb1374e362775d726514e556f0aeda7a0ec ===
+1:  a4432d0d = 1:  5005be35 lab: Settings › Plugins and › Knowledge, references for e2e G3 and G4
+2:  aedbd9b7 = 2:  8092deb8 lab: Settings' nav uses the shared plug icon, no duplicate asset name
+3:  6baf362e = 3:  242f67da Implement native Plugins and Knowledge Settings pages
+
+
+=== settings-parity/report.json sha256 021d083102a72c2d5a3d7ef87456b84a619c94e0c9ca79222f3f7794ee869076 ===
+[
+  {
+    "changed_fraction": 0.006585144318105363,
+    "geometry": {
+      "baselines": 18,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 64
+    },
+    "key": "settings/account-comfortable-dark.png",
+    "mean_error": 0.0012146641944135524,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006585144318105363,
+    "geometry": {
+      "baselines": 18,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 64
+    },
+    "key": "settings/account-cozy-dark.png",
+    "mean_error": 0.0012146641944135524,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006585144318105363,
+    "geometry": {
+      "baselines": 18,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 64
+    },
+    "key": "settings/account-compact-dark.png",
+    "mean_error": 0.001214658304955569,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006585144318105363,
+    "geometry": {
+      "baselines": 18,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 64
+    },
+    "key": "settings/account-touch-dark.png",
+    "mean_error": 0.001214658304955569,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006571928374390865,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-unknown-comfortable-dark.png",
+    "mean_error": 0.0012966666515896543,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006571928374390865,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-unknown-compact-dark.png",
+    "mean_error": 0.0012966666515896543,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006571928374390865,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-unknown-cozy-dark.png",
+    "mean_error": 0.0012966666515896543,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006571928374390865,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-unknown-touch-dark.png",
+    "mean_error": 0.0012966666515896543,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006563518228390731,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-granted-compact-dark.png",
+    "mean_error": 0.0012958091465072876,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006563518228390731,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-granted-cozy-dark.png",
+    "mean_error": 0.0012958091465072876,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006561115329533549,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-granted-comfortable-dark.png",
+    "mean_error": 0.0012957655645182112,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006561115329533549,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-granted-touch-dark.png",
+    "mean_error": 0.0012957655645182112,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.00654429503753328,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-unknown-comfortable-light.png",
+    "mean_error": 0.0006758718423788811,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.00654429503753328,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-unknown-compact-light.png",
+    "mean_error": 0.0006758718423788811,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.00654429503753328,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-unknown-cozy-light.png",
+    "mean_error": 0.0006758718423788811,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.00654429503753328,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-unknown-touch-light.png",
+    "mean_error": 0.0006758718423788811,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006541892138676099,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-unlock-pending-touch-dark.png",
+    "mean_error": 0.001307545658376383,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006540690689247508,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-cancelled-touch-dark.png",
+    "mean_error": 0.0012951660176955125,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006539489239818917,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-unlock-pending-comfortable-dark.png",
+    "mean_error": 0.0013075020763873065,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006539489239818917,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-unlock-pending-cozy-dark.png",
+    "mean_error": 0.0013075020763873065,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006539489239818917,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-unlock-pending-compact-dark.png",
+    "mean_error": 0.00130750089849571,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006538287790390327,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-cancelled-comfortable-dark.png",
+    "mean_error": 0.0012951224357064363,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006538287790390327,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-cancelled-compact-dark.png",
+    "mean_error": 0.0012951224357064363,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006538287790390327,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-cancelled-cozy-dark.png",
+    "mean_error": 0.0012951224357064363,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006531079093818783,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-granted-cozy-light.png",
+    "mean_error": 0.0006775161790478151,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006529877644390192,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-granted-comfortable-light.png",
+    "mean_error": 0.0006774761307335287,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006529877644390192,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-granted-compact-light.png",
+    "mean_error": 0.0006774761307335287,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006529877644390192,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-granted-touch-light.png",
+    "mean_error": 0.0006774761307335287,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006529877644390192,
+    "geometry": {
+      "baselines": 18,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 64
+    },
+    "key": "settings/account-compact-light.png",
+    "mean_error": 0.0005706060261687936,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006529877644390192,
+    "geometry": {
+      "baselines": 18,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 64
+    },
+    "key": "settings/account-comfortable-light.png",
+    "mean_error": 0.0005705341747813975,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006529877644390192,
+    "geometry": {
+      "baselines": 18,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 64
+    },
+    "key": "settings/account-cozy-light.png",
+    "mean_error": 0.0005705341747813975,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006528676194961601,
+    "geometry": {
+      "baselines": 18,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 64
+    },
+    "key": "settings/account-touch-light.png",
+    "mean_error": 0.0005705059053830777,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.00650825155467556,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-unlock-pending-compact-light.png",
+    "mean_error": 0.0006838532358378324,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.00650825155467556,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-unlock-pending-cozy-light.png",
+    "mean_error": 0.0006838532358378324,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.00650825155467556,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-unlock-pending-touch-light.png",
+    "mean_error": 0.0006838532358378324,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.00650705010524697,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-unlock-pending-comfortable-light.png",
+    "mean_error": 0.0006838131875235461,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006499841408675426,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-cancelled-comfortable-light.png",
+    "mean_error": 0.0006825516656235259,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006499841408675426,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-cancelled-compact-light.png",
+    "mean_error": 0.0006825516656235259,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006499841408675426,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-cancelled-cozy-light.png",
+    "mean_error": 0.0006825516656235259,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.006499841408675426,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 85
+    },
+    "key": "settings/custody-·-cancelled-touch-light.png",
+    "mean_error": 0.0006825516656235259,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0050917426783671825,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 80
+    },
+    "key": "settings/custody-·-signer-returned-comfortable-dark.png",
+    "mean_error": 0.001196514062800657,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0050917426783671825,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 80
+    },
+    "key": "settings/custody-·-signer-returned-compact-dark.png",
+    "mean_error": 0.001196514062800657,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0050917426783671825,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 80
+    },
+    "key": "settings/custody-·-signer-returned-cozy-dark.png",
+    "mean_error": 0.001196514062800657,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0050917426783671825,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 80
+    },
+    "key": "settings/custody-·-signer-returned-touch-dark.png",
+    "mean_error": 0.0011965105291258668,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.005084533981795638,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 122
+    },
+    "key": "settings/harnesses-comfortable-dark.png",
+    "mean_error": 0.0007246141745401653,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.005084533981795638,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 122
+    },
+    "key": "settings/harnesses-compact-dark.png",
+    "mean_error": 0.0007246141745401653,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.005084533981795638,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 122
+    },
+    "key": "settings/harnesses-touch-dark.png",
+    "mean_error": 0.0007246141745401653,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.005084533981795638,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 122
+    },
+    "key": "settings/harnesses-cozy-dark.png",
+    "mean_error": 0.000724608285082182,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0050112455666516086,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 80
+    },
+    "key": "settings/custody-·-signer-returned-comfortable-light.png",
+    "mean_error": 0.0005715012237822532,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0050112455666516086,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 80
+    },
+    "key": "settings/custody-·-signer-returned-compact-light.png",
+    "mean_error": 0.0005715012237822532,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0050112455666516086,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 80
+    },
+    "key": "settings/custody-·-signer-returned-cozy-light.png",
+    "mean_error": 0.0005715012237822532,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0050112455666516086,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 80
+    },
+    "key": "settings/custody-·-signer-returned-touch-light.png",
+    "mean_error": 0.0005715012237822532,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004944298576637292,
+    "geometry": {
+      "baselines": 28,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.04736328125,
+      "rects": 147
+    },
+    "key": "settings/plugins-comfortable-light.png",
+    "mean_error": 0.0008156017448277027,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004944298576637292,
+    "geometry": {
+      "baselines": 28,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.04736328125,
+      "rects": 147
+    },
+    "key": "settings/plugins-compact-light.png",
+    "mean_error": 0.0008156017448277027,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004944298576637292,
+    "geometry": {
+      "baselines": 28,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.04736328125,
+      "rects": 147
+    },
+    "key": "settings/plugins-cozy-light.png",
+    "mean_error": 0.0008156017448277027,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004944298576637292,
+    "geometry": {
+      "baselines": 28,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.04736328125,
+      "rects": 147
+    },
+    "key": "settings/plugins-touch-light.png",
+    "mean_error": 0.0008156017448277027,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004935661667003285,
+    "geometry": {
+      "baselines": 28,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.04736328125,
+      "rects": 147
+    },
+    "key": "settings/plugins-comfortable-dark.png",
+    "mean_error": 0.0007924416697254093,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004935661667003285,
+    "geometry": {
+      "baselines": 28,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.04736328125,
+      "rects": 147
+    },
+    "key": "settings/plugins-compact-dark.png",
+    "mean_error": 0.0007924416697254093,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004935661667003285,
+    "geometry": {
+      "baselines": 28,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.04736328125,
+      "rects": 147
+    },
+    "key": "settings/plugins-cozy-dark.png",
+    "mean_error": 0.0007924416697254093,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004935661667003285,
+    "geometry": {
+      "baselines": 28,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.04736328125,
+      "rects": 147
+    },
+    "key": "settings/plugins-touch-dark.png",
+    "mean_error": 0.0007924416697254093,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004844244096077508,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 122
+    },
+    "key": "settings/harnesses-comfortable-light.png",
+    "mean_error": 0.0006676301348770686,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004844244096077508,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 122
+    },
+    "key": "settings/harnesses-compact-light.png",
+    "mean_error": 0.0006676301348770686,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004844244096077508,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 122
+    },
+    "key": "settings/harnesses-cozy-light.png",
+    "mean_error": 0.0006676301348770686,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004844244096077508,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 122
+    },
+    "key": "settings/harnesses-touch-light.png",
+    "mean_error": 0.0006676301348770686,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004785373074076566,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 84
+    },
+    "key": "settings/custody-·-held-cozy-dark.png",
+    "mean_error": 0.0012027839797696647,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004782970175219384,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 84
+    },
+    "key": "settings/custody-·-held-comfortable-dark.png",
+    "mean_error": 0.001202741575672185,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004782970175219384,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 84
+    },
+    "key": "settings/custody-·-held-compact-dark.png",
+    "mean_error": 0.001202741575672185,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004782970175219384,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 84
+    },
+    "key": "settings/custody-·-held-touch-dark.png",
+    "mean_error": 0.0012027403977805883,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.00471809190607549,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 84
+    },
+    "key": "settings/custody-·-held-compact-light.png",
+    "mean_error": 0.0005111472362611195,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004716890456646899,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 84
+    },
+    "key": "settings/custody-·-held-comfortable-light.png",
+    "mean_error": 0.0005111071879468331,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004716890456646899,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 84
+    },
+    "key": "settings/custody-·-held-cozy-light.png",
+    "mean_error": 0.0005111071879468331,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004716890456646899,
+    "geometry": {
+      "baselines": 22,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 84
+    },
+    "key": "settings/custody-·-held-touch-light.png",
+    "mean_error": 0.0005111071879468331,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0040633019674935844,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 53
+    },
+    "key": "settings/knowledge-·-swapped-to-the-stub-compact-light.png",
+    "mean_error": 0.0004883609233237801,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0040633019674935844,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 53
+    },
+    "key": "settings/knowledge-·-swapped-to-the-stub-comfortable-light.png",
+    "mean_error": 0.0004883267644674771,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0040633019674935844,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 53
+    },
+    "key": "settings/knowledge-·-swapped-to-the-stub-cozy-light.png",
+    "mean_error": 0.0004883267644674771,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0040633019674935844,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 53
+    },
+    "key": "settings/knowledge-·-swapped-to-the-stub-touch-light.png",
+    "mean_error": 0.0004883267644674771,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004057294720350631,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 53
+    },
+    "key": "settings/knowledge-·-swapped-to-the-stub-comfortable-dark.png",
+    "mean_error": 0.00048388257947328835,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004057294720350631,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 53
+    },
+    "key": "settings/knowledge-·-swapped-to-the-stub-compact-dark.png",
+    "mean_error": 0.00048388257947328835,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004057294720350631,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 53
+    },
+    "key": "settings/knowledge-·-swapped-to-the-stub-cozy-dark.png",
+    "mean_error": 0.00048388257947328835,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.004057294720350631,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 53
+    },
+    "key": "settings/knowledge-·-swapped-to-the-stub-touch-dark.png",
+    "mean_error": 0.00048388257947328835,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003443354062340808,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 68
+    },
+    "key": "settings/appearance-comfortable-dark.png",
+    "mean_error": 0.0006520089365221969,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003443354062340808,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 68
+    },
+    "key": "settings/appearance-compact-dark.png",
+    "mean_error": 0.0006520089365221969,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003443354062340808,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 68
+    },
+    "key": "settings/appearance-cozy-dark.png",
+    "mean_error": 0.0006520089365221969,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003443354062340808,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 68
+    },
+    "key": "settings/appearance-touch-dark.png",
+    "mean_error": 0.0006520089365221969,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003402504781768726,
+    "geometry": {
+      "baselines": 20,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 143
+    },
+    "key": "settings/new-harness-cozy-dark.png",
+    "mean_error": 0.0008513564882321091,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003402504781768726,
+    "geometry": {
+      "baselines": 20,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 143
+    },
+    "key": "settings/new-harness-touch-dark.png",
+    "mean_error": 0.0008513564882321091,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003402504781768726,
+    "geometry": {
+      "baselines": 20,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 143
+    },
+    "key": "settings/new-harness-comfortable-dark.png",
+    "mean_error": 0.0008513553103405124,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003402504781768726,
+    "geometry": {
+      "baselines": 20,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 143
+    },
+    "key": "settings/new-harness-compact-dark.png",
+    "mean_error": 0.0008513553103405124,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0033556482540536905,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 68
+    },
+    "key": "settings/appearance-comfortable-light.png",
+    "mean_error": 0.0006634733554324643,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0033556482540536905,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 68
+    },
+    "key": "settings/appearance-compact-light.png",
+    "mean_error": 0.0006634733554324643,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0033556482540536905,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 68
+    },
+    "key": "settings/appearance-cozy-light.png",
+    "mean_error": 0.0006634733554324643,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0033556482540536905,
+    "geometry": {
+      "baselines": 19,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 68
+    },
+    "key": "settings/appearance-touch-light.png",
+    "mean_error": 0.0006634733554324643,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003349641006910737,
+    "geometry": {
+      "baselines": 20,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 143
+    },
+    "key": "settings/new-harness-comfortable-light.png",
+    "mean_error": 0.0005380267224968438,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003349641006910737,
+    "geometry": {
+      "baselines": 20,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 143
+    },
+    "key": "settings/new-harness-compact-light.png",
+    "mean_error": 0.0005380267224968438,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003349641006910737,
+    "geometry": {
+      "baselines": 20,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 143
+    },
+    "key": "settings/new-harness-cozy-light.png",
+    "mean_error": 0.0005380267224968438,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003349641006910737,
+    "geometry": {
+      "baselines": 20,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 143
+    },
+    "key": "settings/new-harness-touch-light.png",
+    "mean_error": 0.0005380267224968438,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0031778337386222737,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/cloud-comfortable-dark.png",
+    "mean_error": 0.0004309481311195002,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0031778337386222737,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/cloud-compact-dark.png",
+    "mean_error": 0.0004309481311195002,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0031778337386222737,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/cloud-cozy-dark.png",
+    "mean_error": 0.0004309481311195002,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0031778337386222737,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/cloud-touch-dark.png",
+    "mean_error": 0.0004309481311195002,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003161013446622005,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/cloud-comfortable-light.png",
+    "mean_error": 0.00041622919772766806,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003161013446622005,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/cloud-compact-light.png",
+    "mean_error": 0.00041622919772766806,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003161013446622005,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/cloud-cozy-light.png",
+    "mean_error": 0.00041622919772766806,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003161013446622005,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/cloud-touch-light.png",
+    "mean_error": 0.00041622919772766806,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003148998952336098,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 90
+    },
+    "key": "settings/roles-comfortable-dark.png",
+    "mean_error": 0.0002658100850513118,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003148998952336098,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 90
+    },
+    "key": "settings/roles-compact-dark.png",
+    "mean_error": 0.0002658100850513118,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003148998952336098,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 90
+    },
+    "key": "settings/roles-cozy-dark.png",
+    "mean_error": 0.0002658100850513118,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.003148998952336098,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 90
+    },
+    "key": "settings/roles-touch-dark.png",
+    "mean_error": 0.0002658100850513118,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0028522409434742074,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 90
+    },
+    "key": "settings/roles-comfortable-light.png",
+    "mean_error": 0.0002261504749918537,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0028522409434742074,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 90
+    },
+    "key": "settings/roles-compact-light.png",
+    "mean_error": 0.0002261504749918537,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0028522409434742074,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 90
+    },
+    "key": "settings/roles-cozy-light.png",
+    "mean_error": 0.0002261504749918537,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0028522409434742074,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 90
+    },
+    "key": "settings/roles-touch-light.png",
+    "mean_error": 0.0002261504749918537,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.002583116271469901,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 53
+    },
+    "key": "settings/knowledge-cozy-light.png",
+    "mean_error": 0.000244792965292152,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.002583116271469901,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 53
+    },
+    "key": "settings/knowledge-comfortable-light.png",
+    "mean_error": 0.0002446257046854266,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.002583116271469901,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 53
+    },
+    "key": "settings/knowledge-compact-light.png",
+    "mean_error": 0.0002446257046854266,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.002583116271469901,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 53
+    },
+    "key": "settings/knowledge-touch-light.png",
+    "mean_error": 0.0002446257046854266,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0025795119231841294,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 53
+    },
+    "key": "settings/knowledge-comfortable-dark.png",
+    "mean_error": 0.00024173044714084248,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0025795119231841294,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 53
+    },
+    "key": "settings/knowledge-compact-dark.png",
+    "mean_error": 0.00024173044714084248,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0025795119231841294,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 53
+    },
+    "key": "settings/knowledge-cozy-dark.png",
+    "mean_error": 0.00024173044714084248,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0025795119231841294,
+    "geometry": {
+      "baselines": 16,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 53
+    },
+    "key": "settings/knowledge-touch-dark.png",
+    "mean_error": 0.00024173044714084248,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.002530252496611913,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 90
+    },
+    "key": "settings/in-a-tab-compact-dark.png",
+    "mean_error": 0.0005093556631426035,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.002357243778894859,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 90
+    },
+    "key": "settings/in-a-tab-compact-light.png",
+    "mean_error": 0.00031078316410329185,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.00160393498716852,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 90
+    },
+    "key": "settings/in-a-tab-cozy-light.png",
+    "mean_error": 0.0003011150298779271,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0015991291894541576,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 90
+    },
+    "key": "settings/in-a-tab-touch-light.png",
+    "mean_error": 0.00030252732190231944,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0015991291894541576,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 90
+    },
+    "key": "settings/in-a-tab-comfortable-light.png",
+    "mean_error": 0.00030209267990315283,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.001590719043454023,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-·-one-harness-off-comfortable-light.png",
+    "mean_error": 0.00015938286772691987,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.001590719043454023,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-·-one-harness-off-compact-light.png",
+    "mean_error": 0.00015938286772691987,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.001590719043454023,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-·-one-harness-off-cozy-light.png",
+    "mean_error": 0.00015938286772691987,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.001590719043454023,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-·-one-harness-off-touch-light.png",
+    "mean_error": 0.00015938286772691987,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0015823088974538883,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 90
+    },
+    "key": "settings/in-a-tab-comfortable-dark.png",
+    "mean_error": 0.00048262930281444473,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0015787045491681164,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 90
+    },
+    "key": "settings/in-a-tab-cozy-dark.png",
+    "mean_error": 0.0004842135670119491,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0015787045491681164,
+    "geometry": {
+      "baselines": 15,
+      "complete": true,
+      "max_baseline_error": 0.0078125,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 90
+    },
+    "key": "settings/in-a-tab-touch-dark.png",
+    "mean_error": 0.0004835763276581574,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.001576301650310935,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-comfortable-light.png",
+    "mean_error": 0.00015811310058572308,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.001576301650310935,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-compact-light.png",
+    "mean_error": 0.00015811310058572308,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.001576301650310935,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-cozy-light.png",
+    "mean_error": 0.00015811310058572308,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.001576301650310935,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-touch-light.png",
+    "mean_error": 0.00015811310058572308,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0015666900548822098,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-comfortable-dark.png",
+    "mean_error": 0.00015378552685960342,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0015666900548822098,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-compact-dark.png",
+    "mean_error": 0.00015378552685960342,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0015666900548822098,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-cozy-dark.png",
+    "mean_error": 0.00015378552685960342,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0015666900548822098,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-touch-dark.png",
+    "mean_error": 0.00015378552685960342,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0015534741111677126,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-·-one-harness-off-comfortable-dark.png",
+    "mean_error": 0.00015524493454786208,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0015534741111677126,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-·-one-harness-off-compact-dark.png",
+    "mean_error": 0.00015524493454786208,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0015534741111677126,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-·-one-harness-off-cozy-dark.png",
+    "mean_error": 0.00015524493454786208,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0015534741111677126,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-·-one-harness-off-touch-dark.png",
+    "mean_error": 0.00015524493454786208,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0014681712017377765,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-·-off-comfortable-light.png",
+    "mean_error": 0.00015608830493106884,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0014681712017377765,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-·-off-compact-light.png",
+    "mean_error": 0.00015608830493106884,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0014681712017377765,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-·-off-cozy-light.png",
+    "mean_error": 0.00015608830493106884,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0014681712017377765,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-·-off-touch-light.png",
+    "mean_error": 0.00015608830493106884,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0014501494603089166,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-·-off-comfortable-dark.png",
+    "mean_error": 0.0001559952514949329,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0014501494603089166,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-·-off-compact-dark.png",
+    "mean_error": 0.0001559952514949329,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0014501494603089166,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-·-off-cozy-dark.png",
+    "mean_error": 0.0001559952514949329,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0014501494603089166,
+    "geometry": {
+      "baselines": 14,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 60
+    },
+    "key": "settings/notifications-·-off-touch-dark.png",
+    "mean_error": 0.0001559952514949329,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0013107813265924011,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/shortcuts-comfortable-dark.png",
+    "mean_error": 0.00015254638489991973,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0013107813265924011,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/shortcuts-compact-dark.png",
+    "mean_error": 0.00015254638489991973,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0013107813265924011,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/shortcuts-cozy-dark.png",
+    "mean_error": 0.00015254638489991973,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0013107813265924011,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/shortcuts-touch-dark.png",
+    "mean_error": 0.00015254638489991973,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0013047740794494478,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/shortcuts-comfortable-light.png",
+    "mean_error": 0.00015496106267306762,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0013047740794494478,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/shortcuts-compact-light.png",
+    "mean_error": 0.00015496106267306762,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0013047740794494478,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/shortcuts-cozy-light.png",
+    "mean_error": 0.00015496106267306762,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0013047740794494478,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/shortcuts-touch-light.png",
+    "mean_error": 0.00015496106267306762,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0012891552368777693,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/machines-comfortable-dark.png",
+    "mean_error": 0.00014609978419141323,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0012891552368777693,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/machines-compact-dark.png",
+    "mean_error": 0.00014609978419141323,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0012891552368777693,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/machines-cozy-dark.png",
+    "mean_error": 0.00014609978419141323,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0012891552368777693,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/machines-touch-dark.png",
+    "mean_error": 0.00014609978419141323,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0012807450908776349,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/machines-comfortable-light.png",
+    "mean_error": 0.00014817994075111039,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0012807450908776349,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/machines-compact-light.png",
+    "mean_error": 0.00014817994075111039,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0012807450908776349,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/machines-cozy-light.png",
+    "mean_error": 0.00014817994075111039,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  },
+  {
+    "changed_fraction": 0.0012807450908776349,
+    "geometry": {
+      "baselines": 12,
+      "complete": true,
+      "max_baseline_error": 0.0,
+      "max_rect_error": 0.02304840087890625,
+      "rects": 40
+    },
+    "key": "settings/machines-touch-light.png",
+    "mean_error": 0.00014817994075111039,
+    "policy": {
+      "changed_pixel_budget": 0.02,
+      "channel_tolerance": 8,
+      "diagram_body_advisory": false,
+      "geometry_tolerance_px": 0.5,
+      "historical": false,
+      "scope": "Settings; public records and outer viewport only, read-mostly controls",
+      "text": true
+    },
+    "status": "within policy"
+  }
+]
