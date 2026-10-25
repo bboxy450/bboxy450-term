@@ -696,7 +696,7 @@ impl SeatFixture {
                         time * 1000,
                     )
                     .unwrap()
-                    .envelope().expect("signed fixture envelope"),
+                    .envelope().expect("signed fixture envelope").clone(),
             )
         } else {
             None

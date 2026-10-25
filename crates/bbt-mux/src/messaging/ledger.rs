@@ -80,6 +80,10 @@ pub(crate) struct InboxSummary {
     pub pending_ack: u64,
     pub ids: Vec<Ulid>,
 }
+pub(crate) struct SenderAttribution {
+    pub recipient: Recipient,
+    pub device: Option<Ulid>,
+}
 
 pub struct Ledger {
     pub(crate) store: SqliteStore,
@@ -230,7 +234,10 @@ impl Ledger {
             routes,
             held,
             now,
-            Recipient::Seat(envelope.seat),
+            SenderAttribution {
+                recipient: Recipient::Seat(envelope.seat),
+                device: None,
+            },
         )
     }
     pub(crate) fn accept_from(
@@ -240,8 +247,12 @@ impl Ledger {
         routes: &[Route],
         held: Option<&str>,
         now: u64,
-        sender: Recipient,
+        attribution: SenderAttribution,
     ) -> Result<StoredMessage> {
+        let SenderAttribution {
+            recipient: sender,
+            device,
+        } = attribution;
         if let Some(old) = self.existing(request, sender)? {
             return Ok(old);
         }
@@ -279,7 +290,7 @@ impl Ledger {
             bus: None,
         };
         if held.is_none() {
-            insert_deliveries(&tx, &message, routes, now, None)?;
+            insert_deliveries(&tx, &message, routes, now, None, device)?;
             publication(&tx, &message)?;
         }
         tx.commit()?;
@@ -342,7 +353,7 @@ impl Ledger {
             ),
         )?;
         if held.is_none() {
-            insert_deliveries(&tx, &message, routes, now, Some(same_device))?;
+            insert_deliveries(&tx, &message, routes, now, Some(same_device), None)?;
             publication(&tx, &message)?;
         }
         tx.commit()?;
@@ -507,7 +518,7 @@ impl Ledger {
                 "pending release requires its local recipient scope",
             ));
         }
-        insert_deliveries(&tx, message, routes, now, same_device)?;
+        insert_deliveries(&tx, message, routes, now, same_device, None)?;
         publication(&tx, message)?;
         tx.execute(
             "UPDATE msg_messages SET held_out=NULL WHERE seq=?1",
@@ -1057,6 +1068,7 @@ fn insert_deliveries(
     routes: &[Route],
     now: u64,
     same_device: Option<&std::collections::BTreeSet<Recipient>>,
+    signing_device: Option<Ulid>,
 ) -> Result<()> {
     let sequence = message.sequence;
     let envelope = message.view();
@@ -1098,12 +1110,13 @@ fn insert_deliveries(
             signature: envelope.signature,
             signature_reason: envelope.signature_reason.map(str::to_owned),
             sender_operator: bbt_proto::messaging::OperatorReference::from_recipient(sender),
-            sender_device: observed_device.or(match sender {
+            sender_device: signing_device.or(observed_device).or(match sender {
                 Recipient::Operator(device) => Some(device),
                 _ => None,
             }),
             recipient_device: match route.recipient {
                 Recipient::Operator(device) => Some(device),
+                Recipient::OperatorLocal(_) => signing_device,
                 _ => None,
             },
         };

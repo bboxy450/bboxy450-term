@@ -985,7 +985,17 @@ impl Messaging {
         let message = self
             .swarm(swarm)?
             .ledger
-            .accept_from(&request, &envelope, &routes, None, now, sender)
+            .accept_from(
+                &request,
+                &envelope,
+                &routes,
+                None,
+                now,
+                super::ledger::SenderAttribution {
+                    recipient: sender,
+                    device: Some(authority.device_id),
+                },
+            )
             .map_err(|error| {
                 invalid(format!(
                     "unknown: message {} store outcome unavailable: {error}",

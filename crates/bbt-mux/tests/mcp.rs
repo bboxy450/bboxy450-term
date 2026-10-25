@@ -464,7 +464,7 @@ fn gui_operator_dm_replays_once_and_tasks_share_mcp_verification() {
     assert_eq!(row.author.id, device.to_string());
     assert_eq!(
         row.issuer_kind,
-        bbt_mux::messaging::wire::IssuerKind::LocalDev
+        Some(bbt_mux::messaging::wire::IssuerKind::LocalDev)
     );
     assert_eq!(row.receipts.acked, 1);
     assert_eq!(
