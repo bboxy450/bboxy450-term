@@ -8,13 +8,13 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[d316-pass-means-the-whole-promise]]", rel: decision }
 created: "2026-10-25T01:04:37Z"
-updated: "2026-10-25T01:04:37Z"
+updated: "2026-10-25T01:19:45Z"
 ---
 # e2e script map
 
 **Lens.** Each promise of [[e2e-acceptance]] §1 is tested by one night script, `scripts/e2e/<ID>.sh`; this map says, per promise, how much of the promise the script proves. Decision [[d316-pass-means-the-whole-promise]]: the script's `# coverage:` header is the source of truth, this table must agree with it, and only `full` is green.
 
-Aster's read-only map arrives in six parts and fills the rows below; a row is one line, `missing` in the promise's own words, `tracked-by` the open task's number when partial. Blank cells mean not yet mapped, not full.
+Aster's read-only map arrives in six parts and fills the rows below; a row is one line, `missing` in the promise's own words, `tracked-by` the open task's number when partial. Blank cells mean not yet mapped, not full. **Whoever lands or changes a script's `# coverage:` header edits that promise's row in the same commit**, so the table and the headers agree by construction; a later corpus check only confirms it. Aster's read-only map seeds rows for scripts nobody is touching; Seraph's runner-headless commit carries the terminal rows (T1 to T9) with its headers.
 
 | ID | script | coverage | missing | tracked-by |
 |---|---|---|---|---|
