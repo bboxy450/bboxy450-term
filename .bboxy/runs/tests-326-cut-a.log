@@ -166,3 +166,28 @@ rook-tests-326a-land, the sole active writing branch, keeping its warm target pa
 with the checkout path as required by Oracle4c1c35e0. Original writer has no new edits.
 Only this evidence log changes after the green source; landing's own presubmit will
 check the rebased candidate. #326 Cut B and full #327 remain uncompleted work.
+
+First author landing (bounded attempt; no push)
+----------------------------------------------
+Oracle356faa3e requested land.sh after the completed old-path gate. Oracle131004fc
+subsequently ruled this >half-workspace cut WIDE: if the current900s attempt expires,
+never repeat the bounded attempt; report its log for the temporary wide landing.
+Command sh scripts/land.sh in the same owned checkout/target: outer EXIT77 in
+902.814169s, candidate 830a82715399758fe85f61e8e72d189dcbca6196, tracked tree clean.
+Presubmit EXIT124, presubmit_timeout at900.010454s; not a green presubmit.
+Workspace 1500 pass/0 fail/31 ignored and strict affected(all24)/all-target
+Clippy finished before the bound; no failed assertion was recorded. The last command
+was python3 -I scripts/test-landing.py --all; no completion verdict for that command,
+remaining default invariants, dispatch goldens or selected parity. No push occurred.
+Presubmit raw /Users/feral/.local/state/bboxy450-term/landing/presubmits/830a82715399758fe85f61e8e72d189dcbca6196-459ddfa7/commands.log; SHA256 165227e6e9148c0bce5aa5db2d8220a2b13cbd652fd2771ec9c95d03c75542b4.
+Outer raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-tests-326a-73zsjgow/cut-a-land-1.log; SHA256 8dd54a1dca1660c82c301da3b7fa06842a848ab66b7b6946c18155764f42a3df.
+The timed worker group497 and outer group110 have no remaining processes after exit.
+SLOT3 released: e4b6acc9-d81c-44e1-83d0-1657d31c3862. No bounded retry launched.
+Green-source2fe2e849 versus candidate830a8271 Git object equality:
+crates=False, Cargo.toml=True, Cargo.lock=True.
+The old exact normal gate remains evidence for its own SHA, never a fabricated
+presubmit or parity pass for the rebased candidate. records/landing/cache changes
+on main are distinct from this feature source; all changes and timing limits named.
+Preflight sh scripts/overlap.sh EXIT127: helper not present in the bootstrap; no
+substitute source change was made. One evidence append initially had a blank EOF
+line (diff --check EXIT2), corrected before its signed commit (EXIT0 thereafter).
