@@ -1028,6 +1028,14 @@ async fn run_with_control(
                     UiMsg::Captured {id,error,frame}=>queue_action(&mut outgoing,GuiAction::Captured {id:*id,error:error.clone(),frame:*frame}),
                     UiMsg::Focused {id,result}=>queue_action(&mut outgoing,GuiAction::Focused {id:*id,result:result.clone()}),
                     UiMsg::UiReply {id,result}=>queue_action(&mut outgoing,GuiAction::UiReply {id:*id,result:result.clone()}),
+                    UiMsg::HistoryMetrics {id,status}=> {
+                        let mut status=status.clone();
+                        status.generation=session.endpoint.generation;
+                        status.custody_backend=session.endpoint.custody_backend.clone();
+                        status.history=history.metrics(&model.history);
+                        status.history["r5i"]=crate::stall::diagnostic_report();
+                        queue_action(&mut outgoing,GuiAction::AppReply {id:*id,status});
+                    },
                     UiMsg::AppReply {id,status}=> {
                         let mut status=status.clone();
                         status.generation=session.endpoint.generation;

@@ -26,6 +26,7 @@ phases! {
     TicklessRedraw, ModelBuild, PanePrepare, GuiReceive, GuiApply,
     ModelPublish, LatestPublish, IoOldModelDrop,
     ReadRingRequest, ReadRingTerminalDecode, LogicViewPublish,
+    HistoryPage, HistoryStep,
 }
 const PERIODS: usize = 6;
 

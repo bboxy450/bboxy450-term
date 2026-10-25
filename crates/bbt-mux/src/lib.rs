@@ -17,6 +17,7 @@ pub mod ctl_door;
 pub mod debug;
 mod gui_capture;
 mod gui_events;
+mod history_fault;
 pub mod identity;
 pub mod index;
 pub mod knowledge;

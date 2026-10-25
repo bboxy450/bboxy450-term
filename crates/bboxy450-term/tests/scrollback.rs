@@ -193,6 +193,15 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
     history
         .request(seat, token, through, screen.clone(), Request::top())
         .unwrap();
+    let pending_sample = history.metrics(&BTreeMap::new());
+    assert_eq!(
+        pending_sample["retained_history_bytes"],
+        serde_json::Value::Null
+    );
+    assert_eq!(
+        pending_sample["panes"][0]["retained_history_bytes"],
+        serde_json::Value::Null
+    );
     let (top, fetches, longest) = drive(&mut history, &records, 1);
     assert_eq!(fetches, 1, "top must not prefetch the remaining transcript");
     assert_eq!(text(&top[&seat].screen.cells[0]), "line 00001");
@@ -363,6 +372,16 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
         }]
     );
     assert_eq!(text(&gap[&seat].screen.cells[4]), "line 4");
+    let observed = history.metrics(&gap);
+    assert_eq!(
+        observed["panes"][0]["gap_markers"],
+        serde_json::json!([{"row":3,"from":2,"to":4}])
+    );
+    assert_eq!(
+        observed["retained_history_bytes"].as_u64(),
+        history.retained_heap_bytes().map(|n| n as u64)
+    );
+    assert!(observed["panes"][0]["pages_fetched"].as_u64().unwrap() > 0);
     history.forget(seat);
 
     // There is never an overlapping timeout retry. A correlated Busy result
@@ -438,6 +457,15 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
     let accounted = fifty.retained_heap_bytes().unwrap();
     COUNT.with(|count| count.set(false));
     assert_eq!(fetches, 50);
+    let sample = fifty.metrics(&displays);
+    assert_eq!(sample["complete"], true);
+    assert_eq!(sample["panes"].as_array().unwrap().len(), 50);
+    assert_eq!(sample["retained_history_bytes"], accounted);
+    for row in sample["panes"].as_array().unwrap() {
+        assert!(row["retained_history_bytes"].as_u64().unwrap() <= HEAP_BUDGET as u64);
+        assert_eq!(row["pages_fetched"], 1);
+        assert!(row["pages_resident"].as_u64().unwrap() <= 1);
+    }
     assert!(
         displays
             .values()
@@ -456,6 +484,12 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
         fifty.forget(SeatId::from_u128(id));
     }
     assert_eq!(fifty.retained_heap_bytes(), Some(mem::size_of::<History>()));
+    let released = fifty.metrics(&BTreeMap::new());
+    assert_eq!(
+        released["retained_history_bytes"],
+        mem::size_of::<History>()
+    );
+    assert_eq!(released["panes"], serde_json::json!([]));
 }
 
 fn scroll_fixture() -> (SeatId, View, Arc<Screen>, Vec<HistoryRecord>, u64) {

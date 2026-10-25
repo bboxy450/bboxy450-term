@@ -34,6 +34,9 @@ impl Context {
     pub fn read(&self, request: &DebugRequest, capture: Value) -> Result<Value> {
         bbt_rt::assert_not_ui_thread();
         let data = match request {
+            DebugRequest::RingGap { .. } => {
+                return Err(invalid("ring_gap_requires_admitted_test_account"));
+            }
             DebugRequest::Logs { process, since } => logs(&self.root, *process, *since)?,
             DebugRequest::Journal { query } => journal(&self.root, query)?,
             DebugRequest::Ps => process_tree(self.peers, &self.processes)?,

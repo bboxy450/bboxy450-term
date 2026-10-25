@@ -138,6 +138,103 @@ def s1(app):
           "top=0, live join and captures; displayed bytes/lazy-page metrics unobserved")
 
 
+def history_sample(app, label):
+    data = app.ctl("debug", "metrics", label=label)
+    require(data["ui"]["available"], "GUI history metrics unavailable")
+    history = data["ui"]["history"]
+    require(history["available"] and history["complete"], "history sample omitted panes")
+    require(history["omitted_panes"] == 0, "incomplete history aggregate")
+    require(type(history["retained_history_bytes"]) is int, "heap is unobserved")
+    for row in history["panes"]:
+        require(type(row["retained_history_bytes"]) is int, "pane heap is unobserved")
+        require(0 < row["retained_history_bytes"] <= row["budget_bytes"] == 4_000_000,
+                "history pane exceeds its documented budget")
+        require(0 <= row["pages_resident"] <= 1, "more than one input page resident")
+        require(row["pages_fetched"] == row["pages_evicted"] + row["pages_resident"],
+                "page lifetime counters contradict residency")
+    require(history["retained_history_bytes"] >= sum(r["retained_history_bytes"] for r in history["panes"]),
+            "aggregate understates its retained pane heaps")
+    return history
+
+
+def s2(app):
+    import shlex
+    seat = app.spawn("S2 retained gap")
+    script = app.work / "gap.py"
+    script.write_text("import sys, termios\n"
+                      "t=termios.tcgetattr(0); t[3] &= ~termios.ECHO; termios.tcsetattr(0,termios.TCSANOW,t)\n"
+                      "sys.stdout.write('\\x1bc')\n"
+                      "for n in range(1,5): print(f'S2_BEFORE_{n:02}')\n"
+                      "print('S2_READY_A',flush=True)\n"
+                      "assert input()=='hole'\n"
+                      "for n in range(1,4): print(f'S2_LOST_{n:02}')\n"
+                      "print('S2_READY_B',flush=True)\n"
+                      "assert input()=='after'\n"
+                      "for n in range(1,101): print(f'S2_AFTER_{n:03}')\n"
+                      "print('S2_READY_C',flush=True)\n"
+                      "for line in sys.stdin: print('S2_LIVE-'+line.strip(),flush=True)\n")
+    app.line(seat, "exec python3 -I " + shlex.quote(str(script)))
+    app.wait(seat, "(?m)^S2_READY_A$")
+    before = app.ctl("seat", "screen", seat, label="s2-before")
+    app.line(seat, "hole")
+    app.wait(seat, "(?m)^S2_READY_B$")
+    middle = app.ctl("seat", "screen", seat, label="s2-middle-live")
+    first, last = before["sequence"] + 1, middle["sequence"]
+    require(last >= first, "capture range did not advance")
+    require(any("S2_LOST_01" in str(r) for r in middle["rows"]), "live capture lost original bytes")
+    app.line(seat, "after")
+    app.wait(seat, "(?m)^S2_READY_C$")
+    end = app.ctl("seat", "screen", seat)["sequence"]
+    installed = app.ctl("debug", "fault", "ring-gap", seat, f"{first}..{last}", label="s2-mask")
+    require((installed["from"], installed["to"]) == (first,last), "mask range changed")
+    top = app.ctl("ui", "scroll", seat, "top", label="s2-top")
+    require(not pane(top,seat)["scroll"]["live"], "gap fixture has no history")
+    sample = history_sample(app,"s2-metrics")
+    row = next(r for r in sample["panes"] if r["seat"] == seat)
+    require(row["gap_markers"] == [{"row":5,"from":first,"to":last}],
+            f"gap was duplicated or moved from boundary row5: {row['gap_markers']}")
+    require(row["omitted_gap_markers"] == 0, "gap observations truncated")
+    replay = app.ctl("seat","screen",seat,"--scrollback",f"1..{end}",label="s2-projected-ring")
+    rows = replay["rows"]
+    require(sum("gap" in str(r).lower() for r in rows)==1, "retained read did not report one gap")
+    text = "\n".join(str(r) for r in rows)
+    require("S2_BEFORE_04" in text and "S2_AFTER_001" in text, "surviving side was lost")
+    require("S2_LOST_" not in text, "mask silently reintroduced missing bytes")
+    app.capture(seat,"s2-gap",frame(top))
+    app.ctl("ui","scroll",seat,"bottom")
+    app.line(seat,"NONCE")
+    app.wait(seat,"(?m)^S2_LIVE-NONCE$")
+    require(app.ctl("seat","screen",seat)["generation"] == middle["generation"],
+            "gap replaced the live process")
+    print("S2: test-account retained-read gap once at row5, both surviving sides, original live bytes and input preserved; ring-level gap production not exercised")
+
+
+def s3(app):
+    # Three sequential real viewports. Changing tabs releases the old watch;
+    # this deliberately does not claim a 50-watched simultaneous setup.
+    for n in range(3):
+        seat = app.spawn(f"S3 budget {n}")
+        app.fixture(seat,20_000)
+        app.ctl("ui","scroll",seat,"top")
+        before = history_sample(app,f"s3-{n}-top-metrics")
+        require(len(before["panes"]) == 1 and before["panes"][0]["seat"] == seat,
+                "active Playback owner missing")
+        fetched = before["panes"][0]["pages_fetched"]
+        require(fetched>0, "top fetched no page")
+        require(before["retained_history_bytes"] <= 4_000_000, "aggregate heap exceeds budget")
+        app.ctl("ui","scroll",seat,"row",1_500)
+        after = history_sample(app,f"s3-{n}-seek-metrics")
+        require(after["retained_history_bytes"] <= 4_000_000, "seek exceeded aggregate heap budget")
+        row = next(r for r in after["panes"] if r["seat"]==seat)
+        require(row["pages_fetched"] > fetched, "seek fetched no bounded page")
+        require(row["pages_evicted"] > 0, "consumed page payloads were not released")
+        app.ctl("ui","scroll",seat,"bottom")
+        released = history_sample(app,f"s3-{n}-released-metrics")
+        require(released["panes"] == [], "return-live retained Playback pages")
+        require(released["retained_history_bytes"] < before["retained_history_bytes"], "history heap was not released")
+    print("S3: three sequential actual GUI Playback owners below4MB each/aggregate, bounded page residency/eviction and release on live; 50-watched setup and paging hitch meter unproved")
+
+
 def s4(app):
     seat = app.spawn("S4 history admission")
     app.ctl("app", "resize", "512x256", label="s4-resize")
@@ -234,7 +331,7 @@ def l1(app):
 
 if __name__ == "__main__":
     try:
-        {"S1": s1, "S4": s4, "K2": k2, "L1": l1}[sys.argv[1]](App())
+        {"S1": s1, "S2": s2, "S3": s3, "S4": s4, "K2": k2, "L1": l1}[sys.argv[1]](App())
     except (AssertionError, KeyError, OSError, ValueError, subprocess.TimeoutExpired) as error:
         print(f"FAIL: {sys.argv[1]}: {error}", file=sys.stderr)
         sys.exit(1)

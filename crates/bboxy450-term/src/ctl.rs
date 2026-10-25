@@ -81,7 +81,8 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   events tail --stream NAME [--since SEQ] [--subject GLOB] [--timeout MS]
   debug logs <app|logic|supervisor> [--since BYTE_OFFSET]   bounded page, next_since
   debug journal <account/OP|seat/SEAT/OP>  one retained operation; no SQL or key namespace
-  debug metrics                           existing numeric counters, with availability
+  debug metrics                           logic + GUI history heap/page counters
+  debug fault ring-gap <seat> <from>..<to>  test-account retained-history gap mask
   debug snapshot <file.json>              bounded R5 cursor/capture table; no tracing enabled
   debug ps                                this app's process tree; no argv or environment
   debug notifications                     bounded test recording; no OS presentation
@@ -272,6 +273,11 @@ pub enum Command {
         subject: Option<String>,
         timeout: Duration,
     },
+    DebugFault {
+        seat: String,
+        from: u64,
+        to: u64,
+    },
     Debug {
         request: bbt_proto::gui::DebugRequest,
         snapshot: Option<PathBuf>,
@@ -394,6 +400,7 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("debug", "logs", "Debug"),
     ("debug", "journal", "Debug"),
     ("debug", "metrics", "Debug"),
+    ("debug", "fault", "Debug"),
     ("debug", "snapshot", "Debug"),
     ("debug", "ps", "Debug"),
     ("debug", "notifications", "App"),
@@ -835,6 +842,13 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             bbt_mux::debug::journal_query(query).map_err(|e|format!("{USAGE_PREFIX}{e}"))?;
             Command::Debug {request:bbt_proto::gui::DebugRequest::Journal {query:query.into()},snapshot:None}
         },
+        ["debug", "fault", "ring-gap", seat, range] => {
+            let (from,to) = range.split_once("..").ok_or_else(||format!("{USAGE_PREFIX}ring-gap needs FROM..TO capture sequences"))?;
+            let from = from.parse::<u64>().map_err(|_|format!("{USAGE_PREFIX}invalid gap start"))?;
+            let to = to.parse::<u64>().map_err(|_|format!("{USAGE_PREFIX}invalid gap end"))?;
+            if from==0 || to<from || to-from>=4096 { return Err(format!("{USAGE_PREFIX}ring-gap needs 1..4096 positive capture sequences")); }
+            Command::DebugFault {seat:(*seat).into(),from,to}
+        },
         ["debug", "metrics"] => Command::Debug {request:bbt_proto::gui::DebugRequest::Metrics,snapshot:None},
         ["debug", "ps"] => Command::Debug {request:bbt_proto::gui::DebugRequest::Ps,snapshot:None},
         ["debug", "snapshot", path] => {
@@ -917,7 +931,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             request: bbt_proto::gui::DebugRequest::Logs { .. },
             ..
         } => Some(&["since"]),
-        Command::Debug { .. } => Some(&[]),
+        Command::Debug { .. } | Command::DebugFault { .. } => Some(&[]),
         Command::DebugNotifications | Command::UiNotificationClick(_) => Some(&[]),
         _ => None,
     };
@@ -1189,15 +1203,28 @@ impl Client {
         }
     }
     pub fn debug(&mut self, request: bbt_proto::gui::DebugRequest) -> Result<Value, String> {
+        let history = matches!(request, bbt_proto::gui::DebugRequest::Metrics);
         let id = self.mint();
-        match self.call(
+        let mut data = match self.call(
             Some(id),
             GuiAction::Debug { id, request },
             |reply| matches!(reply,GuiReply::Debug {op,..} if *op==id),
         )? {
-            GuiReply::Debug { data, .. } => Ok(data),
+            GuiReply::Debug { data, .. } => data,
             _ => unreachable!(),
+        };
+        if history {
+            data["ui"] = match self.app(bbt_proto::gui::AppRequest::HistoryMetrics) {
+                Ok(status) => json!({"available":!status.history.is_null(),
+                    "frame_seq":status.frame_seq,"history":status.history,
+                    "basis":"IO sample; frame_seq names the independently produced window frame"}),
+                Err(reason) => json!({"available":false,"reason":reason}),
+            };
+            if serde_json::to_vec(&data).map_err(|e| e.to_string())?.len() > 256 * 1024 {
+                return Err("debug_metrics_exceeds_bound: narrow history window".into());
+            }
         }
+        Ok(data)
     }
     /// The operator's signed `e2e` record write: the data_source write result.
     pub fn record_write(&mut self, args: Value) -> Result<Value, String> {
@@ -1799,6 +1826,7 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
         | Command::RecordChanges { .. }
         | Command::EventsStreams
         | Command::Debug { .. }
+        | Command::DebugFault { .. }
         | Command::EventsTail { .. }
         | Command::TaskReport { .. }
         | Command::TaskAccept { .. }
@@ -2163,6 +2191,10 @@ fn run_verb(
     client.op = Some(id);
     let human = parsed.human;
     let data = match parsed.command {
+        Command::DebugFault { seat, from, to } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            client.debug(bbt_proto::gui::DebugRequest::RingGap { seat, from, to })?
+        }
         Command::Debug { request, snapshot } => {
             debug::read(&mut client, request, snapshot.as_deref())?
         }
@@ -2886,6 +2918,7 @@ mod tests {
             "debug logs app",
             "debug journal account/01M5Q8A7DQ7EQFKBZH4NXBW3QQ",
             "debug metrics",
+            "debug fault ring-gap s 1..2",
             "debug snapshot /tmp/debug.json",
             "debug ps",
             "app endpoint",

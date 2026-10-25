@@ -236,6 +236,9 @@ pub struct Playback {
     history_lines: usize,
     gaps: Vec<Gap>,
     display_heap: usize,
+    checked_heap: Option<usize>,
+    pages_fetched: u64,
+    pages_evicted: u64,
 }
 
 enum Step {
@@ -337,6 +340,9 @@ impl Playback {
             history_lines,
             gaps: Vec::new(),
             display_heap,
+            checked_heap: None,
+            pages_fetched: 0,
+            pages_evicted: 0,
         })
     }
 
@@ -351,6 +357,18 @@ impl Playback {
                 + self.page.as_ref().map_or(0, Page::heap_bytes)
                 + mem::size_of::<Self>(),
         )
+    }
+
+    fn check_heap(&mut self) -> Option<usize> {
+        let bytes = self.retained_heap_bytes();
+        self.checked_heap = bytes;
+        bytes
+    }
+
+    fn evict_page(&mut self) {
+        if self.page.take().is_some() {
+            self.pages_evicted = self.pages_evicted.saturating_add(1);
+        }
     }
 
     fn row(&self) -> Option<u64> {
@@ -390,7 +408,8 @@ impl Playback {
         self.sequence = 0;
         self.next = 1;
         self.complete = self.through == 0;
-        self.page = None;
+        self.evict_page();
+        self.checked_heap = None;
         self.displayed = None;
         self.gaps.clear();
         self.gaps.shrink_to_fit();
@@ -439,6 +458,7 @@ impl Playback {
         records: Vec<HistoryRecord>,
         next: Option<u64>,
     ) -> Result<(), &'static str> {
+        let _sample = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::HistoryPage).work(1, 0);
         if self.page.is_some() {
             return Err("history_page_already_retained");
         }
@@ -448,11 +468,9 @@ impl Playback {
             current: None,
             next,
         });
-        if self
-            .retained_heap_bytes()
-            .is_none_or(|bytes| bytes > HEAP_BUDGET)
-        {
-            self.page = None;
+        self.pages_fetched = self.pages_fetched.saturating_add(1);
+        if self.check_heap().is_none_or(|bytes| bytes > HEAP_BUDGET) {
+            self.evict_page();
             return Err("history_heap_budget_exceeded");
         }
         Ok(())
@@ -495,6 +513,7 @@ impl Playback {
     }
 
     fn step(&mut self) -> Result<Step, &'static str> {
+        let _sample = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::HistoryStep).work(1, 0);
         if let Some(row) = self.row() {
             if row < self.term.history_bounds().start {
                 self.restart();
@@ -561,6 +580,7 @@ impl Playback {
             } else {
                 let next = page.next;
                 self.page = None;
+                self.pages_evicted = self.pages_evicted.saturating_add(1);
                 if next.is_some_and(|next| next <= self.sequence) {
                     return Err("history_page_did_not_advance");
                 }
@@ -582,10 +602,7 @@ impl Playback {
             self.gaps.retain(|gap| gap.row >= first);
             self.gaps.shrink_to_fit();
         }
-        if self
-            .retained_heap_bytes()
-            .is_none_or(|bytes| bytes > HEAP_BUDGET)
-        {
+        if self.check_heap().is_none_or(|bytes| bytes > HEAP_BUDGET) {
             return Err("history_heap_budget_exceeded");
         }
         if self.complete
@@ -596,10 +613,7 @@ impl Playback {
             return Ok(Step::Live);
         }
         let display = self.display();
-        if self
-            .retained_heap_bytes()
-            .is_none_or(|bytes| bytes > HEAP_BUDGET)
-        {
+        if self.check_heap().is_none_or(|bytes| bytes > HEAP_BUDGET) {
             return Err("history_heap_budget_exceeded");
         }
         Ok(display.map_or(Step::Pending, Step::Display))
@@ -629,6 +643,45 @@ pub struct History {
 }
 
 impl History {
+    /// Bounded scalar sample; heap values reuse the existing budget checks.
+    /// No cell walk, model build, layout solve or history fetch is done here.
+    pub fn metrics(&self, displays: &BTreeMap<SeatId, Arc<Historical>>) -> serde_json::Value {
+        const LIMIT: usize = 128;
+        let panes: Vec<_> = self
+            .seats
+            .iter()
+            .take(LIMIT)
+            .map(|(&seat, playback)| {
+                let display = displays.get(&seat);
+                let gaps: Vec<_> = display
+                    .into_iter()
+                    .flat_map(|d| d.gaps.iter())
+                    .take(8)
+                    .map(|gap| serde_json::json!({"row":gap.row,"from":gap.from,"to":gap.to}))
+                    .collect();
+                serde_json::json!({"seat":Ulid(seat.0.0),"generation":playback.view.generation,
+                "retained_history_bytes":playback.checked_heap,"budget_bytes":HEAP_BUDGET,
+                "pages_resident":usize::from(playback.page.is_some()),
+                "pages_fetched":playback.pages_fetched,"pages_evicted":playback.pages_evicted,
+                "top_row":display.map(|d|d.top_row),"gap_markers":gaps,
+                "omitted_gap_markers":display.map_or(0,|d|d.gaps.len().saturating_sub(8))})
+            })
+            .collect();
+        let complete = self.seats.len() <= LIMIT;
+        let total = complete
+            .then(|| {
+                self.seats
+                    .values()
+                    .try_fold(mem::size_of::<Self>(), |total, p| {
+                        total.checked_add(p.checked_heap?)
+                    })
+            })
+            .flatten();
+        serde_json::json!({"available":true,"basis":"GUI IO owner; conservative retained bytes from latest existing budget check, null before first check; page eviction means payload released after consumption/reset; counters live with Playback",
+            "complete":complete,"omitted_panes":self.seats.len().saturating_sub(LIMIT),
+            "retained_history_bytes":total,"per_pane_budget_bytes":HEAP_BUDGET,"panes":panes})
+    }
+
     pub fn request(
         &mut self,
         seat: SeatId,

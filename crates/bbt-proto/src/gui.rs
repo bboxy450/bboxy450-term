@@ -50,6 +50,8 @@ pub enum AppRequest {
     Status,
     /// Read the explicitly selected test notification backend, never the OS.
     Notifications,
+    /// On-demand sample by the GUI IO owner, with no layout or paint work.
+    HistoryMetrics,
     /// Acknowledge the request before beginning orderly app shutdown.
     Stop,
 }
@@ -72,6 +74,8 @@ pub struct AppStatus {
     pub close: serde_json::Value,
     #[serde(default, skip_serializing_if = "serde_json::Value::is_null")]
     pub notifications: serde_json::Value,
+    #[serde(default, skip_serializing_if = "serde_json::Value::is_null")]
+    pub history: serde_json::Value,
 }
 /// The completed frame which acknowledged a focus command.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -324,6 +328,12 @@ pub enum DebugRequest {
         query: String,
     },
     Metrics,
+    /// Test-account-only retained History projection; original ring/live bytes remain intact.
+    RingGap {
+        seat: Ulid,
+        from: u64,
+        to: u64,
+    },
     /// Destination is part of the journaled arguments; only the CLI writes the file.
     Snapshot {
         destination: String,
@@ -344,7 +354,7 @@ pub enum GuiAction {
     },
     ListHosts,
     ListSeats,
-    /// Bounded, read-only diagnostics, admitted only through the operator ctl door.
+    /// Bounded diagnostics and test-account fixtures, admitted only through the ctl door.
     Debug {
         id: Ulid,
         request: DebugRequest,

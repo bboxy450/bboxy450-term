@@ -991,8 +991,8 @@ async fn gui_session(
                             GuiAction::GetHistory {seat,from,to}=> {
                                 let id=Ulid::from(seat.0.0);
                                 let record=client.record(id).await?;
-                                let history=client.history(id,record.generation,from,to).await?;
-                                gui_history_reply(seat,record.generation,from,to,history)
+                                let (history,masks)=client.history_for_gui(id,record.generation,from,to).await?;
+                                gui_history_reply(seat,record.generation,from,to,history,&masks)
                             }
                         }
                     }.await;
@@ -1145,6 +1145,7 @@ fn gui_history_reply(
     from: u64,
     to: u64,
     history: crate::ring::History,
+    masks: &[crate::history_fault::Missing],
 ) -> Result<GuiReply> {
     use bbt_proto::gui::HistoryRecord;
     if history.status.generation != generation {
@@ -1196,10 +1197,12 @@ fn gui_history_reply(
     {
         records.push(gap(from.max(last.saturating_add(1)), to, missing));
     }
+    let mut next = history.next;
+    crate::history_fault::project(&mut records, &mut next, to, masks);
     let reply = GuiReply::History {
         seat,
         records,
-        next: history.next,
+        next,
     };
     if serde_json::to_vec(&reply)?.len() >= MAX_LINE {
         return Err(invalid(
