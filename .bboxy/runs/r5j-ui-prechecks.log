@@ -1,0 +1,142 @@
+R5j UI lazy projection: rebased prechecks
+Source260f167038a00904ba0efb89526e849a5069bb6f on main27a77a51. Three signed patches retain identical range-diff after rebase.
+Scoped per AGENTS bd5531e3; app package has no direct workspace dependents (cargo metadata checked).
+O1/debug assertions, debug info0, direct compiler,2Cargo jobs, memory fixture custody.
+
+Actual results
+{"command": ["cargo", "test", "-p", "bboxy450-term", "--locked", "--no-fail-fast"], "elapsed_s": 306.8432972499868, "exit": 0, "label": "rebased-workspace", "log_sha256": "9949af91671d53961ec84bc25f420da72b8401d2e1dc3dd83579eb04b80a7369", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "source": "260f167038a00904ba0efb89526e849a5069bb6f"}
+{"command": ["cargo", "clippy", "-p", "bboxy450-term", "--all-targets", "--locked", "--", "-D", "warnings"], "elapsed_s": 23.669217791990377, "exit": 0, "label": "rebased-strict", "log_sha256": "fb60c0b2ad9125003e9fe9f3db0f38ec64142593837ee2767a56c7225bdf9adc", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "source": "260f167038a00904ba0efb89526e849a5069bb6f"}
+{"command": ["sh", "scripts/invariants.sh"], "elapsed_s": 342.5188939169748, "exit": 0, "label": "rebased-invariants", "log_sha256": "bdca4d0ed02a0e170b77613055fda4a65f7ac61cde7aac811767d8d5d281ea82", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "source": "260f167038a00904ba0efb89526e849a5069bb6f"}
+App test totals:293passed/0failed/1ignored across23 completed groups; default parallel main bin114/0 including the isolated self-test child.
+Fast invariants summary: invariants: 25 checks, 0 failures, 9 slow checks skipped
+No pending UI fixture/SQLite compiler error waived: prior scoped101/101/1 remain in r5j-ui-focused.log and raw artifacts.
+Current source contains only the four app paths plus evidence; production UI-thread guard untouched; missing-drawable/data-before-tick/focus actual-frame conditions retained.
+The first workspace prechecks were explicitly stopped and retained before completion (focus compatibility audit, then the newer scoped-precheck policy). They are not passes.
+Normal full workspace CI and one967/50 post-gate attempt remain owed.
+Artifact root /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6
+
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/rebased-workspace.log SHA256 9949af91671d53961ec84bc25f420da72b8401d2e1dc3dd83579eb04b80a7369
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/rebased-strict.log SHA256 fb60c0b2ad9125003e9fe9f3db0f38ec64142593837ee2767a56c7225bdf9adc
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/rebased-invariants.log SHA256 bdca4d0ed02a0e170b77613055fda4a65f7ac61cde7aac811767d8d5d281ea82
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/direct-dependents.json SHA256 74dccfcebe0bd8ab76868d599d595540faa870888ef2e6c2f199b1cb5a61c69b
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/sqlite-generated-cache-clean.json SHA256 319aa232236fd1e1dc868253755dcdd4c05104c43e19ee4d911e1bc7c6828f0c
+
+Strict output
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+    Checking libsqlite3-sys v0.38.2
+    Checking tokio-tungstenite v0.30.0
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui)
+    Checking bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-keychain-file)
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mermaid)
+    Checking rusqlite v0.40.2
+    Checking bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-keychain)
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-desktop-notifications-macos)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-doc)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+    Checking bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-harness-wake-up)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-term)
+    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-plugin)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-render)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-desktop-notifications)
+    Finished `dev` profile [optimized] target(s) in 23.53s
+
+Invariant output
+brand: held
+invariant bboxy450-prefix: pass
+invariant checkpoint-bounded: pass
+invariant clippy-clean: skipped (slow)
+cross-os: held
+invariant cross-os-facade: pass
+invariant ctl-never-prints-secrets: pass
+invariant ctl-opt-in: pass
+invariant e2e-runs-unattended: skipped (slow)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-doc)
+    Finished `test` profile [optimized] target(s) in 41.16s
+     Running tests/corpus.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/target/debug/deps/corpus-79736735b68121f5)
+
+running 1 test
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.08s
+
+invariant frontmatter-parses: pass
+invariant glow-never-moves-layout: pass
+invariant idle-swarms-cost-nothing: skipped (slow)
+images: held
+invariant images-resolve: pass
+kill-own-pids: held
+invariant kill-only-own-pids: pass
+invariant kitty-keyboard: pass
+layering: held
+invariant layering: pass
+licenses: 24 workspace crates, SPDX map and required root/crate files present
+invariant licenses-present: pass
+local-first: held
+invariant local-first: pass
+    Finished `test` profile [optimized] target(s) in 0.25s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/target/debug/deps/bbt_mermaid-7c2496a07458bdeb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/fixtures.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/target/debug/deps/fixtures-bb021a3581d5478c)
+
+running 1 test
+test every_bboxy_mermaid_block_has_a_fixture ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.05s
+
+invariant mermaid-fixtures: pass
+invariant messaging-never-held: pass
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 0.81s
+     Running tests/seat_rows.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/target/debug/deps/seat_rows-f51b84d2f0e3093a)
+
+running 1 test
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.01s
+
+invariant modules-through-components: pass
+never-block: held
+invariant never-block-swarm: pass
+never-block: held
+cross-os: held
+invariant no-chokepoints: pass
+deps-licences: held
+invariant no-copyleft-deps: pass
+invariant no-seat-starves: pass
+invariant parity-geometry: skipped (slow)
+invariant restart-keeps-state: skipped (slow)
+invariant rim-never-covers-text: pass
+invariant rim-size-is-layout: pass
+invariant ring-reads-batched: skipped (slow)
+invariant seats-1000-bus: skipped (slow)
+invariant seats-400-memory-idle: skipped (slow)
+invariant seats-967-frame: skipped (slow)
+invariant signed-main: pass
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-core)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui)
+    Checking bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-keychain-file)
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mermaid)
+    Checking bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-keychain)
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-desktop-notifications-macos)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-doc)
+    Checking bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-harness-wake-up)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-term)
+    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-plugin)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-render)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-desktop-notifications)
+    Finished `dev` profile [optimized] target(s) in 12.83s
+invariant ui-never-waits: pass
+invariant watched-replay-priority: pass
+invariants: 25 checks, 0 failures, 9 slow checks skipped
