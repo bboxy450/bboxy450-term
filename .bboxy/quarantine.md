@@ -22,3 +22,4 @@ against cargo's `test <name> ... FAILED` line.
 |---|---|---|---|---|---|---|
 | `fifty_seats_share_one_supervisor_poller` | bbt-supervisor | Sable | [[#329]] | 2026-10-25 | 2026-11-01 | gate 65927a6c red under three-slot load; 5/5 alone |
 | `durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls` | bbt-mux | Sable | [[#330]] | 2026-10-25 | 2026-11-01 | Nyx and Aster prechecks red; 40/40 alone on tip and main |
+| `one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart` | bbt-mux | Rook | provider_gui.rs:506 wall-clock poll (Instant until + sleep 10 ms), #327 B1/B3, fix in the bbt-mux sweep | 2026-10-25 | 2026-11-01 | first postsubmit 438b7cb0 red at load ~38 (3/1 in 5.69 s); Oracle reran it alone 5/5 at load 38 (5.6-8.8 s) |
