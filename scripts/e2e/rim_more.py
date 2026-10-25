@@ -68,12 +68,21 @@ def r4(run):
                  "\\007\\nR4-" + name + "-READY\\n'; exec cat")
         run.ctl("seat", "wait", seat, "--text", "(?m)^R4-" + name + "-READY$", "--timeout", "20000")
         seats.append(seat)
+        if name != "peer":
+            # A one-seat tab intentionally reduces to the SeatRow. Use a real
+            # split so the tab header and its seat row are separate surfaces.
+            sibling = run.ctl("seat", "spawn", "zsh", "--place", "right",
+                              "--cwd", run.work, "--name", "R4-" + name + "-sibling")["seat"]
+            run.line(sibling, "printf '\\033[?25l\\033]7501;state=idle\\007\\nR4-SIBLING-READY\\n'; exec cat")
+            run.ctl("seat", "wait", sibling, "--text", "(?m)^R4-SIBLING-READY$", "--timeout", "20000")
+            run.ctl("seat", "wait", sibling, "--state", "idle", "--timeout", "20000")
     run.ctl("seat", "wait", seats[1], "--state", "idle", "--timeout", "20000")
     states = {row["record"]["id"]: row["state"]["activity"]["kind"]
               for row in run.ctl("seat", "ls")}
     assert [states[seat] for seat in seats] == ["active", "idle", "idle"], "fixture activity differs from the rendered case"
-    run.ctl("ui", "focus", seats[2])
+    run.ctl("ui", "focus", seats[0])
     base = run.clock("advance", 900)
+    assert base["focused"] == seats[0], "rest sample did not focus the active tab"
     a, ca = run.capture("row-tab-rest")
     later = run.clock("advance", 200)
     b, cb = run.capture("row-tab-alive")
@@ -83,8 +92,9 @@ def r4(run):
         return found[0]["rect"]
     active_row = rect(base, "swarm0/body/tab0/seat0/row")
     active_tab = rect(base, "swarm0/body/tab0/header")
-    idle_row = rect(base, "swarm0/body/tab1/seat0/row")
-    idle_tab = rect(base, "swarm0/body/tab1/header")
+    # A split row's edge overlaps its sibling's static coloured shadow.
+    # The standalone row is idle and unfocused, clear of that neighbour.
+    idle_row = rect(base, "swarm0/body/tab2/seat0/row")
     def border_band(r):
         x, y, w, h = r
         return (x + 24, y + h - 2, x + w - 24, y + h - 1)
@@ -99,6 +109,7 @@ def r4(run):
     assert max(abs(u - v) for i, (u, v) in enumerate(zip(edge, inside)) if i % 4 != 3) <= 2, "idle row retains a static rim edge"
     run.ctl("ui", "focus", seats[1])
     origin = run.clock("freeze")
+    assert origin["focused"] == seats[1], "focus sample did not reach the idle tab"
     zero, cz = run.capture("idle-focus-origin")
     peak = run.clock("advance", 450)
     glow, cg = run.capture("idle-focus-peak")
@@ -111,7 +122,10 @@ def r4(run):
     tab_end = min(ty - 4, y - 41)
     assert row_start + 4 < y + h + 40 and ty - (tab_end - 4) < 40, "no isolated swell sample fits"
     row_area = (x + 24, row_start, min(x + w - 24, pane_x - 44), row_start + 4)
-    tab_area = (tx + 24, tab_end - 4, min(tx + tw - 24, pane_x - 44), tab_end)
+    # The narrow header gutter is left of every split seat row. Sampling
+    # across the whole width would also see the active row's moving rim.
+    tab_area = (tx + 4, tab_end - 4, min(tx + 8, active_row[0] - 2), tab_end)
+    assert tab_area[2] <= active_row[0] and tab_area[1] >= active_tab[1] + active_tab[3], "tab sample overlaps an active rim"
     assert tab_area[3] < idle_row[1] - 40, "tab sample could contain the row swell"
     assert row_area[1] > idle_tab[1] + idle_tab[3] + 40, "row sample could contain the tab swell"
     counts = [changed(zero, glow, area) for area in (row_area, tab_area)]
