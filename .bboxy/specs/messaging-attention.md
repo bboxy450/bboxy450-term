@@ -16,7 +16,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: builds-on }
   - { to: "[[mcp-control-plane]]", rel: builds-on }
 created: "2026-10-25T21:45:27Z"
-updated: "2026-10-25T21:45:27Z"
+updated: "2026-10-25T22:07:26Z"
 ---
 # Messaging attention
 
@@ -54,7 +54,7 @@ For each seat, a **policy** maps (destination, class) to one of three modes, wit
 | `digest` | stored, then delivered natively **once** per window as one summary listing every message by id, when the window closes or the batch reaches its cap |
 | *mute* | the operator's swarm mute of [[messaging]], unchanged: holds the seat's traffic both ways and is set by the operator, never by the seat |
 
-**Defaults by role class**, each overridable by the seat for itself and by the operator for any seat: Oracle: conversation `wake`, events `digest`. Architect and Creativity: DMs and messages addressed to them by name `wake`, channel conversation `inbox`, events `inbox`. Executors: briefs, delegations and replies in a thread they started `wake`, other conversation `digest`, events `inbox`. Operator principal and the cockpit: everything visible, nothing wakes a model.
+**No role default wakes on an event**, natively or by digest; events reach a model only by a seat's own choice. **Defaults by role class**, each overridable by the seat for itself and by the operator for any seat: Oracle: conversation `wake`, events `inbox` (the Oracle verifies from the landing log, not from posts; it may set events to `digest` for itself, and that is then its choice, not the default; corrected the same day at Velvet's question, since a digest default contradicted [[notices-never-wake]]). Architect and Creativity: DMs and messages addressed to them by name `wake`, channel conversation `inbox`, events `inbox`. Executors: briefs, delegations and replies in a thread they started `wake`, other conversation `digest`, events `inbox`. Operator principal and the cockpit: everything visible, nothing wakes a model.
 
 **Always wake, whatever the policy**: a message from the operator principal, a task delegated to that seat, and a reply in a thread that seat started. A seat cannot set itself to miss its own work.
 
