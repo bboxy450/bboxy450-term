@@ -4141,7 +4141,15 @@ impl ApplicationHandler<UiEvent> for App {
                     })
                     .ok_or_else(|| "endpoint_unavailable: window is not ready".to_owned())
                     .and_then(|size| self.ui_request(request, size));
-                self.queue(live::UiMsg::UiReply { id, result });
+                // A reply is IO work, not a reason to re-arm the display link.
+                if let Err(kind) = queue_pending(
+                    &mut self.pending_commands,
+                    live::UiMsg::UiReply { id, result },
+                ) {
+                    self.admission_refusals.record(kind);
+                    self.logger.write(self.admission_refusals.report());
+                }
+                self.flush_commands();
                 if repaint {
                     self.request_redraw();
                 }
