@@ -34,3 +34,6 @@ Raw per-command logs, statuses, process metadata, script results and capture:
 /Users/feral/mydev/bboxy450-term-exec4/scratchpad/r6-notifications-20261025T0010/
 No OS notification presentation, native window/space activation, cold launch, photon/scanout, 967-seat load, publication or merge claimed.
 No operator account, login Keychain, desktop input or new socket. One own warmed dev target retained for the required integration/gate; no full gate or slot claimed yet.
+
+2026-10-25 02:48 PDT — quiet-window source-only integration
+The five signed commits were rebased onto accepted main0e97dc32 without conflicts; source643dce88, preflight successor94683062. No build, test, app or gate was started after that rebase. Accepted close Target.ready/shown and R5i instrumentation are preserved in the shared frame path. All results above retain their original pre-rebase source limits. Sable's store4b8f79b6 gate later exited101 in the ancestry-refusal fixture (Python BrokenPipe before reading the queued refusal), so the required accepted GUI-store dependency remains pending; that fixture result is not a store verdict. QUIET r5i-frame honored.
