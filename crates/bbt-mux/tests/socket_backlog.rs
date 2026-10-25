@@ -1,27 +1,49 @@
 #![allow(clippy::disallowed_methods)] // Bounded synthetic PTY/socket IO fixture.
 
+use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
-use std::path::PathBuf;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, AtomicU64, Ordering},
 };
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use bbt_mux::logic::{Logic, LogicConfig, SocketSupervisor, SupervisorConnection};
 use bbt_mux::registry::SeatRecord;
 use bbt_mux::{Action, Config, Event, LaunchSpec, Reply, Supervisor, Ulid};
 use ed25519_dalek::SigningKey;
 use sha2::{Digest, Sha256};
+use tokio::sync::{Notify, watch};
+
+const NO_PROGRESS_TIMEOUT: Duration = Duration::from_secs(90);
 
 struct RequestFlood {
     client: SocketSupervisor,
-    gate: PathBuf,
+    gate: std::fs::File,
     armed: Arc<AtomicBool>,
     requests: Arc<AtomicU64>,
     replayed: Arc<AtomicU64>,
     replayed_through: Arc<AtomicU64>,
     exit: Arc<AtomicU64>,
+    progress: watch::Sender<(u64, u64, u64)>,
+    turns: Arc<Notify>,
+    observation_turns: usize,
+}
+impl RequestFlood {
+    fn progressed(&self) {
+        let current = (
+            self.requests.load(Ordering::Acquire),
+            self.replayed_through.load(Ordering::Acquire),
+            self.exit.load(Ordering::Acquire),
+        );
+        self.progress.send_if_modified(|previous| {
+            if *previous == current {
+                return false;
+            }
+            *previous = current;
+            true
+        });
+    }
 }
 impl SupervisorConnection for RequestFlood {
     fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
@@ -44,31 +66,45 @@ impl SupervisorConnection for RequestFlood {
                 self.replayed_through.fetch_max(sequence, Ordering::Release);
             }
         }
+        self.progressed();
         Ok(reply)
     }
     fn receive(&mut self, timeout: Duration) -> bbt_mux::store::Result<Option<Event>> {
         if self.armed.swap(false, Ordering::AcqRel) {
-            let started = Instant::now();
-            std::fs::write(&self.gate, b"go")?;
+            self.gate.write_all(b"go")?;
             for _ in 0..10_000 {
                 self.client.request(Action::ListOwnedSeats)?;
                 self.requests.fetch_add(1, Ordering::Release);
+                self.progressed();
             }
-            eprintln!(
-                "socket backlog: 10000 requests completed in {:?}",
-                started.elapsed()
-            );
         }
-        let event = self.client.receive(timeout).inspect_err(|error| {
-            eprintln!("socket backlog supervisor receive {timeout:?} failed: {error:?}");
-        })?;
+        // This fixture has one producer. Its Exited event is the final record;
+        // subsequent replay/history requests cannot receive another notification.
+        // An exhausted fixture source need not spend 10 ms on each empty read.
+        let event = if self.exit.load(Ordering::Acquire) == 0 {
+            self.client.receive(timeout).inspect_err(|error| {
+                eprintln!("socket backlog supervisor receive {timeout:?} failed: {error:?}");
+            })?
+        } else {
+            None
+        };
         if let Some(Event::Exited { seq, .. }) = &event {
             self.exit.store(*seq, Ordering::Release);
+        }
+        self.progressed();
+        // Coalesce observer work by logical turns, not a real-clock poll.
+        // The authoritative status/Screen checks decide completion; a fetched
+        // ring cursor cannot, since the last notifications may apply live.
+        self.observation_turns += 1;
+        if self.observation_turns == 32 {
+            self.observation_turns = 0;
+            self.turns.notify_one();
         }
         Ok(event)
     }
 }
 
+// keeps: spec mux-daemon §Acceptance and remaining decisions (ordered ring replay)
 #[test]
 fn socket_request_flood_replays_exact_output_and_delivers_exit_to_logic() {
     let root = tempfile::Builder::new()
@@ -94,14 +130,29 @@ fn socket_request_flood_replays_exact_output_and_delivers_exit_to_logic() {
     let replayed_through = Arc::new(AtomicU64::new(0));
     let exit = Arc::new(AtomicU64::new(0));
     let gate = root.path().join("start");
+    let fifo = std::ffi::CString::new(gate.as_os_str().as_encoded_bytes()).unwrap();
+    // SAFETY: the terminated path belongs to this private fixture directory.
+    assert_eq!(unsafe { libc::mkfifo(fifo.as_ptr(), 0o600) }, 0);
+    use std::os::unix::fs::OpenOptionsExt;
+    let gate_writer = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .custom_flags(libc::O_NONBLOCK)
+        .open(&gate)
+        .unwrap();
+    let (progress, mut watchdog_progress) = watch::channel((0, 0, 0));
+    let turns = Arc::new(Notify::new());
     let connection = RequestFlood {
         client: SocketSupervisor::connect(&socket, supervisor.socket_capability()).unwrap(),
-        gate: gate.clone(),
+        gate: gate_writer,
         armed: armed.clone(),
         requests: requests.clone(),
         replayed: replayed.clone(),
         replayed_through: replayed_through.clone(),
         exit: exit.clone(),
+        progress,
+        turns: turns.clone(),
+        observation_turns: 0,
     };
     let repository = root.path().join("repository");
     std::fs::create_dir(&repository).unwrap();
@@ -121,9 +172,10 @@ fn socket_request_flood_replays_exact_output_and_delivers_exit_to_logic() {
     spec.args = vec![
         "-c".into(),
         r#"
-import os, sys, time, tty
+import os, sys, tty
 tty.setraw(1)
-while not os.path.exists(sys.argv[1]): time.sleep(.001)
+with open(sys.argv[1], 'rb', buffering=0) as start:
+    assert start.read(2) == b'go'
 block = (b'0123456789abcdef' * 255) + b'0123456789abcde\n'
 for _ in range(16384):
     rest = memoryview(block)
@@ -154,30 +206,19 @@ os.write(1, b'\r\nW12G-TAIL\r\n')
                         break Ok::<_, bbt_mux::store::Error>(snapshot);
                     }
                 }
-                tokio::time::sleep(Duration::from_millis(10)).await;
+                turns.notified().await;
             }
         };
         // This is an ordering/exact-replay regression, not a throughput gate.
         // A loaded O0 build can spend most of the former total 90 s allowance
         // on the request flood alone. Keep the same allowance as a no-progress
-        // watchdog, polled independently while a Logic RPC is outstanding.
+        // watchdog, notified independently while a Logic RPC is outstanding.
         let watchdog = async {
-            let progress = || {
-                (
-                    requests.load(Ordering::Acquire),
-                    replayed_through.load(Ordering::Acquire),
-                    exit.load(Ordering::Acquire),
-                )
-            };
-            let mut previous = progress();
-            let mut changed_at = Instant::now();
             loop {
-                tokio::time::sleep(Duration::from_millis(10)).await;
-                let current = progress();
-                if current != previous {
-                    previous = current;
-                    changed_at = Instant::now();
-                } else if changed_at.elapsed() >= Duration::from_secs(90) {
+                if !matches!(
+                    tokio::time::timeout(NO_PROGRESS_TIMEOUT, watchdog_progress.changed()).await,
+                    Ok(Ok(()))
+                ) {
                     break;
                 }
             }
@@ -193,7 +234,7 @@ os.write(1, b'\r\nW12G-TAIL\r\n')
         // "logic stopped". Preserve it without retrying the failed fixture.
         let actor_exit = logic.shutdown();
         panic!(
-            "socket backlog failure (None means 90 s without request/replay/exit progress): observation={observation:?}, actor_exit={actor_exit:?}, requests={}, replayed={}, replayed_through={}, exit_sequence={}",
+            "socket backlog failure (None means no progress or progress source closed): observation={observation:?}, actor_exit={actor_exit:?}, requests={}, replayed={}, replayed_through={}, exit_sequence={}",
             requests.load(Ordering::Acquire),
             replayed.load(Ordering::Acquire),
             replayed_through.load(Ordering::Acquire),
