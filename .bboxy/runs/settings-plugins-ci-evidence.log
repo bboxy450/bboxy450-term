@@ -1,0 +1,110 @@
+{
+  "gate": {
+    "argv": [
+      "sh",
+      "scripts/ci-local.sh",
+      "--parity"
+    ],
+    "source": "953996771e6fe6140025bb5f876f1fe811616160",
+    "worktree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/gate-tree",
+    "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/gate-tree/target",
+    "utc": "2026-10-25T12:34:44.480964+00:00",
+    "started": 1792931684.481598,
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/ui-ci.log",
+    "pid": 30087,
+    "pgid": 30087,
+    "exit": 0,
+    "elapsed_s": 3399.4842071533203,
+    "sha256": "533dc5b3270f7a415ee68669a0547cd912a5f2bffc01b59ecb0450a8f0bc0ac9"
+  },
+  "workspace": {
+    "groups": 205,
+    "passed": 1433,
+    "failed": 0,
+    "ignored": 29
+  },
+  "selected_output": [
+    {
+      "line": 1220,
+      "text": "test settings_registry_is_labelled_reference_and_knowledge_never_invents_a_provider_or_count ... ok"
+    },
+    {
+      "line": 3432,
+      "text": "idle passed: frames=0 callbacks=0 seconds=10.004 windows=0 mode=headless"
+    },
+    {
+      "line": 3502,
+      "text": "lab-check: self-test ok (10 checks fire on checks/bad.html)"
+    },
+    {
+      "line": 3503,
+      "text": "lab-check: 40 pages \u00d7 4 densities \u00b7 0 findings"
+    },
+    {
+      "line": 3678,
+      "text": "geometry: 2160 required; 2160 measured; 0 unproven; 0 mismatches"
+    },
+    {
+      "line": 3679,
+      "text": "parity gate: pass (72 pixel reviews advisory)"
+    },
+    {
+      "line": 3680,
+      "text": "invariant parity-geometry: pass"
+    },
+    {
+      "line": 3692,
+      "text": "invariants: 26 checks, 0 failures, 8 slow checks skipped"
+    },
+    {
+      "line": 3693,
+      "text": "ci-local: all gates passed"
+    }
+  ],
+  "retirement": {
+    "lsof_exit": 1,
+    "lsof_output_bytes": 0,
+    "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/gate-tree/target",
+    "allocated_bytes_retired": 5988335616,
+    "gate_tree_removed": true,
+    "utc": "2026-10-25T13:38:09.315697+00:00",
+    "retained_reports": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/ui-parity-retained",
+    "png_hash_manifest": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/ui-parity-png-sha256.json"
+  },
+  "old_scoped_png_retirement": {
+    "images": 674,
+    "allocated_bytes": 57307136,
+    "manifest": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/retired-scoped-pngs.json"
+  },
+  "original_wren_sources": [
+    "4edc61baecaa878438909a7176a1d10764f6c31c",
+    "1a3e44d3bf7c3a7e049987bcaa63c2b165e74129"
+  ],
+  "rebased_wren_sources": [
+    "76b47c8a",
+    "c6723346"
+  ],
+  "base": "1e531d0a23bb4a37f0990d4214cd31b51453e7ed",
+  "native_source": "b247e0cc",
+  "ui_source_paths": [
+    "crates/bbt-ui/src/modules/settings.rs",
+    "crates/bbt-ui/src/modules/settings/controller.rs",
+    "crates/bbt-ui/src/modules/settings/plugins.rs",
+    "crates/bbt-ui/src/modules/settings/knowledge.rs",
+    "crates/bbt-ui/tests/settings.rs",
+    "crates/bboxy450-term/src/main.rs",
+    "crates/bboxy450-term/src/settings.rs",
+    "crates/bboxy450-term/src/settings/registry.rs",
+    "crates/bboxy450-term/src/settings/plugin-reference.json",
+    "crates/bboxy450-term/tests/settings.rs",
+    "crates/bboxybook/capture-inputs.js",
+    "crates/bboxybook/src/settings.rs",
+    "crates/bboxybook/tests/settings.rs",
+    "lab/web/components.js",
+    "lab/web/lab.css",
+    "lab/web/settings.html"
+  ],
+  "code_equal_to_exact_gated_commit": true,
+  "scope": "Native G3/G4 presentation with labelled P-0 fixtures and existing bundled DataSource read state. No production discovery/trust/enable/setup/provider swap, no new backend; named refusals preserve records. Night G3/G4 remain partial.",
+  "earlier_failures": "settings-plugins-scoped.log retains duplicate plug asset refusal and two empty-version baseline mismatches. Consumed Wren icon fix; empty spans retain box geometry without an invented text baseline; no geometry tolerance relaxed. Final scoped168 and full current Settings168 pass."
+}

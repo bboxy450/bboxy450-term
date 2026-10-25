@@ -1,0 +1,5152 @@
+{
+  "source": "953996771e6fe6140025bb5f876f1fe811616160",
+  "current_cases": 2264,
+  "required_geometry": 2160,
+  "measured": 2160,
+  "optional_geometry_measured": 56,
+  "unproven": 0,
+  "geometry_mismatches": 0,
+  "current_statuses": {
+    "review pixels": 72,
+    "within policy": 2192
+  },
+  "current_advisory_keys": [
+    "documents/as-modal-comfortable-dark.png",
+    "documents/as-modal-comfortable-light.png",
+    "documents/as-modal-compact-dark.png",
+    "documents/as-modal-compact-light.png",
+    "documents/as-modal-cozy-dark.png",
+    "documents/as-modal-cozy-light.png",
+    "documents/as-modal-touch-dark.png",
+    "documents/as-modal-touch-light.png",
+    "documents/with-a-diagram-comfortable-dark.png",
+    "documents/with-a-diagram-comfortable-light.png",
+    "documents/with-a-diagram-compact-dark.png",
+    "documents/with-a-diagram-compact-light.png",
+    "documents/with-a-diagram-cozy-dark.png",
+    "documents/with-a-diagram-cozy-light.png",
+    "documents/with-a-diagram-touch-dark.png",
+    "documents/with-a-diagram-touch-light.png",
+    "harness-icon/claude-comfortable-dark.png",
+    "harness-icon/claude-comfortable-light.png",
+    "harness-icon/claude-compact-dark.png",
+    "harness-icon/claude-compact-light.png",
+    "harness-icon/claude-cozy-dark.png",
+    "harness-icon/claude-cozy-light.png",
+    "harness-icon/claude-touch-dark.png",
+    "harness-icon/claude-touch-light.png",
+    "harness-icon/codex-comfortable-dark.png",
+    "harness-icon/codex-comfortable-light.png",
+    "harness-icon/codex-compact-dark.png",
+    "harness-icon/codex-compact-light.png",
+    "harness-icon/codex-cozy-dark.png",
+    "harness-icon/codex-cozy-light.png",
+    "harness-icon/codex-touch-dark.png",
+    "harness-icon/codex-touch-light.png",
+    "harness-icon/gear-comfortable-dark.png",
+    "harness-icon/gear-comfortable-light.png",
+    "harness-icon/gear-compact-dark.png",
+    "harness-icon/gear-compact-light.png",
+    "harness-icon/gear-cozy-dark.png",
+    "harness-icon/gear-cozy-light.png",
+    "harness-icon/gear-touch-dark.png",
+    "harness-icon/gear-touch-light.png",
+    "harness-icon/omp-comfortable-dark.png",
+    "harness-icon/omp-comfortable-light.png",
+    "harness-icon/omp-compact-dark.png",
+    "harness-icon/omp-compact-light.png",
+    "harness-icon/omp-cozy-dark.png",
+    "harness-icon/omp-cozy-light.png",
+    "harness-icon/omp-touch-dark.png",
+    "harness-icon/omp-touch-light.png",
+    "harness-icon/sidebarfox-comfortable-dark.png",
+    "harness-icon/sidebarfox-comfortable-light.png",
+    "harness-icon/sidebarfox-compact-dark.png",
+    "harness-icon/sidebarfox-compact-light.png",
+    "harness-icon/sidebarfox-cozy-dark.png",
+    "harness-icon/sidebarfox-cozy-light.png",
+    "harness-icon/sidebarfox-touch-dark.png",
+    "harness-icon/sidebarfox-touch-light.png",
+    "harness-icon/zsh-comfortable-dark.png",
+    "harness-icon/zsh-comfortable-light.png",
+    "harness-icon/zsh-compact-dark.png",
+    "harness-icon/zsh-compact-light.png",
+    "harness-icon/zsh-cozy-dark.png",
+    "harness-icon/zsh-cozy-light.png",
+    "harness-icon/zsh-touch-dark.png",
+    "harness-icon/zsh-touch-light.png",
+    "materials/glow-comfortable-dark.png",
+    "materials/glow-comfortable-light.png",
+    "materials/glow-compact-dark.png",
+    "materials/glow-compact-light.png",
+    "materials/glow-cozy-dark.png",
+    "materials/glow-cozy-light.png",
+    "materials/glow-touch-dark.png",
+    "materials/glow-touch-light.png"
+  ],
+  "settings_cases": 168,
+  "settings_statuses": {
+    "within policy": 168
+  },
+  "settings_max_rect_error": 0.04736328125,
+  "settings_max_baseline_error": 0.0078125,
+  "settings_rows": [
+    {
+      "changed_fraction": 0.006585144318105363,
+      "geometry": {
+        "baselines": 18,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 64
+      },
+      "key": "settings/account-comfortable-dark.png",
+      "mean_error": 0.001214658304955569,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006585144318105363,
+      "geometry": {
+        "baselines": 18,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 64
+      },
+      "key": "settings/account-cozy-dark.png",
+      "mean_error": 0.001214658304955569,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006585144318105363,
+      "geometry": {
+        "baselines": 18,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 64
+      },
+      "key": "settings/account-touch-dark.png",
+      "mean_error": 0.001214658304955569,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006582741419248181,
+      "geometry": {
+        "baselines": 18,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 64
+      },
+      "key": "settings/account-compact-dark.png",
+      "mean_error": 0.0012146217903160725,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006574331273248047,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-unknown-compact-dark.png",
+      "mean_error": 0.0012967008104459573,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006574331273248047,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-unknown-touch-dark.png",
+      "mean_error": 0.0012967008104459573,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006571928374390865,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-unknown-comfortable-dark.png",
+      "mean_error": 0.0012966666515896543,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006571928374390865,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-unknown-cozy-dark.png",
+      "mean_error": 0.0012966666515896543,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006563518228390731,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-granted-comfortable-dark.png",
+      "mean_error": 0.0012958103243988842,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006563518228390731,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-granted-cozy-dark.png",
+      "mean_error": 0.0012958091465072876,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006563518228390731,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-granted-touch-dark.png",
+      "mean_error": 0.0012958091465072876,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006561115329533549,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-granted-compact-dark.png",
+      "mean_error": 0.001295766742409808,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006545496486961871,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-unknown-compact-light.png",
+      "mean_error": 0.000675900111777201,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006545496486961871,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-unknown-cozy-light.png",
+      "mean_error": 0.000675900111777201,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006545496486961871,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-unknown-touch-light.png",
+      "mean_error": 0.000675900111777201,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00654429503753328,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-unknown-comfortable-light.png",
+      "mean_error": 0.0006758718423788811,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006541892138676099,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-unlock-pending-comfortable-dark.png",
+      "mean_error": 0.0013075444804847862,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006541892138676099,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-unlock-pending-compact-dark.png",
+      "mean_error": 0.0013075444804847862,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006541892138676099,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-unlock-pending-cozy-dark.png",
+      "mean_error": 0.0013075444804847862,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006541892138676099,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-unlock-pending-touch-dark.png",
+      "mean_error": 0.0013075444804847862,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006540690689247508,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-cancelled-compact-dark.png",
+      "mean_error": 0.0012951660176955125,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006540690689247508,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-cancelled-cozy-dark.png",
+      "mean_error": 0.0012951660176955125,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006538287790390327,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-cancelled-comfortable-dark.png",
+      "mean_error": 0.0012951236135980329,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006538287790390327,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-cancelled-touch-dark.png",
+      "mean_error": 0.0012951224357064363,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006531079093818783,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-granted-compact-light.png",
+      "mean_error": 0.0006775161790478151,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006531079093818783,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-granted-cozy-light.png",
+      "mean_error": 0.0006775161790478151,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006531079093818783,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-granted-touch-light.png",
+      "mean_error": 0.0006775161790478151,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006529877644390192,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-granted-comfortable-light.png",
+      "mean_error": 0.0006774761307335287,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006529877644390192,
+      "geometry": {
+        "baselines": 18,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 64
+      },
+      "key": "settings/account-compact-light.png",
+      "mean_error": 0.000570545953697364,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006529877644390192,
+      "geometry": {
+        "baselines": 18,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 64
+      },
+      "key": "settings/account-cozy-light.png",
+      "mean_error": 0.000570545953697364,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006529877644390192,
+      "geometry": {
+        "baselines": 18,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 64
+      },
+      "key": "settings/account-comfortable-light.png",
+      "mean_error": 0.0005705341747813975,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006529877644390192,
+      "geometry": {
+        "baselines": 18,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 64
+      },
+      "key": "settings/account-touch-light.png",
+      "mean_error": 0.0005705341747813975,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00650825155467556,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-unlock-pending-comfortable-light.png",
+      "mean_error": 0.0006838532358378324,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00650825155467556,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-unlock-pending-cozy-light.png",
+      "mean_error": 0.0006838532358378324,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00650825155467556,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-unlock-pending-touch-light.png",
+      "mean_error": 0.0006838532358378324,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00650705010524697,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-unlock-pending-compact-light.png",
+      "mean_error": 0.0006838131875235461,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006501042858104017,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-cancelled-comfortable-light.png",
+      "mean_error": 0.0006825917139378123,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006501042858104017,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-cancelled-compact-light.png",
+      "mean_error": 0.0006825917139378123,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006501042858104017,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-cancelled-cozy-light.png",
+      "mean_error": 0.0006825917139378123,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.006499841408675426,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 85
+      },
+      "key": "settings/custody-\u00b7-cancelled-touch-light.png",
+      "mean_error": 0.0006825516656235259,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0050917426783671825,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 80
+      },
+      "key": "settings/custody-\u00b7-signer-returned-cozy-dark.png",
+      "mean_error": 0.001196514062800657,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0050917426783671825,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 80
+      },
+      "key": "settings/custody-\u00b7-signer-returned-comfortable-dark.png",
+      "mean_error": 0.0011965105291258668,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0050917426783671825,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 80
+      },
+      "key": "settings/custody-\u00b7-signer-returned-compact-dark.png",
+      "mean_error": 0.0011965105291258668,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0050917426783671825,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 80
+      },
+      "key": "settings/custody-\u00b7-signer-returned-touch-dark.png",
+      "mean_error": 0.0011965105291258668,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.005084533981795638,
+      "geometry": {
+        "baselines": 19,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 122
+      },
+      "key": "settings/harnesses-comfortable-dark.png",
+      "mean_error": 0.0007246141745401653,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.005084533981795638,
+      "geometry": {
+        "baselines": 19,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 122
+      },
+      "key": "settings/harnesses-compact-dark.png",
+      "mean_error": 0.0007246141745401653,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.005084533981795638,
+      "geometry": {
+        "baselines": 19,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 122
+      },
+      "key": "settings/harnesses-touch-dark.png",
+      "mean_error": 0.0007246141745401653,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.005084533981795638,
+      "geometry": {
+        "baselines": 19,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 122
+      },
+      "key": "settings/harnesses-cozy-dark.png",
+      "mean_error": 0.000724608285082182,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0050112455666516086,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 80
+      },
+      "key": "settings/custody-\u00b7-signer-returned-cozy-light.png",
+      "mean_error": 0.0005715012237822532,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0050112455666516086,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 80
+      },
+      "key": "settings/custody-\u00b7-signer-returned-touch-light.png",
+      "mean_error": 0.0005715012237822532,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0050112455666516086,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 80
+      },
+      "key": "settings/custody-\u00b7-signer-returned-comfortable-light.png",
+      "mean_error": 0.0005714941564326733,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0050112455666516086,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 80
+      },
+      "key": "settings/custody-\u00b7-signer-returned-compact-light.png",
+      "mean_error": 0.0005714941564326733,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004944298576637292,
+      "geometry": {
+        "baselines": 28,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.04736328125,
+        "rects": 147
+      },
+      "key": "settings/plugins-comfortable-light.png",
+      "mean_error": 0.0008156017448277027,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004944298576637292,
+      "geometry": {
+        "baselines": 28,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.04736328125,
+        "rects": 147
+      },
+      "key": "settings/plugins-compact-light.png",
+      "mean_error": 0.0008156017448277027,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004944298576637292,
+      "geometry": {
+        "baselines": 28,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.04736328125,
+        "rects": 147
+      },
+      "key": "settings/plugins-cozy-light.png",
+      "mean_error": 0.0008156017448277027,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004944298576637292,
+      "geometry": {
+        "baselines": 28,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.04736328125,
+        "rects": 147
+      },
+      "key": "settings/plugins-touch-light.png",
+      "mean_error": 0.0008156017448277027,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004935661667003285,
+      "geometry": {
+        "baselines": 28,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.04736328125,
+        "rects": 147
+      },
+      "key": "settings/plugins-comfortable-dark.png",
+      "mean_error": 0.0007924416697254093,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004935661667003285,
+      "geometry": {
+        "baselines": 28,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.04736328125,
+        "rects": 147
+      },
+      "key": "settings/plugins-compact-dark.png",
+      "mean_error": 0.0007924416697254093,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004935661667003285,
+      "geometry": {
+        "baselines": 28,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.04736328125,
+        "rects": 147
+      },
+      "key": "settings/plugins-cozy-dark.png",
+      "mean_error": 0.0007924416697254093,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004935661667003285,
+      "geometry": {
+        "baselines": 28,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.04736328125,
+        "rects": 147
+      },
+      "key": "settings/plugins-touch-dark.png",
+      "mean_error": 0.0007924416697254093,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004844244096077508,
+      "geometry": {
+        "baselines": 19,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 122
+      },
+      "key": "settings/harnesses-comfortable-light.png",
+      "mean_error": 0.0006676301348770686,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004844244096077508,
+      "geometry": {
+        "baselines": 19,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 122
+      },
+      "key": "settings/harnesses-compact-light.png",
+      "mean_error": 0.0006676301348770686,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004844244096077508,
+      "geometry": {
+        "baselines": 19,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 122
+      },
+      "key": "settings/harnesses-cozy-light.png",
+      "mean_error": 0.0006676301348770686,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004844244096077508,
+      "geometry": {
+        "baselines": 19,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 122
+      },
+      "key": "settings/harnesses-touch-light.png",
+      "mean_error": 0.0006676301348770686,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004785373074076566,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 84
+      },
+      "key": "settings/custody-\u00b7-held-cozy-dark.png",
+      "mean_error": 0.0012027851576612613,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004785373074076566,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 84
+      },
+      "key": "settings/custody-\u00b7-held-compact-dark.png",
+      "mean_error": 0.0012027839797696647,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004785373074076566,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 84
+      },
+      "key": "settings/custody-\u00b7-held-touch-dark.png",
+      "mean_error": 0.0012027839797696647,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004782970175219384,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 84
+      },
+      "key": "settings/custody-\u00b7-held-comfortable-dark.png",
+      "mean_error": 0.001202741575672185,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00471809190607549,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 84
+      },
+      "key": "settings/custody-\u00b7-held-comfortable-light.png",
+      "mean_error": 0.0005111472362611195,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00471809190607549,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 84
+      },
+      "key": "settings/custody-\u00b7-held-cozy-light.png",
+      "mean_error": 0.0005111472362611195,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00471809190607549,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 84
+      },
+      "key": "settings/custody-\u00b7-held-touch-light.png",
+      "mean_error": 0.0005111472362611195,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004716890456646899,
+      "geometry": {
+        "baselines": 22,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 84
+      },
+      "key": "settings/custody-\u00b7-held-compact-light.png",
+      "mean_error": 0.0005111071879468331,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0040633019674935844,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-\u00b7-swapped-to-the-stub-touch-light.png",
+      "mean_error": 0.0004884940250742025,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0040633019674935844,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-\u00b7-swapped-to-the-stub-comfortable-light.png",
+      "mean_error": 0.0004883267644674771,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0040633019674935844,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-\u00b7-swapped-to-the-stub-compact-light.png",
+      "mean_error": 0.0004883267644674771,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0040633019674935844,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-\u00b7-swapped-to-the-stub-cozy-light.png",
+      "mean_error": 0.0004883267644674771,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004057294720350631,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-\u00b7-swapped-to-the-stub-comfortable-dark.png",
+      "mean_error": 0.00048388257947328835,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004057294720350631,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-\u00b7-swapped-to-the-stub-compact-dark.png",
+      "mean_error": 0.00048388257947328835,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004057294720350631,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-\u00b7-swapped-to-the-stub-cozy-dark.png",
+      "mean_error": 0.00048388257947328835,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004057294720350631,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-\u00b7-swapped-to-the-stub-touch-dark.png",
+      "mean_error": 0.00048388257947328835,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003443354062340808,
+      "geometry": {
+        "baselines": 19,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 68
+      },
+      "key": "settings/appearance-comfortable-dark.png",
+      "mean_error": 0.0006520089365221969,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003443354062340808,
+      "geometry": {
+        "baselines": 19,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 68
+      },
+      "key": "settings/appearance-compact-dark.png",
+      "mean_error": 0.0006520089365221969,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003443354062340808,
+      "geometry": {
+        "baselines": 19,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 68
+      },
+      "key": "settings/appearance-cozy-dark.png",
+      "mean_error": 0.0006520089365221969,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003443354062340808,
+      "geometry": {
+        "baselines": 19,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 68
+      },
+      "key": "settings/appearance-touch-dark.png",
+      "mean_error": 0.0006520089365221969,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003402504781768726,
+      "geometry": {
+        "baselines": 20,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 143
+      },
+      "key": "settings/new-harness-comfortable-dark.png",
+      "mean_error": 0.0008513564882321091,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003402504781768726,
+      "geometry": {
+        "baselines": 20,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 143
+      },
+      "key": "settings/new-harness-compact-dark.png",
+      "mean_error": 0.0008513564882321091,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003402504781768726,
+      "geometry": {
+        "baselines": 20,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 143
+      },
+      "key": "settings/new-harness-cozy-dark.png",
+      "mean_error": 0.0008513564882321091,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003402504781768726,
+      "geometry": {
+        "baselines": 20,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 143
+      },
+      "key": "settings/new-harness-touch-dark.png",
+      "mean_error": 0.0008513564882321091,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0033556482540536905,
+      "geometry": {
+        "baselines": 19,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 68
+      },
+      "key": "settings/appearance-comfortable-light.png",
+      "mean_error": 0.0006634733554324643,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0033556482540536905,
+      "geometry": {
+        "baselines": 19,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 68
+      },
+      "key": "settings/appearance-compact-light.png",
+      "mean_error": 0.0006634733554324643,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0033556482540536905,
+      "geometry": {
+        "baselines": 19,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 68
+      },
+      "key": "settings/appearance-cozy-light.png",
+      "mean_error": 0.0006634733554324643,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0033556482540536905,
+      "geometry": {
+        "baselines": 19,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 68
+      },
+      "key": "settings/appearance-touch-light.png",
+      "mean_error": 0.0006634733554324643,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003349641006910737,
+      "geometry": {
+        "baselines": 20,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 143
+      },
+      "key": "settings/new-harness-comfortable-light.png",
+      "mean_error": 0.0005380267224968438,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003349641006910737,
+      "geometry": {
+        "baselines": 20,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 143
+      },
+      "key": "settings/new-harness-compact-light.png",
+      "mean_error": 0.0005380267224968438,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003349641006910737,
+      "geometry": {
+        "baselines": 20,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 143
+      },
+      "key": "settings/new-harness-cozy-light.png",
+      "mean_error": 0.0005380267224968438,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003349641006910737,
+      "geometry": {
+        "baselines": 20,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 143
+      },
+      "key": "settings/new-harness-touch-light.png",
+      "mean_error": 0.0005380267224968438,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0031778337386222737,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/cloud-comfortable-dark.png",
+      "mean_error": 0.0004309481311195002,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0031778337386222737,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/cloud-compact-dark.png",
+      "mean_error": 0.0004309481311195002,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0031778337386222737,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/cloud-cozy-dark.png",
+      "mean_error": 0.0004309481311195002,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0031778337386222737,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/cloud-touch-dark.png",
+      "mean_error": 0.0004309481311195002,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003163416345479186,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/cloud-touch-light.png",
+      "mean_error": 0.0004162763133915344,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003161013446622005,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/cloud-comfortable-light.png",
+      "mean_error": 0.00041622919772766806,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003161013446622005,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/cloud-compact-light.png",
+      "mean_error": 0.00041622919772766806,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003161013446622005,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/cloud-cozy-light.png",
+      "mean_error": 0.00041622919772766806,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003148998952336098,
+      "geometry": {
+        "baselines": 15,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 90
+      },
+      "key": "settings/roles-comfortable-dark.png",
+      "mean_error": 0.0002658100850513118,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003148998952336098,
+      "geometry": {
+        "baselines": 15,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 90
+      },
+      "key": "settings/roles-compact-dark.png",
+      "mean_error": 0.0002658100850513118,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003148998952336098,
+      "geometry": {
+        "baselines": 15,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 90
+      },
+      "key": "settings/roles-cozy-dark.png",
+      "mean_error": 0.0002658100850513118,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.003148998952336098,
+      "geometry": {
+        "baselines": 15,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 90
+      },
+      "key": "settings/roles-touch-dark.png",
+      "mean_error": 0.0002658089071597151,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0028522409434742074,
+      "geometry": {
+        "baselines": 15,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 90
+      },
+      "key": "settings/roles-comfortable-light.png",
+      "mean_error": 0.0002261504749918537,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0028522409434742074,
+      "geometry": {
+        "baselines": 15,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 90
+      },
+      "key": "settings/roles-compact-light.png",
+      "mean_error": 0.0002261504749918537,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0028522409434742074,
+      "geometry": {
+        "baselines": 15,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 90
+      },
+      "key": "settings/roles-cozy-light.png",
+      "mean_error": 0.0002261504749918537,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0028522409434742074,
+      "geometry": {
+        "baselines": 15,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 90
+      },
+      "key": "settings/roles-touch-light.png",
+      "mean_error": 0.0002261504749918537,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.002583116271469901,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-comfortable-light.png",
+      "mean_error": 0.0002446257046854266,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.002583116271469901,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-compact-light.png",
+      "mean_error": 0.0002446257046854266,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.002583116271469901,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-cozy-light.png",
+      "mean_error": 0.0002446257046854266,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.002583116271469901,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-touch-light.png",
+      "mean_error": 0.0002446257046854266,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0025795119231841294,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-comfortable-dark.png",
+      "mean_error": 0.00024173044714084248,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0025795119231841294,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-compact-dark.png",
+      "mean_error": 0.00024173044714084248,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0025795119231841294,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-cozy-dark.png",
+      "mean_error": 0.00024173044714084248,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0025795119231841294,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-touch-dark.png",
+      "mean_error": 0.00024173044714084248,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.002530252496611913,
+      "geometry": {
+        "baselines": 15,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 90
+      },
+      "key": "settings/in-a-tab-compact-dark.png",
+      "mean_error": 0.0005063767752946566,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.002357243778894859,
+      "geometry": {
+        "baselines": 15,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 90
+      },
+      "key": "settings/in-a-tab-compact-light.png",
+      "mean_error": 0.0003108255682007715,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.00160393498716852,
+      "geometry": {
+        "baselines": 15,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 90
+      },
+      "key": "settings/in-a-tab-cozy-light.png",
+      "mean_error": 0.0003018853709821411,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0015991291894541576,
+      "geometry": {
+        "baselines": 15,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 90
+      },
+      "key": "settings/in-a-tab-touch-light.png",
+      "mean_error": 0.0003016026769989433,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0015991291894541576,
+      "geometry": {
+        "baselines": 15,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 90
+      },
+      "key": "settings/in-a-tab-comfortable-light.png",
+      "mean_error": 0.0003012693336770892,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.001590719043454023,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-\u00b7-one-harness-off-comfortable-light.png",
+      "mean_error": 0.00015973859098911044,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.001590719043454023,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-\u00b7-one-harness-off-compact-light.png",
+      "mean_error": 0.00015938286772691987,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.001590719043454023,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-\u00b7-one-harness-off-cozy-light.png",
+      "mean_error": 0.00015938286772691987,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.001590719043454023,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-\u00b7-one-harness-off-touch-light.png",
+      "mean_error": 0.00015938286772691987,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0015787045491681164,
+      "geometry": {
+        "baselines": 15,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 90
+      },
+      "key": "settings/in-a-tab-touch-dark.png",
+      "mean_error": 0.0004848319601001943,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0015787045491681164,
+      "geometry": {
+        "baselines": 15,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 90
+      },
+      "key": "settings/in-a-tab-comfortable-dark.png",
+      "mean_error": 0.0004819107889404837,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0015787045491681164,
+      "geometry": {
+        "baselines": 15,
+        "complete": true,
+        "max_baseline_error": 0.0078125,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 90
+      },
+      "key": "settings/in-a-tab-cozy-dark.png",
+      "mean_error": 0.0004818707406261973,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.001576301650310935,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-touch-light.png",
+      "mean_error": 0.00015846882384791365,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.001576301650310935,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-comfortable-light.png",
+      "mean_error": 0.00015811310058572308,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.001576301650310935,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-compact-light.png",
+      "mean_error": 0.00015811310058572308,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.001576301650310935,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-cozy-light.png",
+      "mean_error": 0.00015811310058572308,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0015666900548822098,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-compact-dark.png",
+      "mean_error": 0.00015378670475120007,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0015666900548822098,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-touch-dark.png",
+      "mean_error": 0.00015378670475120007,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0015666900548822098,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-comfortable-dark.png",
+      "mean_error": 0.00015378552685960342,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0015666900548822098,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-cozy-dark.png",
+      "mean_error": 0.00015378552685960342,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0015534741111677126,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-\u00b7-one-harness-off-comfortable-dark.png",
+      "mean_error": 0.00015524493454786208,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0015534741111677126,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-\u00b7-one-harness-off-compact-dark.png",
+      "mean_error": 0.00015524493454786208,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0015534741111677126,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-\u00b7-one-harness-off-cozy-dark.png",
+      "mean_error": 0.00015524493454786208,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0015534741111677126,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-\u00b7-one-harness-off-touch-dark.png",
+      "mean_error": 0.00015524493454786208,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0014681712017377765,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-\u00b7-off-comfortable-light.png",
+      "mean_error": 0.00015608830493106884,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0014681712017377765,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-\u00b7-off-compact-light.png",
+      "mean_error": 0.00015608830493106884,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0014681712017377765,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-\u00b7-off-cozy-light.png",
+      "mean_error": 0.00015608830493106884,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0014681712017377765,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-\u00b7-off-touch-light.png",
+      "mean_error": 0.00015608830493106884,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0014501494603089166,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-\u00b7-off-comfortable-dark.png",
+      "mean_error": 0.0001559952514949329,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0014501494603089166,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-\u00b7-off-compact-dark.png",
+      "mean_error": 0.0001559952514949329,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0014501494603089166,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-\u00b7-off-cozy-dark.png",
+      "mean_error": 0.0001559952514949329,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0014501494603089166,
+      "geometry": {
+        "baselines": 14,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 60
+      },
+      "key": "settings/notifications-\u00b7-off-touch-dark.png",
+      "mean_error": 0.0001559952514949329,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0013107813265924011,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/shortcuts-comfortable-dark.png",
+      "mean_error": 0.00015254638489991973,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0013107813265924011,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/shortcuts-compact-dark.png",
+      "mean_error": 0.00015254638489991973,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0013107813265924011,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/shortcuts-cozy-dark.png",
+      "mean_error": 0.00015254638489991973,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0013107813265924011,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/shortcuts-touch-dark.png",
+      "mean_error": 0.00015254638489991973,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0013047740794494478,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/shortcuts-comfortable-light.png",
+      "mean_error": 0.00015496106267306762,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0013047740794494478,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/shortcuts-compact-light.png",
+      "mean_error": 0.00015496106267306762,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0013047740794494478,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/shortcuts-cozy-light.png",
+      "mean_error": 0.00015496106267306762,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0013047740794494478,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/shortcuts-touch-light.png",
+      "mean_error": 0.00015496106267306762,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0012891552368777693,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/machines-comfortable-dark.png",
+      "mean_error": 0.0001461893039527592,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0012891552368777693,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/machines-compact-dark.png",
+      "mean_error": 0.00014609978419141323,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0012891552368777693,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/machines-cozy-dark.png",
+      "mean_error": 0.00014609978419141323,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0012891552368777693,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/machines-touch-dark.png",
+      "mean_error": 0.00014609978419141323,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0012807450908776349,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/machines-comfortable-light.png",
+      "mean_error": 0.00014817994075111039,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0012807450908776349,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/machines-compact-light.png",
+      "mean_error": 0.00014817994075111039,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0012807450908776349,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/machines-cozy-light.png",
+      "mean_error": 0.00014817994075111039,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0012807450908776349,
+      "geometry": {
+        "baselines": 12,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 40
+      },
+      "key": "settings/machines-touch-light.png",
+      "mean_error": 0.00014817994075111039,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    }
+  ],
+  "new_page_rows": [
+    {
+      "changed_fraction": 0.004944298576637292,
+      "geometry": {
+        "baselines": 28,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.04736328125,
+        "rects": 147
+      },
+      "key": "settings/plugins-comfortable-light.png",
+      "mean_error": 0.0008156017448277027,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004944298576637292,
+      "geometry": {
+        "baselines": 28,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.04736328125,
+        "rects": 147
+      },
+      "key": "settings/plugins-compact-light.png",
+      "mean_error": 0.0008156017448277027,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004944298576637292,
+      "geometry": {
+        "baselines": 28,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.04736328125,
+        "rects": 147
+      },
+      "key": "settings/plugins-cozy-light.png",
+      "mean_error": 0.0008156017448277027,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004944298576637292,
+      "geometry": {
+        "baselines": 28,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.04736328125,
+        "rects": 147
+      },
+      "key": "settings/plugins-touch-light.png",
+      "mean_error": 0.0008156017448277027,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004935661667003285,
+      "geometry": {
+        "baselines": 28,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.04736328125,
+        "rects": 147
+      },
+      "key": "settings/plugins-comfortable-dark.png",
+      "mean_error": 0.0007924416697254093,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004935661667003285,
+      "geometry": {
+        "baselines": 28,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.04736328125,
+        "rects": 147
+      },
+      "key": "settings/plugins-compact-dark.png",
+      "mean_error": 0.0007924416697254093,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004935661667003285,
+      "geometry": {
+        "baselines": 28,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.04736328125,
+        "rects": 147
+      },
+      "key": "settings/plugins-cozy-dark.png",
+      "mean_error": 0.0007924416697254093,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004935661667003285,
+      "geometry": {
+        "baselines": 28,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.04736328125,
+        "rects": 147
+      },
+      "key": "settings/plugins-touch-dark.png",
+      "mean_error": 0.0007924416697254093,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0040633019674935844,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-\u00b7-swapped-to-the-stub-touch-light.png",
+      "mean_error": 0.0004884940250742025,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0040633019674935844,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-\u00b7-swapped-to-the-stub-comfortable-light.png",
+      "mean_error": 0.0004883267644674771,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0040633019674935844,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-\u00b7-swapped-to-the-stub-compact-light.png",
+      "mean_error": 0.0004883267644674771,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0040633019674935844,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-\u00b7-swapped-to-the-stub-cozy-light.png",
+      "mean_error": 0.0004883267644674771,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004057294720350631,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-\u00b7-swapped-to-the-stub-comfortable-dark.png",
+      "mean_error": 0.00048388257947328835,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004057294720350631,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-\u00b7-swapped-to-the-stub-compact-dark.png",
+      "mean_error": 0.00048388257947328835,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004057294720350631,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-\u00b7-swapped-to-the-stub-cozy-dark.png",
+      "mean_error": 0.00048388257947328835,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.004057294720350631,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-\u00b7-swapped-to-the-stub-touch-dark.png",
+      "mean_error": 0.00048388257947328835,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.002583116271469901,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-comfortable-light.png",
+      "mean_error": 0.0002446257046854266,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.002583116271469901,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-compact-light.png",
+      "mean_error": 0.0002446257046854266,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.002583116271469901,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-cozy-light.png",
+      "mean_error": 0.0002446257046854266,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.002583116271469901,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-touch-light.png",
+      "mean_error": 0.0002446257046854266,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0025795119231841294,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-comfortable-dark.png",
+      "mean_error": 0.00024173044714084248,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0025795119231841294,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-compact-dark.png",
+      "mean_error": 0.00024173044714084248,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0025795119231841294,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-cozy-dark.png",
+      "mean_error": 0.00024173044714084248,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    },
+    {
+      "changed_fraction": 0.0025795119231841294,
+      "geometry": {
+        "baselines": 16,
+        "complete": true,
+        "max_baseline_error": 0.0,
+        "max_rect_error": 0.02304840087890625,
+        "rects": 53
+      },
+      "key": "settings/knowledge-touch-dark.png",
+      "mean_error": 0.00024173044714084248,
+      "policy": {
+        "changed_pixel_budget": 0.02,
+        "channel_tolerance": 8,
+        "diagram_body_advisory": false,
+        "geometry_tolerance_px": 0.5,
+        "historical": false,
+        "scope": "Settings; public records and outer viewport only, read-mostly controls",
+        "text": true
+      },
+      "status": "within policy"
+    }
+  ],
+  "current_report_sha256": "aaab83e8e1a14eb3af3cf48977e6e9b43d0c51a7ab3d4da202540f355856f37b",
+  "legacy_report_sha256": "5ec6577cc7cf7310d97ae455d0588822eb05fe4c655d3c61c5fb92ce65d72682",
+  "legacy_scope": "1664 cases,851 pixel reviews; diagnostic only, no geometry claim",
+  "retained_reports": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/ui-parity-retained",
+  "retained_non_png": [
+    {
+      "path": "capture.json",
+      "bytes": 3320,
+      "sha256": "139956cdb465cc86b3dfabf4089388ed3348155f3a326b7a437793680575186e"
+    },
+    {
+      "path": "cases.json",
+      "bytes": 115070776,
+      "sha256": "caf3424139639eafdde39dc4bdf72fb64fe426fc26be53e55110854627d19245"
+    },
+    {
+      "path": "fixtures.json",
+      "bytes": 19962,
+      "sha256": "f644803761674496fc8333096430a4c266885a33962e3acfa385134eefdedf66"
+    },
+    {
+      "path": "index.html",
+      "bytes": 2040836,
+      "sha256": "5796894f3b1df7da2680f02faf1cec7a900420daa131df609393cd2cf59f1f80"
+    },
+    {
+      "path": "layouts.json",
+      "bytes": 53552764,
+      "sha256": "9d9eedf2337149c26e0ebfb54fb7a9a108914b472ff82ebc09a2b8cbf2de88f0"
+    },
+    {
+      "path": "legacy/capture.json",
+      "bytes": 3201,
+      "sha256": "b149c5719a65aa22471842feea914bfa48156b3f9b181519e34f001f2b30283d"
+    },
+    {
+      "path": "legacy/cases.json",
+      "bytes": 13968076,
+      "sha256": "7db254dc42029ac1577d5937f826abaebdcbf5e9abb21df77fba5e68991aa329"
+    },
+    {
+      "path": "legacy/fixtures.json",
+      "bytes": 19962,
+      "sha256": "f644803761674496fc8333096430a4c266885a33962e3acfa385134eefdedf66"
+    },
+    {
+      "path": "legacy/index.html",
+      "bytes": 1427963,
+      "sha256": "e7b0d9af7c9f7b65650c6b752106738b8880cc2a4b472426a363e16c1c60eb58"
+    },
+    {
+      "path": "legacy/native/image-replay.json",
+      "bytes": 123,
+      "sha256": "6bc3eff2dfeb045a68e933894bea7e99660cf0d825c67df95d3a2b8114d4d744"
+    },
+    {
+      "path": "legacy/native/manifest.json",
+      "bytes": 13968076,
+      "sha256": "1d849f34134e67020f63e8a08282de715ca20da616a56cf055b89f1a8b3097ed"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/checks/bad.html",
+      "bytes": 1247,
+      "sha256": "b668509358b7a19babec7b80a1fea4ff25d12c2d6ef74cfd841cde05825b4ef3"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/close.html",
+      "bytes": 5821,
+      "sha256": "112d68b39b4119278b3d222b530bd5fb16cf38df61c96bba753c1bd03255b3a7"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/components.html",
+      "bytes": 7832,
+      "sha256": "8ff08c3b5f412e324ab0553cbea2847dbc33244f04d9e97f361f7b66d011c553"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/compose.html",
+      "bytes": 16006,
+      "sha256": "fb03e0105bc686f386e064261f7064ae22109fd2dafbc209df67324b068a99db"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/diagrams.html",
+      "bytes": 7668,
+      "sha256": "7f38cb222dbc0e3eaf352d5db7fff82cb7c9ba9d34798348d6d721323f52bb42"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/documents.html",
+      "bytes": 13538,
+      "sha256": "91c68e2f1272ed9a45e8efadf1e217d22636f73450429f7f6f58e06c50f479f2"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/e2e.html",
+      "bytes": 6039,
+      "sha256": "611e7eeba6517e707b3ffd1d8631fdd0521c1ed72b3d3a4a54eaf365e7990d58"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/events.html",
+      "bytes": 6756,
+      "sha256": "f89caa410d48a3c5ec15cf861a2ff10f2bbd21994382fc6b9bb0d0eaa1eb730b"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/first-run.html",
+      "bytes": 1511,
+      "sha256": "182ddefeb0224cd08ac15399e3a2d376faeb91cd8818c1b4d91586eca1a5a39b"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/glow-inside.html",
+      "bytes": 21162,
+      "sha256": "bb7f5b94ab8a51ccb7846c0f8956ce10e23a7ff2f18926c60d60997c90292ecf"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/glyph.html",
+      "bytes": 2374,
+      "sha256": "c3419970ceaca1d3c6204e9203da92e9e921cba288991b52bca619cabe7da7be"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/graph.html",
+      "bytes": 1704,
+      "sha256": "9e28f3ab21be03174532f8dc128f87c41690defd546e54c5cdece3241b83b6a2"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/harness-icon.html",
+      "bytes": 1292,
+      "sha256": "13eff150fe778e4fd5600a71682e09f50fb2b1e719c949a5a60057a8984a9f83"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/index.html",
+      "bytes": 6328,
+      "sha256": "8c927e9ac3c35a0bc62c02b8594676383e9c1a54c07a623a81fb2b0bf4fd4c85"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/launcher.html",
+      "bytes": 4625,
+      "sha256": "f42e8db6c29f6333bd8c891c96d4b7781fb500417103907494a7b61115fa68fa"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/lifecycle.html",
+      "bytes": 4901,
+      "sha256": "1ef8bbb97c25414c3e74193ce2bcfec3f0b8dbeebe678a778a0e04aff4e1d40c"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/logo.html",
+      "bytes": 854,
+      "sha256": "3706c47aed7c58568f1c36b08e807ef11f9e3a025014c9ddd29049085986f5f4"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/logs/cargo-build.txt",
+      "bytes": 135,
+      "sha256": "f8b600e2e95e8516ba4d71bbd782512a47b375829aff0aba8c24c1587600d82a"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/logs/claude-session.txt",
+      "bytes": 1057,
+      "sha256": "197003c25a1c76392c69d2ef35bddd6774a6db0a89357c09c3817327ca8f368b"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/logs/codex-session.txt",
+      "bytes": 867,
+      "sha256": "a55562ab4491f9d874249272a5c3f666ad346a260ca2b765ecc07af1a4498579"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/logs/git-log.txt",
+      "bytes": 2796,
+      "sha256": "31ac9177fee8ba72f3a5444cc111ca62410cc8e2ef78684c3906dc4d79841a86"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/logs/icq-status.txt",
+      "bytes": 1144,
+      "sha256": "7d92c0e26a0af458693a4fd375ba0d7a458eda265a777067fb7c570dad3a0974"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/logs/ls-kb.txt",
+      "bytes": 875,
+      "sha256": "bc4d5c50a537492f597f2ee35ea5e445649eb35c91791d9dc048f6b226a48d39"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/marks.html",
+      "bytes": 1868,
+      "sha256": "9310f814fc40c158f5223a658ef5e826a2ea2433de9a58a24a74f4a20e46c425"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/materials.html",
+      "bytes": 2414,
+      "sha256": "2f54fadc1c4816b53110deb4acc969b212341539715a5694b67f96a3e3ed3152"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/message-row.html",
+      "bytes": 7168,
+      "sha256": "5b7bd179adc0b5f38fc399890738ca5219b0c76af826f0df3effd39fa0869130"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/mini-grid.html",
+      "bytes": 1678,
+      "sha256": "18e28bb0dbb07ad5b2b7d59a973feddbe22d752cb9c661d28074f7786efc1054"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/pane.html",
+      "bytes": 3973,
+      "sha256": "76a70692f26c28f44ee2136fe1646b8a11b3cb11cc4e7b3a9880e933e2193ea6"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/paths.html",
+      "bytes": 3248,
+      "sha256": "23bd0b05e36831e59def7d938c9d070a1d50578d12eb466d69e518b8b402ca98"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/perf.html",
+      "bytes": 9085,
+      "sha256": "9251eb4cfe2743bdf931237e382a7b7c55ef6504a62fc417acf67a01d1e5c03c"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/picker.html",
+      "bytes": 2007,
+      "sha256": "5edff1ebd24993b5467d175583daed98ad9b4e4f78914a1279c6dd840706aadc"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/purge.html",
+      "bytes": 1236,
+      "sha256": "4e46b259674d2e6c1891d8e5872a5bb5a4e8532e120e040ae02e1796425f1195"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/seat-row.html",
+      "bytes": 10452,
+      "sha256": "2b64ffcf9501cd7526bc5f774f1b0824997b80c17b85f7209e1aa3a437ae7482"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/settings.html",
+      "bytes": 4825,
+      "sha256": "c0be512bd9ef187cd8fd6cffe80010dc3592379a2f2fa680ae153871aa18bdec"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/shaders.html",
+      "bytes": 13491,
+      "sha256": "da7c09cf40bc575d699cbccb409b9fb0e1bf1c6422ca168da0ca55c292fd9bba"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/showcase.html",
+      "bytes": 1320,
+      "sha256": "6747e59bc7f7ab610d339a0eccb7a31e4252fa922015cfd505fcd6821cfb4bc5"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/sidebar.html",
+      "bytes": 3943,
+      "sha256": "f0e80096083b1755199a551c8de2efa4313afa4139944ea8cd2b61e5c39a189a"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/space-header.html",
+      "bytes": 1541,
+      "sha256": "1c2bf93a890b2f8efea20fc2464d932c1948951f23356dfff35aa5055cfcee36"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/splits.html",
+      "bytes": 3439,
+      "sha256": "771de6d7e18ec60671c365273347295a3d337588145de5dcb34b5521c2a93d77"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/stream.html",
+      "bytes": 4090,
+      "sha256": "ab04a7e3874ae826877464458f0312f7c6621c38cc43846fc36b321171d0a5b1"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/style.html",
+      "bytes": 2763,
+      "sha256": "dffd4ae66eb9aedd05f9b768c0b240a92669a6f311c41aad13b4462317906ac1"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/swell.html",
+      "bytes": 10278,
+      "sha256": "6a841b82939b48863a46df72d3b4fe5913bb387741db7d2fdf8011e8a02031cc"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/tab-row.html",
+      "bytes": 1625,
+      "sha256": "85476360ad6bc166b6913c64250821d7647920c266bdf94de9cba869db478013"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/title-strip.html",
+      "bytes": 5094,
+      "sha256": "65286bf6c00cb73df953024f9fd38a68fbbea9eb72ae665f9660a4164bb7177d"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/titlebar.html",
+      "bytes": 1572,
+      "sha256": "1167fcd42114feaf4403570b4954313a84237c3a9c29cdaac2b28f9162348798"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/tokens.html",
+      "bytes": 2594,
+      "sha256": "b2182a2a26d1aabe7f8c97bb95ede067f67045aa3187e7a676c2c57d7dad35b6"
+    },
+    {
+      "path": "legacy/reference-head/lab/web/toolbar-icon.html",
+      "bytes": 2860,
+      "sha256": "b7e771359f0839d687461fe56b6759c7e05f570a2d8a076a7450e7a425b54b16"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/glyph.html",
+      "bytes": 2374,
+      "sha256": "c3419970ceaca1d3c6204e9203da92e9e921cba288991b52bca619cabe7da7be"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/harness-icon.html",
+      "bytes": 1322,
+      "sha256": "103d5ee7cd4fc4580e202f3be3c8e402ed12dfb94a36171c718192f7bcf7a405"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/index.html",
+      "bytes": 2838,
+      "sha256": "f8317ccd35db4c46e6ec22c5012f4a39d6afc4807e8c68a01f70c5b7092a9ac7"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/logo.html",
+      "bytes": 2198,
+      "sha256": "b4efb1204e9d026623dd1382f97f3c4b38f6e969fbe9a84712a9ed26cbec0cbe"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/logs/cargo-build.txt",
+      "bytes": 135,
+      "sha256": "f8b600e2e95e8516ba4d71bbd782512a47b375829aff0aba8c24c1587600d82a"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/logs/claude-session.txt",
+      "bytes": 1057,
+      "sha256": "197003c25a1c76392c69d2ef35bddd6774a6db0a89357c09c3817327ca8f368b"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/logs/codex-session.txt",
+      "bytes": 867,
+      "sha256": "a55562ab4491f9d874249272a5c3f666ad346a260ca2b765ecc07af1a4498579"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/logs/git-log.txt",
+      "bytes": 2796,
+      "sha256": "31ac9177fee8ba72f3a5444cc111ca62410cc8e2ef78684c3906dc4d79841a86"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/logs/icq-status.txt",
+      "bytes": 1144,
+      "sha256": "7d92c0e26a0af458693a4fd375ba0d7a458eda265a777067fb7c570dad3a0974"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/logs/ls-kb.txt",
+      "bytes": 875,
+      "sha256": "bc4d5c50a537492f597f2ee35ea5e445649eb35c91791d9dc048f6b226a48d39"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/message-row.html",
+      "bytes": 2721,
+      "sha256": "29573329204a687e79d82e0f9feef72fbea0f50db4df25efa26123aba12400c3"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/mini-grid.html",
+      "bytes": 1678,
+      "sha256": "18e28bb0dbb07ad5b2b7d59a973feddbe22d752cb9c661d28074f7786efc1054"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/picker.html",
+      "bytes": 1023,
+      "sha256": "64f443e21e158c3502a564d92d36376caaa630397f665b0300b8d5483caa03a0"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/seat-row.html",
+      "bytes": 2437,
+      "sha256": "66d3bffa591b20c5a1fbe91d7cc243a048c23d055bce7eae9a9fec87fa4754ce"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/settings.html",
+      "bytes": 1996,
+      "sha256": "2619d688673b14179b5329592b08e50938d3c94aa3b993496be657812d382aaa"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/showcase.html",
+      "bytes": 16622,
+      "sha256": "46737b0cc728615ecc7951613799290efdcf89bc362a135b9418a55057bd8d3a"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/sidebar.html",
+      "bytes": 3014,
+      "sha256": "bc443568fcc0490cdefb2a77a6b9fd11e583bd3def73835482934206087a4666"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/space-header.html",
+      "bytes": 1541,
+      "sha256": "1c2bf93a890b2f8efea20fc2464d932c1948951f23356dfff35aa5055cfcee36"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/tab-row.html",
+      "bytes": 1625,
+      "sha256": "85476360ad6bc166b6913c64250821d7647920c266bdf94de9cba869db478013"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/title-strip.html",
+      "bytes": 3630,
+      "sha256": "990daf31c5c8325079e9a43a91f9631ba7201ce944f0d2a8096e29056b56306c"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/tokens.html",
+      "bytes": 2594,
+      "sha256": "b2182a2a26d1aabe7f8c97bb95ede067f67045aa3187e7a676c2c57d7dad35b6"
+    },
+    {
+      "path": "legacy/reference-v2/lab/web/toolbar-icon.html",
+      "bytes": 2941,
+      "sha256": "348942e998bf9c3a9da58055bfd9f07be196c99f498afc18f0ba894d2953d71b"
+    },
+    {
+      "path": "legacy/report.json",
+      "bytes": 759001,
+      "sha256": "5ec6577cc7cf7310d97ae455d0588822eb05fe4c655d3c61c5fb92ce65d72682"
+    },
+    {
+      "path": "legacy/report.md",
+      "bytes": 469682,
+      "sha256": "388f17a981e4f37e00f51a175f1aa5477185d5b91aed593c85d336624cd1bf48"
+    },
+    {
+      "path": "legacy/requested.json",
+      "bytes": 427275,
+      "sha256": "9a9e9f58eb95d72642cdc138a4720665bc66dea03f5eeb21ee0cb2f1dec4b11a"
+    },
+    {
+      "path": "native/layouts.json",
+      "bytes": 53552764,
+      "sha256": "9d9eedf2337149c26e0ebfb54fb7a9a108914b472ff82ebc09a2b8cbf2de88f0"
+    },
+    {
+      "path": "native/manifest.json",
+      "bytes": 115068500,
+      "sha256": "0a03279a7368ad8c9f7b62e5be949c8b95fd4c92d0a4d8487c89e66cf998f445"
+    },
+    {
+      "path": "native/surface-layouts.json",
+      "bytes": 5470,
+      "sha256": "f17bf0b2dad1aa7396b6668127eba9c5f3d17378f554ba5ca3e5f5928ba2bb38"
+    },
+    {
+      "path": "reference-head/lab/web/checks/bad.html",
+      "bytes": 1247,
+      "sha256": "b668509358b7a19babec7b80a1fea4ff25d12c2d6ef74cfd841cde05825b4ef3"
+    },
+    {
+      "path": "reference-head/lab/web/close.html",
+      "bytes": 5821,
+      "sha256": "112d68b39b4119278b3d222b530bd5fb16cf38df61c96bba753c1bd03255b3a7"
+    },
+    {
+      "path": "reference-head/lab/web/components.html",
+      "bytes": 7832,
+      "sha256": "8ff08c3b5f412e324ab0553cbea2847dbc33244f04d9e97f361f7b66d011c553"
+    },
+    {
+      "path": "reference-head/lab/web/compose.html",
+      "bytes": 16006,
+      "sha256": "fb03e0105bc686f386e064261f7064ae22109fd2dafbc209df67324b068a99db"
+    },
+    {
+      "path": "reference-head/lab/web/diagrams.html",
+      "bytes": 7668,
+      "sha256": "7f38cb222dbc0e3eaf352d5db7fff82cb7c9ba9d34798348d6d721323f52bb42"
+    },
+    {
+      "path": "reference-head/lab/web/documents.html",
+      "bytes": 13538,
+      "sha256": "91c68e2f1272ed9a45e8efadf1e217d22636f73450429f7f6f58e06c50f479f2"
+    },
+    {
+      "path": "reference-head/lab/web/e2e.html",
+      "bytes": 6039,
+      "sha256": "611e7eeba6517e707b3ffd1d8631fdd0521c1ed72b3d3a4a54eaf365e7990d58"
+    },
+    {
+      "path": "reference-head/lab/web/events.html",
+      "bytes": 6756,
+      "sha256": "f89caa410d48a3c5ec15cf861a2ff10f2bbd21994382fc6b9bb0d0eaa1eb730b"
+    },
+    {
+      "path": "reference-head/lab/web/first-run.html",
+      "bytes": 1511,
+      "sha256": "182ddefeb0224cd08ac15399e3a2d376faeb91cd8818c1b4d91586eca1a5a39b"
+    },
+    {
+      "path": "reference-head/lab/web/glow-inside.html",
+      "bytes": 21162,
+      "sha256": "bb7f5b94ab8a51ccb7846c0f8956ce10e23a7ff2f18926c60d60997c90292ecf"
+    },
+    {
+      "path": "reference-head/lab/web/glyph.html",
+      "bytes": 2374,
+      "sha256": "c3419970ceaca1d3c6204e9203da92e9e921cba288991b52bca619cabe7da7be"
+    },
+    {
+      "path": "reference-head/lab/web/graph.html",
+      "bytes": 1704,
+      "sha256": "9e28f3ab21be03174532f8dc128f87c41690defd546e54c5cdece3241b83b6a2"
+    },
+    {
+      "path": "reference-head/lab/web/harness-icon.html",
+      "bytes": 1292,
+      "sha256": "13eff150fe778e4fd5600a71682e09f50fb2b1e719c949a5a60057a8984a9f83"
+    },
+    {
+      "path": "reference-head/lab/web/index.html",
+      "bytes": 6328,
+      "sha256": "8c927e9ac3c35a0bc62c02b8594676383e9c1a54c07a623a81fb2b0bf4fd4c85"
+    },
+    {
+      "path": "reference-head/lab/web/launcher.html",
+      "bytes": 4625,
+      "sha256": "f42e8db6c29f6333bd8c891c96d4b7781fb500417103907494a7b61115fa68fa"
+    },
+    {
+      "path": "reference-head/lab/web/lifecycle.html",
+      "bytes": 4901,
+      "sha256": "1ef8bbb97c25414c3e74193ce2bcfec3f0b8dbeebe678a778a0e04aff4e1d40c"
+    },
+    {
+      "path": "reference-head/lab/web/logo.html",
+      "bytes": 854,
+      "sha256": "3706c47aed7c58568f1c36b08e807ef11f9e3a025014c9ddd29049085986f5f4"
+    },
+    {
+      "path": "reference-head/lab/web/logs/cargo-build.txt",
+      "bytes": 135,
+      "sha256": "f8b600e2e95e8516ba4d71bbd782512a47b375829aff0aba8c24c1587600d82a"
+    },
+    {
+      "path": "reference-head/lab/web/logs/claude-session.txt",
+      "bytes": 1057,
+      "sha256": "197003c25a1c76392c69d2ef35bddd6774a6db0a89357c09c3817327ca8f368b"
+    },
+    {
+      "path": "reference-head/lab/web/logs/codex-session.txt",
+      "bytes": 867,
+      "sha256": "a55562ab4491f9d874249272a5c3f666ad346a260ca2b765ecc07af1a4498579"
+    },
+    {
+      "path": "reference-head/lab/web/logs/git-log.txt",
+      "bytes": 2796,
+      "sha256": "31ac9177fee8ba72f3a5444cc111ca62410cc8e2ef78684c3906dc4d79841a86"
+    },
+    {
+      "path": "reference-head/lab/web/logs/icq-status.txt",
+      "bytes": 1144,
+      "sha256": "7d92c0e26a0af458693a4fd375ba0d7a458eda265a777067fb7c570dad3a0974"
+    },
+    {
+      "path": "reference-head/lab/web/logs/ls-kb.txt",
+      "bytes": 875,
+      "sha256": "bc4d5c50a537492f597f2ee35ea5e445649eb35c91791d9dc048f6b226a48d39"
+    },
+    {
+      "path": "reference-head/lab/web/marks.html",
+      "bytes": 1868,
+      "sha256": "9310f814fc40c158f5223a658ef5e826a2ea2433de9a58a24a74f4a20e46c425"
+    },
+    {
+      "path": "reference-head/lab/web/materials.html",
+      "bytes": 2414,
+      "sha256": "2f54fadc1c4816b53110deb4acc969b212341539715a5694b67f96a3e3ed3152"
+    },
+    {
+      "path": "reference-head/lab/web/message-row.html",
+      "bytes": 7168,
+      "sha256": "5b7bd179adc0b5f38fc399890738ca5219b0c76af826f0df3effd39fa0869130"
+    },
+    {
+      "path": "reference-head/lab/web/mini-grid.html",
+      "bytes": 1678,
+      "sha256": "18e28bb0dbb07ad5b2b7d59a973feddbe22d752cb9c661d28074f7786efc1054"
+    },
+    {
+      "path": "reference-head/lab/web/pane.html",
+      "bytes": 3973,
+      "sha256": "76a70692f26c28f44ee2136fe1646b8a11b3cb11cc4e7b3a9880e933e2193ea6"
+    },
+    {
+      "path": "reference-head/lab/web/paths.html",
+      "bytes": 3248,
+      "sha256": "23bd0b05e36831e59def7d938c9d070a1d50578d12eb466d69e518b8b402ca98"
+    },
+    {
+      "path": "reference-head/lab/web/perf.html",
+      "bytes": 9085,
+      "sha256": "9251eb4cfe2743bdf931237e382a7b7c55ef6504a62fc417acf67a01d1e5c03c"
+    },
+    {
+      "path": "reference-head/lab/web/picker.html",
+      "bytes": 2007,
+      "sha256": "5edff1ebd24993b5467d175583daed98ad9b4e4f78914a1279c6dd840706aadc"
+    },
+    {
+      "path": "reference-head/lab/web/purge.html",
+      "bytes": 1236,
+      "sha256": "4e46b259674d2e6c1891d8e5872a5bb5a4e8532e120e040ae02e1796425f1195"
+    },
+    {
+      "path": "reference-head/lab/web/seat-row.html",
+      "bytes": 10452,
+      "sha256": "2b64ffcf9501cd7526bc5f774f1b0824997b80c17b85f7209e1aa3a437ae7482"
+    },
+    {
+      "path": "reference-head/lab/web/settings.html",
+      "bytes": 4825,
+      "sha256": "c0be512bd9ef187cd8fd6cffe80010dc3592379a2f2fa680ae153871aa18bdec"
+    },
+    {
+      "path": "reference-head/lab/web/shaders.html",
+      "bytes": 13491,
+      "sha256": "da7c09cf40bc575d699cbccb409b9fb0e1bf1c6422ca168da0ca55c292fd9bba"
+    },
+    {
+      "path": "reference-head/lab/web/showcase.html",
+      "bytes": 1320,
+      "sha256": "6747e59bc7f7ab610d339a0eccb7a31e4252fa922015cfd505fcd6821cfb4bc5"
+    },
+    {
+      "path": "reference-head/lab/web/sidebar.html",
+      "bytes": 3943,
+      "sha256": "f0e80096083b1755199a551c8de2efa4313afa4139944ea8cd2b61e5c39a189a"
+    },
+    {
+      "path": "reference-head/lab/web/space-header.html",
+      "bytes": 1541,
+      "sha256": "1c2bf93a890b2f8efea20fc2464d932c1948951f23356dfff35aa5055cfcee36"
+    },
+    {
+      "path": "reference-head/lab/web/splits.html",
+      "bytes": 3439,
+      "sha256": "771de6d7e18ec60671c365273347295a3d337588145de5dcb34b5521c2a93d77"
+    },
+    {
+      "path": "reference-head/lab/web/stream.html",
+      "bytes": 4090,
+      "sha256": "ab04a7e3874ae826877464458f0312f7c6621c38cc43846fc36b321171d0a5b1"
+    },
+    {
+      "path": "reference-head/lab/web/style.html",
+      "bytes": 2763,
+      "sha256": "dffd4ae66eb9aedd05f9b768c0b240a92669a6f311c41aad13b4462317906ac1"
+    },
+    {
+      "path": "reference-head/lab/web/swell.html",
+      "bytes": 10278,
+      "sha256": "6a841b82939b48863a46df72d3b4fe5913bb387741db7d2fdf8011e8a02031cc"
+    },
+    {
+      "path": "reference-head/lab/web/tab-row.html",
+      "bytes": 1625,
+      "sha256": "85476360ad6bc166b6913c64250821d7647920c266bdf94de9cba869db478013"
+    },
+    {
+      "path": "reference-head/lab/web/title-strip.html",
+      "bytes": 5094,
+      "sha256": "65286bf6c00cb73df953024f9fd38a68fbbea9eb72ae665f9660a4164bb7177d"
+    },
+    {
+      "path": "reference-head/lab/web/titlebar.html",
+      "bytes": 1572,
+      "sha256": "1167fcd42114feaf4403570b4954313a84237c3a9c29cdaac2b28f9162348798"
+    },
+    {
+      "path": "reference-head/lab/web/tokens.html",
+      "bytes": 2594,
+      "sha256": "b2182a2a26d1aabe7f8c97bb95ede067f67045aa3187e7a676c2c57d7dad35b6"
+    },
+    {
+      "path": "reference-head/lab/web/toolbar-icon.html",
+      "bytes": 2860,
+      "sha256": "b7e771359f0839d687461fe56b6759c7e05f570a2d8a076a7450e7a425b54b16"
+    },
+    {
+      "path": "reference-v2/lab/web/glyph.html",
+      "bytes": 2374,
+      "sha256": "c3419970ceaca1d3c6204e9203da92e9e921cba288991b52bca619cabe7da7be"
+    },
+    {
+      "path": "reference-v2/lab/web/harness-icon.html",
+      "bytes": 1322,
+      "sha256": "103d5ee7cd4fc4580e202f3be3c8e402ed12dfb94a36171c718192f7bcf7a405"
+    },
+    {
+      "path": "reference-v2/lab/web/index.html",
+      "bytes": 2838,
+      "sha256": "f8317ccd35db4c46e6ec22c5012f4a39d6afc4807e8c68a01f70c5b7092a9ac7"
+    },
+    {
+      "path": "reference-v2/lab/web/logo.html",
+      "bytes": 2198,
+      "sha256": "b4efb1204e9d026623dd1382f97f3c4b38f6e969fbe9a84712a9ed26cbec0cbe"
+    },
+    {
+      "path": "reference-v2/lab/web/logs/cargo-build.txt",
+      "bytes": 135,
+      "sha256": "f8b600e2e95e8516ba4d71bbd782512a47b375829aff0aba8c24c1587600d82a"
+    },
+    {
+      "path": "reference-v2/lab/web/logs/claude-session.txt",
+      "bytes": 1057,
+      "sha256": "197003c25a1c76392c69d2ef35bddd6774a6db0a89357c09c3817327ca8f368b"
+    },
+    {
+      "path": "reference-v2/lab/web/logs/codex-session.txt",
+      "bytes": 867,
+      "sha256": "a55562ab4491f9d874249272a5c3f666ad346a260ca2b765ecc07af1a4498579"
+    },
+    {
+      "path": "reference-v2/lab/web/logs/git-log.txt",
+      "bytes": 2796,
+      "sha256": "31ac9177fee8ba72f3a5444cc111ca62410cc8e2ef78684c3906dc4d79841a86"
+    },
+    {
+      "path": "reference-v2/lab/web/logs/icq-status.txt",
+      "bytes": 1144,
+      "sha256": "7d92c0e26a0af458693a4fd375ba0d7a458eda265a777067fb7c570dad3a0974"
+    },
+    {
+      "path": "reference-v2/lab/web/logs/ls-kb.txt",
+      "bytes": 875,
+      "sha256": "bc4d5c50a537492f597f2ee35ea5e445649eb35c91791d9dc048f6b226a48d39"
+    },
+    {
+      "path": "reference-v2/lab/web/message-row.html",
+      "bytes": 2721,
+      "sha256": "29573329204a687e79d82e0f9feef72fbea0f50db4df25efa26123aba12400c3"
+    },
+    {
+      "path": "reference-v2/lab/web/mini-grid.html",
+      "bytes": 1678,
+      "sha256": "18e28bb0dbb07ad5b2b7d59a973feddbe22d752cb9c661d28074f7786efc1054"
+    },
+    {
+      "path": "reference-v2/lab/web/picker.html",
+      "bytes": 1023,
+      "sha256": "64f443e21e158c3502a564d92d36376caaa630397f665b0300b8d5483caa03a0"
+    },
+    {
+      "path": "reference-v2/lab/web/seat-row.html",
+      "bytes": 2437,
+      "sha256": "66d3bffa591b20c5a1fbe91d7cc243a048c23d055bce7eae9a9fec87fa4754ce"
+    },
+    {
+      "path": "reference-v2/lab/web/settings.html",
+      "bytes": 1996,
+      "sha256": "2619d688673b14179b5329592b08e50938d3c94aa3b993496be657812d382aaa"
+    },
+    {
+      "path": "reference-v2/lab/web/showcase.html",
+      "bytes": 16622,
+      "sha256": "46737b0cc728615ecc7951613799290efdcf89bc362a135b9418a55057bd8d3a"
+    },
+    {
+      "path": "reference-v2/lab/web/sidebar.html",
+      "bytes": 3014,
+      "sha256": "bc443568fcc0490cdefb2a77a6b9fd11e583bd3def73835482934206087a4666"
+    },
+    {
+      "path": "reference-v2/lab/web/space-header.html",
+      "bytes": 1541,
+      "sha256": "1c2bf93a890b2f8efea20fc2464d932c1948951f23356dfff35aa5055cfcee36"
+    },
+    {
+      "path": "reference-v2/lab/web/tab-row.html",
+      "bytes": 1625,
+      "sha256": "85476360ad6bc166b6913c64250821d7647920c266bdf94de9cba869db478013"
+    },
+    {
+      "path": "reference-v2/lab/web/title-strip.html",
+      "bytes": 3630,
+      "sha256": "990daf31c5c8325079e9a43a91f9631ba7201ce944f0d2a8096e29056b56306c"
+    },
+    {
+      "path": "reference-v2/lab/web/tokens.html",
+      "bytes": 2594,
+      "sha256": "b2182a2a26d1aabe7f8c97bb95ede067f67045aa3187e7a676c2c57d7dad35b6"
+    },
+    {
+      "path": "reference-v2/lab/web/toolbar-icon.html",
+      "bytes": 2941,
+      "sha256": "348942e998bf9c3a9da58055bfd9f07be196c99f498afc18f0ba894d2953d71b"
+    },
+    {
+      "path": "report.json",
+      "bytes": 1464167,
+      "sha256": "aaab83e8e1a14eb3af3cf48977e6e9b43d0c51a7ab3d4da202540f355856f37b"
+    },
+    {
+      "path": "report.md",
+      "bytes": 718569,
+      "sha256": "01b3b69a68c341db666118dead6456ac77673b6e8954ff2478e95583a4bd37bb"
+    },
+    {
+      "path": "requested.json",
+      "bytes": 700489,
+      "sha256": "b06a54e7e8bd4ada3b6a0ba366c6e79edbee64bc52a02c2f6b1c773d1dc5f82e"
+    },
+    {
+      "path": "surface-layouts.json",
+      "bytes": 5470,
+      "sha256": "f17bf0b2dad1aa7396b6668127eba9c5f3d17378f554ba5ca3e5f5928ba2bb38"
+    }
+  ],
+  "retained_new_page_pngs": [
+    "backdrops/settings/knowledge-comfortable-dark.png",
+    "backdrops/settings/knowledge-comfortable-light.png",
+    "backdrops/settings/knowledge-\u00b7-swapped-to-the-stub-comfortable-dark.png",
+    "backdrops/settings/knowledge-\u00b7-swapped-to-the-stub-comfortable-light.png",
+    "backdrops/settings/plugins-comfortable-dark.png",
+    "backdrops/settings/plugins-comfortable-light.png",
+    "diff/settings/knowledge-comfortable-dark.png",
+    "diff/settings/knowledge-comfortable-light.png",
+    "diff/settings/knowledge-\u00b7-swapped-to-the-stub-comfortable-dark.png",
+    "diff/settings/knowledge-\u00b7-swapped-to-the-stub-comfortable-light.png",
+    "diff/settings/plugins-comfortable-dark.png",
+    "diff/settings/plugins-comfortable-light.png",
+    "native/settings/knowledge-comfortable-dark.png",
+    "native/settings/knowledge-comfortable-light.png",
+    "native/settings/knowledge-\u00b7-swapped-to-the-stub-comfortable-dark.png",
+    "native/settings/knowledge-\u00b7-swapped-to-the-stub-comfortable-light.png",
+    "native/settings/plugins-comfortable-dark.png",
+    "native/settings/plugins-comfortable-light.png",
+    "web/settings/knowledge-comfortable-dark.png",
+    "web/settings/knowledge-comfortable-light.png",
+    "web/settings/knowledge-\u00b7-swapped-to-the-stub-comfortable-dark.png",
+    "web/settings/knowledge-\u00b7-swapped-to-the-stub-comfortable-light.png",
+    "web/settings/plugins-comfortable-dark.png",
+    "web/settings/plugins-comfortable-light.png"
+  ],
+  "png_hash_manifest": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-settings-plugins-ohtz_zp5/ui-parity-png-sha256.json",
+  "png_hash_manifest_sha256": "0c759c5bc06cebda65692cc0155eb89ce9b9ed43a6a6e499ac9c2acbb1af168a",
+  "advisory_baseline_note": "72 current reviews matches the reported baseline count; full prior-key-set equality was not independently checked. All168 Settings rows have zero pixel reviews.",
+  "harvest_correction": "First artifact-summary assertion counted all non-null geometry rows as required (2216). Corrected to the report policy:2160 required+56 optional measured. No report, policy or gate output changed."
+}
