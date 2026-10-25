@@ -1,0 +1,45 @@
+T7 CLOSE/UNDO FIRST PRODUCED FRAME — EXECUTOR HANDOFF
+Frozen signed source: 5861d7b1c3fabcf1d664549271a78698bb107ea4
+Branch: velvet-t7-close-frame; base e3275441 (accepted C3 plus Rook evidence).
+No merge or push performed.
+
+Mechanism
+crates/bbt-mux/src/gui_capture.rs:103,262 — Close/Undo reuse C3's bounded UI pending map and UiLayout reply, instead of acknowledging the relay.
+crates/bbt-mux/src/seat_socket.rs:787 — journal under the same authority, await the window receipt.
+crates/bboxy450-term/src/close.rs:119; close_frame.rs:42,60 — read-only confirmed operation/generation; validate authoritative lifecycle and produced pane/focus. No scheduler or IO in Target.
+crates/bboxy450-term/src/main.rs:3717,3830,3855 — reuse C3 UiWait/present_ui and existing draw/GPU completion points in both hosts. No new counter, timer mechanism, DTO or protocol tag.
+crates/bboxy450-term/src/ctl.rs:1980 — applied/frame_seq plus canonical layout receipt.
+scripts/e2e/T7.sh:79,92,107,161 — first close/undo/second close retain distinct receipts; single captures after replies; real 60 s expiry; expired undo explicitly refuses.
+Diff checks: R5 retry, scene, bbt-ui, bbt-ui-model, bbt-render, design and lab unchanged (exit 0).
+
+Actual checks
+Workspace preflight on 6dc69a55: EXIT 0, 1365 pass/0 fail/29 ignored.
+Headless receipt fixture: initial EXIT 101 (my unsupported right/down setup); fixed to supported tabs, EXIT 0 1/0. No nested split runtime claim.
+Relay held-answer/correlation/zero-frame test: EXIT 0 1/0.
+CLI fake-window held answer: EXIT 0 1/0, then EXIT 0 after lint-only rewrite.
+Strict Clippy: initial EXIT 101 single_match in new test; mechanical if-let fix 7ddc6091, rerun EXIT 0. No lint allowance.
+Fast invariants on 5861d7b1: EXIT 0,23 pass/0 fail/9 named slow skips. Final shell syntax 0.
+Exact clean NORMAL ci-local: EXIT 0 / 1584.052s; detached source clean before/after; workspace 1365/0/29; strict 0.
+CI log :1098 dedicated T7; :1097 shared UI end-state; :1813 relay.
+CI log :3385 idle 0 frames/0 callbacks/10.005s/windows0; :3468 invariants 23/0; :3469 all gates passed.
+CI raw SHA256: e2988367a561c534a95fb06a88f4b0ad4ce59463c30a6f3a8c3b3263c4cf16a7
+
+Unattended real-grace verdict
+Gated binary SHA256: b3761ac77ae34f1bc79286c12d78327c6a69d67461e6a214d1d96d1148303cbd
+T7.sh SHA256: 5fe6643cca55f404df75ef9a70bf474e50cf4aa556e858752837e836c928313a (matches frozen source).
+Fixture: /Users/feral/mydev/bboxy450-term-exec6/target/t7r-e80c14cbb6; private FILE test account, unattended=true, windows=0, no operator keychain/input.
+Script EXIT 0; receipt frames 27 (closed/absent) ->32 (restored/focused) ->43 (closed/absent).
+Same shell PID63693/generation, persistent shell variable, saved Position/sidebar order/extent, real 60000 ms grace, retained history/one gone notice, refused expired undo: scripted assertions held.
+Before/restored pane PNGs read: expected terminal text, cookie retained, same extent; no pixel-identity claim.
+App/log witness children reaped and headless stopped. PIDs 63666/63686/63687 gone (ps1/empty); private account retired.
+Historical RED: old 1fe94a92 binary, actual script EXIT1 at missing produced-window-frame receipt; exact old script retained and hashed.
+
+Cleanup
+CI target and detached source removed; 4050526208 allocated cache bytes removed. No dev cache retained.
+Separate urgent merged-gallery cleanup: 53936 PNGs, 1997574144 allocated bytes unlinked; reports/manifests/layouts/captures and per-file hashes kept.
+
+Limits
+T7.sh remains partial: solved pane rectangle/focus after undo and visible grace strip still named gaps in that night script.
+No --ignored/scale gates, no parity rerun, no physical native-window probe. Normal gate explicitly in approved plan.
+New main 0e82311f landed during verification; Oracle calls each rebase check in merge order. This source was not rebased or re-gated during its run.
+Full structured facts, command sources/exits/hashes and receipt fields: t7-close-frame-verdict-5861d7b1.json.

@@ -1,0 +1,428 @@
+{
+  "source": "5861d7b1c3fabcf1d664549271a78698bb107ea4",
+  "base": "e327544193cc88ff62da187c94427baddaeacd7d",
+  "branch": "velvet-t7-close-frame",
+  "generated_utc": "2026-10-25T07:52:00.407243+00:00",
+  "ci": {
+    "source": "5861d7b1c3fabcf1d664549271a78698bb107ea4",
+    "pid": 95157,
+    "worktree": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-ci-source-5861d7b1c3fa",
+    "target": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-ci-build-5861d7b1c3fa",
+    "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-proof/ci-5861d7b1c3fa-1.log",
+    "cache_seed": {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-dev",
+      "source": "5861d7b1c3fabcf1d664549271a78698bb107ea4",
+      "method": "Moved inactive own preflight cache into this exclusive gate target; no dev cache retained, normal Cargo source fingerprints"
+    },
+    "attempt": 1,
+    "disk_free_before": 19366285312,
+    "exit": 0,
+    "elapsed_s": 1584.0515479579917,
+    "cleanup": {
+      "retained_binary": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-proof/bboxy450-term-gated-5861d7b1c3fa",
+      "retained_binary_sha256": "b3761ac77ae34f1bc79286c12d78327c6a69d67461e6a214d1d96d1148303cbd",
+      "target_allocated_bytes_removed": 4050526208,
+      "source_clean_after": true,
+      "worktree_remove_exit": 0
+    },
+    "disk_free_after": 65940590592
+  },
+  "ci_workspace_counts": {
+    "suites": 201,
+    "passed": 1365,
+    "failed": 0,
+    "ignored": 29
+  },
+  "ci_lines": {
+    "t7_headless_close_receipts_restore_the_same_tab_and_extent ... ok": 1098,
+    "ctl_ui_keys_acknowledge_spawn_mute_and_undo_only_after_their_end_state_frame ... ok": 1097,
+    "gui_capture::tests::close_and_undo_share_the_ui_wait_and_do_not_acknowledge_the_relay ... ok": 1813,
+    "idle passed:": 3385,
+    "invariants: 23 checks": 3468,
+    "ci-local: all gates passed": 3469
+  },
+  "checks": [
+    {
+      "name": "build-workspace",
+      "exit": 0,
+      "elapsed_s": 395.64086379198125,
+      "command": [
+        "cargo",
+        "build",
+        "--workspace",
+        "--locked"
+      ],
+      "source": "4d8d208b0306b0adb2099d4b6cad20da3c1c06d8",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-proof/build-workspace.log",
+      "log_sha256": "5d92bbbce59d88db29d0453146c4276c9edee2081b7343a0c7527c9d49172c3d"
+    },
+    {
+      "name": "focused-ctl-after-lint",
+      "exit": 0,
+      "elapsed_s": 7.268981291970704,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--test",
+        "ctl",
+        "ctl_capture_is_answered_by_the_window",
+        "--",
+        "--nocapture"
+      ],
+      "source": "7ddc609138ec0477761c0e497e87c520eae889ad",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-proof/focused-ctl-after-lint.log",
+      "log_sha256": "b2c19fd2c8a97fe9c669bfc3e6a4d9edc2fe892fd4c0a75a97e979cfd8341e0d"
+    },
+    {
+      "name": "focused-ctl",
+      "exit": 0,
+      "elapsed_s": 8.780319790996145,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--test",
+        "ctl",
+        "ctl_capture_is_answered_by_the_window",
+        "--",
+        "--nocapture"
+      ],
+      "source": "6dc69a555a56a8d31c0edfe5445af2cf40fe9243",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-proof/focused-ctl.log",
+      "log_sha256": "3da449ae9b3fc51cf50e590771aa753abc8f539d8960eb6f071d5469ec009754"
+    },
+    {
+      "name": "focused-headless-after-fixture",
+      "exit": 0,
+      "elapsed_s": 7.886478958011139,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--test",
+        "headless",
+        "t7_headless_close_receipts_restore_the_same_tab_and_extent",
+        "--",
+        "--nocapture"
+      ],
+      "source": "6dc69a555a56a8d31c0edfe5445af2cf40fe9243",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-proof/focused-headless-after-fixture.log",
+      "log_sha256": "cb84a4d7899d2cf0a88e185a73ab3908721a68faa00cbe308277c60831436cc9"
+    },
+    {
+      "name": "focused-headless",
+      "exit": 101,
+      "elapsed_s": 76.19900895800674,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--test",
+        "headless",
+        "t7_headless_close_uses_the_window_intent_and_restores_the_same_split",
+        "--",
+        "--nocapture"
+      ],
+      "source": "4d8d208b0306b0adb2099d4b6cad20da3c1c06d8",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-proof/focused-headless.log",
+      "log_sha256": "f85b55ad6ac15f0115f8460f28c0523ef5e98d951408812424352f541505c430"
+    },
+    {
+      "name": "focused-relay",
+      "exit": 0,
+      "elapsed_s": 241.59834658296313,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--locked",
+        "--lib",
+        "gui_capture::tests::close_and_undo_share_the_ui_wait_and_do_not_acknowledge_the_relay",
+        "--",
+        "--nocapture"
+      ],
+      "source": "6dc69a555a56a8d31c0edfe5445af2cf40fe9243",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-proof/focused-relay.log",
+      "log_sha256": "db35d1c210bf535e46a41ed274407737ca1d6e650816102150176e4ca943ac84"
+    },
+    {
+      "name": "lifecycle-target",
+      "exit": 0,
+      "elapsed_s": 665.9352829999989,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--lib",
+        "close_frame::tests",
+        "--",
+        "--nocapture"
+      ],
+      "source": "2ad1d73315a27d6280dcc97a2cb44fe47958e1dc",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-proof/lifecycle-target.log",
+      "log_sha256": "0d1c676edec86a3cb03e6bc93a14325a91e2f75cad220de40df457533f5fc640"
+    },
+    {
+      "name": "preflight-clippy-after",
+      "exit": 0,
+      "elapsed_s": 23.15744233399164,
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "source": "7ddc609138ec0477761c0e497e87c520eae889ad",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-proof/preflight-clippy-after.log",
+      "log_sha256": "1c93a6739bd1bd511b5e67c2981e3e0733552931baab780334aa06fa41c930d1"
+    },
+    {
+      "name": "preflight-clippy",
+      "exit": 101,
+      "elapsed_s": 125.23414508398855,
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "source": "6dc69a555a56a8d31c0edfe5445af2cf40fe9243",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-proof/preflight-clippy.log",
+      "log_sha256": "b878f86b2cf8cb7a15a1e121155976c23395975f518de67e5675b43db27efd26"
+    },
+    {
+      "name": "preflight-invariants",
+      "exit": 0,
+      "elapsed_s": 255.7848905409919,
+      "command": [
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "source": "5861d7b1c3fabcf1d664549271a78698bb107ea4",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-proof/preflight-invariants.log",
+      "log_sha256": "90f59e8f44f82b310811e58d1c04d9b6b92f7101dfe7b5c039bccb73f12e4401"
+    },
+    {
+      "name": "preflight-workspace",
+      "exit": 0,
+      "elapsed_s": 1044.001698291977,
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "source": "6dc69a555a56a8d31c0edfe5445af2cf40fe9243",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-proof/preflight-workspace.log",
+      "log_sha256": "bf628a1fd9eea424b9edf6e6f36e5022b9ef1b392b7ca01a45fa737b6e353c7d"
+    },
+    {
+      "name": "script-syntax-final",
+      "exit": 0,
+      "elapsed_s": 0.05086495901923627,
+      "command": [
+        "sh",
+        "-n",
+        "scripts/e2e/T7.sh"
+      ],
+      "source": "5861d7b1c3fabcf1d664549271a78698bb107ea4",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-proof/script-syntax-final.log",
+      "log_sha256": "2a3954627795f50423fd88b74045fed1aa6fcc709aa93aa4113bc4d4ac5d9a30"
+    },
+    {
+      "name": "script-syntax",
+      "exit": 0,
+      "elapsed_s": 0.025431834044866264,
+      "command": [
+        "sh",
+        "-n",
+        "scripts/e2e/T7.sh"
+      ],
+      "source": "cf57d9baf81853b7d68a155c663a89c9ec24894b",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-proof/script-syntax.log",
+      "log_sha256": "2a3954627795f50423fd88b74045fed1aa6fcc709aa93aa4113bc4d4ac5d9a30"
+    }
+  ],
+  "runtime": {
+    "harness_exit": 0,
+    "script_exit": 0,
+    "expected": "T7 script exits0",
+    "directory": "/Users/feral/mydev/bboxy450-term-exec6/target/t7r-e80c14cbb6",
+    "binary": "/Users/feral/mydev/bboxy450-term-exec6/target/t7-close-frame-proof/bboxy450-term-gated-5861d7b1c3fa",
+    "binary_sha256": "b3761ac77ae34f1bc79286c12d78327c6a69d67461e6a214d1d96d1148303cbd",
+    "script_sha256": "5fe6643cca55f404df75ef9a70bf474e50cf4aa556e858752837e836c928313a",
+    "source_base": "5861d7b1c3fabcf1d664549271a78698bb107ea4",
+    "custody": "private file test account",
+    "private_account_retired": true,
+    "owned_app_pid": 63666
+  },
+  "ready_witness": {
+    "pid": 63666,
+    "mode": "headless",
+    "unattended": true,
+    "custody_backend": "file",
+    "windows": 0,
+    "backend_ready": true,
+    "gui_ready": true
+  },
+  "receipts": [
+    {
+      "file": "/Users/feral/mydev/bboxy450-term-exec6/target/t7r-e80c14cbb6/work/t7-close-first.json",
+      "sha256": "c29dae95d31e296de85b73698d1ad127c509dfedc787709959c8068e607d4c9b",
+      "op": "01M5S06GBBYWK3YQ1PZB8N8V6Q",
+      "seat": "01M5S06FNWE4MA8AYM2QDM3GNK",
+      "action": "close",
+      "window_frame_seq": 27,
+      "focused": null,
+      "panes": []
+    },
+    {
+      "file": "/Users/feral/mydev/bboxy450-term-exec6/target/t7r-e80c14cbb6/work/t7-undo.json",
+      "sha256": "85123f04ac2fdc6d77a0425eadbc207f745a69df57087a473a771f3019a1a3ae",
+      "op": "01M5S06GTGWVWKDDVGQ0FJM6RD",
+      "seat": "01M5S06FNWE4MA8AYM2QDM3GNK",
+      "action": "undo-close",
+      "window_frame_seq": 32,
+      "focused": "01M5S06FNWE4MA8AYM2QDM3GNK",
+      "panes": [
+        {
+          "cols": 159,
+          "focused": true,
+          "rect": [
+            311.0,
+            71.0,
+            1278.0,
+            818.0
+          ],
+          "rows": 54,
+          "seat": "01M5S06FNWE4MA8AYM2QDM3GNK"
+        }
+      ]
+    },
+    {
+      "file": "/Users/feral/mydev/bboxy450-term-exec6/target/t7r-e80c14cbb6/work/t7-close-second.json",
+      "sha256": "24fbf56aa5930d4e4236f91de47d1f5c701419885b34322fe2f121938ac39a61",
+      "op": "01M5S06HH9AXEPABXAQKQR8TWJ",
+      "seat": "01M5S06FNWE4MA8AYM2QDM3GNK",
+      "action": "close",
+      "window_frame_seq": 43,
+      "focused": null,
+      "panes": []
+    }
+  ],
+  "expired_undo": {
+    "hint": "the message is the app's own reason; correct the request it names",
+    "kind": "refused",
+    "message": "ui_frame_refused: there is no window close to undo"
+  },
+  "runtime_cleanup": {
+    "owned_pids": [
+      "63666",
+      "63686",
+      "63687"
+    ],
+    "ps_exit": 1,
+    "remaining": "",
+    "account_absent": true
+  },
+  "runtime_artifact_hashes": {
+    "app.log": "f3cbedc4c7f716af6a44481c7e479a33cfb9524f522c0cdee42332fa292612b1",
+    "commands.json": "f65271f4fbfef9df0a10ebf9dbc10aa8ecccdf3251a6096878eb4585d08e3e52",
+    "t7-before.png": "015aab9f855b58bfe2b3a75cec6db07af9b101aa311bcac845d5bac56470d2d7",
+    "t7-restored.png": "4f1facabb09f6414215679af4eb1a43e40da2cf53d570a8a136a279db687a919",
+    "t7-retained-history.json": "b25269577d166d604650a24b0faaa61cd1f8eee540eec7f149a84d75f5787c83"
+  },
+  "historical_red": {
+    "harness_exit": 0,
+    "script_exit": 1,
+    "expected": "receipt assertion fails on pre-fix source",
+    "directory": "/Users/feral/mydev/bboxy450-term-exec6/target/t7r-cbe50d5133",
+    "binary": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-proof/bboxy450-term-gated-1fe94a925604",
+    "binary_sha256": "399897653615c323a78e1af13bc0bc0a0fe981c4f11925ef2ab2a04c419ebb72",
+    "script_sha256": "5cbd1a2d5d4ab7af497f695b24e9239095694fa1d9788bd5873c3d158bbdde9c",
+    "source_base": "2ad1d73315a27d6280dcc97a2cb44fe47958e1dc",
+    "custody": "private file test account",
+    "private_account_retired": true,
+    "owned_app_pid": 81699
+  },
+  "source_boundaries": {
+    "base": "e327544193cc88ff62da187c94427baddaeacd7d",
+    "head": "5861d7b1c3fabcf1d664549271a78698bb107ea4",
+    "diff_sha256": "2e049ff3dcc1d2cf5597f69a7b09d95a8ed92f83a58e344b1f8490dfccf11d1a",
+    "unchanged_checks": {
+      "protocol": {
+        "exit": 0,
+        "paths": [
+          "crates/bbt-proto"
+        ]
+      },
+      "paint_geometry": {
+        "exit": 0,
+        "paths": [
+          "crates/bbt-ui",
+          "crates/bbt-ui-model",
+          "crates/bbt-render",
+          "design",
+          "lab"
+        ]
+      },
+      "R5_retry_and_scene": {
+        "exit": 0,
+        "paths": [
+          "crates/bboxy450-term/src/command_retry.rs",
+          "crates/bboxy450-term/src/scene.rs"
+        ]
+      }
+    }
+  },
+  "artifacts": {
+    "ci": {
+      "path": ".bboxy/runs/t7-close-frame-ci-5861d7b1.log",
+      "sha256": "e2988367a561c534a95fb06a88f4b0ad4ce59463c30a6f3a8c3b3263c4cf16a7"
+    },
+    "fixture-red": {
+      "path": ".bboxy/runs/t7-close-frame-fixture-red-5861d7b1.log",
+      "sha256": "f85b55ad6ac15f0115f8460f28c0523ef5e98d951408812424352f541505c430"
+    },
+    "clippy-red": {
+      "path": ".bboxy/runs/t7-close-frame-clippy-red-5861d7b1.log",
+      "sha256": "b878f86b2cf8cb7a15a1e121155976c23395975f518de67e5675b43db27efd26"
+    },
+    "script": {
+      "path": ".bboxy/runs/t7-close-frame-script-5861d7b1.log",
+      "sha256": "0ccc4502a5f3d55f60fb975b52600d816d3696b337fba156258cfb28c8ab209a"
+    },
+    "missing-receipt-red": {
+      "path": ".bboxy/runs/t7-close-frame-missing-receipt-red-5861d7b1.log",
+      "sha256": "de33c664ac1b6372b9ad943493862dcb99396e3363d6fe62c2476d3a208538e1"
+    }
+  },
+  "gallery_cleanup_record": ".bboxy/runs/t7-close-frame-gallery-cleanup-5861d7b1.json",
+  "gaps": [
+    "T7.sh coverage remains partial: solved pane rectangle and focus after undo; visible grace strip. Runtime uses supported tab placement; existing pure split restoration tests are retained.",
+    "Normal CI, per approved c6079e99/fe8bbe56 plan; no parity rerun or new pixel/geometry verdict claimed.",
+    "Headless runtime only, windows=0; no OS desktop input or native-window physical probe.",
+    "29 workspace ignored tests and 9 named slow invariants not run.",
+    "Source frozen on e3275441; Oracle9aa99234 orders a rebase check against new0e82311f when called. No new-main compatibility claim yet."
+  ]
+}
