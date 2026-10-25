@@ -15,7 +15,7 @@ links:
   - { to: "[[seats-967-frame]]", rel: unblocks }
   - { to: "[[mux-daemon]]", rel: constrains }
 created: "2026-10-25T09:54:49Z"
-updated: "2026-10-25T09:54:49Z"
+updated: "2026-10-25T10:14:41Z"
 ---
 # Ring reads are batched
 
@@ -39,7 +39,10 @@ with that test (a fixture of many seats with pending data asserting the
 round-trip count against the bound); if the landing commit names the test
 differently it edits this line and the README row in the same commit, and the
 Oracle flips `status` on acceptance. Until then the gate is listed as pending
-and runs nowhere.
+and runs nowhere: `slow: true` and `gate: pending-ring-reads-batched` keep it out of
+the default run (`scripts/invariants.sh` runs every file regardless of `status`;
+the flags are the switch, Nyx and Sable, 2026-10-25); the landing commit removes
+both.
 
 **Cost of a violation.** With hundreds of seats every catch-up pass serialises
 hundreds of one-seat round trips through the supervisor; input-to-GPU latency
