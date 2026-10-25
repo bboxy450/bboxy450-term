@@ -1,0 +1,185 @@
+{
+  "source": "e8453eb78aed672cbaf20623f4c106c97145cc88",
+  "base": "ee7a00d8",
+  "scope": "nine script/map paths; no Rust/product/RPC/UI/render edits",
+  "ci": {
+    "command": "sh scripts/ci-local.sh",
+    "kind": "NORMAL",
+    "exit": 0,
+    "seconds": 1725.313,
+    "workspace_passed": 1422,
+    "workspace_failed": 0,
+    "workspace_ignored": 29,
+    "strict_clippy_exit": 0,
+    "ui_lint_exit": 0,
+    "smoke": {
+      "frames": 0,
+      "callbacks": 0,
+      "seconds": 10.0,
+      "windows": 0
+    },
+    "invariants": {
+      "checks": 25,
+      "failures": 0,
+      "slow_skipped": 9
+    },
+    "raw_sha256": "1128bedae57e5911f3d70bf5a727aa7546dec0d64f4cdc3c286ac8206ce9bc15"
+  },
+  "prechecks": [
+    {
+      "label": "app-tests",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "bboxy450-term"
+      ],
+      "exit": 0,
+      "seconds": 255.222,
+      "log": "/Users/feral/mydev/bboxy450-term-nyx/target/scroll-night/precheck-app-tests.log"
+    },
+    {
+      "label": "strict-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "seconds": 86.877,
+      "log": "/Users/feral/mydev/bboxy450-term-nyx/target/scroll-night/precheck-strict-clippy.log"
+    },
+    {
+      "label": "corpus",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "bbt-doc",
+        "--test",
+        "corpus"
+      ],
+      "exit": 0,
+      "seconds": 12.612,
+      "log": "/Users/feral/mydev/bboxy450-term-nyx/target/scroll-night/precheck-corpus.log"
+    },
+    {
+      "label": "invariants",
+      "command": [
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "exit": 0,
+      "seconds": 221.809,
+      "log": "/Users/feral/mydev/bboxy450-term-nyx/target/scroll-night/precheck-invariants.log"
+    }
+  ],
+  "script_assertions": {
+    "command": "python3 -B -I scripts/e2e/test_ui.py",
+    "passed": 5,
+    "failed": 0
+  },
+  "script_proofs": {
+    "S1": {
+      "coverage": "partial",
+      "evidence": "S1: 20000 row coordinates exactly once/in order in 371 produced pages; top=0, live join and captures; displayed bytes/lazy-page metrics unobserved",
+      "exit": 0,
+      "function": "S1",
+      "group": "scrollback",
+      "kind": "e2e",
+      "missing": [
+        "displayed historical bytes are not exported by ctl (row-coordinate traversal is not a cell proof)",
+        "bounded lazy history page metrics"
+      ],
+      "verdict": "pass"
+    },
+    "S2": {
+      "coverage": "partial",
+      "evidence": "FAIL: S2 fixture_unavailable: no ctl ring-gap fixture; GUI gap placement remains unproved",
+      "exit": 1,
+      "function": "S2",
+      "group": "scrollback",
+      "kind": "e2e",
+      "missing": [
+        "injectable ring-gap fixture",
+        "displayed gap row and both surviving sides"
+      ],
+      "verdict": "fail"
+    },
+    "S3": {
+      "coverage": "partial",
+      "evidence": "FAIL: S3 metrics_unavailable: ctl exports no GUI history retained-heap or paging meter; no scale pass claimed",
+      "exit": 1,
+      "function": "S3",
+      "group": "scrollback",
+      "kind": "e2e",
+      "missing": [
+        "50 watched GUI panes with history",
+        "per-Playback and total retained heap bytes",
+        "paging hitch meter"
+      ],
+      "verdict": "fail"
+    },
+    "S4": {
+      "coverage": "partial",
+      "evidence": "FAIL: S4: S4 fixture_dimensions_unavailable: pane=471x148 Replica=471x69; live grid caps cells at 32768",
+      "exit": 1,
+      "function": "S4",
+      "group": "scrollback",
+      "kind": "e2e",
+      "missing": [
+        "over-budget GUI viewport fixture (live Replica is capped at 32768 cells)",
+        "history heap allocation accounting is not exported by ctl"
+      ],
+      "verdict": "fail"
+    },
+    "K2": {
+      "coverage": "partial",
+      "evidence": "K2: idle focused seat alone muted/unmuted, roster and sidebar mark retained; operator DM stored; amber pixels/native delivery/non-operator delay unobserved",
+      "exit": 0,
+      "function": "K2",
+      "group": "keyboard",
+      "kind": "e2e",
+      "missing": [
+        "amber mark pixel colour",
+        "operator DM native delivery",
+        "non-operator delayed delivery and exactly-once release",
+        "mute journal signer"
+      ],
+      "verdict": "pass"
+    },
+    "L1": {
+      "coverage": "partial",
+      "evidence": "L1: Cmd-T opens centred retained launcher over an existing pane; Esc removes it, zero spawns, same focus/tab; blur/labels/search/presets unobserved",
+      "exit": 0,
+      "function": "L1",
+      "group": "launcher and placement",
+      "kind": "e2e",
+      "missing": [
+        "approved blur pixels",
+        "harness labels and role presets",
+        "search results"
+      ],
+      "verdict": "pass"
+    }
+  },
+  "runner_caveats": [
+    "scrollback night exits 0 at AMBER because its failures/partials are tracked by throwaway-account tasks",
+    "keyboard/launcher group exits 1 because out-of-scope K1/K3/L2/L3/L4 have no scripts on this tested base",
+    "S2 and S3 are explicit unavailable-observation failures, not empty passing tests",
+    "S4 names the actual live-viewport cap mismatch; history refusal/heap proof is still missing",
+    "S1 proves GUI coordinate traversal, not displayed bytes or lazy-page metrics",
+    "No script needs operator input or starts an app outside the canonical runner",
+    "No extra replay during QUIET r5j-ui-frame"
+  ],
+  "main_at_handoff": "08c47b8267607a48c553950836b8d9eab7449567",
+  "no_post_gate_rebase": true
+}

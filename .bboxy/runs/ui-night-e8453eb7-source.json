@@ -1,0 +1,128 @@
+{
+  "source": "e8453eb78aed672cbaf20623f4c106c97145cc88",
+  "files": {
+    ".bboxy/specs/e2e-script-map.md": "c5ee4d3e17999ec2fa5544e3dcac24ccc4664536611546fbb7a34e0a33219f50",
+    "scripts/e2e/S1.sh": "9cb07ef509361d26bc7ddaed1c13976bd353ca99f363f0e0214702aa73c284f8",
+    "scripts/e2e/S2.sh": "5e69eac8d3027033b3ab218dc6ea433fdb7de026f42e7578698d8b3d388535a1",
+    "scripts/e2e/S3.sh": "88ed4b05239d70a027cf582f33d78eabac15cd87e346f867bcbff98da82b7a00",
+    "scripts/e2e/S4.sh": "c084b8e534dad0931c6990f800a8d352cc4b4b46cc88327150080a3fc10c091e",
+    "scripts/e2e/K2.sh": "471647955e4dcd3d4470ef584604aa56ae4c4a8a0c46944f80b43ae6f4606fbe",
+    "scripts/e2e/L1.sh": "d960acc07face032e5fda5e26b690284d013484ab0a56f4161b0a09f623057f4",
+    "scripts/e2e/ui.py": "9072b9c2bda607fdcb632c91241e79d408ac8a5a2f8159695027859342f6e2ae",
+    "scripts/e2e/test_ui.py": "911c23173be1a7be0d52c48bc6a3fd29ae66bc93e90a85d7c552c7302ae39c6b"
+  },
+  "hunks": {
+    ".bboxy/specs/e2e-script-map.md": [
+      {
+        "line": 32,
+        "text": "| L1 | `scripts/e2e/L1.sh` | partial | approved blur pixels; harness labels and role presets; search results | |"
+      },
+      {
+        "line": 36,
+        "text": "| S1 | `scripts/e2e/S1.sh` | partial | displayed historical bytes are not exported by ctl (row-coordinate traversal is not a cell proof); bounded lazy history page metrics | |"
+      },
+      {
+        "line": 37,
+        "text": "| S2 | `scripts/e2e/S2.sh` | partial | injectable ring-gap fixture; displayed gap row and both surviving sides | |"
+      },
+      {
+        "line": 38,
+        "text": "| S3 | `scripts/e2e/S3.sh` | partial | 50 watched GUI panes with history; per-Playback and total retained heap bytes; paging hitch meter | |"
+      },
+      {
+        "line": 39,
+        "text": "| S4 | `scripts/e2e/S4.sh` | partial | over-budget GUI viewport fixture (live Replica is capped at 32768 cells); history heap allocation accounting is not exported by ctl | |"
+      },
+      {
+        "line": 41,
+        "text": "| K2 | `scripts/e2e/K2.sh` | partial | amber mark pixel colour; operator DM native delivery; non-operator delayed delivery and exactly-once release; mute journal signer | |"
+      }
+    ],
+    "scripts/e2e/S1.sh": [
+      {
+        "line": 1,
+        "text": "# coverage: partial; missing: displayed historical bytes are not exported by ctl (row-coordinate traversal is not a cell proof); bounded lazy history page metrics"
+      }
+    ],
+    "scripts/e2e/S2.sh": [
+      {
+        "line": 1,
+        "text": "# coverage: partial; missing: injectable ring-gap fixture; displayed gap row and both surviving sides"
+      }
+    ],
+    "scripts/e2e/S3.sh": [
+      {
+        "line": 1,
+        "text": "# coverage: partial; missing: 50 watched GUI panes with history; per-Playback and total retained heap bytes; paging hitch meter"
+      }
+    ],
+    "scripts/e2e/S4.sh": [
+      {
+        "line": 1,
+        "text": "# coverage: partial; missing: over-budget GUI viewport fixture (live Replica is capped at 32768 cells); history heap allocation accounting is not exported by ctl"
+      }
+    ],
+    "scripts/e2e/K2.sh": [
+      {
+        "line": 1,
+        "text": "# coverage: partial; missing: amber mark pixel colour; operator DM native delivery; non-operator delayed delivery and exactly-once release; mute journal signer"
+      }
+    ],
+    "scripts/e2e/L1.sh": [
+      {
+        "line": 1,
+        "text": "# coverage: partial; missing: approved blur pixels; harness labels and role presets; search results"
+      }
+    ],
+    "scripts/e2e/ui.py": [
+      {
+        "line": 14,
+        "text": "def require(condition, reason):"
+      },
+      {
+        "line": 19,
+        "text": "def pane(layout, seat):"
+      },
+      {
+        "line": 25,
+        "text": "def nodes(layout):"
+      },
+      {
+        "line": 34,
+        "text": "def frame(layout):"
+      },
+      {
+        "line": 40,
+        "text": "class App:"
+      },
+      {
+        "line": 101,
+        "text": "def s1(app):"
+      },
+      {
+        "line": 141,
+        "text": "def s4(app):"
+      },
+      {
+        "line": 178,
+        "text": "def k2(app):"
+      },
+      {
+        "line": 208,
+        "text": "def l1(app):"
+      }
+    ],
+    "scripts/e2e/test_ui.py": [
+      {
+        "line": 17,
+        "text": "class Pages:"
+      },
+      {
+        "line": 48,
+        "text": "class Assertions(unittest.TestCase):"
+      }
+    ]
+  },
+  "brief": "cc3c64a9-6103-488c-8669-6ed4b11a6ee1",
+  "main_delta": "4eaa63ce R5j scene projection and store fast path landed while gate ran; no post-gate rebase; no product hunks in this cut"
+}
