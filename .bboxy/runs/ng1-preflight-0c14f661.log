@@ -1,0 +1,9 @@
+NG1 diagnostic-source preflight, source 0c14f66195b977133734ac3192673967ea58a7ac.
+The prior workspace827 failure remains in ng1-preflight-8275348d.log; this green run is not a claimed root-cause fix. Failure-only diagnostics did not fire.
+
+['cargo', 'clippy', '--workspace', '--all-targets', '--locked', '--', '-D', 'warnings'] — EXIT 0 /51.082877 s; raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/strict-clippy-8.log SHA256 212ee9ba1969ded2950c23679d0f19efbe513087450fb8f61e385af3ab2778ff; worktree clean.
+['cargo', 'test', '--workspace', '--locked', '--no-fail-fast'] — EXIT 0 /426.680514 s; raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/workspace-8.log SHA256 a24b343119f6b0e737eed9ad65218ca8be2f068eb6717adf15e458e29d1989b2; worktree clean.
+['sh', 'scripts/invariants.sh'] — EXIT 0 /294.520250 s; raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/invariants-7.log SHA256 12b6534376fdb8a5845c03b63dc79ab011120cf6889fae8b5577418e87a56d4d; worktree clean.
+Workspace footer totals 1393 passed /0 failed /29 ignored across 205 result footers. The native two-item test passed in this original workspace feature configuration.
+Default invariants 24 checks /0 failures /8 named slow skips. messaging-never-held, checkpoint-bounded, watched-replay-priority and ui-never-waits held.
+No final ci-local/parity acceptance claimed. Posted native source8d0a478c now includes accepted C-3 unions and requires the next prepared-candidate checks.

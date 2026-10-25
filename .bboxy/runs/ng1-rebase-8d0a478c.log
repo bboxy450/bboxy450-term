@@ -1,0 +1,5 @@
+NG1 source-only union rebase, candidate 90064bd8cc0dec1ed5dd0baa8b23fc083a27dc40, onto posted native source8d0a478c4164e50dbc45c885d6eabdd0a01672ef (parent accepted main e3275441).
+Signed rebase EXIT0 with no conflicts; all24 patches range-diff equal against the d22-based prior branch. Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/range-diff-union-v5.log.
+Native/body proof:31 selected methods byte-equal, including ctl_ui_admit and operator_device_for_effect; all15 identity files other than local.rs/status.rs byte-equal. The latter two have only NG1 public-reference getters added; existing native authority stays intact.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/native-body-proof-union-v5.json SHA256 292851862e3d136e79ca377a3d3b118b6436a4a4255435816147d1bea01b36b4.
+No runtime equivalence to the prior base is claimed. Frozen prior0c check source stayed untouched until its workspace run completed. Fresh candidate prechecks and accepted-native final CI follow.
