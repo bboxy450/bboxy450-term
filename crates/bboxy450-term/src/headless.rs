@@ -256,7 +256,11 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         }
                         crate::queue_pending(
                             &mut app.pending_commands,
-                            live::UiMsg::AppReply { id, status },
+                            if request == bbt_proto::gui::AppRequest::HistoryMetrics {
+                                live::UiMsg::HistoryMetrics { id, status }
+                            } else {
+                                live::UiMsg::AppReply { id, status }
+                            },
                         )
                         .map_err(|_| "headless lifecycle admission full")?;
                     }

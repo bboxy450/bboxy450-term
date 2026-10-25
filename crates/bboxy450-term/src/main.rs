@@ -225,6 +225,7 @@ fn app_status(
         windows,
         close: bboxy450_term::close::status(model, Instant::now()),
         notifications: serde_json::Value::Null,
+        history: serde_json::Value::Null,
     }
 }
 
@@ -5229,7 +5230,11 @@ impl ApplicationHandler<UiEvent> for App {
                 if request == bbt_proto::gui::AppRequest::Notifications {
                     status.notifications = self.recording_status();
                 }
-                self.queue(live::UiMsg::AppReply { id, status });
+                self.queue(if request == bbt_proto::gui::AppRequest::HistoryMetrics {
+                    live::UiMsg::HistoryMetrics { id, status }
+                } else {
+                    live::UiMsg::AppReply { id, status }
+                });
             }
             UiEvent::App(live::AppEvent::Stop { id }) => {
                 self.logger
@@ -7741,6 +7746,7 @@ mod input_tests {
                 | live::UiMsg::Focused { .. }
                 | live::UiMsg::UiReply { .. }
                 | live::UiMsg::AppReply { .. }
+                | live::UiMsg::HistoryMetrics { .. }
                 | live::UiMsg::Captured { .. } => {
                     panic!("pane admission fixture produced a messaging intent")
                 }

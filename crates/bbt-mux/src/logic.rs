@@ -302,7 +302,8 @@ enum Command {
         u64,
         u64,
         u64,
-        oneshot::Sender<Result<crate::ring::History>>,
+        bool,
+        oneshot::Sender<Result<(crate::ring::History, Vec<crate::history_fault::Missing>)>>,
     ),
     Close(
         Ulid,
@@ -1150,9 +1151,31 @@ impl LogicClient {
         from: u64,
         to: u64,
     ) -> Result<crate::ring::History> {
+        self.retained_history(seat, generation, from, to, false)
+            .await
+            .map(|(history, _)| history)
+    }
+    pub(crate) async fn history_for_gui(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        from: u64,
+        to: u64,
+    ) -> Result<(crate::ring::History, Vec<crate::history_fault::Missing>)> {
+        self.retained_history(seat, generation, from, to, true)
+            .await
+    }
+    async fn retained_history(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        from: u64,
+        to: u64,
+        masks: bool,
+    ) -> Result<(crate::ring::History, Vec<crate::history_fault::Missing>)> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::History(seat, generation, from, to, tx))
+            .send(Command::History(seat, generation, from, to, masks, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
@@ -1913,6 +1936,7 @@ struct Worker {
     control_journals: BTreeMap<Ulid, crate::mcp::journal::Journal>,
     provenance: crate::provenance::engine::Engine,
     operator_journal: crate::mcp::journal::Journal,
+    history_faults: crate::history_fault::Masks,
     stale_gui_requests: u64,
     #[cfg(test)]
     knowledge_fixture: Option<Arc<dyn DataSource + Send + Sync>>,
@@ -2012,6 +2036,7 @@ impl Worker {
             identity_acl: bbt_proto::identity::CustodyAcl::Unknown,
             control_journals: BTreeMap::new(),
             provenance,
+            history_faults: crate::history_fault::Masks::new(account.clone()),
             operator_journal: crate::mcp::journal::Journal::new(account),
             stale_gui_requests: 0,
             #[cfg(test)]
@@ -6838,6 +6863,77 @@ impl Worker {
                         let _ = reply.send(result);
                     }
                     Command::GuiDebug(id, request, origin, reply) => {
+                        if let bbt_proto::gui::DebugRequest::RingGap { seat, from, to } = request {
+                            let prepared = (|| -> Result<_> {
+                                if origin.door != crate::mcp::Door::Ctl {
+                                    return Err(invalid("debug uses the ctl operator door"));
+                                }
+                                if !self
+                                    .identity
+                                    .issued_by()
+                                    .is_some_and(|s| s.starts_with("test-account:"))
+                                {
+                                    return Err(invalid(
+                                        "test_account_required: ring-gap is refused on real accounts",
+                                    ));
+                                }
+                                let view = self
+                                    .views
+                                    .get(&seat)
+                                    .ok_or_else(|| invalid("ring_gap_unknown_seat"))?;
+                                if from == 0
+                                    || to < from
+                                    || to - from >= crate::history_fault::INTERVAL
+                                    || to > view.sequence
+                                {
+                                    return Err(invalid(
+                                        "ring_gap_invalid_range: expected 1..4096 already applied capture sequences",
+                                    ));
+                                }
+                                let generation = view.info.generation;
+                                let origin = self.identity.bind_origin(origin);
+                                let device_id =
+                                    self.identity.status()?.device_id.ok_or_else(|| {
+                                        invalid("held: operator device custody is unavailable")
+                                    })?;
+                                let actor = crate::mcp::Actor::Operator {
+                                    device_id,
+                                    door: origin.door,
+                                    issued_by: origin.issued_by,
+                                };
+                                let call = crate::mcp::Call {
+                                    op_id: id,
+                                    tool: "debug_fault_ring_gap".into(),
+                                    args: serde_json::json!({"seat":seat,"generation":generation,"from":from,"to":to}),
+                                };
+                                call.validate()?;
+                                let permit =
+                                    self.debug_reads.clone().try_acquire_owned().map_err(|_| {
+                                        invalid("Busy: two debug operations already active; retry")
+                                    })?;
+                                Ok((actor, call, generation, permit))
+                            })();
+                            match prepared {
+                                Err(error) => {
+                                    let _ = reply.send(Err(error));
+                                }
+                                Ok((actor, call, generation, permit)) => {
+                                    let journal = self.operator_journal.clone();
+                                    let masks = self.history_faults.clone();
+                                    self.handle.spawn_blocking(move || {
+                                        let _permit = permit;
+                                        if reply.is_closed() { return; }
+                                        let result = journal.effect(&actor, &call, || match masks.install(seat,generation,from,to) {
+                                            Ok(()) => crate::mcp::success(id,serde_json::json!({"seat":seat,"generation":generation,"from":from,"to":to,
+                                                "scope":"test-account retained History projection; original ring bytes and live state untouched"})),
+                                            Err(error) => crate::mcp::error(id,"ring_gap_refused",&error.to_string()),
+                                        }).and_then(operator_response);
+                                        let _ = reply.send(result);
+                                    });
+                                }
+                            }
+                            continue;
+                        }
                         // The worker copies only cached numeric state. Files, SQLite,
                         // process queries and journal publication run on the read task.
                         let prepared = (|| -> Result<_> {
@@ -7196,8 +7292,20 @@ impl Worker {
                         }
                         let _ = reply.send(result);
                     }
-                    Command::History(id, generation, from, to, reply) => {
-                        let result = self.history(id, generation, from, to);
+                    Command::History(id, generation, from, to, masks, reply) => {
+                        let result = self.history(id, generation, from, to).and_then(|history| {
+                            let masks = if masks
+                                && self
+                                    .identity
+                                    .issued_by()
+                                    .is_some_and(|s| s.starts_with("test-account:"))
+                            {
+                                self.history_faults.ranges(id, generation)?
+                            } else {
+                                Vec::new()
+                            };
+                            Ok((history, masks))
+                        });
                         let _ = reply.send(result);
                     }
                     Command::Snapshot(id, generation, reply) => {

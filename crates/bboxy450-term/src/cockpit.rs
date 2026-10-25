@@ -135,6 +135,10 @@ pub enum UiMsg {
         id: bbt_mux::Ulid,
         status: bbt_proto::gui::AppStatus,
     },
+    HistoryMetrics {
+        id: bbt_mux::Ulid,
+        status: bbt_proto::gui::AppStatus,
+    },
 }
 impl UiMsg {
     /// All launches share one admission budget, including legacy callers.

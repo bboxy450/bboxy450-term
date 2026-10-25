@@ -437,6 +437,7 @@ mod tests {
             windows: 0,
             close: serde_json::Value::Null,
             notifications: serde_json::Value::Null,
+            history: serde_json::Value::Null,
         };
         captures.app_answer(id, status.clone());
         assert_eq!(task.await.unwrap().unwrap(), status);

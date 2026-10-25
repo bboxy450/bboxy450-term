@@ -1,0 +1,150 @@
+{
+  "source": "194a7cb88fc9dc3f2fdac8368e87493c07176366",
+  "parent": "1cde8f0c27afd910ce5b9a6664f4aa3ca64ff2b8",
+  "tree": "c5c30201f660170c46844b3d15975927a04a6130",
+  "verify_commit_exit": 0,
+  "verify_commit": "gpg: Signature made Sun Oct 25 06:05:15 2026 PDT\ngpg:                using EDDSA key 9B07E849480C68328CA20684844ECC0587DE7AB0\ngpg: Good signature from \"Boxy (bboxy450) <bboxy450@gmail.com>\" [ultimate]\n",
+  "paths": {
+    ".bboxy/specs/e2e-script-map.md": "8f6f0aae9b90185f0906eb85741f059b80219f0b818b05b9eb6dcfb13fac4c97",
+    "crates/bboxy450-term/src/cockpit.rs": "dccc94a73b296e037b96f14ba98156631aa78151da5a3099ee8926b8449e43f7",
+    "crates/bboxy450-term/src/ctl.rs": "1d88b3408a925b3cfccf082e48bb275889a08035323ce8a97cab0c0a318e7f4d",
+    "crates/bboxy450-term/src/headless.rs": "bd948c6ea83529949b3a02111d092fa5a9e6e4b2e1fb0c29ded670efd61f22c7",
+    "crates/bboxy450-term/src/live.rs": "99bc1b7cc2b59ac8b2303e084216649ecba126443dce2f3ab17e7967e3aa5049",
+    "crates/bboxy450-term/src/main.rs": "c52b932a4492bdac279ca5a8a74af28cb9927f36cb81ae84a214302bebde587a",
+    "crates/bboxy450-term/src/scrollback.rs": "cb568ca1a26caea813773f8cf59d533e3211bb16d224dc41c9774c148c8aa52c",
+    "crates/bboxy450-term/tests/headless.rs": "69873503d12cee7c74376a618cf49361779083a11303d50e54174967a3decee7",
+    "crates/bboxy450-term/tests/scrollback.rs": "29aac336228353505167918c8fa04c73677ee49ada1a923a1f2ac5d00a35456d",
+    "crates/bbt-mux/src/debug.rs": "4042763dce685a211efc1287bbed408301bd53c9dde82521608d57e92091ae29",
+    "crates/bbt-mux/src/gui_capture.rs": "22cdab284006b15f4f7fdff701125213579e2973bebb3b9d4b64266de52260fe",
+    "crates/bbt-mux/src/history_fault.rs": "8c55a595e87937093542d757f181ab0e4bf1abb2bd63a1dd6e8fac2f50bb4392",
+    "crates/bbt-mux/src/lib.rs": "97d015a8abc8119aeede86604126315d8b053acba9332a9038cb49e8739da17e",
+    "crates/bbt-mux/src/logic.rs": "47b503c8aa1476c0854313d855f6596d575348292f5392dec3a023f0cf84fb6b",
+    "crates/bbt-mux/src/seat_socket.rs": "7f302e5c04c21d999b2f873b31f538b9fbe6612e499e4c7dce8e47f242fcc579",
+    "crates/bbt-proto/src/gui.rs": "1102f1e61a4664a1883278499c74960f16b284cf76762a4371c551180c6bed7d",
+    "crates/bbt-rt/src/diagnostics.rs": "1138fda07b1a347805897856f1dd10cd89ba8136e029a103e490340bede1e9e7",
+    "scripts/e2e/S2.sh": "b02296622fdf1462fd5c11cdd70746dc4500c9770ba1f989c49e333060029267",
+    "scripts/e2e/S3.sh": "561d1eea651e31d733aed14eeb42f4ad0a05fc990ff4ea4f3bcc96a71ed2002c",
+    "scripts/e2e/test_ui.py": "1f276486f7e899848cad9c9eccf5791cc895668eaedca8987324b54cd897fd40",
+    "scripts/e2e/ui.py": "04dfd53d6703ad4db42cf629ff765c685b08abf1dd974e5a38f33d31b5725d7c"
+  },
+  "precheck": {
+    "source": "194a7cb88fc9dc3f2fdac8368e87493c07176366",
+    "commands": [
+      {
+        "label": "scoped-tests",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "bboxy450-term",
+          "-p",
+          "bbt-mux",
+          "-p",
+          "bbt-proto",
+          "-p",
+          "bbt-rt",
+          "-p",
+          "bbt-supervisor",
+          "-p",
+          "bboxy450-harness-wake-up"
+        ],
+        "exit": 0,
+        "seconds": 1158.076,
+        "log": "/Users/feral/mydev/bboxy450-term-nyx/target/history-debug/precheck-scoped-tests.log"
+      },
+      {
+        "label": "strict",
+        "command": [
+          "cargo",
+          "clippy",
+          "--locked",
+          "--all-targets",
+          "-p",
+          "bboxy450-term",
+          "-p",
+          "bbt-mux",
+          "-p",
+          "bbt-proto",
+          "-p",
+          "bbt-rt",
+          "-p",
+          "bbt-supervisor",
+          "-p",
+          "bboxy450-harness-wake-up",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit": 0,
+        "seconds": 67.737,
+        "log": "/Users/feral/mydev/bboxy450-term-nyx/target/history-debug/precheck-strict.log"
+      },
+      {
+        "label": "python",
+        "command": [
+          "python3",
+          "-B",
+          "-I",
+          "scripts/e2e/test_ui.py"
+        ],
+        "exit": 0,
+        "seconds": 0.199,
+        "log": "/Users/feral/mydev/bboxy450-term-nyx/target/history-debug/precheck-python.log"
+      },
+      {
+        "label": "invariants",
+        "command": [
+          "sh",
+          "scripts/invariants.sh"
+        ],
+        "exit": 0,
+        "seconds": 427.22,
+        "log": "/Users/feral/mydev/bboxy450-term-nyx/target/history-debug/precheck-invariants.log"
+      }
+    ]
+  },
+  "binary": {
+    "sha256": "7e3716dd1fc11aba4a76a4b8c19d7ebb1ce12a259bc406d018d9932e63315ff8",
+    "bytes": 54786176,
+    "source": "194a7cb88fc9dc3f2fdac8368e87493c07176366",
+    "gate_exit": 0,
+    "gate_seconds": 1836.658
+  },
+  "main_after_gate": "0eeabc95ac831aa04328b04c70a057a09b0d8f23",
+  "environment": {
+    "RUSTC_WRAPPER": "",
+    "RUSTC_WORKSPACE_WRAPPER": "",
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_INCREMENTAL": "0",
+    "BBOXY_TEST_CUSTODY": "memory",
+    "e2e": "runner-owned file test accounts; windows0"
+  },
+  "artifacts": {
+    "exact-artifacts/S2/s2-before.jsonl": "1ca3ad20321880f0d9f4f8deb8e607586d1d514b648d67997c94dcbe99f63b29",
+    "exact-artifacts/S2/s2-mask.jsonl": "8b3e4d95921961eb75cd31248fac834dde098219e9465f72c0782681b54038dd",
+    "exact-artifacts/S2/output.log": "dd38a23a6bf5bf22f2bffac132e6331a0232df862c0bc64ed21e4d8eedb19edb",
+    "exact-artifacts/S2/s2-gap.png": "acc0be4c04ee20023a15de69c629b6464ccf1c3adedddc20fafed210902960c4",
+    "exact-artifacts/S2/s2-top.jsonl": "918c630ac4a6a61a3a6bbd81c88c378ab9d69bb4af11acbbd9bf6d7d43778ecb",
+    "exact-artifacts/S2/s2-middle-live.jsonl": "1b0b9545256c8baabd4c45c6d4577f006f64322a2546c90ee42c754df5ceb1fd",
+    "exact-artifacts/S2/s2-projected-ring.jsonl": "21d6166a610c0f327a6b48da0dcbd4c2d9ae8a0646c07e7716c5c026f16239bf",
+    "exact-artifacts/S2/gap.py": "6543f67eb2aaca3b3ff7084139ae7b1c1c21bf8d0ea2e0649da824edca3154d5",
+    "exact-artifacts/S2/s2-metrics.jsonl": "76e7beb6f1d80aefa805d78adb691b9809744c5f23610c0c0d0608b8b2ca1909",
+    "exact-artifacts/S2/s2-gap.jsonl": "af03620993fad815843485b96ce516e5922d80ec6a2ad107de509e9ba2d1cd6f",
+    "exact-artifacts/S3/s3-1-top-metrics.jsonl": "c214e7016770afdbb7351e070ef34ec88f7b9d402e24f86b3092e5bf1e4abe6c",
+    "exact-artifacts/S3/s3-0-released-metrics.jsonl": "9274c9eb0708407e2f7a88db1ff443d640d6f17c7ed91abbcf9961a8e0a30c22",
+    "exact-artifacts/S3/s3-1-seek-metrics.jsonl": "05a798ebe5257aa1e5ea3b444fbab93007eeba80702e4167ddd233303e40fb5d",
+    "exact-artifacts/S3/s3-0-top-metrics.jsonl": "16a09fcc8033d77291a0b1e76f290495abe7d32ec9a04e95c8a2756c0782647a",
+    "exact-artifacts/S3/s3-2-seek-metrics.jsonl": "b3d2df7b11e2165ee752747033f58e7a844ea58b4b23cf022c7116badc65c20e",
+    "exact-artifacts/S3/s3-2-released-metrics.jsonl": "954b24ff9fd00381c03c07f04cb982f46fa0f70e9782238eaf945539aa3f88a3",
+    "exact-artifacts/S3/numbered.py": "be476a2050883923762c485ffa4f6dbb07d81318f9489a428e3e928d5542ba7c",
+    "exact-artifacts/S3/s3-2-top-metrics.jsonl": "977dbf2e237fabbd0959e727505fefc715586ec95e34f606bd1fab057f67cdd1",
+    "exact-artifacts/S3/output.log": "f08961678a581d76f18c32317562b617f1ca2b5e56806248f5f885f7934256a4",
+    "exact-artifacts/S3/s3-1-released-metrics.jsonl": "2085f283cd17956782c39957b85bb44e0598a1db7fe7651e1e58d4e9462d8b53",
+    "exact-artifacts/S3/s3-0-seek-metrics.jsonl": "a00f6ad5aebaa4eb550f45cf9e66bb8fe6a3009322103b42a405842fe6164627"
+  }
+}

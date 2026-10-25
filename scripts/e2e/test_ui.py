@@ -63,12 +63,18 @@ class Assertions(unittest.TestCase):
             with self.assertRaisesRegex(AssertionError, "older produced frame"):
                 ui.s1(Pages(Path(d), "stale"))
 
-    def test_missing_observers_fail_instead_of_passing_no_assertions(self):
-        for name, reason in [("S2", "fixture_unavailable"), ("S3", "metrics_unavailable")]:
-            result = subprocess.run(["sh", str(ROOT / f"{name}.sh")],
-                                    capture_output=True, text=True, stdin=subprocess.DEVNULL)
-            self.assertEqual(result.returncode, 1)
-            self.assertIn(reason, result.stderr)
+    def test_budget_and_page_observer_cannot_pass_unobserved_or_oversized_values(self):
+        good={"available":True,"complete":True,"omitted_panes":0,"retained_history_bytes":150,
+              "panes":[{"retained_history_bytes":100,"budget_bytes":4_000_000,
+                        "pages_resident":1,"pages_fetched":2,"pages_evicted":1}]}
+        class Metrics:
+            def ctl(self,*args,**kw): return {"ui":{"available":True,"history":good}}
+        ui.history_sample(Metrics(),"good")
+        for field,value in [("retained_history_bytes",None),("retained_history_bytes",4_000_001),("pages_resident",2),("pages_evicted",3)]:
+            old=good["panes"][0][field]
+            good["panes"][0][field]=value
+            with self.assertRaises(AssertionError): ui.history_sample(Metrics(),"bad")
+            good["panes"][0][field]=old
 
     def test_every_script_header_matches_its_map_row(self):
         mapping = (ROOT.parent.parent / ".bboxy/specs/e2e-script-map.md").read_text()

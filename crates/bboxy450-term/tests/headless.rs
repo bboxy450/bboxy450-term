@@ -1601,6 +1601,19 @@ fn ctl_ui_scroll_reads_the_produced_historical_view_without_changing_focus() {
     let before = f.ok(&["ui", "layout"]);
     assert_eq!(before["data"]["focused"], peer);
     let top = f.ok(&["ui", "scroll", &seat, "top"]);
+    let metrics = f.ok(&["debug", "metrics"]);
+    let meter = &metrics["data"]["ui"]["history"];
+    assert_eq!(metrics["data"]["ui"]["available"], true);
+    assert_eq!(meter["complete"], true);
+    let observed = meter["panes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["seat"] == seat)
+        .unwrap();
+    assert!(observed["retained_history_bytes"].as_u64().unwrap() <= 4_000_000);
+    assert!(observed["pages_fetched"].as_u64().unwrap() > 0);
+    assert!(observed["pages_resident"].as_u64().unwrap() <= 1);
     assert_eq!(
         pane(&top)["scroll"],
         serde_json::json!({"top_row":0,"live":false})
@@ -1733,4 +1746,93 @@ fn app_resize_replies_with_the_first_frame_at_the_new_size() {
     assert!(shot.exists());
     let (code, rows) = f.ctl(&["app", "resize", "1x1"]);
     assert_eq!(code, 2, "{rows:?}");
+}
+
+#[test]
+fn retained_gap_fixture_requires_actual_test_account_and_preserves_live_bytes() {
+    let mut ordinary = Fixture::new();
+    ordinary.start();
+    let seat = ordinary.ok(&["seat", "spawn", "zsh"])["data"]["seat"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let (code, refused) = ordinary.ctl(&[
+        "debug",
+        "fault",
+        "ring-gap",
+        &seat,
+        "1..1",
+        "--as",
+        "test-account:spoof",
+    ]);
+    assert_ne!(code, 0);
+    assert!(
+        format!("{refused:?}").contains("test_account_required"),
+        "{refused:?}"
+    );
+    ordinary.ok(&["app", "stop"]);
+
+    let mut f = Fixture::new();
+    let account = f.root.path().join("history-account");
+    f.run = account.join("run");
+    let started = f.ok(&[
+        "app",
+        "start",
+        "--headless",
+        "--ctl",
+        "--unattended",
+        "--test-account",
+        account.to_str().unwrap(),
+    ]);
+    f.pid = started["data"]["pid"].as_u64().map(|n| n as u32);
+    let seat = f.ok(&["seat", "spawn", "zsh"])["data"]["seat"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    f.ok(&["ui", "focus", &seat]);
+    f.ok(&["seat", "type", &seat, "printf 'HISTORY_LIVE_ORIGINAL\\n'\r"]);
+    f.ok(&[
+        "seat",
+        "wait",
+        &seat,
+        "--text",
+        "(?m)^HISTORY_LIVE_ORIGINAL$",
+        "--timeout",
+        "15000",
+    ]);
+    let screen = f.ok(&["seat", "screen", &seat]);
+    let through = screen["data"]["sequence"].as_u64().unwrap();
+    let invalid = format!("{}..{}", through + 1, through + 1);
+    assert_ne!(f.ctl(&["debug", "fault", "ring-gap", &seat, &invalid]).0, 0);
+    let range = format!("1..{through}");
+    let op = bbt_mux::Ulid::new().to_string();
+    let installed = f.ok(&["debug", "fault", "ring-gap", &seat, &range, "--op", &op]);
+    assert_eq!(installed["data"]["to"], through);
+    assert_eq!(
+        f.ok(&["debug", "fault", "ring-gap", &seat, &range, "--op", &op])["data"],
+        installed["data"]
+    );
+    let live = f.ok(&["seat", "screen", &seat]);
+    assert!(
+        live["data"]["rows"]
+            .to_string()
+            .contains("HISTORY_LIVE_ORIGINAL")
+    );
+    assert_eq!(live["data"]["generation"], screen["data"]["generation"]);
+    let history = f.ok(&["seat", "screen", &seat, "--scrollback", &range]);
+    assert!(
+        !history["data"]["rows"]
+            .to_string()
+            .contains("HISTORY_LIVE_ORIGINAL")
+    );
+    assert!(history["data"]["rows"].to_string().contains("gap"));
+    let changed = format!("{through}..{through}");
+    if through > 1 {
+        assert_ne!(
+            f.ctl(&["debug", "fault", "ring-gap", &seat, &changed, "--op", &op])
+                .0,
+            0
+        );
+    }
+    f.ok(&["app", "stop"]);
 }

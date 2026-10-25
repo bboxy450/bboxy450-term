@@ -1,0 +1,31 @@
+ROLE: EXECUTOR — Nyx Copperwing
+Scope: Oracle41774c11 /0179138a S2/S3 GUI history metrics and test-account-only retained History masks.
+Gated source: 194a7cb88fc9dc3f2fdac8368e87493c07176366 (good machine signature). Branch nyx-history-debug in /Users/feral/mydev/bboxy450-term-nyx.
+Base: 1cde8f0c. Main advanced during gate to 0eeabc95ac831aa04328b04c70a057a09b0d8f23 (Aster placement/R6 and Kestrel/Wren Plugins/Knowledge). Exact source stayed frozen; no merge or push by Executor.
+
+Mechanisms (source-pinned lines):
+- crates/bboxy450-term/src/scrollback.rs:648 — max128-pane on-demand meter, cached conservative budget-check bytes (null before observed), one resident input page, fetched/evicted lifetimes, aggregate and bounded visible gap coordinates. No cell walk or page fetch from the metric read.
+- crates/bbt-rt/src/diagnostics.rs:27 — HistoryPage/HistoryStep reuse the existing opt-in R5i recorder; disabled clock/allocation regression passed.
+- crates/bboxy450-term/src/live.rs:1028 — IO-owned sample through existing AppRequest::HistoryMetrics / AppReply; main.rs:4817 and headless.rs:245 only enqueue that read, no paint/model projection.
+- crates/bboxy450-term/src/ctl.rs:1171 — ctl debug metrics merges the IO sample with logic metrics, independent frame_seq basis, named unavailable/256KiB bound.
+- crates/bbt-mux/src/logic.rs:6445 — fault guard uses actual verified test-account chain, never caller --as; current generation/applied range validated, journal.effect retains op identity. max8 separated intervals/seat/generation, each <=4096 inclusive capture sequences.
+- crates/bbt-mux/src/history_fault.rs:55 — durable account-store mask; :101 replaces only retained GUI History records with named Gap and advances next across page boundaries.
+- crates/bbt-mux/src/logic.rs:1154 and seat_socket.rs:988 — only explicit GUI History reads load/project masks. Public raw history, supervisor Ring/writer, live bytes/state, signatures, read marks and ACK rules unchanged.
+- scripts/e2e/ui.py:160 — S2 one logical marker at row5, both surviving retained-read sides, original live bytes/input and generation preserved. :212 — S3 three SEQUENTIAL actual viewports, per-pane/aggregate budget, page residency/fetch/eviction and return-live release. Headers/map carry remaining partials.
+
+Actual verification:
+- Scoped touched+direct-dependent cargo test:777 passed/0 failed/29 ignored (1158.076s). Strict all-target Clippy0, Python assertions5/0, fast invariants25/0 with9 named slow skips.
+- Exact clean NORMAL ci-local:EXIT0 in1836.658s, workspace1434/0/29ignored, strict/UI lint0; headless idle0frames/0callbacks/10.005s/windows0; invariants25/0/9slow skipped.
+- Exact binary SHA256 7e3716dd1fc11aba4a76a4b8c19d7ebb1ce12a259bc406d018d9932e63315ff8; canonical scrollback night replay in clean source tree: EXIT0 AMBER, S1/S2/S3 pass PARTIAL; existing S4 fixture limit fails by name. All promise/writer apps file custody/test-account/windows0, S2/S3 records test-account run_by + device signer. Proof wrapper0, no operator/desktop/Keychain input.
+- S2 exact marker coordinates [{'from': 7, 'row': 5, 'to': 7}]. S3 nine observations, peak per-pane2018860 bytes /4,000,000, peak aggregate2019340; one input page resident, consumed pages released.
+- Three mask regressions: durability/reopen and generation scope; invalid/oversize/overlap/count refusals; seven page sizes preserve both unmasked sides and one marker per range. Actual normal-account spoof refusal + file-account op replay/live preservation integration passed.
+- Failed initial compile checks, clipped-cursor unit failure and first three-tab fixture assumption are retained in checks/verdict; fixed before source gate. Socket-flood >60s was a normal passing regression (78.33s; precheck84.29s), not a gate failure.
+
+Limits/follow-up:
+S2 remains partial for real ring-level gap production, GUI historical cell bytes, and headless marker pixels (capture currently has a blank gap row; native Scene already paints the label). Oracle112bc6ed assigns that headless foreground fix NEXT after this merge, with --parity. No renderer fix mixed here.
+S3 remains partial for50simultaneously watched GUI panes and the paging hitch budget. Three sequential owners are not a50-watched proof; disabled R5i timing stays unobserved.
+S4 unchanged fixture cap is named. This NORMAL gate did not run parity or the9slow checks.
+
+Cleanup:
+Empty lsof and empty recorded gate PGID before removing sole owned cache: 5116440576 allocated bytes freed. Clean detached CI tree removed after exact night. All five night-owned PIDs independently absent (ps1/no rows). Exact binary and source-pinned JSON/PNG artifacts retained read-only under target/history-debug; no build cache remains.
+Raw gate/check/night/source/verdict/cleanup are the sibling history-debug-194a7cb8-* records. Evidence successor changes these seven records only.
