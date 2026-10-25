@@ -1,0 +1,59 @@
+{
+  "native_source": "d22d5a6802dae8e9e628c1b7e9b8f1c408d7d5ae",
+  "native_evidence": "e44eb695a2760fd425d1ce9e97f6c8d0989eec02",
+  "test": "native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order",
+  "own_observation": {
+    "log": ".bboxy/runs/native-unlock-union-workspace.log",
+    "line": 2336,
+    "sha256": "5c99a1b2229f6e242e4ed3b535801d2c8234af010aa9adc08237ca70d46cc21e",
+    "test_result": "ok",
+    "identity_group": {
+      "passed": 15,
+      "failed": 0,
+      "ignored": 1,
+      "seconds": 0.48
+    },
+    "workspace_exit": 0,
+    "workspace_passed": 1380,
+    "workspace_failed": 0,
+    "workspace_ignored": 29,
+    "samples": 1,
+    "exact_reported_reason_text_occurrences": 0
+  },
+  "original_ci_observation": {
+    "source": "0e0e9d2e04a2609eb5513baf30650b73d4b26ebb",
+    "log": ".bboxy/runs/native-unlock-ci-parity.log",
+    "line": 1915,
+    "test_result": "ok"
+  },
+  "peer_observation": {
+    "reported_source": "8275348d",
+    "source_binding": "Rook reported; not independently attested by this excerpt",
+    "raw_failure_read": true,
+    "snapshot": {
+      "peer_log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/workspace-7.log",
+      "read_bytes": 200860,
+      "snapshot_sha256": "0315f08975c6fa96922e93ff2923fbde2a16a064e034dfc1b82a8553c2981014",
+      "excerpt_sha256": "d1b5a116d749e8623b22c05d6c70196e3a66aa3d3be52717268bc5ab1c9a7bb7",
+      "matching_lines_1_based": [
+        1913,
+        1918,
+        1920,
+        1926
+      ]
+    },
+    "excerpt": ".bboxy/runs/native-unlock-two-item-peer-excerpt.log",
+    "excerpt_sha256": "d1b5a116d749e8623b22c05d6c70196e3a66aa3d3be52717268bc5ab1c9a7bb7",
+    "failure": "InvalidData: held: unlock is only available for a native custody hold",
+    "panic_site": "crates/bbt-mux/tests/identity.rs:273:18",
+    "identity_group": {
+      "passed": 14,
+      "failed": 1,
+      "ignored": 1,
+      "seconds": 3.31
+    },
+    "overall_workspace_exit": "not established by excerpt"
+  },
+  "disposition": "OPEN: Rook is narrowing the interaction; a native passing sample does not resolve the NG1 failure. No cause or intermittency conclusion.",
+  "actions": "Read existing evidence only; no rerun, source change, assertion change or timeout relaxation. Oracle and Rook notified."
+}
