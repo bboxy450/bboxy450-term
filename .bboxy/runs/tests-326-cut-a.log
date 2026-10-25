@@ -1,0 +1,142 @@
+#326 Cut A / #327 initial test-sweep coverage
+
+Scope: socket backlog and lifecycle; full bbt-mux per-test sweep remains separate.
+No cross-process clock draft was applied. No production duration, public schema,
+wire, identity custody or operator account changes.
+
+Classification and disposition:
+- socket_request_flood_replays_exact_output_and_delivers_exit_to_logic: B1/B3
+  fixture waits rewritten; B2 real socket proof moved to explicit night command.
+- lifecycle three original scenarios: B1/B2; all three bodies retained verbatim
+  behind ONE night lifecycle_real_process_boundary entry point. No assertions lost.
+
+Fast coverage:
+- supervisor::close_policy_tests::grace_expires_at_sixty_seconds_and_undo_is_refused_at_the_boundary:
+  real 60-second policy, one millisecond before vs exact expiry, stale close ID,
+  late retry cannot reset deadline, expiry independent of logic.
+- supervisor::close_policy_tests::retry_keeps_the_original_deadline_and_undo_cancels_it_once:
+  exact retry deadline, conflicting IDs/deadlines, undo cancellation/idempotence.
+- registry::close_policy_tests::close_keeps_its_deadline_and_position_across_reopen_and_checks_revisions:
+  durable close record, exact Position, layout/generation/revision refusal, same
+  generation/session and exact close handle after restoration.
+- registry::close_policy_tests::expired_undo_is_refused_and_only_the_exit_receipt_makes_the_seat_retained:
+  expired undo, no speculative clock-only retention, exit receipt + reopened record.
+- logic::close_restoration_tests::undo_restores_the_exact_position_once_and_refuses_stale_process_handles:
+  idempotent restoration reply, liveness and replaced-generation fences.
+- logic::pending_tests::pending_notifications_stay_bounded_and_preserve_resize_and_exit_order:
+  existing 20,000-event captured backlog, one ready seat, ordered resize/output/Exit.
+- logic::pending_tests::raw_backlog_cap_preserves_fifo_while_captured_output_coalesces_until_exit:
+  1,024 raw cap, typed refusal, raw FIFO untouched, 10,000 captured events coalesce,
+  final output and exit delivered in order.
+
+Night coverage (scripts/night-test-boundaries.sh; exact-name --ignored only):
+- socket test retains all 64 MiB + tail, SHA-256, 10,000 requests, contiguous records,
+  coalesced-span replay, zero gap, Screen tail and exit status assertions.
+- lifecycle_real_process_boundary retains ALL 50 original assertions in the
+  three scenario bodies. See lifecycle-body-preservation.json for individual hashes.
+  This includes real GUI state publication, original PID, capture during grace,
+  supervisor replacement, exact paginated history/gaps/control slots, real 60-second
+  supervisor expiry without logic, no relaunch, retained output and refused undo.
+  It supports restart-keeps-state's seat/lifecycle subset; it is not full RS1.
+
+Measured baseline / timing (O1, debug assertions, explicit memory custody):
+- socket original: 63.77 s; initial host start/run load not recorded.
+- socket rewritten isolated-from-own-load: 25.11 / 32.80 / 26.18 s; median 26.18 s.
+  Other host load 25-33 remains; no idle-host or controlled speedup claim.
+- socket 10/10 with two actual cold 2-job Cargo builds: 20.17-33.74 s; no speed gate.
+- lifecycle original: 3/0, 61.86 s; compile excluded (runner 503.233 s including build).
+- initial fast close unit checks: mux 4/0 in 0.01 s, supervisor 2/0 in 0.00 s.
+
+Temporary probes/failures:
+- original phase probe: 68.06 s; history verification 53.251 s, empty receive samples
+  1,873/2,152. The fixture's exhausted source now returns immediately after Exited.
+- a fetched-cursor-only observer condition was rejected: it failed because final
+  output can apply live; it is absent from the final source.
+- final phase probe: observation 21.241 s, history end 29.574 s, shutdown 29.606 s;
+  history 8.333 s, hash/shutdown 0.032 s. Samples show real request/reply transport
+  waits and JSON decode; they are wall samples, not pure CPU attribution.
+- zero no-progress timeout control: expected exit 101, 0.14 s; 90 s restored exactly.
+- grace >= to > mutation: expected exit 101, exact expiry assertion fails in 0.00 s;
+  original supervisor file restored byte-for-byte (grace-fault-restored.json).
+  Standalone negative build also emitted existing bbt-rt complete_drain dead-code
+  warning; this is not silently treated as a clean strict-workspace lint.
+
+Sleep counts:
+- socket: two Rust sleep call sites + one Python polling sleep removed (3 total).
+- lifecycle: four Rust sleep call sites and shell sleep stay only in the explicit
+  night boundary, unchanged. They are moved out of the default tier, not deleted.
+
+Verified after the initial draft:
+- Restored policy run: mux 4/0 in 0.01 s; supervisor 2/0 in 0.00 s.
+- PendingSeats/backlog module: 11/0 in 0.02 s, including the new raw-cap test.
+- Ten paired loaded iterations: all 20 Cargo invocations pass; 30 per-binary
+  results, each 0.00-0.03 s. Two actual 2-job Cargo no-run builds stayed active;
+  all owned process groups reaped; allocated load targets retired.
+- Explicit night script: EXIT 0; socket 1/0 in 21.87 s, lifecycle boundary
+  1/0 in 65.62 s (all 50 original assertions, real 60 s). No empty pass claim.
+- Default socket and lifecycle each: EXIT 0, 0 passed / 1 ignored, 0.00 s.
+  These default skips are backed by the fast policy proofs above, not counted
+  as those proofs themselves.
+- Layering: EXIT 0.
+
+Pending before handoff:
+- normal clean gate; signed source/evidence commits;
+- full #327 crate sweep remains incomplete.
+
+Raw command/result index (all runner times include compilation):
+{"label": "alone-1", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 25.806809208006598, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 25.11s"], "log_sha256": "848a04b9449eea5ef68d6d9e5a868bb6da5c1201daf0e8c0e4b60a5b8caa5a87"}
+{"label": "alone-2", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 33.61729283398017, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 32.80s"], "log_sha256": "261cc59c8348450846792f09e889055e4d0623ec0a7540f0dd6c3b86c78f3af7"}
+{"label": "alone-3", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 27.03260474995477, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 26.18s"], "log_sha256": "b2bc113f695e57ff36f1cfe05177081a3b28b8dd43a4e03c118b000b936c7d72"}
+{"label": "b2-backlog-policies", "command": ["cargo", "test", "-p", "bbt-mux", "--lib", "--locked", "pending_tests", "--", "--nocapture"], "exit": 0, "runner_seconds": 147.4068180419854, "results": ["test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 126 filtered out; finished in 0.02s"], "log_sha256": "9ac6efd4c1eec765a7b2ed03863ebfd88db677e7ec8981359420caef35100f72"}
+{"label": "b2-default-lifecycle", "command": ["cargo", "test", "-p", "bboxy450-term", "--test", "lifecycle", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.6823917090077884, "results": ["test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s"], "log_sha256": "c1eadc6fd7001497bc0ee128b08a9ec68c70f2c20b79db9a0e48c1b5a3dadbf2"}
+{"label": "b2-default-socket", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.7077524170163088, "results": ["test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s"], "log_sha256": "01b15d54f46d26fe551e8c1b6248ff33a5ccafd9a95069bc946db305555df086"}
+{"label": "b2-layering", "command": ["sh", "scripts/layering.sh"], "exit": 0, "runner_seconds": 0.17422954202629626, "results": [], "log_sha256": "4da785f35b44bcf32e335b45c4b4d6b78c88b6c77886f065463850edb831d114"}
+{"label": "b2-night-boundaries", "command": ["sh", "scripts/night-test-boundaries.sh"], "exit": 0, "runner_seconds": 346.51440966600785, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 21.87s", "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 65.62s"], "log_sha256": "44409fd60b00eb1817ffc649b6eba8dc80b613a3248412e07e53caf368922a42"}
+{"label": "b2-policy-tests", "command": ["cargo", "test", "-p", "bbt-supervisor", "-p", "bbt-mux", "--lib", "--locked", "close_", "--", "--nocapture"], "exit": 0, "runner_seconds": 350.9463831250323, "results": ["test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out; finished in 0.01s", "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 51 filtered out; finished in 0.00s"], "log_sha256": "afbc815f57f08011a640ad9f8e5f45b5cb6095230ec74f7fd72bcbdde25571ba"}
+{"label": "b2-restored-policy-tests", "command": ["cargo", "test", "-p", "bbt-supervisor", "-p", "bbt-mux", "--lib", "--locked", "close_", "--", "--nocapture"], "exit": 0, "runner_seconds": 19.598399625043385, "results": ["test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out; finished in 0.01s", "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 51 filtered out; finished in 0.00s"], "log_sha256": "0d26c57c99b2d9c77ee25b2232a6a6cffc3656de15f847a7672413697e9af9ef"}
+{"label": "b2-workspace-clippy", "command": ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "exit": 0, "runner_seconds": 99.26952191698365, "results": [], "log_sha256": "ed2ac3cce44f6a73304ac6f1faab9563d30f26ecaaa46d6cd234ae9e81405244"}
+{"label": "backlog-after-phases", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 101, "runner_seconds": 106.50668787502218, "results": ["test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 102.81s"], "log_sha256": "15b123aed940f2d1613a74c13d4f9ecd001698391bb5a3d2dc1cfa0e6e1eafa7"}
+{"label": "backlog-after", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 38.234721790999174, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 27.16s"], "log_sha256": "1b0060587d3ac45c974dc99af71b1238e4b4b81316e4ae89a822e8da189b4a45"}
+{"label": "backlog-alone-phases", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 33.250091708032414, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 29.62s"], "log_sha256": "f33915e154065a346e67d854ff3e0e3dc8e6a887387fd3c33914c365518797c8"}
+{"label": "backlog-before", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 64.37484495795798, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 63.77s"], "log_sha256": "272fd21706bad943f3d46f13c5995037f90189fc192a5c6d697738c618004135"}
+{"label": "backlog-final-green", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 42.86202408297686, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 36.58s"], "log_sha256": "3e9c700018f523e205cd9a4e168e334b6cc07fb56bddbce9d635b20598c24d3f"}
+{"label": "backlog-logical-turns-phases", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 47.0571431669523, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 39.71s"], "log_sha256": "3db6fae18e460700c145522a7d63c27fd6ccd9db83656e39ec1a4f27a95a4871"}
+{"label": "backlog-phases", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 71.57707500003744, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 68.06s"], "log_sha256": "24feb96fa87750ed3cd9463917d193bc00dda6f83aaf002c069064ee9a1a6625"}
+{"label": "backlog-zero-timeout-negative", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 101, "runner_seconds": 7.632078833994456, "results": ["test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s"], "log_sha256": "9aa0d4099ac3669861ef62f4c4763a36cd86695c911c9d68e0d8f3fa2c5845d0"}
+{"label": "grace-comparison-negative", "command": ["cargo", "test", "-p", "bbt-supervisor", "--lib", "--locked", "supervisor::close_policy_tests::grace_expires_at_sixty_seconds_and_undo_is_refused_at_the_boundary", "--", "--exact", "--nocapture"], "exit": 101, "runner_seconds": 38.6236328749801, "results": ["test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 52 filtered out; finished in 0.00s"], "log_sha256": "f5ed2c2b17c4ff40e4ae60562ecedce03ee6778efc34844640bb8b465aae882e"}
+{"label": "inventory-before", "command": ["cargo", "test", "-p", "bbt-mux", "--locked", "--", "--list"], "exit": 0, "runner_seconds": 526.1764195419964, "results": [], "log_sha256": "a76d42a1889437f3f74bf4a3b8330322958c6c4c5cc862805524f66e45df8301"}
+{"label": "lifecycle-before", "command": ["cargo", "test", "-p", "bboxy450-term", "--test", "lifecycle", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 503.2333665830083, "results": ["test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 61.86s"], "log_sha256": "a74f1d8a386c07d322975d55c46f004d41efb94d4ccd93316f899963c78dd631"}
+{"label": "loaded-01", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 27.606886541005224, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 26.52s"], "log_sha256": "72aef3d77398fe6806967d51cb9d518f0d2692dbc0a9fd0b4bef4057a10656b9"}
+{"label": "loaded-02", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 34.786287583003286, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 33.74s"], "log_sha256": "9d93f4b6293ee95a093035de97bef30387d37d4699162e60be45753a243c004b"}
+{"label": "loaded-03", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 31.541046084021218, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.58s"], "log_sha256": "948244cd67a16affc0320aaa4d7b6d91307136022494cd57cc762211961cddbf"}
+{"label": "loaded-04", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 27.454881125013344, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 26.19s"], "log_sha256": "1b6dcd8a788b60031e56ca1d30a2407df0b8314c1d30320f166eb95961f461e1"}
+{"label": "loaded-05", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 34.03792158304714, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 33.14s"], "log_sha256": "aa6feb576681346100a2b58bd82ac6ffb6dbf9553f78fbec3e6148451209d5fa"}
+{"label": "loaded-06", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 25.599073500023223, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 24.69s"], "log_sha256": "97d11d1cde972d241d5f75512c29befbfc115e891bc9b054118b8c538168df6d"}
+{"label": "loaded-07", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 31.35955987498164, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.50s"], "log_sha256": "cb03dad797a2c2921b5d4bd601dab6d9b65d143e43f9c4261982d1305853e5d1"}
+{"label": "loaded-08", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 20.821532833040692, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.17s"], "log_sha256": "86f44be5c37095fa95406e48e3d282f28ddc4a6be0f86be4b571776b0382185c"}
+{"label": "loaded-09", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 21.533443416003138, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.74s"], "log_sha256": "aa3a979480bd504b9621eb08b6a833f58494f17c190f02b3fbdd2d428abda12c"}
+{"label": "loaded-10", "command": ["cargo", "test", "-p", "bbt-mux", "--test", "socket_backlog", "--locked", "--", "--nocapture"], "exit": 0, "runner_seconds": 22.79664141696412, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 22.17s"], "log_sha256": "e18c2a70af952bce56338c1382206598d05e100d3c7fad6c691b9b21b5c3e4d9"}
+{"label": "policy-loaded-01-close", "command": ["cargo", "test", "-p", "bbt-mux", "-p", "bbt-supervisor", "--lib", "--locked", "close_", "--", "--nocapture"], "exit": 0, "runner_seconds": 1.4041409579804167, "results": ["test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out; finished in 0.03s", "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 51 filtered out; finished in 0.01s"], "log_sha256": "8a073c6067bd3b41b0d5a2372c01de8cd66125fc4775535c77cf092a9472b4ff"}
+{"label": "policy-loaded-01-pending", "command": ["cargo", "test", "-p", "bbt-mux", "--lib", "--locked", "pending_tests", "--", "--nocapture"], "exit": 0, "runner_seconds": 1.017799749970436, "results": ["test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 126 filtered out; finished in 0.02s"], "log_sha256": "da2dd9590cc3b75b1299dcec652fd1c650049e72c4f26c9f5acf0d88ee5e48fe"}
+{"label": "policy-loaded-02-close", "command": ["cargo", "test", "-p", "bbt-mux", "-p", "bbt-supervisor", "--lib", "--locked", "close_", "--", "--nocapture"], "exit": 0, "runner_seconds": 1.1267587919719517, "results": ["test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out; finished in 0.03s", "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 51 filtered out; finished in 0.00s"], "log_sha256": "692ebcc989d867e9881853bfe76b6f5ccd49948be67be64c1bdea478bf0bad96"}
+{"label": "policy-loaded-02-pending", "command": ["cargo", "test", "-p", "bbt-mux", "--lib", "--locked", "pending_tests", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.935999792010989, "results": ["test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 126 filtered out; finished in 0.01s"], "log_sha256": "6f1449d8ac37748f084be505ab91770319a15c7390335203fea20f983a1c329f"}
+{"label": "policy-loaded-03-close", "command": ["cargo", "test", "-p", "bbt-mux", "-p", "bbt-supervisor", "--lib", "--locked", "close_", "--", "--nocapture"], "exit": 0, "runner_seconds": 1.0974944169865921, "results": ["test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out; finished in 0.01s", "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 51 filtered out; finished in 0.00s"], "log_sha256": "3b92e86634a3df28f689f2e93ff9de78bf78f98a6de50b3a64f4b1d6db97ca4f"}
+{"label": "policy-loaded-03-pending", "command": ["cargo", "test", "-p", "bbt-mux", "--lib", "--locked", "pending_tests", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.9077251249691471, "results": ["test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 126 filtered out; finished in 0.01s"], "log_sha256": "3748bd8d30408942d0b25cda26bea8dca31ee56d2789b894eafeb63307a35118"}
+{"label": "policy-loaded-04-close", "command": ["cargo", "test", "-p", "bbt-mux", "-p", "bbt-supervisor", "--lib", "--locked", "close_", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.5929375840350986, "results": ["test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out; finished in 0.00s", "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 51 filtered out; finished in 0.00s"], "log_sha256": "87f2241a4096dbb98aa427e79d064b29474c771b6532393519c8ff9c0deb111f"}
+{"label": "policy-loaded-04-pending", "command": ["cargo", "test", "-p", "bbt-mux", "--lib", "--locked", "pending_tests", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.741980999999214, "results": ["test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 126 filtered out; finished in 0.01s"], "log_sha256": "fae7145ffebe8e5ebb873d6452864bfcabc937c28fc0805749895a54e80f4722"}
+{"label": "policy-loaded-05-close", "command": ["cargo", "test", "-p", "bbt-mux", "-p", "bbt-supervisor", "--lib", "--locked", "close_", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.6508602079702541, "results": ["test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out; finished in 0.00s", "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 51 filtered out; finished in 0.00s"], "log_sha256": "4aee56679565e2a9ff4aace2d55ae724f7f61037513a24ad38eba9150dbac8b8"}
+{"label": "policy-loaded-05-pending", "command": ["cargo", "test", "-p", "bbt-mux", "--lib", "--locked", "pending_tests", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.6453760829754174, "results": ["test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 126 filtered out; finished in 0.01s"], "log_sha256": "b07f14313543901deb837b075fceb4345f6a61073e21d73a6539dac21795e47f"}
+{"label": "policy-loaded-06-close", "command": ["cargo", "test", "-p", "bbt-mux", "-p", "bbt-supervisor", "--lib", "--locked", "close_", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.5635484579834156, "results": ["test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out; finished in 0.00s", "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 51 filtered out; finished in 0.00s"], "log_sha256": "3ef75855d0b1afc5b7de1e0613a2e3ea58fec25cef95587fdd8071318ae43e5e"}
+{"label": "policy-loaded-06-pending", "command": ["cargo", "test", "-p", "bbt-mux", "--lib", "--locked", "pending_tests", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.6294835840235464, "results": ["test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 126 filtered out; finished in 0.01s"], "log_sha256": "487c39a77f6acaea3ccff1db32351aa1db8cb48ead1ce47986e262a02ba73895"}
+{"label": "policy-loaded-07-close", "command": ["cargo", "test", "-p", "bbt-mux", "-p", "bbt-supervisor", "--lib", "--locked", "close_", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.6671555409557186, "results": ["test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out; finished in 0.00s", "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 51 filtered out; finished in 0.00s"], "log_sha256": "5e6e24904155f23609ba9b865c23bde70755c8e5342c92a16c6ef6be8792c73a"}
+{"label": "policy-loaded-07-pending", "command": ["cargo", "test", "-p", "bbt-mux", "--lib", "--locked", "pending_tests", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.7596502079977654, "results": ["test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 126 filtered out; finished in 0.01s"], "log_sha256": "4188c63d3e9fef6292f93c53d4be7998dcd8e1f754a7c55b1d3606783501cef1"}
+{"label": "policy-loaded-08-close", "command": ["cargo", "test", "-p", "bbt-mux", "-p", "bbt-supervisor", "--lib", "--locked", "close_", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.5157502919901162, "results": ["test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out; finished in 0.00s", "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 51 filtered out; finished in 0.00s"], "log_sha256": "c9938ed98ab262d01d246f7e705e2800ffed46a1e67f4ea7909a9a09467198a6"}
+{"label": "policy-loaded-08-pending", "command": ["cargo", "test", "-p", "bbt-mux", "--lib", "--locked", "pending_tests", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.7901776250218973, "results": ["test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 126 filtered out; finished in 0.01s"], "log_sha256": "95c28a97564718a225635dc94fb7e62cb3fb89d7a405d2a5fc85f72f4341440e"}
+{"label": "policy-loaded-09-close", "command": ["cargo", "test", "-p", "bbt-mux", "-p", "bbt-supervisor", "--lib", "--locked", "close_", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.6231834170175716, "results": ["test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out; finished in 0.01s", "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 51 filtered out; finished in 0.00s"], "log_sha256": "dc8f12b92b74f1b17dd58bec9594cfec20259affe613dddeb6edc5eb5d028b45"}
+{"label": "policy-loaded-09-pending", "command": ["cargo", "test", "-p", "bbt-mux", "--lib", "--locked", "pending_tests", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.6101717500132509, "results": ["test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 126 filtered out; finished in 0.01s"], "log_sha256": "2d3f8c2d138b53408fed0c34cf6c1b3c3b100dba16a7cbd73c0d98856cf9b5ba"}
+{"label": "policy-loaded-10-close", "command": ["cargo", "test", "-p", "bbt-mux", "-p", "bbt-supervisor", "--lib", "--locked", "close_", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.6822958330158144, "results": ["test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out; finished in 0.00s", "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 51 filtered out; finished in 0.00s"], "log_sha256": "f41f67ab4fcb12097a140b89390e88ab29d1138c1a111ad842400bd93e6d591e"}
+{"label": "policy-loaded-10-pending", "command": ["cargo", "test", "-p", "bbt-mux", "--lib", "--locked", "pending_tests", "--", "--nocapture"], "exit": 0, "runner_seconds": 0.8021007499773987, "results": ["test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 126 filtered out; finished in 0.01s"], "log_sha256": "4beded25b91c796d80d58e15bddab5ad719c92e17c4096681538ad7db81443f8"}
+
+Strict precheck: cargo clippy --workspace --all-targets --locked -- -D warnings — EXIT 0, runner 99.269521917 s; raw log SHA256 ed2ac3cce44f6a73304ac6f1faab9563d30f26ecaaa46d6cd234ae9e81405244.
+
+Authoritative after inventory: cargo test -p bbt-mux --locked -- --list — EXIT 0; 378 cases / 34 binaries; all 363 original cases still listed. Four new mux unit tests belong to this cut; the other eleven additions are accepted P-1 plugin_registry cases from the rebase, not attributed to this cut. Raw inventory SHA256 183845cecd72d12a4c43dea8b67386240fb0f0e7366c4ccb8955c8997064a8df.

@@ -7389,30 +7389,18 @@ impl Worker {
                     Command::Undo(id, generation, revision, layout_revision, reply) => {
                         let result = (|| {
                             let record = self.registry.get(id)?;
-                            let close = record
-                                .close
-                                .as_ref()
-                                .ok_or_else(|| invalid("no close record"))?;
-                            if record.generation != generation
-                                || close.position.layout_revision != layout_revision
-                                || close.revision != revision
-                            {
-                                return Err(invalid("layout/close revision conflict"));
-                            }
-                            if record.lifecycle == Lifecycle::Open
-                                && record.lifecycle_revision == revision.saturating_add(1)
-                            {
-                                if self
-                                    .views
+                            if let Some(position) = restored_close_position(
+                                &record,
+                                generation,
+                                revision,
+                                layout_revision,
+                                self.views
                                     .get(&id)
-                                    .is_none_or(|view| view.info.exited.is_some())
-                                {
-                                    return Err(invalid("process exited"));
-                                }
-                                // The matching undo already committed. Replaying
-                                // its ID returns the same restoration handle.
-                                return Ok(close.position.clone());
+                                    .is_some_and(|view| view.info.exited.is_none()),
+                            )? {
+                                return Ok(position);
                             }
+                            let close = record.close.as_ref().expect("validated close record");
                             let attachment = self
                                 .attachments
                                 .get(&id)
@@ -7770,6 +7758,35 @@ fn row_text(cells: &[bbt_core::Cell]) -> String {
     text
 }
 
+// The close reply's restoration handle is valid only for the same live process.
+fn restored_close_position(
+    record: &SeatRecord,
+    generation: u64,
+    revision: u64,
+    layout_revision: u64,
+    process_live: bool,
+) -> Result<Option<crate::registry::Position>> {
+    let close = record
+        .close
+        .as_ref()
+        .ok_or_else(|| invalid("no close record"))?;
+    if record.generation != generation
+        || close.position.layout_revision != layout_revision
+        || close.revision != revision
+    {
+        return Err(invalid("layout/close revision conflict"));
+    }
+    if record.lifecycle == Lifecycle::Open
+        && record.lifecycle_revision == revision.saturating_add(1)
+    {
+        if !process_live {
+            return Err(invalid("process exited"));
+        }
+        return Ok(Some(close.position.clone()));
+    }
+    Ok(None)
+}
+
 #[cfg(test)]
 mod pending_tests {
     use super::*;
@@ -7990,6 +8007,7 @@ mod pending_tests {
         assert_eq!(pending.seats.len(), 4);
         assert_eq!(pending.ready_len(), 4);
     }
+    // keeps: invariant no-chokepoints (bounded captured backlog, order, Exit-last)
     #[test]
     fn pending_notifications_stay_bounded_and_preserve_resize_and_exit_order() {
         let mut pending = PendingSeats::default();
@@ -8043,6 +8061,45 @@ mod pending_tests {
         assert_eq!(sequences, [1, 10_001, 20_000, 20_001]);
         assert!(pending.is_empty());
     }
+    // keeps: invariant no-chokepoints (raw cap is separate from captured spans)
+    #[test]
+    fn raw_backlog_cap_preserves_fifo_while_captured_output_coalesces_until_exit() {
+        let raw = Ulid::from(1);
+        let captured = Ulid::from(2);
+        let mut pending = bbt_supervisor::client::PendingEvents::default();
+        pending.confirm_ring(captured, 1, 1).unwrap();
+        for seq in 1..=1024 {
+            pending.push(output(raw, 1, seq)).unwrap();
+        }
+        for seq in 1..=10_000 {
+            pending.push(output(captured, 1, seq)).unwrap();
+        }
+        let refused = pending.push(output(raw, 1, 1025)).unwrap_err();
+        assert_eq!(
+            refused.downcast_ref::<std::io::Error>().unwrap().kind(),
+            std::io::ErrorKind::InvalidData
+        );
+        pending
+            .push(Event::Exited {
+                seat: captured,
+                generation: 1,
+                seq: 10_001,
+                status: crate::protocol::ExitInfo {
+                    code: 0,
+                    signal: None,
+                },
+            })
+            .unwrap();
+        for seq in 1..=1024 {
+            assert_eq!(pending.pop_front(), Some(output(raw, 1, seq)));
+        }
+        assert_eq!(pending.pop_front(), Some(output(captured, 1, 10_000)));
+        assert!(matches!(
+            pending.pop_front(),
+            Some(Event::Exited { seq: 10_001, .. })
+        ));
+        assert!(pending.pop_front().is_none());
+    }
     #[test]
     fn replacement_generation_discards_only_the_old_generation_work() {
         let mut pending = PendingSeats::default();
@@ -8087,5 +8144,50 @@ mod pending_tests {
         assert_eq!(event.sequence(), Some(1000));
         pending.finish(key, true);
         assert!(pending.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod close_restoration_tests {
+    use super::*;
+    use crate::registry::Position;
+    // keeps: spec c1-live-seats §4 (idempotent undo is generation/liveness bound)
+    #[test]
+    fn undo_restores_the_exact_position_once_and_refuses_stale_process_handles() {
+        let mut record = SeatRecord::new(Ulid::new(), Ulid::new(), "close fixture", "zsh");
+        let position = Position {
+            swarm: record.swarm,
+            tab: Ulid::new(),
+            split_path: vec![1, 0],
+            ratios: vec![0.35, 0.65],
+            layout_revision: 7,
+        };
+        record.lifecycle = Lifecycle::ClosedGrace;
+        record.lifecycle_revision = 1;
+        record.close = Some(crate::registry::CloseRecord {
+            operation: Ulid::new(),
+            revision: 1,
+            deadline_ms: 60_000,
+            position: position.clone(),
+        });
+        assert_eq!(
+            restored_close_position(&record, 1, 1, 7, true).unwrap(),
+            None
+        );
+        assert!(restored_close_position(&record, 1, 1, 8, true).is_err());
+        assert!(restored_close_position(&record, 1, 2, 7, true).is_err());
+        assert!(restored_close_position(&record, 2, 1, 7, true).is_err());
+        record.lifecycle = Lifecycle::Open;
+        record.lifecycle_revision = 2;
+        for _ in 0..2 {
+            assert_eq!(
+                restored_close_position(&record, 1, 1, 7, true).unwrap(),
+                Some(position.clone())
+            );
+        }
+        assert!(restored_close_position(&record, 1, 1, 7, false).is_err());
+        record.generation = 2;
+        record.close = None;
+        assert!(restored_close_position(&record, 2, 1, 7, true).is_err());
     }
 }

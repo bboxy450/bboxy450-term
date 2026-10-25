@@ -148,3 +148,116 @@ impl Registry {
         })
     }
 }
+
+#[cfg(test)]
+mod close_policy_tests {
+    use super::*;
+    use std::time::Duration;
+
+    // keeps: spec c1-live-seats §4 (durable close/undo, exact grace and Position)
+    #[tokio::test(start_paused = true)]
+    async fn close_keeps_its_deadline_and_position_across_reopen_and_checks_revisions() {
+        let temp = tempfile::tempdir().unwrap();
+        let registry = Registry::new(SqliteStore::open(temp.path()).unwrap());
+        let mut record = SeatRecord::new(Ulid::new(), Ulid::new(), "fixture", "zsh");
+        record.harness_session_id = Some("same-process-session".into());
+        registry.insert(&record).unwrap();
+        let position = Position {
+            swarm: record.swarm,
+            tab: Ulid::new(),
+            split_path: vec![1, 0],
+            ratios: vec![0.35, 0.65],
+            layout_revision: 7,
+        };
+        let origin = tokio::time::Instant::now();
+        let now = || 1_000 + (tokio::time::Instant::now() - origin).as_millis() as u64;
+        let operation = Ulid::new();
+        let close = registry
+            .close(record.id, 1, operation, position.clone(), now(), 60_000)
+            .unwrap();
+        assert_eq!(close.deadline_ms, 61_000);
+        assert_eq!(close.operation, operation);
+        assert_eq!(close.position, position);
+        assert_eq!(
+            registry.get(record.id).unwrap().lifecycle,
+            Lifecycle::ClosedGrace
+        );
+        tokio::time::advance(Duration::from_secs(30)).await;
+        assert_eq!(
+            registry
+                .close(record.id, 1, operation, position.clone(), now(), 60_000)
+                .unwrap(),
+            close
+        );
+        let registry = Registry::new(SqliteStore::open(temp.path()).unwrap());
+        assert_eq!(registry.get(record.id).unwrap().close, Some(close.clone()));
+        assert!(
+            registry
+                .undo(record.id, 1, close.revision, 8, now())
+                .is_err()
+        );
+        assert!(
+            registry
+                .undo(record.id, 2, close.revision, 7, now())
+                .is_err()
+        );
+        assert!(
+            registry
+                .undo(record.id, 1, close.revision + 1, 7, now())
+                .is_err()
+        );
+        assert_eq!(
+            registry.get(record.id).unwrap().lifecycle,
+            Lifecycle::ClosedGrace
+        );
+        assert_eq!(
+            registry
+                .undo(record.id, 1, close.revision, 7, now())
+                .unwrap(),
+            position
+        );
+        let restored = registry.get(record.id).unwrap();
+        assert_eq!(restored.lifecycle, Lifecycle::Open);
+        assert_eq!(restored.generation, 1);
+        assert_eq!(restored.harness_session_id, record.harness_session_id);
+        assert_eq!(restored.close, Some(close));
+    }
+
+    // keeps: invariant restart-keeps-state (retained close survives reopening)
+    #[tokio::test(start_paused = true)]
+    async fn expired_undo_is_refused_and_only_the_exit_receipt_makes_the_seat_retained() {
+        let temp = tempfile::tempdir().unwrap();
+        let registry = Registry::new(SqliteStore::open(temp.path()).unwrap());
+        let record = SeatRecord::new(Ulid::new(), Ulid::new(), "fixture", "zsh");
+        registry.insert(&record).unwrap();
+        let position = Position {
+            swarm: record.swarm,
+            tab: Ulid::new(),
+            split_path: vec![1, 0],
+            ratios: vec![0.35, 0.65],
+            layout_revision: 7,
+        };
+        let origin = tokio::time::Instant::now();
+        let close = registry
+            .close(record.id, 1, Ulid::new(), position, 0, 60_000)
+            .unwrap();
+        tokio::time::advance(Duration::from_secs(60)).await;
+        let elapsed = (tokio::time::Instant::now() - origin).as_millis() as u64;
+        assert!(
+            registry
+                .undo(record.id, 1, close.revision, 7, elapsed)
+                .is_err()
+        );
+        assert_eq!(
+            registry.get(record.id).unwrap().lifecycle,
+            Lifecycle::ClosedGrace
+        );
+        registry.exited(record.id, 1).unwrap();
+        let registry = Registry::new(SqliteStore::open(temp.path()).unwrap());
+        let retained = registry.get(record.id).unwrap();
+        assert_eq!(retained.lifecycle, Lifecycle::ClosedRetained);
+        assert_eq!(retained.generation, 1);
+        assert_eq!(retained.close, Some(close));
+        assert!(registry.undo(record.id, 1, 1, 7, elapsed).is_err());
+    }
+}

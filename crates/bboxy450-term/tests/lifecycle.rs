@@ -258,7 +258,6 @@ impl Observer {
     }
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position() {
     let root = tempfile::Builder::new()
         .prefix("c1c-close-")
@@ -444,7 +443,6 @@ async fn gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_p
     );
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn gui_history_is_lazy_bounded_capture_pages_with_ordered_gaps_and_control_cursors() {
     let root = tempfile::Builder::new()
         .prefix("c1c-history-")
@@ -583,7 +581,6 @@ async fn gui_history_is_lazy_bounded_capture_pages_with_ordered_gaps_and_control
     );
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it() {
     let root = tempfile::Builder::new()
         .prefix("c1c-expiry-")
@@ -682,4 +679,14 @@ async fn gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_re
     println!(
         "expiry: original60s deadline survived logicSIGKILL, supervisor reaped PID {old_pid}, no new generation/process, retained history and explicit expired undo"
     );
+}
+
+// keeps: invariant restart-keeps-state (seat/close history boundary, not full RS1)
+// keeps: spec c1-live-seats §4 (all original GUI lifecycle/history assertions)
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "night-only real process boundary; scripts/night-test-boundaries.sh"]
+async fn lifecycle_real_process_boundary() {
+    gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position().await;
+    gui_history_is_lazy_bounded_capture_pages_with_ordered_gaps_and_control_cursors().await;
+    gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it().await;
 }

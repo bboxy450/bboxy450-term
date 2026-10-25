@@ -593,6 +593,88 @@ fn diagnostic_outcome<T>(result: &Result<T, Failure>) -> capture_diagnostics::Ou
 #[cfg(not(target_os = "macos"))]
 const CHILD_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
+// Pure close policy; the actor supplies its production clocks and liveness.
+// Tests advance those clock samples in-process without a PTY or a real wait.
+#[derive(Default)]
+struct CloseState {
+    grace: Option<(Ulid, Instant)>,
+    ids: HashMap<Ulid, (u64, bool)>,
+}
+impl CloseState {
+    fn schedule(
+        &mut self,
+        close_id: Ulid,
+        deadline_ms: u64,
+        live: Result<(), Failure>,
+        now_ms: u64,
+        now: Instant,
+    ) -> Result<Reply, Failure> {
+        if let Some((deadline, canceled)) = self.ids.get(&close_id) {
+            if *canceled || *deadline != deadline_ms {
+                return Err(Failure::new(
+                    FailureCode::Invalid,
+                    "close id was canceled or conflicts",
+                ));
+            }
+            return Ok(Reply::CloseScheduled {
+                close_id,
+                deadline_ms: *deadline,
+            });
+        }
+        live?;
+        if close_id == Ulid::nil()
+            || deadline_ms.saturating_sub(now_ms) > 86_400_000
+            || self.ids.len() >= 4096
+            || self.grace.is_some()
+        {
+            return Err(Failure::new(
+                FailureCode::Invalid,
+                "invalid or conflicting close",
+            ));
+        }
+        self.grace = Some((
+            close_id,
+            now + Duration::from_millis(deadline_ms.saturating_sub(now_ms)),
+        ));
+        self.ids.insert(close_id, (deadline_ms, false));
+        Ok(Reply::CloseScheduled {
+            close_id,
+            deadline_ms,
+        })
+    }
+    fn undo(
+        &mut self,
+        close_id: Ulid,
+        live: Result<(), Failure>,
+        now: Instant,
+    ) -> Result<Reply, Failure> {
+        if self
+            .ids
+            .get(&close_id)
+            .is_some_and(|(_, canceled)| *canceled)
+        {
+            return Ok(Reply::CloseUndone { close_id });
+        }
+        live?;
+        match self.grace {
+            Some((id, deadline)) if id == close_id && now < deadline => {
+                self.grace = None;
+                if let Some((_, canceled)) = self.ids.get_mut(&close_id) {
+                    *canceled = true;
+                }
+                Ok(Reply::CloseUndone { close_id })
+            }
+            _ => Err(Failure::new(
+                FailureCode::Exited,
+                "close expired or revision changed",
+            )),
+        }
+    }
+    fn expired(&self, now: Instant) -> bool {
+        self.grace.is_some_and(|(_, deadline)| now >= deadline)
+    }
+}
+
 pub struct Config {
     /// None is the v0.1 in-process transport; Some enables the same protocol on Unix IPC.
     pub socket_path: Option<PathBuf>,
@@ -1738,39 +1820,14 @@ impl Actor {
             } => {
                 let seat = self.seat_mut(attachment.seat, attachment.generation)?;
                 seat.check_writer(client, &attachment)?;
-                if let Some((deadline, canceled)) = seat.close_ids.get(&close_id) {
-                    if *canceled || *deadline != deadline_ms {
-                        return Err(Failure::new(
-                            FailureCode::Invalid,
-                            "close id was canceled or conflicts",
-                        ));
-                    }
-                    return Ok(Reply::CloseScheduled {
-                        close_id,
-                        deadline_ms: *deadline,
-                    });
-                }
-                seat.check_live()?;
-                let now = crate::store::now_ms();
-                if close_id == Ulid::nil()
-                    || deadline_ms.saturating_sub(now) > 86_400_000
-                    || seat.close_ids.len() >= 4096
-                    || seat.grace.is_some()
-                {
-                    return Err(Failure::new(
-                        FailureCode::Invalid,
-                        "invalid or conflicting close",
-                    ));
-                }
-                seat.grace = Some((
-                    close_id,
-                    Instant::now() + Duration::from_millis(deadline_ms.saturating_sub(now)),
-                ));
-                seat.close_ids.insert(close_id, (deadline_ms, false));
-                Ok(Reply::CloseScheduled {
+                let live = seat.check_live();
+                seat.closing.schedule(
                     close_id,
                     deadline_ms,
-                })
+                    live,
+                    crate::store::now_ms(),
+                    Instant::now(),
+                )
             }
             Action::UndoClose {
                 attachment,
@@ -1778,27 +1835,8 @@ impl Actor {
             } => {
                 let seat = self.seat_mut(attachment.seat, attachment.generation)?;
                 seat.check_writer(client, &attachment)?;
-                if seat
-                    .close_ids
-                    .get(&close_id)
-                    .is_some_and(|(_, canceled)| *canceled)
-                {
-                    return Ok(Reply::CloseUndone { close_id });
-                }
-                seat.check_live()?;
-                match seat.grace {
-                    Some((id, deadline)) if id == close_id && Instant::now() < deadline => {
-                        seat.grace = None;
-                        if let Some((_, canceled)) = seat.close_ids.get_mut(&close_id) {
-                            *canceled = true;
-                        }
-                        Ok(Reply::CloseUndone { close_id })
-                    }
-                    _ => Err(Failure::new(
-                        FailureCode::Exited,
-                        "close expired or revision changed",
-                    )),
-                }
+                let live = seat.check_live();
+                seat.closing.undo(close_id, live, Instant::now())
             }
         }
     }
@@ -2077,8 +2115,7 @@ struct Seat {
     exit_published: bool,
     terminate_at: Option<Instant>,
     termination_escalated: bool,
-    grace: Option<(Ulid, Instant)>,
-    close_ids: HashMap<Ulid, (u64, bool)>,
+    closing: CloseState,
     ring: Option<CaptureHandle>,
 }
 
@@ -2141,8 +2178,7 @@ impl Seat {
             exit_published: false,
             terminate_at: None,
             termination_escalated: false,
-            grace: None,
-            close_ids: HashMap::new(),
+            closing: CloseState::default(),
             ring: None,
         })
     }
@@ -2420,9 +2456,7 @@ impl Seat {
     fn tick(&mut self, actor: &mut Actor) -> io::Result<()> {
         if self.exited.is_none()
             && self.terminate_at.is_none()
-            && self
-                .grace
-                .is_some_and(|(_, deadline)| Instant::now() >= deadline)
+            && self.closing.expired(Instant::now())
         {
             signal(self.pid, libc::SIGHUP).map_err(io::Error::other)?;
             self.terminate_at = Some(Instant::now() + Duration::from_millis(250));
@@ -3504,5 +3538,151 @@ mod capture_read_tests {
                 matches!(&history.records[1].event, Event::Exited { status, .. } if status.signal.is_some())
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod close_policy_tests {
+    use super::*;
+
+    fn gone() -> Result<(), Failure> {
+        Err(Failure::new(FailureCode::Exited, "fixture process exited"))
+    }
+
+    // keeps: spec c1-live-seats §4 (real sixty-second grace, no real sleep)
+    #[tokio::test(start_paused = true)]
+    async fn grace_expires_at_sixty_seconds_and_undo_is_refused_at_the_boundary() {
+        let mut close = CloseState::default();
+        let id = Ulid::new();
+        let origin = tokio::time::Instant::now();
+        assert!(matches!(
+            close
+                .schedule(id, 61_000, Ok(()), 1_000, origin.into_std())
+                .unwrap(),
+            Reply::CloseScheduled {
+                deadline_ms: 61_000,
+                ..
+            }
+        ));
+        tokio::time::advance(Duration::from_millis(59_999)).await;
+        assert!(!close.expired(tokio::time::Instant::now().into_std()));
+        assert_eq!(
+            close
+                .undo(Ulid::new(), Ok(()), tokio::time::Instant::now().into_std())
+                .unwrap_err()
+                .code,
+            FailureCode::Exited
+        );
+        tokio::time::advance(Duration::from_millis(1)).await;
+        assert!(close.expired(tokio::time::Instant::now().into_std()));
+        assert_eq!(
+            close
+                .undo(id, Ok(()), tokio::time::Instant::now().into_std())
+                .unwrap_err()
+                .code,
+            FailureCode::Exited
+        );
+        // Nothing in expiry consults a logic actor; its absence cannot reset it.
+        assert!(matches!(
+            close
+                .schedule(
+                    id,
+                    61_000,
+                    gone(),
+                    61_000,
+                    tokio::time::Instant::now().into_std()
+                )
+                .unwrap(),
+            Reply::CloseScheduled {
+                deadline_ms: 61_000,
+                ..
+            }
+        ));
+        assert!(close.expired(tokio::time::Instant::now().into_std()));
+    }
+
+    // keeps: spec c1-live-seats §4 (idempotent close/undo and conflicting IDs)
+    #[tokio::test(start_paused = true)]
+    async fn retry_keeps_the_original_deadline_and_undo_cancels_it_once() {
+        let mut close = CloseState::default();
+        let id = Ulid::new();
+        close
+            .schedule(
+                id,
+                60_000,
+                Ok(()),
+                0,
+                tokio::time::Instant::now().into_std(),
+            )
+            .unwrap();
+        tokio::time::advance(Duration::from_secs(30)).await;
+        assert!(matches!(
+            close
+                .schedule(
+                    id,
+                    60_000,
+                    Ok(()),
+                    30_000,
+                    tokio::time::Instant::now().into_std()
+                )
+                .unwrap(),
+            Reply::CloseScheduled {
+                deadline_ms: 60_000,
+                ..
+            }
+        ));
+        assert_eq!(
+            close
+                .schedule(
+                    id,
+                    90_000,
+                    Ok(()),
+                    30_000,
+                    tokio::time::Instant::now().into_std()
+                )
+                .unwrap_err()
+                .code,
+            FailureCode::Invalid
+        );
+        assert_eq!(
+            close
+                .schedule(
+                    Ulid::new(),
+                    60_000,
+                    Ok(()),
+                    30_000,
+                    tokio::time::Instant::now().into_std()
+                )
+                .unwrap_err()
+                .code,
+            FailureCode::Invalid
+        );
+        assert!(matches!(
+            close
+                .undo(id, Ok(()), tokio::time::Instant::now().into_std())
+                .unwrap(),
+            Reply::CloseUndone { .. }
+        ));
+        tokio::time::advance(Duration::from_secs(60)).await;
+        assert!(!close.expired(tokio::time::Instant::now().into_std()));
+        assert!(matches!(
+            close
+                .undo(id, gone(), tokio::time::Instant::now().into_std())
+                .unwrap(),
+            Reply::CloseUndone { .. }
+        ));
+        assert_eq!(
+            close
+                .schedule(
+                    id,
+                    60_000,
+                    Ok(()),
+                    90_000,
+                    tokio::time::Instant::now().into_std()
+                )
+                .unwrap_err()
+                .code,
+            FailureCode::Invalid
+        );
     }
 }

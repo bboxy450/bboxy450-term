@@ -104,8 +104,10 @@ impl SupervisorConnection for RequestFlood {
     }
 }
 
+// keeps: invariant no-chokepoints (capture/replay continues during a request flood)
 // keeps: spec mux-daemon §Acceptance and remaining decisions (ordered ring replay)
 #[test]
+#[ignore = "night-only real socket boundary; scripts/night-test-boundaries.sh"]
 fn socket_request_flood_replays_exact_output_and_delivers_exit_to_logic() {
     let root = tempfile::Builder::new()
         .prefix("w12g-replay-")
