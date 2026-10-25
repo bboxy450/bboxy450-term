@@ -397,7 +397,7 @@ impl Index {
                 payload,
             ));
             let mut db = self.store.connection()?;
-            let tx = db.transaction()?;
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
             tx.execute(
                 "INSERT INTO kv VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                 rusqlite::params![format!("doc/{relative}"), serde_json::to_vec(&doc)?],
@@ -433,7 +433,7 @@ impl Index {
                     json!({"path":path}),
                 ));
                 let mut db = self.store.connection()?;
-                let tx = db.transaction()?;
+                let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
                 tx.execute("DELETE FROM kv WHERE key=?1", [format!("doc/{path}")])?;
                 for event in &events[event_start..] {
                     tx.execute(

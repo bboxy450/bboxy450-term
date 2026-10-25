@@ -753,7 +753,7 @@ impl Stream {
     }
     fn ack(&mut self, id: &str, sequence: u64) -> Result<()> {
         let mut db = sqlite::open(&self.log.path)?;
-        let tx = db.transaction()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         if tx.execute(
             "DELETE FROM pending WHERE consumer=?1 AND seq=?2 AND deliveries>0",
             params![id, sqlint(sequence)?],
@@ -1524,7 +1524,7 @@ impl Broker {
     pub fn unsubscribe(&mut self, id: &str) -> Result<()> {
         for stream in self.streams.values_mut() {
             let mut db = sqlite::open(&stream.log.path)?;
-            let tx = db.transaction()?;
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
             tx.execute("DELETE FROM pending WHERE consumer=?1", [id])?;
             tx.execute("DELETE FROM consumers WHERE name=?1", [id])?;
             tx.commit()?;
