@@ -256,6 +256,9 @@ pub(crate) struct GuiPage {
     pub cursor: GuiCursor,
 }
 
+/// Detached browse result: filtered events, next page, last scanned sequence.
+pub(crate) type RetainedPage = (Vec<Envelope>, Option<u64>, u64);
+
 struct Stream {
     name: String,
     log: EventLog,
@@ -1339,7 +1342,7 @@ impl Broker {
         filter: &[String],
         after: u64,
         limit: usize,
-    ) -> Result<(Vec<Envelope>, Option<u64>, u64)> {
+    ) -> Result<RetainedPage> {
         let Some(stream) = self.streams.get(name) else {
             return Ok((vec![], None, after));
         };
@@ -1362,21 +1365,29 @@ impl Broker {
         let full = rows.len() == limit;
         let mut through = after;
         let mut events = Vec::new();
+        let mut used = 0usize;
+        let mut byte_limited = false;
         for (sequence, length, subject) in rows {
-            through = sequence;
             // The operator's own lane filter; an event too large for one page is skipped
             // and stays retained, as on the window's pages.
             if !filter.iter().any(|p| matches(p, &subject)) || length > 64 * 1024 {
+                through = sequence;
                 continue;
+            }
+            if used + length as usize > crate::gui_events::PAGE_BYTES - 2048 {
+                byte_limited = true;
+                break;
             }
             let envelope = stream
                 .log
                 .at(sequence)?
                 .ok_or_else(|| invalid("retained event missing"))?;
             envelope.verify()?;
+            used += length as usize;
+            through = sequence;
             events.push(envelope);
         }
-        Ok((events, full.then_some(through), through))
+        Ok((events, (full || byte_limited).then_some(through), through))
     }
     fn gui_page(
         &self,
@@ -1552,7 +1563,7 @@ enum Command {
         Vec<String>,
         u64,
         usize,
-        oneshot::Sender<Result<(Vec<Envelope>, Option<u64>, u64)>>,
+        oneshot::Sender<Result<RetainedPage>>,
     ),
     ReadStreams(oneshot::Sender<Vec<String>>),
     GuiPage(
@@ -1811,7 +1822,7 @@ impl BusHandle {
         filter: Vec<String>,
         after: u64,
         limit: usize,
-    ) -> Result<(Vec<Envelope>, Option<u64>, u64)> {
+    ) -> Result<RetainedPage> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::ReadPage(stream.into(), filter, after, limit, tx))
@@ -1932,6 +1943,35 @@ mod gui_tests {
         assert!(rows.is_empty());
         assert_eq!(next, None);
         assert_eq!(through, 2);
+    }
+
+    #[test]
+    fn retained_read_byte_pages_resume_without_losing_large_events() {
+        let fixture = Fixture::new();
+        let mut broker = fixture.open();
+        for _ in 0..12 {
+            let mut row = event("activity/large");
+            row.payload = serde_json::json!({"text":"x".repeat(30_000)});
+            broker.publish("index", row).unwrap();
+        }
+        let (mut after, mut seen, mut pages) = (0, Vec::new(), 0);
+        loop {
+            let (rows, next, through) = broker
+                .read_page("index", &["activity/>".into()], after, 128)
+                .unwrap();
+            assert!(serde_json::to_vec(&rows).unwrap().len() < crate::gui_events::PAGE_BYTES);
+            seen.extend(rows.into_iter().map(|e| e.seq));
+            after = through;
+            pages += 1;
+            if next.is_none() {
+                break;
+            }
+            assert_eq!(next, Some(after));
+            assert!(pages < 10, "retained page did not converge");
+        }
+        assert!(pages > 1, "fixture did not exceed the byte budget");
+        assert_eq!(seen, (1..=12).collect::<Vec<_>>());
+        assert_eq!(after, 12);
     }
 
     struct Fixture(PathBuf);

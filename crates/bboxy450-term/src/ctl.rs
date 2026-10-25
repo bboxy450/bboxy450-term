@@ -376,9 +376,19 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
         } else if arg == "--unattended" {
             unattended = true;
         } else if let Some(flag) = arg.strip_prefix("--") {
-            let value = it
-                .next()
-                .ok_or(format!("{USAGE_PREFIX}--{flag} needs a value"))?;
+            let value = it.next().ok_or_else(|| {
+                // Keep deprecated flat-form failures unchanged. The new read
+                // grammar reports malformed flags as its named usage error.
+                let prefix = if words
+                    .first()
+                    .is_some_and(|s: &String| matches!(s.as_str(), "record" | "events"))
+                {
+                    USAGE_PREFIX
+                } else {
+                    ""
+                };
+                format!("{prefix}--{flag} needs a value")
+            })?;
             match flag {
                 "endpoint" => endpoint = Some(PathBuf::from(value)),
                 // --run-dir finds the endpoint as BBOXY_RUN_DIR does (#260).
