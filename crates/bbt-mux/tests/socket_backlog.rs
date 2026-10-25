@@ -29,7 +29,15 @@ impl SupervisorConnection for RequestFlood {
         let reply = self.client.request(action).inspect_err(|error| {
             eprintln!("socket backlog supervisor request {kind:?} failed: {error:?}");
         })?;
-        if let Reply::RingHistory { history } = &reply {
+        let histories: Vec<_> = match &reply {
+            Reply::RingHistory { history } => vec![history.as_ref()],
+            Reply::RingHistoryBatch { results } => results
+                .iter()
+                .filter_map(|row| row.result.as_deref().ok())
+                .collect(),
+            _ => vec![],
+        };
+        for history in histories {
             self.replayed
                 .fetch_add(history.records.len() as u64, Ordering::Release);
             if let Some(sequence) = history.records.last().and_then(|r| r.event.sequence()) {

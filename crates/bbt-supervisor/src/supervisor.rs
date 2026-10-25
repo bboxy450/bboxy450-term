@@ -909,6 +909,8 @@ struct PendingIo {
 }
 
 struct PendingRingRead {
+    // Refused overflow metadata uses the existing reply reserve, never an IO slot.
+    charged: bool,
     result: RingReadResult,
     response: Option<CaptureResponse>,
 }
@@ -1283,7 +1285,7 @@ impl Actor {
             + self
                 .pending_batches
                 .iter()
-                .map(|batch| batch.members.len())
+                .map(|batch| batch.members.iter().filter(|member| member.charged).count())
                 .sum::<usize>()
     }
 
@@ -1349,12 +1351,7 @@ impl Actor {
                 "batch budget cannot contain member results",
             ));
         }
-        if self.pending_capture_slots() + reads.len() > CHANNEL_CAPACITY {
-            return Err(Failure::new(
-                FailureCode::Busy,
-                "too many pending ring requests",
-            ));
-        }
+        let mut credits = CHANNEL_CAPACITY.saturating_sub(self.pending_capture_slots());
         let mut members = Vec::with_capacity(reads.len());
         let mut diagnostic = self.capture_diagnostics.start(
             capture_diagnostics::Phase::SupervisorQuery,
@@ -1367,7 +1364,17 @@ impl Actor {
         // request() only admits a query and returns its receiver. No member is
         // awaited until every member has been validated and admitted/refused.
         for (read, mut result) in reads.into_iter().zip(limits) {
+            let charged = credits > 0;
+            if charged {
+                credits -= 1;
+            }
             let response = (|| {
+                if !charged {
+                    return Err(Failure::new(
+                        FailureCode::Busy,
+                        "too many pending ring requests",
+                    ));
+                }
                 if read.from > read.to {
                     return Err(Failure::new(FailureCode::Invalid, "invalid history range"));
                 }
@@ -1388,7 +1395,11 @@ impl Actor {
                     None
                 }
             };
-            members.push(PendingRingRead { result, response });
+            members.push(PendingRingRead {
+                charged,
+                result,
+                response,
+            });
         }
         Ok(PendingRingBatch {
             client,
@@ -2887,14 +2898,17 @@ mod capture_read_tests {
             ),
             members: vec![
                 PendingRingRead {
+                    charged: true,
                     result: good,
                     response: Some(good_rx),
                 },
                 PendingRingRead {
+                    charged: true,
                     result: gone,
                     response: None,
                 },
                 PendingRingRead {
+                    charged: true,
                     result: batch_row(3, vec![]),
                     response: Some(last_rx),
                 },
@@ -3040,22 +3054,58 @@ mod capture_read_tests {
                 },
             ))
         };
-        while actor.pending_capture_slots() < CHANNEL_CAPACITY {
-            let count =
-                (CHANNEL_CAPACITY - actor.pending_capture_slots()).min(MAX_RING_BATCH_MEMBERS);
-            let batch = actor.dispatch_ring_batch(client, frame(count)).unwrap();
+        while actor.pending_capture_slots() + MAX_RING_BATCH_MEMBERS <= CHANNEL_CAPACITY {
+            let batch = actor
+                .dispatch_ring_batch(client, frame(MAX_RING_BATCH_MEMBERS))
+                .unwrap();
             actor.pending_batches.push(batch);
         }
+        assert_eq!(actor.pending_capture_slots(), 121);
+        let partial = actor
+            .dispatch_ring_batch(client, frame(MAX_RING_BATCH_MEMBERS))
+            .expect("seven free credits must admit seven leaves, not refuse the parent");
+        assert!(
+            partial.members[..7].iter().all(|member| member
+                .result
+                .result
+                .as_ref()
+                .unwrap_err()
+                .code
+                == FailureCode::NotFound)
+        );
+        assert!(
+            partial.members[7].response.is_none(),
+            "overflow dispatched a writer request"
+        );
+        assert_eq!(
+            partial.members[7].result.result.as_ref().unwrap_err().code,
+            FailureCode::Busy
+        );
+        actor.pending_batches.push(partial);
         assert_eq!(actor.pending_capture_slots(), 128);
-        let failure = actor.dispatch_ring_batch(client, frame(1)).err().unwrap();
-        assert_eq!(failure.code, FailureCode::Busy);
+        let full = actor
+            .dispatch_ring_batch(client, frame(MAX_RING_BATCH_MEMBERS))
+            .expect("a full IO queue must return per-member Busy");
+        assert!(full.members.iter().all(|member| member.response.is_none()
+            && member.result.result.as_ref().unwrap_err().code == FailureCode::Busy));
+        actor.pending_batches.push(full);
         assert_eq!(
             actor.pending_capture_slots(),
             128,
-            "refusal reserved no extra slots"
+            "unadmitted rows consumed IO credits"
         );
-        actor.pending_batches.pop();
-        assert!(actor.dispatch_ring_batch(client, frame(1)).is_ok());
+        actor.pending_batches.pop(); // The fully refused metadata-only group.
+        actor.pending_batches.pop(); // Release the seven-credit group.
+        let recovered = actor.dispatch_ring_batch(client, frame(1)).unwrap();
+        assert_eq!(
+            recovered.members[0]
+                .result
+                .result
+                .as_ref()
+                .unwrap_err()
+                .code,
+            FailureCode::NotFound
+        );
         actor.disconnect(client);
         assert_eq!(
             actor.pending_capture_slots(),
