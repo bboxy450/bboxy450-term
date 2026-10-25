@@ -10,6 +10,8 @@
 )]
 use bbt_mux::Ulid;
 mod app;
+mod events;
+mod records;
 use bbt_proto::{
     GuiAction, GuiReply, GuiRequest, GuiSeat, SpawnSpec, SwarmId, Where,
     messaging::{Request, Response, SendRequest, TaskRequest, TaskResponse},
@@ -57,6 +59,11 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   task create <title> --verify CMD [--brief TEXT]
                                           an open, unassigned task, signed by the operator
   e2e list [--group GROUP]
+  record fetch <#N|slug|path>              frontmatter, Markdown and confined resource links
+  record search <query> [--type TYPE] [--cursor CURSOR]
+  record changes --since CURSOR           changes and the cursor for the next read
+  events streams                          retained stream names, no consumer attached
+  events tail --stream NAME [--since SEQ] [--subject GLOB] [--timeout MS]
   record write <file|->                   an e2e record, signed by the operator device: the
                                           knowledge_write fields (path or ref, frontmatter,
                                           body, etag) as one JSON object
@@ -208,6 +215,24 @@ pub enum Command {
     RecordWrite {
         source: String,
     },
+    /// Fetch a record through the window's portable knowledge read path.
+    RecordFetch {
+        locator: String,
+    },
+    RecordSearch {
+        query: String,
+        cursor: Option<String>,
+    },
+    RecordChanges {
+        since: String,
+    },
+    EventsStreams,
+    EventsTail {
+        stream: String,
+        since: u64,
+        subject: Option<String>,
+        timeout: Duration,
+    },
     /// `message send (<destination|seat> | --reply-to <id>) <text>` (#264 routing).
     Send {
         to: Option<String>,
@@ -285,6 +310,11 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("task", "create", "RecordWrite"),
     ("e2e", "list", "Knowledge"),
     ("record", "write", "RecordWrite"),
+    ("record", "fetch", "Knowledge"),
+    ("record", "search", "Knowledge"),
+    ("record", "changes", "Knowledge"),
+    ("events", "streams", "EventsStreams"),
+    ("events", "tail", "EventsRead"),
     ("app", "endpoint", "-"),
     ("app", "start", "-"),
     ("app", "status", "App"),
@@ -346,7 +376,9 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
         } else if arg == "--unattended" {
             unattended = true;
         } else if let Some(flag) = arg.strip_prefix("--") {
-            let value = it.next().ok_or(format!("--{flag} needs a value"))?;
+            let value = it
+                .next()
+                .ok_or(format!("{USAGE_PREFIX}--{flag} needs a value"))?;
             match flag {
                 "endpoint" => endpoint = Some(PathBuf::from(value)),
                 // --run-dir finds the endpoint as BBOXY_RUN_DIR does (#260).
@@ -590,6 +622,35 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
         ["record", "write", source] => Command::RecordWrite {
             source: source.into(),
         },
+        ["record", "fetch", locator] => Command::RecordFetch {
+            locator: locator.into(),
+        },
+        ["record", "search", query] => Command::RecordSearch {
+            query: records::search_query(query, flag("type").as_deref())?,
+            cursor: flag("cursor"),
+        },
+        ["record", "changes"] => Command::RecordChanges {
+            since: flag("since")
+                .filter(|s| !s.is_empty())
+                .ok_or_else(|| format!("{USAGE_PREFIX}record changes requires --since CURSOR"))?,
+        },
+        ["events", "streams"] => Command::EventsStreams,
+        ["events", "tail"] => {
+            let stream = flag("stream").filter(|s| !s.is_empty() && s.len() <= 128)
+                .ok_or_else(|| format!("{USAGE_PREFIX}events tail requires --stream NAME (events streams lists names)"))?;
+            let since = flag("since").map(|s| s.parse::<u64>()
+                .map_err(|_| format!("{USAGE_PREFIX}--since requires a stream sequence")))
+                .transpose()?.unwrap_or(0);
+            let subject = flag("subject");
+            if subject.as_ref().is_some_and(|s| s.is_empty() || s.len() > 256) {
+                return Err(format!("{USAGE_PREFIX}--subject requires a nonempty subject glob up to 256 bytes"));
+            }
+            let timeout = flag("timeout").map(|s| s.parse::<u64>().ok()
+                .filter(|ms| (1..=3_600_000).contains(ms))
+                .ok_or_else(|| format!("{USAGE_PREFIX}--timeout: 1 to 3600000 ms")))
+                .transpose()?.unwrap_or(30_000);
+            Command::EventsTail {stream,since,subject,timeout:Duration::from_millis(timeout)}
+        },
         ["app", "endpoint"] => Command::AppEndpoint,
         ["app", "start"] => Command::AppStart {
             headless,
@@ -619,6 +680,28 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "{USAGE_PREFIX}--headless, --ctl, --unattended and --test-account apply only to app start"
         ));
     }
+    let read_flags: Option<&[&str]> = match &command {
+        Command::RecordFetch { .. } | Command::EventsStreams => Some(&[]),
+        Command::RecordSearch { .. } => Some(&["type", "cursor"]),
+        Command::RecordChanges { .. } => Some(&["since"]),
+        Command::EventsTail { .. } => Some(&["stream", "since", "subject", "timeout"]),
+        _ => None,
+    };
+    if let Some(allowed) = read_flags {
+        if let Some(unknown) = flags
+            .keys()
+            .find(|k| !allowed.contains(&k.as_str()) && !["op", "as"].contains(&k.as_str()))
+        {
+            return Err(format!(
+                "{USAGE_PREFIX}--{unknown} does not apply to this read verb"
+            ));
+        }
+        if cells_flag || unassigned_flag {
+            return Err(format!(
+                "{USAGE_PREFIX}--cells and --unassigned do not apply to record/events reads"
+            ));
+        }
+    }
     if let Some(unknown) = flags.keys().find(|k| {
         ![
             "swarm",
@@ -641,6 +724,10 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "scrollback",
             "verify",
             "brief",
+            "type",
+            "cursor",
+            "stream",
+            "subject",
         ]
         .contains(&k.as_str())
     }) {
@@ -808,7 +895,7 @@ impl Client {
         call: &crate::knowledge::ReadCall,
     ) -> bbt_mux::knowledge::data_source::Result<Value> {
         use bbt_mux::knowledge::data_source::CommandError;
-        let id = Ulid::new();
+        let id = self.mint();
         let reply = self
             .call(
                 Some(id),
@@ -869,7 +956,16 @@ impl Client {
         after: u64,
         limit: usize,
     ) -> Result<(Vec<bbt_proto::gui::RetainedEvent>, Option<u64>), String> {
-        let id = Ulid::new();
+        self.events_page(stream, after, limit)
+            .map(|(events, next, _)| (events, next))
+    }
+    fn events_page(
+        &mut self,
+        stream: &str,
+        after: u64,
+        limit: usize,
+    ) -> Result<(Vec<bbt_proto::gui::RetainedEvent>, Option<u64>, u64), String> {
+        let id = self.mint();
         match self.call(
             Some(id),
             GuiAction::EventsRead {
@@ -880,7 +976,24 @@ impl Client {
             },
             |r| matches!(r, GuiReply::EventsRead { op, .. } if *op == id),
         )? {
-            GuiReply::EventsRead { events, next, .. } => Ok((events, next)),
+            GuiReply::EventsRead {
+                events,
+                next,
+                through,
+                ..
+            } => Ok((events, next, through)),
+            _ => unreachable!(),
+        }
+    }
+    /// Read-only discovery under the same GUI admission as EventsRead.
+    pub fn event_streams(&mut self) -> Result<Vec<String>, String> {
+        let id = self.mint();
+        match self.call(
+            Some(id),
+            GuiAction::EventsStreams { id },
+            |r| matches!(r, GuiReply::EventsStreams {op,..} if *op==id),
+        )? {
+            GuiReply::EventsStreams { streams, .. } => Ok(streams),
             _ => unreachable!(),
         }
     }
@@ -1324,6 +1437,11 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
         | Command::Ack { .. }
         | Command::TaskList { .. }
         | Command::TaskGet { .. }
+        | Command::RecordFetch { .. }
+        | Command::RecordSearch { .. }
+        | Command::RecordChanges { .. }
+        | Command::EventsStreams
+        | Command::EventsTail { .. }
         | Command::AppEndpoint
         | Command::AppStart { .. }
         | Command::AppStatus
@@ -1549,9 +1667,13 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
         };
     }
     let mut op = None;
+    let mut tail = None;
     let result = parsed.and_then(|parsed| {
         op = parsed.op;
-        run_verb(args, parsed, default_endpoint, &mut op)
+        if let Command::EventsTail { stream, since, .. } = &parsed.command {
+            tail = Some(events::Progress::new(stream.clone(), *since));
+        }
+        run_verb(args, parsed, default_endpoint, &mut op, &mut tail)
     });
     if let Err(reason) = result {
         let (op, fail) = match reason.strip_prefix(TIMEOUT_PREFIX) {
@@ -1569,11 +1691,12 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
             }
             None => (op, classify(&reason)),
         };
-        println!(
-            "{}",
-            json!({ "ok": false, "op": op.unwrap_or_else(fresh), "error": {
-                "kind": fail.kind, "message": fail.message, "hint": fail.hint } })
-        );
+        let mut line = json!({ "ok": false, "op": op.unwrap_or_else(fresh), "error": {
+            "kind": fail.kind, "message": fail.message, "hint": fail.hint } });
+        if let Some(tail) = tail {
+            tail.error(&mut line);
+        }
+        println!("{line}");
         std::process::exit(fail.exit);
     }
     Ok(())
@@ -1586,6 +1709,7 @@ fn run_verb(
     parsed: Parsed,
     default_endpoint: &Path,
     op: &mut Option<Ulid>,
+    tail: &mut Option<events::Progress>,
 ) -> Result<(), String> {
     let (noun, verb) = parsed.verb.expect("a noun-verb form");
     let endpoint_file = parsed
@@ -1644,6 +1768,22 @@ fn run_verb(
     client.op = Some(id);
     let human = parsed.human;
     let data = match parsed.command {
+        Command::EventsStreams => json!({"streams":client.event_streams()?}),
+        Command::EventsTail {
+            subject, timeout, ..
+        } => {
+            return events::tail(
+                &mut client,
+                id,
+                tail.as_mut().expect("tail progress"),
+                subject.as_deref(),
+                timeout,
+                &mut out,
+            );
+        }
+        Command::RecordFetch { locator } => records::fetch(&mut client, locator)?,
+        Command::RecordSearch { query, cursor } => records::search(&mut client, query, cursor)?,
+        Command::RecordChanges { since } => records::changes(&mut client, since)?,
         Command::AppStatus => serde_json::to_value(client.app(bbt_proto::gui::AppRequest::Status)?)
             .map_err(|e| e.to_string())?,
         Command::AppStop => serde_json::to_value(app::stop(&mut client, &endpoint_file)?)
@@ -2155,6 +2295,7 @@ mod tests {
                 after: 0,
                 limit: 1,
             },
+            GuiAction::EventsStreams { id },
             GuiAction::RenameSeat {
                 id,
                 seat: id,
@@ -2242,6 +2383,11 @@ mod tests {
             "task create t --verify true",
             "e2e list",
             "record write -",
+            "record fetch #1",
+            "record search example",
+            "record changes --since 0",
+            "events streams",
+            "events tail --stream account",
             "app endpoint",
             "seat watch s",
             "seat rename s n",

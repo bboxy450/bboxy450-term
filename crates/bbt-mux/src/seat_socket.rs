@@ -655,7 +655,7 @@ async fn gui_session(
                     let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
                     let op=match &request.action {
                         GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
-                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
+                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
@@ -789,9 +789,19 @@ async fn gui_session(
                             }
                             GuiAction::EventsRead {id,stream,after,limit}=> {
                                 let filter=crate::gui_events::filters(client.gui_messaging_subjects().await?);
-                                let (envelopes,next)=client.bus.read_page(&stream,filter,after,limit).await?;
+                                let (envelopes,next,through)=client.bus.read_page(&stream,filter,after,limit).await?;
                                 let events=envelopes.into_iter().map(|e| bbt_proto::gui::RetainedEvent {seq:e.seq,subject:e.event.subject,source:e.event.source,ts:e.event.ts,payload:e.event.payload}).collect();
-                                Ok(GuiReply::EventsRead {op:id,stream,events,next})
+                                Ok(GuiReply::EventsRead {op:id,stream,events,next,through})
+                            }
+                            GuiAction::EventsStreams {id}=> {
+                                // The operator can browse every registered stream; the
+                                // current subject grants still filter each EventsRead.
+                                client.gui_messaging_subjects().await?;
+                                let streams=client.bus.read_streams().await?;
+                                if serde_json::to_vec(&streams)?.len()>crate::gui_events::PAGE_BYTES {
+                                    return Err(invalid("retained stream names exceed the page bound"));
+                                }
+                                Ok(GuiReply::EventsStreams {op:id,streams})
                             }
                             GuiAction::Screen {id,seat,cells}=>Ok(GuiReply::Screen {op:id,screen:client.gui_screen(seat,cells).await?}),
                             GuiAction::Resize {seat,generation,cols,rows}=> {

@@ -71,7 +71,25 @@ impl DataSource for Source {
         })
     }
     fn search(&self, _: d::SearchRequest) -> d::Result<d::Page<d::SearchHit>> {
-        self.forbidden()
+        self.calls.borrow_mut().push("search");
+        Ok(d::Page {
+            items: vec![
+                d::SearchHit {
+                    reference: Self::reference(),
+                    title: "one".into(),
+                    record_type: "e2e".into(),
+                    number: Some(1),
+                    snippet: "body".into(),
+                    score: 1.0,
+                };
+                if self.oversized_page {
+                    d::MAX_PAGE + 1
+                } else {
+                    1
+                }
+            ],
+            next: None,
+        })
     }
     fn links(&self, _: d::FetchRequest) -> d::Result<d::Links> {
         self.forbidden()
@@ -90,6 +108,8 @@ fn admitted_read_dispatch_reuses_portable_dtos_and_cannot_write_or_ack() {
     let reference = read(&source, "resolve", json!({"locator":"#1"})).unwrap();
     let record = read(&source, "fetch", json!({"ref":reference})).unwrap();
     assert_eq!(record["body"], "body");
+    let search = read(&source, "search", json!({"query":"one","limit":1})).unwrap();
+    assert_eq!(search["items"][0]["ref"]["number"], 1);
     let page = read(&source, "list", json!({"limit":1})).unwrap();
     assert_eq!(page["items"].as_array().unwrap().len(), 1);
     assert_eq!(
@@ -98,7 +118,7 @@ fn admitted_read_dispatch_reuses_portable_dtos_and_cannot_write_or_ack() {
     );
     for name in [
         "write",
-        "search",
+        "links",
         "graph",
         "read_resource",
         "ack",
@@ -111,7 +131,7 @@ fn admitted_read_dispatch_reuses_portable_dtos_and_cannot_write_or_ack() {
     }
     assert_eq!(
         *source.calls.borrow(),
-        ["resolve", "fetch", "list", "changes_since"]
+        ["resolve", "fetch", "search", "list", "changes_since"]
     );
 }
 
@@ -134,6 +154,12 @@ fn oversized_requests_pages_and_record_bodies_are_named_refusals() {
         "invalid_request"
     );
     source.oversized_page = true;
+    assert_eq!(
+        read(&source, "search", json!({"query":"one"}))
+            .unwrap_err()
+            .code,
+        "invalid_provider_result"
+    );
     assert_eq!(
         read(&source, "list", json!({})).unwrap_err().code,
         "invalid_provider_result"
