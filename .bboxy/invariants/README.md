@@ -4,7 +4,7 @@ type: "note"
 number: 138
 title: "Invariants — the law the day runs under"
 created: "2026-10-22T21:14:24Z"
-updated: "2026-10-25T08:45:32Z"
+updated: "2026-10-25T09:54:49Z"
 ---
 # Invariants — the law the day runs under
 
@@ -45,6 +45,7 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[e2e-runs-unattended]] the e2e night runs unattended: no operator input, no login-Keychain access, no window, no build or signature | `sh scripts/e2e-unattended.sh` | pending U-3 (slow, gated) |
 | [[never-block-swarm]] never block the swarm: no open task is parked on a person, and no test needs the operator | `sh scripts/never-block.sh` | held at the adding commit |
 | [[messaging-never-held]] a custody hold never holds local delivery | `cargo test -p bbt-mux --locked --test messaging_flow custody_hold_never_holds_local_delivery -- --exact` | pending NG1 (slow, gated) |
+| [[ring-reads-batched]] a catch-up pass over N seats costs a bounded number of supervisor round trips, never one RPC per seat | `cargo test -p bbt-mux --locked --test logic ring_reads_are_batched -- --exact` | pending Sable's batched ReadRing (slow, gated) |
 | [[no-chokepoints]] no bottlenecks and no chokepoints, in the swarm and in the product | `sh scripts/never-block.sh && sh scripts/cross-os.sh` | held at the adding commit; product instances gated by #268 and #276 |
 
 A violation halts the work that broke it: the task goes `blocked` with

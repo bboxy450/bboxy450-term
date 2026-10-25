@@ -15,7 +15,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: decision }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-24T19:32:03Z"
-updated: "2026-10-25T00:05:29Z"
+updated: "2026-10-25T09:54:49Z"
 ---
 # No bottlenecks and no chokepoints
 
@@ -46,7 +46,10 @@ saw clients idle at 0 % CPU for three to seven minutes, 2,649 hits against
 a29f839d: `scripts/ci-local.sh` and `scripts/invariants.sh` export
 `RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER=`, the global config untouched;
 an empty `rustc-wrapper` in a repo `.cargo/config.toml` did **not** override
-the global one, tested, so the bypass is the environment, not a config file).
+the global one, tested, so the bypass is the environment, not a config file);
+logic's serial one-seat `ReadRing` RPCs to the supervisor (the measured 967/50
+run on 0e97dc32: 6 824 round trips, 93 % of an 8 618 ms input-to-GPU, decode
+0.8 s; Sable designs the batched or pipelined read, gate [[ring-reads-batched]]).
 
 **Wire grammar of the self-service protocol (2026-10-24).** Self-service only
 works when every detector parses the channel the same way, so the slot and
