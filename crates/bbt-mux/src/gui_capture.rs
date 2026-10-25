@@ -98,6 +98,9 @@ impl Captures {
         id: Ulid,
         request: bbt_proto::gui::UiRequest,
     ) -> Result<bbt_proto::gui::UiLayout, String> {
+        self.ui_wait(id, Notice::Ui { id, request }).await
+    }
+    async fn ui_wait(&self, id: Ulid, notice: Notice) -> Result<bbt_proto::gui::UiLayout, String> {
         let (done, answer) = oneshot::channel();
         {
             let mut pending = self.ui.lock().unwrap_or_else(|e| e.into_inner());
@@ -107,7 +110,7 @@ impl Captures {
             }
             pending.insert(id, done);
         }
-        let result = if self.asks.send(Notice::Ui { id, request }).is_err() {
+        let result = if self.asks.send(notice).is_err() {
             Err("endpoint_unavailable: no GUI owner is attached".into())
         } else {
             match tokio::time::timeout(WAIT, answer).await {
@@ -256,20 +259,26 @@ impl Captures {
         }
     }
     /// The window derives Position and uses its ordinary close/undo controller.
-    pub(crate) fn close(
+    pub(crate) async fn close(
         &self,
         op: Ulid,
         seat: bbt_proto::SeatId,
         undo: bool,
-    ) -> Result<(), String> {
-        self.asks
-            .send(if undo {
-                Notice::UndoClose { op, seat }
-            } else {
-                Notice::Close { op, seat }
-            })
-            .map(drop)
-            .map_err(|_| "no window is attached to close or undo".into())
+    ) -> Result<bbt_proto::gui::UiLayout, String> {
+        let layout = self
+            .ui_wait(
+                op,
+                if undo {
+                    Notice::UndoClose { op, seat }
+                } else {
+                    Notice::Close { op, seat }
+                },
+            )
+            .await?;
+        if layout.frame_seq == 0 {
+            return Err("close_frame_incomplete: the GUI owner returned no produced frame".into());
+        }
+        Ok(layout)
     }
     /// The window's answer; an id nobody waits for is ignored.
     pub(crate) fn answer(&self, id: Ulid, answer: Result<bbt_proto::gui::CaptureFrame, String>) {
@@ -336,6 +345,61 @@ mod tests {
             }),
         );
         assert_eq!(task.await.unwrap().unwrap().frame_seq, 9);
+    }
+
+    #[tokio::test]
+    async fn close_and_undo_share_the_ui_wait_and_do_not_acknowledge_the_relay() {
+        use bbt_proto::gui::UiLayout;
+        let captures = Arc::new(Captures::default());
+        let seat = bbt_proto::SeatId::from_u128(5);
+        assert!(
+            captures
+                .close(Ulid(1), seat, false)
+                .await
+                .unwrap_err()
+                .starts_with("endpoint_unavailable:")
+        );
+        let mut owner = captures.subscribe();
+        for (undo, frame_seq) in [(false, 11), (true, 12), (false, 0)] {
+            let id = Ulid::new();
+            let request = tokio::spawn({
+                let captures = captures.clone();
+                async move { captures.close(id, seat, undo).await }
+            });
+            match owner.recv().await.unwrap() {
+                Notice::Close { op, seat: seen } if !undo => assert_eq!((op, seen), (id, seat)),
+                Notice::UndoClose { op, seat: seen } if undo => assert_eq!((op, seen), (id, seat)),
+                other => panic!("wrong close relay: {other:?}"),
+            }
+            assert!(!request.is_finished(), "a relay is not a produced frame");
+            captures.ui_answer(Ulid::new(), Err("wrong operation".into()));
+            assert!(
+                !request.is_finished(),
+                "another operation cannot acknowledge this close"
+            );
+            captures.ui_answer(
+                id,
+                Ok(UiLayout {
+                    frame_seq,
+                    size: [1600., 900.],
+                    swarm: None,
+                    tab: None,
+                    focused: None,
+                    launcher_open: false,
+                    page: None,
+                    document: None,
+                    panes: Vec::new(),
+                    tree: Vec::new(),
+                }),
+            );
+            let answer = request.await.unwrap();
+            if frame_seq == 0 {
+                assert!(answer.unwrap_err().starts_with("close_frame_incomplete:"));
+            } else {
+                assert_eq!(answer.unwrap().frame_seq, frame_seq);
+            }
+            assert!(captures.ui.lock().unwrap().is_empty());
+        }
     }
 
     #[tokio::test]

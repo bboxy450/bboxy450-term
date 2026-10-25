@@ -216,9 +216,12 @@ fn t7_headless_close_uses_the_window_intent_and_restores_the_same_split() {
     let mut f = Fixture::new();
     f.start();
     let mut ids = vec![];
-    for name in ["left", "victim", "right"] {
-        let row = f.ok(&["seat", "spawn", "zsh", "--name", name]);
-        ids.push(row["data"]["seat"].as_str().unwrap().to_owned());
+    for (name, place) in [("left", "tab"), ("victim", "right"), ("right", "down")] {
+        let row = f.ok(&["seat", "spawn", "zsh", "--name", name, "--place", place]);
+        let seat = row["data"]["seat"].as_str().unwrap().to_owned();
+        // Each split is relative to a pane already shown by the window owner.
+        f.ok(&["seat", "focus", &seat]);
+        ids.push(seat);
     }
     let seat = &ids[1];
     f.ok(&["seat", "focus", seat]);
@@ -236,14 +239,37 @@ fn t7_headless_close_uses_the_window_intent_and_restores_the_same_split() {
         .unwrap()
         .clone();
     let first = f.root.path().join("t7-before.png");
-    f.ok(&["seat", "capture", seat, first.to_str().unwrap()]);
-    f.ok(&["seat", "close", seat]);
-    let closed = await_value(&f, || {
-        let row = f.ok(&["app", "status"]);
-        let close = &row["data"]["close"];
-        (close["slots"].as_array()?.len() == 2 && close["grace"].as_array()?.len() == 1)
-            .then_some(row)
-    });
+    let first_frame = f.ok(&["seat", "capture", seat, first.to_str().unwrap()]);
+    let close_frame = f.ok(&["seat", "close", seat]);
+    assert_eq!(close_frame["data"]["applied"], true);
+    assert_eq!(
+        close_frame["data"]["layout"]["panes"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+    assert!(
+        close_frame["data"]["frame_seq"].as_u64().unwrap()
+            > first_frame["data"]["frame_seq"].as_u64().unwrap()
+    );
+    assert!(
+        !close_frame["data"]["layout"]["panes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|pane| pane["seat"] == seat.as_str())
+    );
+    // No lifecycle or capture polling: the command's frame receipt is the boundary.
+    let closed = f.ok(&["app", "status"]);
+    assert_eq!(
+        closed["data"]["close"]["slots"].as_array().unwrap().len(),
+        2
+    );
+    assert_eq!(
+        closed["data"]["close"]["grace"].as_array().unwrap().len(),
+        1
+    );
     assert_eq!(closed["data"]["close"]["grace"][0]["seat"], *seat);
     assert_eq!(closed["data"]["close"]["grace"][0]["undo"], true);
     assert!(
@@ -258,13 +284,30 @@ fn t7_headless_close_uses_the_window_intent_and_restores_the_same_split() {
             .0,
         0
     );
-    f.ok(&["seat", "undo-close", seat]);
-    await_value(&f, || {
-        let row = f.ok(&["app", "status"]);
-        (row["data"]["close"]["slots"] == before["data"]["close"]["slots"]
-            && row["data"]["close"]["grace"].as_array()?.is_empty())
-        .then_some(row)
-    });
+    let undo_frame = f.ok(&["seat", "undo-close", seat]);
+    assert!(
+        undo_frame["data"]["frame_seq"].as_u64().unwrap()
+            > close_frame["data"]["frame_seq"].as_u64().unwrap()
+    );
+    assert_eq!(undo_frame["data"]["layout"]["focused"], seat.as_str());
+    assert_eq!(
+        undo_frame["data"]["layout"]["panes"]
+            .as_array()
+            .unwrap()
+            .len(),
+        3
+    );
+    let restored_ui = f.ok(&["app", "status"]);
+    assert_eq!(
+        restored_ui["data"]["close"]["slots"],
+        before["data"]["close"]["slots"]
+    );
+    assert!(
+        restored_ui["data"]["close"]["grace"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
     let row = f.ok(&["seat", "ls"]);
     let restored = row["data"]
         .as_array()
@@ -278,11 +321,12 @@ fn t7_headless_close_uses_the_window_intent_and_restores_the_same_split() {
     );
     assert_eq!(restored["state"]["process"], original["state"]["process"]);
     let last = f.root.path().join("t7-restored.png");
-    // Capture succeeds only if the restored tab is actually on screen.
-    await_value(&f, || {
-        let (code, rows) = f.ctl(&["seat", "capture", seat, last.to_str().unwrap()]);
-        (code == 0).then(|| rows.last().unwrap().clone())
-    });
+    // One capture must succeed after the first restored frame; no retry masks the contract.
+    let restored_frame = f.ok(&["seat", "capture", seat, last.to_str().unwrap()]);
+    assert!(
+        restored_frame["data"]["frame_seq"].as_u64().unwrap()
+            >= undo_frame["data"]["frame_seq"].as_u64().unwrap()
+    );
     let size = |path| {
         let png = std::fs::read(path).unwrap();
         assert!(png.starts_with(b"\x89PNG\r\n\x1a\n"));

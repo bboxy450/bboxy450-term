@@ -800,8 +800,8 @@ async fn gui_session(
                                 client.record(seat).await?;
                                 if !client.captures.attached() {return Err(invalid("no window is attached to close or undo"));}
                                 client.ctl_record(id,if undo {"seat_undo_close"} else {"seat_close"},serde_json::json!({"seat":seat}),crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
-                                client.captures.close(id,bbt_proto::SeatId::from_u128(seat.0),undo).map_err(invalid)?;
-                                Ok(GuiReply::Ok {op:id})
+                                let layout=client.captures.close(id,bbt_proto::SeatId::from_u128(seat.0),undo).await.map_err(invalid)?;
+                                Ok(GuiReply::Ui {op:id,layout})
                             }
                             GuiAction::FocusSeat {id,seat}=> {
                                 client.record(seat).await?;
