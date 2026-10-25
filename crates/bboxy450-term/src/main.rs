@@ -52,6 +52,10 @@ use winit::{
 
 #[derive(Debug)]
 pub enum UiEvent {
+    UiFor {
+        id: bbt_mux::Ulid,
+        request: bbt_proto::gui::UiRequest,
+    },
     Wake,
     CommandsReady(command_retry::Ready),
     Settings(Arc<preferences::Snapshot>),
@@ -420,6 +424,81 @@ impl FocusState {
     }
 }
 
+fn rect_array(rect: Rect) -> [f32; 4] {
+    [rect.x, rect.y, rect.w, rect.h]
+}
+fn ui_layout_node(
+    layout: &bbt_ui::components::Layout,
+    remaining: &mut usize,
+) -> Result<bbt_proto::gui::UiLayoutNode, String> {
+    use bbt_ui::components::LayoutKind as K;
+    *remaining = remaining
+        .checked_sub(1)
+        .ok_or("ui_layout_oversize: more than 4096 nodes")?;
+    let kind = match &layout.kind {
+        K::Named(name) => format!("named:{name}"),
+        K::Filter { .. } => "filter".into(),
+        K::Atom(_) => "atom".into(),
+        K::Box { .. } => "box".into(),
+        K::Text { .. } => "text".into(),
+        K::Stack => "stack".into(),
+        K::ScrollView { .. } => "scroll_view".into(),
+        K::Spacer => "spacer".into(),
+        K::Icon { .. } => "icon".into(),
+        K::Image { .. } => "image".into(),
+        K::Path { .. } => "path".into(),
+        K::Rects { .. } => "rects".into(),
+    };
+    Ok(bbt_proto::gui::UiLayoutNode {
+        kind,
+        rect: rect_array(layout.rect),
+        children: layout
+            .children
+            .iter()
+            .map(|l| ui_layout_node(l, remaining))
+            .collect::<Result<_, _>>()?,
+    })
+}
+fn chrome_input(name: &str) -> Result<keyboard::Input<'static>, String> {
+    let (command, name) = name
+        .strip_prefix("cmd-")
+        .map_or((false, name), |key| (true, key));
+    let (shift, name) = name
+        .strip_prefix("shift-")
+        .map_or((false, name), |key| (true, key));
+    let (logical_key, code) = match name {
+        "t" => (Key::Character("t".into()), KeyCode::KeyT),
+        "g" => (Key::Character("g".into()), KeyCode::KeyG),
+        "m" => (Key::Character("m".into()), KeyCode::KeyM),
+        "comma" => (Key::Character(",".into()), KeyCode::Comma),
+        "esc" => (Key::Named(NamedKey::Escape), KeyCode::Escape),
+        "enter" => (Key::Named(NamedKey::Enter), KeyCode::Enter),
+        "tab" => (Key::Named(NamedKey::Tab), KeyCode::Tab),
+        "backspace" => (Key::Named(NamedKey::Backspace), KeyCode::Backspace),
+        "up" => (Key::Named(NamedKey::ArrowUp), KeyCode::ArrowUp),
+        "down" => (Key::Named(NamedKey::ArrowDown), KeyCode::ArrowDown),
+        "left" => (Key::Named(NamedKey::ArrowLeft), KeyCode::ArrowLeft),
+        "right" => (Key::Named(NamedKey::ArrowRight), KeyCode::ArrowRight),
+        _ => return Err("invalid_ui_key: unsupported chrome key".into()),
+    };
+    let mut state = ModifiersState::empty();
+    state.set(ModifiersState::SUPER, command);
+    state.set(ModifiersState::SHIFT, shift);
+    Ok(keyboard::Input {
+        unmodified_key: logical_key.clone(),
+        logical_key,
+        physical_key: PhysicalKey::Code(code),
+        text: None,
+        text_all_modifiers: None,
+        location: winit::keyboard::KeyLocation::Standard,
+        state: ElementState::Pressed,
+        repeat: false,
+        modifiers: keyboard::Modifiers {
+            state,
+            locks: Default::default(),
+        },
+    })
+}
 #[derive(Debug, PartialEq, Eq)]
 enum RoutedKey {
     Quit,
@@ -1260,8 +1339,24 @@ fn new_launcher_for(
     )
 }
 
+#[derive(Clone)]
+enum UiProxy {
+    Native(EventLoopProxy<UiEvent>),
+    Headless(Arc<dyn Fn(UiEvent) + Send + Sync>),
+}
+impl UiProxy {
+    fn send_event(&self, event: UiEvent) -> Result<(), ()> {
+        match self {
+            Self::Native(proxy) => proxy.send_event(event).map_err(|_| ()),
+            Self::Headless(send) => {
+                send(event);
+                Ok(())
+            }
+        }
+    }
+}
 struct App {
-    proxy: EventLoopProxy<UiEvent>,
+    proxy: UiProxy,
     inbox: UiInbox,
     wake_counters: std::cell::RefCell<stall::WakeCounters>,
     logger: log::Logger,
@@ -1361,6 +1456,153 @@ struct App {
     stall: Option<stall::Native>,
 }
 impl App {
+    /// The same controller owner is used by winit and the windowless driver.
+    fn owner(
+        proxy: UiProxy,
+        inbox: UiInbox,
+        logger: log::Logger,
+        live_updates: Arc<Latest<Arc<bboxy450_term::model::Model>>>,
+        args: &[String],
+        verify: Verify,
+    ) -> Self {
+        let prepared = Arc::new(Latest::new(inbox.dirty.source(2)));
+        let updates = Arc::new(Latest::new(inbox.dirty.source(3)));
+        let smoke = args.iter().any(|a| a == "--smoke");
+        let fake = !args.iter().any(|a| a == "--headless")
+            && (smoke || args.iter().any(|a| a == "--fake-source"));
+        let overlay = args.iter().any(|a| a == "--meter");
+        let cadence_test = args.iter().any(|a| a == "--cadence-test");
+        let animate = cadence_test || args.iter().any(|a| a == "--animate");
+        let pacing = Mode::Metal;
+        let capture = args
+            .windows(2)
+            .find(|v| v[0] == "--capture")
+            .map(|v| std::path::PathBuf::from(&v[1]));
+        Self {
+            proxy,
+            inbox,
+            wake_counters: Default::default(),
+            logger,
+            prepared,
+            updates,
+            live_updates,
+            live_state: None,
+            live_commands: None,
+            pending_commands: VecDeque::new(),
+            command_retry: Default::default(),
+            admission_refusals: AdmissionRefusals::default(),
+            watched: vec![],
+            pane_sizes: BTreeMap::new(),
+            pane_bounds: vec![],
+            focus_bounds: vec![],
+            scroll_wheel: None,
+            focus: FocusState::default(),
+            notifications: None,
+            frontmost: false,
+            pending_notification: None,
+            spawn_results_seen: BTreeMap::new(),
+            launcher: args
+                .iter()
+                .any(|arg| arg == "--launcher")
+                .then(|| new_launcher(None, 0)),
+            launcher_layout: None,
+            launcher_parent: None,
+            preferences: preferences::State::default(),
+            preferences_io: None,
+            rim_preview: None,
+            mute: preferences::Mute::default(),
+            system_theme: Theme::Dark,
+            local_tab: None,
+            local_page_layout: None,
+            document: {
+                let mut host = documents::Host::default();
+                if let Some(pair) = args.windows(2).find(|p| p[0] == "--document") {
+                    host.show(pair[1].clone());
+                }
+                host
+            },
+            document_return: None,
+            document_layout: None,
+            composer: ComposeController::new(composer::Composer {
+                focus: args.iter().any(|arg| arg == "--compose"),
+                ..Default::default()
+            }),
+            composer_client: messaging::Client::default(),
+            composer_scope: None,
+            task_records: messaging::Records::default(),
+            message_history: messaging::History::default(),
+            events_seen: None,
+            task_regions: Default::default(),
+            close_regions: vec![],
+            reject: None,
+            reject_report: None,
+            reject_focus: false,
+            conversation: bbt_ui::modules::stream_dock::StreamDock {
+                dock: true,
+                framed: false,
+                ..Default::default()
+            },
+            conversation_layout: None,
+            conversation_scroll: 0.,
+            composer_dragging: false,
+            compose_startup: args.iter().any(|arg| arg == "--compose"),
+            operation_backlog: VecDeque::new(),
+            pointer: [0.; 2],
+            query_dragging: false,
+            backend_lost: false,
+            app_generation: 0,
+            app_custody: "unknown".into(),
+            app_ready_sent: false,
+            render_context: None,
+            closing: false,
+            smoke_bootstrap: None,
+            smoke_wake_seen: false,
+            window: None,
+            pacer: None,
+            pacing,
+            clock: Clock::default(),
+            occluded: false,
+            maximum_hz: 60.,
+            budget: budget::Budget::default(),
+            gpu: None,
+            scene: if fake || animate {
+                scene::Scene::new()
+            } else {
+                scene::Scene::live()
+            },
+            meter: HitchMeter::new(120.),
+            modifiers: ModifiersState::empty(),
+            keyboard: keyboard::State::default(),
+            overlay,
+            fake,
+            smoke,
+            demo_started: false,
+            demo_finished: false,
+            idle_scheduled: false,
+            idle_quiet: IdleQuiescence::default(),
+            redraw_pending: std::cell::Cell::new(false),
+            last_update: 0,
+            error: None,
+            capture,
+            capture_pending: true,
+            ctl_captures: Vec::new(),
+            ctl_focus: Default::default(),
+            last_presented: None,
+            pending_resize: None,
+            animate,
+            cadence_test,
+            animation_start: None,
+            frozen_ms: 450.,
+            verify,
+            stall: None,
+        }
+    }
+    fn finish_log(&self, text: String) {
+        match &self.proxy {
+            UiProxy::Native(proxy) => self.logger.finish(text, proxy.clone()),
+            UiProxy::Headless(send) => self.logger.finish_with_sink(text, send.clone()),
+        }
+    }
     fn open_document(&mut self, target: String) {
         if !self.document.open {
             self.document_return = self.focus.stage.clone();
@@ -2474,24 +2716,43 @@ impl App {
             result: answer.result,
         });
     }
+    fn begin_focus(&mut self, ask: bboxy450_term::focus_ack::Ask) {
+        let id = ask.id;
+        if let Some(answer) = self.ctl_focus.set(ask) {
+            self.answer_focus(answer);
+        }
+        let proxy = self.proxy.clone();
+        let timer = bbt_rt::handle().spawn(async move {
+            tokio::time::sleep(bboxy450_term::focus_ack::DEADLINE).await;
+            let _ = proxy.send_event(UiEvent::FocusDeadline(id));
+        });
+        self.ctl_focus.arm(timer.abort_handle());
+    }
     fn poll_focus(&mut self) {
+        // The headless driver supplies its own submitted/completed counters.
+        if self.window.is_some() {
+            let completed = self.meter.total_frames();
+            self.poll_focus_frame(completed, completed + 1);
+        }
+    }
+    fn poll_focus_frame(&mut self, completed: u64, next_frame: u64) -> bool {
         let Some(model) = self.live_state.as_deref() else {
-            return;
+            return false;
         };
         let effect = self.ctl_focus.poll(
             model,
             self.scene.focused(),
             |seat| self.pane_bounds.iter().any(|(id, _)| *id == seat),
-            self.meter.total_frames(),
+            completed,
         );
         match effect {
             Some(bboxy450_term::focus_ack::Effect::Apply(seat)) => {
                 let generation = model.ui.seats[&seat].process_generation;
                 self.focus_action_applied(FocusAction::Activate(seat, FocusOrigin::Row));
                 if self.scene.focused() == Some(seat) {
-                    self.ctl_focus
-                        .applied(self.meter.total_frames() + 1, generation);
+                    self.ctl_focus.applied(next_frame, generation);
                     self.request_redraw();
+                    return true;
                 } else if let Some(answer) = self
                     .ctl_focus
                     .fail("not_on_screen: focus could not activate the requested pane")
@@ -2502,6 +2763,7 @@ impl App {
             Some(bboxy450_term::focus_ack::Effect::Answer(answer)) => self.answer_focus(answer),
             None => (),
         }
+        false
     }
     fn close_seat(&mut self, seat: SeatId, id: bbt_mux::Ulid, undo: bool) {
         let Some(model) = &self.live_state else {
@@ -2729,6 +2991,7 @@ impl App {
     }
     fn request_redraw_sources(&self, sources: &[usize]) {
         self.wake_counters.borrow_mut().redraw(sources);
+        self.redraw_pending.set(true);
         if !self.occluded
             && let Some(pacer) = &self.pacer
         {
@@ -3089,6 +3352,319 @@ impl App {
             let _ = proxy.send_event(UiEvent::DemoFinished);
         });
     }
+    fn route_chrome(&mut self, input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
+        if self.document.open {
+            let routed = route_document(input, modes);
+            finish_route(&mut self.keyboard, input, routed)
+        } else if self.local_tab.is_some()
+            && self.launcher.is_none()
+            && !self.composer.view.focus
+            && !self.reject_focus
+        {
+            let routed = if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
+                route_settings(input, modes, self.settings_ime())
+            } else {
+                route_local_page(input, modes)
+            };
+            finish_route(&mut self.keyboard, input, routed)
+        } else if self.launcher.is_none() && (self.composer.view.focus || self.reject_focus) {
+            let routed = route_composer(
+                input,
+                modes,
+                if self.reject_focus {
+                    ComposeField::Body
+                } else if self.composer.view.kind_menu || self.composer.view.attach_pick.is_some() {
+                    ComposeField::Address
+                } else {
+                    self.composer.view.field
+                },
+            );
+            finish_route(&mut self.keyboard, input, routed)
+        } else {
+            route_input(
+                &mut self.keyboard,
+                input,
+                modes,
+                self.launcher
+                    .as_ref()
+                    .map(|launcher| launcher.launcher.query.as_str()),
+            )
+        }
+    }
+    fn dispatch_chrome(&mut self, routed: RoutedKey) -> Result<(), RoutedKey> {
+        match routed {
+            RoutedKey::OpenLauncher => self.open_launcher(),
+            RoutedKey::OpenGraph => self.open_graph(),
+            RoutedKey::OpenSettings => self.open_settings("Account"),
+            RoutedKey::SettingsKey(key) => self.settings_key(key),
+            RoutedKey::MuteFocused => self.mute_focused(),
+            RoutedKey::UndoClose => self.undo_latest_close(),
+            RoutedKey::LocalPage(command) => {
+                if self.document.open {
+                    self.document_command(command);
+                } else {
+                    self.local_page_command(command);
+                }
+            }
+            RoutedKey::ToggleHud => {
+                self.overlay = !self.overlay;
+                self.logger.write(format!("hitch overlay={}", self.overlay));
+                self.request_redraw();
+            }
+            RoutedKey::Launcher(command) => self.launcher_command(command),
+            RoutedKey::Composer(command) => self.composer_command(command),
+            RoutedKey::ComposerVertical { backwards, extend } => {
+                self.composer_move(Some(backwards), None, extend)
+            }
+            RoutedKey::ComposerLineEdge { end, extend } => {
+                self.composer_move(None, Some(end), extend)
+            }
+            RoutedKey::Pane(navigation) => self.focus_action(FocusAction::Navigate(navigation)),
+            other => return Err(other),
+        }
+        Ok(())
+    }
+    fn ui_request(
+        &mut self,
+        request: bbt_proto::gui::UiRequest,
+        logical: [f32; 2],
+    ) -> Result<bbt_proto::gui::UiLayout, String> {
+        use bbt_proto::gui::{UiRequest, UiTarget};
+        request.validate().map_err(str::to_owned)?;
+        self.drain();
+        if self.live_state.is_none() {
+            return Err("ui_not_ready: no live model".into());
+        }
+        // Focus/navigation use the current solved geometry, just like native input.
+        self.solve_ui(logical)?;
+        match request {
+            UiRequest::Open(UiTarget::Launcher) => self.open_launcher(),
+            UiRequest::Open(UiTarget::Graph) => self.open_graph(),
+            UiRequest::Open(UiTarget::Settings) => self.open_settings("Account"),
+            UiRequest::Open(UiTarget::Docs(path)) => self.open_document(path),
+            UiRequest::Key(keys) => {
+                for key in keys {
+                    let input = chrome_input(&key)?;
+                    let modes = self
+                        .focus
+                        .stage
+                        .as_ref()
+                        .and_then(|s| s.focused)
+                        .and_then(|seat| {
+                            self.live_state
+                                .as_ref()?
+                                .screens
+                                .get(&seat)
+                                .map(|s| s.modes)
+                        })
+                        .unwrap_or_default();
+                    let routed = self.route_chrome(&input, modes);
+                    if matches!(
+                        routed,
+                        RoutedKey::Terminal(_)
+                            | RoutedKey::Scroll(_)
+                            | RoutedKey::Local
+                            | RoutedKey::Quit
+                    ) {
+                        return Err(format!(
+                            "ui_key_not_applicable: {key}; terminal input uses seat key"
+                        ));
+                    }
+                    self.dispatch_chrome(routed)
+                        .map_err(|_| "ui_key_not_applicable".to_owned())?;
+                }
+            }
+            UiRequest::Focus { seat } => {
+                let target = SeatId::from_u128(seat.0);
+                if !self
+                    .live_state
+                    .as_ref()
+                    .is_some_and(|m| m.ui.seats.contains_key(&target))
+                {
+                    return Err(format!("ui_focus_missing: {seat}"));
+                }
+                self.focus_action(FocusAction::Activate(target, FocusOrigin::Row));
+                if self.focus.stage.as_ref().and_then(|s| s.focused) != Some(target) {
+                    return Err(format!("ui_focus_refused: {seat}"));
+                }
+            }
+            UiRequest::Layout => {}
+        }
+        let layouts = self.solve_ui(logical)?;
+        self.ui_layout(logical, &layouts)
+    }
+    fn ui_layout(
+        &self,
+        size: [f32; 2],
+        layouts: &[bbt_ui::components::Layout],
+    ) -> Result<bbt_proto::gui::UiLayout, String> {
+        use bbt_proto::gui::{UiLayout, UiPane};
+        let model = self.live_state.as_ref().ok_or("ui_not_ready: no model")?;
+        let stage = self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage);
+        let scale = self.window.as_ref().map_or(1., |w| w.scale_factor() as f32);
+        let (_, sizes) = pane_controls(
+            model,
+            &self.pane_bounds,
+            &self.watched,
+            &BTreeMap::new(),
+            stage.focused,
+            scale,
+            self.verify.grid_size,
+        );
+        let panes = self
+            .pane_bounds
+            .iter()
+            .filter_map(|(seat, rect)| {
+                let (_, (_, cols, rows)) = sizes.iter().find(|(id, _)| id == seat)?;
+                Some(UiPane {
+                    seat: bbt_mux::Ulid::from(seat.0.0),
+                    rect: rect_array(*rect),
+                    cols: *cols,
+                    rows: *rows,
+                    focused: stage.focused == Some(*seat),
+                })
+            })
+            .collect();
+        let mut roots: Vec<_> = layouts.iter().collect();
+        if let Some(page) = &self.local_page_layout {
+            roots.push(&page.layout);
+        }
+        if let Some(dock) = &self.conversation_layout {
+            roots.push(&dock.layout);
+        }
+        if let Some(document) = &self.document_layout {
+            roots.push(&document.layout);
+        }
+        if let Some(launcher) = &self.launcher_layout {
+            roots.push(launcher.solved());
+        }
+        let mut remaining = 4096;
+        let tree = roots
+            .into_iter()
+            .map(|l| ui_layout_node(l, &mut remaining))
+            .collect::<Result<_, _>>()?;
+        let layout = UiLayout {
+            size,
+            swarm: stage.swarm.map(|id| bbt_mux::Ulid::from(id.0.0)),
+            tab: stage.tab.map(|id| bbt_mux::Ulid::from(id.0.0)),
+            focused: stage.focused.map(|id| bbt_mux::Ulid::from(id.0.0)),
+            launcher_open: self.launcher.is_some(),
+            page: self.local_tab.as_ref().map(|tab| {
+                match tab {
+                    LocalTab::Graph(_) => "graph",
+                    LocalTab::Settings { .. } => "settings",
+                }
+                .to_owned()
+            }),
+            document: self.document.open.then(|| self.document.target.clone()),
+            panes,
+            tree,
+        };
+        if serde_json::to_vec(&layout)
+            .map_err(|e| e.to_string())?
+            .len()
+            > 128 * 1024
+        {
+            return Err("ui_layout_oversize: solved layout exceeds 128 KiB".into());
+        }
+        Ok(layout)
+    }
+    fn solve_ui(&mut self, logical: [f32; 2]) -> Result<Vec<bbt_ui::components::Layout>, String> {
+        self.conversation_layout = if self.live_state.is_some() || self.compose_startup {
+            Some(self.scene.conversation_layout(
+                logical,
+                &composer::Conversation {
+                    stream: self.conversation.clone(),
+                    composer: self.composer.view.clone(),
+                    scroll: self.conversation_scroll,
+                },
+            )?)
+        } else {
+            None
+        };
+        let dock = self.conversation_layout.as_ref().map_or(0., |l| l.height);
+        let layouts = if self.local_tab.is_some() {
+            self.scene.local_page_chrome(logical, dock)?
+        } else {
+            self.scene.layout_with_dock(
+                logical,
+                self.animation_start.is_some() || self.animate,
+                dock,
+            )?
+        };
+        self.local_page_layout = self
+            .local_tab
+            .as_ref()
+            .map(|tab| match tab {
+                LocalTab::Graph(graph) => {
+                    self.scene
+                        .graph_page_layout(logical, dock, &graph.checklist, graph.scroll)
+                }
+                LocalTab::Settings { controller, swarm } => {
+                    let view = self.settings_view(&controller.section);
+                    let issue = self
+                        .preferences
+                        .error
+                        .as_deref()
+                        .or(controller.error.as_deref());
+                    let status = issue.unwrap_or(if self.preferences.saved() {
+                        "saved"
+                    } else if !self.preferences.loaded {
+                        "loading"
+                    } else {
+                        "saving"
+                    });
+                    let status = if self.focus.stage.as_ref().and_then(|s| s.swarm) != *swarm {
+                        format!("{status} · local to original swarm")
+                    } else {
+                        status.into()
+                    };
+                    self.scene.settings_page_layout(
+                        logical,
+                        dock,
+                        &view,
+                        &controller.presentation(),
+                        &status,
+                    )
+                }
+            })
+            .transpose()?;
+        if let (Some(LocalTab::Graph(graph)), Some(layout)) =
+            (&mut self.local_tab, &self.local_page_layout)
+        {
+            graph.scroll = graph.scroll.min(layout.max_scroll);
+        }
+        if let (Some(LocalTab::Settings { controller, .. }), Some(layout)) =
+            (&mut self.local_tab, &self.local_page_layout)
+        {
+            controller.scroll = controller.scroll.min(layout.max_scroll);
+        }
+        let bounds = self.scene.pane_bounds(&layouts);
+        self.task_regions = self.scene.task_regions(&layouts);
+        self.close_regions = self.scene.close_regions(&layouts);
+        self.focus_bounds = self.scene.focus_bounds(&layouts);
+        self.pane_bounds = bounds;
+        self.launcher_layout = self
+            .launcher
+            .as_ref()
+            .map(|launcher| self.scene.launcher_layout(logical, &launcher.launcher))
+            .transpose()?;
+        if self.document.open {
+            let context = self.scene.ui_context();
+            if self
+                .document_layout
+                .as_ref()
+                .is_none_or(|layout| !layout.matches(logical, context))
+            {
+                let layout = self.scene.document_layout(logical, &self.document)?;
+                self.document.scroll.scroll([0.; 2], layout.regions.extent);
+                self.document_layout = Some(layout);
+            }
+        } else {
+            self.document_layout = None;
+        }
+        Ok(layouts)
+    }
     fn redraw(&mut self) -> Result<(), String> {
         self.redraw_pending.set(false);
         if self.gpu.is_none() {
@@ -3173,79 +3749,8 @@ impl App {
         let scale = self.window.as_ref().unwrap().scale_factor() as f32;
         let logical = [size.width as f32 / scale, size.height as f32 / scale];
         let start = Instant::now();
-        self.conversation_layout = if self.live_state.is_some() || self.compose_startup {
-            Some(self.scene.conversation_layout(
-                logical,
-                &composer::Conversation {
-                    stream: self.conversation.clone(),
-                    composer: self.composer.view.clone(),
-                    scroll: self.conversation_scroll,
-                },
-            )?)
-        } else {
-            None
-        };
-        let dock = self.conversation_layout.as_ref().map_or(0., |l| l.height);
-        let layouts = if self.local_tab.is_some() {
-            self.scene.local_page_chrome(logical, dock)?
-        } else {
-            self.scene.layout_with_dock(
-                logical,
-                self.animation_start.is_some() || self.animate,
-                dock,
-            )?
-        };
-        self.local_page_layout = self
-            .local_tab
-            .as_ref()
-            .map(|tab| match tab {
-                LocalTab::Graph(graph) => {
-                    self.scene
-                        .graph_page_layout(logical, dock, &graph.checklist, graph.scroll)
-                }
-                LocalTab::Settings { controller, swarm } => {
-                    let view = self.settings_view(&controller.section);
-                    let issue = self
-                        .preferences
-                        .error
-                        .as_deref()
-                        .or(controller.error.as_deref());
-                    let status = issue.unwrap_or(if self.preferences.saved() {
-                        "saved"
-                    } else if !self.preferences.loaded {
-                        "loading"
-                    } else {
-                        "saving"
-                    });
-                    let status = if self.focus.stage.as_ref().and_then(|s| s.swarm) != *swarm {
-                        format!("{status} · local to original swarm")
-                    } else {
-                        status.into()
-                    };
-                    self.scene.settings_page_layout(
-                        logical,
-                        dock,
-                        &view,
-                        &controller.presentation(),
-                        &status,
-                    )
-                }
-            })
-            .transpose()?;
-        if let (Some(LocalTab::Graph(graph)), Some(layout)) =
-            (&mut self.local_tab, &self.local_page_layout)
-        {
-            graph.scroll = graph.scroll.min(layout.max_scroll);
-        }
-        if let (Some(LocalTab::Settings { controller, .. }), Some(layout)) =
-            (&mut self.local_tab, &self.local_page_layout)
-        {
-            controller.scroll = controller.scroll.min(layout.max_scroll);
-        }
-        let bounds = self.scene.pane_bounds(&layouts);
-        self.task_regions = self.scene.task_regions(&layouts);
-        self.close_regions = self.scene.close_regions(&layouts);
-        self.focus_bounds = self.scene.focus_bounds(&layouts);
+        let layouts = self.solve_ui(logical)?;
+        let bounds = self.pane_bounds.clone();
         if let Some(model) = &self.live_state
             && self.local_tab.is_none()
             && !self.document.open
@@ -3258,12 +3763,6 @@ impl App {
         }
         self.fit_verify_grid(&bounds, scale);
         self.watch_panes(&bounds, scale);
-        self.pane_bounds = bounds;
-        self.launcher_layout = self
-            .launcher
-            .as_ref()
-            .map(|launcher| self.scene.launcher_layout(logical, &launcher.launcher))
-            .transpose()?;
         if let Some(launcher) = &self.launcher_layout {
             let caret = launcher.candidate_area();
             self.window.as_ref().unwrap().set_ime_cursor_area(
@@ -3300,20 +3799,6 @@ impl App {
                 winit::dpi::LogicalPosition::new(caret.x, caret.y),
                 winit::dpi::LogicalSize::new(caret.w, caret.h),
             );
-        }
-        if self.document.open {
-            let context = self.scene.ui_context();
-            if self
-                .document_layout
-                .as_ref()
-                .is_none_or(|layout| !layout.matches(logical, context))
-            {
-                let layout = self.scene.document_layout(logical, &self.document)?;
-                self.document.scroll.scroll([0.; 2], layout.regions.extent);
-                self.document_layout = Some(layout);
-            }
-        } else {
-            self.document_layout = None;
         }
         phases.layout = start.elapsed();
         let overlay = self.overlay.then(|| {
@@ -3603,17 +4088,22 @@ impl ApplicationHandler<UiEvent> for App {
                 self.request_redraw();
             }
             UiEvent::FocusFor(ask) => {
-                let id = ask.id;
-                if let Some(answer) = self.ctl_focus.set(ask) {
-                    self.answer_focus(answer);
-                }
-                let proxy = self.proxy.clone();
-                let timer = bbt_rt::handle().spawn(async move {
-                    tokio::time::sleep(bboxy450_term::focus_ack::DEADLINE).await;
-                    let _ = proxy.send_event(UiEvent::FocusDeadline(id));
-                });
-                self.ctl_focus.arm(timer.abort_handle());
+                self.begin_focus(ask);
                 self.drain();
+                self.request_redraw();
+            }
+            UiEvent::UiFor { id, request } => {
+                let result = self
+                    .window
+                    .as_ref()
+                    .map(|window| {
+                        let scale = window.scale_factor() as f32;
+                        let size = window.inner_size();
+                        [size.width as f32 / scale, size.height as f32 / scale]
+                    })
+                    .ok_or_else(|| "endpoint_unavailable: window is not ready".to_owned())
+                    .and_then(|size| self.ui_request(request, size));
+                self.queue(live::UiMsg::UiReply { id, result });
                 self.request_redraw();
             }
             UiEvent::FocusDeadline(id) => {
@@ -3854,7 +4344,7 @@ impl ApplicationHandler<UiEvent> for App {
                     self.error = Some("R2 idle/update probe failed".into());
                 }
                 if self.smoke || self.cadence_test {
-                    self.logger.finish(text, self.proxy.clone());
+                    self.finish_log(text);
                 } else {
                     self.logger.write(text);
                 }
@@ -3870,7 +4360,7 @@ impl ApplicationHandler<UiEvent> for App {
                     }
                     // Unlike best-effort per-event diagnostics, this final
                     // cumulative count is flushed on IO before Quit is sent.
-                    self.logger.finish(report, self.proxy.clone());
+                    self.finish_log(report);
                 } else {
                     match result {
                         Ok(()) => event_loop.exit(),
@@ -4479,78 +4969,11 @@ impl ApplicationHandler<UiEvent> for App {
                             .get(&seat)
                             .map(|screen| screen.modes)
                     });
-                let routed = if self.document.open {
-                    let routed = route_document(&input, modes.unwrap_or_default());
-                    finish_route(&mut self.keyboard, &input, routed)
-                } else if self.local_tab.is_some()
-                    && self.launcher.is_none()
-                    && !self.composer.view.focus
-                    && !self.reject_focus
-                {
-                    let routed = if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
-                        route_settings(&input, modes.unwrap_or_default(), self.settings_ime())
-                    } else {
-                        route_local_page(&input, modes.unwrap_or_default())
-                    };
-                    finish_route(&mut self.keyboard, &input, routed)
-                } else if self.launcher.is_none() && (self.composer.view.focus || self.reject_focus)
-                {
-                    let routed = route_composer(
-                        &input,
-                        modes.unwrap_or_default(),
-                        if self.reject_focus {
-                            ComposeField::Body
-                        } else if self.composer.view.kind_menu
-                            || self.composer.view.attach_pick.is_some()
-                        {
-                            ComposeField::Address
-                        } else {
-                            self.composer.view.field
-                        },
-                    );
-                    finish_route(&mut self.keyboard, &input, routed)
-                } else {
-                    route_input(
-                        &mut self.keyboard,
-                        &input,
-                        modes.unwrap_or_default(),
-                        self.launcher
-                            .as_ref()
-                            .map(|launcher| launcher.launcher.query.as_str()),
-                    )
-                };
-                match routed {
-                    RoutedKey::Quit => self.request_close(event_loop),
-                    RoutedKey::OpenLauncher => self.open_launcher(),
-                    RoutedKey::OpenGraph => self.open_graph(),
-                    RoutedKey::OpenSettings => self.open_settings("Account"),
-                    RoutedKey::SettingsKey(key) => self.settings_key(key),
-                    RoutedKey::MuteFocused => self.mute_focused(),
-                    RoutedKey::UndoClose => self.undo_latest_close(),
-                    RoutedKey::LocalPage(command) => {
-                        if self.document.open {
-                            self.document_command(command);
-                        } else {
-                            self.local_page_command(command);
-                        }
-                    }
-                    RoutedKey::ToggleHud => {
-                        self.overlay = !self.overlay;
-                        self.logger.write(format!("hitch overlay={}", self.overlay));
-                        self.request_redraw();
-                    }
-                    RoutedKey::Launcher(command) => self.launcher_command(command),
-                    RoutedKey::Composer(command) => self.composer_command(command),
-                    RoutedKey::ComposerVertical { backwards, extend } => {
-                        self.composer_move(Some(backwards), None, extend)
-                    }
-                    RoutedKey::ComposerLineEdge { end, extend } => {
-                        self.composer_move(None, Some(end), extend)
-                    }
-                    RoutedKey::Pane(navigation) => {
-                        self.focus_action(FocusAction::Navigate(navigation))
-                    }
-                    RoutedKey::Scroll(motion) => {
+                let routed = self.route_chrome(&input, modes.unwrap_or_default());
+                match self.dispatch_chrome(routed) {
+                    Ok(()) => {}
+                    Err(RoutedKey::Quit) => self.request_close(event_loop),
+                    Err(RoutedKey::Scroll(motion)) => {
                         if let Some(seat) = self.focus.stage.as_ref().and_then(|s| s.focused) {
                             let page = self
                                 .live_state
@@ -4567,7 +4990,7 @@ impl ApplicationHandler<UiEvent> for App {
                             self.scroll_pane(seat, request);
                         }
                     }
-                    RoutedKey::Terminal(bytes) => {
+                    Err(RoutedKey::Terminal(bytes)) => {
                         // No terminal input before the focused live Screen supplies modes.
                         if modes.is_some()
                             && let Some(seat) =
@@ -4586,7 +5009,8 @@ impl ApplicationHandler<UiEvent> for App {
                             });
                         }
                     }
-                    RoutedKey::Local => {}
+                    Err(RoutedKey::Local) => {}
+                    Err(_) => unreachable!("chrome routed above"),
                 }
             }
             WindowEvent::RedrawRequested => {
@@ -5329,7 +5753,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
     let fake = smoke || std::env::args().any(|arg| arg == "--fake-source");
-    let overlay = std::env::args().any(|arg| arg == "--meter");
     let args: Vec<_> = std::env::args().collect();
     let cadence_test = args.iter().any(|arg| arg == "--cadence-test");
     let animate = cadence_test || args.iter().any(|arg| arg == "--animate");
@@ -5341,10 +5764,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .find(|pair| pair[0] == "--pacing")
             .map_or("metal", |pair| pair[1].as_str()),
     )?;
-    let capture = args
-        .windows(2)
-        .find(|pair| pair[0] == "--capture")
-        .map(|pair| std::path::PathBuf::from(&pair[1]));
     let logger = log::Logger::new();
     // The delegate is installed before run_app finishes application launch.
     // Authorization and native completion waits run only on the bounded worker.
@@ -5432,124 +5851,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ..Default::default()
         });
     }
-    let mut app = App {
-        proxy,
+    let mut app = App::owner(
+        UiProxy::Native(proxy),
         inbox,
-        wake_counters: Default::default(),
         logger,
-        prepared,
-        updates,
         live_updates,
-        live_state: None,
-        live_commands,
-        pending_commands: VecDeque::new(),
-        command_retry: Default::default(),
-        admission_refusals: AdmissionRefusals::default(),
-        watched: vec![],
-        pane_sizes: BTreeMap::new(),
-        pane_bounds: vec![],
-        focus_bounds: vec![],
-        scroll_wheel: None,
-        focus: FocusState::default(),
-        notifications,
-        frontmost: false,
-        pending_notification: None,
-        spawn_results_seen: BTreeMap::new(),
-        launcher: args
-            .iter()
-            .any(|arg| arg == "--launcher")
-            .then(|| new_launcher(None, 0)),
-        launcher_layout: None,
-        launcher_parent: None,
-        preferences: preference_state,
-        preferences_io,
-        rim_preview: None,
-        mute: preferences::Mute::default(),
-        system_theme: Theme::Dark,
-        local_tab: None,
-        local_page_layout: None,
-        document: {
-            let mut host = documents::Host::default();
-            if let Some(pair) = args.windows(2).find(|p| p[0] == "--document") {
-                host.show(pair[1].clone());
-            }
-            host
-        },
-        document_return: None,
-        document_layout: None,
-        composer: ComposeController::new(composer::Composer {
-            focus: args.iter().any(|arg| arg == "--compose"),
-            ..Default::default()
-        }),
-        composer_client: messaging::Client::default(),
-        composer_scope: None,
-        task_records: messaging::Records::default(),
-        message_history: messaging::History::default(),
-        events_seen: None,
-        task_regions: Default::default(),
-        close_regions: vec![],
-        reject: None,
-        reject_report: None,
-        reject_focus: false,
-        conversation: bbt_ui::modules::stream_dock::StreamDock {
-            dock: true,
-            framed: false,
-            ..Default::default()
-        },
-        conversation_layout: None,
-        conversation_scroll: 0.,
-        composer_dragging: false,
-        compose_startup: args.iter().any(|arg| arg == "--compose"),
-        operation_backlog: VecDeque::new(),
-        pointer: [0.; 2],
-        query_dragging: false,
-        backend_lost: false,
-        app_generation: 0,
-        app_custody: "unknown".into(),
-        app_ready_sent: false,
-        render_context: (!fake && !animate).then_some(render_context),
-        closing: false,
-        smoke_bootstrap: None,
-        smoke_wake_seen: false,
-        window: None,
-        pacer: None,
-        pacing,
-        clock: Clock::default(),
-        occluded: false,
-        maximum_hz: 60.,
-        budget: budget::Budget::default(),
-        gpu: None,
-        scene: if fake || animate {
-            scene::Scene::new()
-        } else {
-            scene::Scene::live()
-        },
-        meter: HitchMeter::new(120.),
-        modifiers: ModifiersState::empty(),
-        keyboard: keyboard::State::default(),
-        overlay,
-        fake,
-        smoke,
-        demo_started: false,
-        demo_finished: false,
-        idle_scheduled: false,
-        idle_quiet: IdleQuiescence::default(),
-        redraw_pending: std::cell::Cell::new(false),
-        last_update: 0,
-        error: None,
-        capture,
-        capture_pending: true,
-        ctl_captures: Vec::new(),
-        ctl_focus: Default::default(),
-        last_presented: None,
-        pending_resize: None,
-        animate,
-        cadence_test,
-        animation_start: None,
-        frozen_ms: 450.,
+        &args,
         verify,
-        stall,
-    };
+    );
+    app.prepared = prepared;
+    app.updates = updates;
+    app.live_commands = live_commands;
+    app.notifications = notifications;
+    app.preferences = preference_state;
+    app.preferences_io = preferences_io;
+    app.pacing = pacing;
+    app.render_context = (!fake && !animate).then_some(render_context);
+    app.stall = stall;
     if let Some(pair) = args.windows(2).find(|pair| pair[0] == "--settings") {
         app.open_settings(&pair[1]);
     }
@@ -6053,6 +6371,7 @@ mod input_tests {
                 | live::UiMsg::AttentionFocus { .. }
                 | live::UiMsg::MarkEventsRead { .. }
                 | live::UiMsg::Focused { .. }
+                | live::UiMsg::UiReply { .. }
                 | live::UiMsg::AppReply { .. }
                 | live::UiMsg::Captured { .. } => {
                     panic!("pane admission fixture produced a messaging intent")

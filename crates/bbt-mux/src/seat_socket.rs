@@ -654,13 +654,23 @@ async fn gui_session(
                     }
                     let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
                     let op=match &request.action {
-                        GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
+                        GuiAction::Ui {id,..}|GuiAction::UiReply {id,..}|GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
                         GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
                     let reply:Result<GuiReply>=async {
                         match request.action {
+                            GuiAction::Ui {id,request}=> {
+                                if door!=crate::mcp::Door::Ctl {return Err(invalid("UI requests use the ctl operator door"));}
+                                let layout=client.ctl_ui(id,request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
+                                Ok(GuiReply::Ui {op:id,layout})
+                            }
+                            GuiAction::UiReply {id,result}=> {
+                                if capture_asks.is_none() {return Err(invalid("only the GUI owner answers UI requests"));}
+                                client.captures.ui_answer(id,result);
+                                Ok(GuiReply::Ok {op:id})
+                            }
                             GuiAction::App {id,request}=> {
                                 if door!=crate::mcp::Door::Ctl {return Err(invalid("app lifecycle requests use the ctl operator door"));}
                                 let status=client.captures.app(id,request).await.map_err(invalid)?;

@@ -129,6 +129,9 @@ pub struct LauncherLayout {
     pub rows: Vec<Rect>,
 }
 impl LauncherLayout {
+    pub fn solved(&self) -> &c::Layout {
+        &self.layout
+    }
     pub fn row_at(&self, at: [f32; 2]) -> Option<usize> {
         self.rows.iter().position(|rect| contains(*rect, at))
     }

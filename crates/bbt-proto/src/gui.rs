@@ -77,9 +77,107 @@ pub struct FocusFrame {
     pub generation: u64,
     pub frame_seq: u64,
 }
+
+/// Chrome input, relayed to the GUI owner; never terminal bytes or OS input.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "body", rename_all = "snake_case")]
+pub enum UiRequest {
+    Open(UiTarget),
+    Key(Vec<String>),
+    Focus { seat: Ulid },
+    Layout,
+}
+impl UiRequest {
+    /// Transport bounds; the window decides whether each chrome key is applicable.
+    pub fn validate(&self) -> Result<(), &'static str> {
+        match self {
+            Self::Open(UiTarget::Docs(path))
+                if path.is_empty() || path.len() > 4096 || path.chars().any(char::is_control) =>
+            {
+                Err("invalid_ui_path: expected a printable record locator")
+            }
+            Self::Key(keys) if keys.is_empty() || keys.len() > 32 => {
+                Err("invalid_ui_keys: expected 1-32 named chrome keys")
+            }
+            Self::Key(keys) if keys.iter().any(|key| !UI_KEYS.contains(&key.as_str())) => {
+                Err("invalid_ui_key: unsupported chrome key; use seat key for PTY input")
+            }
+            Self::Focus { seat } if *seat == Ulid::nil() => {
+                Err("invalid_ui_focus: expected a seat ID")
+            }
+            _ => Ok(()),
+        }
+    }
+}
+/// Named chrome chords accepted by ctl and independently checked by the window.
+pub const UI_KEYS: &[&str] = &[
+    "cmd-t",
+    "cmd-g",
+    "cmd-m",
+    "cmd-comma",
+    "esc",
+    "enter",
+    "tab",
+    "shift-tab",
+    "up",
+    "down",
+    "left",
+    "right",
+    "cmd-left",
+    "cmd-right",
+    "cmd-up",
+    "cmd-down",
+    "cmd-enter",
+    "backspace",
+];
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "path", rename_all = "snake_case")]
+pub enum UiTarget {
+    Graph,
+    Settings,
+    Launcher,
+    Docs(String),
+}
+/// The GUI's solved tree, not a reconstruction by logic or ctl.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UiLayout {
+    pub size: [f32; 2],
+    pub swarm: Option<Ulid>,
+    pub tab: Option<Ulid>,
+    pub focused: Option<Ulid>,
+    pub launcher_open: bool,
+    pub page: Option<String>,
+    pub document: Option<String>,
+    pub panes: Vec<UiPane>,
+    pub tree: Vec<UiLayoutNode>,
+}
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UiPane {
+    pub seat: Ulid,
+    pub rect: [f32; 4],
+    pub cols: u16,
+    pub rows: u16,
+    pub focused: bool,
+}
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UiLayoutNode {
+    pub kind: String,
+    pub rect: [f32; 4],
+    pub children: Vec<UiLayoutNode>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body")]
 pub enum GuiAction {
+    Ui {
+        id: Ulid,
+        request: UiRequest,
+    },
+    /// Only the admitted GUI owner can complete a UI relay.
+    UiReply {
+        id: Ulid,
+        result: Result<UiLayout, String>,
+    },
     ListHosts,
     ListSeats,
     /// Ask the app owner through the same admitted operator endpoint.
@@ -342,6 +440,14 @@ pub struct StyledRun {
     reason = "keep the decided C1 shared API; transport bounds each message"
 )]
 pub enum GuiReply {
+    UiAsk {
+        op: Ulid,
+        request: UiRequest,
+    },
+    Ui {
+        op: Ulid,
+        layout: UiLayout,
+    },
     /// A lifecycle query for the attached GUI owner.
     AppAsk {
         op: Ulid,
@@ -605,6 +711,29 @@ mod tests {
             assert!(serde_json::from_value::<GuiAction>(value.clone()).is_ok());
             value["body"].as_object_mut().unwrap().remove("generation");
             assert!(serde_json::from_value::<GuiAction>(value).is_err());
+        }
+    }
+}
+
+#[cfg(test)]
+mod ui_tests {
+    use super::*;
+    #[test]
+    fn ui_requests_keep_their_scope_and_reject_unbounded_input() {
+        let request = UiRequest::Key(vec!["cmd-t".into(), "esc".into()]);
+        assert_eq!(
+            serde_json::from_value::<UiRequest>(serde_json::to_value(&request).unwrap()).unwrap(),
+            request
+        );
+        assert!(request.validate().is_ok());
+        for request in [
+            UiRequest::Key(vec![]),
+            UiRequest::Key(vec!["cmd-t".into(); 33]),
+            UiRequest::Key(vec!["text into terminal".into()]),
+            UiRequest::Focus { seat: Ulid::nil() },
+            UiRequest::Open(UiTarget::Docs("x\n".into())),
+        ] {
+            assert!(request.validate().is_err());
         }
     }
 }

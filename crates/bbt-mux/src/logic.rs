@@ -113,7 +113,22 @@ struct CodexDiscovery {
     binding: Binding,
     result: std::result::Result<(String, serde_json::Value), String>,
 }
+
+struct UiAdmission {
+    retained: serde_json::Value,
+    fresh: bool,
+    journal: crate::mcp::journal::Journal,
+    principal: crate::mcp::Principal,
+    call: crate::mcp::Call,
+}
+
 enum Command {
+    CtlUi(
+        Ulid,
+        bbt_proto::gui::UiRequest,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<UiAdmission>>,
+    ),
     RecoverSeats(oneshot::Sender<Result<()>>),
     GuiHosts(oneshot::Sender<Result<Vec<bbt_proto::GuiHost>>>),
     ControlCatalogue(Ulid, u64, oneshot::Sender<Result<serde_json::Value>>),
@@ -771,6 +786,36 @@ impl LogicClient {
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await
             .map_err(|_| self.unavailable("restart outcome unknown"))?
+    }
+    /// Admit on logic, then wait for the window outside the logic worker. A replay
+    /// returns its retained layout and never repeats a chrome action.
+    pub async fn ctl_ui(
+        &self,
+        op: Ulid,
+        request: bbt_proto::gui::UiRequest,
+        origin: crate::mcp::Origin,
+    ) -> Result<bbt_proto::gui::UiLayout> {
+        request.validate().map_err(invalid)?;
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::CtlUi(op, request.clone(), origin, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        let admission = rx
+            .await
+            .map_err(|_| self.unavailable("UI admission outcome unknown"))??;
+        if !admission.fresh {
+            return operator_response(admission.retained);
+        }
+        let result = match self.captures.ui(op, request).await {
+            Ok(layout) => crate::mcp::success(op, serde_json::to_value(layout)?),
+            Err(reason) => crate::mcp::error(op, "ui_refused", &reason),
+        };
+        operator_response(admission.journal.complete(
+            &admission.principal,
+            &admission.call,
+            result,
+        )?)
     }
     /// Journals a ctl operation whose effect happens in the window (a relay), so it is
     /// recorded and audited like every other ctl op.
@@ -3888,6 +3933,39 @@ impl Worker {
             _ => Err(invalid("resize receipt mismatch")),
         }
     }
+    fn ctl_ui_admit(
+        &self,
+        op: Ulid,
+        request: bbt_proto::gui::UiRequest,
+        origin: crate::mcp::Origin,
+    ) -> Result<UiAdmission> {
+        request.validate().map_err(invalid)?;
+        let origin = self.identity.bind_origin(origin);
+        let device_id = self
+            .identity
+            .status()?
+            .device_id
+            .ok_or_else(|| invalid("held: operator device custody is unavailable"))?;
+        let principal = crate::mcp::Principal::Operator {
+            device_id,
+            door: origin.door,
+            issued_by: origin.issued_by,
+        };
+        let call = crate::mcp::Call {
+            op_id: op,
+            tool: "ui_relay".into(),
+            args: serde_json::to_value(request)?,
+        };
+        call.validate()?;
+        let (retained, fresh) = self.operator_journal.admit(&principal, &call)?;
+        Ok(UiAdmission {
+            retained,
+            fresh,
+            journal: self.operator_journal.clone(),
+            principal,
+            call,
+        })
+    }
     /// One `ctl` effect under the operator principal with its door and issuer, journaled
     /// once per op id (a retry replays, never repeats) and audited on `account/control`.
     /// `args` is what the journal keeps: never typed bytes, only their count and digest.
@@ -5322,9 +5400,9 @@ impl Worker {
         call.validate().map_err(|e| d::CommandError::new("rejected", e.to_string()))?;
         let journal = self.operator_journal.clone();
         let value = match tool::prepare(&call) {
-            Ok(tool::Request::Write(request)) => {
-                journal.effect(&actor, &call, || self.operator_record_write(&call, *request))
-            }
+            Ok(tool::Request::Write(request)) => journal.effect(&actor, &call, || {
+                self.operator_record_write(&call, *request)
+            }),
             Ok(_) => unreachable!("knowledge_write prepares a write"),
             Err(reason) => journal.checked(&actor, &call, mcp::error(id, "rejected", &reason)),
         }
@@ -5566,12 +5644,7 @@ impl Worker {
             Some(name) => name,
             None => self.default_seat_name(swarm)?,
         };
-        let mut record = SeatRecord::new(
-            Ulid::new(),
-            swarm,
-            name,
-            harness.kind.clone(),
-        );
+        let mut record = SeatRecord::new(Ulid::new(), swarm, name, harness.kind.clone());
         record.location = match spec.location {
             bbt_proto::Where::Local => crate::registry::Location::Local,
             bbt_proto::Where::Ssh { host } => crate::registry::Location::Ssh { host },
@@ -5897,6 +5970,9 @@ impl Worker {
                     Command::CtlRestart(id, generation, op, origin, reply) => {
                         let result = self.ctl_restart(id, generation, op, origin);
                         let _ = reply.send(result);
+                    }
+                    Command::CtlUi(op, request, origin, reply) => {
+                        let _ = reply.send(self.ctl_ui_admit(op, request, origin));
                     }
                     Command::CtlRecord(op, tool, args, origin, reply) => {
                         let result = self.ctl_journaled(op, &tool, args, origin, |_| Ok(()));

@@ -687,6 +687,24 @@ impl VerificationFrame {
         completed: SyncSender<(u64, Instant)>,
         wake: impl Fn() + Send + Sync + 'static,
     ) -> Result<Duration, String> {
+        self.draw_layers_notifying(ops, vec![], model, bounds, frame, completed, wake)
+    }
+
+    /// The windowless driver uses the same foreground-after-pane order as winit.
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "same render layers as native; completion belongs to the driver"
+    )]
+    pub fn draw_layers_notifying(
+        &mut self,
+        ops: Vec<Paint>,
+        foreground: Vec<Paint>,
+        model: &Model,
+        bounds: &[(SeatId, Rect)],
+        frame: u64,
+        completed: SyncSender<(u64, Instant)>,
+        wake: impl Fn() + Send + Sync + 'static,
+    ) -> Result<Duration, String> {
         let start = Instant::now();
         self.renderer.begin_frame();
         self.materials.begin_frame();
@@ -729,6 +747,23 @@ impl VerificationFrame {
                     },
                 );
             }
+        }
+        if !foreground.is_empty() {
+            encode_ops(
+                &mut self.renderer,
+                &self.materials,
+                &self.target,
+                &self.backdrop,
+                foreground,
+                FrameTime {
+                    scale: 1.,
+                    time_ms: 450.,
+                    external_before: true,
+                    clear: false,
+                },
+                &mut encoder,
+            )
+            .map_err(|e| e.to_string())?;
         }
         self.materials.flush(&self.renderer.context);
         self.renderer.flush();

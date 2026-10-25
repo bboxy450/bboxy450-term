@@ -23,6 +23,10 @@ pub(crate) struct Ask {
 /// What the window's session forwards.
 #[derive(Debug, Clone)]
 pub(crate) enum Notice {
+    Ui {
+        id: Ulid,
+        request: bbt_proto::gui::UiRequest,
+    },
     Capture(Ask),
     App {
         id: Ulid,
@@ -52,6 +56,7 @@ pub(crate) enum Notice {
 impl Notice {
     pub(crate) fn reply(self) -> bbt_proto::GuiReply {
         match self {
+            Self::Ui { id, request } => bbt_proto::GuiReply::UiAsk { op: id, request },
             Self::App { id, request } => bbt_proto::GuiReply::AppAsk { op: id, request },
             Self::AppStopping { id } => bbt_proto::GuiReply::AppStopping { op: id },
             Self::Capture(ask) => bbt_proto::GuiReply::CaptureAsk {
@@ -74,6 +79,7 @@ pub(crate) struct Captures {
     pending: Mutex<HashMap<Ulid, oneshot::Sender<Result<bbt_proto::gui::CaptureFrame, String>>>>,
     app: Mutex<HashMap<Ulid, oneshot::Sender<bbt_proto::gui::AppStatus>>>,
     focus: Mutex<HashMap<Ulid, oneshot::Sender<Result<bbt_proto::gui::FocusFrame, String>>>>,
+    ui: Mutex<HashMap<Ulid, oneshot::Sender<Result<bbt_proto::gui::UiLayout, String>>>>,
 }
 impl Default for Captures {
     fn default() -> Self {
@@ -82,10 +88,49 @@ impl Default for Captures {
             pending: Mutex::default(),
             app: Mutex::default(),
             focus: Mutex::default(),
+            ui: Mutex::default(),
         }
     }
 }
 impl Captures {
+    pub(crate) async fn ui(
+        &self,
+        id: Ulid,
+        request: bbt_proto::gui::UiRequest,
+    ) -> Result<bbt_proto::gui::UiLayout, String> {
+        let (done, answer) = oneshot::channel();
+        {
+            let mut pending = self.ui.lock().unwrap_or_else(|e| e.into_inner());
+            pending.retain(|_, value| !value.is_closed());
+            if pending.len() >= 64 || pending.contains_key(&id) {
+                return Err("Busy: UI relay is full or this operation is pending".into());
+            }
+            pending.insert(id, done);
+        }
+        let result = if self.asks.send(Notice::Ui { id, request }).is_err() {
+            Err("endpoint_unavailable: no GUI owner is attached".into())
+        } else {
+            match tokio::time::timeout(WAIT, answer).await {
+                Ok(Ok(result)) => result,
+                _ => Err("timeout: GUI owner did not answer the UI request".into()),
+            }
+        };
+        self.ui
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&id);
+        result
+    }
+    pub(crate) fn ui_answer(&self, id: Ulid, result: Result<bbt_proto::gui::UiLayout, String>) {
+        if let Some(done) = self
+            .ui
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&id)
+        {
+            let _ = done.send(result);
+        }
+    }
     /// Lifecycle relays use the capture owner's existing admitted GUI session.
     pub(crate) async fn app(
         &self,
@@ -335,6 +380,35 @@ mod tests {
         assert!(matches!(owner.recv().await.unwrap(),Notice::AppStopping {id:seen} if seen==id));
     }
 
+    #[tokio::test]
+    async fn ui_asks_are_correlated_and_do_not_invent_an_owner() {
+        use bbt_proto::gui::UiRequest;
+        let captures = Arc::new(Captures::default());
+        let id = Ulid::new();
+        assert!(
+            captures
+                .ui(id, UiRequest::Layout)
+                .await
+                .unwrap_err()
+                .starts_with("endpoint_unavailable:")
+        );
+        let mut owner = captures.subscribe();
+        let request = tokio::spawn({
+            let captures = captures.clone();
+            async move { captures.ui(id, UiRequest::Key(vec!["cmd-t".into()])).await }
+        });
+        assert!(
+            matches!(owner.recv().await.unwrap(), Notice::Ui { id: seen, request: UiRequest::Key(keys) } if seen == id && keys == ["cmd-t"])
+        );
+        captures.ui_answer(Ulid::new(), Err("wrong operation".into()));
+        assert!(!request.is_finished());
+        captures.ui_answer(id, Err("ui_key_not_applicable: test refusal".into()));
+        assert_eq!(
+            request.await.unwrap(),
+            Err("ui_key_not_applicable: test refusal".into())
+        );
+        assert!(captures.ui.lock().unwrap().is_empty());
+    }
     #[tokio::test]
     async fn an_ask_completes_with_the_windows_answer() {
         let captures = Arc::new(Captures::default());

@@ -1,0 +1,26 @@
+ROLE: EXECUTOR — Nyx Copperwing
+Brief: e49d5b08-0fe8-4e39-9406-cb35be03f8e5; ctl-cli.md C-3
+Base: f3316827; branch nyx-ctl-ui; worktree bboxy450-term-nyx
+Map approval: 868fdd33-c5a4-4c3d-b4a7-d833c0e6ff6d
+Scene/GPU bridge and parity approval: ecfed3e9-3733-4695-af20-9f3721449a0d
+
+Cut: ctl ui open graph|settings|launcher|docs <locator>, key <named chrome keys>, focus <seat selector>, layout.
+No scroll verb, OS input, logic-side layout, new consumer, renderer algorithm, shader or style change.
+
+Paths/mechanisms:
+- proto/gui.rs: bounded UI requests plus relayed request/result and solved layout DTO.
+- mux/gui_capture.rs: bounded existing GUI-owner broadcast/oneshot relay, correlated completion.
+- mux/logic.rs: account/operator journal admission before relay; retained response replay; wait outside Worker.
+- mux/seat_socket.rs: ctl-only request and GUI-only completion, same admitted endpoint.
+- app ctl.rs: parser, verb mapping, named errors and one Ui action per call.
+- app cockpit.rs/live.rs: request/reply plumbing; unsolicited UiAsk consumes no FIFO slot.
+- app main.rs/headless.rs: shared App controller owner, chrome route/dispatch and pure solve_ui(size); preserve native lifecycle/dirty/GPU servicing.
+- scene.rs: expose the retained LauncherLayout, without rebuilding its geometry.
+- gpu.rs: VerificationFrame foreground after pane textures; legacy caller passes empty foreground.
+- tests/headless.rs: isolated file-account integration and launcher-over-pane pixel witness.
+
+Bounds: 1-32 named keys; 4096-char document locator; 64 pending relays; 10s relay wait; layout 4096 nodes/128KiB, named refusal instead of clipping.
+Verification: focused DTO/relay/parser/FIFO and headless tests, strict workspace/all-target Clippy, exact clean atomic ci-local --parity (0 geometry mismatches), retained before/launcher PNGs with pixel assertion and crop read.
+UI scroll is explicitly a later cut (Corvin 564b997c / records21b41f88).
+Initial WIP check: cargo check --all-targets EXIT101 at Result alias; corrected to std::result::Result; second check EXIT0.
+A whole-workspace cargo fmt --check EXIT1 found inherited formatting plus WIP; only owned changed files formatted, inherited whitespace-only hunks restored. No unrelated source edited.
