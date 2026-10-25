@@ -478,6 +478,7 @@ enum UiEffect {
     Spawn(bbt_mux::Ulid),
     Operation(bbt_mux::Ulid),
     Mute(SeatId, bool),
+    Scroll(bbt_mux::Ulid, SeatId),
     Lifecycle(bboxy450_term::close_frame::Target),
     Document,
     Graph,
@@ -497,6 +498,9 @@ impl UiEffect {
             } => Some(Self::Mute(SeatId::from_u128(seat.0), *muted)),
             live::UiMsg::Messaging { id, .. } | live::UiMsg::Task { id, .. } => {
                 Some(Self::Operation(*id))
+            }
+            live::UiMsg::Scroll { seat, request, .. } => {
+                request.op.map(|id| Self::Scroll(id, *seat))
             }
             live::UiMsg::Close(intent) => Some(Self::Lifecycle(
                 bboxy450_term::close_frame::Target::close(intent),
@@ -2965,6 +2969,11 @@ impl App {
         if self.closing || self.live_commands.is_none() {
             return;
         }
+        let superseding_scroll = match &message {
+            live::UiMsg::Input { seat, .. } => Some(*seat),
+            live::UiMsg::Scroll { seat, request, .. } if request.op.is_none() => Some(*seat),
+            _ => None,
+        };
         let effect = self
             .ui_collect
             .as_ref()
@@ -2978,6 +2987,9 @@ impl App {
                 }
             }
             Ok(()) => {
+                if superseding_scroll.is_some_and(|seat| self.ui_wait.as_ref().is_some_and(|wait| wait.effects.iter().any(|effect| matches!(effect, UiEffect::Scroll(_, target) if *target == seat)))) {
+                    self.cancel_ui("ui_scroll_refused: superseded by admitted input/navigation");
+                }
                 if let (Some(effect), Some(effects)) = (effect, &mut self.ui_collect) {
                     effects.push(effect);
                 }
@@ -3715,6 +3727,40 @@ impl App {
             self.answer_focus(answer);
         }
     }
+    fn ui_scroll_position(
+        &self,
+        id: bbt_mux::Ulid,
+        seat: SeatId,
+    ) -> Result<Option<bbt_proto::gui::UiScrollPosition>, String> {
+        let Some(model) = self.live_state.as_ref() else {
+            return Ok(None);
+        };
+        let Some(reply) = model
+            .scroll
+            .reply
+            .as_ref()
+            .filter(|reply| reply.id == id && reply.seat == seat)
+        else {
+            return Ok(None);
+        };
+        if !model.ui.seats.get(&seat).is_some_and(|record| {
+            record.process_generation == reply.generation
+                && record.lifecycle == bbt_ui_model::Lifecycle::Open
+        }) {
+            return Err("ui_scroll_refused: pane generation is no longer live".into());
+        }
+        let expected = reply
+            .result
+            .as_ref()
+            .map_err(|reason| format!("ui_scroll_refused: {reason}"))?;
+        let actual = model
+            .scroll
+            .position(seat, model.history.get(&seat).map(Arc::as_ref));
+        if actual.live != expected.live || (!actual.live && actual.top_row != expected.top_row) {
+            return Err("ui_scroll_refused: display changed before the produced frame".into());
+        }
+        Ok(Some(*expected))
+    }
     fn ui_effect_ready(&self, effect: &UiEffect) -> Result<bool, String> {
         use bboxy450_term::model::SpawnOutcome;
         let Some(model) = &self.live_state else {
@@ -3733,6 +3779,9 @@ impl App {
             UiEffect::Operation(id) => {
                 Ok(model.operation_results.rows().any(|reply| reply.op == *id))
             }
+            UiEffect::Scroll(id, seat) => self
+                .ui_scroll_position(*id, *seat)
+                .map(|position| position.is_some()),
             UiEffect::Mute(seat, muted) => {
                 if model
                     .ui
@@ -3808,6 +3857,13 @@ impl App {
                             return Err("close_superseded: the produced frame does not show the requested lifecycle".into());
                         }
                     }
+                    if let UiEffect::Scroll(id, seat) = effect {
+                        let expected = self.ui_scroll_position(*id, *seat)?.ok_or("ui_scroll_refused: completion no longer available")?;
+                        let actual = &layout.panes.iter().find(|pane| pane.seat.0 == seat.0.0).ok_or("not_on_screen: scroll pane left the produced frame")?.scroll;
+                        if actual.live != expected.live || (!actual.live && actual.top_row != expected.top_row) {
+                            return Err("ui_scroll_refused: produced frame has a different scroll position".into());
+                        }
+                    }
                 }
                 if wait.visible.as_ref() == Some(&UiVisible::from_layout(&layout)) { Ok(layout) }
                 else { Err("ui_frame_refused: a newer UI state superseded this operation before its frame".into()) }
@@ -3864,7 +3920,7 @@ impl App {
             .collect();
         let preference_revision = self.preferences.revision;
         self.ui_collect = Some(Vec::new());
-        let result = self.apply_ui(request);
+        let result = self.apply_ui(id, request);
         let mut effects = self.ui_collect.take().expect("UI command collection");
         effects.extend(
             self.operation_backlog
@@ -3952,7 +4008,11 @@ impl App {
             );
         }
     }
-    fn apply_ui(&mut self, request: bbt_proto::gui::UiRequest) -> Result<(), String> {
+    fn apply_ui(
+        &mut self,
+        id: bbt_mux::Ulid,
+        request: bbt_proto::gui::UiRequest,
+    ) -> Result<(), String> {
         use bbt_proto::gui::{UiRequest, UiTarget};
         match request {
             UiRequest::Open(UiTarget::Launcher) => self.open_launcher(),
@@ -3992,6 +4052,31 @@ impl App {
                     }
                 }
             }
+            UiRequest::Scroll { seat, motion } => {
+                let seat = SeatId::from_u128(seat.0);
+                if self.local_tab.is_some()
+                    || self.document.open
+                    || self.launcher.is_some()
+                    || !self.pane_bounds.iter().any(|(id, _)| *id == seat)
+                {
+                    return Err("not_on_screen: requested scroll pane is not visible".into());
+                }
+                let screen = self
+                    .live_state
+                    .as_ref()
+                    .and_then(|model| model.screens.get(&seat))
+                    .ok_or("history_view_unavailable")?;
+                let page = i64::try_from(screen.rows.saturating_sub(1).max(1))
+                    .map_err(|_| "history_dimensions_unsupported")?;
+                let request = match motion {
+                    bbt_proto::gui::UiScroll::Top => ScrollRequest::top(),
+                    bbt_proto::gui::UiScroll::Bottom => ScrollRequest::live(),
+                    bbt_proto::gui::UiScroll::PageUp => ScrollRequest::lines(page),
+                    bbt_proto::gui::UiScroll::PageDown => ScrollRequest::lines(-page),
+                    bbt_proto::gui::UiScroll::Row(row) => ScrollRequest::row(row),
+                };
+                self.scroll_pane(seat, request.correlated(id));
+            }
             UiRequest::Focus { .. } | UiRequest::Layout => {
                 return Err("UI request uses the frame acknowledgment path".into());
             }
@@ -4027,6 +4112,9 @@ impl App {
                     cols: *cols,
                     rows: *rows,
                     focused: stage.focused == Some(*seat),
+                    scroll: model
+                        .scroll
+                        .position(*seat, model.history.get(seat).map(Arc::as_ref)),
                 })
             })
             .collect();

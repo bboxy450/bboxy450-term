@@ -225,6 +225,7 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
             Request {
                 anchor: Anchor::Live,
                 lines: 1,
+                op: None,
             },
         )
         .unwrap();
@@ -250,6 +251,7 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
             Request {
                 anchor: Anchor::Live,
                 lines: (live_row - 10_000) as i64,
+                op: None,
             },
         )
         .unwrap();
@@ -288,6 +290,7 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
                 Request {
                     anchor: Anchor::Live,
                     lines: 1,
+                    op: None,
                 }
             } else {
                 Request::top()
@@ -370,7 +373,7 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
         .unwrap();
     assert!(history.next_action(now).is_some());
     assert!(history.next_action(now + Duration::from_secs(60)).is_none());
-    history.rejected(true, now);
+    history.rejected(true, now, "Busy: history service busy");
     assert!(
         history
             .next_action(now + Duration::from_millis(99))
@@ -453,4 +456,214 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
         fifty.forget(SeatId::from_u128(id));
     }
     assert_eq!(fifty.retained_heap_bytes(), Some(mem::size_of::<History>()));
+}
+
+fn scroll_fixture() -> (SeatId, View, Arc<Screen>, Vec<HistoryRecord>, u64) {
+    let seat = SeatId::from_u128(51);
+    let bytes: Vec<u8> = (1..=64)
+        .flat_map(|n| format!("line {n:05}\r\n").into_bytes())
+        .collect();
+    let mut term = Term::new(80, 6, 128);
+    term.advance(&bytes);
+    drop(term.take_events());
+    let row = term.history_bounds().end - 6;
+    (
+        seat,
+        view(seat, 7),
+        Arc::new(Screen::from_term(&term, String::new(), None, None)),
+        vec![HistoryRecord::Bytes { sequence: 1, bytes }],
+        row,
+    )
+}
+
+#[test]
+fn ctl_scroll_completes_absolute_rows_cached_hits_and_u64_tail_without_signed_casts() {
+    let (seat, token, screen, records, tail) = scroll_fixture();
+    let mut history = History::default();
+    let op = Ulid::new();
+    history
+        .request(
+            seat,
+            token,
+            1,
+            screen.clone(),
+            Request::top().correlated(op),
+        )
+        .unwrap();
+    let (top, _, _) = drive(&mut history, &records, 1);
+    assert_eq!(top[&seat].top_row, 0);
+    assert_eq!(text(&top[&seat].screen.cells[0]), "line 00001");
+    let reply = history.take_completion().unwrap();
+    assert_eq!((reply.id, reply.seat, reply.generation), (op, seat, 7));
+    assert_eq!(
+        reply.result.unwrap(),
+        bboxy450_term::scrollback::Position {
+            top_row: Some(0),
+            live: false
+        }
+    );
+    history
+        .request(
+            seat,
+            token,
+            1,
+            screen.clone(),
+            Request::row(17).correlated(Ulid::new()),
+        )
+        .unwrap();
+    let (at, _, _) = drive(&mut history, &records, 1);
+    assert_eq!(at[&seat].top_row, 17);
+    assert_eq!(text(&at[&seat].screen.cells[0]), "line 00018");
+    history.take_completion().unwrap();
+    history
+        .request(
+            seat,
+            token,
+            1,
+            screen.clone(),
+            Request::row(17).correlated(Ulid::new()),
+        )
+        .unwrap();
+    assert_eq!(
+        history.take_completion().unwrap().result.unwrap().top_row,
+        Some(17)
+    );
+    assert!(!history.has_work());
+    assert!(history.next_action(Instant::now()).is_none());
+    history
+        .request(
+            seat,
+            token,
+            1,
+            screen,
+            Request::row(u64::MAX).correlated(Ulid::new()),
+        )
+        .unwrap();
+    for _ in 0..8 {
+        history.step();
+        if !history.contains(seat) {
+            break;
+        }
+    }
+    assert_eq!(
+        history.take_completion().unwrap().result.unwrap(),
+        bboxy450_term::scrollback::Position {
+            top_row: Some(tail),
+            live: true
+        }
+    );
+    assert!(!history.contains(seat));
+    let located = history.take_position().unwrap();
+    assert_eq!(located.baseline, (token, 1));
+    let mut readback = bboxy450_term::scrollback::Readback::default();
+    readback.displayed(seat, Some((token, 2)), located.baseline, located.position);
+    assert_eq!(
+        readback.position(seat, None).top_row,
+        None,
+        "an older replay cannot index a newer live frame"
+    );
+}
+
+#[test]
+fn ctl_scroll_finishes_live_noops_refusals_disconnects_and_local_supersession() {
+    let (seat, token, screen, _, _) = scroll_fixture();
+    let mut history = History::default();
+    history
+        .request(
+            seat,
+            token,
+            1,
+            screen.clone(),
+            Request::live().correlated(Ulid::new()),
+        )
+        .unwrap();
+    assert_eq!(
+        history.take_completion().unwrap().result.unwrap(),
+        bboxy450_term::scrollback::Position::default()
+    );
+    assert!(history.next_action(Instant::now()).is_none());
+    history
+        .request(
+            seat,
+            token,
+            1,
+            screen.clone(),
+            Request::top().correlated(Ulid::new()),
+        )
+        .unwrap();
+    history.next_action(Instant::now()).unwrap();
+    assert_eq!(
+        history.rejected(
+            false,
+            Instant::now(),
+            "history_unavailable: retained data missing"
+        ),
+        Some(seat)
+    );
+    assert_eq!(
+        history.take_completion().unwrap().result.unwrap_err(),
+        "history_unavailable: retained data missing"
+    );
+    history
+        .request(
+            seat,
+            token,
+            1,
+            screen.clone(),
+            Request::top().correlated(Ulid::new()),
+        )
+        .unwrap();
+    history.disconnected();
+    assert_eq!(
+        history.take_completion().unwrap().result.unwrap_err(),
+        "history_disconnected"
+    );
+    history
+        .request(
+            seat,
+            token,
+            1,
+            screen.clone(),
+            Request::top().correlated(Ulid::new()),
+        )
+        .unwrap();
+    history
+        .request(seat, token, 1, screen, Request::lines(1))
+        .unwrap();
+    assert_eq!(
+        history.take_completion().unwrap().result.unwrap_err(),
+        "history_superseded"
+    );
+}
+
+#[test]
+fn solved_scroll_readback_leaves_unindexed_live_null_and_invalidates_old_sequences() {
+    use bboxy450_term::scrollback::{Position, Readback};
+    let (seat, token, _, _, tail) = scroll_fixture();
+    let mut readback = Readback::default();
+    assert_eq!(readback.position(seat, None), Position::default());
+    readback.displayed(
+        seat,
+        Some((token, 1)),
+        (token, 1),
+        Position {
+            top_row: Some(tail),
+            live: true,
+        },
+    );
+    assert_eq!(readback.position(seat, None).top_row, Some(tail));
+    assert!(!readback.observe(seat, Some((token, 1))));
+    assert!(readback.observe(seat, Some((token, 2))));
+    assert_eq!(readback.position(seat, None), Position::default());
+    readback.displayed(
+        seat,
+        Some((token, 2)),
+        (token, 2),
+        Position {
+            top_row: Some(tail),
+            live: true,
+        },
+    );
+    readback.retain(|_| false);
+    assert_eq!(readback.position(seat, None), Position::default());
 }

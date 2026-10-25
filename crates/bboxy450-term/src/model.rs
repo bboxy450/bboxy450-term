@@ -503,6 +503,7 @@ pub struct Model {
     /// Historical display only. Live modes, replicas and acknowledgements keep
     /// using screens; the UI never owns a history parser or a fetched page.
     pub history: BTreeMap<SeatId, Arc<crate::scrollback::Historical>>,
+    pub scroll: Arc<crate::scrollback::Readback>,
     pub frames: BTreeMap<SeatId, Arc<PreparedGrid>>,
     pub states: BTreeMap<SeatId, SeatState>,
     /// Signing holds affect messaging, never whether terminal panes stay live.
@@ -531,6 +532,7 @@ impl Default for Model {
             screens: BTreeMap::new(),
             subtitles: BTreeMap::new(),
             history: BTreeMap::new(),
+            scroll: Arc::default(),
             frames: BTreeMap::new(),
             states: BTreeMap::new(),
             identity: None,
@@ -1109,6 +1111,7 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
         screens,
         subtitles,
         history,
+        scroll: previous.scroll.clone(),
         frames,
         states,
         identity: previous.identity.clone(),
