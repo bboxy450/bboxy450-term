@@ -1,0 +1,30 @@
+Nyx Copperwing <EXECUTOR> — UI night scripts, Oracle cc3c64a9
+Exact signed gated source: e8453eb78aed672cbaf20623f4c106c97145cc88; branch nyx-scroll-night, own worktree.
+Base: accepted ui-scroll/NG1 ee7a00d8. Two source commits, 52a9accf + e8453eb7.
+
+Mechanisms (no Rust, protocol, renderer or scheduling changes):
+scripts/e2e/S1.sh:1 + ui.py:101 — canonical ctl GUI top/absolute-row/bottom traversal of a 20k fixture; 371 produced pages, non-overlapping coordinate intervals, same live tail accepting a nonce. Partial: no displayed-history bytes or lazy-page counters on ctl.
+scripts/e2e/S2.sh:1 — named fixture_unavailable failure. Pure displayed-gap test exists at tests/scrollback.rs:338; real seat socket gap test exists at mux tests/logic.rs:336. Neither is an admitted night fixture for a middle-ring hole displayed by the GUI. Never opens/mutates a live Ring.
+scripts/e2e/S3.sh:1 — named metrics_unavailable failure. No fifty-tab/RSS substitution for fifty watched historical panes, per-Playback heap or hitch meter; no scale pass claimed.
+scripts/e2e/S4.sh:1 + ui.py:141 — real maximum app resize, compare actual live Replica before history admission; fixture_dimensions_unavailable: solved471x148 vs Replica471x69. live.rs:640 / mux logic.rs:4291 cap cells at32768. No product limit changed. Refusal/heap proof remains missing.
+scripts/e2e/K2.sh:1 + ui.py:178 — idle-before-mute, native Cmd-M toggles only focused seat, roster retained, named mutemark appears/disappears, frame-backed capture, operator DM stored. Partial: amber pixels, native DM arrival/non-operator delay+release, mute journal signer.
+scripts/e2e/L1.sh:1 + ui.py:208 — native Cmd-T/Esc, centred horizontal picker bounds over real pane, produced-frame captures, zero spawned IDs, same focus/tab. Partial: blur pixels, harness/preset labels and search.
+scripts/e2e/test_ui.py:1 — five falsification/map tests (skipped interval/stale frame cannot pass; unavailable observers fail; headers match map).
+.bboxy/specs/e2e-script-map.md:32 — six rows match coverage headers. No full coverage is claimed.
+
+Verification, actual statuses:
+- cargo build --locked -p bboxy450-term --bins: EXIT0 (initial O0 build and accepted-base rebuild).
+- python3 -B -I scripts/e2e/test_ui.py: EXIT0,5/0; sh -n six scripts: EXIT0; git diff --check: EXIT0.
+- scoped cargo test --locked -p bboxy450-term: EXIT0,297/0/1 ignored.
+- scoped strict all-target Clippy: EXIT0; bbt-doc corpus6/0; fast invariants25/0 (9 skipped), EXIT0.
+- canonical night scrollback: S1 pass(partial); S2/S3 fail named missing fixture/metrics; final S4 fails named setup cap. Group AMBER/EXIT0, all missing work tracked by runner test-account tasks.
+- canonical night keyboard: K2 pass(partial); group RED/EXIT1 because K1/K3 unimplemented on base.
+- canonical night launcher and placement: L1 pass(partial); group RED/EXIT1 because L2/L3/L4 unimplemented on base.
+- Earlier K2 assertion expected type instead of kind; fixed. Earlier S4 fixture assumptions failed; strict Replica guard now names actual cap. Original failures/digests retained in nights log; no green rewrite.
+- exact clean detached NORMAL sh scripts/ci-local.sh: EXIT0/1725.313s. Workspace1422/0/29 ignored; strict/UI lint0; headless idle0frames/0callbacks/10.000s/windows0; invariants25/0 (9 slow skipped). No parity/967 run (script/data-only brief).
+
+Custody/resources: canonical runner owns throwaway FILE accounts; test-account run_by, no operator identity or input. Gate uses debug memory default with explicit file-account fixtures. No new workload during QUIET r5j-ui-frame; no duplicate post-gate replay. Recorded group empty, lsof1. Removed own O0 target6766444544 bytes and gate target4182126592 bytes; clean detached checkout removed. No active dev/gate/app remains.
+
+Main moved to 4eaa63ce during gate (R5j and store fast path). Frozen exact source unchanged; merge script/map rows additively with other night work. Source acceptance/merge belongs to Vesper. No publish/merge/push by Nyx.
+
+Evidence: ui-night-e8453eb7-ci.log, checks.log, nights.log, source.json, verdict.json, cleanup.json.

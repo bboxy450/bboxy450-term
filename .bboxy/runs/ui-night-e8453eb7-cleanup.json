@@ -1,0 +1,24 @@
+{
+  "precheck": {
+    "path": "/Users/feral/mydev/bboxy450-term-nyx/target/scroll-night-build",
+    "lsof_exit": 1,
+    "allocated_bytes_removed": 6766444544,
+    "removed_at": 1792928515.848042,
+    "purpose": "inactive O0 precheck target; exact gate recreates only its O1 target"
+  },
+  "gate": {
+    "source": "e8453eb78aed672cbaf20623f4c106c97145cc88",
+    "gate_exit": 0,
+    "gate_seconds": 1725.313,
+    "group_members": [],
+    "lsof_exit": 1,
+    "allocated_bytes_removed": 4182126592,
+    "target": "/Users/feral/mydev/bboxy450-term-nyx/target/scroll-night-build",
+    "target_removed": true,
+    "worktree": "/Users/feral/mydev/bboxy450-term-nyx/target/scroll-night-gate-e8453eb78aed",
+    "worktree_was_clean": true,
+    "worktree_removed": true,
+    "no_additional_workload": "quiet r5j-ui-frame honored; no post-gate replay",
+    "removed_at": 1792930291.8239949
+  }
+}
