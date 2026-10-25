@@ -152,6 +152,7 @@ if args[0]=="test" and cfg.get("quarantine"):
     raise SystemExit(101)
 if cfg.get("block")==args[0]:
     (state/"blocked.pid").write_text(str(os.getpid()))
+    if cfg.get("test_started"):print("Running tests/fixture.rs (fixture-binary)\\nrunning 1 test",flush=True)
     signal.pause()
 if cfg.get("fail")==args[0]:raise SystemExit(1)
 if args[0]=="test" and cfg.get("hook"):
@@ -289,6 +290,29 @@ class AffectedTests(unittest.TestCase):
 
 
 class StateTests(unittest.TestCase):
+    def test_phase_accounting_clips_an_active_compile_without_inventing_test_time(self):
+        with tempfile.TemporaryDirectory(prefix="landing-timing-") as temp:
+            path = Path(temp) / "phases.jsonl"
+            path.write_text('\n'.join(json.dumps(e) for e in [
+                {"at": 1., "phase": "compile"}, {"at": 4., "phase": "test"},
+                {"at": 9., "phase": "other"}, {"at": 10., "phase": "compile"}]) + '\n')
+            totals = landing.phase_totals(path, 12.)
+        self.assertEqual(totals, {"compile_seconds": 5., "test_seconds": 5., "tests_started": True})
+
+    def test_narrow_cold_expires_with_one_switch_and_uses_the_latest_attempt(self):
+        with tempfile.TemporaryDirectory(prefix="landing-cold-") as temp:
+            path = Path(temp) / "presubmit.log"
+            cold = {"sha": "fixture-sha", "error": "presubmit_timeout", "exit": 124,
+                    "tests_started": False, "compile_seconds": 900.}
+            path.write_text(json.dumps(cold) + '\n')
+            with patch.object(landing, "state_directory", return_value=Path(temp)):
+                self.assertTrue(landing.narrow_cold("fixture-sha"))
+                with patch.object(landing, "ALLOW_NARROW_COLD", False):
+                    self.assertFalse(landing.narrow_cold("fixture-sha"))
+                with path.open("a") as stream:
+                    stream.write(json.dumps({**cold, "tests_started": True}) + '\n')
+                self.assertFalse(landing.narrow_cold("fixture-sha"))
+
     def test_target_is_keyed_by_checkout_path_and_stable_at_that_path(self):
         with patch.dict(os.environ, {"CARGO_TARGET_DIR": "/tmp/fixture-warm-target"}, clear=True):
             first = landing.build_environment(Path("/tmp/fixture-checkout-a"))
@@ -384,6 +408,19 @@ class PresubmitTests(unittest.TestCase):
         self.assertEqual(record["error"], "presubmit_timeout")
         self.assertEqual(record["exit"], 124)
 
+    def test_timeout_during_a_test_cannot_use_narrow_cold(self):
+        self.cut("crates/c/src/lib.rs")
+        (self.repo.state / "behavior.json").write_text('{"block":"test","test_started":true}')
+        # Leave process/metadata startup outside the assertion: the contract is
+        # expiry of an already-running test, never subsecond fixture startup.
+        (self.repo.state / "fixture.json").write_text('{"timeout_seconds":3}')
+        result = self.repo.presubmit()
+        self.assertEqual(result.returncode, 124, result.stdout + result.stderr)
+        record = json.loads((self.repo.state / "presubmit.log").read_text())
+        self.assertTrue(record["tests_started"])
+        self.assertGreater(record["test_seconds"], 0)
+        self.assertFalse(record["narrow_cold_eligible"])
+
     def test_fixture_cannot_raise_the_fifteen_minute_limit(self):
         self.cut("crates/c/src/lib.rs")
         (self.repo.state / "fixture.json").write_text('{"timeout_seconds":901}')
@@ -454,6 +491,32 @@ class LandTests(unittest.TestCase):
                         + ("ci-local: all gates passed\n" if status == 0 else "fixture failed\n")
                         + f"ci-local: result {sha} {mode} {status}\n")
         return path
+
+    def test_narrow_compile_timeout_accepts_only_exact_green_gate_and_records_tier(self):
+        sha = self.cut()
+        (self.repo.state / "behavior.json").write_text('{"block":"test"}')
+        (self.repo.state / "fixture.json").write_text('{"timeout_seconds":3}')
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 77, result.stdout + result.stderr)
+        record = json.loads((self.repo.state / "presubmit.log").read_text())
+        self.assertTrue(record["narrow_cold_eligible"])
+        result = self.repo.land("--gate-log", self.gate_log(sha))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.repo.remote_head(), sha)
+        landing_record = json.loads((self.repo.state / "landings.log").read_text())
+        self.assertEqual(landing_record["tier"], "narrow-cold")
+        self.assertEqual(landing_record["tested_sha"], sha)
+
+    def test_narrow_test_timeout_still_refuses_a_provided_gate(self):
+        sha = self.cut()
+        (self.repo.state / "behavior.json").write_text('{"block":"test","test_started":true}')
+        (self.repo.state / "fixture.json").write_text('{"timeout_seconds":3}')
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 77, result.stdout + result.stderr)
+        result = self.repo.land("--gate-log", self.gate_log(sha))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("gate_log_requires_wide_or_measured_narrow_cold_cut", result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
 
     def test_wide_exact_green_log_is_reused_and_hashed_without_another_gate(self):
         sha = self.cut("crates/a/src/lib.rs")
@@ -596,6 +659,7 @@ class LandTests(unittest.TestCase):
         result = self.repo.land()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.cargo_test_count(), 2)
+        self.assertEqual(len(json.loads((self.repo.state / "landings.log").read_text())["check_timings"]), 2)
 
     def test_three_moving_attempts_are_79_with_no_candidate_push(self):
         sha = self.cut()

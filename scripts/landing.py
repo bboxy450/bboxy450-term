@@ -6,6 +6,7 @@ use argument arrays; fixture runs use their own repository and shared-state dir.
 import argparse
 import hashlib
 import importlib.util
+import io
 from datetime import datetime, timezone
 import json
 import math
@@ -22,6 +23,11 @@ import uuid
 
 # Running a gate must not leave bytecode among a candidate's source paths.
 sys.dont_write_bytecode = True
+
+# Temporary #325 escape for a measured compile-only timeout. The fixed-slot
+# runner follow-up removes this switch and the narrow-cold acceptance path.
+ALLOW_NARROW_COLD = True
+_timing_path = None
 
 
 class Refusal(Exception):
@@ -183,9 +189,65 @@ def cargo_backed(check):
 
 def checked(argv, root):
     print("presubmit:", shlex.join(map(str, argv)), flush=True)
-    result = command(list(map(str, argv)), cwd=root, capture=False, check=False)
-    if result.returncode:
-        raise Refusal(f"check_failed ({result.returncode}): {argv[0]}", 1)
+    code = measured_command(list(map(str, argv)), root, _timing_path)
+    if code:
+        raise Refusal(f"check_failed ({code}): {argv[0]}", 1)
+
+
+def measured_command(argv, root, timing_path, *, stream=None, env=None):
+    phase = None
+    def switch(value):
+        nonlocal phase
+        if value != phase and timing_path is not None:
+            line = (json.dumps({"at": time.monotonic(), "phase": value}) + "\n").encode()
+            fd = os.open(timing_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+            try:
+                os.write(fd, line)
+            finally:
+                os.close(fd)
+        phase = value
+    cargo = argv[0] == "cargo" or any(Path(arg).name == "quarantine-test.sh" for arg in argv)
+    fixtures = any(Path(arg).name == "test-landing.py" for arg in argv)
+    switch("compile" if cargo else "test" if fixtures else "other")
+    child = subprocess.Popen(argv, cwd=root, env=env, text=True,
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    try:
+        for line in child.stdout:
+            clean = re.sub(r"\x1b\[[0-9;]*m", "", line)
+            if re.match(r"\s*(Compiling|Checking) ", clean):
+                switch("compile")
+            elif re.match(r"\s*Finished .*(?:profile|target)", clean):
+                switch("other")
+            elif (re.match(r"\s*(?:Running |Doc-tests |running \d+ tests?\b|test result:)", clean)
+                  or clean.startswith("Fast CI fixtures;")):
+                switch("test")
+            if stream is None:
+                print(line, end="", flush=True)
+            else:
+                stream.write(line)
+                stream.flush()
+            if clean.startswith("test result:"):
+                switch("other")
+        return child.wait()
+    finally:
+        child.stdout.close()
+        switch("other")
+
+
+def phase_totals(path, ended):
+    events = []
+    if path.exists():
+        for line in path.read_text().splitlines():
+            try:
+                events.append(json.loads(line))
+            except json.JSONDecodeError:
+                pass  # a killed writer can leave only its final event partial
+    totals = {"compile_seconds": 0., "test_seconds": 0.,
+              "tests_started": any(e["phase"] == "test" for e in events)}
+    for event, following in zip(events, events[1:] + [{"at": ended}]):
+        if event["phase"] in ("compile", "test"):
+            totals[event["phase"] + "_seconds"] += max(0., min(following["at"], ended) - event["at"])
+    return totals
 
 
 def records_checks(root, paths):
@@ -257,6 +319,8 @@ def scoped_parity(root, data, output):
 
 
 def presubmit_worker(base, result_path):
+    global _timing_path
+    _timing_path = result_path.parent / "phases.jsonl"
     root = repository()
     data = affected(base + "..HEAD", root=root)
     atomic_write(result_path, json.dumps(data) + "\n")
@@ -276,9 +340,11 @@ def presubmit_worker(base, result_path):
         if dispatch:
             # The dispatch cuts supply their golden tests with the dispatcher.
             # A zero-test filter is not evidence of byte identity.
-            test = command(["cargo", "test", "--locked", *packages, "golden"], cwd=root)
-            print(test.stdout, end="", flush=True)
-            if not re.search(r"test result: ok\. [1-9][0-9]* passed", test.stdout):
+            output = io.StringIO()
+            code = measured_command(["cargo", "test", "--locked", *packages, "golden"],
+                                    root, _timing_path, stream=output)
+            print(output.getvalue(), end="", flush=True)
+            if code or not re.search(r"test result: ok\. [1-9][0-9]* passed", output.getvalue()):
                 raise Refusal("golden_dispatch_tests_missing")
     if data["parity"] == "yes":
         scoped_parity(root, data, result_path.parent / "parity")
@@ -342,7 +408,11 @@ def presubmit(base):
               "verdict": "green" if code == 0 else "red", "exit": code,
               "error": "presubmit_timeout" if timed_out else None,
               "binary_durations": binary_durations(transcript),
-              "log": str(output / "commands.log")}
+              "log": str(output / "commands.log"),
+              "timing_basis": "observed_output_phase_wall",
+              **phase_totals(output / "phases.jsonl", time.monotonic())}
+    record["narrow_cold_eligible"] = (ALLOW_NARROW_COLD and timed_out and not record["tests_started"]
+                                       and record["compile_seconds"] > 0)
     append_record("presubmit.log", record)
     print(transcript, end="")
     print(json.dumps(record, sort_keys=True), flush=True)
@@ -392,7 +462,7 @@ def gate_proof(path, sha):
             "tested_sha": sha}
 
 
-def wide_check(root, data, gate_log=None):
+def wide_check(root, data, gate_log=None, *, tier="wide"):
     sha = git("rev-parse", "HEAD", cwd=root)
     started = time.monotonic()
     if gate_log is None:
@@ -403,9 +473,8 @@ def wide_check(root, data, gate_log=None):
         environment["BBOXY_GATE_SLOT"] = "none"  # land/presubmit already owns it
         print("land: wide cut; full normal CI, no presubmit deadline", flush=True)
         with gate_log.open("w") as stream:
-            code = command(["sh", "scripts/ci-local.sh"], cwd=root, env=environment,
-                           stdout=stream, stderr=subprocess.STDOUT, capture=False,
-                           check=False).returncode
+            code = measured_command(["sh", "scripts/ci-local.sh"], root, output / "phases.jsonl",
+                                    stream=stream, env=environment)
         print(gate_log.read_text(), end="", flush=True)
         proof = gate_proof(gate_log, sha) if code == 0 else {"gate_log": str(gate_log)}
     else:
@@ -415,12 +484,35 @@ def wide_check(root, data, gate_log=None):
     if git("rev-parse", "HEAD", cwd=root) != sha:
         raise Refusal("candidate_changed_during_gate")
     clean_source(root)
-    record = {"sha": sha, "tier": "wide", "affected": data["affected"],
+    record = {"sha": sha, "tier": tier, "affected": data["affected"],
               "seconds": time.monotonic() - started, "verdict": "green" if code == 0 else "red",
               "exit": code, "binary_durations": binary_durations(Path(gate_log).read_text()),
               **proof}
+    if "output" in locals():
+        record.update(phase_totals(output / "phases.jsonl", time.monotonic()))
+        record["timing_basis"] = "observed_output_phase_wall"
+    else:
+        transcript = Path(gate_log).read_text()
+        durations = re.findall(r"\bFinished .*?\bin ((?:[0-9.]+[hms]\s*)+)", transcript)
+        compile_seconds = sum(float(value) * {"h": 3600, "m": 60, "s": 1}[unit]
+                              for duration in durations for value, unit in re.findall(r"([0-9.]+)([hms])", duration))
+        binaries = binary_durations(transcript)
+        fixture_seconds = [float(v) for v in re.findall(r"Ran \d+ fixture tests in ([0-9.]+)s", transcript)]
+        record.update(compile_seconds=compile_seconds if durations else None,
+                      test_seconds=sum(b["seconds"] for b in binaries) + sum(fixture_seconds)
+                      if binaries or fixture_seconds else None,
+                      tests_started=bool(binaries or fixture_seconds),
+                      timing_basis="provided_log_cargo_and_test_reported_wall")
     append_record("presubmit.log", record)
     return record
+
+
+def narrow_cold(sha):
+    if not ALLOW_NARROW_COLD:
+        return False
+    row = next((r for r in reversed(records("presubmit.log")) if r.get("sha") == sha), {})
+    return (row.get("error") == "presubmit_timeout" and row.get("exit") == 124
+            and row.get("tests_started") is False and row.get("compile_seconds", 0) > 0)
 
 
 def binary_durations(transcript):
@@ -595,6 +687,7 @@ def land(gate_log=None):
     spent = 0.
     landing = None
     proof = {}
+    check_timings = []
     with Slot():
         for retry in range(3):
             git("fetch", "origin", "main", cwd=root)
@@ -620,17 +713,25 @@ def land(gate_log=None):
                                       or (any(p.startswith(("lab/", "design/")) for p in data["shared"])
                                           and moved["parity"] == "yes"))
             candidate = git("rev-parse", "HEAD", cwd=root)
-            if tested is None or intersection or (data["tier"] == "wide" and tested != candidate):
+            if (tested is None or intersection
+                    or ((data["tier"] == "wide" or proof.get("tier") == "narrow-cold") and tested != candidate)):
                 started = time.monotonic()
                 if data["tier"] == "wide":
                     proof = wide_check(root, data, gate_log)
                     code = proof["exit"]
+                elif gate_log and narrow_cold(candidate):
+                    proof = wide_check(root, data, gate_log, tier="narrow-cold")
+                    code = proof["exit"]
                 else:
                     if gate_log:
-                        raise Refusal("gate_log_requires_wide_cut")
+                        raise Refusal("gate_log_requires_wide_or_measured_narrow_cold_cut")
                     code = command(["sh", "scripts/presubmit.sh", base], cwd=root,
                                    capture=False, check=False).returncode
+                    proof = next((row for row in reversed(records("presubmit.log"))
+                                  if row.get("sha") == candidate), {})
                 spent += time.monotonic() - started
+                check_timings.append({k: proof.get(k) for k in
+                                      ("sha", "compile_seconds", "test_seconds", "timing_basis")})
                 if code:
                     raise Refusal("presubmit_failed", 77)
                 tested = git("rev-parse", "HEAD", cwd=root)
@@ -654,10 +755,17 @@ def land(gate_log=None):
                         raise Refusal("push_failed: " + pushed.stderr)
                     continue
             landing = {"sha": sha, "timestamp": now(), "author_key": key, "author": email,
-                       "tier": data["tier"], "affected": data["affected"],
+                       "tier": proof.get("tier", data["tier"]), "affected": data["affected"],
                        "presubmit_seconds": spent, "retries": retry, "paths": data["paths"],
                        "tested_sha": tested, "branch": branch}
-            landing.update({k: proof[k] for k in ("gate_log", "gate_log_sha256") if k in proof})
+            landing.update({k: proof[k] for k in ("gate_log", "gate_log_sha256", "compile_seconds",
+                                                 "test_seconds", "tests_started", "timing_basis") if k in proof})
+            landing["check_timings"] = check_timings
+            if len(check_timings) > 1:
+                landing["timing_basis"] = "sum_of_check_timings"
+            for kind in ("compile_seconds", "test_seconds"):
+                landing[kind] = (sum(row[kind] for row in check_timings)
+                                 if all(row[kind] is not None for row in check_timings) else None)
             append_record("landings.log", landing)
             break
         if landing is None:
@@ -693,7 +801,7 @@ def main():
     p.add_argument("result", type=Path)
     p = sub.add_parser("land")
     p.add_argument("--gate-log", type=Path,
-                   help="reuse a full NORMAL ci-local log on the exact wide candidate SHA")
+                   help="reuse full NORMAL CI on the exact wide or measured narrow-cold candidate SHA")
     args = parser.parse_args()
     if args.verb == "affected":
         result = affected(args.range)
