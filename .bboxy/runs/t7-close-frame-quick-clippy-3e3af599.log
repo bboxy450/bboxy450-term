@@ -1,0 +1,20 @@
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mermaid)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-core)
+    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-plugin)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-supervisor)
+    Checking bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-harness-wake-up)
+    Checking bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-keychain-file)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-doc)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-proto)
+    Checking bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-keychain)
+    Checking bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxybook)
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-desktop-notifications)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy-firehose)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 53.39s
+
+EXIT 0
