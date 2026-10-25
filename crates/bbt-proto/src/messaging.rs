@@ -157,6 +157,78 @@ pub struct Envelope {
     pub signature: String,
 }
 
+/// Cryptographic evidence on a locally stored message, independently of delivery receipts.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SignatureState {
+    #[default]
+    Signed,
+    Pending,
+}
+impl SignatureState {
+    pub fn is_signed(&self) -> bool {
+        *self == Self::Signed
+    }
+}
+
+/// An intent can carry only this marker; a signed envelope is a distinct record.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PendingSignature {
+    #[default]
+    Pending,
+}
+
+/// The locally admitted speaker of an unsigned intent, never a public-key claim.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum LogicalSender {
+    Seat {
+        seat: Ulid,
+        #[serde(with = "decimal")]
+        process_generation: u64,
+    },
+    Operator {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        device: Option<Ulid>,
+        door: Door,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        issued_by: Option<String>,
+    },
+}
+
+/// Same-device delivery admitted while custody is unavailable (decision #285).
+///
+/// There is deliberately no cryptographic author, issuer or fallback signature here.
+/// A pending intent cannot be submitted to a pinned remote receiver as an Envelope.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PendingIntent {
+    pub version: u16,
+    pub id: Ulid,
+    pub sender: LogicalSender,
+    pub swarm_id: Ulid,
+    pub role: Role,
+    #[serde(with = "decimal")]
+    pub role_epoch: u64,
+    pub request: SendRequest,
+    pub body: Body,
+    #[serde(with = "decimal")]
+    pub admission_order: u64,
+    #[serde(with = "decimal")]
+    pub admitted_ms: u64,
+    pub signature: PendingSignature,
+    pub hold_reason: String,
+}
+
+/// An appended signature upgrade binds the immutable original intent by ID and digest.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct IntentBinding {
+    pub id: Ulid,
+    pub digest: String,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum State {
