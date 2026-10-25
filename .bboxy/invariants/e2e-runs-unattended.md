@@ -14,7 +14,7 @@ links:
   - { to: "[[id1-seat-chain]]", rel: constrains }
   - { to: "[[ctl-opt-in]]", rel: sibling }
 created: "2026-10-24T19:18:29Z"
-updated: "2026-10-25T12:18:12Z"
+updated: "2026-10-25T16:05:03Z"
 ---
 # The e2e night runs unattended
 
@@ -61,6 +61,8 @@ the slow tier (`slow: true`, `gate: night`): it runs the whole night, so it
 runs under `scripts/ci-local.sh --slow` and in the night itself, never in the
 default gate. With this, the four pieces of
 [[d282-app-tests-itself-unattended]] are all on main.
+
+**Held again on 7dc463d1** (Seraph, 2026-10-25, clean detached tree, own target, bins built then `scripts/e2e-unattended.sh`): exit 0 in 461 s, twelve groups, 55 written, every record test-account signed, every app on file custody, no window. The run grew from about 110 s at landing because more promise scripts now execute; the per-group bound is 1 200 s, and a night approaching it is a design question about the bound or the scripts, raised before it is hit, not a reason to raise the bound quietly.
 
 **Cost of a violation.** A test that needs a human present is a meeting; the
 operator worked fourteen hours for a night that should have run itself.
