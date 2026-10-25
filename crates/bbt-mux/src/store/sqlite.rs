@@ -108,6 +108,39 @@ pub(crate) fn open(path: &Path) -> Result<Lease> {
     })
 }
 
+/// The pragma is a read-only fast path; only a missing schema marker reserves
+/// the writer. Existing version-table databases receive the marker once.
+pub(super) fn ensure_schema(db: &mut Connection, ddl: &str, unsupported: &str) -> Result<()> {
+    let version: i64 = db.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    if version != 0 && version != 1 {
+        return Err(invalid(unsupported));
+    }
+    if version == 0 {
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        // Another opener may have initialized it while we waited for the writer.
+        let current: i64 = tx.pragma_query_value(None, "user_version", |row| row.get(0))?;
+        match current {
+            0 => {
+                tx.execute_batch(ddl)?;
+                let legacy: i64 = tx.query_row("SELECT version FROM version", [], |r| r.get(0))?;
+                if legacy != 1 {
+                    return Err(invalid(unsupported));
+                }
+                tx.pragma_update(None, "user_version", 1)?;
+            }
+            1 => {}
+            _ => return Err(invalid(unsupported)),
+        }
+        tx.commit()?;
+    }
+    // Preserve the existing version-table compatibility check on the fast path.
+    let legacy: i64 = db.query_row("SELECT version FROM version", [], |row| row.get(0))?;
+    if legacy != 1 {
+        return Err(invalid(unsupported));
+    }
+    Ok(())
+}
+
 impl SqliteStore {
     pub fn open(directory: &Path) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
@@ -116,20 +149,14 @@ impl SqliteStore {
             path: directory.join("object.sqlite"),
         };
         let mut db = open(&store.path)?;
-        // Schema probes read before their conditional writes. Reserve the writer
-        // before that snapshot so a competing commit cannot invalidate its upgrade.
-        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-        tx.execute_batch(
+        ensure_schema(
+            &mut db,
             "CREATE TABLE IF NOT EXISTS version (version INTEGER NOT NULL);
             INSERT INTO version SELECT 1 WHERE NOT EXISTS(SELECT 1 FROM version);
             CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value BLOB NOT NULL);
             CREATE TABLE IF NOT EXISTS alarms (key TEXT PRIMARY KEY, deadline INTEGER NOT NULL);",
+            "unsupported object schema",
         )?;
-        let version: i64 = tx.query_row("SELECT version FROM version", [], |r| r.get(0))?;
-        if version != 1 {
-            return Err(invalid("unsupported object schema"));
-        }
-        tx.commit()?;
         Ok(store)
     }
 
@@ -192,6 +219,111 @@ impl Store for SqliteStore {
 mod tests {
     use super::*;
     use std::sync::Barrier;
+
+    #[test]
+    fn schema_markers_migrate_legacy_databases_and_preserve_version_refusals() {
+        use crate::store::events::EventLog;
+
+        let root = tempfile::tempdir().unwrap();
+        let store = SqliteStore::open(root.path()).unwrap();
+        store.put("retained", b"original").unwrap();
+        let log = EventLog::open(root.path()).unwrap();
+        for path in [&store.path, &log.path] {
+            let db = open(path).unwrap();
+            db.pragma_update(None, "user_version", 0).unwrap();
+        }
+        SqliteStore::open(root.path()).unwrap();
+        EventLog::open(root.path()).unwrap();
+        assert_eq!(store.get("retained").unwrap().unwrap(), b"original");
+        for path in [&store.path, &log.path] {
+            let db = open(path).unwrap();
+            assert_eq!(
+                db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
+                    .unwrap(),
+                1
+            );
+            db.pragma_update(None, "user_version", 2).unwrap();
+        }
+        assert_eq!(
+            SqliteStore::open(root.path()).unwrap_err().to_string(),
+            "unsupported object schema"
+        );
+        assert_eq!(
+            EventLog::open(root.path()).unwrap_err().to_string(),
+            "unsupported event schema"
+        );
+        for path in [&store.path, &log.path] {
+            let db = open(path).unwrap();
+            db.pragma_update(None, "user_version", 0).unwrap();
+            db.execute("UPDATE version SET version=2", []).unwrap();
+        }
+        assert_eq!(
+            SqliteStore::open(root.path()).unwrap_err().to_string(),
+            "unsupported object schema"
+        );
+        assert_eq!(
+            EventLog::open(root.path()).unwrap_err().to_string(),
+            "unsupported event schema"
+        );
+        for path in [&store.path, &log.path] {
+            let db = open(path).unwrap();
+            assert_eq!(
+                db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
+                    .unwrap(),
+                0
+            );
+        }
+    }
+
+    #[test]
+    fn fifty_current_schema_opens_do_not_take_either_database_write_lock() {
+        use crate::store::events::EventLog;
+
+        const CALLERS: usize = 50;
+        let root = tempfile::tempdir().unwrap();
+        let store = SqliteStore::open(root.path()).unwrap();
+        let log = EventLog::open(root.path()).unwrap();
+        let mut object_db = store.connection().unwrap();
+        let mut events_db = open(&log.path).unwrap();
+        // Keep both writers reserved until every open returns. A read-only open
+        // can finish; any attempted schema write must fail rather than waiting
+        // for a writer we release later and accidentally passing the test.
+        let object_writer = object_db
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .unwrap();
+        let events_writer = events_db
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .unwrap();
+        let start = Barrier::new(CALLERS);
+        let failures = std::thread::scope(|scope| {
+            let calls: Vec<_> = (0..CALLERS)
+                .map(|caller| {
+                    let start = &start;
+                    let directory = root.path();
+                    scope.spawn(move || {
+                        start.wait();
+                        let mut failures = Vec::new();
+                        if let Err(error) = SqliteStore::open(directory) {
+                            failures.push(format!("caller={caller} object: {error}"));
+                        }
+                        if let Err(error) = EventLog::open(directory) {
+                            failures.push(format!("caller={caller} events: {error}"));
+                        }
+                        failures
+                    })
+                })
+                .collect();
+            calls
+                .into_iter()
+                .flat_map(|call| call.join().unwrap())
+                .collect::<Vec<_>>()
+        });
+        drop((object_writer, events_writer));
+        assert!(
+            failures.is_empty(),
+            "schema opens requested a writer: {failures:?}"
+        );
+    }
 
     #[test]
     fn concurrent_open_and_read_then_write_share_one_database_without_busy() {
