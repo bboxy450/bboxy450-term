@@ -275,6 +275,245 @@ fn explicit_placements_capture_the_anchor_preserve_siblings_and_acknowledge_the_
 }
 
 #[test]
+fn notification_recording_requires_a_test_account_before_startup() {
+    let fixture = Fixture::new();
+    let (code, reply) = fixture.ctl(&[
+        "app",
+        "start",
+        "--headless",
+        "--ctl",
+        "--notifications",
+        "record",
+    ]);
+    assert_eq!(code, 2, "{reply:?}");
+    assert!(!fixture.run.exists());
+    let direct = Command::new(BIN)
+        .args(["--headless", "--notifications", "record", "--run-dir"])
+        .arg(&fixture.run)
+        .env("BBOXY_TEST_CUSTODY", "memory")
+        .output()
+        .unwrap();
+    assert!(!direct.status.success());
+    assert!(String::from_utf8_lossy(&direct.stderr).contains("--test-account"));
+    assert!(!fixture.run.exists());
+}
+
+#[test]
+fn recording_notifications_replace_mute_and_activate_the_exact_headless_pane() {
+    let mut f = Fixture::new();
+    let account = f.root.path().join("notification-account");
+    let start = f.ok(&[
+        "app",
+        "start",
+        "--headless",
+        "--ctl",
+        "--test-account",
+        account.to_str().unwrap(),
+        "--notifications",
+        "record",
+    ]);
+    f.pid = start["data"]["pid"].as_u64().map(|pid| pid as u32);
+    assert_eq!(start["data"]["windows"], 0);
+    assert_eq!(start["data"]["custody_backend"], "file");
+    let target = f.ok(&[
+        "seat",
+        "spawn",
+        "zsh",
+        "--name",
+        "notification-target",
+        "--place",
+        "tab",
+    ])["data"]["seat"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let original = f.ok(&["ui", "focus", &target]);
+    let other = f.ok(&[
+        "seat",
+        "spawn",
+        "zsh",
+        "--name",
+        "other-pane",
+        "--place",
+        "tab",
+    ])["data"]["seat"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let background = f.ok(&["ui", "focus", &other]);
+    assert_ne!(background["data"]["tab"], original["data"]["tab"]);
+    let program = f.root.path().join("waiting-producer.py");
+    std::fs::write(
+        &program,
+        r#"import base64,sys
+print('R6READY',flush=True)
+for raw in sys.stdin:
+    question=raw.rstrip('\n')
+    print('R6PRODUCER:'+question,flush=True)
+    if question=='IDLE':
+        print('\033]7501;state=idle\007',end='',flush=True)
+    else:
+        detail=base64.b64encode((question+'\nprivate second line').encode()).decode()
+        print('\033]7501;state=blocked:kind=question:msg='+detail+'\007',end='',flush=True)
+"#,
+    )
+    .unwrap();
+    let launch = format!(
+        "python3 -u '{}'",
+        program.to_string_lossy().replace('\'', "'\\''")
+    );
+    f.ok(&["seat", "type", &target, &launch]);
+    f.ok(&["seat", "key", &target, "enter"]);
+    f.ok(&[
+        "seat",
+        "wait",
+        &target,
+        "--text",
+        "R6READY",
+        "--timeout",
+        "20000",
+    ]);
+    let question = |text: &str| {
+        f.ok(&["seat", "type", &target, text]);
+        f.ok(&["seat", "key", &target, "enter"]);
+        f.ok(&[
+            "seat",
+            "wait",
+            &target,
+            "--text",
+            &format!("R6PRODUCER:{text}"),
+            "--timeout",
+            "20000",
+        ]);
+    };
+    let notices = || f.ok(&["debug", "notifications"])["data"].clone();
+    question("First question?");
+    let first = await_value(&f, || {
+        let state = notices();
+        (state["available"] == true
+            && state["settled"] == true
+            && state["outstanding_count"] == 1
+            && state["outstanding"][0]["body"] == "First question?")
+            .then_some(state)
+    });
+    assert_eq!(first["backend"], "recording");
+    assert_eq!(first["os_presentation"], false);
+    assert_eq!(first["outstanding"][0]["id"], target);
+    assert_eq!(first["posts"], 1);
+    assert!(!first.to_string().contains("private second line"));
+    question("Replacement question?");
+    let replaced = await_value(&f, || {
+        let state = notices();
+        (state["settled"] == true
+            && state["outstanding_count"] == 1
+            && state["posts"] == 2
+            && state["outstanding"][0]["body"] == "Replacement question?")
+            .then_some(state)
+    });
+    assert_eq!(replaced["replacements"], 1);
+    assert!(
+        replaced["records"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["operation"] == "replace" && row["stage"] == "completion")
+    );
+    use bboxy450_term::ctl::{Client, Endpoint};
+    use bbt_proto::messaging::Request;
+    let mut client =
+        Client::connect(&Endpoint::read(&f.run.join("gui.endpoint")).unwrap()).unwrap();
+    let record = client
+        .seats()
+        .unwrap()
+        .into_iter()
+        .find(|seat| seat.record.id.to_string() == target)
+        .unwrap()
+        .record;
+    client
+        .messaging(
+            record.swarm,
+            Request::Mute {
+                seat: record.id,
+                muted: true,
+            },
+        )
+        .unwrap();
+    await_value(&f, || {
+        let state = notices();
+        (state["settled"] == true
+            && state["outstanding_count"] == 0
+            && state["waiting"].as_array().is_some_and(|rows| {
+                rows.iter()
+                    .any(|r| r["seat"] == target && r["muted"] == true)
+            }))
+        .then_some(state)
+    });
+    question("IDLE");
+    await_value(&f, || {
+        let state = notices();
+        state["waiting"]
+            .as_array()
+            .is_some_and(|rows| rows.iter().all(|r| r["seat"] != target))
+            .then_some(state)
+    });
+    question("Muted question?");
+    let muted = await_value(&f, || {
+        let state = notices();
+        (state["settled"] == true
+            && state["waiting"].as_array().is_some_and(|rows| {
+                rows.iter()
+                    .any(|r| r["seat"] == target && r["muted"] == true)
+            }))
+        .then_some(state)
+    });
+    assert_eq!(muted["posts"], 2, "muted waiting episode posted");
+    assert_eq!(muted["outstanding_count"], 0);
+    client
+        .messaging(
+            record.swarm,
+            Request::Mute {
+                seat: record.id,
+                muted: false,
+            },
+        )
+        .unwrap();
+    await_value(&f, || {
+        let state = notices();
+        (state["settled"] == true
+            && state["outstanding_count"] == 1
+            && state["outstanding"][0]["id"] == target)
+            .then_some(state)
+    });
+    let before = f.ok(&["ui", "layout"]);
+    assert_eq!(before["data"]["focused"], other);
+    let clicked = f.ok(&["ui", "notification-click", &target]);
+    assert_eq!(clicked["data"]["focused"], target);
+    assert_eq!(clicked["data"]["tab"], original["data"]["tab"]);
+    assert!(
+        clicked["data"]["frame_seq"].as_u64().unwrap()
+            > before["data"]["frame_seq"].as_u64().unwrap()
+    );
+    assert!(
+        clicked["data"]["panes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p["seat"] == target && p["focused"] == true)
+    );
+    let handled = await_value(&f, || {
+        let state = notices();
+        (state["settled"] == true && state["activations"] == 1 && state["outstanding_count"] == 0)
+            .then_some(state)
+    });
+    assert_eq!(handled["focused"], target);
+    let (code, _) = f.ctl(&["ui", "notification-click", &other]);
+    assert_ne!(code, 0);
+    assert_eq!(f.ok(&["ui", "layout"])["data"]["focused"], target);
+    assert_eq!(f.ok(&["app", "status"])["data"]["windows"], 0);
+    f.ok(&["app", "stop"]);
+}
+
+#[test]
 fn headless_cli_starts_real_gui_types_captures_and_stops_without_a_window() {
     let mut f = Fixture::new();
     let started = f.start();

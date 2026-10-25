@@ -1708,6 +1708,7 @@ async fn ctl_never_prints_secrets() {
         vec!["debug", "journal", "SELECT * FROM kv"],
         vec!["debug", "journal", "identity/private-key-fixture"],
         vec!["debug", "metrics"],
+        vec!["debug", "notifications"],
         vec!["debug", "snapshot", snapshot.to_str().unwrap()],
         vec!["debug", "ps"],
         vec!["--help"],

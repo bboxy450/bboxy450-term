@@ -48,6 +48,8 @@ pub struct GuiRequest {
 pub enum AppRequest {
     /// Read the GUI owner's actual readiness, without any capability material.
     Status,
+    /// Read the explicitly selected test notification backend, never the OS.
+    Notifications,
     /// Acknowledge the request before beginning orderly app shutdown.
     Stop,
     /// Resize the window (offscreen or real) to this grid of terminal cells; its layout then
@@ -71,6 +73,8 @@ pub struct AppStatus {
     /// Bounded readback of the retained close/grace UI, absent on older hosts.
     #[serde(default)]
     pub close: serde_json::Value,
+    #[serde(default, skip_serializing_if = "serde_json::Value::is_null")]
+    pub notifications: serde_json::Value,
 }
 /// The completed frame which acknowledged a focus command.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -96,6 +100,10 @@ pub enum UiRequest {
     },
     /// Capture a placement in the GUI owner before any seat is launched.
     Spawn(Box<UiSpawn>),
+    /// Debug recording backend only; invokes its real response callback.
+    NotificationClick {
+        seat: Ulid,
+    },
     Layout,
 }
 
@@ -155,7 +163,7 @@ impl UiRequest {
             Self::Key(keys) if keys.iter().any(|key| !UI_KEYS.contains(&key.as_str())) => {
                 Err("invalid_ui_key: unsupported chrome key; use seat key for PTY input")
             }
-            Self::Focus { seat } if *seat == Ulid::nil() => {
+            Self::Focus { seat } | Self::NotificationClick { seat } if *seat == Ulid::nil() => {
                 Err("invalid_ui_focus: expected a seat ID")
             }
             Self::Scroll { seat, .. } if *seat == Ulid::nil() => {

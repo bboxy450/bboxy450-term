@@ -40,6 +40,7 @@ impl bbt_rt::Waker for Wake {
 }
 
 pub fn run(args: &[String]) -> Result<(), String> {
+    let record_notifications = crate::notification_recording(args)?;
     let value = |flag| args.windows(2).find(|v| v[0] == flag).map(|v| v[1].clone());
     let run_dir = value("--run-dir").map(std::path::PathBuf::from);
     let smoke = args.iter().any(|v| v == "--smoke");
@@ -111,6 +112,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
         verify,
     );
     app.live_commands = Some(commands);
+    if record_notifications {
+        app.install_recording()?;
+    }
     let settings_path = value("--settings-config")
         .map(std::path::PathBuf::from)
         .or_else(|| {
@@ -191,6 +195,18 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             dirty = true;
                         }
                     }
+                    UiEvent::Notification(bboxy450_desktop_notifications::Response::Clicked(
+                        id,
+                    )) => app.notification_clicked(id),
+                    UiEvent::Notification(bboxy450_desktop_notifications::Response::Dismissed(
+                        _,
+                    )) => {}
+                    UiEvent::NotificationReady => {
+                        if let Some(worker) = &mut app.notifications {
+                            worker.flush();
+                        }
+                    }
+                    UiEvent::NotificationError(reason) => logger.write(reason),
                     UiEvent::UiFor {
                         id,
                         request,
@@ -240,6 +256,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             0,
                         );
                         status.custody_backend = custody.clone();
+                        if request == bbt_proto::gui::AppRequest::Notifications {
+                            status.notifications = app.recording_status();
+                        }
                         crate::queue_pending(
                             &mut app.pending_commands,
                             live::UiMsg::AppReply { id, status },

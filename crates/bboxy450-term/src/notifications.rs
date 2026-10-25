@@ -7,6 +7,7 @@ use std::{
     collections::BTreeSet,
     sync::{
         Arc,
+        atomic::{AtomicU64, Ordering},
         mpsc::{self, Receiver, SyncSender, TrySendError},
     },
     thread::{self, JoinHandle},
@@ -23,6 +24,7 @@ pub mod recording;
 struct Plan {
     desired: Desired,
     known: BTreeSet<NotificationId>,
+    revision: u64,
 }
 
 /// The host forwards these through its event proxy; Ready releases UI retry.
@@ -37,6 +39,8 @@ pub struct Worker {
     pending: Option<Plan>,
     last: Option<Plan>,
     thread: Option<JoinHandle<()>>,
+    submitted: u64,
+    processed: Arc<AtomicU64>,
 }
 impl Worker {
     pub fn start(
@@ -44,25 +48,44 @@ impl Worker {
         event: Arc<dyn Fn(Event) + Send + Sync>,
     ) -> std::io::Result<Self> {
         let (send, receive) = mpsc::sync_channel(1);
+        let processed = Arc::new(AtomicU64::new(0));
+        let completed = processed.clone();
         let thread = thread::Builder::new()
             .name("bbt-notifications".into())
-            .spawn(move || run(notifier, receive, event))?;
+            .spawn(move || run(notifier, receive, event, completed))?;
         Ok(Self {
             send: Some(send),
             pending: None,
             last: None,
             thread: Some(thread),
+            submitted: 0,
+            processed,
         })
     }
 
     /// Coalesce replaceable desired state, never block on the native worker.
     pub fn submit(&mut self, desired: Desired, known: BTreeSet<NotificationId>) {
-        let plan = Plan { desired, known };
-        if self.last.as_ref() != Some(&plan) {
+        if self
+            .last
+            .as_ref()
+            .is_none_or(|last| last.desired != desired || last.known != known)
+        {
+            self.submitted += 1;
+            let plan = Plan {
+                desired,
+                known,
+                revision: self.submitted,
+            };
             self.last = Some(plan.clone());
             self.pending = Some(plan);
         }
         self.flush();
+    }
+
+    /// Latest desired revision and last fully processed revision. Processing
+    /// is not OS presentation; errors remain visible in the backend's log.
+    pub fn progress(&self) -> (u64, u64) {
+        (self.submitted, self.processed.load(Ordering::Acquire))
     }
 
     pub fn flush(&mut self) {
@@ -94,6 +117,7 @@ fn run(
     notifier: Box<dyn Notifier>,
     receive: Receiver<Plan>,
     event: Arc<dyn Fn(Event) + Send + Sync>,
+    processed: Arc<AtomicU64>,
 ) {
     let mut plan = Plan::default();
     let mut posted = Desired::new();
@@ -182,6 +206,7 @@ fn run(
                 }
             }
         }
+        processed.fetch_max(plan.revision, Ordering::Release);
         event(Event::Ready);
     }
 }

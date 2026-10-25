@@ -25,6 +25,7 @@ struct State {
     sequence: u64,
     omitted_records: u64,
     posts: u64,
+    replacements: u64,
     removals: u64,
     activations: u64,
 }
@@ -68,12 +69,14 @@ impl Recorder {
             .take(SNAPSHOT_ROWS)
             .map(|n| json!({"id":n.id.0,"title":n.title,"body":n.body}))
             .collect();
-        Ok(json!({"backend":"recording","os_presentation":false,
-            "posts":state.posts,"removals":state.removals,"activations":state.activations,
+        Ok(bbt_mux::debug::sanitize(
+            json!({"backend":"recording","os_presentation":false,
+            "posts":state.posts,"replacements":state.replacements,"removals":state.removals,"activations":state.activations,
             "outstanding_count":state.outstanding.len(),"outstanding":outstanding,
             "omitted_outstanding":state.outstanding.len().saturating_sub(SNAPSHOT_ROWS),
             "records":state.records,"omitted_records":state.omitted_records,
-            "activation_basis":"callback submission; the GUI owner separately acknowledges completed focus"}))
+            "activation_basis":"callback submission; the GUI owner separately acknowledges completed focus"}),
+        ))
     }
 
     /// Exercise the same callback the native delegate calls. The lock is
@@ -116,6 +119,12 @@ impl Recorder {
             .state
             .lock()
             .map_err(|_| Error::Backend("recording state unavailable".into()))?;
+        let operation =
+            if operation == "post" && id.is_some_and(|id| state.outstanding.contains_key(id)) {
+                "replace"
+            } else {
+                operation
+            };
         state.record(operation, "request", id, None);
         let result = change(&mut state);
         state.record(
@@ -150,6 +159,7 @@ impl Notifier for Recorder {
                 ));
             }
             state.posts += 1;
+            state.replacements += u64::from(state.outstanding.contains_key(&notice.id));
             state.outstanding.insert(notice.id.clone(), notice.clone());
             Ok(())
         })
@@ -209,5 +219,22 @@ mod tests {
             rows.iter()
                 .any(|r| r["operation"] == "post" && r["stage"] == "completion")
         );
+    }
+
+    #[test]
+    fn recording_readback_redacts_encoded_key_bytes() {
+        let backend = Recorder::new(Arc::new(|_| {}));
+        let key = "ab".repeat(32);
+        let bytes = serde_json::to_string(&vec![171u8; 32]).unwrap();
+        backend
+            .post(&Notification {
+                id: NotificationId("fixture".into()),
+                title: key.clone(),
+                body: bytes.clone(),
+            })
+            .unwrap();
+        let snapshot = backend.snapshot().unwrap().to_string();
+        assert!(!snapshot.contains(&key));
+        assert!(!snapshot.contains(&bytes));
     }
 }

@@ -83,11 +83,14 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   debug metrics                           existing numeric counters, with availability
   debug snapshot <file.json>              bounded R5 cursor/capture table; no tracing enabled
   debug ps                                this app's process tree; no argv or environment
+  debug notifications                     bounded test recording; no OS presentation
+  ui notification-click <seat>            recording callback, acknowledged by its pane frame
   record write <file|->                   an e2e record, signed by the operator device: the
                                           knowledge_write fields (path or ref, frontmatter,
                                           body, etag) as one JSON object
   app endpoint                            the run directory, socket path and generation
   app start [--headless] [--ctl] [--run-dir DIR]
+            [--test-account DIR --notifications record]   debug fixtures only
   app status                              actual backend, GUI, events and custody readiness
   app resize <cols>x<rows>                the window (offscreen or real) to that cell grid
   app stop                                orderly shutdown through the admitted app relay
@@ -144,6 +147,8 @@ pub enum Command {
         motion: bbt_proto::gui::UiScroll,
     },
     Identity(bbt_proto::identity::IdentityRequest),
+    UiNotificationClick(String),
+    DebugNotifications,
     Spawn {
         harness: String,
         name: Option<String>,
@@ -325,6 +330,7 @@ pub enum Command {
         ctl: bool,
         unattended: bool,
         test_account: Option<PathBuf>,
+        record_notifications: bool,
     },
     /// Read liveness through the attached GUI owner.
     AppStatus,
@@ -347,6 +353,7 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("ui", "layout", "Ui"),
     ("identity", "status", "Identity"),
     ("identity", "unlock", "Identity"),
+    ("ui", "notification-click", "Ui"),
     ("seat", "ls", "ListSeats"),
     ("seat", "spawn", "Spawn"),
     ("seat", "screen", "Screen"),
@@ -387,6 +394,7 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("debug", "metrics", "Debug"),
     ("debug", "snapshot", "Debug"),
     ("debug", "ps", "Debug"),
+    ("debug", "notifications", "App"),
     ("app", "endpoint", "-"),
     ("app", "start", "-"),
     ("app", "status", "App"),
@@ -518,6 +526,8 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             seat: seat.into(),
             motion: bbt_proto::gui::UiScroll::Row(row.parse().map_err(|_| format!("{USAGE_PREFIX}ui scroll row requires an unsigned zero-based row"))?),
         },
+        ["ui", "notification-click", seat] => Command::UiNotificationClick(seat.into()),
+        ["debug", "notifications"] => Command::DebugNotifications,
         ["ui", "open", target] => Command::Ui(bbt_proto::gui::UiRequest::Open(match target {
             "graph" => bbt_proto::gui::UiTarget::Graph,
             "settings" => bbt_proto::gui::UiTarget::Settings,
@@ -841,6 +851,11 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             ctl,
             unattended,
             test_account: flag("test-account").map(PathBuf::from),
+            record_notifications: match flag("notifications").as_deref() {
+                None => false,
+                Some("record") if flags.contains_key("test-account") => true,
+                _ => return Err(format!("{USAGE_PREFIX}--notifications record requires --test-account DIR")),
+            },
         },
         ["app", "status"] => Command::AppStatus,
         ["app", "resize", size] => {
@@ -867,7 +882,11 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             });
         }
     };
-    if (headless || ctl || unattended || flags.contains_key("test-account"))
+    if (headless
+        || ctl
+        || unattended
+        || flags.contains_key("test-account")
+        || flags.contains_key("notifications"))
         && !matches!(&command, Command::AppStart { .. })
     {
         return Err(format!(
@@ -884,6 +903,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             ..
         } => Some(&["since"]),
         Command::Debug { .. } => Some(&[]),
+        Command::DebugNotifications | Command::UiNotificationClick(_) => Some(&[]),
         _ => None,
     };
     if let Some(allowed) = read_flags {
@@ -919,6 +939,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
         ![
             "swarm",
             "test-account",
+            "notifications",
             "name",
             "cwd",
             "since",
@@ -1746,6 +1767,8 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
         | Command::UiFocus(_)
         | Command::UiScroll { .. }
         | Command::SpawnAt(_)
+        | Command::UiNotificationClick(_)
+        | Command::DebugNotifications
         | Command::Watch { .. }
         | Command::Rename { .. }
         | Command::Restart { .. }
@@ -2086,6 +2109,7 @@ fn run_verb(
         ctl,
         unattended,
         test_account,
+        record_notifications,
     } = &parsed.command
     {
         let data = app::start(
@@ -2094,6 +2118,7 @@ fn run_verb(
             *ctl,
             *unattended,
             test_account.as_deref(),
+            *record_notifications,
         )?;
         return print(op.unwrap_or_else(fresh), data, parsed.human);
     }
@@ -2170,6 +2195,16 @@ fn run_verb(
             let seat = resolve(&client.seats()?, &seat)?.record.id;
             serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::Scroll { seat, motion })?)
                 .map_err(|e| e.to_string())?
+        }
+        Command::UiNotificationClick(seat) => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::NotificationClick { seat })?)
+                .map_err(|e| e.to_string())?
+        }
+        Command::DebugNotifications => {
+            client
+                .app(bbt_proto::gui::AppRequest::Notifications)?
+                .notifications
         }
         Command::AppStatus => serde_json::to_value(client.app(bbt_proto::gui::AppRequest::Status)?)
             .map_err(|e| e.to_string())?,
@@ -2801,6 +2836,8 @@ mod tests {
             "ui layout",
             "identity status",
             "identity unlock",
+            "ui notification-click s",
+            "debug notifications",
             "seat ls",
             "seat spawn zsh",
             "seat screen s",

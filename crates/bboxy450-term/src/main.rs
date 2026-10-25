@@ -223,7 +223,38 @@ fn app_status(
         frame_seq,
         windows,
         close: bboxy450_term::close::status(model, Instant::now()),
+        notifications: serde_json::Value::Null,
     }
+}
+
+/// Recording can never select the operator's native notification account.
+fn notification_recording(args: &[String]) -> Result<bool, String> {
+    let mut selected = false;
+    for (index, arg) in args.iter().enumerate() {
+        let mode = if arg == "--notifications" {
+            Some(
+                args.get(index + 1)
+                    .map(String::as_str)
+                    .ok_or("--notifications needs record")?,
+            )
+        } else {
+            arg.strip_prefix("--notifications=")
+        };
+        let Some(mode) = mode else { continue };
+        if selected || mode != "record" {
+            return Err("--notifications supports one explicit record selector".into());
+        }
+        selected = true;
+    }
+    if selected
+        && (!cfg!(debug_assertions)
+            || bboxy450_term::cockpit::Config::test_account_from_args(args)
+                .map_err(|e| e.to_string())?
+                .is_none())
+    {
+        return Err("notification recording requires a debug build and --test-account DIR".into());
+    }
+    Ok(selected)
 }
 
 /// Both GUI owners derive close requests from the same retained scene.
@@ -1498,6 +1529,9 @@ struct App {
     notifications: Option<bboxy450_term::notifications::Worker>,
     frontmost: bool,
     pending_notification: Option<(SeatId, Instant)>,
+    notification_ui: Option<bboxy450_term::focus_ack::Ask>,
+    #[cfg(debug_assertions)]
+    notification_recorder: Option<bboxy450_term::notifications::recording::Recorder>,
     spawn_results_seen: BTreeMap<bbt_mux::Ulid, bboxy450_term::model::SpawnOutcome>,
     launcher: Option<LauncherController>,
     launcher_layout: Option<scene::LauncherLayout>,
@@ -1628,6 +1662,9 @@ impl App {
             notifications: None,
             frontmost: false,
             pending_notification: None,
+            notification_ui: None,
+            #[cfg(debug_assertions)]
+            notification_recorder: None,
             spawn_results_seen: BTreeMap::new(),
             launcher: args
                 .iter()
@@ -2794,6 +2831,99 @@ impl App {
             self.queue(action);
         }
     }
+    fn recording_active(&self) -> bool {
+        #[cfg(debug_assertions)]
+        {
+            self.notification_recorder.is_some()
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            false
+        }
+    }
+    fn recording_status(&self) -> serde_json::Value {
+        #[cfg(debug_assertions)]
+        if let Some(recorder) = &self.notification_recorder {
+            // Read the completion fence before the recording; a settled
+            // snapshot therefore includes every effect of that plan.
+            let (submitted, processed) = self
+                .notifications
+                .as_ref()
+                .map_or((0, 0), |worker| worker.progress());
+            return match recorder.snapshot() {
+                Ok(mut state) => {
+                    state["available"] = serde_json::json!(true);
+                    state["plan_revision"] = serde_json::json!(submitted);
+                    state["processed_revision"] = serde_json::json!(processed);
+                    state["settled"] = serde_json::json!(submitted == processed);
+                    state["waiting"]=serde_json::json!(self.live_state.as_ref().map(|model|model.attention.iter().take(64).map(|(seat,attention)|serde_json::json!({"seat":bbt_mux::Ulid(seat.0.0),"muted":attention.muted})).collect::<Vec<_>>()).unwrap_or_default());
+                    state["focused"] = serde_json::json!(
+                        self.focus
+                            .stage
+                            .as_ref()
+                            .and_then(|stage| stage.focused)
+                            .map(|seat| bbt_mux::Ulid(seat.0.0))
+                    );
+                    bbt_mux::debug::sanitize(state)
+                }
+                Err(reason) => {
+                    serde_json::json!({"backend":"recording","available":false,"reason":reason,"os_presentation":false})
+                }
+            };
+        }
+        serde_json::json!({"backend":"not_recording","available":false,
+            "reason":"start a debug app with --test-account DIR --notifications record"})
+    }
+    fn install_recording(&mut self) -> Result<(), String> {
+        #[cfg(debug_assertions)]
+        {
+            let proxy = self.proxy.clone();
+            let recorder =
+                bboxy450_term::notifications::recording::Recorder::new(Arc::new(move |response| {
+                    let _ = proxy.send_event(UiEvent::Notification(response));
+                }));
+            let proxy = self.proxy.clone();
+            self.notifications = Some(
+                bboxy450_term::notifications::Worker::start(
+                    Box::new(recorder.clone()),
+                    Arc::new(move |event| {
+                        let _ = proxy.send_event(match event {
+                            bboxy450_term::notifications::Event::Ready => {
+                                UiEvent::NotificationReady
+                            }
+                            bboxy450_term::notifications::Event::Error(reason) => {
+                                UiEvent::NotificationError(reason)
+                            }
+                        });
+                    }),
+                )
+                .map_err(|e| e.to_string())?,
+            );
+            self.notification_recorder = Some(recorder);
+            Ok(())
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            Err("notification recording needs debug assertions".into())
+        }
+    }
+    fn recording_click(&self, seat: bbt_mux::Ulid) -> Result<(), String> {
+        #[cfg(debug_assertions)]
+        {
+            self.notification_recorder
+                .as_ref()
+                .ok_or("notification recording is not selected")?
+                .activate(&bboxy450_desktop_notifications::NotificationId(
+                    seat.to_string(),
+                ))
+                .map_err(String::from)
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            let _ = seat;
+            Err("notification recording needs debug assertions".into())
+        }
+    }
     fn sync_notifications(&mut self) {
         let policy = self.preferences.notification_policy();
         if let (Some(worker), Some(model)) = (&mut self.notifications, &self.live_state) {
@@ -2810,6 +2940,20 @@ impl App {
     fn notification_clicked(&mut self, id: bboxy450_desktop_notifications::NotificationId) {
         match id.0.parse::<bbt_mux::Ulid>() {
             Ok(id) => {
+                if self.recording_active() {
+                    if self
+                        .notification_ui
+                        .as_ref()
+                        .is_some_and(|ask| ask.seat == SeatId::from_u128(id.0))
+                    {
+                        let ask = self
+                            .notification_ui
+                            .take()
+                            .expect("matching recording click");
+                        self.begin_focus(ask);
+                    }
+                    return;
+                }
                 self.pending_notification = Some((SeatId::from_u128(id.0), Instant::now()));
                 self.apply_notification_click();
             }
@@ -2827,7 +2971,7 @@ impl App {
             at,
             Instant::now(),
             self.live_state.as_deref(),
-            self.window.is_some(),
+            self.window.is_some() || self.recording_active(),
         ) {
             NotificationTarget::Pending => return,
             NotificationTarget::Refused(reason) => {
@@ -3709,6 +3853,10 @@ impl App {
         }
     }
     fn cancel_ui(&mut self, reason: &str) {
+        if let Some(ask) = self.notification_ui.take() {
+            self.ui_focus = None;
+            self.answer_ui(ask.id, Err(reason.into()));
+        }
         if let Some(wait) = self.ui_wait.take() {
             self.answer_ui(wait.id, Err(reason.into()));
         }
@@ -3945,6 +4093,22 @@ impl App {
             self.request_redraw();
             return true;
         }
+        if let UiRequest::NotificationClick { seat } = request {
+            self.ui_focus = Some(id);
+            self.notification_ui = Some(bboxy450_term::focus_ack::Ask {
+                id,
+                seat: SeatId::from_u128(seat.0),
+                prior_spawns,
+            });
+            if let Err(reason) = self.recording_click(seat) {
+                self.notification_ui = None;
+                self.ui_focus = None;
+                self.answer_ui(id, Err(reason));
+                return false;
+            }
+            self.request_redraw();
+            return true;
+        }
         if let Err(reason) = self.solve_ui(logical) {
             self.answer_ui(id, Err(reason));
             return false;
@@ -4155,7 +4319,7 @@ impl App {
                 };
                 self.scroll_pane(seat, request.correlated(id));
             }
-            UiRequest::Focus { .. } | UiRequest::Layout => {
+            UiRequest::Focus { .. } | UiRequest::NotificationClick { .. } | UiRequest::Layout => {
                 return Err("UI request uses the frame acknowledgment path".into());
             }
         }
@@ -4896,7 +5060,7 @@ impl ApplicationHandler<UiEvent> for App {
                     let [w, h] = cell_grid_size(model, cols, rows, window.scale_factor() as f32);
                     self.pending_resize = Some(LogicalSize::new(f64::from(w), f64::from(h)));
                 }
-                let status = app_status(
+                let mut status = app_status(
                     "window",
                     std::env::args().any(|a| {
                         a == "--unattended"
@@ -4910,6 +5074,9 @@ impl ApplicationHandler<UiEvent> for App {
                     self.meter.total_frames(),
                     usize::from(self.window.is_some()),
                 );
+                if request == bbt_proto::gui::AppRequest::Notifications {
+                    status.notifications = self.recording_status();
+                }
                 self.queue(live::UiMsg::AppReply { id, status });
             }
             UiEvent::App(live::AppEvent::Stop { id }) => {
@@ -6494,6 +6661,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     bboxy450_term::cockpit::Config::test_account_from_args(&hook_args)
         .map_err(|error| error as Box<dyn std::error::Error>)?;
+    let record_notifications = notification_recording(&hook_args)?;
     let verify = Verify::from_args(&hook_args)?;
     if hook_args.iter().any(|arg| arg == "--headless") {
         return headless::run(&hook_args).map_err(Into::into);
@@ -6540,32 +6708,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The delegate is installed before run_app finishes application launch.
     // Authorization and native completion waits run only on the bounded worker.
     let callback_proxy = proxy.clone();
-    let notifications = match bboxy450_desktop_notifications::open(Box::new(move |response| {
-        let _ = callback_proxy.send_event(UiEvent::Notification(response));
-    })) {
-        Ok(notifier) => {
-            let progress = proxy.clone();
-            match bboxy450_term::notifications::Worker::start(
-                notifier,
-                Arc::new(move |event| {
-                    let _ = progress.send_event(match event {
-                        bboxy450_term::notifications::Event::Ready => UiEvent::NotificationReady,
-                        bboxy450_term::notifications::Event::Error(reason) => {
-                            UiEvent::NotificationError(reason)
-                        }
-                    });
-                }),
-            ) {
-                Ok(worker) => Some(worker),
-                Err(error) => {
-                    logger.write(format!("notifications unavailable: {error}"));
-                    None
+    let notifications = if record_notifications {
+        None
+    } else {
+        match bboxy450_desktop_notifications::open(Box::new(move |response| {
+            let _ = callback_proxy.send_event(UiEvent::Notification(response));
+        })) {
+            Ok(notifier) => {
+                let progress = proxy.clone();
+                match bboxy450_term::notifications::Worker::start(
+                    notifier,
+                    Arc::new(move |event| {
+                        let _ = progress.send_event(match event {
+                            bboxy450_term::notifications::Event::Ready => {
+                                UiEvent::NotificationReady
+                            }
+                            bboxy450_term::notifications::Event::Error(reason) => {
+                                UiEvent::NotificationError(reason)
+                            }
+                        });
+                    }),
+                ) {
+                    Ok(worker) => Some(worker),
+                    Err(error) => {
+                        logger.write(format!("notifications unavailable: {error}"));
+                        None
+                    }
                 }
             }
-        }
-        Err(error) => {
-            logger.write(error.to_string());
-            None
+            Err(error) => {
+                logger.write(error.to_string());
+                None
+            }
         }
     };
     let (render_context, rendering) = tokio::sync::oneshot::channel();
@@ -6635,6 +6809,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     app.updates = updates;
     app.live_commands = live_commands;
     app.notifications = notifications;
+    if record_notifications {
+        app.install_recording()?;
+    }
     app.preferences = preference_state;
     app.preferences_io = preferences_io;
     app.pacing = pacing;

@@ -19,7 +19,13 @@ pub(super) fn start(
     ctl: bool,
     unattended: bool,
     test_account: Option<&Path>,
+    record_notifications: bool,
 ) -> Result<Value, String> {
+    if record_notifications && (test_account.is_none() || !cfg!(debug_assertions)) {
+        return Err(format!(
+            "{USAGE_PREFIX}notification recording requires a debug build and --test-account DIR"
+        ));
+    }
     let root = endpoint
         .parent()
         .ok_or("app start: run directory is unavailable")?;
@@ -30,6 +36,14 @@ pub(super) fn start(
     }
     if endpoint.exists() {
         let mut client = connect(&[], endpoint)?;
+        if record_notifications
+            && client
+                .app(bbt_proto::gui::AppRequest::Notifications)?
+                .notifications["backend"]
+                != "recording"
+        {
+            return Err("app already runs without recording; stop it and start with --test-account DIR --notifications record".into());
+        }
         let status = client.app(bbt_proto::gui::AppRequest::Status)?;
         let mut data = serde_json::to_value(status).map_err(|e| e.to_string())?;
         data["run_dir"] = json!(root);
@@ -66,6 +80,9 @@ pub(super) fn start(
     }
     if let Some(account) = test_account {
         process.arg("--test-account").arg(account);
+    }
+    if record_notifications {
+        process.arg("--notifications").arg("record");
     }
     let launched = SystemTime::now();
     let mut child = process.spawn().map_err(|e| format!("app start: {e}"))?;
@@ -125,7 +142,8 @@ fn startup_failure(
     let crash_reports = if let Some(report) = report {
         format!("; matching crash report: {}", report.display())
     } else if cfg!(target_os = "macos") {
-        "; macOS crash reports, if generated: ~/Library/Logs/DiagnosticReports/ (match the app PID)".into()
+        "; macOS crash reports, if generated: ~/Library/Logs/DiagnosticReports/ (match the app PID)"
+            .into()
     } else {
         String::new()
     };
