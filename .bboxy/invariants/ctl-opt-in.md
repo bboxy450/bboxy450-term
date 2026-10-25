@@ -3,7 +3,7 @@ id: 01M5P696C140A6AGTP25HXT9BB
 type: invariant
 number: 261
 title: "no gui.endpoint exists unless ctl is enabled, and the app's own seats are refused at the door"
-status: pending
+status: active
 check: cargo test -p bbt-mux --locked --test gui_endpoint ctl_endpoint_opt_in_and_ancestry_refusal -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: an endpoint file that exists when nobody asked is operator authority lying on disk for every same-user process; a seat admitted at the operator's door is a seat holding the operator's hand
 links:
@@ -11,7 +11,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: constrains }
   - { to: "[[mux-daemon]]", rel: constrains }
 created: "2026-10-24T05:31:34Z"
-updated: "2026-10-24T05:31:34Z"
+updated: "2026-10-25T10:31:36Z"
 ---
 # No gui.endpoint exists unless ctl is enabled, and the app's own seats are refused at the door
 
@@ -35,5 +35,7 @@ an OS boundary and the spec says so; this invariant keeps the guard honest, not
 the OS.
 
 **Evidence.** None yet (pending A-1).
+
+**Status flipped to active (Architect, 2026-10-25):** its check `ctl_endpoint_opt_in_and_ancestry_refusal` runs in the default tier and passes on every gate of 2026-10-24 and 2026-10-25; the flip records what the tree already proves, found when `scripts/pending-flags.sh` refused a pending invariant without its skip flags.
 
 Owner: Corvin Duskmantle <ARCHITECT>.

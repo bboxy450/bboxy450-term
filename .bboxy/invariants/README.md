@@ -4,7 +4,7 @@ type: "note"
 number: 138
 title: "Invariants — the law the day runs under"
 created: "2026-10-22T21:14:24Z"
-updated: "2026-10-25T09:54:49Z"
+updated: "2026-10-25T10:31:36Z"
 ---
 # Invariants — the law the day runs under
 
@@ -37,7 +37,7 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[no-copyleft-deps]] every dependency offers a permissive licence | `sh scripts/deps-licences.sh` | held at the adding commit, 483 deps |
 | [[seats-967-frame]] the sidebar and 50 watched panes hold frame time at 967 seats | `GATE_SEATS=967 GATE_WATCHED=50 GATE_SECONDS=10 GATE_BUDGET=8.33 sh scripts/gates.sh frame` | pending a settled run (slow, gated) |
 | [[checkpoint-bounded]] crash recovery work per seat stays under the checkpoint bound | `cargo test -p bbt-mux --locked --test recovery checkpoint_bounded_recovery -- --exact` | pending R5g (slow, gated) |
-| [[ctl-opt-in]] no gui.endpoint exists unless ctl is enabled, and the app's own seats are refused at the door | `cargo test -p bbt-mux --locked --test gui_endpoint ctl_endpoint_opt_in_and_ancestry_refusal -- --exact` | pending A-1 (slow, gated) |
+| [[ctl-opt-in]] no gui.endpoint exists unless ctl is enabled, and the app's own seats are refused at the door | `cargo test -p bbt-mux --locked --test gui_endpoint ctl_endpoint_opt_in_and_ancestry_refusal -- --exact` | active |
 | [[idle-swarms-cost-nothing]] the message pump's cost is independent of the number of idle swarms | `cargo test -p bbt-mux --locked --test logic pump_scans_only_dirty_swarms -- --exact` | pending R5i (slow, gated) |
 | [[ctl-never-prints-secrets]] ctl never prints a capability or a Keychain secret | `cargo test -p bboxy450-term --locked --test ctl ctl_never_prints_secrets -- --exact` | pending C-0 (slow, gated) |
 | [[watched-replay-priority]] watched seats get at least half of the replay pages when both lanes are runnable | `cargo test -p bbt-mux --locked --test logic watched_lane_gets_at_least_half_of_replay_pages -- --exact` | pending R5h (slow, gated) |
@@ -46,6 +46,7 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[never-block-swarm]] never block the swarm: no open task is parked on a person, and no test needs the operator | `sh scripts/never-block.sh` | held at the adding commit |
 | [[messaging-never-held]] a custody hold never holds local delivery | `cargo test -p bbt-mux --locked --test messaging_flow custody_hold_never_holds_local_delivery -- --exact` | pending NG1 (slow, gated) |
 | [[ring-reads-batched]] a catch-up pass over N seats costs a bounded number of supervisor round trips, never one RPC per seat | `cargo test -p bbt-mux --locked --test logic ring_reads_are_batched -- --exact` | pending Sable's batched ReadRing (slow, gated) |
+| [[kill-only-own-pids]] a cleanup kills only PIDs it recorded as its own children, never by name or pattern | `sh scripts/kill-own-pids.sh` | active |
 | [[no-chokepoints]] no bottlenecks and no chokepoints, in the swarm and in the product | `sh scripts/never-block.sh && sh scripts/cross-os.sh` | held at the adding commit; product instances gated by #268 and #276 |
 
 A violation halts the work that broke it: the task goes `blocked` with

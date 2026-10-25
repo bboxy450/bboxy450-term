@@ -4,7 +4,7 @@ type: "spec"
 number: 84
 title: "Mux daemon — process survival and state delivery"
 created: "2026-10-21T19:43:20Z"
-updated: "2026-10-24T06:49:47Z"
+updated: "2026-10-25T10:31:36Z"
 links:
   - { to: "[[d21-ring-durability]]", rel: decision }
   - { to: "[[d22-tick-journal]]", rel: decision }
@@ -241,6 +241,7 @@ Initial ring size/line goals come from [[vision]]'s assumed defaults, not a meas
 These are implementation acceptance criteria, not tests passed by this document:
 
 - Kill the GUI and logic independently: the same supervisor-owned child/master remains, logic reconstructs the same VTE state, and stale logic/writer leases cannot inject.
+- Every kill in the product is of a recorded own child: the supervisor, the session's disconnect fencing and the night runner signal only PIDs they spawned and recorded, never a name or a pattern ([[kill-only-own-pids]]).
 - Force logic downtime until a ring fills: capture backpressures at a valid checkpoint boundary, preserves process ownership and resumes without a hidden gap.
 - Inject partial/corrupt log records and interrupt checkpoint publication/eviction: recover only an intact committed generation/prefix, report missing history, and never allocate from an unchecked length.
 - Replay retained SGR, split UTF-8/escape sequences, alternate-screen and resize transitions: restored state/indexes match the uninterrupted model; no external replay effects fire.

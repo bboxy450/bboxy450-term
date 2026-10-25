@@ -13,6 +13,8 @@ trap 'rm -rf "$target"' EXIT
 CARGO_TARGET_DIR="$target" CARGO_INCREMENTAL=0 cargo test -p bbt-doc --locked --test corpus -q
 CARGO_TARGET_DIR="$target" CARGO_INCREMENTAL=0 cargo test -p bbt-mermaid --locked -q
 sh scripts/layering.sh
+sh scripts/pending-flags.sh
+sh scripts/kill-own-pids.sh
 # The e2e checklist page is generated from e2e-acceptance.md section 1 and a bbt-ui test asserts equality;
 # run it whenever either side is in the push (Oracle, 2026-10-24: a records-only edit broke main once).
 for p in "$@"; do
