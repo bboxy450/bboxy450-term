@@ -248,7 +248,7 @@ window.E2E_PROMISES = [
  {
   "id": "I1",
   "group": "identity",
-  "text": "first launch enrols one device key in the Keychain with one prompt under the GPG root; later launches prompt nothing"
+  "text": "first launch enrols one device key under the GPG root with exactly one custody prompt request, later launches request none; the night proves it against an isolated non-operator native-custody test backend that counts enrollments and prompt requests, never the login Keychain, whose real first launch is the operator's own and is judged, not scripted"
  },
  {
   "id": "I2",

@@ -16,7 +16,7 @@ links:
   - { to: "[[rim-glow]]", rel: promises }
   - { to: "[[attention]]", rel: promises }
 created: "2026-10-24T05:17:08Z"
-updated: "2026-10-25T00:52:00Z"
+updated: "2026-10-25T01:06:35Z"
 ---
 # E2E acceptance
 
@@ -120,7 +120,7 @@ Every promised user-facing function, one line of expectation each, from [[vision
 
 ### identity
 
-- **I1** first launch enrols one device key in the Keychain with one prompt under the GPG root; later launches prompt nothing
+- **I1** first launch enrols one device key under the GPG root with exactly one custody prompt request, later launches request none; the night proves it against an isolated non-operator native-custody test backend that counts enrollments and prompt requests, never the login Keychain, whose real first launch is the operator's own and is judged, not scripted
 - **I2** every seat has its own generation key certified by the device key; every message envelope verifies; a seat with a nil seat id and a non-operator role is refused
 - **I3** the local-dev issuer path works offline and is marked as such everywhere it shows; pinned receivers refuse local-dev envelopes
 - **I4** every record write from the app is signed by the device key with signer device:<id>; git log shows only good signatures on main
@@ -141,6 +141,8 @@ title: "T5 restart keeps every seat"
 function: T5                      # the checklist id above
 group: terminal
 status: pass | fail | blocked | untested | manual
+coverage: full                    # full | partial; required on pass; copied from the script's '# coverage:' header (#316)
+missing: []                       # when partial: the promise's assertions the script does not make, in its words
 steps:                            # what the seat does, in order, with the tool it uses
   - "spawn two zsh seats (seat_spawn), type a marker into each (seat_input)"
   - "kill and relaunch the app (app --restart in the fixture), wait for resume"
@@ -172,7 +174,7 @@ The Oracle sits outside the app (its own session, ICQ) and talks to the seats in
 - **Prompts in the way.** When a harness raises a native prompt at launch (Codex's hook review), the Oracle reads it with `ctl screen`, matches it against the hooks the launch overlay installed, answers it with `ctl input` only on an exact match, and otherwise stops and reports with the screen ([[d270-ctl-screen-input-wait]], the #265 guard).
 - **Judging.** The verdict is the runner's assertion (exit code, screen read, record read), stated in `result` with the evidence (the screen read, the capture path, the receipt ids); a seat's own judgement of expected versus observed is advisory and goes into a comment, never into `status`. Geometry and pixels go to the parity gate, not to a guess.
 - **Reporting.** `task_report` with a structured `verify_result` (decision #28): the command is the step that proved it (`screen_read` with its arguments, or the capture), the exit code is 0 on pass; the e2e record's `status`, `last_run`, `result`, `run_by` and `evidence` are updated by a signed `write`. **Feedback** on what is unintuitive or broken goes two ways: a DM to the Oracle for the day, and a `comment` record (kind `suggestion` or `objection`, pinned to the spec's digest) for the record, so it enters the RFC loop ([[work-items]]). A promise that cannot be tested from inside is `blocked` with the reason, or `manual` if only an eye can judge it.
-- **Acceptance of the swarm's job, deterministically (Velvet's A-3 question, 2026-10-24).** The canonical list is **§1 of this spec, parsed**: every line matching `- **<ID>** <text>` under a `###` group is one promise, in group order, ids unique; a test asserts the parse yields the count stated in §1. No second copy of the list exists anywhere; A-0 writes one e2e record per parsed promise and the view joins records to promises by `function`. A promise with no record, or with two, shows `untested` and names the fault. A `fail` is **tracked** when its record carries `{ to: "[[<task>]]", rel: tracked-by }` to a task whose status is one of `open`, `claimed`, `running`, `reported`, `blocked`; `accepted` and `rejected` close a task, so a fail pointing only at a closed task is **untracked**. The summary has three states and no fourth: **green** when every promise has one usable record, none `untested`, and zero `fail`; **amber: N failures tracked** when the only non-pass records are `fail` rows each tracked by an open task (and `manual` rows judged by the Oracle, which are listed, not hidden); **red** when any promise is missing, doubled, `untested`, or a `fail` is untracked. Fail rows are red in every state; `blocked` rows count as fails for the summary and carry their reason. The Oracle accepts a night at amber or green from this view, never from a report, and amber says what is still owed.
+- **Acceptance of the swarm's job, deterministically (Velvet's A-3 question, 2026-10-24).** The canonical list is **§1 of this spec, parsed**: every line matching `- **<ID>** <text>` under a `###` group is one promise, in group order, ids unique; a test asserts the parse yields the count stated in §1. No second copy of the list exists anywhere; A-0 writes one e2e record per parsed promise and the view joins records to promises by `function`. A promise with no record, or with two, shows `untested` and names the fault. A `fail` is **tracked** when its record carries `{ to: "[[<task>]]", rel: tracked-by }` to a task whose status is one of `open`, `claimed`, `running`, `reported`, `blocked`; `accepted` and `rejected` close a task, so a fail pointing only at a closed task is **untracked**. The summary has three states and no fourth: **green** when every promise has one usable record, none `untested`, zero `fail`, and **every pass is `coverage: full`**; **amber: N failures tracked, M partial tracked** when the only non-green records are `fail` rows each tracked by an open task, `pass` rows with `coverage: partial` whose `missing` list is tracked by an open task, and `manual` rows judged by the Oracle, which are listed, not hidden; **red** when any promise is missing, doubled, `untested`, a `fail` is untracked, or a partial pass is untracked. A partial pass is never green: it shows amber with its missing assertions, and the script's `# coverage:` header is where the value comes from ([[d316-pass-means-the-whole-promise]], map [[e2e-script-map]]). Fail rows are red in every state; `blocked` rows count as fails for the summary and carry their reason. The Oracle accepts a night at amber or green from this view, never from a report, and amber says what is still owed.
 
 ## 4a. Unattended ([[d282-app-tests-itself-unattended]], 2026-10-24)
 
