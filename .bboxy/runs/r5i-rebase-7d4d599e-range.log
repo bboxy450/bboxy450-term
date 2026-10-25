@@ -1,0 +1,89 @@
+1:  707b23fb ! 1:  e32d89fa Instrument R5 probe stages and callback CPU without changing scheduling
+    @@ crates/bboxy450-term/src/main.rs: impl App {
+     +        let received_at = bbt_rt::diagnostics::now();
+     +        if let Some(state) = state {
+                  self.mute.observe(&state);
+    -             self.composer_notice();
+    -             if let Some(reply) = &state.document_reply
+    +             if let Some(reply) = &state.custody_reply {
+    +                 self.custody.observe(reply, Instant::now());
+     @@ crates/bboxy450-term/src/main.rs: impl App {
+                      self.local_page_layout = None;
+                  }
+    @@ crates/bboxy450-term/src/main.rs: impl App {
+          fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+     +        let _callback = bbt_rt::diagnostics::callback(bbt_rt::diagnostics::Phase::AboutToWait);
+              self.apply_notification_click();
+    -         event_loop.set_control_flow(
+    -             self.pending_notification
+    +         let pending = self.custody.wake_at();
+    +         if let Some(message) = self.custody.next(Instant::now(), !self.backend_lost) {
+     @@ crates/bboxy450-term/src/main.rs: impl ApplicationHandler<UiEvent> for App {
+              }
+          }
+    @@ crates/bboxy450-term/tests/r5_stall.rs: fn synthetic_runtime_contract_keeps_fift
+      }
+     
+      ## crates/bbt-mux/src/logic.rs ##
+    -@@ crates/bbt-mux/src/logic.rs: impl Worker {
+    -                 let ring_root = root.join(format!("ring-{previous}"));
+    -                 // The old supervisor is already reaped. Reopening its ring rejects
+    -                 // torn/uncommitted suffixes and replays only durable capture.
+    --                if !ring_root.join("committed").is_file() && !ring_root.join("previous").is_file()
+    --                {
+    -+                if !ring_root.join("committed").is_file() && !ring_root.join("previous").is_file() {
+    -                     return Err(invalid(format!(
+    -                         "RecoveryUnavailable: seat {} has no committed predecessor generation {previous}",
+    -                         record.id
+     @@ crates/bbt-mux/src/logic.rs: impl Worker {
+              })
+          }
+    @@ crates/bbt-mux/src/logic.rs: impl Worker {
+                  if let Event::Output { bytes: output, .. } = &record.event {
+                      bytes += output.len() as u64;
+                  }
+    -@@ crates/bbt-mux/src/logic.rs: impl Worker {
+    -             .identity
+    -             .status()
+    -             .map_err(|e| d::CommandError::new("held", e.to_string()))?
+    --            .device_id.ok_or_else(|| {
+    --            d::CommandError::new("held", "held: operator device custody is unavailable")
+    --        })?;
+    -+            .device_id
+    -+            .ok_or_else(|| {
+    -+                d::CommandError::new("held", "held: operator device custody is unavailable")
+    -+            })?;
+    -         let actor = crate::mcp::Actor::Operator {
+    -             device_id,
+    -             door: origin.door,
+    -@@ crates/bbt-mux/src/logic.rs: impl Worker {
+    -             tool: "knowledge_write".into(),
+    -             args,
+    -         };
+    --        call.validate().map_err(|e| d::CommandError::new("rejected", e.to_string()))?;
+    -+        call.validate()
+    -+            .map_err(|e| d::CommandError::new("rejected", e.to_string()))?;
+    -         let journal = self.operator_journal.clone();
+    -         let value = match tool::prepare(&call) {
+    -             Ok(tool::Request::Write(request)) => journal.effect(&actor, &call, || {
+    -@@ crates/bbt-mux/src/logic.rs: impl Worker {
+    -                         "an update must retain the current record type",
+    -                     );
+    -                 }
+    --                Ok(record) if request.etag.as_ref().is_some_and(|etag| etag != &record.etag) => {
+    -+                Ok(record)
+    -+                    if request
+    -+                        .etag
+    -+                        .as_ref()
+    -+                        .is_some_and(|etag| etag != &record.etag) =>
+    -+                {
+    -                     return mcp::error(
+    -                         call.op_id,
+    -                         "etag_mismatch",
+     @@ crates/bbt-mux/src/logic.rs: impl Worker {
+                      .client
+                      .capture_diagnostics
+2:  fe8874cd = 2:  b5b0c59e Keep callback classification outside the keyboard dispatch and use evidence log format
+3:  987fb0c5 = 3:  db938178 Measure keyboard callbacks without adding key interpretation
+4:  9c688a1a = 4:  7a69c1ee Box the one-time R5 completion payload for bounded control messages
+5:  e9c176ca = 5:  441801fc Record exact R5i normal CI, limits, failure history and owned cleanup

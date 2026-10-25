@@ -1,0 +1,81 @@
+{
+  "source": "441801fc88d29605e1b1dc350c99c4a8d0604746",
+  "base": "7d4d599e",
+  "previous_gated_source": "9c688a1a9b522bc557ecad29b050825772b012f2",
+  "previous_signed_evidence": "e9c176cadc0d86564a467db1a5cdd6115401e277",
+  "checks": [
+    {
+      "name": "workspace",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "exit": 0,
+      "seconds": 700.378
+    },
+    {
+      "name": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "seconds": 38.77
+    },
+    {
+      "name": "invariants",
+      "command": [
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "exit": 0,
+      "seconds": 165.123
+    }
+  ],
+  "workspace_totals": {
+    "passed": 1397,
+    "failed": 0,
+    "ignored": 29
+  },
+  "invariants": {
+    "checks": 23,
+    "failures": 0,
+    "slow_skipped": 9
+  },
+  "env": {
+    "RUSTC_WRAPPER": "",
+    "RUSTC_WORKSPACE_WRAPPER": "",
+    "CARGO_TARGET_DIR": "target/ui-scroll-dev"
+  },
+  "execution_checkout": "target/r5i-quick-441801fc (clean, detached, immutable during checks)",
+  "limits": [
+    "No full re-gate requested: Oracle called workspace+strict+default invariants on the accepted newer base. Exact prior normal CI remains pinned to9c688a1a.",
+    "No967 attempt; syscall-only phase stays unmeasured/null; R5i and capture.json clocks stay separate."
+  ],
+  "logs": [
+    {
+      "path": ".bboxy/runs/r5i-rebase-7d4d599e-workspace.log",
+      "sha256": "ab55ae28e64b04fdf25d7ca79dfa2e8474e09b0a4f16b10a671f7df6485809aa"
+    },
+    {
+      "path": ".bboxy/runs/r5i-rebase-7d4d599e-clippy.log",
+      "sha256": "8a8f9b548cf4d6df90ce4c81b624b29e9a9057303db42cd6324fa93f4d6666a0"
+    },
+    {
+      "path": ".bboxy/runs/r5i-rebase-7d4d599e-invariants.log",
+      "sha256": "558b2fab987b1dabb9185ddf0270a681c12afdb283ac6e7219ef4bfa014f220b"
+    },
+    {
+      "path": ".bboxy/runs/r5i-rebase-7d4d599e-range.log",
+      "sha256": "431d49025f24b6c1400f5e1b76e087c77f1e5e18743ddcb3b99e7bb1ee24c640"
+    }
+  ]
+}
