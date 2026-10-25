@@ -40,11 +40,11 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | K1 | `scripts/e2e/K1.sh` | partial | script not implemented: every key combination reaches the program under the kitty protocol when the program asks for it; ⌘⌥ navigation stays the app's; plain keys are the terminal's | |
 | K2 | `scripts/e2e/K2.sh` | partial | amber mark pixel colour; operator DM native delivery; non-operator delayed delivery and exactly-once release; mute journal signer | |
 | K3 | `scripts/e2e/K3.sh` | partial | script not implemented: ⌘G opens the Graph tab; ⌘-click on a .md path or a wikilink opens the document modal | |
-| R1 | `scripts/e2e/R1.sh` | partial | script not implemented: every pane and strip carries the alive rim centred on the border, two counter-moving waves, seat colour, pulse by activity, focused ×1.3; text is never covered | |
+| R1 | `scripts/e2e/R1.sh` | full | | |
 | R2 | `scripts/e2e/R2.sh` | partial | script not implemented: Settings › Rim size 2 to 8 moves only the gutter and the stage inset; at 2, 4 and 8 the gaps are 2, 4, 8 and the insets 1, 2, 4 | |
-| R3 | `scripts/e2e/R3.sh` | partial | script not implemented: focusing a block swells its silk 40 px past the rim and settles in 0.9 s; nothing moves; the old locate ripple is gone | |
+| R3 | `scripts/e2e/R3.sh` | full | | |
 | R4 | `scripts/e2e/R4.sh` | partial | script not implemented: seat rows, tabs and cards carry the rim and the swell out of the box; idle rows show no rim at rest | |
-| R5 | `scripts/e2e/R5.sh` | partial | script not implemented: a seat waiting on the operator loops the swell in amber on its row and pane until handled; focusing it stops the loop with one swell | |
+| R5 | `scripts/e2e/R5.sh` | full | | |
 | R6 | `scripts/e2e/R6.sh` | partial | a waiting seat posts one desktop notification; clicking it raises the window, switches space | |
 | M1 | `scripts/e2e/M1.sh` | partial | script not implemented: a DM, a channel post and a swarm-stream post from the composer each arrive at the right seats with a receipt; the operator principal signs as the device | |
 | M2 | `scripts/e2e/M2.sh` | partial | script not implemented: the role chip fans out to the exact seats holding the role, one receipt each, shown as one send; above 32 seats it refuses with a named reason | |
