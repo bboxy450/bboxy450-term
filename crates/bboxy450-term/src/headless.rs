@@ -208,7 +208,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         }
                     }
                     UiEvent::CloseFor { id, seat, undo } => {
-                        app.begin_close(id, seat, undo, SIZE, submitted);
+                        app.begin_close(id, seat, undo, size, submitted);
                     }
                     UiEvent::Capture => {
                         if let Some(path) = &capture_path {

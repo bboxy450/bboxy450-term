@@ -215,6 +215,7 @@ fn headless_cli_starts_real_gui_types_captures_and_stops_without_a_window() {
 fn t7_headless_close_receipts_restore_the_same_tab_and_extent() {
     let mut f = Fixture::new();
     f.start();
+    f.ok(&["app", "resize", "100x30"]);
     let mut ids = vec![];
     for name in ["left", "victim", "right"] {
         let row = f.ok(&["seat", "spawn", "zsh", "--name", name, "--place", "tab"]);
@@ -225,6 +226,11 @@ fn t7_headless_close_receipts_restore_the_same_tab_and_extent() {
     }
     let seat = &ids[1];
     f.ok(&["seat", "focus", seat]);
+    let before_layout = f.ok(&["ui", "layout"]);
+    assert_ne!(
+        before_layout["data"]["size"],
+        serde_json::json!([1600., 900.])
+    );
     let before = await_value(&f, || {
         let row = f.ok(&["app", "status"]);
         (row["data"]["close"]["slots"].as_array()?.len() == 3).then_some(row)
@@ -242,6 +248,10 @@ fn t7_headless_close_receipts_restore_the_same_tab_and_extent() {
     let first_frame = f.ok(&["seat", "capture", seat, first.to_str().unwrap()]);
     let close_frame = f.ok(&["seat", "close", seat]);
     assert_eq!(close_frame["data"]["applied"], true);
+    assert_eq!(
+        close_frame["data"]["layout"]["size"],
+        before_layout["data"]["size"]
+    );
     assert!(
         close_frame["data"]["frame_seq"].as_u64().unwrap()
             > first_frame["data"]["frame_seq"].as_u64().unwrap()
@@ -278,6 +288,10 @@ fn t7_headless_close_receipts_restore_the_same_tab_and_extent() {
         0
     );
     let undo_frame = f.ok(&["seat", "undo-close", seat]);
+    assert_eq!(
+        undo_frame["data"]["layout"]["size"],
+        before_layout["data"]["size"]
+    );
     assert!(
         undo_frame["data"]["frame_seq"].as_u64().unwrap()
             > close_frame["data"]["frame_seq"].as_u64().unwrap()
