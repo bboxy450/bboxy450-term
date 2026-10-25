@@ -41,17 +41,17 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | K2 | `scripts/e2e/K2.sh` | partial | amber mark pixel colour; operator DM native delivery; non-operator delayed delivery and exactly-once release; mute journal signer | |
 | K3 | `scripts/e2e/K3.sh` | partial | script not implemented: ⌘G opens the Graph tab; ⌘-click on a .md path or a wikilink opens the document modal | |
 | R1 | `scripts/e2e/R1.sh` | full | | |
-| R2 | `scripts/e2e/R2.sh` | partial | script not implemented: Settings › Rim size 2 to 8 moves only the gutter and the stage inset; at 2, 4 and 8 the gaps are 2, 4, 8 and the insets 1, 2, 4 | |
+| R2 | `scripts/e2e/R2.sh` | full | — | |
 | R3 | `scripts/e2e/R3.sh` | full | | |
-| R4 | `scripts/e2e/R4.sh` | partial | script not implemented: seat rows, tabs and cards carry the rim and the swell out of the box; idle rows show no rim at rest | |
+| R4 | `scripts/e2e/R4.sh` | partial | cards carry the rim and the swell out of the box | |
 | R5 | `scripts/e2e/R5.sh` | full | | |
 | R6 | `scripts/e2e/R6.sh` | partial | a waiting seat posts one desktop notification; clicking it raises the window, switches space | |
-| M1 | `scripts/e2e/M1.sh` | partial | script not implemented: a DM, a channel post and a swarm-stream post from the composer each arrive at the right seats with a receipt; the operator principal signs as the device | |
-| M2 | `scripts/e2e/M2.sh` | partial | script not implemented: the role chip fans out to the exact seats holding the role, one receipt each, shown as one send; above 32 seats it refuses with a named reason | |
+| M1 | `scripts/e2e/M1.sh` | partial | from the composer | |
+| M2 | `scripts/e2e/M2.sh` | partial | the role chip fans out to the exact seats holding the role, one receipt each, shown as one send; above 32 seats it refuses with a named reason | |
 | M3 | `scripts/e2e/M3.sh` | partial | harness: stand-in; real-harness receipt; the seat row shows the task (assigned-task readback and a window capture alone do not prove that row) | |
 | M4 | `scripts/e2e/M4.sh` | full | — | |
 | M5 | `scripts/e2e/M5.sh` | partial | harness: stand-in; a real Worker and real Oracle harness ask for the unassigned inventory (the admitted seat MCP bridge is exercised by deterministic fixtures) | |
-| M6 | `scripts/e2e/M6.sh` | partial | script not implemented: groups stay their own destination; a message to a muted seat waits; priority delays, never deletes | |
+| M6 | `scripts/e2e/M6.sh` | partial | priority delays, never deletes | |
 | F1 | `scripts/e2e/F1.sh` | partial | script not implemented: the stream dock shows one swarm at a time with its channels; arrivals appear within one event-lane delivery; nothing polls | |
 | F2 | `scripts/e2e/F2.sh` | partial | script not implemented: unread counts come from the operator's read marks and survive a restart; viewing a stream marks it read | |
 | F3 | `scripts/e2e/F3.sh` | partial | script not implemented: killing logic and restarting resumes the events lane at its cursors: no duplicate row, no lost event | |
@@ -733,3 +733,19 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 **Baseline pointers:** invariants/seats-1000-bus.md:9; invariants/seats-400-memory-idle.md:9; scripts/gates.sh:29.
 
 Owner: Corvin Duskmantle <ARCHITECT>; rows and archived plans by Aster Cinderwing <EXECUTOR> under the Oracle’s brief.
+
+## Messaging script disposition — 2026-10-25
+
+M1 uses the runner's existing file-account/headless app and operator `ctl message send` for DM, channel and swarm posts. Deterministic Python in real zsh seats calls only its inherited admitted MCP for private routing setup and inbox/ACK evidence. It asserts exact recipient sets, no cross-swarm leakage, one receipt per target, idempotent retry, retained events and independently verifies the operator envelope's Ed25519 signature using OpenSSL. Composer input remains missing.
+
+M2 fails explicitly with `missing_composer_role_control` after validating two matching role grants and one nonmember. Role-chip fanout/grouped-send projection and the above-32 refusal are not exposed by existing ctl; per-seat loops do not substitute for them. Oracle ruling 25117cf9 requires this named failure. A passing role-fixture setup is never reported as a passing role-fanout test.
+
+M6 creates distinct group and channel routes through the same admitted seat-MCP fixture. It asserts original destinations, exact receipt sets, recipient mute holding group traffic, the separate direct operator exception, and survival of both class/priority values through unmute and explicit recipient ACK. This does not measure automatic/native priority scheduling; that clause remains missing.
+
+No script starts an app outside the runner, reads credentials or attaches a second GUI event consumer. Blank tracked-by cells stay untracked in this canonical map; the runner's private-fixture tracking tasks are not production task numbers.
+
+## Additional rim scripts — 2026-10-25
+
+R2 changes Rim size through the actual Settings keyboard controls and reads the produced stage. At 2/4/8 it asserts gaps 2/4/8, both edge insets 1/2/4, unchanged title/sidebar geometry and unchanged content-padding offsets. It captures the actual window after each setting. The private test-account config path is used; the script never edits the operator's config or bypasses Settings with a direct file write.
+
+R4 uses the shared UI-clock driver for rendered row/tab rim and focus-swell samples, including a resting idle row. Samples must exclude the other surface's 40px reach and the pane's halo before they can prove independent row/tab behaviour. Card focus has no exposed app control path; that clause remains partial (Wren's lab reference09660b51). Runtime verification of this new driver remains required before handoff.

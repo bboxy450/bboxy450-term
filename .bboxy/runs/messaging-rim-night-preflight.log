@@ -1,0 +1,22 @@
+M1/M2/M6, then R2/R4 — Aster Cinderwing <EXECUTOR>, development checkpoint
+Oracle b45f8c30, M2/MCP fixture ruling25117cf9. Own branch aster-messaging-night, base0eeabc95; source scripts not yet exact-gated. NO ACCEPTANCE HANDOFF.
+
+scripts/e2e/message_agent.py — deterministic Python under a real zsh seat inherits its admitted MCP bridge; it never reads/prints credentials or starts an app. Raw JSON-RPC results return to the controlling script; the fixture emits no pass/fail verdict.
+scripts/e2e/messaging.py — operator sends/receipts/events/journal over ctl; actor-scoped MCP creates private routing links, reads addressed inboxes and acknowledges. Independent OpenSSL Ed25519 verification binds operator=author=device and signed ctl/test-account attribution. No per-seat send loop pretends to be role fanout.
+M1 header: partial, from the composer. M2 header: partial, role-chip/grouped-send/above32 clauses; expected EXIT1 missing_composer_role_control. M6 header: partial, priority delays, never deletes (retention of both class/priority values is tested, automatic/native priority scheduling is not).
+scripts/e2e/rim_more.py — R2 changes actual Settings controls at2/4/8; produced-layout assertions require gutters2/4/8, insets1/2/4, stable title/sidebar and content-padding offsets. Writes stay under the runner's private account config. R4 row/tab clock/pixel predicates are written, NOT RUN; cards remain partial, confirmed by Wren09660b51. Requires Velvet's clock helper; frozen4f693802 is not accepted on this base yet.
+
+Prototype verification using retained exact2534a3ab binary, no Cargo workload
+Shell parser3+2 wrappers and Python AST3 drivers held.
+Initial e2e --group messaging EXIT2: wrong group name, no app launched. Correct group is 'messaging and tasks'.
+First correct group EXIT1/14.038s: M1/M6 failed fixture channel=inbox query, which filters original signed context rather than arrival sink (ledger.rs:912); device signatures, exact receipt sets and mute/unmute had already passed. Corrected to default admitted seat inbox/outbox visibility, no product change. M2 failed its approved missing-control reason.
+Corrected group EXIT1/17.711s: M1 EXIT0/pass/partial; M6 EXIT0/pass/partial; M2 expected EXIT1/missing_composer_role_control; M3/M4/M5 untested in the selected wrapper dir (Sable owns them). Own tested assertions pass. Group remains RED for absent scripts; no whole-group green claim.
+Initial R2 EXIT1/2.986s: seven down arrows reached Shortcuts in the older8-section binary, whereas current main has10 sections. Changed to backwards wrap through the fixed final Shortcuts/Notifications/Appearance sections, avoiding a forward index.
+Corrected R2 EXIT0/pass/full, enclosing group EXIT1/4.417s solely because the selected R2-only wrapper directory omits the other five scripts. Actual3 window PNGs and produced-layout JSON retained. No direct config write, operator account, NSWindow, global desktop input or second event consumer.
+Raw logs/statuses and hashes: scratchpad/messaging-night-20261025T072116/, manifest messaging-rim-night-prototypes.json. Both initial failure artifact sets retained separately; no blind retry/deadline relaxation.
+
+Still owed
+R4 actual clock-enabled run; consume accepted clock/main without changing its helper; all5 canonical rows/header checks; scoped pre-checks with2 Cargo jobs and direct compiler, fast invariants; signed source and exact clean NORMAL atomic ci-local; final exact-binary scripts; signed evidence-only handoff and target cleanup. No build target exists yet.
+
+Cleanup under Oracle b620fd19
+Merged placement/R6 source5aca0cb7 ancestry verified against main0eeabc95. Empty gallery lsof, every PNG digest rechecked: retired13,972 PNGs /527,116,540 logical bytes /556,605,440 allocated bytes; reports/layouts/manifests/logs/binaries retained. Full per-file retired hashes remain scratchpad/placement-20261025T0213/gallery-retirement.json and the committed old parity manifest. Earlier gate target retirement5,534,232,576bytes is separate. Default GPG verification was retried once per Oracle2ff671a4 and returned Good signature/EXIT0; no shared service/config change.
