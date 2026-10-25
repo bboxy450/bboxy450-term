@@ -8,6 +8,7 @@ use crate::identity::{
     Custody, DeviceKeyStore, IdentityRuntime, LocalIssuerOutcome, PendingReason, UnlockPhase,
     UnlockProgress, UnlockProgressRow, UnlockStep,
 };
+use crate::store::{Events, events::EventLog};
 use bbt_proto::identity::{CustodyAcl, IdentityRequest, UnlockOutcome};
 use std::sync::{Mutex, atomic::AtomicUsize};
 
@@ -76,6 +77,9 @@ fn allowed_native_unlock_reports_reopen_busy_then_refresh_recovers_without_anoth
     };
     let expected_signer = issuer.verifying_key().to_bytes();
     drop(issuer);
+    // Opening the log initializes its schema. The observer must not repeat
+    // those writes while the actor publishes the native completion.
+    let events = EventLog::open(&root.path().join("account")).unwrap();
     keys.held.store(true, Ordering::Release);
     let identity = IdentityRuntime::open_custodied_with_store(
         root.path(),
@@ -183,13 +187,9 @@ fn allowed_native_unlock_reports_reopen_busy_then_refresh_recovers_without_anoth
     assert!(current.reopen_failed.is_none());
 
     // Recovery still publishes one legitimate completion for the immutable act.
-    use crate::store::{Events, events::EventLog};
     let until = Instant::now() + Duration::from_secs(3);
     loop {
-        let rows = EventLog::open(&root.path().join("account"))
-            .unwrap()
-            .after(0, 256)
-            .unwrap();
+        let rows = events.after(0, 256).unwrap();
         let completions: Vec<_> = rows
             .iter()
             .filter(|row| {
@@ -204,7 +204,20 @@ fn allowed_native_unlock_reports_reopen_busy_then_refresh_recovers_without_anoth
             break;
         }
         assert!(completions.is_empty(), "duplicate native completion");
-        assert!(Instant::now() < until, "native completion missing");
+        if Instant::now() >= until {
+            let status = runtime.block_on(logic.client.identity_status());
+            let retained = runtime.block_on(logic.client.gui_identity_control(
+                op,
+                IdentityRequest::Status,
+                origin(),
+            ));
+            panic!(
+                "native completion missing: status={status:?}, retained={retained:?}, rows={}, last={:?}, attempts={}",
+                rows.len(),
+                rows.last().map(|row| row.seq),
+                keys.attempts.load(Ordering::Acquire)
+            );
+        }
         std::thread::sleep(Duration::from_millis(10));
     }
     assert_eq!(keys.attempts.load(Ordering::Acquire), 1);
