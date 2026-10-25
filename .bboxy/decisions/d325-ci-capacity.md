@@ -15,7 +15,7 @@ links:
   - { to: "[[d8-open-source]]", rel: builds-on }
   - { to: "[[no-chokepoints]]", rel: builds-on }
 created: "2026-10-25T16:37:17Z"
-updated: "2026-10-25T19:13:49Z"
+updated: "2026-10-25T22:22:44Z"
 ---
 # Decision 325: the cheapest CI that actually runs
 
@@ -54,6 +54,8 @@ A gate runs in a clean detached worktree with its own empty target, so every gat
 **What it changes in the record.** [[d15-local-ci]] stands for the agents' presubmits and gains the portable tier on the Linux box and the postsubmit on the second Mac; the sixth instance of [[no-chokepoints]] is amended from "no wrapper" to "no shared server": the cache is back with one server per agent. GitHub Actions stays manual-dispatch on the private repository and becomes the free CI of the **public** crates when [[d8-open-source]] publishes them, where hosted minutes cost nothing.
 
 **Measured after the fact (the Oracle's 175-log parse, same day):** compile 52 %, test run 36 %, six binaries with real-clock waits over eight of thirty-seven hours. The order of the steps stands; the data adds that the second lever after the cache is the tests themselves ([[presubmit-tests-fast]]), which no purchase buys back, so the tests get fixed before the box is bought.
+
+**Deferred by the operator, not rejected (2026-10-25, verbatim: "ok we continue as is for now, i will get more hardware for us soon").** Step 1 is live (the per-worktree cache landed at 4e2aadd5, the fixed slot paths follow). Steps 2 and 3, the Linux box and the second Mac, wait for the operator's hardware and stay the plan when it arrives; until then the swarm stays on this machine and the levers are the cache, the test policy and the presubmit's per-invariant selection.
 
 **Operator's call.** Step 3 is a purchase; the Architect recommends it and does not make it. Steps 1 and 2 need no one's approval beyond this record.
 
