@@ -1,0 +1,16 @@
+F
+======================================================================
+FAIL: test_wide_runs_full_normal_gate_and_records_tier (__main__.LandTests.test_wide_runs_full_normal_gate_and_records_tier)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scripts/test-landing.py", line 818, in test_wide_runs_full_normal_gate_and_records_tier
+    self.assertEqual(Path((self.repo.state / 'wide-cwd').read_text().strip()).resolve(),
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     (self.repo.state / 'slots/bboxy450-gate-slot-1/tree').resolve())
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Posix[77 chars]e-_3ep_ax4') != Posix[77 chars]e-_3ep_ax4/.git/fixture-state/slots/bboxy450-gate-slot-1/tree')
+
+----------------------------------------------------------------------
+Ran 1 test in 5.223s
+
+FAILED (failures=1)

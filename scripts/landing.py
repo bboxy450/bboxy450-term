@@ -49,6 +49,11 @@ def cargo_invocation(argv, environment=None):
     return argv, environment
 
 
+DELEGATES = {"quarantine": ("quarantine", "administer"),
+             "quarantine-test": ("quarantine", "test"),
+             "main-watch": ("main_watch", "run")}
+
+
 def command(argv, *, cwd=None, capture=True, check=True, **kwargs):
     argv, environment = cargo_invocation(argv, kwargs.pop("env", None))
     result = subprocess.run(argv, cwd=cwd, text=True, env=environment,
@@ -363,6 +368,106 @@ def records_checks(root, paths):
         checked(["sh", f"scripts/{script}.sh"], root)
 
 
+def command_tools(argv, root):
+    """Repo-local script entry points, rather than every file under scripts/."""
+    words = list(argv)
+    while words and (words[0] == "env" or re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*=.*", words[0])):
+        words.pop(0)
+    if not words:
+        return set()
+    executable = Path(words[0]).name
+    if executable in {"sh", "bash", "dash"} and "-c" in words:
+        index = words.index("-c") + 1
+        if index >= len(words):
+            return set()
+        lexer = shlex.shlex(words[index], posix=True, punctuation_chars=True)
+        lexer.whitespace_split = True
+        result, part = set(), []
+        for token in [*lexer, ";"]:
+            if token in {";", "&&", "||", "|", "(", ")"}:
+                result |= command_tools(part, root)
+                part = []
+            else:
+                part.append(token)
+        return result
+    if executable in {"sh", "bash", "dash", "python", "python3", "node"}:
+        entries = [word for word in words[1:] if not word.startswith("-")]
+        if not entries:
+            return set()
+        entry = Path(entries[0])
+    else:
+        entry = Path(words[0])
+    if entry.is_absolute():
+        try:
+            entry = entry.relative_to(root)
+        except ValueError:
+            try:
+                entry = entry.resolve().relative_to(root.resolve())
+            except ValueError:
+                return set()
+    name = entry.as_posix()
+    if (not name.startswith("scripts/") or ".." in entry.parts
+            or entry.name in {"land.sh", "landing.py", "presubmit.sh", "cache-env.sh"}
+            or entry.name.startswith(("test-landing", "landing_"))):
+        return set()
+    result = {name}
+    delegate = DELEGATES.get(entry.stem)
+    if delegate:
+        result.add("scripts/" + delegate[0] + ".py")
+    return result
+
+
+def execution_commands(root, sha, transcript, *, fixtures=False):
+    commands = {}
+    invariants = ["sh", "scripts/invariants.sh"]
+    def add(argv, tools=None):
+        if tools is None:
+            tools = command_tools(argv, root)
+            if not fixtures:
+                tools = {tool for tool in tools if not Path(tool).name.startswith("test-")}
+        if tools:
+            key = tuple(argv)
+            row = commands.setdefault(key, {"argv": list(argv), "tools": []})
+            row["tools"] = sorted(set(row["tools"]) | tools)
+    for line in transcript.splitlines():
+        argv = None
+        try:
+            if line.startswith("presubmit: "):
+                argv = shlex.split(line.removeprefix("presubmit: "))
+            elif line.startswith("ci-command: "):
+                argv = json.loads(line.removeprefix("ci-command: "))
+        except (ValueError, TypeError):
+            continue
+        if isinstance(argv, list) and argv and all(isinstance(arg, str) for arg in argv):
+            add(argv)
+            if "scripts/invariants.sh" in argv:
+                invariants = argv
+        match = re.fullmatch(r"invariant ([A-Za-z0-9_-]+): pass", line)
+        if not match:
+            continue
+        gate = match[1]
+        source = command(["git", "show", f"{sha}:.bboxy/invariants/{gate}.md"], cwd=root, check=False)
+        if source.returncode:
+            continue
+        lines = source.stdout.splitlines()
+        if not lines or lines[0] != "---":
+            continue
+        for field in lines[1:]:
+            if field == "---":
+                break
+            if field.startswith("check:"):
+                check = field.removeprefix("check:").strip()
+                if len(check) >= 2 and check[0] == check[-1] and check[0] in "\"'":
+                    check = check[1:-1]
+                try:
+                    tools = command_tools(["sh", "-c", check], root)
+                except ValueError:
+                    tools = set()
+                add([*invariants, *([] if gate in invariants else [gate])], tools)
+                break
+    return list(commands.values())
+
+
 def parity_cases(cases, data):
     paths = data["paths"]
     shared_lab = bool(data["shared"]) or any(p.startswith("design/") for p in paths)
@@ -421,11 +526,30 @@ def scoped_parity(root, data, output):
     checked([binary, "compare", "--strict-geometry", "--out", output, "--manifest", captured], root)
 
 
-def presubmit_worker(base, result_path):
+def recheck_data(data, path):
+    if path is None:
+        return data
+    plan = json.loads(Path(path).read_text())
+    if not isinstance(plan, dict):
+        raise Refusal("invalid_recheck_scope", 2)
+    selected, commands = plan.get("affected"), plan.get("commands", [])
+    if (not isinstance(selected, list) or not all(isinstance(name, str) for name in selected)
+            or not set(selected) <= set(data["affected"])
+            or not isinstance(commands, list)
+            or any(not isinstance(argv, list) or not argv
+                   or not all(isinstance(arg, str) for arg in argv) for argv in commands)):
+        raise Refusal("invalid_recheck_scope", 2)
+    return {**data, "tier": "code", "affected": sorted(set(selected)),
+            "parity": "yes" if data["parity"] == "yes" and set(selected) &
+                      {"bbt-ui", "bbt-ui-model", "bbt-render", "bboxybook"} else "no",
+            "recheck": {"affected": sorted(set(selected)), "commands": commands}}
+
+
+def presubmit_worker(base, result_path, recheck=None):
     global _timing_path
     _timing_path = result_path.parent / "phases.jsonl"
     root = repository()
-    data = affected(base + "..HEAD", root=root)
+    data = recheck_data(affected(base + "..HEAD", root=root), recheck)
     atomic_write(result_path, json.dumps(data) + "\n")
     if data["tier"] == "lab":
         records_checks(root, data["paths"])
@@ -435,14 +559,15 @@ def presubmit_worker(base, result_path):
         if packages:
             checked(["sh", "scripts/quarantine-test.sh", "--locked", *packages], root)
             checked(["cargo", "clippy", "--locked", *packages, "--all-targets", "--", "-D", "warnings"], root)
-        if any(p.startswith("scripts/") for p in data["paths"]):
+        if recheck is None and any(p.startswith("scripts/") for p in data["paths"]):
             checked(["python3", "-I", "scripts/test-landing.py", "--all"], root)
             if (root / "scripts/test-resource-ledger.py").exists():
                 checked(["python3", "-I", "scripts/test-resource-ledger.py"], root)
-        checked(["sh", "scripts/invariants.sh", "--affected", " ".join(data["affected"])], root)
+        if packages or recheck is None:
+            checked(["sh", "scripts/invariants.sh", "--affected", " ".join(data["affected"])], root)
         dispatch = any(Path(p).name in ("ctl.rs", "seat_socket.rs", "logic.rs")
                        or "/src/ctl/" in p or "/src/mcp/" in p for p in data["paths"])
-        if dispatch and packages:
+        if dispatch and packages and (recheck is None or "bbt-proto" in data["affected"]):
             # The wire golden is a target in the protocol crate; its test names
             # deliberately contain no "golden" name filter.
             output = io.StringIO()
@@ -452,6 +577,8 @@ def presubmit_worker(base, result_path):
             print(output.getvalue(), end="", flush=True)
             if code or not re.search(r"test result: ok\. [1-9][0-9]* passed", output.getvalue()):
                 raise Refusal("golden_dispatch_tests_missing")
+        for argv in data.get("recheck", {}).get("commands", []):
+            checked(argv, root)
     if data["parity"] == "yes":
         scoped_parity(root, data, result_path.parent / "parity")
     return 0
@@ -467,12 +594,12 @@ def clean_source(root):
         raise Refusal("untracked_source: " + ", ".join(source))
 
 
-def presubmit(base):
+def presubmit(base, recheck=None):
     root = repository()
     ledger_origin(root)
     sha = git("rev-parse", "HEAD", cwd=root)
     clean_source(root)
-    data = affected(base + "..HEAD", root=root)
+    data = recheck_data(affected(base + "..HEAD", root=root), recheck)
     if data["tier"] == "wide":
         with Slot() as slot:
             return slot.result(wide_check(root, data)["exit"])
@@ -493,7 +620,7 @@ def presubmit(base):
         if git("rev-parse", "HEAD", cwd=root) != sha:
             raise Refusal("candidate_changed_during_presubmit")
         record = presubmit_attempt(check_root, sha, base, data, build_cap, run_bound, attempt, operation,
-                                   environment=check_environment)
+                                   environment=check_environment, recheck=recheck)
         clean_source(root)
         if git("rev-parse", "HEAD", cwd=root) != sha:
             raise Refusal("candidate_changed_during_presubmit")
@@ -521,7 +648,8 @@ def stop_worker(child):
         child.wait()
 
 
-def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, operation, *, environment=None):
+def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, operation, *, environment=None,
+                      recheck=None):
     output = state_directory() / "presubmits" / (sha + "-" + uuid.uuid4().hex[:8])
     output.mkdir(parents=True, mode=0o700)
     result_path = output / "affected.json"
@@ -547,7 +675,7 @@ def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, oper
                     pass
     with (output / "commands.log").open("w") as stream:
         child = subprocess.Popen(["sh", str(root / "scripts/presubmit.sh"), "--worker",
-                                  base, str(result_path)], cwd=root,
+                                  base, str(result_path), *(["--recheck", str(recheck)] if recheck else [])], cwd=root,
                                  env=build_environment(root) if environment is None else environment, stdout=stream,
                                  stderr=subprocess.STDOUT, start_new_session=True)
         atomic_write(output / "process.json", json.dumps({"pid": child.pid, "pgid": child.pid,
@@ -589,6 +717,11 @@ def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, oper
               "log": str(output / "commands.log"),
               "timing_basis": "setup_and_visible_compile_build;all_other_execution_run",
               **clocks.totals(ended)}
+    if code == 0:
+        record["commands"] = execution_commands(root, sha, transcript,
+                                                 fixtures=any(p.startswith("scripts/") for p in data["paths"]))
+    if "recheck" in data:
+        record["recheck"] = data["recheck"]
     append_record("presubmit.log", record)
     print(transcript, end="")
     print(json.dumps(record, sort_keys=True), flush=True)
@@ -657,7 +790,7 @@ def wide_check(root, data, gate_log=None):
         environment["BBOXY_GATE_SLOT"] = "none"  # land/presubmit already owns it
         print("land: wide cut; full normal CI, no presubmit deadline", flush=True)
         with gate_log.open("w") as stream:
-            code = measured_command(["sh", "scripts/ci-local.sh"], root, output / "phases.jsonl",
+            code = measured_command(["sh", "scripts/ci-local.sh"], check_root, output / "phases.jsonl",
                                     stream=stream, env=environment)
         print(gate_log.read_text(), end="", flush=True)
         proof = gate_proof(gate_log, sha) if code == 0 else {"gate_log": str(gate_log)}
@@ -672,6 +805,9 @@ def wide_check(root, data, gate_log=None):
               "seconds": time.monotonic() - started, "verdict": "green" if code == 0 else "red",
               "exit": code, "binary_durations": binary_durations(Path(gate_log).read_text()),
               **proof}
+    if code == 0:
+        record["commands"] = execution_commands(root, sha, Path(gate_log).read_text(),
+                                                 fixtures=any(p.startswith("scripts/") for p in data["paths"]))
     if "output" in locals():
         record.update(phase_totals(output / "phases.jsonl", time.monotonic()))
         record["timing_basis"] = "observed_output_phase_wall"
@@ -999,8 +1135,12 @@ def land(gate_log=None):
     landing = None
     proof = {}
     check_timings = []
+    incremental_rechecks = 0
+    executed_commands = {}
     with Slot():
-        for retry in range(3):
+        retry = -1
+        while True:
+            retry += 1
             git("fetch", "origin", "main", cwd=root)
             base = git("rev-parse", "origin/main", cwd=root)
             main_guard(root, base)
@@ -1013,27 +1153,37 @@ def land(gate_log=None):
                     landing = existing
                     break
                 raise Refusal("no_own_commits_to_land")
-            moved = affected(previous_base + ".." + base, root=root) if previous_base else None
             rebased = command(["git", "rebase", "origin/main"], cwd=root, capture=False, check=False)
             if rebased.returncode:
                 raise Refusal("conflict: resolve this rebase before rerunning", 78)
             data = affected(base + "..HEAD", root=root)
-            intersection = moved and (set(data["affected"]) & set(moved["affected"])
-                                      or set(data["paths"]) & set(moved["paths"])
-                                      or moved["shared"]
-                                      or (any(p.startswith(("lab/", "design/")) for p in data["shared"])
-                                          and moved["parity"] == "yes"))
+            moved = affected(previous_base + ".." + base, root=root) if previous_base else None
+            common_paths = moved and set(data["paths"]) & set(moved["paths"])
+            # Each affected set already includes transitive dependents; their
+            # intersection therefore includes those dependents within this cut.
+            intersection = sorted(set(data["affected"]) & set(moved["affected"])) if moved else []
+            changed_tools = set(moved["paths"]) if moved else set()
+            replay = [row["argv"] for row in executed_commands.values()
+                      if changed_tools & set(row["tools"])]
+            recheck = None
+            if tested is not None and not common_paths and (intersection or replay):
+                if incremental_rechecks >= 5:
+                    raise Refusal("main_moving: five incremental rechecks exhausted; finding for Oracle", 79)
+                incremental_rechecks += 1
+                recheck = state_directory() / "rechecks" / (uuid.uuid4().hex + ".json")
+                atomic_write(recheck, json.dumps({"affected": intersection, "commands": replay}) + "\n")
+                print("land: incremental recheck:", " ".join(intersection), flush=True)
             candidate = git("rev-parse", "HEAD", cwd=root)
-            if (tested is None or intersection
-                    or (data["tier"] == "wide" and tested != candidate)):
+            if tested is None or common_paths or recheck is not None:
                 started = time.monotonic()
-                if data["tier"] == "wide":
-                    proof = wide_check(root, data, gate_log)
+                if data["tier"] == "wide" and recheck is None:
+                    proof = wide_check(root, data, gate_log if tested is None else None)
                     code = proof["exit"]
                 else:
-                    if gate_log:
+                    if gate_log and tested is None:
                         raise Refusal("gate_log_requires_wide_cut")
-                    code = command(["sh", "scripts/presubmit.sh", base], cwd=root,
+                    code = command(["sh", "scripts/presubmit.sh", base,
+                                    *(["--recheck", str(recheck)] if recheck else [])], cwd=root,
                                    capture=False, check=False).returncode
                     proof = next((row for row in reversed(records("presubmit.log"))
                                   if row.get("sha") == candidate), {})
@@ -1045,9 +1195,17 @@ def land(gate_log=None):
                         proof["build_attempts"] = len(attempts)
                 spent += time.monotonic() - started
                 check_timings.append({k: proof.get(k) for k in
-                                      ("sha", "compile_seconds", "run_seconds", "test_seconds", "unclassified_seconds", "timing_basis")})
+                                      ("sha", "affected", "recheck", "log", "gate_log", "gate_log_sha256", "compile_seconds", "run_seconds",
+                                       "test_seconds", "unclassified_seconds", "timing_basis")})
                 if code:
                     raise Refusal("presubmit_failed", 77)
+                if tested is None or common_paths:
+                    executed_commands.clear()
+                for row in proof.get("commands", []):
+                    key = tuple(row["argv"])
+                    prior = executed_commands.get(key, {"tools": []})
+                    executed_commands[key] = {"argv": row["argv"],
+                                              "tools": sorted(set(prior["tools"]) | set(row["tools"]))}
                 tested = git("rev-parse", "HEAD", cwd=root)
             else:
                 print("land: moved changes are disjoint; reusing presubmit", flush=True)
@@ -1069,13 +1227,15 @@ def land(gate_log=None):
                         raise Refusal("push_failed: " + pushed.stderr)
                     continue
             landing = {"sha": sha, "base": base, "timestamp": now(), "author_key": key, "author": email,
-                       "tier": proof.get("tier", data["tier"]), "affected": data["affected"],
+                       "tier": data["tier"], "affected": data["affected"],
                        "presubmit_seconds": spent, "retries": retry, "paths": data["paths"],
-                       "tested_sha": tested, "branch": branch}
+                       "tested_sha": tested, "branch": branch,
+                       "incremental_rechecks": incremental_rechecks}
             landing.update({k: proof[k] for k in ("gate_log", "gate_log_sha256", "compile_seconds",
                                                  "run_seconds", "test_seconds", "unclassified_seconds", "build_attempts",
                                                  "tests_started", "timing_basis") if k in proof})
             landing["check_timings"] = check_timings
+            landing["commands"] = list(executed_commands.values())
             if len(check_timings) > 1:
                 landing["timing_basis"] = "sum_of_check_timings"
             for kind in ("compile_seconds", "run_seconds", "test_seconds", "unclassified_seconds"):
@@ -1087,7 +1247,7 @@ def land(gate_log=None):
                 ledger.attempt(ledger, "landed", landing)
             break
         if landing is None:
-            raise Refusal("main_moving: three attempts exhausted", 79)
+            raise Refusal("main_moving: five incremental rechecks exhausted; finding for Oracle", 79)
     # Communication happens after slot release; it never holds build capacity.
     announcement(landing["sha"], git("show", "-s", "--format=%s", landing["sha"], cwd=root))
     return 0
@@ -1096,11 +1256,8 @@ def land(gate_log=None):
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "ci-local":
         return ci_local(sys.argv[2:])
-    delegates = {"quarantine": ("quarantine", "administer"),
-                 "quarantine-test": ("quarantine", "test"),
-                 "main-watch": ("main_watch", "run")}
-    if len(sys.argv) > 1 and sys.argv[1] in delegates:
-        module_name, function = delegates[sys.argv[1]]
+    if len(sys.argv) > 1 and sys.argv[1] in DELEGATES:
+        module_name, function = DELEGATES[sys.argv[1]]
         spec = importlib.util.spec_from_file_location(module_name, Path(__file__).with_name(module_name + ".py"))
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -1114,11 +1271,15 @@ def main():
     sub.add_parser("parity-dir")
     p = sub.add_parser("check-is-cargo")
     p.add_argument("check")
+    p = sub.add_parser("trace-command")
+    p.add_argument("command", nargs=argparse.REMAINDER)
     p = sub.add_parser("presubmit")
     p.add_argument("base", nargs="?", default="origin/main")
+    p.add_argument("--recheck", type=Path)
     p = sub.add_parser("presubmit-worker")
     p.add_argument("base")
     p.add_argument("result", type=Path)
+    p.add_argument("--recheck", type=Path)
     p = sub.add_parser("land")
     p.add_argument("--gate-log", type=Path,
                    help="reuse full NORMAL CI on the exact wide candidate SHA")
@@ -1132,10 +1293,15 @@ def main():
         print(parity_directory())
     elif args.verb == "check-is-cargo":
         return 0 if cargo_backed(args.check) else 1
+    elif args.verb == "trace-command":
+        argv = args.command[1:] if args.command[:1] == ["--"] else args.command
+        if not argv:
+            raise Refusal("empty_trace_command", 2)
+        print("ci-command: " + json.dumps(argv), flush=True)
     elif args.verb == "presubmit":
-        return presubmit(args.base)
+        return presubmit(args.base, args.recheck)
     elif args.verb == "presubmit-worker":
-        return presubmit_worker(args.base, args.result)
+        return presubmit_worker(args.base, args.result, args.recheck)
     elif args.verb == "land":
         return land(args.gate_log)
 

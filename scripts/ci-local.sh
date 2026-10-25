@@ -44,9 +44,17 @@ BBOXY_LEDGER_AGENT=${BBOXY_LEDGER_AGENT:-worktree:$(pwd -P)}
 BBOXY_LEDGER_BRANCH=${BBOXY_LEDGER_BRANCH:-$(git branch --show-current)}
 BBOXY_LEDGER_SHA=$gate_sha
 export BBOXY_LEDGER_AGENT BBOXY_LEDGER_BRANCH BBOXY_LEDGER_SHA
+trace_check() {
+    python3 -I "$ci_source_root/scripts/landing.py" trace-command -- "$@"
+}
+run_check() {
+    trace_check "$@"
+    "$@"
+}
 ledger() {
     ledger_stage=$1
     shift
+    trace_check "$@"
     if [ -f "$ledger_helper" ]; then
         python3 -I "$ledger_helper" run "$ledger_stage" -- "$@"
     else
@@ -85,7 +93,7 @@ else
   echo "smoke failed; private run retained at $smoke_run" >&2
   exit "$smoke_status"
 fi
-sh scripts/invariants.sh "$@"
+run_check sh scripts/invariants.sh "$@"
 if ! gate_clean || [ "$(git rev-parse HEAD)" != "$gate_sha" ]; then
     echo 'ci-local: source changed during gate; no exact-SHA proof' >&2; exit 2
 fi

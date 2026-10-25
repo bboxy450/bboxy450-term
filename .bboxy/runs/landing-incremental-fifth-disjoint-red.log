@@ -1,0 +1,68 @@
+F
+======================================================================
+FAIL: test_a_disjoint_move_after_five_rechecks_still_reuses_the_green (__main__.LandTests.test_a_disjoint_move_after_five_rechecks_still_reuses_the_green)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scripts/test-landing.py", line 988, in test_a_disjoint_move_after_five_rechecks_still_reuses_the_green
+    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 79 != 0 : land: slot 1 of 3
+Current branch fixture-cut is up to date.
+presubmit: sh scripts/quarantine-test.sh --locked -p c
+test result: ok. 1 passed; 0 failed; 0 ignored
+presubmit: cargo clippy --locked -p c --all-targets -- -D warnings
+test result: ok. 1 passed; 0 failed; 0 ignored
+presubmit: sh scripts/invariants.sh --affected c
+{"affected": ["c"], "attempt": 0, "binary_durations": [], "build_cap_seconds": 1800.0, "commands": [{"argv": ["sh", "scripts/quarantine-test.sh", "--locked", "-p", "c"], "tools": ["scripts/quarantine-test.sh", "scripts/quarantine.py"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "c"], "tools": ["scripts/invariants.sh"]}], "compile_seconds": 1.0961031670449302, "error": null, "exit": 0, "finding": null, "log": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/landing-fixture-nnpp2q7o/.git/fixture-state/presubmits/abb163d5d274c1e3a565c3496b817d7d9d203149-e0da2fa7/commands.log", "operation": "a425dbdb19bb418e863328e019519fa4", "run_bound_seconds": 900.0, "run_seconds": 0.043688207981176674, "seconds": 1.1399612920358777, "sha": "abb163d5d274c1e3a565c3496b817d7d9d203149", "test_seconds": 0.0005207909853197634, "tests_started": true, "tier": "code", "timing_basis": "setup_and_visible_compile_build;all_other_execution_run", "unclassified_seconds": 0.04316741699585691, "verdict": "green"}
+land: incremental recheck: c
+presubmit: sh scripts/quarantine-test.sh --locked -p c
+test result: ok. 1 passed; 0 failed; 0 ignored
+presubmit: cargo clippy --locked -p c --all-targets -- -D warnings
+test result: ok. 1 passed; 0 failed; 0 ignored
+presubmit: sh scripts/invariants.sh --affected c
+{"affected": ["c"], "attempt": 0, "binary_durations": [], "build_cap_seconds": 1800.0, "commands": [{"argv": ["sh", "scripts/quarantine-test.sh", "--locked", "-p", "c"], "tools": ["scripts/quarantine-test.sh", "scripts/quarantine.py"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "c"], "tools": ["scripts/invariants.sh"]}], "compile_seconds": 1.1350234170095064, "error": null, "exit": 0, "finding": null, "log": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/landing-fixture-nnpp2q7o/.git/fixture-state/presubmits/18b17b2f9c991eda09ca3536169e472d9f29916f-b8def02f/commands.log", "operation": "2644d37827304cb5ba2eed8ac013e968", "recheck": {"affected": ["c"], "commands": []}, "run_bound_seconds": 900.0, "run_seconds": 0.08995274995686486, "seconds": 1.2252278339583427, "sha": "18b17b2f9c991eda09ca3536169e472d9f29916f", "test_seconds": 0.0005519159603863955, "tests_started": true, "tier": "code", "timing_basis": "setup_and_visible_compile_build;all_other_execution_run", "unclassified_seconds": 0.08940083399647847, "verdict": "green"}
+land: incremental recheck: c
+presubmit: sh scripts/quarantine-test.sh --locked -p c
+test result: ok. 1 passed; 0 failed; 0 ignored
+presubmit: cargo clippy --locked -p c --all-targets -- -D warnings
+test result: ok. 1 passed; 0 failed; 0 ignored
+presubmit: sh scripts/invariants.sh --affected c
+{"affected": ["c"], "attempt": 0, "binary_durations": [], "build_cap_seconds": 1800.0, "commands": [{"argv": ["sh", "scripts/quarantine-test.sh", "--locked", "-p", "c"], "tools": ["scripts/quarantine-test.sh", "scripts/quarantine.py"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "c"], "tools": ["scripts/invariants.sh"]}], "compile_seconds": 1.0167785420198925, "error": null, "exit": 0, "finding": null, "log": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/landing-fixture-nnpp2q7o/.git/fixture-state/presubmits/6f361f57fcbe527c866aee3f4951e90ef80154b8-cfc831f1/commands.log", "operation": "095312aed8c84cddb568bc81df5df8e1", "recheck": {"affected": ["c"], "commands": []}, "run_bound_seconds": 900.0, "run_seconds": 0.03824208298465237, "seconds": 1.0553328749956563, "sha": "6f361f57fcbe527c866aee3f4951e90ef80154b8", "test_seconds": 0.0006252489401958883, "tests_started": true, "tier": "code", "timing_basis": "setup_and_visible_compile_build;all_other_execution_run", "unclassified_seconds": 0.03761683404445648, "verdict": "green"}
+land: incremental recheck: c
+presubmit: sh scripts/quarantine-test.sh --locked -p c
+test result: ok. 1 passed; 0 failed; 0 ignored
+presubmit: cargo clippy --locked -p c --all-targets -- -D warnings
+test result: ok. 1 passed; 0 failed; 0 ignored
+presubmit: sh scripts/invariants.sh --affected c
+{"affected": ["c"], "attempt": 0, "binary_durations": [], "build_cap_seconds": 1800.0, "commands": [{"argv": ["sh", "scripts/quarantine-test.sh", "--locked", "-p", "c"], "tools": ["scripts/quarantine-test.sh", "scripts/quarantine.py"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "c"], "tools": ["scripts/invariants.sh"]}], "compile_seconds": 1.119692416046746, "error": null, "exit": 0, "finding": null, "log": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/landing-fixture-nnpp2q7o/.git/fixture-state/presubmits/a3590de2b55186ea1cccbc1b3c72d9848a1ec917-9b017d6c/commands.log", "operation": "5994ba7a0ff445e28eba6c119373de77", "recheck": {"affected": ["c"], "commands": []}, "run_bound_seconds": 900.0, "run_seconds": 0.0546559999929741, "seconds": 1.1747031660052016, "sha": "a3590de2b55186ea1cccbc1b3c72d9848a1ec917", "test_seconds": 0.00039229198591783643, "tests_started": true, "tier": "code", "timing_basis": "setup_and_visible_compile_build;all_other_execution_run", "unclassified_seconds": 0.054263708007056266, "verdict": "green"}
+land: incremental recheck: c
+presubmit: sh scripts/quarantine-test.sh --locked -p c
+test result: ok. 1 passed; 0 failed; 0 ignored
+presubmit: cargo clippy --locked -p c --all-targets -- -D warnings
+test result: ok. 1 passed; 0 failed; 0 ignored
+presubmit: sh scripts/invariants.sh --affected c
+{"affected": ["c"], "attempt": 0, "binary_durations": [], "build_cap_seconds": 1800.0, "commands": [{"argv": ["sh", "scripts/quarantine-test.sh", "--locked", "-p", "c"], "tools": ["scripts/quarantine-test.sh", "scripts/quarantine.py"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "c"], "tools": ["scripts/invariants.sh"]}], "compile_seconds": 0.9808051669970155, "error": null, "exit": 0, "finding": null, "log": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/landing-fixture-nnpp2q7o/.git/fixture-state/presubmits/6ca6d13222ff93b8c2c6135ed791a2afd87d5e3a-da88473d/commands.log", "operation": "92aefadae675413aa51b32e64e501f69", "recheck": {"affected": ["c"], "commands": []}, "run_bound_seconds": 900.0, "run_seconds": 0.037060625036247075, "seconds": 1.0181864580372348, "sha": "6ca6d13222ff93b8c2c6135ed791a2afd87d5e3a", "test_seconds": 0.0006262499955482781, "tests_started": true, "tier": "code", "timing_basis": "setup_and_visible_compile_build;all_other_execution_run", "unclassified_seconds": 0.036434375040698797, "verdict": "green"}
+land: incremental recheck: c
+presubmit: sh scripts/quarantine-test.sh --locked -p c
+test result: ok. 1 passed; 0 failed; 0 ignored
+presubmit: cargo clippy --locked -p c --all-targets -- -D warnings
+test result: ok. 1 passed; 0 failed; 0 ignored
+presubmit: sh scripts/invariants.sh --affected c
+{"affected": ["c"], "attempt": 0, "binary_durations": [], "build_cap_seconds": 1800.0, "commands": [{"argv": ["sh", "scripts/quarantine-test.sh", "--locked", "-p", "c"], "tools": ["scripts/quarantine-test.sh", "scripts/quarantine.py"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "c"], "tools": ["scripts/invariants.sh"]}], "compile_seconds": 1.2682561260298826, "error": null, "exit": 0, "finding": null, "log": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/landing-fixture-nnpp2q7o/.git/fixture-state/presubmits/0405278dd709b1741d57afa525c4584a81f1ab46-08ec19ab/commands.log", "operation": "d40c3a5d1f5b45008086fe338adff143", "recheck": {"affected": ["c"], "commands": []}, "run_bound_seconds": 900.0, "run_seconds": 0.040753207984380424, "seconds": 1.3122911670361646, "sha": "0405278dd709b1741d57afa525c4584a81f1ab46", "test_seconds": 0.0007065830286592245, "tests_started": true, "tier": "code", "timing_basis": "setup_and_visible_compile_build;all_other_execution_run", "unclassified_seconds": 0.0400466249557212, "verdict": "green"}
+Rebasing (1/1)
+Successfully rebased and updated refs/heads/fixture-cut.
+Rebasing (1/1)
+Successfully rebased and updated refs/heads/fixture-cut.
+Rebasing (1/1)
+Successfully rebased and updated refs/heads/fixture-cut.
+Rebasing (1/1)
+Successfully rebased and updated refs/heads/fixture-cut.
+Rebasing (1/1)
+Successfully rebased and updated refs/heads/fixture-cut.
+landing: main_moving: five incremental rechecks exhausted; finding for Oracle
+
+
+----------------------------------------------------------------------
+Ran 1 test in 23.941s
+
+FAILED (failures=1)

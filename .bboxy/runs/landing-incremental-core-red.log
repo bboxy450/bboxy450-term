@@ -1,0 +1,32 @@
+FFF
+======================================================================
+FAIL: test_wide_moved_main_reuses_the_full_green_for_disjoint_changes (__main__.LandTests.test_wide_moved_main_reuses_the_full_green_for_disjoint_changes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scripts/test-landing.py", line 788, in test_wide_moved_main_reuses_the_full_green_for_disjoint_changes
+    self.assertEqual(self.cargo_test_count(), 1)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_intersecting_move_checks_only_the_crate_intersection (__main__.LandTests.test_intersecting_move_checks_only_the_crate_intersection)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scripts/test-landing.py", line 799, in test_intersecting_move_checks_only_the_crate_intersection
+    self.assertEqual(sum("--workspace" in call for call in tests), 1)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_five_incremental_rechecks_are_79_with_no_candidate_push (__main__.LandTests.test_five_incremental_rechecks_are_79_with_no_candidate_push)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scripts/test-landing.py", line 869, in test_five_incremental_rechecks_are_79_with_no_candidate_push
+    self.assertEqual(self.cargo_test_count(), 6)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 3 != 6
+
+----------------------------------------------------------------------
+Ran 3 tests in 24.514s
+
+FAILED (failures=3)

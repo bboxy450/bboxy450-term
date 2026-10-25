@@ -1,0 +1,92 @@
+{
+  "brief": "50785c5e-fb75-4dd2-ae44-06d4b4000055",
+  "specs": [
+    "e4a652bf",
+    "31f82933",
+    "67d15df9"
+  ],
+  "base": "e0c8b981c954651cabc8acfb98859a724c7695f4",
+  "source_hashes": {
+    "scripts/landing.py": "9bce96572e57b9d24764081d73176025d17d43c41504f112080a717254c94d77",
+    "scripts/ci-local.sh": "1f4568b15c9a3dd987ecc4729bcd20e9a88a55d2e14131e9e2119bc6700a2435",
+    "scripts/test-landing.py": "b5bd1757c0a53ddd1872a05ba4f47528df2f064cca7d1f654d717f3821c0ea20"
+  },
+  "checks": [
+    {
+      "log": ".bboxy/runs/landing-incremental-core-red.log",
+      "tests": 3,
+      "exit": 1,
+      "sha256": "25864185f53dfb356481b7884ae23f3eca7de35333005b72877512b1c0ac46b5"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-core-green.log",
+      "tests": 3,
+      "exit": 0,
+      "sha256": "6e1ac7278c6af30a122321cc63fd6e1213132d815d81d413e60194b8139983c4"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-shared-driver.log",
+      "tests": 2,
+      "exit": 0,
+      "sha256": "e3d6843c4a4eabd6bc722f360dd23dcfa33f2c0165d908b784b8cb1d22146eca"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-tools.log",
+      "tests": 5,
+      "exit": 0,
+      "sha256": "987b702c21cf9a7680054a9c2feea6caebcd8c7b358cc53ac209fd96ceb23cf4"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-ci-trace.log",
+      "tests": 1,
+      "exit": 0,
+      "sha256": "82d29c980a489bf0cba7d370ca45a5135de77142d9b02432ab93d064aa69f7e7"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-fifth-disjoint-red.log",
+      "tests": 1,
+      "exit": 1,
+      "sha256": "ad8b366a30c090b09a47cac91c8e50a1c13850ccb689c81bccd7598779739ae8"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-fifth-disjoint-green.log",
+      "tests": 4,
+      "exit": 0,
+      "sha256": "1c5e2d19c4d1a192c9e624daf3caad4902de0438208020b2e9b5df19795f2b85"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-rebased-graph-red.log",
+      "tests": 1,
+      "exit": 1,
+      "sha256": "e004ff93df8a06d6c4c5aa5349d2f2004294e2fde610717074eb6d26f1c7f6d2"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-rebased-graph-green.log",
+      "tests": 2,
+      "exit": 0,
+      "sha256": "96e2b9da3dc20b155cfbec2f8072c8705d1b67c96eae9f42cc7b4b906ab8b806"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-wide-cwd-red.log",
+      "tests": 1,
+      "exit": 1,
+      "sha256": "16b8a0fbc726648a1657595eb5933fef839b5dd1c7b19b5578add0afcbf992c0"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-wide-cwd-green.log",
+      "tests": 1,
+      "exit": 0,
+      "sha256": "a02aefcd77ecc669b01b35739fde4140182e5d00ad6ff2b8deba1ec5571b8f43"
+    }
+  ],
+  "scope": [
+    "Rust intersection on one rebased dependency graph",
+    "full recheck for a common changed file",
+    "five incremental rechecks before a further intersecting move refuses79",
+    "disjoint moves remain reusable after five",
+    "executed logical command entries plus selected invariant scripts; fixture scripts select only script cuts",
+    "command-only replay of standalone checks and wrappers; source-keyed check history retained",
+    "CI trace emits logical argv and preserves single execution / exit status",
+    "wide CI executes in the prepared fixed source tree, not the caller checkout"
+  ]
+}

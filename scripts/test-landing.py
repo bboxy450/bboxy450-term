@@ -1,5 +1,6 @@
 """Landing contracts exercised only on private throwaway repositories (#323 §12)."""
 import importlib.util
+import io
 import atexit
 import hashlib
 import json
@@ -124,6 +125,7 @@ set -eu
 sha=$(git rev-parse HEAD)
 printf 'ci-local: source %s normal\\n' "$sha"
 printf '%s\\n' "$BBOXY_GATE_SLOT $BBOXY_CARGO_TARGET_DIR" >> "$BBOXY_LANDING_STATE_DIR/wide.log"
+pwd -P > "$BBOXY_LANDING_STATE_DIR/wide-cwd"
 cargo test --workspace --locked
 echo 'ci-local: all gates passed'
 printf 'ci-local: result %s normal 0\\n' "$sha"
@@ -208,20 +210,22 @@ else:
 
     def land(self, *arguments):
         return subprocess.run(["sh", "scripts/land.sh", *map(str, arguments)], cwd=self.root, env=self.environment,
-                              capture_output=True, text=True, timeout=30)
+                              capture_output=True, text=True, timeout=60)
 
     def remote_head(self):
         return run("git", "--git-dir", str(self.origin), "rev-parse", "main", cwd=self.root)
 
-    def movement(self, path, repeat=False):
+    def movement(self, path, repeat=False, contents=None):
         other = self.root / ".git/other-worktree"
         run("git", "worktree", "add", "-q", "-b", "fixture-other", str(other), "origin/main", cwd=self.root)
         hook = self.state / "move-main.sh"
+        write = ("printf '// movement %s\\n' \"$n\" > " + shlex.quote(path) if contents is None else
+                 "printf '%s\\n' " + shlex.quote(contents) + " > " + shlex.quote(path))
         hook.write_text("#!/bin/sh\nset -eu\ncd " + shlex.quote(str(other)) + "\n"
                         + 'count_file=' + shlex.quote(str(self.state / 'moves')) + '\n'
                         + 'n=$(cat "$count_file" 2>/dev/null || echo 0)\nn=$((n+1))\necho "$n" > "$count_file"\n'
                         + "mkdir -p " + shlex.quote(str(Path(path).parent)) + "\n"
-                        + "printf '// movement %s\\n' \"$n\" > " + shlex.quote(path) + "\n"
+                        + write + "\n"
                         + "git add -- " + shlex.quote(path) + "\n"
                         + 'git commit -qm "Fixture movement $n"\ngit push -q origin HEAD:main\n')
         (self.state / "behavior.json").write_text(json.dumps({"hook": str(hook), "repeat_hook": repeat}))
@@ -444,6 +448,29 @@ class PresubmitTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("invariants.sh --affected c\n", (self.repo.state / "shell.log").read_text())
 
+    def test_ci_command_trace_executes_the_original_check_once_and_keeps_its_exit(self):
+        shutil.copy2(SOURCE.with_name('ci-local.sh'), self.repo.root / 'scripts/ci-local.sh')
+        self.repo.write('scripts/layering.sh', '#!/bin/sh\nprintf x >> "$BBOXY_LANDING_STATE_DIR/check-count"\nexit 23\n')
+        self.repo.commit('Fixture CI trace exit')
+        result = subprocess.run(['sh', 'scripts/ci-local.sh'], cwd=self.repo.root,
+                                env=dict(self.repo.environment, BBOXY_GATE_SLOT='none'),
+                                capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 23, result.stdout + result.stderr)
+        self.assertEqual((self.repo.state / 'check-count').read_text(), 'x')
+        trace = next(line for line in result.stdout.splitlines() if line.startswith('ci-command: '))
+        self.assertEqual(json.loads(trace.removeprefix('ci-command: ')), ['sh', 'scripts/layering.sh'])
+        self.assertFalse((self.repo.state / 'cargo.jsonl').exists())
+
+    def test_recheck_refuses_crates_outside_the_cut_without_running_tests(self):
+        self.cut('crates/c/src/lib.rs')
+        plan = self.repo.state / 'outside-scope.json'
+        plan.write_text(json.dumps({'affected': ['outside'], 'commands': []}))
+        result = subprocess.run(['sh', 'scripts/presubmit.sh', self.repo.base, '--recheck', str(plan)],
+                                cwd=self.repo.root, env=self.repo.environment, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn('invalid_recheck_scope', result.stderr)
+        self.assertFalse((self.repo.state / 'cargo.jsonl').exists())
+
     def test_wide_uses_full_normal_ci_without_the_bounded_deadline(self):
         self.cut("crates/a/src/lib.rs")
         (self.repo.state / "fixture.json").write_text('{"timeout_seconds":0.0001}')
@@ -661,6 +688,37 @@ printf 'ci-local: result %s normal 0\\n' "$sha"
             self.assertFalse(live.exists())
 
 
+class ExecutionToolsTests(unittest.TestCase):
+    def test_command_trace_preserves_the_logical_argument_array(self):
+        argv = ["sh", "scripts/check.sh", "an argument with spaces", "$literal"]
+        stream = io.StringIO()
+        with patch.object(sys, "argv", ["landing.py", "trace-command", "--", *argv]), patch.object(sys, "stdout", stream):
+            landing.main()
+        self.assertEqual(json.loads(stream.getvalue().removeprefix("ci-command: ")), argv)
+
+    def test_actual_commands_and_named_invariants_define_the_tool_footprint(self):
+        transcript = ('presubmit: sh scripts/quarantine-test.sh --locked -p c\n'
+                      'presubmit: sh scripts/invariants.sh --affected c\n'
+                      'invariant fixture: pass\n'
+                      'ci-command: ["sh", "scripts/lab-check.sh"]\n'
+                      'presubmit: python3 -I scripts/test-landing.py --all\n'
+                      'presubmit: echo scripts/not-executed.sh\n')
+        source = subprocess.CompletedProcess([], 0, '---\ncheck: "sh scripts/fixture-guard.sh"\n---\n', '')
+        with patch.object(landing, "command", return_value=source):
+            rows = landing.execution_commands(Path('/fixture'), 'candidate', transcript)
+        tools = {tool for row in rows for tool in row['tools']}
+        self.assertEqual(tools, {'scripts/quarantine-test.sh', 'scripts/quarantine.py', 'scripts/invariants.sh',
+                                 'scripts/fixture-guard.sh', 'scripts/lab-check.sh'})
+        selected = next(row for row in rows if 'scripts/fixture-guard.sh' in row['tools'])
+        self.assertEqual(selected['argv'], ['sh', 'scripts/invariants.sh', '--affected', 'c', 'fixture'])
+
+    def test_other_script_fixtures_only_intersect_a_script_cut(self):
+        transcript = 'ci-command: ["python3", "-I", "scripts/test-fixture.py"]\n'
+        self.assertEqual(landing.execution_commands(Path('/fixture'), 'candidate', transcript), [])
+        rows = landing.execution_commands(Path('/fixture'), 'candidate', transcript, fixtures=True)
+        self.assertEqual(rows[0]['tools'], ['scripts/test-fixture.py'])
+
+
 class LandTests(unittest.TestCase):
     def setUp(self):
         self.repo = Repository()
@@ -758,6 +816,8 @@ class LandTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.repo.remote_head(), sha)
         self.assertEqual(self.cargo_test_count(), 1)
+        self.assertEqual(Path((self.repo.state / 'wide-cwd').read_text().strip()).resolve(),
+                         (self.repo.state / 'slots/bboxy450-gate-slot-1/tree').resolve())
         record = json.loads((self.repo.state / "landings.log").read_text())
         self.assertEqual(record["tier"], "wide")
         self.assertIn("gate_log_sha256", record)
@@ -781,14 +841,104 @@ class LandTests(unittest.TestCase):
         self.assertNotEqual(self.repo.remote_head(), sha)
         self.assertEqual(self.cargo_test_count(), 0)
 
-    def test_wide_moved_main_requires_a_new_exact_candidate_gate_even_when_disjoint(self):
+    def test_wide_moved_main_reuses_the_full_green_for_disjoint_changes(self):
         self.cut("crates/a/src/lib.rs")
         self.repo.movement(".bboxy/other.md")
         result = self.repo.land()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(self.cargo_test_count(), 2)
+        self.assertEqual(self.cargo_test_count(), 1)
         record = json.loads((self.repo.state / "landings.log").read_text())
-        self.assertEqual(record["tested_sha"], self.repo.remote_head())
+        self.assertNotEqual(record["tested_sha"], self.repo.remote_head())
+
+    def test_intersecting_move_checks_only_the_crate_intersection(self):
+        self.cut("crates/b/src/lib.rs")
+        self.repo.movement("crates/c/src/lib.rs")
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = [json.loads(line) for line in (self.repo.state / "cargo.jsonl").read_text().splitlines()]
+        tests = [call for call in calls if call[0] == "test"]
+        self.assertEqual(sum("--workspace" in call for call in tests), 1)
+        self.assertEqual([call[call.index("-p") + 1] for call in tests if "-p" in call], ["c"])
+        checks = [json.loads(line) for line in (self.repo.state / "presubmit.log").read_text().splitlines()]
+        self.assertEqual(checks[-1]["affected"], ["c"])
+        self.assertIn("invariants.sh --affected c\n", (self.repo.state / "shell.log").read_text())
+
+    def test_moved_scope_uses_the_rebased_dependency_graph(self):
+        self.cut()
+        path = 'crates/c/Cargo.toml'
+        manifest = (self.repo.root / path).read_text().replace('name="c"', 'name="c_new"')
+        self.repo.movement(path, contents=manifest)
+        hook = self.repo.state / 'move-main.sh'
+        text = hook.read_text().replace('git add -- ' + shlex.quote(path),
+            shlex.quote(shutil.which('cargo')) + ' generate-lockfile --offline\ngit add -- Cargo.lock ' + shlex.quote(path))
+        hook.write_text(text)
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.cargo_test_count(), 2)
+        checks = [json.loads(line) for line in (self.repo.state / 'presubmit.log').read_text().splitlines()]
+        self.assertEqual(checks[-1]['affected'], ['c_new'])
+
+    def test_a_file_changed_on_both_sides_requires_a_full_recheck(self):
+        path = "crates/c/src/lib.rs"
+        self.repo.write(path, "// baseline\n" * 40)
+        self.repo.base = self.repo.commit("Fixture separated changes")
+        run("git", "push", "-q", "origin", "HEAD:main", cwd=self.repo.root)
+        source = self.repo.root / path
+        source.write_text(source.read_text() + "// candidate tail\n")
+        self.repo.commit("Fixture candidate")
+        self.repo.movement(path)
+        hook = self.repo.state / "move-main.sh"
+        text = hook.read_text().replace(
+            "printf '// movement %s\\n' \"$n\" > " + shlex.quote(path),
+            "printf '// movement %s\\n' \"$n\" | cat - " + shlex.quote(path) + " > changed && mv changed " + shlex.quote(path))
+        hook.write_text(text)
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        checks = [json.loads(line) for line in (self.repo.state / "presubmit.log").read_text().splitlines()]
+        self.assertEqual(len(checks), 2)
+        self.assertTrue(all("recheck" not in check for check in checks))
+
+    def test_moved_driver_does_not_invalidate_a_green_code_cut(self):
+        self.cut()
+        self.repo.movement("scripts/test-landing.py")
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.cargo_test_count(), 1)
+
+    def test_an_unexecuted_script_move_keeps_the_green_code_check(self):
+        self.cut()
+        self.repo.movement("scripts/not-executed.sh")
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.cargo_test_count(), 1)
+
+    def test_a_test_wrapper_move_replays_only_its_crate_tests(self):
+        original = (self.repo.root / 'scripts/quarantine-test.sh').read_text()
+        self.cut()
+        self.repo.movement('scripts/quarantine-test.sh', contents=original + '\n# fixture move\n')
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.cargo_test_count(), 2)
+        calls = [json.loads(line) for line in (self.repo.state / 'cargo.jsonl').read_text().splitlines()]
+        self.assertEqual(sum(call[0] == 'clippy' for call in calls), 1)
+        checks = [json.loads(line) for line in (self.repo.state / 'presubmit.log').read_text().splitlines()]
+        self.assertEqual(checks[-1]['recheck'], {'affected': [], 'commands': [
+            ['sh', 'scripts/quarantine-test.sh', '--locked', '-p', 'c']]})
+
+    def test_a_selected_invariant_tool_replays_its_named_check_without_crate_tests(self):
+        self.repo.write('.bboxy/invariants/fixture.md', '---\ntype: invariant\ncheck: sh scripts/fixture-guard.sh\n---\n')
+        self.repo.write('scripts/fixture-guard.sh', '#!/bin/sh\nexit 0\n')
+        self.repo.write('scripts/invariants.sh', '#!/bin/sh\nsh scripts/fixture-guard.sh || exit $?\nprintf "invariant fixture: pass\\n"\n')
+        self.repo.base = self.repo.commit('Fixture selected invariant')
+        run('git', 'push', '-q', 'origin', 'HEAD:main', cwd=self.repo.root)
+        self.cut()
+        self.repo.movement('scripts/fixture-guard.sh')
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 77, result.stdout + result.stderr)
+        self.assertEqual(self.cargo_test_count(), 1)
+        checks = [json.loads(line) for line in (self.repo.state / 'presubmit.log').read_text().splitlines()]
+        self.assertEqual(checks[-1]['recheck'], {'affected': [], 'commands': [
+            ['sh', 'scripts/invariants.sh', '--affected', 'c', 'fixture']]})
 
     def test_signed_cut_pushes_once_logs_and_announces_after_slot_release(self):
         # keeps: #323 §5 fast-forward/signature/log/communication contract.
@@ -849,13 +999,31 @@ class LandTests(unittest.TestCase):
         self.assertEqual(self.cargo_test_count(), 2)
         self.assertEqual(len(json.loads((self.repo.state / "landings.log").read_text())["check_timings"]), 2)
 
-    def test_three_moving_attempts_are_79_with_no_candidate_push(self):
+    def test_five_incremental_rechecks_are_79_with_no_candidate_push(self):
         sha = self.cut()
         self.repo.movement("crates/a/src/lib.rs", repeat=True)
         result = self.repo.land()
         self.assertEqual(result.returncode, 79, result.stdout + result.stderr)
-        self.assertEqual(self.cargo_test_count(), 3)
+        self.assertEqual(self.cargo_test_count(), 6)
         self.assertNotEqual(self.repo.remote_head(), sha)
+
+    def test_a_disjoint_move_after_five_rechecks_still_reuses_the_green(self):
+        self.cut()
+        path = 'crates/a/src/lib.rs'
+        self.repo.movement(path, repeat=True)
+        hook = self.repo.state / 'move-main.sh'
+        text = hook.read_text().replace(shlex.quote(path), '"$move_path"')
+        text = text.replace('mkdir -p ' + shlex.quote(str(Path(path).parent)),
+                            'mkdir -p "$(dirname "$move_path")"')
+        text = text.replace('echo "$n" > "$count_file"\n',
+                            'echo "$n" > "$count_file"\nmove_path=crates/a/src/lib.rs\n'
+                            'if [ "$n" -ge 6 ]; then move_path=.bboxy/after-fifth.md; fi\n')
+        hook.write_text(text)
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.cargo_test_count(), 6)
+        record = json.loads((self.repo.state / 'landings.log').read_text())
+        self.assertEqual(record['incremental_rechecks'], 5)
 
     def test_busy_slots_are_75_without_a_check(self):
         self.cut()
@@ -1367,17 +1535,18 @@ def fixture_suite(extended=False):
                 yield item.id().removeprefix("__main__.")
     names = list(flatten(unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])))
     extended_names = {"LandTests." + name for name in (
-        "test_three_moving_attempts_are_79_with_no_candidate_push",
+        "test_five_incremental_rechecks_are_79_with_no_candidate_push",
+        "test_a_disjoint_move_after_five_rechecks_still_reuses_the_green",
         "test_disjoint_main_movement_rebases_but_does_not_repeat_checks",
         "test_reverse_dependency_overlap_rechecks",
         "test_notification_failure_can_resume_without_rechecking_or_repush")}
     extended_names.add("WatchTests.test_unresolved_failure_reverts_only_the_exact_failed_batch")
     if not extended:
         names = [name for name in names if name not in extended_names]
-        print("Fast CI fixtures; 5 extended moving-main/recovery cases run with --all (presubmit).", flush=True)
+        print("Fast CI fixtures; 6 extended moving-main/recovery cases run with --all (presubmit).", flush=True)
     # Put multi-rebase fixtures first, so their serial Git steps do not form a
     # long tail after the many small state/parity checks.
-    names.sort(key=lambda name: (0 if "three_moving_attempts" in name else
+    names.sort(key=lambda name: (0 if "five_incremental_rechecks" in name else
                                  1 if name.startswith("LandTests.") else 2, name))
     def execute(name):
         began = time.monotonic()
