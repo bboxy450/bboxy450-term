@@ -3,9 +3,9 @@ id: 01M5SXQ96PJH8STZ1687160J90
 type: invariant
 number: 322
 title: "main is red at most until the next revert: a red postsubmit is followed by the culprit's revert before any other code lands, and nothing but a revert lands while main is red"
-status: pending
+status: active
 slow: true
-gate: pending-postsubmit
+gate: watch
 check: sh scripts/main-red-bounded.sh
 cost: a red main that keeps taking landings turns one culprit into a pile nobody can bisect, every Executor rebases onto a broken base, and the night runs against it; the swarm is back in the hell this flow left
 links:
@@ -13,7 +13,7 @@ links:
   - { to: "[[no-chokepoints]]", rel: builds-on }
   - { to: "[[never-block-swarm]]", rel: builds-on }
 created: "2026-10-25T16:18:56Z"
-updated: "2026-10-25T21:30:17Z"
+updated: "2026-10-25T22:20:15Z"
 ---
 # Main is red at most until the next revert
 
@@ -63,5 +63,7 @@ left.
 each preceded by the Oracle's serial merged-tree run and followed by two or
 three peer rebases; no postsubmit, so a red main had no definition and no
 bound.
+
+**Active (2026-10-25).** The first full watcher verdict is 5c6d0edc, green, every gate including parity; the check run on live state exits 0, held, no violations, covered through 8b259fb3 (a later infrastructure red closed by a logged `manual-green`). It stays in the **slow tier with `gate: watch`**: the check reads the live landing state, not the tree, so it exits 2 on an empty state directory and must never run in a presubmit's fresh environment (the trap of #318); the watcher and the night run it, where its state lives.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
