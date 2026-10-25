@@ -407,7 +407,7 @@ impl Progress {
 
 pub enum Control {
     Probe(u64),
-    Finish(Measurements),
+    Finish(Box<Measurements>),
 }
 
 #[derive(Serialize, Default)]
@@ -766,7 +766,11 @@ impl Native {
             };
             // Pressure leaves finalization pending. Only the result channel
             // can report an error, after the IO owner has completed teardown.
-            if self.commands.try_send(Control::Finish(metrics)).is_ok() {
+            if self
+                .commands
+                .try_send(Control::Finish(Box::new(metrics)))
+                .is_ok()
+            {
                 self.finish_sent = true;
             }
         }

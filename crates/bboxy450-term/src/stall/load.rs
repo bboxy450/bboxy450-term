@@ -1328,6 +1328,7 @@ async fn exercise(
                     }
                 }
                 Some(Control::Finish(metrics))=>{
+                    let metrics = *metrics;
                     let (failures,timing_failures)=assess(config,&metrics,&sides);
                     // Metrics are already frozen. Reuse the existing producer-stop
                     // cut, and export without taking a fresh settled observation.
