@@ -327,6 +327,15 @@ fn private_parent(path: &Path) -> Result<()> {
 
 /// Logic has exclusive run custody before recovery. An abrupt exit can leave
 /// its socket inode behind; never replace a live listener or another file.
+#[derive(Debug)]
+pub(crate) struct SeatListenerPending;
+impl std::fmt::Display for SeatListenerPending {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("SeatListenerPending: seat endpoint still has a live or unresponsive listener; retry later")
+    }
+}
+impl std::error::Error for SeatListenerPending {}
+
 fn reclaim_stale_seat_socket(path: &Path) -> Result<()> {
     let meta = match std::fs::symlink_metadata(path) {
         Ok(meta) => meta,
@@ -344,9 +353,7 @@ fn reclaim_stale_seat_socket(path: &Path) -> Result<()> {
                 std::io::ErrorKind::ConnectionRefused | std::io::ErrorKind::NotFound
             ) => {}
         _ => {
-            return Err(invalid(
-                "seat endpoint still has a live or unresponsive listener",
-            ));
+            return Err(SeatListenerPending.into());
         }
     }
     let current = std::fs::symlink_metadata(path)?;
@@ -1653,6 +1660,21 @@ mod gui_tests {
         assert_eq!(std::fs::symlink_metadata(&path).unwrap().ino(), inode);
         drop(listener);
         assert!(path.exists(), "crash fixture must leave the socket inode");
+        // Another test can fork while this listener is open. CLOEXEC closes
+        // the child's copy at exec, not at the parent's drop above.
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            match probe_seat_socket(&path) {
+                Err(error) if error.kind() == std::io::ErrorKind::ConnectionRefused => break,
+                observed => {
+                    assert!(
+                        Instant::now() < deadline,
+                        "listener did not refuse after drop: {observed:?}"
+                    );
+                    std::thread::yield_now();
+                }
+            }
+        }
         reclaim_stale_seat_socket(&path).unwrap();
         assert!(!path.exists());
 

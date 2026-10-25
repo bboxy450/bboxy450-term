@@ -1815,6 +1815,7 @@ struct Worker {
     attachments: BTreeMap<Ulid, Attachment>,
     client: LogicClient,
     endpoints: BTreeMap<Ulid, (EndpointInfo, crate::seat_socket::SeatEndpoint)>,
+    pending_endpoints: VecDeque<(Ulid, u64)>,
     endpoint_root: PathBuf,
     gui_info: EndpointInfo,
     gui_endpoint: Option<crate::seat_socket::SeatEndpoint>,
@@ -1916,6 +1917,7 @@ impl Worker {
             attachments: BTreeMap::new(),
             client,
             endpoints: BTreeMap::new(),
+            pending_endpoints: VecDeque::new(),
             endpoint_root,
             gui_info,
             gui_endpoint: Some(gui_endpoint),
@@ -3923,7 +3925,15 @@ impl Worker {
         // publish one recovered tail instead of syncing every replay page.
         self.flush_protocol_replies(info.seat)?;
         self.save(info.seat)?;
-        self.ensure_endpoint(info.seat, info.generation)?;
+        if let Err(error) = self.ensure_endpoint(info.seat, info.generation) {
+            if !error.is::<crate::seat_socket::SeatListenerPending>() {
+                return Err(error);
+            }
+            // A child forked before the old logic died can retain its listener
+            // until exec. Keep the recovered view live; retry only the bind.
+            self.pending_endpoints
+                .push_back((info.seat, info.generation));
+        }
         if let Ok(record) = self.registry.get(info.seat) {
             if record.generation != info.generation {
                 self.registry.update(info.seat, |r| {
@@ -4003,6 +4013,25 @@ impl Worker {
         };
         self.endpoints.insert(id, (info.clone(), endpoint));
         Ok(info)
+    }
+    fn retry_endpoint(&mut self) -> Result<()> {
+        let Some((id, generation)) = self.pending_endpoints.pop_front() else {
+            return Ok(());
+        };
+        if self
+            .views
+            .get(&id)
+            .is_none_or(|view| view.generation != generation)
+        {
+            return Ok(());
+        }
+        if let Err(error) = self.ensure_endpoint(id, generation) {
+            if !error.is::<crate::seat_socket::SeatListenerPending>() {
+                return Err(error);
+            }
+            self.pending_endpoints.push_back((id, generation));
+        }
+        Ok(())
     }
     fn cleanup_overlay(&self, id: Ulid) -> Result<()> {
         let root = object_dir(&self.config.run_dir, &format!("seat-{id}"))?;
@@ -6442,6 +6471,9 @@ impl Worker {
         let mut made_progress = false;
         let mut deferred_commands = VecDeque::new();
         while !stop.load(Ordering::Acquire) {
+            // One pending bind per turn, rotating on refusal. No sleep, replay
+            // of attachment effects, global seat scan, or idle redraw wake.
+            self.retry_endpoint()?;
             let mut turn =
                 self.client
                     .capture_diagnostics
@@ -6932,7 +6964,13 @@ impl Worker {
                             self.endpoints
                                 .get(&id)
                                 .map(|(info, _)| info.clone())
-                                .ok_or_else(|| invalid("seat endpoint unavailable")),
+                                .ok_or_else(|| {
+                                    if self.pending_endpoints.iter().any(|(seat, _)| *seat == id) {
+                                        crate::seat_socket::SeatListenerPending.into()
+                                    } else {
+                                        invalid("seat endpoint unavailable")
+                                    }
+                                }),
                         );
                     }
                     Command::Close(id, generation, operation, position, grace, target, reply) => {
