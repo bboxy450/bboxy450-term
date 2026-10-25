@@ -118,3 +118,15 @@ ui input: Locate { seat: SeatId(Ulid(1)), where_: Both }
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 113 filtered out; finished in 0.01s
 
 ui input: FocusChanged { seat: SeatId(Ulid(4)), prev: Some(SeatId(Ulid(1))), stage_switched: false }
+
+First scoped prechecks on01ab73e3 (failures retained)
+{"command": ["cargo", "test", "-p", "bboxy450-term", "--locked", "--no-fail-fast"], "elapsed_s": 223.66379254101776, "exit": 101, "label": "scoped-workspace", "log_sha256": "bbe542c9057e8ad96d6f52e5b9cca35d73b51a6b1f1c634e11f37c4e7ee4a990", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "source": "01ab73e3db4d41256fe02d661780ff9b1d58a03a"}
+{"command": ["cargo", "clippy", "-p", "bboxy450-term", "--all-targets", "--locked", "--", "-D", "warnings"], "elapsed_s": 3.5782261670101434, "exit": 101, "label": "scoped-strict", "log_sha256": "5100e58dbcde04255874b3e6d40ad026964395f5503dd381dd5035ebdce1cc36", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "source": "01ab73e3db4d41256fe02d661780ff9b1d58a03a"}
+{"command": ["sh", "scripts/invariants.sh"], "elapsed_s": 167.6133138750447, "exit": 1, "label": "scoped-invariants", "log_sha256": "01a6da7d6b13e0ea07b3664c56b7a237cd63163fa79a582cc54828530dae5b06", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "source": "01ab73e3db4d41256fe02d661780ff9b1d58a03a"}
+App tests: only failing target was the new unit fixture, which called init_ui in the same process as the existing ctl_ui_key_tests UI owner. Production UI_THREAD OnceLock correctly refused the second worker thread. All other app targets completed without a failing target.
+Fixture correction: run that exact unit test in a self-test child process, assert success AND one actual test ran, reap through Command::output; no global UI guard change and no new product process.
+Strict compilation failed before app linting: private target libsqlite3-sys generated out/bindgen.rs was absent; other generated object/static-library files existed. No warning waiver.
+Invariants:23 checks,5 failures,9 slow skips. ui-never-waits reported the same missing generated file; the four piped checks hid their underlying output, so those causes were not directly observed.
+After all checks exited, cargo clean -p libsqlite3-sys --target-dir <own N/target> EXIT0 removed29 files/10.4MiB to force regeneration. No source/lock version change. Full results are not green and remain in the artifact root.
+Policy bd5531e3 was read: two-job app-only tests/strict, direct workspace dependents verified empty by cargo metadata, full workspace reserved for normal gate. Earlier uncompleted workspace drivers were stopped and retained as partial, not verdicts.
+Artifact stop/cache records: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/prechecks-stopped-focus.json; /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/prechecks-stopped-policy.json; /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/sqlite-generated-cache-clean.json

@@ -6549,7 +6549,33 @@ mod lazy_projection_tests {
     }
 
     #[test]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "the fixture owns an isolated process-wide UI thread registration"
+    )]
     fn model_publishes_between_frames_do_not_project_during_drain() {
+        const CHILD: &str = "BBOXY_R5J_UI_FIXTURE_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain",
+                    "--nocapture",
+                    "--test-threads=1",
+                ])
+                .env(CHILD, "1")
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success()
+                    && String::from_utf8_lossy(&output.stdout).contains("1 passed; 0 failed;"),
+                "isolated UI fixture {:?}:\n{}\n{}",
+                output.status,
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return;
+        }
         struct QuietWake;
         impl bbt_rt::Waker for QuietWake {
             fn wake(&self) {}
