@@ -1,0 +1,561 @@
+# proto: raw #327 sweep evidence
+
+Host: macOS. Test/check environment: RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER= CARGO_BUILD_JOBS=2; CARGO_NET_OFFLINE=true; BBOXY_TEST_CUSTODY=memory; private target, dev/test O1, debug assertions enabled, debug=0, incremental=0. No production account, login Keychain or operator input.
+
+
+## state.json — sha256 f1920ebad8ac92e8709fc9157f63b386f655e3b27114c02de95a44f2cc01c72c (982 bytes)
+
+{
+  "brief": "4e0dd0cf-5fd5-41aa-aa8d-c0454df95985",
+  "combined_gate_brief": "cbda7952-28ea-48f4-98d3-b28f8698840c",
+  "crate": "bbt-proto",
+  "base": "3081fa92a690da384e74fe36f9c0d46ce2605234",
+  "branch": "exec5-test-sweep-proto",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target",
+  "phase": "Proto complete; one combined gate pending",
+  "wire_golden_sha256": "651762f6210336f2aff2b054f614c53a049019b2bc3f2e25a3408aa02c2e4e76",
+  "skipped_peer_paths": [
+    "crates/bbt-proto/src/gui/events.rs",
+    "crates/bbt-proto/tests/golden/gui_wire.tsv",
+    "crates/bbt-proto/src/gui.rs (absent; stale peer branch)"
+  ],
+  "dispositions": {
+    "kept": 37,
+    "rewritten": 0,
+    "deleted": 0
+  },
+  "before_count": 37,
+  "before_reported_run_seconds": 0.08,
+  "after_count": 37,
+  "after_reported_run_seconds": 0.11,
+  "source": "75a984941afcda0ed57d5704a61b7ec7d9c1d5f2"
+}
+
+
+## baseline-state.json — sha256 fedd3cfa3e5b72b5d23cede02015a3c18fdf80306197474796a3549085ed0575 (694 bytes)
+
+{
+  "driver_pid": 42939,
+  "steps": [
+    {
+      "name": "inventory",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-proto",
+        "--locked",
+        "--offline",
+        "--",
+        "--list"
+      ],
+      "pid": 42962,
+      "started": 1792955336.246819,
+      "exit": 0,
+      "elapsed": 205.35565280914307
+    },
+    {
+      "name": "baseline",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-proto",
+        "--locked",
+        "--offline"
+      ],
+      "pid": 51021,
+      "started": 1792955541.603325,
+      "exit": 0,
+      "elapsed": 1.1639211177825928
+    }
+  ],
+  "source": "3081fa92a690da384e74fe36f9c0d46ce2605234"
+}
+
+
+## inventory.log — sha256 7a7988b576b812ba367f2c6a36b4561f1e30dcba5a7b1a02c69b17e4c312f425 (5261 bytes)
+
+   Compiling syn v3.0.9
+   Compiling num-traits v0.2.19
+   Compiling getrandom v0.3.4
+   Compiling num-integer v0.1.47
+   Compiling serde_json v1.0.154
+   Compiling serde_derive v1.0.229
+   Compiling serde v1.0.229
+   Compiling num-bigint v0.4.8
+   Compiling ref-cast-impl v1.0.27
+   Compiling num-iter v0.1.46
+   Compiling rand_core v0.9.5
+   Compiling num-complex v0.4.6
+   Compiling num-rational v0.4.2
+   Compiling once_cell v1.21.4
+   Compiling ahash v0.8.12
+   Compiling num v0.4.3
+   Compiling rand_chacha v0.9.0
+   Compiling ref-cast v1.0.27
+   Compiling fluent-uri v0.4.1
+   Compiling strum_macros v0.28.0
+   Compiling rand v0.9.5
+   Compiling fraction v0.17.0
+   Compiling arrayvec v0.7.8
+   Compiling serde-big-array v0.5.1
+   Compiling bitflags v2.13.2
+   Compiling referencing v0.60.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling jsonschema-value v0.60.1
+   Compiling strum v0.28.0
+   Compiling ulid v1.2.1
+   Compiling email_address v0.2.9
+   Compiling jsonschema v0.60.1
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Finished `test` profile [optimized] target(s) in 3m 23s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bbt_proto-da860cefbd11af47)
+events::tests::gaps_are_stream_ranges_without_a_signature: test
+events::tests::numeric_loss_and_ambiguous_positions_are_rejected: test
+events::tests::positions_keep_every_u64_bit_and_their_stream: test
+events::tests::projection_metadata_names_the_original_signature_scope: test
+gui::spawn_pick_tests::spawn_pick_wire_is_bounded_and_old_layouts_keep_revision_unknown: test
+gui::tests::close_readback_is_optional_for_older_app_status_replies: test
+gui::tests::gui_ids_keep_canonical_ulid_text_and_reject_malformed_ids: test
+gui::tests::gui_state_round_trips_portable_enums_without_a_mux_dependency: test
+gui::tests::identity_status_is_portable_and_contains_only_state_and_reason: test
+gui::tests::input_and_resize_require_an_explicit_displayed_generation: test
+gui::ui_tests::scroll_rows_stay_unsigned_and_live_positions_can_be_unindexed: test
+gui::ui_tests::ui_requests_keep_their_scope_and_reject_unbounded_input: test
+hosts::tests::host_states_and_namespaced_locations_round_trip_without_mux_types: test
+identity::tests::native_control_never_accepts_a_caller_identity_or_key_target: test
+identity::tests::reopen_failure_is_typed_and_absent_from_unchanged_control_responses: test
+seat_names::tests::rust_names_match_the_shared_json_and_are_unique: test
+seat_state::placement_tests::absent_placement_keeps_the_default_lane: test
+seat_state::placement_tests::placement_roundtrip_keeps_the_captured_tab_anchor_and_generation: test
+seat_state::placement_tests::spawn_and_reply_keep_the_same_operation_id: test
+streams::tests::direct_metadata_matches_checkpoint_for_all_firehose_parser_scenes: test
+streams::tests::direct_metadata_preserves_custom_palette_cursor_and_resets: test
+
+21 tests, 0 benchmarks
+     Running tests/gui_wire_golden.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/gui_wire_golden-4c1c96d27fc5b8ac)
+every_gui_action_kind_keeps_its_exact_bytes: test
+every_gui_reply_kind_keeps_its_exact_bytes: test
+
+2 tests, 0 benchmarks
+     Running tests/messaging.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/messaging-572d1f4f90698129)
+carried_messages_preserve_canonical_decimal_counters: test
+existing_messaging_requests_keep_their_tags_and_nested_fields: test
+existing_stored_message_and_receipt_pages_keep_their_wire_shape: test
+gui_messaging_wraps_the_existing_payload_and_correlates_its_reply: test
+operator_recipients_are_named_while_legacy_seat_receipts_remain_ulids: test
+task_wire_matches_as_built_tools_and_never_accepts_a_spawn_or_authority_override: test
+unassigned_inventory_is_optional_and_keeps_existing_task_list_bytes: test
+
+7 tests, 0 benchmarks
+     Running tests/messaging_pending.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/messaging_pending-a273068221d4efc6)
+first_startup_intent_has_no_author_and_cannot_be_a_signed_envelope: test
+operator_local_reference_is_not_a_device_and_unknown_epoch_is_not_invented: test
+signed_stored_messages_keep_their_legacy_bytes_without_a_new_tag: test
+
+3 tests, 0 benchmarks
+     Running tests/plugin_contracts.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/plugin_contracts-a15eb3dbeb4622a2)
+current_envelope_serializes_into_event_sink_without_relaxing_the_native_parser: test
+task_verification_uses_the_existing_wire_shape_and_rejects_authority_fields: test
+
+2 tests, 0 benchmarks
+     Running tests/ui_clock.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/ui_clock-d24ae7efffc8e1d3)
+an_older_layout_does_not_invent_an_animation_clock: test
+clock_actions_round_trip_inside_the_existing_ui_request: test
+
+2 tests, 0 benchmarks
+   Doc-tests bbt_proto
+0 tests, 0 benchmarks
+
+
+## baseline.log — sha256 ca125167c66aa1e08fb9f50b1ce997cf771b0abc6e0fd5cf8d939d54f419d259 (4896 bytes)
+
+    Finished `test` profile [optimized] target(s) in 0.38s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bbt_proto-da860cefbd11af47)
+
+running 21 tests
+test events::tests::projection_metadata_names_the_original_signature_scope ... ok
+test gui::tests::close_readback_is_optional_for_older_app_status_replies ... ok
+test gui::tests::gui_ids_keep_canonical_ulid_text_and_reject_malformed_ids ... ok
+test gui::spawn_pick_tests::spawn_pick_wire_is_bounded_and_old_layouts_keep_revision_unknown ... ok
+test gui::tests::identity_status_is_portable_and_contains_only_state_and_reason ... ok
+test gui::tests::input_and_resize_require_an_explicit_displayed_generation ... ok
+test events::tests::numeric_loss_and_ambiguous_positions_are_rejected ... ok
+test events::tests::gaps_are_stream_ranges_without_a_signature ... ok
+test events::tests::positions_keep_every_u64_bit_and_their_stream ... ok
+test gui::tests::gui_state_round_trips_portable_enums_without_a_mux_dependency ... ok
+test gui::ui_tests::scroll_rows_stay_unsigned_and_live_positions_can_be_unindexed ... ok
+test gui::ui_tests::ui_requests_keep_their_scope_and_reject_unbounded_input ... ok
+test hosts::tests::host_states_and_namespaced_locations_round_trip_without_mux_types ... ok
+test identity::tests::native_control_never_accepts_a_caller_identity_or_key_target ... ok
+test identity::tests::reopen_failure_is_typed_and_absent_from_unchanged_control_responses ... ok
+test seat_names::tests::rust_names_match_the_shared_json_and_are_unique ... ok
+test seat_state::placement_tests::absent_placement_keeps_the_default_lane ... ok
+test seat_state::placement_tests::placement_roundtrip_keeps_the_captured_tab_anchor_and_generation ... ok
+test seat_state::placement_tests::spawn_and_reply_keep_the_same_operation_id ... ok
+test streams::tests::direct_metadata_preserves_custom_palette_cursor_and_resets ... ok
+test streams::tests::direct_metadata_matches_checkpoint_for_all_firehose_parser_scenes ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/gui_wire_golden.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/gui_wire_golden-4c1c96d27fc5b8ac)
+
+running 2 tests
+test every_gui_action_kind_keeps_its_exact_bytes ... ok
+test every_gui_reply_kind_keeps_its_exact_bytes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/messaging.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/messaging-572d1f4f90698129)
+
+running 7 tests
+test operator_recipients_are_named_while_legacy_seat_receipts_remain_ulids ... ok
+test unassigned_inventory_is_optional_and_keeps_existing_task_list_bytes ... ok
+test task_wire_matches_as_built_tools_and_never_accepts_a_spawn_or_authority_override ... ok
+test carried_messages_preserve_canonical_decimal_counters ... ok
+test gui_messaging_wraps_the_existing_payload_and_correlates_its_reply ... ok
+test existing_messaging_requests_keep_their_tags_and_nested_fields ... ok
+test existing_stored_message_and_receipt_pages_keep_their_wire_shape ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/messaging_pending.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/messaging_pending-a273068221d4efc6)
+
+running 3 tests
+test operator_local_reference_is_not_a_device_and_unknown_epoch_is_not_invented ... ok
+test signed_stored_messages_keep_their_legacy_bytes_without_a_new_tag ... ok
+test first_startup_intent_has_no_author_and_cannot_be_a_signed_envelope ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/plugin_contracts.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/plugin_contracts-a15eb3dbeb4622a2)
+
+running 2 tests
+test current_envelope_serializes_into_event_sink_without_relaxing_the_native_parser ... ok
+test task_verification_uses_the_existing_wire_shape_and_rejects_authority_fields ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ui_clock.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/ui_clock-d24ae7efffc8e1d3)
+
+running 2 tests
+test an_older_layout_does_not_invent_an_animation_clock ... ok
+test clock_actions_round_trip_inside_the_existing_ui_request ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_proto
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+
+## checks-state.json — sha256 38d0953758170ade26f09913f07aa2ba7e5cd3c56cf07c244e136cd6b34bedf1 (1000 bytes)
+
+{
+  "driver_pid": 75906,
+  "steps": [
+    {
+      "name": "after-final",
+      "pid": 75934,
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-proto",
+        "--locked",
+        "--offline"
+      ],
+      "started": 1792955916.8453948,
+      "exit": 0,
+      "elapsed": 96.45436716079712
+    },
+    {
+      "name": "inventory-after",
+      "pid": 79637,
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-proto",
+        "--locked",
+        "--offline",
+        "--",
+        "--list"
+      ],
+      "started": 1792956013.3007889,
+      "exit": 0,
+      "elapsed": 1.2612531185150146
+    },
+    {
+      "name": "strict",
+      "pid": 79672,
+      "argv": [
+        "cargo",
+        "clippy",
+        "-p",
+        "bbt-proto",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started": 1792956014.562712,
+      "exit": 0,
+      "elapsed": 13.3819580078125
+    }
+  ]
+}
+
+
+## after-final.log — sha256 2655c3006457a3ca5bc6560e1b31298aa404453029fa3fd8e5158d2b7729c743 (4985 bytes)
+
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Finished `test` profile [optimized] target(s) in 1m 34s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bbt_proto-da860cefbd11af47)
+
+running 21 tests
+test events::tests::numeric_loss_and_ambiguous_positions_are_rejected ... ok
+test gui::tests::gui_state_round_trips_portable_enums_without_a_mux_dependency ... ok
+test events::tests::positions_keep_every_u64_bit_and_their_stream ... ok
+test events::tests::projection_metadata_names_the_original_signature_scope ... ok
+test gui::tests::close_readback_is_optional_for_older_app_status_replies ... ok
+test gui::spawn_pick_tests::spawn_pick_wire_is_bounded_and_old_layouts_keep_revision_unknown ... ok
+test gui::tests::gui_ids_keep_canonical_ulid_text_and_reject_malformed_ids ... ok
+test events::tests::gaps_are_stream_ranges_without_a_signature ... ok
+test gui::ui_tests::scroll_rows_stay_unsigned_and_live_positions_can_be_unindexed ... ok
+test gui::tests::identity_status_is_portable_and_contains_only_state_and_reason ... ok
+test gui::tests::input_and_resize_require_an_explicit_displayed_generation ... ok
+test gui::ui_tests::ui_requests_keep_their_scope_and_reject_unbounded_input ... ok
+test hosts::tests::host_states_and_namespaced_locations_round_trip_without_mux_types ... ok
+test identity::tests::native_control_never_accepts_a_caller_identity_or_key_target ... ok
+test identity::tests::reopen_failure_is_typed_and_absent_from_unchanged_control_responses ... ok
+test seat_names::tests::rust_names_match_the_shared_json_and_are_unique ... ok
+test seat_state::placement_tests::absent_placement_keeps_the_default_lane ... ok
+test seat_state::placement_tests::placement_roundtrip_keeps_the_captured_tab_anchor_and_generation ... ok
+test seat_state::placement_tests::spawn_and_reply_keep_the_same_operation_id ... ok
+test streams::tests::direct_metadata_preserves_custom_palette_cursor_and_resets ... ok
+test streams::tests::direct_metadata_matches_checkpoint_for_all_firehose_parser_scenes ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests/gui_wire_golden.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/gui_wire_golden-4c1c96d27fc5b8ac)
+
+running 2 tests
+test every_gui_action_kind_keeps_its_exact_bytes ... ok
+test every_gui_reply_kind_keeps_its_exact_bytes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/messaging.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/messaging-572d1f4f90698129)
+
+running 7 tests
+test unassigned_inventory_is_optional_and_keeps_existing_task_list_bytes ... ok
+test carried_messages_preserve_canonical_decimal_counters ... ok
+test operator_recipients_are_named_while_legacy_seat_receipts_remain_ulids ... ok
+test existing_messaging_requests_keep_their_tags_and_nested_fields ... ok
+test existing_stored_message_and_receipt_pages_keep_their_wire_shape ... ok
+test gui_messaging_wraps_the_existing_payload_and_correlates_its_reply ... ok
+test task_wire_matches_as_built_tools_and_never_accepts_a_spawn_or_authority_override ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/messaging_pending.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/messaging_pending-a273068221d4efc6)
+
+running 3 tests
+test operator_local_reference_is_not_a_device_and_unknown_epoch_is_not_invented ... ok
+test signed_stored_messages_keep_their_legacy_bytes_without_a_new_tag ... ok
+test first_startup_intent_has_no_author_and_cannot_be_a_signed_envelope ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/plugin_contracts.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/plugin_contracts-a15eb3dbeb4622a2)
+
+running 2 tests
+test current_envelope_serializes_into_event_sink_without_relaxing_the_native_parser ... ok
+test task_verification_uses_the_existing_wire_shape_and_rejects_authority_fields ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/ui_clock.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/ui_clock-d24ae7efffc8e1d3)
+
+running 2 tests
+test an_older_layout_does_not_invent_an_animation_clock ... ok
+test clock_actions_round_trip_inside_the_existing_ui_request ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_proto
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+
+## inventory-after.log — sha256 8143aa4a79ddeb00f90e6a1363a0da6ea18d70554cf5a10900dde857f4e9b003 (4042 bytes)
+
+    Finished `test` profile [optimized] target(s) in 0.34s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bbt_proto-da860cefbd11af47)
+events::tests::gaps_are_stream_ranges_without_a_signature: test
+events::tests::numeric_loss_and_ambiguous_positions_are_rejected: test
+events::tests::positions_keep_every_u64_bit_and_their_stream: test
+events::tests::projection_metadata_names_the_original_signature_scope: test
+gui::spawn_pick_tests::spawn_pick_wire_is_bounded_and_old_layouts_keep_revision_unknown: test
+gui::tests::close_readback_is_optional_for_older_app_status_replies: test
+gui::tests::gui_ids_keep_canonical_ulid_text_and_reject_malformed_ids: test
+gui::tests::gui_state_round_trips_portable_enums_without_a_mux_dependency: test
+gui::tests::identity_status_is_portable_and_contains_only_state_and_reason: test
+gui::tests::input_and_resize_require_an_explicit_displayed_generation: test
+gui::ui_tests::scroll_rows_stay_unsigned_and_live_positions_can_be_unindexed: test
+gui::ui_tests::ui_requests_keep_their_scope_and_reject_unbounded_input: test
+hosts::tests::host_states_and_namespaced_locations_round_trip_without_mux_types: test
+identity::tests::native_control_never_accepts_a_caller_identity_or_key_target: test
+identity::tests::reopen_failure_is_typed_and_absent_from_unchanged_control_responses: test
+seat_names::tests::rust_names_match_the_shared_json_and_are_unique: test
+seat_state::placement_tests::absent_placement_keeps_the_default_lane: test
+seat_state::placement_tests::placement_roundtrip_keeps_the_captured_tab_anchor_and_generation: test
+seat_state::placement_tests::spawn_and_reply_keep_the_same_operation_id: test
+streams::tests::direct_metadata_matches_checkpoint_for_all_firehose_parser_scenes: test
+streams::tests::direct_metadata_preserves_custom_palette_cursor_and_resets: test
+
+21 tests, 0 benchmarks
+     Running tests/gui_wire_golden.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/gui_wire_golden-4c1c96d27fc5b8ac)
+every_gui_action_kind_keeps_its_exact_bytes: test
+every_gui_reply_kind_keeps_its_exact_bytes: test
+
+2 tests, 0 benchmarks
+     Running tests/messaging.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/messaging-572d1f4f90698129)
+carried_messages_preserve_canonical_decimal_counters: test
+existing_messaging_requests_keep_their_tags_and_nested_fields: test
+existing_stored_message_and_receipt_pages_keep_their_wire_shape: test
+gui_messaging_wraps_the_existing_payload_and_correlates_its_reply: test
+operator_recipients_are_named_while_legacy_seat_receipts_remain_ulids: test
+task_wire_matches_as_built_tools_and_never_accepts_a_spawn_or_authority_override: test
+unassigned_inventory_is_optional_and_keeps_existing_task_list_bytes: test
+
+7 tests, 0 benchmarks
+     Running tests/messaging_pending.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/messaging_pending-a273068221d4efc6)
+first_startup_intent_has_no_author_and_cannot_be_a_signed_envelope: test
+operator_local_reference_is_not_a_device_and_unknown_epoch_is_not_invented: test
+signed_stored_messages_keep_their_legacy_bytes_without_a_new_tag: test
+
+3 tests, 0 benchmarks
+     Running tests/plugin_contracts.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/plugin_contracts-a15eb3dbeb4622a2)
+current_envelope_serializes_into_event_sink_without_relaxing_the_native_parser: test
+task_verification_uses_the_existing_wire_shape_and_rejects_authority_fields: test
+
+2 tests, 0 benchmarks
+     Running tests/ui_clock.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/ui_clock-d24ae7efffc8e1d3)
+an_older_layout_does_not_invent_an_animation_clock: test
+clock_actions_round_trip_inside_the_existing_ui_request: test
+
+2 tests, 0 benchmarks
+   Doc-tests bbt_proto
+0 tests, 0 benchmarks
+
+
+## strict.log — sha256 1412eb2640ecd24c0c57b3338ad3fad31ff0098d1d4aaf295c5707d04060dfde (1305 bytes)
+
+    Checking serde v1.0.229
+    Checking num-traits v0.2.19
+    Checking zerocopy v0.8.63
+    Checking getrandom v0.3.4
+    Checking num-integer v0.1.47
+    Checking serde_json v1.0.154
+    Checking num-bigint v0.4.8
+    Checking num-rational v0.4.2
+    Checking num-iter v0.1.46
+    Checking rand_core v0.9.5
+    Checking num-complex v0.4.6
+    Checking once_cell v1.21.4
+    Checking ref-cast v1.0.27
+    Checking num v0.4.3
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking ppv-lite86 v0.2.21
+    Checking rand_chacha v0.9.0
+    Checking ahash v0.8.12
+    Checking fluent-uri v0.4.1
+    Checking rand v0.9.5
+    Checking fraction v0.17.0
+    Checking arrayvec v0.7.8
+    Checking serde-big-array v0.5.1
+    Checking bitflags v2.13.2
+    Checking jsonschema-value v0.60.1
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking referencing v0.60.1
+    Checking ulid v1.2.1
+    Checking strum v0.28.0
+    Checking email_address v0.2.9
+    Checking jsonschema v0.60.1
+    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Finished `dev` profile [optimized] target(s) in 13.22s
+
+
+## coverage-check.json — sha256 93e02d688e1dd8e19f872abf465426fda42dd46ac9909b463656820f52e53be9 (1529 bytes)
+
+{
+  "comment_only": [
+    {
+      "path": "crates/bbt-proto/src/events.rs",
+      "test_body_and_helper_unchanged": true
+    },
+    {
+      "path": "crates/bbt-proto/src/gui/mod.rs",
+      "test_body_and_helper_unchanged": true
+    },
+    {
+      "path": "crates/bbt-proto/src/hosts.rs",
+      "test_body_and_helper_unchanged": true
+    },
+    {
+      "path": "crates/bbt-proto/src/identity.rs",
+      "test_body_and_helper_unchanged": true
+    },
+    {
+      "path": "crates/bbt-proto/src/seat_names.rs",
+      "test_body_and_helper_unchanged": true
+    },
+    {
+      "path": "crates/bbt-proto/src/seat_state.rs",
+      "test_body_and_helper_unchanged": true
+    },
+    {
+      "path": "crates/bbt-proto/src/streams.rs",
+      "test_body_and_helper_unchanged": true
+    },
+    {
+      "path": "crates/bbt-proto/tests/gui_wire_golden.rs",
+      "test_body_and_helper_unchanged": true
+    },
+    {
+      "path": "crates/bbt-proto/tests/messaging.rs",
+      "test_body_and_helper_unchanged": true
+    },
+    {
+      "path": "crates/bbt-proto/tests/messaging_pending.rs",
+      "test_body_and_helper_unchanged": true
+    },
+    {
+      "path": "crates/bbt-proto/tests/plugin_contracts.rs",
+      "test_body_and_helper_unchanged": true
+    },
+    {
+      "path": "crates/bbt-proto/tests/ui_clock.rs",
+      "test_body_and_helper_unchanged": true
+    }
+  ],
+  "wire_sha256": "651762f6210336f2aff2b054f614c53a049019b2bc3f2e25a3408aa02c2e4e76",
+  "original_count": 37,
+  "retained_count": 37,
+  "sleep_before": 0,
+  "sleep_after": 0
+}

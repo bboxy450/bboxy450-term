@@ -1,0 +1,41 @@
+# Four-crate #327 sweep evidence
+
+Combined base: 92c861a0ab9e71bc755e6677cc49f3ccc3c67e71. Branch: exec5-test-sweep-combined. Worktree: /Users/feral/mydev/bboxy450-term-exec5.
+
+Four independent fresh-main cuts were combined; all four own-patch range-diffs are =. No source conflict. Original and combined signed sources:
+- 202dcf788a0b40eebd306136e545ccd2de3df29e -> 9815219fb84c81894464ac51a94080e4d61896c2
+- 75a984941afcda0ed57d5704a61b7ec7d9c1d5f2 -> 8b8a63f1286f3c3e8d2eea04dc6025b72beb65a8
+- fe87fb8b9b5db33f15995bbc6275cca5f9bb586e -> eaf614624979a4ddd8812a13a70659a2eff2f13c
+- d0d0d15a4895eeddc3edb8fdcc536e850e284f9d -> 194610409a7a9bac91429e0f810a0b6daefb1659
+
+Metrics (reported test-run sums, not wall-clock speed assertions):
+- bbt-core: 120 ->118 entries; 0.10 ->0.09 s; 2 assertion-free examples deleted; 25 C1/C4 rewrites. Oracle accepted the already-fast core halving exception.
+- bbt-proto: 37 ->37; 0.08 ->0.11 s; all protected D, only comments, bodies/helpers/golden bytes identical. No speed reduction claimed.
+- bboxy450-harness-wake-up: 28 ->29 entries (25 ->26 passing, same 3 paired ignored helper entrypoints); 5.92 ->1.42 s; 3 sleeps removed. Real shared mux fixture passes.
+- bboxy-firehose: 14 ->15; 0.99 ->0.22 s; 2 pacing waits virtualized, parser cases use pure seam, one real CLI refusal retained.
+
+Disclosed failures and limits:
+- Core rewrite first run: exit101, two mistaken contract assertions. Damage was consumed per frame before reset, and reset title was checked through its public output. Final118/0; product behavior unchanged.
+- Core fast invariants first exit1: Mermaid artifact carried the removed gate checkout path, confirmed from embedded fixture path. Cleaned only own bbt-mermaid artifacts after no open handles, rebuilt same source in stable exec5; final26/0/10slow. No invariant waived.
+- Wake-up initial FIFO happy-path tests passed, but peer review identified parent release writing could block when the reader died. Added owned-child kill/reap counterexample: old FIFO fixture failed exit101; ordinary release markers plus directory readiness notifications pass. Parent never writes a FIFO; no retries or deadline shrinking.
+- Linux inotify fixture implementation is present but not runtime-tested on the macOS host. macOS kqueue fixture and real mux boundary executed.
+- WakeOutcome public note strings stay protected D by the Oracle ruling: no typed cause exists yet. Typed-cause port is a named follow-up for the Oracle to open; no public API change in this cut.
+- No per-crate full gate. One combined presubmit is next; acceptance/postsubmit has not been claimed.
+
+Per-test tables account for every original inventory entry and map each rewrite/deletion to retained coverage. Raw checks and run metadata below preserve every test failure and the intentional RED counterexample; no ICQ transcript is committed.
+
+Raw evidence subjects:
+{"bytes": 59377, "path": ".bboxy/runs/test-policy-core-checks.log", "sha256": "bf2ddadeee85392d9fdb2249b7e6b3ad220bfddb96423a3e098944abbb372ee3"}
+{"bytes": 26008, "path": ".bboxy/runs/test-policy-proto-checks.log", "sha256": "f90fce6b9a1f1b4ba43c1a9e82c0fb7c59a20d2efed4c94903ff8294b5f94ed8"}
+{"bytes": 36785, "path": ".bboxy/runs/test-policy-wakeup-checks.log", "sha256": "f45afbda621521b6f624e7e0d5f08651b3a2c669e21ab2e06e17e2a7db06e650"}
+{"bytes": 16791, "path": ".bboxy/runs/test-policy-firehose-checks.log", "sha256": "c31b7925870700efc6bc88327428ffb87c84a2901413cd672dd8f2534a19f461"}
+
+Own-patch comparison:
+1:  202dcf78 = 1:  9815219f Rewrite core tests against terminal contracts
+
+1:  75a98494 = 1:  8b8a63f1 Mark protocol contract tests as protected
+
+1:  fe87fb8b = 1:  eaf61462 Drive harness readiness and fixture handoffs without test sleeps
+
+1:  d0d0d15a = 1:  19461040 Sweep firehose tests onto virtual pacing and parser contracts
+

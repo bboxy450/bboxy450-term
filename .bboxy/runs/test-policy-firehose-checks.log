@@ -1,0 +1,376 @@
+# firehose: raw #327 sweep evidence
+
+Host: macOS. Test/check environment: RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER= CARGO_BUILD_JOBS=2; CARGO_NET_OFFLINE=true; BBOXY_TEST_CUSTODY=memory; private target, dev/test O1, debug assertions enabled, debug=0, incremental=0. No production account, login Keychain or operator input.
+
+
+## state.json — sha256 5974c4960aa52d75f7d62aaa683d40635ca7bc1c15c089f56c5ace86e89aa794 (2482 bytes)
+
+{
+  "brief": "4e0dd0cf-5fd5-41aa-aa8d-c0454df95985",
+  "combined_gate_brief": "44845a1d-09e0-4548-a1c8-6899bdba749d",
+  "crate": "bboxy-firehose",
+  "base": "5c6d0edce8b7094062e4cf6a77a575b6b8923e27",
+  "branch": "exec5-test-sweep-firehose",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target",
+  "phase": "Firehose complete; combined landing checks pending",
+  "corpus_sha256": {
+    "crates/bboxy-firehose/corpus/osc7501-claude.ansi": "11b9e863d847938e0d9cd00cda1b7468e12163d9e940cfb9c028f36df2fa5893",
+    "crates/bboxy-firehose/corpus/cursor-beam.ansi": "2a90d52a1d14837cb8672610f7c6161f5ca365da0a6aada4ac87333c28dc228b",
+    "crates/bboxy-firehose/corpus/claude.ansi": "ea77e2171d5cf42313d96e65cd3c0e5b7a9473688337283174ae20b28d015ec5",
+    "crates/bboxy-firehose/corpus/codex.ansi": "eb44672b4fdfcb6a12da88deec0587171ff694a7475c7f59925e86726d109945",
+    "crates/bboxy-firehose/corpus/generate.py": "84d55de8f0554968154f1d78d0d198a002ef1ba00f7be8db301c627f560f3151",
+    "crates/bboxy-firehose/corpus/cursor-underline.ansi": "3cbdcf789f840118615ebca4a3283a1fa7d362c977b620b510d94fe3c0479b55",
+    "crates/bboxy-firehose/corpus/palette.ansi": "59ee3fb8f5e08618fbc66d8ff5ae2ba32afcd953f8e0af0941d719044956a2a4",
+    "crates/bboxy-firehose/corpus/osc7501-codex.ansi": "5c2373fb10c2ad897aa6f8cc99156572cb493f8ac2ddaaa1028c6f7e635b4672",
+    "crates/bboxy-firehose/corpus/progress.ansi": "d71ad1ccdb0d857b8ddf1cc804dde6ba00dfee0f5370bd2625b2dd41d2baf24f",
+    "crates/bboxy-firehose/corpus/alternate.ansi": "8b65cff7a9771ffe7bb283a8ed94752867cb696921c930b85f396ea4b6649061",
+    "crates/bboxy-firehose/corpus/osc7501-preflight.ansi": "45edf8389e2f3b0390f56091afed0e3edf602f4e2ecbc58d6a07894acfb1975e",
+    "crates/bboxy-firehose/corpus/unicode.ansi": "dca6bee13211ffdd819b388edaf14875d34619546e026ce15cd90c77438f1bf6",
+    "crates/bboxy-firehose/corpus/scroll-links-sync.ansi": "a75140c06354cc99e8f247ba04202d11f086fac6228671c85e5a527d3119919f",
+    "crates/bboxy-firehose/corpus/screen-hashes.txt": "8b31c4632762394bc48e80c90edb4376b66da1655d3886e6058eee3177ebdb5d"
+  },
+  "before_count": 14,
+  "after_count": 15,
+  "before_reported_run_seconds": 0.99,
+  "after_reported_run_seconds": 0.22000000000000003,
+  "sleep_calls_removed": 0,
+  "physical_pacing_waits_removed": 2,
+  "wall_clock_speed_assertions_removed": 1,
+  "source": "d0d0d15a4895eeddc3edb8fdcc536e850e284f9d"
+}
+
+
+## baseline-state.json — sha256 9f975aa356b22e90bd69f99c0c4ef253a984412909dea0eb918a6a45e2a22961 (702 bytes)
+
+{
+  "driver_pid": 29312,
+  "steps": [
+    {
+      "name": "inventory",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy-firehose",
+        "--locked",
+        "--offline",
+        "--",
+        "--list"
+      ],
+      "pid": 29689,
+      "started": 1792958670.152534,
+      "exit": 0,
+      "elapsed": 12.33195185661316
+    },
+    {
+      "name": "baseline",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy-firehose",
+        "--locked",
+        "--offline"
+      ],
+      "pid": 30289,
+      "started": 1792958682.48491,
+      "exit": 0,
+      "elapsed": 1.3672211170196533
+    }
+  ],
+  "source": "5c6d0edce8b7094062e4cf6a77a575b6b8923e27"
+}
+
+
+## inventory.log — sha256 a54e9c74b1edc45a93431916c350e4ba997da83e8da6a6463c47685ad34b30e4 (1847 bytes)
+
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+    Finished `test` profile [optimized] target(s) in 11.61s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bboxy_firehose-edf86a399bb1ffcb)
+0 tests, 0 benchmarks
+     Running unittests src/main.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bboxy_firehose-89d9797364f36959)
+0 tests, 0 benchmarks
+     Running tests/cli.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/cli-c283855aa3471047)
+a_closed_downstream_pipe_stops_an_infinite_flood_cleanly: test
+byte_and_line_rate_caps_keep_the_exact_stream: test
+interrupting_slow_playback_restores_modes_without_waiting_for_the_rate: test
+invalid_inputs_fail_before_emitting_ansi: test
+listing_and_checks_never_emit_terminal_control_bytes: test
+named_scene_and_bounded_loops_are_exact_bytes: test
+playback_needs_no_corpus_files_in_its_working_directory: test
+rates_have_explicit_units_and_cumulative_deadlines: test
+real_pacing_preserves_scene_bytes: test
+seed_is_reproducible_and_reorders_the_complete_corpus: test
+
+10 tests, 0 benchmarks
+     Running tests/corpus.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/corpus-5ffd09c3e6a5ad0f)
+cursor_scenes_are_steady_and_the_next_scene_restores_the_default: test
+frozen_semantic_screens_survive_arbitrary_pty_chunking: test
+originals_are_control_only_and_embedded_verbatim: test
+scenes_exercise_real_grid_effects_and_leave_modes_balanced: test
+
+4 tests, 0 benchmarks
+   Doc-tests bboxy_firehose
+0 tests, 0 benchmarks
+
+
+## baseline.log — sha256 5d05efcf93844ec6d08da5eedd6b46899c3f1e0f225fc551654bdae7454a1b40 (2200 bytes)
+
+    Finished `test` profile [optimized] target(s) in 0.25s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bboxy_firehose-edf86a399bb1ffcb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bboxy_firehose-89d9797364f36959)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/cli-c283855aa3471047)
+
+running 10 tests
+test rates_have_explicit_units_and_cumulative_deadlines ... ok
+test playback_needs_no_corpus_files_in_its_working_directory ... ok
+test named_scene_and_bounded_loops_are_exact_bytes ... ok
+test a_closed_downstream_pipe_stops_an_infinite_flood_cleanly ... ok
+test listing_and_checks_never_emit_terminal_control_bytes ... ok
+test seed_is_reproducible_and_reorders_the_complete_corpus ... ok
+test interrupting_slow_playback_restores_modes_without_waiting_for_the_rate ... ok
+test invalid_inputs_fail_before_emitting_ansi ... ok
+test byte_and_line_rate_caps_keep_the_exact_stream ... ok
+test real_pacing_preserves_scene_bytes ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.90s
+
+     Running tests/corpus.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/corpus-5ffd09c3e6a5ad0f)
+
+running 4 tests
+test cursor_scenes_are_steady_and_the_next_scene_restores_the_default ... ok
+test originals_are_control_only_and_embedded_verbatim ... ok
+test scenes_exercise_real_grid_effects_and_leave_modes_balanced ... ok
+test frozen_semantic_screens_survive_arbitrary_pty_chunking ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+   Doc-tests bboxy_firehose
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+
+## checks-state.json — sha256 246276c3b9a0c4e24f992d93cc33c61186fb3f3c42543adf3de93bec15db5720 (1016 bytes)
+
+{
+  "driver_pid": 60070,
+  "steps": [
+    {
+      "name": "after-final",
+      "pid": 60093,
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy-firehose",
+        "--locked",
+        "--offline"
+      ],
+      "started": 1792959196.118749,
+      "exit": 0,
+      "elapsed": 3.6092190742492676
+    },
+    {
+      "name": "inventory-after",
+      "pid": 60401,
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy-firehose",
+        "--locked",
+        "--offline",
+        "--",
+        "--list"
+      ],
+      "started": 1792959199.728564,
+      "exit": 0,
+      "elapsed": 0.43233299255371094
+    },
+    {
+      "name": "strict",
+      "pid": 60416,
+      "argv": [
+        "cargo",
+        "clippy",
+        "-p",
+        "bboxy-firehose",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started": 1792959200.161487,
+      "exit": 0,
+      "elapsed": 5.001658916473389
+    }
+  ]
+}
+
+
+## after-final.log — sha256 447e0e111dc1151eb0ca64298f27a5a2a9ef32d7cdb63ec4d7b01c05e4f3f51e (2386 bytes)
+
+   Compiling bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+    Finished `test` profile [optimized] target(s) in 2.55s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bboxy_firehose-edf86a399bb1ffcb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bboxy_firehose-89d9797364f36959)
+
+running 2 tests
+test tests::byte_and_line_rate_caps_keep_the_exact_stream ... ok
+test tests::real_pacing_preserves_scene_bytes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/cli-c283855aa3471047)
+
+running 9 tests
+test invalid_inputs_are_rejected_by_the_option_parser ... ok
+test rates_have_explicit_units_and_cumulative_deadlines ... ok
+test named_scene_and_bounded_loops_are_exact_bytes ... ok
+test a_cli_refusal_exits_two_without_emitting_terminal_bytes ... ok
+test playback_needs_no_corpus_files_in_its_working_directory ... ok
+test a_closed_downstream_pipe_stops_an_infinite_flood_cleanly ... ok
+test listing_and_checks_never_emit_terminal_control_bytes ... ok
+test seed_is_reproducible_and_reorders_the_complete_corpus ... ok
+test interrupting_slow_playback_restores_modes_without_waiting_for_the_rate ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running tests/corpus.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/corpus-5ffd09c3e6a5ad0f)
+
+running 4 tests
+test originals_are_control_only_and_embedded_verbatim ... ok
+test cursor_scenes_are_steady_and_the_next_scene_restores_the_default ... ok
+test scenes_exercise_real_grid_effects_and_leave_modes_balanced ... ok
+test frozen_semantic_screens_survive_arbitrary_pty_chunking ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+   Doc-tests bboxy_firehose
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+
+## inventory-after.log — sha256 da9459e4d3474126cd49c4d0480b124aef3da52d7cf609f1c4ca40f35b328204 (1746 bytes)
+
+    Finished `test` profile [optimized] target(s) in 0.27s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bboxy_firehose-edf86a399bb1ffcb)
+0 tests, 0 benchmarks
+     Running unittests src/main.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bboxy_firehose-89d9797364f36959)
+tests::byte_and_line_rate_caps_keep_the_exact_stream: test
+tests::real_pacing_preserves_scene_bytes: test
+
+2 tests, 0 benchmarks
+     Running tests/cli.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/cli-c283855aa3471047)
+a_cli_refusal_exits_two_without_emitting_terminal_bytes: test
+a_closed_downstream_pipe_stops_an_infinite_flood_cleanly: test
+interrupting_slow_playback_restores_modes_without_waiting_for_the_rate: test
+invalid_inputs_are_rejected_by_the_option_parser: test
+listing_and_checks_never_emit_terminal_control_bytes: test
+named_scene_and_bounded_loops_are_exact_bytes: test
+playback_needs_no_corpus_files_in_its_working_directory: test
+rates_have_explicit_units_and_cumulative_deadlines: test
+seed_is_reproducible_and_reorders_the_complete_corpus: test
+
+9 tests, 0 benchmarks
+     Running tests/corpus.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/corpus-5ffd09c3e6a5ad0f)
+cursor_scenes_are_steady_and_the_next_scene_restores_the_default: test
+frozen_semantic_screens_survive_arbitrary_pty_chunking: test
+originals_are_control_only_and_embedded_verbatim: test
+scenes_exercise_real_grid_effects_and_leave_modes_balanced: test
+
+4 tests, 0 benchmarks
+   Doc-tests bboxy_firehose
+0 tests, 0 benchmarks
+
+
+## strict.log — sha256 f4d94fca59578d82bf28c70d8331f34232b961bd870474f650be8e71e58d0c88 (242 bytes)
+
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+    Finished `dev` profile [optimized] target(s) in 4.89s
+
+
+## coverage-check.json — sha256 76d85c48bad25fe69111b0292453ec4150eadc108d1211c6ef7edfc70a610ca4 (2853 bytes)
+
+{
+  "original_entries": [
+    "a_closed_downstream_pipe_stops_an_infinite_flood_cleanly",
+    "byte_and_line_rate_caps_keep_the_exact_stream",
+    "interrupting_slow_playback_restores_modes_without_waiting_for_the_rate",
+    "invalid_inputs_fail_before_emitting_ansi",
+    "listing_and_checks_never_emit_terminal_control_bytes",
+    "named_scene_and_bounded_loops_are_exact_bytes",
+    "playback_needs_no_corpus_files_in_its_working_directory",
+    "rates_have_explicit_units_and_cumulative_deadlines",
+    "real_pacing_preserves_scene_bytes",
+    "seed_is_reproducible_and_reorders_the_complete_corpus",
+    "cursor_scenes_are_steady_and_the_next_scene_restores_the_default",
+    "frozen_semantic_screens_survive_arbitrary_pty_chunking",
+    "originals_are_control_only_and_embedded_verbatim",
+    "scenes_exercise_real_grid_effects_and_leave_modes_balanced"
+  ],
+  "after_entries": [
+    "tests::byte_and_line_rate_caps_keep_the_exact_stream",
+    "tests::real_pacing_preserves_scene_bytes",
+    "a_cli_refusal_exits_two_without_emitting_terminal_bytes",
+    "a_closed_downstream_pipe_stops_an_infinite_flood_cleanly",
+    "interrupting_slow_playback_restores_modes_without_waiting_for_the_rate",
+    "invalid_inputs_are_rejected_by_the_option_parser",
+    "listing_and_checks_never_emit_terminal_control_bytes",
+    "named_scene_and_bounded_loops_are_exact_bytes",
+    "playback_needs_no_corpus_files_in_its_working_directory",
+    "rates_have_explicit_units_and_cumulative_deadlines",
+    "seed_is_reproducible_and_reorders_the_complete_corpus",
+    "cursor_scenes_are_steady_and_the_next_scene_restores_the_default",
+    "frozen_semantic_screens_survive_arbitrary_pty_chunking",
+    "originals_are_control_only_and_embedded_verbatim",
+    "scenes_exercise_real_grid_effects_and_leave_modes_balanced"
+  ],
+  "tag_count": 15,
+  "corpus_identical": {
+    "crates/bboxy-firehose/corpus/osc7501-claude.ansi": true,
+    "crates/bboxy-firehose/corpus/cursor-beam.ansi": true,
+    "crates/bboxy-firehose/corpus/claude.ansi": true,
+    "crates/bboxy-firehose/corpus/codex.ansi": true,
+    "crates/bboxy-firehose/corpus/generate.py": true,
+    "crates/bboxy-firehose/corpus/cursor-underline.ansi": true,
+    "crates/bboxy-firehose/corpus/palette.ansi": true,
+    "crates/bboxy-firehose/corpus/osc7501-codex.ansi": true,
+    "crates/bboxy-firehose/corpus/progress.ansi": true,
+    "crates/bboxy-firehose/corpus/alternate.ansi": true,
+    "crates/bboxy-firehose/corpus/osc7501-preflight.ansi": true,
+    "crates/bboxy-firehose/corpus/unicode.ansi": true,
+    "crates/bboxy-firehose/corpus/scroll-links-sync.ansi": true,
+    "crates/bboxy-firehose/corpus/screen-hashes.txt": true
+  },
+  "corpus_test_bodies_identical": true,
+  "normalized_pacer_body_identical": true,
+  "before_reported_run_seconds": 0.99,
+  "after_reported_run_seconds": 0.22000000000000003
+}

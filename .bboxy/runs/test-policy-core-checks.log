@@ -1,0 +1,1258 @@
+# core: raw #327 sweep evidence
+
+Host: macOS. Test/check environment: RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER= CARGO_BUILD_JOBS=2; CARGO_NET_OFFLINE=true; BBOXY_TEST_CUSTODY=memory; private target, dev/test O1, debug assertions enabled, debug=0, incremental=0. No production account, login Keychain or operator input.
+
+
+## state.json — sha256 3557cc5ca4177ad26c52047ade8a509e98ac8c33a6d801a4b61f80606a744cf8 (1639 bytes)
+
+{
+  "brief": "4e0dd0cf-5fd5-41aa-aa8d-c0454df95985",
+  "crate": "bbt-core",
+  "base": "ac77453d6b2a483b5e414242293755cb8ab6aac2",
+  "branch": "exec5-test-sweep-core",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target",
+  "phase": "Core complete; one combined gate pending",
+  "dispositions": {
+    "kept": 93,
+    "rewritten": 25,
+    "deleted": 2
+  },
+  "staged_paths": [
+    "crates/bbt-core/src/lib.rs",
+    "crates/bbt-core/src/vendor/alacritty/grid/storage.rs",
+    "crates/bbt-core/src/vendor/alacritty/grid/tests.rs",
+    "crates/bbt-core/src/vendor/alacritty/index.rs",
+    "crates/bbt-core/src/vendor/alacritty/term/cell.rs",
+    "crates/bbt-core/src/vendor/alacritty/term/mod.rs",
+    "crates/bbt-core/src/vendor/vte/ansi.rs",
+    "crates/bbt-core/src/vendor/vte/mod.rs",
+    "crates/bbt-core/tests/checkpoint.rs",
+    "crates/bbt-core/tests/history.rs",
+    "crates/bbt-core/tests/resize.rs",
+    ".bboxy/runs/test-policy-bbt-core-table.log"
+  ],
+  "source": "202dcf788a0b40eebd306136e545ccd2de3df29e",
+  "invariants_initial_exit": 1,
+  "invariants_failure": "mermaid-fixtures: cached CARGO_MANIFEST_DIR points at deleted P-1 gate-tree",
+  "combined_gate_brief": "cbda7952-28ea-48f4-98d3-b28f8698840c",
+  "invariants_final_exit": 0,
+  "invariants_final_checks": 26,
+  "invariants_final_failures": 0,
+  "before_count": 120,
+  "before_reported_run_seconds": 0.1,
+  "after_count": 118,
+  "after_reported_run_seconds": 0.09,
+  "halving_target": "unproven at coarse 0.1s scale; Oracle cbda7952 accepts preserving coverage"
+}
+
+
+## baseline-state.json — sha256 375e3d82bc286eff6e7ef281b57438a69c388898331aeeffa1fd072ef96fa682 (692 bytes)
+
+{
+  "driver_pid": 14317,
+  "steps": [
+    {
+      "name": "inventory",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-core",
+        "--locked",
+        "--offline",
+        "--",
+        "--list"
+      ],
+      "pid": 14330,
+      "started": 1792952161.872245,
+      "exit": 0,
+      "elapsed": 29.067884922027588
+    },
+    {
+      "name": "baseline",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-core",
+        "--locked",
+        "--offline"
+      ],
+      "pid": 15280,
+      "started": 1792952190.940704,
+      "exit": 0,
+      "elapsed": 1.1076159477233887
+    }
+  ],
+  "source": "ac77453d6b2a483b5e414242293755cb8ab6aac2"
+}
+
+
+## inventory.log — sha256 ae73f4b9140fb36e27296b60e5896df1afdf0dd6cad6828c15fd6cc0ca5a84f9 (7862 bytes)
+
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Finished `test` profile [optimized] target(s) in 27.68s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bbt_core-3540113d0b776113)
+kitty_keyboard_invariant: test
+vendor::alacritty::grid::storage::tests::grow_after_zero: test
+vendor::alacritty::grid::storage::tests::grow_before_zero: test
+vendor::alacritty::grid::storage::tests::indexing: test
+vendor::alacritty::grid::storage::tests::indexing_above_inner_len: test
+vendor::alacritty::grid::storage::tests::initialize: test
+vendor::alacritty::grid::storage::tests::rotate: test
+vendor::alacritty::grid::storage::tests::rotate_wrap_zero: test
+vendor::alacritty::grid::storage::tests::shrink_after_zero: test
+vendor::alacritty::grid::storage::tests::shrink_before_and_after_zero: test
+vendor::alacritty::grid::storage::tests::shrink_before_zero: test
+vendor::alacritty::grid::storage::tests::shrink_then_grow: test
+vendor::alacritty::grid::storage::tests::truncate_invisible_lines: test
+vendor::alacritty::grid::storage::tests::truncate_invisible_lines_beginning: test
+vendor::alacritty::grid::storage::tests::with_capacity: test
+vendor::alacritty::grid::tests::accurate_size_hint: test
+vendor::alacritty::grid::tests::grow_reflow: test
+vendor::alacritty::grid::tests::grow_reflow_disabled: test
+vendor::alacritty::grid::tests::grow_reflow_multiline: test
+vendor::alacritty::grid::tests::scroll_down: test
+vendor::alacritty::grid::tests::scroll_down_with_history: test
+vendor::alacritty::grid::tests::scroll_up: test
+vendor::alacritty::grid::tests::shrink_reflow: test
+vendor::alacritty::grid::tests::shrink_reflow_disabled: test
+vendor::alacritty::grid::tests::shrink_reflow_empty_cell_inside_line: test
+vendor::alacritty::grid::tests::shrink_reflow_twice: test
+vendor::alacritty::grid::tests::test_iter: test
+vendor::alacritty::index::tests::add: test
+vendor::alacritty::index::tests::add_clamp: test
+vendor::alacritty::index::tests::add_grid_clamp: test
+vendor::alacritty::index::tests::add_none_clamp: test
+vendor::alacritty::index::tests::add_wrap: test
+vendor::alacritty::index::tests::location_ordering: test
+vendor::alacritty::index::tests::sub: test
+vendor::alacritty::index::tests::sub_clamp: test
+vendor::alacritty::index::tests::sub_grid_clamp: test
+vendor::alacritty::index::tests::sub_none_clamp: test
+vendor::alacritty::index::tests::sub_wrap: test
+vendor::alacritty::term::cell::tests::cell_size_is_below_cap: test
+vendor::alacritty::term::cell::tests::line_length_works: test
+vendor::alacritty::term::cell::tests::line_length_works_with_wrapline: test
+vendor::alacritty::term::tests::clear_saved_lines: test
+vendor::alacritty::term::tests::clearing_scrollback_resets_display_offset: test
+vendor::alacritty::term::tests::clearing_viewport_keeps_history_position: test
+vendor::alacritty::term::tests::damage_cursor_movements: test
+vendor::alacritty::term::tests::damage_public_usage: test
+vendor::alacritty::term::tests::full_damage: test
+vendor::alacritty::term::tests::grid_serde: test
+vendor::alacritty::term::tests::grow_lines_updates_active_cursor_pos: test
+vendor::alacritty::term::tests::grow_lines_updates_inactive_cursor_pos: test
+vendor::alacritty::term::tests::input_line_drawing_character: test
+vendor::alacritty::term::tests::parse_cargo_version: test
+vendor::alacritty::term::tests::shrink_lines_updates_active_cursor_pos: test
+vendor::alacritty::term::tests::shrink_lines_updates_inactive_cursor_pos: test
+vendor::alacritty::term::tests::window_title: test
+vendor::vte::ansi::tests::contrast: test
+vendor::vte::ansi::tests::mixed_sync_escape: test
+vendor::vte::ansi::tests::parse_control_attribute: test
+vendor::vte::ansi::tests::parse_designate_g0_as_line_drawing: test
+vendor::vte::ansi::tests::parse_designate_g1_as_line_drawing_and_invoke: test
+vendor::vte::ansi::tests::parse_invalid_legacy_rgb_colors: test
+vendor::vte::ansi::tests::parse_invalid_number: test
+vendor::vte::ansi::tests::parse_invalid_rgb_colors: test
+vendor::vte::ansi::tests::parse_number_too_large: test
+vendor::vte::ansi::tests::parse_osc104_reset_all_colors: test
+vendor::vte::ansi::tests::parse_osc104_reset_all_colors_no_semicolon: test
+vendor::vte::ansi::tests::parse_osc104_reset_color: test
+vendor::vte::ansi::tests::parse_osc4_set_color: test
+vendor::vte::ansi::tests::parse_terminal_identity_csi: test
+vendor::vte::ansi::tests::parse_terminal_identity_esc: test
+vendor::vte::ansi::tests::parse_truecolor_attr: test
+vendor::vte::ansi::tests::parse_valid_legacy_rgb_colors: test
+vendor::vte::ansi::tests::parse_valid_number: test
+vendor::vte::ansi::tests::parse_valid_rgb_colors: test
+vendor::vte::ansi::tests::parse_zsh_startup: test
+vendor::vte::ansi::tests::partial_sync_updates: test
+vendor::vte::ansi::tests::sync_bsu_with_esu: test
+vendor::vte::ansi::tests::sync_bursts_buffer: test
+vendor::vte::tests::c1s: test
+vendor::vte::tests::csi_reset: test
+vendor::vte::tests::csi_subparameters: test
+vendor::vte::tests::dcs_reset: test
+vendor::vte::tests::esc_reset: test
+vendor::vte::tests::esc_reset_intermediates: test
+vendor::vte::tests::exceed_max_buffer_size: test
+vendor::vte::tests::execute_anywhere: test
+vendor::vte::tests::intermediate_reset_on_dcs_exit: test
+vendor::vte::tests::invalid_utf8: test
+vendor::vte::tests::osc_bell_terminated: test
+vendor::vte::tests::osc_c0_st_terminated: test
+vendor::vte::tests::osc_containing_string_terminator: test
+vendor::vte::tests::params_buffer_filled_with_subparam: test
+vendor::vte::tests::parse_csi_max_params: test
+vendor::vte::tests::parse_csi_params_ignore_long_params: test
+vendor::vte::tests::parse_csi_params_leading_semicolon: test
+vendor::vte::tests::parse_csi_params_trailing_semicolon: test
+vendor::vte::tests::parse_dcs: test
+vendor::vte::tests::parse_dcs_max_params: test
+vendor::vte::tests::parse_empty_osc: test
+vendor::vte::tests::parse_long_csi_param: test
+vendor::vte::tests::parse_osc: test
+vendor::vte::tests::parse_osc_max_params: test
+vendor::vte::tests::parse_osc_with_utf8_arguments: test
+vendor::vte::tests::partial_invalid_utf8: test
+vendor::vte::tests::partial_invalid_utf8_split: test
+vendor::vte::tests::partial_utf8: test
+vendor::vte::tests::partial_utf8_into_esc: test
+vendor::vte::tests::partial_utf8_separating_utf8: test
+vendor::vte::tests::unicode: test
+
+109 tests, 0 benchmarks
+     Running tests/checkpoint.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/checkpoint-e3746ca7a7e49968)
+checkpoint_retains_an_incomplete_csi_and_utf8_codepoint: test
+incomplete_osc_restores_without_replaying_old_effects_or_losing_the_live_hook: test
+osc_7501_reaches_the_hook_with_raw_parameters_for_bel_and_st: test
+red_foreground_survives_4096_bytes_and_a_durable_checkpoint: test
+saved_cursor_and_inactive_primary_screen_survive_checkpoint: test
+synchronized_output_buffer_and_preceding_character_survive_checkpoint: test
+viewport_only_drops_existing_history_even_while_the_primary_is_inactive: test
+
+7 tests, 0 benchmarks
+     Running tests/history.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/history-e5cb074fd8a3cf71)
+bounded_history_windows_checkpoint_compatibility_and_heap_accounting: test
+
+1 test, 0 benchmarks
+     Running tests/resize.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/resize-65095df25bcaef8b)
+resizing_reflows_content_keeps_the_cursor_in_bounds_and_preserves_modes: test
+
+1 test, 0 benchmarks
+   Doc-tests bbt_core
+crates/bbt-core/src/lib.rs - (line 3): test
+crates/bbt-core/src/vendor/alacritty/term/mod.rs - vendor::alacritty::term::test::mock_term (line 2410): test
+
+2 tests, 0 benchmarks
+all doctests ran in 0.39s; merged doctests compilation took 0.27s
+
+
+## baseline.log — sha256 4e6a624ba99f099dd0530e844a5aaa0165f08c4a15a9ab1d2a63b89a08596733 (8962 bytes)
+
+    Finished `test` profile [optimized] target(s) in 0.21s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bbt_core-3540113d0b776113)
+
+running 109 tests
+test vendor::alacritty::grid::storage::tests::indexing ... ok
+test vendor::alacritty::grid::storage::tests::grow_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::grow_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::rotate ... ok
+test vendor::alacritty::grid::storage::tests::indexing_above_inner_len - should panic ... ok
+test vendor::alacritty::grid::storage::tests::rotate_wrap_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_and_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::initialize ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_then_grow ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines_beginning ... ok
+test vendor::alacritty::grid::storage::tests::with_capacity ... ok
+test vendor::alacritty::grid::tests::accurate_size_hint ... ok
+test vendor::alacritty::grid::tests::grow_reflow ... ok
+test vendor::alacritty::grid::tests::grow_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::grow_reflow_multiline ... ok
+test vendor::alacritty::grid::tests::scroll_down ... ok
+test vendor::alacritty::grid::tests::scroll_down_with_history ... ok
+test vendor::alacritty::grid::tests::scroll_up ... ok
+test vendor::alacritty::grid::tests::shrink_reflow ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_empty_cell_inside_line ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_twice ... ok
+test vendor::alacritty::grid::tests::test_iter ... ok
+test vendor::alacritty::index::tests::add ... ok
+test vendor::alacritty::index::tests::add_clamp ... ok
+test vendor::alacritty::index::tests::add_grid_clamp ... ok
+test vendor::alacritty::index::tests::add_none_clamp ... ok
+test vendor::alacritty::index::tests::add_wrap ... ok
+test vendor::alacritty::index::tests::location_ordering ... ok
+test vendor::alacritty::index::tests::sub ... ok
+test vendor::alacritty::index::tests::sub_clamp ... ok
+test vendor::alacritty::index::tests::sub_grid_clamp ... ok
+test vendor::alacritty::index::tests::sub_none_clamp ... ok
+test vendor::alacritty::index::tests::sub_wrap ... ok
+test vendor::alacritty::term::cell::tests::cell_size_is_below_cap ... ok
+test vendor::alacritty::term::cell::tests::line_length_works ... ok
+test vendor::alacritty::term::cell::tests::line_length_works_with_wrapline ... ok
+test vendor::alacritty::term::tests::clear_saved_lines ... ok
+test vendor::alacritty::term::tests::clearing_scrollback_resets_display_offset ... ok
+test vendor::alacritty::term::tests::damage_cursor_movements ... ok
+test vendor::alacritty::term::tests::clearing_viewport_keeps_history_position ... ok
+test vendor::alacritty::term::tests::damage_public_usage ... ok
+test vendor::alacritty::term::tests::full_damage ... ok
+test vendor::alacritty::term::tests::grid_serde ... ok
+test vendor::alacritty::term::tests::window_title ... ok
+test vendor::alacritty::term::tests::input_line_drawing_character ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_inactive_cursor_pos ... ok
+test vendor::alacritty::term::tests::parse_cargo_version ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_active_cursor_pos ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_active_cursor_pos ... ok
+test vendor::vte::ansi::tests::contrast ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_inactive_cursor_pos ... ok
+test vendor::vte::ansi::tests::mixed_sync_escape ... ok
+test vendor::vte::ansi::tests::parse_invalid_legacy_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_invalid_number ... ok
+test vendor::vte::ansi::tests::parse_invalid_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_number_too_large ... ok
+test vendor::vte::ansi::tests::parse_control_attribute ... ok
+test vendor::vte::ansi::tests::parse_designate_g0_as_line_drawing ... ok
+test vendor::vte::ansi::tests::parse_designate_g1_as_line_drawing_and_invoke ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors_no_semicolon ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_color ... ok
+test vendor::vte::ansi::tests::parse_osc4_set_color ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_csi ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_esc ... ok
+test vendor::vte::ansi::tests::parse_truecolor_attr ... ok
+test vendor::vte::ansi::tests::parse_valid_legacy_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_valid_number ... ok
+test vendor::vte::ansi::tests::parse_valid_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_zsh_startup ... ok
+test vendor::vte::ansi::tests::partial_sync_updates ... ok
+test vendor::vte::ansi::tests::sync_bsu_with_esu ... ok
+test vendor::vte::tests::csi_subparameters ... ok
+test vendor::vte::tests::csi_reset ... ok
+test vendor::vte::tests::c1s ... ok
+test vendor::vte::tests::dcs_reset ... ok
+test vendor::vte::tests::esc_reset ... ok
+test vendor::vte::tests::esc_reset_intermediates ... ok
+test vendor::vte::tests::exceed_max_buffer_size ... ok
+test vendor::vte::tests::execute_anywhere ... ok
+test vendor::vte::tests::intermediate_reset_on_dcs_exit ... ok
+test vendor::vte::tests::invalid_utf8 ... ok
+test vendor::vte::tests::osc_bell_terminated ... ok
+test vendor::vte::tests::osc_c0_st_terminated ... ok
+test vendor::vte::tests::osc_containing_string_terminator ... ok
+test vendor::vte::tests::params_buffer_filled_with_subparam ... ok
+test vendor::vte::tests::parse_csi_max_params ... ok
+test vendor::vte::tests::parse_csi_params_ignore_long_params ... ok
+test vendor::vte::tests::parse_csi_params_leading_semicolon ... ok
+test vendor::vte::tests::parse_csi_params_trailing_semicolon ... ok
+test vendor::vte::tests::parse_dcs ... ok
+test vendor::vte::tests::parse_dcs_max_params ... ok
+test vendor::vte::tests::parse_empty_osc ... ok
+test vendor::vte::tests::parse_long_csi_param ... ok
+test vendor::vte::tests::parse_osc ... ok
+test vendor::vte::tests::parse_osc_max_params ... ok
+test vendor::vte::tests::parse_osc_with_utf8_arguments ... ok
+test vendor::vte::tests::partial_invalid_utf8 ... ok
+test vendor::vte::tests::partial_invalid_utf8_split ... ok
+test vendor::vte::tests::partial_utf8 ... ok
+test vendor::vte::tests::partial_utf8_into_esc ... ok
+test vendor::vte::tests::partial_utf8_separating_utf8 ... ok
+test vendor::vte::tests::unicode ... ok
+test kitty_keyboard_invariant ... ok
+test vendor::vte::ansi::tests::sync_bursts_buffer ... ok
+
+test result: ok. 109 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/checkpoint.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/checkpoint-e3746ca7a7e49968)
+
+running 7 tests
+test osc_7501_reaches_the_hook_with_raw_parameters_for_bel_and_st ... ok
+test viewport_only_drops_existing_history_even_while_the_primary_is_inactive ... ok
+test saved_cursor_and_inactive_primary_screen_survive_checkpoint ... ok
+test incomplete_osc_restores_without_replaying_old_effects_or_losing_the_live_hook ... ok
+test synchronized_output_buffer_and_preceding_character_survive_checkpoint ... ok
+test checkpoint_retains_an_incomplete_csi_and_utf8_codepoint ... ok
+test red_foreground_survives_4096_bytes_and_a_durable_checkpoint ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/history.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/history-e5cb074fd8a3cf71)
+
+running 1 test
+test bounded_history_windows_checkpoint_compatibility_and_heap_accounting ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/resize.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/resize-65095df25bcaef8b)
+
+running 1 test
+test resizing_reflows_content_keeps_the_cursor_in_bounds_and_preserves_modes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_core
+
+running 2 tests
+test crates/bbt-core/src/lib.rs - (line 3) ... ok
+test crates/bbt-core/src/vendor/alacritty/term/mod.rs - vendor::alacritty::term::test::mock_term (line 2410) ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.41s; merged doctests compilation took 0.28s
+
+
+## after-state.json — sha256 3cae4dda8cdbf25b4d7c5435aa1d3afcf8dcb89ce088ef0b5705d22e4e5c72bb (220 bytes)
+
+{
+  "driver_pid": 61830,
+  "pid": 61866,
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "bbt-core",
+    "--locked",
+    "--offline"
+  ],
+  "started": 1792953349.2389,
+  "exit": 101,
+  "elapsed": 27.763144969940186
+}
+
+
+## after.log — sha256 70541e57d1c81832fd86131fae70989fbb17a835ee1a187760461c9dd3a2537f (7928 bytes)
+
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Finished `test` profile [optimized] target(s) in 27.55s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bbt_core-3540113d0b776113)
+
+running 108 tests
+test vendor::alacritty::grid::storage::tests::indexing ... ok
+test vendor::alacritty::grid::storage::tests::rotate ... ok
+test vendor::alacritty::grid::storage::tests::rotate_wrap_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_and_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::indexing_above_inner_len - should panic ... ok
+test vendor::alacritty::grid::storage::tests::shrink_then_grow ... ok
+test vendor::alacritty::grid::storage::tests::grow_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::grow_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines ... ok
+test vendor::alacritty::grid::storage::tests::with_capacity ... ok
+test vendor::alacritty::grid::tests::accurate_size_hint ... ok
+test vendor::alacritty::grid::tests::grow_reflow ... ok
+test vendor::alacritty::grid::tests::grow_reflow_disabled ... ok
+test vendor::alacritty::grid::storage::tests::initialize ... ok
+test vendor::alacritty::grid::tests::grow_reflow_multiline ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines_beginning ... ok
+test vendor::alacritty::grid::tests::scroll_down ... ok
+test vendor::alacritty::grid::tests::scroll_down_with_history ... ok
+test vendor::alacritty::grid::tests::scroll_up ... ok
+test vendor::alacritty::grid::tests::shrink_reflow ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_empty_cell_inside_line ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_twice ... ok
+test vendor::alacritty::grid::tests::test_iter ... ok
+test vendor::alacritty::index::tests::add ... ok
+test vendor::alacritty::index::tests::add_clamp ... ok
+test vendor::alacritty::index::tests::add_grid_clamp ... ok
+test vendor::alacritty::index::tests::add_none_clamp ... ok
+test vendor::alacritty::index::tests::add_wrap ... ok
+test vendor::alacritty::index::tests::location_ordering ... ok
+test vendor::alacritty::index::tests::sub ... ok
+test vendor::alacritty::index::tests::sub_clamp ... ok
+test vendor::alacritty::index::tests::sub_grid_clamp ... ok
+test vendor::alacritty::index::tests::sub_none_clamp ... ok
+test vendor::alacritty::index::tests::sub_wrap ... ok
+test vendor::alacritty::term::cell::tests::cell_size_is_below_cap ... ok
+test vendor::alacritty::term::cell::tests::line_length_works ... ok
+test vendor::alacritty::term::cell::tests::line_length_works_with_wrapline ... ok
+test vendor::alacritty::term::tests::clear_saved_lines ... ok
+test vendor::alacritty::term::tests::damage_cursor_movements ... FAILED
+test vendor::alacritty::term::tests::clearing_viewport_keeps_history_position ... ok
+test vendor::alacritty::term::tests::clearing_scrollback_resets_display_offset ... ok
+test vendor::alacritty::term::tests::damage_public_usage ... ok
+test vendor::alacritty::term::tests::grid_serde ... ok
+test vendor::alacritty::term::tests::input_line_drawing_character ... ok
+test vendor::alacritty::term::tests::parse_cargo_version ... ok
+test vendor::vte::ansi::tests::contrast ... ok
+test vendor::vte::ansi::tests::mixed_sync_escape ... ok
+test vendor::vte::ansi::tests::parse_control_attribute ... ok
+test vendor::vte::ansi::tests::parse_designate_g0_as_line_drawing ... ok
+test vendor::vte::ansi::tests::parse_designate_g1_as_line_drawing_and_invoke ... ok
+test vendor::vte::ansi::tests::parse_invalid_legacy_rgb_colors ... ok
+test vendor::alacritty::term::tests::window_title ... FAILED
+test vendor::vte::ansi::tests::parse_invalid_number ... ok
+test vendor::vte::ansi::tests::parse_invalid_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_number_too_large ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors_no_semicolon ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_active_cursor_pos ... ok
+test vendor::alacritty::term::tests::full_damage ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_color ... ok
+test vendor::vte::ansi::tests::parse_osc4_set_color ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_csi ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_esc ... ok
+test vendor::vte::ansi::tests::parse_truecolor_attr ... ok
+test vendor::vte::ansi::tests::parse_valid_legacy_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_valid_number ... ok
+test vendor::vte::ansi::tests::parse_valid_rgb_colors ... ok
+test vendor::vte::ansi::tests::partial_sync_updates ... ok
+test vendor::vte::ansi::tests::sync_bsu_with_esu ... ok
+test vendor::vte::tests::c1s ... ok
+test vendor::vte::tests::csi_reset ... ok
+test vendor::vte::tests::csi_subparameters ... ok
+test vendor::vte::tests::dcs_reset ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_inactive_cursor_pos ... ok
+test vendor::vte::tests::esc_reset ... ok
+test vendor::vte::tests::esc_reset_intermediates ... ok
+test vendor::vte::tests::exceed_max_buffer_size ... ok
+test vendor::vte::tests::execute_anywhere ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_active_cursor_pos ... ok
+test vendor::vte::tests::intermediate_reset_on_dcs_exit ... ok
+test vendor::vte::tests::invalid_utf8 ... ok
+test vendor::vte::tests::osc_bell_terminated ... ok
+test vendor::vte::tests::osc_c0_st_terminated ... ok
+test vendor::vte::tests::osc_containing_string_terminator ... ok
+test vendor::vte::tests::params_buffer_filled_with_subparam ... ok
+test vendor::vte::tests::parse_csi_max_params ... ok
+test vendor::vte::tests::parse_csi_params_ignore_long_params ... ok
+test vendor::vte::tests::parse_csi_params_leading_semicolon ... ok
+test vendor::vte::tests::parse_csi_params_trailing_semicolon ... ok
+test vendor::vte::tests::parse_dcs ... ok
+test vendor::vte::tests::parse_dcs_max_params ... ok
+test vendor::vte::tests::parse_empty_osc ... ok
+test vendor::vte::tests::parse_long_csi_param ... ok
+test vendor::vte::tests::parse_osc ... ok
+test vendor::vte::tests::parse_osc_max_params ... ok
+test vendor::vte::tests::parse_osc_with_utf8_arguments ... ok
+test vendor::vte::tests::partial_invalid_utf8 ... ok
+test vendor::vte::tests::partial_invalid_utf8_split ... ok
+test vendor::vte::tests::partial_utf8 ... ok
+test vendor::vte::tests::partial_utf8_into_esc ... ok
+test vendor::vte::tests::partial_utf8_separating_utf8 ... ok
+test vendor::vte::tests::unicode ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_inactive_cursor_pos ... ok
+test kitty_keyboard_invariant ... ok
+test vendor::vte::ansi::tests::sync_bursts_buffer ... ok
+
+failures:
+
+---- vendor::alacritty::term::tests::damage_cursor_movements stdout ----
+
+thread 'vendor::alacritty::term::tests::damage_cursor_movements' (42351819) panicked at crates/bbt-core/src/vendor/alacritty/term/mod.rs:2917:9:
+assertion `left == right` failed
+  left: LineDamageBounds { line: 7, left: 0, right: 3 }
+ right: LineDamageBounds { line: 7, left: 3, right: 3 }
+
+---- vendor::alacritty::term::tests::window_title stdout ----
+
+thread 'vendor::alacritty::term::tests::window_title' (42351829) panicked at crates/bbt-core/src/vendor/alacritty/term/mod.rs:3175:9:
+assertion `left == right` failed
+  left: []
+ right: [None]
+
+
+failures:
+    vendor::alacritty::term::tests::damage_cursor_movements
+    vendor::alacritty::term::tests::window_title
+
+test result: FAILED. 106 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p bbt-core --lib`
+
+
+## checks-state.json — sha256 44177703d95231314fc9624540eef8d11bf2b8af16b16b2b5a59c7e222939495 (1218 bytes)
+
+{
+  "driver_pid": 65454,
+  "steps": [
+    {
+      "name": "after-final",
+      "pid": 65468,
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-core",
+        "--locked",
+        "--offline"
+      ],
+      "started": 1792953441.1036642,
+      "exit": 0,
+      "elapsed": 33.23323583602905
+    },
+    {
+      "name": "inventory-after",
+      "pid": 66377,
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-core",
+        "--locked",
+        "--offline",
+        "--",
+        "--list"
+      ],
+      "started": 1792953474.338263,
+      "exit": 0,
+      "elapsed": 1.6097190380096436
+    },
+    {
+      "name": "strict",
+      "pid": 66446,
+      "argv": [
+        "cargo",
+        "clippy",
+        "-p",
+        "bbt-core",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started": 1792953475.948364,
+      "exit": 0,
+      "elapsed": 13.230005979537964
+    },
+    {
+      "name": "invariants",
+      "pid": 67148,
+      "argv": [
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "started": 1792953489.179092,
+      "exit": 1,
+      "elapsed": 835.8818202018738
+    }
+  ]
+}
+
+
+## after-final.log — sha256 ba359a74b5219385811d1318e2d4baeadd3b78610d41b13f331ab7a74d50dd17 (8876 bytes)
+
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Finished `test` profile [optimized] target(s) in 31.20s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bbt_core-3540113d0b776113)
+
+running 108 tests
+test vendor::alacritty::grid::storage::tests::shrink_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::indexing ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_and_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::rotate_wrap_zero ... ok
+test vendor::alacritty::grid::storage::tests::rotate ... ok
+test vendor::alacritty::grid::storage::tests::indexing_above_inner_len - should panic ... ok
+test vendor::alacritty::grid::storage::tests::shrink_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::grow_after_zero ... ok
+test vendor::alacritty::grid::storage::tests::initialize ... ok
+test vendor::alacritty::grid::storage::tests::grow_before_zero ... ok
+test vendor::alacritty::grid::storage::tests::shrink_then_grow ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines_beginning ... ok
+test vendor::alacritty::grid::storage::tests::truncate_invisible_lines ... ok
+test vendor::alacritty::grid::storage::tests::with_capacity ... ok
+test vendor::alacritty::grid::tests::accurate_size_hint ... ok
+test vendor::alacritty::grid::tests::grow_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::grow_reflow ... ok
+test vendor::alacritty::grid::tests::grow_reflow_multiline ... ok
+test vendor::alacritty::grid::tests::scroll_down ... ok
+test vendor::alacritty::grid::tests::scroll_up ... ok
+test vendor::alacritty::grid::tests::scroll_down_with_history ... ok
+test vendor::alacritty::grid::tests::shrink_reflow ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_disabled ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_empty_cell_inside_line ... ok
+test vendor::alacritty::grid::tests::shrink_reflow_twice ... ok
+test vendor::alacritty::grid::tests::test_iter ... ok
+test vendor::alacritty::index::tests::add ... ok
+test vendor::alacritty::index::tests::add_clamp ... ok
+test vendor::alacritty::index::tests::add_grid_clamp ... ok
+test vendor::alacritty::index::tests::add_none_clamp ... ok
+test vendor::alacritty::index::tests::add_wrap ... ok
+test vendor::alacritty::index::tests::location_ordering ... ok
+test vendor::alacritty::index::tests::sub ... ok
+test vendor::alacritty::index::tests::sub_clamp ... ok
+test vendor::alacritty::index::tests::sub_grid_clamp ... ok
+test vendor::alacritty::index::tests::sub_none_clamp ... ok
+test vendor::alacritty::index::tests::sub_wrap ... ok
+test vendor::alacritty::term::cell::tests::cell_size_is_below_cap ... ok
+test vendor::alacritty::term::cell::tests::line_length_works ... ok
+test vendor::alacritty::term::cell::tests::line_length_works_with_wrapline ... ok
+test vendor::alacritty::term::tests::clear_saved_lines ... ok
+test vendor::alacritty::term::tests::clearing_scrollback_resets_display_offset ... ok
+test vendor::alacritty::term::tests::damage_cursor_movements ... ok
+test vendor::alacritty::term::tests::damage_public_usage ... ok
+test vendor::alacritty::term::tests::grid_serde ... ok
+test vendor::alacritty::term::tests::clearing_viewport_keeps_history_position ... ok
+test vendor::alacritty::term::tests::input_line_drawing_character ... ok
+test vendor::alacritty::term::tests::parse_cargo_version ... ok
+test vendor::vte::ansi::tests::contrast ... ok
+test vendor::vte::ansi::tests::parse_control_attribute ... ok
+test vendor::vte::ansi::tests::mixed_sync_escape ... ok
+test vendor::vte::ansi::tests::parse_designate_g0_as_line_drawing ... ok
+test vendor::vte::ansi::tests::parse_designate_g1_as_line_drawing_and_invoke ... ok
+test vendor::vte::ansi::tests::parse_invalid_legacy_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_invalid_number ... ok
+test vendor::vte::ansi::tests::parse_invalid_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_number_too_large ... ok
+test vendor::alacritty::term::tests::window_title ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors ... ok
+test vendor::alacritty::term::tests::full_damage ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_all_colors_no_semicolon ... ok
+test vendor::vte::ansi::tests::parse_osc104_reset_color ... ok
+test vendor::vte::ansi::tests::parse_osc4_set_color ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_csi ... ok
+test vendor::vte::ansi::tests::parse_terminal_identity_esc ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_inactive_cursor_pos ... ok
+test vendor::vte::ansi::tests::parse_truecolor_attr ... ok
+test vendor::vte::ansi::tests::parse_valid_legacy_rgb_colors ... ok
+test vendor::vte::ansi::tests::parse_valid_number ... ok
+test vendor::alacritty::term::tests::shrink_lines_updates_active_cursor_pos ... ok
+test vendor::vte::ansi::tests::parse_valid_rgb_colors ... ok
+test vendor::vte::ansi::tests::partial_sync_updates ... ok
+test vendor::vte::ansi::tests::sync_bsu_with_esu ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_active_cursor_pos ... ok
+test vendor::vte::tests::c1s ... ok
+test vendor::vte::tests::csi_reset ... ok
+test vendor::vte::tests::csi_subparameters ... ok
+test vendor::vte::tests::dcs_reset ... ok
+test vendor::vte::tests::esc_reset ... ok
+test vendor::vte::tests::esc_reset_intermediates ... ok
+test vendor::vte::tests::exceed_max_buffer_size ... ok
+test vendor::vte::tests::execute_anywhere ... ok
+test vendor::vte::tests::intermediate_reset_on_dcs_exit ... ok
+test vendor::vte::tests::invalid_utf8 ... ok
+test vendor::alacritty::term::tests::grow_lines_updates_inactive_cursor_pos ... ok
+test vendor::vte::tests::osc_bell_terminated ... ok
+test vendor::vte::tests::osc_c0_st_terminated ... ok
+test vendor::vte::tests::osc_containing_string_terminator ... ok
+test vendor::vte::tests::params_buffer_filled_with_subparam ... ok
+test vendor::vte::tests::parse_csi_max_params ... ok
+test vendor::vte::tests::parse_csi_params_ignore_long_params ... ok
+test vendor::vte::tests::parse_csi_params_leading_semicolon ... ok
+test vendor::vte::tests::parse_csi_params_trailing_semicolon ... ok
+test vendor::vte::tests::parse_dcs ... ok
+test vendor::vte::tests::parse_dcs_max_params ... ok
+test vendor::vte::tests::parse_empty_osc ... ok
+test vendor::vte::tests::parse_long_csi_param ... ok
+test vendor::vte::tests::parse_osc ... ok
+test vendor::vte::tests::parse_osc_max_params ... ok
+test vendor::vte::tests::parse_osc_with_utf8_arguments ... ok
+test vendor::vte::tests::partial_invalid_utf8 ... ok
+test vendor::vte::tests::partial_invalid_utf8_split ... ok
+test vendor::vte::tests::partial_utf8 ... ok
+test vendor::vte::tests::partial_utf8_into_esc ... ok
+test vendor::vte::tests::partial_utf8_separating_utf8 ... ok
+test vendor::vte::tests::unicode ... ok
+test kitty_keyboard_invariant ... ok
+test vendor::vte::ansi::tests::sync_bursts_buffer ... ok
+
+test result: ok. 108 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/checkpoint.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/checkpoint-e3746ca7a7e49968)
+
+running 7 tests
+test saved_cursor_and_inactive_primary_screen_survive_checkpoint ... ok
+test incomplete_osc_restores_without_replaying_old_effects_or_losing_the_live_hook ... ok
+test checkpoint_retains_an_incomplete_csi_and_utf8_codepoint ... ok
+test synchronized_output_buffer_and_preceding_character_survive_checkpoint ... ok
+test viewport_only_drops_existing_history_even_while_the_primary_is_inactive ... ok
+test osc_7501_reaches_the_hook_with_raw_parameters_for_bel_and_st ... ok
+test red_foreground_survives_4096_bytes_and_a_durable_checkpoint ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/history.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/history-e5cb074fd8a3cf71)
+
+running 1 test
+test bounded_history_windows_checkpoint_compatibility_and_heap_accounting ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/resize.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/resize-65095df25bcaef8b)
+
+running 1 test
+test resizing_reflows_content_keeps_the_cursor_in_bounds_and_preserves_modes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_core
+
+running 1 test
+test crates/bbt-core/src/lib.rs - (line 3) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+all doctests ran in 0.48s; merged doctests compilation took 0.29s
+
+
+## inventory-after.log — sha256 5fd0099e74a5ac083a4aa0ddbc7a4aadb12b69419e4762e21892ba98701b2380 (7614 bytes)
+
+    Finished `test` profile [optimized] target(s) in 0.32s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bbt_core-3540113d0b776113)
+kitty_keyboard_invariant: test
+vendor::alacritty::grid::storage::tests::grow_after_zero: test
+vendor::alacritty::grid::storage::tests::grow_before_zero: test
+vendor::alacritty::grid::storage::tests::indexing: test
+vendor::alacritty::grid::storage::tests::indexing_above_inner_len: test
+vendor::alacritty::grid::storage::tests::initialize: test
+vendor::alacritty::grid::storage::tests::rotate: test
+vendor::alacritty::grid::storage::tests::rotate_wrap_zero: test
+vendor::alacritty::grid::storage::tests::shrink_after_zero: test
+vendor::alacritty::grid::storage::tests::shrink_before_and_after_zero: test
+vendor::alacritty::grid::storage::tests::shrink_before_zero: test
+vendor::alacritty::grid::storage::tests::shrink_then_grow: test
+vendor::alacritty::grid::storage::tests::truncate_invisible_lines: test
+vendor::alacritty::grid::storage::tests::truncate_invisible_lines_beginning: test
+vendor::alacritty::grid::storage::tests::with_capacity: test
+vendor::alacritty::grid::tests::accurate_size_hint: test
+vendor::alacritty::grid::tests::grow_reflow: test
+vendor::alacritty::grid::tests::grow_reflow_disabled: test
+vendor::alacritty::grid::tests::grow_reflow_multiline: test
+vendor::alacritty::grid::tests::scroll_down: test
+vendor::alacritty::grid::tests::scroll_down_with_history: test
+vendor::alacritty::grid::tests::scroll_up: test
+vendor::alacritty::grid::tests::shrink_reflow: test
+vendor::alacritty::grid::tests::shrink_reflow_disabled: test
+vendor::alacritty::grid::tests::shrink_reflow_empty_cell_inside_line: test
+vendor::alacritty::grid::tests::shrink_reflow_twice: test
+vendor::alacritty::grid::tests::test_iter: test
+vendor::alacritty::index::tests::add: test
+vendor::alacritty::index::tests::add_clamp: test
+vendor::alacritty::index::tests::add_grid_clamp: test
+vendor::alacritty::index::tests::add_none_clamp: test
+vendor::alacritty::index::tests::add_wrap: test
+vendor::alacritty::index::tests::location_ordering: test
+vendor::alacritty::index::tests::sub: test
+vendor::alacritty::index::tests::sub_clamp: test
+vendor::alacritty::index::tests::sub_grid_clamp: test
+vendor::alacritty::index::tests::sub_none_clamp: test
+vendor::alacritty::index::tests::sub_wrap: test
+vendor::alacritty::term::cell::tests::cell_size_is_below_cap: test
+vendor::alacritty::term::cell::tests::line_length_works: test
+vendor::alacritty::term::cell::tests::line_length_works_with_wrapline: test
+vendor::alacritty::term::tests::clear_saved_lines: test
+vendor::alacritty::term::tests::clearing_scrollback_resets_display_offset: test
+vendor::alacritty::term::tests::clearing_viewport_keeps_history_position: test
+vendor::alacritty::term::tests::damage_cursor_movements: test
+vendor::alacritty::term::tests::damage_public_usage: test
+vendor::alacritty::term::tests::full_damage: test
+vendor::alacritty::term::tests::grid_serde: test
+vendor::alacritty::term::tests::grow_lines_updates_active_cursor_pos: test
+vendor::alacritty::term::tests::grow_lines_updates_inactive_cursor_pos: test
+vendor::alacritty::term::tests::input_line_drawing_character: test
+vendor::alacritty::term::tests::parse_cargo_version: test
+vendor::alacritty::term::tests::shrink_lines_updates_active_cursor_pos: test
+vendor::alacritty::term::tests::shrink_lines_updates_inactive_cursor_pos: test
+vendor::alacritty::term::tests::window_title: test
+vendor::vte::ansi::tests::contrast: test
+vendor::vte::ansi::tests::mixed_sync_escape: test
+vendor::vte::ansi::tests::parse_control_attribute: test
+vendor::vte::ansi::tests::parse_designate_g0_as_line_drawing: test
+vendor::vte::ansi::tests::parse_designate_g1_as_line_drawing_and_invoke: test
+vendor::vte::ansi::tests::parse_invalid_legacy_rgb_colors: test
+vendor::vte::ansi::tests::parse_invalid_number: test
+vendor::vte::ansi::tests::parse_invalid_rgb_colors: test
+vendor::vte::ansi::tests::parse_number_too_large: test
+vendor::vte::ansi::tests::parse_osc104_reset_all_colors: test
+vendor::vte::ansi::tests::parse_osc104_reset_all_colors_no_semicolon: test
+vendor::vte::ansi::tests::parse_osc104_reset_color: test
+vendor::vte::ansi::tests::parse_osc4_set_color: test
+vendor::vte::ansi::tests::parse_terminal_identity_csi: test
+vendor::vte::ansi::tests::parse_terminal_identity_esc: test
+vendor::vte::ansi::tests::parse_truecolor_attr: test
+vendor::vte::ansi::tests::parse_valid_legacy_rgb_colors: test
+vendor::vte::ansi::tests::parse_valid_number: test
+vendor::vte::ansi::tests::parse_valid_rgb_colors: test
+vendor::vte::ansi::tests::partial_sync_updates: test
+vendor::vte::ansi::tests::sync_bsu_with_esu: test
+vendor::vte::ansi::tests::sync_bursts_buffer: test
+vendor::vte::tests::c1s: test
+vendor::vte::tests::csi_reset: test
+vendor::vte::tests::csi_subparameters: test
+vendor::vte::tests::dcs_reset: test
+vendor::vte::tests::esc_reset: test
+vendor::vte::tests::esc_reset_intermediates: test
+vendor::vte::tests::exceed_max_buffer_size: test
+vendor::vte::tests::execute_anywhere: test
+vendor::vte::tests::intermediate_reset_on_dcs_exit: test
+vendor::vte::tests::invalid_utf8: test
+vendor::vte::tests::osc_bell_terminated: test
+vendor::vte::tests::osc_c0_st_terminated: test
+vendor::vte::tests::osc_containing_string_terminator: test
+vendor::vte::tests::params_buffer_filled_with_subparam: test
+vendor::vte::tests::parse_csi_max_params: test
+vendor::vte::tests::parse_csi_params_ignore_long_params: test
+vendor::vte::tests::parse_csi_params_leading_semicolon: test
+vendor::vte::tests::parse_csi_params_trailing_semicolon: test
+vendor::vte::tests::parse_dcs: test
+vendor::vte::tests::parse_dcs_max_params: test
+vendor::vte::tests::parse_empty_osc: test
+vendor::vte::tests::parse_long_csi_param: test
+vendor::vte::tests::parse_osc: test
+vendor::vte::tests::parse_osc_max_params: test
+vendor::vte::tests::parse_osc_with_utf8_arguments: test
+vendor::vte::tests::partial_invalid_utf8: test
+vendor::vte::tests::partial_invalid_utf8_split: test
+vendor::vte::tests::partial_utf8: test
+vendor::vte::tests::partial_utf8_into_esc: test
+vendor::vte::tests::partial_utf8_separating_utf8: test
+vendor::vte::tests::unicode: test
+
+108 tests, 0 benchmarks
+     Running tests/checkpoint.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/checkpoint-e3746ca7a7e49968)
+checkpoint_retains_an_incomplete_csi_and_utf8_codepoint: test
+incomplete_osc_restores_without_replaying_old_effects_or_losing_the_live_hook: test
+osc_7501_reaches_the_hook_with_raw_parameters_for_bel_and_st: test
+red_foreground_survives_4096_bytes_and_a_durable_checkpoint: test
+saved_cursor_and_inactive_primary_screen_survive_checkpoint: test
+synchronized_output_buffer_and_preceding_character_survive_checkpoint: test
+viewport_only_drops_existing_history_even_while_the_primary_is_inactive: test
+
+7 tests, 0 benchmarks
+     Running tests/history.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/history-e5cb074fd8a3cf71)
+bounded_history_windows_checkpoint_compatibility_and_heap_accounting: test
+
+1 test, 0 benchmarks
+     Running tests/resize.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/resize-65095df25bcaef8b)
+resizing_reflows_content_keeps_the_cursor_in_bounds_and_preserves_modes: test
+
+1 test, 0 benchmarks
+   Doc-tests bbt_core
+crates/bbt-core/src/lib.rs - (line 3): test
+
+1 test, 0 benchmarks
+all doctests ran in 0.42s; merged doctests compilation took 0.29s
+
+
+## strict.log — sha256 74321f1c74ff049f07096d574e32b2df1cd818535ccecff8ee72f05f7b2d9ddc (487 bytes)
+
+    Checking serde_core v1.0.229
+    Checking libc v0.2.191
+    Checking smallvec v1.16.3
+    Checking parking_lot_core v0.9.12
+    Checking parking_lot v0.12.5
+    Checking log v0.4.34
+    Checking serde v1.0.229
+    Checking bitflags v2.13.2
+    Checking serde_json v1.0.154
+    Checking serde-big-array v0.5.1
+    Checking arrayvec v0.7.8
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Finished `dev` profile [optimized] target(s) in 13.10s
+
+
+## invariants.log — sha256 1eddd12d6f5763206258657eae500495f1020de0d3702bffc02454fa105db537 (5552 bytes)
+
+brand: held
+invariant bboxy450-prefix: pass
+invariant checkpoint-bounded: pass
+invariant clippy-clean: skipped (slow)
+cross-os: held
+invariant cross-os-facade: pass
+invariant ctl-never-prints-secrets: pass
+invariant ctl-opt-in: pass
+invariant e2e-runs-unattended: skipped (slow)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Finished `test` profile [optimized] target(s) in 26.04s
+     Running tests/corpus.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/corpus-79736735b68121f5)
+
+running 1 test
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.11s
+
+invariant frontmatter-parses: pass
+invariant glow-never-moves-layout: pass
+invariant idle-swarms-cost-nothing: skipped (slow)
+images: held
+invariant images-resolve: pass
+kill-own-pids: held
+invariant kill-only-own-pids: pass
+invariant kitty-keyboard: pass
+layering: held
+invariant layering: pass
+licenses: 24 workspace crates, SPDX map and required root/crate files present
+invariant licenses-present: pass
+local-first: held
+invariant local-first: pass
+invariant main-red-bounded: skipped (slow)
+    Finished `test` profile [optimized] target(s) in 0.22s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bbt_mermaid-7c2496a07458bdeb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/fixtures.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/fixtures-bb021a3581d5478c)
+
+running 1 test
+test every_bboxy_mermaid_block_has_a_fixture ... FAILED
+
+failures:
+
+---- every_bboxy_mermaid_block_has_a_fixture stdout ----
+
+thread 'every_bboxy_mermaid_block_has_a_fixture' (42456273) panicked at crates/bbt-mermaid/tests/fixtures.rs:41:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    every_bboxy_mermaid_block_has_a_fixture
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p bbt-mermaid --test fixtures`
+invariant mermaid-fixtures: fail (exit 101)
+invariant messaging-never-held: pass
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Finished `test` profile [optimized] target(s) in 1.06s
+     Running tests/seat_rows.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/seat_rows-f51b84d2f0e3093a)
+
+running 1 test
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+invariant modules-through-components: pass
+never-block: held
+invariant never-block-swarm: pass
+never-block: held
+cross-os: held
+invariant no-chokepoints: pass
+deps-licences: held
+invariant no-copyleft-deps: pass
+invariant no-seat-starves: pass
+invariant parity-geometry: skipped (slow)
+invariant presubmit-tests-fast: skipped (slow)
+invariant restart-keeps-state: skipped (slow)
+invariant rim-never-covers-text: pass
+invariant rim-size-is-layout: pass
+invariant ring-reads-batched: pass
+invariant seats-1000-bus: skipped (slow)
+invariant seats-400-memory-idle: skipped (slow)
+invariant seats-967-frame: skipped (slow)
+invariant signed-main: pass
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+    Checking bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Checking bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain)
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-supervisor)
+    Checking bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-harness-wake-up)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-proto)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 27.15s
+invariant ui-never-waits: pass
+invariant watched-replay-priority: pass
+invariants: 26 checks, 1 failures, 10 slow checks skipped
+
+
+## repair-state.json — sha256 d2a3a5d06fdc07280d6558bfa0a94c9cd47259d6dd0642083f0b35ccbf1abfb7 (729 bytes)
+
+{
+  "driver_pid": 4692,
+  "steps": [
+    {
+      "name": "clean-stale-mermaid",
+      "pid": 4709,
+      "argv": [
+        "cargo",
+        "clean",
+        "-p",
+        "bbt-mermaid",
+        "--offline"
+      ],
+      "started": 1792954475.8936949,
+      "exit": 0,
+      "elapsed": 0.34317612648010254
+    },
+    {
+      "name": "mermaid-rebuilt",
+      "pid": 4714,
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mermaid",
+        "--locked",
+        "--offline",
+        "--test",
+        "fixtures",
+        "every_bboxy_mermaid_block_has_a_fixture",
+        "--",
+        "--exact"
+      ],
+      "started": 1792954476.237173,
+      "exit": 0,
+      "elapsed": 6.0335447788238525
+    }
+  ]
+}
+
+
+## clean-stale-mermaid.log — sha256 ef3f2a3ff480b09a013111a53bbb478a8ccd4b380326fddceb8cf471fc7b0a4a (37 bytes)
+
+     Removed 57 files, 12.4MiB total
+
+
+## mermaid-rebuilt.log — sha256 00d87cebd1f93187ab3a339fdc5de3238797a3f321dbe3cd1cb578bf55dc3190 (475 bytes)
+
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Finished `test` profile [optimized] target(s) in 5.78s
+     Running tests/fixtures.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/fixtures-bb021a3581d5478c)
+
+running 1 test
+test every_bboxy_mermaid_block_has_a_fixture ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.08s
+
+
+
+## invariants-final-state.json — sha256 eaa2f8186cdfdc747f6ba73c85430afa8e175fd43d42a3d81eb87dcebe69cbd1 (267 bytes)
+
+{
+  "driver_pid": 9775,
+  "steps": [
+    {
+      "name": "invariants-final",
+      "pid": 9795,
+      "argv": [
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "started": 1792954569.956746,
+      "exit": 0,
+      "elapsed": 722.6801528930664
+    }
+  ]
+}
+
+
+## invariants-final.log — sha256 f8482535d96bb1c8aa0494efc1fc21bb2e31480d3b035508f9fefa68098f29c3 (3641 bytes)
+
+brand: held
+invariant bboxy450-prefix: pass
+invariant checkpoint-bounded: pass
+invariant clippy-clean: skipped (slow)
+cross-os: held
+invariant cross-os-facade: pass
+invariant ctl-never-prints-secrets: pass
+invariant ctl-opt-in: pass
+invariant e2e-runs-unattended: skipped (slow)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Finished `test` profile [optimized] target(s) in 5.61s
+     Running tests/corpus.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/corpus-79736735b68121f5)
+
+running 1 test
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.09s
+
+invariant frontmatter-parses: pass
+invariant glow-never-moves-layout: pass
+invariant idle-swarms-cost-nothing: skipped (slow)
+images: held
+invariant images-resolve: pass
+kill-own-pids: held
+invariant kill-only-own-pids: pass
+invariant kitty-keyboard: pass
+layering: held
+invariant layering: pass
+licenses: 24 workspace crates, SPDX map and required root/crate files present
+invariant licenses-present: pass
+local-first: held
+invariant local-first: pass
+invariant main-red-bounded: skipped (slow)
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Finished `test` profile [optimized] target(s) in 3.37s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/bbt_mermaid-7c2496a07458bdeb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/fixtures.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/fixtures-bb021a3581d5478c)
+
+running 1 test
+test every_bboxy_mermaid_block_has_a_fixture ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.02s
+
+invariant mermaid-fixtures: pass
+invariant messaging-never-held: pass
+    Finished `test` profile [optimized] target(s) in 0.25s
+     Running tests/seat_rows.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/gate-target/debug/deps/seat_rows-f51b84d2f0e3093a)
+
+running 1 test
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.01s
+
+invariant modules-through-components: pass
+never-block: held
+invariant never-block-swarm: pass
+never-block: held
+cross-os: held
+invariant no-chokepoints: pass
+deps-licences: held
+invariant no-copyleft-deps: pass
+invariant no-seat-starves: pass
+invariant parity-geometry: skipped (slow)
+invariant presubmit-tests-fast: skipped (slow)
+invariant restart-keeps-state: skipped (slow)
+invariant rim-never-covers-text: pass
+invariant rim-size-is-layout: pass
+invariant ring-reads-batched: pass
+invariant seats-1000-bus: skipped (slow)
+invariant seats-400-memory-idle: skipped (slow)
+invariant seats-967-frame: skipped (slow)
+invariant signed-main: pass
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mux)
+    Checking bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-term)
+    Finished `dev` profile [optimized] target(s) in 19.66s
+invariant ui-never-waits: pass
+invariant watched-replay-priority: pass
+invariants: 26 checks, 0 failures, 10 slow checks skipped
+
+
+## coverage-check.json — sha256 ec138a65b497353877a0b265116c80ddeaafc019ca0670a2e0926d8b48130287 (959 bytes)
+
+{
+  "production_code": [
+    {
+      "path": "crates/bbt-core/src/lib.rs",
+      "production_code_equal": true
+    },
+    {
+      "path": "crates/bbt-core/src/vendor/alacritty/index.rs",
+      "production_code_equal": true
+    },
+    {
+      "path": "crates/bbt-core/src/vendor/vte/mod.rs",
+      "production_code_equal": true
+    },
+    {
+      "path": "crates/bbt-core/src/vendor/vte/ansi.rs",
+      "production_code_equal": true
+    },
+    {
+      "path": "crates/bbt-core/src/vendor/alacritty/term/cell.rs",
+      "production_code_equal": true
+    },
+    {
+      "path": "crates/bbt-core/src/vendor/alacritty/term/mod.rs",
+      "production_code_equal": true
+    },
+    {
+      "path": "crates/bbt-core/src/vendor/alacritty/grid/storage.rs",
+      "production_code_equal": true
+    }
+  ],
+  "tagged_test_entry_points": 117,
+  "retained_doctests": 1,
+  "missing_tags": [],
+  "original_inventory": 120,
+  "sleep_calls_before": 0,
+  "sleep_calls_after": 0
+}
