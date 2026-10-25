@@ -1,3 +1,4 @@
+# coverage: partial; missing: solved pane rectangle and focus after undo; visible grace strip
 # T7: close and undo use the window's actual layout; never a second lifecycle door.
 # The runner owns the throwaway account/app. This script needs no desktop input.
 . "$(dirname "$0")/lib.sh"
@@ -56,6 +57,19 @@ wait_lifecycle() {
         sleep 0.2
     done
 }
+assert_not_on_screen() {
+    python3 -I - "$1" "$seat" <<'PYHIDDEN'
+import json,sys
+from pathlib import Path
+rows=[json.loads(line) for line in Path(sys.argv[1]).read_text().splitlines() if line.strip()]
+assert len(rows)==1, 'capture did not return one structured error'
+row=rows[0]
+assert row.get('ok') is False, 'capture did not refuse'
+error=row.get('error',{})
+assert error.get('kind')=='not_on_screen', f'unrelated capture error: {error}'
+assert error.get('message')==f'not_on_screen: seat {sys.argv[2]} has no pane on screen', 'capture refused for a different seat'
+PYHIDDEN
+}
 close() {
     ctl seat close "$seat" > "$E2E_WORK/t7-close.json" || fail 'window close refused'
     wait_lifecycle closed_grace 100
@@ -68,6 +82,7 @@ close() {
         tries=$((tries+1)); [ "$tries" -le 50 ] || fail 'closed pane is still visible in the window'
         sleep 0.2
     done
+    assert_not_on_screen "$E2E_WORK/t7-hidden.json" || fail 'closed pane capture failed for an unrelated reason'
     wait_ui grace
 }
 close first
@@ -129,4 +144,5 @@ ctl seat undo-close "$seat" > "$E2E_WORK/t7-expired-undo.json" 2>&1 || :
 sleep 0.3
 [ "$(seat_field "$seat" record.lifecycle)" = closed_retained ] || fail 'expired undo reopened the seat'
 if ctl seat capture "$seat" "$E2E_WORK/t7-gone.png" > "$E2E_WORK/t7-gone.json" 2>&1; then fail 'retained seat still owns a pane'; fi
+assert_not_on_screen "$E2E_WORK/t7-gone.json" || fail 'retained pane capture failed for an unrelated reason'
 note 'T7 same PID/generation, retained history, position, presented extent, sidebar order/grace/notice, and real grace/expiry held'
