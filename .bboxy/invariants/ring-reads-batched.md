@@ -15,7 +15,7 @@ links:
   - { to: "[[seats-967-frame]]", rel: unblocks }
   - { to: "[[mux-daemon]]", rel: constrains }
 created: "2026-10-25T09:54:49Z"
-updated: "2026-10-25T11:48:44Z"
+updated: "2026-10-25T11:51:12Z"
 ---
 # Ring reads are batched
 
@@ -23,9 +23,17 @@ updated: "2026-10-25T11:48:44Z"
 pass over N seats with pending ring data costs at most `ceil(N / 8)` supervisor
 round trips, never N (967 seats: at most 121 requests, zero singleton calls
 from the hot sweep); a request carries up to eight seats, every member is
-admitted before any waiting, a refused member fails alone without blocking or
-advancing the others, and the final cursors and Screens are exactly the ones
-the singleton path produced. The 6 824 serial RPCs that motivated this are evidence; the gate is a
+admitted before any waiting, a refused member fails alone, never preventing the
+others' admission, reply or application and never advancing its own cursor,
+and the final cursors and Screens are exactly the ones the singleton path
+produced. Across hosts the bound is the sum of `ceil(N_host / 8)`. **One
+aggregate reply per batch is the design**, not a compromise: the group returns
+after its last member, so a slow member delays at most seven others by one
+read, a coupling bounded by the member count and `max_bytes`; the property is
+about round trips, failure independence and exactness, not about a completed
+member being visible before the slowest finishes. Streamed replies would be a
+new ruling with its own reply-reserve rule, taken only if a measurement shows
+the aggregate wait exceeding the page budget (Sable's question, 2026-10-25). The 6 824 serial RPCs that motivated this are evidence; the gate is a
 round-trip count under a fixed fixture, because a count does not depend on the
 machine.
 
