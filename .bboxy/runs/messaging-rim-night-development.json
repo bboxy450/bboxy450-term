@@ -6,6 +6,21 @@
     "sha256": "687b5297439c7f896540e3de02a76d4bbcdde2ab7406c75a58601558876377ba"
   },
   "checks": {
+    "corrected-rim": {
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec4/target/messaging-night/debug/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "rim, swell and attention",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/messaging-night-20261025T072116/corrected-rim-scripts"
+      ],
+      "exit": 1,
+      "started": "2026-10-25T15:35:54.242368+00:00",
+      "elapsed_s": 12.5262656249688,
+      "log_sha256": "39abeab1aca81ac91efd43c971988b7da54003133414f19fb9515b82d8a346fb"
+    },
     "current-binary-build": {
       "command": [
         "cargo",
@@ -48,6 +63,74 @@
       "started": "2026-10-25T15:02:59.932044+00:00",
       "elapsed_s": 9.967026708996855,
       "log_sha256": "691bfdbd3e3f843455866503b0abbcfad76e71a4f68ca32333d9fd6e2e2d5976"
+    },
+    "final-binary-build": {
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "bboxy450-term",
+        "--locked"
+      ],
+      "exit": 0,
+      "started": "2026-10-25T15:33:00.434897+00:00",
+      "elapsed_s": 72.45488991698949,
+      "log_sha256": "b7b80d2fbd2cedc63919e5a9be03952cd29130fb2845626c953041e8284c794c"
+    },
+    "final-clippy": {
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "bbt-doc",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "started": "2026-10-25T15:37:13.227999+00:00",
+      "elapsed_s": 3.2453848749864846,
+      "log_sha256": "50ef1d01c01cdf8b12bfa0f274cb03a70b756dd023c7ca38a8b0e39bcf248a81"
+    },
+    "final-corpus": {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-doc",
+        "--locked",
+        "--test",
+        "corpus"
+      ],
+      "exit": 0,
+      "started": "2026-10-25T15:37:11.772588+00:00",
+      "elapsed_s": 1.4219162089866586,
+      "log_sha256": "de4626f4348a2615c4be6c9206ec043d132968b1b9725f51358f0c8975d12389"
+    },
+    "final-invariants": {
+      "command": [
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "exit": 0,
+      "started": "2026-10-25T15:37:16.513072+00:00",
+      "elapsed_s": 336.3887910839985,
+      "log_sha256": "4165a0e02e88bb7390bdacb74db5594fb6901915d08626feda289d19dc4205c0"
+    },
+    "merged-binary-build": {
+      "command": [
+        "cargo",
+        "build",
+        "-p",
+        "bboxy450-term",
+        "--locked"
+      ],
+      "exit": 0,
+      "started": "2026-10-25T15:35:13.656246+00:00",
+      "elapsed_s": 29.88406958396081,
+      "log_sha256": "8b97b2cb6a7d2571c2a4c91ebb91c8b2acff0cd6cd05a70a0da8a714adb96416"
     },
     "precheck-clippy": {
       "command": [
@@ -548,7 +631,147 @@
     "r4-unsaved-focus-artifacts/r4-clock-ce1ee38c/row-tab-rest.png": {
       "bytes": 100476,
       "sha256": "67c3acd3db2f1b158dc94b1a8dbcfa4b52bc2b49309d82a2ad43464c17e69963"
+    },
+    "corrected-rim-artifacts/R2/output.log": {
+      "bytes": 118,
+      "sha256": "58818472a4ab79ef6b3574986cd9df64157c51a714caf9417b1892e32263c5a2"
+    },
+    "corrected-rim-artifacts/R2/r2-layout-2.jsonl": {
+      "bytes": 25342,
+      "sha256": "658a307b9c37c983323920ecc5d2a1fc18ad2bad75f85b754fcda91ce38516ee"
+    },
+    "corrected-rim-artifacts/R2/r2-layout-4.jsonl": {
+      "bytes": 25343,
+      "sha256": "a4d4f18826fc2ae588dc55011085e97fc54c08503b1aaf637450c3e63eaa893b"
+    },
+    "corrected-rim-artifacts/R2/r2-layout-8.jsonl": {
+      "bytes": 25343,
+      "sha256": "2a42898448852b72c9d5a0c9978548c9e4b783cab8c5958316f8182c03abb3d3"
+    },
+    "corrected-rim-artifacts/R2/r2-result.json": {
+      "bytes": 610160,
+      "sha256": "3801a22b01cbfb07ceb42035d0e7a02c2cedafb27cc4fdb76beb5ef7536021d8"
+    },
+    "corrected-rim-artifacts/R2/r2-rim-2.jsonl": {
+      "bytes": 316,
+      "sha256": "039809a44132313a255c1c540b9a5b450c40957b67fc573ddccda4950deadf89"
+    },
+    "corrected-rim-artifacts/R2/r2-rim-2.png": {
+      "bytes": 110706,
+      "sha256": "1fd25d8812482a60d13b623fb4fb91d73db0d6e7d0d21f25a83846fa4eeebe8d"
+    },
+    "corrected-rim-artifacts/R2/r2-rim-4.jsonl": {
+      "bytes": 317,
+      "sha256": "27d5bd91234b48d6b170406c1c9c5e882030b2774b41650a9bdef642ccf4cd59"
+    },
+    "corrected-rim-artifacts/R2/r2-rim-4.png": {
+      "bytes": 124543,
+      "sha256": "fa885da7791e3b11696f76a1eda12205e72a5f5247bc5be44a3ecc3a9d1d0ee1"
+    },
+    "corrected-rim-artifacts/R2/r2-rim-8.jsonl": {
+      "bytes": 317,
+      "sha256": "4b0f343f6ffe78eafeefa0858b8909e46a9fe920ca4afaf3227555671f63b379"
+    },
+    "corrected-rim-artifacts/R2/r2-rim-8.png": {
+      "bytes": 129958,
+      "sha256": "d56b4bcc2f6603bbc564dc6ea9c72f03f29d4603129945ebe6b0e9377d3e08c4"
+    },
+    "corrected-rim-artifacts/R2/r2-settings-2.jsonl": {
+      "bytes": 32098,
+      "sha256": "2206a3beae39c4445c7bdc1caa562a133ac5a8dcb01526f891fcf19057306011"
+    },
+    "corrected-rim-artifacts/R2/r2-settings-4.jsonl": {
+      "bytes": 32098,
+      "sha256": "594a54121c9530cbf4168399700708907a4e600a358f9ac0d9b9253fd8d9d22a"
+    },
+    "corrected-rim-artifacts/R2/r2-settings-8.jsonl": {
+      "bytes": 32099,
+      "sha256": "91a6e411e691a8468d70daeee708d960afeda8aaca068e5c6f2c28e04378e62f"
+    },
+    "corrected-rim-artifacts/R4/output.log": {
+      "bytes": 128,
+      "sha256": "4f0bf86ab0d16fac0ac62da882bfefdc29c6460a0e39e36b30be87a176aad4d5"
+    },
+    "corrected-rim-artifacts/R4/r4-clock-a48a5b10/commands.json": {
+      "bytes": 3722352,
+      "sha256": "dd4d94f007f3f637ecf5bc3613ea414ec7dd310a5dd7a471716dd98d67171efc"
+    },
+    "corrected-rim-artifacts/R4/r4-clock-a48a5b10/idle-focus-origin.png": {
+      "bytes": 116487,
+      "sha256": "ada7fae693b98aedac3aa098d19d237aa1f21619daec04db47ed284a61168070"
+    },
+    "corrected-rim-artifacts/R4/r4-clock-a48a5b10/idle-focus-peak.png": {
+      "bytes": 167639,
+      "sha256": "f14ac44d72e14f136771508f97eeba967778d74fc074e1cc8361586e52a19a23"
+    },
+    "corrected-rim-artifacts/R4/r4-clock-a48a5b10/idle-focus-settled.png": {
+      "bytes": 114284,
+      "sha256": "a24ec9776d17e17681313ccc7d4ff0730228d8a13c7de575efae3c93cd0ae703"
+    },
+    "corrected-rim-artifacts/R4/r4-clock-a48a5b10/manifest.json": {
+      "bytes": 1087,
+      "sha256": "2827d6d4b2184216adc8c48ed4959af6b46d3c981e5f50626e219d00fed08961"
+    },
+    "corrected-rim-artifacts/R4/r4-clock-a48a5b10/row-tab-alive.png": {
+      "bytes": 126494,
+      "sha256": "44cc4c0417943f668b8d24f5de72f04f9372fab4130617322cf73d3e146e606b"
+    },
+    "corrected-rim-artifacts/R4/r4-clock-a48a5b10/row-tab-rest.png": {
+      "bytes": 127005,
+      "sha256": "fe75fbb87e7e176f62628c0aa7e775b876410c06f04c0a1e4670baece5e78b91"
+    },
+    "corrected-rim-artifacts/R4/r4-clock-a48a5b10/verdict.json": {
+      "bytes": 2038,
+      "sha256": "1c57d6eb409ec15cb4880308358dfab96fd0261d2e7a7d56e8da7f26fe3df832"
     }
   },
-  "R4_current": "Saved corrections after failures, NOT RUN; QUIET rook-r5k-batch-frame13267 until09:10PDT or opening-key END; separate header/body and no active rim overlap are asserted."
+  "R4_current": {
+    "script_exit": 0,
+    "coverage": "partial",
+    "missing": [
+      "cards carry the rim and the swell out of the box"
+    ],
+    "active_rim_pixels": [
+      213,
+      225
+    ],
+    "independent_swell_pixels": [
+      832,
+      16
+    ],
+    "geometry_unchanged": true,
+    "settled_at_ms": 900,
+    "verdict": "corrected-rim-artifacts/R4/r4-clock-a48a5b10/verdict.json"
+  },
+  "successful_rim_binary": {
+    "source": "fbc1a50584d68f9770cd83f919abe3b3bfa11c29",
+    "sha256": "1a71f56b587bca8736db6c4e0b39d352a713a175d37e2e5fb2152be2f8211e4a",
+    "build": "merged-binary-build.status.json"
+  },
+  "R2_current": {
+    "script_exit": 0,
+    "coverage": "full",
+    "all_four_insets": true,
+    "rim_sizes": [
+      2,
+      4,
+      8
+    ]
+  },
+  "source_files": {
+    "scripts/e2e/M1.sh": "4ac7d9f3191900a2f84f4c67fb38ac6f0da0915348aee4b2281c2ccc9c4cb0a1",
+    "scripts/e2e/M2.sh": "9d755b3ca9cefbd435b4655f7d4434ca051f1055343d0c840078439bb5daa92f",
+    "scripts/e2e/M6.sh": "9e4903d88a5c1e89ba070a231cece24cbb62fb1008b46191e6e45d2ff2e6e68d",
+    "scripts/e2e/R2.sh": "05ebfcfcf5d88c84421702fdbd0441f6753daff5fe7f2a6fb732969ef8a427a0",
+    "scripts/e2e/R4.sh": "2c6b641e985366c6aa4f819e0dcd25813be99d5465f827753f4c76b5bb5ef616",
+    "scripts/e2e/message_agent.py": "a588c6efa2505a42d92799b44ef3272a4d666528e2cd57f37f1033fd84f872dc",
+    "scripts/e2e/messaging.py": "2a25e17ec011ff8b311921a0a98aca38b75d1fc870a4f0155d79318c2295a190",
+    "scripts/e2e/rim_more.py": "ac46db80757990c1136e88a30973b4f55c6b96858138992b5084c4196e63a2fe",
+    "scripts/e2e/rim_clock.py": "d47df4d6c3f44243a65a188b333756cc28d2591d7b645434b3451077de98a425"
+  },
+  "precheck_summary": {
+    "corpus": "6/0, exit0",
+    "scoped_strict_clippy": "bbt-doc all-targets exit0",
+    "default_invariants": "26checks/0failures/8slow skipped, exit0"
+  }
 }
