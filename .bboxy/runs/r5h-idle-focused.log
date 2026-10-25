@@ -1,0 +1,50 @@
+R5h-idle: deterministic stale-tick regression and focused checks
+Owner Rook Ashwhisker <EXECUTOR>; authorization 5c8b8277-84d9-472d-9ec8-afea51fcd11b
+Current implementation source 3b2d97f6cae80bd37a0242b19c0fb37ddd358d86 on origin/main f33168270eb82e823847368bf90465c67bdee48d; branch rook-r5h-idle.
+All commits signed by Boxy with the machine key. Own four changed paths byte-equal to tested 4fcd8af09f81667d5100b88ea93065b4a5ed68d7: git diff EXIT 0. Final exact normal CI still follows.
+
+Mechanism:
+display_link.rs: wake_action distinguishes data invalidation, active display tick, and stale/empty wake. A tick after pause cannot request a new native frame. Real data mixed with a tick and unknown source IDs remain invalidations.
+main.rs: retains dirty-source IDs in delivered Wake, early GPU bootstrap and frame drains; tick-only render uses the existing drawable without calling request_frame. Data consumed by an early native redraw still arms the link before an empty queued Wake is ignored.
+stall.rs: fixed 16-source numerical counts (delivered wakes, frame drains, redraw requests, attributed frames), explicit overflow, separate redraw/messages/output pending bits, monotonic observation time and atomic IO snapshots. The settle line includes these plus frame/callback/GPU-completed counts. Source attribution is coalesced and non-additive, not a count of every producer mark.
+stall/load.rs: ONE TEST-LITERAL default field, accommodating the extended witness. No production change in that file.
+Native::frame was reviewed: assigning the latest paused target does not call a pacer or request work. Its latest-target rule, GPU completion, settle deadline and idle assertions remain unchanged.
+Headless keeps its bool poll API; native uses poll_with_wakes. No identity, protocol, provider, capture, replay, checkpoint or visual-paint changes from this feature.
+
+Controls and actual commands:
+red source d1aa9a8a8c16fafdfe4dc3fb4960e8d25684e01d
+command ["cargo", "test", "-p", "bboxy450-term", "--locked", "--bin", "bboxy450-term", "display_link::tests::tick_wake_after_pause_does_not_reopen_link", "--", "--exact", "--nocapture"]
+actual EXIT 101 elapsed 323.74765129195293 s
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-idle-brn88x88/red.log SHA256 feb16d9bcaecea1889ceafa79dc13774d37ea3efd8393fa13862f24a8144e521
+green source dcdd058b6fe3e164a5ef29d7dbac4185af65b869
+command ["cargo", "test", "-p", "bboxy450-term", "--locked", "--bin", "bboxy450-term"]
+actual EXIT 101 elapsed 3.2893673749640584 s
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-idle-brn88x88/green.log SHA256 a8f2622828f767a50f60bd98a861681434de965d5d08f62d391a53346ccf0bae
+green-v2 source 582679b3e3ecc5b33351f04cdd50241bf50d4313
+command ["cargo", "test", "-p", "bboxy450-term", "--locked", "--bin", "bboxy450-term"]
+actual EXIT 101 elapsed 107.68893687496893 s
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-idle-brn88x88/green-v2.log SHA256 4fd370884d4ace76949b055d6234a715ec524460aa9dfd36d2d8c1436cbda52f
+build source 4fcd8af09f81667d5100b88ea93065b4a5ed68d7
+command ["cargo", "build", "-p", "bboxy450-term", "--locked"]
+actual EXIT 0 elapsed 420.57115354103735 s
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-idle-brn88x88/build.log SHA256 ad9506f484b8f661aace2ad4d6f65edfa75e7210942f8b281a4a7608e0aa040a
+green-v3 source 4fcd8af09f81667d5100b88ea93065b4a5ed68d7
+command ["cargo", "test", "-p", "bboxy450-term", "--locked", "--bin", "bboxy450-term"]
+actual EXIT 0 elapsed 60.66890920896549 s
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-idle-brn88x88/green-v3.log SHA256 9acc6404fd273aad01e78085e2f9b0acb147df91217a1e0c3a4bdc8c3dbc5866
+clippy source 4fcd8af09f81667d5100b88ea93065b4a5ed68d7
+command ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"]
+actual EXIT 0 elapsed 166.03760454099393 s
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-idle-brn88x88/clippy.log SHA256 6c688cdedd5c57e9f9e4319ba9fffbcac5882f113fe9d530116900fed2f30472
+
+Red proof: extracted the prior unconditional Wake decision into the actual UI handler, then froze signed source d1aa9a8a in its own clean detached checkout. tick_wake_after_pause_does_not_reopen_link reached an assertion (not a compiler failure): left Invalidate, right Ignore. Runtime 0.00 s, command including build 323.747651 s, EXIT 101. Its original source remains reachable on rook-r5h-idle-before-rebase.
+Control-base proof: the pre-fix UiEvent::Wake body on 51373e98 and afff4758 was byte-equal (SHA256 8a797ef59bf67bcd755444c6595ec9358efa4720897829770824bcefa6cda9b4).
+First green preparation failed to compile (E0308): existing stall/headless.rs called the bool poll API. Fixed by retaining that API and adding native poll_with_wakes; headless.rs itself untouched.
+Second green command executed 103 tests: 100 passed, 3 existing real-process tests failed because the standalone app artifact had not been built. No assertion or tolerance was changed. cargo build -p bboxy450-term --locked then provided the correct-source executable.
+Final green: 103 passed / 0 failed, including the stale-tick, mixed-data, source/queue serialization and bounded-overflow regressions plus all three real-process tests. Runtime 13.40 s; total command 60.668909 s. Child teardown messages confirm orderly logic/supervisor shutdown in the real IO test.
+Strict workspace/all-target Clippy -D warnings actual EXIT 0 in 166.037605 s.
+A host load1 sample was 73.06 during the app prerequisite build; own rustc was active at 24% CPU. This is context, not a controlled performance measurement.
+All commands used one private target, direct compiler (both wrappers empty), jobs 2, O1 with debug assertions, debug info 0, memory fixture custody. Test checkout reused at each immutable commit; no source changed during a command (diff hashes before/after equal).
+
+Limit: no 967 attempt is authorized or made in this cut. The earlier frame failure remains a failure; this unit proof does not retroactively establish its unrecorded wake source/rate or the stop-to-settled checkpoint budget. The new counters make that distinction observable in a later scheduled run.
+No operator input, login-Keychain access, desktop injection, publication or main push. Exact normal atomic CI and target cleanup are still owed before handoff.

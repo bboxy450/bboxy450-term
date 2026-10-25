@@ -1848,6 +1848,7 @@ mod tests {
             callbacks: 13,
             paused_frame: Some(12),
             completed_frame: 11,
+            ..Default::default()
         };
         probe.record(native);
         let snapshot = probe.snapshot();

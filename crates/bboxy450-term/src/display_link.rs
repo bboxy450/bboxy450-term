@@ -25,6 +25,28 @@ pub struct Tick {
     pub drawable: Option<Drawable>,
 }
 
+/// The display-link source allocated by App; ticks are not data invalidations.
+pub const TICK_SOURCE: usize = 4;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Rendering work demanded by one coalesced UI wake.
+pub enum WakeAction {
+    Ignore,
+    Tick,
+    Invalidate,
+}
+
+/// Decide whether a coalesced wake needs a new display-link request.
+pub fn wake_action(sources: &[usize], active: bool) -> WakeAction {
+    if sources.iter().any(|source| *source != TICK_SOURCE) {
+        WakeAction::Invalidate
+    } else if !sources.is_empty() && active {
+        WakeAction::Tick
+    } else {
+        WakeAction::Ignore
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     Fifo,
@@ -294,6 +316,10 @@ impl DisplayLink {
     pub fn is_metal(&self) -> bool {
         matches!(self.backend, Backend::Metal { .. })
     }
+    /// Inspect demand without starting the native display link.
+    pub fn is_active(&self) -> bool {
+        self.active.get()
+    }
     /// One-shot invalidations also use the display link's drawable. No code
     /// calls CAMetalLayer.nextDrawable once its Metal display link is attached.
     pub fn request_frame(&self) {
@@ -378,6 +404,24 @@ impl Drop for DisplayLink {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn tick_wake_after_pause_does_not_reopen_link() {
+        // draw has called set_active(false); its already-queued tick Wake is
+        // delivered afterwards, with no new model or input invalidation.
+        assert_eq!(wake_action(&[TICK_SOURCE], false), WakeAction::Ignore);
+    }
+    #[test]
+    fn data_racing_a_tick_still_requests_a_frame_after_pause() {
+        assert_eq!(
+            wake_action(&[TICK_SOURCE, 5], false),
+            WakeAction::Invalidate
+        );
+        assert_eq!(wake_action(&[5], false), WakeAction::Invalidate);
+        assert_eq!(wake_action(&[TICK_SOURCE], true), WakeAction::Tick);
+        assert_eq!(wake_action(&[], true), WakeAction::Ignore);
+        // Unknown sources remain real invalidations; telemetry never gates work.
+        assert_eq!(wake_action(&[999], false), WakeAction::Invalidate);
+    }
     #[test]
     fn clock_uses_target_time_and_excludes_paused_time() {
         let mut clock = Clock::default();

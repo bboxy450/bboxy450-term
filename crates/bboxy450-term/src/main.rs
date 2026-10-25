@@ -34,7 +34,7 @@ use bbt_ui_model::{
     layout::Rect,
     tokens::Theme,
 };
-use display_link::{Clock, DisplayLink, Mode};
+use display_link::{Clock, DisplayLink, Mode, WakeAction, wake_action};
 use e2e_checklist::{LocalTab, PageCommand};
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
@@ -1221,6 +1221,7 @@ fn new_launcher_for(
 struct App {
     proxy: EventLoopProxy<UiEvent>,
     inbox: UiInbox,
+    wake_counters: std::cell::RefCell<stall::WakeCounters>,
     logger: log::Logger,
     prepared: Arc<Latest<Prepared>>,
     updates: Arc<Latest<usize>>,
@@ -2521,6 +2522,10 @@ impl App {
         // wait for process shutdown on this thread.
     }
     fn request_redraw(&self) {
+        self.request_redraw_sources(&[stall::DIRECT_REDRAW_SOURCE]);
+    }
+    fn request_redraw_sources(&self, sources: &[usize]) {
+        self.wake_counters.borrow_mut().redraw(sources);
         if !self.occluded
             && let Some(pacer) = &self.pacer
         {
@@ -2695,11 +2700,12 @@ impl App {
         }
         Ok(())
     }
-    fn drain(&mut self) {
+    fn drain(&mut self) -> Vec<usize> {
         if let Some(stall) = &self.stall {
             stall.drain();
         }
-        self.inbox.dirty.drain();
+        let sources = self.inbox.dirty.drain();
+        self.wake_counters.borrow_mut().drained(&sources);
         let start = Instant::now();
         while start.elapsed() < Duration::from_millis(1) {
             let message = self.inbox.messages.try_recv();
@@ -2838,6 +2844,7 @@ impl App {
         }
         self.drive_document();
         self.flush_commands();
+        sources
     }
     fn demo(&mut self) {
         if !self.fake || self.demo_started {
@@ -2864,7 +2871,8 @@ impl App {
         if self.gpu.is_none() {
             // A producer may wake us before GPU preparation finishes. Drain
             // admission even on an empty frame, or GPU-ready can lose its wake.
-            self.inbox.dirty.drain();
+            let sources = self.inbox.dirty.drain();
+            self.wake_counters.borrow_mut().drained(&sources);
             if self.smoke_wake_seen
                 && let Some(open) = self.smoke_bootstrap.take()
             {
@@ -2905,7 +2913,7 @@ impl App {
                 &gpu.surface,
                 display,
                 self.maximum_hz,
-                self.inbox.dirty.source(4),
+                self.inbox.dirty.source(display_link::TICK_SOURCE),
                 self.pacing,
             )?;
             pacer.set_active(self.animate && !self.occluded)?;
@@ -2915,7 +2923,18 @@ impl App {
         }
         let mut phases = Phases::default();
         let start = Instant::now();
-        self.drain();
+        let sources = self.drain();
+        // A native redraw can consume data before its queued Wake arrives.
+        // If no drawable is pending, preserve that invalidation before the
+        // later empty Wake is ignored.
+        if self
+            .pacer
+            .as_ref()
+            .is_some_and(|pacer| pacer.is_metal() && !pacer.is_active())
+            && wake_action(&sources, false) == WakeAction::Invalidate
+        {
+            self.request_redraw_sources(&sources);
+        }
         // Drain the coalesced dirty flag before consuming its latest tick, so a
         // concurrent CV callback cannot publish a tick without a future wake.
         let tick = self.pacer.as_ref().and_then(DisplayLink::take_tick);
@@ -3134,6 +3153,7 @@ impl App {
                 overlay: pane_overlay,
             }),
         )? {
+            self.wake_counters.borrow_mut().frame();
             phases.encode = encode;
             phases.present_wait = wait;
             if let Some((phase, time)) = self.meter.record(Instant::now(), phases) {
@@ -3227,7 +3247,9 @@ impl App {
                 let mut status = app_status(
                     "window",
                     std::env::args().any(|a| {
-                        a == "--unattended" || a == "--test-account" || a.starts_with("--test-account=")
+                        a == "--unattended"
+                            || a == "--test-account"
+                            || a.starts_with("--test-account=")
                     }),
                     true,
                     true,
@@ -3315,15 +3337,20 @@ impl ApplicationHandler<UiEvent> for App {
                     });
                 }
                 if let Some(stall) = &mut self.stall {
-                    let pending = self.redraw_pending.get()
-                        || !self.inbox.messages.is_empty()
-                        || !self.inbox.output.is_empty();
-                    let result = stall.poll(
+                    let wakes = self.wake_counters.borrow().snapshot().with_pending(
+                        self.redraw_pending.get(),
+                        !self.inbox.messages.is_empty(),
+                        !self.inbox.output.is_empty(),
+                    );
+                    let result = stall.poll_with_wakes(
                         self.meter.total_frames(),
                         self.pacer.as_ref().map_or(0, DisplayLink::callbacks),
-                        pending,
+                        wakes,
                         self.maximum_hz,
                     );
+                    if let Some(line) = stall.settle_line(!matches!(&result, Ok(None))) {
+                        self.logger.write(line);
+                    }
                     match result {
                         Ok(Some(report)) => {
                             if !report.failures.is_empty() {
@@ -3374,7 +3401,9 @@ impl ApplicationHandler<UiEvent> for App {
                 let status = app_status(
                     "window",
                     std::env::args().any(|a| {
-                        a == "--unattended" || a == "--test-account" || a.starts_with("--test-account=")
+                        a == "--unattended"
+                            || a == "--test-account"
+                            || a.starts_with("--test-account=")
                     }),
                     !self.backend_lost && self.live_state.is_some(),
                     self.meter.total_frames() > 0,
@@ -3424,6 +3453,8 @@ impl ApplicationHandler<UiEvent> for App {
                 self.request_close(event_loop);
             }
             UiEvent::Wake => {
+                let sources = self.inbox.dirty.drain();
+                self.wake_counters.borrow_mut().wake(&sources);
                 if self.smoke && self.gpu.is_none() {
                     self.smoke_wake_seen = true;
                 }
@@ -3431,7 +3462,29 @@ impl ApplicationHandler<UiEvent> for App {
                     self.fail(error, event_loop);
                     return;
                 }
-                self.request_redraw();
+                match wake_action(
+                    &sources,
+                    self.pacer.as_ref().is_some_and(DisplayLink::is_active),
+                ) {
+                    WakeAction::Ignore => {
+                        if sources.contains(&display_link::TICK_SOURCE) {
+                            self.wake_counters.borrow_mut().ignored_tick();
+                        }
+                        if let Some(pacer) = &self.pacer
+                            && !pacer.is_active()
+                        {
+                            pacer.clear();
+                        }
+                    }
+                    WakeAction::Tick => {
+                        self.wake_counters.borrow_mut().redraw(&sources);
+                        if let Some(window) = &self.window {
+                            self.redraw_pending.set(true);
+                            window.request_redraw();
+                        }
+                    }
+                    WakeAction::Invalidate => self.request_redraw_sources(&sources),
+                }
             }
             UiEvent::BeginIdle => {
                 let counts = (
@@ -4908,7 +4961,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     // `ctl --help` and `e2e --help` are their own usages, printed by them.
-    if hook_args.first().is_none_or(|arg| arg != "ctl" && arg != "e2e")
+    if hook_args
+        .first()
+        .is_none_or(|arg| arg != "ctl" && arg != "e2e")
         && hook_args.iter().any(|arg| arg == "--help" || arg == "-h")
     {
         println!("{HELP}\n{}", stall::HELP);
@@ -5104,6 +5159,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = App {
         proxy,
         inbox,
+        wake_counters: Default::default(),
         logger,
         prepared,
         updates,

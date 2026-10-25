@@ -6,7 +6,7 @@ mod load;
 use bboxy450_term::model::Model;
 use bbt_proto::SeatId;
 use bbt_rt::{Latest, Phases, UiSender};
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use std::{
     collections::BTreeMap,
     path::PathBuf,
@@ -103,6 +103,196 @@ pub const SETTLE: u8 = 3;
 pub const IDLE: u8 = 4;
 pub const FINISHED: u8 = 5;
 
+const WAKE_SLOTS: usize = 16;
+/// Redraw requests outside a DirtySet Wake use 1024, outside its source range.
+pub const DIRECT_REDRAW_SOURCE: usize = 1024;
+
+#[derive(Debug, Default, Clone, Copy, Serialize)]
+struct WakeSourceCounts {
+    source: usize,
+    wakes: u64,
+    frame_drains: u64,
+    redraws: u64,
+    frames: u64,
+}
+impl WakeSourceCounts {
+    fn used(&self) -> bool {
+        self.wakes | self.frame_drains | self.redraws | self.frames != 0
+    }
+}
+
+fn serialize_sources<S: Serializer>(
+    sources: &[WakeSourceCounts; WAKE_SLOTS],
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    serializer.collect_seq(sources.iter().filter(|source| source.used()))
+}
+
+/// Bounded numerical UI observations. A frame may have several source causes;
+/// these attribution counts are not additive frame or event totals.
+#[derive(Debug, Default, Clone, Copy, Serialize)]
+pub struct WakeDiagnostics {
+    #[serde(serialize_with = "serialize_sources")]
+    sources: [WakeSourceCounts; WAKE_SLOTS],
+    wake_events: u64,
+    empty_wakes: u64,
+    ignored_ticks: u64,
+    overflow: u64,
+    pending_redraw: bool,
+    pending_messages: bool,
+    pending_output: bool,
+}
+impl WakeDiagnostics {
+    /// Snapshot the three independent pending predicates without a queue read on IO.
+    pub fn with_pending(mut self, redraw: bool, messages: bool, output: bool) -> Self {
+        self.pending_redraw = redraw;
+        self.pending_messages = messages;
+        self.pending_output = output;
+        self
+    }
+    fn pending(&self) -> bool {
+        self.pending_redraw || self.pending_messages || self.pending_output
+    }
+}
+
+/// UI-owned counters, with no IO or locks. The app currently uses six dirty
+/// sources; overflow is explicit if a future producer exceeds the 16 slots.
+#[derive(Default)]
+pub struct WakeCounters {
+    values: WakeDiagnostics,
+    pending: [bool; WAKE_SLOTS],
+}
+impl WakeCounters {
+    fn slot(&mut self, source: usize) -> Option<usize> {
+        let slot = self
+            .values
+            .sources
+            .iter()
+            .position(|row| row.used() && row.source == source)
+            .or_else(|| self.values.sources.iter().position(|row| !row.used()));
+        let Some(slot) = slot else {
+            self.values.overflow = self.values.overflow.saturating_add(1);
+            return None;
+        };
+        self.values.sources[slot].source = source;
+        Some(slot)
+    }
+    /// Record one delivered Wake and the source flags it consumed.
+    pub fn wake(&mut self, sources: &[usize]) {
+        self.values.wake_events = self.values.wake_events.saturating_add(1);
+        if sources.is_empty() {
+            self.values.empty_wakes = self.values.empty_wakes.saturating_add(1);
+        }
+        for &source in sources {
+            if let Some(slot) = self.slot(source) {
+                let row = &mut self.values.sources[slot];
+                row.wakes = row.wakes.saturating_add(1);
+            }
+        }
+    }
+    /// Attribute flags consumed by a frame before their queued Wake is delivered.
+    pub fn drained(&mut self, sources: &[usize]) {
+        for &source in sources {
+            if let Some(slot) = self.slot(source) {
+                let row = &mut self.values.sources[slot];
+                row.frame_drains = row.frame_drains.saturating_add(1);
+                self.pending[slot] = true;
+            }
+        }
+    }
+    /// Attribute a redraw request to each of its coalesced causes.
+    pub fn redraw(&mut self, sources: &[usize]) {
+        for &source in sources {
+            if let Some(slot) = self.slot(source) {
+                let row = &mut self.values.sources[slot];
+                row.redraws = row.redraws.saturating_add(1);
+                self.pending[slot] = true;
+            }
+        }
+    }
+    /// Attribute a submitted frame, then retire its pending causes.
+    pub fn frame(&mut self) {
+        for (row, pending) in self.values.sources.iter_mut().zip(&mut self.pending) {
+            if std::mem::take(pending) {
+                row.frames = row.frames.saturating_add(1);
+            }
+        }
+    }
+    /// Count a delivered tick that could not request new display work.
+    pub fn ignored_tick(&mut self) {
+        self.values.ignored_ticks = self.values.ignored_ticks.saturating_add(1);
+    }
+    /// Copy counters; no reset, queue drain or IO occurs.
+    pub fn snapshot(&self) -> WakeDiagnostics {
+        self.values
+    }
+}
+
+#[derive(Default)]
+struct WakeSourceProbe {
+    source: AtomicU64,
+    wakes: AtomicU64,
+    frame_drains: AtomicU64,
+    redraws: AtomicU64,
+    frames: AtomicU64,
+}
+
+#[derive(Default)]
+struct WakeProbe {
+    sources: [WakeSourceProbe; WAKE_SLOTS],
+    wake_events: AtomicU64,
+    empty_wakes: AtomicU64,
+    ignored_ticks: AtomicU64,
+    overflow: AtomicU64,
+    pending: AtomicU8,
+}
+impl WakeProbe {
+    fn record(&self, value: WakeDiagnostics) {
+        for (target, row) in self.sources.iter().zip(value.sources) {
+            target.source.store(row.source as u64, Ordering::Relaxed);
+            target.wakes.store(row.wakes, Ordering::Relaxed);
+            target
+                .frame_drains
+                .store(row.frame_drains, Ordering::Relaxed);
+            target.redraws.store(row.redraws, Ordering::Relaxed);
+            target.frames.store(row.frames, Ordering::Relaxed);
+        }
+        self.wake_events.store(value.wake_events, Ordering::Relaxed);
+        self.empty_wakes.store(value.empty_wakes, Ordering::Relaxed);
+        self.ignored_ticks
+            .store(value.ignored_ticks, Ordering::Relaxed);
+        self.overflow.store(value.overflow, Ordering::Relaxed);
+        self.pending.store(
+            u8::from(value.pending_redraw)
+                | (u8::from(value.pending_messages) << 1)
+                | (u8::from(value.pending_output) << 2),
+            Ordering::Relaxed,
+        );
+    }
+    fn snapshot(&self) -> WakeDiagnostics {
+        let pending = self.pending.load(Ordering::Relaxed);
+        WakeDiagnostics {
+            sources: std::array::from_fn(|i| {
+                let row = &self.sources[i];
+                WakeSourceCounts {
+                    source: row.source.load(Ordering::Relaxed) as usize,
+                    wakes: row.wakes.load(Ordering::Relaxed),
+                    frame_drains: row.frame_drains.load(Ordering::Relaxed),
+                    redraws: row.redraws.load(Ordering::Relaxed),
+                    frames: row.frames.load(Ordering::Relaxed),
+                }
+            }),
+            wake_events: self.wake_events.load(Ordering::Relaxed),
+            empty_wakes: self.empty_wakes.load(Ordering::Relaxed),
+            ignored_ticks: self.ignored_ticks.load(Ordering::Relaxed),
+            overflow: self.overflow.load(Ordering::Relaxed),
+            pending_redraw: pending & 1 != 0,
+            pending_messages: pending & 2 != 0,
+            pending_output: pending & 4 != 0,
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct Progress {
     phase: AtomicU8,
@@ -128,9 +318,11 @@ struct NativeSettleProbe {
     callbacks: AtomicU64,
     paused_frame: AtomicU64,
     completed_frame: AtomicU64,
+    wakes: WakeProbe,
+    observed_elapsed_ns: AtomicU64,
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Default, Clone, Copy, Serialize)]
 struct NativeSettleWitness {
     observed: bool,
     phase: u8,
@@ -142,9 +334,14 @@ struct NativeSettleWitness {
     callbacks: u64,
     paused_frame: Option<u64>,
     completed_frame: u64,
+    wakes: WakeDiagnostics,
+    observed_elapsed_ns: u64,
 }
 impl NativeSettleProbe {
     fn record(&self, witness: NativeSettleWitness) {
+        self.wakes.record(witness.wakes);
+        self.observed_elapsed_ns
+            .store(witness.observed_elapsed_ns, Ordering::Relaxed);
         self.frames.store(witness.frames, Ordering::Relaxed);
         self.callbacks.store(witness.callbacks, Ordering::Relaxed);
         self.paused_frame
@@ -174,6 +371,8 @@ impl NativeSettleProbe {
             callbacks: self.callbacks.load(Ordering::Relaxed),
             paused_frame: has_paused_frame.then(|| self.paused_frame.load(Ordering::Relaxed)),
             completed_frame: self.completed_frame.load(Ordering::Relaxed),
+            wakes: self.wakes.snapshot(),
+            observed_elapsed_ns: self.observed_elapsed_ns.load(Ordering::Relaxed),
         }
     }
 }
@@ -293,6 +492,8 @@ pub struct Native {
     paused_frame: Option<u64>,
     completed_frame: u64,
     probe_clipped: bool,
+    started: Instant,
+    settle_logged_phase: Option<u8>,
 }
 impl Native {
     pub fn start(
@@ -360,6 +561,8 @@ impl Native {
             paused_frame: None,
             completed_frame: 0,
             probe_clipped: false,
+            started: Instant::now(),
+            settle_logged_phase: None,
         }
     }
     pub fn cancel(&mut self) {
@@ -392,15 +595,25 @@ impl Native {
         pending: bool,
         hz: f64,
     ) -> Result<Option<Report>, String> {
+        // Headless has no native dirty-source producer or UI output queues.
+        self.poll_with_wakes(
+            frames,
+            callbacks,
+            WakeDiagnostics::default().with_pending(pending, false, false),
+            hz,
+        )
+    }
+    /// Native poll with bounded source attribution and separate pending flags.
+    pub fn poll_with_wakes(
+        &mut self,
+        frames: u64,
+        callbacks: u64,
+        wakes: WakeDiagnostics,
+        hz: f64,
+    ) -> Result<Option<Report>, String> {
         self.progress.poll_pending.store(false, Ordering::Release);
         self.hz = hz;
-        match self.result.try_recv() {
-            Ok(result) => return result.map(Some),
-            Err(oneshot::error::TryRecvError::Closed) => {
-                return Err("r5-worker-stopped-without-report".into());
-            }
-            Err(oneshot::error::TryRecvError::Empty) => {}
-        }
+        let pending = wakes.pending();
         let phase = self.progress.phase();
         if phase != self.phase {
             self.phase = phase;
@@ -424,7 +637,16 @@ impl Native {
             callbacks,
             paused_frame: self.paused_frame,
             completed_frame: self.completed_frame,
+            wakes,
+            observed_elapsed_ns: self.started.elapsed().as_nanos().min(u64::MAX as u128) as u64,
         });
+        match self.result.try_recv() {
+            Ok(result) => return result.map(Some),
+            Err(oneshot::error::TryRecvError::Closed) => {
+                return Err("r5-worker-stopped-without-report".into());
+            }
+            Err(oneshot::error::TryRecvError::Empty) => {}
+        }
         if phase == MEASURE && self.probe_started.is_none() && self.cpu.len() >= 8 {
             let id = 1;
             let admitted = Instant::now();
@@ -478,6 +700,19 @@ impl Native {
             }
         }
         Ok(None)
+    }
+    /// Memory-only formatting; the app sends this to its existing IO logger.
+    pub fn settle_line(&mut self, finishing: bool) -> Option<String> {
+        let witness = self.progress.native_settle.snapshot();
+        if !finishing && (witness.phase < SETTLE || self.settle_logged_phase == Some(witness.phase))
+        {
+            return None;
+        }
+        self.settle_logged_phase = Some(witness.phase);
+        Some(format!(
+            "R5 settle sources=0:messages,1:output,2:prepared,3:demo,4:display_tick,5:live_model,1024:direct {}",
+            serde_json::to_string(&witness).expect("numeric settle witness serializes")
+        ))
     }
     pub fn frame(
         &mut self,
@@ -607,6 +842,66 @@ pub fn headless(config: Config) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn wake_sources_and_pending_queues_survive_settle_serialization() {
+        let mut counters = WakeCounters::default();
+        counters.wake(&[4]);
+        counters.ignored_tick();
+        counters.wake(&[4, 5]);
+        counters.redraw(&[4, 5]);
+        counters.frame();
+        // A publication consumed by a frame can leave a later, empty Wake.
+        counters.drained(&[0]);
+        counters.frame();
+        counters.wake(&[]);
+        let wakes = counters.snapshot().with_pending(false, true, false);
+        let witness = NativeSettleWitness {
+            observed: true,
+            phase: SETTLE,
+            pending: wakes.pending(),
+            has_paused_frame: true,
+            frames: 12,
+            callbacks: 13,
+            paused_frame: Some(12),
+            completed_frame: 11,
+            observed_elapsed_ns: 1_000_000,
+            wakes,
+            ..Default::default()
+        };
+        let probe = NativeSettleProbe::default();
+        probe.record(witness);
+        let json = serde_json::to_value(probe.snapshot()).unwrap();
+        assert_eq!(json["frames"], 12);
+        assert_eq!(json["callbacks"], 13);
+        assert_eq!(json["completed_frame"], 11);
+        assert_eq!(json["observed_elapsed_ns"], 1_000_000);
+        assert_eq!(json["wakes"]["wake_events"], 3);
+        assert_eq!(json["wakes"]["empty_wakes"], 1);
+        assert_eq!(json["wakes"]["ignored_ticks"], 1);
+        assert_eq!(json["wakes"]["pending_redraw"], false);
+        assert_eq!(json["wakes"]["pending_messages"], true);
+        assert_eq!(json["wakes"]["pending_output"], false);
+        let sources = json["wakes"]["sources"].as_array().unwrap();
+        assert_eq!(sources.len(), 3);
+        let tick = sources.iter().find(|row| row["source"] == 4).unwrap();
+        assert_eq!(tick["wakes"], 2);
+        assert_eq!(tick["redraws"], 1);
+        assert_eq!(tick["frames"], 1);
+        let messages = sources.iter().find(|row| row["source"] == 0).unwrap();
+        assert_eq!(messages["frame_drains"], 1);
+        assert_eq!(messages["wakes"], 0);
+        assert_eq!(messages["frames"], 1);
+    }
+
+    #[test]
+    fn extra_wake_sources_are_bounded_and_overflow_is_named() {
+        let mut counters = WakeCounters::default();
+        counters.wake(&(0..WAKE_SLOTS + 3).collect::<Vec<_>>());
+        let json = serde_json::to_value(counters.snapshot()).unwrap();
+        assert_eq!(json["sources"].as_array().unwrap().len(), WAKE_SLOTS);
+        assert_eq!(json["overflow"], 3);
+    }
 
     #[test]
     fn lower_row_echo_does_not_acknowledge_a_probe_or_bypass_the_clip() {
