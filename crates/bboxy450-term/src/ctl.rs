@@ -36,6 +36,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   ui focus <seat>                        select its pane through the GUI owner
   ui scroll <seat> <top|bottom|page-up|page-down|row N>   zero-based GUI history
   ui layout                              solved window tree, pane grids, focus and tab
+  ui clock freeze|advance <ms>|resume     test-account animation time, acknowledged by its frame
   seat ls
   seat spawn <claude|codex|zsh> [--place right|down|tab|space] [--role oracle|architect|creativity|executor|shell]
              [--name NAME] [--cwd DIR] [--swarm ID]
@@ -351,6 +352,7 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("ui", "focus", "Ui"),
     ("ui", "scroll", "Ui"),
     ("ui", "layout", "Ui"),
+    ("ui", "clock", "Ui"),
     ("identity", "status", "Identity"),
     ("identity", "unlock", "Identity"),
     ("ui", "notification-click", "Ui"),
@@ -510,6 +512,19 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
     let flag = |name: &str| flags.get(name).cloned();
     let swarm = flag("swarm").as_ref().map(ulid).transpose()?;
     let command = match words.iter().map(String::as_str).collect::<Vec<_>>()[..] {
+        ["ui", "clock", "freeze"] => Command::Ui(bbt_proto::gui::UiRequest::Clock(
+            bbt_proto::gui::UiClockCommand::Freeze,
+        )),
+        ["ui", "clock", "advance", ms] => Command::Ui(bbt_proto::gui::UiRequest::Clock(
+            bbt_proto::gui::UiClockCommand::Advance {
+                ms: ms.parse::<u64>().map_err(|_| {
+                    format!("{USAGE_PREFIX}ui clock advance requires unsigned integer milliseconds")
+                })?,
+            },
+        )),
+        ["ui", "clock", "resume"] => Command::Ui(bbt_proto::gui::UiRequest::Clock(
+            bbt_proto::gui::UiClockCommand::Resume,
+        )),
         ["ui", "layout"] => Command::Ui(bbt_proto::gui::UiRequest::Layout),
         ["ui", "focus", seat] => Command::UiFocus(seat.into()),
         ["ui", "scroll", seat, motion] => Command::UiScroll {
@@ -2834,6 +2849,7 @@ mod tests {
             "ui focus s",
             "ui scroll s top",
             "ui layout",
+            "ui clock freeze",
             "identity status",
             "identity unlock",
             "ui notification-click s",
@@ -2995,6 +3011,29 @@ mod tests {
         assert!(
             matches!(parse_full(&args("ui key cmd-t esc")).unwrap().command, Command::Ui(bbt_proto::gui::UiRequest::Key(keys)) if keys == ["cmd-t", "esc"])
         );
+    }
+
+    #[test]
+    fn ui_clock_commands_use_the_existing_relay_and_reject_non_integer_advances() {
+        use bbt_proto::gui::{UiClockCommand, UiRequest};
+        for (line, expected) in [
+            ("ui clock freeze", UiClockCommand::Freeze),
+            ("ui clock advance 450", UiClockCommand::Advance { ms: 450 }),
+            ("ui clock resume", UiClockCommand::Resume),
+        ] {
+            assert!(
+                matches!(parse_full(&args(line)).unwrap().command, Command::Ui(UiRequest::Clock(actual)) if actual == expected)
+            );
+        }
+        for line in [
+            "ui clock advance -1",
+            "ui clock advance 1.5",
+            "ui clock advance 18446744073709551616",
+            "ui clock advance",
+            "ui clock stop",
+        ] {
+            assert!(parse_full(&args(line)).is_err(), "{line}");
+        }
     }
     #[test]
     fn errors_name_a_kind_a_hint_and_an_exit() {

@@ -1,0 +1,37 @@
+EXECUTOR HANDOFF — deterministic UI clock + R1/R3/R5 scripts, final main union
+Source 4f6938023fe1c6f088c246a5e227e4868071a372; branch velvet-rim-scripts; exec6.
+Base 0eeabc95ac831aa04328b04c70a057a09b0d8f23 (accepted placement/R6 + Settings Plugins/Knowledge).
+Oracle913e1988 and f8a30f70 authorized this union and quick checks; no second full gate requested.
+Signed implementation3dbe0859, original-gate evidence4569a87e, scripts4f693802. This successor is evidence only.
+
+Mechanism, current file:line:
+crates/bboxy450-term/src/animation_clock.rs:46/69 — one App timeline; frozen now/advance avoid wall-clock reads, range checked, resume continuous. Real deadlines/metrics remain real time.
+crates/bbt-proto/src/gui.rs:109/269 and crates/bboxy450-term/src/ctl.rs — existing UiRequest::Clock freeze/advance/resume, produced-frame clock state and frame_seq.
+crates/bbt-mux/src/logic.rs:4334; crates/bboxy450-term/src/main.rs:4333 — chain-verified test-account admission plus independently validated owner fence. Forged --as refuses.
+crates/bboxy450-term/src/main.rs:2964/4505; crates/bboxy450-term/src/scene.rs:440; same crate headless.rs/gpu.rs/display_link.rs — logical landing shared by both drivers, one latched time for scene and GPU layers, produced-frame revision fence, frozen pacing disabled. Rook's lazy scene projection is preserved.
+scripts/e2e/rim_clock.py:420 — R1 checks both wave lengths/directions, focus gain, owner colours, clipping/content identity and real four-state pulse/breath behaviour against canonical kit inputs.
+scripts/e2e/rim_clock.py:187 — R3 frozen-byte identity, documented450ms outer swell/41px reach,900ms settle and no terminal-content change.
+scripts/e2e/rim_clock.py:223 — R5 two real waiting episodes, repeated amber pane AND isolated sidebar-row halos, unchanged focus/layout, focus handles one episode and harness clear stops the other.
+scripts/e2e/R{1,3,5}.sh and .bboxy/specs/e2e-script-map.md — one standard runner path; full coverage for exactly these promises.
+No renderer, shader, token, style, pass or settle-predicate change.
+
+Rebase unions kept accepted UiRequest Spawn and NotificationClick beside Clock; UiLayout layout_revision/spawned/clock fields all remain. App apply_ui keeps Option<UiSpawnCapture> and existing recording/status/install/click methods. Legacy layout compatibility asserts absent clock only, allowing accepted layout_revision serialization. Settings base rebased cleanly; no Settings edit.
+
+Actual verification on exact4f693802, CARGO_BUILD_JOBS=2, RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER=:
+cargo test --locked -p bbt-proto -p bbt-mux -p bboxy450-term -- --test-threads=2 — EXIT0;687 passed,0failed,20ignored;928.152s.
+cargo clippy --locked --all-targets -p bbt-proto -p bbt-mux -p bboxy450-term -- -D warnings — EXIT0;68.411s.
+sh scripts/invariants.sh — EXIT0;25checks,0failures,9slow skipped;316.008s.
+Fresh final-source saved binary SHA2565b51964b1f326b7969247250aeb420709415067fb69392366ec639fe0804463d; one headless FILE-account rendered proof EXIT0. Frozen PNG hashes identical; origin frame75/time1144 -> peak frame81/time1594 (+450); actual outer-gap1248changed pixels, same pane/grid; resume frame85/live1594 -> frame88/live1653. Capture frames76/79/82/86 are fresh offscreen completions. Peak image read. Five recorded own processes gone, psEXIT1/no rows; private account retired.
+Installed e2e night --group 'rim, swell and attention' on the SAME final binary and source: R1/R3/R5 actual scriptEXIT0/full; accepted R6 EXIT0/partial and tracked. All6 records written. R2/R4 untested; actual whole group EXIT1/red, NOT a green night. Wrapper verifies that honest outcome and all5 FILE-account headless appPIDs gone (psEXIT1); runtime root removed.
+Original full clean ci-local --parity remains attributed to aad79a7a: EXIT0,2240cases,2136/2136geometry,0unproven/mismatches,72advisories,0new/removed keys. Committed original logs, manifest and gallery retained. No full-gate claim for the union.
+
+Counterexamples retained: pre-fix headless landing binary fails R3 at missing450ms outer swell; the positive script passes. First pulse probe guessed a seat-derived phase, corrected to fit the implementation-selected phase, no renderer edit. First prototype's too-long AF_UNIX temp path failed setup, corrected to a short private /tmp root. These failures were not accepted as passes. Superseded75297811 union compile stopped only after the Oracle requested0ee rebase: actual-2/SIGINT,681.408s, no test verdict; own recorded CargoPID only, psEXIT1 afterward.
+Cleanup: retired own ui-clock-dev cache2903302144 allocated bytes (7430files); saved final binary and clock/gallery proofs retained. Original gate cache5516877824bytes was already retired. Peer files untouched. No full gate held.
+
+Retained paths in exec6:
+target/ui-clock-proof/union-0ee-* (commands/raw logs/status), union-4f693802-cleanup.json, saved final binary.
+target/uc-722cafb186 (final images/layout/commands/hashes/reap).
+target/rim-night-prototype-b3ae300f (actual night log/records/status).
+target/ui-clock-parity-aad79a7abffb-1 (original exact gate gallery/report/manifests).
+Detailed hashes, exits and source inputs: ui-clock-union-verdict-4f693802.json. Raw quick outputs and actual night JSON lines are committed beside this record.
+Not checked: R2/R4 and OS desktop notification presentation; those are outside this brief. No operator interaction, login Keychain, new pool/reader, style compensation, merge or main push.

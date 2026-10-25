@@ -105,6 +105,22 @@ pub enum UiRequest {
         seat: Ulid,
     },
     Layout,
+    /// Deterministic animation time, admitted only for a verified test account.
+    Clock(UiClockCommand),
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "snake_case")]
+pub enum UiClockCommand {
+    Freeze,
+    Advance { ms: u64 },
+    Resume,
+}
+/// The animation clock sampled for this produced frame, not a wall timestamp.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiClockState {
+    pub frozen: bool,
+    pub time_ms: u64,
+    pub revision: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -248,6 +264,9 @@ pub struct UiLayout {
     /// The tree revision encoded in this frame; absent on older hosts.
     #[serde(default)]
     pub layout_revision: Option<u64>,
+    /// Absent on an older owner. A retained reply keeps its original frame clock.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub clock: Option<UiClockState>,
     pub size: [f32; 2],
     pub swarm: Option<Ulid>,
     pub tab: Option<Ulid>,

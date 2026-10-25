@@ -4560,6 +4560,16 @@ impl Worker {
         origin: crate::mcp::Origin,
     ) -> Result<UiAdmission> {
         request.validate().map_err(invalid)?;
+        if matches!(&request, bbt_proto::gui::UiRequest::Clock(_))
+            && !self
+                .identity
+                .issued_by()
+                .is_some_and(|label| label.starts_with("test-account:"))
+        {
+            return Err(invalid(
+                "test_account_required: UI clock control requires a verified test account",
+            ));
+        }
         let origin = self.identity.bind_origin(origin);
         let device_id = self.operator_device_for_effect()?;
         let principal = crate::mcp::Principal::Operator {

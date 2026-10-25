@@ -377,6 +377,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 if dirty && submitted == rendered {
                     app.project_scene(true);
                     let layouts = app.solve_ui(size)?;
+                    app.focus_layout_ready();
                     let (next, changed) = crate::pane_controls(
                         &model,
                         &app.pane_bounds,
@@ -427,6 +428,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         &model,
                         &app.pane_bounds,
                         submitted,
+                        app.clock_frame.time_ms,
                         completed.clone(),
                         move || {
                             callbacks.fetch_add(1, Ordering::Relaxed);

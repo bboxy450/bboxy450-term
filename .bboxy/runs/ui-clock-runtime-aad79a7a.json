@@ -1,0 +1,210 @@
+{
+  "source": "aad79a7abffb7bc00d6c1c92732d8e8dba179328",
+  "binary": {
+    "path": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-proof/bboxy450-term-ci-aad79a7abffb-1",
+    "sha256": "85143a2a6f4f15b97c598f7886c4d380b886f4758982765c474e0c7b5a99635d",
+    "gate_exit": 0
+  },
+  "actual_exit": 0,
+  "private_account_retired": true,
+  "run": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-c80f2beaa9",
+  "frames": {
+    "origin": {
+      "frame_seq": 50,
+      "clock": {
+        "frozen": true,
+        "revision": 3,
+        "time_ms": 1173
+      },
+      "panes": [
+        {
+          "cols": 159,
+          "focused": true,
+          "rect": [
+            311.0,
+            71.0,
+            1278.0,
+            818.0
+          ],
+          "rows": 54,
+          "scroll": {
+            "live": true,
+            "top_row": null
+          },
+          "seat": "01M5SK4TB49PY9HAGC9BP3TYZV"
+        }
+      ]
+    },
+    "peak": {
+      "frame_seq": 54,
+      "clock": {
+        "frozen": true,
+        "revision": 4,
+        "time_ms": 1623
+      },
+      "panes": [
+        {
+          "cols": 159,
+          "focused": true,
+          "rect": [
+            311.0,
+            71.0,
+            1278.0,
+            818.0
+          ],
+          "rows": 54,
+          "scroll": {
+            "live": true,
+            "top_row": null
+          },
+          "seat": "01M5SK4TB49PY9HAGC9BP3TYZV"
+        }
+      ]
+    },
+    "resumed": {
+      "frame_seq": 58,
+      "clock": {
+        "frozen": false,
+        "revision": 5,
+        "time_ms": 1623
+      },
+      "panes": [
+        {
+          "cols": 159,
+          "focused": true,
+          "rect": [
+            311.0,
+            71.0,
+            1278.0,
+            818.0
+          ],
+          "rows": 54,
+          "scroll": {
+            "live": true,
+            "top_row": null
+          },
+          "seat": "01M5SK4TB49PY9HAGC9BP3TYZV"
+        }
+      ]
+    },
+    "live": {
+      "frame_seq": 60,
+      "clock": {
+        "frozen": false,
+        "revision": 5,
+        "time_ms": 1671
+      },
+      "panes": [
+        {
+          "cols": 159,
+          "focused": true,
+          "rect": [
+            311.0,
+            71.0,
+            1278.0,
+            818.0
+          ],
+          "rows": 54,
+          "scroll": {
+            "live": true,
+            "top_row": null
+          },
+          "seat": "01M5SK4TB49PY9HAGC9BP3TYZV"
+        }
+      ]
+    }
+  },
+  "halo": {
+    "roi": [
+      270,
+      437,
+      294,
+      489
+    ],
+    "changed": 1248,
+    "requirement": "450 ms swell paints beyond the 2 px resting outer rim, in the empty sidebar gap"
+  },
+  "owned_reap": {
+    "recorded_pids": [
+      97614,
+      97618,
+      97630,
+      97652,
+      97668
+    ],
+    "remaining": [],
+    "ps_exit": 1
+  },
+  "files": [
+    {
+      "path": "app.log",
+      "bytes": 5728,
+      "sha256": "0f9d8201cdf3b900d5a85cdf8e958aa193fb918f917339d17df6f3648685b539"
+    },
+    {
+      "path": "commands.json",
+      "bytes": 1479027,
+      "sha256": "d91da82590cf1bc56218e321f90945e241335893a4a26f13c3998f4a6a772d50"
+    },
+    {
+      "path": "frames.json",
+      "bytes": 981723,
+      "sha256": "87a601f1e192445519388f9f39f6a4c79c823816790fdee4a227f21489fe1893"
+    },
+    {
+      "path": "frozen-a.png",
+      "bytes": 99348,
+      "sha256": "c351f909ce4da1b3c01dc2e6c5413701b729e3bd0f1c6014969dcd03f3d9cab0"
+    },
+    {
+      "path": "frozen-b.png",
+      "bytes": 99348,
+      "sha256": "c351f909ce4da1b3c01dc2e6c5413701b729e3bd0f1c6014969dcd03f3d9cab0"
+    },
+    {
+      "path": "halo-verdict.json",
+      "bytes": 172,
+      "sha256": "103b12158302064ffd8e6f77d850bb730a9f09b87ae0bf8055948bfa04cb423b"
+    },
+    {
+      "path": "live.png",
+      "bytes": 146392,
+      "sha256": "9281691a02ecbf7a833d842ee0bca91543a5b513c13fce9dd60a9d8bbca5ee74"
+    },
+    {
+      "path": "owned-app.json",
+      "bytes": 96,
+      "sha256": "2fabf77c15a131678b79eda4666ae7b8d2ff30d5bb8f6c6806908efe26b6d829"
+    },
+    {
+      "path": "owned-pids.json",
+      "bytes": 35,
+      "sha256": "a6993344e8ee548ffde73fbb424c54d194e3e8e695f8755f0ff6549a94ddbbde"
+    },
+    {
+      "path": "owned-reap.json",
+      "bytes": 85,
+      "sha256": "0e9eff36c06836f6172318964e5f1916f703e5c0e9cbdb6ca4fbf48b09f7dd22"
+    },
+    {
+      "path": "peak-450.png",
+      "bytes": 147344,
+      "sha256": "c7686bd0c03a6677e956a6e2519396593233d3de4fc0decd71c121656ede743f"
+    },
+    {
+      "path": "phase-frames.json",
+      "bytes": 346604,
+      "sha256": "748617bf783b08eb38491cbd4f26dc8e49cce7b57aa608dee1c086929766b01b"
+    },
+    {
+      "path": "repository/.bboxy/log/2026-10-25.jsonl",
+      "bytes": 2933,
+      "sha256": "9cd18e7e7932d0f4db6b59e64d8cc16456501f96dd8e003da3bc8a385f3e38a4"
+    },
+    {
+      "path": "status.json",
+      "bytes": 387,
+      "sha256": "fe0333a8e533daad0792157ae56260b5332ded777ba2ac416f3fc632ade75dde"
+    }
+  ]
+}

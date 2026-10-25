@@ -21,7 +21,6 @@ use winit::platform::macos::MonitorHandleExtMacOS;
 
 pub type Drawable = Retained<ProtocolObject<dyn CAMetalDrawable>>;
 pub struct Tick {
-    pub target: f64,
     pub drawable: Option<Drawable>,
 }
 
@@ -70,28 +69,6 @@ impl Mode {
     }
 }
 
-#[derive(Default)]
-pub struct Clock {
-    epoch: Option<f64>,
-    elapsed: f64,
-    last: Option<f64>,
-}
-impl Clock {
-    pub fn observe(&mut self, target: f64) -> Option<f32> {
-        if !target.is_finite() || target <= 0. || self.last.is_some_and(|last| target < last) {
-            return None;
-        }
-        let epoch = *self.epoch.get_or_insert(target - self.elapsed / 1000.);
-        self.elapsed = (target - epoch) * 1000.;
-        self.last = Some(target);
-        Some(self.elapsed as f32)
-    }
-    pub fn pause(&mut self) {
-        self.epoch = None;
-        self.last = None;
-    }
-}
-
 struct MetalState {
     pending: RefCell<Option<Tick>>,
     callbacks: Cell<u64>,
@@ -111,7 +88,6 @@ define_class!(
             let state = self.ivars();
             state.callbacks.set(state.callbacks.get() + 1);
             state.pending.replace(Some(Tick {
-                target: update.targetTimestamp(),
                 drawable: Some(update.drawable()),
             }));
             state.dirty.mark();
@@ -350,10 +326,7 @@ impl DisplayLink {
         match &self.backend {
             Backend::Fifo => None,
             Backend::Metal { delegate, .. } => delegate.ivars().pending.borrow_mut().take(),
-            Backend::Cv { context, .. } => context.ticks.take().map(|target| Tick {
-                target,
-                drawable: None,
-            }),
+            Backend::Cv { context, .. } => context.ticks.take().map(|_| Tick { drawable: None }),
         }
     }
     pub fn set_active(&self, active: bool) -> Result<(), String> {
@@ -441,17 +414,6 @@ mod tests {
             wake_action(&[0, 1, TICK_SOURCE, 5], true),
             WakeAction::Invalidate
         );
-    }
-    #[test]
-    fn clock_uses_target_time_and_excludes_paused_time() {
-        let mut clock = Clock::default();
-        assert_eq!(clock.observe(100.), Some(0.));
-        assert!((clock.observe(100.016).unwrap() - 16.).abs() < 0.001);
-        assert!(clock.observe(99.).is_none());
-        assert!(clock.observe(f64::NAN).is_none());
-        clock.pause();
-        assert!((clock.observe(200.).unwrap() - 16.).abs() < 0.001);
-        assert!((clock.observe(200.032).unwrap() - 48.).abs() < 0.001);
     }
     #[test]
     fn core_video_timestamp_matches_sdk_abi() {
