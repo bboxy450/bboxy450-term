@@ -48,6 +48,8 @@ pub struct GuiRequest {
 pub enum AppRequest {
     /// Read the GUI owner's actual readiness, without any capability material.
     Status,
+    /// Read the explicitly selected test notification backend, never the OS.
+    Notifications,
     /// Acknowledge the request before beginning orderly app shutdown.
     Stop,
     /// Resize the window (offscreen or real) to this grid of terminal cells; its layout then
@@ -71,6 +73,8 @@ pub struct AppStatus {
     /// Bounded readback of the retained close/grace UI, absent on older hosts.
     #[serde(default)]
     pub close: serde_json::Value,
+    #[serde(default, skip_serializing_if = "serde_json::Value::is_null")]
+    pub notifications: serde_json::Value,
 }
 /// The completed frame which acknowledged a focus command.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -87,14 +91,67 @@ pub struct FocusFrame {
 pub enum UiRequest {
     Open(UiTarget),
     Key(Vec<String>),
-    Focus { seat: Ulid },
-    Scroll { seat: Ulid, motion: UiScroll },
+    Focus {
+        seat: Ulid,
+    },
+    Scroll {
+        seat: Ulid,
+        motion: UiScroll,
+    },
+    /// Capture a placement in the GUI owner before any seat is launched.
+    Spawn(Box<UiSpawn>),
+    /// Debug recording backend only; invokes its real response callback.
+    NotificationClick {
+        seat: Ulid,
+    },
     Layout,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SpawnPlace {
+    Right,
+    Down,
+    Tab,
+    Space,
+}
+
+/// Operator inputs only; the GUI supplies the actual tab/anchor/generation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiSpawn {
+    pub harness: String,
+    pub name: Option<String>,
+    pub role: Option<String>,
+    pub cwd: String,
+    pub swarm: Option<Ulid>,
+    pub place: SpawnPlace,
+}
+
+/// The captured target of a spawn whose pane the reply's frame contains.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiSpawned {
+    pub seat: Ulid,
+    pub op: Ulid,
+    pub swarm: Ulid,
+    pub placement: crate::seat_state::Placement,
+    pub layout_revision: u64,
+    pub applied_layout_revision: u64,
 }
 impl UiRequest {
     /// Transport bounds; the window decides whether each chrome key is applicable.
     pub fn validate(&self) -> Result<(), &'static str> {
         match self {
+            Self::Spawn(pick)
+                if pick.harness.is_empty()
+                    || pick.harness.len() > 256
+                    || pick.cwd.is_empty()
+                    || pick.cwd.len() > 4096
+                    || pick.name.as_ref().is_some_and(|name| name.len() > 1024)
+                    || pick.role.as_ref().is_some_and(|role| role.len() > 128)
+                    || pick.swarm == Some(Ulid::nil()) =>
+            {
+                Err("invalid_ui_spawn: invalid launch inputs")
+            }
             Self::Open(UiTarget::Docs(path))
                 if path.is_empty() || path.len() > 4096 || path.chars().any(char::is_control) =>
             {
@@ -106,7 +163,7 @@ impl UiRequest {
             Self::Key(keys) if keys.iter().any(|key| !UI_KEYS.contains(&key.as_str())) => {
                 Err("invalid_ui_key: unsupported chrome key; use seat key for PTY input")
             }
-            Self::Focus { seat } if *seat == Ulid::nil() => {
+            Self::Focus { seat } | Self::NotificationClick { seat } if *seat == Ulid::nil() => {
                 Err("invalid_ui_focus: expected a seat ID")
             }
             Self::Scroll { seat, .. } if *seat == Ulid::nil() => {
@@ -188,6 +245,9 @@ pub enum UiTarget {
 pub struct UiLayout {
     /// The window composition this solved layout describes (not a bus cursor).
     pub frame_seq: u64,
+    /// The tree revision encoded in this frame; absent on older hosts.
+    #[serde(default)]
+    pub layout_revision: Option<u64>,
     pub size: [f32; 2],
     pub swarm: Option<Ulid>,
     pub tab: Option<Ulid>,
@@ -197,6 +257,8 @@ pub struct UiLayout {
     pub document: Option<String>,
     pub panes: Vec<UiPane>,
     pub tree: Vec<UiLayoutNode>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spawned: Option<UiSpawned>,
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UiPane {
@@ -860,5 +922,36 @@ mod ui_tests {
         ] {
             assert!(request.validate().is_err());
         }
+    }
+}
+
+#[cfg(test)]
+mod spawn_pick_tests {
+    use super::*;
+    #[test]
+    fn spawn_pick_wire_is_bounded_and_old_layouts_keep_revision_unknown() {
+        let pick = UiSpawn {
+            harness: "zsh".into(),
+            name: None,
+            role: None,
+            cwd: "/fixture".into(),
+            swarm: None,
+            place: SpawnPlace::Right,
+        };
+        let request = UiRequest::Spawn(Box::new(pick.clone()));
+        request.validate().unwrap();
+        assert_eq!(
+            serde_json::from_value::<UiRequest>(serde_json::to_value(&request).unwrap()).unwrap(),
+            request
+        );
+        let mut oversized = pick.clone();
+        oversized.cwd = "x".repeat(4097);
+        assert!(UiRequest::Spawn(Box::new(oversized)).validate().is_err());
+        let mut invalid = pick;
+        invalid.swarm = Some(Ulid::nil());
+        assert!(UiRequest::Spawn(Box::new(invalid)).validate().is_err());
+        let old:UiLayout=serde_json::from_value(serde_json::json!({"frame_seq":4,"size":[100,100],"swarm":null,"tab":null,"focused":null,"launcher_open":false,"page":null,"document":null,"panes":[],"tree":[]})).unwrap();
+        assert_eq!(old.layout_revision, None);
+        assert_eq!(old.spawned, None);
     }
 }

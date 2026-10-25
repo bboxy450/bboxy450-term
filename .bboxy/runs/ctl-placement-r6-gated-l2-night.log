@@ -1,0 +1,9 @@
+{"coverage":null,"evidence":"no script at /Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/scripts/L1.sh","exit":null,"function":"L1","group":"launcher and placement","kind":"e2e","missing":[],"verdict":"untested"}
+{"coverage":"partial","evidence":"L2: tab/right/down/new swarm space, captured anchor/generation, sibling rectangles, produced frames and same-op replay held; pending-focus race remains partial","exit":0,"function":"L2","group":"launcher and placement","kind":"e2e","missing":["never a guessed slot"],"verdict":"pass"}
+{"coverage":null,"evidence":"no script at /Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/scripts/L3.sh","exit":null,"function":"L3","group":"launcher and placement","kind":"e2e","missing":[],"verdict":"untested"}
+{"coverage":null,"evidence":"no script at /Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/scripts/L4.sh","exit":null,"function":"L4","group":"launcher and placement","kind":"e2e","missing":[],"verdict":"untested"}
+{"function":"L1","kind":"record","number":1,"path":"e2e/L1.md","tracked_by":null}
+{"function":"L2","kind":"record","number":3,"path":"e2e/L2.md","tracked_by":"01M5SKECG3ZXYW02XF4QKV5GR5"}
+{"function":"L3","kind":"record","number":4,"path":"e2e/L3.md","tracked_by":null}
+{"function":"L4","kind":"record","number":5,"path":"e2e/L4.md","tracked_by":null}
+{"group":"launcher and placement","kind":"summary","partial":["L2"],"passed":1,"red":["L1","L3","L4"],"state":"red","total":4,"tracked":["L2"],"unwritten":[]}

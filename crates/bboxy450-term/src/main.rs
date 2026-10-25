@@ -223,7 +223,38 @@ fn app_status(
         frame_seq,
         windows,
         close: bboxy450_term::close::status(model, Instant::now()),
+        notifications: serde_json::Value::Null,
     }
+}
+
+/// Recording can never select the operator's native notification account.
+fn notification_recording(args: &[String]) -> Result<bool, String> {
+    let mut selected = false;
+    for (index, arg) in args.iter().enumerate() {
+        let mode = if arg == "--notifications" {
+            Some(
+                args.get(index + 1)
+                    .map(String::as_str)
+                    .ok_or("--notifications needs record")?,
+            )
+        } else {
+            arg.strip_prefix("--notifications=")
+        };
+        let Some(mode) = mode else { continue };
+        if selected || mode != "record" {
+            return Err("--notifications supports one explicit record selector".into());
+        }
+        selected = true;
+    }
+    if selected
+        && (!cfg!(debug_assertions)
+            || bboxy450_term::cockpit::Config::test_account_from_args(args)
+                .map_err(|e| e.to_string())?
+                .is_none())
+    {
+        return Err("notification recording requires a debug build and --test-account DIR".into());
+    }
+    Ok(selected)
 }
 
 /// Both GUI owners derive close requests from the same retained scene.
@@ -491,7 +522,9 @@ impl UiEffect {
         model: Option<&bboxy450_term::model::Model>,
     ) -> Option<Self> {
         match message {
-            live::UiMsg::Spawn { id, .. } => Some(Self::Spawn(*id)),
+            live::UiMsg::Spawn { id, .. } | live::UiMsg::SpawnSpec { id, .. } => {
+                Some(Self::Spawn(*id))
+            }
             live::UiMsg::Messaging {
                 request: bbt_proto::messaging::Request::Mute { seat, muted },
                 ..
@@ -523,7 +556,13 @@ struct UiWait {
     after: Option<u64>,
     visible: Option<UiVisible>,
     effects: Vec<UiEffect>,
+    spawn: Option<UiSpawnCapture>,
     timer: tokio::task::AbortHandle,
+}
+struct UiSpawnCapture {
+    op: bbt_mux::Ulid,
+    captured: bboxy450_term::launcher::CapturedSpawn,
+    seat: Option<SeatId>,
 }
 impl Drop for UiWait {
     fn drop(&mut self) {
@@ -1490,6 +1529,9 @@ struct App {
     notifications: Option<bboxy450_term::notifications::Worker>,
     frontmost: bool,
     pending_notification: Option<(SeatId, Instant)>,
+    notification_ui: Option<bboxy450_term::focus_ack::Ask>,
+    #[cfg(debug_assertions)]
+    notification_recorder: Option<bboxy450_term::notifications::recording::Recorder>,
     spawn_results_seen: BTreeMap<bbt_mux::Ulid, bboxy450_term::model::SpawnOutcome>,
     launcher: Option<LauncherController>,
     launcher_layout: Option<scene::LauncherLayout>,
@@ -1620,6 +1662,9 @@ impl App {
             notifications: None,
             frontmost: false,
             pending_notification: None,
+            notification_ui: None,
+            #[cfg(debug_assertions)]
+            notification_recorder: None,
             spawn_results_seen: BTreeMap::new(),
             launcher: args
                 .iter()
@@ -2786,6 +2831,99 @@ impl App {
             self.queue(action);
         }
     }
+    fn recording_active(&self) -> bool {
+        #[cfg(debug_assertions)]
+        {
+            self.notification_recorder.is_some()
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            false
+        }
+    }
+    fn recording_status(&self) -> serde_json::Value {
+        #[cfg(debug_assertions)]
+        if let Some(recorder) = &self.notification_recorder {
+            // Read the completion fence before the recording; a settled
+            // snapshot therefore includes every effect of that plan.
+            let (submitted, processed) = self
+                .notifications
+                .as_ref()
+                .map_or((0, 0), |worker| worker.progress());
+            return match recorder.snapshot() {
+                Ok(mut state) => {
+                    state["available"] = serde_json::json!(true);
+                    state["plan_revision"] = serde_json::json!(submitted);
+                    state["processed_revision"] = serde_json::json!(processed);
+                    state["settled"] = serde_json::json!(submitted == processed);
+                    state["waiting"]=serde_json::json!(self.live_state.as_ref().map(|model|model.attention.iter().take(64).map(|(seat,attention)|serde_json::json!({"seat":bbt_mux::Ulid(seat.0.0),"muted":attention.muted})).collect::<Vec<_>>()).unwrap_or_default());
+                    state["focused"] = serde_json::json!(
+                        self.focus
+                            .stage
+                            .as_ref()
+                            .and_then(|stage| stage.focused)
+                            .map(|seat| bbt_mux::Ulid(seat.0.0))
+                    );
+                    bbt_mux::debug::sanitize(state)
+                }
+                Err(reason) => {
+                    serde_json::json!({"backend":"recording","available":false,"reason":reason,"os_presentation":false})
+                }
+            };
+        }
+        serde_json::json!({"backend":"not_recording","available":false,
+            "reason":"start a debug app with --test-account DIR --notifications record"})
+    }
+    fn install_recording(&mut self) -> Result<(), String> {
+        #[cfg(debug_assertions)]
+        {
+            let proxy = self.proxy.clone();
+            let recorder =
+                bboxy450_term::notifications::recording::Recorder::new(Arc::new(move |response| {
+                    let _ = proxy.send_event(UiEvent::Notification(response));
+                }));
+            let proxy = self.proxy.clone();
+            self.notifications = Some(
+                bboxy450_term::notifications::Worker::start(
+                    Box::new(recorder.clone()),
+                    Arc::new(move |event| {
+                        let _ = proxy.send_event(match event {
+                            bboxy450_term::notifications::Event::Ready => {
+                                UiEvent::NotificationReady
+                            }
+                            bboxy450_term::notifications::Event::Error(reason) => {
+                                UiEvent::NotificationError(reason)
+                            }
+                        });
+                    }),
+                )
+                .map_err(|e| e.to_string())?,
+            );
+            self.notification_recorder = Some(recorder);
+            Ok(())
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            Err("notification recording needs debug assertions".into())
+        }
+    }
+    fn recording_click(&self, seat: bbt_mux::Ulid) -> Result<(), String> {
+        #[cfg(debug_assertions)]
+        {
+            self.notification_recorder
+                .as_ref()
+                .ok_or("notification recording is not selected")?
+                .activate(&bboxy450_desktop_notifications::NotificationId(
+                    seat.to_string(),
+                ))
+                .map_err(String::from)
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            let _ = seat;
+            Err("notification recording needs debug assertions".into())
+        }
+    }
     fn sync_notifications(&mut self) {
         let policy = self.preferences.notification_policy();
         if let (Some(worker), Some(model)) = (&mut self.notifications, &self.live_state) {
@@ -2802,6 +2940,20 @@ impl App {
     fn notification_clicked(&mut self, id: bboxy450_desktop_notifications::NotificationId) {
         match id.0.parse::<bbt_mux::Ulid>() {
             Ok(id) => {
+                if self.recording_active() {
+                    if self
+                        .notification_ui
+                        .as_ref()
+                        .is_some_and(|ask| ask.seat == SeatId::from_u128(id.0))
+                    {
+                        let ask = self
+                            .notification_ui
+                            .take()
+                            .expect("matching recording click");
+                        self.begin_focus(ask);
+                    }
+                    return;
+                }
                 self.pending_notification = Some((SeatId::from_u128(id.0), Instant::now()));
                 self.apply_notification_click();
             }
@@ -2819,7 +2971,7 @@ impl App {
             at,
             Instant::now(),
             self.live_state.as_deref(),
-            self.window.is_some(),
+            self.window.is_some() || self.recording_active(),
         ) {
             NotificationTarget::Pending => return,
             NotificationTarget::Refused(reason) => {
@@ -3701,6 +3853,10 @@ impl App {
         }
     }
     fn cancel_ui(&mut self, reason: &str) {
+        if let Some(ask) = self.notification_ui.take() {
+            self.ui_focus = None;
+            self.answer_ui(ask.id, Err(reason.into()));
+        }
         if let Some(wait) = self.ui_wait.take() {
             self.answer_ui(wait.id, Err(reason.into()));
         }
@@ -3808,7 +3964,27 @@ impl App {
             Ok(false) => false,
             Ok(true) => {
                 let visible = self.ui_visible();
+                let placed = self
+                    .ui_wait
+                    .as_ref()
+                    .and_then(|wait| wait.spawn.as_ref())
+                    .and_then(|spawn| {
+                        self.spawn_results_seen.get(&spawn.op).or_else(|| {
+                            self.live_state
+                                .as_ref()?
+                                .spawns
+                                .get(&spawn.op)
+                                .map(|s| &s.outcome)
+                        })
+                    })
+                    .and_then(|outcome| match outcome {
+                        bboxy450_term::model::SpawnOutcome::Placed(seat) => Some(*seat),
+                        _ => None,
+                    });
                 let wait = self.ui_wait.as_mut().expect("UI waiter observed");
+                if let Some(spawn) = &mut wait.spawn {
+                    spawn.seat = placed;
+                }
                 wait.after = Some(submitted + 1);
                 wait.visible = Some(visible);
                 self.request_redraw();
@@ -3827,7 +4003,7 @@ impl App {
             .is_some_and(|wait| wait.after.is_some_and(|after| frame >= after))
         {
             let wait = self.ui_wait.take().expect("qualifying UI frame");
-            let result = layout.and_then(|layout| {
+            let result = layout.and_then(|mut layout| {
                 for effect in &wait.effects {
                     if let UiEffect::Lifecycle(target) = effect {
                         let model = self.live_state.as_ref().ok_or("ui_not_ready: no live model")?;
@@ -3848,8 +4024,36 @@ impl App {
                         }
                     }
                 }
-                if wait.visible.as_ref() == Some(&UiVisible::from_layout(&layout)) { Ok(layout) }
-                else { Err("ui_frame_refused: a newer UI state superseded this operation before its frame".into()) }
+                if wait.visible.as_ref() != Some(&UiVisible::from_layout(&layout)) {
+                    return Err("ui_frame_refused: a newer UI state superseded this operation before its frame".into());
+                }
+                if let Some(spawn) = &wait.spawn {
+                    let seat = spawn.seat.ok_or(
+                        "ui_frame_refused: spawn target was not captured before its frame",
+                    )?;
+                    let id = bbt_mux::Ulid(seat.0.0);
+                    if layout.focused != Some(id)
+                        || !layout.panes.iter().any(|pane| pane.seat == id)
+                    {
+                        return Err("ui_frame_refused: produced frame does not show the spawned pane".into());
+                    }
+                    layout.spawned = Some(bbt_proto::gui::UiSpawned {
+                        seat: id,
+                        op: spawn.op,
+                        swarm: bbt_mux::Ulid(spawn.captured.spec.swarm.0.0),
+                        placement: spawn
+                            .captured
+                            .spec
+                            .placement
+                            .clone()
+                            .expect("explicit captured placement"),
+                        layout_revision: spawn.captured.layout_revision,
+                        applied_layout_revision: layout
+                            .layout_revision
+                            .ok_or("ui_frame_refused: frame revision is unavailable")?,
+                    });
+                }
+                Ok(layout)
             });
             self.answer_ui(wait.id, result);
         }
@@ -3889,6 +4093,22 @@ impl App {
             self.request_redraw();
             return true;
         }
+        if let UiRequest::NotificationClick { seat } = request {
+            self.ui_focus = Some(id);
+            self.notification_ui = Some(bboxy450_term::focus_ack::Ask {
+                id,
+                seat: SeatId::from_u128(seat.0),
+                prior_spawns,
+            });
+            if let Err(reason) = self.recording_click(seat) {
+                self.notification_ui = None;
+                self.ui_focus = None;
+                self.answer_ui(id, Err(reason));
+                return false;
+            }
+            self.request_redraw();
+            return true;
+        }
         if let Err(reason) = self.solve_ui(logical) {
             self.answer_ui(id, Err(reason));
             return false;
@@ -3917,10 +4137,13 @@ impl App {
                     _ => None,
                 }),
         );
-        if let Err(reason) = result {
-            self.answer_ui(id, Err(reason));
-            return true;
-        }
+        let spawn = match result {
+            Ok(spawn) => spawn,
+            Err(reason) => {
+                self.answer_ui(id, Err(reason));
+                return true;
+            }
+        };
         if self.document.open {
             effects.push(UiEffect::Document);
         }
@@ -3931,7 +4154,7 @@ impl App {
             }),
             None => {}
         }
-        self.await_ui_frame(id, effects, submitted);
+        self.await_ui_frame(id, effects, submitted, spawn);
         self.request_redraw();
         true
     }
@@ -3959,9 +4182,15 @@ impl App {
         self.ui_collect = Some(Vec::new());
         self.close_seat(seat, id, undo);
         let effects = self.ui_collect.take().expect("close command collection");
-        self.await_ui_frame(id, effects, submitted);
+        self.await_ui_frame(id, effects, submitted, None);
     }
-    fn await_ui_frame(&mut self, id: bbt_mux::Ulid, effects: Vec<UiEffect>, submitted: u64) {
+    fn await_ui_frame(
+        &mut self,
+        id: bbt_mux::Ulid,
+        effects: Vec<UiEffect>,
+        submitted: u64,
+        spawn: Option<UiSpawnCapture>,
+    ) {
         let proxy = self.proxy.clone();
         let timer = bbt_rt::handle().spawn(async move {
             tokio::time::sleep(bboxy450_term::focus_ack::DEADLINE).await;
@@ -3972,6 +4201,7 @@ impl App {
             after: None,
             visible: None,
             effects,
+            spawn,
             timer: timer.abort_handle(),
         });
         self.poll_ui_frame(submitted);
@@ -3995,9 +4225,38 @@ impl App {
         &mut self,
         id: bbt_mux::Ulid,
         request: bbt_proto::gui::UiRequest,
-    ) -> Result<(), String> {
+    ) -> Result<Option<UiSpawnCapture>, String> {
         use bbt_proto::gui::{UiRequest, UiTarget};
         match request {
+            UiRequest::Spawn(pick) => {
+                let model = self.live_state.as_deref().ok_or("ui_not_ready: no model")?;
+                let stage = self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage);
+                let captured = bboxy450_term::launcher::operator_placement(
+                    *pick,
+                    model,
+                    stage,
+                    self.scene.layout_revision(),
+                )?;
+                let op = bbt_mux::Ulid::new();
+                if self.document.open {
+                    self.close_document();
+                }
+                if self.local_tab.is_some() {
+                    self.close_local_tab();
+                }
+                if self.launcher.is_some() {
+                    self.close_launcher();
+                }
+                self.queue(live::UiMsg::SpawnSpec {
+                    id: op,
+                    spec: Box::new(captured.spec.clone()),
+                });
+                return Ok(Some(UiSpawnCapture {
+                    op,
+                    captured,
+                    seat: None,
+                }));
+            }
             UiRequest::Open(UiTarget::Launcher) => self.open_launcher(),
             UiRequest::Open(UiTarget::Graph) => self.open_graph(),
             UiRequest::Open(UiTarget::Settings) => self.open_settings("Account"),
@@ -4060,11 +4319,11 @@ impl App {
                 };
                 self.scroll_pane(seat, request.correlated(id));
             }
-            UiRequest::Focus { .. } | UiRequest::Layout => {
+            UiRequest::Focus { .. } | UiRequest::NotificationClick { .. } | UiRequest::Layout => {
                 return Err("UI request uses the frame acknowledgment path".into());
             }
         }
-        Ok(())
+        Ok(None)
     }
     fn ui_layout(
         &self,
@@ -4121,6 +4380,7 @@ impl App {
             .collect::<Result<_, _>>()?;
         let layout = UiLayout {
             frame_seq: 0, // filled only by the actual produced-frame callback
+            layout_revision: Some(self.scene.layout_revision()),
             size,
             swarm: stage.swarm.map(|id| bbt_mux::Ulid::from(id.0.0)),
             tab: stage.tab.map(|id| bbt_mux::Ulid::from(id.0.0)),
@@ -4136,6 +4396,7 @@ impl App {
             document: self.document.open.then(|| self.document.target.clone()),
             panes,
             tree,
+            spawned: None,
         };
         if serde_json::to_vec(&layout)
             .map_err(|e| e.to_string())?
@@ -4799,7 +5060,7 @@ impl ApplicationHandler<UiEvent> for App {
                     let [w, h] = cell_grid_size(model, cols, rows, window.scale_factor() as f32);
                     self.pending_resize = Some(LogicalSize::new(f64::from(w), f64::from(h)));
                 }
-                let status = app_status(
+                let mut status = app_status(
                     "window",
                     std::env::args().any(|a| {
                         a == "--unattended"
@@ -4813,6 +5074,9 @@ impl ApplicationHandler<UiEvent> for App {
                     self.meter.total_frames(),
                     usize::from(self.window.is_some()),
                 );
+                if request == bbt_proto::gui::AppRequest::Notifications {
+                    status.notifications = self.recording_status();
+                }
                 self.queue(live::UiMsg::AppReply { id, status });
             }
             UiEvent::App(live::AppEvent::Stop { id }) => {
@@ -6397,6 +6661,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     bboxy450_term::cockpit::Config::test_account_from_args(&hook_args)
         .map_err(|error| error as Box<dyn std::error::Error>)?;
+    let record_notifications = notification_recording(&hook_args)?;
     let verify = Verify::from_args(&hook_args)?;
     if hook_args.iter().any(|arg| arg == "--headless") {
         return headless::run(&hook_args).map_err(Into::into);
@@ -6443,32 +6708,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The delegate is installed before run_app finishes application launch.
     // Authorization and native completion waits run only on the bounded worker.
     let callback_proxy = proxy.clone();
-    let notifications = match bboxy450_desktop_notifications::open(Box::new(move |response| {
-        let _ = callback_proxy.send_event(UiEvent::Notification(response));
-    })) {
-        Ok(notifier) => {
-            let progress = proxy.clone();
-            match bboxy450_term::notifications::Worker::start(
-                notifier,
-                Arc::new(move |event| {
-                    let _ = progress.send_event(match event {
-                        bboxy450_term::notifications::Event::Ready => UiEvent::NotificationReady,
-                        bboxy450_term::notifications::Event::Error(reason) => {
-                            UiEvent::NotificationError(reason)
-                        }
-                    });
-                }),
-            ) {
-                Ok(worker) => Some(worker),
-                Err(error) => {
-                    logger.write(format!("notifications unavailable: {error}"));
-                    None
+    let notifications = if record_notifications {
+        None
+    } else {
+        match bboxy450_desktop_notifications::open(Box::new(move |response| {
+            let _ = callback_proxy.send_event(UiEvent::Notification(response));
+        })) {
+            Ok(notifier) => {
+                let progress = proxy.clone();
+                match bboxy450_term::notifications::Worker::start(
+                    notifier,
+                    Arc::new(move |event| {
+                        let _ = progress.send_event(match event {
+                            bboxy450_term::notifications::Event::Ready => {
+                                UiEvent::NotificationReady
+                            }
+                            bboxy450_term::notifications::Event::Error(reason) => {
+                                UiEvent::NotificationError(reason)
+                            }
+                        });
+                    }),
+                ) {
+                    Ok(worker) => Some(worker),
+                    Err(error) => {
+                        logger.write(format!("notifications unavailable: {error}"));
+                        None
+                    }
                 }
             }
-        }
-        Err(error) => {
-            logger.write(error.to_string());
-            None
+            Err(error) => {
+                logger.write(error.to_string());
+                None
+            }
         }
     };
     let (render_context, rendering) = tokio::sync::oneshot::channel();
@@ -6538,6 +6809,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     app.updates = updates;
     app.live_commands = live_commands;
     app.notifications = notifications;
+    if record_notifications {
+        app.install_recording()?;
+    }
     app.preferences = preference_state;
     app.preferences_io = preferences_io;
     app.pacing = pacing;
@@ -7202,7 +7476,9 @@ mod input_tests {
                     sizes.insert(seat, (cols, rows));
                 }
                 live::UiMsg::Watched(panes) => watched = panes,
-                live::UiMsg::SpawnZsh | live::UiMsg::Spawn { .. } => spawns += 1,
+                live::UiMsg::SpawnZsh
+                | live::UiMsg::Spawn { .. }
+                | live::UiMsg::SpawnSpec { .. } => spawns += 1,
                 live::UiMsg::ConsumeSpawn { .. }
                 | live::UiMsg::Scroll { .. }
                 | live::UiMsg::DocumentRead { .. }
@@ -8174,16 +8450,33 @@ mod spawn_admission_tests {
             location: bbt_proto::Where::Local,
         }
     }
+    fn captured() -> live::UiMsg {
+        live::UiMsg::SpawnSpec {
+            id: bbt_mux::Ulid::new(),
+            spec: Box::new(bbt_proto::SpawnSpec {
+                swarm: bbt_proto::SwarmId::from_u128(1),
+                harness_kind: "zsh".into(),
+                name: None,
+                role: None,
+                cwd: "/fixture".into(),
+                location: bbt_proto::Where::Local,
+                resume: None,
+                placement: Some(bbt_proto::seat_state::Placement::NewTab {
+                    tab: bbt_proto::TabId::from_u128(1),
+                }),
+            }),
+        }
+    }
     #[test]
     fn generic_and_legacy_spawns_share_the_same_cap() {
         let mut pending = VecDeque::new();
         for n in 0..PENDING_SPAWNS {
             queue_pending(
                 &mut pending,
-                if n % 2 == 0 {
-                    generic()
-                } else {
-                    live::UiMsg::SpawnZsh
+                match n % 3 {
+                    0 => generic(),
+                    1 => live::UiMsg::SpawnZsh,
+                    _ => captured(),
                 },
             )
             .unwrap();
@@ -8194,6 +8487,10 @@ mod spawn_admission_tests {
         );
         assert_eq!(
             queue_pending(&mut pending, live::UiMsg::SpawnZsh),
+            Err(AdmissionRefused::Spawn)
+        );
+        assert_eq!(
+            queue_pending(&mut pending, captured()),
             Err(AdmissionRefused::Spawn)
         );
         assert_eq!(pending.len(), PENDING_SPAWNS);

@@ -1,0 +1,63 @@
+R6 recording notifications — Aster Cinderwing <EXECUTOR>, preflight checkpoint
+Source ff28e03790ef55272f0b679243435475f21b3ace, branch aster-notification-adapter, on accepted main7d4d599e.
+Brief4944503b; CLI ruling2e80d512; night script6832dcd8/259e3bf8; runner integrationfdffe695.
+NOT AN ACCEPTANCE HANDOFF: exact ci-local --parity has not run. Oracle6832dcd8 requires Sable's GUI-store fix to land first. Final rebase/prechecks/gate/evidence successor remain.
+
+Mechanism
+notifications/recording.rs:33 — stable seat IDs, one outstanding entry per seat; repeat replaces. State cap1024, history256, readback64 with omission counts. Refused overlong IDs are bounded before retention. Requests/completions are distinct; activate completion means callback_submitted, not focused or OS-delivered.
+notifications/recording.rs:68 — memory-only try_lock read/click on UI; actual Notifier calls use the existing guarded notification IO worker. C4 sanitizer redacts encoded keys/capabilities before debug output. Explicit backend=recording and os_presentation=false.
+notifications.rs:87 — submitted/processed desired-plan fence makes muted sends0 a functional assertion. Processing is not OS delivery. Existing capacity-one/coalesced desired-state handoff remains.
+main.rs:231 — --notifications record requires debug assertions and an explicit test account before startup; native factory is skipped for recording. headless.rs installs the same recorder/event sink without a window.
+main.rs:2826,2922,3957 — bounded readback plus the facade Response::Clicked callback through the existing focus controller. UI activation waits prior placements, exact pane and completed frame before replying.
+ctl.rs / ctl/app.rs / proto/gui.rs — app start --notifications record, debug notifications, ui notification-click <seat> over existing App/UI relays. No new socket.
+e2e_night.rs:412 — runner selects recording on its existing private headless/file-account app. R6.sh owns no lifecycle or nested app. N1-N4 retain their Knowledge meanings; they are outside this assignment.
+scripts/e2e/R6.sh:1 — first-line-only body, stable-ID replacement, exact tab/pane frame and PNG, muted fresh waiting episode posts0, absent-notification refusal by its actual reason. Header/map agree: partial; missing a waiting seat posts one desktop notification; clicking it raises the window, switches space. No task number invented in the canonical row.
+
+Verified commands (direct compiler, O1/debug assertions, no debuginfo/incremental; private file accounts for recording)
+headless-recording: EXIT0,2/0; focused-notifications: EXIT0,5/0 before the extra bounds case.
+bounded-recording: EXIT0,3/0 including refusal/history bounds before redaction.
+runner-notification-integration on ff28e037: EXIT0,2/0,94.223s (4.11s runtime).
+strict-with-night on pre-runner3fcdd697: EXIT0,18.358s. map-corpus: EXIT0,6/0,2.792s.
+Earlier rebased workspace on c756cce2: EXIT101,1395 passed/1 failed/29 ignored,668.374s; all13 headless passed. Sole failure durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls, gui_events.rs:251 read_line EOF unwrap(None). Oracle149271b5 confirms another baseline sighting and assigns Sable's fix; this report does not infer DatabaseBusy without a child-stderr witness.
+Earlier strict-rebased: EXIT0,33.264s. invariants-rebased: EXIT0,23/0/9 named slow skips,256.033s.
+R6 final script under an equivalent prepared single-app contract: EXIT0,4.678s; file custody/windows0, ordinary app stop0. Capture inspected: intended terminal/producer content present.
+Actual night on ff28e037: e2e night --group 'rim, swell and attention' --scripts scripts/e2e, EXIT1/4.082s. R6 script EXIT0, coverage partial, two exact header gaps, private tracking task created. Overall RED solely R1-R5 untested because scripts are absent; no whole-group green claim. Default throwaway records only; no --records override.
+Actual night log SHA2567dae088e9e0387cde952f2e52593152abb1febe6f2a4cecec801e2e78296af62.
+
+Failures retained, not erased
+Initial old-base workspace: existing generic UI close/undo test got GUI handshake EOF after close; child stderr was deleted by its TempDir. Root cause unknown. A preserved-log focused control on newer accepted C4 passed, with no DatabaseBusy/GUI-store-error witness; that does not prove the original symptom fixed.
+First diagnostic watcher: overly long TMPDIR made supervisor reject SUN_LEN before startup. Corrected the evidence wrapper to a short owned /tmp/ar6-*; no product workaround.
+When removing the superseded nested-app prototype, generated Python fixture indentation was broken. The script failed at R6READY with the actual IndentationError. Corrected indentation and added a producer syntax check; no timeout relaxed. Final R6 script uses only the runner's one app.
+Superseded nested prototype passed but is not the final contract. Corrected/final single-app script and actual runner verdict above are the current proof.
+
+Raw per-command logs, statuses, process metadata, script results and capture:
+/Users/feral/mydev/bboxy450-term-exec4/scratchpad/r6-notifications-20261025T0010/
+No OS notification presentation, native window/space activation, cold launch, photon/scanout, 967-seat load, publication or merge claimed.
+No operator account, login Keychain, desktop input or new socket. One own warmed dev target retained for the required integration/gate; no full gate or slot claimed yet.
+
+2026-10-25 02:48 PDT — quiet-window source-only integration
+The five signed commits were rebased onto accepted main0e97dc32 without conflicts; source643dce88, preflight successor94683062. No build, test, app or gate was started after that rebase. Accepted close Target.ready/shown and R5i instrumentation are preserved in the shared frame path. All results above retain their original pre-rebase source limits. Sable's store4b8f79b6 gate later exited101 in the ancestry-refusal fixture (Python BrokenPipe before reading the queued refusal), so the required accepted GUI-store dependency remains pending; that fixture result is not a store verdict. QUIET r5i-frame honored.
+
+2026-10-25 combined R6/placement gate candidate
+Oracle ed879516 confirms Sable's BEGIN IMMEDIATE write fix and GUI transient defence are accepted through NG1/main27a77a51. Dependency is satisfied; no further wait is required. Both assigned cuts are integrated on accepted main1f970e11/schema3, source39738753, branch aster-notification-adapter; placement-only checkpoint5b228b5d remains separately available. Three replay conflicts retained both the Spawn/NotificationClick protocol variants, both CLI paths and all three new headless tests. No renderer or style change.
+cargo test -p bbt-proto -p bbt-mux -p bboxy450-term --locked --no-fail-fast — EXIT0,662 passed/0 failed/20 ignored,849.665s; SHA2560c52d6a32398f1efa5799cb63340f463a895dd9c2eb23f82ebcb75f1f7c9d15d. All15 headless tests passed together, including recording policy/exact-pane activation and all four placements. Recorder bounds/replacement/redaction3/0.
+Strict Clippy on those three crates/all targets — EXIT0,73.400s; SHA256168ad697eeee806ca4d7ac582c1ec3aedf70ad66b895e5bf68103c3ea7280bc6.
+Fast invariants — EXIT0,25 checks/0 failures/9 named slow skips,366.399s; SHA2564be74f56e5cf647928b27014d441e1d95ffe2d4257e4fdd864a6337694e9e36f. All combined runs use two Cargo jobs, direct compiler and O1/debug assertions.
+Raw union logs/statuses/process metadata are in scratchpad/placement-20261025T0213/union-*. Separate original R6/night evidence above is retained. One exact clean ci-local --parity gate and actual final L2/R6 nights are still owed. No overall night, OS presentation, window/space raising or scanout claim.
+
+Actual canonical nights on code-equivalent candidate2b726fe9 (code bytes equal tested39738753)
+e2e night --group 'launcher and placement' --scripts scripts/e2e — overall EXIT1/9.204s, SHA2561c3aa7aa513204a985ec4dbb3a88514de0558c038b0ab2a1e415c294f61f48a9. L2 script EXIT0/pass/partial; group RED only L1/L3/L4 untested (scripts absent). Its declared gap remains 'never a guessed slot', the pending-focus night witness.
+e2e night --group 'rim, swell and attention' --scripts scripts/e2e — overall EXIT1/4.493s, SHA25653d7bf692dff957fd089d2a19d1be90bbedd61c0f3d69f9c4f32eb64da46a4b1. R6 script EXIT0/pass/partial; group RED only R1-R5 untested. The two OS presentation/window-space gaps remain. Both nights wrote their private fixture records and tracking tasks; nothing was written to production records.
+Evidence retention gap on this runner base: e2e_night.rs:81 creates a TempDir whose cleanup removes work/captures on return. Repeated both canonical scripts unchanged through scratch artifact-export wrappers (same headers, same exit status, no lifecycle of their own), copying E2E_WORK only before return. No account directory, capability file or database copied. Both scripts again EXIT0/pass/partial; enclosing groups remain RED/EXIT1 for the same absent scripts. Retained L2 run5.962s/SHA2563d3a5b7ac147220e1b531963b441909475f0ff3a05986c86fa03a77e98e9443c; R6 run5.070s/SHA2566566cae244811c35dc4d5363f48cc42d67e6db86354b19d152f043acc218fbae.
+74 exported public test artifacts,4,970,069 bytes, five PNGs: scratchpad/placement-20261025T0213/night-artifacts/. Per-file digest manifest is .bboxy/runs/placement-r6-night-artifacts.json. L2 down-pane and R6 clicked-pane PNGs were visually inspected: chosen-cwd prompt and the replacement-question producer are present in their intended captured panes. No OS window or screen capture used.
+
+Accepted scroll integration while full gate slots were occupied
+Rebased onto accepted ee7a00d8, source01d24202. Retained UiScroll id correlation, actual frame scroll-position check, close-frame guards, captured Spawn receipt and recording activation; both command/protocol/test paths remain. The scratch conflict resolver had one Python IndentationError before execution; corrected, with no source change from that failed invocation.
+Full headless suite EXIT0,16/0,141.025s (19.01s runtime),SHA256f962b33b7d953918cd46c5afa0b54df0d3ba3fe00a0fbe5af229f55c2efd0763. Strict touched-crate Clippy EXIT0,41.471s,SHA25605d0574bf1c0c28901596bc3172a0c4f9b8c443d2adb7ab7222adf456a1b7f5c. Fast invariants EXIT0,25/0/9 named slow skips,321.406s,SHA256d6656016aef01e5bc6b688a38bd37a02b395417c1b416dbe082ef7c827e5ee00. Two Cargo jobs throughout. Initial actual-night evidence retains its pre-scroll source limit; the final gate is still owed.
+
+Post-quiet integration (Oracle55b5a7be; Rook END1261427b)
+No workload started during QUIET r5j-ui-frame. After END, rebased without conflicts onto accepted08c47b82, including lazy scene projection and both native-store repairs; source d837c775. Reused the sole own warmed target already prepared for the exact gate; no second cache.
+Full headless suite EXIT0,16/0,114.571s (19.10s runtime),SHA2560926f332b5d736e0bd75a1eecd449224258351f4159d67df6ea41edfab4644ce. Lazy scene publication regression EXIT0,1/0,20.098s,SHA256c2a5952dafd139b275df8a1bde666ab7c1b267b9ddc5b53e753098b995c68127. Strict touched-crate Clippy EXIT0,22.546s,SHA256113230ea2f6edd1239830d77bbb62e55d23a0b42a96083f11c8f82c2e678d57e. Fast invariants EXIT0,25/0/9 named slow skips,225.769s,SHA25652211516c0be811e3499e9c10bfb1f1f52729e12838f100bead84829d5df8f73. All use two Cargo jobs/direct compiler/debug assertions. One exact clean --parity gate follows on an evidence-only successor; no additional moving-main precheck cycle planned.
+
+2026-10-25 final exact-gate and script disposition
+Supersedes earlier pending-gate wording: signed2534a3ab exact clean ci-local --parity EXIT0,3264.612s; workspace1441/0/29ignored, strict0, headless16/0, idle0/0/10.005s/windows0, current2240 cases/2136 measured geometry/0unproven/mismatches/72 advisory, invariants26/0/8slow skips. Final exact-binary L2/R6 each EXIT0/pass/partial; enclosing groups EXIT1 only for absent other scripts in this tested source. Full results, actual earlier failures, named gaps, raw paths, per-file hashes and cleanup are in ctl-placement-r6-handoff.log plus ctl-placement-r6-evidence.json. No OS/whole-night/full-promise claim. Own inactive target freed5,534,232,576bytes after empty lsof; no code delta after the exact gated source.

@@ -864,6 +864,8 @@ async fn ctl_capture_is_answered_by_the_window() {
                         id: op,
                         result: Ok(bbt_proto::gui::UiLayout {
                             frame_seq,
+                            layout_revision: None,
+                            spawned: None,
                             size: [1600., 900.],
                             swarm: None,
                             tab: None,
@@ -1706,6 +1708,7 @@ async fn ctl_never_prints_secrets() {
         vec!["debug", "journal", "SELECT * FROM kv"],
         vec!["debug", "journal", "identity/private-key-fixture"],
         vec!["debug", "metrics"],
+        vec!["debug", "notifications"],
         vec!["debug", "snapshot", snapshot.to_str().unwrap()],
         vec!["debug", "ps"],
         vec!["--help"],

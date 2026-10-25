@@ -381,6 +381,8 @@ mod tests {
                 id,
                 Ok(UiLayout {
                     frame_seq,
+                    layout_revision: None,
+                    spawned: None,
                     size: [1600., 900.],
                     swarm: None,
                     tab: None,
@@ -433,6 +435,7 @@ mod tests {
             frame_seq: 1,
             windows: 0,
             close: serde_json::Value::Null,
+            notifications: serde_json::Value::Null,
         };
         captures.app_answer(id, status.clone());
         assert_eq!(task.await.unwrap().unwrap(), status);

@@ -560,6 +560,9 @@ impl Scene {
             now,
         )
     }
+    pub fn layout_revision(&self) -> u64 {
+        self.layout_revision
+    }
     /// Retained hit boxes: never a guessed strip/pane coordinate.
     pub fn close_regions(&self, layouts: &[c::Layout]) -> Vec<(SeatId, Rect, bool)> {
         let mut out = vec![];

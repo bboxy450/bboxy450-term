@@ -49,6 +49,11 @@ pub enum UiMsg {
         role: Option<String>,
         location: bbt_proto::Where,
     },
+    /// An operator's full inputs and placement captured by the GUI owner.
+    SpawnSpec {
+        id: bbt_mux::Ulid,
+        spec: Box<bbt_proto::SpawnSpec>,
+    },
     /// Compatibility for the existing verification and default-shell callers.
     SpawnZsh,
     Close(crate::close::Intent),
@@ -134,7 +139,10 @@ pub enum UiMsg {
 impl UiMsg {
     /// All launches share one admission budget, including legacy callers.
     pub fn is_spawn(&self) -> bool {
-        matches!(self, Self::Spawn { .. } | Self::SpawnZsh)
+        matches!(
+            self,
+            Self::Spawn { .. } | Self::SpawnSpec { .. } | Self::SpawnZsh
+        )
     }
 }
 

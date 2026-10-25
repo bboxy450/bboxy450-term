@@ -37,7 +37,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   ui scroll <seat> <top|bottom|page-up|page-down|row N>   zero-based GUI history
   ui layout                              solved window tree, pane grids, focus and tab
   seat ls
-  seat spawn <claude|codex|zsh> [--place tab] [--role oracle|architect|creativity|executor|shell]
+  seat spawn <claude|codex|zsh> [--place right|down|tab|space] [--role oracle|architect|creativity|executor|shell]
              [--name NAME] [--cwd DIR] [--swarm ID]
   seat screen <seat> [--human]            the visible screen, cursor and title
   seat type <seat> <text>                 types the text as written
@@ -83,11 +83,14 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   debug metrics                           existing numeric counters, with availability
   debug snapshot <file.json>              bounded R5 cursor/capture table; no tracing enabled
   debug ps                                this app's process tree; no argv or environment
+  debug notifications                     bounded test recording; no OS presentation
+  ui notification-click <seat>            recording callback, acknowledged by its pane frame
   record write <file|->                   an e2e record, signed by the operator device: the
                                           knowledge_write fields (path or ref, frontmatter,
                                           body, etag) as one JSON object
   app endpoint                            the run directory, socket path and generation
   app start [--headless] [--ctl] [--run-dir DIR]
+            [--test-account DIR --notifications record]   debug fixtures only
   app status                              actual backend, GUI, events and custody readiness
   app resize <cols>x<rows>                the window (offscreen or real) to that cell grid
   app stop                                orderly shutdown through the admitted app relay
@@ -144,6 +147,8 @@ pub enum Command {
         motion: bbt_proto::gui::UiScroll,
     },
     Identity(bbt_proto::identity::IdentityRequest),
+    UiNotificationClick(String),
+    DebugNotifications,
     Spawn {
         harness: String,
         name: Option<String>,
@@ -154,6 +159,8 @@ pub enum Command {
         /// A role preset (#262); the backend resolves and guards it as the launcher does.
         role: Option<String>,
     },
+    /// An explicit placement is captured by the attached GUI, never guessed here.
+    SpawnAt(Box<bbt_proto::gui::UiSpawn>),
     Seats,
     Dm {
         seat: String,
@@ -323,6 +330,7 @@ pub enum Command {
         ctl: bool,
         unattended: bool,
         test_account: Option<PathBuf>,
+        record_notifications: bool,
     },
     /// Read liveness through the attached GUI owner.
     AppStatus,
@@ -345,6 +353,7 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("ui", "layout", "Ui"),
     ("identity", "status", "Identity"),
     ("identity", "unlock", "Identity"),
+    ("ui", "notification-click", "Ui"),
     ("seat", "ls", "ListSeats"),
     ("seat", "spawn", "Spawn"),
     ("seat", "screen", "Screen"),
@@ -385,6 +394,7 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("debug", "metrics", "Debug"),
     ("debug", "snapshot", "Debug"),
     ("debug", "ps", "Debug"),
+    ("debug", "notifications", "App"),
     ("app", "endpoint", "-"),
     ("app", "start", "-"),
     ("app", "status", "App"),
@@ -516,6 +526,8 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             seat: seat.into(),
             motion: bbt_proto::gui::UiScroll::Row(row.parse().map_err(|_| format!("{USAGE_PREFIX}ui scroll row requires an unsigned zero-based row"))?),
         },
+        ["ui", "notification-click", seat] => Command::UiNotificationClick(seat.into()),
+        ["debug", "notifications"] => Command::DebugNotifications,
         ["ui", "open", target] => Command::Ui(bbt_proto::gui::UiRequest::Open(match target {
             "graph" => bbt_proto::gui::UiTarget::Graph,
             "settings" => bbt_proto::gui::UiTarget::Settings,
@@ -681,21 +693,29 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             }
         }
         ["seat", "ls"] => Command::Seats,
-        ["seat", "spawn", harness] => Command::Spawn {
-            harness: harness.into(),
-            name: flag("name"),
-            cwd: flag("cwd").map(PathBuf::from),
-            swarm,
-            role: flag("role"),
-            new_tab: match flag("place").or(flag("placement")).as_deref() {
-                None => false,
-                Some("tab" | "new-tab") => true,
-                Some(other) => {
-                    return Err(format!(
-                        "{USAGE_PREFIX}--place: only tab is supported yet, not {other}"
-                    ));
-                }
-            },
+        ["seat", "spawn", harness] => {
+            if let Some(place) = flag("place").or(flag("placement")) {
+                use bbt_proto::gui::{SpawnPlace, UiSpawn};
+                let place = match place.as_str() {
+                    "right" => SpawnPlace::Right,
+                    "down" => SpawnPlace::Down,
+                    "tab" | "new-tab" => SpawnPlace::Tab,
+                    "space" => SpawnPlace::Space,
+                    _ => return Err(format!("{USAGE_PREFIX}--place: expected right|down|tab|space")),
+                };
+                let pick = UiSpawn {
+                    harness: harness.into(), name: flag("name"), role: flag("role"), swarm, place,
+                    cwd: std::path::absolute(flag("cwd").unwrap_or_else(|| ".".into()))
+                        .map_err(|e| format!("{USAGE_PREFIX}--cwd: {e}"))?.to_string_lossy().into_owned(),
+                };
+                let request = bbt_proto::gui::UiRequest::Spawn(Box::new(pick));
+                request.validate().map_err(|e| format!("{USAGE_PREFIX}{e}"))?;
+                let bbt_proto::gui::UiRequest::Spawn(pick) = request else { unreachable!() };
+                Command::SpawnAt(pick)
+            } else {
+                // The no-placement backend lane also serves bare Session callers.
+                Command::Spawn {harness:harness.into(),name:flag("name"),cwd:flag("cwd").map(PathBuf::from),swarm,role:flag("role"),new_tab:false}
+            }
         },
         ["seat", "capture", target, path] => Command::Capture {
             path: std::path::absolute(path).map_err(|e| format!("capture {path}: {e}"))?,
@@ -831,6 +851,11 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             ctl,
             unattended,
             test_account: flag("test-account").map(PathBuf::from),
+            record_notifications: match flag("notifications").as_deref() {
+                None => false,
+                Some("record") if flags.contains_key("test-account") => true,
+                _ => return Err(format!("{USAGE_PREFIX}--notifications record requires --test-account DIR")),
+            },
         },
         ["app", "status"] => Command::AppStatus,
         ["app", "resize", size] => {
@@ -857,7 +882,11 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             });
         }
     };
-    if (headless || ctl || unattended || flags.contains_key("test-account"))
+    if (headless
+        || ctl
+        || unattended
+        || flags.contains_key("test-account")
+        || flags.contains_key("notifications"))
         && !matches!(&command, Command::AppStart { .. })
     {
         return Err(format!(
@@ -874,6 +903,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             ..
         } => Some(&["since"]),
         Command::Debug { .. } => Some(&[]),
+        Command::DebugNotifications | Command::UiNotificationClick(_) => Some(&[]),
         _ => None,
     };
     if let Some(allowed) = read_flags {
@@ -909,6 +939,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
         ![
             "swarm",
             "test-account",
+            "notifications",
             "name",
             "cwd",
             "since",
@@ -1735,6 +1766,9 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
         Command::Ui(_)
         | Command::UiFocus(_)
         | Command::UiScroll { .. }
+        | Command::SpawnAt(_)
+        | Command::UiNotificationClick(_)
+        | Command::DebugNotifications
         | Command::Watch { .. }
         | Command::Rename { .. }
         | Command::Restart { .. }
@@ -2075,6 +2109,7 @@ fn run_verb(
         ctl,
         unattended,
         test_account,
+        record_notifications,
     } = &parsed.command
     {
         let data = app::start(
@@ -2083,6 +2118,7 @@ fn run_verb(
             *ctl,
             *unattended,
             test_account.as_deref(),
+            *record_notifications,
         )?;
         return print(op.unwrap_or_else(fresh), data, parsed.human);
     }
@@ -2134,6 +2170,18 @@ fn run_verb(
         Command::Ui(request) => {
             serde_json::to_value(client.ui(request)?).map_err(|e| e.to_string())?
         }
+        Command::SpawnAt(pick) => {
+            let harness = pick.harness.clone();
+            let layout = client.ui(bbt_proto::gui::UiRequest::Spawn(pick))?;
+            let placed = layout
+                .spawned
+                .as_ref()
+                .ok_or("ui_frame_refused: spawn reply has no placement receipt")?;
+            json!({"seat":placed.seat,"swarm":placed.swarm,"harness":harness,
+                "spawn_op":placed.op,"placement":placed.placement,"layout_revision":placed.layout_revision,
+                "applied_layout_revision":placed.applied_layout_revision,
+                "frame_seq":layout.frame_seq,"layout":layout})
+        }
         Command::UiFocus(seat) => {
             let seat = resolve(&client.seats()?, &seat)?.record.id;
             serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::Focus { seat })?)
@@ -2147,6 +2195,16 @@ fn run_verb(
             let seat = resolve(&client.seats()?, &seat)?.record.id;
             serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::Scroll { seat, motion })?)
                 .map_err(|e| e.to_string())?
+        }
+        Command::UiNotificationClick(seat) => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::NotificationClick { seat })?)
+                .map_err(|e| e.to_string())?
+        }
+        Command::DebugNotifications => {
+            client
+                .app(bbt_proto::gui::AppRequest::Notifications)?
+                .notifications
         }
         Command::AppStatus => serde_json::to_value(client.app(bbt_proto::gui::AppRequest::Status)?)
             .map_err(|e| e.to_string())?,
@@ -2778,6 +2836,8 @@ mod tests {
             "ui layout",
             "identity status",
             "identity unlock",
+            "ui notification-click s",
+            "debug notifications",
             "seat ls",
             "seat spawn zsh",
             "seat screen s",
@@ -3058,5 +3118,51 @@ mod tests {
             (back.path, back.capability),
             (endpoint.path, endpoint.capability)
         );
+    }
+}
+
+#[cfg(test)]
+mod placement_parser_tests {
+    use super::*;
+    #[test]
+    fn explicit_placements_relay_intents_without_choosing_an_anchor_in_the_cli() {
+        use bbt_proto::gui::SpawnPlace;
+        for (name, expected) in [
+            ("right", SpawnPlace::Right),
+            ("down", SpawnPlace::Down),
+            ("tab", SpawnPlace::Tab),
+            ("new-tab", SpawnPlace::Tab),
+            ("space", SpawnPlace::Space),
+        ] {
+            let args = [
+                "seat",
+                "spawn",
+                "zsh",
+                "--place",
+                name,
+                "--cwd",
+                "/chosen cwd",
+                "--name",
+                "chosen",
+                "--role",
+                "shell",
+            ]
+            .map(str::to_owned);
+            let Command::SpawnAt(pick) = parse_full(&args).unwrap().command else {
+                panic!("explicit placement bypassed the owner")
+            };
+            assert_eq!(pick.place, expected);
+            assert_eq!(pick.swarm, None);
+            assert_eq!(pick.cwd, "/chosen cwd");
+            assert_eq!(pick.name.as_deref(), Some("chosen"));
+            assert_eq!(pick.role.as_deref(), Some("shell"));
+        }
+        let args = ["seat", "spawn", "zsh", "--place", "diagonal"].map(str::to_owned);
+        assert!(parse_full(&args).unwrap_err().starts_with(USAGE_PREFIX));
+        let args = ["seat", "spawn", "zsh"].map(str::to_owned);
+        assert!(matches!(
+            parse_full(&args).unwrap().command,
+            Command::Spawn { new_tab: false, .. }
+        ));
     }
 }

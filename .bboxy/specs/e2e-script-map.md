@@ -8,7 +8,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[d316-pass-means-the-whole-promise]]", rel: decision }
 created: "2026-10-25T01:04:37Z"
-updated: "2026-10-25T04:25:15Z"
+updated: "2026-10-25T11:20:11Z"
 ---
 # e2e script map
 
@@ -30,7 +30,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | T8 | `scripts/e2e/T8.sh` | partial | malformed/unapproved report rejection; reported grade drawn in the seat row | |
 | T9 | `scripts/e2e/T9.sh` | partial | a harness resumed by session id (only a zsh seat is restarted) | |
 | L1 | `scripts/e2e/L1.sh` | partial | approved blur pixels; harness labels and role presets; search results | |
-| L2 | `scripts/e2e/L2.sh` | partial | script not implemented: a new seat lands exactly where the operator picked (split right, split down, new tab, new space), never a guessed slot | |
+| L2 | `scripts/e2e/L2.sh` | partial | never a guessed slot | |
 | L3 | `scripts/e2e/L3.sh` | partial | script not implemented: every launched seat has our MCP server, the hook shim and the bboxy450 skill at launch; the user's own ~/.claude and ~/.codex are byte-identical before and after | |
 | L4 | `scripts/e2e/L4.sh` | partial | script not implemented: a fresh Claude seat and a fresh Codex seat each call orient and task_report on their first turn in a fixture task | |
 | S1 | `scripts/e2e/S1.sh` | partial | displayed historical bytes are not exported by ctl (row-coordinate traversal is not a cell proof); bounded lazy history page metrics | |
@@ -45,7 +45,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | R3 | `scripts/e2e/R3.sh` | partial | script not implemented: focusing a block swells its silk 40 px past the rim and settles in 0.9 s; nothing moves; the old locate ripple is gone | |
 | R4 | `scripts/e2e/R4.sh` | partial | script not implemented: seat rows, tabs and cards carry the rim and the swell out of the box; idle rows show no rim at rest | |
 | R5 | `scripts/e2e/R5.sh` | partial | script not implemented: a seat waiting on the operator loops the swell in amber on its row and pane until handled; focusing it stops the loop with one swell | |
-| R6 | `scripts/e2e/R6.sh` | partial | script not implemented: a waiting seat posts one desktop notification with the question's first line; a repeat replaces it; clicking it raises the window, switches space and tab, focuses the pane; muted seats post nothing | |
+| R6 | `scripts/e2e/R6.sh` | partial | a waiting seat posts one desktop notification; clicking it raises the window, switches space | |
 | M1 | `scripts/e2e/M1.sh` | partial | script not implemented: a DM, a channel post and a swarm-stream post from the composer each arrive at the right seats with a receipt; the operator principal signs as the device | |
 | M2 | `scripts/e2e/M2.sh` | partial | script not implemented: the role chip fans out to the exact seats holding the role, one receipt each, shown as one send; above 32 seats it refuses with a named reason | |
 | M3 | `scripts/e2e/M3.sh` | partial | script not implemented: the operator delegates a task by #N or path to a seat; the seat's frontmatter says claimed and its row shows the task; the seat gets one oracle-class message | |
