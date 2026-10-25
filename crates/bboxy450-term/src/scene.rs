@@ -159,6 +159,8 @@ fn named<'a>(layout: &'a c::Layout, name: &str) -> Option<&'a c::Layout> {
 }
 
 pub struct Scene {
+    #[cfg(test)]
+    projections: usize,
     hosts: Vec<bbt_proto::GuiHost>,
     closed: Vec<(SeatId, Instant, String, String)>,
     layout_revision: u64,
@@ -301,6 +303,8 @@ impl Scene {
         ))
         .expect("embedded scene-15 fixture");
         Self {
+            #[cfg(test)]
+            projections: 0,
             seats,
             tasks: vec![],
             closed: vec![],
@@ -396,6 +400,8 @@ impl Scene {
     }
     pub fn live() -> Self {
         Self {
+            #[cfg(test)]
+            projections: 0,
             seats: vec![],
             tasks: vec![],
             closed: vec![],
@@ -419,6 +425,10 @@ impl Scene {
         .with_env_rim()
     }
     pub fn set_model(&mut self, model: &bboxy450_term::model::Model, stage: &Stage) {
+        #[cfg(test)]
+        {
+            self.projections += 1;
+        }
         let measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::UiProjection);
         bbt_rt::diagnostics::probe_after(
             bbt_rt::diagnostics::ProbeStage::LatestTaken,
@@ -518,6 +528,10 @@ impl Scene {
             bbt_rt::diagnostics::ProbeStage::LatestTaken,
             bbt_rt::diagnostics::ProbeStage::ProjectionFinished,
         );
+    }
+    #[cfg(test)]
+    pub fn projections(&self) -> usize {
+        self.projections
     }
     pub fn close_intent(
         &self,

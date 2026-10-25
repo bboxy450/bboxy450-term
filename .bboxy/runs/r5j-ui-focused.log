@@ -1,0 +1,132 @@
+R5j UI lazy projection — focused proof
+ROLE: EXECUTOR / Rook Ashwhisker
+Brief: a8e41fdd-7b7c-489f-b09d-528c24e872c1
+Base:7fa335668fde6aa8628e5431e241e9975ea57493; prior measured R5i evidence6c666517.
+
+Mechanism
+main.rs App::drain retains latest Model Arc and command/focus/reply handling, marks scene_dirty; it performs no Scene::set_model.
+The previous five production set_model call sites coalesce through one project_scene boundary.
+main.rs App::redraw drains dirty data before consuming the tick as before. No-tick/occluded turns return without projecting.
+gpu.rs splits the existing acquire code from draw. Unavailable/lost/size-mismatched targets retain their original result/reconfigure/error policy.
+Only an acquired target permits project_scene; a refusal retains the pending marker and original redraw retry conditions.
+Acquisition wait remains present-wait accounting, excluded from drain CPU wall phases.
+headless.rs projects once in its existing dirty && submitted==rendered offscreen frame branch before layout/submit.
+Scene projection / UiLayout / historical cell rendering use the same retained model in a frame. No protocol or pager change.
+scene.rs adds only a cfg(test) per-instance projection counter. Production R5i counters remain in place.
+R5i ModelApplied stamp now follows actual projection rather than mere Arc retention.
+
+Checks (O1; debug0; memory fixtures; wrappers clear; own sole target; two Cargo jobs)
+{"command": ["cargo", "test", "-p", "bboxy450-term", "--locked", "--bin", "bboxy450-term", "lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain", "--", "--exact", "--nocapture"], "elapsed_s": 669.576287792006, "exit": 101, "label": "projection-red", "log_sha256": "ad947b53ba49b1231eb32f1794ec4edf77de37b756b7bb6f5d227b1ede0c5ab4", "patch_sha256": "530531b74aee6c2e30d6ea2b75a8d59ea22660ed32abfd9af1935545287572da", "source": "7fa335668fde6aa8628e5431e241e9975ea57493"}
+{"command": ["cargo", "test", "-p", "bboxy450-term", "--locked", "--bin", "bboxy450-term", "lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain", "--", "--exact", "--nocapture"], "elapsed_s": 34.40924841701053, "exit": -15, "label": "projection-green", "log_sha256": "dd1c8f88115022bdae6c938cbf7b6501ba212936d15c5979d27d5df64f569cd2", "patch_sha256": "82f0cbbd7f7bc236a6f4c1d0dbabd2cb67ddeda9685fbbabd34be3de2945d00b", "source": "7fa335668fde6aa8628e5431e241e9975ea57493"}
+The first green build was deliberately SIGTERM-stopped while restoring unrelated formatter changes; it is not a test verdict.
+All unrelated paths restored to exact HEAD bytes; only main.rs/gpu.rs/headless.rs/scene.rs changed in the final source.
+{"command": ["cargo", "test", "-p", "bboxy450-term", "--locked", "--bin", "bboxy450-term", "lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain", "--", "--exact", "--nocapture"], "elapsed_s": 858.8170694170403, "exit": 0, "label": "projection-green-scoped", "log_sha256": "193b7d8e627dc4ae97a1ed987a3a621b4e2985b7d17163b804c2d9abaf22adb0", "patch_sha256": "63727bdd9087bf007991c0e62191d6667bbc7d0bb68b5077c4cf97119b7e5940", "source": "7fa335668fde6aa8628e5431e241e9975ea57493"}
+rustfmt --edition2024 --config skip_children=true --check on those four files — EXIT0.
+git diff --check — EXIT0.
+
+Regression properties
+The same failing drain assertion is retained in the final test; baseline observed1 projection where0 was required.
+Two batches of64 real App::drain calls retain newest Arc and the data invalidation, with no intermediate projection.
+Missing-frame boundary leaves projection count/pending work unchanged. Next usable frame projects newest title once.
+Repeated frame boundary without data does not reproject. Three local focus changes coalesce to one newest-focus projection.
+No wall-clock throughput assertion, native window, operator input or credential access.
+
+Not yet checked at this commit: workspace/strict/invariants, clean normal ci-local, and the ONE post-gate967/50 timing attempt.
+No measured performance claim from this unit proof. NG1 remains parked until the store/native fixes land.
+Artifacts /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6
+
+projection-red raw command output SHA256 ad947b53ba49b1231eb32f1794ec4edf77de37b756b7bb6f5d227b1ede0c5ab4
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-rt)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui)
+   Compiling bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-harness-wake-up)
+   Compiling bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-supervisor)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-doc)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-render)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 11m 09s
+     Running unittests src/main.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/target/debug/deps/bboxy450_term-385072e00e980f81)
+
+running 1 test
+
+thread 'lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain' (37355546) panicked at crates/bboxy450-term/src/main.rs:6542:13:
+assertion `left == right` failed: drain projected without a frame
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain ... FAILED
+
+failures:
+
+failures:
+    lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 113 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p bboxy450-term --bin bboxy450-term`
+
+projection-green raw command output SHA256 dd1c8f88115022bdae6c938cbf7b6501ba212936d15c5979d27d5df64f569cd2
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)
+
+projection-green-scoped raw command output SHA256 193b7d8e627dc4ae97a1ed987a3a621b4e2985b7d17163b804c2d9abaf22adb0
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui-model)
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-ui)
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-proto)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-render)
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-doc)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 14m 18s
+     Running unittests src/main.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/target/debug/deps/bboxy450_term-385072e00e980f81)
+
+running 1 test
+ui input: FocusChanged { seat: SeatId(Ulid(4)), prev: Some(SeatId(Ulid(1))), stage_switched: false }
+ui input: Locate { seat: SeatId(Ulid(4)), where_: Both }
+test lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain ... okui input: FocusChanged { seat: SeatId(Ulid(1)), prev: Some(SeatId(Ulid(4))), stage_switched: false }
+ui input: Locate { seat: SeatId(Ulid(1)), where_: Both }
+ui input: FocusChanged { seat: SeatId(Ulid(4)), prev: Some(SeatId(Ulid(1))), stage_switched: false }
+
+ui input: Locate { seat: SeatId(Ulid(4)), where_: Both }
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 113 filtered out; finished in 0.00s
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/unrelated-formatter.patch SHA256 dd4c0ca143023cf2601fad07c4133be719f0626295bd084084892ce7f7b600e9
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/formatter-restored.json SHA256 27939c94c0662e70ba5bc5aa7213c6c6fdfc2e0b8ff49b60700841fe7410f6ae
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/projection-green-stopped.json SHA256 b0ef1bb0bacad04e4d749302ab13c2819785e09ff22027d78cdae60f1336e488
+
+Focus compatibility addendum
+Source audit: poll_focus_frame checked Scene::focused immediately after the local action; with deferred projection this still names the last drawn frame.
+Immediate acceptance now checks FocusState.stage.focused. The Pending frame/generation/visibility checks and all three-second deadlines remain unchanged.
+Extended same regression calls real App::poll_focus_frame, observes retained previous scene, no ACK before frame11, then one projection and successful actual-focus/frame11 completion.
+{"command": ["cargo", "test", "-p", "bboxy450-term", "--locked", "--bin", "bboxy450-term", "lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain", "--", "--exact", "--nocapture"], "elapsed_s": 16.330939208040945, "exit": 0, "label": "projection-focus-green", "log_sha256": "12d9a41b32fd9f0778d8de6d0b4686cdacf6befa99dae0572e98df92de26470d", "patch_sha256": "4a16bd0fbd35a4388e9a148a2bf84714c3423a710047b9221567ba8e034a9f8f", "source": "48ac78a990db6baac422b1444d60c758186b172a"}
+Original workspace precheck was stopped before completion after the source finding; no workspace verdict was claimed. Own driver87327 and four descendants terminated; stop manifest /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/prechecks-stopped-focus.json
+Raw extended focused log SHA256 12d9a41b32fd9f0778d8de6d0b4686cdacf6befa99dae0572e98df92de26470d
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 15.89s
+     Running unittests src/main.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/target/debug/deps/bboxy450_term-385072e00e980f81)
+
+running 1 test
+ui input: FocusChanged { seat: SeatId(Ulid(4)), prev: Some(SeatId(Ulid(1))), stage_switched: false }
+ui input: Locate { seat: SeatId(Ulid(4)), where_: Both }
+ui input: FocusChanged { seat: SeatId(Ulid(1)), prev: Some(SeatId(Ulid(4))), stage_switched: false }
+test lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain ... ok
+
+ui input: Locate { seat: SeatId(Ulid(1)), where_: Both }
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 113 filtered out; finished in 0.01s
+
+ui input: FocusChanged { seat: SeatId(Ulid(4)), prev: Some(SeatId(Ulid(1))), stage_switched: false }
+
+First scoped prechecks on01ab73e3 (failures retained)
+{"command": ["cargo", "test", "-p", "bboxy450-term", "--locked", "--no-fail-fast"], "elapsed_s": 223.66379254101776, "exit": 101, "label": "scoped-workspace", "log_sha256": "bbe542c9057e8ad96d6f52e5b9cca35d73b51a6b1f1c634e11f37c4e7ee4a990", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "source": "01ab73e3db4d41256fe02d661780ff9b1d58a03a"}
+{"command": ["cargo", "clippy", "-p", "bboxy450-term", "--all-targets", "--locked", "--", "-D", "warnings"], "elapsed_s": 3.5782261670101434, "exit": 101, "label": "scoped-strict", "log_sha256": "5100e58dbcde04255874b3e6d40ad026964395f5503dd381dd5035ebdce1cc36", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "source": "01ab73e3db4d41256fe02d661780ff9b1d58a03a"}
+{"command": ["sh", "scripts/invariants.sh"], "elapsed_s": 167.6133138750447, "exit": 1, "label": "scoped-invariants", "log_sha256": "01a6da7d6b13e0ea07b3664c56b7a237cd63163fa79a582cc54828530dae5b06", "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "source": "01ab73e3db4d41256fe02d661780ff9b1d58a03a"}
+App tests: only failing target was the new unit fixture, which called init_ui in the same process as the existing ctl_ui_key_tests UI owner. Production UI_THREAD OnceLock correctly refused the second worker thread. All other app targets completed without a failing target.
+Fixture correction: run that exact unit test in a self-test child process, assert success AND one actual test ran, reap through Command::output; no global UI guard change and no new product process.
+Strict compilation failed before app linting: private target libsqlite3-sys generated out/bindgen.rs was absent; other generated object/static-library files existed. No warning waiver.
+Invariants:23 checks,5 failures,9 slow skips. ui-never-waits reported the same missing generated file; the four piped checks hid their underlying output, so those causes were not directly observed.
+After all checks exited, cargo clean -p libsqlite3-sys --target-dir <own N/target> EXIT0 removed29 files/10.4MiB to force regeneration. No source/lock version change. Full results are not green and remain in the artifact root.
+Policy bd5531e3 was read: two-job app-only tests/strict, direct workspace dependents verified empty by cargo metadata, full workspace reserved for normal gate. Earlier uncompleted workspace drivers were stopped and retained as partial, not verdicts.
+Artifact stop/cache records: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/prechecks-stopped-focus.json; /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/prechecks-stopped-policy.json; /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/sqlite-generated-cache-clean.json

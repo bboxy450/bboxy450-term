@@ -1476,6 +1476,7 @@ struct App {
     updates: Arc<Latest<usize>>,
     live_updates: Arc<Latest<Arc<bboxy450_term::model::Model>>>,
     live_state: Option<Arc<bboxy450_term::model::Model>>,
+    scene_dirty: bool,
     live_commands: Option<live::CommandSender>,
     pending_commands: VecDeque<live::UiMsg>,
     command_retry: command_retry::Retry,
@@ -1605,6 +1606,7 @@ impl App {
             updates,
             live_updates,
             live_state: None,
+            scene_dirty: true,
             live_commands: None,
             pending_commands: VecDeque::new(),
             command_retry: Default::default(),
@@ -1745,9 +1747,7 @@ impl App {
             && let Some(model) = &self.live_state
         {
             self.focus.restore(stage, &model.ui);
-            if let Some(stage) = &self.focus.stage {
-                self.scene.set_model(model, stage);
-            }
+            self.scene_dirty = true;
         }
         self.document_layout = None;
         self.sync_text_ime();
@@ -2014,11 +2014,7 @@ impl App {
         let system = self.verify.theme.unwrap_or(self.system_theme);
         self.scene
             .set_appearance(&self.effective_preferences(), system);
-        if let Some(model) = &self.live_state
-            && let Some(stage) = &self.focus.stage
-        {
-            self.scene.set_model(model, stage);
-        }
+        self.scene_dirty = true;
         if let Some(commands) = &self.live_commands {
             let ctx = self.scene.ui_context();
             commands.set_context(preferences::ContextUpdate {
@@ -2749,10 +2745,7 @@ impl App {
             .apply(&model.ui, action, &self.focus_bounds, Instant::now())
         {
             Ok(events) => {
-                self.scene.set_model(
-                    &model,
-                    self.focus.stage.as_ref().expect("focus action stage"),
-                );
+                self.scene_dirty = true;
                 self.attention_focus_events(&events, true);
                 for event in events {
                     self.logger.write(format!("ui input: {event:?}"));
@@ -2917,7 +2910,7 @@ impl App {
             Some(bboxy450_term::focus_ack::Effect::Apply(seat)) => {
                 let generation = model.ui.seats[&seat].process_generation;
                 self.focus_action_applied(FocusAction::Activate(seat, FocusOrigin::Row));
-                if self.scene.focused() == Some(seat) {
+                if self.focus.stage.as_ref().and_then(|stage| stage.focused) == Some(seat) {
                     self.ctl_focus.applied(next_frame, generation);
                     self.request_redraw();
                     return true;
@@ -3326,12 +3319,6 @@ impl App {
             let (mut gpu, scene) = result?;
             self.scene = scene;
             self.apply_preferences();
-            if let Some(state) = &self.live_state {
-                self.scene.set_model(
-                    state,
-                    self.focus.stage.as_ref().unwrap_or(&state.ui.window.stage),
-                );
-            }
             let size = self.window.as_ref().unwrap().inner_size();
             gpu.resize(size.width, size.height);
             self.logger.write(format!(
@@ -3486,8 +3473,7 @@ impl App {
                 launcher.replace_items(launcher_items_for(Some(&state), self.focus.stage.as_ref()));
                 self.launcher_layout = None;
             }
-            self.scene
-                .set_model(&state, self.focus.stage.as_ref().expect("published stage"));
+            self.scene_dirty = true;
             let (completed, follow_up) = self.composer_client.replies(&state.operation_results);
             if let Some(draft) = completed {
                 if draft.delegate {
@@ -3501,9 +3487,6 @@ impl App {
             {
                 let _drop = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::UiOldModelDrop);
                 self.live_state = Some(state);
-            }
-            if let Some(stall) = &self.stall {
-                stall.model_applied();
             }
             if let Some(seat) = restored {
                 self.focus_action(FocusAction::Activate(seat, FocusOrigin::Keyboard));
@@ -4263,6 +4246,24 @@ impl App {
         }
         Ok(layouts)
     }
+    /// Data and focus may change between ticks; only a usable frame projects
+    /// their newest state. A refused drawable leaves the pending work intact.
+    fn project_scene(&mut self, frame_ready: bool) {
+        if !frame_ready || !self.scene_dirty {
+            return;
+        }
+        let Some(model) = &self.live_state else {
+            return;
+        };
+        self.scene.set_model(
+            model,
+            self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage),
+        );
+        self.scene_dirty = false;
+        if let Some(stall) = &self.stall {
+            stall.model_applied();
+        }
+    }
     fn redraw(&mut self) -> Result<(), String> {
         self.redraw_pending.set(false);
         if self.gpu.is_none() {
@@ -4336,7 +4337,7 @@ impl App {
         }
         // Drain the coalesced dirty flag before consuming its latest tick, so a
         // concurrent CV callback cannot publish a tick without a future wake.
-        let tick = self.pacer.as_ref().and_then(DisplayLink::take_tick);
+        let mut tick = self.pacer.as_ref().and_then(DisplayLink::take_tick);
         let fifo = self.pacer.as_ref().is_none_or(DisplayLink::is_fifo);
         let metal = self.pacer.as_ref().is_some_and(DisplayLink::is_metal);
         if self.occluded
@@ -4353,7 +4354,22 @@ impl App {
             }
             return Ok(());
         }
-        phases.drain = start.elapsed();
+        let frame = self
+            .gpu
+            .as_mut()
+            .unwrap()
+            .acquire(tick.as_mut().and_then(|tick| tick.drawable.take()))?;
+        self.project_scene(frame.is_some());
+        let Some(frame) = frame else {
+            if (self.animate && fifo)
+                || !self.inbox.messages.is_empty()
+                || !self.inbox.output.is_empty()
+            {
+                self.request_redraw();
+            }
+            return Ok(());
+        };
+        phases.drain = start.elapsed().saturating_sub(frame.wait());
         let scale = self.window.as_ref().unwrap().scale_factor() as f32;
         let logical = [size.width as f32 / scale, size.height as f32 / scale];
         let start = Instant::now();
@@ -4463,7 +4479,7 @@ impl App {
             ops,
             scale,
             self.frozen_ms,
-            tick.and_then(|tick| tick.drawable),
+            frame,
             self.meter.total_frames() + 1,
             self.live_state.as_ref().map(|model| gpu::Panes {
                 model,
@@ -6581,6 +6597,176 @@ mod capture_step_tests {
                 CaptureStep::Refuse("window occluded, no frame presented")
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod lazy_projection_tests {
+    use super::*;
+    use bbt_ui_model::{Axis, Seat, SplitNode, Swarm, SwarmId, Tab, TabId};
+
+    fn published_model(revision: usize) -> Arc<bboxy450_term::model::Model> {
+        let id = SeatId::from_u128(1);
+        let swarm = SwarmId::from_u128(2);
+        let mut seat = Seat::new(id, swarm, [1; 32], "fixture", "zsh");
+        seat.title = format!("revision {revision}");
+        Arc::new(bboxy450_term::model::Model {
+            ui: UiModel::new(
+                vec![Swarm::new(
+                    swarm,
+                    "fixture",
+                    vec![Tab::new(
+                        TabId::from_u128(3),
+                        "fixture",
+                        SplitNode::split(
+                            Axis::Row,
+                            0.5,
+                            SplitNode::Leaf(id),
+                            SplitNode::Leaf(SeatId::from_u128(4)),
+                        ),
+                    )],
+                )],
+                vec![
+                    seat,
+                    Seat::new(SeatId::from_u128(4), swarm, [4; 32], "other", "zsh"),
+                ],
+            )
+            .unwrap(),
+            ..Default::default()
+        })
+    }
+
+    #[test]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "the fixture owns an isolated process-wide UI thread registration"
+    )]
+    fn model_publishes_between_frames_do_not_project_during_drain() {
+        const CHILD: &str = "BBOXY_R5J_UI_FIXTURE_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain",
+                    "--nocapture",
+                    "--test-threads=1",
+                ])
+                .env(CHILD, "1")
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success()
+                    && String::from_utf8_lossy(&output.stdout).contains("1 passed; 0 failed;"),
+                "isolated UI fixture {:?}:\n{}\n{}",
+                output.status,
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return;
+        }
+        struct QuietWake;
+        impl bbt_rt::Waker for QuietWake {
+            fn wake(&self) {}
+        }
+        let inbox = bbt_rt::init_ui(QuietWake);
+        let latest = Arc::new(Latest::new(inbox.dirty.source(5)));
+        let mut app = App::owner(
+            UiProxy::Headless(Arc::new(|_| {})),
+            inbox,
+            log::Logger::new(),
+            latest.clone(),
+            &["--headless".into()],
+            Verify::default(),
+        );
+        for revision in 0..64 {
+            let model = published_model(revision);
+            latest.publish(model.clone());
+            let sources = app.drain();
+            assert!(sources.contains(&5), "the data invalidation must survive");
+            assert!(Arc::ptr_eq(app.live_state.as_ref().unwrap(), &model));
+            assert_eq!(
+                app.scene.projections(),
+                0,
+                "drain projected without a frame"
+            );
+            app.project_scene(false);
+            assert_eq!(app.scene.projections(), 0, "a missing drawable projected");
+        }
+        app.project_scene(true);
+        assert_eq!(app.scene.projections(), 1);
+        assert_eq!(app.scene.seats[0].title, "revision 63");
+        for revision in 64..128 {
+            let model = published_model(revision);
+            latest.publish(model.clone());
+            app.drain();
+            assert!(Arc::ptr_eq(app.live_state.as_ref().unwrap(), &model));
+            app.project_scene(false);
+            assert_eq!(app.scene.projections(), 1);
+        }
+        app.project_scene(true);
+        assert_eq!(
+            app.scene.projections(),
+            2,
+            "N publishes added one projection"
+        );
+        assert_eq!(app.scene.seats[0].title, "revision 127");
+        app.project_scene(true);
+        assert_eq!(
+            app.scene.projections(),
+            2,
+            "unchanged state is already projected"
+        );
+
+        for id in [4, 1, 4] {
+            app.focus_action_applied(FocusAction::Activate(
+                SeatId::from_u128(id),
+                FocusOrigin::Keyboard,
+            ));
+        }
+        assert_eq!(
+            app.focus.stage.as_ref().unwrap().focused,
+            Some(SeatId::from_u128(4))
+        );
+        assert_eq!(
+            app.scene.projections(),
+            2,
+            "focus changes only mark pending work"
+        );
+        app.project_scene(false);
+        assert_eq!(app.scene.projections(), 2);
+        app.project_scene(true);
+        assert_eq!(app.scene.projections(), 3);
+        assert_eq!(app.scene.focused(), Some(SeatId::from_u128(4)));
+
+        let target = SeatId::from_u128(1);
+        app.ctl_focus.set(bboxy450_term::focus_ack::Ask {
+            id: bbt_mux::Ulid(9),
+            seat: target,
+            prior_spawns: vec![],
+        });
+        assert!(app.poll_focus_frame(10, 11));
+        assert_eq!(app.focus.stage.as_ref().unwrap().focused, Some(target));
+        assert_eq!(app.scene.focused(), Some(SeatId::from_u128(4)));
+        let model = app.live_state.clone().unwrap();
+        assert!(
+            app.ctl_focus
+                .poll(&model, app.scene.focused(), |_| true, 10)
+                .is_none(),
+            "accepted focus still waits for its produced frame"
+        );
+        app.project_scene(false);
+        assert_eq!(app.scene.projections(), 3);
+        app.project_scene(true);
+        assert_eq!(app.scene.projections(), 4);
+        let Some(bboxy450_term::focus_ack::Effect::Answer(answer)) =
+            app.ctl_focus
+                .poll(&model, app.scene.focused(), |_| true, 11)
+        else {
+            panic!("the projected completed frame must acknowledge focus");
+        };
+        let frame = answer.result.unwrap();
+        assert_eq!(frame.seat, target);
+        assert_eq!(frame.frame_seq, 11);
     }
 }
 
