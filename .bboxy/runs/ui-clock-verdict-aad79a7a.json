@@ -1,0 +1,301 @@
+{
+  "source": "aad79a7abffb7bc00d6c1c92732d8e8dba179328",
+  "base": "cc7977ef941a73d4ec33145e91a5a10d5fcbf56f",
+  "ci": {
+    "phase": "finished",
+    "source_sha": "aad79a7abffb7bc00d6c1c92732d8e8dba179328",
+    "source": "/Users/feral/mydev/bboxy450-term-exec6/scratchpad/ui-clock-ci-aad79a7abffb-1",
+    "target": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-dev",
+    "report": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-parity-aad79a7abffb-1",
+    "log": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-proof/ci-aad79a7abffb-1.log",
+    "command": [
+      "sh",
+      "scripts/ci-local.sh",
+      "--parity"
+    ],
+    "wrapper_pid": 45913,
+    "target_reused_exclusively_after_precheck": true,
+    "started_utc": "2026-10-25T12:40:16.257274+00:00",
+    "environment": {
+      "CARGO_TARGET_DIR": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-dev",
+      "PARITY_OUT": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-parity-aad79a7abffb-1",
+      "CARGO_BUILD_JOBS": "2",
+      "BBOXY_TEST_CUSTODY": "memory",
+      "RUSTC_WRAPPER": "",
+      "RUSTC_WORKSPACE_WRAPPER": "",
+      "RUST_TEST_THREADS": "2"
+    },
+    "ci_pid": 45962,
+    "ci_exit": 0,
+    "elapsed_seconds": 3497.9554836250027,
+    "slot": 2,
+    "artifacts": {
+      "bboxy450-term": {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-proof/bboxy450-term-ci-aad79a7abffb-1",
+        "sha256": "85143a2a6f4f15b97c598f7886c4d380b886f4758982765c474e0c7b5a99635d",
+        "gate_exit": 0
+      },
+      "bboxybook": {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-proof/bboxybook-ci-aad79a7abffb-1",
+        "sha256": "80e375d99325762d91d9be55a4b9902111ffad5a8d63cce678a726dcc7982be1",
+        "gate_exit": 0
+      }
+    },
+    "target_allocated_bytes_retired": 5516877824,
+    "target_removed": true,
+    "post_ci_status": "",
+    "source_remove_exit": 0,
+    "finished_utc": "2026-10-25T13:38:36.401055+00:00",
+    "log_sha256": "1027fe60527cc68a258952f7936702ae34f1e1c36c5ffe70675602b952bb82b8",
+    "report_sha256": "8e267e7f96828e4ae0f67854c75c3009379ab531fbe9358b367472d6a5b6ebc0"
+  },
+  "parity": {
+    "cases": 2240,
+    "required": 2136,
+    "unproven": [],
+    "mismatches": [],
+    "reviews": 72,
+    "new_keys": [],
+    "removed_keys": [],
+    "review_modules": {
+      "harness-icon": 48,
+      "documents": 16,
+      "materials": 8
+    },
+    "baseline": {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-gate-ff0d7433/parity/report.json",
+      "source": "ff0d74335d25a5d5ea105c69d01b6bdae395fc82",
+      "sha256": "1ffb7c99cd289737ce3eb388ba51b2b0fffb0e4be3efb6c731e38596cccb1e85",
+      "case_count": 2176,
+      "review_keys": [
+        "documents/as-modal-comfortable-dark.png",
+        "documents/as-modal-comfortable-light.png",
+        "documents/as-modal-compact-dark.png",
+        "documents/as-modal-compact-light.png",
+        "documents/as-modal-cozy-dark.png",
+        "documents/as-modal-cozy-light.png",
+        "documents/as-modal-touch-dark.png",
+        "documents/as-modal-touch-light.png",
+        "documents/with-a-diagram-comfortable-dark.png",
+        "documents/with-a-diagram-comfortable-light.png",
+        "documents/with-a-diagram-compact-dark.png",
+        "documents/with-a-diagram-compact-light.png",
+        "documents/with-a-diagram-cozy-dark.png",
+        "documents/with-a-diagram-cozy-light.png",
+        "documents/with-a-diagram-touch-dark.png",
+        "documents/with-a-diagram-touch-light.png",
+        "harness-icon/claude-comfortable-dark.png",
+        "harness-icon/claude-comfortable-light.png",
+        "harness-icon/claude-compact-dark.png",
+        "harness-icon/claude-compact-light.png",
+        "harness-icon/claude-cozy-dark.png",
+        "harness-icon/claude-cozy-light.png",
+        "harness-icon/claude-touch-dark.png",
+        "harness-icon/claude-touch-light.png",
+        "harness-icon/codex-comfortable-dark.png",
+        "harness-icon/codex-comfortable-light.png",
+        "harness-icon/codex-compact-dark.png",
+        "harness-icon/codex-compact-light.png",
+        "harness-icon/codex-cozy-dark.png",
+        "harness-icon/codex-cozy-light.png",
+        "harness-icon/codex-touch-dark.png",
+        "harness-icon/codex-touch-light.png",
+        "harness-icon/gear-comfortable-dark.png",
+        "harness-icon/gear-comfortable-light.png",
+        "harness-icon/gear-compact-dark.png",
+        "harness-icon/gear-compact-light.png",
+        "harness-icon/gear-cozy-dark.png",
+        "harness-icon/gear-cozy-light.png",
+        "harness-icon/gear-touch-dark.png",
+        "harness-icon/gear-touch-light.png",
+        "harness-icon/omp-comfortable-dark.png",
+        "harness-icon/omp-comfortable-light.png",
+        "harness-icon/omp-compact-dark.png",
+        "harness-icon/omp-compact-light.png",
+        "harness-icon/omp-cozy-dark.png",
+        "harness-icon/omp-cozy-light.png",
+        "harness-icon/omp-touch-dark.png",
+        "harness-icon/omp-touch-light.png",
+        "harness-icon/sidebarfox-comfortable-dark.png",
+        "harness-icon/sidebarfox-comfortable-light.png",
+        "harness-icon/sidebarfox-compact-dark.png",
+        "harness-icon/sidebarfox-compact-light.png",
+        "harness-icon/sidebarfox-cozy-dark.png",
+        "harness-icon/sidebarfox-cozy-light.png",
+        "harness-icon/sidebarfox-touch-dark.png",
+        "harness-icon/sidebarfox-touch-light.png",
+        "harness-icon/zsh-comfortable-dark.png",
+        "harness-icon/zsh-comfortable-light.png",
+        "harness-icon/zsh-compact-dark.png",
+        "harness-icon/zsh-compact-light.png",
+        "harness-icon/zsh-cozy-dark.png",
+        "harness-icon/zsh-cozy-light.png",
+        "harness-icon/zsh-touch-dark.png",
+        "harness-icon/zsh-touch-light.png",
+        "materials/glow-comfortable-dark.png",
+        "materials/glow-comfortable-light.png",
+        "materials/glow-compact-dark.png",
+        "materials/glow-compact-light.png",
+        "materials/glow-cozy-dark.png",
+        "materials/glow-cozy-light.png",
+        "materials/glow-touch-dark.png",
+        "materials/glow-touch-light.png"
+      ]
+    },
+    "png_counts": {
+      "web": 2240,
+      "native": 2240,
+      "backdrops": 2240
+    },
+    "capture_sha256": "a3eb2d1272c7f987c7cc14c11235fa1ed600b1fe630e9deea1a11afee62576b5"
+  },
+  "runtime": {
+    "exit": 0,
+    "directory": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-c80f2beaa9",
+    "binary": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-proof/bboxy450-term-gate-stage-aad79a7abffb-1",
+    "binary_sha256": "85143a2a6f4f15b97c598f7886c4d380b886f4758982765c474e0c7b5a99635d",
+    "source": "aad79a7abffb7bc00d6c1c92732d8e8dba179328",
+    "private_account_retired": true
+  },
+  "runtime_reap": {
+    "recorded_pids": [
+      97614,
+      97618,
+      97630,
+      97652,
+      97668
+    ],
+    "remaining": [],
+    "ps_exit": 1
+  },
+  "runtime_halo": {
+    "roi": [
+      270,
+      437,
+      294,
+      489
+    ],
+    "changed": 1248,
+    "requirement": "450 ms swell paints beyond the 2 px resting outer rim, in the empty sidebar gap"
+  },
+  "gallery_manifest": {
+    "path": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-proof/gallery-hashes-aad79a7a.jsonl",
+    "files": 14177,
+    "sha256": "60cbe3f3bd521522988260cae04946da5d52b36130bc3dec6ac1660bd50a11a9"
+  },
+  "workspace": {
+    "passed": 1440,
+    "failed": 0,
+    "ignored": 29
+  },
+  "precheck_equivalence": {
+    "source": "aad79a7abffb7bc00d6c1c92732d8e8dba179328",
+    "parent": "cc7977ef941a73d4ec33145e91a5a10d5fcbf56f",
+    "scoped_precheck_source": "2d45d71b7eff45aa9467fee40dc6bd2e7ad9477c",
+    "own_source_blobs_identical": {
+      "crates/bboxy450-term/src/animation_clock.rs": true,
+      "crates/bboxy450-term/src/ctl.rs": true,
+      "crates/bboxy450-term/src/display_link.rs": true,
+      "crates/bboxy450-term/src/gpu.rs": true,
+      "crates/bboxy450-term/src/headless.rs": true,
+      "crates/bboxy450-term/src/main.rs": true,
+      "crates/bboxy450-term/src/scene.rs": true,
+      "crates/bboxy450-term/tests/ctl.rs": true,
+      "crates/bboxy450-term/tests/headless.rs": true,
+      "crates/bbt-mux/src/gui_capture.rs": true,
+      "crates/bbt-mux/src/logic.rs": true,
+      "crates/bbt-proto/src/gui.rs": true,
+      "crates/bbt-proto/tests/ui_clock.rs": true
+    },
+    "accepted_main_delta": "unattended night writer, UI scripts, records only; rerun e2e_night integration then scoped strict Clippy and fast invariants on this source"
+  },
+  "precheck_results": {
+    "union-2d45d71b-tests": {
+      "exit": 0,
+      "elapsed_s": 772.7258125829976,
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "bbt-proto",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bboxy450-term",
+        "--",
+        "--test-threads=2"
+      ]
+    },
+    "final-night-test": {
+      "exit": 0,
+      "elapsed_s": 205.26114491699263,
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "e2e_night",
+        "--",
+        "--test-threads=2"
+      ]
+    },
+    "final-clippy": {
+      "exit": 0,
+      "elapsed_s": 22.553790542006027,
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--all-targets",
+        "-p",
+        "bbt-proto",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bboxy450-term",
+        "--",
+        "-D",
+        "warnings"
+      ]
+    },
+    "final-invariants": {
+      "exit": 0,
+      "elapsed_s": 199.83623329200782,
+      "command": [
+        "sh",
+        "scripts/invariants.sh"
+      ]
+    }
+  },
+  "main_at_handoff": {
+    "sha": "1cde8f0c27afd910ce5b9a6664f4aa3ca64ff2b8",
+    "since_base": [
+      "1cde8f0c ctl debug fault ring-gap: a projection mask never a ring mutation, test-account chain is the authority, bounded and journaled; history meter bounded to 128 panes, on demand, no periodic scan"
+    ]
+  },
+  "historical_failures": [
+    "Initial compile-only headless preflight exposed the accidentally test-only Scene::set_model wrapper; normal fixture wrapper restored before signing.",
+    "The first pixel-difference probe only proved rim motion. A stronger outside-rim ROI failed with zero changed pixels on the saved pre-fix binary. App::focus_layout_ready now shares native landing with headless, and both strong Rust and CLI proofs pass."
+  ],
+  "evidence_files": [
+    {
+      "path": ".bboxy/runs/ui-clock-ci-aad79a7a.log",
+      "sha256": "1027fe60527cc68a258952f7936702ae34f1e1c36c5ffe70675602b952bb82b8"
+    },
+    {
+      "path": ".bboxy/runs/ui-clock-prechecks-aad79a7a.log",
+      "sha256": "3edff60702fe0c04075f50deaf0c7368134c7b4d06801c3a8cd72c0fbb6c1b7c"
+    },
+    {
+      "path": ".bboxy/runs/ui-clock-gallery-hashes-aad79a7a.jsonl",
+      "sha256": "60cbe3f3bd521522988260cae04946da5d52b36130bc3dec6ac1660bd50a11a9"
+    },
+    {
+      "path": ".bboxy/runs/ui-clock-runtime-aad79a7a.json",
+      "sha256": "112cded8fd756bf0e33196cfb8279c7b503c9ce6a2324be7702dc7d28cafa5fb"
+    }
+  ]
+}

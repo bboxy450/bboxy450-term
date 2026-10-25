@@ -1,0 +1,1761 @@
+
+## union-2d45d71b-tests
+{"source": "2d45d71b7eff45aa9467fee40dc6bd2e7ad9477c", "exit": 0, "elapsed_s": 772.7258125829976, "command": ["cargo", "test", "--locked", "-p", "bbt-proto", "-p", "bbt-mux", "-p", "bboxy450-term", "--", "--test-threads=2"]}
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 5m 32s
+     Running unittests src/lib.rs (target/ui-clock-dev/debug/deps/bboxy450_term-ec64ec2d2b9e8e26)
+
+running 65 tests
+test attention::tests::all_three_wait_reasons_and_generation_are_typed ... ok
+test attention::tests::live_state_updates_preserve_stage_and_handling_survives_model_rebuild ... ok
+test attention::tests::muted_and_supplied_notification_preferences_never_post_or_change_focus ... ok
+test attention::tests::one_episode_loops_until_explicit_focus_or_leaving_and_repeat_keeps_its_key ... ok
+test close::tests::t7_expiry_removes_only_the_row_and_emits_one_exact_retained_notice ... ok
+test close::tests::t7_a_delayed_close_publication_still_announces_retention_once ... ok
+test close::tests::t7_grace_uses_only_the_matching_registry_deadline_and_generation ... ok
+test close::tests::t7_metadata_rebuild_restores_the_same_generation_tree_and_focus ... ok
+test close::tests::t7_position_and_undo_snapshot_use_the_actual_split_without_optimistic_close ... ok
+test close_frame::tests::close_needs_the_confirmed_operation_not_just_a_model_or_layout_edit ... ok
+test close_frame::tests::undo_needs_the_same_generation_open_and_shown_in_its_restored_pane ... ok
+test cockpit::gui_io_tests::oversized_request_is_rejected_before_enqueue_without_stopping_the_writer ... ok
+test cockpit::gui_io_tests::startup_write_deadline_is_two_seconds_of_controlled_time ... ok
+test cockpit::gui_io_tests::writer_task_death_is_disconnected_even_while_the_reader_stays_connected ... ok
+test ctl::app::tests::startup_diagnostic_does_not_claim_an_unobserved_exit ... ok
+test ctl::app::tests::startup_diagnostic_names_a_sigbus_child_and_its_matching_report ... ok
+test ctl::app::tests::startup_diagnostic_preserves_a_real_terminating_signal ... ok
+test ctl::app::tests::startup_diagnostic_preserves_exit_codes_and_core_dump_status ... ok
+test ctl::app::tests::startup_diagnostic_selects_newest_post_launch_report_for_its_pid_only ... ok
+test ctl::tests::a_paste_is_bracketed_only_when_asked_and_cannot_end_itself ... ok
+test ctl::tests::a_refusal_that_beats_the_request_is_still_read ... ok
+test ctl::tests::commands_parse_in_the_spec_s_shapes ... ok
+test ctl::tests::errors_name_a_kind_a_hint_and_an_exit ... ok
+test ctl::tests::every_verb_maps_to_exactly_one_window_action ... ok
+test ctl::tests::task_verbs_parse_typed_evidence_and_require_their_own_flags ... ok
+test ctl::tests::the_endpoint_file_round_trips ... ok
+test ctl::tests::ui_clock_commands_use_the_existing_relay_and_reject_non_integer_advances ... ok
+test ctl::tests::ui_keys_are_bounded_chrome_names_and_never_terminal_text ... ok
+test ctl::tests::ui_scroll_parses_only_the_typed_window_motions ... ok
+test focus_ack::tests::a_newer_placement_or_the_wrong_pane_never_gets_a_success_acknowledgment ... ok
+test focus_ack::tests::an_already_consumed_result_in_an_older_ui_snapshot_does_not_supersede_focus ... ok
+test focus_ack::tests::an_earlier_placement_settles_before_focus_and_only_a_completed_frame_acknowledges_it ... ok
+test focus_ack::tests::replacing_and_expiring_focus_are_bounded_and_do_not_complete_another_operation ... ok
+test grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines ... ok
+test keyboard_adapter_uses_neutral_core_and_live_modes ... ok
+test model::event_lane_tests::a_large_newest_live_record_takes_precedence_over_read_page_bytes ... ok
+test model::event_lane_tests::byte_budget_is_independent_of_row_count ... ok
+test model::event_lane_tests::empty_pages_and_refusals_have_distinct_monotonic_completion_revisions ... ok
+test model::event_lane_tests::metadata_rebuild_and_reconnect_preserve_the_published_window ... ok
+test model::event_lane_tests::requested_old_page_survives_a_full_live_window_until_replaced ... ok
+test model::event_lane_tests::rows_dedupe_by_canonical_identity_and_keep_per_stream_order ... ok
+test model::event_lane_tests::sparse_history_pages_keep_next_without_acknowledging_or_marking_read ... ok
+test model::event_lane_tests::stale_transport_snapshots_cannot_roll_back_operator_read_state ... ok
+test model::event_lane_tests::window_eviction_is_visible_and_old_replays_do_not_repopulate_it ... ok
+test model::tests::a_second_spawn_and_refresh_preserve_the_first_explicit_split ... ok
+test model::tests::custody_held_spawns_release_in_admission_order_with_the_same_captured_requests ... ok
+test model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations ... ok
+test model::tests::pending_spawns_are_bounded_and_a_reused_id_never_requeues_an_effect ... ok
+test model::tests::removed_or_replaced_anchor_keeps_the_new_seat_and_names_the_partial_outcome ... ok
+test model::tests::reversed_spawn_replies_use_their_captured_anchors_and_duplicates_are_inert ... ok
+test model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor ... ok
+test model::tests::unknown_spawn_and_unrelated_metadata_never_place_or_lose_the_request ... ok
+test cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline ... ok
+test notifications::tests::a_fresh_worker_withdraws_known_inactive_ids_from_an_old_process ... ok
+test notifications::tests::a_mute_admitted_during_authorization_prevents_the_pending_post ... ok
+test notifications::tests::replacement_and_removal_use_the_same_id_off_the_caller_thread ... ok
+test settings::tests::atomic_patch_preserves_a_config_symlink ... ok
+test settings::tests::busy_configuration_refuses_without_waiting_or_altering_the_file ... ok
+test settings::tests::harness_array_patches_preserve_entry_comments_even_when_an_entry_is_removed ... ok
+test settings::tests::native_second_item_hold_keeps_unlock_available_after_an_allowed_access ... ok
+test settings::tests::native_unknown_checks_the_same_id_and_never_replays_on_disconnect ... ok
+test settings::tests::patches_survive_restart_and_preserve_comments_and_unmanaged_keys ... ok
+test settings::tests::refused_save_keeps_original_bytes_and_read_does_not_create_a_file ... ok
+test settings::tests::stale_save_cannot_acknowledge_a_newer_edit ... ok
+test model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy ... ok
+
+test result: ok. 65 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+     Running unittests src/main.rs (target/ui-clock-dev/debug/deps/bboxy450_term-385072e00e980f81)
+
+running 119 tests
+test animation_clock::tests::an_overflowing_advance_does_not_change_the_frozen_frame_or_revision ... ok
+test animation_clock::tests::an_unfrozen_advance_is_refused_without_changing_the_timeline ... ok
+test animation_clock::tests::frozen_frames_ignore_wall_time_and_advance_exactly_to_the_swell_peak ... ok
+test animation_clock::tests::resume_keeps_the_virtual_instant_and_then_follows_live_time ... ok
+test budget::tests::hud_gpu_mean_counts_spans_without_a_cpu_row ... ok
+test budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored ... ok
+test capture_step_tests::an_occluded_window_answers_from_its_last_frame_or_says_why_not ... ok
+test capture::tests::a_crop_stays_inside_the_frame ... ok
+test command_retry::tests::a_closed_receiver_wakes_delivery_once_without_polling ... ok
+test command_retry::tests::busy_delivery_resumes_in_fifo_order_without_a_frame_or_poll ... ok
+test command_retry::tests::capacity_is_reserved_once_and_stale_events_release_it ... ok
+test composer_host_tests::composer_submit_is_focus_local_and_newline_tab_navigation_remain_local ... ok
+test composer_host_tests::operation_admission_is_bounded_without_consuming_terminal_input_capacity ... ok
+test composer_host_tests::consumed_composer_press_never_leaks_a_kitty_release_after_focus_changes ... ok
+test composer_host_tests::settings_keyboard_routes_edits_and_balances_only_the_prior_pty_release ... ok
+test composer_host_tests::t7_command_z_is_local_once_and_control_z_remains_terminal_input ... ok
+test ctl_ui_key_tests::every_advertised_chrome_key_uses_the_native_input_boundary ... ok
+test composer_host_tests::settings_mute_requires_a_visible_real_focused_seat_and_awaits_metadata ... ok
+test default_spawn_tests::default_picks_are_keyed_by_id_and_leave_placement_and_navigation_deferred ... ok
+launcher open
+launcher open
+test ctl_ui_key_tests::virtual_chords_leave_native_pressed_keys_and_releases_alone ... ok
+test display_link::tests::core_video_timestamp_matches_sdk_abi ... ok
+test display_link::tests::data_racing_a_tick_still_requests_a_frame_after_pause ... ok
+test default_spawn_tests::host_picks_preserve_structured_location_without_parsing_labels ... ok
+test display_link::tests::tick_wake_after_pause_does_not_reopen_link ... ok
+test e2e_checklist::tests::a_new_local_graph_has_no_invented_results_or_run_metadata ... ok
+test e2e_checklist::tests::the_host_can_replace_its_snapshot_and_scroll_stays_local_and_bounded ... ok
+test gpu::backdrop_key_tests::a_frosted_op_after_host_drawing_is_never_keyed ... ok
+test gpu::backdrop_key_tests::keys_follow_prior_content_and_only_timed_content_follows_time ... ok
+test gpu::clear_fold_tests::a_target_whose_first_op_is_a_material_or_nothing_is_still_cleared ... ok
+test input_tests::admission_limits_preserve_accepted_bytes_and_allow_merging_at_the_entry_cap ... ok
+test input_tests::input_queued_while_backend_is_lost_survives_resume_and_a_full_queue ... ok
+test input_tests::operator_keys_use_pty_bytes_and_keep_command_shortcuts_out_of_the_shell ... ok
+test input_tests::pane_controls_coalesce_to_the_latest_visible_set_and_size ... ok
+test input_tests::ten_minute_disconnect_bounds_admission_and_drains_accepted_input_in_order ... ok
+test input_tests::text_bursts_keep_byte_order_first_id_and_generation_boundaries ... ok
+test launcher_host_tests::a_graph_press_never_reaches_the_pty_but_an_earlier_pty_press_gets_its_release ... ok
+test launcher_host_tests::actual_controller_filters_picks_climbs_and_preserves_the_named_gaps ... ok
+test launcher_host_tests::cold_notification_waits_for_its_exact_seat_and_never_selects_a_substitute ... ok
+test launcher_host_tests::consumed_local_presses_keep_local_repeats_without_leaking_into_the_pty ... ok
+test launcher_host_tests::document_keys_never_navigate_the_covered_pane_and_balance_prior_pty_releases ... ok
+test launcher_host_tests::document_return_anchor_survives_refresh_and_reconciles_a_removed_seat ... ok
+test launcher_host_tests::graph_navigation_is_local_and_global_shortcuts_still_reach_the_app ... ok
+test launcher_host_tests::ime_preedit_converts_utf8_cursor_bytes_to_utf16_without_committing ... ok
+test launcher_host_tests::modal_input_never_reaches_a_pty_and_picks_do_not_repeat ... ok
+test launcher_host_tests::published_screens_do_not_undo_local_focus_or_create_locate ... ok
+test launcher_host_tests::stage_switch_waits_for_the_new_outer_pane_before_locate_once ... ok
+test launcher_host_tests::terminal_keys_stay_byte_exact_while_explicit_chords_move_focus ... ok
+test launcher_host_tests::terminal_route_uses_live_modes_and_forwards_only_requested_releases ... ok
+test lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain ... ok
+test live::tests::controls_obey_logic_size_limits_and_discard_old_generations ... ok
+test live::tests::disconnected_mutations_wait_for_explicit_retry_while_pane_controls_survive ... ok
+test live::tests::empty_page_completions_publish_and_refusals_complete_only_the_matched_stream ... ok
+test live::tests::event_ack_follows_shared_model_publication_and_replays_do_not_publish_twice ... ok
+test live::tests::event_terminal_replies_release_fifo_while_status_and_gap_pushes_never_do ... ok
+test live::tests::first_refused_resize_converges_without_another_ui_resize ... ok
+test live::tests::generic_spawn_preserves_inputs_and_uses_io_defaults ... ok
+test live::tests::held_and_reordered_knowledge_replies_do_not_block_control_or_history_results ... ok
+test live::tests::knowledge_demand_survives_a_full_command_queue_and_coalesces ... ok
+test live::tests::knowledge_reply_correlation_cannot_consume_an_unrelated_result ... ok
+test gpu::clear_fold_tests::a_folded_clear_draws_the_scene_byte_identically_in_one_pass_fewer ... ok
+test live::tests::messaging_and_task_terminal_wrappers_release_only_their_own_fifo_slots ... ok
+test live::tests::native_retained_results_publish_every_revision_and_survive_metadata_rebuild ... ok
+test live::tests::native_terminal_replies_are_correlated_and_async_identity_never_releases_them ... ok
+test live::tests::queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication ... ok
+cockpit ready: supervisor=94523 logic=94547
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+GUI operation 01M5SG4NQYJK30RTHKBE23HJ9Y accepted
+cockpit ready: supervisor=94522 logic=94548
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+GUI operation 01M5SG4NSN297DDQMEP6ME1ZGC accepted
+GUI operation 01M5SG4NQ776NBBTHJ32Y9AQJ5 rejected: not a built-in harness
+GUI operation 01M5SG4P0WSR0XAA63V2G1D65E accepted
+GUI operation 01M5SG4P3GM21JWWJH9FA4JD37 accepted
+GUI operation 01M5SG4P3YA4PYJQEG4R80ZAWD accepted
+GUI operation 01M5SG4P3ZZ5E8S6J950E7B4FT accepted
+GUI operation 01M5SG4P5BNG0MQJ97JWW687A5 accepted
+GUI operation 01M5SG4P5G3Q3VHJ241AVDXVEQ accepted
+GUI operation 01M5SG4P5HSES2WRFCRBK266JX accepted
+GUI operation 01M5SG4P6WWS7DF3BR2YXRR56H accepted
+GUI operation 01M5SG4P6X6EHEEA3MQBR35GJE accepted
+GUI operation 01M5SG4P7AS2Q51R243FKDE16A accepted
+GUI operation 01M5SG4P6ZQKMMM53MKMFMNCM7 accepted
+GUI operation 01M5SG4P9B0QMVDRFAKGZSD5AT accepted
+GUI operation 01M5SG4P9EAGQT4R29GX0TW312 accepted
+GUI operation 01M5SG4PAQM6QQB2D652MKAEAJ accepted
+GUI operation 01M5SG4PB5B3RWBV29905K4J3F accepted
+GUI operation 01M5SG4PBY33VEPR6SF5NXC39G accepted
+GUI operation 01M5SG4PC1ZXH3G2PK9PFFWB4H accepted
+GUI operation 01M5SG4PDS161DWC3Y1N73X7V1 rejected: unknown GUI stream
+GUI operation 01M5SG4PDTDTST0S02F14ERJM9 accepted
+GUI operation 01M5SG4PEPBRM89QDDBZWMCR65 accepted
+GUI operation 01M5SG4PEQ9EJ3QP01ZQ5QWSYC accepted
+GUI operation 01M5SG4PFJ6KXJDJHBV8Z6E2E4 accepted
+GUI operation 01M5SG4PFKYGGEJZRX8FRPHYFY accepted
+GUI operation 01M5SG4PG10XFT4N0XJ743SWYK accepted
+GUI operation 01M5SG4PGGWBCNGKSM5WNP95PM accepted
+GUI operation 01M5SG4PGH5NEFWHMWKXYG2WYC accepted
+GUI operation 01M5SG4PGHB52GNVREDSH8M8TP accepted
+GUI operation 01M5SG4PHH43E3MHKN776EDTNG accepted
+GUI operation 01M5SG4PHHTG6N4RH744WR7Q85 accepted
+seat 01M5SG4NV55Q0Z72QWN127HSKY activity=Idle process=ClosedGrace { until_ms: 1792930956470 }
+GUI operation 01M5SG4PKSXB3MXW3VT33M4SS4 accepted
+seat 01M5SG4NV55Q0Z72QWN127HSKY activity=Idle process=Running { pid: 94556 }
+GUI operation 01M5SG4PNKB2FDDED6M91VZN2K accepted
+GUI operation 01M5SG4PNM8WY9331DXW9NXHMP accepted
+GUI operation 01M5SG4PNMRBPDGCK3QFN79E9M accepted
+GUI operation 01M5SG4PNMNXECF6KG82FGM6JT accepted
+GUI operation 01M5SG4PNNP67V0ZARJYYZMR6M accepted
+GUI operation 01M5SG4PP30C3HRAPMQ6TJJGMB accepted
+GUI operation 01M5SG4PPR5S8MRY1DEVKV025M accepted
+GUI operation 01M5SG4PQSZ8ZMF6GE1X4W806H accepted
+GUI operation 01M5SG4PRC89J0XH16T4CXVMSA accepted
+GUI operation 01M5SG4PRVQ2VPCR03RTC22DZ7 accepted
+GUI operation 01M5SG4PRWJQE1C1E3AVQHE0N9 accepted
+GUI operation 01M5SG4PS9RJ2PA1ENYQV99REQ accepted
+GUI operation 01M5SG4PS9BCGAEP6HC5HJNCBV accepted
+GUI operation 01M5SG4PS93TJQ8G77M5M1K2AX accepted
+GUI operation 01M5SG4PTVFKF1F9V9PR4XCHX5 accepted
+GUI operation 01M5SG4PVR9JCQERSJA0NXWE4H accepted
+GUI operation 01M5SG4PWM52VA5QFZHVK4CGC1 accepted
+GUI operation 01M5SG4PXGVQZB43D0AFNYD2HZ accepted
+GUI operation 01M5SG4PY08MDC93RA9B2MRCZG accepted
+GUI operation 01M5SG4PZ25BJ7ANJPW1TT34R2 accepted
+GUI operation 01M5SG4PZGDQX1NYEMVWVD5CPV accepted
+GUI operation 01M5SG4PZHCN86BESNSQ5DEBR5 accepted
+GUI operation 01M5SG4Q1AYWG6PQN79V7R605Z accepted
+GUI operation 01M5SG4Q29587K11HQ0B51WEQM accepted
+GUI operation 01M5SG4Q36TRHFRFT4J75F11BM accepted
+GUI operation 01M5SG4Q42K7Y38X310DEEVJTZ accepted
+GUI operation 01M5SG4Q52C2R74J1821CM396Q accepted
+GUI operation 01M5SG4Q5ZQ3FZ1J300RWM58XB accepted
+GUI operation 01M5SG4Q6FHEVZFR57D5VB17CQ accepted
+GUI operation 01M5SG4Q7AEXE2MKGQG5KJ6Q0X accepted
+GUI operation 01M5SG4QA2TQ55F8K81KVH116D accepted
+GUI operation 01M5SG4QAYJJNCF3H8A57ZS943 accepted
+GUI operation 01M5SG4QBVPWMQQ31N4758XV01 accepted
+GUI operation 01M5SG4QDKRQ5RWTP2D9EADPCX accepted
+GUI operation 01M5SG4QEG4JK59K11PHB3BRP9 accepted
+GUI operation 01M5SG4QEZ487KFBPV8S2DC5T6 accepted
+GUI operation 01M5SG4QFCDMNEGW50BBCR4SDA accepted
+GUI operation 01M5SG4QFDHRV0B9BHFCNV4QHG accepted
+GUI operation 01M5SG4QFDW5S9Z4E2J3PT9DH1 accepted
+GUI operation 01M5SG4QFDSN8P2X762WMFY7BB accepted
+GUI operation 01M5SG4QFD8X8Z31JFRD17CD3R accepted
+GUI operation 01M5SG4QFDXJPHRHDTBF2PFDQR accepted
+GUI operation 01M5SG4QFEF0HFB8B1C40CTKCH accepted
+GUI operation 01M5SG4QFE78KYN9AJRW8BAQBM accepted
+GUI operation 01M5SG4QFEF6XXYWBTWD92HQ4C accepted
+GUI operation 01M5SG4QJXZDJQ6FVNFVCP3GFQ accepted
+GUI operation 01M5SG4QJPHGSHTFP7BDF37MDS accepted
+GUI operation 01M5SG4QKZX92E9RXM8DYZ2GP3 accepted
+GUI operation 01M5SG4QM557S69R3QBAHH1WN7 accepted
+GUI operation 01M5SG4QMMPBW6KRWKS66TRPFH accepted
+GUI operation 01M5SG4QMMA73P7A4CJ1MKQ9GZ accepted
+GUI operation 01M5SG4QN2QXG6PDXVC1ZPGHQ5 accepted
+GUI operation 01M5SG4QMW6F867BQ2YEBBWYPV accepted
+GUI operation 01M5SG4QMWYJBKDYBGS7EZRMDV accepted
+GUI operation 01M5SG4QMWHPRT44GEKHF7NM3Y accepted
+GUI operation 01M5SG4QMW4B50GY59Q4SX9X8X accepted
+GUI operation 01M5SG4QMWT3AA2BJ6N241S5TC accepted
+GUI operation 01M5SG4QMW6M0YAGNJ0P9ZHZFA accepted
+GUI operation 01M5SG4QMWTC5VNJEW5GMRYF0Q accepted
+GUI operation 01M5SG4QMWYRQ4MJXDVSSGAC5N accepted
+GUI operation 01M5SG4QMWFZ8W38XSWCZNNWDA accepted
+GUI operation 01M5SG4QMW4SA7XDWNDD1VNA15 accepted
+GUI operation 01M5SG4QMWWYYBCBJ4YNRAZJX5 accepted
+GUI operation 01M5SG4QMW9B0H4K8TST8D2DBW accepted
+GUI operation 01M5SG4QMWQVCZ2Q8TSRX1DNQZ accepted
+GUI operation 01M5SG4QMWZG0MMYE2JV7JJXWP accepted
+GUI operation 01M5SG4QMW4VPMDKPCCXWYVFCK accepted
+GUI operation 01M5SG4QMW40QC3CCQTRNVQCYA accepted
+GUI operation 01M5SG4QMW67ACJCBAS7ZG43NR accepted
+GUI operation 01M5SG4QMW5CRN3P9MFDYX89Y9 accepted
+GUI operation 01M5SG4QMWR6EY9EGB2GH160B5 accepted
+GUI operation 01M5SG4QMWDTA8QN3EMGGY4DR8 accepted
+GUI operation 01M5SG4QMWSXDY03T1S85X0C1N accepted
+GUI operation 01M5SG4QMWVD57XDHRMEFYPG5V accepted
+GUI operation 01M5SG4QMWV651NW80ZSH45Q5W accepted
+GUI operation 01M5SG4QMWD17E8NS4HVDWP69M accepted
+GUI operation 01M5SG4QMWRC3C7EEV41GARW4H accepted
+GUI operation 01M5SG4QMWC0HACNP2SR3W96KC accepted
+GUI operation 01M5SG4QMW2NX2XKV28MMHPPHX accepted
+GUI operation 01M5SG4QMWSM9TVFPBEYBED5PH accepted
+GUI operation 01M5SG4QMWXAYYK075CMR38T8S accepted
+GUI operation 01M5SG4QMWK9P6R15DXNQXT4PJ accepted
+GUI operation 01M5SG4QMW12P78XSQ526CADRM accepted
+GUI operation 01M5SG4QMW91T6975RVHG341PE accepted
+GUI operation 01M5SG4QMW6RTPFZATKNKSCQPW accepted
+GUI operation 01M5SG4QMW76FGXQ3W2AACDJB5 accepted
+GUI operation 01M5SG4QMWGE206MMN4WWT23QT accepted
+GUI operation 01M5SG4QMWQWSRWYMPKTS0Q85W accepted
+GUI operation 01M5SG4QMWAXKZMVWNP7KPPMXK accepted
+GUI operation 01M5SG4QMW0BYE2GJ8DGVGXPDJ accepted
+GUI operation 01M5SG4QMWWQJVR026SBV56JCF accepted
+GUI operation 01M5SG4QMWCSDNZPCRTWYRJNS7 accepted
+GUI operation 01M5SG4QMWMC1VNQ5GYGKZTGDT accepted
+GUI operation 01M5SG4QMWWBZ65H0BXA0329TC accepted
+GUI operation 01M5SG4QMWZWGTNFZXXTFG6BSX accepted
+GUI operation 01M5SG4QMWGGM17CZK6VSNR97G accepted
+GUI operation 01M5SG4QMWSX37HWJZ0H3X569F accepted
+GUI operation 01M5SG4QMW8HX9XKQN0FDRXQBG accepted
+GUI operation 01M5SG4QMWP2P0VK85Q4BJNWQ1 accepted
+GUI operation 01M5SG4QMWMRDXAFET4BKRX31G accepted
+GUI operation 01M5SG4QMWMZF8DG0PVYMECSDR accepted
+GUI operation 01M5SG4QMWZAXH33V36J7CHX95 accepted
+GUI operation 01M5SG4QMWA2FPY90YACB92MAD accepted
+GUI operation 01M5SG4QMWTEWWKJ4BH9DHG3ER accepted
+GUI operation 01M5SG4QMWXMZZB3724ZB76D1H accepted
+GUI operation 01M5SG4QMWPEZ9RG85KQAE2MVY accepted
+GUI operation 01M5SG4QMWTA87MS93G0D4V0B7 accepted
+GUI operation 01M5SG4QMWY0H03YVXF5M1WR0R accepted
+GUI operation 01M5SG4QMWVAYB08HD198SP2PM accepted
+GUI operation 01M5SG4QMW6Z2KEGQNQDXHJFVW accepted
+GUI operation 01M5SG4QMW745FHZYT2CJ6WHF4 accepted
+GUI operation 01M5SG4QMW87NE9848FV3DSRT7 accepted
+GUI operation 01M5SG4QMWBH1KWPQQH3M5ZEQM accepted
+GUI operation 01M5SG4QMWECQMPMAW3A54Z5R5 accepted
+GUI operation 01M5SG4QMWVP17V19B0BCED6H9 accepted
+GUI operation 01M5SG4QMWEPVZV4VH7M5Z79HB accepted
+GUI operation 01M5SG4QMWQR65VFBF3VKE4V4F accepted
+GUI operation 01M5SG4QMWWPPFS4DR9VBKRW7V accepted
+GUI operation 01M5SG4QMW84HHJ73SG91C9PQR accepted
+GUI operation 01M5SG4QMWNSAAXG6VDYKCD3Z4 accepted
+GUI operation 01M5SG4QMWP1J4P6NBNYF7J2X5 accepted
+GUI operation 01M5SG4QMWKDC42RA3MEK38Q6V accepted
+GUI operation 01M5SG4QMWVNN21RCY7GMN1RQG accepted
+GUI operation 01M5SG4QMWE2WXTGP4NS2E8Q96 accepted
+seat 01M5SG4NV55Q0Z72QWN127HSKY activity=Active process=Running { pid: 94556 }
+GUI operation 01M5SG4QMW5FBMJ7TE64804YW4 accepted
+GUI operation 01M5SG4QMW5W1565Z2AXGGCYKB accepted
+GUI operation 01M5SG4QMW6AFPRTNTNSMB033V accepted
+GUI operation 01M5SG4QMWAT4P116RR2RHGF4F accepted
+GUI operation 01M5SG4QMWR9ZF21CTY0CBCND6 accepted
+GUI operation 01M5SG4QMWD4T52B9P0HW7RHN6 accepted
+GUI operation 01M5SG4QMWJY6F06GTENCZN02G accepted
+GUI operation 01M5SG4QMWE8A4HKTNGDF7TQ3D accepted
+GUI operation 01M5SG4QMWYFEXS8XKWVJKTHXW accepted
+GUI operation 01M5SG4QMWC65NDXT0VFFB5MQE accepted
+GUI operation 01M5SG4QMWD1F11997D5F3N793 accepted
+GUI operation 01M5SG4QMW9Z5W87ZKXDNXYS86 accepted
+GUI operation 01M5SG4QMW0YQM5YKY8M4RB1YA accepted
+GUI operation 01M5SG4QMW6258EGGJDHSY1YK2 accepted
+GUI operation 01M5SG4QMWSGW3Z2TNFSH9G3RC accepted
+GUI operation 01M5SG4QMWQGEPN3GW79BC00N8 accepted
+GUI operation 01M5SG4QMW97Q502GKBF99WRZ8 accepted
+GUI operation 01M5SG4QMWT1ZPWFH4KNYA6D1A accepted
+GUI operation 01M5SG4QMWZM2BZF7BZGF12HA6 accepted
+GUI operation 01M5SG4QMW94NV7SJTRPXPT2S4 accepted
+GUI operation 01M5SG4QMW9JZSR41G8B013SKT accepted
+GUI operation 01M5SG4QMWDBA8ZVXQJYGEN6AR accepted
+GUI operation 01M5SG4QMWSYKYMC1512V4X18P accepted
+GUI operation 01M5SG4QMW5P0N4QRHAENQZ62X accepted
+GUI operation 01M5SG4QMWNK2HT1TAS6C01D0S accepted
+GUI operation 01M5SG4QMWWSSW22G4A1FBRREF accepted
+GUI operation 01M5SG4QMWJMV3PQ20VRWJ51N7 accepted
+GUI operation 01M5SG4QMWBJWKRCY8N1SZ59ED accepted
+GUI operation 01M5SG4QMWGMYY9N895M69NHF3 accepted
+GUI operation 01M5SG4QMWXP23AEMW6K7Y9MH8 accepted
+GUI operation 01M5SG4QMWTHCHJCJD4A866HSR accepted
+GUI operation 01M5SG4QMW3WR78B08MVNVCPJ6 accepted
+GUI operation 01M5SG4QMW3R1ADDGCKVSRCFR1 accepted
+GUI operation 01M5SG4QMWE9H3GCZDF2SQEMX5 accepted
+GUI operation 01M5SG4QMW8QH0KHNJDXG3T5SN accepted
+GUI operation 01M5SG4QMWVDQ7FESSPZK9T12M accepted
+GUI operation 01M5SG4QMWRDK38EYGD8F9GMA0 accepted
+GUI operation 01M5SG4QMW4FTRHS02WT43N766 accepted
+GUI operation 01M5SG4QMWSNGEF8HB2Y44KVBT accepted
+GUI operation 01M5SG4QMW8W8C1RJZR97D0Y3F accepted
+GUI operation 01M5SG4RR0V9V32A1MH128AVGV accepted
+GUI operation 01M5SG4QMWYYQCKDYENHJFFP73 accepted
+GUI operation 01M5SG4QMWKQKV2QQ10MWANMMP accepted
+GUI operation 01M5SG4QMW6SDQPDDXDKCG9QA4 accepted
+GUI operation 01M5SG4QMWVP48ASBJZK3S19CR accepted
+GUI operation 01M5SG4QMWMA0MQ4DPC5N8TCTG accepted
+GUI operation 01M5SG4QMWCEWQZQVESD8CBZFF accepted
+GUI operation 01M5SG4QMWCKBPTJE1BNY8PNJY accepted
+GUI operation 01M5SG4QMWWQ0M6A6X14KEQ4QX accepted
+GUI operation 01M5SG4QMXVXX4DGEYZZPQ1CNC accepted
+GUI operation 01M5SG4QMXYSYPE4X69CPJPTTW accepted
+GUI operation 01M5SG4QMX685A32Q17CB37EY1 accepted
+GUI operation 01M5SG4QMXZ55WFJD0ANBP51W2 accepted
+GUI operation 01M5SG4QMXNP59PNWN69ABAAW5 accepted
+GUI operation 01M5SG4QMXD9H5XKTZF1NTW56R accepted
+GUI operation 01M5SG4QMXSD3952M0S3ZF0EAA accepted
+GUI operation 01M5SG4QMXG7XBN9CDCJ2M3JZF accepted
+GUI operation 01M5SG4QMXKMGW5W2FJMAAEWQ8 accepted
+GUI operation 01M5SG4QMXKKEEE3NNZGQ1H7K6 accepted
+GUI operation 01M5SG4QMXXMZC531NZKEDP51Z accepted
+GUI operation 01M5SG4RXRPYWWAFWZS5XZ351F accepted
+GUI operation 01M5SG4QMXEZ4M1WM9HNWSM127 accepted
+GUI operation 01M5SG4QMX09XRJPT2FBD95YG0 accepted
+GUI operation 01M5SG4QMXJ1S688A0D1GMZ6SS accepted
+GUI operation 01M5SG4RZ0EB7Z6R1C6V36JR83 accepted
+GUI operation 01M5SG4QMXRWZVNR62RQ3BA162 accepted
+GUI operation 01M5SG4QMXVX8HRN6N4DWN9HGF accepted
+GUI operation 01M5SG4QMXR6YS7KCVYNQ4GD0V accepted
+GUI operation 01M5SG4QMXNNSH1C83E3946Z3G accepted
+GUI operation 01M5SG4S09FK759XT8X4V7FSZY accepted
+GUI operation 01M5SG4S090AD924CK3EYMAXDW accepted
+GUI operation 01M5SG4S09MMDVSG0BS6MHAX1D accepted
+GUI operation 01M5SG4S09MFWKYZVKQC5JVZT0 accepted
+GUI operation 01M5SG4QMX1N8JCQ3HCVMW4N0W accepted
+GUI operation 01M5SG4QMXJ5Y8QK2CFZ7X65AJ accepted
+GUI operation 01M5SG4QMXWE9F4QKRH6X4Q0ED accepted
+GUI operation 01M5SG4QMX0WNEMXWSF9XDMXKA accepted
+GUI operation 01M5SG4QMXJS3QTEVWJSQ50ZVJ accepted
+GUI operation 01M5SG4QMXMH6GG1EE7EQMB2B2 accepted
+GUI operation 01M5SG4QMXNTAJSQQ9FM8FYHG4 accepted
+GUI operation 01M5SG4QMXXD6TG5C8M9GSMM1G accepted
+GUI operation 01M5SG4QMXX55S8PFRGTZC3FDM accepted
+GUI operation 01M5SG4QMXX9HW4B0CR3MS6EB8 accepted
+GUI operation 01M5SG4QMXQS882DHT13443XNZ accepted
+GUI operation 01M5SG4QMXPMRZMKH1JCTH69G4 accepted
+GUI operation 01M5SG4QMX5P9461PYXZWNWTYD accepted
+GUI operation 01M5SG4QMX805DXBJBJEXG4D0C accepted
+GUI operation 01M5SG4QMXNNP6T5R8RXYA9VQ1 accepted
+GUI operation 01M5SG4QMXYR53ZD265G9CZ7C0 accepted
+GUI operation 01M5SG4S4SBA635DABNCYW4T7B accepted
+GUI operation 01M5SG4QMXNN7EBGBR49YBSFFH accepted
+GUI operation 01M5SG4QMXC53947XZQHH0A9V9 accepted
+GUI operation 01M5SG4QMXA4PTG16S6FW9MQB6 accepted
+GUI operation 01M5SG4QMX2DB8A0DRN2ZYY7CA accepted
+GUI operation 01M5SG4S62XQQYW53NMEQR7072 accepted
+GUI operation 01M5SG4QMX87RCXC6F6G4RBNTY accepted
+GUI operation 01M5SG4QMX6NX3G0XNW49C6NWG accepted
+GUI operation 01M5SG4QMXY90ESZ7SFV5DZV2N accepted
+GUI operation 01M5SG4S73WY61D304E7HBQSSY accepted
+GUI operation 01M5SG4S73DE7RAQCGXYXG8XEJ accepted
+GUI operation 01M5SG4S73J1RHXG6ETARWW7WM accepted
+GUI operation 01M5SG4S798RRR71DP0F257XZD accepted
+GUI operation 01M5SG4QMXBZV2H5HVW500F7V6 accepted
+GUI operation 01M5SG4QMX2QH0JKKYW835FHQC accepted
+GUI operation 01M5SG4QMX1EVJ2CQS1HE9C3DC accepted
+GUI operation 01M5SG4QMX1HHSHXB9TFQPE2GD accepted
+GUI operation 01M5SG4QMX38QJNREREMNXRK18 accepted
+GUI operation 01M5SG4QMXSF6V8REC49W7JWPJ accepted
+GUI operation 01M5SG4QMXB0FQJ8F7ES5PB4YH accepted
+GUI operation 01M5SG4QMXFR4HXH5T8BFCC8NE accepted
+GUI operation 01M5SG4QMX14J1T8C7EFBX7A4W accepted
+GUI operation 01M5SG4QMXJWHK7ZKH85B0WNAD accepted
+GUI operation 01M5SG4QMXQFFDNHPEVPV04H3N accepted
+GUI operation 01M5SG4QMXTFRC44XFXDZT35ZK accepted
+GUI operation 01M5SG4QMXFDVVATEHX06Y3NJ8 accepted
+GUI operation 01M5SG4QMXBTS8P8JSKGK9JNTQ accepted
+GUI operation 01M5SG4QMX497ZGMR11R57BQA8 accepted
+GUI operation 01M5SG4QMXR45QXVGAJNY79K4B accepted
+GUI operation 01M5SG4QNJS7AVRGYR0975BSW2 accepted
+GUI operation 01M5SG4SC77ZGNP6WJ9BQT36KB accepted
+GUI operation 01M5SG4QNJG83XQZ7CB5Z83T3T accepted
+GUI operation 01M5SG4QNJHNX65H4281KGKGRF accepted
+GUI operation 01M5SG4QNJMC54BT5DPZ7MA6XB accepted
+GUI operation 01M5SG4QNJ7PQFD7TRQ03DPVE6 accepted
+GUI operation 01M5SG4SDGYSEYB25JNGS7DSQP accepted
+GUI operation 01M5SG4QNJFJZ16D626K49SDG8 accepted
+GUI operation 01M5SG4QNJNTQJ4F8XSXE9HQBD accepted
+GUI operation 01M5SG4SEBKB1V4180Q0W364JH accepted
+GUI operation 01M5SG4SEBH02KG2ZFHDSBQWMC accepted
+GUI operation 01M5SG4SEBTH48JTVJWZQW4TWX accepted
+GUI operation 01M5SG4SEBEZZYCD5SBP3F6APQ accepted
+GUI operation 01M5SG4QNJ26Y508Q4Z8G0MHX9 accepted
+GUI operation 01M5SG4QNJ8BBSX82MXWAM4G2H accepted
+GUI operation 01M5SG4QNJFC4C4KZ4C9MR6YMC accepted
+GUI operation 01M5SG4QNJP7EMRP6X21S538H7 accepted
+GUI operation 01M5SG4QNJ7HJW0S7YQTC0EVCA accepted
+GUI operation 01M5SG4QNJKN6XK5N4GS8QGQKH accepted
+GUI operation 01M5SG4QNJHZESYG4NDMQB4QR4 accepted
+GUI operation 01M5SG4QNJTM2P98Z78F5V6FCC accepted
+GUI operation 01M5SG4QNJSG28VE9AN5K8KEEV accepted
+GUI operation 01M5SG4QNZXQJWDFMHR4GMMCS2 accepted
+GUI operation 01M5SG4QP5TDHX98M6ZVS10Y4X accepted
+GUI operation 01M5SG4QPB9DDJ8GDF177WVTNA accepted
+GUI operation 01M5SG4QR4MDA0GCZ42HAFH2KN accepted
+GUI operation 01M5SG4QRAX80ZV70Y2FEXBWJD accepted
+GUI operation 01M5SG4QRG60FY2VMY8F0M8TE4 accepted
+GUI operation 01M5SG4QSCKEWTT6B7DYTSX7GQ accepted
+GUI operation 01M5SG4QSJCPQ4YMSMER77PP69 accepted
+GUI operation 01M5SG4QSR6435YJFF99VE2DV3 accepted
+GUI operation 01M5SG4SKDQY7YZEYXN4ENEMFT accepted
+GUI operation 01M5SG4QSYPMRQEX6GWH1NGE55 accepted
+GUI operation 01M5SG4QZ6X2W6568JJHPWJ5HQ accepted
+GUI operation 01M5SG4QZ6M0YWFQF82C246H3N accepted
+GUI operation 01M5SG4QZ6E82HQ5NFGQ41ZSNT accepted
+GUI operation 01M5SG4SMMWVCCG7AB6B41K7HK accepted
+GUI operation 01M5SG4QZ6WFPHZ6VJ03AV7WGJ accepted
+GUI operation 01M5SG4QZ6VQC76NCZR5PVWPVS accepted
+GUI operation 01M5SG4SNV4RTVDJ6GHTWVBC0T accepted
+GUI operation 01M5SG4SP1ND924E64K6FTYPWT accepted
+GUI operation 01M5SG4SQDYWPTDJ1BBEXH26DM accepted
+GUI operation 01M5SG4QZ6BXWMK9FE05D3DHK7 accepted
+GUI operation 01M5SG4QZ62YKXSHZE0ZPNSF6F accepted
+GUI operation 01M5SG4QZ6GZKZVRP0B27QBPW1 accepted
+GUI operation 01M5SG4QZ61HVH9C82KWW4D4TF accepted
+GUI operation 01M5SG4QZ6A6TTB8Q5DVC3VVS8 accepted
+GUI operation 01M5SG4QZ6ERYF6FJV62D86084 accepted
+GUI operation 01M5SG4QZ6MEKCZEDZ2G3RG6P6 accepted
+GUI operation 01M5SG4QZ6BN99XPWE0CZWSAW4 accepted
+GUI operation 01M5SG4QZCFFFHFZK7C4TC3HKW accepted
+GUI operation 01M5SG4QZJNTVFPY9W2DA2EECD accepted
+GUI operation 01M5SG4QZRVPC25STT5GSW3G4R accepted
+GUI operation 01M5SG4R0H0KTNF79T5KT11WP7 accepted
+GUI operation 01M5SG4R0QBH1T4MZ95A1X6NN1 accepted
+GUI operation 01M5SG4R0X2TEEF6TFYEE0D5XD accepted
+GUI operation 01M5SG4SVJ72DPHC31HYA2B8M2 accepted
+GUI operation 01M5SG4R13YQZ2EMDNP9TECKS1 accepted
+GUI operation 01M5SG4R1Z3VJVDTEEWJ060MXH accepted
+GUI operation 01M5SG4R2596JK4T0QSG80GJ5K accepted
+GUI operation 01M5SG4R2BW3C38WFX9PSDNNAG accepted
+GUI operation 01M5SG4SWSWR01ZHKQS7TD8EVW accepted
+GUI operation 01M5SG4R7Z2XH0294MTA2VV60W accepted
+GUI operation 01M5SG4R7ZHSR1C0ABMVEBCNHM accepted
+GUI operation 01M5SG4R7Z2324Q9XKBDHMSCM5 accepted
+GUI operation 01M5SG4R7ZAYNKKD7VJ4328101 accepted
+GUI operation 01M5SG4SY3E5CPAWEAAE80CQJY accepted
+GUI operation 01M5SG4R7ZY4X9SMMAGXGSEC73 accepted
+GUI operation 01M5SG4R7ZSE7TBDT5N2HTSP4F accepted
+GUI operation 01M5SG4SYRY8VEGYFWWR0VFHBC accepted
+GUI operation 01M5SG4SYRYJJFSZB0TZ6W6TA9 accepted
+GUI operation 01M5SG4SZCB5RXDY4NR3DSD791 accepted
+GUI operation 01M5SG4SZC890QT3HZWTXVRT4N accepted
+GUI operation 01M5SG4R7ZNGX4DQVK7V5219AK accepted
+GUI operation 01M5SG4R7Z2F5M00B3SP0RC6VJ accepted
+GUI operation 01M5SG4R7Z6N7SDAPAW5YG4M2S accepted
+GUI operation 01M5SG4R7ZKXPVH9MDQXGQ0AD0 accepted
+GUI operation 01M5SG4R7ZYHRFH3386S4FRHKZ accepted
+GUI operation 01M5SG4R7ZNSDHMWVCMM616NAW accepted
+GUI operation 01M5SG4R7ZEV384MF5MTQBWNDC accepted
+GUI operation 01M5SG4R8681G64TDXG0ZV1R02 accepted
+GUI operation 01M5SG4T1T6Z0SJ85QMFE7GC11 accepted
+GUI operation 01M5SG4T1TJFS6K0SHHC60W4VZ accepted
+GUI operation 01M5SG4T1T3DSRZTF1R1KEE1SY accepted
+GUI operation 01M5SG4R8DC7ZB9ANCM6ZQS4YS accepted
+GUI operation 01M5SG4R8RTJQH9JFFXXNKH1KX accepted
+GUI operation 01M5SG4R8YTAQ8KT6JD5DK9D19 accepted
+GUI operation 01M5SG4R9BRY9W3QM7X0JSAXXP accepted
+GUI operation 01M5SG4R9KABQ160X5JH376SF1 accepted
+GUI operation 01M5SG4R9TDBD1SCJ399HW4MMZ accepted
+GUI operation 01M5SG4RA0HNZVMABE2TWEX20C accepted
+GUI operation 01M5SG4RAH6RDRP25KMS2Y8Y3Y accepted
+GUI operation 01M5SG4RAQZR5RYQA1VG700HB2 accepted
+GUI operation 01M5SG4RFYC1WY1J85PPM02ME6 accepted
+GUI operation 01M5SG4RFY9980T8N27ZPRG51R accepted
+GUI operation 01M5SG4T5GY7VZ0C0B4G0YGVYX accepted
+GUI operation 01M5SG4T5JRF0F4V7NDKVGZS2B accepted
+GUI operation 01M5SG4T5JKBF18TG9Y5G8JQ3B accepted
+GUI operation 01M5SG4T5J7TD8QCJDGZ2CGXJE accepted
+GUI operation 01M5SG4T5JGVX3PT8AYBRJFVR6 accepted
+GUI operation 01M5SG4T5KYAGD2NGBX7FBEWTW accepted
+GUI operation 01M5SG4RFYMHMZN66B8A7CZ1DP accepted
+GUI operation 01M5SG4RFYFC99T9M1FEZ61748 accepted
+GUI operation 01M5SG4RFY7TY4SHA7HPWZ813G accepted
+GUI operation 01M5SG4RFY86C8CP884VT63QFY accepted
+GUI operation 01M5SG4T6PRQYYGHCM27G84BQG accepted
+GUI operation 01M5SG4RFYNEMRFB6XCJYZKPPR accepted
+GUI operation 01M5SG4T6W08Q2QE2KXF1EAW33 accepted
+GUI operation 01M5SG4T6XS83FNZKCJZJFW5YR accepted
+GUI operation 01M5SG4T72WRW8JN13BBFWHSEY accepted
+GUI operation 01M5SG4RFZEKMWF94Q7EV9RC74 accepted
+GUI operation 01M5SG4T7HQFVS2XYHBPNFJ118 accepted
+GUI operation 01M5SG4T7HWAFVVB9J6KJ5J9ED accepted
+GUI operation 01M5SG4T7H8TFD4PA8W00RYK0F accepted
+GUI operation 01M5SG4T7HV1TDCFFRNTXWCHS7 accepted
+GUI operation 01M5SG4T7HYN3W87E6AM46MVPW accepted
+GUI operation 01M5SG4T7JBNWYDWTCDWMSRAEY accepted
+GUI operation 01M5SG4T7YBHWWC7PP3JR4B4PE accepted
+GUI operation 01M5SG4T7Y5E0C9YX0V64W5JMR accepted
+GUI operation 01M5SG4T7YV5WFN0MN8BYYP3M4 accepted
+GUI operation 01M5SG4T7Z4SKEEHEFHVVFK991 accepted
+GUI operation 01M5SG4T7Z3JZXPX3683YV7JNH accepted
+GUI operation 01M5SG4T7Z6BA4AEZX5VSC12M7 accepted
+GUI operation 01M5SG4T7ZBMRTC376WY626361 accepted
+GUI operation 01M5SG4T7ZFQE2M3QS628ZFY3R accepted
+GUI operation 01M5SG4T8DC4QHR2F68BQYABTS accepted
+GUI operation 01M5SG4T8D19A90WD8W20ENS6H accepted
+GUI operation 01M5SG4T8D5VB4V0FMQTX6Z0RY accepted
+GUI operation 01M5SG4T8VK1A9HNA3T6KCARJT accepted
+GUI operation 01M5SG4T8V91MGSR8W8K1ABEVZ accepted
+GUI operation 01M5SG4T8W04T64NZHBK440S4X accepted
+GUI operation 01M5SG4T8W8Z1MJ5RE0KB1MJH2 accepted
+GUI operation 01M5SG4T8WKGTJ9VZRM0085YRZ accepted
+GUI operation 01M5SG4T9A2D4CQCE2SRE33WGV accepted
+GUI operation 01M5SG4T9ADTE5CA2G0YN1RE6A accepted
+GUI operation 01M5SG4T9AM647EX3J0GFZHMT3 accepted
+GUI operation 01M5SG4T9A2J4222ZWTYZZF73D accepted
+GUI operation 01M5SG4T9RXJ3ZFWHS4V61VGKM accepted
+GUI operation 01M5SG4TA6G4AABH49XYZ4JHPG accepted
+GUI operation 01M5SG4TANSY5S7AZTWA37GG4M accepted
+GUI operation 01M5SG4TANME799DC16YN5WMDY accepted
+GUI operation 01M5SG4TDKRQFC708SDEVTS91Z accepted
+GUI operation 01M5SG4TATKFV4PN43NHC9CAB9 accepted
+GUI operation 01M5SG4TEJ3SXQ3FR6EZMH9MM4 accepted
+GUI operation 01M5SG4TEJN2QVW7F45M0HF8AR accepted
+GUI operation 01M5SG4TEW09GJ6QHCDT9H9H9D accepted
+GUI operation 01M5SG4TFBFHNNQZY0QK4ZS537 accepted
+GUI operation 01M5SG4TFD2VXYXF7JY7F3ZV1F accepted
+GUI operation 01M5SG4TFHECBYT880H5RARANS accepted
+seat 01M5SG4NV55Q0Z72QWN127HSKY activity=Idle process=Running { pid: 94556 }
+GUI operation 01M5SG4TGW5P9RM3AP5DH1R533 accepted
+GUI operation 01M5SG4THFEPVYT1BVWMQRXKED accepted
+GUI operation 01M5SG4THXMKCYYYKWJYM8VV3W accepted
+GUI operation 01M5SG4TJCFR7NGFBPZDS3XTV4 accepted
+seat 01M5SG4NV55Q0Z72QWN127HSKY activity=Idle process=Running { pid: 94556 }
+GUI operation 01M5SG4TJJW6Q0NJ8VYNXYMBGW accepted
+GUI operation 01M5SG4TK1N6N887GQ5V06VDS9 accepted
+GUI operation 01M5SG4TJT5ZNQJ00AHWEZJCPM accepted
+GUI operation 01M5SG4TNE8A5QE1GFBN633XS4 accepted
+GUI operation 01M5SG4TQHPD0JACMQQ693K6GA accepted
+GUI operation 01M5SG4TRECQT0S313CGHQVBTP accepted
+GUI operation 01M5SG4TSD6E3M6MG8GD12BRVH accepted
+GUI operation 01M5SG4TTAGKKYMRN3PXYP2RMK accepted
+GUI operation 01M5SG4TV7V08SSQ6AKK1XJ0AP accepted
+GUI operation 01M5SG4TWAM6GGETXGWF073D3Y accepted
+GUI operation 01M5SG4TZV1SACVCNVXB0NR7AF accepted
+GUI disconnected: GUI connection closed
+logic exited: signal: 9 (SIGKILL)
+GUI disconnected: recovery failed: logic exited during startup
+cockpit children reaped after orderly shutdown
+test live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame ... ok
+cockpit ready: supervisor=94715 logic=94717
+initial identity status: LocalDev, reason=None, selector=memory custody (debug)
+GUI operation 01M5SG4V9N6X45GRYQ9AZKDFWB accepted
+GUI operation 01M5SG4VDXM494GT148J85NP9F accepted
+GUI operation 01M5SG4VE06ZH14RTV38G9ZWVY accepted
+GUI operation 01M5SG4VE0D51C9N1S6DJ3V3AH accepted
+GUI operation 01M5SG4VE183S45SNJ40ERZE5H accepted
+GUI operation 01M5SG4VE9N8FFTKH5PGE4Y7CV accepted
+GUI operation 01M5SG4VEGK89ZNB40S5291TNK accepted
+GUI operation 01M5SG4VEW7ABP8CXFSVT4V382 accepted
+GUI operation 01M5SG4VF2GHJMESJXXQ0P759T accepted
+GUI operation 01M5SG4VF895S4EYAVXJVNWZ8K accepted
+GUI operation 01M5SG4VFDVREMPZYDT2ZVHW4V accepted
+GUI operation 01M5SG4VFJMQR8D03AJG0XV7BQ accepted
+GUI operation 01M5SG4VFN15WM5KY2N8M7GD9Y accepted
+GUI operation 01M5SG4VFTCB0YAEHNRVWG90QD accepted
+GUI operation 01M5SG4VFX5ECC22B4HGSTYQR9 accepted
+GUI operation 01M5SG4VG1V8X7GNERGAA2EYWR accepted
+GUI operation 01M5SG4VG4B6MKCH1C7P27XP9E accepted
+GUI operation 01M5SG4VKJ7Q2F8DPPCD0PXKZC accepted
+GUI operation 01M5SG4VPCH3WB7802GBQ8ERG6 accepted
+GUI operation 01M5SG4VS7NHER0T4G9YYT4YE1 accepted
+GUI operation 01M5SG4VWBAC1088443TAD2KH0 accepted
+GUI operation 01M5SG4VZ2FGX80D854EZFENH4 accepted
+GUI operation 01M5SG4VZPRFTZ2FHQ9HH5CZ0B accepted
+GUI operation 01M5SG4VZPR8ZSMMY4NTHVSE88 accepted
+GUI operation 01M5SG4W1BYDTN77FR877YVGQG accepted
+GUI operation 01M5SG4W3E3PXC44NPAXP5Q45T accepted
+GUI operation 01M5SG4W3E7R3RCKWJ1MXYQT3G accepted
+GUI operation 01M5SG4W3E18D57BSRXSVZB9Z0 accepted
+GUI operation 01M5SG4W3E5EKHT8GF35CFEQYF accepted
+GUI operation 01M5SG4W3FTJEW4K254F0XSXMT accepted
+GUI operation 01M5SG4W3MGZPAMEA5CZZXS1CF accepted
+GUI operation 01M5SG4W5FQMBKYSHZQ6A9MAWP accepted
+GUI operation 01M5SG4WBD7HA311WB6X9FDSVG accepted
+GUI operation 01M5SG4WGQKCJQ7RT58ZNPX72C accepted
+GUI operation 01M5SG4WHM256DYHWG9F73NRPZ accepted
+cockpit children reaped after orderly shutdown
+test live::tests::real_io_scrollback_reaches_first_line_joins_live_and_releases_on_input ... ok
+test live::tests::refused_watch_retries_stay_bounded_and_coalesce_the_latest_size ... ok
+test live::tests::resize_before_a_coalesced_watch_keeps_its_desired_grid ... ok
+test live::tests::scroll_history_errors_are_correlated_behind_operations_and_async_pushes ... ok
+test live::tests::scroll_history_reads_yield_to_already_published_applied_actions ... ok
+test live::tests::sent_control_waits_for_an_observation_or_refusal_before_retrying ... ok
+test live::tests::waiting_attention_is_published_before_ack_but_history_pages_are_passive ... ok
+test placement_tests::new_membership_does_not_focus_without_a_matching_spawn_result ... ok
+test placement_tests::spawn_pick_uses_ui_focus_and_only_known_catalogue_ids ... ok
+test scene::depth_tests::app_clock_steps_the_actual_focus_rims_to_450_ms_without_moving_layout ... ok
+test scene::depth_tests::attention_loops_until_handled_and_a_muted_seat_stays_quiet ... ok
+test scene::depth_tests::controlled_attention_keeps_its_logical_phase_across_metadata_publications ... ok
+test scene::depth_tests::historical_gap_uses_cell_device_origin_and_last_row_scissor_at_both_scales ... ok
+test scene::depth_tests::local_graph_uses_a_clipped_retained_viewport_and_keeps_the_terminal_stage ... ok
+test scene::depth_tests::pane_rects_are_identical_across_activity_states ... ok
+test scene::depth_tests::published_attention_drives_both_blocks_without_moving_focus_or_restarting_swell ... ok
+test scene::depth_tests::the_focus_swell_rises_and_settles_over_swell_ms_and_keeps_frames_until_then ... ok
+test scene::depth_tests::the_rim_size_moves_the_gutter_and_inset_and_never_the_sidebar ... ok
+test scene::identity_note_tests::the_frame_labels_test_accounts_without_changing_real_identity_notes ... ok
+test scene::launcher_tests::assigned_task_uses_its_seat_subtree_and_retained_review_hit_without_moving_panes ... ok
+test scene::launcher_tests::document_uses_effective_context_without_moving_panes_and_keeps_hud_last ... ok
+test scene::launcher_tests::ime_candidate_area_follows_the_retained_caret_and_pointer_uses_utf16 ... ok
+test scene::launcher_tests::no_launcher_paint_proof ... ok
+test scene::launcher_tests::repeated_document_publications_keep_the_original_focus_swell_instant ... ok
+test scene::launcher_tests::retained_launcher_hit_regions_and_unwrapped_foreground_order ... ok
+test scene::launcher_tests::settings_owns_one_inner_scroller_and_uses_the_effective_theme_density_and_rim ... ok
+test scene::launcher_tests::t7_close_and_undo_hits_are_the_actual_retained_buttons ... ok
+test scroll_input_tests::admitted_input_resets_a_queued_scroll_anchor_and_refusal_does_not ... ok
+test scroll_input_tests::scroll_shortcuts_stay_local_for_repeats_and_kitty_releases ... ok
+test scroll_input_tests::ten_minutes_of_scroll_pressure_keep_one_composed_intent_per_pane ... ok
+test smoke_tests::a_real_resize_fails_the_probe_even_without_any_frame_or_callback ... ok
+test smoke_tests::idle_waits_for_producer_queued_work_and_late_frames_before_starting ... ok
+test smoke_tests::interrupted_idle_windows_never_pass_and_deadline_has_a_named_reason ... ok
+test smoke_tests::occlusion_keeps_the_full_idle_window_and_old_timers_cannot_end_a_new_one ... ok
+test spawn_admission_tests::claude_presets_reach_spawn_and_only_claude_gets_presets ... ok
+test spawn_admission_tests::existing_oracle_note_uses_the_displayed_swarm_and_never_blocks_the_default ... ok
+test spawn_admission_tests::generic_and_legacy_spawns_share_the_same_cap ... ok
+test stall::load::tests::busy_ring_page_names_its_query_and_stays_unknown ... ok
+test stall::load::tests::capture_export_keeps_the_first_settled_cut_and_serializes_frozen_boundaries ... ok
+test stall::load::tests::failed_tail_keeps_known_ring_cursor_and_does_not_report_marker_absence ... ok
+test stall::load::tests::functional_ci_reports_timing_failures_and_the_slow_switch_enforces_them ... ok
+test stall::load::tests::gui_errors_keep_the_operation_and_identify_the_consumer_path ... ok
+test stall::load::tests::gui_keeps_applying_and_acknowledging_while_side_finish_is_held ... ok
+test stall::load::tests::probe_row_fits_every_fifteen_and_fifty_pane_fixture ... ok
+test stall::load::tests::ring_probe_follows_pages_and_never_combines_marker_bytes_across_a_gap ... ok
+test stall::load::tests::settle_diagnostic_names_the_active_predicates_without_inventing_ui_results ... ok
+test stall::load::tests::timeout_prints_and_saves_each_seat_without_inventing_unobserved_backend_results ... ok
+test stall::tests::extra_wake_sources_are_bounded_and_overflow_is_named ... ok
+test stall::tests::lower_row_echo_does_not_acknowledge_a_probe_or_bypass_the_clip ... ok
+test stall::tests::wake_sources_and_pending_queues_survive_settle_serialization ... ok
+test verification_tests::live_screen_hash_matches_frozen_palette_unicode_and_link_fixtures ... ok
+test verification_tests::no_sender_model_retains_read_demand_without_undeliverable_commands ... ok
+test verification_tests::verification_grid_validation_and_window_fit_use_real_cell_bounds ... ok
+GUI operation 01M5SG4YKEE9YR9XQYRD5ECBTA accepted
+GUI operation 01M5SG4YKEWDA04H7184J3VCWE accepted
+GUI operation 01M5SG4YQ5FWF0T73XTW9VWWQ1 accepted
+GUI operation 01M5SG4YQ55HVGMCYECKJXMR4N accepted
+GUI operation 01M5SG4YQ5RGZE1H2F53XGABZ1 accepted
+GUI operation 01M5SG4YQ6T8NHJGGYRGGG86XE accepted
+GUI operation 01M5SG4YQ6ZMYDBF9A7WRY366S accepted
+GUI operation 01M5SG507Z7FTWTY58R8690N5Z accepted
+GUI operation 01M5SG507ZA2B4BCG1WT3J135N accepted
+GUI operation 01M5SG50BQXYYKGVZF5SG1HZ53 accepted
+GUI operation 01M5SG50BR2X3W6XPNK1W65R6F accepted
+GUI operation 01M5SG50BSJKD82EQ016K8HR0N accepted
+GUI operation 01M5SG50BSMYR1Z99FHEWZK3WD accepted
+GUI operation 01M5SG50BS367JZFQYB2P3H82F accepted
+GUI operation 01M5SG51GKHT2TJR5T7VHZED9Z accepted
+cockpit children reaped after orderly shutdown
+test live::tests::live_e2e_and_ctl_share_one_corpus_and_refresh_from_document_events ... ok
+
+test result: ok. 119 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 14.03s
+
+     Running tests/cockpit.rs (target/ui-clock-dev/debug/deps/cockpit-d968de4e99dec0ab)
+
+running 5 tests
+test app_io_owner_observes_both_child_process_exits ... ok
+test cancelled_exit_watch_preserves_orderly_child_shutdown ... ok
+test gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames ... ok
+test real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection ... ok
+test same_run_directory_relaunches_and_spawns_after_orderly_shutdown ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.14s
+
+     Running tests/ctl.rs (target/ui-clock-dev/debug/deps/ctl-07ce40ec093d505a)
+
+running 16 tests
+test a_wrong_capability_is_refused_with_its_reason ... ok
+test ctl_capture_is_answered_by_the_window ... ok
+test ctl_help_prints_its_own_usage ... ok
+test ctl_drives_a_claude_seat_from_outside_the_app ... ok
+test ctl_noun_verb_grammar_replies_and_errors ... ok
+test ctl_record_write_signs_e2e_records_only ... ok
+test ctl_screen_input_and_wait_drive_a_seat ... ok
+test ctl_seat_restart_starts_the_next_generation ... ok
+test ctl_task_create_opens_an_unassigned_operator_task ... ok
+test ctl_task_transitions_preserve_verification_and_operation_identity ... ok
+test debug_reads_real_process_logs_journal_cursors_and_disabled_capture_without_a_window ... ok
+test ctl_never_prints_secrets ... ok
+test hook_list_names_the_codex_overlay_from_launch_rs ... ok
+test real_ctl_keeps_a_refusal_that_interrupts_its_request_write ... ok
+test without_ctl_the_app_writes_no_endpoint ... ok
+test first_contact_uses_the_authenticated_hook_socket_and_restores_it_after_logic_restart ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 14.18s
+
+     Running tests/ctl_records.rs (target/ui-clock-dev/debug/deps/ctl_records-66939c1eeccf92db)
+
+running 3 tests
+test ctl_record_read_keeps_the_endpoint_exit_when_the_socket_closes_mid_request ... ok
+test ctl_events_discover_filter_and_resume_without_a_second_consumer_or_ack ... ok
+test ctl_records_fetch_search_pages_and_changes_use_the_private_provider ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.01s
+
+     Running tests/custody.rs (target/ui-clock-dev/debug/deps/custody-5d0a1db1d62ab0f3)
+
+running 1 test
+test custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.33s
+
+     Running tests/documents.rs (target/ui-clock-dev/debug/deps/documents-91e657625c910b54)
+
+running 12 tests
+test composer_refuses_unknown_attachment_shapes_before_any_send_is_admitted ... ok
+test attachment_overflow_is_named_on_the_message_without_changing_its_projection ... ok
+test errors_and_disconnect_finish_once_and_retry_only_on_a_new_open ... ok
+test composer_wraps_task_paths_once_and_preserves_existing_wire_references ... ok
+test known_backend_loss_is_a_visible_final_outcome_and_late_data_cannot_restart_the_read ... ok
+test metadata_publications_retain_an_unconsumed_document_reply ... ok
+test reopening_while_pending_drains_the_old_reply_without_replacing_the_new_target ... ok
+test oversize_and_stale_results_refuse_instead_of_clipping_or_picking_another_file ... ok
+test resolve_fetch_and_numbered_links_use_the_provider_record_without_a_signature_claim ... ok
+test retained_attachment_targets_are_bounded_as_whole_references ... ok
+test task_delegate_keeps_its_provider_path ... ok
+test the_provenance_card_displays_test_account_attribution_without_certifying_metadata ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/e2e_night.rs (target/ui-clock-dev/debug/deps/e2e_night-40196b691a0b80d6)
+
+running 1 test
+test the_runner_turns_script_exit_codes_into_verdicts_and_a_summary ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.49s
+
+     Running tests/headless.rs (target/ui-clock-dev/debug/deps/headless-00bec12ba528c165)
+
+running 15 tests
+test ctl_ui_keys_acknowledge_spawn_mute_and_undo_only_after_their_end_state_frame ... ok
+test ctl_ui_relays_real_chrome_layout_focus_and_a_foreground_launcher ... ok
+test headless_cli_starts_real_gui_types_captures_and_stops_without_a_window ... ok
+test ctl_ui_scroll_reads_the_produced_historical_view_without_changing_focus ... ok
+test headless_consumes_launch_results_so_ten_seats_are_placed_and_capturable ... ok
+test headless_smoke_uses_the_idle_probe_with_no_window_or_operator ... ok
+test seat_wait_reads_produced_frames_and_not_on_screen_names_its_frame ... ok
+test stopping_an_unavailable_endpoint_is_named_and_never_uses_a_pid ... ok
+test t7_headless_close_receipts_restore_the_same_tab_and_extent ... ok
+test idle_probe_rejects_an_external_lifecycle_wake ... ok
+test test_account_ui_clock_freezes_pixels_steps_focus_and_resumes_live_time ... ok
+test ui_clock_refuses_a_non_test_account_even_with_a_forged_issuer ... ok
+test unattended_headless_control_uses_its_own_file_account ... ok
+test unattended_without_a_test_account_is_refused_before_native_custody ... ok
+test unattended_idle_smoke_keeps_file_custody_without_a_window ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 37.33s
+
+     Running tests/hosts.rs (target/ui-clock-dev/debug/deps/hosts-86222e7c17d10dc9)
+
+running 1 test
+test provider_data_binds_settings_launcher_and_survives_model_rebuilds ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/knowledge_e2e.rs (target/ui-clock-dev/debug/deps/knowledge_e2e-efe3692ab977cec8)
+
+running 3 tests
+test malformed_repeated_and_oversized_pages_fail_closed_instead_of_publishing_partial_rows ... ok
+test observer_coalesces_wakes_stops_when_hidden_and_refuses_previous_epoch_replies ... ok
+test one_signed_corpus_drives_the_screen_and_ctl_projection_through_changes ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.92s
+
+     Running tests/launcher.rs (target/ui-clock-dev/debug/deps/launcher-3d73da50ffe07a54)
+
+running 20 tests
+test a_provider_disconnect_invalidates_its_path_and_cannot_dive_again ... ok
+test a_connecting_host_keeps_the_existing_browseable_projection ... ok
+test cancelling_composition_restores_committed_text_and_the_selection ... ok
+test catalog_refresh_preserves_the_selected_id_across_reordering ... ok
+test digits_pick_or_dive_only_on_an_empty_query_and_preserve_modifiers ... ok
+test direct_activation_outside_the_rows_is_local_and_preserves_selection ... ok
+test each_down_provider_state_refuses_both_pick_and_dive ... ok
+test enter_descends_ordinary_parents_and_picks_the_typed_harness_default ... ok
+test enter_picks_the_parent_default_and_right_still_opens_placements ... ok
+test escape_climbs_one_explicit_level_before_closing_even_with_a_query ... ok
+test explicit_placement_rows_override_modifiers_and_empty_stage_opens_a_tab ... ok
+test field_selection_insertion_and_deletion_never_split_a_surrogate_pair ... ok
+test left_and_backspace_leave_nonempty_queries_to_the_text_field ... ok
+test link_state_blocks_activation_even_without_the_legacy_down_flag ... ok
+test placement_pick_captures_the_ui_stage_and_generation_before_any_reply ... ok
+test preedit_never_filters_or_activates_and_commit_replaces_the_original_selection ... ok
+test reroll_is_a_pure_name_request_and_does_not_discard_navigation ... ok
+test selection_wraps_and_empty_results_are_safe ... ok
+test the_cap_refuses_parent_and_leaf_picks_while_navigation_and_right_stay_live ... ok
+test typed_descent_then_right_commits_the_existing_projection_path ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/lifecycle.rs (target/ui-clock-dev/debug/deps/lifecycle-88432f7df7c94c5c)
+
+running 3 tests
+test gui_close_retry_and_undo_publish_unwatched_state_and_keep_the_pty_and_position ... ok
+test gui_history_is_lazy_bounded_capture_pages_with_ordered_gaps_and_control_cursors ... ok
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it has been running for over 60 seconds
+test gui_close_expires_without_logic_and_relaunch_does_not_reset_grace_or_resume_it ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 61.01s
+
+     Running tests/messaging_flow.rs (target/ui-clock-dev/debug/deps/messaging_flow-3fa50f066f848b14)
+
+running 1 test
+test composed_decision_and_task_delegation_cross_the_real_gui_boundary ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.77s
+
+     Running tests/messaging_ui.rs (target/ui-clock-dev/debug/deps/messaging_ui-c1a366f325feae45)
+
+running 18 tests
+test a_newer_live_cursor_cannot_make_an_old_empty_page_prove_newer_coverage ... ok
+test a_disconnect_retries_the_captured_ids_and_ignores_the_old_unknown_publication ... ok
+test a_refused_inbox_page_retries_its_actual_cursor_only_on_explicit_view ... ok
+test normal_model_build_preserves_correlated_results_across_grid_publications ... ok
+test a_refused_retained_page_finishes_the_read_and_waits_for_an_explicit_retry ... ok
+test older_display_projections_cannot_undo_new_receipts_or_release_evidence ... ok
+test read_pages_capture_scope_keep_actual_next_and_ignore_old_scope_replies ... ok
+test receiving_does_not_mark_read_and_counts_require_complete_retained_coverage ... ok
+test repeated_disconnects_release_result_admission_without_accepting_old_socket_replies ... ok
+test pending_frame_has_no_issuer_and_a_grade_upgrade_keeps_the_message_position ... ok
+test result_byte_bound_includes_correlation_metadata_and_names_oversize_reads ... ok
+test role_recipients_are_captured_from_scoped_registry_membership_and_cap_at_32 ... ok
+test role_send_is_one_view_with_receipts_only_when_all_its_real_projections_exist ... ok
+test send_captures_the_selected_swarm_exact_destination_and_stable_operation_id ... ok
+test task_review_does_not_repeat_an_unknown_effect_with_a_fresh_id_or_changed_reason ... ok
+test task_views_keep_canonical_status_and_require_the_actual_zero_exit_report ... ok
+test unrelated_replies_cannot_clear_the_draft_and_durable_held_is_named ... ok
+test reply_window_is_bounded_and_replacements_keep_the_same_correlation ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/native_signing.rs (target/ui-clock-dev/debug/deps/native_signing-09e24b3f46b4a603)
+
+running 2 tests
+test native_runner_installs_the_team_requirement_and_reuses_it_on_the_next_run ... ok
+test native_bundle_recipe_installs_the_same_requirement_without_real_signing ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+
+     Running tests/plugins.rs (target/ui-clock-dev/debug/deps/plugins-223bf8071798e092)
+
+running 1 test
+test real_binary_runs_headless_against_a_fixture_without_opening_the_production_root ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+     Running tests/r5_stall.rs (target/ui-clock-dev/debug/deps/r5_stall-54eda24cc2142a3b)
+
+running 1 test
+test synthetic_runtime_contract_keeps_fifteen_encoded_panes_live_under_mixed_io ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.22s
+
+     Running tests/recovery.rs (target/ui-clock-dev/debug/deps/recovery-936fec2d4a7ae130)
+
+running 9 tests
+test codex_service_fixture ... ignored, private Codex service stand-in, exercised by the recovery tests
+test partial_startup_survives_cancelled_poll_and_shutdown_reaps_its_child ... ok
+supervisor: reclaimed stale control socket /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/c1c-admit-MkmwkN/run/mux.sock (mtime 1792931071): nothing listened
+supervisor: orderly shutdown requested
+supervisor: shutdown completed
+test recovered_generation_admission_rejects_unknown_and_conflicting_launches_but_exact_retry_is_idempotent ... ok
+test restart_catalogue_accepts_completion_within_the_sessions_startup_budget ... ok
+test restart_catalogue_preserves_terminal_recovery_failures ... ok
+test restart_catalogue_still_rejects_a_hang ... ok
+test shutdown_during_pending_recovery_reaps_children_without_restarting ... ok
+test logic_death_keeps_pty_generation_rewatches_and_preserves_ack_backpressure ... ok
+test supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv ... ok
+
+test result: ok. 8 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 2.36s
+
+     Running tests/scrollback.rs (target/ui-clock-dev/debug/deps/scrollback-c2ece33c18a18ca3)
+
+running 5 tests
+test ctl_scroll_completes_absolute_rows_cached_hits_and_u64_tail_without_signed_casts ... ok
+test ctl_scroll_finishes_live_noops_refusals_disconnects_and_local_supersession ... ok
+test scrollback_dimension_admission_uses_the_heap_budget ... ok
+test solved_scroll_readback_leaves_unindexed_live_null_and_invalidates_old_sequences ... ok
+test scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay_bounded ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/settings.rs (target/ui-clock-dev/debug/deps/settings-37f73124497ed2b5)
+
+running 5 tests
+test settings_metadata_rebuild_preserves_context_and_the_preferences_snapshot ... ok
+test settings_mute_refusal_is_visible_and_success_waits_for_authoritative_metadata ... ok
+test settings_io_coalesces_edits_without_losing_other_fields_and_survives_restart ... ok
+test settings_projects_missing_identity_honestly_and_uses_the_backend_role_defaults ... ok
+test settings_persisted_policy_drives_attention_and_keeps_focus_and_mute_suppression ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/test_account.rs (target/ui-clock-dev/debug/deps/test_account-257c904936b48658)
+
+running 2 tests
+test test_account_selector_is_explicit_and_rejects_bad_flags_before_custody ... ok
+test logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authority ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s
+
+     Running unittests src/lib.rs (target/ui-clock-dev/debug/deps/bbt_mux-e318bb56e3f043c4)
+
+running 125 tests
+test adapters::mapping::tests::arbiter_round_trip_keeps_host_only_stamp ... ok
+test adapters::mapping::tests::grade_round_trip ... ok
+test adapters::mapping::tests::evidence_and_outcome_round_trip ... ok
+test adapters::mapping::tests::harness_methods_round_trip_through_wire ... ok
+test adapters::mapping::tests::launch_plan_round_trip_keeps_host_identity_and_default_size ... ok
+test adapters::mapping::tests::literal_input_round_trip_keeps_explicit_enter_and_identity ... ok
+test adapters::mapping::tests::waiting_kind_round_trip ... ok
+test adapters::mapping::tests::state_round_trip ... ok
+test bus::gui_tests::gui_deduplicated_publish_wakes_a_retained_append_not_yet_routed ... ok
+test bus::gui_tests::gui_defers_a_row_that_fits_a_fresh_quantum_without_emitting_a_gap ... ok
+test bus::gui_tests::gui_delivery_limit_is_audited_without_discarding_the_original_row ... ok
+test bus::gui_tests::gui_filter_migration_keeps_pending_and_tail_but_new_subjects_start_at_head ... ok
+test bus::gui_tests::gui_filter_migration_resumes_after_a_crash_between_streams ... ok
+test bus::gui_tests::gui_oversized_rows_have_a_visible_gap_and_retained_original ... ok
+test bus::gui_tests::gui_one_attachment_detaches_without_deleting_and_filter_change_versions ... ok
+test bus::gui_tests::gui_starts_new_but_replays_unpublished_pending_after_logic_restart ... ok
+test bus::gui_tests::gui_transport_ack_is_not_operator_read_and_read_marks_survive_restart ... ok
+test bus::gui_tests::retained_read_cursor_includes_filtered_rows_on_a_short_final_page ... ok
+test checkpoint::tests::a_generation_has_only_one_immutable_submitted_cursor ... ok
+test checkpoint::tests::an_explicit_earlier_checkpoint_hint_does_not_shrink_the_record_debt_budget ... ok
+test checkpoint::tests::four_occupied_slots_keep_the_next_save_queued_until_completion ... ok
+test checkpoint::tests::late_old_generation_ack_does_not_commit_or_release_a_new_save ... ok
+test checkpoint::tests::policy_is_data_with_the_decided_budgets ... ok
+test checkpoint::tests::replay_pages_do_not_reset_the_sixty_second_oldest_byte_clock ... ok
+test checkpoint::tests::unknown_or_mismatching_completion_never_acknowledges_a_cursor ... ok
+test ctl_door::tests::a_chain_that_never_reaches_the_root_is_refused ... ok
+test ctl_door::tests::the_window_keeps_its_door_and_a_supervisor_descendant_is_refused ... ok
+test debug::tests::debug_sources_refuse_symlinks_and_encoded_key_material ... ok
+test bus::gui_tests::retained_read_byte_pages_resume_without_losing_large_events ... ok
+test debug::tests::journal_selects_one_operation_read_only_without_opening_other_namespaces ... ok
+test debug::tests::log_cursors_are_bounded_complete_lines_and_cannot_split_secrets ... ok
+test gui_capture::tests::close_and_undo_share_the_ui_wait_and_do_not_acknowledge_the_relay ... ok
+test gui_capture::tests::an_ask_completes_with_the_windows_answer ... ok
+test gui_capture::tests::focus_waits_for_the_gui_frame_answer_and_keeps_its_correlation ... ok
+test gui_capture::tests::lifecycle_uses_the_gui_owner_and_only_commits_stop_after_the_reply ... ok
+test gui_capture::tests::ui_asks_are_correlated_and_do_not_invent_an_owner ... ok
+test gui_events::tests::held_messaging_sources_keep_the_typed_projection_without_rewriting_proof ... ok
+test gui_events::tests::public_activity_fields_exclude_arbitrary_bodies_and_unsafe_refs ... ok
+test gui_events::tests::metadata_preserves_the_original_proof_and_rejects_tampering ... ok
+test identity::agent::tests::agent_cancellation_and_bad_framing_fail_closed ... ok
+test identity::agent::tests::malformed_agent_data_is_rejected ... ok
+test identity::io::debug_tests::debug_without_override_selects_keychain ... ok
+test identity::io::debug_tests::fixture_generates_private_keys_once_and_reopens_without_a_known_key ... ok
+test identity::io::debug_tests::fixture_never_overwrites_a_key_or_accepts_a_relative_directory ... ok
+test identity::io::debug_tests::labels_describe_the_actual_store_and_survive_the_io_wrapper ... ok
+test identity::io::debug_tests::unset_process_fixture ... ignored, spawned-process fixture, invoked by debug_without_override_selects_keychain
+test identity::keychain::tests::denied_or_interactive_keychain_answers_have_a_named_hold ... ok
+test identity::keychain::tests::native_recorded_tier_never_falls_back_after_an_entitlement_refusal ... ok
+test identity::native_keychain::tests::queries_allow_ui_only_when_the_explicit_argument_says_so ... ok
+test identity::native_keychain::tests::the_team_and_application_requirement_parses_without_accessing_any_keychain ... ok
+test identity::unlock::tests::a_wrong_key_and_a_cancelled_native_read_have_no_writes ... ok
+test identity::unlock::tests::add_verify_or_delete_failure_never_loses_the_legacy_secret ... ok
+test identity::unlock::tests::an_audit_refusal_before_delete_leaves_both_and_restart_cleanup_never_prompts ... ok
+test identity::unlock::tests::an_unreadable_replacement_never_silently_falls_back_to_legacy ... ok
+test identity::unlock::tests::native_regrant_uses_one_interactive_read_then_prompt_free_verification ... ok
+test index::test_account_attribution::verified_test_context_is_covered_by_document_and_activity_signatures ... ok
+test index::tests::checked_creation_has_one_winner_and_does_not_overwrite_it ... ok
+test identity::agent::tests::agent_deadline_is_bounded ... ok
+test index::tests::checked_writer_keeps_editor_changes_and_refuses_symlink_escapes ... ok
+test index::tests::oversized_documents_are_skipped_without_blocking_valid_edits ... ok
+test index::tests::unchanged_documents_are_not_reread_and_same_length_edits_are_indexed ... ok
+test logic::knowledge_responsiveness_tests::held_read_does_not_stall_other_gui_seat_input_or_resize ... ok
+test logic::knowledge_responsiveness_tests::held_read_does_not_stall_same_gui_seat_input_or_resize ... ok
+test logic::native_reopen_tests::allowed_native_unlock_reports_reopen_busy_then_refresh_recovers_without_another_attempt ... ok
+test logic::pending_tests::closed_watch_admission_cannot_resurrect_interest_or_change_its_token ... ok
+test logic::pending_tests::down_host_work_is_parked_until_a_provider_up_transition ... ok
+test logic::pending_tests::empty_lanes_donate_without_borrowing_the_next_background_turn ... ok
+test logic::pending_tests::ended_interest_demotes_next_round_without_tombstones_or_generation_leaks ... ok
+test logic::pending_tests::pending_notifications_stay_bounded_and_preserve_resize_and_exit_order ... ok
+test logic::pending_tests::pending_seats_rotate_without_changing_an_unfinished_target ... ok
+test logic::pending_tests::replacement_generation_discards_only_the_old_generation_work ... ok
+test logic::pending_tests::watch_refcounts_are_idempotent_and_disconnect_releases_only_its_session ... ok
+test logic::pending_tests::watched_and_background_work_stays_parked_without_a_ready_spin ... ok
+test logic::pending_tests::watched_quota_is_three_to_one_and_each_lane_rotates ... ok
+test logic::seat_name_tests::automatic_names_are_unique_in_the_swarm_for_every_harness ... ok
+test logic::seat_name_tests::exhausted_pool_uses_the_first_unused_numbered_name ... ok
+test mcp::journal::tests::admitted_operator_without_a_result_stays_unknown_after_reopen ... ok
+test mcp::journal::tests::audit_outbox_preserves_call_order_instead_of_random_ulid_order ... ok
+test mcp::journal::tests::concurrent_operation_retries_return_one_committed_result ... ok
+test mcp::journal::tests::control_result_and_audit_commit_atomically_and_reopen_without_redispatch ... ok
+test mcp::journal::tests::crashed_admitted_mutation_reopens_unknown_without_redispatch ... ok
+test mcp::journal::tests::legacy_seat_actor_entries_replay_without_migration_or_dispatch ... ok
+test mcp::journal::tests::local_operator_replays_across_doors_without_claiming_native_authority ... ok
+test mcp::journal::tests::mutation_requires_audit_admission_and_releases_the_transaction_before_dispatch ... ok
+test mcp::journal::tests::native_admission_failure_rolls_back_every_intent_and_authority_is_not_supplied ... ok
+test mcp::journal::tests::native_status_of_a_missing_id_never_admits_or_poisons_an_unlock ... ok
+test mcp::journal::tests::native_unknown_survives_restart_and_gets_one_immutable_device_completion ... ok
+test mcp::journal::tests::operator_reconnect_replays_the_account_result_and_rejects_another_device ... ok
+test mcp::journal::tests::outcome_audit_failure_keeps_the_original_unknown_intent ... ok
+test mcp::seats::tests::native_attempt_rechecks_canonical_caller_policy_and_target_binding ... ok
+test messaging::keys::tests::local_operator_grant_requires_a_key_field_and_canonical_positive_epoch ... ok
+test messaging::pending::tests::pending_binding_covers_sender_content_and_admission_order_without_an_author ... ok
+test messaging::service::reference_tests::an_existing_device_keeps_its_original_operator_recipient_encoding ... ok
+test messaging::service::reference_tests::first_held_operator_delivers_an_authorless_intent_but_cannot_mute ... ok
+test messaging::service::reference_tests::operator_reference_survives_enrolment_without_moving_its_recipient ... ok
+test plugins::check::tests::cached_descriptor_survives_a_host_reload_and_a_new_digest_has_no_cache ... ok
+test plugins::check::tests::task_contract_properties_derive_from_the_current_native_tool_catalogue ... ok
+test plugins::client::tests::progress_cannot_extend_a_deadline_and_cancellation_does_not_replay ... ok
+test index::tests::sibling_build_writes_do_not_dirty_watch_or_trigger_reconciliation ... ok
+test plugins::trust::tests::one_readonly_copy_and_account_record_are_required_before_execution ... ok
+test provenance::artifacts::tests::ambiguous_detection_then_claim_keeps_one_lineage_and_rewrites_task_link ... ok
+test provenance::artifacts::tests::inline_history_is_bounded_and_older_rows_stay_out_of_the_document ... ok
+test provenance::author::tests::device_id_is_data_and_does_not_certify_local_or_pending_signers ... ok
+test plugins::client::tests::real_stdio_keeps_opaque_signed_bytes_and_only_allowed_environment_names ... ok
+test provenance::detector::rescan_tests::saturated_rescan_reports_incomplete_without_refilling_overflow ... ok
+test provenance::detector::tests::root_fd_refuses_symlink_parents_and_preserves_full_digest_semantics ... ok
+test provenance::detector::tests::hint_overflow_is_bounded_and_reported_hint_survives_coalescing ... ok
+test provenance::projection::tests::jsonl_recovers_partial_and_duplicate_rows_without_resigning_history ... ok
+test provenance::projection::tests::projection_refuses_symlink_destinations ... ok
+test provenance::git::tests::bounded_git_snapshot_observes_refs_without_signing_or_running_hooks ... ok
+test provenance::tests::index_and_bus_share_one_order_and_keep_each_actual_signer ... ok
+test seat_socket::gui_tests::duplicate_baseline_ack_preserves_the_newer_in_flight_update ... ok
+test seat_socket::gui_tests::fallback_never_requests_a_snapshot_while_an_update_is_in_flight ... ok
+test seat_socket::gui_tests::busy_gui_poll_and_locked_cursor_keep_the_session_and_queued_events ... ok
+test seat_socket::gui_tests::refusal_drains_the_complete_request_before_half_closing ... ok
+test seat_socket::gui_tests::repeated_ticks_keep_one_check_per_seat_and_hot_seats_stay_at_the_back ... ok
+test seat_socket::gui_tests::seat_listener_recovery_reclaims_only_a_dead_owned_socket ... ok
+test seat_socket::gui_tests::session_error_reasons_name_deadlines_without_logging_payloads ... ok
+test seat_socket::gui_tests::unwatch_removes_pending_work_and_rewatch_schedules_only_once ... ok
+test store::events::attribution_tests::real_account_rows_keep_the_original_serialization_and_signing_bytes ... ok
+test store::events::attribution_tests::test_account_rows_sign_the_host_derived_label_without_changing_payloads ... ok
+test seat_socket::gui_tests::gui_view_waits_for_applied_and_resize_clamps_without_reading_cells ... ok
+test store::sqlite::tests::fifty_current_schema_opens_do_not_take_either_database_write_lock ... ok
+test store::sqlite::tests::schema_markers_migrate_legacy_databases_and_preserve_version_refusals ... ok
+test store::sqlite::tests::concurrent_open_and_read_then_write_share_one_database_without_busy ... ok
+
+test result: ok. 124 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 3.41s
+
+     Running tests/adapters.rs (target/ui-clock-dev/debug/deps/adapters-b460640210b24adc)
+
+running 10 tests
+test adapters_literal_paste_requires_positive_readiness_and_submit_false_has_no_enter ... ok
+test adapters_literal_guard_negatives_write_no_bytes ... ok
+test adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it ... ok
+test adapters_positive_ready_is_consumed_and_journals_unknown_without_retyping ... ok
+test adapters_logic_launch_retains_overlay_until_exit_and_authenticates_shim_fallback ... ok
+test adapters_sessions_file_dialog_blocks_every_write_and_rejects_pid_session_reuse ... ok
+test codex_launch_refuses_oracle_class_before_creating_an_overlay ... ok
+test harness_defaults_follow_the_role_contract_and_validate_authority ... ok
+test adapters_real_zsh_overlay_reports_prompt_133_b_and_command_boundary ... ok
+test logic_refuses_codex_oracle_authority_without_admitting_a_seat ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.37s
+
+     Running tests/capture_busy.rs (target/ui-clock-dev/debug/deps/capture_busy-cb38e203228a86a3)
+
+running 2 tests
+test large_capture_catchup_yields_to_control_between_history_pages ... ok
+test capture_busy_exhaustion_keeps_logic_alive_and_retries_the_checkpoint ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s
+
+     Running tests/capture_fairness.rs (target/ui-clock-dev/debug/deps/capture_fairness-aaf4c86f1dd3eb5f)
+
+running 2 tests
+test down_host_replay_parks_and_idle_local_polling_stays_bounded_until_reconnect ... ok
+test four_watched_seats_advance_during_a_large_replay_and_match_serial_screens ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.15s
+
+     Running tests/checkpoint_scheduling.rs (target/ui-clock-dev/debug/deps/checkpoint_scheduling-5e85c00f0caed40e)
+
+running 4 tests
+test a_stale_recorder_row_cannot_hide_authoritative_parser_completion ... ok
+test caught_up_idle_checkpoints_do_not_checkpoint_a_twenty_mib_backlog ... ok
+test a_held_checkpoint_does_not_hold_snapshot_or_status_service ... ok
+test hundred_mib_partial_replay_forces_r_spaced_checkpoints_and_never_exceeds_two_r_debt ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.17s
+
+     Running tests/gates_seats.rs (target/ui-clock-dev/debug/deps/gates_seats-994a8f5eaa72ffd6)
+
+running 4 tests
+test gate_bus ... ignored, C1d gate 2: sh scripts/gates.sh bus
+test gate_memory ... ignored, C1d gate 1: sh scripts/gates.sh memory
+test gate_poller ... ignored, C1d gate 3: sh scripts/gates.sh poller
+test disk_guard_abort_terminates_owned_children_and_removes_the_run ... ok
+
+test result: ok. 1 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+     Running tests/gui_endpoint.rs (target/ui-clock-dev/debug/deps/gui_endpoint-30613cd83559a976)
+
+running 2 tests
+test a_refusal_queued_before_the_request_survives_a_broken_pipe ... ok
+test ctl_endpoint_opt_in_and_ancestry_refusal ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+     Running tests/gui_events.rs (target/ui-clock-dev/debug/deps/gui_events-d277f404dae8ce1c)
+
+running 2 tests
+test gui_event_fixture_child ... ignored, spawned only by the parent with its private fixture paths
+GUI session ended: door=Gui, reason=I/O error (BrokenPipe, os=Some(32))
+test durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.23s
+
+     Running tests/identity.rs (target/ui-clock-dev/debug/deps/identity-9a23835648428198)
+
+running 16 tests
+test identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ack_contracts ... ok
+test identity_bootstrap_external_certification_and_custody ... ok
+test identity_cutover_preserves_live_local_generation_and_fences_newer_local_sequences ... ok
+test identity_device_without_root_certification_is_refused_before_seat_issuance ... ok
+test identity_keychain_device_local_item_and_cleanup ... ignored, uses the current login Keychain with an isolated, deleted test item; run for ID1a acceptance
+test identity_locked_keychain_and_wrong_keygrip_install_nothing ... ok
+test identity_hold_range_stays_ephemeral_until_throwaway_device_enrollment_then_closes ... ok
+test identity_operator_uses_the_current_device_grant_and_refuses_seat_or_local_authority ... ok
+test identity_pending_failure_installs_no_authority_and_retries_same_device ... ok
+test identity_seat_chain_checks_certificates_scope_expiry_and_revoked_epochs ... ok
+test identity_reset_is_explicit_monotonic_and_does_not_rewrite_old_chain_history ... ok
+test identity_status_is_available_as_data_through_the_bounded_logic_client ... ok
+test identity_seat_renewal_never_uses_the_primary_and_roster_keeps_public_history ... ok
+test identity_status_surfaces_renewal_expiry_custody_hold_and_live_legacy_count ... ok
+test identity_status_reports_no_primary_and_persists_safe_bootstrap_pending_reasons ... ok
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 15 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.04s
+
+     Running tests/identity_io.rs (target/ui-clock-dev/debug/deps/identity_io-df6aea9cfd41ee22)
+
+running 4 tests
+test interaction_required_is_pending_without_a_prompt_or_replacement ... ok
+test memory_custody_process_fixture ... ignored, spawned-process fixture, invoked by debug_process_override_uses_only_memory_custody
+test debug_process_override_uses_only_memory_custody ... ok
+test stuck_custody_has_a_two_second_bound_and_retry_does_not_add_workers ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 4.02s
+
+     Running tests/identity_local.rs (target/ui-clock-dev/debug/deps/identity_local-649adab12e84d054)
+
+running 11 tests
+test concurrent_creators_read_one_atomic_winner ... ok
+test bus_seals_exact_hash_range_before_rekey_and_replays_retained_signed_bytes ... ok
+test first_launch_device_is_stable_and_local_or_pending_is_still_uncertified ... ok
+test held_device_creation_retains_its_reserved_id_and_releases_on_recovery ... ok
+test fresh_memory_custody_gets_a_fresh_device_and_lost_custody_stays_held ... ok
+test legacy_custody_record_upgrades_once_without_changing_the_issuer_or_its_address ... ok
+test old_random_pin_is_not_silently_replaced ... ok
+test held_queue_survives_reopen_and_refuses_changed_generation_role_epoch_and_routes ... ok
+test stable_machine_key_survives_logic_relaunch_and_is_shared_across_run_dirs ... ok
+test unavailable_and_missing_custody_hold_without_replacement_or_secret_file ... ok
+test pending_logic_keeps_pty_live_retries_at_30s_and_releases_durable_sends_in_order ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.14s
+
+     Running tests/knowledge.rs (target/ui-clock-dev/debug/deps/knowledge-2b572b0d7ed202a7)
+
+running 11 tests
+test ambiguity_names_candidates_and_fresh_number_checks_do_not_pick_a_first_hit ... ok
+test checked_signed_write_allocates_once_and_changes_only_after_existing_outbox_publication ... ok
+test cursor_is_root_query_and_snapshot_bound_and_reopens_without_restarting_the_page ... ok
+test decision_birth_names_the_allocated_number_and_refusal_consumes_nothing ... ok
+test resolution_fetch_and_images_use_one_root_and_the_existing_record_handles ... ok
+test resource_symlinks_escapes_nonfiles_and_oversize_are_refused_without_copies ... ok
+test search_filters_ranking_weighted_links_and_graph_pages_share_index_data ... ok
+test shared_contract_root_answers_all_eight_methods_for_future_stdio_conformance ... ok
+test swarm_graph_uses_registry_references_and_refuses_cross_swarm_ambiguity ... ok
+test uneven_search_pages_defer_a_row_that_fits_a_fresh_quantum_without_clipping ... ok
+test numbered_208_and_1000_record_fixtures_page_on_io_with_stable_unique_results ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.17s
+
+     Running tests/knowledge_gui.rs (target/ui-clock-dev/debug/deps/knowledge_gui-e1942f1c24bb5801)
+
+running 2 tests
+test admitted_read_dispatch_reuses_portable_dtos_and_cannot_write_or_ack ... ok
+test oversized_requests_pages_and_record_bodies_are_named_refusals ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/knowledge_views.rs (target/ui-clock-dev/debug/deps/knowledge_views-6bd030f076588fd7)
+
+running 3 tests
+test a_nonconforming_provider_cannot_make_a_view_loop_or_admit_an_oversize_page ... ok
+test alternative_provider_drives_graph_and_briefs_without_an_index_or_policy_upgrade ... ok
+test document_view_paths_cannot_bypass_the_provider_port ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/logic.rs (target/ui-clock-dev/debug/deps/logic-18544defd969a734)
+
+running 14 tests
+test external_logic_fixture ... ignored, subprocess fixture, invoked by the hard-kill acceptance test
+test a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_identity ... ok
+test logic_reconnect_keeps_same_supervisor_child_and_exact_screen ... ok
+test hard_killed_separate_logic_process_recovers_the_same_zsh_view ... ok
+test ring_capture_throughput_with_logic_running_and_stopped ... ignored, cargo test -p bbt-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1
+test ring_capture_twenty_mib_profile_running_and_stopped ... ignored, W1.2f baseline instrumentation: run release ring_capture_twenty_mib_profile --ignored --nocapture
+test ring_cold_replay_twenty_mib_profile ... ignored, W1.2f O0 cold-start profile; producer latency is separately reported and gated
+test real_seat_socket_binds_capability_generation_and_returns_explicit_history_gap ... ok
+test ring_idle_checkpoint_indexes_small_output_without_a_shutdown_or_byte_threshold ... ok
+test ring_live_logic_catches_up_coalesced_notifications_after_a_stall ... ok
+test supervisor_expires_grace_after_logic_stops_and_undo_preserves_process ... ok
+test view_stream_coalesces_and_replica_refuses_wrong_baselines_atomically ... ok
+test watched_lane_gets_at_least_half_of_replay_pages ... ok
+test ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap ... ok
+
+test result: ok. 10 passed; 0 failed; 4 ignored; 0 measured; 0 filtered out; finished in 16.51s
+
+     Running tests/logic_exit.rs (target/ui-clock-dev/debug/deps/logic_exit-4c6155c548f09231)
+
+running 1 test
+test queued_and_later_callers_keep_the_worker_error_and_panic_cause ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/mcp.rs (target/ui-clock-dev/debug/deps/mcp-dbc064530dcd416b)
+
+running 52 tests
+test d264_a_refused_send_is_stored_nowhere ... ok
+test d264_a_reply_without_destination_goes_to_the_sender ... ok
+test d264_orient_and_the_skill_say_how_to_reach_the_operator ... ok
+test d264_an_unknown_destination_is_refused_with_the_valid_one ... ok
+test d269_ctl_envelopes_carry_door_and_issuer_signed_and_framed ... ok
+test mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_content ... ok
+test gui_operator_dm_replays_once_and_tasks_share_mcp_verification ... ok
+test mcp_artifact_number_uses_unindexed_records_of_every_type_and_keeps_retry_bytes ... ok
+test mcp_artifact_partial_write_remains_unknown_and_is_not_reexecuted ... ok
+test mcp_counts_have_a_basis_and_ack_ids_without_equating_acknowledgement_with_reading ... ok
+test mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results ... ok
+test mcp_destinations_explain_rights_and_write_only_reads_without_expanding_grants ... ok
+test mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_result ... ok
+test mcp_framing_is_bounded_and_protocol_errors_never_echo_input ... ok
+test mcp_installed_claude_and_codex_call_orient ... ignored, live installed-client interop; BBOXY_TEST_EXE must name the built app
+test mcp_fixture_first_turn_orients_reports_and_retains_signed_task_receipts ... ok
+test mcp_journal_survives_logic_restart_and_never_replays_a_result_under_changed_authority ... ok
+test mcp_knowledge266_artifacts_keep_claims_observations_lineage_and_creator_corrections ... ok
+test mcp_knowledge266_oracle_task_creation_and_open_brief_edits_do_not_delegate_or_accept ... ok
+test mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_types ... ok
+test mcp_knowledge266_search_pages_use_shared_root_resolution_and_refuse_stale_cursors ... ok
+test mcp_knowledge_post_commit_failure_is_unknown_and_never_recreates_a_deleted_file ... ok
+test mcp_knowledge266_worker_task_results_use_report_notice_and_acceptance_guards ... ok
+test mcp_knowledge_real_bridge_writes_with_the_seat_key_and_replays_without_reallocation ... ok
+test mcp_knowledge_refuses_outside_paths_forged_authority_type_ids_and_stale_etags ... ok
+test mcp_list_and_graph_pages_explain_authenticated_scope_and_empty_views ... ok
+test mcp_message_visibility_and_receipt_pages_preserve_current_w24_scope ... ok
+test mcp_messages_bind_the_sender_retry_once_reply_list_and_ack_through_w24 ... ok
+test mcp_minted_read_ids_are_retryable_and_every_catalogue_explains_optional_ids ... ok
+test mcp_numeric_selectors_refuse_invalid_missing_and_ambiguous_handles ... ok
+test mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority ... ok
+test mcp_orient_unread_has_a_basis_and_acknowledgement_remains_separate ... ok
+test mcp_orient_cold_start_names_identity_allowed_tools_tasks_counts_and_actions ... ok
+test mcp_record_numbers_resolve_before_the_existing_task_authority_fences ... ok
+test mcp_role_scope_and_schema_cannot_be_spoofed_and_graph_reads_hide_foreign_items ... ok
+test mcp_seat_controls_enforce_catalogue_scope_generation_and_strict_arguments ... ok
+test mcp_seat_input_consumes_readiness_and_enter_is_explicit ... ok
+test mcp_seat_isolated_process ... ignored, subprocess fixture; parent supplies a disposable HOME and no credential environment
+test mcp_seat_input_lost_receipt_is_unknown_and_never_repeated_after_restart ... ok
+test mcp_seat_mute_is_epoch_checked_signed_and_preserves_read_access ... ok
+test mcp_seat_reads_page_real_capture_and_refuse_stale_view_cursors ... ok
+test mcp_seat_spawn_runs_once_with_isolated_home_and_existing_wiring ... ok
+test mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_arguments ... ok
+test mcp_spawn_refuses_forbidden_and_unknown_presets_before_admitting_a_seat ... ok
+test mcp_seat_native_interrupt_is_bounded_audited_and_never_replayed ... ok
+test mcp_task_partial_wake_stays_unknown_after_restart_and_never_rewrites_the_file ... ok
+test mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_only ... ok
+test mcp_work_item_audit_admission_failure_executes_no_frontmatter_write ... ok
+test mcp_task_reassignment_reauthorizes_history_and_refuses_foreign_or_ambiguous_scope ... ok
+test mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check ... ignored, acceptance driver supplies the prebuilt bbt-doc corpus test binary
+test mcp_work_item_signing_hold_keeps_the_original_file_and_terminals ... ok
+test running_mcp_bridge_survives_logic_restart_with_the_same_generation_admission ... ok
+
+test result: ok. 49 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 25.75s
+
+     Running tests/measurements.rs (target/ui-clock-dev/debug/deps/measurements-65aa4ced473f6e00)
+
+running 2 tests
+test file_descriptors_at_200_live_seats_and_sqlite_objects ... ignored, finite 200-live-seat descriptor measurement
+test recursive_cte_vs_petgraph_and_thousand_subscriber_fanout ... ignored, finite synthetic 10k-document / 100k-link measurement
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/messaging.rs (target/ui-clock-dev/debug/deps/messaging-9a06f26272a0412d)
+
+running 18 tests
+test arrival_path_limit_rejects_instead_of_silently_losing_an_unpaused_route ... ok
+test ambiguous_guarded_pty_stays_unknown_through_the_delivery_ledger ... ok
+test filter_rate_pause_and_worker_self_subscription_are_bounded_by_folder_grants ... ok
+test batching_never_jumps_over_an_earlier_eligible_route_in_worker_fifo ... ok
+test idle_mute_publishes_a_durable_seat_state_without_an_activity_transition ... ok
+test live_supervisor_admits_fresh_guard_and_rejects_replaced_foreground_evidence ... ok
+test message_bus_position_survives_reopen_without_reusing_the_ledger_sequence ... ok
+test mute_holds_both_directions_reopens_and_releases_only_under_current_grants ... ok
+test muted_peer_cannot_claim_the_authenticated_operator_direct_control_exception ... ok
+test nested_fanout_deduplicates_bridges_cycles_filters_and_preserves_arrival_paths_after_reopen ... ok
+test nil_seat_requires_the_local_operator_device_and_reserved_role ... ok
+test oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects ... ok
+test persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart ... ok
+test priority_fifo_four_to_one_and_burst_overflow_are_receiver_local ... ok
+test recipient_cursor_pages_do_not_skip_sinks_and_unsubscribing_survives_reopen ... ok
+test signed_envelope_covers_role_routing_thread_and_rejects_untrusted_issuer_and_noncanonical_counters ... ok
+test supervisor_final_fence_rejects_a_user_draft_without_accepting_any_guarded_bytes ... ok
+test live_logic_and_capability_socket_deliver_dm_native_written_without_claiming_model_receipt ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+
+     Running tests/messaging_flow.rs (target/ui-clock-dev/debug/deps/messaging_flow-cc4d3a8377aa4952)
+
+running 3 tests
+test local_delivery_outlives_the_old_signing_queue_cap_and_resume_is_bounded ... ok
+test pending_remote_delivery_waits_and_signed_completions_follow_admission_order ... ok
+test custody_hold_never_holds_local_delivery ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.36s
+
+     Running tests/native_unlock.rs (target/ui-clock-dev/debug/deps/native_unlock-5ad19cd0a93552fb)
+
+running 6 tests
+test native_audit_failure_executes_nothing_and_no_hold_is_a_native_noop ... ok
+test native_held_gui_requires_the_current_capability_and_refuses_a_supplied_device ... ok
+test native_hold_refuses_an_unvalidated_persisted_device_before_admission ... ok
+test native_cancelled_and_unknown_outcomes_survive_logic_restart_without_replay ... ok
+test native_hold_unlock_is_audited_before_access_and_does_not_block_panes ... ok
+test native_status_check_cannot_turn_a_missing_or_unknown_id_into_an_attempt ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.67s
+
+     Running tests/plugins.rs (target/ui-clock-dev/debug/deps/plugins-bc43171f16169e5c)
+
+running 7 tests
+test directories_symlinks_and_production_copies_do_not_bootstrap_trust ... ok
+test reference_uses_one_shape_and_all_eight_methods_then_reaps_its_children ... ok
+test six_required_refusals_are_named_and_never_leave_a_child ... ok
+test protocol_errors_command_errors_eof_bad_results_and_fixed_deadlines_stay_distinct ... ok
+test stderr_is_drained_with_a_bound_and_eof_escalation_reaps_a_term_ignoring_child ... ok
+test task_provider_must_return_every_app_signed_write_byte_for_byte ... ok
+test the_other_five_contracts_are_probed_and_cross_field_results_are_checked ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.46s
+
+     Running tests/provenance.rs (target/ui-clock-dev/debug/deps/provenance-e74d18268b4f6a02)
+
+running 6 tests
+test claim_before_detection_survives_missing_rebuildable_mirror ... ok
+test live_detection_claim_hook_rename_delete_and_restart_preserve_evidence ... ok
+test provenance_corpus_driver ... ignored, explicit corpus driver; caller supplies a disposable output root
+test symlinks_outside_paths_and_oversized_files_never_leak_content_or_partial_hashes ... ok
+test unchanged_clipped_git_refs_produce_no_activity_for_ten_seconds ... ok
+test custody_hold_keeps_observations_ephemeral_until_legitimate_projection_recovers ... ok
+
+test result: ok. 5 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 30.11s
+
+     Running tests/provider.rs (target/ui-clock-dev/debug/deps/provider-550515dad427b217)
+
+running 3 tests
+test local_provider_preserves_the_existing_link_and_rejects_unknown_hosts ... ok
+test location_namespaces_select_one_link_and_only_the_local_link_waits ... ok
+test logic_routes_real_seats_recovery_history_ownership_and_close_by_location ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.41s
+
+     Running tests/provider_fake.rs (target/ui-clock-dev/debug/deps/provider_fake-a131469468eb73f9)
+
+running 3 tests
+test fixture_is_the_host_source_and_invalid_scripts_are_rejected ... ok
+test all_requests_keep_their_reply_and_down_requests_never_execute_while_events_wait_for_rtt ... ok
+test headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_restart ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.67s
+
+     Running tests/provider_gui.rs (target/ui-clock-dev/debug/deps/provider_gui-13b7bfd0bd7e2e1c)
+
+running 4 tests
+test fixture_drains_notifications_while_waiting_and_keeps_a_split_reply ... ok
+test gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker ... ok
+test operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch ... ok
+test one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.74s
+
+     Running tests/recovery.rs (target/ui-clock-dev/debug/deps/recovery-704ba399e614084d)
+
+running 2 tests
+test checkpoint_recovery_child ... ignored, owned subprocess of checkpoint_bounded_recovery
+test checkpoint_bounded_recovery ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 5.82s
+
+     Running tests/ring.rs (target/ui-clock-dev/debug/deps/ring-830a83664927f5a6)
+
+running 9 tests
+test ring_corrupt_sealed_payload_is_an_error_not_a_complete_replay ... ok
+test ring_group_commit_distinguishes_captured_bytes_from_the_durable_cursor ... ok
+test ring_checkpoint_preserves_incomplete_csi_utf8_osc_and_suppresses_replayed_effects ... ok
+test ring_logical_rows_ignore_osc_payload_newlines_and_advance_epochs_without_invented_tail_indexes ... ok
+test ring_red_sgr_checkpoint_restores_colour_and_replay_matches_every_live_cell ... ok
+test ring_rejects_uncommitted_and_torn_suffix_then_can_commit_and_reopen_again ... ok
+test ring_rejects_wrong_generation_sequence_and_corruption_without_unbounded_allocation ... ok
+test ring_ten_thousand_logical_lines_round_trip_with_paginated_history_and_index ... ok
+test ring_hot_rollover_keeps_crc_cold_history_and_two_checkpoint_references ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.29s
+
+     Running tests/seat_wiring.rs (target/ui-clock-dev/debug/deps/seat_wiring-8aaf88a52148aceb)
+
+running 1 test
+test first_logic_launch_wires_both_fixture_clients_without_user_config_writes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.66s
+
+     Running tests/socket_backlog.rs (target/ui-clock-dev/debug/deps/socket_backlog-41a0bae1785ffd37)
+
+running 1 test
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic has been running for over 60 seconds
+test socket_request_flood_replays_exact_output_and_delivers_exit_to_logic ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 68.99s
+
+     Running tests/storage_bus_index.rs (target/ui-clock-dev/debug/deps/storage_bus_index-7fae43cab8c1c5cb)
+
+running 15 tests
+test duplicate_numbers_in_different_types_refuse_allocation ... ok
+test explicit_ack_redelivers_original_ids_survives_restart_and_never_redelivers_acked_work ... ok
+test grammar_matches_tokens_and_rejects_mid_path_tail_wildcards ... ok
+test independent_streams_latest_snapshots_queue_gaps_and_nonretained_output ... ok
+test index_resolves_annotated_links_retains_broken_frontmatter_and_rebuilds_from_sqlite ... ok
+test invalid_legacy_numbers_remain_visible_and_block_new_writes ... ok
+test mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_changes ... ok
+test number_allocation_child ... ignored, subprocess fixture used by concurrent_processes_allocate_under_one_root_lock
+test numbered_links_bind_graph_edges_only_when_the_number_is_unique ... ok
+test record_numbers_use_fresh_nested_frontmatter_and_are_immutable ... ok
+test registry_keeps_session_mapping_mute_and_exact_close_revision_across_restart ... ok
+test request_reply_has_no_responders_and_fanout_is_not_replayed ... ok
+test signed_events_dedupe_forever_reject_conflicts_tampering_and_torn_database ... ok
+test sqlite_objects_blobs_and_alarms_round_trip_across_reopen ... ok
+test concurrent_processes_allocate_under_one_root_lock ... ok
+
+test result: ok. 14 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.36s
+
+     Running tests/test_account.rs (target/ui-clock-dev/debug/deps/test_account-873a7d6694cb9a95)
+
+running 7 tests
+test a_foreign_nonempty_directory_never_becomes_a_test_identity ... ok
+test a_missing_or_corrupt_root_refuses_without_generating_a_new_identity ... ok
+test fresh_runs_are_distinct_and_cannot_rebind_an_existing_account ... ok
+test generated_root_device_and_verified_grants_survive_reopening ... ok
+test startup_allows_the_selected_private_run_inside_the_account_directory ... ok
+test startup_refuses_a_foreign_issuer_before_creating_test_keys_or_context ... ok
+test seat_messages_require_the_label_derived_by_the_receiving_account ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+     Running tests/ui_guard.rs (target/ui-clock-dev/debug/deps/ui_guard-2d2ef1de03f76563)
+
+running 1 test
+test ui_thread_is_rejected_before_creating_a_database_directory ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/ui-clock-dev/debug/deps/bbt_proto-b4ac7baec69db008)
+
+running 20 tests
+test events::tests::gaps_are_stream_ranges_without_a_signature ... ok
+test events::tests::numeric_loss_and_ambiguous_positions_are_rejected ... ok
+test events::tests::positions_keep_every_u64_bit_and_their_stream ... ok
+test events::tests::projection_metadata_names_the_original_signature_scope ... ok
+test gui::tests::close_readback_is_optional_for_older_app_status_replies ... ok
+test gui::tests::gui_ids_keep_canonical_ulid_text_and_reject_malformed_ids ... ok
+test gui::tests::identity_status_is_portable_and_contains_only_state_and_reason ... ok
+test gui::tests::input_and_resize_require_an_explicit_displayed_generation ... ok
+test gui::tests::gui_state_round_trips_portable_enums_without_a_mux_dependency ... ok
+test gui::ui_tests::ui_requests_keep_their_scope_and_reject_unbounded_input ... ok
+test gui::ui_tests::scroll_rows_stay_unsigned_and_live_positions_can_be_unindexed ... ok
+test identity::tests::native_control_never_accepts_a_caller_identity_or_key_target ... ok
+test identity::tests::reopen_failure_is_typed_and_absent_from_unchanged_control_responses ... ok
+test hosts::tests::host_states_and_namespaced_locations_round_trip_without_mux_types ... ok
+test seat_names::tests::rust_names_match_the_shared_json_and_are_unique ... ok
+test seat_state::placement_tests::absent_placement_keeps_the_default_lane ... ok
+test seat_state::placement_tests::placement_roundtrip_keeps_the_captured_tab_anchor_and_generation ... ok
+test seat_state::placement_tests::spawn_and_reply_keep_the_same_operation_id ... ok
+test streams::tests::direct_metadata_preserves_custom_palette_cursor_and_resets ... ok
+test streams::tests::direct_metadata_matches_checkpoint_for_all_firehose_parser_scenes ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests/messaging.rs (target/ui-clock-dev/debug/deps/messaging-fe00bf55edb9e2b8)
+
+running 7 tests
+test carried_messages_preserve_canonical_decimal_counters ... ok
+test existing_messaging_requests_keep_their_tags_and_nested_fields ... ok
+test existing_stored_message_and_receipt_pages_keep_their_wire_shape ... ok
+test gui_messaging_wraps_the_existing_payload_and_correlates_its_reply ... ok
+test operator_recipients_are_named_while_legacy_seat_receipts_remain_ulids ... ok
+test task_wire_matches_as_built_tools_and_never_accepts_a_spawn_or_authority_override ... ok
+test unassigned_inventory_is_optional_and_keeps_existing_task_list_bytes ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/messaging_pending.rs (target/ui-clock-dev/debug/deps/messaging_pending-05a07fd3ea1f6a11)
+
+running 3 tests
+test operator_local_reference_is_not_a_device_and_unknown_epoch_is_not_invented ... ok
+test first_startup_intent_has_no_author_and_cannot_be_a_signed_envelope ... ok
+test signed_stored_messages_keep_their_legacy_bytes_without_a_new_tag ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/plugin_contracts.rs (target/ui-clock-dev/debug/deps/plugin_contracts-1dab162097032f11)
+
+running 2 tests
+test current_envelope_serializes_into_event_sink_without_relaxing_the_native_parser ... ok
+test task_verification_uses_the_existing_wire_shape_and_rejects_authority_fields ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ui_clock.rs (target/ui-clock-dev/debug/deps/ui_clock-4413de784f99131e)
+
+running 2 tests
+test an_older_layout_does_not_invent_an_animation_clock ... ok
+test clock_actions_round_trip_inside_the_existing_ui_request ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bboxy450_term
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_mux
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_proto
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+EXIT 0
+
+## final-night-test
+{"source": "aad79a7abffb7bc00d6c1c92732d8e8dba179328", "exit": 0, "elapsed_s": 205.26114491699263, "command": ["cargo", "test", "--locked", "-p", "bboxy450-term", "--test", "e2e_night", "--", "--test-threads=2"]}
+   Compiling bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-proto)
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 3m 19s
+     Running tests/e2e_night.rs (target/ui-clock-dev/debug/deps/e2e_night-40196b691a0b80d6)
+
+running 1 test
+test the_runner_turns_script_exit_codes_into_verdicts_and_a_summary ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.88s
+
+
+EXIT 0
+
+## final-clippy
+{"source": "aad79a7abffb7bc00d6c1c92732d8e8dba179328", "exit": 0, "elapsed_s": 22.553790542006027, "command": ["cargo", "clippy", "--locked", "--all-targets", "-p", "bbt-proto", "-p", "bbt-mux", "-p", "bboxy450-term", "--", "-D", "warnings"]}
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-core)
+    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-plugin)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-proto)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+    Checking bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-keychain-file)
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mermaid)
+    Checking bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-keychain)
+    Checking bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-harness-wake-up)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-doc)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-supervisor)
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mux)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-desktop-notifications)
+    Finished `dev` profile [optimized] target(s) in 22.45s
+
+EXIT 0
+
+## final-invariants
+{"source": "aad79a7abffb7bc00d6c1c92732d8e8dba179328", "exit": 0, "elapsed_s": 199.83623329200782, "command": ["sh", "scripts/invariants.sh"]}
+brand: held
+invariant bboxy450-prefix: pass
+invariant checkpoint-bounded: pass
+invariant clippy-clean: skipped (slow)
+cross-os: held
+invariant cross-os-facade: pass
+invariant ctl-never-prints-secrets: pass
+invariant ctl-opt-in: pass
+invariant e2e-runs-unattended: skipped (slow)
+    Finished `test` profile [optimized] target(s) in 0.15s
+     Running tests/corpus.rs (target/ui-clock-dev/debug/deps/corpus-79736735b68121f5)
+
+running 1 test
+test real_bboxy_frontmatter_parses ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.06s
+
+invariant frontmatter-parses: pass
+invariant glow-never-moves-layout: pass
+invariant idle-swarms-cost-nothing: skipped (slow)
+images: held
+invariant images-resolve: pass
+kill-own-pids: held
+invariant kill-only-own-pids: pass
+invariant kitty-keyboard: pass
+layering: held
+invariant layering: pass
+licenses: 24 workspace crates, SPDX map and required root/crate files present
+invariant licenses-present: pass
+local-first: held
+invariant local-first: pass
+    Finished `test` profile [optimized] target(s) in 0.10s
+     Running unittests src/lib.rs (target/ui-clock-dev/debug/deps/bbt_mermaid-7c2496a07458bdeb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+
+     Running tests/fixtures.rs (target/ui-clock-dev/debug/deps/fixtures-bb021a3581d5478c)
+
+running 1 test
+test every_bboxy_mermaid_block_has_a_fixture ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.01s
+
+invariant mermaid-fixtures: pass
+invariant messaging-never-held: pass
+    Finished `test` profile [optimized] target(s) in 0.12s
+     Running tests/seat_rows.rs (target/ui-clock-dev/debug/deps/seat_rows-f51b84d2f0e3093a)
+
+running 1 test
+test module_sources_and_legacy_adapter_cannot_hand_draw_rows ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+invariant modules-through-components: pass
+never-block: held
+invariant never-block-swarm: pass
+never-block: held
+cross-os: held
+invariant no-chokepoints: pass
+deps-licences: held
+invariant no-copyleft-deps: pass
+invariant no-seat-starves: pass
+invariant parity-geometry: skipped (slow)
+invariant restart-keeps-state: skipped (slow)
+invariant rim-never-covers-text: pass
+invariant rim-size-is-layout: pass
+invariant ring-reads-batched: skipped (slow)
+invariant seats-1000-bus: skipped (slow)
+invariant seats-400-memory-idle: skipped (slow)
+invariant seats-967-frame: skipped (slow)
+invariant signed-main: pass
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui-model)
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-core)
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-ui)
+    Checking bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-keychain-file)
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mermaid)
+    Checking bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-keychain)
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-desktop-notifications-macos)
+    Checking bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-harness-wake-up)
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-supervisor)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-proto)
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-doc)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-plugin)
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-render)
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-desktop-notifications)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mux)
+    Finished `dev` profile [optimized] target(s) in 15.47s
+invariant ui-never-waits: pass
+invariant watched-replay-priority: pass
+invariants: 25 checks, 0 failures, 9 slow checks skipped
+
+EXIT 0
+
+## Historical compile-only preflight failure, before the signed source
+   Compiling bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bbt-mux)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-exec6/crates/bboxy450-term)
+error[E0599]: no method named `set_model` found for struct `scene::Scene` in the current scope
+   --> crates/bboxy450-term/src/stall/headless.rs:84:19
+    |
+ 84 |             scene.set_model(&model, &model.ui.window.stage);
+    |                   ^^^^^^^^^ method not found in `scene::Scene`
+    |
+   ::: crates/bboxy450-term/src/scene.rs:161:1
+    |
+161 | pub struct Scene {
+    | ---------------- method `set_model` not found for this struct
+
+For more information about this error, try `rustc --explain E0599`.
+error: could not compile `bboxy450-term` (bin "bboxy450-term") due to 1 previous error
+
+EXIT 101
+
+## Historical saved-binary halo counterexample: actual EXIT 1
+{"exit": 1, "directory": "/Users/feral/mydev/bboxy450-term-exec6/target/uc-e78dbb1c59", "binary": "/Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-proof/bboxy-before-landing", "binary_sha256": "e2ea22da0931572fdb326f6255b2341962986d689f40fc3364bb4bf606c95041", "source": "0e97dc326e3fe2e490bef4cae51afa59a2c239dd", "private_account_retired": true}
+Traceback (most recent call last):
+  File "/tmp/velvet-ui-clock-proof.py", line 83, in <module>
+    assert changed > 0, '450 ms image has no swell beyond the resting rim'
+           ^^^^^^^^^^^
+AssertionError: 450 ms image has no swell beyond the resting rim
+
+{"exit": 1, "expected_exit": 1, "binary": "bboxy-before-landing", "inputs": "headless-2-inputs.json"}

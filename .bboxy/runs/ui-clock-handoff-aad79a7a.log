@@ -1,0 +1,32 @@
+EXECUTOR HANDOFF — UI animation clock
+Signed source aad79a7abffb7bc00d6c1c92732d8e8dba179328; branch velvet-ui-clock, exec6.
+Base cc7977ef941a73d4ec33145e91a5a10d5fcbf56f. Oracle brief65e9d334.
+
+Mechanism (paths under crates/):
+bboxy450-term/src/animation_clock.rs:46/54/69 — one App animation timeline; frozen now/advance do not sample wall time; checked advances and continuous resume. Operational deadlines and metrics retain real time.
+bbt-proto/src/gui.rs:98/209; bboxy450-term/src/ctl.rs:505 — freeze/advance <ms>/resume through the existing typed UiRequest, optional produced-frame clock state and frame_seq.
+bbt-mux/src/logic.rs:4334 — verified chain test-account label required before the normal UI admission/journal; caller --as cannot forge it. App adds the independently validated test-account owner fence.
+bboxy450-term/src/main.rs:2813/3825/3881/4231/4336 — actual layout landing shared by both drivers; prior landing publication and exact frozen revision/time fence the produced-frame reply; frame clock latched once; Rook's one lazy projection preserved.
+bboxy450-term/src/scene.rs:440 — controlled waiting episodes map once to logical time, keep original episode identity across model publications and retain muted/clear handling.
+bboxy450-term/src/headless.rs; gpu.rs:717 — same latched time for scene and both GPU layers; actual solve publishes landing. display_link.rs removes the superseded animation clock and unused target timestamp.
+Tests: protocol round trips/old-layout compatibility; clock freeze/overflow/resume; real ink swell at450ms and waiting phase continuity; headless frozen bytes, geometry, authorization and live resume.
+No bbt-render, bbt-ui, ui-model, lab, token, shader, style, pass or settle-predicate edit.
+
+Validation, actual commands:
+2d45d71b: cargo test --locked -p bbt-proto -p bbt-mux -p bboxy450-term -- --test-threads=2 — EXIT0;675/0/20ignored,772.726s.
+Final rebase to aad79a7a preserves all13 own file blobs exactly; accepted main adds night writer/scripts/records. cargo test -p bboxy450-term --locked --test e2e_night -- --test-threads=2 — EXIT0,1/0.
+Final scoped strict all-target Clippy — EXIT0. Fast invariants — EXIT0,25/0/9slow skipped.
+Exact clean BBOXY_TEST_CUSTODY=memory sh scripts/ci-local.sh --parity — EXIT0,3497.955s; workspace 1440/0/29ignored; strict/UI lint/smoke pass; invariants26/0/8slow skipped. Wrappers empty, Cargo jobs2, actual atomic slot2 released.
+Current 2240 cases; required geometry 2136/2136,0unproven/0mismatches.72reviews remain,0new/0removed versus hash-verified accepted C3ff0d7433 report. Legacy1664/851 is non-gating.
+
+Exact gate-binary proof: SHA256 85143a2a6f4f15b97c598f7886c4d380b886f4758982765c474e0c7b5a99635d. Private FILE account, headless, windows0, no operator input.
+Frozen PNGs identical; origin frame50 time1173ms -> peak frame54 time1623ms (+450), outer-rim ROI 1248 changed pixels. Same pane/grid. Resume frame58 is live; next layout time advances. All5 recorded own processes gone, independent ps EXIT1/no rows; account retired.
+Binary SHA matches pre-gate and final CI artifact; no extra claim inferred from metadata alone.
+
+Historical compile failure and the zero-halo counterexample are retained in the prechecks log; the weak first image-difference probe was not treated as swell proof.
+Retained gallery /Users/feral/mydev/bboxy450-term-exec6/target/ui-clock-parity-aad79a7abffb-1; report SHA256 8e267e7f96828e4ae0f67854c75c3009379ab531fbe9358b367472d6a5b6ebc0; capture/hash manifests and full logs retained.
+Cleanup: own inactive dev target reused exclusively, then deleted 5516877824 allocated bytes; detached gate checkout removed0. Peer files untouched.
+Main moved during gate to 1cde8f0c27afd910ce5b9a6664f4aa3ca64ff2b8: ['1cde8f0c ctl debug fault ring-gap: a projection mask never a ring mutation, test-account chain is the authority, bounded and journaled; history meter bounded to 128 panes, on demand, no periodic scan']. No rebase/re-gate after the exact run.
+
+Next authorized follow-up: R1/R3/R5 scripts, now scratch prototypes only, not part of this source or gate. The standard night prototype has all3 pass/full and all6 records written; actual group exit1 remains red for R2/R4/R6 untested. No full-night green claim.
+Evidence-only successor changes .bboxy/runs only. Oracle verification and merge remain pending.
