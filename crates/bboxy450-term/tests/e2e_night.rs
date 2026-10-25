@@ -95,7 +95,8 @@ seat=$("$BBT" ctl seat spawn zsh --place tab --cwd "$E2E_WORK" | python3 -I -c '
     let kept = std::path::PathBuf::from(summary["kept"].as_str().expect("failed run retained"));
     assert_eq!(
         std::fs::metadata(&kept).unwrap().permissions().mode() & 0o077,
-        0
+        0,
+        "retained root is private: {kept:?}"
     );
     assert!(
         std::fs::read_to_string(kept.join("T2/work/output.log"))

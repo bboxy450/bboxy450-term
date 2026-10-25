@@ -11,6 +11,7 @@
 use serde_json::{Value, json};
 use std::{
     io::Write,
+    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     process::{Command, Stdio},
     time::{Duration, Instant},
@@ -71,6 +72,7 @@ async fn night(
 ) -> Result<bool, String> {
     let temporary = tempfile::Builder::new()
         .prefix("e2en")
+        .permissions(std::fs::Permissions::from_mode(0o700))
         .tempdir_in(std::env::var_os("TMPDIR").map_or_else(std::env::temp_dir, PathBuf::from))
         .map_err(|e| e.to_string())?;
     let root = temporary.path().canonicalize().map_err(|e| e.to_string())?;
