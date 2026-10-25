@@ -1,0 +1,3 @@
+#!/bin/sh
+# Deterministic wiring probe, not a native client or model.
+exec python3 -I -B "$(dirname "$0")/../launch_probe.py" codex "$@"

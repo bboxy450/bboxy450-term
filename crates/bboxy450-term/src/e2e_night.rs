@@ -377,8 +377,9 @@ fn upsert(
 }
 
 /// One promise: a fresh windowless app with ctl on, the script against it, then an orderly
-/// shutdown. An adjacent `<ID>.fixture-bin` supplies deterministic harnesses to this app
-/// only. Returns the script's exit code and the tail of its output.
+/// shutdown. Adjacent `<ID>.fixture-bin` and `<ID>.fixture-home` directories supply
+/// deterministic harnesses and a private harness configuration to this app only.
+/// Returns the script's exit code and the tail of its output.
 async fn promise(
     root: &Path,
     script: &Path,
@@ -386,6 +387,10 @@ async fn promise(
 ) -> Result<(Option<i32>, String), String> {
     let fixture = script.with_extension("fixture-bin");
     let fixture = fixture.is_dir().then_some(fixture);
+    let home_seed = script.with_extension("fixture-home");
+    if home_seed.is_dir() {
+        copy_fixture_home(&home_seed, &root.join("home"))?;
+    }
     let app = App::start(root, &root.join("repository"), fixture.as_deref()).await?;
     println!(
         "{}",
@@ -405,6 +410,35 @@ async fn promise(
         tail.push_str(&format!("\napp shutdown: {error}"));
     }
     Ok((exit, tail))
+}
+
+/// Copy a committed configuration seed without following links outside the fixture.
+/// Each promise can mutate its copy; it never shares the seed or the runner's HOME.
+fn copy_fixture_home(source: &Path, target: &Path) -> Result<(), String> {
+    let kind = std::fs::symlink_metadata(source)
+        .map_err(|e| e.to_string())?
+        .file_type();
+    if !kind.is_dir() {
+        return Err("fixture home must be a directory, never a symlink".into());
+    }
+    std::fs::create_dir_all(target).map_err(|e| e.to_string())?;
+    std::fs::set_permissions(target, std::fs::Permissions::from_mode(0o700))
+        .map_err(|e| e.to_string())?;
+    for entry in std::fs::read_dir(source).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let destination = target.join(entry.file_name());
+        let kind = entry.file_type().map_err(|e| e.to_string())?;
+        if kind.is_dir() {
+            copy_fixture_home(&entry.path(), &destination)?;
+        } else if kind.is_file() {
+            std::fs::copy(entry.path(), &destination).map_err(|e| e.to_string())?;
+            std::fs::set_permissions(&destination, std::fs::Permissions::from_mode(0o600))
+                .map_err(|e| e.to_string())?;
+        } else {
+            return Err("fixture home contains a symlink or a special file".into());
+        }
+    }
+    Ok(())
 }
 
 /// A windowless app in its own run directory, started as the operator would start one:
@@ -439,6 +473,13 @@ impl App {
         }
         let account = root.join("account");
         let mut launch = ctl(&run, repository, &root.join("zsh-config"));
+        let home = root.join("home");
+        if home.is_dir() {
+            launch
+                .env("HOME", &home)
+                .env("CLAUDE_CONFIG_DIR", home.join(".claude"))
+                .env("CODEX_HOME", home.join(".codex"));
+        }
         // A deterministic harness is local to this promise's app and its real seats.
         // Do not mutate the runner's PATH or the separate records app's environment.
         if let Some(bin) = fixture_bin {
@@ -598,4 +639,52 @@ async fn run_script(
 /// The summary's exit code: 0 green or amber, 1 red.
 pub fn exit_code(ok: bool) -> i32 {
     if ok { 0 } else { 1 }
+}
+
+#[cfg(test)]
+mod fixture_home_tests {
+    use super::*;
+
+    // keeps: spec e2e-script-map §L3
+    #[test]
+    fn fixture_home_copies_private_configs_without_sharing_the_seed() {
+        let temp = tempfile::tempdir().unwrap();
+        let seed = temp.path().join("seed");
+        let copied = temp.path().join("promise-home");
+        std::fs::create_dir_all(seed.join(".claude")).unwrap();
+        std::fs::write(seed.join(".claude/settings.json"), b"{\"fixture\":1}\n").unwrap();
+        copy_fixture_home(&seed, &copied).unwrap();
+        std::fs::write(seed.join(".claude/settings.json"), b"{\"fixture\":2}\n").unwrap();
+        assert_eq!(
+            std::fs::read(copied.join(".claude/settings.json")).unwrap(),
+            b"{\"fixture\":1}\n"
+        );
+        assert_eq!(
+            std::fs::metadata(&copied).unwrap().permissions().mode() & 0o777,
+            0o700
+        );
+        assert_eq!(
+            std::fs::metadata(copied.join(".claude/settings.json"))
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+    }
+
+    // keeps: spec e2e-script-map §L3
+    #[test]
+    fn fixture_home_refuses_a_link_outside_its_seed() {
+        let temp = tempfile::tempdir().unwrap();
+        let seed = temp.path().join("seed");
+        let copied = temp.path().join("promise-home");
+        let outside = temp.path().join("outside");
+        std::fs::create_dir(&seed).unwrap();
+        std::fs::write(&outside, b"private outside value").unwrap();
+        std::os::unix::fs::symlink(&outside, seed.join("escape")).unwrap();
+        assert!(copy_fixture_home(&seed, &copied).is_err());
+        assert!(!copied.join("escape").exists());
+        assert_eq!(std::fs::read(&outside).unwrap(), b"private outside value");
+    }
 }

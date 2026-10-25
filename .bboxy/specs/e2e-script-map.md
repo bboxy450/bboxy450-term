@@ -31,7 +31,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | T9 | `scripts/e2e/T9.sh` | partial | a harness resumed by session id (only a zsh seat is restarted) | |
 | L1 | `scripts/e2e/L1.sh` | partial | approved blur pixels; harness labels and role presets; search results | |
 | L2 | `scripts/e2e/L2.sh` | partial | never a guessed slot | |
-| L3 | `scripts/e2e/L3.sh` | partial | script not implemented: every launched seat has our MCP server, the hook shim and the bboxy450 skill at launch; the user's own ~/.claude and ~/.codex are byte-identical before and after | |
+| L3 | `scripts/e2e/L3.sh` | partial | harness: stand-in; missing: real Claude/Codex consume the launch wiring; terminal zsh has no agent skill/MCP contract | Private HOME/config hashes, per-seat argv/overlays, pinned skill, real inherited MCP handshake/orient and published shim activity |
 | L4 | `scripts/e2e/L4.sh` | partial | script not implemented: a fresh Claude seat and a fresh Codex seat each call orient and task_report on their first turn in a fixture task | |
 | S1 | `scripts/e2e/S1.sh` | partial | displayed historical bytes are not exported by ctl (row-coordinate traversal is not a cell proof); bounded lazy history page metrics | |
 | S2 | `scripts/e2e/S2.sh` | partial | ring-level gap production not exercised; GUI historical cell bytes; headless gap-marker pixels | |
@@ -212,7 +212,9 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 
 **Required assertions:** bboxy MCP server, expected hook set and pinned skill are available on first launch; installed paths/argv belong to this seat; before/after user configuration digest sets identical. No operator credential/content is read or changed.
 
-**Gaps at baseline afff4758:** Read-only launch manifest/MCP-call audit export and provisioned throwaway harness account. Fixture process/argv proves wiring only; a real client handshake is a separate assertion. recipe control is not yet in the ctl parser.
+**Script:** `scripts/e2e/L3.sh` — partial, harness: stand-in. The real headless app launches deterministic Claude/Codex fixtures with a private HOME/config seed. The script asserts per-seat overlays, the pinned skill digest, the expected hook set, real inherited MCP initialize/list/orient with the admitted seat/generation/role, published shim activity, and unchanged private harness configuration hashes. Compact case evidence survives in the night output.
+
+**Remaining gaps:** Real Claude/Codex consumption of that launch wiring needs a provisioned throwaway harness account; the stand-ins prove the bridge and launch wiring only. The terminal zsh launch installs shell integration, not an agent MCP/skill contract; no claim is made for it here.
 
 **Baseline pointers:** ctl.rs:505; adapters launch path; ctl-cli.md:80; tests/mcp.rs.
 
