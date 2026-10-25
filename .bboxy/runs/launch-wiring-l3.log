@@ -1,0 +1,28 @@
+L3 launch wiring — Sable Embertail <EXECUTOR>, 2026-10-25
+
+Accepted main: 508d46a2724151fdf4bedeb58010315778aabd35 (Oracle hand landing after three green author checks exhausted main_moving). Signed third checked source: 819fdca0b10b5e9eb42a7236bed5ad890bd89b81, branch sable-launch-wiring. Oracle reported merged-tree bboxy450-term strict Clippy exit 0, two fixture-home tests passed, shell syntax 0, own paths byte-identical (ICQ 5a37c185-65be-4308-94c6-e3f2b7fbbc67).
+
+Mechanism
+crates/bboxy450-term/src/e2e_night.rs:392/417/480 — copy a promise's optional fixture-home into its own private HOME, reject symlinks/special files, use 0700 directories/0600 files; set HOME/CLAUDE_CONFIG_DIR/CODEX_HOME only on that promise app.
+scripts/e2e/L3.sh:29/40 — wait for the READY text ordered after shim bytes on the same owned PTY, then assert published active/shim state and the launch/bridge/config proof.
+scripts/e2e/launch_probe.py — deterministic Claude/Codex stand-ins inspect actual per-seat overlays, pinned skill, distinct seat/generation, inherited authenticated MCP initialize/tools/orient and real configured lifecycle hooks. No capabilities are extracted and no operator HOME/login/Keychain is used.
+The script's first line and map row remain PARTIAL, harness: stand-in. Real clients consuming that wiring are unproven; terminal zsh has no agent skill/MCP contract.
+
+Runtime checks
+- fixture-home tests 2/0; shell/Python syntax 0.
+- First launching-group night EXIT1: L1/L2 pass, L3 fail because the baseline lacked --state active, L4 untested. The fixture was corrected to the ordered READY marker and explicit state/grade assertions; no product flag was introduced.
+- Corrected launching-group night EXIT 1/10.122s: L1/L2/L3 pass, L4 untested. L3 passed; the group remains RED because L4 has no script. No green/amber group claim.
+- Both real bridge case rows, actor/role/seat/generation, hook and config assertions are in l3-runtime-proof.json under private_root below. All 4 file-custody headless apps were gone and their endpoints removed; all 4 records were written. Successful temporary home cleaned normally. Runtime binary SHA-256 f522340851c87daf4d8a1aa7993b17f6e9bfbd5492987f252eac39cb9f22c485.
+- e2e_night.rs, L3.sh and launch_probe.py are byte-identical between successful runtime source c5df7c28bc7bedd026f1a588ac99dcf6ecf64a56 and the checked L3 source.
+
+Author validation — every exit retained
+Two obsolete total 900 s attempts exited 77/inner 124 without an assertion failure. The second spent 761.812 s compiling and 137.582 s in tests before Clippy was interrupted. The parent-target to checkout-keyed target transition is documented in l3-target-transition.json. One two-clock attempt exited 75/all slots taken and ran no check. The next author command exited 79/main_moving after all three cycles below passed; no push was attempted by Sable.
+- c75b3e8279cec38eaa81351c35edd1de77f78ada: exit 0, BUILD 318.162 s, RUN 735.295 s; log /Users/feral/.local/state/bboxy450-term/landing/presubmits/c75b3e8279cec38eaa81351c35edd1de77f78ada-a645e38c/commands.log; SHA-256 a8a6674ffedaeec89cfdfcc39d267eb4934862882028fbe5fd899cfbed7db55e.
+- 0efa66f71681dcbde67d3f3149b7d57519c13544: exit 0, BUILD 325.967 s, RUN 884.822 s; log /Users/feral/.local/state/bboxy450-term/landing/presubmits/0efa66f71681dcbde67d3f3149b7d57519c13544-a9ed656b/commands.log; SHA-256 caa60e209b5d4c1d5c2d762adae27f6e591d8c313276c192360d421f7ac35378.
+- 819fdca0b10b5e9eb42a7236bed5ad890bd89b81: exit 0, BUILD 332.834 s, RUN 608.583 s; log /Users/feral/.local/state/bboxy450-term/landing/presubmits/819fdca0b10b5e9eb42a7236bed5ad890bd89b81-3ac6c645/commands.log; SHA-256 f08c5547e119c540c5916302486a1d6893325583635d8b20501686639477cd1c.
+Each completed cycle passed strict Clippy, landing/recovery fixtures and 26 invariants. Cycle 3 headless 20/0 includes the frozen-clock test; this is no repair claim for task 336. The author command's real elapsed time was 3217.040 s. Vesper then landed the already-green code under the explicit transition rule.
+
+private_root: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-night-iloqd6d6
+Evidence: l3-runtime-proof.json; l3-launch-night-2.command.json; l3-accepted-main-proof.json; l3-two-clocks-completed-checks.json; l3-land-two-clocks-2.command.json/.log/.result.json; l3-retired-target.json.
+The retired target had lsof exit 1/no open files; 2,276,700,160 allocated file bytes were removed, retaining all reports/hashes. Final observed debug binary SHA-256 af3ce299190fc0f53a178b133078b6037733f9e94ade4836a4d7e31628a7fbcd.
+No new visual, real-client, full launching-group or 967-scale claim.
