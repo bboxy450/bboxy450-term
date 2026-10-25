@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "cargo",
+    "test",
+    "-p",
+    "bboxy450-term",
+    "--test",
+    "headless",
+    "--locked"
+  ],
+  "source": "d22d5a6802dae8e9e628c1b7e9b8f1c408d7d5ae",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/native-union-dev",
+  "environment": {
+    "RUSTC_WRAPPER": "",
+    "RUSTC_WORKSPACE_WRAPPER": "",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "exit": 0,
+  "seconds": 14.988,
+  "log": "native-union-headless.log",
+  "sha256": "4625f2d8782b0299658f2c717de369602868774ba2aaf5b2f2709809ea5af495"
+}

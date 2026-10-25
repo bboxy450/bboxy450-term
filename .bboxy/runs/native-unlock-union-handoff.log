@@ -1,0 +1,31 @@
+Kestrel Voidwing <EXECUTOR> — native #280/#315 union handoff
+TESTED UNION SOURCE: d22d5a6802dae8e9e628c1b7e9b8f1c408d7d5ae
+BASE: 6beb36f3017c55a42a98f8bc1438d950b3edb0a3
+WORKTREE / BRANCH: /Users/feral/mydev/bboxy450-term-exec5 / exec5-native-unlock
+
+ORACLE REQUEST
+Union the original gated native work with current main; run workspace tests, strict Clippy, default invariants, Settings 144 scoped parity, and headless once. No second full gate. Brief a13ff2c2 / 319b4a2d; original native gate evidence accepted as is.
+
+UNION / SOURCE PROOF
+Rebased the ten-commit source/evidence stack from base 714163f2 onto ac973701, resolving three textual conflicts as unions: ctl.rs retains C-2 record/event verbs plus identity status/unlock; main.rs BackendLost keeps capacity-retry cancellation plus native Unknown cleanup; seat_socket.rs keeps all operation-ID alternatives including EventsStreams and Identity. Reviewed cockpit/live/logic/gui auto-merges. The first patch differs only in those conflict/context unions; the remaining nine patches range-diff '='.
+After the quiet window ended and before any build, rebased cleanly again onto just-landed 6beb36f3 (ctl task verbs). All ten patches range-diff '=' against the first union. All ten commits have good signatures. Twenty-four of the 31 native source files are byte-identical to the original gated source; only the seven upstream-shared files differ. Source-only diff-check EXIT 0. Hashes and both range-diffs are adjacent.
+
+ACTUAL SCOPED RESULTS ON d22d5a68
+cargo test --workspace --locked — EXIT 0, 1080.069 s; 1380 passed, 0 failed, 29 ignored.
+cargo clippy --workspace --all-targets --locked -- -D warnings — EXIT 0, 255.263 s.
+sh scripts/invariants.sh — EXIT 0, 463.932 s; 23 checks, 0 failures, 9 slow skipped.
+BBOXYBOOK_GALLERY=settings PARITY_OUT=<private output> sh scripts/parity.sh — EXIT 0, 287.997 s; fresh web capture 144/144, native render 144/144, geometry 144 required/measured, 0 unproven, 0 mismatches, 0 pixel reviews. All 48 custody cases are within policy.
+cargo test -p bboxy450-term --test headless --locked — EXIT 0, 14.988 s; 9 passed, 0 failed. This is the one explicit rerun after the workspace suite.
+Both compiler wrapper variables were empty. One owned dev target; debug assertions and memory test custody enabled. All five command exits and raw log SHA256 values are in native-unlock-union-checks.json. No corrective product edit and no waived failure in this scoped run. Git rebase initially exited 1 on the three named conflicts; resolution/continue and the later clean rebase exited 0, with raw logs retained.
+
+ORIGINAL EXACT FULL GATE, STILL THE ACCEPTED GATE EVIDENCE
+Source 0e0e9d2e04a2609eb5513baf30650b73d4b26ebb; sh scripts/ci-local.sh --parity EXIT 0 / 3300.927 s, 'all gates passed'.
+Log .bboxy/runs/native-unlock-ci-parity.log SHA256 afca2116375a6d90c9f4c44aae436b05091c9bd1df9d5d6d5616f8d3ecf95e25.
+Original mechanisms, rule/regression pointers, named pre-T7/setup failures and limitations remain in .bboxy/runs/native-unlock-handoff.log. No full gate was repeated for this union.
+
+MAIN MOVEMENT / LIMITS
+Main advanced during the frozen checks with C-3 and frame evidence. Latest observed origin/main after checks: e327544193cc88ff62da187c94427baddaeacd7d G Merge third 967/50 frame attempt evidence (Rook). No rebase or repeated checks after that movement; Oracle owns the merged-tree verification.
+Actual macOS login-Keychain dialog and ACL behavior remains unverified. This is the approved fixture/public-query/fake-signing native cut; no operator action or physical session is required. Facade-family/other-OS extraction is deferred. The 29 ignored tests and 9 skipped slow invariants are explicitly retained in the logs.
+
+RESOURCE / GIT
+The check driver exited 0. lsof found no open files under the exact owned target before removal. Removed 4030480384 allocated bytes from /Users/feral/mydev/bboxy450-term-exec5/target/native-union-dev. No full-gate slot was claimed. No publish or merge performed. Final handoff commit changes evidence only.

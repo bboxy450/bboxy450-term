@@ -1,0 +1,43 @@
+ 1:  b355a4fe !  1:  f8c12a76 Implement journaled native identity unlock and operator controls
+    @@ crates/bboxy450-term/src/ctl.rs: pub enum Command {
+          ("seat", "spawn", "Spawn"),
+          ("seat", "screen", "Screen"),
+     @@ crates/bboxy450-term/src/ctl.rs: pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
+    -         ["record", "write", source] => Command::RecordWrite {
+    -             source: source.into(),
+    +                 .transpose()?.unwrap_or(30_000);
+    +             Command::EventsTail {stream,since,subject,timeout:Duration::from_millis(timeout)}
+              },
+     +        ["identity", "status"] => Command::Identity(bbt_proto::identity::IdentityRequest::Status),
+     +        ["identity", "unlock"] => Command::Identity(bbt_proto::identity::IdentityRequest::Unlock),
+    @@ crates/bboxy450-term/src/main.rs: impl App {
+              if let Some(size) = self.pending_resize.take()
+                  && let Some(window) = &self.window
+     @@ crates/bboxy450-term/src/main.rs: impl ApplicationHandler<UiEvent> for App {
+    -                 self.logger
+                          .write(format!("backend lost; retaining last pane frame: {reason}"));
+                      self.backend_lost = true;
+    +                 self.command_retry.cancel();
+     +                self.custody.next(Instant::now(), false);
+     +                self.pending_commands
+     +                    .retain(|message| !matches!(message, live::UiMsg::IdentityControl { .. }));
+    @@ crates/bbt-mux/src/seat_socket.rs: async fn gui_session(
+                          let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
+                          let op=match &request.action {
+                              GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
+    --                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
+    -+                        GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
+    +-                        GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
+    ++                        GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
+                              GuiAction::UndoClose {close_id,..}=>*close_id,
+                              _=>Ulid::new(),
+                          };
+ 2:  ab69332f =  2:  05099d7e Keep native recovery selection in one bounded condition
+ 3:  43783b77 =  3:  2c1bcaf7 Keep fresh identity operation IDs distinct from nil defaults
+ 4:  d0b327ea =  4:  1d92e7c4 Enroll the two-item unlock fixture in its actual run account
+ 5:  8c5759e4 =  5:  525279ca Recover the issuer before checking separate certified device custody
+ 6:  36a5de2c =  6:  365b7591 Make unknown native operation checks read-only even before admission
+ 7:  a3de103f =  7:  4457ff7b Refuse expired public authority before native custody effects
+ 8:  5a4d405b =  8:  fe75a658 Match custody status typography and insets to the paired lab reference
+ 9:  0e0e9d2e =  9:  106abd02 Record native unlock prechecks and paired Settings parity evidence
+10:  8464114f = 10:  d22d5a68 Record native unlock exact gate, headless repeats and honest failure evidence

@@ -1,0 +1,12 @@
+{
+  "source": "d22d5a6802dae8e9e628c1b7e9b8f1c408d7d5ae",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/native-union-dev",
+  "owner_marker": "native-union-dev d22d5a68",
+  "lsof_exit": 1,
+  "lsof_stdout_empty": true,
+  "allocated_bytes_removed": 4030480384,
+  "target_removed": true,
+  "seconds": 1.508,
+  "utc": "2026-10-25T06:41:52.179491+00:00",
+  "full_gate_slot_claimed": false
+}

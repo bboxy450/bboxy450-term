@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "sh",
+    "scripts/invariants.sh"
+  ],
+  "source": "d22d5a6802dae8e9e628c1b7e9b8f1c408d7d5ae",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec5",
+  "target": "/Users/feral/mydev/bboxy450-term-exec5/target/native-union-dev",
+  "environment": {
+    "RUSTC_WRAPPER": "",
+    "RUSTC_WORKSPACE_WRAPPER": "",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "exit": 0,
+  "seconds": 463.932,
+  "log": "native-union-invariants.log",
+  "sha256": "737f8900ef786c450c4e8967512689cae0d8b9206e807839f6e62da97b9350b0"
+}
