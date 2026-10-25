@@ -45,9 +45,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let smoke = args.iter().any(|v| v == "--smoke");
     let ready_line = args.iter().any(|v| v == "--app-ready");
     let capture_path = value("--capture").map(std::path::PathBuf::from);
-    let unattended = bboxy450_term::cockpit::Config::test_account_from_args(args)
-        .map_err(|error| error.to_string())?
-        .is_some();
+    let test_account = bboxy450_term::cockpit::Config::test_account_from_args(args)
+        .map_err(|error| error.to_string())?;
+    let unattended = test_account.is_some();
     let verify = crate::Verify::from_args(args)?;
     let mut gpu = bootstrap()?;
     let thread = std::thread::current();
@@ -113,6 +113,11 @@ pub fn run(args: &[String]) -> Result<(), String> {
     app.live_commands = Some(commands);
     let settings_path = value("--settings-config")
         .map(std::path::PathBuf::from)
+        .or_else(|| {
+            test_account
+                .as_ref()
+                .map(|account| account.join("config.toml"))
+        })
         .map_or_else(bboxy450_term::settings::default_path, Ok)?;
     let settings_events = sink.clone();
     app.preferences_io = Some(bboxy450_term::settings::Io::start(
