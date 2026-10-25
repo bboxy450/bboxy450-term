@@ -249,17 +249,40 @@ async fn restarted(session: &mut Session) -> Vec<GuiSeat> {
 async fn restart_catalogue(
     mut event: impl AsyncFnMut() -> bbt_mux::store::Result<Event>,
 ) -> bbt_mux::store::Result<Vec<GuiSeat>> {
-    tokio::time::timeout(Duration::from_secs(15), async {
+    let started = tokio::time::Instant::now();
+    let mut last = String::from("waiting for process exit/recovery");
+    // Session gives startup 30 s after observing/reaping the old processes.
+    // This is a hang watchdog, not a stricter recovery performance budget.
+    tokio::time::timeout(Duration::from_secs(60), async {
         loop {
-            if let Event::Reply(reply) = event().await?
-                && let GuiReply::Seats(seats) = *reply
-            {
-                return Ok(seats);
+            match event().await? {
+                Event::Reply(reply) => {
+                    if let GuiReply::Seats(seats) = *reply {
+                        println!(
+                            "restart catalogue after {:?}; last={last}",
+                            started.elapsed()
+                        );
+                        return Ok(seats);
+                    }
+                    last = "non-catalogue reply".into();
+                }
+                Event::Exited { process, status } => last = format!("{process} exited: {status}"),
+                Event::Disconnected(reason) => {
+                    if reason.starts_with("recovery failed:") {
+                        return Err(bbt_mux::store::invalid(reason));
+                    }
+                    last = format!("disconnected: {reason}");
+                }
             }
         }
     })
     .await
-    .map_err(|_| bbt_mux::store::invalid("restart catalogue watchdog elapsed"))?
+    .map_err(|_| {
+        bbt_mux::store::invalid(format!(
+            "restart catalogue watchdog elapsed after {:?}; last={last}",
+            started.elapsed()
+        ))
+    })?
 }
 
 #[tokio::test(start_paused = true)]
@@ -273,6 +296,33 @@ async fn restart_catalogue_accepts_completion_within_the_sessions_startup_budget
     .await
     .unwrap();
     assert!(seats.is_empty());
+}
+
+#[tokio::test(start_paused = true)]
+async fn restart_catalogue_preserves_terminal_recovery_failures() {
+    let error = restart_catalogue(async || {
+        Ok(Event::Disconnected(
+            "recovery failed: startup refused".into(),
+        ))
+    })
+    .await
+    .unwrap_err();
+    assert_eq!(error.to_string(), "recovery failed: startup refused");
+}
+
+#[tokio::test(start_paused = true)]
+async fn restart_catalogue_still_rejects_a_hang() {
+    let started = tokio::time::Instant::now();
+    let error = restart_catalogue(async || std::future::pending().await)
+        .await
+        .unwrap_err();
+    assert_eq!(started.elapsed(), Duration::from_secs(60));
+    assert!(error.to_string().contains("watchdog elapsed"));
+    assert!(
+        error
+            .to_string()
+            .contains("waiting for process exit/recovery")
+    );
 }
 async fn durable(root: &Path, seat: &GuiSeat, sequence: u64) {
     let path = root.join(format!(
