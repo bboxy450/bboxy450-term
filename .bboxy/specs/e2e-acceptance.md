@@ -16,7 +16,7 @@ links:
   - { to: "[[rim-glow]]", rel: promises }
   - { to: "[[attention]]", rel: promises }
 created: "2026-10-24T05:17:08Z"
-updated: "2026-10-24T19:28:08Z"
+updated: "2026-10-25T00:52:00Z"
 ---
 # E2E acceptance
 
@@ -43,7 +43,7 @@ Every promised user-facing function, one line of expectation each, from [[vision
 
 - **T1** ⌘T on a Claude, Codex or zsh row opens a real PTY seat in a pane within one frame, named from the furry pool, in the chosen placement
 - **T2** typing in a focused pane reaches the program; the echo appears within one frame; a 100 kB paste arrives intact
-- **T3** resizing a pane or the window resizes the PTY and the program redraws at the new size with no stale cells
+- **T3** resizing a pane or the window resizes the PTY and the program redraws at the new size with no stale cells; under a window owner the layout owns the PTY size, so the night drives it with `ctl app resize <cols>x<rows>` and asserts `stty` in the seat equals the pane size `seat ls` reports
 - **T4** a pane shows real cells: colours, bold, italics, underline, wide glyphs and emoji align to the grid; the cursor shape follows the program
 - **T5** the app is killed and relaunched: every seat is attached to the same PTY, layout, focus and scroll positions are identical, the programs never noticed
 - **T6** the supervisor dies: seats survive; the app says so, restarts it, re-attaches, resumes by session id

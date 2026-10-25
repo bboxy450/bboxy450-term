@@ -13,7 +13,7 @@ window.E2E_PROMISES = [
  {
   "id": "T3",
   "group": "terminal",
-  "text": "resizing a pane or the window resizes the PTY and the program redraws at the new size with no stale cells"
+  "text": "resizing a pane or the window resizes the PTY and the program redraws at the new size with no stale cells; under a window owner the layout owns the PTY size, so the night drives it with `ctl app resize <cols>x<rows>` and asserts `stty` in the seat equals the pane size `seat ls` reports"
  },
  {
   "id": "T4",
