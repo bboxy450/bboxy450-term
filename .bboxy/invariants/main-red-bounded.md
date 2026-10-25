@@ -13,7 +13,7 @@ links:
   - { to: "[[no-chokepoints]]", rel: builds-on }
   - { to: "[[never-block-swarm]]", rel: builds-on }
 created: "2026-10-25T16:18:56Z"
-updated: "2026-10-25T16:18:56Z"
+updated: "2026-10-25T17:52:31Z"
 ---
 # Main is red at most until the next revert
 
@@ -34,7 +34,18 @@ interval is visible in the log with its length ([[d321-out-of-integration-hell]]
 commit touching the code paths is a revert (subject begins `Revert` and names
 the culprit sha), and every commit between that red verdict and the next green
 verdict touching the code paths is a revert; it also asserts every code commit
-on `main` older than the newest green verdict is covered. **Pending** until the
+on `main` older than the newest green verdict is covered. **What it evaluates
+and what pending means (Nyx's question, 2026-10-25):** the bound is structural,
+the next code commit, never a wall clock, so the check invents no expiry. When
+`origin/main` is exactly the red sha and no later code commit exists, the state
+is **pending**, reported as such and held so far, exit 0: nothing has landed
+that the property forbids. When the check runs inside a presubmit, it evaluates
+the **candidate `HEAD`** if that candidate is a descendant of `origin/main`
+consisting only of reverts, so the revert that clears the red is not refused by
+the red it clears; otherwise it evaluates `origin/main`. A non-revert candidate
+on a red tip is the violation, and `land.sh` refuses it first with
+`main_red`. The length of each red interval is a metric in the postsubmit log,
+never an assertion of this check. **Pending** until the
 main watch writes the log; `slow: true` and `gate: pending-postsubmit` keep it
 out of the default run until then, and the commit that lands the watch removes
 both and the Oracle flips `status` on acceptance.
