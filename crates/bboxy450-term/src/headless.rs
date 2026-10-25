@@ -130,6 +130,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let mut captures = VecDeque::new();
     let mut submitted = 0;
     let mut rendered = 0;
+    let mut ui_frame = None;
     let mut rendered_at = None;
     let mut backend = false;
     let mut generation = 0;
@@ -188,16 +189,14 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             dirty = true;
                         }
                     }
-                    UiEvent::UiFor { id, request } => {
-                        let repaint = !matches!(request, bbt_proto::gui::UiRequest::Layout);
-                        let result = app.ui_request(request, SIZE);
-                        crate::queue_pending(
-                            &mut app.pending_commands,
-                            live::UiMsg::UiReply { id, result },
-                        )
-                        .map_err(|_| "headless UI reply admission full")?;
-                        dirty |= repaint;
+                    UiEvent::UiFor {
+                        id,
+                        request,
+                        prior_spawns,
+                    } => {
+                        dirty |= app.begin_ui(id, request, SIZE, submitted, prior_spawns);
                     }
+                    UiEvent::UiDeadline(id) => app.ui_deadline(id),
                     UiEvent::FocusFor(ask) => {
                         app.begin_focus(ask);
                     }
@@ -267,6 +266,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     crate::now_ms()
                         .saturating_sub(at.elapsed().as_millis().try_into().unwrap_or(u64::MAX)),
                 );
+                if ui_frame.as_ref().is_some_and(|(id, _)| *id <= frame) {
+                    let (id, layout) = ui_frame.take().expect("completed UI frame");
+                    app.present_ui(id, layout);
+                }
             }
             let sources = app.drain();
             if !sources.is_empty() {
@@ -281,6 +284,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
             }
             if !closing {
                 dirty |= app.poll_focus_frame(rendered, submitted + 1);
+                dirty |= app.poll_ui_frame(submitted);
                 // A copy is submitted before any later draw, so its metadata names
                 // the exact completed texture being read back, even under a flood.
                 if submitted == rendered && rendered > 0 {
@@ -387,6 +391,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         app.conversation_layout.as_ref(),
                         app.document_layout.as_ref(),
                     );
+                    let layout = app.ui_observe.then(|| app.ui_layout(SIZE, &layouts));
                     gpu.draw_layers_notifying(
                         base,
                         foreground,
@@ -399,6 +404,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             wake.unpark();
                         },
                     )?;
+                    ui_frame = layout.map(|layout| (submitted, layout));
                     dirty = false;
                 }
                 if let Some(send) = &app.live_commands {

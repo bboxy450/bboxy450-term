@@ -55,7 +55,9 @@ pub enum UiEvent {
     UiFor {
         id: bbt_mux::Ulid,
         request: bbt_proto::gui::UiRequest,
+        prior_spawns: Vec<bbt_mux::Ulid>,
     },
+    UiDeadline(bbt_mux::Ulid),
     Wake,
     CommandsReady(command_retry::Ready),
     Settings(Arc<preferences::Snapshot>),
@@ -426,6 +428,62 @@ impl FocusState {
 
 fn rect_array(rect: Rect) -> [f32; 4] {
     [rect.x, rect.y, rect.w, rect.h]
+}
+
+#[derive(Clone, PartialEq, Eq)]
+struct UiVisible {
+    launcher: bool,
+    page: Option<String>,
+    document: Option<String>,
+    focused: Option<bbt_mux::Ulid>,
+    tab: Option<bbt_mux::Ulid>,
+}
+impl UiVisible {
+    fn from_layout(layout: &bbt_proto::gui::UiLayout) -> Self {
+        Self {
+            launcher: layout.launcher_open,
+            page: layout.page.clone(),
+            document: layout.document.clone(),
+            focused: layout.focused,
+            tab: layout.tab,
+        }
+    }
+}
+enum UiEffect {
+    Spawn(bbt_mux::Ulid),
+    Operation(bbt_mux::Ulid),
+    Mute(SeatId, bool),
+    Lifecycle(SeatId, bool),
+    Refused(String),
+}
+impl UiEffect {
+    fn from_message(message: &live::UiMsg) -> Option<Self> {
+        match message {
+            live::UiMsg::Spawn { id, .. } => Some(Self::Spawn(*id)),
+            live::UiMsg::Messaging {
+                request: bbt_proto::messaging::Request::Mute { seat, muted },
+                ..
+            } => Some(Self::Mute(SeatId::from_u128(seat.0), *muted)),
+            live::UiMsg::Messaging { id, .. } | live::UiMsg::Task { id, .. } => {
+                Some(Self::Operation(*id))
+            }
+            live::UiMsg::Close(intent) => Some(Self::Lifecycle(intent.seat, false)),
+            live::UiMsg::UndoClose { seat } => Some(Self::Lifecycle(*seat, true)),
+            _ => None,
+        }
+    }
+}
+struct UiWait {
+    id: bbt_mux::Ulid,
+    after: Option<u64>,
+    visible: Option<UiVisible>,
+    effects: Vec<UiEffect>,
+    timer: tokio::task::AbortHandle,
+}
+impl Drop for UiWait {
+    fn drop(&mut self) {
+        self.timer.abort();
+    }
 }
 fn ui_layout_node(
     layout: &bbt_ui::components::Layout,
@@ -1454,6 +1512,11 @@ struct App {
     /// Operator captures waiting for the next presented frame.
     ctl_captures: Vec<live::CaptureAsk>,
     ctl_focus: bboxy450_term::focus_ack::Pending,
+    ui_observe: bool,
+    ui_frame: Option<(u64, Result<bbt_proto::gui::UiLayout, String>)>,
+    ui_wait: Option<UiWait>,
+    ui_focus: Option<bbt_mux::Ulid>,
+    ui_collect: Option<Vec<UiEffect>>,
     /// When the last frame was presented; a capture of it names this time.
     last_presented: Option<std::time::SystemTime>,
     pending_resize: Option<LogicalSize<f64>>,
@@ -1596,6 +1659,11 @@ impl App {
             capture_pending: true,
             ctl_captures: Vec::new(),
             ctl_focus: Default::default(),
+            ui_observe: args.iter().any(|arg| arg == "--ctl"),
+            ui_frame: None,
+            ui_wait: None,
+            ui_focus: None,
+            ui_collect: None,
             last_presented: None,
             pending_resize: None,
             animate,
@@ -2720,6 +2788,34 @@ impl App {
         }
     }
     fn answer_focus(&mut self, answer: bboxy450_term::focus_ack::Answer) {
+        if self.ui_focus == Some(answer.id) {
+            self.ui_focus = None;
+            let result = answer
+                .result
+                .map_err(|reason| {
+                    if reason.starts_with("focus_timeout:") {
+                        format!("timeout: {reason}")
+                    } else {
+                        format!("ui_frame_refused: {reason}")
+                    }
+                })
+                .and_then(|frame| {
+                    self.last_ui_frame().and_then(|layout| {
+                        if layout.frame_seq >= frame.frame_seq
+                            && layout.focused == Some(bbt_mux::Ulid(frame.seat.0.0))
+                        {
+                            Ok(layout)
+                        } else {
+                            Err(
+                                "ui_frame_refused: no produced layout contains the focused pane"
+                                    .into(),
+                            )
+                        }
+                    })
+                });
+            self.answer_ui(answer.id, result);
+            return;
+        }
         self.queue(live::UiMsg::Focused {
             id: answer.id,
             result: answer.result,
@@ -2799,9 +2895,23 @@ impl App {
         if self.closing || self.live_commands.is_none() {
             return;
         }
-        if let Err(kind) = queue_pending(&mut self.pending_commands, message) {
-            self.admission_refusals.record(kind);
-            self.logger.write(self.admission_refusals.report());
+        let effect = self
+            .ui_collect
+            .as_ref()
+            .and_then(|_| UiEffect::from_message(&message));
+        match queue_pending(&mut self.pending_commands, message) {
+            Err(kind) => {
+                self.admission_refusals.record(kind);
+                self.logger.write(self.admission_refusals.report());
+                if let Some(effects) = &mut self.ui_collect {
+                    effects.push(UiEffect::Refused("ui_command_queue_full".into()));
+                }
+            }
+            Ok(()) => {
+                if let (Some(effect), Some(effects)) = (effect, &mut self.ui_collect) {
+                    effects.push(effect);
+                }
+            }
         }
         self.flush_commands();
     }
@@ -3338,6 +3448,9 @@ impl App {
         }
         self.drive_document();
         self.poll_focus();
+        if self.window.is_some() {
+            self.poll_ui_frame(self.meter.total_frames());
+        }
         self.flush_commands();
         sources
     }
@@ -3457,22 +3570,235 @@ impl App {
             WakeAction::Invalidate => self.request_redraw_sources(sources),
         }
     }
-    fn ui_request(
+    fn answer_ui(&mut self, id: bbt_mux::Ulid, result: Result<bbt_proto::gui::UiLayout, String>) {
+        if let Err(kind) = queue_pending(
+            &mut self.pending_commands,
+            live::UiMsg::UiReply { id, result },
+        ) {
+            self.admission_refusals.record(kind);
+            self.logger.write(self.admission_refusals.report());
+        }
+        self.flush_commands();
+    }
+    fn last_ui_frame(&self) -> Result<bbt_proto::gui::UiLayout, String> {
+        self.ui_frame
+            .as_ref()
+            .map(|(_, layout)| layout.clone())
+            .unwrap_or_else(|| Err("ui_not_ready: no produced layout frame".into()))
+    }
+    fn ui_visible(&self) -> UiVisible {
+        let stage = self
+            .focus
+            .stage
+            .as_ref()
+            .or_else(|| self.live_state.as_ref().map(|model| &model.ui.window.stage));
+        UiVisible {
+            launcher: self.launcher.is_some(),
+            page: self.local_tab.as_ref().map(|tab| match tab {
+                LocalTab::Graph(_) => "graph".into(),
+                LocalTab::Settings { .. } => "settings".into(),
+            }),
+            document: self.document.open.then(|| self.document.target.clone()),
+            focused: stage
+                .and_then(|stage| stage.focused)
+                .map(|seat| bbt_mux::Ulid(seat.0.0)),
+            tab: stage
+                .and_then(|stage| stage.tab)
+                .map(|tab| bbt_mux::Ulid(tab.0.0)),
+        }
+    }
+    fn cancel_ui(&mut self, reason: &str) {
+        if let Some(wait) = self.ui_wait.take() {
+            self.answer_ui(wait.id, Err(reason.into()));
+        }
+        if self.ui_focus.is_some()
+            && let Some(answer) = self.ctl_focus.fail(reason)
+        {
+            self.answer_focus(answer);
+        }
+    }
+    fn ui_effect_ready(&self, effect: &UiEffect) -> Result<bool, String> {
+        use bboxy450_term::model::SpawnOutcome;
+        let Some(model) = &self.live_state else {
+            return Ok(false);
+        };
+        match effect {
+            UiEffect::Spawn(id) => match self
+                .spawn_results_seen
+                .get(id)
+                .or_else(|| model.spawns.get(id).map(|request| &request.outcome))
+            {
+                Some(SpawnOutcome::Placed(seat)) => Ok(model.ui.tab_of(*seat).is_some()),
+                Some(SpawnOutcome::Pending | SpawnOutcome::AwaitingSeat(_)) | None => Ok(false),
+                Some(outcome) => Err(format!("ui_frame_refused: spawn {id}: {outcome:?}")),
+            },
+            UiEffect::Operation(id) => {
+                Ok(model.operation_results.rows().any(|reply| reply.op == *id))
+            }
+            UiEffect::Mute(seat, muted) => {
+                if model
+                    .ui
+                    .seats
+                    .get(seat)
+                    .is_some_and(|record| record.muted == *muted)
+                {
+                    Ok(true)
+                } else if self.mute.pending() {
+                    Ok(false)
+                } else {
+                    Err(format!("ui_frame_refused: mute for {seat} was not applied"))
+                }
+            }
+            UiEffect::Lifecycle(seat, open) => Ok(model.ui.seats.get(seat).is_some_and(|record| {
+                if *open {
+                    record.lifecycle == bbt_ui_model::Lifecycle::Open
+                        && model.ui.tab_of(*seat).is_some()
+                } else {
+                    record.lifecycle != bbt_ui_model::Lifecycle::Open
+                        && model.ui.tab_of(*seat).is_none()
+                }
+            })),
+            UiEffect::Refused(reason) => Err(format!("ui_frame_refused: {reason}")),
+        }
+    }
+    fn poll_ui_frame(&mut self, submitted: u64) -> bool {
+        let Some(wait) = &self.ui_wait else {
+            return false;
+        };
+        if wait.after.is_some() {
+            return false;
+        }
+        let ready = wait.effects.iter().try_fold(true, |ready, effect| {
+            self.ui_effect_ready(effect).map(|next| ready && next)
+        });
+        match ready {
+            Err(reason) => {
+                let wait = self.ui_wait.take().expect("UI waiter observed");
+                self.answer_ui(wait.id, Err(reason));
+                false
+            }
+            Ok(false) => false,
+            Ok(true) => {
+                let visible = self.ui_visible();
+                let wait = self.ui_wait.as_mut().expect("UI waiter observed");
+                wait.after = Some(submitted + 1);
+                wait.visible = Some(visible);
+                self.request_redraw();
+                true
+            }
+        }
+    }
+    fn present_ui(&mut self, frame: u64, mut layout: Result<bbt_proto::gui::UiLayout, String>) {
+        if let Ok(layout) = &mut layout {
+            layout.frame_seq = frame;
+        }
+        self.ui_frame = Some((frame, layout.clone()));
+        if self
+            .ui_wait
+            .as_ref()
+            .is_some_and(|wait| wait.after.is_some_and(|after| frame >= after))
+        {
+            let wait = self.ui_wait.take().expect("qualifying UI frame");
+            let result = layout.and_then(|layout| {
+                if wait.visible.as_ref() == Some(&UiVisible::from_layout(&layout)) { Ok(layout) }
+                else { Err("ui_frame_refused: a newer UI state superseded this operation before its frame".into()) }
+            });
+            self.answer_ui(wait.id, result);
+        }
+    }
+    fn begin_ui(
         &mut self,
+        id: bbt_mux::Ulid,
         request: bbt_proto::gui::UiRequest,
         logical: [f32; 2],
-    ) -> Result<bbt_proto::gui::UiLayout, String> {
-        use bbt_proto::gui::{UiRequest, UiTarget};
-        request.validate().map_err(str::to_owned)?;
+        submitted: u64,
+        prior_spawns: Vec<bbt_mux::Ulid>,
+    ) -> bool {
+        use bbt_proto::gui::UiRequest;
+        if let Err(reason) = request.validate() {
+            self.answer_ui(id, Err(reason.into()));
+            return false;
+        }
+        if matches!(request, UiRequest::Layout) {
+            self.answer_ui(id, self.last_ui_frame());
+            return false;
+        }
+        self.cancel_ui("ui_frame_refused: a newer UI operation superseded this request");
         let sources = self.drain();
-        // A layout read may consume data before its queued Wake. Keep that
-        // invalidation, without treating the read itself as a repaint reason.
         self.dispatch_wake_sources(&sources);
         if self.live_state.is_none() {
-            return Err("ui_not_ready: no live model".into());
+            self.answer_ui(id, Err("ui_not_ready: no live model".into()));
+            return false;
         }
-        // Focus/navigation use the current solved geometry, just like native input.
-        self.solve_ui(logical)?;
+        self.ui_observe = true;
+        if let UiRequest::Focus { seat } = request {
+            self.ui_focus = Some(id);
+            self.begin_focus(bboxy450_term::focus_ack::Ask {
+                id,
+                seat: SeatId::from_u128(seat.0),
+                prior_spawns,
+            });
+            self.request_redraw();
+            return true;
+        }
+        if let Err(reason) = self.solve_ui(logical) {
+            self.answer_ui(id, Err(reason));
+            return false;
+        }
+        let previous_ops: std::collections::BTreeSet<_> = self
+            .operation_backlog
+            .iter()
+            .filter_map(|message| match message {
+                live::UiMsg::Messaging { id, .. } | live::UiMsg::Task { id, .. } => Some(*id),
+                _ => None,
+            })
+            .collect();
+        self.ui_collect = Some(Vec::new());
+        let result = self.apply_ui(request);
+        let mut effects = self.ui_collect.take().expect("UI command collection");
+        effects.extend(
+            self.operation_backlog
+                .iter()
+                .filter_map(|message| match message {
+                    live::UiMsg::Messaging { id, .. } | live::UiMsg::Task { id, .. }
+                        if !previous_ops.contains(id) =>
+                    {
+                        Some(UiEffect::Operation(*id))
+                    }
+                    _ => None,
+                }),
+        );
+        if let Err(reason) = result {
+            self.answer_ui(id, Err(reason));
+            return true;
+        }
+        let proxy = self.proxy.clone();
+        let timer = bbt_rt::handle().spawn(async move {
+            tokio::time::sleep(bboxy450_term::focus_ack::DEADLINE).await;
+            let _ = proxy.send_event(UiEvent::UiDeadline(id));
+        });
+        self.ui_wait = Some(UiWait {
+            id,
+            after: None,
+            visible: None,
+            effects,
+            timer: timer.abort_handle(),
+        });
+        self.poll_ui_frame(submitted);
+        self.request_redraw();
+        true
+    }
+    fn ui_deadline(&mut self, id: bbt_mux::Ulid) {
+        if self.ui_wait.as_ref().is_some_and(|wait| wait.id == id) {
+            self.ui_wait.take();
+            self.answer_ui(
+                id,
+                Err("timeout: no produced frame completed this UI operation".into()),
+            );
+        }
+    }
+    fn apply_ui(&mut self, request: bbt_proto::gui::UiRequest) -> Result<(), String> {
+        use bbt_proto::gui::{UiRequest, UiTarget};
         match request {
             UiRequest::Open(UiTarget::Launcher) => self.open_launcher(),
             UiRequest::Open(UiTarget::Graph) => self.open_graph(),
@@ -3511,24 +3837,11 @@ impl App {
                     }
                 }
             }
-            UiRequest::Focus { seat } => {
-                let target = SeatId::from_u128(seat.0);
-                if !self
-                    .live_state
-                    .as_ref()
-                    .is_some_and(|m| m.ui.seats.contains_key(&target))
-                {
-                    return Err(format!("ui_focus_missing: {seat}"));
-                }
-                self.focus_action(FocusAction::Activate(target, FocusOrigin::Row));
-                if self.focus.stage.as_ref().and_then(|s| s.focused) != Some(target) {
-                    return Err(format!("ui_focus_refused: {seat}"));
-                }
+            UiRequest::Focus { .. } | UiRequest::Layout => {
+                return Err("UI request uses the frame acknowledgment path".into());
             }
-            UiRequest::Layout => {}
         }
-        let layouts = self.solve_ui(logical)?;
-        self.ui_layout(logical, &layouts)
+        Ok(())
     }
     fn ui_layout(
         &self,
@@ -3581,6 +3894,7 @@ impl App {
             .map(|l| ui_layout_node(l, &mut remaining))
             .collect::<Result<_, _>>()?;
         let layout = UiLayout {
+            frame_seq: 0, // filled only by the actual produced-frame callback
             size,
             swarm: stage.swarm.map(|id| bbt_mux::Ulid::from(id.0.0)),
             tab: stage.tab.map(|id| bbt_mux::Ulid::from(id.0.0)),
@@ -3887,6 +4201,7 @@ impl App {
                 self.frozen_ms = time;
             }
         }
+        let ui_frame = self.ui_observe.then(|| self.ui_layout(logical, &layouts));
         if let Some((encode, wait)) = self.gpu.as_mut().unwrap().draw(
             ops,
             scale,
@@ -3983,6 +4298,9 @@ impl App {
                 }
             }
             self.last_presented = Some(std::time::SystemTime::now());
+            if let Some(layout) = ui_frame {
+                self.present_ui(self.meter.total_frames(), layout);
+            }
             if !self.app_ready_sent
                 && !self.backend_lost
                 && self.live_state.is_some()
@@ -4129,9 +4447,12 @@ impl ApplicationHandler<UiEvent> for App {
                 self.drain();
                 self.request_redraw();
             }
-            UiEvent::UiFor { id, request } => {
-                let repaint = !matches!(request, bbt_proto::gui::UiRequest::Layout);
-                let result = self
+            UiEvent::UiFor {
+                id,
+                request,
+                prior_spawns,
+            } => {
+                let size = self
                     .window
                     .as_ref()
                     .map(|window| {
@@ -4139,21 +4460,15 @@ impl ApplicationHandler<UiEvent> for App {
                         let size = window.inner_size();
                         [size.width as f32 / scale, size.height as f32 / scale]
                     })
-                    .ok_or_else(|| "endpoint_unavailable: window is not ready".to_owned())
-                    .and_then(|size| self.ui_request(request, size));
-                // A reply is IO work, not a reason to re-arm the display link.
-                if let Err(kind) = queue_pending(
-                    &mut self.pending_commands,
-                    live::UiMsg::UiReply { id, result },
-                ) {
-                    self.admission_refusals.record(kind);
-                    self.logger.write(self.admission_refusals.report());
-                }
-                self.flush_commands();
-                if repaint {
-                    self.request_redraw();
+                    .ok_or_else(|| "endpoint_unavailable: window is not ready".to_owned());
+                match size {
+                    Ok(size) => {
+                        self.begin_ui(id, request, size, self.meter.total_frames(), prior_spawns);
+                    }
+                    Err(reason) => self.answer_ui(id, Err(reason)),
                 }
             }
+            UiEvent::UiDeadline(id) => self.ui_deadline(id),
             UiEvent::FocusDeadline(id) => {
                 if let Some(answer) = self.ctl_focus.expire(id) {
                     self.answer_focus(answer);
@@ -4944,6 +5259,11 @@ impl ApplicationHandler<UiEvent> for App {
                 }
             }
             WindowEvent::KeyboardInput { event, .. } => {
+                if event.state == ElementState::Pressed {
+                    self.cancel_ui(
+                        "ui_frame_refused: physical keyboard input superseded this request",
+                    );
+                }
                 let input = self.keyboard.event(&event, self.modifiers);
                 if event.state.is_pressed() {
                     self.focus.controller.key_pressed(Instant::now());

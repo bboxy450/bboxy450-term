@@ -579,12 +579,18 @@ fn ctl_ui_relays_real_chrome_layout_focus_and_a_foreground_launcher() {
     assert_eq!(started["data"]["custody_backend"], "file");
     assert_eq!(f.ok(&["seat", "ls"])["data"].as_array().unwrap().len(), 0);
     let op = bbt_mux::Ulid::new().to_string();
-    assert_eq!(
-        f.ok(&["ui", "key", "cmd-t", "--op", &op])["data"]["launcher_open"],
-        true
-    );
-    assert_eq!(f.ok(&["ui", "layout"])["data"]["launcher_open"], true);
-    assert_eq!(f.ok(&["ui", "key", "esc"])["data"]["launcher_open"], false);
+    let opened = f.ok(&["ui", "key", "cmd-t", "--op", &op]);
+    assert_eq!(opened["data"]["launcher_open"], true);
+    let frame = opened["data"]["frame_seq"]
+        .as_u64()
+        .expect("produced UI frame");
+    assert!(frame > 0);
+    let read = f.ok(&["ui", "layout"]);
+    assert_eq!(read["data"]["launcher_open"], true);
+    assert!(read["data"]["frame_seq"].as_u64().unwrap() >= frame);
+    let closed = f.ok(&["ui", "key", "esc"]);
+    assert_eq!(closed["data"]["launcher_open"], false);
+    assert!(closed["data"]["frame_seq"].as_u64().unwrap() > frame);
     assert_eq!(
         f.ok(&["seat", "ls"])["data"].as_array().unwrap().len(),
         0,
@@ -628,6 +634,20 @@ fn ctl_ui_relays_real_chrome_layout_focus_and_a_foreground_launcher() {
     assert_eq!(focused["data"]["focused"], a);
     assert_ne!(focused["data"]["tab"], Value::Null);
     assert_ne!(focused["data"]["tab"], second["data"]["tab"]);
+    assert!(
+        focused["data"]["frame_seq"].as_u64().unwrap()
+            > second["data"]["frame_seq"].as_u64().unwrap()
+    );
+    let focus_png = f.root.path().join("ui-focus-ack.png");
+    let capture = f.ok(&["seat", "capture", &a, focus_png.to_str().unwrap()]);
+    assert!(
+        focus_png.is_file(),
+        "focus reply must already have a capturable pane: {capture}"
+    );
+    assert!(
+        capture["data"]["frame_seq"].as_u64().unwrap()
+            >= focused["data"]["frame_seq"].as_u64().unwrap()
+    );
     let ids: Vec<_> = f.ok(&["seat", "ls"])["data"]
         .as_array()
         .unwrap()
@@ -753,6 +773,78 @@ fn ctl_ui_relays_real_chrome_layout_focus_and_a_foreground_launcher() {
     );
     assert_eq!(f.ok(&["ui", "key", "esc"])["data"]["document"], Value::Null);
     assert_eq!(f.ok(&["ui", "layout"])["data"]["focused"], a);
+    f.ok(&["app", "stop"]);
+    f.pid = None;
+}
+
+#[test]
+fn ctl_ui_keys_acknowledge_spawn_mute_and_undo_only_after_their_end_state_frame() {
+    let mut f = Fixture::new();
+    let account = f.root.path().join("ui-end-state-account");
+    f.run = account.join("run");
+    let started = f.ok(&[
+        "app",
+        "start",
+        "--headless",
+        "--ctl",
+        "--unattended",
+        "--test-account",
+        account.to_str().unwrap(),
+    ]);
+    f.pid = started["data"]["pid"].as_u64().map(|pid| pid as u32);
+    f.ok(&["ui", "open", "launcher"]);
+    // The stock empty-swarm menu is Claude, Codex, pi, omp, zsh. Enter is
+    // Launch/go; the Right arrow opens that preset's placement submenu.
+    let spawned = f.ok(&["ui", "key", "down", "down", "down", "down", "enter"]);
+    assert_eq!(spawned["data"]["launcher_open"], false);
+    let panes = spawned["data"]["panes"].as_array().unwrap();
+    assert_eq!(panes.len(), 1, "the spawn reply must show the placed pane");
+    let seat = panes[0]["seat"].as_str().unwrap().to_owned();
+    let png = f.root.path().join("ui-spawn-ack.png");
+    let capture = f.ok(&["seat", "capture", &seat, png.to_str().unwrap()]);
+    assert!(png.is_file(), "{capture}");
+    assert!(
+        capture["data"]["frame_seq"].as_u64().unwrap()
+            >= spawned["data"]["frame_seq"].as_u64().unwrap()
+    );
+    let muted = f.ok(&["ui", "key", "cmd-m"]);
+    let seats = f.ok(&["seat", "ls"]);
+    let record = seats["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["record"]["id"] == seat)
+        .unwrap();
+    assert_eq!(
+        record["record"]["muted"], true,
+        "mute reply must follow authoritative metadata"
+    );
+    assert!(
+        muted["data"]["frame_seq"].as_u64().unwrap()
+            > spawned["data"]["frame_seq"].as_u64().unwrap()
+    );
+    f.ok(&["seat", "close", &seat]);
+    await_value(&f, || {
+        let layout = f.ok(&["ui", "layout"]);
+        (layout["data"]["panes"].as_array()?.is_empty()
+            && ui_node(&layout["data"], &format!("closed/{seat}")).is_some())
+        .then_some(layout)
+    });
+    let restored = f.ok(&["ui", "key", "cmd-z"]);
+    assert!(
+        restored["data"]["panes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|pane| pane["seat"] == seat)
+    );
+    let png = f.root.path().join("ui-undo-ack.png");
+    let capture = f.ok(&["seat", "capture", &seat, png.to_str().unwrap()]);
+    assert!(png.is_file(), "{capture}");
+    assert!(
+        capture["data"]["frame_seq"].as_u64().unwrap()
+            >= restored["data"]["frame_seq"].as_u64().unwrap()
+    );
     f.ok(&["app", "stop"]);
     f.pid = None;
 }

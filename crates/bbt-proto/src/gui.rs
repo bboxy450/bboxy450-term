@@ -154,6 +154,8 @@ pub enum UiTarget {
 /// The GUI's solved tree, not a reconstruction by logic or ctl.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UiLayout {
+    /// The window composition this solved layout describes (not a bus cursor).
+    pub frame_seq: u64,
     pub size: [f32; 2],
     pub swarm: Option<Ulid>,
     pub tab: Option<Ulid>,

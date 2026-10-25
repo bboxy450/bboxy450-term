@@ -193,7 +193,7 @@ pub fn start_with_sink(
                     let events = events.clone();
                     move |ask| {
                         events(match ask {
-                            OperatorAsk::Ui { id, request } => UiEvent::UiFor { id, request },
+                            OperatorAsk::Ui { id, request, prior_spawns } => UiEvent::UiFor { id, request, prior_spawns },
                             OperatorAsk::Capture(ask) => UiEvent::CaptureFor(ask),
                             OperatorAsk::Focus(ask) => UiEvent::FocusFor(ask),
                             OperatorAsk::Close { id, seat, undo } => {
@@ -224,6 +224,7 @@ pub enum OperatorAsk {
     Ui {
         id: Ulid,
         request: bbt_proto::gui::UiRequest,
+        prior_spawns: Vec<Ulid>,
     },
     Capture(CaptureAsk),
     /// Focus this seat, as the window's own row click does (`ctl seat focus`).
@@ -1187,7 +1188,7 @@ async fn run_with_control(
                                 if changed {publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;}
                             }
                         },
-                        GuiReply::UiAsk {op,request}=>capture(OperatorAsk::Ui {id:op,request}),
+                        GuiReply::UiAsk {op,request}=>capture(OperatorAsk::Ui {id:op,request,prior_spawns:model.spawns.keys().copied().collect()}),
                         GuiReply::Ui {..}=>{},
                         GuiReply::AppAsk {op,request}=>app(AppEvent::Ask {id:op,request}),
                         GuiReply::AppStopping {op}=>app(AppEvent::Stop {id:op}),

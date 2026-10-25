@@ -811,7 +811,7 @@ impl LogicClient {
             Ok(layout) => crate::mcp::success(op, serde_json::to_value(layout)?),
             Err(reason) => crate::mcp::error(
                 op,
-                if reason.starts_with("timeout:") {
+                if reason.starts_with("timeout:") || reason.starts_with("ui_frame_refused:") {
                     "unknown"
                 } else {
                     "ui_refused"
