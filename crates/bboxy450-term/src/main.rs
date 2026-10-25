@@ -3226,7 +3226,9 @@ impl App {
                 self.app_ready_sent = true;
                 let mut status = app_status(
                     "window",
-                    std::env::args().any(|a| a == "--unattended" || a == "--test-account"),
+                    std::env::args().any(|a| {
+                        a == "--unattended" || a == "--test-account" || a.starts_with("--test-account=")
+                    }),
                     true,
                     true,
                     self.live_state.as_deref().unwrap(),
@@ -3371,7 +3373,9 @@ impl ApplicationHandler<UiEvent> for App {
                 let empty = bboxy450_term::model::Model::default();
                 let status = app_status(
                     "window",
-                    std::env::args().any(|a| a == "--unattended" || a == "--test-account"),
+                    std::env::args().any(|a| {
+                        a == "--unattended" || a == "--test-account" || a.starts_with("--test-account=")
+                    }),
                     !self.backend_lost && self.live_state.is_some(),
                     self.meter.total_frames() > 0,
                     self.live_state.as_deref().unwrap_or(&empty),

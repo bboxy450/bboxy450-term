@@ -47,9 +47,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let smoke = args.iter().any(|v| v == "--smoke");
     let ready_line = args.iter().any(|v| v == "--app-ready");
     let capture_path = value("--capture").map(std::path::PathBuf::from);
-    let unattended = args
-        .iter()
-        .any(|v| v == "--unattended" || v == "--test-account");
+    let unattended = bboxy450_term::cockpit::Config::test_account_from_args(args)
+        .map_err(|error| error.to_string())?
+        .is_some();
     let verify = crate::Verify::from_args(args)?;
     let mut gpu = bootstrap()?;
     let thread = std::thread::current();

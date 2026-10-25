@@ -333,7 +333,7 @@ fn stopping_an_unavailable_endpoint_is_named_and_never_uses_a_pid() {
 }
 
 #[test]
-fn an_unavailable_unattended_selector_never_falls_back_to_the_keychain() {
+fn unattended_without_a_test_account_is_refused_before_native_custody() {
     let root = tempfile::tempdir().unwrap();
     let out = Command::new(BIN)
         .args(["--headless", "--unattended"])
@@ -343,6 +343,95 @@ fn an_unavailable_unattended_selector_never_falls_back_to_the_keychain() {
         .unwrap();
     assert!(!out.status.success());
     let log = String::from_utf8(out.stderr).unwrap();
-    assert!(log.contains("no Keychain fallback"), "{log}");
+    assert!(log.contains("unattended requires --test-account"), "{log}");
     assert!(!root.path().join("run").exists());
+}
+
+#[test]
+fn unattended_headless_control_uses_its_own_file_account() {
+    let mut f = Fixture::new();
+    let account = f.root.path().join("account");
+    f.run = account.join("run");
+    let row = f.ok(&[
+        "app",
+        "start",
+        "--headless",
+        "--ctl",
+        "--unattended",
+        "--test-account",
+        account.to_str().unwrap(),
+    ]);
+    f.pid = row["data"]["pid"].as_u64().map(|pid| pid as u32);
+    assert_eq!(row["data"]["custody_backend"], "file");
+    assert_eq!(row["data"]["unattended"], true);
+    assert_eq!(row["data"]["windows"], 0);
+    let spawned = f.ok(&[
+        "seat",
+        "spawn",
+        "zsh",
+        "--name",
+        "file-proof",
+        "--place",
+        "tab",
+    ]);
+    let seat = spawned["data"]["seat"].as_str().unwrap();
+    f.ok(&["seat", "type", seat, "printf 'FILE-ACCOUNT-42\\n'"]);
+    f.ok(&["seat", "key", seat, "enter"]);
+    f.ok(&[
+        "seat",
+        "wait",
+        seat,
+        "--text",
+        "(?m)^FILE-ACCOUNT-42$",
+        "--timeout",
+        "20000",
+    ]);
+    let status = f.ok(&["app", "status"]);
+    assert_eq!(status["data"]["custody_backend"], "file");
+    assert_eq!(status["data"]["unattended"], true);
+    let png = f.root.path().join("file-account.png");
+    let capture = await_value(&f, || {
+        let (code, rows) = f.ctl(&["seat", "capture", seat, png.to_str().unwrap()]);
+        (code == 0).then(|| rows.last().unwrap().clone())
+    });
+    assert_eq!(capture["data"]["offscreen"], true);
+    assert!(!f.log().contains("signing held"), "{}", f.log());
+    f.ok(&["app", "stop"]);
+    await_value(&f, || {
+        f.log()
+            .contains("headless GUI stopped: Ok(())")
+            .then_some(Value::Bool(true))
+    });
+    f.pid = None;
+}
+
+#[test]
+fn unattended_idle_smoke_keeps_file_custody_without_a_window() {
+    let root = tempfile::tempdir().unwrap();
+    let account = root.path().join("account");
+    let out = Command::new(BIN)
+        .args([
+            "--headless",
+            "--smoke",
+            "--app-ready",
+            "--unattended",
+            "--test-account",
+        ])
+        .arg(&account)
+        .current_dir(root.path())
+        .env("BBOXY_TEST_CUSTODY", "memory")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    let log = String::from_utf8(out.stderr).unwrap();
+    assert!(out.status.success(), "{log}");
+    let status: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(status["custody_backend"], "file");
+    assert_eq!(status["unattended"], true);
+    assert_eq!(status["windows"], 0);
+    assert!(log.contains("idle passed: frames=0 callbacks=0"), "{log}");
+    assert!(
+        log.contains("cockpit children reaped after orderly shutdown"),
+        "{log}"
+    );
 }
