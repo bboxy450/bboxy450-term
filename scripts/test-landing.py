@@ -14,6 +14,7 @@ import unittest
 from unittest.mock import patch
 from concurrent.futures import ThreadPoolExecutor
 
+sys.dont_write_bytecode = True
 
 SOURCE = Path(__file__).with_name("landing.py")
 spec = importlib.util.spec_from_file_location("landing", SOURCE)
