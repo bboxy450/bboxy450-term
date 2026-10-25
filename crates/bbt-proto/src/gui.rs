@@ -242,6 +242,11 @@ pub enum GuiAction {
         after: u64,
         limit: usize,
     },
+    /// Discover retained stream names through the same operator admission.
+    /// This creates no consumer; EventsRead still filters every returned event.
+    EventsStreams {
+        id: Ulid,
+    },
     /// An operator-signed knowledge write of an `e2e` record (`ctl record write`, e2e
     /// acceptance §2): `args` is the knowledge_write DTO (`path` or `ref`, `frontmatter`,
     /// `body`, `etag`). Logic signs it with the operator device under its issuer and journals
@@ -466,6 +471,13 @@ pub enum GuiReply {
         stream: String,
         events: Vec<RetainedEvent>,
         next: Option<u64>,
+        /// Last scanned sequence, including rows hidden by the subject filter.
+        #[serde(default)]
+        through: u64,
+    },
+    EventsStreams {
+        op: Ulid,
+        streams: Vec<String>,
     },
     /// One seat's visible screen: text rows (trailing blanks trimmed), the cursor, the
     /// terminal modes (keyboard protocol included) and the process generation input targets.

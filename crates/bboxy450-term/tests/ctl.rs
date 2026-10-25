@@ -1529,6 +1529,11 @@ async fn ctl_never_prints_secrets() {
         vec!["receipts", &message],
         vec!["reports"],
         vec!["e2e"],
+        vec!["record", "fetch", "#1"],
+        vec!["record", "search", "not-a-fixture-secret"],
+        vec!["record", "changes", "--since", "0"],
+        vec!["events", "streams"],
+        vec!["events", "tail", "--stream", "account", "--since", "0"],
         vec!["--help"],
     ];
     for args in runs {

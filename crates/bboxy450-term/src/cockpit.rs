@@ -795,6 +795,7 @@ impl Session {
                 | GuiReply::EventsRead { .. }
                 | GuiReply::OperatorClose { .. }
                 | GuiReply::OperatorUndoClose { .. }
+                | GuiReply::EventsStreams { .. }
                 | GuiReply::OperatorFocus { .. }
                 | GuiReply::Focused { .. }
                 | GuiReply::Hosts(_)

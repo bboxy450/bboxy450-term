@@ -32,6 +32,13 @@ pub fn read(source: &dyn DataSource, method: &str, args: Value) -> d::Result<Val
     let result = (|| match method {
         "resolve" => encode(source.resolve(decode(args)?)?),
         "fetch" => encode(source.fetch(decode(args)?)?),
+        "search" => {
+            let page = source.search(decode(args)?)?;
+            if page.items.len() > d::MAX_PAGE {
+                return Err(invalid("knowledge search exceeds the provider item bound"));
+            }
+            encode(page)
+        }
         "list" => {
             let page = source.list(decode(args)?)?;
             if page.items.len() > d::MAX_PAGE {
@@ -48,7 +55,7 @@ pub fn read(source: &dyn DataSource, method: &str, args: Value) -> d::Result<Val
         }
         _ => Err(d::CommandError::new(
             "read_only_method",
-            "knowledge GUI reads allow resolve, fetch, list and changes_since only",
+            "knowledge GUI reads allow resolve, fetch, search, list and changes_since only",
         )),
     })();
     // Errors have the same wire bound as successful values. A provider cannot
