@@ -64,7 +64,7 @@ wait_lifecycle() {
     done
 }
 assert_not_on_screen() {
-    python3 -I - "$1" "$seat" <<'PYHIDDEN'
+    python3 -I - "$1" "$seat" "$2" <<'PYHIDDEN'
 import json,sys
 from pathlib import Path
 rows=[json.loads(line) for line in Path(sys.argv[1]).read_text().splitlines() if line.strip()]
@@ -73,7 +73,12 @@ row=rows[0]
 assert row.get('ok') is False, 'capture did not refuse'
 error=row.get('error',{})
 assert error.get('kind')=='not_on_screen', f'unrelated capture error: {error}'
-assert error.get('message')==f'not_on_screen: seat {sys.argv[2]} has no pane on screen', 'capture refused for a different seat'
+assert error.get('seat')==sys.argv[2], 'capture refused for a different seat'
+receipt=json.loads(Path(sys.argv[3]).read_text())
+assert receipt.get('ok') is True and receipt['data']['seat']==sys.argv[2], 'close receipt names a different seat'
+frame=error.get('frame_seq')
+assert isinstance(frame,int) and not isinstance(frame,bool), 'capture refusal lacks a produced frame'
+assert frame>=receipt['data']['frame_seq'], 'capture refusal predates close'
 PYHIDDEN
 }
 receipt_frame() {
@@ -98,7 +103,7 @@ close() {
     kill -0 "$shell" 2>/dev/null || fail 'close terminated the PTY inside grace'
     # One capture after the receipt; a retry loop would hide an early reply.
     ctl seat capture "$seat" "$E2E_WORK/t7-hidden.png" > "$E2E_WORK/t7-hidden.json" 2>&1 || :
-    assert_not_on_screen "$E2E_WORK/t7-hidden.json" || fail 'closed pane capture failed for an unrelated reason'
+    assert_not_on_screen "$E2E_WORK/t7-hidden.json" "$close_receipt" || fail 'closed pane capture failed for an unrelated reason'
     [ ! -e "$E2E_WORK/t7-hidden.png" ] || fail 'a closed pane wrote an image'
     check_ui grace || fail 'close receipt precedes the retained UI state'
 }
@@ -168,6 +173,6 @@ PYEXPIRED
 [ "$?" -eq 0 ] || fail 'expired undo did not refuse honestly'
 [ "$(seat_field "$seat" record.lifecycle)" = closed_retained ] || fail 'expired undo reopened the seat'
 ctl seat capture "$seat" "$E2E_WORK/t7-gone.png" > "$E2E_WORK/t7-gone.json" 2>&1 || :
-assert_not_on_screen "$E2E_WORK/t7-gone.json" || fail 'retained pane capture failed for an unrelated reason'
+assert_not_on_screen "$E2E_WORK/t7-gone.json" "$close_receipt" || fail 'retained pane capture failed for an unrelated reason'
 [ ! -e "$E2E_WORK/t7-gone.png" ] || fail 'a retained pane wrote an image'
 note 'T7 same PID/generation, retained history, position, presented extent, sidebar order/grace/notice, and real grace/expiry held'

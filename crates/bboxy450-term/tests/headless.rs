@@ -1521,9 +1521,10 @@ fn seat_wait_reads_produced_frames_and_not_on_screen_names_its_frame() {
     let second = spawn("second", Some("tab"));
     f.ok(&["seat", "wait", &second, "--on-screen", "--timeout", "15000"]);
     let shot = f.root.path().join("hidden.png");
-    let (code, rows) = f.ctl(&["seat", "capture", &first, shot.to_str().unwrap()]);
+    let (code, rows) = f.ctl(&["seat", "capture", "first", shot.to_str().unwrap()]);
     assert_eq!(code, 1, "{rows:?}");
     assert_eq!(rows[0]["error"]["kind"], "not_on_screen", "{rows:?}");
+    assert_eq!(rows[0]["error"]["seat"], first, "{rows:?}");
     assert!(rows[0]["error"]["frame_seq"].is_u64(), "{rows:?}");
     assert!(!shot.exists());
 }
