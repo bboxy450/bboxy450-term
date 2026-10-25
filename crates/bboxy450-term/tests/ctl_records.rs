@@ -8,10 +8,58 @@ use bbt_mux::Ulid;
 use bbt_proto::{GuiAction, GuiReply};
 use serde_json::{Value, json};
 use std::{
+    io::{BufRead, BufReader},
+    os::unix::net::UnixListener,
     path::{Path, PathBuf},
     process::Command,
     time::{Duration, Instant},
 };
+
+#[test]
+fn ctl_record_read_keeps_the_endpoint_exit_when_the_socket_closes_mid_request() {
+    let root = tempfile::tempdir().unwrap();
+    let socket = root.path().join("gui.sock");
+    let listener = UnixListener::bind(&socket).unwrap();
+    let endpoint = root.path().join("gui.endpoint");
+    let capability = [0x63; 32];
+    std::fs::write(
+        &endpoint,
+        bboxy450_term::ctl::Endpoint {
+            path: socket,
+            capability,
+        }
+        .to_json(),
+    )
+    .unwrap();
+    let server = std::thread::spawn(move || {
+        let (socket, _) = listener.accept().unwrap();
+        socket
+            .set_read_timeout(Some(Duration::from_secs(60)))
+            .unwrap();
+        let mut request = String::new();
+        BufReader::new(socket).read_line(&mut request).unwrap();
+        let request: bbt_proto::GuiRequest = serde_json::from_str(&request).unwrap();
+        assert!(
+            matches!(request.action, GuiAction::Knowledge { method, .. } if method == "resolve")
+        );
+        // The owner disappears after receiving the request, before returning its result.
+    });
+    let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+        .args(["ctl", "record", "fetch", "#1", "--endpoint"])
+        .arg(endpoint)
+        .env_remove("BBOXY_CTL_ISSUER")
+        .current_dir(root.path())
+        .output()
+        .unwrap();
+    server.join().unwrap();
+    assert_eq!(output.status.code(), Some(4), "{output:?}");
+    let lines = String::from_utf8(output.stdout).unwrap();
+    let reply: Value = serde_json::from_str(lines.trim()).unwrap();
+    assert_eq!(reply["error"]["kind"], "endpoint_unavailable");
+    let secret = "63".repeat(32);
+    assert!(!lines.contains(&secret));
+    assert!(!String::from_utf8_lossy(&output.stderr).contains(&secret));
+}
 
 async fn fixture(root: &Path) -> (Session, PathBuf) {
     let repository = root.join("repository");

@@ -9,7 +9,13 @@ fn read(client: &mut Client, method: &'static str, args: impl Serialize) -> Resu
             method,
             args: serde_json::to_value(args).map_err(|e| e.to_string())?,
         })
-        .map_err(|e| e.to_string())
+        .map_err(|e| {
+            if e.code == "transport" {
+                e.message
+            } else {
+                e.to_string()
+            }
+        })
 }
 
 pub(super) fn fetch(client: &mut Client, locator: String) -> Result<Value, String> {
