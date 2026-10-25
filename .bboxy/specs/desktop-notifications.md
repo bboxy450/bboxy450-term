@@ -17,7 +17,7 @@ links:
   - { to: "[[licensing]]", rel: licence }
   - { to: "[[desktop-notifications-research]]", rel: research }
 created: 2026-10-23T23:04:45Z
-updated: "2026-10-25T07:14:15Z"
+updated: "2026-10-25T08:24:43Z"
 ---
 # Desktop notifications
 
@@ -37,7 +37,7 @@ flowchart LR
 
 ## 1. Shape
 
-- **One facade, one crate per OS.** `bboxy450-desktop-notifications` holds the types and the trait and selects the backend with `[target.'cfg(target_os = "…")'.dependencies]`; `bboxy450-desktop-notifications-macos` is real; `-windows` and `-linux` are dummies; `-ios`, `-android` and `-web` are named here and not created until there is work for them. The suite depends only on the facade; the app never names an OS crate ([[cross-os-facade]]). A **recording backend** behind the same trait, selected by `ctl app start --notifications record` for test accounts only, stores every post and click so the unattended night asserts N1 to N4 against `ctl debug notifications` and drives the click with `ctl ui notification-click <seat>`, never through the OS's Notification Center ([[ctl-cli]], Oracle's ruling 2026-10-25).
+- **One facade, one crate per OS.** `bboxy450-desktop-notifications` holds the types and the trait and selects the backend with `[target.'cfg(target_os = "…")'.dependencies]`; `bboxy450-desktop-notifications-macos` is real; `-windows` and `-linux` are dummies; `-ios`, `-android` and `-web` are named here and not created until there is work for them. The suite depends only on the facade; the app never names an OS crate ([[cross-os-facade]]). A **recording backend** behind the same trait, selected by `ctl app start --notifications record` for test accounts only, stores every post and click so the unattended night asserts R6, and R5's waiting loop, against `ctl debug notifications` and drives the click with `ctl ui notification-click <seat>`, never through the OS's Notification Center ([[ctl-cli]], Oracle's ruling 2026-10-25).
 - **Layering.** The four crates lead the order in `scripts/layering.sh`, so they can depend on nothing of ours and nothing of ours but the app depends on them; the click never carries a `bbt-*` type, only the facade's `Response`, which the app maps to its own action ([[layering]]).
 - **Names and licence.** The names are the operator's; crates.io availability is checked before any publish (the research records what the pages return today). Dual MIT OR Apache-2.0 like every kit ([[licensing]]).
 
