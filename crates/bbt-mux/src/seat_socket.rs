@@ -191,10 +191,93 @@ fn gui_session_error_reason(error: &crate::store::Error) -> String {
             error.line(),
             error.column(),
         )
+    } else if let Some(error) = error.downcast_ref::<GuiStorePersistent>() {
+        error.to_string()
     } else if let Some(error) = error.downcast_ref::<rusqlite::Error>() {
         format!("GUI store error ({:?})", error.sqlite_error_code())
     } else {
         "GUI session failed".into()
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum GuiStoreOperation {
+    Poll,
+    Cursor,
+    Refresh,
+}
+impl GuiStoreOperation {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Poll => "gui_poll",
+            Self::Cursor => "gui_cursor",
+            Self::Refresh => "gui_refresh",
+        }
+    }
+}
+
+#[derive(Debug)]
+struct GuiStorePersistent {
+    operation: GuiStoreOperation,
+    extended_code: Option<i32>,
+}
+impl std::fmt::Display for GuiStorePersistent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "GuiStorePersistent: operation={} extended_code={:?}",
+            self.operation.name(),
+            self.extended_code
+        )
+    }
+}
+impl std::error::Error for GuiStorePersistent {}
+
+/// One flag per read operation, never an accumulating retry queue. The session's
+/// existing ticks decide when to retry; no request/effect is replayed here.
+#[derive(Default)]
+struct GuiStoreReads {
+    busy: [bool; 3],
+}
+impl GuiStoreReads {
+    fn read<T>(&mut self, operation: GuiStoreOperation, result: Result<T>) -> Result<Option<T>> {
+        let busy = &mut self.busy[operation as usize];
+        match result {
+            Ok(value) => {
+                *busy = false;
+                Ok(Some(value))
+            }
+            Err(error) => {
+                let Some(sqlite) = error.downcast_ref::<rusqlite::Error>() else {
+                    return Err(error);
+                };
+                let (code, extended_code) = match sqlite {
+                    rusqlite::Error::SqliteFailure(code, _) => {
+                        (Some(code.code), Some(code.extended_code))
+                    }
+                    _ => (None, None),
+                };
+                if matches!(
+                    code,
+                    Some(rusqlite::ErrorCode::DatabaseBusy | rusqlite::ErrorCode::DatabaseLocked)
+                ) {
+                    if !*busy {
+                        eprintln!(
+                            "GUI store transient: operation={} extended_code={extended_code:?}; retry on next eligible tick",
+                            operation.name()
+                        );
+                    }
+                    *busy = true;
+                    Ok(None)
+                } else {
+                    Err(GuiStorePersistent {
+                        operation,
+                        extended_code,
+                    }
+                    .into())
+                }
+            }
+        }
     }
 }
 
@@ -427,9 +510,9 @@ impl GuiLane {
     }
 }
 async fn gui_attach_lane(client: &LogicClient) -> Result<(GuiLane, Option<crate::bus::Delivery>)> {
-    let device = client.gui_device().await?;
+    let reference = client.gui_device().await?;
     let filter = crate::gui_events::filters(client.gui_messaging_subjects().await?);
-    let lease = client.bus.gui_attach(device, filter).await?;
+    let lease = client.bus.gui_attach(reference.id, filter).await?;
     let lane = GuiLane {
         bus: client.bus.clone(),
         lease,
@@ -597,6 +680,9 @@ async fn gui_session(
     let mut events_at: Option<Instant> = None;
     let mut lane_error: Option<String> = None;
     let mut filters_at = Instant::now();
+    let mut refresh_retry = false;
+    let mut cursor_waits_for_tick = false;
+    let mut store_reads = GuiStoreReads::default();
     let mut event_cursors = BTreeMap::new();
     let mut views: BTreeMap<bbt_proto::SeatId, GuiView> = BTreeMap::new();
     let watch_session = client.gui_watch_session();
@@ -901,19 +987,24 @@ async fn gui_session(
                     }
                 }
                 _=tick.tick(),if admitted=> {
-                    if filters_at.elapsed()>=Duration::from_secs(1) && let Some(active)=&mut lane {
+                    cursor_waits_for_tick=false;
+                    if (refresh_retry||filters_at.elapsed()>=Duration::from_secs(1)) && let Some(active)=&mut lane {
+                        refresh_retry=false;
                         filters_at=Instant::now();
                         let filters=async {
-                            if client.gui_device().await?!=active.lease.device {
-                                return Err(invalid("GuiDeviceChanged: reattaching current custody device"));
+                            if client.gui_device().await?.id!=active.lease.reference {
+                                return Err(invalid("GuiOperatorChanged: reattaching current local principal"));
                             }
                             client.gui_messaging_subjects().await
                         }.await;
                         match filters {
                             Ok(filters)=> {
-                                let next=client.bus.gui_refresh(&active.lease,crate::gui_events::filters(filters)).await?;
-                                if next!=active.lease {
-                                    active.lease=next;state_events.clear();event_cursors.clear();events_at=None;
+                                if let Some(next)=store_reads.read(GuiStoreOperation::Refresh,client.bus.gui_refresh(&active.lease,crate::gui_events::filters(filters)).await)? {
+                                    if next!=active.lease {
+                                        active.lease=next;state_events.clear();event_cursors.clear();events_at=None;
+                                    }
+                                } else {
+                                    refresh_retry=true;
                                 }
                             }
                             Err(error)=> {
@@ -943,15 +1034,18 @@ async fn gui_session(
                         }
                     }
                     if state_events.is_empty() && events_at.is_none_or(|at|at.elapsed()>=Duration::from_millis(100)) && let Some(active)=&lane {
-                        state_events.extend(client.bus.gui_poll(&active.lease,crate::gui_events::PAGE_RECORDS,crate::gui_events::PAGE_BYTES).await?);
-                        event_cursors.clear();events_at=Some(Instant::now());
+                        if let Some(events)=store_reads.read(GuiStoreOperation::Poll,client.bus.gui_poll(&active.lease,crate::gui_events::PAGE_RECORDS,crate::gui_events::PAGE_BYTES).await)? {
+                            state_events.extend(events);
+                            event_cursors.clear();
+                        }
+                        events_at=Some(Instant::now());
                     }
                     for &seat in views.keys() {checks.schedule(seat);}
                 }
-                _=async {},if !checks.is_empty()||!state_events.is_empty()=> {
+                _=async {},if !checks.is_empty()||(!state_events.is_empty()&&!cursor_waits_for_tick)=> {
                     // One awaited unit, then incoming actions are polled again.
                     // Alternate state and pane work so neither can monopolize.
-                    if !checks.is_empty()&&(prefer_view||state_events.is_empty()) {
+                    if !checks.is_empty()&&(prefer_view||state_events.is_empty()||cursor_waits_for_tick) {
                         let seat=checks.next().unwrap();
                         if let Some(watched)=views.get_mut(&seat)
                             && let Err(error)=gui_fallback_check(&client,&mut write,seat,watched).await {
@@ -960,15 +1054,21 @@ async fn gui_session(
                             send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:error.to_string()}).await?;
                         }
                         prefer_view=false;
-                    } else if let Some(event)=state_events.pop_front() {
-                        let cursor=if let crate::bus::Delivery::Event {stream,envelope,..}=&event {
+                    } else if let Some(event)=state_events.front() {
+                        let cursor=if let crate::bus::Delivery::Event {stream,envelope,..}=event {
                             if envelope.event.subject.ends_with("/message")||envelope.event.subject.ends_with("/receipt") {
                                 if !event_cursors.contains_key(stream) && let Some(active)=&lane {
-                                    event_cursors.insert(stream.clone(),crate::gui_events::cursor(client.bus.gui_cursor(&active.lease,stream).await?));
+                                    if let Some(cursor)=store_reads.read(GuiStoreOperation::Cursor,client.bus.gui_cursor(&active.lease,stream).await)? {
+                                        event_cursors.insert(stream.clone(),crate::gui_events::cursor(cursor));
+                                    } else {
+                                        cursor_waits_for_tick=true;prefer_view=true;actions=0;
+                                        continue;
+                                    }
                                 }
                                 event_cursors.get(stream).cloned()
                             } else {None}
                         } else {None};
+                        let event=state_events.pop_front().expect("front event retained until its cursor is ready");
                         match gui_event_reply(event,&client,cursor).await {
                             Ok(reply)=>send(&mut write,&reply).await?,
                             Err(error)=>send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:error.to_string()}).await?,
@@ -985,6 +1085,18 @@ async fn gui_session(
         }
         Ok(())
     }.await;
+    if let Err(error) = &result
+        && error.is::<GuiStorePersistent>()
+    {
+        let _ = send(
+            &mut write,
+            &GuiReply::EventStatus {
+                attached: false,
+                reason: Some(gui_session_error_reason(error)),
+            },
+        )
+        .await;
+    }
     drop(watch_session);
     if let Some(active) = lane.take() {
         active.close().await;
@@ -1200,6 +1312,275 @@ mod gui_tests {
         registry::SeatRecord,
     };
 
+    #[tokio::test]
+    async fn busy_gui_poll_and_locked_cursor_keep_the_session_and_queued_events() {
+        use bbt_proto::messaging::{Request, Response, SendRequest};
+        use std::sync::atomic::Ordering;
+        struct Keys;
+        impl crate::identity::DeviceKeyStore for Keys {
+            fn custody(&self) -> crate::identity::Custody {
+                crate::identity::Custody::Memory
+            }
+            fn load(&self, _: Ulid) -> crate::identity::Result<Option<ed25519_dalek::SigningKey>> {
+                Ok(Some(ed25519_dalek::SigningKey::from_bytes(&[91; 32])))
+            }
+            fn create(
+                &self,
+                _: Ulid,
+                _: &ed25519_dalek::SigningKey,
+            ) -> crate::identity::Result<()> {
+                Err(crate::identity::PendingReason::JournalConflict)
+            }
+        }
+        let root = tempfile::tempdir().unwrap();
+        let repository = root.path().join("repository");
+        std::fs::create_dir(&repository).unwrap();
+        let run = root.path().join("run");
+        assert!(matches!(
+            crate::identity::local_dev_issuer_with_store(&run, &Keys),
+            crate::identity::LocalIssuerOutcome::Ready(_)
+        ));
+        let supervisor = Supervisor::start(crate::Config {
+            journal_directory: Some(root.path().join("supervisor-journal")),
+            ..Default::default()
+        })
+        .unwrap();
+        let logic = Logic::start(
+            supervisor.connect().unwrap(),
+            LogicConfig {
+                run_dir: run,
+                repository,
+                ring: Default::default(),
+            },
+            ed25519_dalek::SigningKey::from_bytes(&[91; 32]),
+            &tokio::runtime::Handle::current(),
+        )
+        .unwrap();
+        let spec = LaunchSpec::new("/bin/cat", root.path());
+        let seat = spec.seat;
+        let swarm = Ulid::new();
+        logic
+            .client
+            .spawn(
+                SeatRecord::new(seat, swarm, "GUI transient fixture", "cat"),
+                spec,
+            )
+            .await
+            .unwrap();
+        let endpoint = logic.client.gui_endpoint().await.unwrap();
+        let stream = tokio::net::UnixStream::connect(&endpoint.path)
+            .await
+            .unwrap();
+        let (read, mut write) = stream.into_split();
+        let mut read = BufReader::new(read);
+        // This is per-handle, one-shot injection before attachment can start polling.
+        logic
+            .client
+            .bus
+            .gui_read_faults
+            .poll
+            .store(rusqlite::ffi::SQLITE_BUSY_SNAPSHOT, Ordering::SeqCst);
+        let attached = Ulid::new();
+        send(
+            &mut write,
+            &GuiRequest {
+                version: bbt_proto::gui::VERSION,
+                capability: endpoint.capability,
+                action: GuiAction::AttachEvents { id: attached },
+            },
+        )
+        .await
+        .unwrap();
+        // Live replay begins at the attachment cut: publish after its acknowledgement.
+        tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                let line = read_line(&mut read)
+                    .await
+                    .unwrap()
+                    .expect("GUI closed before attachment");
+                let reply: GuiReply = serde_json::from_slice(&line).unwrap();
+                if matches!(reply,GuiReply::Ok {op} if op==attached) {
+                    break;
+                }
+                assert!(
+                    !matches!(reply, GuiReply::Error { .. }),
+                    "attach refused: {reply:?}"
+                );
+            }
+        })
+        .await
+        .unwrap();
+        let published = logic
+            .client
+            .bus
+            .publish(
+                "index",
+                crate::store::events::Draft::new(
+                    "activity/transient-fixture",
+                    "fixture",
+                    serde_json::json!({"marker":"after-busy"}),
+                ),
+            )
+            .await
+            .unwrap();
+        let result = tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                let line = read_line(&mut read)
+                    .await
+                    .unwrap()
+                    .expect("GUI session closed on transient poll");
+                let reply: GuiReply = serde_json::from_slice(&line).unwrap();
+                assert!(
+                    !matches!(reply, GuiReply::Error { .. }),
+                    "event refused after busy: {reply:?}"
+                );
+                if let GuiReply::Event { stream, seq, .. } = reply {
+                    send(
+                        &mut write,
+                        &GuiRequest {
+                            version: bbt_proto::gui::VERSION,
+                            capability: endpoint.capability,
+                            action: GuiAction::EventAck {
+                                stream: stream.clone(),
+                                seq,
+                            },
+                        },
+                    )
+                    .await
+                    .unwrap();
+                    if stream == "index" && seq == published.seq {
+                        break;
+                    }
+                }
+            }
+            assert_eq!(
+                logic.client.bus.gui_read_faults.poll.load(Ordering::SeqCst),
+                0
+            );
+            logic
+                .client
+                .bus
+                .gui_read_faults
+                .cursor
+                .store(rusqlite::ffi::SQLITE_LOCKED, Ordering::SeqCst);
+            let message = SendRequest::text("operator/inbox", "after-locked-cursor");
+            let response = logic
+                .client
+                .gui_messaging(
+                    message.id,
+                    swarm,
+                    Request::Send { message },
+                    crate::mcp::Origin::default(),
+                )
+                .await
+                .unwrap();
+            let Response::Stored { message } = response else {
+                panic!("message was not stored");
+            };
+            let message_id = message
+                .envelope()
+                .expect("ready-custody fixture must produce a signed envelope")
+                .id;
+            loop {
+                let line = read_line(&mut read)
+                    .await
+                    .unwrap()
+                    .expect("GUI session closed on transient cursor");
+                let reply: GuiReply = serde_json::from_slice(&line).unwrap();
+                assert!(
+                    !matches!(reply, GuiReply::Error { .. }),
+                    "event refused after locked: {reply:?}"
+                );
+                if let GuiReply::Event { stream, seq, envelope, .. } = reply {
+                    send(
+                        &mut write,
+                        &GuiRequest {
+                            version: bbt_proto::gui::VERSION,
+                            capability: endpoint.capability,
+                            action: GuiAction::EventAck {
+                                stream: stream.clone(),
+                                seq,
+                            },
+                        },
+                    )
+                    .await
+                    .unwrap();
+                    if matches!(&envelope.payload,bbt_proto::events::GuiEventPayload::Message {row} if row.id==message_id) {
+                        break;
+                    }
+                }
+            }
+            assert_eq!(
+                logic
+                    .client
+                    .bus
+                    .gui_read_faults
+                    .cursor
+                    .load(Ordering::SeqCst),
+                0
+            );
+            send(
+                &mut write,
+                &GuiRequest {
+                    version: bbt_proto::gui::VERSION,
+                    capability: endpoint.capability,
+                    action: GuiAction::ListSeats,
+                },
+            )
+            .await
+            .unwrap();
+            loop {
+                let line = read_line(&mut read)
+                    .await
+                    .unwrap()
+                    .expect("original GUI session did not survive");
+                if let GuiReply::Seats(seats) = serde_json::from_slice::<GuiReply>(&line).unwrap() {
+                    assert!(seats.iter().any(|s| s.record.id == seat));
+                    break;
+                }
+            }
+            logic
+                .client
+                .bus
+                .gui_read_faults
+                .poll
+                .store(rusqlite::ffi::SQLITE_CORRUPT, Ordering::SeqCst);
+            loop {
+                let line = read_line(&mut read)
+                    .await
+                    .unwrap()
+                    .expect("persistent error was not reported before close");
+                if let GuiReply::EventStatus {
+                    attached: false,
+                    reason: Some(reason),
+                } = serde_json::from_slice::<GuiReply>(&line).unwrap()
+                {
+                    assert!(
+                        reason.starts_with("GuiStorePersistent: operation=gui_poll"),
+                        "{reason}"
+                    );
+                    assert!(reason.contains("Some(11)"), "{reason}");
+                    break;
+                }
+            }
+            while let Some(line) = read_line(&mut read).await.unwrap() {
+                assert!(
+                    !matches!(
+                        serde_json::from_slice::<GuiReply>(&line).unwrap(),
+                        GuiReply::Seats(_)
+                    ),
+                    "persistent store failure kept serving the session"
+                );
+            }
+        })
+        .await;
+        drop(write);
+        drop(read);
+        logic.shutdown().unwrap();
+        supervisor.shutdown().unwrap();
+        result.expect("GUI event recovery watchdog elapsed");
+    }
+
     #[test]
     fn seat_listener_recovery_reclaims_only_a_dead_owned_socket() {
         use std::os::unix::{fs::symlink, net::UnixListener};
@@ -1242,6 +1623,21 @@ mod gui_tests {
         let io: crate::store::Error = std::io::Error::other("private-payload-value").into();
         let reason = gui_session_error_reason(&io);
         assert!(reason.starts_with("I/O error"));
+        assert!(!reason.contains("private-payload-value"));
+
+        let error = GuiStoreReads::default()
+            .read::<()>(
+                GuiStoreOperation::Poll,
+                Err(rusqlite::Error::SqliteFailure(
+                    rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CORRUPT),
+                    Some("private-payload-value".into()),
+                )
+                .into()),
+            )
+            .unwrap_err();
+        let reason = gui_session_error_reason(&error);
+        assert!(reason.starts_with("GuiStorePersistent: operation=gui_poll"));
+        assert!(reason.contains("Some(11)"));
         assert!(!reason.contains("private-payload-value"));
 
         let json: crate::store::Error =

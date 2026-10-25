@@ -169,8 +169,8 @@ async fn custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry() {
     let initial = initial.expect("initial identity missing");
     assert_eq!(initial.state, GuiIdentityState::Pending);
     assert!(initial.reason.unwrap().contains("Keychain"));
-    // A custody hold keeps this opt-in attachment pending; the same connection
-    // receives the signed identity notice when custody becomes available.
+    // The events lane attaches during the hold; the same connection later
+    // receives the identity notice when custody becomes available.
     send(
         &mut write,
         endpoint.capability,
@@ -285,7 +285,13 @@ async fn custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry() {
             .messaging(record.id, 1, Request::Send { message })
             .await
             .unwrap();
-        assert!(matches!(response, Response::Held {id, ..} if Some(&id)==ids.last()));
+        let Response::Stored { message } = response else {
+            panic!("local delivery was held: {response:?}");
+        };
+        assert_eq!(Some(&message.view().id), ids.last());
+        assert!(message.envelope().is_none());
+        assert_eq!(message.view().signature, bbt_proto::messaging::SignatureState::Pending);
+        assert!(message.view().signature_reason.is_some());
     }
     store.unavailable.store(false, Ordering::Release);
     tokio::time::timeout(Duration::from_secs(35), async {
@@ -347,14 +353,14 @@ async fn custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry() {
     assert_eq!(
         page.items
             .iter()
-            .map(|message| message.envelope.id)
+            .map(|message| message.envelope().expect("signed fixture envelope").id)
             .collect::<Vec<_>>(),
         ids
     );
     assert_eq!(
         page.items
             .iter()
-            .map(|message| message.envelope.sender_sequence)
+            .map(|message| message.envelope().expect("signed fixture envelope").sender_sequence)
             .collect::<Vec<_>>(),
         vec![1, 2]
     );

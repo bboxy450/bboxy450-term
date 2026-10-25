@@ -1,4 +1,5 @@
 //! The logic owner mediates keys, current grants, inboxes and the local bus.
+use bbt_proto::messaging::{OperatorReference, OperatorReferenceKind};
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -59,6 +60,22 @@ struct HeldSend {
     request: SendRequest,
     operator: bool,
     routes: Vec<Route>,
+    /// An admitted local observation, retained before any recipient delivery.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    intent: Option<bbt_proto::messaging::PendingIntent>,
+    /// Persist the exact completion with its sequence before the cross-store append.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    completion: Option<Envelope>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    operator_context: Option<PendingOperator>,
+}
+#[derive(Clone, Serialize, Deserialize)]
+struct PendingOperator {
+    reference: OperatorReference,
+    device: Option<Ulid>,
+    door: bbt_proto::messaging::Door,
+    issued_by: Option<String>,
+    epoch: Option<u64>,
 }
 /// The target policy/version observed by an admitted operator-side control.
 pub(crate) struct MuteGuard {
@@ -131,12 +148,19 @@ fn hash128(bytes: &[u8]) -> u128 {
     (u128::from(mix(a ^ w)) << 64) | u128::from(mix(b.wrapping_add(w) ^ a))
 }
 #[derive(Clone, Copy)]
+struct OperatorSource<'a> {
+    signing: Option<&'a super::keys::OperatorSigning>,
+    reference: OperatorReference,
+    device: Option<Ulid>,
+    origin: &'a crate::mcp::Origin,
+}
+#[derive(Clone, Copy)]
 enum Source<'a> {
     Seat {
         record: &'a SeatRecord,
         operator: bool,
     },
-    Operator(&'a super::keys::OperatorSigning),
+    Operator(OperatorSource<'a>),
 }
 impl Source<'_> {
     fn actor(self) -> Actor {
@@ -165,7 +189,8 @@ pub struct Messaging {
     registry: Registry,
     keys: Arc<dyn SeatKeys>,
     swarms: BTreeMap<Ulid, Swarm>,
-    operator_device: Option<Ulid>,
+    operator_reference: Option<OperatorReference>,
+    operator_device_attribution: Option<Ulid>,
 }
 impl Messaging {
     pub fn request(
@@ -201,7 +226,45 @@ impl Messaging {
             return Err(invalid("unknown operator messaging swarm"));
         }
         self.set_operator_device(authority.device_id)?;
-        self.request_from(swarm, Source::Operator(authority), request, mute_state, now)
+        self.request_from(
+            swarm,
+            Source::Operator(OperatorSource {
+                signing: Some(authority),
+                reference: self.operator_reference.expect("reference admitted"),
+                device: Some(authority.device_id),
+                origin: &authority.origin,
+            }),
+            request,
+            mute_state,
+            now,
+        )
+    }
+    /// Only the admitted local messaging door may use this inferred principal.
+    /// Other operator mutations still require their existing signing authority.
+    pub(crate) fn request_operator_pending(
+        &mut self,
+        device: Option<Ulid>,
+        origin: &crate::mcp::Origin,
+        swarm: Ulid,
+        request: super::api::Request,
+        now: u64,
+    ) -> Result<super::api::Response> {
+        if swarm == Ulid::nil() || !self.registry.list()?.iter().any(|seat| seat.swarm == swarm) {
+            return Err(invalid("unknown operator messaging swarm"));
+        }
+        let reference = self.operator_reference(device)?;
+        self.request_from(
+            swarm,
+            Source::Operator(OperatorSource {
+                signing: None,
+                reference,
+                device: self.operator_device_attribution,
+                origin,
+            }),
+            request,
+            None,
+            now,
+        )
     }
     fn request_from(
         &mut self,
@@ -212,15 +275,31 @@ impl Messaging {
         now: u64,
     ) -> Result<super::api::Response> {
         use super::api::{Request, Response};
+        if matches!(
+            source,
+            Source::Operator(OperatorSource { signing: None, .. })
+        ) && !matches!(
+            &request,
+            Request::Send { .. }
+                | Request::List { .. }
+                | Request::Receipts { .. }
+                | Request::Acknowledge { .. }
+                | Request::Ls { .. }
+        ) {
+            return Err(invalid(
+                "held: this operator mutation requires signing custody",
+            ));
+        }
         let actor = source.actor();
         match request {
             Request::Send { message } => match source {
                 Source::Seat { record, operator } => {
                     self.send_inner(record.id, record.generation, message, now, operator, None)
                 }
-                Source::Operator(authority) => {
-                    self.send_operator(authority, swarm, message, None, now)
-                }
+                Source::Operator(source) => match source.signing {
+                    Some(authority) => self.send_operator(authority, swarm, message, None, now),
+                    None => self.send_operator_pending(source, swarm, message, now),
+                },
             },
             Request::List {
                 thread,
@@ -231,7 +310,7 @@ impl Messaging {
                 Source::Seat { record, .. } => Ok(Response::Messages {
                     page: self.list(record.id, thread, channel.as_deref(), after, limit)?,
                 }),
-                Source::Operator(authority) => {
+                Source::Operator(source) => {
                     let channel = channel
                         .map(|path| super::tree::normalize(&path, true))
                         .transpose()?;
@@ -243,9 +322,7 @@ impl Messaging {
                         )?;
                     }
                     let page = self.swarm(swarm)?.ledger.list_for(
-                        channel
-                            .is_none()
-                            .then_some(Recipient::Operator(authority.device_id)),
+                        channel.is_none().then_some(source.reference.recipient()),
                         thread,
                         channel.as_deref(),
                         after,
@@ -269,7 +346,7 @@ impl Messaging {
                 }
                 let recipient = match source {
                     Source::Seat { record, .. }
-                        if !actor.controls() && stored.envelope.seat != record.id =>
+                        if !actor.controls() && stored.view().seat != record.id =>
                     {
                         Some(record.id)
                     }
@@ -287,8 +364,8 @@ impl Messaging {
                     Source::Seat { record, .. } => {
                         self.acknowledge(record.id, message, agent.as_deref(), now)?
                     }
-                    Source::Operator(authority) => self.swarm(swarm)?.ledger.acknowledge(
-                        Recipient::Operator(authority.device_id),
+                    Source::Operator(source) => self.swarm(swarm)?.ledger.acknowledge(
+                        source.reference.recipient(),
                         message,
                         agent.as_deref(),
                         now,
@@ -385,7 +462,8 @@ impl Messaging {
             CREATE TABLE IF NOT EXISTS msg_policies(seat TEXT PRIMARY KEY,epoch INTEGER NOT NULL,role BLOB NOT NULL,muted INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS msg_grants(id TEXT PRIMARY KEY,data BLOB NOT NULL);
             CREATE TABLE IF NOT EXISTS msg_notices(id TEXT PRIMARY KEY,envelope BLOB NOT NULL,request BLOB NOT NULL,sent INTEGER NOT NULL DEFAULT 0);
-            CREATE TABLE IF NOT EXISTS msg_held(position INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT UNIQUE NOT NULL,data BLOB NOT NULL,reason TEXT NOT NULL,state TEXT NOT NULL);")?;
+            CREATE TABLE IF NOT EXISTS msg_held(position INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT UNIQUE NOT NULL,data BLOB NOT NULL,reason TEXT NOT NULL,state TEXT NOT NULL);
+            CREATE INDEX IF NOT EXISTS msg_held_fifo ON msg_held(state,position);")?;
         pin_issuer(&account, keys.as_ref())?;
         let registry = Registry::new(account.clone());
         let mut messaging = Self {
@@ -394,12 +472,21 @@ impl Messaging {
             registry,
             keys,
             swarms: BTreeMap::new(),
-            operator_device: None,
+            operator_reference: None,
+            operator_device_attribution: None,
         };
+        if messaging
+            .account
+            .get("messaging/operator-reference")?
+            .is_some()
+        {
+            messaging.operator_reference(None)?;
+        }
         for record in messaging.registry.list()? {
             messaging.sync_seat(&record)?;
         }
         messaging.recover_notices()?;
+        messaging.recover_pending_intents()?;
         Ok(messaging)
     }
     pub fn record(&self, id: Ulid, generation: u64) -> Result<SeatRecord> {
@@ -466,8 +553,8 @@ impl Messaging {
         if !self.swarms.contains_key(&id) {
             let store = SqliteStore::open(&object_dir(&self.root, &format!("swarm-{id}"))?)?;
             let mut tree = Tree::open(store.clone(), id)?;
-            if let Some(device_id) = self.operator_device {
-                tree.set_operator(device_id);
+            if let Some(reference) = self.operator_reference {
+                tree.set_operator_reference(reference);
             }
             self.swarms.insert(
                 id,
@@ -484,22 +571,87 @@ impl Messaging {
         Ok(self.swarms.get_mut(&id).unwrap())
     }
     pub(crate) fn set_operator_device(&mut self, device_id: Ulid) -> Result<()> {
-        if device_id == Ulid::nil() {
+        self.operator_reference(Some(device_id)).map(|_| ())
+    }
+    /// Persist a principal once. Only the admitted IO owner supplies validated
+    /// device facts; no request DTO can choose or change the continuity key.
+    pub(crate) fn operator_reference(&mut self, device: Option<Ulid>) -> Result<OperatorReference> {
+        if device == Some(Ulid::nil()) {
             return Err(invalid("operator device must be non-nil"));
         }
-        if self.operator_device != Some(device_id) {
-            self.operator_device = Some(device_id);
+        if let Some(reference) = self.operator_reference
+            && device.is_none_or(|device| self.operator_device_attribution == Some(device))
+        {
+            return Ok(reference);
+        }
+        let mut db = self.account.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let old: Option<Vec<u8>> = tx
+            .query_row(
+                "SELECT value FROM kv WHERE key='messaging/operator-reference'",
+                [],
+                |r| r.get(0),
+            )
+            .optional()?;
+        let reference = match old {
+            Some(bytes) => serde_json::from_slice::<OperatorReference>(&bytes)?,
+            None => {
+                let reference = OperatorReference {
+                    id: match device {
+                        Some(device) => device,
+                        None => Ulid::new(),
+                    },
+                    kind: if device.is_some() {
+                        OperatorReferenceKind::DeviceDerived
+                    } else {
+                        OperatorReferenceKind::OperatorLocal
+                    },
+                };
+                tx.execute(
+                    "INSERT INTO kv VALUES('messaging/operator-reference',?1)",
+                    [serde_json::to_vec(&reference)?],
+                )?;
+                reference
+            }
+        };
+        if reference.id == Ulid::nil() {
+            return Err(invalid("invalid persisted operator reference"));
+        }
+        if let Some(device) = device {
+            let binding = serde_json::json!({"reference":reference,"device":device});
+            tx.execute(
+                "INSERT OR IGNORE INTO kv VALUES(?1,?2)",
+                params![
+                    format!("messaging/operator-bindings/{}/{}", reference.id, device),
+                    serde_json::to_vec(&binding)?
+                ],
+            )?;
+            tx.execute("INSERT INTO kv VALUES('messaging/operator-attribution',?1) ON CONFLICT(key) DO UPDATE SET value=excluded.value",[serde_json::to_vec(&device)?])?;
+        }
+        let attribution: Option<Vec<u8>> = tx
+            .query_row(
+                "SELECT value FROM kv WHERE key='messaging/operator-attribution'",
+                [],
+                |r| r.get(0),
+            )
+            .optional()?;
+        tx.commit()?;
+        self.operator_device_attribution = attribution
+            .map(|bytes| serde_json::from_slice(&bytes))
+            .transpose()?;
+        if self.operator_reference != Some(reference) {
+            self.operator_reference = Some(reference);
             for swarm in self.swarms.values_mut() {
-                swarm.tree.set_operator(device_id);
+                swarm.tree.set_operator_reference(reference);
                 swarm.seen.clear();
                 swarm.resolved.clear();
                 swarm.muted.clear();
             }
         }
-        Ok(())
+        Ok(reference)
     }
     pub(crate) fn operator_subjects(&self) -> Result<Vec<String>> {
-        if self.operator_device.is_none() {
+        if self.operator_reference.is_none() {
             return Err(invalid("held: operator device custody is unavailable"));
         }
         // Enumerate retained subjects from the current tree, rather than a
@@ -539,7 +691,7 @@ impl Messaging {
             .ledger
             .by_id(id)
             .map_err(|_| invalid("message is not in the requested swarm"))?;
-        if message.envelope.swarm_id != swarm {
+        if message.view().swarm_id != swarm {
             return Err(invalid("messaging swarm mismatch: retained message"));
         }
         let sender = self.swarm(swarm)?.ledger.sender(id)?;
@@ -556,6 +708,11 @@ impl Messaging {
             Recipient::Operator(device) => AuthorRef {
                 kind: AuthorKind::Operator,
                 id: device.to_string(),
+                name: "operator".into(),
+            },
+            Recipient::OperatorLocal(reference) => AuthorRef {
+                kind: AuthorKind::OperatorLocal,
+                id: reference.to_string(),
                 name: "operator".into(),
             },
         };
@@ -577,14 +734,17 @@ impl Messaging {
         };
         Ok(MessageRow {
             id,
-            bus: message.bus,
+            bus: message.bus.clone(),
             author,
-            issuer_kind: message.envelope.issuer_kind,
-            kind: message.envelope.kind,
-            priority_class: message.envelope.priority_class,
-            priority: message.envelope.priority,
-            text: message.envelope.body.text().unwrap_or_default().into(),
-            ts: message.envelope.timestamp,
+            issuer_kind: message.view().issuer_kind,
+            signature: message.view().signature,
+            signature_reason: message.view().signature_reason.map(str::to_owned),
+            upgrade_of: message.upgrade_of().cloned(),
+            kind: message.view().kind,
+            priority_class: message.view().priority_class,
+            priority: message.view().priority,
+            text: message.view().body.text().unwrap_or_default().into(),
+            ts: message.view().timestamp,
             receipts,
         })
     }
@@ -672,7 +832,7 @@ impl Messaging {
         }
         self.sync_seat(&record)?;
         if let Some(old) = self.swarm(record.swarm)?.ledger.existing(&request, from)? {
-            if old.envelope.body != body {
+            if old.view().body != &body {
                 return Err(invalid("task message ID body conflict"));
             }
             return Ok(old);
@@ -782,9 +942,12 @@ impl Messaging {
         let body = body.unwrap_or_else(|| Body::Text {
             text: request.text.clone(),
         });
-        let sender = Recipient::Operator(authority.device_id);
+        let sender = self
+            .operator_reference
+            .expect("operator reference admitted")
+            .recipient();
         if let Some(old) = self.swarm(swarm)?.ledger.existing(&request, sender)? {
-            if old.envelope.body != body {
+            if old.view().body != &body {
                 return Err(invalid("message ID body conflict"));
             }
             return Ok(super::api::Response::Stored {
@@ -795,11 +958,11 @@ impl Messaging {
             let old = self.swarm(swarm)?.ledger.by_id(reply)?;
             if request
                 .thread_id
-                .is_some_and(|thread| thread != old.envelope.thread_id)
+                .is_some_and(|thread| thread != old.view().thread_id)
             {
                 return Err(invalid("reply thread mismatch"));
             }
-            request.thread_id = Some(old.envelope.thread_id);
+            request.thread_id = Some(old.view().thread_id);
         }
         let routes = self.swarm(swarm)?.tree.resolve(
             Actor::Operator,
@@ -811,58 +974,31 @@ impl Messaging {
         self.check_recipients(swarm, &routes)?;
         let mut db = self.account.connection()?;
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-        let counter = sender.to_string();
-        let last: Option<u64> = tx
-            .query_row(
-                "SELECT sequence FROM msg_counters WHERE seat=?1 AND generation=0",
-                [&counter],
-                |row| u64_at(row, 0),
-            )
-            .optional()?;
-        let sequence = last
-            .unwrap_or(0)
-            .checked_add(1)
-            .ok_or_else(|| invalid("sender sequence exhausted"))?;
-        let mut envelope = Envelope {
-            version: 1,
-            id: request.id,
-            issuer_kind: authority.issuer.kind,
-            issuer: authority.issuer.key.clone(),
-            account: authority.issuer.key.clone(),
-            device: authority.device.clone(),
-            seat: Ulid::nil(),
-            author: authority.device.clone(),
-            swarm_id: swarm,
-            process_generation: 0,
-            context: request.destination.clone(),
-            role: crate::registry::Role {
-                name: "operator".into(),
-                class: Class::Oracle,
-            },
-            role_grant_id: authority.grant.clone(),
-            role_epoch: authority.epoch,
-            priority_class: Class::Oracle,
-            sender_sequence: sequence,
-            thread_id: request.thread_id.unwrap_or(request.id),
-            reply_to: request.reply_to,
-            timestamp: now / 1000,
-            priority: request.priority,
-            kind: request.kind,
+        let envelope = mint_operator(
+            &tx,
+            authority,
+            swarm,
+            &request,
             body,
-            attachments: request.attachments.clone(),
-            door: Some(authority.origin.door),
-            issued_by: authority.origin.issued_by.clone(),
-            signature: String::new(),
-        };
-        envelope.sign(&authority.key)?;
+            now,
+            &authority.origin,
+        )?;
         self.validate(&envelope)?;
-        tx.execute("INSERT INTO msg_counters VALUES(?1,0,?2) ON CONFLICT(seat,generation) DO UPDATE SET sequence=excluded.sequence",
-            params![counter, sqlint(sequence)?])?;
         tx.commit()?;
         let message = self
             .swarm(swarm)?
             .ledger
-            .accept_from(&request, &envelope, &routes, None, now, sender)
+            .accept_from(
+                &request,
+                &envelope,
+                &routes,
+                None,
+                now,
+                super::ledger::SenderAttribution {
+                    recipient: sender,
+                    device: Some(authority.device_id),
+                },
+            )
             .map_err(|error| {
                 invalid(format!(
                     "unknown: message {} store outcome unavailable: {error}",
@@ -878,6 +1014,176 @@ impl Messaging {
         Ok(super::api::Response::Stored {
             message: Box::new(message),
         })
+    }
+    fn send_operator_pending(
+        &mut self,
+        source: OperatorSource<'_>,
+        swarm: Ulid,
+        mut request: SendRequest,
+        now: u64,
+    ) -> Result<super::api::Response> {
+        use bbt_proto::messaging::{LogicalSender, PendingIntent, PendingSignature};
+        request.validate()?;
+        if matches!(request.kind, MessageKind::Presence | MessageKind::Task) {
+            return Err(invalid(
+                "typed presence/task messages require their signed producer API",
+            ));
+        }
+        request.destination = super::tree::normalize(&request.destination, true)?;
+        let destination = request
+            .destination
+            .split_once('/')
+            .and_then(|(kind, tail)| {
+                tail.split('/')
+                    .next()?
+                    .parse::<Ulid>()
+                    .ok()
+                    .map(|id| (kind, id))
+            });
+        let destination_swarm = match destination {
+            Some(("seats", seat)) => Some(self.registry.get(seat)?.swarm),
+            Some(("swarms", swarm)) => Some(swarm),
+            _ => None,
+        };
+        if destination_swarm.is_some_and(|target| target != swarm) {
+            return Err(invalid("messaging swarm mismatch: destination"));
+        }
+        if request.destination == format!("swarms/{swarm}") {
+            request.destination.push_str("/*");
+        }
+        let sender = source.reference.recipient();
+        if let Some(old) = self.swarm(swarm)?.ledger.existing(&request, sender)? {
+            return Ok(super::api::Response::Stored {
+                message: Box::new(old),
+            });
+        }
+        if let Some(reply) = request.reply_to {
+            let old = self.swarm(swarm)?.ledger.by_id(reply)?;
+            if request
+                .thread_id
+                .is_some_and(|thread| thread != old.view().thread_id)
+            {
+                return Err(invalid("reply thread mismatch"));
+            }
+            request.thread_id = Some(old.view().thread_id);
+        }
+        let routes = self.swarm(swarm)?.tree.resolve(
+            Actor::Operator,
+            &request.destination,
+            request.kind,
+            Class::Oracle,
+            request.priority,
+        )?;
+        self.check_recipients(swarm, &routes)?;
+        let mut db = self.account.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let previous: Option<Vec<u8>> = tx
+            .query_row(
+                "SELECT data FROM msg_held WHERE id=?1",
+                [request.id.to_string()],
+                |r| r.get(0),
+            )
+            .optional()?;
+        if let Some(bytes) = previous {
+            let held: HeldSend = serde_json::from_slice(&bytes)?;
+            if held.request != request
+                || held
+                    .operator_context
+                    .as_ref()
+                    .is_none_or(|old| old.reference != source.reference)
+            {
+                return Err(invalid(
+                    "pending operator id conflicts with its original admission",
+                ));
+            }
+            tx.commit()?;
+            return self.store_pending(&held, now);
+        }
+        let issuer_record: Option<Vec<u8>> = tx
+            .query_row(
+                "SELECT value FROM kv WHERE key='identity/local-issuer'",
+                [],
+                |row| row.get(0),
+            )
+            .optional()?;
+        let epoch = issuer_record
+            .map(|bytes| super::keys::local_operator_grant(&bytes).map(|(_, epoch)| epoch))
+            .transpose()?;
+        let reason = self
+            .keys
+            .signing_hold()
+            .unwrap_or_else(|| "operator signing unavailable".into());
+        let context = PendingOperator {
+            reference: source.reference,
+            device: source.device,
+            door: source.origin.door,
+            issued_by: source.origin.issued_by.clone(),
+            epoch,
+        };
+        let mut held = HeldSend {
+            seat: Ulid::nil(),
+            generation: 0,
+            swarm,
+            role: crate::registry::Role {
+                name: "operator".into(),
+                class: Class::Oracle,
+            },
+            epoch: epoch.unwrap_or(0),
+            issuer_state: tx
+                .query_row(
+                    "SELECT value FROM kv WHERE key='identity/issuer'",
+                    [],
+                    |r| r.get(0),
+                )
+                .optional()?,
+            request: request.clone(),
+            operator: true,
+            routes,
+            intent: None,
+            completion: None,
+            operator_context: Some(context),
+        };
+        tx.execute(
+            "INSERT INTO msg_held(id,data,reason,state) VALUES(?1,?2,?3,'held')",
+            params![request.id.to_string(), serde_json::to_vec(&held)?, reason],
+        )?;
+        let sender = match source.reference.kind {
+            OperatorReferenceKind::OperatorLocal => LogicalSender::OperatorLocal {
+                reference: source.reference,
+                device: source.device,
+                door: source.origin.door,
+                issued_by: source.origin.issued_by.clone(),
+            },
+            OperatorReferenceKind::DeviceDerived => LogicalSender::Operator {
+                reference: source.reference,
+                device: source.device,
+                door: source.origin.door,
+                issued_by: source.origin.issued_by.clone(),
+            },
+        };
+        held.intent = Some(PendingIntent {
+            version: 1,
+            id: request.id,
+            sender,
+            swarm_id: swarm,
+            role: held.role.clone(),
+            role_epoch: epoch,
+            body: Body::Text {
+                text: request.text.clone(),
+            },
+            request,
+            admission_order: tx.last_insert_rowid() as u64,
+            admitted_ms: now,
+            signature: PendingSignature::Pending,
+            hold_reason: reason,
+        });
+        super::pending::binding(held.intent.as_ref().unwrap())?;
+        tx.execute(
+            "UPDATE msg_held SET data=?2 WHERE id=?1",
+            params![held.request.id.to_string(), serde_json::to_vec(&held)?],
+        )?;
+        tx.commit()?;
+        self.store_pending(&held, now)
     }
     fn send_inner(
         &mut self,
@@ -929,11 +1235,11 @@ impl Messaging {
             self.can_read(from, &old)?;
             if request
                 .thread_id
-                .is_some_and(|id| id != old.envelope.thread_id)
+                .is_some_and(|id| id != old.view().thread_id)
             {
                 return Err(invalid("reply thread mismatch"));
             }
-            request.thread_id = Some(old.envelope.thread_id);
+            request.thread_id = Some(old.view().thread_id);
         }
         let actor = if operator {
             Actor::Operator
@@ -978,7 +1284,7 @@ impl Messaging {
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         let epoch = policy(&tx, &record)?;
         let operator_direct = operator && super::tree::sink(&request.destination).is_ok();
-        let pending = HeldSend {
+        let mut pending = HeldSend {
             seat: from,
             generation,
             swarm: record.swarm,
@@ -994,6 +1300,9 @@ impl Messaging {
             request: request.clone(),
             operator,
             routes: routes.clone(),
+            intent: None,
+            completion: None,
+            operator_context: None,
         };
         if let Some(original) = releasing {
             if original.swarm != pending.swarm
@@ -1023,13 +1332,17 @@ impl Messaging {
                         "held send id reused with different content or authority",
                     ));
                 }
+                if old.intent.is_some() {
+                    tx.commit()?;
+                    return self.store_pending(&old, now);
+                }
                 return Ok(super::api::Response::Held {
                     id: request.id,
                     reason,
                 });
             }
-            let queued: i64 = tx.query_row(
-                "SELECT count(*) FROM msg_held WHERE state='held'",
+            let queued: bool = tx.query_row(
+                "SELECT EXISTS(SELECT 1 FROM msg_held WHERE state='held')",
                 [],
                 |r| r.get(0),
             )?;
@@ -1042,11 +1355,8 @@ impl Messaging {
                         .is_none()
                         .then(|| "identity pending".into())
                 })
-                .or_else(|| (queued > 0).then(|| "earlier signing work held".into()));
+                .or_else(|| queued.then(|| "earlier signing work held".into()));
             if let Some(reason) = reason {
-                if queued >= 128 {
-                    return Err(invalid("held signing queue is full"));
-                }
                 tx.execute(
                     "INSERT INTO msg_held(id,data,reason,state) VALUES(?1,?2,?3,'held')",
                     params![
@@ -1055,11 +1365,36 @@ impl Messaging {
                         reason
                     ],
                 )?;
-                tx.commit()?;
-                return Ok(super::api::Response::Held {
+                // The durable admission order is independent of a signing key.
+                // A custody outage must not turn a signing queue bound into a
+                // local-delivery gate. Resume drains a bounded page instead.
+                pending.intent = Some(bbt_proto::messaging::PendingIntent {
+                    version: 1,
                     id: request.id,
-                    reason,
+                    sender: bbt_proto::messaging::LogicalSender::Seat {
+                        device: self.operator_device_attribution,
+                        seat: from,
+                        process_generation: generation,
+                    },
+                    swarm_id: record.swarm,
+                    role: record.role.clone(),
+                    role_epoch: Some(epoch),
+                    body: Body::Text {
+                        text: request.text.clone(),
+                    },
+                    request: request.clone(),
+                    admission_order: tx.last_insert_rowid() as u64,
+                    admitted_ms: now,
+                    signature: bbt_proto::messaging::PendingSignature::Pending,
+                    hold_reason: reason,
                 });
+                super::pending::binding(pending.intent.as_ref().unwrap())?;
+                tx.execute(
+                    "UPDATE msg_held SET data=?2 WHERE id=?1",
+                    params![request.id.to_string(), serde_json::to_vec(&pending)?],
+                )?;
+                tx.commit()?;
+                return self.store_pending(&pending, now);
             }
         }
         let envelope = mint(
@@ -1088,9 +1423,308 @@ impl Messaging {
             message: Box::new(message),
         })
     }
+    fn recover_pending_intents(&mut self) -> Result<()> {
+        let mut after = 0;
+        loop {
+            let page: Vec<(u64, Vec<u8>)> = {
+                let db = self.account.connection()?;
+                let mut query = db.prepare_cached("SELECT position,data FROM msg_held WHERE state='held' AND position>?1 ORDER BY position LIMIT 128")?;
+                query
+                    .query_map([sqlint(after)?], |row| Ok((u64_at(row, 0)?, row.get(1)?)))?
+                    .collect::<std::result::Result<_, _>>()?
+            };
+            if page.is_empty() {
+                break;
+            }
+            for (position, bytes) in page {
+                after = position;
+                let held: HeldSend = serde_json::from_slice(&bytes)?;
+                let Some(intent) = &held.intent else {
+                    continue;
+                };
+                if let Err(error) = self.store_pending(&held, intent.admitted_ms) {
+                    if !error
+                        .downcast_ref::<std::io::Error>()
+                        .is_some_and(|error| error.kind() == std::io::ErrorKind::InvalidData)
+                    {
+                        return Err(error);
+                    }
+                    self.account.connection()?.execute(
+                        "UPDATE msg_held SET state='refused',reason=?2 WHERE position=?1",
+                        params![
+                            sqlint(position)?,
+                            format!("pending delivery refused: {error}")
+                        ],
+                    )?;
+                }
+            }
+        }
+        Ok(())
+    }
+    fn local_recipients(&self, routes: &[Route]) -> Result<BTreeSet<Recipient>> {
+        let mut local = BTreeSet::new();
+        for route in routes {
+            if self.recipient_is_local(route.recipient)? {
+                local.insert(route.recipient);
+            }
+        }
+        Ok(local)
+    }
+    fn recipient_is_local(&self, recipient: Recipient) -> Result<bool> {
+        Ok(match recipient {
+            Recipient::Seat(seat) => {
+                self.registry.get(seat)?.location == crate::registry::Location::Local
+            }
+            recipient @ (Recipient::Operator(_) | Recipient::OperatorLocal(_)) => {
+                self.operator_reference.map(OperatorReference::recipient) == Some(recipient)
+            }
+        })
+    }
+    fn store_pending(&mut self, held: &HeldSend, now: u64) -> Result<super::api::Response> {
+        let intent = held
+            .intent
+            .as_ref()
+            .ok_or_else(|| invalid("missing pending intent"))?;
+        let local = self.local_recipients(&held.routes)?;
+        let (sender, sender_muted) = if let Some(operator) = &held.operator_context {
+            if self.operator_reference != Some(operator.reference) {
+                return Err(invalid("pending operator reference mismatch"));
+            }
+            (operator.reference.recipient(), None)
+        } else {
+            let record = self.record(held.seat, held.generation)?;
+            (
+                Recipient::Seat(held.seat),
+                (record.muted && !held.operator).then_some("sender muted"),
+            )
+        };
+        let message = self.swarm(held.swarm)?.ledger.accept_pending(
+            intent,
+            &held.routes,
+            &local,
+            sender_muted,
+            now,
+            sender,
+        )?;
+        self.reconcile(now)?;
+        Ok(super::api::Response::Stored {
+            message: Box::new(message),
+        })
+    }
+    fn release_operator_intent(
+        &mut self,
+        mut held: HeldSend,
+        authority: Option<&super::keys::OperatorSigning>,
+        now: u64,
+    ) -> Result<super::api::Response> {
+        let Some(authority) = authority else {
+            return Ok(super::api::Response::Held {
+                id: held.request.id,
+                reason: "operator signing unavailable; local delivery remains pending".into(),
+            });
+        };
+        let context = held
+            .operator_context
+            .clone()
+            .ok_or_else(|| invalid("missing pending operator context"))?;
+        let intent = held
+            .intent
+            .clone()
+            .ok_or_else(|| invalid("missing pending operator intent"))?;
+        if self.operator_reference != Some(context.reference)
+            || context.epoch.is_some_and(|epoch| epoch != authority.epoch)
+        {
+            return Err(invalid(
+                "held operator authority changed; original intent retained",
+            ));
+        }
+        let routes = self.swarm(held.swarm)?.tree.resolve(
+            Actor::Operator,
+            &held.request.destination,
+            held.request.kind,
+            Class::Oracle,
+            held.request.priority,
+        )?;
+        self.check_recipients(held.swarm, &routes)?;
+        if routes != held.routes {
+            return Err(invalid("held send authority changed; resubmit explicitly"));
+        }
+        let mut db = self.account.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let issuer: Option<Vec<u8>> = tx
+            .query_row(
+                "SELECT value FROM kv WHERE key='identity/issuer'",
+                [],
+                |r| r.get(0),
+            )
+            .optional()?;
+        if held
+            .issuer_state
+            .as_ref()
+            .is_some_and(|old| Some(old) != issuer.as_ref())
+        {
+            return Err(invalid(
+                "held operator issuer changed; original intent retained",
+            ));
+        }
+        let envelope = match &held.completion {
+            Some(envelope) => envelope.clone(),
+            None => {
+                let origin = crate::mcp::Origin {
+                    door: context.door,
+                    issued_by: context.issued_by.clone(),
+                };
+                mint_operator(
+                    &tx,
+                    authority,
+                    held.swarm,
+                    &held.request,
+                    intent.body.clone(),
+                    intent.admitted_ms,
+                    &origin,
+                )?
+            }
+        };
+        super::pending::check_upgrade_content(&intent, &envelope)?;
+        held.completion = Some(envelope.clone());
+        tx.execute(
+            "UPDATE msg_held SET data=?2 WHERE id=?1",
+            params![held.request.id.to_string(), serde_json::to_vec(&held)?],
+        )?;
+        tx.commit()?;
+        self.validate(&envelope)?;
+        if self.operator_reference(Some(authority.device_id))? != context.reference {
+            return Err(invalid(
+                "operator reference changed during signature completion",
+            ));
+        }
+        self.store_pending(&held, now)?;
+        let local = self.local_recipients(&routes)?;
+        let message = self.swarm(held.swarm)?.ledger.upgrade_pending(
+            &intent,
+            &envelope,
+            &routes,
+            &local,
+            now,
+            Some(authority.device_id),
+        )?;
+        if let Some(swarm) = self.swarms.get_mut(&held.swarm) {
+            swarm.seen.clear();
+            swarm.resolved.clear();
+        }
+        Ok(super::api::Response::Stored {
+            message: Box::new(message),
+        })
+    }
+    fn release_held_send(
+        &mut self,
+        mut held: HeldSend,
+        authority: Option<&super::keys::OperatorSigning>,
+        now: u64,
+    ) -> Result<super::api::Response> {
+        if held.operator_context.is_some() {
+            return self.release_operator_intent(held, authority, now);
+        }
+        let Some(intent) = held.intent.clone() else {
+            return self.send_inner(
+                held.seat,
+                held.generation,
+                held.request.clone(),
+                now,
+                held.operator,
+                Some(&held),
+            );
+        };
+        let record = self.record(held.seat, held.generation)?;
+        let actor = if held.operator {
+            Actor::Operator
+        } else {
+            Actor::Seat {
+                seat: record.id,
+                class: record.role.class,
+            }
+        };
+        let routes = self.swarm(held.swarm)?.tree.resolve(
+            actor,
+            &held.request.destination,
+            held.request.kind,
+            record.role.class,
+            held.request.priority,
+        )?;
+        self.check_recipients(held.swarm, &routes)?;
+        let mut db = self.account.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let epoch = policy(&tx, &record)?;
+        let issuer: Option<Vec<u8>> = tx
+            .query_row(
+                "SELECT value FROM kv WHERE key='identity/issuer'",
+                [],
+                |r| r.get(0),
+            )
+            .optional()?;
+        if record.swarm != held.swarm
+            || record.role != held.role
+            || epoch != held.epoch
+            || held
+                .issuer_state
+                .as_ref()
+                .is_some_and(|old| Some(old) != issuer.as_ref())
+            || routes != held.routes
+        {
+            return Err(invalid("held send authority changed; resubmit explicitly"));
+        }
+        let envelope = match &held.completion {
+            Some(envelope) => envelope.clone(),
+            None => mint(
+                &tx,
+                self.keys.as_ref(),
+                &record,
+                &held.request,
+                intent.body.clone(),
+                Issue {
+                    epoch,
+                    now: intent.admitted_ms,
+                    operator_direct: held.operator
+                        && super::tree::sink(&held.request.destination).is_ok(),
+                },
+            )?,
+        };
+        super::pending::check_upgrade_content(&intent, &envelope)?;
+        held.completion = Some(envelope.clone());
+        tx.execute(
+            "UPDATE msg_held SET data=?2 WHERE id=?1",
+            params![held.request.id.to_string(), serde_json::to_vec(&held)?],
+        )?;
+        tx.commit()?;
+        self.validate(&envelope)?;
+        // A crash between the account transaction and this append reuses the
+        // stored envelope, including its sender sequence and signature.
+        self.store_pending(&held, now)?;
+        let local = self.local_recipients(&routes)?;
+        let device = self.operator_device_attribution;
+        let message = self
+            .swarm(held.swarm)?
+            .ledger
+            .upgrade_pending(&intent, &envelope, &routes, &local, now, device)?;
+        if let Some(swarm) = self.swarms.get_mut(&held.swarm) {
+            swarm.seen.clear();
+            swarm.resolved.clear();
+        }
+        Ok(super::api::Response::Stored {
+            message: Box::new(message),
+        })
+    }
     /// Install a verified ready provider, then consume durable unsigned work in
     /// admission order. Changed authority is refused by name, never upgraded.
     pub fn resume_signing(&mut self, keys: Arc<dyn SeatKeys>, now: u64) -> Result<usize> {
+        self.resume_signing_with_operator(keys, None, now)
+    }
+    pub(crate) fn resume_signing_with_operator(
+        &mut self,
+        keys: Arc<dyn SeatKeys>,
+        authority: Option<&super::keys::OperatorSigning>,
+        now: u64,
+    ) -> Result<usize> {
         pin_issuer(&self.account, keys.as_ref())?;
         let changed = !Arc::ptr_eq(&self.keys, &keys);
         self.keys = keys;
@@ -1105,7 +1739,7 @@ impl Messaging {
             return Ok(0);
         }
         let mut released = 0;
-        loop {
+        for _ in 0..64 {
             let next: Option<(String, Vec<u8>)> = self
                 .account
                 .connection()?
@@ -1119,14 +1753,7 @@ impl Messaging {
                 break;
             };
             let queued: HeldSend = serde_json::from_slice(&bytes)?;
-            let result = self.send_inner(
-                queued.seat,
-                queued.generation,
-                queued.request.clone(),
-                now,
-                queued.operator,
-                Some(&queued),
-            );
+            let result = self.release_held_send(queued, authority, now);
             let (state, reason) = match result {
                 Ok(super::api::Response::Stored { .. }) => {
                     released += 1;
@@ -1158,11 +1785,51 @@ impl Messaging {
         for route in routes {
             match route.recipient {
                 Recipient::Seat(seat) if self.registry.get(seat)?.swarm == swarm => {}
-                Recipient::Operator(device) if self.operator_device == Some(device) => {}
+                recipient @ (Recipient::Operator(_) | Recipient::OperatorLocal(_))
+                    if self.operator_reference.map(OperatorReference::recipient)
+                        == Some(recipient) => {}
                 _ => return Err(invalid("destination is outside this account/swarm scope")),
             }
         }
         Ok(())
+    }
+    fn validate_message(
+        &self,
+        message: &StoredMessage,
+    ) -> Result<(Option<SeatRecord>, Class, bool)> {
+        if let Some(envelope) = message.envelope() {
+            return self.validate(envelope);
+        }
+        let intent = message
+            .intent()
+            .ok_or_else(|| invalid("missing pending content"))?;
+        let bytes: Vec<u8> = self.account.connection()?.query_row(
+            "SELECT data FROM msg_held WHERE id=?1",
+            [intent.id.to_string()],
+            |r| r.get(0),
+        )?;
+        let admitted: HeldSend = serde_json::from_slice(&bytes)?;
+        if admitted.intent.as_ref() != Some(intent) {
+            return Err(invalid(
+                "pending intent does not match its local admission journal",
+            ));
+        }
+        super::pending::binding(intent)?;
+        if let Some(operator) = &admitted.operator_context {
+            if self.operator_reference != Some(operator.reference) {
+                return Err(invalid("pending operator reference changed"));
+            }
+            return Ok((None, Class::Oracle, true));
+        }
+        let record = self.record(admitted.seat, admitted.generation)?;
+        if record.swarm != admitted.swarm || record.role != admitted.role {
+            return Err(invalid("pending sender authority changed"));
+        }
+        Ok((
+            Some(record),
+            admitted.role.class,
+            admitted.operator && super::tree::sink(&intent.request.destination).is_ok(),
+        ))
     }
     fn validate(&self, message: &Envelope) -> Result<(Option<SeatRecord>, Class, bool)> {
         self.keys.verify(message)?;
@@ -1222,17 +1889,19 @@ impl Messaging {
     }
     pub fn can_read(&mut self, seat: Ulid, message: &StoredMessage) -> Result<()> {
         let record = self.registry.get(seat)?;
-        if record.swarm != message.envelope.swarm_id {
+        if record.swarm != message.view().swarm_id {
             return Err(invalid("message outside caller swarm"));
         }
-        if seat == message.envelope.seat
+        if seat == message.view().seat
             || record.role.class == Class::Oracle
             || self
                 .swarm(record.swarm)?
                 .ledger
-                .receipts(message.envelope.id)?
+                .receipts(message.view().id)?
                 .iter()
-                .any(|r| r.recipient == seat)
+                .any(|r| {
+                    r.recipient == seat && r.evidence != crate::adapters::Evidence::SenderStored
+                })
         {
             return Ok(());
         }
@@ -1244,8 +1913,7 @@ impl Messaging {
         self.can_read(seat, &stored)?;
         let all = self.swarm(swarm)?.ledger.receipts(message)?;
         Ok(
-            if stored.envelope.seat == seat || self.registry.get(seat)?.role.class == Class::Oracle
-            {
+            if stored.view().seat == seat || self.registry.get(seat)?.role.class == Class::Oracle {
                 all
             } else {
                 all.into_iter().filter(|r| r.recipient == seat).collect()
@@ -1474,7 +2142,7 @@ impl Messaging {
                 }
                 for message in &held {
                     let routes = (|| -> Result<Vec<Route>> {
-                        let (sender, class, direct) = self.validate(&message.envelope)?;
+                        let (sender, class, direct) = self.validate_message(message)?;
                         if sender.as_ref().is_some_and(|sender| sender.muted) && !direct {
                             return Err(invalid("sender muted"));
                         }
@@ -1489,17 +2157,25 @@ impl Messaging {
                                         class: sender.role.class,
                                     })
                             },
-                            &message.envelope.context,
-                            message.envelope.kind,
+                            message.view().context,
+                            message.view().kind,
                             class,
-                            message.envelope.priority,
+                            message.view().priority,
                         )
                     })();
                     match routes {
-                        Ok(routes) => self
-                            .swarm(swarm_id)?
-                            .ledger
-                            .release_out(message, &routes, now)?,
+                        Ok(routes) => {
+                            let local = message
+                                .intent()
+                                .map(|_| self.local_recipients(&routes))
+                                .transpose()?;
+                            self.swarm(swarm_id)?.ledger.release_out(
+                                message,
+                                &routes,
+                                now,
+                                local.as_ref(),
+                            )?;
+                        }
                         Err(e) => self
                             .swarm(swarm_id)?
                             .ledger
@@ -1545,6 +2221,9 @@ impl Messaging {
                     let Some(resolved) = &messages[&receipt.message_sequence].0 else {
                         continue;
                     };
+                    let remote_pending = receipt.signature
+                        == bbt_proto::messaging::SignatureState::Pending
+                        && !self.recipient_is_local(receipt.recipient)?;
                     let resolved = match resolved {
                         Err(e) => Err(e.clone()),
                         Ok((class, direct, by)) => match by
@@ -1555,7 +2234,12 @@ impl Messaging {
                                 .muted_once(swarm_id, receipt.recipient, &mut targets)
                                 .0
                                 .map(|muted| {
-                                    let held = if muted && !*direct {
+                                    let held = if remote_pending {
+                                        Some(
+                                            "signature pending; pinned remote delivery waits"
+                                                .into(),
+                                        )
+                                    } else if muted && !*direct {
                                         Some("recipient muted".into())
                                     } else if route.arrivals.iter().all(|a| a.paused) {
                                         Some("subscription paused".into())
@@ -1604,12 +2288,12 @@ impl Messaging {
             return Ok(hit.1);
         }
         let message = self.swarm(swarm_id)?.ledger.message(sequence)?;
-        let entry = if matches!(message.envelope.body, Body::Presence { .. }) {
+        let entry = if matches!(message.view().body, Body::Presence { .. }) {
             None
         } else {
             Some(
                 (|| -> Result<_> {
-                    let (sender, class, direct) = self.validate(&message.envelope)?;
+                    let (sender, class, direct) = self.validate_message(&message)?;
                     if sender.as_ref().is_some_and(|sender| sender.muted) && !direct {
                         return Err(invalid("sender muted"));
                     }
@@ -1624,10 +2308,10 @@ impl Messaging {
                                     class: sender.role.class,
                                 })
                         },
-                        &message.envelope.context,
-                        message.envelope.kind,
+                        message.view().context,
+                        message.view().kind,
                         class,
-                        message.envelope.priority,
+                        message.view().priority,
                     )?;
                     // First route per (seat, agent), as a linear `find` picks.
                     let mut by = HashMap::new();
@@ -1659,8 +2343,12 @@ impl Messaging {
                 .get(seat)
                 .map(|t| t.muted)
                 .map_err(|e| e.to_string()),
-            Recipient::Operator(device) if self.operator_device == Some(device) => Ok(false),
-            Recipient::Operator(_) => {
+            recipient @ (Recipient::Operator(_) | Recipient::OperatorLocal(_))
+                if self.operator_reference.map(OperatorReference::recipient) == Some(recipient) =>
+            {
+                Ok(false)
+            }
+            Recipient::Operator(_) | Recipient::OperatorLocal(_) => {
                 Err("operator device is not the active account device".into())
             }
         };
@@ -1799,6 +2487,64 @@ fn policy(tx: &rusqlite::Transaction<'_>, record: &SeatRecord) -> Result<u64> {
     tx.execute("INSERT INTO msg_policies VALUES(?1,?2,?3,?4) ON CONFLICT(seat) DO UPDATE SET epoch=excluded.epoch,role=excluded.role,muted=excluded.muted",params![record.id.to_string(),sqlint(epoch)?,role,record.muted])?;
     Ok(epoch)
 }
+fn mint_operator(
+    tx: &rusqlite::Transaction<'_>,
+    authority: &super::keys::OperatorSigning,
+    swarm: Ulid,
+    request: &SendRequest,
+    body: Body,
+    now: u64,
+    origin: &crate::mcp::Origin,
+) -> Result<Envelope> {
+    let counter = Recipient::Operator(authority.device_id).to_string();
+    let last: Option<u64> = tx
+        .query_row(
+            "SELECT sequence FROM msg_counters WHERE seat=?1 AND generation=0",
+            [&counter],
+            |row| u64_at(row, 0),
+        )
+        .optional()?;
+    let sequence = last
+        .unwrap_or(0)
+        .checked_add(1)
+        .ok_or_else(|| invalid("sender sequence exhausted"))?;
+    let mut envelope = Envelope {
+        version: 1,
+        id: request.id,
+        issuer_kind: authority.issuer.kind,
+        issuer: authority.issuer.key.clone(),
+        account: authority.issuer.key.clone(),
+        device: authority.device.clone(),
+        seat: Ulid::nil(),
+        author: authority.device.clone(),
+        swarm_id: swarm,
+        process_generation: 0,
+        context: request.destination.clone(),
+        role: crate::registry::Role {
+            name: "operator".into(),
+            class: Class::Oracle,
+        },
+        role_grant_id: authority.grant.clone(),
+        role_epoch: authority.epoch,
+        priority_class: Class::Oracle,
+        sender_sequence: sequence,
+        thread_id: request.thread_id.unwrap_or(request.id),
+        reply_to: request.reply_to,
+        timestamp: now / 1000,
+        priority: request.priority,
+        kind: request.kind,
+        body,
+        attachments: request.attachments.clone(),
+        door: Some(origin.door),
+        issued_by: origin.issued_by.clone(),
+        signature: String::new(),
+    };
+    envelope.sign(&authority.key)?;
+    tx.execute("INSERT INTO msg_counters VALUES(?1,0,?2) ON CONFLICT(seat,generation) DO UPDATE SET sequence=excluded.sequence",
+        params![counter, sqlint(sequence)?])?;
+    Ok(envelope)
+}
+
 struct Issue {
     epoch: u64,
     now: u64,
@@ -1882,9 +2628,297 @@ fn mint(
 
 /// Where a reply to `message` goes: its seat's inbox, or the operator's (decision #264).
 fn sender_inbox(message: &super::ledger::StoredMessage) -> String {
-    if message.envelope.seat == Ulid::nil() {
+    if message.view().seat == Ulid::nil() {
         "operator/inbox".into()
     } else {
-        format!("seats/{}/inbox", message.envelope.seat)
+        format!("seats/{}/inbox", message.view().seat)
+    }
+}
+
+#[cfg(test)]
+mod reference_tests {
+    use super::super::{
+        keys::LocalSeatKeys,
+        wire::{Issuer, IssuerKind},
+    };
+    use super::*;
+    use ed25519_dalek::SigningKey;
+
+    struct NoAuthor;
+    impl SeatKeys for NoAuthor {
+        fn issuer(&self) -> Issuer {
+            Issuer {
+                kind: IssuerKind::LocalDev,
+                key: String::new(),
+            }
+        }
+        fn ready_issuer(&self) -> Option<Issuer> {
+            None
+        }
+        fn signing_hold(&self) -> Option<String> {
+            Some("fixture custody unavailable".into())
+        }
+        fn leaf(&self, _: Ulid, _: u64) -> Result<SigningKey> {
+            panic!("pending local messaging must not ask for a signing key")
+        }
+        fn verify(&self, _: &Envelope) -> Result<()> {
+            Err(invalid("pending has no author"))
+        }
+    }
+
+    #[test]
+    fn first_held_operator_delivers_an_authorless_intent_but_cannot_mute() {
+        use super::super::api::{Request, Response};
+        use bbt_proto::messaging::{LogicalSender, SignatureState};
+        let root = tempfile::tempdir().unwrap();
+        let account = SqliteStore::open(&object_dir(root.path(), "account").unwrap()).unwrap();
+        let registry = Registry::new(account);
+        let swarm = Ulid::new();
+        let recipient = SeatRecord::new(Ulid::new(), swarm, "recipient", "zsh");
+        registry.insert(&recipient).unwrap();
+        let mut messaging = Messaging::open(root.path(), Arc::new(NoAuthor)).unwrap();
+        let request =
+            SendRequest::text(format!("seats/{}/inbox", recipient.id), "first operator DM");
+        let id = request.id;
+        let Response::Stored { message } = messaging
+            .request_operator_pending(
+                None,
+                &Default::default(),
+                swarm,
+                Request::Send { message: request },
+                1000,
+            )
+            .unwrap()
+        else {
+            panic!("local operator message must be stored");
+        };
+        let intent = message.intent().unwrap();
+        assert_eq!(intent.role_epoch, None);
+        let LogicalSender::OperatorLocal {
+            reference, device, ..
+        } = &intent.sender
+        else {
+            panic!("explicit local principal");
+        };
+        assert_eq!(*device, None);
+        assert_eq!(reference.kind, OperatorReferenceKind::OperatorLocal);
+        assert!(
+            serde_json::to_value(intent)
+                .unwrap()
+                .get("author")
+                .is_none()
+        );
+        let inbox = messaging.list(recipient.id, None, None, 0, 16).unwrap();
+        assert_eq!(inbox.items.len(), 1);
+        assert_eq!(inbox.items[0].view().id, id);
+        let receipt = messaging.receipts(recipient.id, id).unwrap().remove(0);
+        assert_eq!(receipt.signature, SignatureState::Pending);
+        assert_eq!(receipt.sender_operator, Some(*reference));
+        assert_eq!(receipt.sender_device, None);
+        assert_eq!(
+            messaging
+                .operator_message_row(swarm, id)
+                .unwrap()
+                .issuer_kind,
+            None
+        );
+        assert!(
+            messaging
+                .request_operator_pending(
+                    None,
+                    &Default::default(),
+                    swarm,
+                    Request::Mute {
+                        seat: recipient.id,
+                        muted: true
+                    },
+                    1001
+                )
+                .unwrap_err()
+                .to_string()
+                .contains("requires signing custody")
+        );
+        assert!(!registry.get(recipient.id).unwrap().muted);
+        let reference = *reference;
+        let binding = super::super::pending::binding(intent).unwrap();
+        let original = serde_json::to_vec(intent).unwrap();
+        drop(messaging);
+        let mut messaging = Messaging::open(root.path(), Arc::new(NoAuthor)).unwrap();
+        assert_eq!(messaging.operator_reference(None).unwrap(), reference);
+        let work = messaging
+            .prepare(swarm, recipient.id, 10000)
+            .unwrap()
+            .unwrap();
+        messaging
+            .finish(
+                swarm,
+                &work,
+                &WakeOutcome {
+                    evidence: crate::adapters::Evidence::NativeWritten,
+                    native_id: Some("operator-write-once".into()),
+                    note: "fixture wrote once".into(),
+                },
+                10001,
+                false,
+            )
+            .unwrap();
+        let key = SigningKey::from_bytes(&[63; 32]);
+        let public = public(&key.verifying_key().to_bytes());
+        let grant =
+            serde_json::to_vec(&serde_json::json!({"public_key":public,"epoch":"1"})).unwrap();
+        messaging
+            .account
+            .put("identity/local-issuer", &grant)
+            .unwrap();
+        let authority = super::super::keys::OperatorSigning {
+            device_id: Ulid::from(14u128),
+            issuer: Issuer {
+                kind: IssuerKind::LocalDev,
+                key: public.clone(),
+            },
+            device: public,
+            grant: digest(&grant),
+            epoch: 1,
+            key: key.clone(),
+            origin: Default::default(),
+        };
+        assert_eq!(
+            messaging
+                .resume_signing_with_operator(
+                    Arc::new(LocalSeatKeys::new(key)),
+                    Some(&authority),
+                    20000
+                )
+                .unwrap(),
+            1
+        );
+        assert_eq!(messaging.operator_reference(None).unwrap(), reference);
+        let row = messaging
+            .list(recipient.id, None, None, 0, 16)
+            .unwrap()
+            .items
+            .remove(0);
+        assert_eq!(row.upgrade_of(), Some(&binding));
+        row.envelope().unwrap().verify_signature().unwrap();
+        assert!(
+            messaging
+                .prepare(swarm, recipient.id, 20001)
+                .unwrap()
+                .is_none()
+        );
+        let receipt = messaging.receipts(recipient.id, id).unwrap().remove(0);
+        assert_eq!(receipt.sender_operator, Some(reference));
+        assert_eq!(receipt.sender_device, Some(authority.device_id));
+        assert_eq!(receipt.attempt, Some(work.id));
+        let retained: Vec<u8> = messaging
+            .swarm(swarm)
+            .unwrap()
+            .ledger
+            .store
+            .connection()
+            .unwrap()
+            .query_row(
+                "SELECT envelope FROM msg_messages WHERE id=?1",
+                [id.to_string()],
+                |r| r.get(0),
+            )
+            .unwrap();
+        let retained: bbt_proto::messaging::StoredContent =
+            serde_json::from_slice(&retained).unwrap();
+        let bbt_proto::messaging::StoredContent::Pending { intent } = retained else {
+            panic!("original intent cannot be replaced");
+        };
+        assert_eq!(serde_json::to_vec(&intent).unwrap(), original);
+        assert!(
+            messaging
+                .events()
+                .unwrap()
+                .iter()
+                .any(|(_, event)| event.payload["actual_device"]
+                    == serde_json::json!(authority.device_id)
+                    && event.payload["upgrade_of"]["digest"] == binding.digest)
+        );
+    }
+
+    #[test]
+    fn operator_reference_survives_enrolment_without_moving_its_recipient() {
+        let root = tempfile::tempdir().unwrap();
+        let keys = Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[61; 32])));
+        let mut messaging = Messaging::open(root.path(), keys.clone()).unwrap();
+        let reference = messaging.operator_reference(None).unwrap();
+        assert_eq!(reference.kind, OperatorReferenceKind::OperatorLocal);
+        assert_eq!(messaging.operator_device_attribution, None);
+        assert!(matches!(reference.recipient(),Recipient::OperatorLocal(id) if id==reference.id));
+        let immutable = messaging
+            .account
+            .get("messaging/operator-reference")
+            .unwrap()
+            .unwrap();
+        assert!(
+            serde_json::from_slice::<serde_json::Value>(&immutable)
+                .unwrap()
+                .get("device")
+                .is_none()
+        );
+        drop(messaging);
+
+        let mut messaging = Messaging::open(root.path(), keys).unwrap();
+        let device = Ulid::from(12u128);
+        assert_eq!(
+            messaging.operator_reference(Some(device)).unwrap(),
+            reference
+        );
+        assert_eq!(messaging.operator_reference(None).unwrap(), reference);
+        assert_eq!(messaging.operator_device_attribution, Some(device));
+        assert_eq!(
+            messaging
+                .account
+                .get("messaging/operator-reference")
+                .unwrap()
+                .unwrap(),
+            immutable
+        );
+        let bytes = messaging
+            .account
+            .get(&format!(
+                "messaging/operator-bindings/{}/{}",
+                reference.id, device
+            ))
+            .unwrap()
+            .unwrap();
+        let binding: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(
+            binding["reference"],
+            serde_json::to_value(reference).unwrap()
+        );
+        assert_eq!(binding["device"], serde_json::json!(device));
+        assert_eq!(
+            messaging
+                .account
+                .list("messaging/operator-bindings/")
+                .unwrap()
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn an_existing_device_keeps_its_original_operator_recipient_encoding() {
+        let root = tempfile::tempdir().unwrap();
+        let mut messaging = Messaging::open(
+            root.path(),
+            Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[62; 32]))),
+        )
+        .unwrap();
+        let device = Ulid::from(13u128);
+        let reference = messaging.operator_reference(Some(device)).unwrap();
+        assert_eq!(reference.id, device);
+        assert_eq!(reference.kind, OperatorReferenceKind::DeviceDerived);
+        assert_eq!(
+            reference.recipient().to_string(),
+            format!("operator:{device}")
+        );
+        assert!(messaging.operator_reference(Some(Ulid::nil())).is_err());
+        assert_eq!(messaging.operator_reference(None).unwrap(), reference);
     }
 }

@@ -495,7 +495,7 @@ fn held_queue_survives_reopen_and_refuses_changed_generation_role_epoch_and_rout
             messaging
                 .request(seat.id, 1, Request::Send { message }, false, None, 1)
                 .unwrap(),
-            Response::Held { .. }
+            Response::Stored { message } if message.envelope().is_none() && message.intent().is_some()
         ));
     }
     assert_eq!(
@@ -559,7 +559,7 @@ fn held_queue_survives_reopen_and_refuses_changed_generation_role_epoch_and_rout
     assert!(rows[2].1.contains("authority changed"));
     let page = messaging.list(seats[3].id, None, None, 0, 10).unwrap();
     assert_eq!(page.items.len(), 1);
-    assert_eq!(page.items[0].envelope.id, ids[3]);
+    assert_eq!(page.items[0].envelope().expect("signed fixture envelope").id, ids[3]);
     println!(
         "ID1d: unsigned queue survives owner reopen; changed role/epoch, generation and routes are refused; later valid work releases in order"
     );
@@ -725,7 +725,7 @@ fn pending_logic_keeps_pty_live_retries_at_30s_and_releases_durable_sends_in_ord
                     .messaging(seat.id, 1, Request::Send { message }),
             )
             .unwrap();
-        assert!(matches!(response,Response::Held{id,..} if Some(&id)==ids.last()));
+        assert!(matches!(response,Response::Stored{message} if Some(&message.view().id)==ids.last() && message.envelope().is_none()));
     }
     assert_eq!(
         store(root.path())
@@ -781,13 +781,13 @@ fn pending_logic_keeps_pty_live_retries_at_30s_and_releases_durable_sends_in_ord
         panic!("messages")
     };
     assert_eq!(
-        page.items.iter().map(|m| m.envelope.id).collect::<Vec<_>>(),
+        page.items.iter().map(|m| m.envelope().expect("signed fixture envelope").id).collect::<Vec<_>>(),
         ids
     );
     assert_eq!(
         page.items
             .iter()
-            .map(|m| m.envelope.sender_sequence)
+            .map(|m| m.envelope().expect("signed fixture envelope").sender_sequence)
             .collect::<Vec<_>>(),
         vec![1, 2]
     );

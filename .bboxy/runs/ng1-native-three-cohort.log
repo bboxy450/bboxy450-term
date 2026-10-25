@@ -1,0 +1,726 @@
+NG1 native three-cohort probe — Oracle1b356459, one target reused serially
+No extra CPU/PTTY load; no deadline/predicate changes; explicit private fake native custody + disposable GnuPG fixture; O1/assertions, jobs2, memory selector, direct rustc. No full gate/no967 run. Counts are focused non-reproduction, not cause/fix proof. Workspace0596 EXIT101 remains retained.
+{"binary": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/native-three-cohort/main/identity-test", "binary_sha256": "438b392ddeeae2c8783e6645ac4be532e1b8aca01756df9fe88efa7ab8e51bf3", "build": {"cohort": "main", "command": ["cargo", "test", "-p", "bbt-mux", "--locked", "--test", "identity", "--no-run", "--message-format=json"], "driver_pid": 72064, "elapsed_s": 54.085800166998524, "exit": 0, "log_sha256": "5d2d3f60d283482958943781a62933fc2c58dfa75157f672ba77e69a8c4cb2c7", "phase": "build", "pid": 72113, "source": "7d4d599edc55e55307b21b952a0128b9cd30f5a5", "start": "2026-10-25T01:56:40.061550-07:00", "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/target"}, "cohort": "main", "failed": 0, "passed": 30, "source": "7d4d599edc55e55307b21b952a0128b9cd30f5a5", "tracked_clean": true}
+{"cohort": "main", "elapsed_s": 0.5918516249512322, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 75471, "run": 1}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.3220934580313042, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 75499, "run": 2}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "main", "elapsed_s": 0.3215117080253549, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 75529, "run": 3}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "main", "elapsed_s": 0.3192245829850435, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 75558, "run": 4}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.3105352080310695, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 75582, "run": 5}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.32944758399389684, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 75610, "run": 6}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "main", "elapsed_s": 0.31751991697819903, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 75636, "run": 7}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.30978241696720943, "exit": 0, "log_sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21", "passed": true, "pid": 75663, "run": 8}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+{"cohort": "main", "elapsed_s": 0.32213808299275115, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 75688, "run": 9}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.3160123329726048, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 75725, "run": 10}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.3119487499934621, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 75752, "run": 11}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.3075768749695271, "exit": 0, "log_sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21", "passed": true, "pid": 75803, "run": 12}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+{"cohort": "main", "elapsed_s": 0.3095648330054246, "exit": 0, "log_sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21", "passed": true, "pid": 75828, "run": 13}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+{"cohort": "main", "elapsed_s": 0.3165369170019403, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 75865, "run": 14}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.31568837497616187, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 75910, "run": 15}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.31663537496933714, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 75943, "run": 16}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.317682207969483, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 75972, "run": 17}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.3094202500069514, "exit": 0, "log_sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21", "passed": true, "pid": 76001, "run": 18}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+{"cohort": "main", "elapsed_s": 0.3173454999923706, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 76026, "run": 19}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.32124716602265835, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 76056, "run": 20}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "main", "elapsed_s": 0.3179363750386983, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 76082, "run": 21}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.30383270798483863, "exit": 0, "log_sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21", "passed": true, "pid": 76112, "run": 22}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+{"cohort": "main", "elapsed_s": 0.3192682910012081, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 76141, "run": 23}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.3142447909922339, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 76165, "run": 24}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.3159597080084495, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 76193, "run": 25}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.3119850420043804, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 76220, "run": 26}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.3178464589873329, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 76247, "run": 27}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.3151383329532109, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 76279, "run": 28}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.3164383750408888, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 76307, "run": 29}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "main", "elapsed_s": 0.3200519169913605, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 76332, "run": 30}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"binary": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/native-three-cohort/ng1/identity-test", "binary_sha256": "470d13498e7bd01838ba0d35a5ae61d086dcf08089aef7a14faca28021923c2a", "build": {"cohort": "ng1", "command": ["cargo", "test", "-p", "bbt-mux", "--locked", "--test", "identity", "--no-run", "--message-format=json"], "driver_pid": 72064, "elapsed_s": 45.07606662501348, "exit": 0, "log_sha256": "2d871d04aeeac8985346efff12965f1b2660d480983e9493999f0565f6489e29", "phase": "build", "pid": 76372, "source": "997f920605d8245952bcfd04c91e3388741ea17f", "start": "2026-10-25T01:57:44.095267-07:00", "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/target"}, "cohort": "ng1", "failed": 0, "passed": 30, "source": "997f920605d8245952bcfd04c91e3388741ea17f", "tracked_clean": true}
+{"cohort": "ng1", "elapsed_s": 0.5926198749803007, "exit": 0, "log_sha256": "08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e", "passed": true, "pid": 77909, "run": 1}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.33s
+
+
+{"cohort": "ng1", "elapsed_s": 0.3069537080009468, "exit": 0, "log_sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21", "passed": true, "pid": 77935, "run": 2}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+{"cohort": "ng1", "elapsed_s": 0.30513558397069573, "exit": 0, "log_sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21", "passed": true, "pid": 77959, "run": 3}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+{"cohort": "ng1", "elapsed_s": 0.3229760829708539, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 77985, "run": 4}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "ng1", "elapsed_s": 0.31295908300671726, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 78012, "run": 5}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1", "elapsed_s": 0.30495545896701515, "exit": 0, "log_sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21", "passed": true, "pid": 78036, "run": 6}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+{"cohort": "ng1", "elapsed_s": 0.32225450000260025, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 78063, "run": 7}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "ng1", "elapsed_s": 0.3492292920127511, "exit": 0, "log_sha256": "47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c", "passed": true, "pid": 78087, "run": 8}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.34s
+
+
+{"cohort": "ng1", "elapsed_s": 0.3199910420225933, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 78111, "run": 9}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1", "elapsed_s": 0.31317566701909527, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 78136, "run": 10}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1", "elapsed_s": 0.3237779999617487, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 78164, "run": 11}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "ng1", "elapsed_s": 0.31249387498246506, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 78220, "run": 12}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1", "elapsed_s": 0.31781099998624995, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 78263, "run": 13}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1", "elapsed_s": 0.31541491695679724, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 78305, "run": 14}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1", "elapsed_s": 0.3144871660042554, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 78353, "run": 15}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1", "elapsed_s": 0.3360320000210777, "exit": 0, "log_sha256": "08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e", "passed": true, "pid": 78402, "run": 16}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.33s
+
+
+{"cohort": "ng1", "elapsed_s": 0.3101704170112498, "exit": 0, "log_sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21", "passed": true, "pid": 78457, "run": 17}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+{"cohort": "ng1", "elapsed_s": 0.32554575003450736, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 78501, "run": 18}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "ng1", "elapsed_s": 0.3190551670268178, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 78556, "run": 19}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1", "elapsed_s": 0.34505683300085366, "exit": 0, "log_sha256": "47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c", "passed": true, "pid": 78601, "run": 20}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.34s
+
+
+{"cohort": "ng1", "elapsed_s": 0.3411390410037711, "exit": 0, "log_sha256": "08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e", "passed": true, "pid": 78655, "run": 21}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.33s
+
+
+{"cohort": "ng1", "elapsed_s": 0.33867612498579547, "exit": 0, "log_sha256": "08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e", "passed": true, "pid": 78700, "run": 22}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.33s
+
+
+{"cohort": "ng1", "elapsed_s": 0.3354500840068795, "exit": 0, "log_sha256": "08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e", "passed": true, "pid": 78754, "run": 23}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.33s
+
+
+{"cohort": "ng1", "elapsed_s": 0.3474362500128336, "exit": 0, "log_sha256": "47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c", "passed": true, "pid": 78802, "run": 24}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.34s
+
+
+{"cohort": "ng1", "elapsed_s": 0.32937316701281816, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 78864, "run": 25}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "ng1", "elapsed_s": 0.3536128749838099, "exit": 0, "log_sha256": "47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c", "passed": true, "pid": 78914, "run": 26}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.34s
+
+
+{"cohort": "ng1", "elapsed_s": 0.31380279205041006, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 78975, "run": 27}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1", "elapsed_s": 0.33329725003568456, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 79025, "run": 28}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "ng1", "elapsed_s": 0.31431466597132385, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 79076, "run": 29}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1", "elapsed_s": 0.30571712501114234, "exit": 0, "log_sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21", "passed": true, "pid": 79125, "run": 30}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+{"binary": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/native-three-cohort/ng1-store/identity-test", "binary_sha256": "26c111c98f87294db31ad7fd0d04620b18dff366298d4d1cfea50774722c5099", "build": {"cohort": "ng1-store", "command": ["cargo", "test", "-p", "bbt-mux", "--locked", "--test", "identity", "--no-run", "--message-format=json"], "driver_pid": 72064, "elapsed_s": 51.103126999980304, "exit": 0, "log_sha256": "346e8d5482fc452413bdc1f8a80fcd6a38c8e7e705e361990a6b26a644dc559e", "phase": "build", "pid": 79223, "source": "6bba08b73addab09c6fffd8fa75f707fa9eb9fdf", "start": "2026-10-25T01:58:39.356028-07:00", "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/target"}, "cohort": "ng1-store", "failed": 0, "passed": 30, "source": "6bba08b73addab09c6fffd8fa75f707fa9eb9fdf", "tracked_clean": true}
+{"cohort": "ng1-store", "elapsed_s": 0.6458774170023389, "exit": 0, "log_sha256": "f064e72dd6743c39fa2f08462ef68e573f5383d69af185267f917b7919fb6ca9", "passed": true, "pid": 82220, "run": 1}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.37s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3552856669994071, "exit": 0, "log_sha256": "47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c", "passed": true, "pid": 82282, "run": 2}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.34s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3257837910205126, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 82336, "run": 3}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.321058041008655, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 82393, "run": 4}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3056028329883702, "exit": 0, "log_sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21", "passed": true, "pid": 82440, "run": 5}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3357716250466183, "exit": 0, "log_sha256": "08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e", "passed": true, "pid": 82490, "run": 6}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.33s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.4081554589793086, "exit": 0, "log_sha256": "a10b240b2c7b39fd546a9e3e02765e7665308df907e25636ad72c024148aded0", "passed": true, "pid": 82539, "run": 7}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.40s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.32176566700218245, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 82601, "run": 8}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.38342470896895975, "exit": 0, "log_sha256": "f064e72dd6743c39fa2f08462ef68e573f5383d69af185267f917b7919fb6ca9", "passed": true, "pid": 82651, "run": 9}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.37s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.31851533299777657, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 82764, "run": 10}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.32225087500410154, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 82819, "run": 11}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3310272080125287, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 82863, "run": 12}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3114417499746196, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 82933, "run": 13}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.329899333009962, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 82981, "run": 14}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.4675132500124164, "exit": 0, "log_sha256": "f0e4271613e1649d9dd182756a2d7aa2a80b1a723136abaed0ccc0a1a7318981", "passed": true, "pid": 83034, "run": 15}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.46s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.339707333012484, "exit": 0, "log_sha256": "08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e", "passed": true, "pid": 83105, "run": 16}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.33s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3552395000006072, "exit": 0, "log_sha256": "3d7c354866eceacfaf196d4c2971f6e4ab58d8be7338a58d30d92c62feb4c4ca", "passed": true, "pid": 83152, "run": 17}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.35s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3424140840070322, "exit": 0, "log_sha256": "47454dd9731c7e702f5fa10d04bf5a4b19170ee6bfbffed459bc88a90854d52c", "passed": true, "pid": 83196, "run": 18}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.34s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.31729204201838, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 83258, "run": 19}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3326593749807216, "exit": 0, "log_sha256": "08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e", "passed": true, "pid": 83313, "run": 20}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.33s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3183285829727538, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 83349, "run": 21}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3355306669836864, "exit": 0, "log_sha256": "08fca5618d02ec6f8cdbad151d51989ecb45c3f5ed718350977b6b3e7b6f484e", "passed": true, "pid": 83399, "run": 22}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.33s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3214986660168506, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 83448, "run": 23}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3072868339950219, "exit": 0, "log_sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21", "passed": true, "pid": 83495, "run": 24}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.31087383400881663, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 83537, "run": 25}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3136515420046635, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 83587, "run": 26}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3059886249830015, "exit": 0, "log_sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21", "passed": true, "pid": 83634, "run": 27}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.31197554199025035, "exit": 0, "log_sha256": "3e7dbb6cbfb394e02bc2be363981bfc6f784b6cc1075e7c373762c93be115245", "passed": true, "pid": 83673, "run": 28}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.31s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3011106249759905, "exit": 0, "log_sha256": "2e260b8b34c613bc5dbe99af851bd62586e3d1e1d059bb0edacb1a7dbbfa1b21", "passed": true, "pid": 83718, "run": 29}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.30s
+
+
+{"cohort": "ng1-store", "elapsed_s": 0.3214407080085948, "exit": 0, "log_sha256": "7d9f56417ebb050ff93994cf188d89d7cbcc3b830d829f1eb3d5ba9f23643f89", "passed": true, "pid": 83759, "run": 30}
+
+running 1 test
+test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.32s
+
+
+{"cohorts": 3, "driver_exit": 0, "exact_runs": 90, "failed": 0, "passed": 90, "ps_exit": 1, "ps_rows": 0, "source_summary_sha256": "5011bd914122b965ef7ee3be38d65bc3a641bcd93917e75780b1f7602d7b16fe", "test_and_build_driver_pids_checked": 94, "time": "2026-10-25T02:01:31.356015-07:00"}

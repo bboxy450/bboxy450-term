@@ -359,21 +359,21 @@ fn gui_operator_dm_replays_once_and_tasks_share_mcp_verification() {
     else {
         panic!("{first:?}")
     };
-    assert_eq!(message.envelope.seat, Ulid::nil());
-    assert_eq!(message.envelope.process_generation, 0);
-    assert_eq!(message.envelope.role.name, "operator");
-    assert_eq!(message.envelope.role.class, Class::Oracle);
-    assert_eq!(message.envelope.author, message.envelope.device);
-    message.envelope.verify_signature().unwrap();
+    assert_eq!(message.envelope().expect("signed fixture envelope").seat, Ulid::nil());
+    assert_eq!(message.envelope().expect("signed fixture envelope").process_generation, 0);
+    assert_eq!(message.envelope().expect("signed fixture envelope").role.name, "operator");
+    assert_eq!(message.envelope().expect("signed fixture envelope").role.class, Class::Oracle);
+    assert_eq!(message.envelope().expect("signed fixture envelope").author, message.envelope().expect("signed fixture envelope").device);
+    message.envelope().expect("signed fixture envelope").verify_signature().unwrap();
     let account = SqliteStore::open(&f.config.run_dir.join("account")).unwrap();
     let local_issuer = account.get("identity/local-issuer").unwrap().unwrap();
     assert_eq!(
-        message.envelope.role_grant_id,
+        message.envelope().expect("signed fixture envelope").role_grant_id,
         bbt_mux::store::digest(&local_issuer)
     );
     let local_issuer: Value = serde_json::from_slice(&local_issuer).unwrap();
     assert_eq!(
-        json!(message.envelope.role_epoch.to_string()),
+        json!(message.envelope().expect("signed fixture envelope").role_epoch.to_string()),
         local_issuer["epoch"]
     );
     assert_eq!(
@@ -411,7 +411,15 @@ fn gui_operator_dm_replays_once_and_tasks_share_mcp_verification() {
     let entry: Value =
         serde_json::from_slice(&account.get(&format!("control/op/{id}")).unwrap().unwrap())
             .unwrap();
-    assert_eq!(entry["actor"]["device_id"], json!(device));
+    // This fixture installs the device after Logic::start. Its already-minted
+    // account-local messaging principal survives that later enrolment.
+    let reference: bbt_proto::messaging::OperatorReference = serde_json::from_slice(
+        &account.get("messaging/operator-reference").unwrap().unwrap(),
+    ).unwrap();
+    assert_eq!(reference.kind, bbt_proto::messaging::OperatorReferenceKind::OperatorLocal);
+    assert_ne!(reference.id, device);
+    assert_eq!(entry["actor"]["reference"], json!(reference));
+    assert!(entry["actor"].get("device_id").is_none());
     assert_eq!(entry["tool"], "gui_messaging");
     let inbox = f.call(f.own.id, Ulid::new(), "message_list", json!({"limit":128}));
     assert!(!inbox["isError"].as_bool().unwrap(), "{inbox}");
@@ -460,11 +468,11 @@ fn gui_operator_dm_replays_once_and_tasks_share_mcp_verification() {
         );
         std::thread::sleep(Duration::from_millis(10));
     };
-    assert_eq!(row.author.kind, AuthorKind::Operator);
-    assert_eq!(row.author.id, device.to_string());
+    assert_eq!(row.author.kind, AuthorKind::OperatorLocal);
+    assert_eq!(row.author.id, reference.id.to_string());
     assert_eq!(
         row.issuer_kind,
-        bbt_mux::messaging::wire::IssuerKind::LocalDev
+        Some(bbt_mux::messaging::wire::IssuerKind::LocalDev)
     );
     assert_eq!(row.receipts.acked, 1);
     assert_eq!(
@@ -1068,16 +1076,16 @@ fn mcp_seat_mute_is_epoch_checked_signed_and_preserves_read_access() {
         .items
         .iter()
         .filter(|message| {
-            message.envelope.seat == f.peer.id
+            message.envelope().expect("signed fixture envelope").seat == f.peer.id
                 && matches!(
-                    message.envelope.body,
+                    message.envelope().expect("signed fixture envelope").body,
                     bbt_mux::messaging::wire::Body::Presence { .. }
                 )
         })
         .collect();
     assert_eq!(notices.len(), 2);
     for notice in notices {
-        notice.envelope.verify_signature().unwrap();
+        notice.envelope().expect("signed fixture envelope").verify_signature().unwrap();
     }
 
     let mut self_mute = f.target(f.oracle.id);
@@ -4310,7 +4318,7 @@ fn operator_inbox(f: &Fixture) -> Vec<String> {
     };
     page.items
         .iter()
-        .map(|item| serde_json::to_value(&item.envelope.body).unwrap()["text"].to_string())
+        .map(|item| serde_json::to_value(&item.envelope().expect("signed fixture envelope").body).unwrap()["text"].to_string())
         .collect()
 }
 fn texts(page: &Value) -> String {
@@ -5070,14 +5078,14 @@ fn d269_ctl_envelopes_carry_door_and_issuer_signed_and_framed() {
         },
     );
     // In the envelope bytes, and signed: changing or stripping either breaks the signature.
-    let wire = serde_json::to_value(&ctl.envelope).unwrap();
+    let wire = serde_json::to_value(ctl.envelope().expect("signed fixture envelope")).unwrap();
     assert_eq!(wire["door"], "ctl", "{wire}");
     assert_eq!(wire["issued_by"], "Vesper (Oracle)", "{wire}");
-    ctl.envelope.verify_signature().unwrap();
-    let mut forged = ctl.envelope.clone();
+    ctl.envelope().expect("signed fixture envelope").verify_signature().unwrap();
+    let mut forged = ctl.envelope().expect("signed fixture envelope").clone();
     forged.issued_by = Some("Mallory (Oracle)".into());
     assert!(forged.verify_signature().is_err(), "the issuer is signed");
-    let mut stripped = ctl.envelope.clone();
+    let mut stripped = ctl.envelope().expect("signed fixture envelope").clone();
     stripped.door = None;
     stripped.issued_by = None;
     assert!(stripped.verify_signature().is_err(), "the door is signed");
@@ -5115,9 +5123,9 @@ fn d269_ctl_envelopes_carry_door_and_issuer_signed_and_framed() {
     else {
         panic!("{reply:?}")
     };
-    assert_eq!(message.envelope.door, Some(Door::Gui));
-    assert_eq!(message.envelope.issued_by, None);
-    message.envelope.verify_signature().unwrap();
+    assert_eq!(message.envelope().expect("signed fixture envelope").door, Some(Door::Gui));
+    assert_eq!(message.envelope().expect("signed fixture envelope").issued_by, None);
+    message.envelope().expect("signed fixture envelope").verify_signature().unwrap();
     // A seat's own envelope never carries either.
     let seat = data(f.mutate(
         own,

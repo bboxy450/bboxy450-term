@@ -15,6 +15,8 @@ pub struct Message {
     pub author: Option<Author>,
     #[serde(rename = "issuer_kind")]
     pub issuer_kind: Option<String>,
+    pub signature: Option<String>,
+    pub signature_reason: Option<String>,
     #[serde(rename = "priority_class")]
     pub priority_class: Option<String>,
     pub priority: u8,
@@ -941,6 +943,36 @@ impl Message {
             )
             .into(),
         ];
+        if let Some(signature) = &self.signature {
+            let pending = signature == "pending";
+            let grade = if pending {
+                "pending · inferred"
+            } else {
+                signature
+            };
+            let text = self.signature_reason.as_ref().map_or_else(
+                || format!("signature: {grade}"),
+                |reason| format!("signature: {grade} · {reason}"),
+            );
+            body.push(
+                label(
+                    format!("{head_key}/signature"),
+                    text,
+                    text_style(
+                        t.tiny as f32,
+                        400,
+                        false,
+                        if pending {
+                            rgba(TOKENS.color.state.waiting)
+                        } else {
+                            ui::Color::Muted
+                        },
+                    ),
+                    true,
+                )
+                .into(),
+            );
+        }
         if let Some(reply) = &self.reply_to {
             let mut s = plain(None, [0., 0., 0., sp.s3 as f32], 0.);
             s.overrides.border = Some(ui::Border {

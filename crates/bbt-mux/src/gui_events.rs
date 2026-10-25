@@ -218,7 +218,7 @@ pub(crate) async fn project(
 ) -> Result<GuiEventEnvelope> {
     let metadata = metadata(stream, &envelope)?;
     let subject = envelope.event.subject.as_str();
-    let payload = if envelope.event.source == "messaging"
+    let payload = if messaging_source(&envelope.event.source)
         && (subject.ends_with("/message") || subject.ends_with("/receipt"))
     {
         let swarm = stream
@@ -285,12 +285,39 @@ pub(crate) async fn project(
     })
 }
 
+/// A custody hold labels the original bus source without changing its proof.
+/// Recognise only the broker's exact run-id prefix, never an arbitrary suffix.
+fn messaging_source(source: &str) -> bool {
+    source == "messaging"
+        || source.strip_prefix("ephemeral-hold/").is_some_and(|tail| {
+            tail.split_once('/')
+                .is_some_and(|(run, source)| source == "messaging" && run.parse::<Ulid>().is_ok())
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::store::events::Draft;
     use ed25519_dalek::SigningKey;
     use serde_json::json;
+
+    #[test]
+    fn held_messaging_sources_keep_the_typed_projection_without_rewriting_proof() {
+        assert!(messaging_source("messaging"));
+        assert!(messaging_source(&format!(
+            "ephemeral-hold/{}/messaging",
+            Ulid::new()
+        )));
+        for source in [
+            "other/messaging",
+            "ephemeral-hold/no-id/messaging",
+            "ephemeral-hold/messaging",
+            "messaging/extra",
+        ] {
+            assert!(!messaging_source(source));
+        }
+    }
 
     fn signed(payload: Value) -> Envelope {
         Envelope::signed(

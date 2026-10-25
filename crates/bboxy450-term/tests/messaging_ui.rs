@@ -397,7 +397,10 @@ fn projected_message(scope: SwarmId, sequence: u64) -> bbt_proto::messaging::Mes
             id: "seat-author".into(),
             name: "Actual shared author".into(),
         },
-        issuer_kind: IssuerKind::LocalDev,
+        issuer_kind: Some(IssuerKind::LocalDev),
+        signature: SignatureState::Signed,
+        signature_reason: None,
+        upgrade_of: None,
         kind: MessageKind::Decision,
         priority_class: bbt_proto::registry::Class::Worker,
         priority: 8,
@@ -405,6 +408,110 @@ fn projected_message(scope: SwarmId, sequence: u64) -> bbt_proto::messaging::Mes
         ts: 1000,
         receipts: ReceiptSummary::default(),
     }
+}
+
+#[test]
+fn pending_frame_has_no_issuer_and_a_grade_upgrade_keeps_the_message_position() {
+    use bboxy450_term::messaging::History;
+    use bbt_proto::messaging::{AuthorKind, IssuerKind, SignatureState};
+    use bbt_ui::{self as ui, components as c, modules::stream_dock::Entry};
+    use bbt_ui_model::layout::{Rect, TextMeasure, TextStyle};
+    struct Metrics;
+    impl TextMeasure for Metrics {
+        fn width(&self, value: &str, style: &TextStyle) -> f32 {
+            value.chars().count() as f32 * style.size * 0.5
+        }
+    }
+    impl c::Measure for Metrics {
+        fn font_metrics(&self, style: &TextStyle) -> [f32; 2] {
+            [style.size * 0.8, style.size * 0.2]
+        }
+    }
+    fn labels(node: &c::Layout) -> String {
+        let mut out = match &node.kind {
+            c::LayoutKind::Text { runs, .. } => runs.iter().map(|run| run.text.clone()).collect(),
+            _ => String::new(),
+        };
+        for child in &node.children {
+            out += &labels(child);
+        }
+        out
+    }
+    let scope = SwarmId::from_u128(81);
+    let mut pending = projected_message(scope, 1);
+    pending.author.kind = AuthorKind::Operator;
+    pending.issuer_kind = None;
+    pending.signature = SignatureState::Pending;
+    pending.signature_reason = Some("fixture custody unavailable".into());
+    pending.receipts.delivered = 1;
+    pending.text = "first message, retained in place".into();
+    let mut later = projected_message(scope, 2);
+    later.text = "later message".into();
+    let mut history = History::default();
+    history.select(scope);
+    history.row(&pending, Some("operator/inbox"), 100);
+    history.row(&later, Some("operator/inbox"), 100);
+    let model = bboxy450_term::model::Model::default();
+    let entries = history.entries(&model, &Default::default(), &[]);
+    let Entry::Message { data, .. } = &entries[0] else {
+        panic!("pending message");
+    };
+    assert!(data.issuer_kind.is_none());
+    assert_eq!(data.signature.as_deref(), Some("pending"));
+    let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+    let frame = data
+        .element(ctx, "pending", true, false, &Metrics)
+        .layout(Rect::new(0., 0., 900., 0.), ctx, &Metrics)
+        .unwrap();
+    let text = labels(&frame);
+    assert!(text.contains("signature: pending · inferred · fixture custody unavailable"));
+    assert!(
+        text.contains("1 delivered"),
+        "delivery and signing are separate evidence"
+    );
+    assert!(
+        !text.contains("local-dev"),
+        "pending has no placeholder issuer"
+    );
+
+    let mut signed = pending.clone();
+    signed.issuer_kind = Some(IssuerKind::LocalDev);
+    signed.signature = SignatureState::Signed;
+    signed.signature_reason = None;
+    signed.upgrade_of = Some(bbt_proto::messaging::IntentBinding {
+        id: signed.id,
+        // Display-only projection fixture; signature verification is tested in mux.
+        digest: "0".repeat(64),
+    });
+    history.row(&signed, None, 101);
+    history.row(&pending, None, 100); // An old publication cannot undo a newer grade.
+    history.row(&pending, None, 101); // Equal display clocks cannot revoke a completion.
+    history.row(&pending, None, 102); // A later stale projection cannot either.
+    let entries = history.entries(&model, &Default::default(), &[]);
+    assert!(
+        entries
+            .iter()
+            .any(|entry| matches!(entry,Entry::Note {text,..} if text=="stream cursor pending"))
+    );
+    let entries: Vec<_> = entries
+        .iter()
+        .filter(|entry| matches!(entry, Entry::Message { .. }))
+        .collect();
+    assert_eq!(entries.len(), 2, "the grade upgrade must not add a message");
+    let Entry::Message { data, .. } = &entries[0] else {
+        panic!("signed message");
+    };
+    assert_eq!(data.text, signed.text);
+    assert_eq!(data.signature.as_deref(), Some("signed"));
+    let frame = data
+        .element(ctx, "signed", true, false, &Metrics)
+        .layout(Rect::new(0., 0., 900., 0.), ctx, &Metrics)
+        .unwrap();
+    assert!(labels(&frame).contains("signature: signed"));
+    let Entry::Message { data, .. } = &entries[1] else {
+        panic!("later message");
+    };
+    assert_eq!(data.text, later.text);
 }
 #[test]
 fn receiving_does_not_mark_read_and_counts_require_complete_retained_coverage() {

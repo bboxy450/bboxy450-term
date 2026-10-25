@@ -116,7 +116,9 @@ impl SqliteStore {
             path: directory.join("object.sqlite"),
         };
         let mut db = open(&store.path)?;
-        let tx = db.transaction()?;
+        // Schema probes read before their conditional writes. Reserve the writer
+        // before that snapshot so a competing commit cannot invalidate its upgrade.
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         tx.execute_batch(
             "CREATE TABLE IF NOT EXISTS version (version INTEGER NOT NULL);
             INSERT INTO version SELECT 1 WHERE NOT EXISTS(SELECT 1 FROM version);
@@ -183,5 +185,78 @@ impl Store for SqliteStore {
         Ok(stmt
             .query_map([super::sqlint(now_ms)?], |r| r.get(0))?
             .collect::<std::result::Result<_, _>>()?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Barrier;
+
+    #[test]
+    fn concurrent_open_and_read_then_write_share_one_database_without_busy() {
+        const ROUNDS: usize = 50;
+        const CALLERS: usize = 4;
+        let root = tempfile::tempdir().unwrap();
+        let store = SqliteStore::open(root.path()).unwrap();
+        store.put("counter", &0u64.to_le_bytes()).unwrap();
+        // Start with enough configured connections to isolate schema transaction
+        // admission from first-connection WAL setup. All callers use the real pool.
+        let leases: Vec<_> = (0..CALLERS).map(|_| store.connection().unwrap()).collect();
+        drop(leases);
+        let start = Barrier::new(CALLERS);
+        let failures = std::thread::scope(|scope| {
+            let calls: Vec<_> = (0..CALLERS)
+                .map(|caller| {
+                    let start = &start;
+                    let directory = root.path();
+                    scope.spawn(move || {
+                        let mut failures = Vec::new();
+                        for round in 0..ROUNDS {
+                            start.wait();
+                            let result = (|| -> Result<()> {
+                                let reopened = SqliteStore::open(directory)?;
+                                let mut db = reopened.connection()?;
+                                let tx = db.transaction_with_behavior(
+                                    rusqlite::TransactionBehavior::Immediate,
+                                )?;
+                                let bytes: Vec<u8> = tx.query_row(
+                                    "SELECT value FROM kv WHERE key='counter'",
+                                    [],
+                                    |row| row.get(0),
+                                )?;
+                                let value = u64::from_le_bytes(
+                                    bytes.try_into().map_err(|_| invalid("invalid counter"))?,
+                                );
+                                // Let competing schema opens observe this writer;
+                                // no time-based delay or retry hides an error.
+                                std::thread::yield_now();
+                                tx.execute(
+                                    "UPDATE kv SET value=?1 WHERE key='counter'",
+                                    [value.checked_add(1).unwrap().to_le_bytes().as_slice()],
+                                )?;
+                                tx.commit()?;
+                                Ok(())
+                            })();
+                            if let Err(error) = result {
+                                failures.push(format!("caller={caller} round={round}: {error}"));
+                            }
+                        }
+                        failures
+                    })
+                })
+                .collect();
+            calls
+                .into_iter()
+                .flat_map(|call| call.join().unwrap())
+                .collect::<Vec<_>>()
+        });
+        assert!(failures.is_empty(), "concurrent store errors: {failures:?}");
+        let bytes = store.get("counter").unwrap().unwrap();
+        assert_eq!(
+            u64::from_le_bytes(bytes.try_into().unwrap()),
+            (CALLERS * ROUNDS) as u64,
+            "every successful read-then-write must be retained"
+        );
     }
 }

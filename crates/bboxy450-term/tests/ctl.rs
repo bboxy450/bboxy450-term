@@ -363,28 +363,28 @@ async fn ctl_drives_a_claude_seat_from_outside_the_app() {
     let issued: Vec<_> = page
         .items
         .iter()
-        .filter(|m| m.envelope.issued_by.as_deref() == Some(issuer))
+        .filter(|m| m.envelope().expect("signed fixture envelope").issued_by.as_deref() == Some(issuer))
         .collect();
     assert!(
         issued
             .iter()
-            .any(|m| m.envelope.kind == bbt_proto::messaging::MessageKind::Task),
+            .any(|m| m.envelope().expect("signed fixture envelope").kind == bbt_proto::messaging::MessageKind::Task),
         "the Delegate message names its issuer: {:?}",
         page.items
             .iter()
-            .map(|m| (&m.envelope.kind, &m.envelope.issued_by))
+            .map(|m| (&m.envelope().expect("signed fixture envelope").kind, &m.envelope().expect("signed fixture envelope").issued_by))
             .collect::<Vec<_>>()
     );
     assert!(
         issued
             .iter()
-            .any(|m| m.envelope.body.text() == Some(&format!("report {task_path}"))),
+            .any(|m| m.envelope().expect("signed fixture envelope").body.text() == Some(&format!("report {task_path}"))),
         "the DM names its issuer"
     );
     assert!(
         issued
             .iter()
-            .all(|m| m.envelope.door == Some(bbt_proto::messaging::Door::Ctl))
+            .all(|m| m.envelope().expect("signed fixture envelope").door == Some(bbt_proto::messaging::Door::Ctl))
     );
     let report = until("the task's report in ctl reports", &log, || {
         ctl(&run, &["reports"])

@@ -602,6 +602,7 @@ pub(crate) fn authorize(doc: &Document, registry: &Registry, actor: &Actor) -> C
         return Err("task swarm is ambiguous".into());
     }
     let swarm = match actor {
+        Actor::OperatorLocal { .. } => return Err("task authority requires signing custody".into()),
         Actor::Seat(actor) => actor.swarm_id,
         Actor::Operator { .. } => {
             registry
@@ -932,6 +933,10 @@ fn wake_id(op: Ulid, recipient: Recipient, event: &str) -> Ulid {
         Recipient::Operator(device) => {
             hash.update(b"operator:");
             hash.update(device.to_bytes());
+        }
+        Recipient::OperatorLocal(reference) => {
+            hash.update(b"operator-local:");
+            hash.update(reference.to_bytes());
         }
     }
     hash.update(event.as_bytes());

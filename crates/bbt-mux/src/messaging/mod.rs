@@ -4,6 +4,7 @@
 pub mod api;
 pub mod keys;
 pub mod ledger;
+pub mod pending;
 pub mod service;
 pub mod tree;
 pub mod wire;

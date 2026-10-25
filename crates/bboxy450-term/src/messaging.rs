@@ -150,20 +150,29 @@ pub fn message_view(
         author: Some(Author {
             kind: match row.author.kind {
                 wire::AuthorKind::Seat => "seat",
-                wire::AuthorKind::Operator => "operator",
+                wire::AuthorKind::Operator | wire::AuthorKind::OperatorLocal => "operator",
                 wire::AuthorKind::Observer => "observer",
             }
             .into(),
             id: row.author.id.clone(),
             name: row.author.name.clone(),
         }),
-        issuer_kind: Some(
-            match row.issuer_kind {
+        issuer_kind: row.issuer_kind.map(|kind| {
+            match kind {
                 wire::IssuerKind::LocalDev => "local-dev",
                 wire::IssuerKind::GpgRoot => "gpg-root",
             }
-            .into(),
-        ),
+            .into()
+        }),
+        signature: (row.signature == wire::SignatureState::Pending || row.upgrade_of.is_some())
+            .then_some(
+                match row.signature {
+                    wire::SignatureState::Signed => "signed",
+                    wire::SignatureState::Pending => "pending",
+                }
+                .into(),
+            ),
+        signature_reason: row.signature_reason.clone(),
         priority_class: Some(
             match row.priority_class {
                 bbt_proto::registry::Class::Oracle => "oracle",
@@ -187,7 +196,11 @@ pub fn message_view(
         role,
         // v0.1 has one operator per account; other rows' receipt aggregates are
         // not displayed as the operator's own delivery evidence.
-        receipts: (row.author.kind == wire::AuthorKind::Operator).then_some(Receipts {
+        receipts: matches!(
+            row.author.kind,
+            wire::AuthorKind::Operator | wire::AuthorKind::OperatorLocal
+        )
+        .then_some(Receipts {
             delivered: row.receipts.delivered,
             acked: row.receipts.acked,
             held: row.receipts.held,

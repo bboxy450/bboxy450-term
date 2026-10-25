@@ -226,12 +226,12 @@ struct GuiStreamPoll {
     undeliverable: Vec<GuiUndeliverable>,
 }
 
-/// One active drain of the device's durable consumer. The token is in-process
+/// One active drain of the local operator's durable consumer. The token is in-process
 /// attachment state, never a second identity or a caller-supplied principal.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct GuiLease {
     pub consumer: String,
-    pub device: Ulid,
+    pub reference: Ulid,
     token: Ulid,
 }
 
@@ -753,7 +753,7 @@ impl Stream {
     }
     fn ack(&mut self, id: &str, sequence: u64) -> Result<()> {
         let mut db = sqlite::open(&self.log.path)?;
-        let tx = db.transaction()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         if tx.execute(
             "DELETE FROM pending WHERE consumer=?1 AND seq=?2 AND deliveries>0",
             params![id, sqlint(sequence)?],
@@ -1122,7 +1122,7 @@ impl Broker {
         }
         let lease = GuiLease {
             consumer: name,
-            device,
+            reference: device,
             token: Ulid::new(),
         };
         self.gui_attachments.insert(
@@ -1137,7 +1137,7 @@ impl Broker {
 
     fn gui_attachment(&self, lease: &GuiLease) -> Result<&GuiAttachment> {
         self.gui_attachments
-            .get(&lease.device)
+            .get(&lease.reference)
             .filter(|active| active.lease == *lease)
             .ok_or_else(|| invalid("GuiConsumerDetached: stale GUI attachment"))
     }
@@ -1149,20 +1149,20 @@ impl Broker {
         if self.consumers[&lease.consumer].filter == filters {
             return Ok(lease.clone());
         }
-        let old = self.gui_attachments.remove(&lease.device).unwrap();
-        match self.gui_attach(lease.device, filters) {
+        let old = self.gui_attachments.remove(&lease.reference).unwrap();
+        match self.gui_attach(lease.reference, filters) {
             Ok(next) => Ok(next),
             Err(error) => {
-                self.gui_attachments.insert(lease.device, old);
+                self.gui_attachments.insert(lease.reference, old);
                 Err(error)
             }
         }
     }
 
     fn gui_detach(&mut self, lease: &GuiLease) -> Result<()> {
-        if self.gui_attachments.contains_key(&lease.device) {
+        if self.gui_attachments.contains_key(&lease.reference) {
             self.gui_attachment(lease)?;
-            self.gui_attachments.remove(&lease.device);
+            self.gui_attachments.remove(&lease.reference);
         }
         Ok(())
     }
@@ -1214,7 +1214,7 @@ impl Broker {
             result.extend(batch.deliveries);
             undeliverable.extend(batch.undeliverable);
             self.gui_attachments
-                .get_mut(&lease.device)
+                .get_mut(&lease.reference)
                 .unwrap()
                 .last_stream = Some(name);
         }
@@ -1524,7 +1524,7 @@ impl Broker {
     pub fn unsubscribe(&mut self, id: &str) -> Result<()> {
         for stream in self.streams.values_mut() {
             let mut db = sqlite::open(&stream.log.path)?;
-            let tx = db.transaction()?;
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
             tx.execute("DELETE FROM pending WHERE consumer=?1", [id])?;
             tx.execute("DELETE FROM consumers WHERE name=?1", [id])?;
             tx.commit()?;
@@ -1588,6 +1588,14 @@ enum Command {
 #[derive(Clone)]
 pub struct BusHandle {
     tx: mpsc::Sender<Command>,
+    #[cfg(test)]
+    pub(crate) gui_read_faults: std::sync::Arc<GuiReadFaults>,
+}
+#[cfg(test)]
+#[derive(Default)]
+pub(crate) struct GuiReadFaults {
+    pub(crate) poll: std::sync::atomic::AtomicI32,
+    pub(crate) cursor: std::sync::atomic::AtomicI32,
 }
 impl BusHandle {
     /// Uses the R1 handle. No runtime is created or blocked by this constructor.
@@ -1673,7 +1681,11 @@ impl BusHandle {
                 }
             }
         });
-        Ok(Self { tx })
+        Ok(Self {
+            tx,
+            #[cfg(test)]
+            gui_read_faults: Default::default(),
+        })
     }
     pub fn try_publish(
         &self,
@@ -1764,6 +1776,8 @@ impl BusHandle {
         limit: usize,
         bytes: usize,
     ) -> Result<Vec<Delivery>> {
+        #[cfg(test)]
+        self.gui_read_fault(false)?;
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::GuiPoll(lease.clone(), limit, bytes, tx))
@@ -1793,12 +1807,29 @@ impl BusHandle {
         rx.await.map_err(|_| invalid("GUI event router stopped"))?
     }
     pub(crate) async fn gui_cursor(&self, lease: &GuiLease, stream: &str) -> Result<GuiCursor> {
+        #[cfg(test)]
+        self.gui_read_fault(true)?;
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Command::GuiCursor(lease.clone(), stream.into(), tx))
             .await
             .map_err(|_| invalid("GUI event router stopped"))?;
         rx.await.map_err(|_| invalid("GUI event router stopped"))?
+    }
+    #[cfg(test)]
+    fn gui_read_fault(&self, cursor: bool) -> Result<()> {
+        let fault = if cursor {
+            &self.gui_read_faults.cursor
+        } else {
+            &self.gui_read_faults.poll
+        };
+        let code = fault.swap(0, std::sync::atomic::Ordering::SeqCst);
+        if code != 0 {
+            return Err(
+                rusqlite::Error::SqliteFailure(rusqlite::ffi::Error::new(code), None).into(),
+            );
+        }
+        Ok(())
     }
     pub(crate) async fn gui_read(
         &self,
