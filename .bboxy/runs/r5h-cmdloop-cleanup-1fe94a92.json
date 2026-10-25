@@ -1,0 +1,43 @@
+{
+  "authorization": "Oracle eed22c4f gallery-retirement rule; merged work only, all four source revisions are origin/main ancestors; lsof +D before removal found no open handles (exit 1, no output)",
+  "created": "2026-10-25T04:14:46.183739+00:00",
+  "status": "complete",
+  "galleries": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-parity-51c3cce",
+      "revision": "51c3cce870306c936a29a0862c94b51e2461ae4f",
+      "report_sha256": "e880b88119ceaa9bc041f8b71a49a6e56ab6dc7e1fb0725f8f1e2b66e54d8695",
+      "capture_sha256": "5ac43e510b9d2cbd56cb0dd69f172a8b2e1de36e830cd23d372ee523d7aa8c8f",
+      "png_count": 12084
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/records-parity-18b14420",
+      "revision": "18b144204c939d81f09318f603b1906f879c79af",
+      "report_sha256": "028b6924fa59c28bf3e709fc11fd5e6772980d393eda13fa80e6dc7133cf7e77",
+      "capture_sha256": "4bf6580ef2eb9fc026b91fc986e01e952ba022974cb7d754645686b4b6d8785a",
+      "png_count": 12084
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d",
+      "revision": "4c7e10d2225c9f538f1d843dc51ffbb633c22280",
+      "report_sha256": "aaf9c291eb7a96f47684ff88e50c1731f0b7dbe40698dc992473a7540cc1d8a7",
+      "capture_sha256": "e9edbe2a95e8ac8dfb13ec0ef6365c4af20481599e4f7f824c449fdf5775a71e",
+      "png_count": 12084
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-parity-deb5e2a0",
+      "revision": "deb5e2a0e8384331aa8cd045319aafbdfd6e0e1d",
+      "report_sha256": "a81d35d750807fda3955e61ebd52c56b4841cc86fb4b16c979f06b34da9873a0",
+      "capture_sha256": "ec67757f10d565329d345ed86ae55de25a550e835a288fdee975a9f082862738",
+      "png_count": 13108
+    }
+  ],
+  "manifest": "/Users/feral/mydev/bboxy450-term-exec6/target/retired-evidence-20261024-r5h/retired-pngs.jsonl",
+  "manifest_sha256": "ad432ba61060206f12184d31f3cfd9a80a2c55a1ed726e6ee9bc6ee798f772cb",
+  "png_files": 49360,
+  "bytes": 1537298870,
+  "allocated_bytes_unlinked": 1642573824,
+  "disk_free_before": 38336933888,
+  "kept": "Every non-PNG file, including report.json/capture/manifests/logs; named T7 and all three Settings/Graph hosting baselines untouched",
+  "disk_free_after": 39841366016
+}

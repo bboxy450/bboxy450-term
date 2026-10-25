@@ -1,0 +1,289 @@
+{
+  "created": "2026-10-25T04:44:26.097914+00:00",
+  "source": "1fe94a92560461d2ec97c060080cda8b222c877a",
+  "branch": "velvet-r5h-cmdloop",
+  "source_signatures": [
+    "1fe94a92560461d2ec97c060080cda8b222c877a G test(app): scope async test runtime allowance to retry fixtures",
+    "52ec0af6770437beb25edc9c45fc790e435ed674 G fix(app): retry backend commands on capacity without repainting"
+  ],
+  "source_files_sha256": {
+    "crates/bboxy450-term/src/main.rs": "520b1a241a6742895837bece74cd63dcb62a5638aea3b53389d11ca562bb8c23",
+    "crates/bboxy450-term/src/command_retry.rs": "97741abb337f26dd600aa998d55e9178987d66b4d15a5e9620d2070ea9dd8ad0"
+  },
+  "gate": {
+    "source": "1fe94a92560461d2ec97c060080cda8b222c877a",
+    "pid": 44260,
+    "worktree": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-ci-source-1fe94a925604",
+    "target": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-ci-build-1fe94a925604",
+    "log": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-proof/ci-1fe94a925604-1.log",
+    "cache_seed": {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-dev",
+      "source": "1fe94a92560461d2ec97c060080cda8b222c877a",
+      "method": "Moved inactive own preflight cache into this exclusive gate target; no dev cache retained, normal Cargo source fingerprints"
+    },
+    "attempt": 1,
+    "disk_free_before": 38719311872,
+    "exit": 0,
+    "elapsed_s": 1829.2639603330172,
+    "cleanup": {
+      "retained_binary": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-proof/bboxy450-term-gated-1fe94a925604",
+      "retained_binary_sha256": "399897653615c323a78e1af13bc0bc0a0fe981c4f11925ef2ab2a04c419ebb72",
+      "target_allocated_bytes_removed": 4014735360,
+      "worktree_remove_exit": 0
+    },
+    "disk_free_after": 47099637760
+  },
+  "committed_ci_log": "r5h-cmdloop-ci-1fe94a92.log",
+  "ci_log_sha256": "5e1f8779a2da80f9e71f52946f8c57f569706f8e713e93f629a5b884d5c1a9ba",
+  "ci_assertion_lines": {
+    "smoke": [
+      [
+        3349,
+        "idle passed: frames=0 callbacks=0 seconds=10.005 windows=0 mode=headless"
+      ]
+    ],
+    "final": [
+      [
+        3432,
+        "invariants: 23 checks, 0 failures, 9 slow checks skipped"
+      ],
+      [
+        3433,
+        "ci-local: all gates passed"
+      ]
+    ]
+  },
+  "preflight_workspace_counts": {
+    "passed": 1339,
+    "failed": 0,
+    "ignored": 29
+  },
+  "checks": [
+    {
+      "name": "reads-before",
+      "exit": 101,
+      "elapsed_s": 691.1325334170251,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--bin",
+        "bboxy450-term",
+        "no_sender_model_retains_read_demand_without_undeliverable_commands",
+        "--",
+        "--nocapture"
+      ],
+      "base_head_at_start": "aa3bc5e016b5e65c0b9b1c885e47ce6a3e43b99b",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-proof/reads-before.log",
+      "log_sha256": "1f16a414fe261f05184ce72437f59ea5e5a7d633a85cfdf2c4cc863ed4d3af06"
+    },
+    {
+      "name": "focused-after",
+      "exit": 101,
+      "elapsed_s": 22.58680158399511,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--bin",
+        "bboxy450-term",
+        "--",
+        "--nocapture"
+      ],
+      "base_head_at_start": "aa3bc5e016b5e65c0b9b1c885e47ce6a3e43b99b",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-proof/focused-after.log",
+      "log_sha256": "cc6122d5e8c83a7da6e8e8d8b0913a147d7d094e39a50e88477f88607e507073"
+    },
+    {
+      "name": "build-workspace",
+      "exit": 0,
+      "elapsed_s": 273.8441434169654,
+      "command": [
+        "cargo",
+        "build",
+        "--workspace",
+        "--locked"
+      ],
+      "base_head_at_start": "71016b4b2ccabed001aa40c70a9fd6a4333b717f",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-proof/build-workspace.log",
+      "log_sha256": "1378f66357f28640dc242344796753bc5bf50783d26a7be82e650434ca2785d2"
+    },
+    {
+      "name": "preflight-workspace",
+      "exit": 0,
+      "elapsed_s": 1475.2319630410057,
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "base_head_at_start": "2ade6b3459025c2d597e93d17e064d19e267b75b",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-proof/preflight-workspace.log",
+      "log_sha256": "f92fe0d49c541a4c31b1dce1028ed4692b06c51d69263080cb86ab0e8f45fe0c"
+    },
+    {
+      "name": "preflight-clippy",
+      "exit": 101,
+      "elapsed_s": 113.23944212502101,
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "base_head_at_start": "2ade6b3459025c2d597e93d17e064d19e267b75b",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-proof/preflight-clippy.log",
+      "log_sha256": "4b2bf85a45be214756d8e8ccc60e2df37e710f6fe5dd48d715cad083268a973f"
+    },
+    {
+      "name": "preflight-clippy-after",
+      "exit": 0,
+      "elapsed_s": 37.41328966600122,
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "base_head_at_start": "622fd3c9c303c0d612407fd2f017def51be937e3",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-proof/preflight-clippy-after.log",
+      "log_sha256": "497d8d97cd0839cb3ee8f9a719cffcfb18a151772887d45279a03e2a6b05fc99"
+    },
+    {
+      "name": "preflight-invariants",
+      "exit": 0,
+      "elapsed_s": 464.7525855830172,
+      "command": [
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "base_head_at_start": "622fd3c9c303c0d612407fd2f017def51be937e3",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-proof/preflight-invariants.log",
+      "log_sha256": "0f41672c1f63409280052ff904e5327d14822f74187c2146993320f29d011db0"
+    },
+    {
+      "name": "retry-final",
+      "exit": 0,
+      "elapsed_s": 41.27234445803333,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--bin",
+        "bboxy450-term",
+        "command_retry::tests",
+        "--",
+        "--nocapture"
+      ],
+      "base_head_at_start": "1fe94a92560461d2ec97c060080cda8b222c877a",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-proof/retry-final.log",
+      "log_sha256": "10027e11c593faeb67d01fac45dbcf3e15fdadd431e7eea78bfb6a8aa49747de"
+    },
+    {
+      "name": "reads-final",
+      "exit": 0,
+      "elapsed_s": 1.2528964160010219,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--bin",
+        "bboxy450-term",
+        "no_sender_model_retains_read_demand_without_undeliverable_commands",
+        "--",
+        "--nocapture"
+      ],
+      "base_head_at_start": "1fe94a92560461d2ec97c060080cda8b222c877a",
+      "log": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-proof/reads-final.log",
+      "log_sha256": "7ab239114d31a16425de61a80ce9473a221963daa290d182097a554b086972c0"
+    }
+  ],
+  "before_fix": {
+    "base": "aa3bc5e0",
+    "state": "regression-only extraction/test patch, uncommitted development run; original unconditional read admission retained",
+    "patch": "r5h-cmdloop-red-1fe94a92.patch",
+    "patch_sha256": "272318e0db62e1f61e513de2d722503fd8e6e8e9e485cf2ce26b20fa9f737c81",
+    "main_sha256_file": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-proof/reads-before-source.sha256",
+    "expected_exit": 101,
+    "raw_patch_local_path": "/Users/feral/mydev/bboxy450-term-exec6/target/r5h-cmdloop-proof/reads-before.patch",
+    "raw_patch_sha256": "33193db696894d300974e18580878b68b18b0d19a1cfff59db84616c86cd6d1a",
+    "patch_reconstructed_main_sha256": "2411dcc61419de8d361982c37c311e6bca2754ca20a96ef88e813fe99202d23a",
+    "artifact_check": "Initial git diff --check exit2 on a raw unified diff blank context line. Normalized only that context encoding; git apply --check/apply reconstruct the original failing main.rs byte-for-byte; final check0."
+  },
+  "initial_setup_failure": "focused-after had 106 pass / 3 missing-app-binary preconditions; workspace build then workspace 1339/0 resolved all three",
+  "initial_lint_failure": "preflight-clippy exit101: tokio test macro Runtime::block_on, fixed with allowances scoped to those three test functions only; production unchanged",
+  "acceptance": {
+    "no_sender": "120 fixture-model read-admission cycles retain controller demand without creating commands; attaching a sender yields the original seven reads",
+    "busy": "real capacity-one channel retains and delivers input ids, bytes and generation boundaries in FIFO order; one coalesced capacity reservation, stale-event release and closed-receiver wake tested",
+    "redraw": "queue/Busy delivery use CommandsReady rather than repaint; redraw tail no longer uses pending_commands",
+    "settle": "stall.rs byte-identical to base and settle predicate unchanged; no budget/tolerance adjustment",
+    "unattended": "clean normal CI memory custody and headless smoke0, orderly children reaped",
+    "native_967": "not run in this cut; Rook owns the single post-merge frame attempt, no performance/settle claim"
+  },
+  "cleanup": {
+    "authorization": "Oracle eed22c4f gallery-retirement rule; merged work only, all four source revisions are origin/main ancestors; lsof +D before removal found no open handles (exit 1, no output)",
+    "created": "2026-10-25T04:14:46.183739+00:00",
+    "status": "complete",
+    "galleries": [
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/f4b-parity-51c3cce",
+        "revision": "51c3cce870306c936a29a0862c94b51e2461ae4f",
+        "report_sha256": "e880b88119ceaa9bc041f8b71a49a6e56ab6dc7e1fb0725f8f1e2b66e54d8695",
+        "capture_sha256": "5ac43e510b9d2cbd56cb0dd69f172a8b2e1de36e830cd23d372ee523d7aa8c8f",
+        "png_count": 12084
+      },
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/records-parity-18b14420",
+        "revision": "18b144204c939d81f09318f603b1906f879c79af",
+        "report_sha256": "028b6924fa59c28bf3e709fc11fd5e6772980d393eda13fa80e6dc7133cf7e77",
+        "capture_sha256": "4bf6580ef2eb9fc026b91fc986e01e952ba022974cb7d754645686b4b6d8785a",
+        "png_count": 12084
+      },
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/seat-wait-parity-4c7e10d",
+        "revision": "4c7e10d2225c9f538f1d843dc51ffbb633c22280",
+        "report_sha256": "aaf9c291eb7a96f47684ff88e50c1731f0b7dbe40698dc992473a7540cc1d8a7",
+        "capture_sha256": "e9edbe2a95e8ac8dfb13ec0ef6365c4af20481599e4f7f824c449fdf5775a71e",
+        "png_count": 12084
+      },
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec6/target/advisory-parity-deb5e2a0",
+        "revision": "deb5e2a0e8384331aa8cd045319aafbdfd6e0e1d",
+        "report_sha256": "a81d35d750807fda3955e61ebd52c56b4841cc86fb4b16c979f06b34da9873a0",
+        "capture_sha256": "ec67757f10d565329d345ed86ae55de25a550e835a288fdee975a9f082862738",
+        "png_count": 13108
+      }
+    ],
+    "manifest": "/Users/feral/mydev/bboxy450-term-exec6/target/retired-evidence-20261024-r5h/retired-pngs.jsonl",
+    "manifest_sha256": "ad432ba61060206f12184d31f3cfd9a80a2c55a1ed726e6ee9bc6ee798f772cb",
+    "png_files": 49360,
+    "bytes": 1537298870,
+    "allocated_bytes_unlinked": 1642573824,
+    "disk_free_before": 38336933888,
+    "kept": "Every non-PNG file, including report.json/capture/manifests/logs; named T7 and all three Settings/Graph hosting baselines untouched",
+    "disk_free_after": 39841366016
+  },
+  "not_run": [
+    "parity (normal gate explicitly briefed; renderer, layout and lab untouched)",
+    "ignored native Keychain tests",
+    "967-seat attempt (assigned to Rook)"
+  ],
+  "main_at_handoff": "6ff7f975393bb10b64ea0615f7d9715cfa5efbef"
+}

@@ -1,0 +1,131 @@
+diff --git a/crates/bboxy450-term/src/main.rs b/crates/bboxy450-term/src/main.rs
+index fff6f7f2..f156820e 100644
+--- a/crates/bboxy450-term/src/main.rs
++++ b/crates/bboxy450-term/src/main.rs
+@@ -1802,17 +1802,26 @@ impl App {
+         self.events_seen = Some(model.events.clone());
+     }
+     fn conversation_reads(&mut self, viewed: bool) {
+-        if viewed && let Some(action) = self.message_history.viewed_all() {
+-            self.operation_backlog.push_back(action.into());
+-        }
+-        self.operation_backlog.extend(
+-            self.message_history
+-                .actions()
+-                .into_iter()
+-                .map(live::UiMsg::from),
++        admit_reads(
++            self.live_commands.as_deref(),
++            &mut self.operation_backlog,
++            || {
++                let mut reads = Vec::new();
++                if viewed && let Some(action) = self.message_history.viewed_all() {
++                    reads.push(action.into());
++                }
++                reads.extend(self.message_history.actions().into_iter().map(live::UiMsg::from));
++                reads.extend(self.message_history.commands());
++                reads
++            },
++        );
++    }
++    fn task_reads(&mut self) {
++        admit_reads(
++            self.live_commands.as_deref(),
++            &mut self.operation_backlog,
++            || self.task_records.commands(),
+         );
+-        self.operation_backlog
+-            .extend(self.message_history.commands());
+     }
+     fn blur_reject(&mut self) {
+         self.reject_focus = false;
+@@ -1981,7 +1990,7 @@ impl App {
+                 self.conversation_reads(true);
+             }
+         }
+-        self.operation_backlog.extend(self.task_records.commands());
++        self.task_reads();
+         self.refresh_conversation();
+         if let Some(window) = &self.window {
+             window.set_ime_allowed(
+@@ -2973,7 +2982,7 @@ impl App {
+             }
+             self.composer_catalog();
+             self.conversation_reads(false);
+-            self.operation_backlog.extend(self.task_records.commands());
++            self.task_reads();
+             self.refresh_conversation();
+             for (op, outcome) in results {
+                 if let bboxy450_term::model::SpawnOutcome::Placed(seat) = &outcome {
+@@ -4062,7 +4071,7 @@ impl ApplicationHandler<UiEvent> for App {
+                 if dy < 0. {
+                     self.message_history.more();
+                     self.task_records.more_tasks();
+-                    self.operation_backlog.extend(self.task_records.commands());
++                    self.task_reads();
+                 }
+                 self.conversation_reads(true);
+                 self.request_redraw();
+@@ -4691,6 +4700,13 @@ fn queue_pending(
+     pending.push_back(message);
+     Ok(())
+ }
++fn admit_reads(
++    _sender: Option<&tokio::sync::mpsc::Sender<live::UiMsg>>,
++    backlog: &mut VecDeque<live::UiMsg>,
++    reads: impl FnOnce() -> Vec<live::UiMsg>,
++) {
++    backlog.extend(reads());
++}
+ fn flush_pending(
+     sender: &tokio::sync::mpsc::Sender<live::UiMsg>,
+     pending: &mut VecDeque<live::UiMsg>,
+@@ -5529,6 +5545,48 @@ mod capture_step_tests {
+ mod verification_tests {
+     use super::*;
+
++    #[test]
++    fn no_sender_model_retains_read_demand_without_undeliverable_commands() {
++        let scope = bbt_proto::SwarmId::from_u128(42);
++        let model = bboxy450_term::model::Model {
++            ui: UiModel::new(
++                vec![bbt_ui_model::Swarm::new(scope, "fixture", vec![])],
++                vec![],
++            )
++            .unwrap(),
++            ..Default::default()
++        };
++        let mut history = messaging::History::default();
++        let mut records = messaging::Records::default();
++        let mut backlog = VecDeque::new();
++        for _ in 0..120 {
++            let scope = model.ui.window.sidebar.swarms[0].id;
++            history.select(scope);
++            records.select(scope);
++            admit_reads(None, &mut backlog, || {
++                let mut reads: Vec<_> = history.actions().into_iter().map(live::UiMsg::from).collect();
++                reads.extend(history.commands());
++                reads.extend(records.commands());
++                reads
++            });
++            assert!(backlog.is_empty(), "a fixture without IO has no deliverable reads");
++        }
++        // Admission resumes from the original demand, without a fake pending
++        // operation/cursor left behind by the sender-less publications.
++        let (sender, _receiver) = tokio::sync::mpsc::channel(1);
++        admit_reads(Some(&sender), &mut backlog, || {
++            let mut reads: Vec<_> = history.actions().into_iter().map(live::UiMsg::from).collect();
++            reads.extend(history.commands());
++            reads.extend(records.commands());
++            reads
++        });
++        assert_eq!(backlog.len(), 7); // cursor, page, message list, four record reads
++        assert!(matches!(backlog[0], live::UiMsg::EventCursor { .. }));
++        assert!(matches!(backlog[1], live::UiMsg::EventPage { after: 0, .. }));
++        assert_eq!(history.commands().len(), 0);
++        assert_eq!(records.commands().len(), 0);
++    }
++
+     #[test]
+     fn verification_grid_validation_and_window_fit_use_real_cell_bounds() {
+         assert_eq!(parse_verify_grid("80x24").unwrap(), (80, 24));

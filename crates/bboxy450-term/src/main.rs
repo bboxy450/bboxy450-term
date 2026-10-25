@@ -2,6 +2,7 @@
 mod assets;
 mod budget;
 mod capture;
+mod command_retry;
 mod display_link;
 mod e2e_checklist;
 mod gpu;
@@ -52,6 +53,7 @@ use winit::{
 #[derive(Debug)]
 pub enum UiEvent {
     Wake,
+    CommandsReady(command_retry::Ready),
     Settings(Arc<preferences::Snapshot>),
     DemoFinished,
     BeginIdle,
@@ -1269,6 +1271,7 @@ struct App {
     live_state: Option<Arc<bboxy450_term::model::Model>>,
     live_commands: Option<live::CommandSender>,
     pending_commands: VecDeque<live::UiMsg>,
+    command_retry: command_retry::Retry,
     admission_refusals: AdmissionRefusals,
     watched: Vec<(SeatId, View)>,
     pane_sizes: BTreeMap<SeatId, (u64, u16, u16)>,
@@ -1802,17 +1805,37 @@ impl App {
         self.events_seen = Some(model.events.clone());
     }
     fn conversation_reads(&mut self, viewed: bool) {
-        if viewed && let Some(action) = self.message_history.viewed_all() {
-            self.operation_backlog.push_back(action.into());
+        if self.closing || self.backend_lost {
+            return;
         }
-        self.operation_backlog.extend(
-            self.message_history
-                .actions()
-                .into_iter()
-                .map(live::UiMsg::from),
+        admit_reads(
+            self.live_commands.as_deref(),
+            &mut self.operation_backlog,
+            || {
+                let mut reads = Vec::new();
+                if viewed && let Some(action) = self.message_history.viewed_all() {
+                    reads.push(action.into());
+                }
+                reads.extend(
+                    self.message_history
+                        .actions()
+                        .into_iter()
+                        .map(live::UiMsg::from),
+                );
+                reads.extend(self.message_history.commands());
+                reads
+            },
         );
-        self.operation_backlog
-            .extend(self.message_history.commands());
+    }
+    fn task_reads(&mut self) {
+        if self.closing || self.backend_lost {
+            return;
+        }
+        admit_reads(
+            self.live_commands.as_deref(),
+            &mut self.operation_backlog,
+            || self.task_records.commands(),
+        );
     }
     fn blur_reject(&mut self) {
         self.reject_focus = false;
@@ -1981,7 +2004,7 @@ impl App {
                 self.conversation_reads(true);
             }
         }
-        self.operation_backlog.extend(self.task_records.commands());
+        self.task_reads();
         self.refresh_conversation();
         if let Some(window) = &self.window {
             window.set_ime_allowed(
@@ -2191,7 +2214,7 @@ impl App {
         }));
     }
     fn flush_operations(&mut self) {
-        if self.backend_lost || self.closing {
+        if self.backend_lost || self.closing || self.live_commands.is_none() {
             return;
         }
         while self
@@ -2509,7 +2532,7 @@ impl App {
             self.admission_refusals.record(kind);
             self.logger.write(self.admission_refusals.report());
         }
-        self.request_redraw();
+        self.flush_commands();
     }
     fn scroll_pane(&mut self, seat: SeatId, request: ScrollRequest) {
         let Some(generation) = self
@@ -2598,14 +2621,57 @@ impl App {
         }
     }
     fn flush_commands(&mut self) {
-        self.flush_operations();
-        if let Some(sender) = &self.live_commands {
-            if flush_pending(sender, &mut self.pending_commands, self.backend_lost).is_err() {
-                self.backend_lost = true;
-                self.scene.backend_lost();
-            } else if !self.backend_lost && !self.pending_commands.is_empty() {
-                self.request_redraw();
+        if self.closing || self.backend_lost || self.live_commands.is_none() {
+            self.command_retry.cancel();
+            return;
+        }
+        // Refill bounded operation batches in this delivery turn. Once Busy,
+        // channel capacity, rather than a rendered frame, resumes delivery.
+        loop {
+            self.flush_operations();
+            let sender = self.live_commands.as_ref().unwrap();
+            if flush_pending(sender, &mut self.pending_commands, false).is_err() {
+                self.command_delivery_lost();
+                return;
             }
+            if !self.pending_commands.is_empty() {
+                let proxy = self.proxy.clone();
+                self.command_retry.arm(sender, move |ready| {
+                    let _ = proxy.send_event(UiEvent::CommandsReady(ready));
+                });
+                return;
+            }
+            if self.operation_backlog.is_empty() {
+                self.command_retry.cancel();
+                return;
+            }
+        }
+    }
+    fn commands_ready(&mut self, ready: command_retry::Ready) {
+        let Some(permit) = self.command_retry.accept(ready) else {
+            return;
+        };
+        if self.closing || self.backend_lost || self.live_commands.is_none() {
+            return;
+        }
+        self.flush_operations();
+        match permit {
+            Ok(permit) => {
+                if let Some(message) = self.pending_commands.pop_front() {
+                    permit.send(message);
+                }
+            }
+            Err(()) => self.command_delivery_lost(),
+        }
+        self.flush_commands();
+    }
+    fn command_delivery_lost(&mut self) {
+        self.command_retry.cancel();
+        if !self.backend_lost {
+            self.backend_lost = true;
+            self.scene.backend_lost();
+            // A changed backend status is paint work; retained commands aren't.
+            self.request_redraw();
         }
     }
     fn watch_panes(&mut self, bounds: &[(SeatId, Rect)], scale: f32) {
@@ -2645,6 +2711,7 @@ impl App {
             return;
         }
         self.closing = true;
+        self.command_retry.cancel();
         self.pending_commands.clear();
         self.logger.write("app close requested; stopping IO owner");
         if let Some(stall) = &mut self.stall {
@@ -2973,7 +3040,7 @@ impl App {
             }
             self.composer_catalog();
             self.conversation_reads(false);
-            self.operation_backlog.extend(self.task_records.commands());
+            self.task_reads();
             self.refresh_conversation();
             for (op, outcome) in results {
                 if let bboxy450_term::model::SpawnOutcome::Placed(seat) = &outcome {
@@ -3435,7 +3502,6 @@ impl App {
             }
         }
         if (self.animate && fifo)
-            || (!self.backend_lost && !self.pending_commands.is_empty())
             || !self.inbox.messages.is_empty()
             || !self.inbox.output.is_empty()
         {
@@ -3469,6 +3535,7 @@ impl ApplicationHandler<UiEvent> for App {
     }
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: UiEvent) {
         match event {
+            UiEvent::CommandsReady(ready) => self.commands_ready(ready),
             UiEvent::Notification(bboxy450_desktop_notifications::Response::Clicked(id)) => {
                 self.notification_clicked(id)
             }
@@ -3815,12 +3882,15 @@ impl ApplicationHandler<UiEvent> for App {
                 self.logger
                     .write(format!("backend lost; retaining last pane frame: {reason}"));
                 self.backend_lost = true;
+                self.command_retry.cancel();
                 self.scene.backend_lost();
                 self.request_redraw();
             }
             UiEvent::BackendReady => {
                 self.backend_lost = false;
                 self.scene.backend_ready();
+                self.conversation_reads(false);
+                self.task_reads();
                 self.flush_commands();
                 self.request_redraw();
             }
@@ -4062,7 +4132,7 @@ impl ApplicationHandler<UiEvent> for App {
                 if dy < 0. {
                     self.message_history.more();
                     self.task_records.more_tasks();
-                    self.operation_backlog.extend(self.task_records.commands());
+                    self.task_reads();
                 }
                 self.conversation_reads(true);
                 self.request_redraw();
@@ -4690,6 +4760,17 @@ fn queue_pending(
     }
     pending.push_back(message);
     Ok(())
+}
+fn admit_reads(
+    sender: Option<&tokio::sync::mpsc::Sender<live::UiMsg>>,
+    backlog: &mut VecDeque<live::UiMsg>,
+    reads: impl FnOnce() -> Vec<live::UiMsg>,
+) {
+    // Calling the controllers consumes their demand and assigns pending ids.
+    // A fixture with no IO owner must leave that demand untouched.
+    if sender.is_some() {
+        backlog.extend(reads());
+    }
 }
 fn flush_pending(
     sender: &tokio::sync::mpsc::Sender<live::UiMsg>,
@@ -5362,6 +5443,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         live_state: None,
         live_commands,
         pending_commands: VecDeque::new(),
+        command_retry: Default::default(),
         admission_refusals: AdmissionRefusals::default(),
         watched: vec![],
         pane_sizes: BTreeMap::new(),
@@ -5528,6 +5610,62 @@ mod capture_step_tests {
 #[cfg(test)]
 mod verification_tests {
     use super::*;
+
+    #[test]
+    fn no_sender_model_retains_read_demand_without_undeliverable_commands() {
+        let scope = bbt_proto::SwarmId::from_u128(42);
+        let model = bboxy450_term::model::Model {
+            ui: UiModel::new(
+                vec![bbt_ui_model::Swarm::new(scope, "fixture", vec![])],
+                vec![],
+            )
+            .unwrap(),
+            ..Default::default()
+        };
+        let mut history = messaging::History::default();
+        let mut records = messaging::Records::default();
+        let mut backlog = VecDeque::new();
+        for _ in 0..120 {
+            let scope = model.ui.window.sidebar.swarms[0].id;
+            history.select(scope);
+            records.select(scope);
+            admit_reads(None, &mut backlog, || {
+                let mut reads: Vec<_> = history
+                    .actions()
+                    .into_iter()
+                    .map(live::UiMsg::from)
+                    .collect();
+                reads.extend(history.commands());
+                reads.extend(records.commands());
+                reads
+            });
+            assert!(
+                backlog.is_empty(),
+                "a fixture without IO has no deliverable reads"
+            );
+        }
+        // Admission resumes from the original demand, without a fake pending
+        // operation/cursor left behind by the sender-less publications.
+        let (sender, _receiver) = tokio::sync::mpsc::channel(1);
+        admit_reads(Some(&sender), &mut backlog, || {
+            let mut reads: Vec<_> = history
+                .actions()
+                .into_iter()
+                .map(live::UiMsg::from)
+                .collect();
+            reads.extend(history.commands());
+            reads.extend(records.commands());
+            reads
+        });
+        assert_eq!(backlog.len(), 7); // cursor, page, message list, four record reads
+        assert!(matches!(backlog[0], live::UiMsg::EventCursor { .. }));
+        assert!(matches!(
+            backlog[1],
+            live::UiMsg::EventPage { after: 0, .. }
+        ));
+        assert_eq!(history.commands().len(), 0);
+        assert_eq!(records.commands().len(), 0);
+    }
 
     #[test]
     fn verification_grid_validation_and_window_fit_use_real_cell_bounds() {
