@@ -8,10 +8,15 @@
 // the e2e record's public fields: function, number, status, last_run, run_by, result, reason, links [{ to, rel }]; tasks [{ ref, status }]
 const el = Lab.el, P = window.E2E_PROMISES, SEATS = ['seat:kestrel-voidwing', 'seat:nyx-copperwing', 'seat:rook-ashwhisker'];
 const at = i => '2026-10-24T0' + (1 + Math.floor(i / 20)) + ':' + String((i * 7) % 60).padStart(2, '0') + ':00Z';
-const rec = (p, i, status, x) => ({ function: p.id, number: 300 + i, status, ...(status === 'untested' ? {} : { last_run: at(i), run_by: SEATS[i % 3], result: status }), ...(x || {}) });
+// a pass carries coverage (#316); the fixtures' passes are full unless a state says otherwise
+const rec = (p, i, status, x) => ({ function: p.id, number: 300 + i, status, ...(status === 'untested' ? {} : { last_run: at(i), run_by: SEATS[i % 3], result: status }), ...(status === 'pass' ? { coverage: 'full' } : {}), ...(x || {}) });
 const T = n => ({ to: '[[#' + n + ']]', rel: 'tracked-by' });
 const TASKS = [{ ref: '#341', status: 'running' }, { ref: '#342', status: 'accepted' }, { ref: '#343', status: 'running' }, { ref: '#344', status: 'open' }];
 const TASKS_AMBER = [{ ref: '#341', status: 'open' }, { ref: '#342', status: 'claimed' }, { ref: '#343', status: 'running' }];
+// #316's first four partial scripts (Aster's map): each passes on a subset of its promise and names what it does not assert
+const PART = { T5: ['the app is killed and relaunched; the script kills logic, not the app'], T2: ['a 100 kB paste arrives intact; the compare is truncated'], T6: ['every harness resumes by session id; only the zsh respawn is proven'], T1: ['the seat opens within one frame'] };
+const TASKS_PART = [{ ref: '#343', status: 'running' }, { ref: '#350', status: 'open' }, { ref: '#351', status: 'claimed' }, { ref: '#352', status: 'open' }, { ref: '#353', status: 'running' }];
+const partial = (p, i, n, extra) => rec(p, i, 'pass', { coverage: 'partial', missing: PART[p.id], ...(n ? { links: [T(n)] } : {}), ...(extra || {}) });
 const BUNDLE = 'needs the bundled app: a bare cargo run posts no notification';
 const RECORDS = {
   'all untested': P.map((p, i) => rec(p, i, 'untested')),
@@ -30,8 +35,14 @@ const RECORDS = {
     return o ? rec(p, i, o[0], o[1]) : rec(p, i, 'pass');
   }),
   'all pass': P.map((p, i) => ({ P1: rec(p, i, 'manual', { reason: 'the hitch meter is judged by eye' }), I1: rec(p, i, 'manual', { reason: 'the Keychain prompt needs the operator' }) })[p.id] || rec(p, i, 'pass')),
+  // amber: the only non-green rows are tracked partials (each missing list covered by an open task) and a tracked fail
+  'partial tracked': P.map((p, i) => ({ T5: () => partial(p, i, 350), T2: () => partial(p, i, 351), T6: () => partial(p, i, 352), T1: () => partial(p, i, 353),
+    M2: () => rec(p, i, 'fail', { links: [T(343)] }), P1: () => rec(p, i, 'manual', { reason: 'the hitch meter is judged by eye' }) })[p.id]?.() || rec(p, i, 'pass')),
+  // red: T1's partial has no task, and K1 passed with no coverage stated, which reads partial with missing 'unstated'
+  'partial untracked': P.map((p, i) => ({ T5: () => partial(p, i, 350), T2: () => partial(p, i, 351), T6: () => partial(p, i, 352), T1: () => partial(p, i, 0),
+    K1: () => rec(p, i, 'pass', { coverage: undefined }) })[p.id]?.() || rec(p, i, 'pass'))
 };
-Lab.page({ title: 'e2e checklist', wide: true, note: 'The Graph tab\'s acceptance view (spec #258): the 54 promises of §1, parsed, joined to their e2e records. The band says the night at a glance: red when anything is missing, doubled, untested or a fail is untracked; amber when the only fails are tracked by open tasks; green when every promise passes (manual rows are judged by the Oracle and listed). Blocked counts as a fail. Outlined cells are what keeps it red.',
+Lab.page({ title: 'e2e checklist', wide: true, note: 'The Graph tab\'s acceptance view (spec #258): the promises of §1, parsed, joined to their e2e records. The band says the night at a glance: red when anything is missing, doubled, untested, or a fail or a partial pass is untracked; amber when the only non-green rows are tracked fails and tracked partials ("N failures tracked, M partial tracked"); green only when every promise passes in full (manual rows are judged by the Oracle and listed). A pass is a claim about the whole promise (#316): a partial one shows amber with its missing assertions, never green, and a pass with no coverage stated reads partial. Blocked counts as a fail. Outlined cells are what keeps it red.',
   states: [...Object.keys(RECORDS), 'empty catalogue', 'provider fault'],
-  render(s, body) { body.append(C.e2eChecklist({ promises: s === 'empty catalogue' ? [] : P, records: s === 'provider fault' ? RECORDS['all pass'] : RECORDS[s] || [], tasks: s === 'failures tracked' ? TASKS_AMBER : TASKS, faults: s === 'provider fault' ? ['Acceptance records unavailable: provider offline'] : [] })); } });
+  render(s, body) { body.append(C.e2eChecklist({ promises: s === 'empty catalogue' ? [] : P, records: s === 'provider fault' ? RECORDS['all pass'] : RECORDS[s] || [], tasks: s === 'failures tracked' ? TASKS_AMBER : s.startsWith('partial') ? TASKS_PART : TASKS, faults: s === 'provider fault' ? ['Acceptance records unavailable: provider offline'] : [] })); } });
 </script></body></html>

@@ -355,6 +355,9 @@
   // Three summary states and no fourth: green (every promise one usable record, none untested, zero fail), amber (the only non-pass
   // rows are tracked fails, plus manual rows), red (anything missing, doubled, untested, or a fail untracked).
   const E2E_OPEN = ['open', 'claimed', 'running', 'reported', 'blocked'], E2E_ST = ['pass', 'fail', 'blocked', 'untested', 'manual'];
+  // #316: a pass is a claim about the whole promise. coverage: full | partial (missing: the promise's assertions the script does not
+  // make); a pass with no coverage reads partial, missing 'unstated'. Display statuses add 'partial' (amber, never green).
+  const E2E_SHOW = ['pass', 'partial', 'fail', 'blocked', 'untested', 'manual'];
   const e2eRef = to => String(to).replace(/^\[\[|\]\]$/g, '');
   const e2eTasks = (r, tasks) => (r.links || []).filter(l => l.rel === 'tracked-by').map(l => { const ref = e2eRef(l.to), t = (tasks || []).find(x => x.ref === ref); return { ref, status: t ? t.status : 'unknown' }; });
   // fail closed: an empty catalogue is refused (throws), and a record whose status is not one of the five is not usable: the promise
@@ -368,38 +371,39 @@
       if (rs.length !== 1) return { ...p, status: 'untested', fault: rs.length ? 'doubled · ' + rs.length + ' records' : 'no record' };
       const r = rs[0], failing = r.status === 'fail' || r.status === 'blocked';
       if (!E2E_ST.includes(r.status)) return { ...p, ...r, status: 'untested', fault: 'invalid status · ' + r.status };
-      const tracked_by = e2eTasks(r, tasks);
-      return { ...p, ...r, failing, tracked_by, tracked: failing && tracked_by.some(t => E2E_OPEN.includes(t.status)) }; });
-    const counts = Object.fromEntries(E2E_ST.map(k => [k, rows.filter(r => r.status === k).length]));
+      const tracked_by = e2eTasks(r, tasks), open = tracked_by.some(t => E2E_OPEN.includes(t.status));
+      if (r.status === 'pass' && r.coverage !== 'full') return { ...p, ...r, status: 'partial', partial: true, missing: r.coverage === 'partial' && (r.missing || []).length ? r.missing : ['unstated'], tracked_by, tracked: open };
+      return { ...p, ...r, failing, tracked_by, tracked: failing && open }; });
+    const counts = Object.fromEntries(E2E_SHOW.map(k => [k, rows.filter(r => r.status === k).length]));
     const missing = rows.filter(r => r.fault === 'no record').map(r => r.id), doubled = rows.filter(r => r.fault && r.fault.startsWith('doubled')).map(r => r.id), invalid = rows.filter(r => r.fault && r.fault.startsWith('invalid')).map(r => r.id);
-    const untracked = rows.filter(r => r.failing && !r.tracked).map(r => r.id);
+    const untracked = rows.filter(r => r.failing && !r.tracked).map(r => r.id), partialUntracked = rows.filter(r => r.partial && !r.tracked).map(r => r.id);
     faults = faults || [];
-    const state = faults.length || missing.length || doubled.length || invalid.length || counts.untested || untracked.length ? 'red' : counts.fail + counts.blocked ? 'amber' : 'green';
-    return { state, rows, counts, missing, doubled, invalid, untracked, faults };
+    const state = faults.length || missing.length || doubled.length || invalid.length || counts.untested || untracked.length || partialUntracked.length ? 'red' : counts.fail + counts.blocked + counts.partial ? 'amber' : 'green';
+    return { state, rows, counts, missing, doubled, invalid, untracked, partialUntracked, faults };
   }
-  const E2E_MARK = { pass: checkMark, fail: crossMark, blocked: slashMark, untested: () => circleMark(0), manual: () => circleMark(.5) };
+  const E2E_MARK = { pass: checkMark, partial: () => circleMark(.5, .5), fail: crossMark, blocked: slashMark, untested: () => circleMark(0), manual: () => circleMark(.5) };   // partial: the left half, amber; manual the right half
   // e2eChecklist({ promises, records, tasks, faults }): the summary band reads from across the room (state word, the owed count, one cell per
   // promise in group order; manual rows are listed in the headline, never folded into a pass, §4); the groups below carry each promise's status, last run (UTC) and the seat that ran it
   function e2eChecklist(opts) {
     let S; try { S = e2eSummary(opts.promises, opts.records, opts.tasks, opts.faults); } catch (e) { return el('div', { class: 'e2e-err' }, el('b', {}, 'No checklist: '), e.message); }
     const c = S.counts, n = S.rows.length, faults = S.missing.length + S.doubled.length + S.invalid.length;
     const plural = (k, w) => k + ' ' + w + (k === 1 ? '' : 's');
-    const say = S.state === 'green' ? (c.manual ? [c.pass + ' pass', c.manual + ' manual'] : ['all ' + n + ' pass']) : S.state === 'amber' ? [plural(c.fail + c.blocked, 'failure') + ' tracked', c.manual ? c.manual + ' manual' : null].filter(Boolean)
-      : [S.faults.length ? plural(S.faults.length, 'fault') : null, c.untested - faults ? (c.untested - faults) + ' untested' : null, S.untracked.length ? plural(S.untracked.length, 'fail') + ' untracked' : null,
+    const say = S.state === 'green' ? (c.manual ? [c.pass + ' pass', c.manual + ' manual'] : ['all ' + n + ' pass']) : S.state === 'amber' ? [[c.fail + c.blocked ? plural(c.fail + c.blocked, 'failure') + ' tracked' : null, c.partial ? c.partial + ' partial tracked' : null].filter(Boolean).join(', '), c.manual ? c.manual + ' manual' : null].filter(Boolean)
+      : [S.faults.length ? plural(S.faults.length, 'fault') : null, c.untested - faults ? (c.untested - faults) + ' untested' : null, S.untracked.length ? plural(S.untracked.length, 'fail') + ' untracked' : null, S.partialUntracked.length ? S.partialUntracked.length + ' partial untracked' : null,
         S.missing.length ? S.missing.length + ' missing' : null, S.doubled.length ? S.doubled.length + ' doubled' : null, S.invalid.length ? S.invalid.length + ' invalid' : null].filter(Boolean);
     const runs = opts.records.filter(r => r.last_run), last = runs.length ? Math.max(...runs.map(r => Date.parse(r.last_run))) : null, seats = new Set(runs.map(r => r.run_by)).size;
     const groups = [...new Set(S.rows.map(r => r.group))];
-    const cell = r => el('i', { class: 'e2c ' + r.status + (r.failing && !r.tracked ? ' untracked' : '') + (r.fault ? ' fault' : ''), title: r.id + ' · ' + (r.fault || r.status) });
+    const cell = r => el('i', { class: 'e2c ' + r.status + ((r.failing || r.partial) && !r.tracked ? ' untracked' : '') + (r.fault ? ' fault' : ''), title: r.id + ' · ' + (r.fault || r.status) });
     const head = el('div', { class: 'e2e-head ' + S.state },
       el('div', { class: 'e2e-top' }, el('span', { class: 'e2e-word' }, S.state), el('span', { class: 'e2e-say' }, el('b', {}, say[0]), ...say.slice(1).map(x => el('span', {}, ' · ' + x))),
         el('span', { class: 'e2e-meta' }, n + ' promises' + (last ? ' · last run ' + hhmm(last) + ' UTC · ' + plural(seats, 'seat') : ' · never run'))),
       el('div', { class: 'e2e-strip' }, ...groups.map(g => el('span', { class: 'e2s', title: g }, ...S.rows.filter(r => r.group === g).map(cell)))),
-      el('div', { class: 'e2e-counts' }, ...E2E_ST.map(k => el('span', { class: 'e2k ' + k + (c[k] ? '' : ' zero') }, el('i', { class: 'e2c ' + k }), c[k] + ' ' + k))),
+      el('div', { class: 'e2e-counts' }, ...E2E_SHOW.filter(k => k !== 'partial' || c.partial).map(k => el('span', { class: 'e2k ' + k + (c[k] ? '' : ' zero') }, el('i', { class: 'e2c ' + k }), c[k] + ' ' + k))),
       ...S.faults.map(f => el('div', { class: 'e2e-fault', role: 'status' }, el('b', {}, 'fault'), ' · ' + f)));
-    const row = r => el('div', { class: 'e2r ' + r.status + (r.failing ? (r.tracked ? ' tracked' : ' untracked') : '') + (r.fault ? ' fault' : ''), title: r.text },
+    const row = r => el('div', { class: 'e2r ' + r.status + (r.failing || r.partial ? (r.tracked ? ' tracked' : ' untracked') : '') + (r.fault ? ' fault' : ''), title: r.text },
       el('code', { class: 'e2id' }, r.id), el('span', { class: 'e2m' }, E2E_MARK[r.status]()), el('span', { class: 'e2t' }, r.text),
       el('span', { class: 'e2s-word' }, r.fault || r.status), el('span', { class: 'e2when' }, r.last_run ? hhmm(Date.parse(r.last_run)) : '—'), el('span', { class: 'e2by' }, r.run_by ? r.run_by.replace(/^seat:/, '') : ''),
-      r.failing ? el('span', { class: 'e2note' }, ...(r.tracked_by || []).map(t => el('span', { class: 'e2task ' + (E2E_OPEN.includes(t.status) ? 'open' : 'closed') }, t.ref + ' ' + t.status)), r.tracked ? null : el('b', { class: 'e2untr' }, 'untracked'), r.reason ? el('span', { class: 'e2why' }, r.reason) : null)
+      r.failing || r.partial ? el('span', { class: 'e2note' }, r.partial ? el('span', { class: 'e2miss' }, 'partial · missing: ' + r.missing.join('; ')) : null, ...(r.tracked_by || []).map(t => el('span', { class: 'e2task ' + (E2E_OPEN.includes(t.status) ? 'open' : 'closed') }, t.ref + ' ' + t.status)), r.tracked ? null : el('b', { class: 'e2untr' }, 'untracked'), r.reason ? el('span', { class: 'e2why' }, r.reason) : null)
         : r.status === 'manual' ? el('span', { class: 'e2note' }, el('span', { class: 'e2why' }, 'Oracle’s eye' + (r.reason ? ' · ' + r.reason : ''))) : null);
     const body = el('div', { class: 'e2e-groups' }, ...groups.map(g => { const rs = S.rows.filter(r => r.group === g), ok = rs.filter(r => r.status === 'pass').length;
       return el('div', { class: 'e2g' }, el('div', { class: 'e2g-h' }, el('b', {}, g), el('span', { class: 'e2s' }, ...rs.map(cell)), el('span', { class: 'e2g-n' }, ok + ' / ' + rs.length + ' pass')), ...rs.map(row)); }));

@@ -1671,3 +1671,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 .cu-out { margin: var(--s3) 0; padding: var(--s3) var(--s6); border-radius: var(--r-row); font-size: var(--t-small); color: var(--fg-dim); background: var(--badge); }
 .cu-out b { color: var(--fg); font-weight: 600; }
 .cu-out.granted b { color: color-mix(in srgb, var(--c-ok) 70%, var(--fg)); } .cu-out.cancelled b, .cu-out.unknown b { color: color-mix(in srgb, var(--c-waiting) 70%, var(--fg)); }
+/* #316 partial passes: amber, the left-half mark, the missing assertions named; never green */
+.e2c.partial { background: var(--c-waiting); opacity: 1; }
+.e2r.partial .e2m, .e2r.partial .e2s-word { color: var(--c-waiting); }
+.e2r .e2miss { color: var(--fg); }
