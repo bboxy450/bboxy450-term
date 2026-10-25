@@ -15,7 +15,7 @@ links:
   - { to: "[[d272-ctl-one-grammar]]", rel: decision }
   - { to: "[[work-items]]", rel: record-type }
 created: "2026-10-24T15:24:41Z"
-updated: "2026-10-25T09:07:53Z"
+updated: "2026-10-25T09:34:11Z"
 ---
 # ctl
 
@@ -82,7 +82,7 @@ A recipe is a **record** (`type: recipe`, numbered, in `.bboxy/recipes/`), not c
 
 ## 5. Permission and audit, one story
 
-One principal: the operator's device key signs every `ctl` operation (#31). One door: the endpoint file exists only when the app runs with `--ctl` (#261); a peer descended from the app's own supervisor is refused and told why (#260). One label: `door: ctl` and `issued_by` travel in the signed body and show in the seat's native frame (#269). One audit kind: every call is `control/op` with kind `ctl` and audited on `account/control`; the Graph tab's provenance card shows the Oracle's hand and the operator's apart. No new authority: a verb that cannot be done in the window does not exist here. The desktop is never touched: `seat input` is our own PTY through the window's own `Input` action (#270).
+One principal: the operator's device key signs every `ctl` operation (#31). One door: the endpoint file exists only when the app runs with `--ctl` (#261); a peer descended from the app's own supervisor is refused and told why (#260); **told why is a wire rule (2026-10-25, from Sable's gate at `tests/gui_endpoint.rs:185`)**: the listener reads the request to its end before it writes `ancestry_refused`, flushes the refusal, half-closes its write side and only then closes, so the refused client can always read it; and the `ctl` client, on a send error, reads whatever reply is pending before it gives up. A refusal the client could not read is a violation of #260, not a fixture flake; a fixture that stops at the send error without reading is testing the wrong half. One label: `door: ctl` and `issued_by` travel in the signed body and show in the seat's native frame (#269). One audit kind: every call is `control/op` with kind `ctl` and audited on `account/control`; the Graph tab's provenance card shows the Oracle's hand and the operator's apart. No new authority: a verb that cannot be done in the window does not exist here. The desktop is never touched: `seat input` is our own PTY through the window's own `Input` action (#270).
 
 **The invariants, named.** Every operation is under the operator principal with `door: ctl` and `issued_by`, journaled and audited ([[ctl-opt-in]] holds the door closed by default). Seats are refused by ancestry (#260). No OS or desktop input, ever: `seat type`, `seat key` and `ui key` end in our own PTY or our own window. Nothing leaves the machine. **The capability and every Keychain secret are never printed**: `app endpoint` shows the path and the generation, never the capability; no reply, log line or error carries one ([[ctl-never-prints-secrets]]). Approval rules are explicit and data-driven (recipes, §4) and a refusal says what it saw.
 
