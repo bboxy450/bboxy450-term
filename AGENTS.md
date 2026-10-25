@@ -82,7 +82,7 @@ Before every handoff, run `sh scripts/ci-local.sh` (add `--parity` when lab, des
 
 **No shared compile cache.** The global `~/.cargo/config.toml` routes rustc through one sccache server that stalls every agent's build; `ci-local.sh` and `invariants.sh` clear it, and every other cargo command here runs with `RUSTC_WRAPPER= RUSTC_WORKSPACE_WRAPPER=`.
 
-**Pre-check before taking a slot**, in your own dev target with wrappers clear: `cargo test --workspace --locked`, strict clippy, and `sh scripts/invariants.sh` (fast checks; it caught the kitty-keyboard route that a full gate would have spent an hour finding). A full gate is the last check, not the first.
+**Pre-check before taking a slot**, in your own dev target with wrappers clear and `CARGO_BUILD_JOBS=2`: `cargo test --locked -p <each crate you touched> -p <its direct dependents>`, strict clippy on those crates, and `sh scripts/invariants.sh`. Not `--workspace`: ten agents each pre-checking the whole workspace drove load past 150 and became the chokepoint; the gate runs the whole workspace. A full gate is the last check, not the first.
 
 Report the real exit code. A shared-tree run proves nothing: other agents' in-flight files leak into it.
 
